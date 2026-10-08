@@ -86,6 +86,7 @@ from ...parse.nodes import (
     TpyTupleUnpack,
     TpyVarDecl,
 )
+from ...typesys import pointer_repr_optional, pointer_variant_union
 from ...typesys import (
     AnyType,
     collapse_tuple_own_elements,
@@ -1417,8 +1418,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                 # Pointer-repr Optional slot (`-> Box | None` -> Poll<Box*>,
                 # BORROW form): sources gate in the return arm's BORROW
                 # rungs (the field optional_to_ptr lift; others fence).
-                or (isinstance(rt_inner, OptionalType)
-                    and rt_inner.uses_pointer_repr())):
+                or pointer_repr_optional(rt_inner) is not None):
             return _reject("res.return_type")
     # Forwarded proto-param aliases (`xs = it`) are compile-time renames:
     # the decl emits nothing and every read renders the backing param
@@ -1717,8 +1717,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             # long as the name never registers ptr-variant. A value union
             # takes the VALUE kind instead, where it has no render yet
             # (BUGS.md#resumable-value-union-local-rejects).
-            if (isinstance(lt, UnionType) and not lt.needs_wrapper()
-                    and lt.uses_pointer_repr()):
+            if pointer_variant_union(lt) is not None:
                 frame_slots.add(lname)
                 continue
             return _reject("res.local_storage")

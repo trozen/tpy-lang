@@ -1240,7 +1240,7 @@ struct _LockAcquire {
     void cancel() const;
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) const;
     static constexpr std::string_view __tpy_class_name__ = "asyncio._LockAcquire";
 };
 
@@ -1308,7 +1308,7 @@ struct _SemAcquire {
     void cancel() const;
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) const;
     static constexpr std::string_view __tpy_class_name__ = "asyncio._SemAcquire";
 };
 
@@ -1536,7 +1536,7 @@ struct _QueueWait {
     //     if self._q._wait_ready(self._kind, waker):
     //         return poll_ready_none()
     //     return poll_pending()
-    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) {
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) const {
         if (::tpy::deref_check(this->_q)._wait_ready(this->_kind, waker)) {
             return ::tpystd::coro::poll_ready_none();
         }
@@ -3084,7 +3084,7 @@ inline void _LockAcquire::cancel() const {
 //     if self._lock._try_acquire(waker):
 //         return poll_ready_none()
 //     return poll_pending()
-inline ::tpystd::tpy::Poll<std::monostate> _LockAcquire::__poll__(::tpystd::coro::Waker waker) {
+inline ::tpystd::tpy::Poll<std::monostate> _LockAcquire::__poll__(::tpystd::coro::Waker waker) const {
     if (::tpy::deref_check(this->_lock)._try_acquire(waker)) {
         return ::tpystd::coro::poll_ready_none();
     }
@@ -3157,7 +3157,7 @@ inline void _SemAcquire::cancel() const {
 //     if self._sem._try_acquire(waker):
 //         return poll_ready_none()
 //     return poll_pending()
-inline ::tpystd::tpy::Poll<std::monostate> _SemAcquire::__poll__(::tpystd::coro::Waker waker) {
+inline ::tpystd::tpy::Poll<std::monostate> _SemAcquire::__poll__(::tpystd::coro::Waker waker) const {
     if (::tpy::deref_check(this->_sem)._try_acquire(waker)) {
         return ::tpystd::coro::poll_ready_none();
     }

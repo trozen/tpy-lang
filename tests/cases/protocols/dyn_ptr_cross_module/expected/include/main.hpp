@@ -63,7 +63,7 @@ struct Notifier {
     void aim(::tpyapp::pet::Counter* p);
 
     // def trigger(self, by: int32) -> None:
-    void trigger(int32_t by);
+    void trigger(int32_t by) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Notifier";
 };
 
@@ -103,7 +103,7 @@ inline void Notifier::aim(::tpyapp::pet::Counter* p) {
 //     if self.target is None:
 //         return
 //     self.target.bump(by)
-inline void Notifier::trigger(int32_t by) {
+inline void Notifier::trigger(int32_t by) const {
     if ((this->target == nullptr)) {
         return;
     }

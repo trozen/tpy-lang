@@ -86,7 +86,7 @@ struct Waker {
     explicit Waker(Awaker* awaker = nullptr, int32_t task_id = 0, int32_t generation = 0);
 
     // def wake(self) -> None:
-    void wake();
+    void wake() const;
     static constexpr std::string_view __tpy_class_name__ = "tpy.coro.Waker";
 };
 
@@ -148,10 +148,6 @@ inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation)
       task_id(task_id),
       generation(generation) {}
 
-// # Not @readonly: wake() doesn't mutate self, but it dispatches into
-// # the awaker's `mark_runnable`, which mutates the executor's runnable
-// # queue. Marking wake() readonly would narrow `self.awaker` to
-// # `Ptr[readonly[Awaker]]` and reject the call.
 // def wake(self) -> None:
 //     if self.awaker is None:
 //         return
@@ -164,7 +160,7 @@ inline Waker::Waker(Awaker* awaker, int32_t task_id, int32_t generation)
 //         # the caller's invariant -- see `_ExecutorScope` in
 //         # `lib/tpy/asyncio/_executor.py`.
 //         pass
-inline void Waker::wake() {
+inline void Waker::wake() const {
     if ((this->awaker == nullptr)) {
         return;
     }

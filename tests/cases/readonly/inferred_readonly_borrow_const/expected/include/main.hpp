@@ -94,7 +94,7 @@ struct Outer {
     int32_t read_sub() const;
 
     // def read_named(self) -> int32:
-    int32_t read_named();
+    int32_t read_named() const;
 
     // def bump(self) -> None:
     void bump();
@@ -197,15 +197,15 @@ inline int32_t Outer::read_sub() const {
 }
 
 // def read_named(self) -> int32:
-//     # NOT inferred readonly: binding a NAMED accessor result keeps the
-//     # receiver mutable (READONLY_DESIGN.md limitation), so the mutable
-//     # twin + non-const bind stay -- pins the asymmetry with read_sub.
+//     # Inferred readonly like read_sub: the NAMED accessor result is
+//     # only read, so its loan on the receiver credits nothing and the
+//     # const twin binds -- pins the symmetry with read_sub.
 //     p = self.store.get(5)
 //     if p is not None:
 //         return p.v
 //     return -1
-inline int32_t Outer::read_named() {
-    Cell* p = this->store.get(5);
+inline int32_t Outer::read_named() const {
+    const Cell* p = this->store.get(5);
     if ((p != nullptr)) {
         return p->v;
     }

@@ -1,0 +1,1 @@
+main.py:26: error: Cannot pass readonly[Counter] as mutable Counter in argument 'p' (tuple element 0)

@@ -28,7 +28,7 @@
 #   __init__ isn't supported; `clone()` covers the share path internally.
 from __future__ import annotations
 from typing import Protocol
-from tpy import Own, Ptr, uint32, uint64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly, unsafe_interior_mutable
+from tpy import Own, Ptr, uint32, uint64, Deref, Covariant, Equatable, Comparable, Hashable, dynamic, nocopy, auto_readonly
 from tpy.mem import UninitStorage
 from tpy.unsafe import unsafe_take, unsafe_release
 
@@ -112,11 +112,13 @@ class _RcCell[U](_RcCellBase):
 
 @nocopy
 class Rc[T](Deref[T], Covariant[T]):
-    # `_cell` is bookkeeping outside the readonly boundary (the refcount lives
-    # behind it): clone/downgrade bump it through a readonly handle, the
-    # std::shared_ptr const-copy pattern. `_payload` stays inside the boundary
-    # so a readonly handle still yields readonly T.
-    _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
+    # Readonly protects the handle, not what its pointers point at: clone /
+    # downgrade bump the refcount behind `_cell` through a readonly handle, the
+    # std::shared_ptr const-copy pattern. A readonly handle yields readonly T
+    # only through `get` / `__deref__` (their declared `auto_readonly[T]`);
+    # `_payload` is an implementation field the guarantee assumes callers do
+    # not touch.
+    _cell: Ptr[_RcCellBase]
     _payload: Ptr[T]
 
     # TODO: package-private once TPy gains a private-method mechanism;
@@ -193,9 +195,10 @@ class Rc[T](Deref[T], Covariant[T]):
 
 @nocopy
 class Weak[T]:
-    _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
+    _cell: Ptr[_RcCellBase]
     # _payload dangles between strong=0 and weak=0, but is only dereferenced
-    # via upgrade() after the strong-count check confirms the payload is live.
+    # via upgrade() after the strong-count check confirms the payload is live;
+    # dereferencing the field directly can read a dropped payload.
     _payload: Ptr[T]
 
     # TODO: package-private (same as Rc.__init__).

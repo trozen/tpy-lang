@@ -55,9 +55,9 @@ def aug_through_get(o: Outer):             # Outer&
     o.b.get().v += 1
 
 
-def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
-    x = o.b.get()                          # mutable source, so the receiver stays mutable
-    return x.v                             # until never-mutated locals can bind const
+def alias_read(o: Outer) -> int32:         # const Outer&: the alias is never written
+    x = o.b.get()                          # through, so its loan on the receiver credits
+    return x.v                             # nothing and the local binds const
 
 
 def alias_write(o: Outer):                 # Outer&

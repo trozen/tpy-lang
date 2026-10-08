@@ -77,7 +77,7 @@ class Line:
         self.b = b
 
     @readonly
-    def first(self) -> Point:
+    def first(self) -> readonly[Point]:
         return self.a
 
     def reset(self, x: int32) -> None:

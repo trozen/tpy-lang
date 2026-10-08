@@ -13,7 +13,7 @@ class Point:
 
 
 def deref_mut(p: Ptr[readonly[Point]]) -> Point:
-    return p  # tpyc: error(/return\.record_source/)
+    return p  # tpyc: error(/expected Point, got Ptr\[readonly\[Point\]\]/)
 
 
 def main() -> None:

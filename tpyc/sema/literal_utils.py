@@ -7,7 +7,7 @@ and peels a single `TpyCoerce` wrapper so callers don't have to.
 from ..parse import (
     TpyBytesLiteral, TpyCall, TpyExpr, TpyFloatLiteral, TpyName,
     TpyNoneLiteral, TpyStrLiteral, TpyIntLiteral, TpyBoolLiteral,
-    TpyUnaryOp, TpyCoerce,
+    TpyUnaryOp, TpyCoerce, const_tuple_index,
 )
 from ..type_def_registry import is_char_type
 from ..prescan import literal_constant
@@ -81,12 +81,8 @@ def literal_value_from_expr(expr: TpyExpr | None) -> LiteralValue | None:
         return LiteralValue(LiteralTag.STR, inner.value)
     if isinstance(inner, TpyBoolLiteral):
         return LiteralValue(LiteralTag.BOOL, inner.value)
-    if isinstance(inner, TpyIntLiteral):
-        return LiteralValue(LiteralTag.INT, inner.value)
-    if (isinstance(inner, TpyUnaryOp) and inner.op == "-"
-            and isinstance(inner.operand, TpyIntLiteral)):
-        return LiteralValue(LiteralTag.INT, -inner.operand.value)
-    return None
+    n = const_tuple_index(inner)
+    return LiteralValue(LiteralTag.INT, n) if n is not None else None
 
 
 def fixed_int_literal_value_from_expr(expr: TpyExpr) -> int | None:

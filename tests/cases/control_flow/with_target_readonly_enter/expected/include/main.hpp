@@ -26,7 +26,7 @@ struct Reg {
     explicit Reg(int32_t n);
 
     // @readonly
-    // def __enter__(self) -> "Reg":
+    // def __enter__(self) -> readonly["Reg"]:
     const Reg& __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Reg& obj) {
 inline Reg::Reg(int32_t n) : n(n) {}
 
 // @readonly
-// def __enter__(self) -> "Reg":
+// def __enter__(self) -> readonly["Reg"]:
 //     return self
 inline const Reg& Reg::__enter__() const {
     return (*this);

@@ -1,6 +1,6 @@
 # The borrow-alias off a method-call receiver is admitted only when the call
-# hands back a MUTABLE reference: a `@readonly` receiver method returns
-# `const Mid&`, and the decl's const verdict does not travel through the field
+# hands back a MUTABLE reference: a `@readonly` receiver method declared
+# `-> readonly[Mid]` returns `const Mid&`, and the decl's const verdict does not travel through the field
 # hop, so the alias would be spelled `Jar&` over `const Jar`.
 # See BUGS.md#const-borrow-call-field-lift-loses-const. Workaround: bind the
 # receiver first (`m = h.peek_ro()` then `j = m.jar`).
@@ -28,7 +28,7 @@ class H:
         self.mid = Mid(t)
 
     @readonly
-    def peek_ro(self) -> Mid:
+    def peek_ro(self) -> readonly[Mid]:
         return self.mid
 
 

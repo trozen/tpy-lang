@@ -14,6 +14,7 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
+    make_readonly,
     param_may_be_written,
     any_default_suppressed,
     default_emittable_at,
@@ -70,10 +71,11 @@ from .overloads import (
 )
 from .context import (
     CallOperands, LendSource, _is_self_call_deferred, _root_name_of_expr,
+    receiver_leaves, receiver_root, value_root,
     call_lend_sources,
     call_borrow_operands, expr_lends_storage, proven_lend_roots,
 )
-from .receiver_calls import receiver_leaves, record_truth_calls
+from .receiver_calls import call_mutates_receiver, record_truth_calls
 from .narrowing import truthy_operands
 from .scope_tracker import lend_roots
 from .compatibility import TupleSink
@@ -789,7 +791,7 @@ class CallAnalyzer:
                 and isinstance(arg, TpyName)
                 and not isinstance(arg_type, ReadonlyType)
                 and self.ctx.is_readonly_name(arg.name)):
-            return ReadonlyType(arg_type)
+            return make_readonly(arg_type)
         return arg_type
 
     def resolve_pending_borrow_checks(self) -> None:
@@ -860,7 +862,7 @@ class CallAnalyzer:
         self.pending_copy_receiver_calls.clear()
         for fi, lost, site in pending:
             root = fi.root
-            if (fi.is_readonly or root.is_readonly) and not root.const_withheld:
+            if fi.emitted_const:
                 continue
             if root.direct_self_mutated is not None and not root.self_mutated:
                 continue
@@ -904,8 +906,7 @@ class CallAnalyzer:
         pending = self.pending_readonly_receiver_checks[:]
         self.pending_readonly_receiver_checks.clear()
         for callee, method, site in pending:
-            root = callee.root
-            if not (callee.is_readonly or root.is_readonly) or root.const_withheld:
+            if not callee.emitted_const:
                 raise self.ctx.error(
                     f"Cannot call non-readonly method '{method}' on readonly reference",
                     site)
@@ -3770,7 +3771,7 @@ class CallAnalyzer:
                             and not isinstance(bare_elem, TypeParamRef)):
                         for sub in arg.args:
                             sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
-                            sub_root = _root_name_of_expr(sub_expr)
+                            sub_root = value_root(sub_expr, self.ctx.get_expr_type)
                             if sub_root is not None:
                                 self.ctx.mark_param_mutated(sub_root)
                                 self.ctx.mark_loop_var_mutated(sub_root)
@@ -3801,11 +3802,12 @@ class CallAnalyzer:
         if fi.is_readonly and fi.root.direct_mutated_params is None:
             return
         # The mutable clone of an @auto_readonly accessor (dict.values/items,
-        # Box.get) hands out a borrow but does not mutate its receiver; an
-        # edge here would conservatively flip the caller's self_mutated in
-        # Phase 2 (native clones have no analyzed mutation facts). Mutation
-        # THROUGH the borrowed result is rooted at the mutation site instead.
-        if fi.borrows_receiver_via_auto_readonly:
+        # Box.get) hands out a borrow but does not mutate its receiver
+        # (`call_mutates_receiver`); an edge here would conservatively flip
+        # the caller's self_mutated in Phase 2 (native clones have no analyzed
+        # mutation facts). Mutation THROUGH the borrowed result is rooted at
+        # the mutation site instead.
+        if fi.is_auto_readonly_mutable_clone and not call_mutates_receiver(fi):
             return
         name_to_idx = self.ctx.func.current_param_name_to_idx
         rebound = self.ctx.func.current_rebound_params
@@ -3819,10 +3821,11 @@ class CallAnalyzer:
             # A select receiver is each operand it may pick.
             self_rooted = False
             for leaf in receiver_leaves(expr.obj):
-                obj_root = _root_name_of_expr(leaf)
-                if obj_root is not None and _is_self_call_deferred(
-                        leaf, obj_root, self.ctx.func.loop_var_iterable,
-                        self.ctx.func.borrow_tracker):
+                obj_root = receiver_root(leaf, self.ctx.get_expr_type)
+                if (obj_root is not None
+                        and _is_self_call_deferred(
+                            leaf, obj_root, self.ctx.func.loop_var_iterable,
+                            self.ctx.func.borrow_tracker, self.ctx.get_expr_type)):
                     self_rooted = True
             if expr.super_parent_type is not None or self_rooted:
                 receiver_idx = self.ctx.self_receiver_index()
@@ -3861,7 +3864,7 @@ class CallAnalyzer:
                 seen_callers: set[int] = set()
                 for sub in pack.args:
                     sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
-                    sub_root = _root_name_of_expr(sub_expr)
+                    sub_root = value_root(sub_expr, self.ctx.get_expr_type)
                     if sub_root is None:
                         continue
                     for resolved in self._arg_storage_roots(sub_root):
@@ -3892,7 +3895,7 @@ class CallAnalyzer:
             # is a direct fact at the call site, not an edge.
             for src in sources:
                 if src.binds_open_param:
-                    _gr = _root_name_of_expr(src.expr)
+                    _gr = value_root(src.expr, self.ctx.get_expr_type)
                     if _gr is not None:
                         self.ctx.mark_param_mutated(_gr)
             sources = [s for s in sources
@@ -3910,9 +3913,13 @@ class CallAnalyzer:
             arg_roots: list[str] = []
             through_handle = False
             for src in sources:
-                arg_root = _root_name_of_expr(src.expr)
+                arg_root = value_root(src.expr, self.ctx.get_expr_type)
                 if arg_root is not None:
                     arg_roots.append(arg_root)
+                    continue
+                if _root_name_of_expr(src.expr) is not None:
+                    # A handle read out of a holder: what the callee writes
+                    # is its referent, not the holder.
                     continue
                 roots = [r for r in lend_roots(self.ctx, src.expr)
                          if not r.held_whole]
@@ -6951,7 +6958,7 @@ class CallAnalyzer:
                 continue
             if not param_has_mutable_borrow_surface(ptype):
                 continue
-            arg_root = _root_name_of_expr(expr.args[i])
+            arg_root = value_root(expr.args[i], self.ctx.get_expr_type)
             if arg_root is None:
                 continue
             # A bare generic slot is marked too: the template is one C++

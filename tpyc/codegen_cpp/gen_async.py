@@ -65,6 +65,7 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
+from ..typesys import pointer_repr_optional
 from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership, body_function_info, body_method_info
 from ..value_category import (async_return_form, AsyncReturnForm,
                               declared_call_const,
@@ -669,7 +670,7 @@ class AsyncCoroCodegen:
                 # `F_<pname>&&` -- same shape as STATIC_PROTOCOL.
                 field_type = ctor_type = fn_param_template_name(pname)
             elif kind in (_CoroParamKind.POINTER, _CoroParamKind.OWNED_TUPLE):
-                if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+                if pointer_repr_optional(actual) is not None:
                     field_type = ctor_type = ptype_inner.to_cpp_param_type()
                 elif isinstance(actual, TupleType):
                     # Borrow form: std::tuple<..., T*> (readonly -> const T*).
@@ -757,7 +758,7 @@ class AsyncCoroCodegen:
         # reference one. Only the KIND's name is a pointer -- the borrow
         # question is answered per instantiation, on the substituted slot the
         # call site passes to `_param_borrows`.
-        if isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+        if pointer_repr_optional(actual) is not None:
             return _CoroParamKind.POINTER
         if self.ctx.is_ptr_variant_union(actual):
             return _CoroParamKind.POINTER
@@ -2036,8 +2037,7 @@ class AsyncCoroCodegen:
             kind = rcfg.FrameLocalKind.FRAME_SLOT
         elif ltype_inner.is_value_type():
             kind = rcfg.FrameLocalKind.VALUE
-        elif (isinstance(unwrap_readonly(ltype_inner), OptionalType)
-                and unwrap_readonly(ltype_inner).uses_pointer_repr()):
+        elif pointer_repr_optional(ltype_inner) is not None:
             # Pointer-repr Optional: bare `T* = nullptr` aliases the
             # source and uses nullptr as both "uninitialized" and
             # "None"; no outer `std::optional<...>` wrap. A `readonly`
@@ -4155,8 +4155,7 @@ class AsyncCoroCodegen:
                             rcfg.mark_frame_const(state, s.name)
                     elif (ltype is not None and s.init is not None
                             and not src_is_exc
-                            and isinstance(ltype_bare, OptionalType)
-                            and ltype_bare.uses_pointer_repr()):
+                            and pointer_repr_optional(ltype_bare) is not None):
                         # Pointer-repr Optional locals get their bare `T*`
                         # frame field on their own emission branch (not via
                         # `aliases`); only the const fact is recorded here,
@@ -4180,8 +4179,7 @@ class AsyncCoroCodegen:
                                 continue
                             cap_bare = unwrap_ref_type(cap_t)
                             if (cap.name in aliases
-                                    or (isinstance(cap_bare, OptionalType)
-                                        and cap_bare.uses_pointer_repr())):
+                                    or pointer_repr_optional(cap_bare) is not None):
                                 borrows_from(cap.name, s.subject)
                                 if self.ctx.is_const_storage_source(s.subject):
                                     rcfg.mark_frame_const(state, cap.name)
@@ -4417,8 +4415,7 @@ class AsyncCoroCodegen:
                 # on what `__enter__` actually lends -- so a `-> StrView` target
                 # owns as much as a `-> str` one, and nothing is left to defer.
                 continue
-            if (isinstance(resolved_enter, OptionalType)
-                    and resolved_enter.uses_pointer_repr()):
+            if pointer_repr_optional(resolved_enter) is not None:
                 # A pointer-repr Optional answers alias-vs-own by itself (the
                 # null pointer doubles as None) and has its own field kind; a
                 # source-form payload would win the earlier arm and render

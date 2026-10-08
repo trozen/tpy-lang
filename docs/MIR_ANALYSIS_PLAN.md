@@ -2665,9 +2665,9 @@ as the corpus grows).
   parameter, one returning a container field of the receiver
   `param0.items`), nothing invalidated or retained. A
   borrowed record result is readonly exactly when the emitted C++ result
-  is const (`callables._borrowed_result`: the callable's readonly verdict,
-  declared or inferred, where `typesys.return_const_projected` projects
-  it, or a `readonly[...]` return type), at the definition and at every
+  is const (`callables._borrowed_result`: a `readonly[...]` declared
+  return, `typesys.declared_result_readonly`, or the receiver's access for
+  a result that follows it), at the definition and at every
   call: a method that does not write `self` and returns a record
   parameter hands its caller a mutable borrow (`call_other`), an explicit
   `@readonly` method returning `self` a readonly one (`call_me_ro`). An

@@ -25,7 +25,7 @@ struct Container {
     Container();
 
     // @readonly
-    // def items(self) -> list[int32]:
+    // def items(self) -> readonly[list[int32]]:
     const std::vector<int32_t>& items() const;
 
     // @readonly
@@ -45,7 +45,7 @@ inline std::ostream& operator<<(std::ostream& os, const Container& obj) {
 inline Container::Container() : _items(std::vector<int32_t>{10, 20, 30}) {}
 
 // @readonly
-// def items(self) -> list[int32]:
+// def items(self) -> readonly[list[int32]]:
 //     return self._items
 inline const std::vector<int32_t>& Container::items() const {
     return this->_items;

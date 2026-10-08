@@ -21,6 +21,7 @@ from typing import Literal, TextIO, TYPE_CHECKING
 #   are emitted.
 MethodEmitMode = Literal["inline", "decl", "def_hpp", "def_cpp"]
 
+from ..typesys import make_readonly, pointer_repr_optional, readonly_access
 from ..typesys import (
     default_emittable_at, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
@@ -31,7 +32,7 @@ from ..typesys import (
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
     property_getter_returns_storage_ref,
-    bare_name, recorded_return_borrow_sources, return_const_projected,
+    bare_name,
     body_function_info, body_method_info,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -54,6 +55,12 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
     from .protocols import ProtocolGenerator, ProtocolParamInfo
+
+
+def _pointer_slot_cpp(var_type: TpyType, cpp_type: str) -> str:
+    """A pointer-slot global's C++ type: `T*`, `const T*` when the global
+    only has readonly access to what it points at."""
+    return f"const {cpp_type}*" if readonly_access(var_type) else f"{cpp_type}*"
 
 
 def _infer_literal_default_type(expr: TpyExpr) -> TpyType | None:
@@ -638,6 +645,13 @@ class FunctionGenerator:
             return False
         return all(self.protocols.is_protocol_const(p.name) for p in info.protocols)
 
+    def shim_return_cpp(self, method: TpyFunction) -> str:
+        """The return a shim delegating to `method` (an operator, the call
+        operator) spells: the method's own, so the delegation binds whatever
+        the method hands back."""
+        return self._resolve_return_type(method.return_type,
+                                         error_return=method.error_return)
+
     def _resolve_return_type(self, return_type: TpyType, *, const: bool = False,
                              error_return: str | None = None) -> str:
         """Map a return type to C++, using Base& for @dynamic protocols.
@@ -818,29 +832,6 @@ class FunctionGenerator:
         """Return method param indices whose address escapes via a mutable Ptr[T] field."""
         fi = self._method_body_info(method, record_name)
         return fi.addr_escapes_params if fi is not None else frozenset()
-
-    def _method_return_const_projected(self, method: TpyFunction, record_name: str) -> bool:
-        """Whether a const method's borrowed return is const too."""
-        fi = body_method_info(self.ctx.analyzer.registry.get_record(record_name), method)
-        # Only an INFERRED verdict can split the two.
-        return fi is None or not fi.root.readonly_inferred or return_const_projected(fi)
-
-    def _get_method_genuine_mutated_params(self, method: TpyFunction, record_name: str) -> frozenset[int] | None:
-        """Return mutation indices excluding return-borrow roots for const codegen.
-
-        Borrow exposure shares the mutation set; its roots are subtracted
-        even when also modified -- but only where the return is
-        const-projected, since a mutable borrow of a parameter is a write
-        path through it. Finalized facts retain unrelated transitive
-        mutations so those parameters stay non-const.
-        """
-        fi = self._method_body_info(method, record_name)
-        if fi is None or fi.mutated_params is None:
-            return None
-        mp = fi.mutated_params
-        if fi.root.readonly_inferred and not return_const_projected(fi):
-            return mp
-        return mp - recorded_return_borrow_sources(fi)
 
     def _has_dynamic_protocol_params(self, params: list[tuple[str, TpyType]]) -> bool:
         """Check if any params are @dynamic protocol types (need Base& codegen)."""
@@ -1494,15 +1485,9 @@ class FunctionGenerator:
         """
         use_const_params = ((method.is_readonly and not method.auto_readonly_params_resolved)
                             or method.name in CONST_PARAMS_METHODS)
-        ae = self._get_method_addr_escapes(method, record_name)
-        if use_const_params:
-            return self.gen_params(method.params, method.type_params, const_params=True,
-                                   mutated_params=self._get_method_genuine_mutated_params(method, record_name),
-                                   addr_escapes_params=ae,
-                                   func=method)
-        return self.gen_params(method.params, method.type_params,
+        return self.gen_params(method.params, method.type_params, const_params=use_const_params,
                                mutated_params=self._get_method_mutated_params(method, record_name),
-                               addr_escapes_params=ae,
+                               addr_escapes_params=self._get_method_addr_escapes(method, record_name),
                                func=method)
 
     def gen_method_def(self, out: TextIO, method: TpyFunction, record_name: str,
@@ -1560,11 +1545,6 @@ class FunctionGenerator:
         is_def_mode = mode in ("def_hpp", "def_cpp")
         cpp_record_qualified = escape_cpp_name(record_name.replace(".", "::"))
         rec_short = bare_name(record_name)
-        # The receiver's const-ness and the return's are separate verdicts: an
-        # inferred-const method whose return borrows a parameter stays `const`
-        # and keeps its declared mutable return.
-        ret_const = const and self._method_return_const_projected(method, record_name)
-
         # Inplace dunders return T& (reference to self) in C++.
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
         if is_inplace_dunder:
@@ -1586,14 +1566,14 @@ class FunctionGenerator:
                            else self.types.type_to_cpp(inner))
                 ret_type = f"const {storage}&" if const else f"{storage}&"
             else:
-                ret_type = self._resolve_return_type(cpp_return_type, const=ret_const,
+                ret_type = self._resolve_return_type(cpp_return_type,
                                                       error_return=method.error_return)
         elif override and is_any_str_type(cpp_return_type):
             # @dynamic protocol virtual returns std::string; override must match
             # even if the impl declares -> StrView or -> String.
             ret_type = "std::string"
         else:
-            ret_type = self._resolve_return_type(cpp_return_type, const=ret_const,
+            ret_type = self._resolve_return_type(cpp_return_type,
                                                   error_return=method.error_return)
         dfl = method.defaults if method.defaults else None
 
@@ -1617,9 +1597,6 @@ class FunctionGenerator:
         rp = self._get_reassigned_params(method)
         mp = self._get_method_mutated_params(method, record_name)
         ae = self._get_method_addr_escapes(method, record_name)
-        # For const methods, drop the params marked mutated only because they're
-        # returned by reference (return-borrow), keeping genuinely mutated ones.
-        gmp = self._get_method_genuine_mutated_params(method, record_name) if use_const_params else None
         # C++ rejects default arguments repeated on both the in-class declaration
         # and the out-of-line definition. Emit defaults only on the decl side.
         emit_defaults = not is_def_mode
@@ -1638,7 +1615,7 @@ class FunctionGenerator:
             if use_const_params and not declared_const_only:
                 params = self.gen_params_with_protocols(method.params, method.type_params,
                                                         const_params=True,
-                                                        mutated_params=gmp,
+                                                        mutated_params=mp,
                                                         defaults=dfl, emit_defaults=emit_defaults,
                                                         func=method)
             else:
@@ -1650,7 +1627,7 @@ class FunctionGenerator:
             ctp = class_type_params or None
             if use_const_params and not declared_const_only:
                 params = self.gen_params(method.params, method.type_params, const_params=True,
-                                         mutated_params=gmp,
+                                         mutated_params=mp,
                                          addr_escapes_params=ae,
                                          defaults=dfl, emit_defaults=emit_defaults,
                                          class_type_params=ctp, func=method)
@@ -1802,8 +1779,9 @@ class FunctionGenerator:
         if isinstance(var_type, OwnType):
             var_type = var_type.wrapped
         # Optional non-value types use inner type (pointer-global adds T*)
-        elif isinstance(var_type, OptionalType) and var_type.uses_pointer_repr():
-            var_type = var_type.inner
+        elif (opt := pointer_repr_optional(var_type)) is not None:
+            var_type = (make_readonly(opt.inner) if readonly_access(var_type)
+                        else opt.inner)
         # Resolve IntLiteralType in all composite types (tuples, arrays, lists)
         var_type = resolve_int_literals(var_type, self.ctx.analyzer.ctx.default_int_for_literal)
         return var_type
@@ -1889,7 +1867,7 @@ class FunctionGenerator:
                                  or isinstance(var_type, PtrType)) else ""))
             out.write(f"{cpp_type} {stmt.name}{init};\n")
         else:
-            out.write(f"{cpp_type}* {stmt.name}{{}};\n")
+            out.write(f"{_pointer_slot_cpp(var_type, cpp_type)} {stmt.name}{{}};\n")
 
     def gen_global_extern(self, out: TextIO, stmt: TpyVarDecl) -> None:
         """Generate an extern declaration for a global variable in header file."""
@@ -1902,7 +1880,7 @@ class FunctionGenerator:
         elif is_value:
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:
-            out.write(f"extern {cpp_type}* {stmt.name};\n")
+            out.write(f"extern {_pointer_slot_cpp(var_type, cpp_type)} {stmt.name};\n")
 
     def _gen_final_init_expr(self, stmt: TpyVarDecl, var_type: TpyType) -> str:
         """Render a Final global's initializer through THIR. The name itself

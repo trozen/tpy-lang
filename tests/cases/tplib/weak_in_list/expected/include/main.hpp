@@ -17,7 +17,7 @@ struct Node;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def observed_values(observers: list[Weak[Node]]) -> Own[list[int32]]:
-std::vector<int32_t> observed_values(const std::vector<::tpystd::tplib::rc::Weak<Node>>& observers);
+std::vector<int32_t> observed_values(std::vector<::tpystd::tplib::rc::Weak<Node>>& observers);
 // def main() -> None:
 void main();
 

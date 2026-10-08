@@ -20,8 +20,9 @@ from enum import Enum, auto
 
 from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpyNoneLiteral,
                            TpySubscript, is_property_getter_read)
+from ..typesys import pointer_repr_optional
 from ..typesys import (
-    OptionalType, OwnType, TpyType, TupleType, UnionType,
+    OwnType, TpyType, TupleType, UnionType,
     is_ptr_variant_union, property_getter_returns_storage_ref,
     unwrap_qualifiers, unwrap_readonly,
 )
@@ -117,7 +118,7 @@ def is_plain_nonvalue(t: TpyType) -> bool:
     check = t.wrapped if isinstance(t, OwnType) else t
     if check.is_value_type():
         return False
-    if isinstance(check, OptionalType) and check.uses_pointer_repr():
+    if pointer_repr_optional(check) is not None:
         return False
     if is_ptr_variant_union(check):
         return False
@@ -140,7 +141,7 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
     """
     if isinstance(expr, TpyFieldAccess):
         vt = _expr_type(analyzer, expr)
-        return isinstance(vt, OptionalType) and vt.uses_pointer_repr()
+        return pointer_repr_optional(vt) is not None
     if is_property_getter_read(expr):
         # A @property read is a getter CALL, but its return convention is
         # the FIELD's: a pointer-repr Optional comes back as
@@ -150,7 +151,7 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
             expr.resolved_function_info.return_type)
     if isinstance(expr, TpySubscript):
         vt = _expr_type(analyzer, expr)
-        if not (isinstance(vt, OptionalType) and vt.uses_pointer_repr()):
+        if pointer_repr_optional(vt) is None:
             return False
         # A user-record __getitem__ CALL follows the call convention: a
         # pointer-repr Optional return is already borrow-form `T*` unless the
@@ -240,7 +241,7 @@ def classify_local_binding(
     if name in hoisted or name in move_through:
         return LocalBinding.OTHER
     is_reassigned = name in reassigned
-    if isinstance(target_type, OptionalType) and target_type.uses_pointer_repr():
+    if pointer_repr_optional(target_type) is not None:
         # None-literal and rvalue inits take the slot-hoist pointer-local
         # machinery (reassigned or not). THIR lowering sub-gates the
         # admitted init/reseat shapes.

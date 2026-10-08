@@ -43,7 +43,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
 // @nocopy
 // class Counter:
 struct Counter {
-    // _cell: unsafe_interior_mutable[Ptr[Cell]]
+    // _cell: Ptr[Cell]
     Cell* _cell;
     bool __tpy_owned_ = true;
 

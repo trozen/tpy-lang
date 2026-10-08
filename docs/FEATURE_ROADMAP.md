@@ -354,8 +354,10 @@ could use a pending representation that resolves during sema/codegen based on co
   trait that resolves at C++ instantiation time.
 - Dangling references: per-element dangling check on tuple return literals prevents
   returning references to locals/temporaries.
-- Readonly methods: `@readonly` methods returning tuple with reference elements use
-  `const T&` for reference elements (matching the const method semantics).
+- Readonly element access: a tuple return's elements take their access from the
+  declared element type (`-> tuple[readonly[A], B]` is `std::tuple<const A*, B*>`);
+  a `@readonly` method returning its own storage as an element declares it
+  `readonly[...]`.
 
 **Current state**: Implemented. Context-dependent tuple element semantics are fully working.
 

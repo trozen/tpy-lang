@@ -165,9 +165,9 @@ inline std::ostream& operator<<(std::ostream& os, const _RwLockCell<T>& obj) {
 // class Mutex[T]:
 template<typename T>
 struct Mutex {
-    // _cell: unsafe_interior_mutable[Ptr[_MutexCell[T]]]
+    // _cell: Ptr[_MutexCell[T]]
     _MutexCell<T>* _cell;
-    // _payload: unsafe_interior_mutable[Ptr[T]]
+    // _payload: Ptr[T]
     T* _payload;
     bool __tpy_owned_ = true;
 
@@ -237,7 +237,7 @@ struct MutexGuard {
     T* _payload;
     // _locked: bool
     bool _locked;
-    // _raw_mu: unsafe_interior_mutable[Ptr[_RawMutex]]
+    // _raw_mu: Ptr[_RawMutex]
     ::tpy::MovableMutex* _raw_mu;
 
     // def __init__(self, cell: Ptr[_MutexCell[T]], payload: Ptr[T]) -> None:
@@ -294,7 +294,10 @@ struct MutexGuard {
         return ::tpy::deref_check(this->_payload);
     }
 
-    // def get(self) -> T:
+    // # Access-polymorphic like __deref__: a readonly guard hands out a
+    // # readonly payload.
+    // @auto_readonly
+    // def get(self) -> auto_readonly[T]:
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
@@ -302,21 +305,35 @@ struct MutexGuard {
         return ::tpy::deref_check(this->_payload);
     }
 
+    // # Access-polymorphic like __deref__: a readonly guard hands out a
+    // # readonly payload.
+    // @auto_readonly
+    // def get(self) -> auto_readonly[T]:
+    //     _require_locked(self._locked)
+    //     return self._payload
+    ::tpy::val_or_cref_t<T> get() const {
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
+        return ::tpy::deref_check(this->_payload);
+    }
+
     // # `Own[T]`, not `T`: this writes into the lock's owned storage, so a borrowed
     // # reference payload would be copied where CPython aliases the passed object.
     // # Moving in consumes the source, so the two models are indistinguishable.
+    // # It writes only through `_payload`, so readonly inference would make it
+    // # callable on a readonly guard, which hands out a readonly payload.
+    // @readonly(False)
     // def set(self, value: Own[T]) -> None:
     //     _require_locked(self._locked)
     //     unsafe_store(self._payload, uint32(0), value)
-    void set(::tpy::own_param_t<T> value) const {
+    void set(::tpy::own_param_t<T> value) {
         ::tpystd::tpy::sync::_require_locked(this->_locked);
         this->_payload[0] = std::move(value);
     }
 
     // # Internal hook for `Condvar.wait` (`_CondvarLock` structural conformance):
     // # hands out the raw lock this guard holds so users never touch `_RawMutex`.
-    // # @readonly (via the interior-mutable `_raw_mu` pointer) so it stays callable
-    // # through wait's readonly param. Only the exclusive Mutex guard conforms;
+    // # @readonly (`_raw_mu` is a `Ptr`, which readonly does not reach through) so
+    // # it stays callable through wait's readonly param. Only the exclusive Mutex guard conforms;
     // # RwLock's shared_mutex guards don't (a condvar pairs with an exclusive lock).
     // @readonly
     // def _raw_mutex(self) -> Ptr[_RawMutex]:
@@ -350,9 +367,9 @@ inline std::ostream& operator<<(std::ostream& os, const MutexGuard<T>& obj) {
 // class RwLock[T]:
 template<typename T>
 struct RwLock {
-    // _cell: unsafe_interior_mutable[Ptr[_RwLockCell[T]]]
+    // _cell: Ptr[_RwLockCell[T]]
     _RwLockCell<T>* _cell;
-    // _payload: unsafe_interior_mutable[Ptr[T]]
+    // _payload: Ptr[T]
     T* _payload;
     bool __tpy_owned_ = true;
 
@@ -552,7 +569,10 @@ struct WriteGuard {
         return ::tpy::deref_check(this->_payload);
     }
 
-    // def get(self) -> T:
+    // # Access-polymorphic like __deref__: a readonly guard hands out a
+    // # readonly payload.
+    // @auto_readonly
+    // def get(self) -> auto_readonly[T]:
     //     _require_locked(self._locked)
     //     return self._payload
     ::tpy::val_or_ref_t<T> get() {
@@ -560,13 +580,27 @@ struct WriteGuard {
         return ::tpy::deref_check(this->_payload);
     }
 
+    // # Access-polymorphic like __deref__: a readonly guard hands out a
+    // # readonly payload.
+    // @auto_readonly
+    // def get(self) -> auto_readonly[T]:
+    //     _require_locked(self._locked)
+    //     return self._payload
+    ::tpy::val_or_cref_t<T> get() const {
+        ::tpystd::tpy::sync::_require_locked(this->_locked);
+        return ::tpy::deref_check(this->_payload);
+    }
+
     // # `Own[T]`, not `T`: this writes into the lock's owned storage, so a borrowed
     // # reference payload would be copied where CPython aliases the passed object.
     // # Moving in consumes the source, so the two models are indistinguishable.
+    // # It writes only through `_payload`, so readonly inference would make it
+    // # callable on a readonly guard, which hands out a readonly payload.
+    // @readonly(False)
     // def set(self, value: Own[T]) -> None:
     //     _require_locked(self._locked)
     //     unsafe_store(self._payload, uint32(0), value)
-    void set(::tpy::own_param_t<T> value) const {
+    void set(::tpy::own_param_t<T> value) {
         ::tpystd::tpy::sync::_require_locked(this->_locked);
         this->_payload[0] = std::move(value);
     }
@@ -592,7 +626,7 @@ inline std::ostream& operator<<(std::ostream& os, const WriteGuard<T>& obj) {
 // @unsafe_sync
 // class Condvar:
 struct Condvar {
-    // _cv: unsafe_interior_mutable[Ptr[_RawCondvar]]
+    // _cv: Ptr[_RawCondvar]
     ::tpy::MovableConditionVariable* _cv;
     bool __tpy_owned_ = true;
 

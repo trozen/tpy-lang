@@ -8,6 +8,8 @@
 namespace tpyapp::main {
 
 struct Counter;
+struct Sum;
+struct Box;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -15,6 +17,8 @@ inline constexpr std::string_view __name__ = "__main__";
 int32_t value_only(const std::tuple<int32_t, int32_t>& p);
 // def mixed(p: readonly[tuple[int32, Counter]]) -> int32:
 int32_t mixed(const std::tuple<int32_t, const Counter*>& p);
+// def keep(t: readonly[tuple[Box, int32]], xs: list[tuple[Box, int32]]) -> None:
+void keep(const std::tuple<const Box*, int32_t>& t, std::vector<std::tuple<Box, int32_t>>& xs);
 // def main() -> None:
 void main();
 
@@ -40,9 +44,73 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+// class Sum:
+struct Sum {
+    // k: int32
+    int32_t k;
+
+    // def __init__(self, k: int32) -> None:
+    Sum() = default;
+    explicit Sum(int32_t k);
+
+    // @readonly
+    // def plus(self, o: tuple[int32, Counter]) -> int32:
+    int32_t plus(const std::tuple<int32_t, const Counter*>& o) const;
+
+    // def __add__(self, o: tuple[int32, Counter]) -> int32:
+    int32_t __add__(const std::tuple<int32_t, const Counter*>& o) const;
+
+    friend int32_t operator+(const Sum& lhs, const std::tuple<int32_t, const Counter*>& o) {
+        return lhs.__add__(o);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sum";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Sum& obj) {
+    ::tpy::print_object_default(os, "Sum", obj);
+    return os;
+}
+
+// class Box:
+struct Box {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Box() = default;
+    explicit Box(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
+    ::tpy::print_object_default(os, "Box", obj);
+    return os;
+}
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Counter::Counter(int32_t n) : n(n) {}
+
+// def __init__(self, k: int32) -> None:
+//     self.k = k
+inline Sum::Sum(int32_t k) : k(k) {}
+
+// @readonly
+// def plus(self, o: tuple[int32, Counter]) -> int32:
+//     return self.k + mixed(o)  # tpyc: ok
+inline int32_t Sum::plus(const std::tuple<int32_t, const Counter*>& o) const {
+    return (::tpy::add_check<int32_t>(this->k, ::tpyapp::main::mixed(o)));
+}
+
+// def __add__(self, o: tuple[int32, Counter]) -> int32:
+//     return self.k + mixed(o)  # tpyc: ok
+inline int32_t Sum::__add__(const std::tuple<int32_t, const Counter*>& o) const {
+    return (::tpy::add_check<int32_t>(this->k, ::tpyapp::main::mixed(o)));
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Box::Box(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

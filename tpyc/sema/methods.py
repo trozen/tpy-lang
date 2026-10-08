@@ -14,7 +14,7 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
-    unwrap_own, ConcreteCoroType,
+    unwrap_own, ConcreteCoroType, receiver_lends,
     RecordInfo, InitInheritBlock, InitInheritBlocker,
     contains_type_param, contains_pending_leaf,
     FloatLiteralType, resolve_int_literals,
@@ -47,7 +47,8 @@ from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls)
 from .pending_num import (ContainerCells, Entry, is_pending_num,
                           leaves_as_numbers, root_of, with_container)
-from .receiver_calls import (check_receiver_call_loans, credit_receiver_mutation,
+from .receiver_calls import (call_mutates_receiver, check_receiver_call_loans,
+                             credit_receiver_mutation, implicit_readonly_result_hint,
                              receiver_is_readonly)
 
 if TYPE_CHECKING:
@@ -1018,9 +1019,10 @@ class MethodAnalyzer:
                 # needs a mutable one (std::function::operator() is const).
                 if is_readonly_receiver and not expr.is_callable_field:
                     info = expr.resolved_function_info
-                    if info is not None and not info.is_readonly:
+                    if info is not None and call_mutates_receiver(info):
                         raise self.ctx.error(
-                            f"Cannot call non-readonly method '{expr.method}' on readonly reference",
+                            f"Cannot call non-readonly method '{expr.method}' on readonly reference"
+                            + implicit_readonly_result_hint(self.ctx, expr.obj),
                             expr)
                 # Enforce consuming methods: receiver must be a local variable
                 info = expr.resolved_function_info
@@ -1029,30 +1031,14 @@ class MethodAnalyzer:
                 # Track non-readonly method calls on for-each loop variables
                 # and string view sources (receiver mutation invalidates views)
                 info = expr.resolved_function_info
-                # The mutable clone of an @auto_readonly accessor (Box.get / Rc.get /
-                # Deref) does not mutate its receiver -- only a mutation *through* its
-                # borrowed result does. Demoting here would force every read-only use
-                # (`return o.b.get().v`) to a mutable receiver. The actual mutation is
-                # rooted back to the receiver at the mutation site, where
-                # _root_name_of_expr is transparent to the accessor call.
-                # A method call through an `unsafe_interior_mutable` field (e.g.
-                # `self._cell.incr_strong()`) mutates bookkeeping the owner
-                # declared outside its readonly boundary -- it must not demote
-                # the enclosing method. Reassigning the slot is a separate path
-                # (assignment enforcement on the receiver) and stays rejected.
-                interior_receiver = (
-                    isinstance(expr.obj, TpyFieldAccess)
-                    and expr.obj.accessed_field_is_interior
-                )
-                if (info is not None and not info.is_readonly
-                        and not info.is_auto_readonly_mutable_clone
-                        and not expr.is_callable_field
-                        and not interior_receiver):
+                if (info is not None and call_mutates_receiver(info)
+                        and not expr.is_callable_field):
                     # A select receiver is each operand it may pick, and
                     # each is credited exactly as a single receiver would be.
                     # The self-rooted call edge is `_record_mutation_call_edges`'s.
                     credit_receiver_mutation(self.ctx, expr.obj, obj_type,
-                                             expr.method, edges_recorded=True)
+                                             expr.method, edges_recorded=True,
+                                             eager=receiver_lends(info)[0])
                 return result
 
             deref_target = self.expr.get_deref_target_type(

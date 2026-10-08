@@ -1516,8 +1516,14 @@ def substitute_type_params_structural(
     layer has a more capable `TypeOps.substitute_type_params` in
     type_ops.py that handles representation choices (e.g. Optional
     pointer repr); this one is for typesys-internal callers that only
-    need structural replacement.
+    need structural replacement. The result is settled
+    (`settled_substitution`), as every substitution's is.
     """
+    return settled_substitution(typ, _substitute_structural(typ, subst))
+
+
+def _substitute_structural(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    # Keeps every inner readonly: a handle's referent stays const storage.
     if isinstance(typ, TypeParamRef):
         return subst.get(typ.name, typ)
     # NominalType.type_args can hold raw ints (Array[T, N]); map_inner_types
@@ -1531,7 +1537,7 @@ def substitute_type_params_structural(
                 new_args.append(subst[arg.name])
                 changed = True
             elif hasattr(arg, "map_inner_types"):
-                new = substitute_type_params_structural(arg, subst)
+                new = _substitute_structural(arg, subst)
                 new_args.append(new)
                 if new is not arg:
                     changed = True
@@ -1544,7 +1550,7 @@ def substitute_type_params_structural(
             )
         return typ
     return typ.map_inner_types(
-        lambda t: substitute_type_params_structural(t, subst))
+        lambda t: _substitute_structural(t, subst))
 
 
 def substitute_type_params_simple(
@@ -1554,11 +1560,15 @@ def substitute_type_params_simple(
     substitution. `TypeResolver.substitute_type_params` delegates here and
     THIR lowering resolves call-site param slots through the same function,
     so the two emit paths cannot drift. Unlike the structural variant above
-    it does not special-case Array's raw-int `type_args` slot."""
+    it does not special-case Array's raw-int `type_args` slot. The result
+    is settled (`settled_substitution`)."""
+    return settled_substitution(typ, _substitute_simple(typ, subst))
+
+
+def _substitute_simple(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     if isinstance(typ, TypeParamRef):
         return subst.get(typ.name, typ)
-    return typ.map_inner_types(
-        lambda t: substitute_type_params_simple(t, subst))
+    return typ.map_inner_types(lambda t: _substitute_simple(t, subst))
 
 
 def expand_fi_template(fi: 'FunctionInfo',
@@ -1841,17 +1851,35 @@ class PtrType(TpyType):
     def with_inner_types(self, types: tuple['TpyType', ...]) -> 'TpyType':
         return PtrType(types[0])
 
-    def as_const(self) -> 'PtrType':
-        """Return a const version of this pointer."""
-        if self.is_readonly:
-            return self
-        return PtrType(ReadonlyType(self.pointee))
-
     def as_mutable(self) -> 'PtrType':
         """Return a mutable version of this pointer."""
         if not self.is_readonly:
             return self
         return PtrType(self.inner_pointee)
+
+
+def indirection_referent_readonly(t: 'TpyType | None') -> bool | None:
+    """Where a place step -- a field, an element, a dereference -- taken off a
+    value of type `t` lands: None when it stays in `t`'s own storage (an
+    ordinary step, const exactly when what holds that storage is), else `t` is
+    a value-typed handle (a `Ptr`, a borrowing view such as `Span`) and the
+    step reaches its referent, whose access is the handle's type argument
+    alone: True when that is readonly. Readonly never attaches to a handle,
+    and a write through one does not mutate whatever holds it."""
+    if t is None:
+        return None
+    bare = unwrap_ref_type(unwrap_qualifiers(t))
+    if isinstance(bare, PtrType):
+        return bare.is_readonly
+    if _is_borrowing_view_type(bare):
+        return view_is_inherently_const(bare)
+    return None
+
+
+def is_indirection_type(t: 'TpyType | None') -> bool:
+    """A value-typed handle whose referent is not its holder's storage (see
+    `indirection_referent_readonly`)."""
+    return indirection_referent_readonly(t) is not None
 
 
 def is_readonly_ptr(typ: 'TpyType') -> bool:
@@ -2043,23 +2071,6 @@ def unwrap_readonly(typ: 'TpyType') -> 'TpyType':
     """Strip ReadonlyType wrapper if present, returning the inner type."""
     if isinstance(typ, ReadonlyType):
         return typ.wrapped
-    return typ
-
-
-def peel_value_readonly(typ: 'TpyType') -> 'TpyType':
-    """Strip `readonly` off a VALUE type at a position that binds a copy (a
-    parameter, a loop var, a comprehension element): the copy is the
-    receiver's own, so the marker says nothing about it. A non-value type
-    keeps the marker (the binding borrows, and the marker is what makes it
-    const), and so does a value tuple with borrow-form elements: the tuple
-    copies but its elements alias the source objects, so its readonly is the
-    const protecting them. `has_ref_elements` covers every borrowed element
-    kind (records, pointer-variant unions, recursive-union wrappers)."""
-    if isinstance(typ, ReadonlyType) and typ.wrapped.is_value_type():
-        inner = typ.wrapped
-        if isinstance(inner, TupleType) and inner.has_ref_elements():
-            return typ
-        return inner
     return typ
 
 
@@ -2278,6 +2289,59 @@ def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     if isinstance(typ, OwnType):
         typ = typ.wrapped
     return typ
+
+
+def repr_shape(typ: 'TpyType') -> 'TpyType':
+    """The representation shape under every access and ownership wrapper
+    (`Ref`, `readonly`, `Own`, `Send` / `Sync`), peeled in whatever order
+    they were applied: whichever site wrapped first decides the order (an
+    owned local's read is `Own[readonly[T | None]]`, a declared slot
+    `readonly[Own[...]]`), and the shape is the same either way. Readonly
+    is access, never shape: const-ness keeps reading the wrapper
+    (`readonly_access`)."""
+    while isinstance(typ, (RefType, ReadonlyType, OwnType, _MarkerType)):
+        typ = typ.wrapped
+    return typ
+
+
+def _wrapped_by(typ: 'TpyType', wrapper: type) -> bool:
+    """Whether a `wrapper` is among the wrappers `repr_shape` peels."""
+    while isinstance(typ, (RefType, ReadonlyType, OwnType, _MarkerType)):
+        if isinstance(typ, wrapper):
+            return True
+        typ = typ.wrapped
+    return False
+
+
+def readonly_access(typ: 'TpyType') -> bool:
+    """Whether `readonly` is among the wrappers `repr_shape` peels, in
+    whatever order they were applied: the access half beside the shape."""
+    return _wrapped_by(typ, ReadonlyType)
+
+
+def pointer_repr_optional(typ: 'TpyType | None') -> 'OptionalType | None':
+    """The pointer-repr Optional (`T*` at a borrow, `std::optional<T>` in
+    storage) `typ` has the shape of (`repr_shape`), or None. An `Own` among
+    the wrappers selects the storage form (`Own[T | None]` is
+    `std::optional<T>` at a parameter and a return), so an owned Optional is
+    not one."""
+    if not isinstance(typ, TpyType) or _wrapped_by(typ, OwnType):
+        return None
+    shape = repr_shape(typ)
+    return (shape if isinstance(shape, OptionalType) and shape.uses_pointer_repr()
+            else None)
+
+
+def pointer_variant_union(typ: 'TpyType | None') -> 'UnionType | None':
+    """The non-value union lowered to `::tpy::Union<A*, B*>` at a borrow
+    that `typ` has the shape of (`repr_shape`), or None. A recursive-union
+    alias uses a wrapper struct, a value type, so it is not one; an owned
+    union (`Own[A | B]`) is the storage form."""
+    if not isinstance(typ, TpyType) or _wrapped_by(typ, OwnType):
+        return None
+    shape = repr_shape(typ)
+    return (shape if isinstance(shape, UnionType) and shape.uses_pointer_repr()
+            and not shape.needs_wrapper() else None)
 
 
 class MarkerAssertionError(Exception):
@@ -2610,6 +2674,7 @@ def make_ref(t: 'TpyType') -> 'TpyType':
     TypeParamRef is always wrapped -- the C++ trait aliases handle
     value-vs-ref dispatch at template instantiation time.
     """
+    t = canonical_readonly(t)
     if isinstance(t, (OwnType, RefType, ReadonlyType,
                       VoidType, NoneType, OptionalType, UnionType)):
         return t
@@ -2681,7 +2746,8 @@ def returns_cpp_reference_shape(ret_type: TpyType | None) -> bool:
     """
     rt = unwrap_ref_type(ret_type)
     return (rt is not None and not rt.is_value_type()
-            and not isinstance(rt, (TypeParamRef, OwnType, OptionalType, UnionType))
+            and not isinstance(rt, (TypeParamRef, OwnType))
+            and not isinstance(repr_shape(rt), (OptionalType, UnionType))
             and not is_protocol_type(rt))
 
 
@@ -2851,6 +2917,141 @@ def apply_auto_readonly(t: 'TpyType') -> 'TpyType':
     return t.with_inner_types(new_inner)
 
 
+# A position inside a declared result: the steps from the whole result down
+# to one component, each the index of a child in `inner_types()` -- except
+# under a union, whose members normalization may reorder and merge: there the
+# step is the member type itself, readonly peeled. `Ref` and `readonly`
+# wrappers are not steps. RESULT_ROOT is the whole result.
+ComponentPath = tuple
+RESULT_ROOT: ComponentPath = ()
+
+
+def component_node(t: 'TpyType') -> 'TpyType':
+    """`t` with the wrappers a component path does not count as steps
+    peeled (`Ref`, `readonly`, `auto_readonly`, Send/Sync markers)."""
+    while isinstance(t, (RefType, ReadonlyType, AutoReadonlyType)):
+        t = t.wrapped
+    return unwrap_send_sync(t)
+
+
+def auto_readonly_components(marked: 'TpyType') -> frozenset:
+    """The components of a declared result its `auto_readonly[...]` markers
+    sit at: the parts whose access follows the receiver."""
+    found: set = set()
+
+    def walk(t: 'TpyType', path: tuple) -> None:
+        t = unwrap_send_sync(t)
+        if isinstance(t, AutoReadonlyType):
+            found.add(path)
+        node = component_node(t)
+        for i, child in enumerate(node.inner_types()):
+            step = (unwrap_readonly(strip_auto_readonly(component_node(child)))
+                    if isinstance(node, UnionType) else i)
+            walk(child, path + (step,))
+
+    walk(marked, RESULT_ROOT)
+    return frozenset(found)
+
+
+def type_component(t: 'TpyType | None', path: ComponentPath) -> 'TpyType | None':
+    """The part of `t` at `path` (wrappers kept), or None when `t` has no
+    such component (a type parameter, a differently shaped slot)."""
+    for step in path:
+        if t is None:
+            return None
+        node = component_node(t)
+        children = node.inner_types()
+        if isinstance(node, UnionType):
+            t = next((m for m in children
+                      if unwrap_readonly(component_node(m)) == step), None)
+        elif isinstance(step, int) and step < len(children):
+            t = children[step]
+        else:
+            return None
+    return t
+
+
+def readonly_protects(t: 'TpyType') -> bool:
+    """Whether `readonly[t]` protects anything: `t` holds a reference -- it
+    is a reference type, a pointer-repr Optional / union, or a tuple /
+    Optional / union with a member that does (the tuple is a value, but its
+    record element is the object the source refers to). On a copy holding
+    none (a scalar, a value record, a value-repr union, a `Ptr` or `Span`:
+    readonly does not reach through a handle) it does not. A type parameter
+    may be either and keeps it."""
+    if isinstance(t, (ReadonlyType, AutoReadonlyType, RefType)):
+        return readonly_protects(t.wrapped)
+    if isinstance(t, (OwnType, VoidType)):
+        return False
+    if isinstance(t, TupleType):
+        return any(readonly_protects(e) for e in t.element_types)
+    if isinstance(t, (OptionalType, UnionType)):
+        return t.uses_pointer_repr() or any(
+            readonly_protects(m) for m in t.inner_types())
+    return not t.is_value_type()
+
+
+def make_readonly(t: 'TpyType') -> 'TpyType':
+    """`t` as a readonly value: `readonly[t]`, or `t` itself where readonly
+    protects nothing (`readonly_protects`) -- readonly on a copy is the copy.
+    A tuple holding a reference stays readonly as a whole, and reading an
+    element off it projects readonly onto that element. The one constructor
+    of a readonly value type; a handle's referent (`Ptr[readonly[T]]`,
+    `Span[readonly[T]]`) and a field's slot marker are not values and keep
+    theirs."""
+    if isinstance(t, ReadonlyType):
+        return canonical_readonly(t)
+    if isinstance(unwrap_ref_type(t), ReadonlyType):
+        return t
+    return ReadonlyType(t) if readonly_protects(t) else t
+
+
+def canonical_readonly(t: 'TpyType') -> 'TpyType':
+    """`t` with no value-level `readonly[...]` (on the whole type, on a
+    tuple element) that protects nothing: a settled type -- a declared
+    signature, a substituted one -- carries none."""
+    if isinstance(t, ReadonlyType):
+        inner = canonical_readonly(t.wrapped)
+        if not readonly_protects(inner):
+            return inner
+        return t if inner is t.wrapped else ReadonlyType(inner)
+    if isinstance(t, TupleType):
+        elems = tuple(canonical_readonly(e) for e in t.element_types)
+        if all(n is o for n, o in zip(elems, t.element_types)):
+            return t
+        return t.with_inner_types(elems)
+    return t
+
+
+class ImplicitReadonly(Enum):
+    """Why a method is readonly without the user spelling it, which makes
+    its borrowed result readonly (`readonly_result`); decided at
+    registration."""
+    PURE = "pure"
+    FROZEN = "frozen"
+    DUNDER = "dunder"
+
+
+def settled_substitution(declared: 'TpyType', substituted: 'TpyType') -> 'TpyType':
+    """A substitution's result with its value-level readonly settled
+    (`canonical_readonly`) where the substitution changed the type
+    (`readonly[T]` at `T = int32`); a type it left alone keeps its
+    declared spelling."""
+    return substituted if substituted == declared else canonical_readonly(substituted)
+
+
+def readonly_result(t: 'TpyType') -> 'TpyType':
+    """The declared result of a method that is readonly without the user
+    spelling it (an implicitly readonly dunder, `@pure`, a frozen record):
+    readonly (`make_readonly`), a tuple result element by element."""
+    if isinstance(t, TupleType):
+        elems = tuple(readonly_result(e) for e in t.element_types)
+        if all(n is o for n, o in zip(elems, t.element_types)):
+            return t
+        return TupleType(elems)
+    return make_readonly(t)
+
+
 def has_auto_readonly(t: 'TpyType') -> bool:
     """Return True if t contains any AutoReadonlyType node."""
     if isinstance(t, AutoReadonlyType):
@@ -2925,19 +3126,12 @@ def has_auto_own(t: 'TpyType') -> bool:
 
 @dataclass(frozen=True)
 class InteriorMutableType(TpyType):
-    """Transient field-declaration marker for `unsafe_interior_mutable[T]`.
+    """Parse-time marker for the reserved `unsafe_interior_mutable[T]`.
 
-    Marks a field as outside its owning object's readonly boundary: readonly
-    does not propagate into the field's pointee and mutating *through* the
-    field does not demote the receiver (reassigning the slot still does --
-    that is enforced on the receiver, not the field). The escape hatch for
-    refcount-style hidden bookkeeping (e.g. Rc's `_cell`); the C++ analog is
-    a `mutable` member reached through a raw pointer.
-
-    Like AutoReadonlyType/AutoOwnType this never survives to codegen: field
-    registration strips it into `FieldInfo.is_interior_mutable` and stores
-    the unwrapped type. A surviving node (used outside a field annotation)
-    raises rather than emitting silently wrong C++.
+    Field registration rejects it (a `Ptr` field needs no marker: readonly
+    does not reach through a pointer; the inline-field form is not
+    implemented), so it never survives to codegen. A surviving node (used
+    outside a field annotation) raises rather than emitting wrong C++.
     """
     wrapped: TpyType
 
@@ -3592,7 +3786,7 @@ def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
         # native_global checks the pointee instead, because there the
         # pointee IS the emitted element type rather than a handle.
         return True
-    if isinstance(t, OptionalType) and t.uses_pointer_repr():
+    if pointer_repr_optional(t) is not None:
         # A pointer-repr Optional IS the pointer -- the nullable-handle idiom
         # (`-> Widget | None` emits the same type as `Ptr[Widget]`), admitted
         # for the same reason and at both positions. A value inner stays out
@@ -6413,10 +6607,9 @@ def is_ptr_variant_union(t: TpyType) -> bool:
     Pure type query -- `CodeGenContext.is_ptr_variant_union`, the binding
     classifier and the value-category rules all read this one definition. A
     recursive-union alias uses a wrapper struct, which is a value type, so it
-    is not a pointer variant.
+    is not a pointer variant. Reads the shape (`pointer_variant_union`).
     """
-    return (isinstance(t, UnionType) and t.uses_pointer_repr()
-            and not t.needs_wrapper())
+    return pointer_variant_union(t) is not None
 
 
 def property_getter_returns_storage_ref(rt: 'TpyType | None') -> bool:
@@ -6430,9 +6623,8 @@ def property_getter_returns_storage_ref(rt: 'TpyType | None') -> bool:
     reference return reads as a temporary (or the reverse) at every hop off a
     property.
     """
-    rt = unwrap_ref_type(rt)
-    return ((isinstance(rt, OptionalType) and rt.uses_pointer_repr())
-            or (rt is not None and is_ptr_variant_union(rt)))
+    return (pointer_repr_optional(rt) is not None
+            or pointer_variant_union(rt) is not None)
 
 
 def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
@@ -6490,12 +6682,12 @@ def polymorphic_source_inner(
     fact filter (sema) and the cast-and-cache extraction (codegen)."""
     if declared is None:
         return None
+    opt = pointer_repr_optional(declared)
+    if (opt is not None
+            and isinstance(opt.inner, NominalType)
+            and is_dynamic_dispatch_inner(opt.inner, registry)):
+        return opt.inner
     unwrapped = unwrap_readonly(declared)
-    if (isinstance(unwrapped, OptionalType)
-            and unwrapped.uses_pointer_repr()
-            and isinstance(unwrapped.inner, NominalType)
-            and is_dynamic_dispatch_inner(unwrapped.inner, registry)):
-        return unwrapped.inner
     if isinstance(unwrapped, PtrType):
         pointee = unwrapped.inner_pointee
         if (isinstance(pointee, NominalType)
@@ -6560,11 +6752,9 @@ def polymorphic_source_is_pointer(declared: 'TpyType | None') -> bool:
     cast-input choice in dynamic_cast emission."""
     if declared is None:
         return False
-    unwrapped = unwrap_readonly(declared)
-    if isinstance(unwrapped, PtrType):
+    if isinstance(unwrap_readonly(declared), PtrType):
         return True
-    return (isinstance(unwrapped, OptionalType)
-            and unwrapped.uses_pointer_repr())
+    return pointer_repr_optional(declared) is not None
 
 
 def polymorphic_subclass_into_optional(
@@ -7077,10 +7267,6 @@ class FieldInfo:
     is_factory_default: bool = False  # True for field(default_factory=...)
     loc: Optional[Any] = None  # SourceLocation from parse.py (avoid circular import)
     native_name: Optional[str] = None  # C++ member name override from native_field(...)
-    # `unsafe_interior_mutable[T]` marker, stripped from `type` at registration: mutations
-    # reached *through* this field don't count against the owner's readonly-ness
-    # and readonly does not propagate into the field. See InteriorMutableType.
-    is_interior_mutable: bool = False
 
 
 @dataclass
@@ -7418,9 +7604,6 @@ class FunctionInfo:
     return_type: Optional[TpyType]
     is_noalloc: bool = False
     is_readonly: bool = False
-    # `is_readonly` was INFERRED from the body (the receiver is never
-    # mutated), not declared: only the receiver's const-ness is proven.
-    readonly_inferred: bool = False
     is_pure: bool = False
     # `transient=True` on the binding: the stub's C++ reads or writes only
     # its arguments, retains nothing and reaches no other TPy storage.
@@ -7580,6 +7763,15 @@ class FunctionInfo:
     # pair: flipping it to is_readonly=True would merge it with the const
     # sibling and break overload resolution.
     is_auto_readonly_mutable_clone: bool = False
+    # The components of the declared result whose access follows the
+    # receiver (`auto_readonly_components`; RESULT_ROOT for the whole result):
+    # stamped on both clones of an `@auto_readonly` pair from its markers.
+    # Read through `root`.
+    following_components: frozenset = frozenset()
+    # Why the method is readonly though the user did not spell it, which
+    # makes its borrowed result readonly (`readonly_result`); None for any
+    # other method. Read through `root`.
+    implicit_readonly_result: 'ImplicitReadonly | None' = None
     # One of SEVERAL callable signatures bound under one name (a @dispatch /
     # @overload group, a method's auto_readonly pair), set where the group
     # is formed. A `str` literal argument then has to be pinned to its view
@@ -7708,16 +7900,12 @@ class FunctionInfo:
         return self.native_name
 
     @property
-    def borrows_receiver_via_auto_readonly(self) -> bool:
-        """Mutable clone of an @auto_readonly accessor whose result borrows the
-        receiver (Box.get / Rc.get / Deref). Such a call does not mutate its
-        receiver; only a mutation through the borrowed result does. Used for
-        mutation rooting and to keep the receiver const for read-only use.
-        A value-returning clone (no -1 in return_borrows_from) returns a copy
-        and is excluded.
-        """
-        return (self.is_auto_readonly_mutable_clone
-                and -1 in recorded_return_borrow_sources(self))
+    def emitted_const(self) -> bool:
+        """Whether the C++ member is `const`, so a readonly receiver may call
+        it: declared or inferred readonly, and not kept non-const
+        (`const_withheld`: a `@readonly(False)` opt-out, a `@dynamic`
+        override)."""
+        return (self.is_readonly or self.root.is_readonly) and not self.root.const_withheld
 
     def is_generic(self) -> bool:
         """Return True if this is a generic function with type parameters."""
@@ -7864,6 +8052,18 @@ def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     return fi.root.return_borrows_from or frozenset()
 
 
+def result_borrow_sources(fi: FunctionInfo) -> tuple[frozenset[int], bool]:
+    """The sources a call's result borrows (`recorded_return_borrow_sources`)
+    with the receiver added where the call DECLARES lending it by reference
+    (`receiver_lends`) -- the body may reach that storage through a `Ptr`,
+    which records nothing -- and whether the receiver is there only by that
+    declaration."""
+    sources = recorded_return_borrow_sources(fi)
+    if -1 in sources or not receiver_lends(fi)[1]:
+        return sources, False
+    return sources | {-1}, True
+
+
 def held_whole_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     """The recorded sources the result keeps a whole-object reference to
     and nothing more (see `FunctionInfo.held_whole_params`); root-read like
@@ -7871,36 +8071,97 @@ def held_whole_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     return fi.root.held_whole_params
 
 
-def return_const_projected(fi: FunctionInfo) -> bool:
-    """Whether the emitted signature const-projects this callee's borrowed
-    return (`const T&` / `const T*`), which every binding off the call must
-    mirror.
-
-    A DECLARED `@readonly` makes the receiver and every parameter readonly, so
-    whatever the return borrows is const. An INFERRED one proves the receiver
-    only: a return that borrows a PARAMETER keeps the declared mutable type,
-    exactly as a free function's does, and that parameter stays in the mutated
-    set. Read off the root: a call site's specialization can predate the
-    inference.
-    """
-    root = fi.root
-    if not (fi.is_readonly or root.is_readonly):
+def declared_result_readonly(fi: FunctionInfo | None) -> bool:
+    """Whether a call's result is readonly by its callee's DECLARED return:
+    `-> readonly[T]` (spelled, the const clone of an `@auto_readonly` pair,
+    or a method readonly without `@readonly` -- `readonly_result`) or an
+    inherently const view. The return type is the contract; nothing about
+    the receiver or the body projects it. Read off the root: a call site's
+    specialization can predate the facts."""
+    if fi is None:
         return False
-    if root.borrow_declared:
-        # `@readonly` says the call mutates nothing; the result's access is
-        # its lent arguments' (the runtime picks the const overload when
-        # one is const), unless the stub declares a readonly result.
-        return (root.return_type is not None
-                and (isinstance(root.return_type, ReadonlyType)
-                     or view_is_inherently_const(root.return_type)))
-    if not root.readonly_inferred:
-        return True
-    if root.return_type is not None and view_is_inherently_const(root.return_type):
-        return True
-    # No recorded source keeps the projection: an open-`T` member read records
-    # none and still lends the const receiver.
-    sources = recorded_return_borrow_sources(fi)
-    return not sources or -1 in sources
+    rt = fi.root.return_type
+    return rt is not None and (is_readonly_result_type(rt) or view_is_inherently_const(rt))
+
+
+def is_readonly_result_type(t: 'TpyType') -> bool:
+    """Whether a declared result type is `readonly[...]` (under its `Ref`
+    and Send/Sync markers): the type-level half of
+    `declared_result_readonly`, for a reader holding the type itself."""
+    return isinstance(unwrap_ref_type(unwrap_send_sync(t)), ReadonlyType)
+
+
+def declares_whole_result_following(decl: 'FunctionInfo | Any') -> bool:
+    """Whether a declaration -- a `TpyFunction`, or a root `FunctionInfo` --
+    marks its whole result as following its receiver (`RESULT_ROOT` among
+    its declared `following_components`), at any instantiation: the flag an
+    access-twin pair publishes its one result by
+    (`receiver_neutral_return`)."""
+    return RESULT_ROOT in decl.following_components
+
+
+def receiver_neutral_return(t: 'TpyType', follows_receiver: bool) -> 'TpyType':
+    """The one result an `@auto_readonly` pair whose whole result follows the
+    receiver (`follows_receiver`, `declares_whole_result_following`)
+    publishes for both clones: the declared
+    return without the readonly the const clone's receiver gives it (each
+    call binds it at its own receiver's access). Any other result is its
+    declared type."""
+    bare = unwrap_ref_type(t)
+    if follows_receiver and isinstance(bare, ReadonlyType):
+        return make_ref(bare.wrapped)
+    return t
+
+
+def _through_handle(t: 'TpyType', component: ComponentPath) -> bool:
+    """Whether `component` of a result of type `t` lies past a handle -- a
+    `Ptr`'s pointee, a type argument (a view's element, an `Rc`'s payload):
+    a referent every copy of the result reaches, never inert."""
+    return any(isinstance(component_node(type_component(t, component[:k])),
+                          (PtrType, NominalType))
+               for k in range(len(component)))
+
+
+def following_components(fi: FunctionInfo | None) -> frozenset:
+    """The components of `fi`'s declared result (at its specialization)
+    whose access the declaration gives as the receiver's
+    (`FunctionInfo.following_components`): every marker except one on a
+    part that holds no reference -- a copy (`auto_readonly[T]` at
+    `T = int32`) follows nothing. A handle's referent always counts."""
+    if fi is None or not fi.root.following_components:
+        return frozenset()
+    t = fi.return_type
+    return frozenset(
+        c for c in fi.root.following_components
+        if (part := type_component(t, c)) is None or _through_handle(t, c)
+        or readonly_protects(part))
+
+
+def receiver_lends(fi: FunctionInfo | None) -> tuple[bool, bool]:
+    """What a call of `fi` lends of its receiver writable: (a handle's
+    referent, a reference) -- a following component (`following_components`)
+    that this clone's result does not make readonly, past a handle or held
+    by reference. A lent handle is aliased by every copy of the result and
+    nothing tracks it, so the call itself demotes its receiver; a lent
+    reference is a loan of the receiver on whatever binds it."""
+    handle = reference = False
+    for c in following_components(fi):
+        assert fi is not None
+        part = type_component(fi.return_type, c)
+        if part is not None and isinstance(unwrap_ref_type(part), ReadonlyType):
+            continue
+        if _through_handle(fi.return_type, c):
+            handle = True
+        else:
+            reference = True
+    return handle, reference
+
+
+def result_follows_receiver_root(fi: FunctionInfo | None) -> bool:
+    """Whether the callee declares its whole result's access as its
+    receiver's (an `@auto_readonly` pair's `auto_readonly[T]`, a property
+    getter): C++ picks the clone by the receiver's constness."""
+    return RESULT_ROOT in following_components(fi)
 
 
 @dataclass

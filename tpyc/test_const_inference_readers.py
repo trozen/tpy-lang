@@ -26,10 +26,12 @@ PARAM = frozenset({0})
     pytest.param(RECORD, frozenset(), MUTATED, True, MUTATED, id="empty-roots"),
     pytest.param(RECORD, SELF, MUTATED, False, MUTATED, id="self-borrow"),
     pytest.param(RECORD, PARAM, MUTATED, True, MUTATED, id="param-borrow"),
-    pytest.param(RECORD, SELF | PARAM, MUTATED, False, frozenset({1}),
+    # A mutable borrow return of a parameter is a write path through it: only
+    # a declared readonly return lets the return roots go.
+    pytest.param(RECORD, SELF | PARAM, MUTATED, False, MUTATED,
                  id="self-and-param-borrow"),
     pytest.param(RECORD, PARAM, None, True, None, id="unknown-mutations"),
-    pytest.param(STRVIEW, SELF | PARAM, MUTATED, True, frozenset({1}), id="str-view"),
+    pytest.param(STRVIEW, SELF | PARAM, MUTATED, True, MUTATED, id="str-view"),
     pytest.param(BYTESVIEW, SELF, MUTATED, True, MUTATED, id="bytes-view"),
     pytest.param(make_span(INT32), SELF, MUTATED, False, MUTATED, id="mutable-span"),
     pytest.param(make_span(INT32, is_readonly=True), SELF, MUTATED, True, MUTATED,
@@ -67,8 +69,10 @@ def test_const_inference_consumers(
     registry.records["Owner"] = RecordInfo("Owner", [], methods={"get": [fi]})
     ctx = SimpleNamespace(analyzer=SimpleNamespace(registry=registry))
     generator = FunctionGenerator(ctx, None, None)
-    # Return-root subtraction must not drop mutations of unrelated parameters.
-    assert generator._get_method_genuine_mutated_params(method, "Owner") == remaining
+    # The const-method signature reads the finalized mutation set whole: a
+    # return root the body also writes must stay non-const, and a readonly
+    # return marks no write of its own to subtract.
+    assert generator._get_method_mutated_params(method, "Owner") == remaining
     assert fi.return_borrows_from is roots
     assert fi.mutated_params is mutated
 

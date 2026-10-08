@@ -1,0 +1,15 @@
+root 1
+component 111 111
+component_arg 1111
+component_nullable 11111
+unmarked 111111
+root_alias 111113 10
+getitem 11111113
+getitem_ro_read 11111113
+root_ro_arg 11111113
+unmarked_alias 11111114
+chain 1 1
+select 2
+loop 1 1
+self_receiver 13
+loop_exemption 7 7

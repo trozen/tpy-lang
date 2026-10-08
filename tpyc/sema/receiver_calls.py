@@ -20,17 +20,21 @@ from typing import TYPE_CHECKING
 
 from ..compilation_context import get_current_compiler
 from ..parse import (
-    TpyBinOp, TpyChainedCompare, TpyCoerce, TpyExpr, TpyFieldAccess, TpyIfExpr, TpyMethodCall,
-    TpyName, TpyStmt, TpySubscript,
+    TpyBinOp, TpyChainedCompare, TpyCoerce, TpyExpr, TpyFieldAccess, TpyMethodCall,
+    TpyName, TpyStmt, TpySubscript, TpyUnaryOp,
 )
+from ..value_category import peel_coerce
 from ..type_def_registry import protocol_info_of
 from ..typesys import (
-    FunctionInfo, MutationCallEdge, NominalType, ReadonlyType, TpyType,
+    FunctionInfo, ImplicitReadonly, MutationCallEdge, NominalType,
+    ReadonlyType, TpyType,
     is_bodyless_binding, is_dyn_protocol, is_protocol_type, unwrap_own,
-    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    unwrap_readonly, unwrap_ref_type, unwrap_send_sync, is_indirection_type,
+    receiver_lends,
 )
 from .context import (
     _is_self_call_deferred, _local_traces_to_self, _root_name_of_expr,
+    receiver_leaves, receiver_root,
     call_param_args, element_index_key, element_loan_mutation_warning,
     loan_mutation_warning,
 )
@@ -138,28 +142,21 @@ def implicit_calls(node: TpyExpr | TpyStmt) -> list[ImplicitCall]:
     return out
 
 
-def receiver_leaves(expr: TpyExpr) -> list[TpyExpr]:
-    """The operands a method-call receiver may BE: the receiver itself, or
-    for a ternary / value and/or select every operand it can pick
-    (recursively) -- the call mutates whichever one it runs on."""
-    while isinstance(expr, TpyCoerce):
-        expr = expr.expr
-    if isinstance(expr, TpyIfExpr):
-        return (receiver_leaves(expr.then_expr)
-                + receiver_leaves(expr.else_expr))
-    if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-        return receiver_leaves(expr.left) + receiver_leaves(expr.right)
-    return [expr]
-
-
-def call_mutates_receiver(fi: FunctionInfo) -> bool:
-    """Whether calling `fi` may mutate its receiver.
+def call_mutates_receiver(fi: FunctionInfo, *, handle_climbs: bool = False) -> bool:
+    """Whether calling `fi` may mutate its receiver: its C++ member is not
+    const (`emitted_const`), or it lends a writable handle into the receiver
+    (`receiver_lends`) -- nothing tracks the copies of a handle, so the call
+    is the write, whatever is done with its result -- unless the one name
+    the handle reaches its referent through climbs to the receiver
+    (`handle_climbs`: a `for` loop variable, `loop_var_iterable`).
 
     The mutable clone of an @auto_readonly accessor (Box.get / Rc.get /
-    Deref, a reference-returning `__getitem__`) hands out a borrow but does
-    not mutate the receiver -- a mutation THROUGH its result is rooted back
-    to the receiver at the mutation site."""
-    return not (fi.is_readonly or fi.is_pure
+    Deref, a reference-returning `__getitem__`) that lends a reference does
+    not mutate the receiver -- a mutation THROUGH its result climbs the loan
+    the binding takes, or roots back to the receiver at the mutation site."""
+    if receiver_lends(fi)[0] and not handle_climbs:
+        return True
+    return not (fi.emitted_const or fi.is_pure
                 or fi.is_auto_readonly_mutable_clone)
 
 
@@ -178,8 +175,11 @@ def _user_overload_invalidates(m: FunctionInfo) -> bool:
     # through same-class method calls is not detected here
     # (BUGS.md#transitive-receiver-growth-unchecked): Phase 2 propagation
     # runs after body analysis.
-    # A stub has no body to infer from: its declaration is the fact.
-    if m.is_readonly or m.native_mutates == "elements":
+    # A stub has no body to infer from: its declaration is the fact. The
+    # mutable clone of an @auto_readonly pair shares its body with the const
+    # clone, so it cannot mutate its receiver's structure either.
+    if (m.is_readonly or m.native_mutates == "elements"
+            or m.is_auto_readonly_mutable_clone):
         return False
     smp = m.root.direct_structural_mutated_params
     return smp is None or -1 in smp
@@ -285,11 +285,14 @@ def credit_receiver_mutation(ctx: SemanticContext, recv: TpyExpr,
     not demote the enclosing method. `edges_recorded` says the caller's
     call-edge recorder already filed that edge (an explicit method call).
     `eager` marks the receiver directly instead of deferring, whether or not
-    a callee is known; with no callee the mark is always eager. A known
+    a callee is known; with no callee the mark is always eager, and so is a
+    call lending a writable handle (`receiver_lends`: the callee's own body
+    does not write its self). A known
     `callee` also answers the structural-mutation question from its own facts
     (an inherited dunder included); without one the method is looked up by
     name.
     """
+    eager = eager or callee is not None and receiver_lends(callee)[0]
     for leaf in receiver_leaves(recv):
         _credit_leaf(ctx, leaf, obj_type, method, callee, eager, edges_recorded)
 
@@ -298,14 +301,15 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
                  method: str, callee: FunctionInfo | None, eager: bool,
                  edges_recorded: bool) -> None:
     fn = ctx.func
-    obj_root = _root_name_of_expr(recv)
+    obj_root = receiver_root(recv, ctx.get_expr_type)
     if obj_root is not None:
         ctx.mark_loop_var_mutated(obj_root)
         receiver_idx = ctx.self_receiver_index()
-        defers = edges_recorded or (not eager and callee is not None
-                                    and receiver_idx is not None)
+        defers = not eager and (edges_recorded or (callee is not None
+                                                   and receiver_idx is not None))
         deferred = defers and _is_self_call_deferred(
-            recv, obj_root, fn.loop_var_iterable, fn.borrow_tracker)
+            recv, obj_root, fn.loop_var_iterable, fn.borrow_tracker,
+            ctx.get_expr_type)
         if deferred and not edges_recorded:
             assert callee is not None
             fn.current_call_edges.append(MutationCallEdge(
@@ -331,6 +335,10 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
     # `frame = self.frame; frame.get().mutating_method()`)
     # is also a self-mutation since the receiver aliases
     # self-owned storage.
+    if is_indirection_type(ctx.get_expr_type(recv)):
+        # A handle a call returned points where it was formed, and forming a
+        # mutable one over the receiver's storage already mutated it there.
+        return
     chain = recv
     while isinstance(chain, TpyMethodCall):
         chain = chain.obj
@@ -358,6 +366,54 @@ def receiver_is_readonly(ctx: SemanticContext, recv: TpyExpr,
                for leaf in leaves)
 
 
+def implicit_readonly_result_hint(ctx: SemanticContext, obj: TpyExpr) -> str:
+    """The way out of a write through the result of a method readonly
+    without the user spelling it (`readonly_result`): the place written,
+    or the local it is read off, is that call's result."""
+    while True:
+        obj = peel_coerce(obj)
+        if isinstance(obj, (TpyFieldAccess, TpySubscript)):
+            obj = obj.obj
+        elif (isinstance(obj, TpyName)
+                and (decl := ctx.func.var_decl_by_name.get(obj.name)) is not None
+                and decl.init is not None):
+            obj = decl.init
+        else:
+            break
+    fi = (obj.resolved_function_info if isinstance(obj, TpyMethodCall)
+          else obj.resolved_binop.method
+          if isinstance(obj, TpyBinOp) and obj.resolved_binop is not None
+          else obj.resolved_unaryop.method
+          if isinstance(obj, TpyUnaryOp) and obj.resolved_unaryop is not None
+          else None)
+    reason = fi.root.implicit_readonly_result if fi is not None else None
+    if reason is ImplicitReadonly.PURE:
+        how = f"'@pure' method '{fi.name}' returns it readonly; drop @pure"
+    elif reason is ImplicitReadonly.FROZEN:
+        how = (f"method '{fi.name}' of a frozen record returns it readonly; "
+               f"mark it @readonly(False)")
+    elif reason is ImplicitReadonly.DUNDER:
+        how = (f"'{fi.name}' returns it readonly; declare '-> Own[...]' "
+               f"to return a fresh value")
+    else:
+        return ""
+    return f" ({how}, or copy() the result)"
+
+
+
+def implicit_call_mutates_receiver(ctx: SemanticContext, recv: TpyExpr,
+                                   callee: FunctionInfo, *,
+                                   handle_climbs: bool = False) -> bool:
+    """`call_mutates_receiver` for the callee an implicit dunder call on
+    `recv` runs. A dunder is found by name, so an `@auto_readonly` pair
+    answers with its mutable clone; a readonly receiver runs the const
+    clone, which mutates and lends nothing -- as an explicit call's overload
+    resolution picks it."""
+    if callee.is_auto_readonly_mutable_clone and receiver_is_readonly(ctx, recv):
+        return False
+    return call_mutates_receiver(callee, handle_climbs=handle_climbs)
+
+
 def check_implicit_readonly_receiver(
         ctx: SemanticContext, recv: TpyExpr, callee: FunctionInfo | None,
         method: str, site: TpyExpr | TpyStmt, *, record: bool = True) -> None:
@@ -372,7 +428,8 @@ def check_implicit_readonly_receiver(
     frame runs what the calls that built it may write)."""
     if record:
         record_implicit_call(site, callee, recv, method)
-    if callee is not None and not call_mutates_receiver(callee):
+    if callee is not None and not implicit_call_mutates_receiver(
+            ctx, recv, callee):
         return
     if not receiver_is_readonly(ctx, recv):
         return
@@ -388,7 +445,7 @@ def credit_implicit_receiver_call(
         ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
         callee: FunctionInfo | None, method: str, site: TpyExpr | TpyStmt, *,
         eager: bool = False, check_loans: bool = True,
-        record: bool = True) -> None:
+        record: bool = True, handle_climbs: bool = False) -> None:
     """The receiver effects of a dunder call no call node spells.
 
     `callee` is the resolved dunder (found through the MRO); it decides
@@ -401,21 +458,18 @@ def credit_implicit_receiver_call(
     `check_loans=False` when the caller asked `check_receiver_call_loans`
     itself, before registering a loan the call must not see (the for
     statement's own iteration loan). `record` as for
-    `check_implicit_readonly_receiver`.
+    `check_implicit_readonly_receiver`, `handle_climbs` as for
+    `call_mutates_receiver`.
     """
     if record:
         record_implicit_call(site, callee, recv, method)
-    if callee is not None and not call_mutates_receiver(callee):
+    if callee is not None and not implicit_call_mutates_receiver(
+            ctx, recv, callee, handle_climbs=handle_climbs):
         return
     check_implicit_readonly_receiver(ctx, recv, callee, method, site,
                                      record=False)
     if check_loans and obj_type is not None:
         check_receiver_call_loans(ctx, recv, obj_type, method, site,
                                   callee=callee)
-    # A call through an `unsafe_interior_mutable` field mutates bookkeeping
-    # the owner declared outside its readonly boundary -- it must not demote
-    # the enclosing method.
-    if isinstance(recv, TpyFieldAccess) and recv.accessed_field_is_interior:
-        return
     credit_receiver_mutation(ctx, recv, obj_type, method, callee=callee,
                              eager=eager)

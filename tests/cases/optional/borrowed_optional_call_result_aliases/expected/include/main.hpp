@@ -49,6 +49,8 @@ void s_free(H& h);
 void s_generic(std::vector<R>& xs);
 // def s_union(a: R, b: S) -> None:
 void s_union(R& a, S& b);
+// def s_readonly(h: H) -> None:
+void s_readonly(H& h);
 // def s_walrus(h: H) -> None:
 void s_walrus(H& h);
 // def s_assert(h: H) -> None:
@@ -71,7 +73,7 @@ void s_ternary_sink(std::vector<R>& xs, bool c);
 // def s_append(h: H) -> None:
 void s_append(H& h);
 // def s_own_arg(h: H) -> None:
-void s_own_arg(H& h);
+void s_own_arg(const H& h);
 // def s_own_ret(h: H) -> Own[R]:
 R s_own_ret(H& h);
 // def s_field(h: H, k: K) -> None:
@@ -149,6 +151,10 @@ struct H {
 
     // def geto(self) -> Optional[R]:
     R* geto();
+
+    // @readonly
+    // def get(self) -> readonly[Optional[R]]:
+    const R* get() const;
 
     // @property
     // def p(self) -> Optional[R]:
@@ -311,6 +317,13 @@ inline H::H() : o(R()) {}
 // def geto(self) -> Optional[R]:
 //     return self.o
 inline R* H::geto() {
+    return ::tpy::optional_to_ptr(this->o);
+}
+
+// @readonly
+// def get(self) -> readonly[Optional[R]]:
+//     return self.o
+inline const R* H::get() const {
     return ::tpy::optional_to_ptr(this->o);
 }
 

@@ -35,7 +35,7 @@ from ..parse.nodes import (
     TpyIfExpr, TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
     TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern, TpySetLiteral, TpyStmt,
     TpyStrLiteral, TpySubscript,
-    TpyTupleLiteral, TpyTupleUnpack, TpyUnaryOp, TpyVarDecl,
+    TpyTupleLiteral, TpyTupleUnpack, TpyVarDecl,
     TpyWildcardPattern,
     walrus_bindings,
 )
@@ -44,7 +44,7 @@ from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
                                   literal_value_from_expr)
 from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
-from ..value_category import declared_call_const
+from ..typesys import pointer_repr_optional
 from ..typesys import (
     BIGINT, FLOAT, AnyType, FloatLiteralType, IntLiteralType, LiteralType,
     NominalType, OptionalType,
@@ -57,6 +57,7 @@ from ..typesys import (
     polymorphic_subclass_into_optional, resolve_int_literals, unwrap_optional_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
+from ..value_category import call_result_const, receiver_const
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name
 from .type_resolution import resolve_stmt_binding_type
 from .types import resolve_pending_container
@@ -155,36 +156,16 @@ def is_const_indirect(ctx: 'CodeGenContext', target_type: TpyType | None,
         if (isinstance(sema_var_type, OptionalType)
                 and isinstance(sema_var_type.inner, ReadonlyType)):
             return True
-    # A borrow-declared call's const-ness is the type sema gave it; the
-    # receiver and `@readonly` arms below do not apply to it.
-    declared = declared_call_const(ctx.analyzer, init) if init is not None else None
-    if declared is not None:
-        return declared
-    # Readonly method call returns const T& -> variable needs const indirection.
-    # (TypeParamRef returns are handled separately via val_or_cref_t at the local var decl.)
+    # A call's result access is its callee's declared one (the raw sema type
+    # above); one whose callee declares that its whole result follows the
+    # receiver is const on a const receiver, which C++ overload resolution
+    # picks whichever clone sema resolved. An element of a const-rooted
+    # container is const storage.
     if isinstance(init, TpyMethodCall):
-        fi = init.resolved_function_info
-        if fi is not None and fi.is_readonly and ctx._call_returns_cpp_ref(fi):
-            return True
-    # Operator dispatch mirrors the method-call arm: a readonly dunder's
-    # borrow return is const-projected at emit, so the alias binds const.
-    if isinstance(init, TpyBinOp) and init.resolved_binop is not None:
-        fi = init.resolved_binop.method
-        if fi.is_readonly and ctx._call_returns_cpp_ref(fi):
-            return True
-    if isinstance(init, TpyUnaryOp) and init.resolved_unaryop is not None:
-        fi = init.resolved_unaryop.method
-        if fi.is_readonly and ctx._call_returns_cpp_ref(fi):
-            return True
-    # A subscript / method call on a const-rooted receiver binds const:
-    # when the enclosing method's readonly-ness is INFERRED (post
-    # body-analysis), sema resolved the MUTABLE twin, so the
-    # fi.is_readonly arms above miss -- but C++ overload resolution on
-    # the const receiver picks the const twin regardless. Sound for the
-    # same reason as the name-alias arm below: a const-rooted source
-    # implies inference proved no writes through the result.
-    if isinstance(init, (TpySubscript, TpyMethodCall)) \
-            and ctx.is_const_storage_source(init.obj):
+        return call_result_const(init, ctx.analyzer.get_expr_type,
+                                 ctx.is_const_storage_source)
+    if isinstance(init, TpySubscript) and receiver_const(
+            init.obj, ctx.analyzer.get_expr_type, ctx.is_const_storage_source):
         return True
     # An alias of a const-inferred source must also bind const, else a
     # mutable reference/pointer would be taken from a const source. Sound
@@ -250,7 +231,7 @@ def ptr_slot_field_type(ctx: 'CodeGenContext', init: 'TpyExpr',
             and ctx.needs_optional_to_ptr_lift(init.name)):
         return None
     init_type = ctx.get_expr_type(init)
-    if isinstance(init_type, OptionalType) and init_type.uses_pointer_repr():
+    if pointer_repr_optional(init_type) is not None:
         if (ctx.is_storage_form_optional_source(init)
                 and not ctx.is_rvalue_source(init)):
             return None
@@ -720,7 +701,7 @@ def seed_param_locals(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
             if infos and infos[0].has_none:
                 ctx.pointer_locals.add(pname)
                 ctx.const_indirect_locals.add(pname)
-        elif isinstance(actual, OptionalType) and actual.uses_pointer_repr():
+        elif pointer_repr_optional(actual) is not None:
             ctx.pointer_locals.add(pname)
             # `const P*` when annotated `readonly[...]` OR when the inferred
             # verdict const-consts it (readonly fn/method whose param address
@@ -881,7 +862,6 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
     ctx.indent_level = indent_level
     ctx.current_return_type = return_type
     ctx.current_return_cpp = return_cpp
-    ctx.current_return_const = bool(getattr(func, 'is_readonly', False))
     # Set current_yield_type for generator bodies so yield-emission sites
     # don't need it threaded through their call signatures. Skipped for
     # sema-errored generators (no resolved yield type) -- leaves the

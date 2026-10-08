@@ -1,1 +1,0 @@
-main.py:7: error: unsafe_interior_mutable[...] on field 'p' cannot wrap 'Own[Ptr[int32]]'; unsafe_interior_mutable applies to a plain Ptr[T] field

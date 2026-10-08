@@ -9,4 +9,4 @@ class Point:
         self.y = y
 
 def extract(p: readonly[Point]) -> tuple[int32, Point]:
-    return (p.x, p)  # tpyc: error(/readonly source/)
+    return (p.x, p)  # tpyc: error(/Cannot return readonly\[Point\] as tuple element 1.*declare the return as .tuple\[int32, readonly\[Point\]\]./)

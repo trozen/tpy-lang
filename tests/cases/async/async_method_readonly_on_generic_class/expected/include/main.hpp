@@ -41,7 +41,7 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 }
 
 // @readonly
-// async def peek(self) -> T:
+// async def peek(self) -> readonly[T]:
 template <typename T>
 struct __coro_Box_peek {
     ::tpy::frame_state __state;
@@ -58,7 +58,7 @@ struct __coro_Box_peek {
           __cancel_pending(false),
           __self(__self) {}
 
-    ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __poll__(::tpystd::coro::Waker waker);
+    ::tpystd::tpy::Poll<::tpy::val_or_cptr_t<T>> __poll__(::tpystd::coro::Waker waker);
     void cancel() { __cancel_pending = true; }
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_Box_peek<T>&) {
@@ -67,17 +67,17 @@ struct __coro_Box_peek {
 };
 
 // @readonly
-// async def peek(self) -> T:
+// async def peek(self) -> readonly[T]:
 //     return self.val
 template <typename T>
-::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>> __coro_Box_peek<T>::__poll__(::tpystd::coro::Waker waker) {
+::tpystd::tpy::Poll<::tpy::val_or_cptr_t<T>> __coro_Box_peek<T>::__poll__(::tpystd::coro::Waker waker) {
     (void)waker;
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_DONE;
-        ::tpy::val_or_ptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(__self.val);
-        return ::tpystd::tpy::Poll<::tpy::val_or_ptr_t<T>>::ready(std::move(__tpy_async_ret));
+        ::tpy::val_or_cptr_t<T> __tpy_async_ret = ::tpy::to_val_or_ptr<::tpy::val_or_cptr_t<T>>(__self.val);
+        return ::tpystd::tpy::Poll<::tpy::val_or_cptr_t<T>>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
     }

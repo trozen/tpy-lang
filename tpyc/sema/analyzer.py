@@ -10,8 +10,9 @@ from typing import Callable, Optional
 
 from ..typesys import resolve_int_literals
 from ..typesys import (
+    make_readonly,
     TpyType, TypeRegistry, NominalType, AliasRef, UnionType, FinalType, STR, LiteralType, VoidType, VOID,
-    NoneType, INT32, ReadonlyType, unwrap_readonly, peel_value_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
+    NoneType, INT32, unwrap_readonly, canonical_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
     body_function_info, body_method_info,
@@ -1457,17 +1458,13 @@ class SemanticAnalyzer:
     def _normalize_param_type(self, ptype: TpyType, is_readonly_ctx: bool) -> TpyType:
         """Normalize a parameter type for readonly context.
 
-        Strips ReadonlyType from value types (copies are always safe; the
-        same peel a comprehension loop var gets).
-        Wraps non-value types with ReadonlyType in @readonly contexts.
+        A parameter binds a copy of a value, so a readonly on it protects
+        nothing (`canonical_readonly`); in a @readonly context a parameter
+        holding a reference (a reference type, a tuple with a reference
+        element) is readonly (`make_readonly`).
         """
-        peeled = peel_value_readonly(ptype)
-        if peeled is not ptype:
-            return peeled
-        if is_readonly_ctx and not isinstance(ptype, ReadonlyType):
-            if not ptype.is_value_type():
-                return ReadonlyType(ptype)
-        return ptype
+        ptype = canonical_readonly(ptype)
+        return make_readonly(ptype) if is_readonly_ctx else ptype
 
     def _stamp_frame_materials(self, func: TpyFunction, fi: 'FunctionInfo') -> None:
         """Copy Send/Sync frame-classification materials onto the

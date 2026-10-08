@@ -22,7 +22,7 @@ int32_t grow(Sector* sector);
 // def count_readonly(sector: Ptr[readonly[Sector]]) -> int32:
 int32_t count_readonly(const Sector* sector);
 // def pic_width(seg: Seg) -> int32:
-int32_t pic_width(Seg& seg);
+int32_t pic_width(const Seg& seg);
 // def has_pic(seg: Seg) -> bool:
 bool has_pic(const Seg& seg);
 // def main():

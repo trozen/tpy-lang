@@ -103,8 +103,8 @@ struct Producer {
     //     chan = self.c.get()
     //     with chan.m.lock() as g:
     //         return g.get()._cap
-    uint32_t capacity() {
-        Chan<T>& chan = this->c.get();
+    uint32_t capacity() const {
+        const Chan<T>& chan = this->c.get();
         auto __ctx_1 = chan.m.lock();
         auto& g = __ctx_1.__enter__();
         bool __fin_ran_1 = false;

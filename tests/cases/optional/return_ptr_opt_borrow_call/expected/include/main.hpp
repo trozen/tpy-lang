@@ -71,7 +71,7 @@ struct B {
     R* ret_self();
 
     // @readonly
-    // def opt_ro(self) -> Optional[R]:
+    // def opt_ro(self) -> readonly[Optional[R]]:
     const R* opt_ro() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.B";
 };
@@ -183,10 +183,10 @@ inline R* B::ret_self() {
     return this->opt_m();
 }
 
-// # DECLARED readonly: the borrowed result is const-projected, so a local
+// # DECLARED readonly: the borrowed result is declared readonly, so a local
 // # bound to it is `const R*` rather than the mutable `R*` above
 // @readonly
-// def opt_ro(self) -> Optional[R]:
+// def opt_ro(self) -> readonly[Optional[R]]:
 //     return self._opt
 inline const R* B::opt_ro() const {
     return ::tpy::optional_to_ptr(this->_opt);

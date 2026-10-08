@@ -25,8 +25,8 @@ void write_through_get(Outer& o);
 void mutate_through_get(Outer& o);
 // def aug_through_get(o: Outer):             # Outer&
 void aug_through_get(Outer& o);
-// def alias_read(o: Outer) -> int32:         # Outer&: non-const local alias needs a
-int32_t alias_read(Outer& o);
+// def alias_read(o: Outer) -> int32:         # const Outer&: the alias is never written
+int32_t alias_read(const Outer& o);
 // def alias_write(o: Outer):                 # Outer&
 void alias_write(Outer& o);
 // def elem_alias_write(o: Outer):            # Outer&: field-path element-borrow alias write

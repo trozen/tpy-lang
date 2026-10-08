@@ -1,0 +1,1 @@
+main.py:20: error: Cannot assign to readonly field 'ro'; declare the field 'Ptr[A]' to re-point it

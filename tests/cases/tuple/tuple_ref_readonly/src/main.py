@@ -14,7 +14,7 @@ class Wrapper:
         self.inner = inner
 
     @readonly
-    def get_pair(self) -> tuple[Container, int32]:
+    def get_pair(self) -> tuple[readonly[Container], int32]:
         return (self.inner, self.inner.value)
 
 def main() -> None:

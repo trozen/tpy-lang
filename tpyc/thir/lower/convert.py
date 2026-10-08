@@ -31,6 +31,7 @@ from ...typesys import (
     LiteralType,
     NoneType,
     OptionalType,
+    pointer_repr_optional,
     PtrType,
     TpyType,
     TupleType,
@@ -193,7 +194,7 @@ def _absorbs(member_t: TpyType, rt: 'TpyType | None', types) -> bool:
 
 
 def _ptr_opt(t: TpyType) -> bool:
-    return isinstance(t, OptionalType) and t.uses_pointer_repr()
+    return pointer_repr_optional(t) is not None
 
 
 def _binds(slot_t: TpyType, rt: 'TpyType | None', types) -> bool:

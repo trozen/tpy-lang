@@ -1,1 +1,1 @@
-main.py:9: error: Cannot return readonly source as tuple element 0. Type 'Point' would be returned by mutable reference, but the source is readonly. Use Own[Point] with copy() to return by value.
+main.py:9: error: Cannot return readonly[Point] as tuple element 0 at mutable return type 'tuple[Point, int32]'; declare the return as 'tuple[readonly[Point], int32]'

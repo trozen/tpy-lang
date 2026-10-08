@@ -44,7 +44,7 @@ from .typesys import (
     TpyType, INT32, INT64, BIGINT, VOID, NominalType,
     RecordInfo, FunctionInfo, ProtocolInfo, TypeAliasInfo,
     OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
-    RecursiveUnionInfo,
+    RecursiveUnionInfo, declares_whole_result_following, receiver_neutral_return,
     is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
     accessor_role, clear_all_compilation_state, BUILTIN_RETURN_EXCEPTIONS,
 )
@@ -1070,10 +1070,14 @@ class Compiler:
         if len(role) != 2:
             return None
         mutable, const = sorted(role, key=lambda b: b.clone_of is None)
-        # A clone whose parameters or return carry the receiver's access binds
-        # a second signature: two callables, not one.
+        # A clone whose parameters carry the receiver's access binds a second
+        # signature: two callables, not one. Its result's access is each
+        # call's receiver's, so the pair's results differ only by that.
         return (const if mutable.clone_of is const and mutable.params == const.params
-                and mutable.return_type == const.return_type else None)
+                and unwrap_ref_type(receiver_neutral_return(
+                    mutable.return_type, declares_whole_result_following(mutable)))
+                == unwrap_ref_type(receiver_neutral_return(
+                    const.return_type, declares_whole_result_following(const))) else None)
 
     def _finalize_workspace(self) -> None:
         """The post-body workspace passes, shared by both compile paths

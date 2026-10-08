@@ -211,8 +211,9 @@ def slot_message(display: TpyType, target: TpyType, dest: str, kind: str,
                 f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
     if kind == KIND_ELEMENTS:
         return (DiagnosticLevel.WARNING, f"copies {display} elements; {hint}")
+    # The copy is its own mutable value, whatever access the source had.
     return (DiagnosticLevel.WARNING,
-            f"copies {display} into {dest}; use copy() to make this explicit")
+            f"copies {unwrap_readonly(display)} into {dest}; use copy() to make this explicit")
 
 
 def warn_value_call_binding(ctx: 'SemanticContext', expr: TpyExpr,

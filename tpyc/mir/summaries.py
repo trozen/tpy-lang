@@ -5,7 +5,7 @@ from ..thir.scalar_leaves import (
     native_container_subject, owned_value_type, record_type, storage_leaf, view_leaf,
 )
 from ..type_def_registry import ParamPassing
-from ..typesys import TpyType, unwrap_readonly
+from ..typesys import TpyType, receiver_neutral_return, unwrap_readonly
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
     MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, path_hops, return_origin_problem,
@@ -191,7 +191,9 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             or (callee.identity.owner is not None) is not method or body.receiver_init is not None
             or twin and not (method and callee.signature.result_follows_receiver and callee.signature.passings)
             or body.borrowed_result != bound_result(callee.signature, method and declaration.receiver.readonly)
-            or callee.signature.return_type != body.return_type):
+            or callee.signature.return_type not in (
+                body.return_type, receiver_neutral_return(
+                    body.return_type, callee.signature.result_follows_receiver))):
         return MIRSummaryResult.opaque("summary definition or result contract mismatch")
     effective = th.effective_params(declaration)
     params = tuple(s for s in body.slots if s.kind is MIRSlotKind.PARAMETER)

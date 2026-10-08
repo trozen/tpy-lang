@@ -1,7 +1,8 @@
 # A borrow-returning operator dunder (binary, reflected, unary) hands out an
-# ALIAS of an operand, like CPython: the friend-operator shim const-projects
-# its return alongside the method emit, and the result binds as a borrow
-# (mutating the source afterwards is visible through it), not an owned copy.
+# ALIAS of an operand, like CPython: an implicitly readonly dunder declares
+# its borrowed return readonly, the friend-operator shim spells it as the
+# method does, and the result binds as a borrow (mutating the source
+# afterwards is visible through it), not an owned copy.
 from tpy import int32
 
 

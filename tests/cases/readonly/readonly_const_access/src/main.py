@@ -9,7 +9,7 @@ class Container:
         self._items = [int32(10), int32(20), int32(30)]
 
     @readonly
-    def items(self) -> list[int32]:
+    def items(self) -> readonly[list[int32]]:
         return self._items
 
     @readonly

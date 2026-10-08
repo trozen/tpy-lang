@@ -68,7 +68,7 @@ class Counter:
 
     # method body: the receiver returned by an explicit @readonly method -- a readonly result
     @readonly
-    def me_ro(self) -> "Counter":  # tpyc: mir(covered) mir_summary(known)
+    def me_ro(self) -> readonly["Counter"]:  # tpyc: mir(covered) mir_summary(known)
         return self
 
     # method body: a view of a str parameter returned

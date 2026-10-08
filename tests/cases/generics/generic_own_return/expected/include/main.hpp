@@ -33,7 +33,7 @@ struct Box {
 
     // def take(self) -> Own[T]:
     //     return copy(self.value)
-    T take() const {
+    ::tpy::own_return_t<T> take() const {
         return T(this->value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";

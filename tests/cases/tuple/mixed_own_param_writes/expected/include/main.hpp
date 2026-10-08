@@ -210,12 +210,12 @@ struct Adder {
     explicit Adder(int32_t k);
 
     // def __add__(self, o: tuple[Own[Tok], Box]) -> int32:  # tpyc: ok
-    int32_t __add__(std::tuple<Tok, Box*>&& o) const;
+    int32_t __add__(std::tuple<Tok, const Box*>&& o) const;
 
     // def __sub__(self, o: Own[Tok]) -> int32:  # tpyc: ok
     int32_t __sub__(Tok&& o) const;
 
-    friend int32_t operator+(const Adder& lhs, std::tuple<Tok, Box*>&& o) {
+    friend int32_t operator+(const Adder& lhs, std::tuple<Tok, const Box*>&& o) {
         return lhs.__add__(std::move(o));
     }
 
@@ -442,14 +442,12 @@ inline Adder::Adder(int32_t k) : k(k) {}
 
 // def __add__(self, o: tuple[Own[Tok], Box]) -> int32:  # tpyc: ok
 //     a, c = o
-//     c.n += 1
-//     return self.k + take(a)
-inline int32_t Adder::__add__(std::tuple<Tok, Box*>&& o) const {
+//     return self.k + take(a) + c.n
+inline int32_t Adder::__add__(std::tuple<Tok, const Box*>&& o) const {
     auto& __tup_1 = o;
     Tok a = std::move(std::get<0>(__tup_1));
     auto&& c = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_1)));
-    c.n = ::tpy::add_check<int32_t>(c.n, 1);
-    return (::tpy::add_check<int32_t>(this->k, ::tpyapp::main::take(std::move(a))));
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->k, ::tpyapp::main::take(std::move(a)))), c.n));
 }
 
 // def __sub__(self, o: Own[Tok]) -> int32:  # tpyc: ok

@@ -490,6 +490,10 @@ struct ArrayList {
         return __getitem__(index);
     }
 
+    std::span<T> operator[](::tpy::BasicSlice index) {
+        return __getitem__(index);
+    }
+
     friend bool operator==(const ArrayList& lhs, const ArrayList<T, N>& other) {
         return lhs.__eq__(other);
     }

@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import Callable, Iterator, TextIO, TYPE_CHECKING
 
+from ..typesys import pointer_repr_optional
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo, INT32,
@@ -19,6 +20,7 @@ from ..typesys import (
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
     polymorphic_source_is_pointer, param_takes_ownership,
+    declared_result_readonly,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -45,6 +47,7 @@ from ..value_category import (
     declared_call_const,
     call_value_optional,
     CONTAINER_LITERAL_NODES,
+    const_place, call_result_const,
 )
 from .forms import (
     LoopBinding, loop_binding_kind,
@@ -1542,12 +1545,6 @@ class CodeGenContext:
     # return-value temp; 'auto' would reject the braced / std::nullopt
     # spellings some return sites pass.
     current_return_cpp: str | None = None
-    # Whether the current function's return slot was rendered const (a readonly
-    # method projects const onto its borrow returns). The signature reads
-    # `func.is_readonly` at `_resolve_return_type(const=...)`; return-value
-    # emission must read the SAME fact, or the body builds a mutable-pointer
-    # value against a const-pointer slot.
-    current_return_const: bool = False
     # Generator yield type. Set at the generator-body entry point (state-machine
     # __next__) and read by all yield
     # emission sites so they share one source of truth instead of threading
@@ -2040,7 +2037,6 @@ class CodeGenContext:
         self.indent_level = 0
         self.current_return_type = None
         self.current_return_cpp = None
-        self.current_return_const = False
         self.current_yield_type = None
         self.current_error_return = None
         self.error_return_stmt_handled = False
@@ -2226,7 +2222,6 @@ class CodeGenContext:
             self.match_switch_depth,
             self.current_return_type,
             self.current_return_cpp,
-            self.current_return_const,
             self.current_error_return,
             self.error_return_stmt_handled,
             self.in_async_coro_body,
@@ -2251,7 +2246,6 @@ class CodeGenContext:
         self.match_switch_depth = 0
         self.current_return_type = return_type
         self.current_return_cpp = return_cpp
-        self.current_return_const = False
         self.current_error_return = error_return_cpp
         self.error_return_stmt_handled = False
         self.in_async_coro_body = False
@@ -2278,7 +2272,6 @@ class CodeGenContext:
              self.match_switch_depth,
              self.current_return_type,
              self.current_return_cpp,
-             self.current_return_const,
              self.current_error_return,
              self.error_return_stmt_handled,
              self.in_async_coro_body,
@@ -2777,18 +2770,11 @@ class CodeGenContext:
         value-variant lift (needs `to_const_ptr_variant`), the storage-optional
         lift, the REF_ALIAS borrow-local arm, the `.get()` accessor local, and
         `is_const_storage_source` (the tuple sinks)."""
-        if isinstance(expr, TpyCoerce):
-            return self.is_const_union_source(expr.expr)
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            obj = expr.obj
-            if isinstance(obj, TpyName):
-                return (obj.name in self.const_ref_params
-                        or obj.name in self.const_indirect_locals
-                        or self.frame_binding_is_const(obj.name))
-            # Chained access (outer.inner.pet, self.store[k]): recurse on
-            # the object
-            return self.is_const_union_source(obj)
-        return False
+        return const_place(expr, self.analyzer.get_expr_type, lambda e, stepped: (
+            stepped and isinstance(e, TpyName)
+            and (e.name in self.const_ref_params
+                 or e.name in self.const_indirect_locals
+                 or self.frame_binding_is_const(e.name))))
 
     def is_const_storage_source(self, expr: TpyExpr) -> bool:
         """True when `expr` reads from a const-bound storage location, so
@@ -2796,11 +2782,8 @@ class CodeGenContext:
         (field / subscript, arbitrarily deep) rooted at a const receiver
         (self in a readonly method, const param/local), or a name bound const
         (const-storage loop var, const-inferred param/local), or a call whose
-        verdict is its RECEIVER's: a borrowing-view accessor (`d.items()` /
-        `d.values()`, the view aliases the receiver's storage) or a method
-        that returns a reference into it (`T&`, the `@auto_readonly` clone
-        pair means sema may have typed the call off the mutable half while
-        C++ overload resolution picks the const one).
+        result is const (`call_result_const`) and lends storage: a borrowing
+        view, or a reference.
         """
         if self.is_const_union_source(expr):
             return True
@@ -2809,17 +2792,17 @@ class CodeGenContext:
             return declared
         if isinstance(expr, TpyMethodCall) and expr.obj is not None:
             fi = expr.resolved_function_info
-            if fi is not None and (
-                    is_borrowing_view_type(unwrap_ref_type(fi.return_type))
-                    # A `@property` getter over a container field is the
-                    # member read one spelling over; the convention comes
-                    # from the one predicate that owns it -- spelling it
-                    # here again lost the storage-ref Optional / union
-                    # returns, which are references into the field too.
-                    or property_access_returns_cpp_ref(self.analyzer, expr)
-                    or _call_returns_cpp_ref_shared(self.analyzer, fi)):
-                return self.is_const_storage_source(expr.obj)
-            return False
+            # A `@property` getter over a container field is the member read
+            # one spelling over (`property_access_returns_cpp_ref`: storage-ref
+            # Optional / union returns are references into the field too).
+            lends = fi is not None and (
+                is_borrowing_view_type(unwrap_ref_type(fi.return_type))
+                or property_access_returns_cpp_ref(self.analyzer, expr)
+                or _call_returns_cpp_ref_shared(self.analyzer, fi))
+            return (declared_result_readonly(fi)
+                    or lends and call_result_const(
+                        expr, self.analyzer.get_expr_type,
+                        self.is_const_storage_source))
         if isinstance(expr, TpyName):
             return (expr.name in self.const_storage_form_tuple_locals
                     or expr.name in self.const_borrow_form_tuple_locals
@@ -3372,7 +3355,7 @@ class CodeGenContext:
         expr_type = self.get_expr_type(expr)
         if isinstance(expr_type, PtrType):
             return rendered
-        if isinstance(expr_type, OptionalType) and expr_type.uses_pointer_repr():
+        if pointer_repr_optional(expr_type) is not None:
             return rendered
         return f"(*{rendered})"
 

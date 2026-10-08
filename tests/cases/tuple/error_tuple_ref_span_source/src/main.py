@@ -6,4 +6,4 @@ class Point:
     y: int32
 
 def get_first(s: Span[readonly[Point]]) -> tuple[Point, int32]:
-    return (s[0], int32(1))  # tpyc: error(/readonly.*reference/)
+    return (s[0], int32(1))  # tpyc: error(/Cannot return readonly\[Point\] as tuple element 0.*declare the return as .tuple\[readonly\[Point\], int32\]./)

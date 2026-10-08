@@ -111,11 +111,11 @@ struct Tree {
 
     // @property
     // def kid(self) -> readonly[Optional[Leaf]]:
-    const Leaf* kid();
+    std::optional<Leaf>& kid();
 
     // @property
     // def kid(self) -> readonly[Optional[Leaf]]:
-    const Leaf* kid() const;
+    const std::optional<Leaf>& kid() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tree";
 };
 
@@ -178,15 +178,15 @@ inline Tree::Tree() : child(Leaf(::tpy::BigInt(4))) {}
 // @property
 // def kid(self) -> readonly[Optional[Leaf]]:
 //     return self.child  # tpyc: ok
-inline const Leaf* Tree::kid() {
-    return ::tpy::optional_to_ptr(this->child);
+inline std::optional<Leaf>& Tree::kid() {
+    return this->child;
 }
 
 // @property
 // def kid(self) -> readonly[Optional[Leaf]]:
 //     return self.child  # tpyc: ok
-inline const Leaf* Tree::kid() const {
-    return ::tpy::optional_to_ptr(this->child);
+inline const std::optional<Leaf>& Tree::kid() const {
+    return this->child;
 }
 
 // def __init__(self, v: int) -> None:  # tpyc: warning(/does not call 'super/)

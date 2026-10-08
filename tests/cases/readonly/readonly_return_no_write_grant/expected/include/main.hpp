@@ -10,6 +10,7 @@ namespace tpyapp::main {
 struct Point;
 struct Reg;
 struct Reader;
+struct Writer;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -80,6 +81,23 @@ inline std::ostream& operator<<(std::ostream& os, const Reader& obj) {
     return os;
 }
 
+// class Writer:
+struct Writer {
+
+
+    // def pick(self, a: Point) -> readonly[Point]:  # tpyc: ok
+    const Point& pick(const Point& a) const;
+
+    // def touch(self, r: Point) -> readonly[Point]:  # tpyc: ok
+    const Point& touch(Point& r) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Writer";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Writer& obj) {
+    ::tpy::print_object_default(os, "Writer", obj);
+    return os;
+}
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
@@ -115,6 +133,24 @@ inline Reader::Reader(int32_t x) : reg(Reg(x)) {}
 inline int32_t Reader::read() const {
     const Point& v = this->reg.view();
     return v.x;
+}
+
+// # param position in an inferred-const method: the readonly return grants
+// # no write, so `a` stays `const Point&`...
+// def pick(self, a: Point) -> readonly[Point]:  # tpyc: ok
+//     return a
+inline const Point& Writer::pick(const Point& a) const {
+    return a;
+}
+
+// # ...but the body's own write keeps `r` a mutable `Point&` -- the return
+// # borrow must not erase it
+// def touch(self, r: Point) -> readonly[Point]:  # tpyc: ok
+//     r.x = 1
+//     return r
+inline const Point& Writer::touch(Point& r) const {
+    r.x = 1;
+    return r;
 }
 void __tpy_init();
 } // namespace tpyapp::main

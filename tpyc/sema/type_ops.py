@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, replace as dc_replace
 from typing import Callable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from ..typesys import (
+    canonical_readonly, settled_substitution,
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
     bound_as_spelled, make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
     TupleType, FinalType, ClassVarType,
@@ -89,10 +90,20 @@ def frame_yield_may_borrow(typ: TpyType) -> bool:
 
 
 def partial_substitute(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
-    """Substitute known type params, preserve unknown TypeParamRefs as-is."""
+    """Substitute known type params, preserve unknown TypeParamRefs as-is;
+    the result is settled (`settled_substitution`)."""
+    return settled_substitution(typ, _substitute_types(typ, subst))
+
+
+def _substitute_types(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
+    # Keeps every inner readonly: a handle's referent (`Ptr[readonly[T]]`)
+    # is const storage whatever `T` is; only the caller's settled result
+    # drops a value-level one.
+    if isinstance(typ, SelfType) and "Self" in subst:
+        return subst["Self"]
     if isinstance(typ, TypeParamRef):
         return subst.get(typ.name, typ)
-    return typ.map_inner_types(lambda t: partial_substitute(t, subst))
+    return typ.map_inner_types(lambda t: _substitute_types(t, subst))
 
 
 def to_owned_storage_form(typ: TpyType) -> TpyType:
@@ -411,10 +422,10 @@ class TypeOperations:
                 check_hashable_constraints=check_hashable_constraints,
             )
 
-        # `unsafe_interior_mutable[T]` is a field-only marker; field registration strips
-        # it before this runs, so reaching here means it was written on a param,
-        # return, local, or container -- reject with a clear message instead of
-        # letting the unstripped marker crash codegen.
+        # `unsafe_interior_mutable[T]` is a reserved field marker that field
+        # registration rejects, so reaching here means it was written on a
+        # param, return, local, or container -- reject with a clear message
+        # instead of letting the marker crash codegen.
         if isinstance(typ, InteriorMutableType):
             raise SemanticError(
                 "unsafe_interior_mutable[...] is only valid on a class field declaration",
@@ -833,6 +844,12 @@ class TypeOperations:
         Returns:
             The type with all TypeParamRef instances replaced by their concrete types.
         """
+        return canonical_readonly(self._substitute(typ, subst))
+
+    def _substitute(self, typ: TpyType, subst: dict[str, TpyType | int]) -> TpyType:
+        # Keeps every readonly: only the value positions `canonical_readonly`
+        # settles may drop one -- a handle's referent (`Ptr[readonly[T]]` at
+        # `T = int32`) is const storage, not a copy.
         # PERF TODO: candidate for memoization by (typ, frozen(subst)) if profile
         # shows this is hot. Frozen dataclass types are hashable. Needs profiling
         # data post-mypyc before acting; not a top hotspot in current profiles.
@@ -850,14 +867,14 @@ class TypeOperations:
         # but the concrete type after substitution is a value type, force pointer
         # repr so the caller matches the template's representation.
         if isinstance(typ, OptionalType) and typ.uses_pointer_repr():
-            new_inner = self.substitute_type_params(typ.inner, subst)
+            new_inner = self._substitute(typ.inner, subst)
             if new_inner.is_value_type():
                 return OptionalType(new_inner, force_pointer_repr=True)
             return OptionalType(new_inner)
         # Special handling for Array: substitute size if it's a TypeParamRef
         if is_array(typ):
             elem, size = typ.type_args[0], typ.type_args[1]
-            new_elem = self.substitute_type_params(elem, subst)
+            new_elem = self._substitute(elem, subst)
             new_size = size
             if isinstance(size, TypeParamRef) and size.name in subst:
                 new_size = subst[size.name]
@@ -878,7 +895,7 @@ class TypeOperations:
                     new_args.append(subst[arg.name])
                     changed = True
                 elif isinstance(arg, TpyType):
-                    new_arg = self.substitute_type_params(arg, subst)
+                    new_arg = self._substitute(arg, subst)
                     new_args.append(new_arg)
                     if new_arg is not arg:
                         changed = True
@@ -889,7 +906,7 @@ class TypeOperations:
                                  typ._module_qname, typ.is_dynamic_protocol)
             return typ
         # Use map_inner_types for types that have inner types
-        result = typ.map_inner_types(lambda t: self.substitute_type_params(t, subst))
+        result = typ.map_inner_types(lambda t: self._substitute(t, subst))
         # A pointee is a bare-T slot: a Ref bound from inference must not
         # nest as Ptr[Ref[T]] (see to_bare_slot_form).
         if isinstance(result, PtrType) and isinstance(result.pointee, RefType):
@@ -936,13 +953,10 @@ class TypeOperations:
 
         Substitutes SelfType and TypeParamRef according to the substitution map.
         Handles nested types like Own[Self], Ptr[T], list[T], etc.
-        Uses map_inner_types for generic traversal of wrapper types.
+        Uses map_inner_types for generic traversal of wrapper types. The
+        result is settled (`settled_substitution`).
         """
-        if isinstance(typ, SelfType) and "Self" in subst:
-            return subst["Self"]
-        if isinstance(typ, TypeParamRef) and typ.name in subst:
-            return subst[typ.name]
-        return typ.map_inner_types(lambda t: self.substitute_types(t, subst))
+        return settled_substitution(typ, _substitute_types(typ, subst))
 
     def substitute_self(self, typ: TpyType, actual: TpyType) -> TpyType:
         """Recursively substitute SelfType with actual type throughout a type structure.

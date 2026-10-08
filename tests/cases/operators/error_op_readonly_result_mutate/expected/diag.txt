@@ -1,1 +1,1 @@
-main.py:20: error: Cannot mutate readonly reference
+main.py:20: error: Cannot mutate readonly reference ('__add__' returns it readonly; declare '-> Own[...]' to return a fresh value, or copy() the result)

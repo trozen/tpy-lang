@@ -1,0 +1,1 @@
+main.py:24: error: Cannot return readonly[Box] as tuple element 0 at a mutable part of return type 'tuple[Box, int32] | None' of an @auto_readonly method; mark that part 'auto_readonly[Box]'

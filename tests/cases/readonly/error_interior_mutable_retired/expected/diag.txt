@@ -1,0 +1,1 @@
+main.py:14: error: unsafe_interior_mutable[...] on field '_cell' is no longer needed: readonly does not reach through a Ptr, so declare the field as 'Ptr[Cell]'

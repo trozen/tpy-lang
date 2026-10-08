@@ -17,7 +17,7 @@ struct Cell;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def read_via_weak(w: Weak[Cell]) -> int32:
-int32_t read_via_weak(const ::tpystd::tplib::rc::Weak<Cell>& w);
+int32_t read_via_weak(::tpystd::tplib::rc::Weak<Cell>& w);
 // def main() -> None:
 void main();
 

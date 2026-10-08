@@ -135,20 +135,6 @@ def warn_export_class_return_alias(ctx: 'SemanticContext',
                         fn, alias_records, info, ctx.registry)):
                 return
             cls_name = getattr(borrow_inner, 'name', '?')
-            if info is not None and info.is_value_type:
-                # A value class has no identity/view path at all (it
-                # crosses by copy from every source), so the residual
-                # wording's self/param identity advice would lie here.
-                ctx.warning(
-                    f"{label}: returns exposed value-type class "
-                    f"'{cls_name}' by reference, and a value class "
-                    f"always crosses the CPython boundary as a copy -- "
-                    f"the copy is a new object (identity and "
-                    f"write-through aliasing are not preserved, even "
-                    f"for `return self`); return Own[{cls_name}] to "
-                    f"make the copy explicit",
-                    first_return(fn.body))
-                return
             ctx.warning(
                 f"{label}: returns exposed class '{cls_name}' by "
                 f"reference from a source with no live object behind it "

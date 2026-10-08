@@ -36,6 +36,7 @@ from ...parse.nodes import (
     TpySubscript,
     TpyTupleLiteral,
 )
+from ...typesys import pointer_repr_optional
 from ...typesys import (
     NoneType,
     OptionalType,
@@ -622,8 +623,7 @@ def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:
     STORAGE result: the slot owns what it is handed, so a by-value call
     result lands whole. The right to hoist an argument temp is the slot
     contract's (`field_slot_use`), carried through unchanged."""
-    ptr_opt = (isinstance(member_t, OptionalType)
-               and member_t.uses_pointer_repr())
+    ptr_opt = pointer_repr_optional(member_t) is not None
     ptr_union = _eligible_ptr_union(member_t, analyzer) is not None
     forms = _slot_lift_forms(ptr_opt, ptr_union) | _STORAGE_COPY_FORMS
     if not (ptr_opt or ptr_union):

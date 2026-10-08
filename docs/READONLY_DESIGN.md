@@ -67,6 +67,8 @@ def copy_into(src: readonly[Point], dest: Point) -> None:
 | Subscript read (`x[i]`)          | Yes (returns `readonly[Elem]`)        |
 | Subscript write (`x[i] = v`)     | No                                    |
 | Rebind the variable (`x = other`) | Yes (changes the reference, not the object) |
+| Write through a `Ptr[T]` / `Span[T]` field (`x.p.n = 1`) | Yes (the pointee is not the object's storage) |
+| Write through a `Ptr[readonly[T]]` / `Span[readonly[T]]` | No |
 
 ### Value types are unaffected
 
@@ -74,6 +76,12 @@ Value types (`int32`, `bool`, `float`, `str`, `char`, etc.) are always copies.
 `readonly[int32]` is valid syntax but has no effect -- the parameter is a copy
 regardless. This means you never need to annotate value-type parameters with
 `readonly`.
+The same holds for every copy that holds no reference: a value record
+(`ValueType`), a value-repr `Optional` / union, a `Ptr` or `Span` handle.
+`readonly` over one is dropped where the type is settled (`typesys.make_readonly` /
+`canonical_readonly`: a declared signature, a substituted one, a result), so no
+reader sees `readonly[int32]`; a handle's referent (`Ptr[readonly[T]]`) is not a
+copy and keeps it, and a `readonly[...]` FIELD is a slot that cannot be reassigned.
 
 ### `@readonly` decorator (shorthand)
 
@@ -100,11 +108,12 @@ class Box:
     # C++: int32_t value() const { return _value; }
 ```
 
-**Note on return types:** `@readonly` does NOT wrap the return type in
-`readonly[T]`. Return-type constness comes from the C++ `const` method
-qualifier -- a `const` method returning a `T&` member naturally returns
-`const T&`. Explicit `readonly[T]` return type annotations are not yet
-supported.
+**Note on return types:** the declared return type is the contract (see
+"The return type is the contract" below). An explicit `@readonly` method that
+returns its own storage must declare it `-> readonly[T]`; returning what a
+`Ptr` field points at, `-> T` hands out a mutable `T&` from a `const` method.
+A readonly the user did not spell -- an implicitly-readonly dunder, `@pure`, a
+frozen record -- declares its borrowed return readonly along with it.
 
 A method that is only INFERRED const (it never mutates `self`, no decorator)
 proves its receiver and nothing else: it is emitted `const`, but a return that
@@ -197,18 +206,20 @@ any path must be treated as readonly.
 
 ### Dual const/non-const overloads
 
-A `@readonly` method that returns a non-value type gets dual const/non-const
-overloads in C++. `@readonly` means "doesn't mutate self", but the return
-carries the caller's mutability context -- a const receiver gets a const
-reference back, a mutable receiver gets a mutable reference:
+A method whose reference result follows its receiver gets dual
+const/non-const overloads in C++: an `@auto_readonly` method, the implicit
+`__deref__` / `__getitem__` / `__span__` pair with a reference result, and a
+`@property` getter. A const receiver gets a const reference back, a mutable
+receiver a mutable one. A `@readonly` method gets ONE `const` overload whose
+result is exactly its declared return type:
 
 ```cpp
-// Generated for @readonly methods returning non-value types:
+// @auto_readonly / implicit pair / property getter, non-value result:
 const T& method() const;   // readonly receiver -> readonly ref
 T& method();               // mutable receiver -> mutable ref
 
-// Generated for @readonly methods returning value types:
-T method() const;           // single const overload (copy, no ref duality)
+// @readonly, `-> readonly[T]` / `-> T` (a pointee) / a value:
+const T& method() const;   T& method() const;   T method() const;
 ```
 
 At the callsite, C++ overload resolution selects based on the receiver's
@@ -238,7 +249,17 @@ def f(p: readonly[Point | None]) -> None:
 ```
 
 C++ mapping: `readonly[Point | None]` -> `const Point*` (const nullable
-pointer).
+pointer), as a parameter and as a declared result alike: a local bound from
+`-> readonly[Point | None]`, a local rebound to it and a return relaying it
+are the `const Point*` alias of the source (`const Point* p = h.get();`).
+
+Readonly is access, never shape. Whether a type is an Optional, a
+pointer-repr Optional or a pointer-variant union is read through every
+access and ownership wrapper in whatever order the wrappers were applied
+(`typesys.repr_shape`, with the views `pointer_repr_optional` and
+`pointer_variant_union`; an `Own` among the wrappers selects the storage
+form, so `Own[Point | None]` is not a pointer-repr Optional). Const-ness
+keeps reading the `readonly` wrapper itself (`readonly_access`).
 
 ### C++ mapping summary
 
@@ -308,8 +329,6 @@ Allowed:
 - Global writes allowed (globals are not parameters)
 - Narrowing integration: readonly calls preserve facts (best-effort)
 - C++ const generation from is_readonly
-- Conditional dual const/non-const overloads for non-value, non-Own reference
-  return types on `@readonly` methods
 - Builtins marked readonly: `len`, `chr`, `abs`, `min`, `max`, `range`,
   `copy`, `print`
 
@@ -358,12 +377,24 @@ Allowed:
    ReadonlyType propagates through subscript (`readonly[list[T]][i]` ->
    `readonly[T]`), field access chains, and iteration. It projects onto an
    element that is not a value type, and onto a tuple or Optional that
-   HOLDS one (`sema/context.py readonly_reaches`, the one predicate every
+   HOLDS one (`typesys.py make_readonly` over `readonly_protects`, the one constructor every
    projection site asks; a `Ptr` or a view stops it), so `xs[0][1].n = v` off a
    `readonly[list[tuple[int32, Box]]]` and a write through an unpack target
    of a readonly tuple are refused like the record element's write; a
    tuple of plain values (`tuple[int32, str]`) is copied and takes no
-   readonly. List literals with
+   readonly. A tuple parameter holding a reference is readonly in a readonly
+   context (an explicit `@readonly` method, an implicitly readonly dunder,
+   `@pure`) like a reference parameter: `__add__(self, o: tuple[Own[Tok],
+   Box])` takes `std::tuple<Tok, const Box*>&&` and refuses a write through
+   the unpacked `Box`. A readonly tuple follows the scalar rule for its
+   reference elements: an `Own[...]` slot (`xs.append(t)`) takes a warned
+   copy of the whole tuple, as `ys.append(b)` copies a `readonly[Box]`; any
+   other mutable tuple slot checks it element by element, as the literal
+   `(o[0], o[1])` is, and refuses the reference element -- a mutable
+   parameter with *Cannot pass readonly[Box] as mutable Box in argument 'p'
+   (tuple element 0)*, a field or subscript store (refused like `self.g =
+   b`) with the same message plus *-- use copy(t) to store a mutable
+   copy*. List literals with
    readonly elements infer `PendingList[readonly[T]]` which rejects assignment
    to `list[T]`. Passing `readonly[list[T]]` to `list[T]` param is caught by
    type compatibility. No taint-tracking needed for these cases.
@@ -374,9 +405,12 @@ Allowed:
    argument (global aliasing scenario). Full soundness for all edge cases
    requires escape analysis.
 
-6. **No explicit `readonly[T]` return type** -- `@readonly` affects parameter
-   enforcement only. Return-type constness comes from C++ method const
-   qualification, not from an explicit `readonly[T]` return annotation.
+6. **Declared readonly union returns do not lower** -- a `-> readonly[A | B]`
+   return and every binding of one are THIR rejects
+   (BUGS.md#declared-readonly-return-lowering-gaps), behind the general
+   union-result gap its mutable twin `-> A | B` meets first. An implicitly
+   readonly method (a dunder, `@pure`, a frozen record) returning a
+   pointer-variant union borrow declares exactly that shape.
 
 7. **Sema/codegen mismatch for dual overloads** -- sema analyzes each method
    body once, but codegen may generate two C++ overloads (const + non-const)
@@ -421,21 +455,22 @@ both clones. Value types (copied on return) need no annotation.
 
 ### Interaction with `IMPLICIT_READONLY_METHODS`
 
-Methods in `IMPLICIT_READONLY_METHODS` (`__getitem__`, `__span__`, `__deref__`,
-`__iter__`, `__len__`, `__eq__`, arithmetic operators, etc.) are treated as
-`@readonly` (single const overload) by default. Dual overloads require an
-explicit `@auto_readonly` decorator.
-
-When `@auto_readonly` is applied to a method in `IMPLICIT_READONLY_METHODS`,
-the compiler generates dual overloads. Without it, only a single const overload
-is generated (which is correct for value-returning methods like `__len__` and
-`__eq__`, but not for reference-returning methods like `__getitem__ -> T`).
+Methods in `IMPLICIT_READONLY_METHODS` (`__len__`, `__eq__`, arithmetic
+operators, etc.) are readonly by default: one `const` overload, whose
+borrowed result is declared `readonly[...]` with it (see "The return type is
+the contract"). The reference-returning accessors among them --
+`__getitem__`, `__span__`, `__deref__` (`IMPLICIT_AUTO_READONLY_METHODS`) --
+instead get the dual pair when their result is a reference: method expansion
+marks the result `auto_readonly[...]` whole, as if the user wrote
+`@auto_readonly`. An explicit `@readonly` opts such an accessor back into the
+single const overload; `@readonly(False)` opts out of readonly entirely.
 
 The general rule: apply `@auto_readonly` whenever the method returns a
 reference type and you want the const overload to return a const variant. Mark
 the parts of the return type that should become const with `auto_readonly[T]`:
 `Span[auto_readonly[T]]`, `Ptr[auto_readonly[T]]`, `auto_readonly[T]`
-for a bare type parameter. Value types (copied on return) need no annotation.
+for a bare type parameter. An unmarked reference result follows the receiver
+whole. Value types (copied on return) need no annotation.
 
 ### Interaction with `@overload`
 
@@ -468,10 +503,9 @@ independently.
 A parameter read only *through* an `@auto_readonly` accessor (`Box.get`,
 `Rc.get`, a `Deref.__deref__`) keeps a `const` receiver. The mutable clone of
 the accessor does not mutate its receiver -- only a mutation *through* the
-borrowed result does -- so the accessor call itself no longer demotes the
-receiver param (`sema/methods.py` skips the non-readonly-call mutation mark for
-`is_auto_readonly_mutable_clone`). The actual demotion is rooted back to the
-receiver at the mutation site:
+borrowed result does -- so the accessor call itself does not demote the
+receiver param (`receiver_calls.call_mutates_receiver`). The actual demotion is
+rooted back to the receiver at the mutation site:
 
 ```python
 def read(o: Outer) -> int32:  return o.b.get().v   # const Outer&  (result only read)
@@ -491,28 +525,54 @@ receiver carrying the const-ness the borrow verdict gives that receiver, so
 C++ overload resolution still decides which half runs -- codegen only supplies
 the receiver qualifier it would have had at the call site.
 
-Two predicates intentionally differ in scope: the call-site demotion is
-suppressed for *every* `@auto_readonly` mutable clone (`is_auto_readonly_mutable_clone`)
--- including value-returning ones, which read the receiver to produce a copy
-and must not demote it -- whereas mutation rooting back through the result
-(the `_root_name_of_expr` transparency) applies only to a *borrowing* clone
-(`FunctionInfo.borrows_receiver_via_auto_readonly`, which also requires the
-result to alias the receiver), since a value copy cannot carry a mutation back.
-Mutation rooting is symmetric with subscript element access (`xs[0].v = 9`):
-`_root_name_of_expr` is transparent to a borrowing accessor call, and a genuine
-through-reference write climbs a field-path borrow root to its owning param
-(`mark_param_mutated(..., through_field=True)`).
+Which part of a result follows the receiver is DECLARED (`FunctionInfo.following_components`,
+read through `typesys.following_components` at the call's specialization -- a marker on a part
+that holds no reference, `auto_readonly[T]` at `T = int32`, follows nothing). What a call lends
+of its receiver is one fact, `typesys.receiver_lends`, consumed by the call and the existing loan
+machinery, never by the binding site:
 
-**Limitation:** binding a named accessor result to a local (`x = o.b.get()`)
-keeps the receiver mutable, because a non-const local alias requires a mutable
-source (locals are non-const by default). A const receiver for aliased *reads*
-awaits never-mutated-local const-binding (see TODO). The SUBSCRIPT spelling
-(`x = o.b[k]`) is not subject to this: it stays readonly-compatible, and the
-bound borrow local is emitted const when the receiver chain is const-rooted
-(e.g. `self` in an inferred-readonly method) -- codegen's `_is_const_indirect`
-receiver-const arm, mirrored in THIR's `_f1_is_const`, since C++ overload
-resolution picks the const twin regardless of which twin sema resolved
-pre-inference.
+- **A handle's referent** (`Ptr[auto_readonly[T]]`, `Span[auto_readonly[T]]`, an `Rc`'s payload):
+  every copy of the handle reaches it and nothing tracks the copies, so the CALL demotes its
+  receiver (`receiver_calls.call_mutates_receiver`), whatever is done with the result -- a
+  read-only use keeps the receiver mutable. A `for` statement's `__iter__` is the exception the
+  loop owns: its handle is reached only through the loop variable, whose writes climb to the
+  iterable (`call_mutates_receiver(handle_climbs=...)`, keyed on the loop variable's iteration
+  loans, `iter_loans._loop_var_climbs`; a comprehension or an `in` test takes no exemption).
+  Known limit: the climb misses a write made through a callee the loop variable is passed to
+  (BUGS.md#loop-element-callee-mutation-not-propagated) or inside a nested def
+  (BUGS.md#loop-var-write-routes-miss-write-set), and a comprehension variable does not climb at
+  all (BUGS.md#comprehension-loop-var-mutation-not-propagated).
+  Both the call-site demotion and the loop exemption are interim approximations of one rule:
+  the receiver is mutated exactly when a write reaches it through the handle. The intended
+  end state stays in sema (MIR runs after inference and cannot feed it back): (1) close the
+  three climb gaps above so the loop exemption is exact; (2) generalise the loop variable's
+  trace to any local holding a handle from a declared `@auto_readonly` call, recorded by the
+  order-free whole-function pre-pass, with an ALLOW-LIST of harmless uses (a value-field read,
+  `is None` / comparison, a `readonly[...]` parameter, a declared or implicit `@readonly` call)
+  -- every other use (a write, a non-readonly call, passing, storing, capturing, returning,
+  yielding) demotes as today, so the rule stays sound and only gains precision; read-only uses
+  of `Ptr`-returning accessors and of `Rc.clone` / `Weak.upgrade` then keep the receiver const.
+  Beyond that, exact (annotation-free, least-solution) inference is a MIR-based re-layering:
+  docs/CONST_INFERENCE_TARGET_DESIGN.md.
+  Separately, BUGS.md#spaniter-next-copies-element makes an `ArrayList` / span loop variable a
+  copy, so writes through it miss the container regardless of const.
+- **A reference** (the whole result, a tuple element): the call loans its receiver to whatever
+  binds the result (`_register_call_result_borrow` reads `typesys.result_borrow_sources`; a
+  `for` over the call files it as the iteration's loan), so a write through any place derived
+  from it -- a local, a walrus, a rebind, an unpack, a return, a loop variable -- climbs that
+  loan; a read-only alias leaves the receiver const and binds const, since C++ picks the clone by
+  the receiver. A receiver that is itself such a call lends ITS receiver (`w.me().ref()` loans
+  `w`, `sema.context.lent_receivers`), and the THIR const verdict follows the same chain. A
+  place derived through a field of the result (`x = o.b.get().leaf`) is bound eagerly: the
+  receiver is demoted at that binding.
+
+A call form is recognized by its resolved callee, so an explicit call, a subscript dispatched to
+`__getitem__`, an implicit dunder and a property read all take the same path; an implicit dunder
+on a readonly receiver runs the const clone, which lends nothing writable, and a subscript on a
+readonly receiver is typed off that clone's result (`h[0]` off a `Ptr[auto_readonly[A]]`
+`__getitem__` is a `Ptr[readonly[A]]`). Not yet: a `@property` getter with a component
+marker (BUGS.md#auto-readonly-property-component-pair) and an `@auto_readonly` operator dunder
+(BUGS.md#auto-readonly-operator-dunder-pair).
 
 ### Restrictions
 
@@ -522,48 +582,82 @@ pre-inference.
   are different concepts)
 - `@pure` remains separate (single const overload, no propagation)
 
-## Interior mutability: `unsafe_interior_mutable[Ptr[T]]` fields
+## Pointers and spans are access boundaries
 
-`unsafe_interior_mutable[Ptr[T]]` is the dual of `readonly[T]`: it marks one field as
-*outside* its owning object's readonly boundary. TPy's readonly is deep --
-it propagates through the reachable object graph, including into `Ptr[T]`
-fields (a readonly borrow yields readonly sub-borrows). That deepness is
-load-bearing (`Rc.get()` returning `self._payload` is only sound because a
-`readonly[Rc]` view makes the payload readonly). But some state is genuine
-*bookkeeping* that is invisible to a readonly observer -- a refcount reached
-through a control-block pointer -- and should be mutable even through a
-readonly handle. In C++ this is automatic: `const` does not cross a raw
-pointer (`_cell` is `T* const`, `*_cell` stays non-const), exactly like
-`std::shared_ptr` being const-copyable. `unsafe_interior_mutable` opts a single field
-out of TPy's stricter propagation to match.
+`readonly` protects the storage a reference names: the object, its fields,
+the elements of the containers it owns. It does not reach through a `Ptr[T]`
+or a `Span[T]` (or any other borrowing view): those are value-typed handles,
+and what they point at is not the storage of whatever holds them. This is the
+C++ rule (`T* const` derefs to a mutable `T`; a `const std::span<T>` hands out
+mutable elements) and Rust's raw-pointer rule.
 
-**Semantics.** On a field typed `unsafe_interior_mutable[Ptr[T]]`:
+```python
+class M:
+    _a: Ptr[A]
+    xs: Span[int32]
 
-- Accessing it through a `readonly[Self]` receiver does **not** wrap the
-  pointee in `readonly` (the field keeps its declared mutable shape).
-- A non-readonly method call *through* the field (`self._cell.incr()`) does
-  **not** demote the enclosing method, so the method can be `@readonly` /
-  `@auto_readonly`.
-- Reassigning the slot (`self._cell = other`) through a readonly receiver is
-  **still rejected** -- that is enforced on the receiver's readonly-ness, which
-  `unsafe_interior_mutable` never touches. The hatch is for mutation *beyond* the field
-  boundary, not for the field slot itself.
+    def tick(self) -> None:       # void tick() const;
+        self._a.bump()
 
-**Soundness contract.** `unsafe_interior_mutable` is an unsafe assertion: the author
-guarantees the field's mutation is unobservable through a readonly read.
-For `Rc`, the refcount feeds no readonly-observable result, and the payload
-(`_payload`) is deliberately *not* interior, so `readonly[Rc[T]].get()` still
-yields readonly `T`. Marking observable state interior would create a hole --
-keep it to bookkeeping reached through a pointer.
+    def poke(self) -> None:       # void poke() const;
+        self.xs[0] += 1
 
-**Implementation.** A transient `InteriorMutableType` marker (parser ->
-resolver, mirroring `auto_readonly[...]`) is stripped at field registration
-into `FieldInfo.is_interior_mutable`; the stored field type is the plain
-`Ptr[T]`, so the marker never flows through codegen or type comparisons. The
-flag is read at exactly the readonly-propagation site (`sema/expressions.py`)
-and the mutation-rooting site (`sema/methods.py`) -- both already branch on
-readonly. Validation (field-only, `Ptr[T]`-only, no `readonly`/`Own`/nested
-wrapping) lives in the registration strip pass and `validate_type`.
+def via_ro(m: readonly[M]) -> None:
+    m._a.n += 1                   # OK: the pointee is not m's storage
+    m._a = other                  # error: the field itself is m's storage
+```
+
+To protect what a handle points at, say so in its type: `Ptr[readonly[T]]`,
+`Span[readonly[T]]`. A `Ptr[readonly[T]]` derefs into a `T` slot only where
+that slot copies the pointee (a value `T`); a reference slot -- a local, a
+return, a tuple element of a reference type -- is a type mismatch, since it
+would hand the readonly pointee out mutably. `readonly[Ptr[T]]` and
+`readonly[Span[T]]` protect only the handle (a copy): on a parameter they have
+no effect, exactly like `readonly[int32]` (a declared signature and a
+substituted result drop a readonly that protects nothing,
+`typesys.canonical_readonly`); on a FIELD
+they make the slot readonly -- it cannot be re-pointed after construction --
+while what it points at stays writable.
+
+```python
+class H:
+    ro: readonly[Ptr[A]]
+
+    def poke(self) -> None:
+        self.ro.n += 1            # OK: the pointee stays writable
+        self.ro = other           # error: Cannot assign to readonly field 'ro'
+```
+
+The rule has two halves, decided once per write by the mutation mode of the
+place walkers (`_root_name_of_expr` / `addr_taken_roots` given the expression
+types, `tpyc/sema/context.py`); the const walkers of every layer step the
+same way (`value_category.const_place`, one step predicate,
+`typesys.indirection_referent_readonly`):
+
+- **The holder is not written.** A write whose place is reached through a
+  handle read out of some object's storage (`self._a.n = 1`,
+  `m.xs[0] += 1`, `self._ps[0].bump()`) does not mutate that object, so it
+  neither demotes an inferred-const method nor needs a mutable receiver.
+- **The referent effect stays with the handle's name.** A write through a
+  handle that is a local or a parameter (`p.n = 1`, `s[0].clear()`) is
+  credited to that name, so the callee's facts say it writes through that
+  parameter. Where the handle was FORMED over some storage -- a record
+  coerced to a `Ptr`, `take_ptr(x)`, a mutable `Span` over a container -- the
+  formation itself demotes that storage. A loop variable that is itself a
+  handle (`for p in ps` over `list[Ptr[A]]`) is written only through its
+  referent, so the write does not climb to the iterable, and a call on a
+  handle receiver runs on its referent, not on the storage the handle was
+  read out of.
+
+Lifetimes are not part of this rule: a borrow taken through a handle stays
+conservatively tied to the holder for the borrow checker.
+
+The guarantees of the handle-holding library types (`Rc`, `Arc`, `Weak`,
+`Box`, `Mutex`, `RwLock` and their guards) rest on their public accessors,
+which declare their payload as following the receiver (`auto_readonly[T]`,
+see below). Their `_`-prefixed implementation fields are private by Python
+convention only: reaching `_payload` around `get()` (or around a lock)
+bypasses the guarantee. A warning for such a read is planned (TODO.md).
 
 **Receiver-polarity clone.** `Rc.clone`/`downgrade`/`upgrade` are
 `@auto_readonly`: from a `readonly[Rc[T]]` handle they return a
@@ -578,6 +672,82 @@ an `auto_readonly[...]` marker in the construction (`Rc[auto_readonly[T]](...)`
 transformed by `_clone_auto_readonly` -- a workaround for an inference gap
 (generic inference cannot bind a type parameter to a `readonly[T]`; tracked in
 `BUGS.md`).
+
+History: from 2026-02-27 to 2026-10-05 readonly was DEEP through a `Ptr`
+field (a `Ptr[T]` field read through a readonly receiver became
+`Ptr[readonly[T]]`), with an `unsafe_interior_mutable[Ptr[T]]` field marker to
+opt bookkeeping pointers back out. Everything else (params, locals, elements,
+spans) was already shallow, and const inference had to follow pointers to
+match the field rule. The marker is retired: on a `Ptr` field it is an error
+(it is redundant), and the name is reserved for an inline field that stays
+mutable through a readonly owner (a C++ `mutable` member, TODO.md).
+
+## The return type is the contract
+
+A body's declared return type is exactly what its signature hands out; it is
+never projected from the receiver's const-ness. `-> A` returns a mutable `A&`,
+`-> readonly[A]` a `const A&`, element by element for a tuple
+(`-> tuple[readonly[A], B]` is `std::tuple<const A*, B*>`). A nullable result
+`X | None` follows exactly the rules of `X`: `-> tuple[readonly[A], B] | None`
+is `std::optional<std::tuple<const A*, B*>>`, an unmarked
+`-> tuple[A, B] | None` takes the bare twin's per-element error, and an
+`@auto_readonly` or `@property` result marks it per element, as the bare tuple.
+
+- An explicit `@readonly` method returning a pointee at `-> A` emits
+  `A& get() const`.
+- An explicit `@readonly` method returning its OWN storage at a mutable return
+  type is an error: `self.own` is `readonly[A]` there, and it does not fit an
+  `A` (*Cannot return readonly[A] at mutable return type 'A'; declare the
+  return as 'readonly[A]'*). The same holds for a `@readonly` function
+  returning a parameter's storage.
+- An inferred method returning a writable borrow of its own storage is not
+  const (the return grants write access); one returning a pointee is.
+- A readonly the user did not spell -- an implicitly-readonly dunder
+  (`__add__` returning `self` or a parameter), `@pure`, a frozen record --
+  wraps what its declared return borrows in `readonly[...]` where that
+  readonly is applied (registration; `typesys.readonly_result`, a tuple's
+  reference elements one by one): `const Acc&`, and `c = a + b; c.n = 5` is a
+  located error. Only an explicit `@readonly` / `readonly[...]` makes the
+  user own the return type.
+- The only results that follow the receiver are the declared ones: an
+  `auto_readonly[...]` marker, the implicit `__deref__` / `__getitem__` /
+  `__span__` pair, a `@property` getter, and an `@auto_readonly` method with no
+  marker in its result, whose reference result is marked whole. The const
+  clone's own declared return carries the readonly, so the return rule holds
+  in both clones. An unmarked part of a mixed result (`T | Span[auto_readonly[T]]`)
+  returning the receiver's storage is an error in the const clone, and the
+  fix names the marker (*mark that part 'auto_readonly[T]'*), never the
+  clone's readonly projection.
+
+**One fact: declared result access.** Whether a call's result is readonly is
+read off the callee's declared return (`typesys.declared_result_readonly`),
+nowhere else: sema types the call with it (so a write through it is a
+located error), the signature renders it, and every binding -- a local, a
+pre-declared or hoisted local, a `with` / walrus / `match` / closure /
+`@error_return` binding, a tuple capture, a returned borrow's escape -- reads
+it. The one other source of a const result is the receiver: a callee that
+declares its whole result as following the receiver
+(`typesys.result_follows_receiver_root`) is bound const where its receiver is
+emitted const, since C++ picks the const clone; a bodyless native accessor
+that declares a receiver borrow (`list.__getitem__`, `dict.get`) follows it
+the same way.
+
+**Per-component following.** Which parts of a result follow the receiver is
+decided where the markers sit, in `_clone_auto_readonly`
+(`typesys.auto_readonly_components`, stamped on both clones as
+`following_components`): the whole result, a `Ptr` pointee, a `Span` element,
+a tuple element, a union member. A marker on a part that holds no reference
+at the call's specialization is inert (`typesys.following_components`). What a
+call lends of its receiver (`typesys.receiver_lends`) is consumed by the call
+and the loan machinery, never by a binding site: a handle's referent demotes
+the receiver at the call, a reference loans the receiver to whatever binds the
+result (see "Usage-dependent receiver const-ness").
+
+The two clones of a pair whose whole result follows the receiver are ONE
+callable for THIR and MIR: they publish the receiver-neutral result
+(`typesys.receiver_neutral_return`), and each call binds its access at its
+own receiver (`call_contract.bound_result`). A pair that differs below the
+whole result (a component marker) is two callables.
 
 ## Future Roadmap
 

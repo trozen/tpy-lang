@@ -10,6 +10,10 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def put(g: MutexGuard[list[int32]], v: Own[list[int32]]) -> None:
+void put(::tpystd::tpy::sync::MutexGuard<std::vector<int32_t>>& g, std::vector<int32_t>&& v);
+// def put_w(g: WriteGuard[list[int32]], v: Own[list[int32]]) -> None:
+void put_w(::tpystd::tpy::sync::WriteGuard<std::vector<int32_t>>& g, std::vector<int32_t>&& v);
 // def main() -> None:
 void main();
 

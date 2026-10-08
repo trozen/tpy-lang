@@ -1078,8 +1078,8 @@ class ProtocolChecker:
                 type_subst = self.get_parent_type_subst(parent_type, parent_info)
                 if type_subst:
                     substituted_type = self.type_ops.substitute_type_params(inherited.type, type_subst)
-                    # Preserve every other FieldInfo fact (is_interior_mutable,
-                    # native_name, loc, ...) -- only the type is substituted.
+                    # Preserve every other FieldInfo fact (native_name, loc,
+                    # ...) -- only the type is substituted.
                     return dataclasses.replace(inherited, type=substituted_type)
                 return inherited
         return None
@@ -1116,7 +1116,8 @@ class ProtocolChecker:
                 result.append(parent_info.name)
         return result
 
-    def lookup_record_method(self, record_info: RecordInfo, method_name: str) -> FunctionInfo | None:
+    def lookup_record_method(self, record_info: RecordInfo, method_name: str, *,
+                             readonly_receiver: bool = False) -> FunctionInfo | None:
         """Look up a method in a record, including inherited methods.
 
         For generic parent classes, substitutes type parameters with concrete types.
@@ -1124,12 +1125,19 @@ class ProtocolChecker:
         looking up `get` on IntContainer returns FunctionInfo with return type int32.
 
         Supports inheritance from both user-defined classes and builtin types.
-        Delegates to lookup_record_method_overloads and returns the first overload.
+        Delegates to lookup_record_method_overloads and returns the first
+        overload -- for a `readonly_receiver`, the const clone of an
+        `@auto_readonly` pair, which C++ runs on it as an explicit call's
+        overload resolution picks it.
         """
         overloads, type_subst = self.lookup_record_method_overloads(record_info, method_name)
         if not overloads:
             return None
         method = overloads[0]
+        if readonly_receiver and method.is_auto_readonly_mutable_clone:
+            method = next((m for m in overloads
+                           if m.is_readonly and not m.is_auto_readonly_mutable_clone
+                           and len(m.params) == len(method.params)), method)
         return self.type_ops.substitute_method_type_params(method, type_subst) if type_subst else method
 
     def lookup_record_property(self, record_info: RecordInfo, prop_name: str) -> 'PropertyInfo | None':

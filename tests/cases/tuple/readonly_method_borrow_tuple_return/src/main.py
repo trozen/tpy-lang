@@ -30,7 +30,7 @@ class Maker:
         return (c, c)
 
     @readonly
-    def declared_pair(self, c: Cell) -> tuple[Cell, Cell]:
+    def declared_pair(self, c: Cell) -> tuple[readonly[Cell], readonly[Cell]]:
         return (c, c)
 
     def mixed(self, c: Cell) -> tuple[Own[Cell], Cell]:

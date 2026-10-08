@@ -187,7 +187,7 @@ struct Counter {
     Counter& other(Counter& o) const;
 
     // @readonly
-    // def me_ro(self) -> "Counter":  # tpyc: mir(covered) mir_summary(known)
+    // def me_ro(self) -> readonly["Counter"]:  # tpyc: mir(covered) mir_summary(known)
     const Counter& me_ro() const;
 
     // def first(self, s: str) -> StrView:  # tpyc: mir(covered) mir_summary(known)
@@ -573,7 +573,7 @@ inline Counter& Counter::other(Counter& o) const {
 
 // # method body: the receiver returned by an explicit @readonly method -- a readonly result
 // @readonly
-// def me_ro(self) -> "Counter":  # tpyc: mir(covered) mir_summary(known)
+// def me_ro(self) -> readonly["Counter"]:  # tpyc: mir(covered) mir_summary(known)
 //     return self
 inline const Counter& Counter::me_ro() const {
     return (*this);

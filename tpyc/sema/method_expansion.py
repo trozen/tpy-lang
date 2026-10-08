@@ -40,11 +40,16 @@ from ..typesys import (
     AutoOwnType,
     AutoReadonlyType,
     IMPLICIT_AUTO_READONLY_METHODS,
+    OptionalType,
     OwnType,
     ReadonlyType,
     SelfType,
     apply_auto_own,
     apply_auto_readonly,
+    auto_readonly_components,
+    readonly_protects,
+    TupleType,
+    TpyType,
     has_auto_readonly,
     strip_auto_own,
     strip_auto_readonly,
@@ -96,6 +101,7 @@ def _expand_one(method: TpyFunction) -> list[TpyFunction]:
     _detect_per_param_auto_readonly(method)
     _check_auto_readonly_generic_method(method)
     _apply_property_setter_wrapping(method)
+    _mark_whole_result_follows_receiver(method)
 
     if method.auto_readonly:
         return _clone_auto_readonly(method)
@@ -216,14 +222,15 @@ def _apply_implicit_auto_readonly(method: TpyFunction) -> None:
         return
     if method.is_readonly or method.readonly_opt_out:
         return
-    if method.has_auto_readonly_decorator or method.auto_readonly:
-        return
     rtype = method.return_type
     if rtype is None or isinstance(rtype, (AutoReadonlyType, ReadonlyType)):
         return
-    # Value-typed returns don't carry aliasing risk; let the IMPLICIT_READONLY
-    # path handle them (single const overload).
-    if rtype.is_value_type():
+    if method.has_auto_readonly_decorator or method.auto_readonly:
+        return
+    # A returned copy carries no aliasing risk, and a tuple's elements are
+    # marked one by one (`readonly_result`): the IMPLICIT_READONLY path
+    # handles both (single const overload).
+    if not _whole_borrow(rtype):
         return
     method.return_type = AutoReadonlyType(rtype)
     method.has_auto_readonly_decorator = True
@@ -267,6 +274,31 @@ def _check_auto_readonly_generic_method(method: TpyFunction) -> None:
         )
 
 
+def _whole_borrow(rtype: TpyType) -> bool:
+    """A result the clone pair marks as a whole: a borrow (`readonly_protects`)
+    that is not a tuple (marked per element) and not already readonly. `X |
+    None` is marked as `X` is."""
+    shape = rtype.inner if isinstance(rtype, OptionalType) else rtype
+    return (not isinstance(shape, (TupleType, ReadonlyType, AutoReadonlyType))
+            and readonly_protects(rtype))
+
+
+def _mark_whole_result_follows_receiver(method: TpyFunction) -> None:
+    """A `@property` getter, and an `@auto_readonly` method whose result
+    carries no `auto_readonly[...]` marker, declare their whole reference
+    result as following the receiver -- the shape the implicit dunder pairs
+    spell (`_apply_implicit_auto_readonly`): marked whole, so the const clone
+    declares it readonly."""
+    if not (method.is_property_getter or method.has_auto_readonly_decorator):
+        return
+    if not method.auto_readonly or method.is_generator or method.is_async:
+        return
+    rtype = method.return_type
+    if rtype is None or has_auto_readonly(rtype) or not _whole_borrow(rtype):
+        return
+    method.return_type = AutoReadonlyType(rtype)
+
+
 def _apply_property_setter_wrapping(method: TpyFunction) -> None:
     """@property setter: first non-self param is an ownership transfer."""
     if not method.is_property_setter or not method.params:
@@ -291,6 +323,10 @@ def _clone_auto_readonly(method: TpyFunction) -> list[TpyFunction]:
     const_params = [(n, apply_auto_readonly(t)) for n, t in method.params]
     mutable_return = strip_auto_readonly(method.return_type)
     const_return = apply_auto_readonly(method.return_type)
+    # Decided here, where the markers still sit in the declared result.
+    marked_return = method.return_type
+    following = (auto_readonly_components(marked_return)
+                 if marked_return is not None else frozenset())
     mutable = dataclasses.replace(
         method,
         params=mutable_params,
@@ -301,6 +337,8 @@ def _clone_auto_readonly(method: TpyFunction) -> list[TpyFunction]:
         auto_readonly_params_resolved=True,
         auto_readonly_polarity="strip",
         is_auto_readonly_mutable_clone=True,
+        marked_return_type=marked_return,
+        following_components=following,
         # Clear the derivation source so a second expand pass (per-record
         # run after macros) doesn't re-derive auto_readonly and re-clone.
         self_annotation=None,
@@ -316,6 +354,8 @@ def _clone_auto_readonly(method: TpyFunction) -> list[TpyFunction]:
         auto_readonly_params_resolved=True,
         auto_readonly_polarity="apply",
         defaults=copy.deepcopy(method.defaults),
+        marked_return_type=marked_return,
+        following_components=following,
         self_annotation=None,
     )
     mutable.clone_of = const

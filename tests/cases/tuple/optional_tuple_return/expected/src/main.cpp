@@ -343,6 +343,10 @@ void section_free() {
 //     r = h.peek(False)  # tpyc: ok
 //     if r is not None:
 //         print("readonly:", r[0].n, r[1], h.peek(True) is None)
+//     q = h.pair_prop  # tpyc: ok
+//     if q is not None:
+//         q[0].n += 30  # a write through a mutable receiver's property result
+//     print("property:", h.pair[0].n)
 void section_method() {
     Holder h = Holder(4);
     auto t = h.maybe(false);
@@ -368,6 +372,11 @@ void section_method() {
     if ((r.has_value())) {
         std::cout << "readonly:" << " " << std::get<0>((*r))->n << " " << std::get<1>((*r)) << " " << ::tpy::print_bool((!h.peek(true).has_value())) << "\n" << ::tpy::check_signals;
     }
+    auto q = h.pair_prop();
+    if ((q.has_value())) {
+        std::get<0>((*q))->n = ::tpy::add_check<int32_t>(std::get<0>((*q))->n, 30);
+    }
+    std::cout << "property:" << " " << std::get<0>(h.pair).n << "\n" << ::tpy::check_signals;
 }
 
 // def section_relay() -> None:

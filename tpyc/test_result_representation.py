@@ -75,9 +75,11 @@ def _recursive_alias_render_context(monkeypatch: pytest.MonkeyPatch) -> None:
     pytest.param(ReadonlyType(CELL), True, BORROW, "Cell", id="readonly"),
     # Qualifier order is observable today; erasure must not normalize it away.
     pytest.param(ReadonlyType(GENERIC), True, TRAIT, "T", id="readonly-generic"),
-    pytest.param(ReadonlyType(OptionalType(CELL)), True, BORROW,
+    # Readonly is access, never shape: the readonly Optional / union returns
+    # by value like its mutable twin.
+    pytest.param(ReadonlyType(OptionalType(CELL)), False, BORROW,
                  "std::optional<Cell>", id="readonly-optional"),
-    pytest.param(ReadonlyType(UnionType((CELL, OTHER))), True, STORAGE,
+    pytest.param(ReadonlyType(UnionType((CELL, OTHER))), False, STORAGE,
                  "::tpy::Union<Cell, Other>", id="readonly-union"),
     pytest.param(RefType(ReadonlyType(GENERIC)), True, TRAIT, "T&",
                  id="ref-readonly-generic"),

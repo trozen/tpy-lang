@@ -5,11 +5,14 @@ Type compatibility checking, coercions, and lvalue analysis.
 """
 
 from __future__ import annotations
+import re
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 
+from ..typesys import pointer_repr_optional, readonly_access
 from ..typesys import (
+    make_readonly,
     ELEM,
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
     PendingListType, PendingDictType, PendingSetType, PendingStrType, PendingBytesType, PendingViewType, UnknownElementType,
@@ -31,7 +34,7 @@ from .. import qnames
 from ..value_category import (
     CONTAINER_LITERAL_NODES, async_result_aliases, call_returns_cpp_ref,
     is_iterator_protocol, is_rvalue_source,
-    peel_value_wrappers,
+    peel_value_wrappers, const_place,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
 from .type_join import user_type_name
@@ -39,6 +42,7 @@ from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
 from .move_chain import why_not_movable, render_move_chain
 from ..parse import (
+    const_tuple_index,
     ResultForm,
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
     TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyCallLike, TpyMethodCall, TpyUnaryOp,
@@ -107,6 +111,18 @@ def _view_return_family(return_type: TpyType) -> tuple[str, str] | None:
         if pred(return_type):
             return display, owned
     return None
+
+
+_TUPLE_ELEMENT_SUFFIX = re.compile(r" \(tuple element ([0-9.]+)\)$")
+
+
+def _tuple_element_context(context: str, i: int) -> str:
+    """`context` narrowed to element `i`; a nested element extends the
+    enclosing element's path (`1.0`), as the copy warnings spell it."""
+    m = _TUPLE_ELEMENT_SUFFIX.search(context)
+    if m is None:
+        return f"{context} (tuple element {i})"
+    return f"{context[:m.start()]} (tuple element {m.group(1)}.{i})"
 
 
 def _view_keeping_hint(name: str, display: str, source: str | None) -> str:
@@ -322,11 +338,18 @@ def _declared_call_member(m: TpyExpr) -> bool:
 
 class CompatError:
     """Type compatibility check failure (returned by _check_compat, not raised)."""
-    __slots__ = ('message', 'loc')
+    __slots__ = ('message', 'loc', 'copy_admits', 'tuple_copy_remedy')
 
-    def __init__(self, message: str, loc: SourceLocation | None = None):
+    def __init__(self, message: str, loc: SourceLocation | None = None, *,
+                 copy_admits: bool = False):
         self.message = message
         self.loc = loc
+        # A readonly reference met a mutable reference slot, which a `copy()`
+        # of the source would fill.
+        self.copy_admits = copy_admits
+        # ...as an element of a readonly tuple: an owning slot names
+        # `copy()` of the whole source as the remedy.
+        self.tuple_copy_remedy = False
 
 
 # Result type for _check_compat: Coercion | None (compatible) or CompatError (incompatible)
@@ -411,7 +434,7 @@ class TypeCompatibility:
         to their source iterables -- both are storage that the address-take
         could mutate via the resulting pointer.
         """
-        for name in addr_taken_roots(expr):
+        for name in addr_taken_roots(expr, self.ctx.get_expr_type):
             root = self.ctx.func.borrow_tracker.effective_storage(name)
             self.ctx.mark_param_mutated(root)
             self.ctx.mark_loop_var_mutated(root)
@@ -686,10 +709,54 @@ class TypeCompatibility:
         The spelling is the destination type's own display name, so no pair of
         types is named here.
         """
+        target = unwrap_ref_type(unwrap_own(unwrap_readonly(expected)))
+        if is_readonly_ptr(actual) and actual.inner_pointee == target:
+            # The deref would hand out the readonly pointee at a slot that
+            # borrows it (`check_type_compatible`'s copying-slot rule).
+            if coercion_ctx in (CoercionContext.ARG, CoercionContext.RETURN):
+                return f" -- declare {coercion_ctx.slot} 'readonly[{target}]'"
+            return (f" -- keep the pointer: bind it to a name without an "
+                    f"annotation or to a '{actual}' slot")
         if borrow_only_veto(actual, expected, coercion_ctx, sink_owns) is None:
             return ""
-        target = unwrap_ref_type(unwrap_own(unwrap_readonly(expected)))
         return f" -- write '{target}(...)' around it"
+
+    def _check_readonly_return(self, actual: TpyType, expected: TpyType,
+                               loc: SourceLocation | None) -> None:
+        """The declared return type is the contract of the slot: a readonly
+        borrow does not fit a mutable reference return. A slot that copies
+        (a value type, `Own[...]`) or a readonly-only protocol takes it."""
+        a = unwrap_ref_type(unwrap_send_sync(actual))
+        e = unwrap_ref_type(unwrap_send_sync(expected))
+        if (not isinstance(a, ReadonlyType) or a.wrapped.is_value_type()
+                or isinstance(e, (ReadonlyType, OwnType)) or e.is_value_type()):
+            return
+        # A union return with a readonly member takes the readonly borrow there.
+        if isinstance(e, UnionType) and any(
+                isinstance(unwrap_ref_type(m), ReadonlyType) for m in e.members):
+            return
+        if is_protocol_type(e) and self.protocols:
+            proto_info = protocol_info_of(e)
+            if proto_info and self.protocols.is_all_readonly(proto_info):
+                return
+        raise SemanticError(
+            f"Cannot return readonly[{a.wrapped}] "
+            f"{self.readonly_return_hint(e, a.wrapped)}", loc)
+
+    def readonly_return_hint(self, slot: TpyType, returned: TpyType,
+                             fix: TpyType | None = None) -> str:
+        """Where a readonly borrow of `returned` was returned and how to
+        declare that part of the result: `readonly[...]` on it (`fix`, the
+        whole `slot` by default), or, in the const clone of an
+        `@auto_readonly` def, an `auto_readonly[...]` marker on it in the
+        result as the user declared it -- never the clone's own projection
+        of that result."""
+        fn = self.ctx.func.current_function
+        if getattr(fn, "auto_readonly_polarity", None) == "apply" and fn.marked_return_type is not None:
+            return (f"at a mutable part of return type '{fn.marked_return_type}' of an "
+                    f"@auto_readonly method; mark that part 'auto_readonly[{returned}]'")
+        return (f"at mutable return type '{slot}'; declare the return as "
+                f"'{fix if fix is not None else ReadonlyType(slot)}'")
 
     def check_type_compatible(
         self, actual: TpyType, expected: TpyType, context: str,
@@ -721,6 +788,8 @@ class TypeCompatibility:
         # A dict or set slot of a call resolved against a container whose
         # leaves have settled names them too.
         expected = self.pend.current(expected)
+        if is_return:
+            self._check_readonly_return(actual, expected, loc)
         # A check that produces the coercion is where a list literal's
         # element is decided by the typed container it meets.
         result = self._check_compat(actual, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, commit=True)
@@ -731,6 +800,13 @@ class TypeCompatibility:
                     if isinstance(source_expr, TpyName)
                     else self.pend.elem_annotation_hint(source_expr, expected,
                                                         coercion_ctx))
+            if result.tuple_copy_remedy and self._sink_owns_its_value(
+                    expected, coercion_ctx, target_is_storage_form):
+                # The store refuses the readonly element as it refuses a
+                # readonly scalar; a copy of the tuple is mutable throughout.
+                src = (source_expr.name if isinstance(source_expr, TpyName)
+                       else "...")
+                hint += f" -- use copy({src}) to store a mutable copy"
             raise SemanticError(result.message + hint, result.loc)
         return result
 
@@ -1033,17 +1109,41 @@ class TypeCompatibility:
         # T -> readonly[T]: always OK (adding const is safe)
         if isinstance(expected, ReadonlyType):
             actual_inner = unwrap_readonly(actual)
+            if (is_readonly_ptr(actual_inner)
+                    and not isinstance(unwrap_ref_type(expected.wrapped), PtrType)):
+                # A readonly slot takes the pointee of a readonly pointer as
+                # it would a mutable one's: it hands out no write either way.
+                # A readonly POINTER slot (a field that cannot be re-pointed)
+                # keeps the pointee's own access.
+                actual_inner = PtrType(actual_inner.inner_pointee)
             return self._check_compat(
                 actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
                 sink_owns, commit
             )
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
-        # Exceptions: value types (copies), readonly protocols (Sized, Sequence),
-        # return values (C++ const method handles safety via const propagation)
+        # Exceptions: value types (copies), readonly protocols (Sized,
+        # Sequence). A return slot's own readonly is decided once, at the top
+        # (`check_type_compatible`); a return's tuple elements are the tuple
+        # capture's, which owns their message.
         # Note: mutable Span is NOT excepted even for returns -- you cannot
         # construct a mutable span from a const container.
         if isinstance(actual, ReadonlyType) and not isinstance(expected, ReadonlyType):
+            if (isinstance(actual.wrapped, TupleType) and not is_return
+                    and not isinstance(expected, OwnType)):
+                # A tuple copies its elements, so the copy is mutable only
+                # where an element is: readonly projects onto each one, as
+                # the literal `(t[0], k)` judges them. An `Own[...]` slot
+                # takes a copy of the whole value, as it takes a readonly
+                # scalar (the value-type rule below).
+                result = self._check_compat(
+                    TupleType(tuple(make_readonly(e)
+                                    for e in actual.wrapped.element_types)),
+                    expected, context, loc, source_expr, is_return, coercion_ctx,
+                    target_is_storage_form, sink_owns, commit)
+                if isinstance(result, CompatError) and result.copy_admits:
+                    result.tuple_copy_remedy = True
+                return result
             is_mutable_span = is_span(expected) and not is_readonly_span(expected)
             if (not expected.is_value_type() or is_mutable_span) and (not is_return or is_mutable_span):
                 allow = False
@@ -1057,7 +1157,7 @@ class TypeCompatibility:
                         f"use Span[readonly[T]] or annotate return type with auto_readonly[T]"
                         if is_return else
                         f"Cannot pass readonly[{actual.wrapped}] as mutable {expected} in {context}",
-                        loc,
+                        loc, copy_admits=not (is_return or is_mutable_span),
                     )
             return self._check_compat(
                 actual.wrapped, expected, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
@@ -1268,11 +1368,13 @@ class TypeCompatibility:
         # an `optional_to_ptr` lift at codegen, mirroring the existing
         # storage-form-to-borrow-form lift for OptionalType destinations.
         if isinstance(expected, PtrType):
-            actual_for_opt = unwrap_own(actual)
-            if (isinstance(actual_for_opt, OptionalType)
-                    and actual_for_opt.uses_pointer_repr()
-                    and _inner_compat_with_ro_widening(actual_for_opt.inner, expected.pointee)):
-                return None
+            actual_for_opt = pointer_repr_optional(unwrap_own(actual))
+            if actual_for_opt is not None:
+                # A readonly Optional's pointee is readonly too.
+                actual_inner = (make_readonly(actual_for_opt.inner)
+                                if readonly_access(actual) else actual_for_opt.inner)
+                if _inner_compat_with_ro_widening(actual_inner, expected.pointee):
+                    return None
 
         # NominalType with Own[T] in type args signals copy semantics -- applies to both
         # protocols (Iterable[Own[T]]) and concrete containers (dict[K, Own[V]]).
@@ -1583,7 +1685,7 @@ class TypeCompatibility:
                                 f"into owned storage; {remedy}", source_expr))
                     elif not deferred:
                         self.ctx.warning(
-                            f"copies {value_type} into owned storage; "
+                            f"copies {unwrap_readonly(value_type)} into owned storage; "
                             f"{remedy}",
                             source_expr
                         )
@@ -1637,7 +1739,7 @@ class TypeCompatibility:
                 # tuple ARGUMENT to be borrowing and let a bytearray reach a
                 # `bytes` element with no diagnostic at all.
                 result = self._check_compat(
-                    a, e, f"{context} (tuple element {i})", loc,
+                    a, e, _tuple_element_context(context, i), loc,
                     source_expr=source_expr, is_return=is_return,
                     coercion_ctx=coercion_ctx, target_is_storage_form=True,
                     sink_owns=True, commit=commit,
@@ -2002,12 +2104,12 @@ class TypeCompatibility:
             # Generic deref coercion: any type with __deref__() -> T coerces to T
             if self.type_ops:
                 deref_target = self.type_ops.get_deref_coercion_target(actual)
-                if deref_target is None and is_readonly_ptr(actual):
-                    # Ptr[readonly[T]] -> T via deref is safe for returns and
-                    # assignments (the value is copied); reject only in ARG
-                    # context where the callee may need a mutable reference.
-                    if ctx != CoercionContext.ARG:
-                        deref_target = self.type_ops.get_deref_target_type(actual)
+                if (deref_target is None and is_readonly_ptr(actual)
+                        and ctx != CoercionContext.ARG and expected.is_value_type()):
+                    # Ptr[readonly[T]] -> T derefs only where the slot COPIES
+                    # the pointee (a value type); a reference slot would hand
+                    # out the readonly pointee mutably.
+                    deref_target = self.type_ops.get_deref_target_type(actual)
                 if deref_target is not None and unwrap_readonly(deref_target) == expected:
                     coercion = DEREF_COERCION
         if coercion is None:
@@ -2319,11 +2421,12 @@ class TypeCompatibility:
                 value_expr, inner_value, var_type, ctx,
                 coercion_ctx=CoercionContext.ASSIGN)
         # Readonly status flows from the value expression.
-        if isinstance(value_type, ReadonlyType) and not var_type.is_value_type():
+        if isinstance(value_type, ReadonlyType):
             if isinstance(var_type, OptionalType):
-                var_type = OptionalType(ReadonlyType(var_type.inner))
+                if not var_type.is_value_type():
+                    var_type = OptionalType(ReadonlyType(var_type.inner))
             else:
-                var_type = ReadonlyType(var_type)
+                var_type = make_readonly(var_type)
         return var_type, coerced
 
     def _reassign_list_element_compat(
@@ -2533,30 +2636,11 @@ class TypeCompatibility:
         return False
 
     def is_const_ref_source(self, expr: TpyExpr) -> bool:
-        """Check if expression provides a const reference (can't be captured as T&).
-
-        Returns True for sources that are inherently const in C++:
-        - Field access / subscript through a readonly-typed object
-        """
-        if isinstance(expr, TpyCoerce):
-            return self.is_const_ref_source(expr.expr)
-        if isinstance(expr, TpySubscript):
-            obj_type = self.ctx.get_expr_type(expr.obj)
-            if obj_type is not None:
-                unwrapped = unwrap_readonly(obj_type)
-                if is_span(unwrapped) and is_readonly_span(unwrapped):
-                    return True
-            return self.is_const_ref_source(expr.obj)
-        if isinstance(expr, TpyFieldAccess):
-            obj_type = self.ctx.get_expr_type(expr.obj)
-            if obj_type is not None and isinstance(obj_type, ReadonlyType):
-                return True
-            return self.is_const_ref_source(expr.obj)
-        if isinstance(expr, TpyName):
-            expr_type = self.ctx.get_expr_type(expr)
-            if expr_type is not None and isinstance(expr_type, ReadonlyType):
-                return True
-        return False
+        """Check if expression provides a const reference (can't be captured as T&):
+        a place readonly-typed itself or reached through readonly storage,
+        this side of any `Ptr` / `Span` step (`const_place`)."""
+        return const_place(expr, self.ctx.get_expr_type, lambda e, _stepped: isinstance(
+            self.ctx.get_expr_type(e), ReadonlyType))
 
     def _is_auto_moved(self, source_expr: 'TpyExpr | None') -> bool:
         """Last-use of an owned local: auto-move makes the copy invisible."""
@@ -2844,13 +2928,8 @@ class TypeCompatibility:
         `Own[...]` element of a tuple-typed name; None otherwise."""
         if not (isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName)):
             return None
-        index = expr.index
-        if isinstance(index, TpyIntLiteral):
-            idx = index.value
-        elif (isinstance(index, TpyUnaryOp) and index.op == "-"
-              and isinstance(index.operand, TpyIntLiteral)):
-            idx = -index.operand.value
-        else:
+        idx = const_tuple_index(expr.index)
+        if idx is None:
             return None
         tt = self.ctx.get_expr_type(expr.obj)
         tt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt)))
@@ -2971,7 +3050,7 @@ class TypeCompatibility:
         if not self.ctx.defer_own_copy_verdict(
                 value_type, payload, f"owned storage{where}", expr):
             self.ctx.warning(
-                f"copies {value_type} into owned storage{where}; "
+                f"copies {unwrap_readonly(value_type)} into owned storage{where}; "
                 f"{self.copy_remedy(expr)}",
                 expr
             )
@@ -4446,8 +4525,7 @@ class TypeCompatibility:
         joins), so branch-divergent binds accumulate both arms' sources.
         """
         sources: set[str] = set()
-        for root, _grants_write in tuple_borrow_escape_roots(
-                init_expr, tt, False, expr_type=None):
+        for root in tuple_borrow_escape_roots(init_expr, tt, expr_type=None):
             expanded = self.ctx.func.bp_borrow_source_roots(root)
             for s in (expanded if expanded else (root,)):
                 if s != name:

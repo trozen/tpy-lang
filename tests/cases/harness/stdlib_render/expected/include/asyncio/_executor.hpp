@@ -93,7 +93,7 @@ template<typename T>
 Task<T> _build_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, bool executor_owned);
 // def task_to_any_box[T](task: Task[T]) -> Own[Box[AnyTask]]:
 template<typename T>
-::tpystd::tplib::box::Box<AnyTask> task_to_any_box(const Task<T>& task);
+::tpystd::tplib::box::Box<AnyTask> task_to_any_box(Task<T>& task);
 // def _make_waker(handle: Awaker, task_id: int32,
 //                 generation: int32) -> Waker:
 ::tpystd::coro::Waker _make_waker(::tpystd::coro::Awaker& handle, int32_t task_id, int32_t generation);
@@ -1022,7 +1022,7 @@ Task<T> _build_task(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, bool e
 //     executor's slot table."""
 //     return Box[AnyTask](TaskStateView[T](task._state.clone()))
 template<typename T>
-::tpystd::tplib::box::Box<AnyTask> task_to_any_box(const Task<T>& task) {
+::tpystd::tplib::box::Box<AnyTask> task_to_any_box(Task<T>& task) {
     return ::tpystd::tplib::box::Box<AnyTask>(::tpy::make_adapter<AnyTask>(TaskStateView<T>(task._state.clone())));
 }
 // # Test-only Box[AnyTask] factory: builds a TaskState[T] without

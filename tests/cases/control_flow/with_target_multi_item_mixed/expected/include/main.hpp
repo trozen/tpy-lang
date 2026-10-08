@@ -73,7 +73,7 @@ struct Delegator {
     ~Delegator();
 
     // def __enter__(self) -> Item:
-    const Item& __enter__() const;
+    Item& __enter__() const;
 
     // def __exit__(self, et, ev, tb) -> None:
     void __exit__(std::monostate et, const ::tpy::BaseException* ev, std::monostate tb) const;
@@ -151,7 +151,7 @@ inline Delegator::~Delegator() {
 
 // def __enter__(self) -> Item:
 //     return SHARED
-inline const Item& Delegator::__enter__() const {
+inline Item& Delegator::__enter__() const {
     return (*SHARED);
 }
 

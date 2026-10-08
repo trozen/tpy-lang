@@ -55,9 +55,9 @@ class Outer:
         return -1
 
     def read_named(self) -> int32:
-        # NOT inferred readonly: binding a NAMED accessor result keeps the
-        # receiver mutable (READONLY_DESIGN.md limitation), so the mutable
-        # twin + non-const bind stay -- pins the asymmetry with read_sub.
+        # Inferred readonly like read_sub: the NAMED accessor result is
+        # only read, so its loan on the receiver credits nothing and the
+        # const twin binds -- pins the symmetry with read_sub.
         p = self.store.get(5)
         if p is not None:
             return p.v

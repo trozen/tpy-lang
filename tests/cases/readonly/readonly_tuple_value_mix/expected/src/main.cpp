@@ -20,14 +20,36 @@ int32_t mixed(const std::tuple<int32_t, const Counter*>& p) {
     return (::tpy::add_check<int32_t>(a, b.n));
 }
 
+// # keep: an owning argument takes a copy of the whole readonly tuple, as
+// # `ys.append(b)` copies a readonly[Box] scalar; a field or subscript store
+// # refuses it (readonly/error_readonly_tuple_store_copy_hint). The copy itself
+// # is observed in readonly/readonly_tuple_append_copies (CPython aliases).
+// def keep(t: readonly[tuple[Box, int32]], xs: list[tuple[Box, int32]]) -> None:
+//     xs.append(t)  # tpyc: warning(/copies Box into owned storage \(tuple element 0\); use copy\(\)/)
+void keep(const std::tuple<const Box*, int32_t>& t, std::vector<std::tuple<Box, int32_t>>& xs) {
+    xs.push_back(::tpy::tuple_to_storage<std::tuple<Box, int32_t>>(t));
+}
+
 // def main() -> None:
 //     print("value_only:", value_only((3, 4)))
 //     c = Counter(5)
 //     print("mixed:", mixed((10, c)))
+//     s = Sum(100)
+//     print("forward:", s.plus((1, c)))
+//     xs: list[tuple[Box, int32]] = []
+//     keep((Box(7), 8), xs)
+//     kept = xs[0]
+//     print("keep:", kept[0].n, kept[1])
 void main() {
     std::cout << "value_only:" << " " << ::tpyapp::main::value_only(std::tuple<int32_t, int32_t>{3, 4}) << "\n" << ::tpy::check_signals;
     Counter c = Counter(5);
     std::cout << "mixed:" << " " << ::tpyapp::main::mixed(std::tuple<int32_t, const Counter*>{10, &(c)}) << "\n" << ::tpy::check_signals;
+    Sum s = Sum(100);
+    std::cout << "forward:" << " " << s.plus(std::tuple<int32_t, Counter*>{1, &(c)}) << "\n" << ::tpy::check_signals;
+    std::vector<std::tuple<Box, int32_t>> xs = std::vector<std::tuple<Box, int32_t>>{};
+    ::tpyapp::main::keep(::tpy::tuple_value_to_borrow<std::tuple<const Box*, int32_t>>(std::tuple<Box, int32_t>{Box(7), 8}), xs);
+    auto&& kept = ::tpy::__getitem__(xs, 0);
+    std::cout << "keep:" << " " << std::get<0>(kept).n << " " << std::get<1>(kept) << "\n" << ::tpy::check_signals;
 }
 
 // main()

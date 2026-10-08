@@ -108,7 +108,7 @@ struct WithHeapStorage {
 
     // def get(self) -> T:
     //     return self._storage.load0()
-    ::tpy::val_or_cref_t<T> get() const {
+    ::tpy::val_or_ref_t<T> get() {
         return this->_storage.load0();
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithHeapStorage";

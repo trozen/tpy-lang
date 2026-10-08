@@ -184,12 +184,10 @@ Known adjacent issues remain separate: `BUGS.md#lend-back-of-hoisted-temp-warned
 boundaries.
 
 An additional probe found that a free `@readonly def keep(cell: Cell) -> Cell`
-emits `const Cell&`, but `saved = keep(cell)` binds `Cell&` and fails the C++
-build. Tracked as
-`BUGS.md#readonly-free-return-binding-drops-const`. The result-access fact must
-reflect the emitted const return; a mismatched caller stays uncovered.
-Explicit `readonly[Cell]` return
-annotations work in the probe and supply the positive readonly witness.
+emitted `const Cell&` while `saved = keep(cell)` bound `Cell&`. Since
+2026-10-06 the declared return type is the contract: that source is a located
+error (*declare the return as 'readonly[Cell]'*), and the explicit
+`readonly[Cell]` return supplies the positive readonly witness.
 The decorated definition's parameter signature/facts also fail the existing
 exact summary-identity check, so its summary remains Opaque; this batch does not
 relax that check to admit the inconsistent source boundary.

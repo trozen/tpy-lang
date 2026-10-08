@@ -54,13 +54,13 @@ struct Holder {
 
     // def dup(self) -> T:
     //     return copy(self.value)  # tpyc: ok
-    ::tpy::val_or_cref_t<T> dup() const {
+    ::tpy::val_or_ref_t<T> dup() const {
         return T(this->value);
     }
 
     // def dup_via_module(self) -> T:
     //     return t.copy(self.value)  # tpyc: ok
-    ::tpy::val_or_cref_t<T> dup_via_module() const {
+    ::tpy::val_or_ref_t<T> dup_via_module() const {
         return T(this->value);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

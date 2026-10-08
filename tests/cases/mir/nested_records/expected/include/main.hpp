@@ -99,7 +99,7 @@ struct Line {
     explicit Line(const Point& a, Point&& b, int32_t tag);
 
     // @readonly
-    // def first(self) -> Point:  # tpyc: mir(covered) mir_summary(known)
+    // def first(self) -> readonly[Point]:  # tpyc: mir(covered) mir_summary(known)
     const Point& first() const;
 
     // def reset(self, x: int32) -> None:  # tpyc: mir(covered) mir_summary(known)
@@ -209,7 +209,7 @@ inline Line::Line(const Point& a, Point&& b, int32_t tag)
 
 // # method: a member returned by reference (return origin param0.a)
 // @readonly
-// def first(self) -> Point:  # tpyc: mir(covered) mir_summary(known)
+// def first(self) -> readonly[Point]:  # tpyc: mir(covered) mir_summary(known)
 //     return self.a
 inline const Point& Line::first() const {
     return this->a;

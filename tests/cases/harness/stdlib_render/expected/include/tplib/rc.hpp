@@ -149,7 +149,7 @@ inline std::ostream& operator<<(std::ostream& os, const _RcCell<U>& obj) {
 // class Rc[T](Deref[T], Covariant[T]):
 template<typename T>
 struct Rc {
-    // _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
+    // _cell: Ptr[_RcCellBase]
     _RcCellBase* _cell;
     // _payload: Ptr[T]
     T* _payload;
@@ -392,7 +392,7 @@ inline std::ostream& operator<<(std::ostream& os, const Rc<T>& obj) {
 // class Weak[T]:
 template<typename T>
 struct Weak {
-    // _cell: unsafe_interior_mutable[Ptr[_RcCellBase]]
+    // _cell: Ptr[_RcCellBase]
     _RcCellBase* _cell;
     // _payload: Ptr[T]
     T* _payload;

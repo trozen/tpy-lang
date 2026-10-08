@@ -3,6 +3,7 @@ method 4
 free 4
 generic 4
 union 4
+readonly 4
 walrus 4
 assert 4
 closure 4

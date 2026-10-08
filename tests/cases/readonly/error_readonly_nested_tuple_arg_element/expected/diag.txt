@@ -1,0 +1,1 @@
+main.py:19: error: Cannot pass readonly[Box] as mutable Box in argument 'p' (tuple element 1.1)

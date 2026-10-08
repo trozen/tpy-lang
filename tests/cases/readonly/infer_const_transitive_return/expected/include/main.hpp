@@ -44,7 +44,7 @@ struct Container {
     Point& first_mutable();
 
     // @readonly
-    // def first_readonly(self) -> Point:   # const: explicitly read-only
+    // def first_readonly(self) -> readonly[Point]:   # const: explicitly read-only
     const Point& first_readonly() const;
 
     // def first_x(self) -> int:            # auto-const: value return, no self borrow
@@ -91,7 +91,7 @@ inline Point& Container::first_mutable() {
 }
 
 // @readonly
-// def first_readonly(self) -> Point:   # const: explicitly read-only
+// def first_readonly(self) -> readonly[Point]:   # const: explicitly read-only
 //     return self._items[0]
 inline const Point& Container::first_readonly() const {
     return ::tpy::__getitem__(this->_items, 0);

@@ -403,7 +403,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
     holding a fresh record INLINE beside a borrowed one (`t = (Box(1), b)`,
     `std::tuple<Box, Box*>`) records that layout for its element reads and
     is aliased, not copied, by `u = t` -- `t[0].n` off it was ill-formed
-    C++ before. Sema twin (`sema/context.py readonly_reaches`, asked at
+    C++ before. Sema twin (`typesys.py make_readonly`, asked at
     every projection site): readonly
     projects through a tuple element that holds a reference (`xs[0][1].n =
     v` off a `readonly[list[tuple[int32, Box]]]` is refused like the
@@ -463,7 +463,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
     no `ok -> reject`. Returns: the nullable reference-tuple return is
     `std::optional<R>`, R the bare return's layout (`std::optional<
     std::tuple<Box*, Box*>>`, mixed `<Box, Box*>`, owned `<Box, int32_t>`,
-    `const Box*` under `@readonly`); the Optional is peeled at the prescan
+    `const Box*` at a `readonly[Box]` element); the Optional is peeled at the prescan
     fact (`ret_nullable_tuple`), so the bare arms render the value and
     `return None` is `std::nullopt`; the caller binds `auto r = f(..)`
     and a narrowed element write reaches the caller's object; relays by
