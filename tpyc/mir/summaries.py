@@ -7,21 +7,21 @@ from ..thir.scalar_leaves import (
 from ..type_def_registry import ParamPassing
 from ..typesys import TpyType, receiver_neutral_return, unwrap_readonly
 from .call_contract import (
-    BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
-    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, path_hops, return_origin_problem,
-    summary_problem, write_problem,
+    BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRCallSummary, MIRGlobalId, MIRLoanTransfer,
+    MIRParameterBinding, MIRParameterWrite, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
+    MIRSummaryState, bound_result, path_hops, return_origin_problem, summary_problem, transfer_ends, write_problem,
 )
 from .call_effects import resolve_call_writes
 from .coverage import (
-    MIRUnsupported, container_view_holder, leaf_borrow, owned_storage, scalar_slot, view_holder,
+    MIRUnsupported, container_view_holder, leaf_borrow, owned_storage, scalar_slot, view_holder, view_member,
 )
 from .definitions import MIRDefinitions
-from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents
+from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents, seeded_loan
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct,
-    MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRField, MIRFunction, MIRIteratorAdvance,
-    MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered, MIROp,
+    MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction,
+    MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered, MIROp,
     MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
     MIRSlot, MIRSlotKind, MIRSlotId, MIRTupleIndex, MIRUnionPayload, MIRValueKind, statement_call,
 )
@@ -46,13 +46,13 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
     it is the body's own -- the holder's borrow of the whole storage, a
     read, copy or borrow of one of its fields, a field write into it, a
     whole copy out of it, or a loan at a borrowing passing (a known
-    callee retains nothing; its writes reach this storage through the
-    dependency pass). Escapes through a holder are the summary's own
-    checks: a returned borrow has no parameter origin and a write's
-    origin outside the parameters is refused. Its destruction is outside
-    the summary -- by the body at scope end, or by the caller for a
-    parameter handed over at OWN -- so its definition must still be
-    hook-free."""
+    callee keeps nothing but the loans its transfers publish; those and
+    its writes reach this storage through the dependency pass). Escapes
+    through a holder are the summary's own checks: a returned borrow has
+    no parameter origin and a write's origin outside the parameters is
+    refused. Its destruction is outside the summary -- by the body at
+    scope end, or by the caller for a parameter handed over at OWN -- so
+    its definition must still be hook-free."""
     slots = {s.id: s for s in body.slots}
     records = {s.id for s in body.slots
                if s.value_kind is MIRValueKind.OWNED and s.container_layout is None and not owned_storage(s)}
@@ -148,6 +148,65 @@ def _path_in_layouts(declaration: th.THIRFunction, definitions: MIRDefinitions, 
     the storage its hop reads: the parameter's record, then each member's."""
     return all(field in definitions.get(declaration, storage).layout.fields
                for (storage, _), field in zip(path_hops(binding, path), place.projections))
+
+
+def _transfers(body: MIRFunction, dependencies: MIRDependencies,
+               parameters: dict[MIRSlotId, int]) -> frozenset[MIRLoanTransfer] | str:
+    """The loans the body may store in objects the caller reaches
+    (`MIRDependencies.caller_stores`), each mapped to its source: a
+    parameter's seeded loan to that parameter's member, a lent view or
+    owned leaf to the parameter, a literal to static storage. A loan of the
+    body's own storage escapes (a conflict of the body), and one of a
+    member or element of the caller's storage has no transfer form: either
+    leaves the summary unpublished."""
+    slots = {s.id: s for s in body.slots}
+    if any(store.escaping for store in dependencies.caller_stores):
+        return "summary stores a loan of the body's storage"
+    found: set[MIRLoanTransfer] = set()
+    for store in dependencies.caller_stores:
+        holder: int | MIRResultHolder
+        if store.result:
+            holder = MIR_RESULT
+        elif slots[store.key.root].value_kind is MIRValueKind.BORROWED:
+            holder = parameters[store.key.root]
+        else:
+            # What a body stores in an `Own[R]` parameter's object, the caller
+            # never reads again: its argument is a temporary of the call.
+            continue
+        path = _published_path(store.key)
+        for ref in store.loans:
+            if not store.result and ref == seeded_loan(store.key):
+                # The lent object's own loan, which the caller's weak join keeps.
+                continue
+            if ref.static:
+                found.add(MIRLoanTransfer(holder, path, MIR_STATIC))
+                continue
+            index = parameters.get(ref.place.root)
+            if index is None:
+                return "summary transfer source outside the parameters"
+            if ref.held:
+                found.add(MIRLoanTransfer(holder, path, index, _published_path(ref.place)))
+            elif not ref.place.projections:
+                found.add(MIRLoanTransfer(holder, path, index))
+            else:
+                # A loan of a member's or an element's storage would need that
+                # storage's own path, which no transfer source publishes.
+                return "summary transfer source is a member or element"
+    return frozenset(found)
+
+
+def _transfer_in_layouts(declaration: th.THIRFunction, definitions: MIRDefinitions,
+                         bindings: tuple[MIRParameterBinding, ...], transfer: MIRLoanTransfer,
+                         result: TpyType) -> bool:
+    """Whether each field of a transfer's paths is a member of the layout
+    of the storage its hop reads (`_path_in_layouts`)."""
+    for end in transfer_ends(transfer, bindings, result):
+        hops = (None if end is None else end.owned_hops if end.parameter is None
+                else path_hops(bindings[end.parameter], end.path))
+        if hops is None or not all(MIRField(MIRFieldId(field.owner, field.name), field.type)
+                                   in definitions.get(declaration, storage).layout.fields for storage, field in hops):
+            return False
+    return True
 
 
 def _record_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
@@ -368,6 +427,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             target = slots[stmt.target.root]
             if target.kind is MIRSlotKind.GLOBAL:
                 return MIRSummaryResult.opaque("summary global access")
+            if view_member(stmt.target) is not None:
+                # A view member rebound replaces no storage; what it stores in
+                # an object the caller reaches is a transfer (`_transfers`).
+                continue
             # A write event is admitted on the body's own storage, which no
             # caller-visible place reaches, and on an owned-leaf field or a
             # container's elements, whose write origin is published below.
@@ -445,9 +508,15 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     pass
                 case _:
                     return MIRSummaryResult.opaque("summary unsupported operation")
+    transfers = _transfers(body, dependencies, parameters)
+    if isinstance(transfers, str):
+        return MIRSummaryResult.opaque(transfers)
+    for transfer in transfers:
+        if not _transfer_in_layouts(declaration, definitions, tuple(bindings), transfer, callee.signature.return_type):
+            return MIRSummaryResult.opaque("summary transfer field differs from definition")
     summary = MIRCallSummary(callee, tuple(bindings),
                              frozenset(range(len(params))), frozenset(writes), frozenset(),
-                             frozenset(returns), frozenset(), not body.exceptional_exits,
+                             frozenset(returns), transfers, not body.exceptional_exits,
                              frozenset(global_reads))
     problem = summary_problem(summary)
     if problem is not None:

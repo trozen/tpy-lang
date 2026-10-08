@@ -7,10 +7,11 @@ function and roots to the emitted THIR obligations and placement plan.
 
 MIR itself bounds the channels: a container element never holds a borrow
 (borrow-holding elements refuse at admission), a record holds one only in a
-view member its constructor stored, keyed at the object's stored-loan entries
-(`MIRDependencies.objects`), globals hold no references, and MIR has no
-captures, exceptional edges or opaque calls; every call carries a validated
-summary without retention on any exit. Record cleanup is not representable in MIR, so every body storage record
+view member (its own or an inline member record's), keyed at the object's
+stored-loan entries (`MIRDependencies.objects`), globals hold no references,
+and MIR has no captures, exceptional edges or opaque calls; every call
+carries a validated summary whose loan transfers the dependency pass
+applies. Record cleanup is not representable in MIR, so every body storage record
 (a container's record elements included) needs a verified hook-free definition
 from the caller.
 
@@ -28,12 +29,13 @@ from ..parse import SourceLocation
 from .call_effects import analyze_call_effects
 from .coverage import MIRUnsupported, owned_tuple, scalar_wrapper
 from .definitions import MIRDefinitions
+from .dump import _location, _place
 from .dependencies import (
-    MIRDependencies, MIRReferent, _dependencies, _leaves, live_holders, resolve_referents,
+    MIRDependencies, MIRReferent, _dependencies, _leaves, feasible_returns, live_holders, resolve_referents,
 )
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
+    MIRAssign, MIRBodyKind, MIREdge, MIRField, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
     MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
     MIRUnionPayload, MIRValueKind,
 )
@@ -56,6 +58,7 @@ class MIRStorageConflictKind(Enum):
     REPLACEMENT = auto()
     PAYLOAD_END = auto()
     RETURN_ESCAPE = auto()
+    STORE_ESCAPE = auto()
 
 
 @dataclass(frozen=True)
@@ -296,15 +299,17 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 gap("missing dependency facts at a feasible point", point_loc(point))
                 continue
             selected = dict(facts)
-            # A record object a live holder reaches has an entry for each
-            # loan it stores (`MIRDependencies.objects`).
+            # A record object a live holder reaches -- an inline member
+            # object too -- has an entry for each loan it stores
+            # (`MIRDependencies.objects`).
             for holder in sorted(live_holders(state, liveness.points[point], dependencies.stored_loans),
                                  key=_place_key):
                 for ref in state[holder]:
-                    if ref.place.projections or ref.place.root not in slots:
+                    prefix = ref.place.projections
+                    if ref.place.root not in slots or not all(isinstance(p, MIRField) for p in prefix):
                         continue
                     for key in dependencies.objects[ref.place.root]:
-                        if not state.get(key):
+                        if key.projections[:len(prefix)] == prefix and not state.get(key):
                             gap(f"live record %{ref.place.root.index} has unknown stored loans", point_loc(point))
             for sid in sorted(liveness.points[point], key=lambda s: s.index):
                 for leaf in _leaves(slots[sid]):
@@ -379,7 +384,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
     escapes, unknown = _return_escapes(prepared, dependencies)
     for loc in unknown:
         gap("borrowed return has unknown origins", loc)
-    for escape in escapes:
+    for escape in (*escapes, *_store_escapes(prepared, dependencies)):
         attribute(escape.kind, escape.origin, escape.holder, escape.site, escape.loc)
     return tuple(conflicts), tuple(gaps)
 
@@ -390,28 +395,52 @@ def _return_escapes(prepared: MIRPrepared, dependencies: MIRDependencies
     storage, over all origins, with the locations of returns whose origins
     are unknown. Discovery only: which origins a certificate requires is the
     caller's attribution."""
-    fn, presence = prepared.function, prepared.presence
+    fn = prepared.function
     slots = {s.id: s for s in fn.slots}
     escapes: list[MIRStorageConflict] = []
     unknown: list[SourceLocation | None] = []
     # Function exit has no successor, so liveness says nothing about a result.
     if fn.borrowed_result is None:
         return (), ()
-    for block in fn.blocks:
-        term = block.terminator
-        point = MIRPoint(block.id, len(block.statements))
-        state = dependencies.referents.get(point)
-        # A feasible point without facts is the dependency coverage's gap.
-        if not isinstance(term, MIRReturn) or point not in presence.points or state is None:
-            continue
+    for point, term, state in feasible_returns(prepared, dependencies):
         origins = resolve_referents(MIRPlace(term.value), state, slots)
         if not origins:
             unknown.append(term.loc)
         for origin in sorted(origins, key=lambda r: (r.place.root.index, len(r.place.projections))):
             if not origin.external:
                 escapes.append(MIRStorageConflict(MIRStorageConflictKind.RETURN_ESCAPE, origin.place,
-                                                  MIRPlace(term.value), MIREdge(block.id), term.loc))
+                                                  MIRPlace(term.value), MIREdge(point.block), term.loc))
     return tuple(escapes), tuple(unknown)
+
+
+def _store_escapes(prepared: MIRPrepared, dependencies: MIRDependencies) -> tuple[MIRStorageConflict, ...]:
+    """Every loan of the body's own storage among the loans it stores in an
+    object the caller reaches, which outlives the body
+    (`MIRDependencies.caller_stores`), at the first point it is found."""
+    blocks = {b.id: b for b in prepared.function.blocks}
+    escapes: list[MIRStorageConflict] = []
+    seen: set[tuple[MIRPlace, MIRReferent]] = set()
+    for store in dependencies.caller_stores:
+        block = blocks[store.point.block]
+        loc = (block.statements[store.point.index].loc if store.point.index < len(block.statements)
+               else block.terminator.loc)
+        for ref in sorted(store.escaping, key=lambda r: (r.place.root.index, _place(r.place))):
+            if (store.key, ref) not in seen:
+                seen.add((store.key, ref))
+                escapes.append(MIRStorageConflict(MIRStorageConflictKind.STORE_ESCAPE, ref.place, store.key,
+                                                  store.point, loc))
+    return tuple(escapes)
+
+
+def analyze_store_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
+                          ) -> tuple[MIRStorageConflict, ...] | MIRNotCovered:
+    """Unconditional discovery of STORE_ESCAPE conflicts over a lowered
+    body, independent of any certificate's required origins."""
+    if isinstance(dependencies, MIRNotCovered):
+        return dependencies
+    if dependencies.function is not fn:
+        raise MIRValidationError("store escape input belongs to a different MIR function")
+    return _store_escapes(_prepare_function(fn), dependencies)
 
 
 def analyze_return_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRNotCovered
@@ -428,3 +457,21 @@ def analyze_return_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRN
     if unknown:
         return MIRNotCovered(fn.id, "return escapes", "borrowed return has unknown origins", unknown[0])
     return escapes
+
+
+def dump_escapes(returns: tuple[MIRStorageConflict, ...] | MIRNotCovered,
+                 stores: tuple[MIRStorageConflict, ...] | MIRNotCovered) -> str:
+    """The RETURN_ESCAPE and STORE_ESCAPE conflicts the verdict reports."""
+    lines = ["escapes (the body's own storage reaching the caller; possible conflicts)"]
+    for name, result in (("return escapes", returns), ("store escapes", stores)):
+        if isinstance(result, MIRNotCovered):
+            lines.append(f"  {name} not covered: {result.reason}")
+            continue
+        for escape in result:
+            site = (f"bb{escape.site.source.index} return" if isinstance(escape.site, MIREdge)
+                    else f"bb{escape.site.block.index} before {escape.site.index}")
+            lines.append(f"  {site}: {escape.kind.name.lower()} storage:{_place(escape.origin)} "
+                         f"held by {_place(escape.holder)}{_location(escape.loc)}")
+    if len(lines) == 1:
+        lines.append("  no escapes")
+    return "\n".join(lines) + "\n"

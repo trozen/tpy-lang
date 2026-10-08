@@ -57,11 +57,9 @@ std::string_view pick_late(Tok& a, Tok& b, Buf& buf, bool flag);
 void detached_view(int32_t k, bool flag);
 // def literal_member() -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t literal_member();
-// def retarget(t: Tok, s: str) -> None:  # tpyc: mir(uncovered /^view member write$/)
+// def retarget(t: Tok, s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
 void retarget(Tok& t, std::string_view s);
-// def make(name: str) -> Own[Tok]:  # tpyc: mir(uncovered /^owned result holds a borrow$/)
-Tok make(std::string_view name);
-// def consume(t: Own[Tok]) -> int32:  # tpyc: mir(uncovered /^owned parameter holds a borrow$/) warning(/never consumed/)
+// def consume(t: Own[Tok]) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
 int32_t consume(Tok&& t);
 // def in_list(name: str) -> int32:  # tpyc: mir(uncovered /^container holds a borrow$/)
 int32_t in_list(std::string_view name);
@@ -93,9 +91,6 @@ struct Tok {
 
     // def text(self) -> StrView:  # tpyc: mir(covered) mir_summary(known)
     std::string_view text() const;
-
-    // def reset(self, s: str) -> None:  # tpyc: mir(uncovered /^view member write$/)
-    void reset(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tok";
 };
 
@@ -182,13 +177,6 @@ inline Tok::Tok(std::string_view s, int32_t n)
 //     return self.s
 inline std::string_view Tok::text() const {
     return this->s;
-}
-
-// # method: a view member is written only by its constructor
-// def reset(self, s: str) -> None:  # tpyc: mir(uncovered /^view member write$/)
-//     self.s = s
-inline void Tok::reset(std::string_view s) {
-    this->s = s;
 }
 
 // # constructor: a literal member stores static storage

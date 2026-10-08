@@ -7,7 +7,7 @@ from ..thir.scalar_leaves import owned_leaf, record_type
 from ..typesys import TpyType, unwrap_readonly
 
 from .coverage import container_holder
-from .dependencies import MIRDependencies, MIRReferent, _referent, live_holders, resolve_referents
+from .dependencies import MIRDependencies, MIRReferent, _referent, resolve_referents
 from .dump import _location, _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
@@ -184,11 +184,22 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         replaced.append((point, place, None))
     for point, target, rebind_owner in sorted(replaced, key=lambda e: (e[0].block.index, e[0].index, _place(e[1]))):
         incoming = dependencies.referents[point]
-        live_after = live_holders(incoming, liveness.points[MIRPoint(point.block, point.index + 1)],
-                                  dependencies.stored_loans)
+        after = MIRPoint(point.block, point.index + 1)
+        outgoing = dependencies.referents[after]
+        live_after = liveness.points[after]
         affected = resolve_referents(target, incoming, slots)
-        for holder, refs in sorted(incoming.items(), key=lambda item: _place(item[0])):
-            if holder not in live_after or holder.root == rebind_owner:
+        # The statement may install a loan into the storage it replaces --
+        # a callee's transfer, or the record it fills -- so the holders of
+        # the state it leaves count too, and the filled object's own loans
+        # before the holder rebinding to it is live.
+        holders = dependencies.live(incoming, live_after)
+        for leaf, refs in dependencies.live(outgoing, live_after).items():
+            holders[leaf] = holders.get(leaf, frozenset()) | refs
+        if not target.projections:
+            for key in dependencies.objects[target.root]:
+                holders[key] = holders.get(key, frozenset()) | outgoing.get(key, frozenset())
+        for holder, refs in sorted(holders.items(), key=lambda item: _place(item[0])):
+            if holder.root == rebind_owner:
                 continue
             for written in sorted(affected, key=_referent_key):
                 for retained in sorted(refs, key=_referent_key):

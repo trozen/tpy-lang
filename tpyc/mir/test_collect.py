@@ -87,6 +87,24 @@ def test_dump_uses_real_bodies_and_constructor_definitions() -> None:
     assert out == dump(SOURCE)
 
 
+def test_dump_prints_store_escapes() -> None:
+    out = dump("""\
+from tpy import StrView, int32
+
+class Tok:
+    s: StrView
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+def fill(t: Tok, k: int32) -> None:
+    buf = "x" * k
+    t.s = buf
+""")
+    fill = out[out.index("::fill@"):]
+    assert "escapes (the body's own storage reaching the caller; possible conflicts)" in fill
+    assert re.search(r"store_escape storage:%\d+ held by %\d+\.\S*Tok::s", fill), fill
+
+
 def test_owned_tuple_dump_includes_each_inline_member() -> None:
     out = dump('''from tpy import int32
 class Cell:

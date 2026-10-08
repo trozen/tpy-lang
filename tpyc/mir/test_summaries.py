@@ -130,7 +130,7 @@ def test_leaf_evidence_is_known(artifacts: Artifacts, name: str) -> None:
     summary = result.summary
     assert summary.callee == functions[name].resolved_callee
     assert summary.reads == frozenset(range(len(functions[name].params)))
-    assert summary.writes == summary.invalidates == summary.retains == summary.returns == frozenset()
+    assert summary.writes == summary.invalidates == summary.transfers == summary.returns == frozenset()
     assert summary.normal_return_only
 
 
@@ -220,7 +220,7 @@ def test_writes_follow_aliases_at_each_write(artifacts: Artifacts, name: str,
     assert {(w.parameter, w.path[0].name) for w in summary.writes} == expected
     assert all(len(w.path) == 1 and w.path[0].type == INT32
                and w.path[0].owner == summary.parameters[w.parameter].type for w in summary.writes)
-    assert summary.invalidates == summary.retains == summary.returns == frozenset()
+    assert summary.invalidates == summary.transfers == summary.returns == frozenset()
     assert summary_problem(summary) is None
 
 

@@ -4,7 +4,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ..thir.scalar_leaves import storage_leaf
+from ..thir.scalar_leaves import storage_leaf, view_leaf
 from ..typesys import unwrap_readonly
 from .call_effects import call_write_places
 from .coverage import moved_storage
@@ -75,8 +75,10 @@ def analyze_storage(fn: MIRFunction) -> MIRStorageEvents | MIRNotCovered:
 def owned_field(field: MIRField) -> bool:
     """A field whose storage its record owns and a write replaces in place:
     an owned leaf's buffer, a container, or an inline record member -- every
-    modeled field but a scalar leaf, which holds no loan."""
-    return not storage_leaf(unwrap_readonly(field.type))
+    modeled field but a scalar leaf, which holds no loan, and a view member,
+    whose write rebinds the loan the record stores and replaces no storage."""
+    bare = unwrap_readonly(field.type)
+    return not storage_leaf(bare) and not view_leaf(bare)
 
 
 def storage_destination(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:

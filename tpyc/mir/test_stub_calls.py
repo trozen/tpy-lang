@@ -216,7 +216,7 @@ def test_admitted_stub_calls_carry_their_declared_summary(active) -> None:
         assert isinstance(summary.callee, th.THIRStubCallee)
         assert summary_problem(summary) is None and summary == stub_summary(summary.callee)
         assert summary.reads == frozenset(range(len(summary.parameters)))
-        assert not (summary.writes or summary.invalidates or summary.retains or summary.global_reads)
+        assert not (summary.writes or summary.invalidates or summary.transfers or summary.global_reads)
         assert summary.normal_return_only is False
 
 
@@ -500,7 +500,7 @@ def _summary(stub: th.THIRStubCallee) -> MIRCallSummary:
     assert summary_problem(summary) is None
     # Every method may raise and reads every parameter; a stub summary retains nothing.
     assert summary.normal_return_only is False and summary.reads == frozenset(range(len(summary.parameters)))
-    assert not (summary.invalidates or summary.retains or summary.global_reads)
+    assert not (summary.invalidates or summary.transfers or summary.global_reads)
     return summary
 
 

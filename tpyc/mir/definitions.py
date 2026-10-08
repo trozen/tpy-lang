@@ -509,19 +509,27 @@ def _record_identity(node: object, layout: object) -> None:
         layout.custom_destructor, layout.copyable, layout.movable)), "invalid record eligibility")
 
 
+def _stored_loan_member(typ: TpyType) -> bool:
+    """A member whose loans the record object stores at member keys: a view
+    member, or an inline record member (its own view members, keyed under
+    the member's place; its definition decides its fields)."""
+    return view_leaf(typ) or record_type(unwrap_readonly(typ))
+
+
 def _record_members(node: object, layout: th.THIRRecordLayout) -> None:
     """Every field a modeled shape (`modeled_field`) keyed by an owner in
     the hierarchy. A view member stores its source's loan in the record
-    object; a member record or container holding one would key it under
-    the record around it, which no place models."""
+    object, and an inline record member's view members store theirs under
+    the member's place; a container or wrapper member holding one would key
+    it under an element or a payload, which no place models."""
     owners = (layout.type, *layout.ancestors)
     members = {MIRFieldId(f.owner, f.name) for f in layout.fields}
-    require(node, not any(holds_loan(f.type) and not view_leaf(f.type) for f in layout.fields),
+    require(node, not any(holds_loan(f.type) and not _stored_loan_member(f.type) for f in layout.fields),
             "record member holds a borrow")
     # `holds_loan` reads UNKNOWN as no loan; beside a stored loan that
     # unproved member (a native, protocol or `bytearray` field) could hold one too.
-    require(node, not any(view_leaf(f.type) for f in layout.fields) or all(
-        view_leaf(f.type) or loan_free(f.type)
+    require(node, not any(holds_loan(f.type) for f in layout.fields) or all(
+        _stored_loan_member(f.type) or loan_free(f.type)
         for f in layout.fields), "record member loan unknown beside a view member")
     require(node, len(members) == len(layout.fields) and all(
         f.owner in owners and bool(f.name) and modeled_field(f.type)

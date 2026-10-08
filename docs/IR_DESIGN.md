@@ -39,7 +39,7 @@ String, bytes) then views as places (both landed), B3 containers as places
 (first half landed; in the retained-loans half declared storage members,
 user method summaries, property accessors with projected return origins,
 inherited records, owned record results, nested records and view fields
-slice 1 landed, view fields slice 2 comes next), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
+slices 1 and 2 landed, view fields slice 3 comes next), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
 the advisory checker and authority transition
 ([breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order)). Lifetime and
 loan defects are routed to MIR, not patched in sema (`BUGS.md` entries tagged

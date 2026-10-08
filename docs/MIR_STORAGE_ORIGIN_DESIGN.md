@@ -133,7 +133,8 @@ Certification requires all of the following:
 
 The first version requires whole-body coverage. It does not analyze a
 hand-selected subgraph around the candidate. Existing summary extraction
-already proves its bounded `retains == empty` contract from known bodies;
+proves its bounded retention contract from known bodies: the only loans a
+callee keeps are the published view-member transfers (`MIRLoanTransfer`);
 absence of a summary must never be interpreted the same way.
 
 Completeness is checked before interpreting empty conflict lists. Every live,
