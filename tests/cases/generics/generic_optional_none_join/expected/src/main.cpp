@@ -12,7 +12,7 @@ namespace tpyapp::main {
 int32_t via_ternary(std::vector<int32_t>& xs, bool c) {
     int32_t* y = ((c) ? (::tpyapp::main::first<int32_t>(xs)) : (nullptr));
     if ((y != nullptr)) {
-        return std::move((*y));
+        return (*y);
     }
     return -1;
 }

@@ -129,7 +129,7 @@ from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
-    binds_fresh_call_value,
+    binds_fresh_call_value, binds_owned_value,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory,
@@ -6695,9 +6695,10 @@ class StatementAnalyzer:
                 # Own return, literal, op). A borrow-producing init that codegen
                 # renders as a `T&` alias -- a reference-returning call, or a
                 # ternary/and-or of reference lvalues -- must NOT be owned, or a
-                # later move-out would corrupt the aliased source. Same predicate
-                # codegen uses for the `T&`-vs-value rendering (value_category).
-                if is_rvalue_source(self.ctx, stmt.init):
+                # later move-out would corrupt the aliased source; nor may a
+                # call's pointer borrow form (`T*` Optional, pointer-variant
+                # union), which renders as a value but points into lent storage.
+                if binds_owned_value(self.ctx, stmt.init):
                     note_owned_local(self.ctx, stmt.name, var_type)
                     # Fresh-ctor local: a non-reassigned local whose sole binding
                     # is a constructor call of its exact static type. Its dynamic
@@ -7649,8 +7650,8 @@ class StatementAnalyzer:
             else:
                 self.ctx.func.rvalue_vars.add(stmt.target.name)
                 # See the var-decl branch: owned only for a genuine value-creating
-                # init, not a borrow-producing one rendered `T&`.
-                if is_rvalue_source(self.ctx, stmt.value):
+                # init, not a borrow-producing one (a `T&` or pointer-form call).
+                if binds_owned_value(self.ctx, stmt.value):
                     note_owned_local(self.ctx, stmt.target.name,
                                      self.ctx.get_expr_type(stmt.value))
                 else:

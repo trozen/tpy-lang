@@ -1,11 +1,13 @@
 """Shared expression value-category predicates (borrow-alias vs rvalue).
 
-Both sema (to classify a local's binding as owned-movable vs borrow-alias)
-and codegen (to render a local as an owned value vs a `T&` reference) must
-answer the same question: "does this initializer produce a fresh rvalue, or
-does it alias existing storage?" Keeping the answer in one place avoids the
-divergence that lets sema mark a `C&` borrow-alias as movable -- which then
-moves out of the alias and corrupts the source.
+Codegen asks the value CATEGORY of an initializer (`is_rvalue_source`:
+render a local as an owned value or a `T&` reference); sema asks whether the
+bound name OWNS the object (`binds_owned_value`: owned-movable or
+borrow-alias). The two agree except for a call handing back the pointer
+borrow form (`T*` for a pointer-repr Optional, `Union<A*, B*>`): a C++
+prvalue whose referent the callee lent. Keeping both answers in one place
+avoids the divergence that lets sema mark a borrow-alias as movable -- which
+then moves out of the alias and corrupts the source.
 
 The `analyzer` argument is duck-typed: it only needs `get_expr_type(expr)`
 and `registry`. Both the sema `AnalyzerContext` and the codegen
@@ -20,7 +22,7 @@ from .typesys import (
     TypeParamRef, OwnType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_bodyless_binding, is_open_type_param_return, is_primitive_type,
-    is_protocol_type,
+    is_protocol_type, is_ptr_variant_union,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync,
@@ -232,6 +234,51 @@ def call_hands_back_value(call: TpyExpr) -> bool:
     return (isinstance(rt, TpyType)
             and isinstance(unwrap_readonly(unwrap_ref_type(
                 unwrap_send_sync(rt))), OwnType))
+
+
+def lends_pointer_form_result(analyzer: 'ValueCategoryAnalyzer',
+                              expr: TpyExpr) -> bool:
+    """Whether a call hands back the pointer BORROW form -- a pointer-repr
+    Optional (`T*`) or a pointer-variant union (`Union<A*, B*>`) -- of
+    storage the callee lent. The return rule refuses a fresh value at such
+    a return (`Own[...]` is the by-value spelling), so only
+    `call_hands_back_value` makes one a value. Asked of the result TYPE, so
+    a generic instantiation and a native stub answer at their substitution.
+    A select (ternary, value `and` / `or`) hands back whichever arm runs, so
+    it lends when either arm does."""
+    expr = peel_coerce(expr)
+    if isinstance(expr, TpyIfExpr):
+        return (lends_pointer_form_result(analyzer, expr.then_expr)
+                or lends_pointer_form_result(analyzer, expr.else_expr))
+    if (isinstance(expr, TpyBinOp) and expr.op in ("&&", "||")
+            and not is_bool_type(analyzer.get_expr_type(expr))):
+        return (lends_pointer_form_result(analyzer, expr.left)
+                or lends_pointer_form_result(analyzer, expr.right))
+    if (not isinstance(expr, (TpyCall, TpyMethodCall))
+            or call_hands_back_value(expr)):
+        return False
+    fi = expr.resolved_function_info
+    if fi is not None and fi.is_constructor:
+        return False
+    t = analyzer.get_expr_type(expr)
+    if not isinstance(t, TpyType):
+        return False
+    # An `Own` left after the access wrappers is the storage form, which
+    # neither shape test matches.
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return ((isinstance(t, OptionalType) and t.uses_pointer_repr())
+            or is_ptr_variant_union(t))
+
+
+def binds_owned_value(analyzer: 'ValueCategoryAnalyzer',
+                      expr: TpyExpr) -> bool:
+    """Whether a name bound from `expr` OWNS the object it holds, so its
+    last use may move it: a fresh value (`is_rvalue_source`) that is not a
+    pointer-form borrow the callee lent (`lends_pointer_form_result`). The
+    one ownership question every name binding (declaration, assignment,
+    walrus, the bind-kind stamp) asks."""
+    return (is_rvalue_source(analyzer, expr)
+            and not lends_pointer_form_result(analyzer, expr))
 
 
 def call_value_optional(call: TpyExpr) -> 'OptionalType | None':
@@ -1034,6 +1081,10 @@ def returns_borrow(analyzer: 'ValueCategoryAnalyzer', expr: TpyExpr) -> bool:
     # exactly when holding it copies an object the program still reaches.
     if isinstance(inner, TpyCallLike) and inner.result_form.is_fresh:
         return inner.copy_observable
+    # The pointer borrow form is a C++ prvalue `is_rvalue_source` calls
+    # fresh, yet what it points at is the callee's lent storage.
+    if lends_pointer_form_result(analyzer, inner):
+        return True
     link = _borrow_link(inner)
     if link is None:
         return False

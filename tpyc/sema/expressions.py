@@ -67,7 +67,7 @@ from ..prescan import (
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
 from .context import PENDING_CONTAINER_TYPES, readonly_reaches, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
-from ..value_category import (frame_factory_callee, is_rvalue_source, async_result_aliases,
+from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
 from .alias_rebind import bind_kind_of
@@ -4213,7 +4213,7 @@ class ExpressionAnalyzer:
                 if holds_frame_object(resolved):
                     record_frame_binding_roots(
                         self.ctx, name, frame_binding_fact(expr.value, self.ctx), expr)
-                if is_rvalue_source(self.ctx, expr.value):
+                if binds_owned_value(self.ctx, expr.value):
                     note_owned_local(self.ctx, name, resolved)
                     warn_value_call_binding(self.ctx, expr.value, f"local '{name}'")
                 else:
