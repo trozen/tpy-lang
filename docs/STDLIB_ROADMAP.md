@@ -337,7 +337,7 @@ helper-API surface.
 | `UnicodeError` and subtypes | Missing | TPy has few encoding-panic sites today |
 | `GeneratorExit` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable, and constructed by the frame destructor as `__exit__`'s exc_val when an abandoned generator/coroutine closes a suspended `with` region |
 | `KeyboardInterrupt` | Done | Inherits `BaseException` directly (CPython hierarchy); raisable/catchable; raised by Ctrl-C on the main thread at the next interruptible operation (`print`, sleep, input, blocking socket I/O, join, a `subprocess` wait or pipe, `sys.stdout` / file I/O) and by `asyncio.run` after a SIGINT-driven graceful shutdown; uncaught, it prints `KeyboardInterrupt` and dies by SIGINT (status 130) like CPython |
-| `SystemExit` | Missing | Control-flow exception; needs runtime support |
+| `SystemExit` | Done | Inherits `BaseException` directly; `code: int32 \| str \| None`; raised by `sys.exit`; uncaught, the generated `main()` exits with its code after the stack unwound (None -> 0, int -> itself, str -> stderr + 1); leaves `asyncio.run` as in CPython and crosses an `@export` boundary with its code |
 | `SystemError` | Missing | Internal-interpreter notion not directly applicable |
 | `EOFError` | Done | Raised by `input()` on EOF; also available for user `raise` |
 | `PermissionError`, `FileExistsError`, `NotADirectoryError`, `IsADirectoryError` | Done | `OSError` subclasses (per CPython). Raised by the `os` syscall errno table (EACCES/EPERM, EEXIST, ENOTDIR, EISDIR); also user-raisable |
@@ -445,7 +445,7 @@ Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`,
 | `argv` | Done | List populated at runtime init |
 | `stdout`, `stderr` | Done | Backed by `tpy::StdStream` (wraps `std::cout` / `std::cerr`); satisfy the `Writable` protocol so they work as `print(file=...)` targets and expose `write(str) -> int32` / `flush()` |
 | `stdin` | Missing | Needs read-side protocol; lower priority than write |
-| `exit(code)` | Done | `int32` arg lowered to `std::exit(int)` via `tpy::sys_exit`; `[[noreturn]]` |
+| `exit(code)` | Done | Raises `SystemExit(code)`; `code` is an `int32` (an `int` narrows to it), a `str` or `None` (the default). Typed `-> None`, not `NoReturn` |
 | `platform` | Missing | Compile-time constant |
 | `version`, `version_info` | Missing | Already in `tpy.version`; could re-export |
 | `path` | Missing | List; relates to import machinery (TPy resolves at compile time, so semantics differ) |

@@ -211,6 +211,7 @@ extern PyObject *PyExc_StopAsyncIteration;
 extern PyObject *PyExc_TimeoutError;
 extern PyObject *PyExc_GeneratorExit;
 extern PyObject *PyExc_KeyboardInterrupt;
+extern PyObject *PyExc_SystemExit;
 
 // The None singleton. Py_None is the macro `&_Py_NoneStruct`; we mirror the
 // underlying data symbol so void-return wrappers can hand back a fresh ref.

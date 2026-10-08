@@ -35,3 +35,25 @@ show(excs.open_missing)         # FileNotFoundError | missing file
 show(excs.fail_generic)         # Exception | generic failure
 show(excs.divide, 10, 3)        # ok 3
 show_type(excs.divide, 10, 0)   # ZeroDivisionError (message is version-specific)
+
+
+def show_exit(f):
+    # SystemExit is not an Exception: catch it on its own and show what the
+    # host sees of it -- its type, code and args.
+    try:
+        f()
+    except SystemExit as e:
+        print(type(e).__name__, isinstance(e, SystemExit), repr(e.code), e.args,
+              repr(str(e)))
+
+
+show_exit(excs.exit_int)        # SystemExit True 3 (3,) '3'
+show_exit(excs.exit_str)        # SystemExit True 'm' ('m',) 'm'
+show_exit(excs.exit_bare)       # SystemExit True None () ''
+show_exit(excs.exit_none)       # SystemExit True None (None,) 'None'
+show_exit(excs.exit_sub)        # Leave True 9 (9,) '9'
+show_exit(excs.exit_sub_data)   # LeaveWith True 4 (4,) '4'
+try:
+    excs.exit_sub_data()
+except SystemExit as e:
+    print("reason", e.reason)

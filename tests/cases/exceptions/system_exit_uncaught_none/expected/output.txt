@@ -1,0 +1,5 @@
+work: exiting
+work: finally
+work: __exit__ sees an exception True
+work local: __del__
+main local: __del__

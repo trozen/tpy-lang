@@ -689,7 +689,16 @@ exception escaping an `@export` body (or `PyInit_`) crosses as the matching
 `const tpy::BaseException&` and routes it through the runtime cascade in
 `runtime/cpp/include/tpy/interop/exc_bridge.hpp` (`set_py_err_from` ->
 `py_exc_for`), which maps the dynamic type most-derived-first and degrades an
-unlisted subclass to its nearest listed base. Still **planned** from the list
+unlisted subclass to its nearest listed base. `SystemExit` is the one built-in
+that crosses by its data instead of its message: the host gets `SystemExit`
+with the same `code` (an int, a str or `None`) and CPython's `args` -- `()` for
+`SystemExit()`, `(None,)` for `SystemExit(None)` -- and a user subclass of it
+builds its Python instance from that code rather than from the message, then
+marshals its own fields as below. Divergence: the args are built from the
+`code` at the raise, not from the constructor arguments, so a code reassigned
+before raising (`e = SystemExit(3); e.code = None; raise e`) crosses as
+`(None,)` where CPython keeps `(3,)` (the C++ exception holds no args tuple,
+BUGS.md#exception-args-missing). Still **planned** from the list
 below: `@error_return` Err -> raise and panic -> exception.
 
 **User exception classes are implemented, including their instance data.** Each

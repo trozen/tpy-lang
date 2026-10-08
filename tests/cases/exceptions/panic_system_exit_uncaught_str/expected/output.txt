@@ -1,0 +1,3 @@
+main: exiting
+main: finally
+main local: __del__

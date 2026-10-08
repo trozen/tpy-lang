@@ -14,6 +14,58 @@ const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 
 
 
+// # TODO: declare as ``NoReturn`` once TPy gains the type; until then code
+// # after a ``sys.exit()`` is not flagged as dead.
+// # The per-alternative variants: BUGS.md#dispatch-union-param-refuses-literal,
+// # BUGS.md#bigint-arg-to-int-union-param-ill-formed.
+// @dispatch
+// def exit() -> None:
+//     raise SystemExit()
+void exit() {
+    throw ::tpy::SystemExit{};
+}
+
+// @dispatch
+// def exit(code: int32) -> None:
+//     raise SystemExit(code)
+void exit(int32_t code) {
+    throw ::tpy::SystemExit(code);
+}
+
+// @dispatch
+// def exit(code: str) -> None:
+//     raise SystemExit(code)
+void exit(std::string_view code) {
+    throw ::tpy::SystemExit(code);
+}
+
+// @dispatch
+// def exit(code: None) -> None:
+//     # CPython's sys.exit(None) raises with args () and str '', unlike an
+//     # explicit SystemExit(None).
+//     raise SystemExit()
+void exit(std::monostate code) {
+    throw ::tpy::SystemExit{};
+}
+
+// @dispatch
+// def exit(code: int32 | str | None) -> None:
+//     if isinstance(code, int32):
+//         raise SystemExit(code)
+//     if isinstance(code, str):
+//         raise SystemExit(code)
+//     raise SystemExit()
+void exit(const ::tpy::Union<std::monostate, int32_t, std::string>& code) {
+    if (std::holds_alternative<int32_t>(code)) {
+        const auto& __code = std::get<int32_t>(code);
+        throw ::tpy::SystemExit(__code);
+    }
+    if (std::holds_alternative<std::string>(code)) {
+        const auto& __code = std::get<std::string>(code);
+        throw ::tpy::SystemExit(__code);
+    }
+    throw ::tpy::SystemExit{};
+}
 
 // from tpy.extern import native
 //

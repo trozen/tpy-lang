@@ -6,6 +6,8 @@
 namespace {
 using namespace ::tpy::cpy;
 
+::tpy::interop::ExcRegistry excs__exc_registry;
+
 PyObject *excs__check_positive_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
     static char *__kwlist[] = {const_cast<char *>("n"), nullptr};
     PyObject *a0 = nullptr;
@@ -14,7 +16,7 @@ PyObject *excs__check_positive_pywrap(PyObject *self, PyObject *args, PyObject *
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::excs::check_positive(__p0));
     } catch (const ::tpy::BaseException &__e) {
-        ::tpy::interop::set_py_err_from(__e);
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
         return nullptr;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -31,7 +33,7 @@ PyObject *excs__lookup_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) 
         int64_t __p0 = ::tpy::interop::from_py<int64_t>(a0);
         return ::tpy::interop::to_py(::tpyapp::excs::lookup(__p0));
     } catch (const ::tpy::BaseException &__e) {
-        ::tpy::interop::set_py_err_from(__e);
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
         return nullptr;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -44,7 +46,7 @@ PyObject *excs__open_missing_pywrap(PyObject *self, PyObject *unused) {
     try {
         return ::tpy::interop::to_py(::tpyapp::excs::open_missing());
     } catch (const ::tpy::BaseException &__e) {
-        ::tpy::interop::set_py_err_from(__e);
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
         return nullptr;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -62,7 +64,7 @@ PyObject *excs__divide_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) 
         int64_t __p1 = ::tpy::interop::from_py<int64_t>(a1);
         return ::tpy::interop::to_py(::tpyapp::excs::divide(__p0, __p1));
     } catch (const ::tpy::BaseException &__e) {
-        ::tpy::interop::set_py_err_from(__e);
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
         return nullptr;
     } catch (...) {
         if (!PyErr_Occurred())
@@ -75,12 +77,112 @@ PyObject *excs__fail_generic_pywrap(PyObject *self, PyObject *unused) {
     try {
         return ::tpy::interop::to_py(::tpyapp::excs::fail_generic());
     } catch (const ::tpy::BaseException &__e) {
-        ::tpy::interop::set_py_err_from(__e);
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
         return nullptr;
     } catch (...) {
         if (!PyErr_Occurred())
             PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
         return nullptr;
+    }
+}
+
+PyObject *excs__exit_int_pywrap(PyObject *self, PyObject *unused) {
+    try {
+        return ::tpy::interop::to_py(::tpyapp::excs::exit_int());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *excs__exit_str_pywrap(PyObject *self, PyObject *unused) {
+    try {
+        return ::tpy::interop::to_py(::tpyapp::excs::exit_str());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *excs__exit_bare_pywrap(PyObject *self, PyObject *unused) {
+    try {
+        return ::tpy::interop::to_py(::tpyapp::excs::exit_bare());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *excs__exit_none_pywrap(PyObject *self, PyObject *unused) {
+    try {
+        return ::tpy::interop::to_py(::tpyapp::excs::exit_none());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *excs__exit_sub_pywrap(PyObject *self, PyObject *unused) {
+    try {
+        return ::tpy::interop::to_py(::tpyapp::excs::exit_sub());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *excs__exit_sub_data_pywrap(PyObject *self, PyObject *unused) {
+    try {
+        return ::tpy::interop::to_py(::tpyapp::excs::exit_sub_data());
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+void excs__exc_LeaveWith_seterr(const ::tpy::BaseException &__base, PyObject *__pytype) noexcept {
+    const auto &__e = static_cast<const ::tpyapp::excs::LeaveWith &>(__base);
+    PyObject *__inst = nullptr;
+    try {
+        PyObject *__args = ::tpy::interop::exc_ctor_args(__e);
+        if (!__args) return;
+        __inst = ::tpy::cpy::PyObject_Call(__pytype, __args, nullptr);
+        ::tpy::cpy::Py_DecRef(__args);
+        if (!__inst) return;
+        { PyObject *__v = ::tpy::interop::to_py(__e.reason);
+          if (!__v) { ::tpy::cpy::Py_DecRef(__inst); return; }
+          if (::tpy::cpy::PyObject_SetAttrString(__inst, "reason", __v) < 0) {
+            ::tpy::cpy::Py_DecRef(__v); ::tpy::cpy::Py_DecRef(__inst); return; }
+          ::tpy::cpy::Py_DecRef(__v); }
+        ::tpy::cpy::PyErr_SetObject(__pytype, __inst);
+        ::tpy::cpy::Py_DecRef(__inst);
+    } catch (...) {
+        if (__inst) ::tpy::cpy::Py_DecRef(__inst);
+        if (!::tpy::cpy::PyErr_Occurred()) ::tpy::cpy::PyErr_NoMemory();
     }
 }
 
@@ -90,6 +192,12 @@ PyMethodDef excs__methods[] = {
     {"open_missing", excs__open_missing_pywrap, METH_NOARGS, nullptr},
     {"divide", as_pycfunction(excs__divide_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
     {"fail_generic", excs__fail_generic_pywrap, METH_NOARGS, nullptr},
+    {"exit_int", excs__exit_int_pywrap, METH_NOARGS, nullptr},
+    {"exit_str", excs__exit_str_pywrap, METH_NOARGS, nullptr},
+    {"exit_bare", excs__exit_bare_pywrap, METH_NOARGS, nullptr},
+    {"exit_none", excs__exit_none_pywrap, METH_NOARGS, nullptr},
+    {"exit_sub", excs__exit_sub_pywrap, METH_NOARGS, nullptr},
+    {"exit_sub_data", excs__exit_sub_data_pywrap, METH_NOARGS, nullptr},
     {nullptr, nullptr, 0, nullptr},
 };
 
@@ -105,10 +213,20 @@ PyModuleDef excs__moduledef = {
 
 extern "C" PyObject *PyInit_excs(void) {
     try {
+        PyObject *__m = ::tpy::cpy::PyModule_Create2(&excs__moduledef, ::tpy::cpy::PYTHON_API_VERSION);
+        if (!__m) return nullptr;
+        PyObject *excs__exc_Leave = ::tpy::cpy::PyErr_NewException("excs.Leave", ::tpy::interop::py_exc_by_name("SystemExit"), nullptr);
+        if (!excs__exc_Leave) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "Leave", excs__exc_Leave) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        excs__exc_registry.push_back({std::type_index(typeid(::tpyapp::excs::Leave)), excs__exc_Leave, ::tpy::interop::exc_set_err_message_only});
+        PyObject *excs__exc_LeaveWith = ::tpy::cpy::PyErr_NewException("excs.LeaveWith", ::tpy::interop::py_exc_by_name("SystemExit"), nullptr);
+        if (!excs__exc_LeaveWith) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "LeaveWith", excs__exc_LeaveWith) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        excs__exc_registry.push_back({std::type_index(typeid(::tpyapp::excs::LeaveWith)), excs__exc_LeaveWith, excs__exc_LeaveWith_seterr});
         ::tpyapp::excs::__tpy_init();
-        return ::tpy::cpy::PyModule_Create2(&excs__moduledef, ::tpy::cpy::PYTHON_API_VERSION);
+        return __m;
     } catch (const ::tpy::BaseException &__e) {
-        ::tpy::interop::set_py_err_from(__e);
+        ::tpy::interop::set_py_err_from(__e, excs__exc_registry);
         return nullptr;
     } catch (...) {
         if (!::tpy::cpy::PyErr_Occurred())

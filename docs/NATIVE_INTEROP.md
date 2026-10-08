@@ -725,13 +725,18 @@ extern "C" {
 
 ### Ctrl-C in a host program (`--no-main`)
 
-A standalone TPy program's generated `main()` sets process-wide dispositions
-(`tpy::process_startup()`): the uncaught-exception terminate handler, SIGPIPE
+A standalone TPy program's generated `main()` (`tpy::run_main`, which also
+turns an uncaught `SystemExit` into the exit status) sets process-wide
+dispositions (`tpy::process_startup()`): the uncaught-exception terminate handler, SIGPIPE
 ignored, and the SIGINT layer that turns Ctrl-C into `KeyboardInterrupt` (see
 the "Ctrl-C (SIGINT) -> `KeyboardInterrupt`" entry under
 [Error Handling](LANGUAGE_FEATURES.md#error-handling)). A `--no-main` build
 (TPy code linked into a C/C++ host, or a CPython extension module) installs none
-of them: the host owns its signals. Ctrl-C then does whatever the host's
+of them: the host owns its signals, and a `sys.exit()` reaches the host's
+call of `__tpy_main` as a thrown `tpy::SystemExit` (`<tpy/system.hpp>`;
+`tpy::exit_status(e)` reports it as a standalone program does and returns the
+status).
+Ctrl-C then does whatever the host's
 disposition says, and `time.sleep` / `input()` / blocking sockets /
 `subprocess` waits and pipes in TPy code are not interruptible. (`asyncio.run` still installs a SIGINT handler for the
 duration of the run and restores the host's afterwards.)

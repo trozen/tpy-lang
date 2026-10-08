@@ -2021,7 +2021,8 @@ class FunctionGenerator:
 
         Always emits __tpy_main(argc, argv) at global scope which initializes
         sys_argv and calls the entry module's __tpy_init().
-        When no_main is False (default), also emits a main() wrapper.
+        When no_main is False (default), also emits a main() wrapper that turns
+        an uncaught SystemExit into the exit status (::tpy::run_main).
         """
         ns = module_to_cpp_namespace(self.ctx.module_name)
         out.write(f"}} // namespace {ns}\n\n")
@@ -2032,8 +2033,7 @@ class FunctionGenerator:
         out.write("}\n")
         if not no_main:
             out.write("\nint main(int argc, char* argv[]) {\n")
-            out.write(f"{INDENT}::tpy::process_startup();\n")
-            out.write(f"{INDENT}return __tpy_main(argc, argv);\n")
+            out.write(f"{INDENT}return ::tpy::run_main(argc, argv, &__tpy_main);\n")
             out.write("}\n")
 
     @staticmethod

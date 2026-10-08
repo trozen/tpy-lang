@@ -8,6 +8,8 @@
 
 namespace tpyapp::utils {
 
+using ::tpystd::sys::exit;
+
 inline constexpr std::string_view __name__ = "utils";
 
 void __tpy_init();

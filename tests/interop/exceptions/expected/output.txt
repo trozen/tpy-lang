@@ -6,3 +6,10 @@ FileNotFoundError | missing file
 Exception | generic failure
 ok 3
 ZeroDivisionError
+SystemExit True 3 (3,) '3'
+SystemExit True 'm' ('m',) 'm'
+SystemExit True None () ''
+SystemExit True None (None,) 'None'
+Leave True 9 (9,) '9'
+LeaveWith True 4 (4,) '4'
+reason why

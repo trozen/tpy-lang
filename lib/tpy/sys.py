@@ -1,7 +1,7 @@
 # sys module: argv requires runtime init (not native_module)
 # tpy: cpp_namespace("tpystd::sys")
 from typing import Final
-from tpy import int32
+from tpy import int32, dispatch
 from tpy.extern import native
 
 
@@ -44,9 +44,36 @@ stdout: _StdStream = _get_sys_stdout()
 stderr: _StdStream = _get_sys_stderr()
 
 
-# TODO: declare as ``NoReturn`` once TPy gains the type. Today the
-# binding is ``-> None``, so sema treats call sites as normal returns
-# and won't flag dead code after a ``sys.exit()``. The C++ shim is
-# ``[[noreturn]]``, so the runtime behavior is correct.
-@native("tpy::sys_exit")
-def exit(code: int32) -> None: ...
+# TODO: declare as ``NoReturn`` once TPy gains the type; until then code
+# after a ``sys.exit()`` is not flagged as dead.
+# The per-alternative variants: BUGS.md#dispatch-union-param-refuses-literal,
+# BUGS.md#bigint-arg-to-int-union-param-ill-formed.
+@dispatch
+def exit() -> None:
+    raise SystemExit()
+
+
+@dispatch
+def exit(code: int32) -> None:
+    raise SystemExit(code)
+
+
+@dispatch
+def exit(code: str) -> None:
+    raise SystemExit(code)
+
+
+@dispatch
+def exit(code: None) -> None:
+    # CPython's sys.exit(None) raises with args () and str '', unlike an
+    # explicit SystemExit(None).
+    raise SystemExit()
+
+
+@dispatch
+def exit(code: int32 | str | None) -> None:
+    if isinstance(code, int32):
+        raise SystemExit(code)
+    if isinstance(code, str):
+        raise SystemExit(code)
+    raise SystemExit()

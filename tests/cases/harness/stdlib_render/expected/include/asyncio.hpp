@@ -572,6 +572,10 @@ struct _GatherFuture {
     //                     else:
     //                         self._completion_indices.append(i)
     //                         self._completion_boxes.append(Box(p.value()))
+    //             except (SystemExit, KeyboardInterrupt):
+    //                 # These end the program, not the sub-task: never a
+    //                 # gather outcome (CPython raises them out of the loop).
+    //                 raise
     //             except BaseException as e:
     //                 self._settled[i] = True
     //                 self._completed += 1
@@ -637,6 +641,10 @@ struct _GatherFuture {
                                 this->_completion_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
                             }
                         }
+                    } catch (const ::tpy::SystemExit&) {
+                        throw;
+                    } catch (const ::tpy::KeyboardInterrupt&) {
+                        throw;
                     } catch (const ::tpy::BaseException& e) {
                         ::tpy::__setitem__(this->_settled, i, true);
                         this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
@@ -835,6 +843,9 @@ struct _GatherSettledFuture {
     //                     self._completed += 1
     //                     self._result_indices.append(i)
     //                     self._result_boxes.append(Box(p.value()))
+    //             except (SystemExit, KeyboardInterrupt):
+    //                 # Not a settled outcome: these end the program.
+    //                 raise
     //             except BaseException as e:
     //                 self._settled[i] = True
     //                 self._completed += 1
@@ -911,6 +922,10 @@ struct _GatherSettledFuture {
                             this->_result_indices.push_back(i);
                             this->_result_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
                         }
+                    } catch (const ::tpy::SystemExit&) {
+                        throw;
+                    } catch (const ::tpy::KeyboardInterrupt&) {
+                        throw;
                     } catch (const ::tpy::BaseException& e) {
                         ::tpy::__setitem__(this->_settled, i, true);
                         this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);

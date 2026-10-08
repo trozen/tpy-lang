@@ -27,14 +27,18 @@
 
 #pragma once
 
+#include <cstdint>
+#include <string>
 #include <string_view>
 #include <tuple>
 #include <typeindex>
 #include <typeinfo>
+#include <variant>
 #include <vector>
 
 #include "tpy/core.hpp"
 #include "tpy/interop/cpython_h.hpp"
+#include "tpy/system.hpp"
 
 namespace tpy::interop {
 
@@ -53,7 +57,7 @@ namespace tpy::interop {
     X(RuntimeError) X(ValueError) X(AttributeError) X(AssertionError) \
     X(TypeError) X(NotImplementedError) X(EOFError) X(MemoryError) \
     X(StopAsyncIteration) X(GeneratorExit) \
-    X(KeyboardInterrupt) X(Exception)
+    X(KeyboardInterrupt) X(SystemExit) X(Exception)
 
 // The per-type "raise this across the boundary" action: given the caught
 // exception and its Python type, set the Python error. A message-only exception
@@ -72,11 +76,36 @@ using ExcSetErr = void (*)(const tpy::BaseException &, cpy::PyObject *) noexcept
 using ExcRegistry =
     std::vector<std::tuple<std::type_index, cpy::PyObject *, ExcSetErr>>;
 
-// The default setter: message field only, no data attributes. Used for message-
-// only user exceptions and as the fallback for built-in exception types.
+// The constructor arguments the host-side instance is built from: `(message,)`,
+// except that a SystemExit (or subclass) crosses as its `code`, so the host's
+// `e.code` is the int / str / None the TPy side raised -- `(code,)`, or `()`
+// for a no-argument SystemExit, which the empty message tells apart from
+// SystemExit(None) (whose str is 'None'). A new reference, or nullptr with the
+// Python error set.
+inline cpy::PyObject *exc_ctor_args(const tpy::BaseException &e) noexcept {
+    const auto *se = dynamic_cast<const tpy::SystemExit *>(&e);
+    if (!se) return cpy::Py_BuildValue("(s)", e.what());
+    if (const auto *i = std::get_if<int32_t>(&se->code)) {
+        return cpy::Py_BuildValue("(N)", cpy::PyLong_FromLongLong(*i));
+    }
+    if (const auto *s = std::get_if<std::string>(&se->code)) {
+        return cpy::Py_BuildValue(
+            "(N)", cpy::PyUnicode_FromStringAndSize(
+                       s->data(), static_cast<cpy::Py_ssize_t>(s->size())));
+    }
+    if (se->message.empty()) return cpy::Py_BuildValue("()");
+    return cpy::Py_BuildValue("(O)", &cpy::_Py_NoneStruct);
+}
+
+// The default setter: no data attributes. Used for message-only user exceptions
+// and for built-in exception types. A tuple value is unpacked into the
+// constructor call when the error is normalized.
 inline void exc_set_err_message_only(const tpy::BaseException &e,
                                      cpy::PyObject *pytype) noexcept {
-    cpy::PyErr_SetString(pytype, e.what());
+    cpy::PyObject *args = exc_ctor_args(e);
+    if (!args) return;
+    cpy::PyErr_SetObject(pytype, args);
+    cpy::Py_DecRef(args);
 }
 
 // Maps a body-raised built-in exception to its PyExc_* by exact-then-base
@@ -106,7 +135,7 @@ inline cpy::PyObject *py_exc_by_name(std::string_view name) noexcept {
 // exceptions (the marshaller throws a non-BaseException marker), so no error is
 // set yet and the mapped type+message must win.
 inline void set_py_err_from(const tpy::BaseException &e) noexcept {
-    cpy::PyErr_SetString(py_exc_for(e), e.what());
+    exc_set_err_message_only(e, py_exc_for(e));
 }
 
 // Iterator exhaustion arrives as the error value of `__next__`'s std::expected,
