@@ -4,6 +4,7 @@
 # reuses the cache, while a change to generated content, runtime headers, or
 # the toolchain re-keys it.
 
+import os
 from pathlib import Path
 
 import conftest
@@ -78,3 +79,19 @@ def test_changes_when_stdlib_output_hash_changes(tmp_path):
     fp_a = compute_exec_fingerprint(tmp_path, modules, [], [], stdlib_output_hash="A")
     fp_b = compute_exec_fingerprint(tmp_path, modules, [], [], stdlib_output_hash="B")
     assert fp_a != fp_b
+
+
+def test_exec_marker_hit_refreshes_the_marker(tmp_path, monkeypatch):
+    # the cache sweep ages markers by mtime, so a hit must count as a use
+    monkeypatch.setattr(conftest, "_exec_results_dir", lambda: tmp_path)
+    marker = tmp_path / "abc"
+    marker.write_text("case\n")
+    os.utime(marker, (0, 0))
+    assert conftest.exec_pass_is_cached("abc")
+    assert marker.stat().st_mtime > 0
+    assert not conftest.exec_pass_is_cached("missing")
+    # a marker that cannot be refreshed (a read-only cache) is still a hit
+    def read_only(*args, **kwargs):
+        raise PermissionError(args[0])
+    monkeypatch.setattr(conftest.os, "utime", read_only)
+    assert conftest.exec_pass_is_cached("abc")

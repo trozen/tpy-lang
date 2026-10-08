@@ -60,7 +60,9 @@ from tpyc.compiler import (
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
 from tpyc.toolchain import (
-    compiler_target_os, host_os, pch_is_path_sensitive, shared_cache_root,
+    compiler_target_os, host_os, mark_cache_entry_used, pch_is_path_sensitive,
+    shared_cache_root, sweep_shared_cache, CACHE_DIRS, EXEC_RESULTS_DIR, PCH_DIR,
+    STDLIB_OBJS_DIR,
 )
 from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
@@ -554,8 +556,10 @@ def _build_persistent_stdlib_cache(cache_dir: Path) -> _StdlibCache | None:
 
 def _get_or_build_persistent_stdlib_cache(root: Path) -> _StdlibCache | None:
     """Get-or-build the shared stdlib cache. Coordinated via fcntl.flock."""
-    cache_dir = root / "stdlib-objs" / _stdlib_cache_key()
+    cache_dir = root / STDLIB_OBJS_DIR / _stdlib_cache_key()
     ready_marker = cache_dir / ".ready"
+    # before reading it, so a concurrent sweep sees the entry in use
+    mark_cache_entry_used(cache_dir)
 
     # Fast path: already built
     if ready_marker.exists():
@@ -653,9 +657,10 @@ def get_pch_header() -> Path | None:
     _pch_initialized = True
 
     try:
-        pch_dir = _shared_cache_root() / "pch" / _pch_cache_key()
+        pch_dir = _shared_cache_root() / PCH_DIR / _pch_cache_key()
         pch_header = pch_dir / "tpy_pch.hpp"
         pch_gch = pch_dir / "tpy_pch.hpp.gch"
+        mark_cache_entry_used(pch_dir)
 
         # Fast path: PCH already built for this content key. Skip locking
         # entirely so warm-cache workers don't queue on LOCK_EX at startup.
@@ -1406,6 +1411,24 @@ def resolve_update_flag(config, *, is_master: bool, env_set: bool) -> bool:
     return typed or env_set
 
 
+def _sweep_shared_cache() -> None:
+    """Best effort: a sweep that fails is reported and the run goes on."""
+    try:
+        sweep = sweep_shared_cache(_shared_cache_root())
+    except (OSError, ValueError) as exc:
+        _log(f"cache sweep skipped: {exc}", err=True)
+        return
+    if sweep is None:
+        return
+    if sweep.removed or sweep.markers:
+        _log(f"cache sweep: removed {sweep.removed} entries unused for "
+             f"{sweep.entry_age // 86400}+ days and {sweep.markers} exec markers unused "
+             f"for {sweep.marker_age // 86400}+ days ({sweep.freed / 1e9:.1f} GB)")
+    if sweep.failed:
+        _log(f"cache sweep: could not remove {len(sweep.failed)} entries "
+             f"(e.g. {sweep.failed[0]})", err=True)
+
+
 def pytest_configure(config):
     """Print ccache status; manage session fingerprint file."""
     global UPDATE_EXPECTED  # assigned below; declared here so the guard can read it
@@ -1459,6 +1482,11 @@ def pytest_configure(config):
         _pch_cache_key.cache_clear()
         fast_linker_flags.cache_clear()
 
+    # Every process, so a remote worker sweeps its own host's cache; the
+    # sweep's hourly stamp and lock keep it to one per machine.
+    if not config.getoption("--clean"):
+        _sweep_shared_cache()
+
     if not is_master:
         return
 
@@ -1481,7 +1509,7 @@ def pytest_configure(config):
     if config.getoption("--clean"):
         root = _shared_cache_root()
         wiped = []
-        for sub in ("pch", "stdlib-objs", "exec-results"):
+        for sub in CACHE_DIRS:
             target = root / sub
             if target.exists():
                 shutil.rmtree(target, ignore_errors=True)
@@ -1801,7 +1829,7 @@ def write_fingerprints(case_dir: Path, fingerprints: dict[str, str]) -> None:
 # worktrees -- identical cases dedup, divergent ones can't collide.
 
 def _exec_results_dir() -> Path:
-    return _shared_cache_root() / "exec-results"
+    return _shared_cache_root() / EXEC_RESULTS_DIR
 
 
 def merge_link_flags(case_flags: list[str], cache_flags: list[str]) -> list[str]:
@@ -1928,11 +1956,18 @@ def compute_exec_fingerprint(
 
 
 def exec_pass_is_cached(fingerprint: str) -> bool:
-    """True when a green-exec marker for this fingerprint exists locally."""
+    """True when a green-exec marker for this fingerprint exists locally. A
+    hit refreshes the marker's mtime: the cache sweep ages markers by it; a
+    marker that cannot be refreshed (a read-only cache) is still a hit."""
+    marker = _exec_results_dir() / fingerprint
     try:
-        return (_exec_results_dir() / fingerprint).exists()
+        os.utime(marker)
+        return True
     except OSError:
-        return False
+        try:
+            return marker.exists()
+        except OSError:
+            return False
 
 
 def record_exec_pass(fingerprint: str, case_id: str) -> None:

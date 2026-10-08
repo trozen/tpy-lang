@@ -15,13 +15,21 @@ import functools
 import glob
 import hashlib
 import os
+import re
 import shutil
+import stat
 import subprocess
 import sys
 import tempfile
+import time
 from collections.abc import Iterator
 from dataclasses import dataclass, field
 from pathlib import Path
+
+try:
+    import fcntl
+except ImportError:  # Windows: the cache sweep's hourly stamp alone keeps it rare
+    fcntl = None  # type: ignore[assignment]
 
 
 class CompilerNotFoundError(Exception):
@@ -322,6 +330,173 @@ def shared_cache_root() -> Path:
         if local_app:
             return Path(local_app) / "tpyc" / "cache"
     return Path.home() / ".cache" / "tpyc"
+
+
+# --- shared cache eviction ---------------------------------------------------
+# Keys of the stdlib-object and PCH caches hash the compiler source and the
+# runtime headers, so every edit adds a new entry beside the old ones; nothing
+# else ever removes them.
+
+CACHE_MAX_AGE_ENV = "TPYC_CACHE_MAX_AGE"
+DEFAULT_CACHE_MAX_AGE = 3 * 86400
+EXEC_MARKER_MAX_AGE = 30 * 86400
+CACHE_SWEEP_INTERVAL = 3600
+CACHE_USED_MARK = ".used"
+# The cache layout, read by the producers, `--clean` and the sweep. Each
+# entry kind: its directory under the root, and a file the loader reads on
+# every use, whose atime covers entries no session marked.
+STDLIB_OBJS_DIR = "stdlib-objs"
+PCH_DIR = "pch"  # the test harness's per-key PCHs and the REPL's (`repl-<key>`)
+EXEC_RESULTS_DIR = "exec-results"
+CACHE_ENTRY_KINDS = ((STDLIB_OBJS_DIR, "metadata.json"), (PCH_DIR, "tpy_pch.hpp.gch"))
+CACHE_DIRS = (STDLIB_OBJS_DIR, PCH_DIR, EXEC_RESULTS_DIR)
+UNMARKED_MIN_AGE = 14 * 86400
+# The names the producers write: sha256 keys, the REPL's `repl-<md5[:12]>`,
+# exec markers (and their pid-tagged temp files); anything else under the
+# root is not the cache's to remove.
+_CACHE_ENTRY_NAME = re.compile(r"[0-9a-f]{64}|repl-[0-9a-f]{12}")
+_CACHE_TRASH_NAME = re.compile(r"\.trash-(?:[0-9a-f]{64}|repl-[0-9a-f]{12})-[0-9]+")
+_EXEC_MARKER_NAME = re.compile(r"[0-9a-f]{64}(?:\.[0-9]+\.tmp)?")
+
+
+@dataclass
+class CacheSweep:
+    entry_age: int  # seconds unused after which an entry went
+    marker_age: int  # the same for an exec-result marker
+    removed: int = 0  # cache entries
+    markers: int = 0  # exec-result markers
+    freed: int = 0  # bytes
+    failed: list[str] = field(default_factory=list)
+
+
+def cache_max_age() -> int:
+    """`$TPYC_CACHE_MAX_AGE` in seconds: "<n>d", or 0 for never. Whole days
+    only: a session marks its entries when it starts, so an age shorter than
+    the longest session would sweep an entry still in use."""
+    value = os.environ.get(CACHE_MAX_AGE_ENV, "").strip()
+    if not value:
+        return DEFAULT_CACHE_MAX_AGE
+    if value == "0":
+        return 0
+    if not (value.endswith("d") and value[:-1].isdigit()):
+        raise ValueError(f'{CACHE_MAX_AGE_ENV} must be "<n>d" (days) or 0, got {value!r}')
+    return int(value[:-1]) * 86400
+
+
+def mark_cache_entry_used(entry: Path) -> None:
+    """Record that this session uses `entry`; best effort."""
+    with contextlib.suppress(OSError):
+        if entry.is_dir():
+            (entry / CACHE_USED_MARK).touch()
+
+
+def _expired(entry: Path, read_file: str, now: float, max_age: int) -> bool:
+    """Unused for `max_age` by the session mark. An entry no session has
+    marked yet (built or used by an older harness) goes by the loader's read
+    of its file and its own mtime instead, and gets at least
+    UNMARKED_MIN_AGE: atime does not advance on a noatime mount."""
+    times = [entry.stat().st_mtime]
+    try:
+        times.append((entry / CACHE_USED_MARK).stat().st_mtime)
+    except OSError:
+        max_age = max(max_age, UNMARKED_MIN_AGE)
+        with contextlib.suppress(OSError):
+            times.append((entry / read_file).stat().st_atime)
+    return now - max(times) > max_age
+
+
+def _disk_size(path: str | Path) -> int:
+    st = os.lstat(path)
+    blocks = getattr(st, "st_blocks", None)  # POSIX only
+    return st.st_size if blocks is None else blocks * 512
+
+
+def _tree_size(path: Path) -> int:
+    size = 0
+    for dirpath, _, files in os.walk(path):
+        for name in files:
+            with contextlib.suppress(OSError):
+                size += _disk_size(os.path.join(dirpath, name))
+    return size
+
+
+def _remove_entry(entry: Path, sweep: CacheSweep) -> bool:
+    """Rename right after the age check, so a reader sees the entry whole or
+    not at all and the window for one revived meanwhile stays small; an entry
+    whose build lock is held is being built and stays. A trash dir an
+    interrupted sweep left behind goes on the next one."""
+    trash = entry.with_name(f".trash-{entry.name}-{os.getpid()}")
+    try:
+        with open(entry / ".lock", "a") as lock:
+            if fcntl is not None:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            entry.rename(trash)
+    except OSError:
+        sweep.failed.append(entry.name)
+        return False
+    return _remove_trash(trash, sweep)
+
+
+def _remove_trash(trash: Path, sweep: CacheSweep) -> bool:
+    size = _tree_size(trash)
+    try:
+        shutil.rmtree(trash)
+    except OSError:
+        sweep.failed.append(trash.name)
+        return False
+    sweep.freed += size
+    return True
+
+
+def sweep_shared_cache(root: Path | None = None, *, now: float | None = None,
+                       force: bool = False) -> CacheSweep | None:
+    """Remove cache entries unused for `cache_max_age()`, and exec-result
+    markers unused for 30 days. Only names the cache itself writes are
+    touched, whatever else the root holds. At most once per hour per cache
+    root (a stamp), by one process at a time (a non-blocking lock); None
+    when it did not run. Raises ValueError for a malformed
+    `$TPYC_CACHE_MAX_AGE`."""
+    max_age = cache_max_age()
+    root = root or shared_cache_root()
+    if not max_age or not root.is_dir():
+        return None
+    now = time.time() if now is None else now
+    stamp = root / ".last-sweep"
+    # "a": a lock file that turns out to be a link must not lose its target's contents
+    with open(root / ".sweep.lock", "a") as lock:
+        if fcntl is not None:
+            try:
+                fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+            except OSError:
+                return None
+        with contextlib.suppress(OSError):
+            if not force and now - stamp.stat().st_mtime < CACHE_SWEEP_INTERVAL:
+                return None
+        stamp.touch()
+        sweep = CacheSweep(entry_age=max_age, marker_age=max(max_age, EXEC_MARKER_MAX_AGE))
+        for kind, read_file in CACHE_ENTRY_KINDS:
+            for entry in sorted((root / kind).glob("*")):
+                if not entry.is_dir() or entry.is_symlink():
+                    continue
+                if _CACHE_TRASH_NAME.fullmatch(entry.name):
+                    _remove_trash(entry, sweep)
+                    continue
+                if not _CACHE_ENTRY_NAME.fullmatch(entry.name):
+                    continue
+                with contextlib.suppress(OSError):
+                    if _expired(entry, read_file, now, max_age) and _remove_entry(entry, sweep):
+                        sweep.removed += 1
+        for marker in sorted((root / EXEC_RESULTS_DIR).glob("*")):
+            if not _EXEC_MARKER_NAME.fullmatch(marker.name) or marker.is_symlink():
+                continue
+            with contextlib.suppress(OSError):
+                st = marker.stat()
+                if stat.S_ISREG(st.st_mode) and now - st.st_mtime > sweep.marker_age:
+                    size = _disk_size(marker)
+                    marker.unlink()
+                    sweep.markers += 1
+                    sweep.freed += size
+        return sweep
 
 
 # Known force-enable for clang < 19 + libstdc++ (compile-verified):
