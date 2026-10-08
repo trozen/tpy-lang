@@ -175,7 +175,7 @@ def overview(start: Path) -> int:
                 if host.path_prepend:
                     extra += f", PATH+={host.path_prepend}"
                 print(f"  {host.name}: ssh {host.ssh}, {host.workers} workers, "
-                      f"{host.slots} slot(s), root {host.root}{extra}")
+                      f"{host.slots} slot(s), root {host.root or cfg.DEFAULT_ROOT + " (or $XDG_CACHE_HOME/pytest-hosts)"}{extra}")
     print("commands:")
     for name, help_text in COMMANDS.items():
         print(f"  pytest-hosts {name:<7} {help_text}")

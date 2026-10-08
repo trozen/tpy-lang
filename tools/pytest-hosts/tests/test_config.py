@@ -114,13 +114,39 @@ def test_checkout_override_alone_is_a_config(tmp_path):
     ('[projects.p]\nlocal = "many"', "positive integer"),
     ('[projects.p]\nlocal = -1', "positive integer"),
     ('[hosts.a]\nssh = "a"\nworkers = 1\n[projects.p]\nhosts.a = { workers = 0 }', "positive integer"),
-    ('[wat]\nx = 1', "unknown top-level table 'wat' (valid: local, hosts, projects)"),
+    ('[wat]\nx = 1', "unknown top-level key 'wat' (valid: max_age, local, hosts, projects)"),
+    ('max_age = "2w"', 'max_age must be "<n>d" (days) or 0'),
+    ('max_age = "36h"', 'max_age must be "<n>d" (days) or 0'),
+    ('max_age = 14', 'max_age must be "<n>d" (days) or 0'),
+    ('max_age = false', 'max_age must be "<n>d" (days) or 0'),
+    ('max_age = 0.0', 'max_age must be "<n>d" (days) or 0'),
+    ('[hosts.a]\nssh = "a"\nworkers = 1\nmax_age = "d"', 'max_age must be'),
     ('[hosts.a\n', "hosts.toml:"),
 ])
 def test_rejects(tmp_path, text, message):
     path = write(tmp_path / "hosts.toml", text)
     with pytest.raises(cfg.ConfigError, match=__import__("re").escape(message)):
         cfg.load_hosts_file(path)
+
+
+def test_max_age_default_global_and_per_host(tmp_path):
+    hf = cfg.load_hosts_file(write(tmp_path / "a.toml", """
+        [hosts.a]
+        ssh = "a"
+        workers = 1
+    """))
+    assert hf.hosts["a"].max_age == 14 * 86400
+    hf = cfg.load_hosts_file(write(tmp_path / "b.toml", """
+        max_age = "3d"
+        [hosts.a]
+        ssh = "a"
+        workers = 1
+        [hosts.b]
+        ssh = "b"
+        workers = 1
+        max_age = 0
+    """))
+    assert (hf.hosts["a"].max_age, hf.hosts["b"].max_age) == (3 * 86400, 0)
 
 
 def test_local_workers_default_auto(tmp_path):

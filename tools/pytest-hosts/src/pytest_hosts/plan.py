@@ -11,7 +11,7 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import HostConfig, HostsFile, Workers, project_hosts
+from .config import DEFAULT_ROOT, HostConfig, HostsFile, Workers, project_hosts
 
 TREE_ID_LENGTH = 8
 VENV_NAME = "venv"
@@ -49,11 +49,14 @@ class RemoteHost:
     def setup_hash_file(self) -> str:
         return f"{self.parent}/setup.hash"
 
+    def tmp_dir(self, host_tmp: str) -> str:
+        """Where the temp roots go on the host: the configured `tmp`, else
+        the host's own temp dir. A temp root is `pytest-hosts-<hash8>`."""
+        return (self.tmp_base or host_tmp).rstrip("/")
+
     def tmp_root(self, host_tmp: str) -> str:
-        """Where this checkout's workers keep their temp files on the host:
-        under the configured `tmp`, else the host's own temp dir."""
-        base = (self.tmp_base or host_tmp).rstrip("/")
-        return f"{base}/pytest-hosts-{self.parent.rsplit('/', 1)[1]}"
+        """Where this checkout's workers keep their temp files on the host."""
+        return f"{self.tmp_dir(host_tmp)}/pytest-hosts-{self.parent.rsplit('/', 1)[1]}"
 
     def worker_tmp(self, host_tmp: str, index: int) -> str:
         return f"{self.tmp_root(host_tmp)}/w{index}"
@@ -67,12 +70,13 @@ def tree_id(source_host: str, checkout: Path) -> str:
 
 def plan_remote(host: HostConfig, checkout: Path, source_host: str, *, ssh_config: str,
                 control_dir: str, workers: int | None = None, home: str | None = None,
-                use_venv: bool = True) -> RemoteHost:
+                cache: str | None = None, use_venv: bool = True) -> RemoteHost:
     """Lay out one host. `home` replaces a leading `~` in the host's root
-    once the probe has learned it (execnet chdirs without expanding it).
+    once the probe has learned it (execnet chdirs without expanding it);
+    `cache` is the host's cache dir, where an unset root goes.
     Without a setup command there is no venv to point at, so the workers
     run whatever `python3` the ssh session finds."""
-    root = _expand_home(host.root, home)
+    root = _expand_home(host.root or (f"{cache}/pytest-hosts" if cache else DEFAULT_ROOT), home)
     parent = f"{root.rstrip('/')}/{tree_id(source_host, checkout)}"
     venv = f"{parent}/{VENV_NAME}"
     return RemoteHost(
@@ -96,10 +100,11 @@ def _expand_home(path: str, home: str | None) -> str:
     return path
 
 
-def with_home(remote: RemoteHost, home: str, checkout: Path, source_host: str) -> RemoteHost:
+def with_home(remote: RemoteHost, home: str, checkout: Path, source_host: str,
+              cache: str | None = None) -> RemoteHost:
     return plan_remote(remote.host, checkout, source_host, ssh_config=remote.ssh_config,
                        control_dir=remote.control_dir, workers=remote.workers, home=home,
-                       use_venv=remote.python != "python3")
+                       cache=cache, use_venv=remote.python != "python3")
 
 
 def remote_spec(remote: RemoteHost, index: int) -> str:

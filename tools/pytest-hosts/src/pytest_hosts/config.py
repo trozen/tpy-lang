@@ -16,10 +16,10 @@ HOSTS_FILE_NAME = "hosts.toml"
 CHECKOUT_OVERRIDE_NAME = ".pytest-hosts.toml"
 TOOL_TABLE = "pytest-hosts"
 
-TOP_KEYS = ("local", "hosts", "projects")
+TOP_KEYS = ("max_age", "local", "hosts", "projects")
 LOCAL_KEYS = ("workers",)
 HOST_KEYS = ("ssh", "workers", "slots", "root", "unreachable", "ssh_config", "path_prepend",
-             "lock_dir", "tmp")
+             "lock_dir", "tmp", "max_age")
 PROJECT_KEYS = ("local", "hosts")
 PROJECT_HOST_KEYS = ("workers",)
 SETTINGS_KEYS = ("setup", "setup_when", "env", "ignore", "pull")
@@ -31,6 +31,8 @@ HOSTS_REFERENCE = """\
 # projects use them. A gitignored .pytest-hosts.toml in a checkout is
 # layered on top of this file for one-off experiments.
 
+max_age = "14d"             # remove a host's trees unused this many days; 0: never
+
 [local]
 workers = "auto"            # local cap for every project; a number or "auto"; 0: none
 
@@ -38,12 +40,14 @@ workers = "auto"            # local cap for every project; a number or "auto"; 0
 ssh = "bigbox"              # an ssh alias; user/key/port come from ~/.ssh/config
 workers = 60                # xdist workers on this host
 slots = 1                   # concurrent sessions this host accepts; others queue
-root = "~/.pytest-hosts"    # where synced trees and venvs live
+# root = "/srv/pytest-hosts"   # where synced trees and venvs live; $XDG_CACHE_HOME/pytest-hosts
+                              # (~/.cache/pytest-hosts) on the host when unset
 unreachable = "error"       # or "local": run without this host, loudly
 lock_dir = "/tmp/pytest-hosts"  # slot lock files; shared by every user of the box
 # tmp = "/scratch"                    # workers' temp root; the host's TMPDIR when unset
 # ssh_config = "~/.ssh/bigbox.cfg"    # replaces the generated ssh config for this host
 # path_prepend = "/opt/toolchain/bin"  # in front of PATH for workers and setup
+# max_age = "30d"                     # overrides the top-level max_age for this host
 
 [projects.my-project]       # key: the [project] name in the project's pyproject.toml
 local = 4                   # overrides [local] workers for this project
@@ -63,6 +67,8 @@ pull = true                                   # mirror what the remote run wrote
 """
 
 Workers = int | str  # an int, or "auto"
+DEFAULT_MAX_AGE = 14 * 86400
+DEFAULT_ROOT = "~/.cache/pytest-hosts"  # what an unset root means where the host sets no XDG_CACHE_HOME
 
 
 class ConfigError(Exception):
@@ -75,12 +81,13 @@ class HostConfig:
     ssh: str
     workers: int
     slots: int = 1
-    root: str = "~/.pytest-hosts"
+    root: str | None = None  # the host's $XDG_CACHE_HOME/pytest-hosts when unset
     unreachable: str = "error"
     ssh_config: str | None = None
     path_prepend: str | None = None
     lock_dir: str = "/tmp/pytest-hosts"
     tmp: str | None = None  # workers' temp root; the host's TMPDIR when unset
+    max_age: int = DEFAULT_MAX_AGE  # seconds; trees unused longer are swept, 0: never
 
 
 @dataclass(frozen=True)
@@ -203,7 +210,17 @@ def _path(table: dict[str, Any], key: str, where: str) -> str | None:
     return value
 
 
-def _host(name: str, table: Any, where: str) -> HostConfig:
+def _max_age(value: Any, where: str) -> int:
+    """Days only: the stamp is touched when a run starts, so an age shorter
+    than the longest run would sweep a tree that is still in use."""
+    if value == "0" or (type(value) is int and value == 0):
+        return 0
+    if not (isinstance(value, str) and value.endswith("d") and value[:-1].isdigit()):
+        raise ConfigError(f'{where}: max_age must be "<n>d" (days) or 0, got {value!r}')
+    return int(value[:-1]) * 86400
+
+
+def _host(name: str, table: Any, where: str, max_age: int = DEFAULT_MAX_AGE) -> HostConfig:
     if not isinstance(table, dict):
         raise ConfigError(f"{where}: must be a table")
     ssh = _str(table, "ssh", where)
@@ -223,19 +240,20 @@ def _host(name: str, table: Any, where: str) -> HostConfig:
         ssh=ssh,
         workers=_workers(table["workers"], where, local=False),
         slots=slots,
-        root=_str(table, "root", where, "~/.pytest-hosts") or "~/.pytest-hosts",
+        root=_str(table, "root", where),
         unreachable=unreachable or "error",
         ssh_config=_str(table, "ssh_config", where),
         path_prepend=_str(table, "path_prepend", where),
         lock_dir=_str(table, "lock_dir", where, "/tmp/pytest-hosts") or "/tmp/pytest-hosts",
         tmp=_path(table, "tmp", where),
+        max_age=_max_age(table["max_age"], where) if "max_age" in table else max_age,
     )
 
 
 def parse_hosts(raw: dict[str, Any], source: str = HOSTS_FILE_NAME) -> HostsFile:
     for key in raw:
         if key not in TOP_KEYS:
-            raise ConfigError(f"{source}: unknown top-level table {key!r} "
+            raise ConfigError(f"{source}: unknown top-level key {key!r} "
                               f"(valid: {', '.join(TOP_KEYS)})")
     local = raw.get("local", {})
     if not isinstance(local, dict):
@@ -246,7 +264,9 @@ def parse_hosts(raw: dict[str, Any], source: str = HOSTS_FILE_NAME) -> HostsFile
     hosts_raw = raw.get("hosts", {})
     if not isinstance(hosts_raw, dict):
         raise ConfigError(f"{source}: [hosts] must be a table")
-    hosts = {name: _host(name, table, f"{source}: [hosts.{name}]") for name, table in hosts_raw.items()}
+    max_age = _max_age(raw["max_age"], source) if "max_age" in raw else DEFAULT_MAX_AGE
+    hosts = {name: _host(name, table, f"{source}: [hosts.{name}]", max_age)
+             for name, table in hosts_raw.items()}
     by_alias: dict[str, str] = {}
     for name, host in hosts.items():
         # the alias is how a session tells its hosts apart, on the specs and
