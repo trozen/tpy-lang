@@ -3377,12 +3377,12 @@ class CallAnalyzer:
         # Explicit OwnType (from function return, not a name) means ownership
         # was already acknowledged -- skip the check.
         check_type = arg_type
+        if self.compat.passed_owned_element(own_ptype, arg):
+            self._warn_unnecessary_copy(arg)
+            return
         if isinstance(arg_type, OwnType):
             if isinstance(arg, TpyName):
                 check_type = arg_type.wrapped  # implicit Own from local
-            elif self.compat.passed_owned_element(own_ptype, arg):
-                self._warn_unnecessary_copy(arg)
-                return
             else:
                 # Explicit Own from function return -- ownership acknowledged
                 self.compat.check_own_consumption(arg)

@@ -12,15 +12,15 @@ namespace tpyapp::main {
 void main() {
     std::get<0>(::tpyapp::helper::pair)->v = 9;
     std::cout << "borrow" << " " << ::tpyapp::helper::V->v << " " << std::get<1>(::tpyapp::helper::pair) << "\n" << ::tpy::check_signals;
-    std::get<1>(::tpyapp::helper::owned).v = 7;
-    std::cout << "owned" << " " << std::get<1>(::tpyapp::helper::owned).v << "\n" << ::tpy::check_signals;
+    std::get<1>(::tpyapp::helper::owned)->v = 7;
+    std::cout << "owned" << " " << std::get<1>(::tpyapp::helper::owned)->v << "\n" << ::tpy::check_signals;
 }
 
-// # An IMPORTING module sees a tuple global by its binding type alone, so which
-// # form the global takes (a tuple of pointer slots for a tuple of references,
-// # storage for one that owns a fresh element) is recorded on the binding by the
-// # defining module and read here: a write through the imported alias reaches
-// # the defining module's object, and the owned element reads bare.
+// # An IMPORTING module sees a tuple global by its binding type alone: a tuple
+// # of pointer slots, whether the defining module bound it from names or parked
+// # a fresh element in a static, so a write through the imported global reaches
+// # the defining module's object and every reference element reads through its
+// # slot (`std::get<1>(::tpyapp::helper::owned)->v`).
 // from helper import pair, owned, V
 //
 // main()

@@ -1,1 +1,0 @@
-main.py:27: error: Cannot reassign global variable 'tg' of type 'tuple[Box, int32]': a module-level unpack borrowed an element of it, and the alias would follow the rebind

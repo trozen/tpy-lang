@@ -158,8 +158,7 @@ The broader tuple feature is not assumed correct:
 - `BUGS.md#readonly-auto-tuple-copy-fact` and
   `BUGS.md#optional-tuple-unpack-readonly-fact` block relying on those sibling
   metadata paths without their own checks.
-- `BUGS.md#global-tuple-ref-storage-form` and
-  `BUGS.md#consume-own-element-of-mixed-tuple` remain outside this local
+- `BUGS.md#consume-own-element-of-mixed-tuple` remains outside this local
   slice.
 - Synchronous owning-call tuple rebinds reuse optional backing in the emitter.
   Before proposing their admission, probe retained aliases across replacement;

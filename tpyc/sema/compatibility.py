@@ -29,7 +29,8 @@ from ..typesys import (
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     unwrap_qualifiers,
     disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources,
-    GenExprType, is_open_type_param_return, PendingNumType)
+    GenExprType, is_open_type_param_return, PendingNumType,
+    global_binds_by_reference)
 from .. import qnames
 from ..value_category import (
     CONTAINER_LITERAL_NODES, async_result_aliases, call_returns_cpp_ref,
@@ -1640,7 +1641,14 @@ class TypeCompatibility:
             # the same one the monomorphic twin makes, and `copy()` is
             # spellable there now that it takes a readonly source.
             warned_ptr_repr_tuple = False
-            if (not is_return and (ref_scalar or ptr_repr_tuple)
+            # An owned element's pass was decided (moved, or its copy
+            # warned) by the argument check, which runs first.
+            element_decided = (source_expr in self.ctx.element_moves
+                               or (isinstance(source_expr, TpySubscript)
+                                   and source_expr
+                                   in self.ctx.own_element_copies))
+            if (not is_return and not element_decided
+                    and (ref_scalar or ptr_repr_tuple)
                     and self.source_copies_into_storage(source_expr,
                                                         is_auto_moved)):
                 if ptr_repr_tuple:
@@ -2924,8 +2932,11 @@ class TypeCompatibility:
         return True
 
     def owned_element_read(self, expr: TpyExpr) -> 'tuple[str, int] | None':
-        """`(name, i)` for `name[i]` with a constant index reading an
-        `Own[...]` element of a tuple-typed name; None otherwise."""
+        """`(name, i)` for `name[i]` with a constant index reading an element
+        the binding OWNS: an `Own[...]` element, or a reference element held
+        by value because the binding owns the whole tuple -- an `Own[tuple]`
+        parameter, or an owned local whose element `i` is not held by
+        reference (`copy_into_own_idxs`). None otherwise."""
         if not (isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName)):
             return None
         idx = const_tuple_index(expr.index)
@@ -2938,10 +2949,24 @@ class TypeCompatibility:
             return None
         if idx < 0:
             idx += len(tt.element_types)
-        if not (0 <= idx < len(tt.element_types)
-                and isinstance(unwrap_readonly(tt.element_types[idx]), OwnType)):
+        if not 0 <= idx < len(tt.element_types):
             return None
-        return expr.obj.name, idx
+        name = expr.obj.name
+        et = unwrap_readonly(tt.element_types[idx])
+        if isinstance(et, OwnType):
+            return name, idx
+        if unwrap_ref_type(et).is_value_type():
+            return None
+        func = self.ctx.func.current_function
+        ptype = (next((t for p, t in func.params if p == name), None)
+                 if isinstance(func, TpyFunction) else None)
+        if ptype is not None:
+            owns = (isinstance(unwrap_readonly(ptype), OwnType)
+                    and func.takes_ownership_of(name, ptype))
+        else:
+            owns = (self._is_owned_var(name)
+                    and idx not in self.ctx.func.bp_copy_into_own_idxs(name))
+        return (name, idx) if owns else None
 
     def returned_captured_name(self, expr: TpyExpr) -> 'TpyName | None':
         """The owned NAME a `return` hands over although a closure of the
@@ -3340,11 +3365,13 @@ class TypeCompatibility:
                     return name not in self.ctx.func.current_lvalue_reassigned
                 return True
             return False
-        # Top-level: non-value-type vars become pointer-globals, can't be moved
+        # Top-level: a global bound by reference (a pointer slot, or a
+        # tuple of them) points at storage it does not own, so its
+        # module-level last use is no move.
         var_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
         if var_type:
             inner = var_type.wrapped if isinstance(var_type, OwnType) else var_type
-            if not inner.is_value_type():
+            if global_binds_by_reference(inner):
                 return False
         return True
 
@@ -5086,17 +5113,20 @@ class TypeCompatibility:
             if i in self.ctx.func.bp_copy_into_own_idxs(name):
                 self._warn_name_element_copy(et, i, expr)
                 copied.add(i)
-        # A tuple PARAM or LOOP VARIABLE carries no construction-time facts:
-        # its declared elements say what arrives borrowed. (At an argument
-        # the whole-tuple coercion warning already declares its copy; a
-        # return has none.)
+        # A tuple PARAM, LOOP VARIABLE or module GLOBAL carries no
+        # construction-time facts: its declared elements say what arrives
+        # borrowed. (At an argument the whole-tuple coercion warning already
+        # declares its copy; a return has none.)
         func = self.ctx.func
+        is_global = self._is_reference_tuple_global(name)
         if return_slot and (
-                (name in func.current_param_names
-                 and name not in func.current_rebound_params)
+                is_global
+                or (name in func.current_param_names
+                    and name not in func.current_rebound_params)
                 or (name in func.loop_vars
                     and name not in func.current_reassigned_vars)):
-            declared = self.ctx.func.current_scope.lookup(name)
+            declared = (self.ctx.global_scope.lookup(name) if is_global
+                        else self.ctx.func.current_scope.lookup(name))
             dt = (unwrap_readonly(unwrap_ref_type(declared))
                   if declared is not None else None)
             if (isinstance(dt, TupleType)
@@ -5117,6 +5147,21 @@ class TypeCompatibility:
         # are correctly left unconsumed.
         if isinstance(expr, TpyName) and self.is_auto_move_use(expr):
             self.check_own_consumption(expr)
+
+    def _is_reference_tuple_global(self, name: str) -> bool:
+        """A module global that is a tuple of pointer slots, read where no
+        local shadows it: it owns none of its elements, so an owning slot
+        copies every reference element, as the scalar global's does."""
+        if name not in self.ctx.top_level_decls:
+            return False
+        scope = self.ctx.func.current_scope
+        while scope is not None and scope is not self.ctx.global_scope:
+            if name in scope.bindings:
+                return False
+            scope = scope.parent
+        gt = self.ctx.global_scope.lookup(name)
+        return (isinstance(unwrap_readonly(gt), TupleType)
+                and global_binds_by_reference(gt))
 
     def _derive_tuple_member_hazards(
             self, tt: TupleType, expr: TpyExpr) -> int | None:

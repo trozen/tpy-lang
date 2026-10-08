@@ -1,5 +1,6 @@
-main.py:355: warning: copies Box into field (tuple element 0); use copy() to make this explicit
-main.py:355: warning: copies Box into field (tuple element 1); use copy() to make this explicit
+main.py:430: warning: copies tuple[Box, Box] into owned storage; use copy() to make this explicit
+main.py:371: warning: copies Box into field (tuple element 0); use copy() to make this explicit
+main.py:371: warning: copies Box into field (tuple element 1); use copy() to make this explicit
 main.py:33: warning: Own[Box] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
 main.py:47: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
 main.py:79: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
@@ -8,13 +9,17 @@ main.py:119: warning: owned tuple param 'p' is never consumed (not moved out by 
 main.py:176: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
 main.py:184: warning: copies tuple[Own[Box], Own[Box]] into owned storage; use copy() to make this explicit
 main.py:183: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:191: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:201: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:212: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:225: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
-main.py:222: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:249: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:258: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
-main.py:257: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:264: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
-main.py:399: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:193: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:193: warning: copies tuple[Box, Box] into owned storage; use copy() to make this explicit
+main.py:201: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:207: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:217: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:228: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:241: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:238: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:265: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:274: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:273: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:280: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:411: warning: Result borrows from temporary argument 'a'; the temporary is destroyed at end-of-statement
+main.py:419: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)

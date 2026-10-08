@@ -832,6 +832,10 @@ inline Dest to_storage_elem(Src&& s) {
     } else if constexpr (std::is_pointer_v<SrcD>) {
         if constexpr (is_optional_v<DestD>) {
             return ptr_to_optional(s);
+        } else if constexpr (std::is_pointer_v<DestD>) {
+            // A pointer slot the destination keeps as a pointer, differing
+            // only in qualification (`Box*` -> `const Box*`): no deref.
+            return s;
         } else {
             return *s;
         }
@@ -851,6 +855,8 @@ inline Dest to_storage_elem_move(Src&& s) {
     } else if constexpr (std::is_pointer_v<SrcD>) {
         if constexpr (is_optional_v<DestD>) {
             return ptr_to_optional_move(s);
+        } else if constexpr (std::is_pointer_v<DestD>) {
+            return s;
         } else {
             return std::move(*s);
         }

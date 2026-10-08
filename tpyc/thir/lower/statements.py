@@ -141,11 +141,11 @@ from ...type_def_registry import (
 )
 from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
+from ...sema.context import expr_lends_storage
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr,
                                    numeric_literal_truth)
 from ...codegen_cpp.forms import (
-    is_borrow_form_tuple_global,
     loop_binding_kind,
     LocalBinding,
     is_plain_nonvalue,
@@ -172,6 +172,7 @@ from ...prescan import (
     scope_bound_names,
 )
 from ...typesys import (is_polymorphic_subclass_fact,
+                        TupleGlobalLayout, global_tuple_layout,
                         polymorphic_source_inner,
                         polymorphic_source_is_pointer,
                         polymorphic_subclass_into_optional)
@@ -366,7 +367,6 @@ from .predicates import (
     _nested_storage_tuple,
     _optional_borrow_tuple,
     _nullable_borrow_tuple_call,
-    _mixed_own_storage_source,
     _alias_field_source_ok,
     _f2_reseat_ok,
     _facts_have_concrete,
@@ -612,6 +612,7 @@ from .expressions import (
     _hoists_arg_temp,
     _own_tuple_shape_match,
     _own_tuple_borrow_lift_arg,
+    mixed_slot_btuple_name,
     _deref_loop_source,
     _lower_isinstance_cond,
     _narrow_member_cpp,
@@ -911,6 +912,8 @@ def _scalar_or_str_unpack_elem(t: TpyType | None, analyzer) -> bool:
     pointer-repr-Optional / union elements need the borrow-alias and other
     unpack branches, which are not lowered yet."""
     return (_eligible_scalar(t)
+            # An enum binds by value like a scalar.
+            or _eligible_enum(t, analyzer) is not None
             or _value_record_slot(t)
             or _callable_value(t)
             or _value_opt_scalar(
@@ -3674,11 +3677,36 @@ def _reject_value_elem_at_borrow_tuple(name: str, lit: TpyTupleLiteral,
             continue
         et = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
             bt.element_types[i])))
-        if et.is_value_type() or not TupleType._element_is_pointer_repr(et):
+        if not _value_capture_needs_storage(et):
             continue
         elem = lit.elements[i]
         emit_prims.reject_value_element_in_rebound_tuple(
             name, i, et, getattr(elem, "loc", None) or lit.loc)
+
+
+def _borrow_tuple_call_matches(init: TpyExpr, bt_t: 'TupleType',
+                               analyzer) -> bool:
+    """A CALL returning the plain borrow tuple the name holds (`-> tuple[
+    Box, Box]`, no `Own` element, not readonly): its result is the pointer
+    tuple itself, so a reseat assigns it bare."""
+    fi = getattr(init, "resolved_function_info", None)
+    if fi is None or call_returns_cpp_ref(analyzer, fi):
+        return False
+    rt = getattr(fi, "return_type", None)
+    if not isinstance(rt, TpyType) or isinstance(rt, ReadonlyType):
+        return False
+    rtu = unwrap_ref_type(unwrap_send_sync(rt))
+    return (isinstance(rtu, TupleType) and rtu.has_pointer_repr_element()
+            and not rtu.has_own_element()
+            and unwrap_readonly(rtu) == unwrap_readonly(bt_t))
+
+
+def _value_capture_needs_storage(et: 'TpyType') -> bool:
+    """A VALUE-captured tuple element of this type is an object with no
+    storage of its own at a borrow-form tuple, which holds it as a pointer:
+    a module-level write parks it, a local rebind refuses it."""
+    et = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
+    return not et.is_value_type() and TupleType._element_is_pointer_repr(et)
 
 
 def _note_inline_elements(name: str, lit: TpyTupleLiteral, slot: 'TupleType',
@@ -5664,6 +5692,89 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         name=stmt.name, resolved_type=vtype,
         kind=PtrSlotKind.GLOBAL_RVALUE, init=init,
         cpp_type=lc.render_type(slot_t), branch_scope=in_branch, loc=loc)
+
+
+def _park_tuple_global(stmt: TpyVarDecl, scope: '_LowerScope',
+                       lc: _LowerCtx, declared: dict[str, TpyType],
+                       loc) -> 'THIRStmt | None':
+    """A module-level write of a tuple global whose value holds an object
+    itself -- a literal with a fresh element, a call handing one back --
+    parks the whole value in a static of its own layout, which the global
+    points into element-wise, as `V = Box(2)` parks its Box:
+    `static std::tuple<Box, Box*> __global_slot_N = make_mixed((*V));`
+    `M = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_N);`.
+    Each write parks a static of its own, so a rebind never writes what an
+    earlier one parked. None when the value holds no object."""
+    analyzer = lc.analyzer
+    init = stmt.init
+    bt_t = (_borrow_tuple_local_type(stmt.name, declared,
+                                     lc.storage_tuple_locals)
+            if (lc.top_level_scope
+                and stmt.name in analyzer.ctx.top_level_decls) else None)
+    if bt_t is None:
+        return None
+    # Which elements the value brings as objects of its own: a literal's
+    # VALUE-captured reference elements; every reference element of a call
+    # that owns its result whole (`-> Own[tuple[Box, Box]]`, `-> tuple[
+    # Own[Box], Own[Box]]`); the `Own` positions of a mixed call's result.
+    owned: 'tuple[bool, ...] | None' = None
+    if (isinstance(init, TpyTupleLiteral)
+            and len(init.elem_capture) == len(bt_t.element_types)):
+        owned = tuple(
+            cap is TupleElemCapture.VALUE and _value_capture_needs_storage(et)
+            for cap, et in zip(init.elem_capture, bt_t.element_types))
+    elif isinstance(init, (TpyCall, TpyMethodCall)):
+        rt = unwrap_readonly(unwrap_send_sync(analyzer.get_expr_type(init)))
+        if (isinstance(rt, TupleType)
+                and len(rt.element_types) == len(bt_t.element_types)):
+            if _btuple_owning_call_init(init, analyzer):
+                owned = tuple(_value_capture_needs_storage(et)
+                              for et in bt_t.element_types)
+            elif _renders_own_borrow_tuple(init, lc.own_borrow_tuple_locals,
+                                           analyzer):
+                owned = tuple(isinstance(unwrap_readonly(e), OwnType)
+                              for e in rt.element_types)
+    if owned is None or not any(owned):
+        return None
+    park_t = TupleType(tuple(OwnType(et) if o else et
+                             for o, et in zip(owned, bt_t.element_types)))
+    if scope.loop_depth or lc.in_for_body:
+        # One static per site: a loop would overwrite what an earlier
+        # iteration parked, and the alias-rebind pass models no tuple site
+        # to warn a name bound from it
+        # (BUGS.md#tuple-global-loop-rebind-unwarned).
+        note_detail("top_level.tuple_global_loop_rebind" if lc.in_for_body
+                    else "top_level.global_slot_branch")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    if any(isinstance(et, TupleType) and et.has_nested_pointer_repr_element()
+           for et in map(unwrap_readonly, bt_t.element_types)):
+        # The element-by-element conversion does not descend into a nested
+        # tuple (BUGS.md#nested-storage-tuple-element-read).
+        note_detail("top_level.tuple_global_nested_ref")
+        raise ThirUnsupported(stmt_reject_reason(stmt))
+    mixed = park_t.is_mixed_own()
+    if isinstance(init, TpyTupleLiteral):
+        value = (_lower_borrow_tuple_literal(init, park_t, lc, declared)
+                 if mixed
+                 else _lower_tuple_literal(init, park_t, lc, declared,
+                                           use=_ExprUse(allow_temps=True)))
+    else:
+        value = _lower_expr(
+            init, lc, declared,
+            use=_ExprUse(result=(_ExprResultUse.VALUE if mixed
+                                 else _ExprResultUse.STORAGE),
+                         pos=SinkPos.LOCAL_DECL,
+                         forms=_decl_slot_forms(
+                             park_t, analyzer, whole_tuple_call=False,
+                             from_call=mixed, ptr_local=False),
+                         allow_temps=True))
+    _witness("top_level.tuple_global_park")
+    return THIRPtrLocalDecl(
+        name=stmt.name, resolved_type=bt_t, kind=PtrSlotKind.GLOBAL_RVALUE,
+        init=value,
+        cpp_type=_resolve_tuple_pending(park_t, analyzer).to_cpp_return(),
+        val_cpp=_resolve_tuple_pending(bt_t, analyzer).to_cpp_return(),
+        loc=loc)
 
 
 def _lower_dyn_own_erased_call_decl(stmt: TpyVarDecl, lc: _LowerCtx,
@@ -9993,8 +10104,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     storage_tuple_locals=lc.storage_tuple_locals)
                     and _storage_tuple_alias_src_ok(
                         stmt.init, declared, analyzer)
-                    and _f1_tuple(
-                        analyzer.get_expr_type(stmt.init), analyzer) is not None):
+                    # ... or an owned-element storage tuple (`q = p` off
+                    # `p: tuple[Own[Box], Own[Box]]`): its elements are
+                    # inline, so the alias re-binds the same storage too.
+                    and (_f1_tuple(analyzer.get_expr_type(stmt.init), analyzer)
+                         is not None
+                         or _own_record_tuple(analyzer.get_expr_type(stmt.init),
+                                              analyzer) is not None)):
                 lc.storage_tuple_locals.add(stmt.name)
                 # The alias aliases its source's const-ness (`auto&&` deduces it): a
                 # const-receiver source makes reads lift to `const T*`. Tracked in
@@ -10194,6 +10310,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 if is_reassign and stmt.name not in lc.prescan.param_names
                 else None)
         if bt_t is not None:
+            parked = _park_tuple_global(stmt, scope, lc, declared, loc)
+            if parked is not None:
+                return parked
             if (stmt.name in lc.rebind_slot_locals
                     and _btuple_owning_call_init(stmt.init, analyzer)):
                 # The OWNING-call reseat over a hoisted borrow-tuple local:
@@ -10218,17 +10337,33 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     target=THIRName(result_type=bt_t, name=stmt.name,
                                     loc=loc),
                     value=value, btuple_borrow_cpp=bc, loc=loc)
-            if (isinstance(stmt.init, (TpyCall, TpyMethodCall))
-                    and _renders_own_borrow_tuple(
-                        stmt.init, lc.own_borrow_tuple_locals, analyzer)):
-                # A MIXED own+borrow tuple-returning CALL hands back the
-                # hybrid `std::tuple<Box, Box*>` BY VALUE -- already the
-                # local's exact form, so the reseat is a PLAIN assign: no
-                # lift, no rebind slot. The owning-call row above keeps the
-                # emplace for a STORAGE-form (all-Own) return, which is the
-                # discriminator `_renders_own_borrow_tuple` reads off the
-                # callee's declared `is_mixed_own` tuple.
-                _witness("btuple.reseat_mixed_call")
+            _mixed_call = (isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                           and _renders_own_borrow_tuple(
+                               stmt.init, lc.own_borrow_tuple_locals,
+                               analyzer))
+            # A plain borrow-tuple return (`-> tuple[Box, Box]`) is the
+            # pointer tuple itself, assigned bare -- into a name that IS the
+            # pointer tuple (a literal-bound local holding an element inline
+            # is `std::tuple<Box, Box*>`), from a call whose result outlives
+            # the statement (a temporary argument fails closed, as the alias
+            # decl's call source does: the result could point at it).
+            _borrow_call = (
+                not _mixed_call
+                and isinstance(stmt.init, (TpyCall, TpyMethodCall))
+                and _borrow_tuple_call_matches(stmt.init, bt_t, analyzer)
+                and stmt.name not in lc.own_borrow_tuple_locals
+                and not any(lc.inline_tuple_elems.get(stmt.name, ()))
+                and expr_lends_storage(analyzer, stmt.init))
+            if _mixed_call or _borrow_call:
+                # A CALL whose result already IS the name's form hands it
+                # back BY VALUE, so the reseat is a PLAIN assign: no lift, no
+                # rebind slot. The MIXED own+borrow return is the hybrid
+                # `std::tuple<Box, Box*>`; the plain borrow-tuple return
+                # renders `P = pick((*V), (*W));`, the scalar's
+                # `V2 = &(pick(..))`. The owning-call row above keeps the
+                # emplace for a STORAGE-form (all-Own) return.
+                _witness("btuple.reseat_mixed_call" if _mixed_call
+                         else "btuple.reseat_borrow_call")
                 return THIRAssign(
                     target=THIRName(result_type=bt_t, name=stmt.name,
                                     loc=loc),
@@ -10240,7 +10375,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                          bt_t, analyzer,
                                          whole_tuple_call=False,
                                          from_call=True, ptr_local=False),
-                                     allow_temps=True)),
+                                     allow_temps=_mixed_call)),
                     loc=loc)
             if not _borrow_tuple_source_ok(stmt.init, lc):
                 note_detail("reseat.borrow_tuple_source")
@@ -10252,7 +10387,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("btuple.reseat_literal")
             elif isinstance(stmt.init, TpyName):
                 # A sibling borrow-tuple local: the bare pointer-tuple copy
-                # (`u = t;`) -- same form, no lift.
+                # (`u = t;`) -- same form, no lift. A source holding an owned
+                # element inline would copy it where CPython rebinds.
+                if stmt.init.name in lc.own_borrow_tuple_locals:
+                    note_detail("reseat.borrow_tuple_inline_source")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
                 value = _lower_expr(
                     stmt.init, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.BORROW_BIND))
@@ -10275,76 +10414,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             return THIRAssign(
                 target=THIRName(result_type=bt_t, name=stmt.name, loc=loc),
                 value=value, loc=loc)
-        # STORAGE-form F3 tuple GLOBAL write (top level only): the target is
-        # the namespace-scope storage value, so a tuple-literal init takes
-        # the borrow ladder WRAPPED in the storage lift -- `g =
-        # ::tpy::tuple_to_storage<S>(std::tuple<T*, T*>{t1, nullptr});`
-        # (the storage lift over the tuple literal). This arm
-        # claims EVERY write to such a global: an unhandled source must
-        # reject here, not leak into a value reseat that would skip the lift.
-        if (is_reassign and lc.top_level_scope
-                and stmt.name in lc.storage_tuple_locals):
-            st_bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                declared[stmt.name])))
-            st_ft = _f1_tuple(st_bare, analyzer)
-            st_own = _own_record_tuple(st_bare, analyzer)
-            if st_own is not None:
-                if isinstance(stmt.init, TpyTupleLiteral):
-                    # The global OWNS the fresh elements its literal builds
-                    # (sema marked them `Own` on the binding), so the
-                    # storage literal is the slot's own form -- no lift.
-                    _witness("top_level.tuple_global_owned_literal")
-                    return THIRAssign(
-                        target=THIRName(result_type=st_bare, name=stmt.name,
-                                        loc=loc),
-                        value=_lower_tuple_literal(stmt.init, st_own, lc,
-                                                   declared),
-                        loc=loc)
-                if not isinstance(stmt.init, (TpyCall, TpyMethodCall)):
-                    # An LVALUE source (a name, a subscript) would be a
-                    # plain storage assign -- a COPY where CPython aliases
-                    # -- so it rejects here rather than leaking to the value
-                    # reseat. An owning CALL is a fresh rvalue the plain
-                    # assign moves in; it falls through to that arm.
-                    note_detail("top_level.tuple_global_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-            if st_ft is not None:
-                if isinstance(stmt.init, TpyTupleLiteral):
-                    _witness("top_level.tuple_storage_global")
-                    return THIRAssign(
-                        target=THIRName(result_type=st_bare, name=stmt.name,
-                                        loc=loc),
-                        value=THIRFormConvert(
-                            result_type=st_bare,
-                            value=_lower_borrow_tuple_literal(
-                                stmt.init, st_ft, lc, declared),
-                            form=Form.STORAGE, move=False, loc=loc),
-                        loc=loc)
-                _tg_mixed = _mixed_own_storage_source(
-                    stmt.init, st_ft, frozenset(), analyzer)
-                if _tg_mixed is not None:
-                    # A MIXED-own-tuple CALL hands back `std::tuple<Box, Box*>`
-                    # by value; the owning global slot materializes its
-                    # borrowed half through the same NON-move lift the ctor
-                    # MIL and field-write siblings use
-                    # (`g = ::tpy::tuple_to_storage<S>(make_mixed((*v)));`).
-                    _witness("top_level.tuple_global_mixed_call")
-                    return THIRAssign(
-                        target=THIRName(result_type=st_bare, name=stmt.name,
-                                        loc=loc),
-                        value=THIRFormConvert(
-                            result_type=st_bare,
-                            value=_lower_expr(
-                                _tg_mixed, lc, declared,
-                                use=_ExprUse(
-                                    result=_ExprResultUse.VALUE,
-                                    pos=SinkPos.GLOBAL_SLOT_WRITE,
-                                    forms=_ONLY_BTUPLE_SLOT,
-                                    allow_temps=True)),
-                            form=Form.STORAGE, move=False, loc=loc),
-                        loc=loc)
-                note_detail("top_level.tuple_global_source")
-                raise ThirUnsupported(stmt_reject_reason(stmt))
         # OPTIONAL_STORAGE branch-hoist assign: the single-bind non-value's
         # in-branch decl writes PLAIN into the if-head `std::optional<T>`
         # (`name = <storage rvalue>;` -- the OPTIONAL_STORAGE decl arm).
@@ -11798,6 +11867,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         raise ThirUnsupported(stmt_reject_reason(stmt))
                     lc.inline_tuple_elems[stmt.name] = inline[0]
                     alias_cpp = "auto&"
+                elif (arm_names
+                      and len(arm_names) == (2 if isinstance(stmt.init, TpyIfExpr)
+                                             else 1)
+                      and all(n in lc.own_borrow_tuple_locals
+                              and n not in lc.prescan.reassigned
+                              for n in arm_names)):
+                    # The mixed render holds its owned elements inline too;
+                    # a source rebound later overwrites them in place, which
+                    # an alias would follow, so that one keeps the copy.
+                    alias_cpp = "auto&"
                 if arm_names and all(_const_borrow_name(n, lc, const_locals=True)
                                      for n in arm_names):
                     lc.const_locals.add(stmt.name)
@@ -12536,6 +12615,12 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     TpyVarDecl(name=stmt.target.name, type=None,
                                init=stmt.value, loc=loc),
                     lc, declared, loc)
+            parked = _park_tuple_global(
+                TpyVarDecl(name=stmt.target.name, type=None,
+                           init=stmt.value, loc=loc),
+                scope, lc, declared, loc)
+            if parked is not None:
+                return parked
         elif (isinstance(stmt.target, TpySubscript)
               and stmt.target.slice_function_info is not None
               and isinstance(stmt.target.index, TpySlice)):
@@ -13660,10 +13745,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # a storage-tuple alias local (`return t`) or a field read (`return h.pair`).
             if isinstance(stmt.value, TpyName):
                 if _unlifted_declared_copy(stmt.value, lc):
-                    # A MIXED return slot owns an element the name borrows.
+                    # A MIXED return slot owns an element the name borrows:
+                    # a borrow-form name whose copy sema declared lifts into
+                    # the slot's own layout (`tuple_to_storage<std::tuple<
+                    # Box, Box*>>(t)`), as it does at the mixed argument.
+                    if mixed_slot_btuple_name(stmt.value, ret_tuple, declared,
+                                              narrowed):
+                        _witness("ret.own_tuple_btuple_lift")
+                        return THIRReturn(
+                            value=THIRFormConvert(
+                                result_type=ret_tuple,
+                                value=_lower_expr(stmt.value, lc, declared,
+                                                  allow_unrouted_name=True),
+                                form=Form.STORAGE, param_form=True, loc=loc),
+                            loc=loc)
                     note_detail("return.own_element_copy_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                if stmt.value.name not in lc.storage_tuple_locals:
+                if (stmt.value.name not in lc.storage_tuple_locals
+                        # A name holding the mixed render owes a plain
+                        # borrow slot the lift to its owned element.
+                        and not (stmt.value.name in lc.own_borrow_tuple_locals
+                                 and not ret_tuple.is_mixed_own())):
                     # A local already bound in BORROW form (an `auto` decl off
                     # a ref-element tuple) needs no lift -- it returns bare.
                     if (stmt.value.name in declared
@@ -16277,7 +16379,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             has_opt_ptr = any(b == "opt_ptr" for b in bind_tags)
             subscript_wrap_src = False
             if (isinstance(stmt.value, TpyName)
-                    and stmt.value.name in lc.storage_tuple_locals
+                    and (stmt.value.name in lc.storage_tuple_locals
+                         # A mixed tuple GLOBAL holds its owned element by
+                         # value; a module-level pointer-slot target takes
+                         # its address through the same lift.
+                         or (lc.top_level_scope and "global_ptr" in bind_tags
+                             and stmt.value.name
+                             in lc.own_borrow_tuple_locals))
                     # opt_ptr targets ride the whole-tuple lift only off an
                     # Own-PARAM storage name (`a, b = t` on
                     # `Own[tuple[P | None, ..]]` -> `tuple_to_pointer<
@@ -16303,8 +16411,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 _witness("stmt.tuple_unpack.ref_param_source")
             elif (isinstance(stmt.value, TpyName)
                   and stmt.value.name in lc.prescan.global_readonly
-                  and is_borrow_form_tuple_global(declared.get(
-                      stmt.value.name))):
+                  and global_tuple_layout(declared.get(stmt.value.name))
+                  is TupleGlobalLayout.PTR_SLOTS):
                 # A tuple-of-references GLOBAL is a tuple of pointer slots:
                 # already borrow form, bound by ref like the param, its
                 # elements read bare. Same-module globals only: an imported

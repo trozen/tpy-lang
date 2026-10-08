@@ -27,6 +27,7 @@ if TYPE_CHECKING:
     from .slot_hint import SlotHint
 
 from ..typesys import (
+    global_tuple_binding_type,
     TpyType, recorded_return_borrow_sources, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
@@ -785,11 +786,13 @@ def proven_lend_roots(analyzer: 'ValueCategoryAnalyzer',
     else:
         fi = expr.resolved_function_info
         # A view handed back by value (`d.values()`) still points into what
-        # the call lends, as a reference result does.
+        # the call lends, as a reference result does; so does a borrow-form
+        # tuple (`-> tuple[Box, Box]`, a tuple of pointers by value).
         if (fi is None or fi.is_constructor
                 or fi.root.return_borrows_from is None
                 or not (call_returns_cpp_ref(analyzer, fi)
-                        or is_borrowing_view_type(fi.return_type))):
+                        or is_borrowing_view_type(fi.return_type)
+                        or escaping_borrow_tuple(fi.return_type) is not None)):
             return None
     ops = call_borrow_operands(expr)
     if ops is None:
@@ -2869,11 +2872,6 @@ class SemanticContext:
 
     # --- Final globals ---
     final_globals: set[str] = field(default_factory=set)
-    # Tuple globals a module-level unpack has borrowed an element out of: a
-    # pointer-slot target now aims into their storage, so a later
-    # module-level rebind would re-point that alias (CPython keeps the old
-    # object). The set is what the rebind refusal keys on.
-    tuple_globals_aliased: set[str] = field(default_factory=set)
     analyzed_finals: set[str] = field(default_factory=set)
 
     # --- Builtins ---
@@ -4005,16 +4003,22 @@ class SemanticContext:
         return self.is_top_level and stmt is self.current_module_stmt
 
     def define_module_global(self, name: str, var_type: 'TpyType | None',
-                             line: int) -> None:
-        """Record a module-slot binding. The single writer of the module's
-        global tables, so the export collection, the storage-durability
-        checks and the order-aware codegen all see one verdict.
+                             line: int) -> 'TpyType | None':
+        """Record a module-slot binding and return the type recorded. The
+        single writer of the module's global tables, so the export
+        collection, the storage-durability checks and the order-aware
+        codegen all see one verdict. A tuple global borrows what its write
+        parks, so no element is owned by the binding: the per-element `Own`
+        is stripped here, once, for every reader.
 
         `top_level_decls` keeps the EARLIEST line, so a use between two
         re-declarations still resolves against the global."""
+        if var_type is not None:
+            var_type = global_tuple_binding_type(var_type)
         self.global_scope.define(name, var_type)
         prior = self.top_level_decls.get(name)
         self.top_level_decls[name] = line if prior is None else min(prior, line)
+        return var_type
 
     def self_names_receiver(self) -> bool:
         """True when the name `self` here is a method receiver -- this

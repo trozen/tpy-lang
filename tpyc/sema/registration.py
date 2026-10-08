@@ -4321,7 +4321,7 @@ class TypeRegistrar:
                     self.ctx.final_globals.add(stmt.name)
                 # This walk is over the module's statement list itself, so
                 # every decl it sees is a module slot by construction.
-                self.ctx.define_module_global(
+                actual_type = self.ctx.define_module_global(
                     stmt.name, actual_type, stmt.loc.line if stmt.loc else 0)
                 self.ctx.preregistered_globals.add(stmt.name)
                 self.ctx.global_ns.bind_variable(stmt.name, actual_type)

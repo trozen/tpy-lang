@@ -9,7 +9,7 @@ namespace tpyapp::main {
 
 struct Cell;
 
-extern std::tuple<int32_t, Cell> g;
+extern std::tuple<int32_t, Cell*> g;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:

@@ -11,7 +11,7 @@ struct Cell;
 
 extern Cell* V;
 extern std::tuple<Cell*, int32_t> pair;
-extern std::tuple<int32_t, Cell> owned;
+extern std::tuple<int32_t, Cell*> owned;
 inline constexpr std::string_view __name__ = "helper";
 
 // class Cell:

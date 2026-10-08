@@ -43,7 +43,7 @@ struct Init;
 struct Slot;
 
 extern Box* GB;
-extern std::tuple<Box, Box> G;
+extern std::tuple<Box*, Box*> G;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_write;
@@ -91,6 +91,10 @@ std::tuple<Box, Box*> mk_box(Box& b);
 int32_t borrow_write(std::tuple<Box, Box*>&& p);
 // def owned_live(p: tuple[Own[Box], Own[Box]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 int32_t owned_live(std::tuple<Box, Box>&& p);
+// def borrow_local(a: Box, b: Box) -> int32:
+int32_t borrow_local(Box& a, Box& b);
+// def borrow_local_return(a: Box, b: Box) -> tuple[Own[Box], Box]:
+std::tuple<Box, Box*> borrow_local_return(Box& a, Box& b);
 // def closure_unpack(p: tuple[Own[Box], Box]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
 int32_t closure_unpack(std::tuple<Box, Box*>&& p);
 // def closure_unpack_owned(p: tuple[Own[Box], Own[Box]]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)

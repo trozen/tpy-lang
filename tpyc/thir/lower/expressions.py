@@ -627,6 +627,7 @@ from .checks import (
     _own_tuple_move_arg_facts,
     _own_tuple_borrow_lift_arg_facts,
     _own_tuple_decay_copy_arg_facts,
+    mixed_slot_btuple_name,
     builds_named_frame,
     _own_slot_reference_tuple,
     _enum_receiver,
@@ -7188,7 +7189,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and (e.obj.name in lc.storage_tuple_locals
                      # The mixed render holds its OWNED elements by value too.
                      or (e.obj.name in lc.own_borrow_tuple_locals
-                         and tup[1] in dict(tup[0].owned_elements())))
+                         and tup[1] in dict(tup[0].owned_elements()))
+                     # ... and a literal-bound local its inline ones.
+                     or lc.inline_tuple_elems.get(
+                         e.obj.name, ())[tup[1]:tup[1] + 1] == (True,))
                 # An OPTIONAL element off a storage tuple is the ONE family
                 # whose read is not bare std::get (it needs the
                 # optional_to_ptr lift) -- unreachable through today's decl
@@ -14377,7 +14381,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             loc=getattr(a, "loc", None))
     bt_name = _borrow_tuple_storage_name_arg(
         a, ptype, declared, lc.storage_tuple_locals, analyzer,
-        lc.movable_locals, lc.own_borrow_tuple_locals)
+        lc.own_borrow_tuple_locals)
     if bt_name is not None:
         # The NAME twin of the two lift rows above: a storage-form tuple local
         # takes the same `tuple_to_pointer`. Const-ness is the want_const
@@ -15323,10 +15327,18 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         return THIRMove(result_type=lowered.result_type, value=lowered,
                         form=Form.STORAGE, loc=getattr(a, "loc", None))
     if _own_tuple_decay_copy_arg(a, ptype, lc, declared):
-        # A still-live mixed tuple name at the mixed `&&` slot decay-copies
-        # into a prvalue (`sink(auto(p))` -- the warned copy).
-        _witness("arg.own_tuple_decay_copy")
+        # A still-live tuple name at the mixed `&&` slot copies into a
+        # prvalue (the warned copy): a mixed binding decay-copies
+        # (`sink(auto(p))`), a borrow-form one lifts element-wise.
         lowered = _lower_expr(a, lc, declared, allow_unrouted_name=True)
+        if mixed_slot_btuple_name(a, ptype, declared, lc.narrow.narrowed):
+            _witness("arg.own_tuple_btuple_lift")
+            return THIRFormConvert(
+                result_type=_resolve_tuple_pending(unwrap_readonly(
+                    unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer),
+                value=lowered, form=Form.STORAGE, param_form=True,
+                loc=getattr(a, "loc", None))
+        _witness("arg.own_tuple_decay_copy")
         return THIRDecayCopy(result_type=lowered.result_type, value=lowered,
                              form=Form.STORAGE, loc=getattr(a, "loc", None))
     if isinstance(a, TpyGeneratorExpression) and not (

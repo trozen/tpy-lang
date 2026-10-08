@@ -1,1 +1,0 @@
-Pins a known-wrong shipping state: a MIXED owned+borrow tuple global copies its borrowed element where the local twin aliases, so TPy prints `mixed_write 2` where CPython prints 44. The divergence is the thing under test and is silent, which is why the cell needs a regression target. See BUGS.md#global-tuple-ref-storage-form.

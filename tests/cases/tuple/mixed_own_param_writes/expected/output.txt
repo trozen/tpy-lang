@@ -26,5 +26,7 @@ operator 26
 adapter 86
 member-init 21 45 88
 field-write 24 88
+borrow-local 93 90
+borrow-local-return 4 91
 global-genexpr 160
 global 80

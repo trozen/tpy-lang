@@ -160,7 +160,6 @@ from ...value_category import (
 )
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
-    is_borrow_form_tuple_global,
     LocalBinding,
     is_ptr_variant_union,
     reads_storage_form_optional,
@@ -2327,16 +2326,8 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     if _value_tuple_global(gt, analyzer) is not None:
         return gt
     if _f1_tuple(gt, analyzer) is not None:
-        # A tuple of REFERENCES is the tuple of pointer slots (`std::tuple<T*,
-        # ..> g;`), read like a borrow-tuple local; one with an OWNED element
-        # (sema marks a fresh literal element or an owning call's element
-        # `Own` on the binding) is a namespace-scope STORAGE value, which
-        # the seeding call site registers in `storage_tuple_locals`
-        # (`_storage_tuple_global`, the borrow-vs-storage NAME partition).
-        return gt
-    if _own_record_tuple(gt, analyzer) is not None:
-        # The all-owned storage tuple global (`g = (1, Cell(5))` owns its
-        # fresh element): the same storage lvalue, registered the same way.
+        # A tuple holding a reference holds it as a pointer slot
+        # (`std::tuple<T*, ..> g;`), read like the borrow-tuple local.
         return gt
     # A VALUE-record global (`UTC: timezone = timezone(timedelta())`) is a
     # plain namespace-scope object like any value global: never a pointer
@@ -5309,17 +5300,6 @@ def _tuple_has_own_element(t: 'TupleType') -> bool:
     return False
 
 
-def _storage_tuple_global(t: 'TpyType | None', analyzer) -> 'TupleType | None':
-    """A tuple GLOBAL that is a namespace-scope STORAGE value, or None: a
-    pointer-repr F3 tuple or an Own-record tuple, minus the tuple of
-    references, which is the tuple of pointer slots (borrow form). The one
-    family test the seeding sites and the read-only admission share."""
-    if is_borrow_form_tuple_global(t):
-        return None
-    ft = _f1_tuple(t, analyzer)
-    return ft if ft is not None else _own_record_tuple(t, analyzer)
-
-
 def _own_record_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
     """A STORAGE tuple with per-element `Own[record]` ownership
     (`tuple[Own[A], Own[B]]` -- `std::tuple<A, B>`), or None: the record
@@ -5909,30 +5889,28 @@ def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
 
 def _tuple_name_elem_subscript(sub: TpyExpr, declared: dict[str, TpyType],
                                analyzer) -> bool:
-    """A pointer-repr record element read off a tuple NAME (`b = p[1]`,
-    `a = t[0]`): the REF_ALIAS decl binds the element's referent. Which
-    render that is follows the name's layout, decided once by
-    `_subscript_yields_borrow_ptr`: a borrow-form name holds the element
-    as `T*` (`(*std::get<1>(p))`), a storage-form name (an `auto&&` alias,
-    a loop variable, an `Own[tuple]` param) holds it by value
-    (`std::get<0>(t)`)."""
+    """A record element read off a tuple NAME (`b = p[1]`, `a = t[0]`,
+    `o = p[0]` of an `Own` element): the REF_ALIAS decl binds the
+    element's referent. Which render that is follows the name's layout,
+    decided once by `_subscript_yields_borrow_ptr`: a borrow-form name
+    holds a plain element as `T*` (`(*std::get<1>(p))`); an `Own` element,
+    and every element of a storage-form name (an `auto&&` alias, a loop
+    variable, an `Own[tuple]` param), is held by value (`std::get<0>(t)`)."""
     if not isinstance(sub, TpySubscript) or sub.needs_optional_runtime_check:
         return False
     if not isinstance(sub.obj, TpyName):
         return False
     t = declared.get(sub.obj.name)
-    if not isinstance(t, TpyType):
-        return False
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(_unwrap_own(t))))
-    if not (isinstance(bare, TupleType) and bare.has_pointer_repr_element()):
+    if not (isinstance(t, TpyType) and isinstance(unwrap_readonly(
+            unwrap_ref_type(unwrap_send_sync(_unwrap_own(t)))), TupleType)):
         return False
     res = _subscript_index_and_tuple(sub, analyzer)
     if res is None:
         return False
     recv_t, idx = res
-    et = recv_t.element_types[idx]
-    return (et.value_form() is ValueForm.BORROW_REF
-            and TupleType._element_is_pointer_repr(et)
+    et = _unwrap_own(recv_t.element_types[idx])
+    return (TupleType._element_is_pointer_repr(et)
+            and et.value_form() is ValueForm.BORROW_REF
             and _f1_record(et, analyzer))
 
 
@@ -9467,6 +9445,14 @@ def _container_storage_return_call_ret(ret: TpyType | None, analyzer) -> bool:
     return _f1_container_ref(t)
 
 
+def _capture_value_elem(e: TpyType, analyzer) -> bool:
+    """A value element an owned-tuple call capture copies out as it is: a
+    scalar, an enum or an owned str/bytes."""
+    return (_eligible_scalar(e) or _eligible_enum(e, analyzer) is not None
+            or _resolved_viewfam_value(unwrap_ref_type(e), analyzer)
+            is not None)
+
+
 def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
     """A call-result tuple with at least one `Own[F1-record]` element, every
     other element a value scalar or str/bytes -- the tuple-unpack move-out
@@ -9506,9 +9492,7 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                     # same shape the Own[record] row spells.
                     or _own_container_element(e)):
                 return None
-        elif not (_eligible_scalar(e)
-                  or _resolved_viewfam_value(unwrap_ref_type(e), analyzer)
-                  is not None
+        elif not (_capture_value_elem(e, analyzer)
                   # A nested VALUE-tuple element (`accept() ->
                   # tuple[Own[socket], tuple[str, int32]]`): the capture
                   # holds it by value; a kept target copies it out like a
@@ -9554,9 +9538,7 @@ def _own_ref_mix_call_ret(ret: TpyType | None,
               and TupleType._element_is_pointer_repr(e)
               and _f1_record(e, analyzer)):
             saw_borrow = True
-        elif not (_eligible_scalar(e)
-                  or _resolved_viewfam_value(unwrap_ref_type(e), analyzer)
-                  is not None):
+        elif not _capture_value_elem(e, analyzer):
             return None
     return t if (saw_own and saw_borrow) else None
 

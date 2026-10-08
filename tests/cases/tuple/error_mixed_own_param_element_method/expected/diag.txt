@@ -1,2 +1,0 @@
-main.py:26: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:28: error: in function 'f': this construct is not yet supported by C++ code generation (expr.method_call:method.recv.subscript)

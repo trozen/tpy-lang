@@ -11,7 +11,7 @@ struct Box;
 struct NBox;
 struct H;
 
-extern std::tuple<Box, int32_t> tg;
+extern std::tuple<Box*, int32_t> tg;
 extern Box* gx;
 extern int32_t gk;
 extern Box* V;

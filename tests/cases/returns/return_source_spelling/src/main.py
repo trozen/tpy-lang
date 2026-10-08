@@ -1,6 +1,6 @@
 # How an owning return takes a stored source: a consuming method moves its
 # receiver out, a copied source is spelled with ITS type (never the slot's),
-# a tuple element held by value is copied out (a missed move), a getter of a
+# a tuple element held by value moves out at the tuple's last use, a getter of a
 # readonly Optional field builds.
 from typing import Optional, Self
 
@@ -52,15 +52,14 @@ class P:
 
 def elem_of_local() -> Own[P]:
     t = (P(1), 2)
-    # A copy where a move is possible: the tuple is never read again
-    # (BUGS.md#owned-tuple-element-return-copies).
-    return t[0]  # tpyc: warning(/copies P/)
+    # The tuple is the function's own and never read again: the element
+    # moves out, as it does off a `tuple[Own[P], P]` param.
+    return t[0]  # tpyc: ok
 
 
 def elem_of_param(t: Own[tuple[P, int]]) -> Own[P]:
-    # Copied, not moved, although the tuple is owned; a `tuple[Own[P], P]`
-    # param moves its element (BUGS.md#owned-tuple-element-return-copies).
-    return t[0]  # tpyc: warning(/copies P/)
+    # An owned tuple param at its last use: the element moves out.
+    return t[0]  # tpyc: ok
 
 
 class Leaf:
@@ -93,7 +92,7 @@ def main() -> None:
     w = live_sub()
     w.v += 1
     print("live_subclass:", w.v)
-    # a tuple element the tuple holds by value: copied out today.
+    # a tuple element the tuple holds by value moves out at the last use.
     p = elem_of_local()
     p.v += 10
     print("tuple_elem_local:", p.v)

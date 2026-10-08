@@ -32,7 +32,7 @@ from ..typesys import (
     resolve_int_literals, CONST_PARAMS_METHODS,
     error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
     property_getter_returns_storage_ref,
-    bare_name,
+    bare_name, TupleGlobalLayout, global_tuple_layout,
     body_function_info, body_method_info,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
@@ -45,7 +45,6 @@ from ..parse.nodes import (
 from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError
 from . import emit_prims
 from .param_const import decide_param_const, ParamConstDecision
-from .forms import is_borrow_form_tuple_global
 from .type_resolution import (resolve_global_binding_type,
                               resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
@@ -1855,9 +1854,12 @@ class FunctionGenerator:
         # std::optional<T> in a global, so this asks the storage predicate, not
         # a boundary-form one.
         is_value = var_type.is_value_type() or var_type.needs_wrapper()
-        if is_borrow_form_tuple_global(var_type):
-            # A tuple of pointer slots, null until module init binds it.
-            cpp_type = self.types.tuple_borrow_cpp(var_type)
+        if global_tuple_layout(var_type) is TupleGlobalLayout.PTR_SLOTS:
+            # A tuple of pointer slots, null until module init binds it; a
+            # readonly global's slots point at const.
+            cpp_type = self.types.tuple_borrow_cpp(
+                unwrap_readonly(var_type),
+                const=isinstance(var_type, ReadonlyType))
             init = emit_prims.placeholder_init(var_type, cpp_type) or "{}"
             out.write(f"{cpp_type} {stmt.name}{init};\n")
         elif is_value:
@@ -1874,9 +1876,11 @@ class FunctionGenerator:
         var_type = self._resolve_global_type(stmt)
         cpp_type = self._global_cpp_type(var_type, stmt)
         is_value = var_type.is_value_type() or var_type.needs_wrapper()
-        if is_borrow_form_tuple_global(var_type):
-            out.write(f"extern {self.types.tuple_borrow_cpp(var_type)} "
-                      f"{stmt.name};\n")
+        if global_tuple_layout(var_type) is TupleGlobalLayout.PTR_SLOTS:
+            cpp_type = self.types.tuple_borrow_cpp(
+                unwrap_readonly(var_type),
+                const=isinstance(var_type, ReadonlyType))
+            out.write(f"extern {cpp_type} {stmt.name};\n")
         elif is_value:
             out.write(f"extern {cpp_type} {stmt.name};\n")
         else:

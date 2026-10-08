@@ -185,6 +185,22 @@ def owned_live(p: tuple[Own[Box], Own[Box]]) -> int32:  # tpyc: warning(/owned t
     return got + p[1].n
 
 
+# an all-borrow tuple local at the mixed slot: the owned position copies its
+# referent in, warned, and the borrowed one keeps pointing at the caller's
+# object, which the callee writes through.
+def borrow_local(a: Box, b: Box) -> int32:
+    t = (a, b)
+    got = borrow_write(t)  # tpyc: warning(/copies tuple\[Box, Box\] into owned storage/)
+    return got + t[1].n
+
+
+# ... and returned into the mixed slot: the same lift, the owned position
+# copied (warned), the borrowed one still the caller's object.
+def borrow_local_return(a: Box, b: Box) -> tuple[Own[Box], Box]:
+    t = (a, b)
+    return t  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
+
+
 # closure + unpack: a nested def captures the param and runs in the `return`,
 # so the unpack aliases the owned element instead of moving it out, and the
 # writes through `a` and `c` show through the closure.
@@ -391,6 +407,10 @@ def main() -> None:
     sl = Slot()
     sl.put((Box(24), b))
     print("field-write", sl.pair[0].n, sl.pair[1].n)
+    print("borrow-local", borrow_local(Box(3), b), b.n)
+    rt = borrow_local_return(Box(4), b)
+    rt[1].n += 1
+    print("borrow-local-return", rt[0].n, b.n)
 
 
 main()
@@ -400,10 +420,11 @@ def reader(p: tuple[Own[Box], Box]) -> int32:  # tpyc: warning(/owned tuple para
     return p[0].n + p[1].n
 
 
-# module global: a mixed global holds storage form, so a generator expression
-# capturing it reads its elements in place, and its last use lifts into the
-# mixed param element by element.
+# module global: a mixed global is a tuple of pointer slots at its parked
+# static, so a generator expression capturing it reads its elements in place;
+# like a scalar reference global it does not own that static, so even its
+# last module-level use is the warned copy.
 GB = Box(71)
 G = mk_box(GB)
 print("global-genexpr", sum(G[0].n + G[1].n for _ in range(2)))  # tpyc: ok
-print("global", reader(G))  # tpyc: ok
+print("global", reader(G))  # tpyc: warning(/copies tuple\[Box, Box\] into owned storage/)

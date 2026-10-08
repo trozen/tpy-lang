@@ -2199,12 +2199,17 @@ class THIRFormConvert(THIRExpr):
     `generic_return` picks the return sink's sibling
     (`::tpy::param_to_return<T>`), which must NOT copy at a reference-typed
     instantiation: there `val_or_ref_t<T>` is `T&` and an owned temporary
-    would dangle."""
+    would dangle.
+
+    `param_form` spells a tuple STORAGE lift at the slot's parameter form:
+    a mixed `tuple[Own[A], B]` parameter owns its `A` but keeps `B` a
+    pointer (`::tpy::tuple_to_storage<std::tuple<A, B*>>(t)`)."""
     value: THIRExpr
     is_const: bool = False
     move: bool = False
     materialize: 'bool | None' = None
     generic_return: bool = False
+    param_form: bool = False
 
 
 # --- Statements ---

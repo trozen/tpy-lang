@@ -1,0 +1,28 @@
+alias_owned 13
+alias_mixed 11 102
+alias_whole_name 101
+alias_whole 13
+alias_loop 11
+alias_readonly 7
+readonly_owned_write 9
+method_owned 4
+method_mixed 2 103
+field_method 3
+field_method_borrowed 5 3
+closure_method 105
+genexpr_in_gen [1, 2]
+genexpr_field_chain True
+pass_whole 5
+pass_local 5
+pass_kept 1005 5
+pass_live_alias 6
+ret_whole 508
+ret_local 8
+unpack_call 6 True
+unpack_borrowed 6 True
+unpack_borrowed_caller 6
+m_alias_mixed 4 203
+m_alias_owned 6
+m_method_owned 7
+m_method_mixed 5 204
+m_field_method 6

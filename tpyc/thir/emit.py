@@ -1305,7 +1305,8 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # tuple STORAGE arm.
         if isinstance(t, TupleType):
             helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
-            return f"::tpy::{helper}<{t.to_cpp()}>({inner})"
+            dest = t.to_cpp_return() if e.param_form else t.to_cpp()
+            return f"::tpy::{helper}<{dest}>({inner})"
         # S1/S6 str+bytes slices: a view-form source (string_view / span) into
         # an owned storage sink (decl init / return) copies via the family's
         # owned constructor -- `std::string(x)` / `::tpy::Bytes(x)` -- the
@@ -3813,7 +3814,12 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             _gs_static = "" if stmt.branch_scope else state.slot_static
             out.write(f"{indent}{_gs_static}{stmt.cpp_type} {slot} = "
                       f"{init_cpp};\n")
-            out.write(f"{indent}{name} = &{slot};\n")
+            if stmt.val_cpp is not None:
+                # A tuple global points at the parked value element-wise.
+                out.write(f"{indent}{name} = ::tpy::tuple_to_pointer<"
+                          f"{stmt.val_cpp}>({slot});\n")
+            else:
+                out.write(f"{indent}{name} = &{slot};\n")
             _witness("top_level.global_slot")
         elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
             # Hoisted record pointer-local: the `std::optional<T>` slot

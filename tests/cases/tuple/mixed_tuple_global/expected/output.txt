@@ -1,0 +1,40 @@
+module 20 1
+module-unpack 21 22
+function 44 7 44
+function-unpack 45 8
+annotated 46 1
+select 99 1 48
+literal 47 10
+ctor 48 99
+method 58 58
+generator 158 158
+async 1158 1158
+generator-alias [0, 399] 399
+async-alias 3399 3399
+closure 1160 1160
+comprehension [1160, 1161]
+lambda 1160
+finally 5
+with 6
+borrow-param 7
+alias 50
+relay 51 52
+relay-owning 52 52 141
+name-alias 54 53
+local-alias 55
+import 32 9 9
+last-use 1107
+last-use-owned 141
+after 53 1054 70
+rebind-mixed 80 81 1055 46
+rebind-owned 91 95
+whole-own 60 62
+alias 82 1
+no-default 8 10 1056 46
+singleton 7
+borrowed-fresh 1057 8
+later-fresh 146 46 2
+for-borrow 47 1
+if-rebind 48 1
+import-alias 10 32
+borrow-call 49 1057 1058 1058 59

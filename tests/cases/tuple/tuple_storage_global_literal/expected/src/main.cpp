@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-std::tuple<int32_t, Cell> g;
+std::tuple<int32_t, Cell*> g{};
 
 // def main() -> None:
 //     # Mutating through the global slot and reading back proves the element is
@@ -12,9 +12,9 @@ std::tuple<int32_t, Cell> g;
 //     print(g[0])
 //     print(g[1].v)
 void main() {
-    std::get<1>(g).v = 9;
+    std::get<1>(g)->v = 9;
     std::cout << std::get<0>(g) << "\n" << ::tpy::check_signals;
-    std::cout << std::get<1>(g).v << "\n" << ::tpy::check_signals;
+    std::cout << std::get<1>(g)->v << "\n" << ::tpy::check_signals;
 }
 
 // # The subject: both elements are fresh, so the literal is spelled in storage
@@ -27,7 +27,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    g = std::tuple<int32_t, Cell>{1, Cell(2)};
+    static std::tuple<int32_t, Cell> __global_slot_1 = std::tuple<int32_t, Cell>{1, Cell(2)};
+    g = ::tpy::tuple_to_pointer<std::tuple<int32_t, Cell*>>(__global_slot_1);
     ::tpyapp::main::main();
 }
 
