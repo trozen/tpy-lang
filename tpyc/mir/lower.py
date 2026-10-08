@@ -1698,7 +1698,9 @@ class _Coverage:
                 _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect"})
                 name = expr.name
             case th.THIRSelf():
-                _plain(expr, {"deref", "is_last_use", "is_movable"})
+                _plain(expr, {"deref", "is_last_use", "is_movable", "pointer"})
+                # A frame's reference receiver is not the pointer `this`.
+                _require(expr, expr.pointer, "unsupported metadata: pointer")
                 _require(expr, self.fn.receiver is not None, "missing receiver fact")
                 _require(expr, expr.form is th.Form.BORROW, "receiver read form")
                 _require(expr, not isinstance(unwrap_ref_type(expr.result_type), ReadonlyType)
@@ -2088,7 +2090,8 @@ class _Coverage:
         return layout
 
     def projection(self, expr: th.THIRSubscript, *, capture: bool = False) -> TpyType | th.THIRBorrowedRecord | th.THIROwnedRecord:
-        _plain(expr, {"receiver", "index", "tuple_index"} | ({"deref"} if capture else set()))
+        _plain(expr, {"receiver", "index", "tuple_index", "elem_pointer"}
+               | ({"deref"} if capture else set()))
         _require(expr, not capture or expr.deref, "tuple capture needs dereferenced element")
         layout = self.tuple_expr(expr.receiver, allow_owned=True)
         _require(expr, not layout.owns_records or isinstance(expr.receiver, th.THIRName),
@@ -2101,6 +2104,10 @@ class _Coverage:
                  "tuple index disagreement")
         _plain(expr.index, {"value", "int_cpp"})
         member = layout.elements[index]
+        # The render's pointer fact must agree with the layout MIR reads.
+        _require(expr, not expr.elem_pointer
+                 or isinstance(member, th.THIRBorrowedRecord),
+                 "tuple element pointer disagreement")
         if isinstance(member, (th.THIRBorrowedRecord, th.THIROwnedRecord)):
             self.reference(expr, th.THIRBorrowedRecord(member.type, member.readonly), expr.result_type)
             _require(expr, expr.form is th.Form.BORROW, "tuple reference projection form")

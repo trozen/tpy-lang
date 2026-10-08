@@ -1,0 +1,6 @@
+consuming_self: hello world, long enough to heap allocate
+dup_self: hello world, long enough to heap allocate hello world, long enough to heap allocate
+live_subclass: 4
+tuple_elem_local: 11
+tuple_elem_param: 15
+getter_opt: 4

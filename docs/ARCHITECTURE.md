@@ -631,8 +631,12 @@ among its type parameters), `copy_may_raise`
 `compares_fixed_ints` (the runtime compares it with every fixed-width int),
 `primitive_ops` (the primitive-operation contract: runtime operators that
 may allocate, printed with no user method), `zero_value` (the value of
-value-initialized storage) and `param_passing` (the parameter convention,
-where the default derivation from `is_value_type` does not spell it),
+value-initialized storage), `param_passing` (the parameter convention,
+where the default derivation from `is_value_type` does not spell it) and
+`owned_from_view_explicit` (the owned buffer takes its own view form only
+through an explicit constructor -- `::tpy::Bytes` from a `BytesView`, where
+`std::string` assigns from a `string_view` -- so a view source reaches an
+owned slot through a spelled copy; read by `thir/lower/convert.py`),
 category payloads `int_traits`, `float_traits`, `enum: EnumInfo`,
 `record: RecordInfo`, `protocol: ProtocolInfo`). `loan_inert`,
 `owned_leaf` and `param_passing` are read through `typesys.loan_class`,

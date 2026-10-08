@@ -8,6 +8,7 @@
 namespace tpyapp::main {
 
 struct Store;
+struct StrStore;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -17,6 +18,8 @@ int32_t pick(::tpy::BytesView a, ::tpy::BytesView b);
 int32_t pick_local(::tpy::BytesView a, ::tpy::BytesView b);
 // def pick_rebound(a: bytes, b: bytes) -> int32:
 int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b);
+// def put_free(h: StrStore, a: str, first: bool) -> None:
+void put_free(StrStore& h, std::string_view a, bool first);
 // def pick_owned(a: bytes, b: bytes) -> bytes:
 ::tpy::Bytes pick_owned(::tpy::BytesView a, ::tpy::BytesView b);
 // def main() -> None:
@@ -33,11 +36,38 @@ struct Store {
 
     // def put(self, a: bytes, b: bytes) -> None:
     void put(::tpy::BytesView a, ::tpy::BytesView b);
+
+    // def put_either(self, a: bytes, b: bytes, first: bool) -> None:
+    void put_either(::tpy::BytesView a, ::tpy::BytesView b, bool first);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Store& obj) {
     ::tpy::print_object_default(os, "Store", obj);
+    return os;
+}
+
+// class StrStore:
+struct StrStore {
+    // u: str | int32
+    ::tpy::Union<int32_t, std::string> u;
+    // o: str | None
+    std::optional<std::string> o;
+
+    // def __init__(self, a: str, first: bool) -> None:
+    StrStore() = default;
+    explicit StrStore(std::string_view a, bool first);
+
+    // def put(self, a: str, first: bool) -> None:
+    void put(std::string_view a, bool first);
+
+    // def put_or(self, a: str) -> None:
+    void put_or(std::string_view a);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.StrStore";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const StrStore& obj) {
+    ::tpy::print_object_default(os, "StrStore", obj);
     return os;
 }
 
@@ -53,6 +83,41 @@ inline Store::Store(::tpy::BytesView data) : data(::tpy::Bytes(data)) {}
 //     self.data = a or b  # tpyc: ok
 inline void Store::put(::tpy::BytesView a, ::tpy::BytesView b) {
     this->data = ::tpy::Bytes(((!a.empty()) ? a : b));
+}
+
+// def put_either(self, a: bytes, b: bytes, first: bool) -> None:
+//     # The ternary twin: a select of two views stays a view, so the owned
+//     # field store copies it too.
+//     self.data = a if first else b  # tpyc: ok
+inline void Store::put_either(::tpy::BytesView a, ::tpy::BytesView b, bool first) {
+    this->data = ::tpy::Bytes(((first) ? (a) : (b)));
+}
+
+// def __init__(self, a: str, first: bool) -> None:
+//     # ctor: a view param beside a literal is a view, so the owning union
+//     # and Optional members copy the whole select.
+//     self.u = a if first else "lit"  # tpyc: ok
+//     self.o = a or "lit"  # tpyc: ok
+inline StrStore::StrStore(std::string_view a, bool first)
+    : u(std::string(((first) ? (a) : ("lit")))),
+      o(std::string(((!a.empty()) ? a : std::string_view("lit")))) {}
+
+// def put(self, a: str, first: bool) -> None:
+//     # method: the ternary twin at body writes.
+//     self.u = a if first else "lit"  # tpyc: ok
+//     self.o = a if first else "lit"  # tpyc: ok
+inline void StrStore::put(std::string_view a, bool first) {
+    this->u = std::string(((first) ? (a) : ("lit")));
+    this->o = std::string(((first) ? (a) : ("lit")));
+}
+
+// def put_or(self, a: str) -> None:
+//     # method: the `or` twin at body writes.
+//     self.u = a or "lit"  # tpyc: ok
+//     self.o = a or "lit"  # tpyc: ok
+inline void StrStore::put_or(std::string_view a) {
+    this->u = std::string(((!a.empty()) ? a : std::string_view("lit")));
+    this->o = std::string(((!a.empty()) ? a : std::string_view("lit")));
 }
 void __tpy_init();
 } // namespace tpyapp::main

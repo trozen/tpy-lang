@@ -5,7 +5,8 @@ from dataclasses import MISSING, fields
 
 def unsupported_metadata(node: object, allowed: set[str]) -> str | None:
     for member in fields(node):
-        if member.name in allowed | {"loc", "result_type", "form"}:
+        if member.name in allowed | {"loc", "result_type", "form", "source",
+                                     "normalized"}:
             continue
         default = member.default
         if default is MISSING and member.default_factory is not MISSING:

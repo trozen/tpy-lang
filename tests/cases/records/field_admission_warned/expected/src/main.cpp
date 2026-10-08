@@ -392,6 +392,22 @@ void literal_list_elem() {
     std::cout << "holder.literal_tuple_elem" << " " << std::get<0>(k.t) << " " << std::get<1>(k.t).v << " " << std::get<1>(::tpy::__getitem__(pairs, 0)).v << "\n" << ::tpy::check_signals;
 }
 
+// def elem_holder_fn() -> None:
+//     # local holder: a free function writes a tuple local's record element
+//     # into a field; it copies.
+//     h = ElemHolder()
+//     t = (P(1), 2)
+//     h.p = t[0]  # tpyc: warning(/copies P into field/)
+//     t[0].v += 100
+//     print("holder.tuple_elem_local", h.p.v, t[0].v)
+void elem_holder_fn() {
+    ElemHolder h = ElemHolder();
+    auto t = std::tuple<P, int32_t>{P(1), 2};
+    h.p = std::get<0>(t);
+    std::get<0>(t).v = ::tpy::add_check<int32_t>(std::get<0>(t).v, 100);
+    std::cout << "holder.tuple_elem_local" << " " << h.p.v << " " << std::get<0>(t).v << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     xs = [1]
 //     h = Holder(xs)
@@ -421,6 +437,11 @@ void literal_list_elem() {
 //     comp_elems()
 //     slot_writes()
 //     literal_list_elem()
+//     eh = ElemHolder()
+//     eh.from_local()
+//     eh.from_own_param((P(5), 6))
+//     ElemInit((P(7), 8))
+//     elem_holder_fn()
 void main() {
     std::vector<int32_t> xs = {1};
     Holder h = Holder(xs);
@@ -453,6 +474,11 @@ void main() {
     ::tpyapp::main::comp_elems();
     ::tpyapp::main::slot_writes();
     ::tpyapp::main::literal_list_elem();
+    ElemHolder eh = ElemHolder();
+    eh.from_local();
+    eh.from_own_param(std::tuple<P, int32_t>{P(5), 6});
+    (void)(ElemInit(std::tuple<P, int32_t>{P(7), 8}));
+    ::tpyapp::main::elem_holder_fn();
 }
 
 

@@ -27,6 +27,8 @@ struct PqSrc;
 struct Deep;
 struct Slots;
 struct Paired;
+struct ElemHolder;
+struct ElemInit;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -97,6 +99,8 @@ void slot_holder(const OptSrc& o, PqSrc& u, std::vector<std::optional<P>>& xs);
 void slot_writes();
 // def literal_list_elem() -> None:
 void literal_list_elem();
+// def elem_holder_fn() -> None:
+void elem_holder_fn();
 // def main() -> None:
 void main();
 
@@ -419,6 +423,43 @@ inline std::ostream& operator<<(std::ostream& os, const Paired& obj) {
     return os;
 }
 
+// class ElemHolder:
+struct ElemHolder {
+    // p: P
+    P p;
+
+    // def __init__(self) -> None:
+    ElemHolder();
+
+    // def from_local(self) -> None:
+    void from_local();
+
+    // def from_own_param(self, t: Own[tuple[P, int32]]) -> None:
+    void from_own_param(std::tuple<P, int32_t> t);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ElemHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ElemHolder& obj) {
+    ::tpy::print_object_default(os, "ElemHolder", obj);
+    return os;
+}
+
+// class ElemInit:
+struct ElemInit {
+    // p: P
+    P p;
+
+    // def __init__(self, t: Own[tuple[P, int32]]) -> None:
+    ElemInit() = default;
+    explicit ElemInit(std::tuple<P, int32_t> t);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ElemInit";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ElemInit& obj) {
+    ::tpy::print_object_default(os, "ElemInit", obj);
+    return os;
+}
+
 // class Derived(Base):
 struct Derived : Base {
     // ia: Item
@@ -725,6 +766,45 @@ inline int32_t Slots::showu_g3() const {
 // def __init__(self) -> None:
 //     self.t = (0, P(0))
 inline Paired::Paired() : t(std::tuple<int32_t, P>{0, P(0)}) {}
+
+// def __init__(self) -> None:
+//     self.p = P(0)
+inline ElemHolder::ElemHolder() : p(P(0)) {}
+
+// def from_local(self) -> None:
+//     # method: a tuple local's record element copies into the field.
+//     t = (P(1), 2)
+//     self.p = t[0]  # tpyc: warning(/copies P into field/)
+//     t[0].v += 100
+//     print("method.tuple_elem_local", self.p.v, t[0].v)
+inline void ElemHolder::from_local() {
+    auto t = std::tuple<P, int32_t>{P(1), 2};
+    this->p = std::get<0>(t);
+    std::get<0>(t).v = ::tpy::add_check<int32_t>(std::get<0>(t).v, 100);
+    std::cout << "method.tuple_elem_local" << " " << this->p.v << " " << std::get<0>(t).v << "\n" << ::tpy::check_signals;
+}
+
+// def from_own_param(self, t: Own[tuple[P, int32]]) -> None:
+//     # method: an owned tuple param's record element copies likewise.
+//     self.p = t[0]  # tpyc: warning(/copies P into field/)
+//     t[0].v += 100
+//     print("method.tuple_elem_param", self.p.v, t[0].v)
+inline void ElemHolder::from_own_param(std::tuple<P, int32_t> t) {
+    this->p = std::get<0>(t);
+    std::get<0>(t).v = ::tpy::add_check<int32_t>(std::get<0>(t).v, 100);
+    std::cout << "method.tuple_elem_param" << " " << this->p.v << " " << std::get<0>(t).v << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, t: Own[tuple[P, int32]]) -> None:
+//     # ctor: a member-init from an owned tuple param's record element
+//     # copies it.
+//     self.p = t[0]  # tpyc: warning(/copies P into field/)
+//     t[0].v += 100
+//     print("ctor.tuple_elem_param", self.p.v, t[0].v)
+inline ElemInit::ElemInit(std::tuple<P, int32_t> t) : p(std::get<0>(t)) {
+    std::get<0>(t).v = ::tpy::add_check<int32_t>(std::get<0>(t).v, 100);
+    std::cout << "ctor.tuple_elem_param" << " " << this->p.v << " " << std::get<0>(t).v << "\n" << ::tpy::check_signals;
+}
 
 // def __init__(self, it: Own[Item]) -> None:
 //     super().__init__()

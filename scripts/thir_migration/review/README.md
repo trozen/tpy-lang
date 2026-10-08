@@ -46,6 +46,51 @@ Scripts (run from the repo root with `uv run python`):
   down as gates move onto the reference-type axis; `resolve_pending_container`
   and the literal-construction sites are the two that legitimately stay, so a
   drop there is a regression, not progress. `--json` for a diffable dump.
+- `convert_gates.py` -- **the one-conversion-boundary ratchet** (TODO.md "One
+  conversion boundary for every value sink"). A static AST walk (~5 s, no
+  compile): per migrated sink family (the field write, the return), the
+  conversion nodes built outside `tpyc/thir/lower/convert.py`, the
+  expression-kind tests left in conversion code (split literal / target /
+  rule / conversion / read / landing-2), convert.py's own kind tests, `SinkPos`
+  reads and lowering-context parameters, the binding-presence tests, and a
+  decision audit over the call graph from the sinks, `convert`, the `Source`
+  stamp and the `Slot` builder. `uv run python
+  scripts/thir_migration/review/convert_gates.py [--json] [--audit]`;
+  `--check` exits 1 when a gated number in `convert_gates.expected.json`
+  grew, `--update` rewrites it.
+- `convert_matrix.py` -- **the conversion boundary's differential matrix.**
+  One generated program per (source x sink x position) cell: sources
+  (param, readonly param, local at its last use, a live local a closure
+  reads, field, list element, tuple element of a local / of an `Own`
+  param, borrow-returning call, by-value call, ternary, walrus, `self`
+  consuming / not, a subclass local at a base slot; a `str` / `bytes`
+  param (a view) and local (owned), the mixed selects `a if c else "lit"`
+  and `a or "lit"`, a narrowed `Optional[str]` param, a `str`-returning
+  call) x sinks (`-> P`, `-> P | None`, `-> Own[P]`, `-> tuple[P, int]`,
+  `-> str`, `-> Optional[str]`; fields `P`, `Optional[P]`, `str`,
+  `str | int`, `Optional[str]`, `bytes`, and the member-init of each) x
+  positions (function, method, constructor, generator, async); cells a
+  position cannot spell, or whose source type the sink does not take, are
+  skipped. Each program compiles with `tpyc --dump-code` under the current
+  tree and under `--base <checkout>`; a cell is its verdict (the reject
+  key), its warnings and its C++ (comment lines dropped), and the script
+  prints every cell that differs. `--build` also compiles both sides of
+  every differing cell to a binary (`tpyc -b`); a cell that builds on the
+  base and not on the current tree is a regression.
+  `--known FILE.json` (`convert_matrix.known.json`) lists the cells whose
+  difference is a USER DECISION, by exact cell id, each with who decided
+  it and when (`decided`), why (`reason`), and the cell as it must look on
+  the current tree (`expect`: verdict, warnings, the C++ lines against the
+  base, a hash of the whole C++); `--pin-known` fills `expect` from a
+  run. A known entry records a decision, never a fix: a regression is
+  fixed, not listed. Exit 1 when an
+  unknown cell differs, a decided cell no longer matches its `expect`, or
+  a build regressed. `uv run python
+  scripts/thir_migration/review/convert_matrix.py --base ../tpy-m4
+  --known scripts/thir_migration/review/convert_matrix.known.json --build
+  [--jobs 4] [-k SUBSTR]`; programs and dumps land in
+  `build/convert_matrix` (not committed). A manual instrument (tens of
+  minutes at `--jobs 4`), never part of the pytest run.
 - `property_position_sweep.py` -- **the property x position verdict ratchet.**
   The matrix is (position x getter flavour x receiver kind), for the accessor
   spelling and for its spelled-METHOD twin, and it records a

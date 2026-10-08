@@ -2854,6 +2854,10 @@ class SemanticContext:
     # owns, at the tuple's last use: a return (`returned_owned_element`)
     # or an `Own[T]` argument (`passed_owned_element`).
     element_moves: IdentitySet = field(default_factory=IdentitySet)
+    # Returned NAMES a closure of the body still reads after the return
+    # (`returned_captured_name`) at an owning slot: sema warned the copy,
+    # and the read is copied, never moved.
+    live_name_copies: IdentitySet = field(default_factory=IdentitySet)
     # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is

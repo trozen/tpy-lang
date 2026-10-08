@@ -341,7 +341,7 @@ codegen (and later MIR lowering) can consume without referencing the `SemanticAn
 | `var_types[id(node)]` side table | `THIRVarDecl.resolved_type: TpyType` on the node |
 | `ptr_deref_facts[(line, key)]` dict | `THIRDeref.non_null: bool` on the node |
 | `subscript_bounds_facts` dict | `THIRSubscript.bounds_safe: bool` on the node |
-| `all_last_uses: set[int]` + `movable_locals: set[str]` | `THIRName.is_last_use: bool` + `THIRName.is_movable: bool` on the node |
+| `all_last_uses: set[int]` + `movable_locals: set[str]` | `THIRExpr.source.movable` (the `Source` stamped once on every lowered expression) |
 | `resolved_function_info` optional field | `THIRCall.target: ResolvedFunction` required field |
 | Per-function analyzer dicts (`function_scan_results`, `function_hoisted_vars`, `function_movable_locals`, `function_move_through_vars`, `function_global_decls`) | `THIRFunction.layout` and `THIRFunction.declared_globals` |
 | Module options from sema/context (`default_int_type`, `default_int_for_literal`) | `THIRModule` required fields |
@@ -418,13 +418,17 @@ THIRParam
 ```
 THIRExpr (base)
   result_type: TpyType                 # always present
+  source: Source | None                # what the value IS (tpyc/thir/source.py):
+                                       #   held, const, movable (sema's last use x
+                                       #   movable here), pointer_held, id_read,
+                                       #   must_copy, temporary, elems (per tuple
+                                       #   element), binding, analyzed_type,
+                                       #   copy_type
   loc: SourceLocation | None
 
 THIRName
   name: str
   result_type: TpyType
-  is_last_use: bool                    # from liveness analysis
-  is_movable: bool                     # in movable_locals
 
 THIRCall
   target: ResolvedFunction             # fully resolved -- function, overload index, etc.
@@ -759,6 +763,25 @@ exhibits (Open Q 9's `key=` lambda, async/await union, match capture): the
 conversion is inserted at each CONSUMER site, so one definition with one param
 form is bridged independently by each consumer -- no definition-site guess.
 
+Beside `form` every lowered expression carries `source: Source`
+(`tpyc/thir/source.py`), written once at the tail of `_lower_expr`
+(`stamp_source`): `held` (STORAGE / BORROWED / FRESH / VALUE) refines `form`
+by whether the expression names existing storage, plus `const`, `movable`,
+`pointer_held` and `id_read` (the node's own `reads_raw_pointer` /
+`reads_binding`, rewritten whenever the node is rebuilt), `must_copy`,
+`temporary` (the value dies with its full expression), `elems` (one `Source`
+per element of a tuple literal or tuple name), the NAME read's `binding`,
+`analyzed_type` (sema's type before lowering settled a pending literal) and
+`copy_type` (the type a copy of the value constructs; the sink spells it).
+`held` is decided from the expression's facts (`_held_from_facts`: a name
+from its binding's representation, a member or element from the slot it
+names, a call from its callee's declared result, an rvalue from
+`is_rvalue_source`, a select from its arms, a coerce from its inner) and
+never reads `form`. `form` is still set by each arm and sits beside it --
+an interim the TODO entry "One conversion boundary for every value sink"
+names; the end state is one fact, with `form` a view of `source`. A node an
+arm builds beside `_lower_expr` takes the same stamp (`stamped`).
+
 `THIRVarDecl` additionally carries the local-representation fact:
 
 ```
@@ -822,24 +845,34 @@ because they call one classifier.
 
 Every slot has a form (field / container / `Own` -> STORAGE; param / return /
 yield / borrow-local -> BORROW; value type -> VALUE; storage-form locals ->
-STORAGE). Callers do not pass raw `dst_form` / `is_const` / `move`; a boundary
-API carries the decision:
+STORAGE). Callers do not pass raw `dst_form` / `is_const` / `move`; one
+boundary carries the decision, `convert(expr, slot, types)` in
+`tpyc/thir/lower/convert.py`:
 
 ```python
-def required_form(slot) -> Form | None:        # None == no form axis (value type)
-    ...
-def coerce_form(expr, slot):                    # the single insertion door
-    f = required_form(slot)
-    if f is None or expr.form == f:
-        return expr                             # asserts no axis applies for value
-    return THIRFormConvert(value=expr, result_type=expr.result_type,
-                           form=f, is_const=slot.is_const, move=slot.move)
+def convert(expr: THIRExpr, slot: Slot, types, *,
+            explicit_copy: bool = False) -> Plan | Refuse:
+    # reads expr.source (the Source stamp), the Slot and the type relation
+    # between them -- never the sink's identity, the expression's kind or
+    # the lowering context. explicit_copy: the source is copied, never
+    # moved (a peeled `copy()` argument, a borrowed source sema warned).
 ```
 
+`Slot` (`tpyc/thir/lower/context.py`) describes the place: its type, what it
+`holds` (OWNS / VALUE / ERASED / RELOCATE / BORROWS / POINTER / TRAIT), the
+const-ness it asks for, the construction mode (member-init, assignment,
+return) and the view lifetime it obliges. A `Plan` is the converted
+expression (built from the existing nodes: `THIRFormConvert`, `THIRMove`,
+`THIRCopy`, `THIROptViewArg`, `THIROptionalPtrArg`) with its effect (PASS /
+LIFT / COPY / MOVE; `MATERIALIZE` -- the source lands in storage the caller
+provides -- is declared but no row produces it yet); a `Refuse` carries the key the sink files under its own
+family (`field_write.lift.borrow`). The field write and the migrated return
+rows go through it; the remaining sinks are the consolidation's later units.
+
 Today's ~12 predicates + 22 side-sets + per-site re-derivations collapse into two
-carried facts read here: the source's `form` and the slot's form. This is the bulk
+carried facts read here: the source's `Source` and the `Slot`. This is the bulk
 of the win and the bulk of the risk -- the side-sets encode subtle const / rebind /
-suspension / null-state facts the tags must preserve to stay byte-identical.
+suspension / null-state facts the stamp must preserve.
 
 #### RefType (Open Q 12) -- narrowed dissolution
 
@@ -917,16 +950,20 @@ consumes, made honest in one unit:
   its axis only where they left `VALUE`, an ordering contract that one
   `_call_result_form` read by both would remove (TODO).
 
-The name read carries `indirect` beside `deref` (`raw_pointer` = the bare
-`T*`), since `BORROW` spells both `T&` and `T*`. That is representation on an
-expression node, the same exception `deref` already is to "representation
-stays on `THIRVarDecl`". The consuming method's receiver carries the same
-`is_last_use` / `is_movable` stamp a name does.
+The name read derives `indirect` from its binding (`Source.binding.pointer`)
+beside `deref` (`raw_pointer` = the bare `T*`), since `BORROW` spells both
+`T&` and `T*`. That is representation on an expression node, the same
+exception `deref` already is to "representation stays on `THIRVarDecl`".
+The consuming method's receiver carries the same `Source.movable` a name
+does.
 
-The field-write sink (`thir/lower/field_write.py`) decides its render from
-`form`, `_node_moves` and `result_type`; what it still asks before lowering
--- the whole-binding read, the pointer-slot lift, the global-slot use, the
-view shim's param type -- is the residue the TODO entry's step (e) names.
+The field-write sink (`thir/lower/field_write.py`) builds a literal against
+its slot and hands every other source, lowered once, to `convert` with the
+field's `Slot` (`field_slot_use`); the conversion reads the source's stamped
+`Source` -- its `binding` answers the whole-binding read, the pointer-slot
+lift and the view shim's param type -- and the slot alone. What the sink
+still decides itself is its target / receiver and the named language-rule
+refusals (a stored lambda, the view-slot fence).
 
 The PLACEMENT half of the slot contract -- whether a statement exists to
 hoist a declaration before -- is a fact about the whole expression tree
@@ -2047,7 +2084,7 @@ The lowering pass (`tpyc/mir/lower.py`) converts THIR to MIR:
    `x` is known to be `Foo`" after flattening THIR control flow into basic blocks.
 
 3. **Initial Move/Copy assignment.** The lowering pass inserts `Move` for last-use
-   sites (from THIR's `is_last_use` flags) and `Copy` elsewhere. The optimization
+   sites (from THIR's `Source.movable`) and `Copy` elsewhere. The optimization
    pass may upgrade `Copy` -> `Move` later.
 
 4. **Borrow creation.** Alias assignments (`y = x` for non-value types) become

@@ -228,7 +228,7 @@ def test_receiver_reads_and_alias_access_are_checked(artifacts: Artifacts) -> No
     # A readonly receiver cannot become writable by accessing its field directly.
     fn = functions["singleton"]
     store = replace(fn.body[1], target=replace(fn.body[1].target, receiver=th.THIRSelf(
-        fn.receiver.type, form=th.Form.BORROW)))
+        fn.receiver.type, form=th.Form.BORROW, pointer=True)))
     uncovered(replace(fn, receiver=replace(fn.receiver, readonly=True), body=(store, fn.body[2])),
               "readonly field store")
 
