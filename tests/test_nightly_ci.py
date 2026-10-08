@@ -1,12 +1,14 @@
-"""Unit tests for the nightly-CI orchestrator (ci/nightly/nightly.py):
-report logic (parse_junit + format_report), the per-config script builders,
-and the backend dispatch / self-disable gate. The real docker/ssh/email
+"""Unit tests for the nightly-CI orchestrator (ci/nightly/nightly.py) and its
+GitHub Actions side (gha.py): report logic (parse_junit + format_report),
+the per-config script builders, the backend dispatch / self-disable gate, and
+the Actions matrix and report. The real docker/ssh/email
 plumbing is validated end-to-end by `nightly.py --smoke`; these cover the
 decisions an unattended night makes about what to run and report."""
 
 import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 _REPO = Path(__file__).resolve().parent.parent
@@ -299,3 +301,118 @@ def test_run_logged_feeds_the_script_on_stdin_and_logs_it(
     assert rc == 0
     text = log.read_text()
     assert "ran-to-the-end" in text and "<<'EOF'" in text and script in text
+
+
+_gha_spec = importlib.util.spec_from_file_location(
+    "tpy_nightly_gha", _NIGHTLY_PATH.parent / "gha.py")
+gha = importlib.util.module_from_spec(_gha_spec)
+_gha_spec.loader.exec_module(gha)
+
+
+def test_gha_matrix_maps_every_runnable_row() -> None:
+    """GitHub runs the same rows and phases as the local runner: containers
+    for the Linux rows, the hosted macOS runner (Apple clang pinned) for the
+    ssh row, and nothing for a host-installed toolchain like osxcross."""
+    configs = _configs()
+    m = gha.matrix(configs, set(), smoke=False)
+    linux = {r["name"]: r for r in m["linux"]}
+    hosted = {c["name"] for c in configs
+              if not (c.get("platform") or c.get("requires") or c.get("mounts"))}
+    assert set(linux) == hosted
+    [mac] = m["macos"]
+    assert mac["runner"] == "macos-15"
+    # the ssh backend's native run, with the hosted image's clang pinned
+    assert mac["command"] == "uv run pytest " + " ".join(
+        nightly.native_pytest_args(False, "junit-macos-native.xml", cxx="clang"))
+    for c in configs:
+        row = linux.get(c["name"])
+        if row is None:
+            continue
+        assert row["container"] == c["base_image"]
+        # the same phase selection as the docker backend
+        assert row["command"] == "uv run pytest " + " ".join(
+            nightly.suite_pytest_args(c, False, f"junit-{c['name']}.xml"))
+        assert ("lld" in row["apt"].split()) == (not c.get("cpython"))
+        env = row["env"].splitlines()
+        if c.get("cpython"):
+            assert env[:2] == [f"UV_PYTHON={c['cpython']}", "UV_PYTHON_DOWNLOADS=automatic"]
+        else:
+            # the distro Python is the base image's axis, never a managed one
+            assert env[:2] == ["UV_PYTHON=/usr/bin/python3", "UV_PYTHON_DOWNLOADS=never"]
+
+
+def test_gha_matrix_script_and_env_rows() -> None:
+    """A script row runs its script verbatim and is judged by its exit code;
+    a row's own env entries ride along after the interpreter pins."""
+    cfg = {"name": "lint", "base_image": "ubuntu:24.04", "script": "make lint",
+           "env": ["FOO=1"]}
+    [row] = gha.matrix([cfg], set(), smoke=False)["linux"]
+    assert row["command"] == "make lint" and row["script"] is True
+    assert row["env"].splitlines()[-1] == "FOO=1"
+
+
+def test_gha_cli_rejects_rows_it_cannot_run(tmp_path: Path) -> None:
+    """Naming a row the hosted runners cannot run (osxcross) or one that does
+    not exist is an error, not an empty -- and therefore green -- matrix."""
+    gha_py = str(_NIGHTLY_PATH.parent / "gha.py")
+    for rows in ("macos-arm64", "nosuch"):
+        r = subprocess.run([sys.executable, gha_py, "matrix", "--rows", rows],
+                           capture_output=True, text=True)
+        assert r.returncode == 2 and rows in r.stderr
+    empty = json.dumps({"linux": [], "macos": []})
+    r = subprocess.run([sys.executable, gha_py, "report", str(tmp_path),
+                        "--matrix", empty], capture_output=True, text=True)
+    assert r.returncode == 1
+
+
+def test_gha_matrix_row_filter_and_smoke() -> None:
+    m = gha.matrix(_configs(), {"zig", "macos-native"}, smoke=True)
+    assert [r["name"] for r in m["linux"]] == ["zig"]
+    assert m["linux"][0]["uv_sync"] == "--extra bundled"
+    assert all("-k" in r["command"] for r in m["linux"] + m["macos"])
+
+
+def test_gha_report_verdicts(tmp_path: Path) -> None:
+    """A row is green only with a clean junit AND a zero exit; a missing
+    result (job died or was cancelled) is an error, never a silent pass."""
+    (tmp_path / "junit-green.xml").write_text(
+        '<testsuites><testsuite tests="2" failures="0" errors="0" skipped="0"'
+        ' time="60"><testcase name="a"/><testcase name="b"/></testsuite>'
+        '</testsuites>')
+    (tmp_path / "exit-green.txt").write_text("0\n")
+    (tmp_path / "junit-red.xml").write_text(_JUNIT)
+    (tmp_path / "exit-red.txt").write_text("1\n")
+    (tmp_path / "junit-crashed.xml").write_text(
+        '<testsuites><testsuite tests="1" failures="0" errors="0" skipped="0">'
+        '<testcase name="a"/></testsuite></testsuites>')
+    (tmp_path / "exit-crashed.txt").write_text("3\n")
+    rows = {"linux": [{"name": n, "script": False}
+                      for n in ("green", "red", "crashed", "missing")],
+            "macos": []}
+    text, green = gha.report(tmp_path, rows, smoke=False, rev="abc")
+    assert not green
+    status = {r.name: r.status for r in
+              (gha.row_result(tmp_path, n, False)
+               for n in ("green", "red", "crashed", "missing"))}
+    assert status == {"green": "pass", "red": "test-failures",
+                      "crashed": "error", "missing": "error"}
+    assert "FAIL 3/4" in text and "re_basic" in text
+    only_green = {"linux": [{"name": "green", "script": False}], "macos": []}
+    assert gha.report(tmp_path, only_green, smoke=False, rev="abc")[1]
+    assert not gha.report(tmp_path, {"linux": [], "macos": []}, smoke=False, rev="abc")[1]
+
+
+def test_gha_verdicts_match_the_local_runner(tmp_path: Path) -> None:
+    """Both runners judge a row through nightly.suite_verdict: a script row by
+    its exit code, a truncated junit as one red row (not a crashed report)."""
+    (tmp_path / "exit-script-ok.txt").write_text("0\n")
+    (tmp_path / "exit-script-bad.txt").write_text("3\n")
+    (tmp_path / "junit-truncated.xml").write_text("<testsuites><testsuite")
+    (tmp_path / "exit-truncated.txt").write_text("1\n")
+    (tmp_path / "junit-no-exit.xml").write_text(_JUNIT)
+    cases = {"script-ok": (True, "pass"), "script-bad": (True, "test-failures"),
+             "script-died": (True, "error"), "truncated": (False, "error"),
+             "no-exit": (False, "test-failures")}
+    for name, (script, want) in cases.items():
+        assert gha.row_result(tmp_path, name, script).status == want, name
+    assert "junit parse failed" in gha.row_result(tmp_path, "truncated", False).detail

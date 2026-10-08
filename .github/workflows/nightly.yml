@@ -1,0 +1,169 @@
+# Nightly CI on GitHub-hosted runners: every row of ci/nightly/configs.json
+# runs in parallel, cold (no cache is kept between runs: a full matrix's
+# ccache would not fit GitHub's per-repo cache budget, and a nightly can
+# afford cold builds). ci/nightly/gha.py turns the configs into the matrix
+# and the rows' junit files into the report on the run's summary page; a red
+# row fails the run, which GitHub reports by email. See ci/nightly/README.md.
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 1 * * *"
+  workflow_dispatch:
+    inputs:
+      rows:
+        description: "Comma-separated config names (empty = all)"
+        type: string
+        default: ""
+      smoke:
+        description: "Run only the smoke slice"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v7
+      - id: matrix
+        env:
+          ROWS: ${{ inputs.rows }}
+          SMOKE: ${{ inputs.smoke && '--smoke' || '' }}
+        run: echo "matrix=$(python3 ci/nightly/gha.py matrix --rows "$ROWS" $SMOKE)" >> "$GITHUB_OUTPUT"
+
+  linux:
+    needs: plan
+    if: fromJSON(needs.plan.outputs.matrix).linux[0] != null
+    strategy:
+      fail-fast: false
+      matrix:
+        row: ${{ fromJSON(needs.plan.outputs.matrix).linux }}
+    name: ${{ matrix.row.name }}
+    runs-on: ubuntu-latest
+    # --init: the default PID 1 (`tail -f /dev/null`) never reaps orphans,
+    # and every `zig c++` leaves zombie `zig` processes behind; unreaped they
+    # exhaust the PID space two-thirds into the zig row.
+    container:
+      image: ${{ matrix.row.container }}
+      options: --init
+    timeout-minutes: 350
+    # Container steps default to `sh` (dash).
+    defaults:
+      run:
+        shell: bash
+    env:
+      DEBIAN_FRONTEND: noninteractive
+      NAME: ${{ matrix.row.name }}
+      ROW_COMMAND: ${{ matrix.row.command }}
+    steps:
+      - name: Packages
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends ${{ matrix.row.apt }}
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0  # no floating major tags since v8
+        with:
+          enable-cache: false
+      - name: Sync
+        env:
+          ROW_ENV: ${{ matrix.row.env }}
+        run: |
+          echo "$ROW_ENV" >> "$GITHUB_ENV"
+          export $ROW_ENV
+          uv sync --quiet ${{ matrix.row.uv_sync }}
+      - name: Suite
+        run: |
+          # The row's own exit code is the verdict input, so nothing may stop
+          # the step before it is recorded.
+          set +e
+          export PYTHONUNBUFFERED=1
+          eval "$ROW_COMMAND" 2>&1 | tee "suite-$NAME.log" \
+            | grep --line-buffered -v "^tpy| thir faces"
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > "exit-$NAME.txt"
+          exit "$rc"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: nightly-${{ matrix.row.name }}
+          path: |
+            junit-*.xml
+            suite-*.log
+            exit-*.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  macos:
+    needs: plan
+    if: fromJSON(needs.plan.outputs.matrix).macos[0] != null
+    strategy:
+      fail-fast: false
+      matrix:
+        row: ${{ fromJSON(needs.plan.outputs.matrix).macos }}
+    name: ${{ matrix.row.name }}
+    runs-on: ${{ matrix.row.runner }}
+    timeout-minutes: 350
+    env:
+      NAME: ${{ matrix.row.name }}
+      ROW_COMMAND: ${{ matrix.row.command }}
+    steps:
+      - name: Newest Xcode
+        run: |
+          sudo xcode-select -s "$(ls -d /Applications/Xcode_*.app | sort -V | tail -1)"
+          xcodebuild -version; clang++ --version | head -1
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0  # no floating major tags since v8
+        with:
+          enable-cache: false
+      - name: Sync
+        run: uv sync --quiet
+      - name: Suite
+        run: |
+          # The row's own exit code is the verdict input, so nothing may stop
+          # the step before it is recorded.
+          set +e
+          export PYTHONUNBUFFERED=1
+          eval "$ROW_COMMAND" 2>&1 | tee "suite-$NAME.log" \
+            | grep --line-buffered -v "^tpy| thir faces"
+          rc=${PIPESTATUS[0]}
+          echo "$rc" > "exit-$NAME.txt"
+          exit "$rc"
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: nightly-${{ matrix.row.name }}
+          path: |
+            junit-*.xml
+            suite-*.log
+            exit-*.txt
+          if-no-files-found: ignore
+          retention-days: 14
+
+  report:
+    needs: [plan, linux, macos]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v8
+        with:
+          pattern: nightly-*
+          path: results
+          merge-multiple: true
+      - name: Report
+        env:
+          MATRIX: ${{ needs.plan.outputs.matrix }}
+          SMOKE: ${{ inputs.smoke && '--smoke' || '' }}
+        run: |
+          python3 ci/nightly/gha.py report results --matrix "$MATRIX" \
+            --rev "$GITHUB_SHA" $SMOKE | tee -a "$GITHUB_STEP_SUMMARY"
+          exit "${PIPESTATUS[0]}"

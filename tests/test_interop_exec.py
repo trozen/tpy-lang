@@ -74,7 +74,8 @@ def _run_tpyc(args: list[str], what: str) -> str:
     """Invoke the real `tpyc` CLI (exercises the first-class .so build mode)
     and return stderr -- under `-q` on the emit path that is exactly the
     front-end diagnostics, which the caller snapshots into diag.txt."""
-    cmd = [sys.executable, "-m", "tpyc", *args]
+    # `-P`: no module in the cwd may shadow a stdlib module tpyc itself imports.
+    cmd = [sys.executable, "-P", "-m", "tpyc", *args]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
     if result.returncode != 0:
         pytest.fail(
@@ -149,7 +150,7 @@ def test_exec_on_ext_module_rejected(case_dir, mod_py, tmp_path):
     """`tpyc --exec` on an `# tpy: ext_module` must fail loudly: a .so is not
     runnable, so the CLI rejects it instead of building something it can't
     launch."""
-    cmd = [sys.executable, "-m", "tpyc", str(mod_py), "-x", "-o", str(tmp_path)]
+    cmd = [sys.executable, "-P", "-m", "tpyc", str(mod_py), "-x", "-o", str(tmp_path)]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
     if result.returncode == 0:
         pytest.fail(

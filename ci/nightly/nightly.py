@@ -142,7 +142,14 @@ def container_script(cfg: dict, smoke: bool) -> str:
         # verdict off the exit code -- the command must be a ratchet, not a
         # report, or the row is decoration.
         return "\n".join(setup + [cfg["script"]])
-    pytest_args = [f"--junitxml=/out/junit-{cfg['name']}.xml"]
+    pytest_args = suite_pytest_args(cfg, smoke, f"/out/junit-{cfg['name']}.xml")
+    return "\n".join(setup + [f"uv run pytest {shlex.join(pytest_args)}"])
+
+
+def suite_pytest_args(cfg: dict, smoke: bool, junit: str) -> list[str]:
+    """A pytest row's arguments -- shared by the docker backend and the GitHub
+    Actions matrix (ci/nightly/gha.py), so both run the same phases."""
+    pytest_args = [f"--junitxml={junit}"]
     # --no-exec rows need no C++ toolchain, so `cxx` is optional for them.
     if cfg.get("cxx"):
         pytest_args.insert(0, f"--cxx={cfg['cxx']}")
@@ -162,7 +169,7 @@ def container_script(cfg: dict, smoke: bool) -> str:
     pytest_args += cfg.get("pytest_args", [])
     if smoke:
         pytest_args += ["-k", SMOKE_FILTER]
-    return "\n".join(setup + [f"uv run pytest {shlex.join(pytest_args)}"])
+    return pytest_args
 
 
 def export_source(dest: Path) -> None:
@@ -245,6 +252,17 @@ def _run_docker(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
                       script=container_script(cfg, smoke))
 
 
+def native_pytest_args(smoke: bool, junit: str, cxx: str | None = None) -> list[str]:
+    """A native-host row's arguments: the full comp+exec+cpy run, the
+    toolchain auto-detected unless the host needs `cxx` pinned."""
+    pytest_args = ["--force-exec", f"--junitxml={junit}"]
+    if cxx:
+        pytest_args.insert(0, f"--cxx={cxx}")
+    if smoke:
+        pytest_args += ["-k", SMOKE_FILTER]
+    return pytest_args
+
+
 def remote_script(cfg: dict, smoke: bool) -> str:
     """The script run over ssh on a native host (e.g. macOS, default shell
     zsh). Full comp+exec+cpy: no --cxx (auto-detect the host clang) and no
@@ -255,9 +273,7 @@ def remote_script(cfg: dict, smoke: bool) -> str:
     is written one level above the synced repo so rsync --delete never touches
     it. Portable sh/zsh only -- no Linux-only utilities."""
     workdir = shlex.quote(cfg["ssh"]["workdir"])
-    pytest_args = ["--force-exec", f"--junitxml=../junit-{cfg['name']}.xml"]
-    if smoke:
-        pytest_args += ["-k", SMOKE_FILTER]
+    pytest_args = native_pytest_args(smoke, f"../junit-{cfg['name']}.xml")
     return "\n".join([
         "set -eu",
         'export PATH="$HOME/.local/bin:$PATH"',
@@ -341,36 +357,46 @@ def run_config(cfg: dict, src_dir: Path, out_dir: Path, timeout: float,
         res.duration_s = time.monotonic() - start
         return res
     res.duration_s = time.monotonic() - start
+    suite_verdict(res, out_dir / f"junit-{cfg['name']}.xml", rc,
+                  script=bool(cfg.get("script")))
+    return res
 
-    if cfg.get("script"):
+
+def suite_verdict(res: ConfigResult, junit: Path, rc: int | None,
+                  script: bool) -> None:
+    """Set a row's status from its junit file and exit code -- the one rule
+    for the local runner and the GitHub Actions report. `rc` is None when no
+    exit code was recorded (the job died before the suite or was cancelled)."""
+    if rc is None and (script or not junit.exists()):
+        res.status = "error"
+        res.detail = "no exit code -- the suite never finished"
+        return
+    if script:
         # No junit from a script row: its exit code IS the verdict.
         res.status = "pass" if rc == 0 else "test-failures"
         if rc != 0:
             res.failed = 1
             res.detail = f"script exited {rc}"
-        return res
-
-    junit = out_dir / f"junit-{cfg['name']}.xml"
-    if junit.exists():
-        try:
-            parse_junit(junit, res)
-        except ET.ParseError as exc:
-            # Truncated/corrupt XML (pytest killed mid-write) must not lose
-            # the whole night's report.
-            res.status = "error"
-            res.detail = f"junit parse failed: {exc}"
-            return res
-        if res.failed or res.errors:
-            res.status = "test-failures"
-        elif rc == 0:
-            res.status = "pass"
-        else:
-            res.status = "error"
-            res.detail = f"pytest exit {rc} with no recorded test failures"
-    else:
+        return
+    if not junit.exists():
         res.status = "error"
         res.detail = f"no junit xml produced (exit {rc}); infra/build failure"
-    return res
+        return
+    try:
+        parse_junit(junit, res)
+    except ET.ParseError as exc:
+        # Truncated/corrupt XML (pytest killed mid-write) must not lose
+        # the whole night's report.
+        res.status = "error"
+        res.detail = f"junit parse failed: {exc}"
+        return
+    if res.failed or res.errors:
+        res.status = "test-failures"
+    elif rc == 0:
+        res.status = "pass"
+    else:
+        res.status = "error"
+        res.detail = f"pytest exit {rc} with no recorded test failures"
 
 
 def parse_junit(path: Path, res: ConfigResult) -> None:

@@ -80,6 +80,7 @@
     },
     {
       "name": "macos-native",
+      "platform": "macos",
       "ssh": { "host": "tpy-nightly-mac", "workdir": "tpy-nightly-work" },
       "timeout": 21600
     }

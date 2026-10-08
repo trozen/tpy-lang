@@ -33,9 +33,11 @@ main()
 def run_tpyc(cwd: Path, *argv: str) -> subprocess.CompletedProcess:
     # A per-program PCH is baked into every TU's ccache key, so the stdlib
     # objects would miss for each program dir and each run; without it, and
-    # with the temp dir's paths relativized, they hit across both.
+    # with the temp dir's paths relativized, they hit across both. `-P`: the
+    # cwd holds a `math.py` shadowing stdlib math, which must not shadow it
+    # for tpyc's own process (on macOS CPython's math is not built in).
     return subprocess.run(
-        [sys.executable, "-m", "tpyc", "--no-pch", *argv],
+        [sys.executable, "-P", "-m", "tpyc", "--no-pch", *argv],
         cwd=cwd, capture_output=True, text=True, timeout=600,
         env={**os.environ, "CCACHE_BASEDIR": str(cwd)},
     )
@@ -218,7 +220,7 @@ def test_inline_program_build_dir_is_removed(
 
     def run(*argv: str) -> subprocess.CompletedProcess:
         return subprocess.run(
-            [sys.executable, "-m", "tpyc", "--no-pch", *argv],
+            [sys.executable, "-P", "-m", "tpyc", "--no-pch", *argv],
             cwd=tmp_path, capture_output=True, text=True, timeout=600,
             env={**os.environ, "TMPDIR": str(temp_root),
                  "CCACHE_BASEDIR": str(tmp_path)})
