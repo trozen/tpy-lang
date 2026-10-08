@@ -5,10 +5,40 @@ configurations (compiler versions, dependency modes, distro/Python/libstdc++
 combinations) break in ways a single local dev toolchain never surfaces;
 this nightly is the safety net that catches toolchain/config breakage.
 Correctness of the code itself is covered by the developer running the suite
-before pushing. Runs as a plain cron job on the dedicated test box,
-sequentially -- most rows build in a fresh container per config (a full
-cold config is ~25 min on 16 cores, so the whole matrix fits a night
-without parallelism); the native-macOS row instead runs over SSH.
+before pushing.
+
+It runs on **GitHub Actions** (`.github/workflows/nightly.yml`); the local
+runner below (`nightly.py` + cron) is kept for manual runs on a box of your
+own.
+
+## GitHub Actions
+
+- **When:** daily at 01:00 UTC on `master`, or by hand: Actions -> nightly ->
+  Run workflow, optionally with `rows` (comma-separated config names) and
+  `smoke` (the `SMOKE_FILTER` slice only).
+- **What:** `gha.py matrix` turns `configs.json` into one job per row, all in
+  parallel: the Linux rows in a `container:` of their `base_image` (apt
+  installs the row's packages plus `lld`), the `"platform": "macos"` row on
+  GitHub's `macos-15` runner with Apple clang (`--cxx=clang`: the image also
+  ships Homebrew GCC, which auto-detection would pick). A row's pytest
+  arguments come from the same helpers as the local backends
+  (`suite_pytest_args`, `native_pytest_args`) and its verdict from the same
+  `suite_verdict`. Rows needing a host-installed toolchain (`requires` /
+  `mounts`, i.e. osxcross) are left out -- the native macOS job covers that
+  platform -- and naming one in `rows` is an error.
+- **Containers start with `--init`.** Every `zig c++` leaves zombie `zig`
+  processes behind, and a container job's default PID 1 (`tail -f
+  /dev/null`) never reaps them: without an init the zig row runs out of PIDs
+  two-thirds of the way in (thousands of `SystemResources` failures).
+- **No cache, by design.** Every row builds cold: a full matrix's ccache
+  (~1.1 GB per Linux row, ~2.3 GB for macOS) would not fit GitHub's ~10 GB
+  per-repo cache budget, and with every row in parallel the run still ends
+  ~3 h after it starts (Linux rows 1.5-3 h on 4 vCPU, macOS ~1.5 h). A cold
+  build also cannot hide anything behind a cache.
+- **Results:** the `report` job (`gha.py report`) writes the familiar table
+  to the run's summary page and fails the run if any row is red -- GitHub
+  emails the failure. Each row's junit, full suite log and exit code are
+  uploaded as the `nightly-<row>` artifact (14 days).
 
 ## Files
 
@@ -28,6 +58,8 @@ without parallelism); the native-macOS row instead runs over SSH.
   emails the report via msmtp, prunes old logs.
 - `cron-nightly.sh` -- the single script cron invokes: flock, source the env
   file, `git pull` master, exec the freshly-pulled `nightly.py`.
+- `gha.py` -- the GitHub Actions side (stdlib-only): `matrix` (configs ->
+  job matrix) and `report` (junit + exit codes -> the run summary).
 
 ## Config notes
 
@@ -61,7 +93,7 @@ without parallelism); the native-macOS row instead runs over SSH.
   alongside 3.x via a single version `#ifdef`, so the system floor is
   2.28.0. Anything older is rejected cleanly by the version guard
   (`SystemLibVersionError`) rather than failing deep in the C compiler.
-- The macos-arm64 row cross-compiles the whole case set with osxcross and
+- (Local runner only.) The macos-arm64 row cross-compiles the whole case set with osxcross and
   passes nothing but `--cxx`: the harness detects the darwin target itself
   (`-dumpmachine`) and auto-degrades exec to build-only. The row
   self-disables ("unavailable" in the report, never red) until the
@@ -106,8 +138,9 @@ without parallelism); the native-macOS row instead runs over SSH.
   `ld`. Any case that does not build on mac is a genuine bug to fix (or,
   if truly unportable, gets a targeted skip added at that point); the row
   reports the fail-set as red -- that red is the worklist, not noise.
-- The `macos-native` row runs the FULL suite (comp+exec+cpy) *natively* on
-  a Mac over SSH -- so it catches runtime-parity divergences the build-only
+- On GitHub the `macos-native` row runs on the hosted `macos-15` runner; the
+  rest of this note is the local runner. There it runs the FULL suite
+  (comp+exec+cpy) *natively* on a Mac over SSH -- so it catches runtime-parity divergences the build-only
   osxcross cross row structurally cannot (e.g. a wrong `errno`-derived
   exception). It's a second backend in `nightly.py`: instead of a docker
   container, it rsyncs the source into a persistent remote workdir (relative
@@ -121,7 +154,7 @@ without parallelism); the native-macOS row instead runs over SSH.
   Config carries only an opaque `ssh` alias (`host`, `workdir`); the real
   hostname/user/key live in `~/.ssh/config` on the box, out of git.
 
-## Caching (deliberate -- do not "optimize")
+## Caching on the local runner (deliberate -- do not "optimize")
 
 A named docker volume `tpy-nightly-cache` (auto-created on first run) is
 mounted at `/cache` in every container and shared across configs and nights:

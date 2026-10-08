@@ -2425,7 +2425,10 @@ THIR -> MIR -> passes ──┤
 ```
 
 Passes 1-5 (liveness, move optimization, borrow checking, value range, dead code)
-are shared. The backends diverge only at the final emission stage.
+are shared. The backends diverge only at the final emission stage. A
+WebAssembly backend over linear memory -- the recorded direction for running
+compile-time macros without CPython (`docs/SELF_HOSTING.md` section 10) -- would
+be a third branch here, sharing the same passes.
 
 ### What LLVM Requires Beyond C++
 

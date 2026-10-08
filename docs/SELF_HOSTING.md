@@ -50,6 +50,7 @@ What it would take for tpyc to compile itself.
 | 8.2  | `pathlib.Path` or equivalent   | S      | TODO   |
 | 8.5  | `subprocess` (spawn processes) | S      | Partial |
 | 8.6  | `tempfile`/`shutil`/`os` wraps | S      | TODO   |
+| 10   | Macros without CPython (Wasm)  | L      | Direction only |
 
 > **Effort key:** XS = hours, S = a day, M = a few days, L = a week+
 
@@ -680,6 +681,92 @@ variable. `zip` maps to parallel iteration.
 
 After the source refactors in section 7.1, the compiler source won't use `isinstance`.
 It can be deferred as a general language feature.
+
+---
+
+## 10. Compile-time macros without CPython
+
+Macro modules (`# tpy: macro_module`) run under CPython inside the compiler process
+today. `tpyc/macro_loader.py` restricts their imports to `tpyc.macro_api` and removes
+`open`/`exec`/`eval`, but that is a soft restriction, not a sandbox: compiling a
+project already runs its macro code with the compiler's privileges. A self-hosted
+tpyc has no CPython to run them in.
+
+The stdlib macros (`dataclasses`, `enum`, `argparse`, `struct`, `tplib.json.model`,
+`_functools_macros`, `_macro_helpers`; ~3700 lines in 2026-10) are typed programs
+over one API: `macro_api`'s AST builders (`ast.name`, `ast.method_call`,
+`ast.var_decl`, `ast.call`, `ast.quote`, ...), `ClassInfo`, f-strings,
+`isinstance`, small classes, lambdas. No `eval`/`exec`, no third-party imports.
+
+**Direction (2026-10, not a decided design).** Nothing below is scheduled; it
+records where the discussion landed so later work does not close the path off.
+Each step gets its own design pass when it is picked up.
+
+1. **Macro code is TPy code.** `macro_api` becomes a TPy library and the stdlib
+   macros compile with tpyc. Every option below needs it; it also flushes out
+   ordinary gaps (old-style `Generic[T]`/`TypeVar`, `NamedTuple`, `tuple[T, ...]`).
+2. **Macros compiled to WebAssembly.** tpyc emits Wasm directly for the macro
+   subset and runs it in an embedded Wasm runtime. The module reaches only the
+   host functions it imports (`macro_api`, `ClassInfo`, the string and container
+   operations the subset uses), so compiling never runs arbitrary code -- the
+   property an IDE / LSP or a CI build of an untrusted change needs -- and a macro
+   edit needs no C++ build. The same `.wasm` runs under a CPython-hosted tpyc
+   (`wasmtime` from PyPI, a prebuilt wheel) and a self-hosted one (wasmtime's C
+   API), so macros could be sandboxed before self-hosting.
+3. **Extend toward the full language,** one feature family at a time, checked
+   against the test corpus the way the cpy phase checks CPython parity.
+
+**Linear memory, the C++ backend's object model.** TPy's semantics are C++'s:
+records stored inline in fields and containers, borrows that point into an object
+(`T&` to a field, `T*` to a list element, a span over part of a buffer), and
+deterministic destruction (`__del__`, `Own` drops at scope end). Wasm's linear
+memory -- one bounds-checked byte array per module -- holds exactly that, with the
+same layouts the C++ backend produces. The backend then does what the C++
+compiler does today: layout (sizes, alignment, every generic instantiation), an
+allocator (TPy, or a small C one compiled to Wasm), drop insertion and moves, and
+a runtime library over raw memory (`str` as pointer + length, `list` as a growable
+buffer, `dict` as a hash table). That largely overlaps what `docs/IR_DESIGN.md`
+lists for the LLVM backend (monomorphization, drops, the runtime library), so
+this backend is in effect the first native one and its work carries over. Exceptions are independent of the memory model (Wasm 3.0 `throw` /
+`try_table`). A debug allocator that quarantines freed blocks would also make it
+a run-time check of TPy's lifetime rules. A hand-written module using exceptions
+and imported host functions ran under `wasmtime` 49.0 from Python (2026-10-08).
+
+**Emit from MIR, not THIR.** MIR is the planned backend-agnostic input
+(`docs/IR_DESIGN.md` "Future: LLVM Backend": THIR -> MIR -> passes -> backend):
+explicit control flow and places, which map onto Wasm's structured control flow,
+exceptions and memory addresses. Emitting from THIR would re-lower control flow
+(`try`/`finally`, `break`/`continue`, generators) in the new backend, duplicating
+MIR. It can start once MIR lowers every body of the macro subset, ahead of full
+MIR coverage. The runtime library could start as host functions and move to pure
+TPy compiled by the same backend.
+
+**Alternatives considered:**
+
+- *Compile the generated C++ to Wasm* (`zig c++ -target wasm32-wasi`), reusing the
+  whole C++ backend. Blocked on C++ exceptions, which TPy's `raise` / `try` lower
+  to: zig 0.16 builds its wasm libc++ without them (`undefined symbol:
+  __cxa_throw`), and with `-fwasm-exceptions -mexception-handling` its libc++
+  build fails in the LLVM backend (*undefined tag symbol cannot be weak*). Worth
+  re-checking when a wasm toolchain ships exception-enabled libc++; it would also
+  keep a C++ build per macro edit.
+- *Wasm GC objects* (Wasm 3.0 structs and arrays managed by the runtime's
+  collector) instead of linear memory. A much smaller first backend -- no
+  allocator, layout or drops -- but a different object model: a GC struct field
+  holds a scalar or a reference, never another struct inline; references point
+  at whole objects only, so a borrow of a field or element has no direct form;
+  and destruction timing is the collector's. Struct subtyping, `ref.test` and
+  exceptions ran in the same wasmtime probe.
+- *Our own typed bytecode and VM.* A higher-level instruction set (list and
+  string operations as host calls) is a smaller backend than Wasm, but we would
+  own the VM, its spec and its tooling, and it runs nowhere else.
+- *An embedded Python interpreter* (MicroPython, PocketPy) running macro source
+  as is. No backend, but a vendored C / C++ library, and two macro engines with
+  different semantics (CPython under today's tpyc, the interpreter when
+  self-hosted) unless it also ships as a compiled extension.
+- *Macros as native binaries* exchanging serialized AST over stdin/stdout. Same
+  trust model as today (macro code runs with the user's privileges); only useful
+  as a stopgap for a self-hosted tpyc before the Wasm backend exists.
 
 ---
 
