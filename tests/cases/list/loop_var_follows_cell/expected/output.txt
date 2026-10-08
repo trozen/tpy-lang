@@ -1,0 +1,49 @@
+list 3 [1, 2, 1099511627776]
+method 3 [1, 2, 1099511627776]
+set 1
+dict 1
+keys 1
+values 10
+items 1 10
+views 2 True {1: 10, 1099511627776: 1099511627776}
+in-views True True
+pairs 1 a
+pairs 2 b
+nested [(1, 'a'), (2, 'b'), (1099511627776, 'c')] 14 [[1, 2, 4], [3, 4, 1099511627776]]
+mixed 1 5
+mixed 1099511627776 0
+gen 1
+gen 2
+gen 1099511627776
+async 1099511627779
+else 3
+after 3
+after-list [1, 2, 3, 4]
+zero-trip [1099511627776]
+rep1 1
+rep1 2
+rep2 3
+repeat [1, 2] [3, 1099511627776]
+fresh 1099511627776
+num 1
+num 2
+str a!
+str b!
+float 2.5
+float 3.5
+reuse p! q
+rebind 12
+rebind 13
+rebind-list [1, 2, 1099511627776]
+unpack 11 2
+unpack-list 21 2 [(1, 2), (1099511627776, 3)]
+hoisted 6 [4, 5]
+capture 1
+lambda 2
+capture 2
+lambda 3
+captures 4 [1, 2, 3]
+inv 1
+inv-list [1, 2, 1099511627776]
+ctx 1
+ctx-list [1, 5000000000]

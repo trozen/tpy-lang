@@ -11227,7 +11227,7 @@
  "dict_si__ctor__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ctor__loop_var__decl_reassigned": [
   "ok",
@@ -11247,7 +11247,7 @@
  "dict_si__ctor__loop_var__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__ctor__loop_var__tuple_elem": [
   "ok",
@@ -11717,7 +11717,7 @@
  "dict_si__fn__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__fn__loop_var__decl_reassigned": [
   "ok",
@@ -11737,7 +11737,7 @@
  "dict_si__fn__loop_var__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__fn__loop_var__tuple_elem": [
   "ok",
@@ -12517,7 +12517,7 @@
  "dict_si__meth__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__meth__loop_var__decl_reassigned": [
   "ok",
@@ -12537,7 +12537,7 @@
  "dict_si__meth__loop_var__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "dict_si__meth__loop_var__tuple_elem": [
   "ok",
@@ -13017,7 +13017,7 @@
  "dict_si__nested__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: dict = %s0 %x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: dict = %s0 %x[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__loop_var__decl_reassigned": [
   "ok",
@@ -13037,7 +13037,7 @@
  "dict_si__nested__loop_var__recv_mut": [
   "ok",
   "",
-  "%s0[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%s0[str('z')] = lit(9) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__loop_var__tuple_elem": [
   "ok",
@@ -16552,12 +16552,12 @@
  "list_i__ctor__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__loop_var__field_write": [
   "ok",
@@ -16572,7 +16572,7 @@
  "list_i__ctor__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__ctor__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -17077,12 +17077,12 @@
  "list_i__fn__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__loop_var__field_write": [
   "ok",
@@ -17097,7 +17097,7 @@
  "list_i__fn__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__fn__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -17912,12 +17912,12 @@
  "list_i__meth__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__loop_var__field_write": [
   "ok",
@@ -17932,7 +17932,7 @@
  "list_i__meth__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i__meth__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -18447,12 +18447,12 @@
  "list_i__nested__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: list = %s0 method_call(%x, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: list = %s0 method_call(%x, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0"
+  "ptr_decl[ptr_addr] %x: list = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [lit(9)]) print(call(len [tpy::__len__], [%s1]) [raw]) print(call(len [tpy::__len__], [%s0]) [raw]) call(ne"
  ],
  "list_i__nested__loop_var__field_write": [
   "ok",
@@ -18467,7 +18467,7 @@
  "list_i__nested__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "method_call(%s0, push_back, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "list_i__nested__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -24847,7 +24847,7 @@
  "set_i__ctor__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ctor__loop_var__decl_reassigned": [
   "ok",
@@ -24867,7 +24867,7 @@
  "set_i__ctor__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__ctor__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -25372,7 +25372,7 @@
  "set_i__fn__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__fn__loop_var__decl_reassigned": [
   "ok",
@@ -25392,7 +25392,7 @@
  "set_i__fn__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__fn__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26207,7 +26207,7 @@
  "set_i__meth__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__meth__loop_var__decl_reassigned": [
   "ok",
@@ -26227,7 +26227,7 @@
  "set_i__meth__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "set_i__meth__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",
@@ -26742,7 +26742,7 @@
  "set_i__nested__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: set = %s0 method_call(%x, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "%x: set = %s0 method_call(%x, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__loop_var__decl_reassigned": [
   "ok",
@@ -26762,7 +26762,7 @@
  "set_i__nested__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
+  "method_call(%s0, insert, [lit(9)]) print(call(len [tpy::__len__], [%s0]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__loop_var__tuple_elem": [
   "reject:expr.method_call:method.recv.subscript",

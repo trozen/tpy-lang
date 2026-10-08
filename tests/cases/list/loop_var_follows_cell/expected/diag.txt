@@ -1,0 +1,1 @@
+main.py:217: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)

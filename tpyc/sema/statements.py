@@ -2631,7 +2631,15 @@ class StatementAnalyzer:
             else:
                 self.ctx.for_head_bodies.append(stmt.body)
                 try:
-                    iterable_type = self.expr.analyze_expr(stmt.iterable)
+                    # Iterating hands out elements, each a pending read that
+                    # follows the cell like `xs[i]` does: the statement itself
+                    # decides no width -- unless the loop variable is read
+                    # after the loop, which still decides it (TODO.md slice
+                    # (7d): a binding deciding its declaration once).
+                    decides = stmt.var_live_after is not False
+                    with self.pend.list_sink(None if decides
+                                             else stmt.iterable):
+                        iterable_type = self.expr.analyze_expr(stmt.iterable)
                 finally:
                     self.ctx.for_head_bodies.pop()
                 is_readonly_iterable = isinstance(iterable_type, ReadonlyType)
@@ -2765,7 +2773,9 @@ class StatementAnalyzer:
                     self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
                     self._check_loop_var_rebind(stmt, elem_type)
                     self._record_for_loop_var_type(stmt, elem_type)
-                    with self.scopes.loop_var(inner_scope, stmt.var, elem_type, iter_depth, is_foreach=True):
+                    cid_floor = self.ctx.pending_num_counter
+                    var_type = self._loop_var_cell_type(stmt, elem_type)
+                    with self.scopes.loop_var(inner_scope, stmt.var, var_type, iter_depth, is_foreach=True):
                         # Inside the declaration: the block rule reads the
                         # loop variable's own depth when it notes the binding.
                         self._note_loop_var_iteration(
@@ -2773,6 +2783,9 @@ class StatementAnalyzer:
                             placeable=not self._iteration_yields_copies(iterable_type))
                         for s in stmt.body:
                             self.analyze_stmt(s)
+                    # The head's variables leave scope with the loop: a later
+                    # binding of the name is another variable.
+                    self.pend.retire_loop_heads(cid_floor)
                     if track_loop_prov:
                         self.init.remove_loop_var_provenance(stmt.var)
                     for name in eph_added:
@@ -4614,8 +4627,56 @@ class StatementAnalyzer:
         """
         if not stmt.loc or stmt.is_tuple_unpack:
             return
-        self.ctx.declared_var_types[(stmt.loc.line, stmt.var)] = (
-            resolve_int_literals(elem_type, self.ctx.default_int_for_literal))
+        key = (stmt.loc.line, stmt.var)
+        table = self.ctx.declared_var_types
+        recorded = resolve_int_literals(elem_type,
+                                        self.ctx.default_int_for_literal)
+        table[key] = recorded
+        if value_leaves(recorded):
+            # An element of a container whose cells decide its leaves
+            # follows them, as a declaration bound to one does.
+            def follow(_types: tuple[TpyType, ...]) -> None:
+                table[key] = self.pend.finalize_values(table[key])
+            self.pend.defer(stmt, (recorded,), follow)
+        elif self.pend.container_cells(recorded) is not None:
+            # A row of a container whose cells decide it (`for row in g`)
+            # follows its resolution, as `row = g[0]` does.
+            def resolve(resolved: TpyType) -> None:
+                table[key] = resolved
+            self.ctx.func.after_list_resolution.append((recorded, resolve))
+
+    def _loop_var_cell_type(self, stmt: TpyForEach,
+                            elem_type: TpyType) -> TpyType:
+        """The type the loop variable reads as in the body. A head binding
+        an element a cell has not decided yet is a local first bound to a
+        value over a pending one (`y = xs[0]`): it gets a derived cell, so
+        a store into it, a capture of it or a use that needs its type
+        works on its own cell, never widening the container's."""
+        if stmt.hoist_loop_var:
+            # The head assigns the existing local, which reads as its own
+            # type; `_check_loop_var_rebind` holds the element to it.
+            existing = self.ctx.func.current_scope.lookup(stmt.var)
+            if existing is None:
+                return elem_type
+            return unwrap_readonly(unwrap_ref_type(existing))
+        return self._derived_cell_type(stmt.var, elem_type, stmt,
+                                       loop_head=True)
+
+    def _derived_cell_type(self, name: str, elem_type: TpyType,
+                           site: TpyStmt, loop_head: bool) -> TpyType:
+        """The type a new local `name` bound to an element of type
+        `elem_type` without a value expression of its own (a `for` head, a
+        tuple-unpack target) reads as: a derived cell of that element when
+        it is a pending number, else the element's type."""
+        elem = strip_int(elem_type)
+        if (not is_pending_num(elem)
+                or name in self.ctx.func.global_declarations):
+            return elem_type
+        cell = self.pend.new_cell(name, None, derived=True,
+                                  is_float=bool(value_family(elem)))
+        cell.loop_head = loop_head
+        self.pend.add_store(cell, elem, site)
+        return self.pend.cell_type(cell)
 
     def _is_body_first_local(self, name: str) -> bool:
         """Whether `name` is pending as a local a loop body (not a `for`
@@ -4685,12 +4746,22 @@ class StatementAnalyzer:
                 f"is not yet supported; rename the loop variable", stmt)
         elem_bare = self._resolve_literal_type(
             unwrap_readonly(unwrap_ref_type(unwrap_own(elem_type))))
-        if exist_bare != elem_bare:
-            raise self.ctx.error(
-                f"for-loop rebinds existing variable '{stmt.var}' of "
-                f"type '{exist_bare}' with elements of type "
-                f"'{elem_bare}'; rename the loop variable or match "
-                f"the types", stmt)
+
+        def check(types: tuple[TpyType, ...]) -> None:
+            exist_t, elem_t = types
+            if exist_t != elem_t:
+                raise self.ctx.error(
+                    f"for-loop rebinds existing variable '{stmt.var}' of "
+                    f"type '{exist_t}' with elements of type "
+                    f"'{elem_t}'; rename the loop variable or match "
+                    f"the types", stmt)
+        if value_leaves(exist_bare) or value_leaves(elem_bare):
+            # An element whose container's cells are still open is judged
+            # at the type they settle to, as a store of one into a typed
+            # local is.
+            self.pend.defer(stmt, (exist_bare, elem_bare), check)
+        else:
+            check((exist_bare, elem_bare))
         stmt.hoist_loop_var = True
 
     def _unbind_branch_pending(self, scope_before: set[str],
@@ -6756,7 +6827,7 @@ class StatementAnalyzer:
         """Analyze tuple unpacking: a, b = expr. A tuple read from a list
         whose leaves cells decide reaches it undecided: each target binds
         its leaf, as `a = xs[1][0]` does."""
-        with self.pend.list_sink(None if stmt.is_loop_head else stmt.value):
+        with self.pend.list_sink(stmt.value):
             rhs_type = self.expr.analyze_expr(stmt.value)
         rhs_check = rhs_type.wrapped if isinstance(rhs_type, OwnType) else rhs_type
         # A readonly tuple (a `readonly[list[tuple[..]]]` element, a readonly
@@ -6902,7 +6973,13 @@ class StatementAnalyzer:
                 # takes BigInt needs that flexibility (heapq pattern).
                 elem_type = resolve_int_literals(elem_type, self.ctx.default_int_for_literal)
                 stmt.target_types[i] = elem_type
-                self.ctx.func.current_scope.define(name, elem_type)
+                # A leaf a cell has not decided yet binds as `a = xs[1][0]`
+                # does: the target has its own derived cell.
+                read_type = (elem_type if self.ctx.is_top_level
+                             else self._derived_cell_type(
+                                 name, elem_type, stmt,
+                                 loop_head=stmt.is_loop_head))
+                self.ctx.func.current_scope.define(name, read_type)
                 self.ctx.func.nonstmt_bound_names.add(name)
                 # Record scope depth so the definite-assignment read-check sees
                 # the target (mirrors the scalar var-decl): a loop-body-only

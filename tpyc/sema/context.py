@@ -2255,6 +2255,9 @@ class FunctionTrackingState:
     # The element cells of the function's list literals (their ids): the
     # cells no local name owns, settled and dropped with the others.
     pending_elem_cids: list[int] = field(default_factory=list)
+    # The cells of earlier declarations a later one of the same name took
+    # the name from, settled and dropped with the others.
+    pending_unowned_cids: list[int] = field(default_factory=list)
     # Operations and conversions over pending values, resolved at settle.
     pending_num_deferred: list['DeferredIntOp'] = field(default_factory=list)
     # Types recorded at a value that holds a row (a call's signature at the

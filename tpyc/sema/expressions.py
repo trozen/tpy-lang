@@ -2021,9 +2021,14 @@ class ExpressionAnalyzer:
                 # open, any other decides them first.
                 with self.pend.list_sink(e):
                     t = self.analyze_expr(e)
+                lc = self.pend.container_cells(t)
+                if lc is None and value_leaves(t):
+                    # A haystack holding a cell container's leaves without
+                    # being one (`d.values()`) has no part to look up at:
+                    # its `__contains__` resolves only at the decided type.
+                    return self.pend.force_value(e, t)
                 return self.decide_for_lookup(
-                    e, t, self.membership_step(self.pend.container_cells(t)),
-                    left_type)
+                    e, t, self.membership_step(lc), left_type)
             return self.analyze_expr(e)
         left_type = operand(expr.left)
         dunder_scope = self._dunder_operand_scope(expr, left_type,

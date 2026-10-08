@@ -483,11 +483,11 @@ def take8(v: list[int8]) -> None: pass
             id="typed-store-then-wide-literal"),
         pytest.param(
             "def main() -> None:\n    ys = []\n    ys.append(1)\n"
-            "    for v in ys:\n        print(v)\n    ys.append(a64())\n",
-            r"^'ys' holds int32 elements since line 8 \(a loop iterable\), "
+            "    print([v for v in ys])\n    ys.append(a64())\n",
+            r"^'ys' holds int32 elements since line 8 \(a comprehension\), "
             r"and this value is int64; annotate its first binding: "
             r"ys: list\[int64\] = \[\]$",
-            id="loop-then-wider"),
+            id="comprehension-then-wider"),
         pytest.param(
             "def main(x32: int32) -> Own[list[int64]]:\n    out = []\n"
             "    for i in range(3):\n        out.append(x32)\n"
@@ -510,6 +510,77 @@ def take8(v: list[int8]) -> None: pass
 def test_empty_list_refusal_wording(body: str, message: str) -> None:
     """An empty list is refused in the words its literal twin is, with the
     hint spelling the empty first binding."""
+    with pytest.raises(SemanticError, match=message):
+        Compiler.from_source(_EMPTY_PRELUDE + body,
+                             lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+def test_loop_var_argument_checked_after_settle() -> None:
+    """A loop variable passed at a typed parameter does not decide the
+    list it iterates: the list widens, and the argument's conversion is
+    refused once it has, as `take32(y)` over `y = xs[0]` is."""
+    body = ("def take32(v: int32) -> int32: return v\n"
+            "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
+            "        print(take32(x))\n    xs.append(a64())\n")
+    with pytest.raises(SemanticError,
+                       match=r"^Type mismatch in argument 'v': expected "
+                             r"int32, got int64$"):
+        Compiler.from_source(_EMPTY_PRELUDE + body,
+                             lib_dirs=[get_lib_dir() / "tpy"]).compile()
+
+
+@pytest.mark.parametrize(
+    "body,message",
+    [
+        pytest.param(
+            "def main() -> None:\n    x: int32 = 7\n    ys = [1, 2]\n"
+            "    for x in ys:\n        print(x)\n    ys.append(a64())\n",
+            r"^for-loop rebinds existing variable 'x' of type 'int32' with "
+            r"elements of type 'int64'; rename the loop variable or match "
+            r"the types$",
+            id="typed-target-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    x = 7\n    ys = [1, 2]\n"
+            "    for x in ys:\n        print(x)\n    ys.append(a64())\n",
+            r"^for-loop rebinds existing variable 'x' of type 'int32' with "
+            r"elements of type 'int64'; rename the loop variable or match "
+            r"the types$",
+            id="pending-target-then-wider"),
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
+            "        x = a64()\n        print(x)\n",
+            r"^'x' is int32 and this value is int64; bind the int64 value "
+            r"to a new name$",
+            id="loop-var-wider-store"),
+        pytest.param(
+            "def main() -> None:\n    ps = [(1, 2)]\n    a, b = ps[0]\n"
+            "    a = a64()\n    print(a, b)\n",
+            r"^'a' is int32 and this value is int64; bind the int64 value "
+            r"to a new name$",
+            id="unpack-target-wider-store"),
+        # A limitation: a loop whose variable is read after it decides.
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n    for x in xs:\n"
+            "        pass\n    print(x)\n    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 7 \(a loop iterable\), "
+            r"and this value is int64; annotate its first binding: "
+            r"xs: list\[int64\] = \[\.\.\.\]$",
+            id="loop-var-read-after-loop-decides"),
+        # A limitation: a generic call over the list still decides it.
+        pytest.param(
+            "def main() -> None:\n    xs = [1, 2]\n"
+            "    for i, x in enumerate(xs):\n        print(i, x)\n"
+            "    xs.append(a64())\n",
+            r"^'xs' holds int32 elements since line 7 \(passed as "
+            r"Iterable\[int32\]\), and this value is int64; annotate its "
+            r"first binding: xs: list\[int64\] = \[\.\.\.\]$",
+            id="enumerate-then-wider"),
+    ],
+)
+def test_loop_var_refusal_wording(body: str, message: str) -> None:
+    """A loop variable or unpack target is its own local: a wider store
+    into it, or a container widening under a typed or earlier-bound loop
+    target, is refused rather than narrowed."""
     with pytest.raises(SemanticError, match=message):
         Compiler.from_source(_EMPTY_PRELUDE + body,
                              lib_dirs=[get_lib_dir() / "tpy"]).compile()
@@ -977,12 +1048,12 @@ def take32(d: dict[str, int32]) -> None: pass
             r"annotate its first binding: s: set\[int64\] = \{\.\.\.\}$",
             id="set-typed-seed"),
         pytest.param(
-            "def main() -> None:\n    s = {1}\n    for v in s:\n"
-            "        print(v)\n    s.add(a64())\n",
-            r"^'s' holds int32 elements since line 7 \(a loop iterable\), "
+            "def main() -> None:\n    s = {1}\n    print([v for v in s])\n"
+            "    s.add(a64())\n",
+            r"^'s' holds int32 elements since line 7 \(a comprehension\), "
             r"and this value is int64; annotate its first binding: "
             r"s: set\[int64\] = \{\.\.\.\}$",
-            id="set-loop-then-wider"),
+            id="set-comprehension-then-wider"),
         pytest.param(
             "def main() -> None:\n    d = {'a': 1}\n"
             "    print(d.get('b', a64()))\n",
@@ -1059,12 +1130,12 @@ def take32(d: dict[str, int32]) -> None: pass
             id="empty-set-typed-first-add"),
         pytest.param(
             "def main() -> None:\n    d = {'a': 1}\n"
-            "    for v in d.values():\n        print(v)\n"
+            "    print([v for v in d.values()])\n"
             "    d['b'] = a64()\n",
-            r"^'d' holds int32 values since line 7 \(a loop iterable\), and "
+            r"^'d' holds int32 values since line 7 \(a comprehension\), and "
             r"this value is int64; annotate its first binding: "
             r"d: dict\[str, int64\] = \{\.\.\.\}$",
-            id="values-loop-then-wider"),
+            id="values-comprehension-then-wider"),
         pytest.param(
             "def main() -> None:\n    d1 = {'a': 1}\n    d2 = {'b': 2}\n"
             "    z = d1 if len(d1) > 0 else d2\n    print(z)\n"

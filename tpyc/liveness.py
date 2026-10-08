@@ -717,6 +717,14 @@ def _loop_head(stmt: TpyWhile | TpyForEach) -> TpyExpr:
     return stmt.iterable if isinstance(stmt, TpyForEach) else stmt.condition
 
 
+def _loop_head_names(stmt: TpyForEach) -> list[str]:
+    head = stmt.body[0] if stmt.is_tuple_unpack and stmt.body else None
+    if (isinstance(head, TpyTupleUnpack) and isinstance(head.value, TpyName)
+            and head.value.name == stmt.var):
+        return [stmt.var, *(t for t in head.targets if t is not None)]
+    return [stmt.var]
+
+
 def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
                   w: _Walk) -> None:
     after = frozenset(live)
@@ -725,9 +733,12 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
     exit_live = frozenset(live)
     if w.mark and isinstance(stmt, TpyForEach):
         # OR-ed in: a body the walk marks twice (a `finally` copy) keeps the
-        # live verdict of either walk.
+        # live verdict of either walk. An unpacking head's variables are its
+        # targets.
+        names = _loop_head_names(stmt)
         stmt.var_live_after = (bool(stmt.var_live_after)
-                               or stmt.var in after or stmt.var in exit_live)
+                               or any(n in after or n in exit_live
+                                      for n in names))
     header = _loop_header(stmt, exit_live, after, w)
     if not w.mark:
         live.clear()
