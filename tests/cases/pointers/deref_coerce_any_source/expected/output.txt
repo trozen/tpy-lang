@@ -1,0 +1,10 @@
+method 1
+readonly 1
+property 2
+ret_field 3
+ret_call 4
+ret_elem 5
+arg 8
+arg_temp 9
+decl 10
+reseat 10 1

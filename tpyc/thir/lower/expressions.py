@@ -14566,11 +14566,13 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                                             loc=getattr(a, "loc", None)), lc)
     dc = _deref_coerce_arg(a, ptype, declared, lc.analyzer)
     if dc is not None:
-        # The deref auto-coercion name: a Ptr source renders the inline
-        # `::tpy::deref_check(p)` lvalue; a record-wrapper source hoists the
-        # slot-typed VALUE copy temp and passes the temp name.
+        # The deref auto-coercion: a Ptr source renders the inline
+        # `::tpy::deref_check(<src>)` lvalue; a record-wrapper source hoists
+        # the slot-typed VALUE copy temp and passes the temp name. A call
+        # source may need temps of its own (`bump(ptr(a, []))`).
         dkind, dslot = dc
-        inner = _lower_expr(a.expr, lc, declared)
+        inner = _lower_expr(a.expr, lc, declared,
+                            use=_ExprUse(allow_temps=temp_args))
         wrap = ("::tpy::deref_check({0})" if dkind == "inline"
                 else "{0}.__deref__()")
         coerced = THIRCoerce(result_type=dslot, expr=inner,
