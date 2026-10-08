@@ -186,8 +186,10 @@ class ExtensionGenerator:
             fields = [f for f in reg.user_declared_fields(info)
                       if not is_internal_boundary_field(f.name)]
             has_data = bool(fields)
-            setter = (var_for(record.name) + "_seterr" if has_data
-                      else "::tpy::interop::exc_set_err_message_only")
+            if has_data:
+                setter = var_for(record.name) + "_seterr"
+            else:
+                setter = "::tpy::interop::exc_set_err_message_only"
             result.append({
                 "var": var_for(record.name),
                 "cpp_type": qualified_cpp_name(call_ns, record.name),
@@ -203,8 +205,9 @@ class ExtensionGenerator:
     def _emit_user_exc_setters(self, out: TextIO, user_excs: list[dict],
                                sym: str) -> None:
         """One setter per data-carrying user exception: reconstruct a Python
-        instance from the message (`pytype(e.what())`), marshal each data field
-        to an instance attribute, then PyErr_SetObject. str()/args reflect the
+        instance from its ctor args (`exc_ctor_args`: the message, or a
+        SystemExit's code), marshal each data field to an instance attribute,
+        then PyErr_SetObject. str()/args reflect the
         message only -- the C++ exception holds fields, not the original
         constructor arg tuple, so the full args cannot be reconstructed (an
         acknowledged divergence). Field marshal reuses the getset/operator
@@ -222,8 +225,8 @@ class ExtensionGenerator:
             # the host. Catch and degrade to a no-alloc MemoryError.
             out.write("    PyObject *__inst = nullptr;\n")
             out.write("    try {\n")
-            out.write('        PyObject *__args = ::tpy::cpy::Py_BuildValue("(s)", '
-                      "__e.what());\n")
+            out.write("        PyObject *__args = "
+                      "::tpy::interop::exc_ctor_args(__e);\n")
             out.write("        if (!__args) return;\n")
             out.write("        __inst = ::tpy::cpy::PyObject_Call("
                       "__pytype, __args, nullptr);\n")

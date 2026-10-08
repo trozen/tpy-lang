@@ -68,13 +68,23 @@ def _run_drain_main_task(box: Own[Box[AnyTask]]) -> bool:
     signals = _SignalScope(executor)
     main_id = executor.spawn(box)
     interrupted = False
+    completed = False
     try:
         interrupted = executor.run_until(main_id)
+        completed = True
     finally:
-        # Swallow drain-time exceptions; v1 has no place to surface them.
+        # A run left by an exception (a task's SystemExit, a second Ctrl-C)
+        # cancels the root too, so its finally / __aexit__ run as in
+        # CPython's Runner.close.
+        skip_id = main_id if completed else -1
         try:
-            executor.drain_spawned_with_cancel(main_id)
+            executor.drain_spawned_with_cancel(skip_id)
+        except (SystemExit, KeyboardInterrupt):
+            # Raised by a task during cleanup: it replaces the exception in
+            # flight, as in CPython.
+            raise
         except BaseException:
+            # Other drain-time exceptions have no place to surface in v1.
             pass
     return interrupted
 
@@ -580,6 +590,10 @@ class _GatherFuture[T]:
                         else:
                             self._completion_indices.append(i)
                             self._completion_boxes.append(Box(p.value()))
+                except (SystemExit, KeyboardInterrupt):
+                    # These end the program, not the sub-task: never a
+                    # gather outcome (CPython raises them out of the loop).
+                    raise
                 except BaseException as e:
                     self._settled[i] = True
                     self._completed += 1
@@ -790,6 +804,9 @@ class _GatherSettledFuture[T]:
                         self._completed += 1
                         self._result_indices.append(i)
                         self._result_boxes.append(Box(p.value()))
+                except (SystemExit, KeyboardInterrupt):
+                    # Not a settled outcome: these end the program.
+                    raise
                 except BaseException as e:
                     self._settled[i] = True
                     self._completed += 1

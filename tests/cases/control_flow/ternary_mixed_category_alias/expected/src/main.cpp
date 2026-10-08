@@ -830,6 +830,5 @@ int __tpy_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    ::tpy::process_startup();
-    return __tpy_main(argc, argv);
+    return ::tpy::run_main(argc, argv, &__tpy_main);
 }

@@ -41,6 +41,7 @@ panics until they fire (matches `std::vector::at()`).
 | `OverflowError` (int true-division overflow) | Done -- throw-tier | `int / int` whose quotient exceeds double range raises `OverflowError("integer division result too large for a float")`, matching CPython (the integer `truediv` overloads in `bigint.hpp`). Covered by `tests/cases/int/panic_int_truediv_overflow` |
 | `RuntimeError` | Class-only | Generic catchall enabling `raise RuntimeError("...")` in user code. No runtime panic sites migrated -- this is a user-facing escape hatch for "this shouldn't happen" runtime conditions |
 | `MemoryError` | Class-only | Class exposed for `raise MemoryError("...")` in user code. The single OOM panic site (`bigint.hpp` allocation failure) deliberately stays as `tpy_panic`: catching `MemoryError` is fragile because the handler may itself allocate |
+| `SystemExit` | Done -- throw-tier | Raised by `sys.exit`; derives from `BaseException`, carries `code: int32 \| str \| None`. The generated `main()` (`::tpy::run_main`) catches only it and returns its status from `main` after the stack unwound (None -> 0, int -> itself, str -> stderr + 1); every other uncaught exception keeps the terminate-handler report |
 | Internal invariants (uninit slot bookkeeping, "should not happen") | Stays panic | Not Python-exception-shaped |
 
 `@noalloc` does not yet enforce "no may-throw expressions" on hot

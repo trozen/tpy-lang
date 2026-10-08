@@ -24,5 +24,21 @@ inline constexpr std::string_view byteorder = "little";
 // maxunicode: Final[int] = 0x10FFFF
 extern const ::tpy::BigInt maxunicode;
 
+// @dispatch
+// def exit() -> None:
+void exit();
+// @dispatch
+// def exit(code: int32) -> None:
+void exit(int32_t code);
+// @dispatch
+// def exit(code: str) -> None:
+void exit(std::string_view code);
+// @dispatch
+// def exit(code: None) -> None:
+void exit(std::monostate code);
+// @dispatch
+// def exit(code: int32 | str | None) -> None:
+void exit(const ::tpy::Union<std::monostate, int32_t, std::string>& code);
+
 void __tpy_init();
 } // namespace tpystd::sys

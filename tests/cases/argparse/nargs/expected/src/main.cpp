@@ -64,7 +64,7 @@ int32_t main() {
 // a1 = p1.parse_args(["a.txt", "b.txt"])
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] files [files ...]\n\npositional arguments:\n  files [files ...]\n\noptions:\n  -h, --help         show this help message and exit" << "\n" << ::tpy::check_signals;
-    ::tpy::sys_exit(0);
+    ::tpystd::sys::exit(0);
 }
 
 // a1 = p1.parse_args(["a.txt", "b.txt"])
@@ -94,13 +94,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
                 __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
             } else {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
         }
     }
     if ((__tpy_argparse_pi < 1)) {
         ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n" << ::tpy::check_signals;
-        ::tpy::sys_exit(2);
+        ::tpystd::sys::exit(2);
     }
     return __tpy_builder_argparse_args_1(std::move(files));
 }
@@ -108,7 +108,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
 // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
 void __tpy_builder_argparse_help_2() {
     std::cout << "usage: prog [-h] [--coord COORD COORD] [--tag TAG [TAG ...]]\n\noptions:\n  -h, --help           show this help message and exit\n  --coord COORD COORD\n  --tag TAG [TAG ...]" << "\n" << ::tpy::check_signals;
-    ::tpy::sys_exit(0);
+    ::tpystd::sys::exit(0);
 }
 
 // a2 = p2.parse_args(["--coord", "10", "20", "--tag", "x", "y", "--tag", "z"])
@@ -142,7 +142,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
             }
             if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) != 2)) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires exactly 2 value(s)")) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
             __tpy_argparse_i = __tpy_argparse_j;
             __tpy_argparse_seen_coord = true;
@@ -154,13 +154,13 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
             }
             if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) == 0)) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires at least one value")) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
             __tpy_argparse_i = __tpy_argparse_j;
             __tpy_argparse_seen_tag = true;
         } else {
             ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-            ::tpy::sys_exit(2);
+            ::tpystd::sys::exit(2);
         }
     }
     if (__tpy_argparse_seen_coord) {
@@ -175,7 +175,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
 // a3 = p3.parse_args(["--mode"])
 void __tpy_builder_argparse_help_3() {
     std::cout << "usage: prog [-h] [--mode [MODE]]\n\noptions:\n  -h, --help     show this help message and exit\n  --mode [MODE]" << "\n" << ::tpy::check_signals;
-    ::tpy::sys_exit(0);
+    ::tpystd::sys::exit(0);
 }
 
 // a3 = p3.parse_args(["--mode"])
@@ -202,7 +202,7 @@ __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<s
             }
         } else {
             ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-            ::tpy::sys_exit(2);
+            ::tpystd::sys::exit(2);
         }
     }
     return __tpy_builder_argparse_args_3(mode);
@@ -211,7 +211,7 @@ __tpy_builder_argparse_args_3 __tpy_builder_argparse_parse_3(const std::vector<s
 // a4 = p4.parse_args([])
 void __tpy_builder_argparse_help_4() {
     std::cout << "usage: prog [-h] [--limit LIMIT]\n\noptions:\n  -h, --help     show this help message and exit\n  --limit LIMIT" << "\n" << ::tpy::check_signals;
-    ::tpy::sys_exit(0);
+    ::tpystd::sys::exit(0);
 }
 
 // a4 = p4.parse_args([])
@@ -231,13 +231,13 @@ __tpy_builder_argparse_args_4 __tpy_builder_argparse_parse_4(const std::vector<s
         if ((__tpy_argparse_tok == "--limit")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
             limit = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else {
             ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-            ::tpy::sys_exit(2);
+            ::tpystd::sys::exit(2);
         }
     }
     return __tpy_builder_argparse_args_4(limit);
@@ -264,6 +264,5 @@ int __tpy_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    ::tpy::process_startup();
-    return __tpy_main(argc, argv);
+    return ::tpy::run_main(argc, argv, &__tpy_main);
 }

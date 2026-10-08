@@ -29,7 +29,7 @@ void excinherit__exc_BaseErr_seterr(const ::tpy::BaseException &__base, PyObject
     const auto &__e = static_cast<const ::tpyapp::excinherit::BaseErr &>(__base);
     PyObject *__inst = nullptr;
     try {
-        PyObject *__args = ::tpy::cpy::Py_BuildValue("(s)", __e.what());
+        PyObject *__args = ::tpy::interop::exc_ctor_args(__e);
         if (!__args) return;
         __inst = ::tpy::cpy::PyObject_Call(__pytype, __args, nullptr);
         ::tpy::cpy::Py_DecRef(__args);
@@ -51,7 +51,7 @@ void excinherit__exc_DerivedErr_seterr(const ::tpy::BaseException &__base, PyObj
     const auto &__e = static_cast<const ::tpyapp::excinherit::DerivedErr &>(__base);
     PyObject *__inst = nullptr;
     try {
-        PyObject *__args = ::tpy::cpy::Py_BuildValue("(s)", __e.what());
+        PyObject *__args = ::tpy::interop::exc_ctor_args(__e);
         if (!__args) return;
         __inst = ::tpy::cpy::PyObject_Call(__pytype, __args, nullptr);
         ::tpy::cpy::Py_DecRef(__args);

@@ -124,6 +124,13 @@ class TaskState[T]:
                 self.awaiter.wake()
                 return True
             return False
+        except (SystemExit, KeyboardInterrupt) as e:
+            # Stored like any outcome, then raised out of the run, as
+            # CPython's Task.__step does: these end the program, not the task.
+            self.done = True
+            self.exc = Box(e.clone())
+            self.awaiter.wake()
+            raise
         except BaseException as e:
             self.done = True
             self.exc = Box(e.clone())
@@ -552,10 +559,22 @@ class Executor(Awaker):
         box = self.slots[slot_id].box
         if box is None:
             return False
-        if box.get().poll_any(waker):
-            self.slots[slot_id].box = None
-            self.slots[slot_id].generation += 1
+        done = False
+        try:
+            done = box.get().poll_any(waker)
+        except BaseException:
+            # A task whose SystemExit / KeyboardInterrupt leaves the run is
+            # finished: retire its slot so the shutdown drain does not poll
+            # it again.
+            self._retire(slot_id)
+            raise
+        if done:
+            self._retire(slot_id)
         return True
+
+    def _retire(self, slot_id: int32) -> None:
+        self.slots[slot_id].box = None
+        self.slots[slot_id].generation += 1
 
     def drain_runnable(self) -> bool:
         any_polled = False
@@ -619,8 +638,9 @@ class Executor(Awaker):
         self.mark_runnable(main_id, self.slots[main_id].generation)
 
     # Counts a SIGINT delivered since the last check: the first cancels the
-    # root for graceful shutdown, a second abandons the cleanup by raising
-    # KeyboardInterrupt out of the run, like CPython's asyncio.run.
+    # root for graceful shutdown, a second raises KeyboardInterrupt out of the
+    # run, whose drain then cancels the root once more, like CPython's
+    # asyncio.run (Runner.close cancels every unfinished task).
     def _check_shutdown_signal(self, main_id: int32) -> None:
         if not self.shutdown_armed:
             return

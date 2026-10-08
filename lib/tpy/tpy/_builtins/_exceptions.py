@@ -454,3 +454,36 @@ class GeneratorExit(BaseException):
 @native("tpy::KeyboardInterrupt")
 class KeyboardInterrupt(BaseException):
     def __init__(self, message: str = "") -> None: ...
+
+# Raised by sys.exit. Inherits BaseException directly (not Exception), like
+# CPython, so `except Exception` does not swallow it. Uncaught, it becomes the
+# process exit status from `code` (None -> 0, an int -> itself, a str ->
+# printed to stderr, status 1) once the stack has unwound.
+@native("tpy::SystemExit")
+class SystemExit(BaseException):
+    code: int32 | str | None
+
+    @dispatch
+    @cpp_template("tpy::SystemExit()")
+    def __init__(self) -> None: ...
+
+    # One variant per alternative besides the whole union: overload
+    # resolution does not admit an int literal or a narrowed sub-union at
+    # a union parameter (BUGS.md#dispatch-union-param-refuses-literal), and
+    # an `int` argument there fails the C++ build
+    # (BUGS.md#bigint-arg-to-int-union-param-ill-formed).
+    @dispatch
+    @cpp_template("tpy::SystemExit({0})")
+    def __init__(self, code: int32) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::SystemExit({0})")
+    def __init__(self, code: str) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::SystemExit(std::monostate{})")
+    def __init__(self, code: None) -> None: ...
+
+    @dispatch
+    @cpp_template("tpy::SystemExit({0})")
+    def __init__(self, code: int32 | str | None) -> None: ...

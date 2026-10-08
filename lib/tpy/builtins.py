@@ -11,6 +11,7 @@ from tpy._builtins import (
     TypeError, NotImplementedError, RuntimeError, RecursionError, EOFError,
     MemoryError, StopIteration,
     StopAsyncIteration, TimeoutError, GeneratorExit, KeyboardInterrupt,
+    SystemExit,
     Range, range,
     len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, input, isinstance, getattr, setattr, delattr, hasattr,
     all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter,
@@ -45,6 +46,6 @@ __all__ = [
     "all", "any", "sum", "sorted", "bin", "hex", "oct", "enumerate", "reversed", "zip",
     "map", "filter",
     "StopIteration", "StopAsyncIteration", "TimeoutError", "GeneratorExit",
-    "KeyboardInterrupt",
+    "KeyboardInterrupt", "SystemExit",
     "TextIO", "BinaryIO", "open", "open_text", "open_binary",
 ]

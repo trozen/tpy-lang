@@ -144,9 +144,17 @@ int32_t Executor::_next_timer_timeout_ms() const {
 //     box = self.slots[slot_id].box
 //     if box is None:
 //         return False
-//     if box.get().poll_any(waker):
-//         self.slots[slot_id].box = None
-//         self.slots[slot_id].generation += 1
+//     done = False
+//     try:
+//         done = box.get().poll_any(waker)
+//     except BaseException:
+//         # A task whose SystemExit / KeyboardInterrupt leaves the run is
+//         # finished: retire its slot so the shutdown drain does not poll
+//         # it again.
+//         self._retire(slot_id)
+//         raise
+//     if done:
+//         self._retire(slot_id)
 //     return True
 bool Executor::poll_slot(int32_t slot_id) {
     if ((slot_id >= ::tpy::__len__(this->slots))) {
@@ -162,9 +170,17 @@ bool Executor::poll_slot(int32_t slot_id) {
     if ((box == nullptr)) {
         return false;
     }
-    if (box->get().poll_any(waker)) {
-        ::tpy::__getitem__(this->slots, slot_id).box = std::nullopt;
-        ::tpy::__getitem__(this->slots, slot_id).generation = ::tpy::add_check<int32_t>(::tpy::__getitem__(this->slots, slot_id).generation, 1);
+    bool done = false;
+    {
+        try {
+            done = box->get().poll_any(waker);
+        } catch (const ::tpy::BaseException&) {
+            this->_retire(slot_id);
+            throw;
+        }
+    }
+    if (done) {
+        this->_retire(slot_id);
     }
     return true;
 }
@@ -214,8 +230,9 @@ bool Executor::wait_for_event() {
 }
 
 // # Counts a SIGINT delivered since the last check: the first cancels the
-// # root for graceful shutdown, a second abandons the cleanup by raising
-// # KeyboardInterrupt out of the run, like CPython's asyncio.run.
+// # root for graceful shutdown, a second raises KeyboardInterrupt out of the
+// # run, whose drain then cancels the root once more, like CPython's
+// # asyncio.run (Runner.close cancels every unfinished task).
 // def _check_shutdown_signal(self, main_id: int32) -> None:
 //     if not self.shutdown_armed:
 //         return

@@ -23,7 +23,7 @@ int32_t main() {
 // args = parser.parse_args(["--unknown"])
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: myapp [--count N]\n\noptions:\n  -h, --help     show this help message and exit\n  --count COUNT" << "\n" << ::tpy::check_signals;
-    ::tpy::sys_exit(0);
+    ::tpystd::sys::exit(0);
 }
 
 // args = parser.parse_args(["--unknown"])
@@ -43,13 +43,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         if ((__tpy_argparse_tok == "--count")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("myapp: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
             count = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else {
             ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("myapp: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-            ::tpy::sys_exit(2);
+            ::tpystd::sys::exit(2);
         }
     }
     return __tpy_builder_argparse_args_1(count);
@@ -76,6 +76,5 @@ int __tpy_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    ::tpy::process_startup();
-    return __tpy_main(argc, argv);
+    return ::tpy::run_main(argc, argv, &__tpy_main);
 }

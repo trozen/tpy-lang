@@ -58,7 +58,7 @@ void main() {
 //      "--paths", "a", "b", "c"])
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] [--include INCLUDE] [--paths PATHS [PATHS ...]]\n\noptions:\n  -h, --help                 show this help message and exit\n  --include INCLUDE\n  --paths PATHS [PATHS ...]" << "\n" << ::tpy::check_signals;
-    ::tpy::sys_exit(0);
+    ::tpystd::sys::exit(0);
 }
 
 // args = parser.parse_args(
@@ -88,7 +88,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         if ((__tpy_argparse_tok == "--include")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
             __tpy_argparse_acc_include.push_back(Tag::from_arg(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
@@ -102,13 +102,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             }
             if (((::tpy::sub_check<int32_t>((::tpy::sub_check<int32_t>(__tpy_argparse_j, __tpy_argparse_i)), 1)) == 0)) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", __tpy_argparse_tok)), " requires at least one value")) << "\n" << ::tpy::check_signals;
-                ::tpy::sys_exit(2);
+                ::tpystd::sys::exit(2);
             }
             __tpy_argparse_i = __tpy_argparse_j;
             __tpy_argparse_seen_paths = true;
         } else {
             ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-            ::tpy::sys_exit(2);
+            ::tpystd::sys::exit(2);
         }
     }
     if (__tpy_argparse_seen_include) {
@@ -141,6 +141,5 @@ int __tpy_main(int argc, char* argv[]) {
 }
 
 int main(int argc, char* argv[]) {
-    ::tpy::process_startup();
-    return __tpy_main(argc, argv);
+    return ::tpy::run_main(argc, argv, &__tpy_main);
 }

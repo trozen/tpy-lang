@@ -32,7 +32,7 @@ void userexcd__exc_ParseError_seterr(const ::tpy::BaseException &__base, PyObjec
     const auto &__e = static_cast<const ::tpyapp::userexcd::ParseError &>(__base);
     PyObject *__inst = nullptr;
     try {
-        PyObject *__args = ::tpy::cpy::Py_BuildValue("(s)", __e.what());
+        PyObject *__args = ::tpy::interop::exc_ctor_args(__e);
         if (!__args) return;
         __inst = ::tpy::cpy::PyObject_Call(__pytype, __args, nullptr);
         ::tpy::cpy::Py_DecRef(__args);

@@ -9,6 +9,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::sys::exit;
+
 struct __tpy_builder_argparse_args_1;
 
 inline constexpr std::string_view __name__ = "__main__";

@@ -251,6 +251,13 @@ struct TaskState {
     //             self.awaiter.wake()
     //             return True
     //         return False
+    //     except (SystemExit, KeyboardInterrupt) as e:
+    //         # Stored like any outcome, then raised out of the run, as
+    //         # CPython's Task.__step does: these end the program, not the task.
+    //         self.done = True
+    //         self.exc = Box(e.clone())
+    //         self.awaiter.wake()
+    //         raise
     //     except BaseException as e:
     //         self.done = True
     //         self.exc = Box(e.clone())
@@ -275,6 +282,16 @@ struct TaskState {
                     return true;
                 }
                 return false;
+            } catch (const ::tpy::SystemExit& e) {
+                this->done = true;
+                this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+                this->awaiter.wake();
+                throw;
+            } catch (const ::tpy::KeyboardInterrupt& e) {
+                this->done = true;
+                this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+                this->awaiter.wake();
+                throw;
             } catch (const ::tpy::BaseException& e) {
                 this->done = true;
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
@@ -579,6 +596,9 @@ struct Executor : ::tpystd::coro::Awaker {
     // def poll_slot(self, slot_id: int32) -> bool:
     bool poll_slot(int32_t slot_id);
 
+    // def _retire(self, slot_id: int32) -> None:
+    void _retire(int32_t slot_id);
+
     // def drain_runnable(self) -> bool:
     bool drain_runnable();
 
@@ -868,6 +888,14 @@ inline void Executor::mark_runnable(int32_t slot_id, int32_t generation) {
     }
     slot.runnable = true;
     this->runnable_q.push_back(slot_id);
+}
+
+// def _retire(self, slot_id: int32) -> None:
+//     self.slots[slot_id].box = None
+//     self.slots[slot_id].generation += 1
+inline void Executor::_retire(int32_t slot_id) {
+    ::tpy::__getitem__(this->slots, slot_id).box = std::nullopt;
+    ::tpy::__getitem__(this->slots, slot_id).generation = ::tpy::add_check<int32_t>(::tpy::__getitem__(this->slots, slot_id).generation, 1);
 }
 
 // def drain_runnable(self) -> bool:

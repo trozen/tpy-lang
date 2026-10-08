@@ -47,6 +47,10 @@ def main() -> None:
             time.sleep(1.0)
     elif mode == "handled":
         print(asyncio.run(handled()))
+    elif mode == "exitmsg":
+        sys.exit("bye")
+    elif mode == "exit256":
+        sys.exit(256)
     else:
         print(sys.argv[2])
         sys.exit(7)
@@ -141,14 +145,18 @@ def test_cli_signal_lifecycle(
         options.append("--no-ccache")
 
     # `interrupted`: the program itself reports an uncaught KeyboardInterrupt
-    # (its SIGINT became one) before dying by SIGINT.
-    for mode, ignored, output, exitcode, interrupted in [
-        ("int", False, "", -signal.SIGINT, True),
-        ("term", False, "", -signal.SIGTERM, False),
-        ("group", False, "ready\n", -signal.SIGINT, True),
-        ("int", True, "survived\n", 0, False),
-        ("handled", False, "42\n", 0, False),
-        ("exit", False, "two words --unchanged\n", 7, False),
+    # (its SIGINT became one) before dying by SIGINT. `message`: a stderr line
+    # the program must print (an uncaught str exit code).
+    for mode, ignored, output, exitcode, interrupted, message in [
+        ("int", False, "", -signal.SIGINT, True, None),
+        ("term", False, "", -signal.SIGTERM, False, None),
+        ("group", False, "ready\n", -signal.SIGINT, True, None),
+        ("int", True, "survived\n", 0, False, None),
+        ("handled", False, "42\n", 0, False, None),
+        ("exit", False, "two words --unchanged\n", 7, False, None),
+        ("exitmsg", False, "", 1, False, "bye"),
+        # The OS keeps the low 8 bits of the status, as under CPython.
+        ("exit256", False, "", 0, False, None),
     ]:
         for cold in (True, False):
             # Rebuild exercises the subprocess route with the same binary;
@@ -162,6 +170,8 @@ def test_cli_signal_lifecycle(
             assert ("analyzed" in result.stderr) == cold, context
             assert ("cached:" in result.stderr) != cold, context
             assert ("KeyboardInterrupt" in result.stderr.splitlines()) == interrupted, context
+            if message is not None:
+                assert message in result.stderr.splitlines(), context
             assert "panic" not in result.stderr, context
             assert "Traceback" not in result.stderr, context
 
@@ -587,6 +597,26 @@ def mode_async_twice() -> None:
         print("KeyboardInterrupt out of run")
 
 
+async def hung_cleanup_outer() -> None:
+    try:
+        ready("ready")
+        await asyncio.sleep(30.0)
+    finally:
+        try:
+            ready("cleanup started")
+            await asyncio.sleep(30.0)
+            print("cleanup finished (WRONG)")
+        finally:
+            print("outer cleanup")
+
+
+def mode_async_twice_outer() -> None:
+    try:
+        asyncio.run(hung_cleanup_outer())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt out of run")
+
+
 class Resource:
     async def __aenter__(self) -> None:
         print("aenter")
@@ -688,6 +718,8 @@ def main() -> None:
         mode_uncaught()
     elif mode == "async_twice":
         mode_async_twice()
+    elif mode == "async_twice_outer":
+        mode_async_twice_outer()
     elif mode == "async_with":
         mode_async_with()
     elif mode == "async_spawned":
@@ -817,9 +849,13 @@ class _Child:
     # joinable
     ("join_pending", ["ready"],
      "ready\njoin: pending interrupt delivered\nresult: 7\n"),
-    # a second Ctrl-C abandons a hung cleanup (CPython's escape hatch)
+    # a second Ctrl-C cancels the root again, so a hung cleanup await ends
     ("async_twice", ["ready", "cleanup started"],
      "ready\ncleanup started\nKeyboardInterrupt out of run\n"),
+    # ... and the cleanup around that await still runs, as CPython's
+    # Runner.close cancels every unfinished task once more
+    ("async_twice_outer", ["ready", "cleanup started"],
+     "ready\ncleanup started\nouter cleanup\nKeyboardInterrupt out of run\n"),
     # cancelling the root runs __aexit__ on the way out
     ("async_with", ["ready"], "aenter\nready\naexit\nKeyboardInterrupt\n"),
     # a live spawned task is cancelled and cleaned up too

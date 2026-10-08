@@ -8,6 +8,8 @@
 
 namespace tpyapp::main {
 
+using ::tpystd::sys::exit;
+
 struct __tpy_builder_argparse_a_args_1;
 struct __tpy_builder_argparse_args_1;
 

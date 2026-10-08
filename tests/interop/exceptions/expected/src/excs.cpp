@@ -30,6 +30,30 @@ int64_t fail_generic() {
     throw ::tpy::Exception("generic failure");
 }
 
+int64_t exit_int() {
+    throw ::tpy::SystemExit(3);
+}
+
+int64_t exit_str() {
+    throw ::tpy::SystemExit("m");
+}
+
+int64_t exit_bare() {
+    throw ::tpy::SystemExit{};
+}
+
+int64_t exit_none() {
+    throw ::tpy::SystemExit(std::monostate{});
+}
+
+int64_t exit_sub() {
+    throw Leave(9);
+}
+
+int64_t exit_sub_data() {
+    throw LeaveWith(4, "why");
+}
+
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

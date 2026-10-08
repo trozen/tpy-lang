@@ -7,6 +7,9 @@
 
 namespace tpyapp::excs {
 
+struct Leave;
+struct LeaveWith;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 int64_t check_positive(int64_t n);
@@ -14,6 +17,48 @@ int64_t lookup(int64_t key);
 int64_t open_missing();
 int64_t divide(int64_t a, int64_t b);
 int64_t fail_generic();
+int64_t exit_int();
+int64_t exit_str();
+int64_t exit_bare();
+int64_t exit_none();
+int64_t exit_sub();
+int64_t exit_sub_data();
 
+struct Leave : ::tpy::SystemExit {
+
+    using ::tpy::SystemExit::SystemExit;
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<Leave>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Leave";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Leave& obj) {
+    ::tpy::print_object_default(os, "Leave", obj);
+    return os;
+}
+
+struct LeaveWith : ::tpy::SystemExit {
+    std::string reason;
+
+    LeaveWith() = default;
+    explicit LeaveWith(int32_t code, std::string_view reason);
+
+    [[nodiscard]] std::unique_ptr<::tpy::Throwable> clone() const override { return std::make_unique<LeaveWith>(*this); }
+    [[noreturn]] void __raise__() const override { throw *this; }
+    const char* what() const noexcept override { return this->message.c_str(); }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.LeaveWith";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const LeaveWith& obj) {
+    ::tpy::print_object_default(os, "LeaveWith", obj);
+    return os;
+}
+
+
+inline LeaveWith::LeaveWith(int32_t code, std::string_view reason)
+    : ::tpy::SystemExit(code),
+      reason(reason) {}
 void __tpy_init();
 } // namespace tpyapp::excs

@@ -1,0 +1,27 @@
+finally: body ran
+finally: caught 3
+with: __exit__ sees an exception True
+with: caught 4
+codes int: code 5 str '5'
+codes str: code bye str 'bye'
+codes exit(): code None str ''
+codes exit(None): code None str ''
+codes SystemExit(): code None str ''
+codes SystemExit(None): code None str 'None'
+codes SystemExit(3): code 3 str '3'
+codes int arg: code 6 str '6'
+codes union None: code None str ''
+codes union str: code u str 'u'
+codes union int: code 2 str '2'
+codes SystemExit(union): code w str 'w'
+codes reassigned: code 4 str '1'
+not_an_exception: caught as BaseException
+subclass: caught as SystemExit 9
+subclass: caught as Leave why
+in_method: caught 6
+generator: got 1
+generator: finally ran
+generator: caught 8
+error_return: caught 12
+swallowed: returned 7
+module level: caught 11

@@ -17,13 +17,23 @@ namespace tpystd::asyncio {
 //     signals = _SignalScope(executor)
 //     main_id = executor.spawn(box)
 //     interrupted = False
+//     completed = False
 //     try:
 //         interrupted = executor.run_until(main_id)
+//         completed = True
 //     finally:
-//         # Swallow drain-time exceptions; v1 has no place to surface them.
+//         # A run left by an exception (a task's SystemExit, a second Ctrl-C)
+//         # cancels the root too, so its finally / __aexit__ run as in
+//         # CPython's Runner.close.
+//         skip_id = main_id if completed else -1
 //         try:
-//             executor.drain_spawned_with_cancel(main_id)
+//             executor.drain_spawned_with_cancel(skip_id)
+//         except (SystemExit, KeyboardInterrupt):
+//             # Raised by a task during cleanup: it replaces the exception in
+//             # flight, as in CPython.
+//             raise
 //         except BaseException:
+//             # Other drain-time exceptions have no place to surface in v1.
 //             pass
 //     return interrupted
 bool _run_drain_main_task(::tpystd::tplib::box::Box<::tpystd::asyncio::_executor::AnyTask>&& box) {
@@ -32,21 +42,34 @@ bool _run_drain_main_task(::tpystd::tplib::box::Box<::tpystd::asyncio::_executor
     _SignalScope signals = _SignalScope(executor);
     int32_t main_id = executor.spawn(std::move(box));
     bool interrupted = false;
+    bool completed = false;
+    int32_t skip_id;
     {
         try {
             interrupted = executor.run_until(main_id);
+            completed = true;
         } catch (...) {
+            skip_id = ((completed) ? (main_id) : (-1));
             {
                 try {
-                    executor.drain_spawned_with_cancel(main_id);
+                    executor.drain_spawned_with_cancel(skip_id);
+                } catch (const ::tpy::SystemExit&) {
+                    throw;
+                } catch (const ::tpy::KeyboardInterrupt&) {
+                    throw;
                 } catch (const ::tpy::BaseException&) {
                 }
             }
             throw;
         }
+        skip_id = ((completed) ? (main_id) : (-1));
         {
             try {
-                executor.drain_spawned_with_cancel(main_id);
+                executor.drain_spawned_with_cancel(skip_id);
+            } catch (const ::tpy::SystemExit&) {
+                throw;
+            } catch (const ::tpy::KeyboardInterrupt&) {
+                throw;
             } catch (const ::tpy::BaseException&) {
             }
         }

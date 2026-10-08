@@ -1,0 +1,7 @@
+main task: finally ran
+main task: out of run 6
+spawned task: main's finally ran
+spawned task: out of run 5
+gather: out of run 7
+interrupt: out of run x
+drain: out of run 9

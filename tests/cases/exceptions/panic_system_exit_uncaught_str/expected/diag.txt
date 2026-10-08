@@ -1,0 +1,1 @@
+main.py:7: warning: Method 'Fatal.__str__' hides 'BaseException.__str__' -- any 'BaseException' reference will call 'BaseException.__str__', not 'Fatal.__str__' (differs from Python's dynamic dispatch); make 'BaseException' a @dynamic protocol for runtime dispatch
