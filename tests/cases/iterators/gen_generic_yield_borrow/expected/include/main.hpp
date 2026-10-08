@@ -101,7 +101,7 @@ template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
       { __fn(__a0) } -> std::convertible_to<B>;
   }
-::tpy::val_or_ref_t<B> app(__F0&& f, const std::vector<A>& x);
+::tpy::val_or_ref_t<B> app(__F0&& f, std::vector<A>& x);
 // def trial_then_local[T](items: list[T], n: int32) -> Iterator[T]:
 template <typename T>
 __gen_trial_then_local<T> trial_then_local(std::vector<T>& items, int32_t n);
@@ -1680,7 +1680,7 @@ template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
       { __fn(__a0) } -> std::convertible_to<B>;
   }
-::tpy::val_or_ref_t<B> app(__F0&& f, const std::vector<A>& x) {
+::tpy::val_or_ref_t<B> app(__F0&& f, std::vector<A>& x) {
     return f(::tpy::__getitem__(x, 0));
 }
 

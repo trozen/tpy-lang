@@ -32,7 +32,7 @@ template<typename T, typename K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-void apply_generic(const std::vector<T>& xs, __F0&& f, std::vector<K>& out);
+void apply_generic(std::vector<T>& xs, __F0&& f, std::vector<K>& out);
 // def apply_twin(xs: list[int32], f: Fn[[int32], Cell], out: list[Cell]) -> None:
 template<typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
@@ -200,7 +200,7 @@ template<typename T, typename K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-void apply_generic(const std::vector<T>& xs, __F0&& f, std::vector<K>& out) {
+void apply_generic(std::vector<T>& xs, __F0&& f, std::vector<K>& out) {
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();

@@ -90,9 +90,11 @@ are conservatively marked mutated for const inference and borrow warnings.
 The explicit non-mutating contract is `readonly[...]` inside the param list
 (`Callable[[readonly[list[int32]]], None]` keeps `const&` and exempts the
 call from the conservative marks). Signature compatibility is contravariant
-in params, covariant in returns; bare generic slots (`Fn[[T], R]`) are
-exempt from the conservative mutation marks so generic combinators keep
-const container params.
+in params, covariant in returns; a bare generic slot (`Fn[[T], R]`) is marked
+the same way (at a reference-type `T` the callable takes `T&`), so a generic
+combinator's forwarded container is a mutable borrow; the resize mark lands on
+the whole parameter even for an element argument
+(`BUGS.md#callable-arg-structure-effect-depth`).
 
 ### Type System
 
