@@ -24,10 +24,9 @@ a copy unavoidable, the compiler warns and the user silences the warning with an
 Wrong: `extern std::tuple<Box, Box> G` (owning storage), so `V.n` prints 2 under TPy and 42 under
 CPython, with no diagnostic. Right: the form the scalar global `G: Box = V` already takes, a
 borrow slot `Box* G`, as the local tuple does -- `std::tuple<Box*, Box*> G{}`, bound bare at
-module init. The same global from a MIXED call (`make_mixed(V)` -> `tuple[Own[Box], Box]`) still
-takes storage and copies the borrowed element.
-(open: `BUGS.md#global-tuple-ref-storage-form`,
-`BUGS.md#callable-value-borrow-return-copies-unwarned`)
+module init; from a MIXED call (`make_mixed(V)` -> `tuple[Own[Box], Box]`) the same tuple of
+pointer slots, aimed at the call's value parked in a static as the scalar parks its object.
+(open: `BUGS.md#callable-value-borrow-return-copies-unwarned`)
 
 **Check.** Mutate the object after the boundary (return, yield, param, field store, container
 insert, global) and print a field that shows whether the mutation reached the original, under

@@ -699,6 +699,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "arg.own_element_move",         # owned tuple element at its Own[T] slot,
                                     # the tuple's last use: std::move(get)
     "arg.own_element_copy",         # ... still live: the declared copy
+    "arg.own_tuple_btuple_lift",    # borrow-form tuple name at a mixed
+                                    # Own-tuple slot: the element-wise lift
     "arg.own_tuple_decay_copy",     # still-live mixed Own-tuple name at the
                                     # mixed && slot: `sink(auto(p))`
     "arg.open_value_tuple_name",    # bare NAME at a native `tuple[T, int32]`
@@ -859,6 +861,10 @@ THIR_FACES: frozenset[str] = frozenset({
     # A BORROW-form Own-element tuple NAME at the same return: the warned
     # copy lifts through `tuple_to_storage<S>(pair)`.
     "ret.own_tuple_borrow_lift",
+    "btuple.reseat_borrow_call",    # borrow-tuple name reseated from a call
+                                    # returning its own pointer tuple
+    "ret.own_tuple_btuple_lift",    # borrow-form tuple name at a MIXED
+                                    # return: tuple_to_storage<{A, B*}>(t)
     # ... and at a whole Own[ptr-repr tuple] ELEMENT slot (`xs.append(t)`
     # -> `push_back(tuple_to_storage<S>(t))`).
     # F1-record element/value slot: a record RVALUE (exact or covariant
@@ -3254,14 +3260,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A HOISTED global's initializing write: the slot is an optional on
     # the hoist lines (`g = &*(__global_slot_N = init);`).
     "top_level.global_hoist_slot",
-    "top_level.tuple_storage_global",  # F3 tuple global write: the borrow
-                                    # literal under the tuple_to_storage lift
-    # The same global written from a MIXED-own-tuple CALL: the call renders
-    # bare under the same non-move lift.
-    "top_level.tuple_global_mixed_call",
-    # The same global OWNING the fresh elements of its literal (sema marks
-    # them `Own` on the binding): the storage literal bare, no lift.
-    "top_level.tuple_global_owned_literal",
+    # A tuple global's write whose value holds an object: the value parks
+    # in a static of its own layout, the global points at it element-wise.
+    "top_level.tuple_global_park",
     "top_level.global_null",        # `g = nullptr;`
     # A BORROW-returning method call at a global slot: the slot points AT
     # the callee-owned storage (`pt = &(points->load(0));`), no slot alloc.

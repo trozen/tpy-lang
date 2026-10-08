@@ -23,20 +23,19 @@ W live_sub() {
 
 // def elem_of_local() -> Own[P]:
 //     t = (P(1), 2)
-//     # A copy where a move is possible: the tuple is never read again
-//     # (BUGS.md#owned-tuple-element-return-copies).
-//     return t[0]  # tpyc: warning(/copies P/)
+//     # The tuple is the function's own and never read again: the element
+//     # moves out, as it does off a `tuple[Own[P], P]` param.
+//     return t[0]  # tpyc: ok
 P elem_of_local() {
     auto t = std::tuple<P, int32_t>{P(::tpy::BigInt(1)), 2};
-    return P(std::get<0>(t));
+    return std::move(std::get<0>(t));
 }
 
 // def elem_of_param(t: Own[tuple[P, int]]) -> Own[P]:
-//     # Copied, not moved, although the tuple is owned; a `tuple[Own[P], P]`
-//     # param moves its element (BUGS.md#owned-tuple-element-return-copies).
-//     return t[0]  # tpyc: warning(/copies P/)
+//     # An owned tuple param at its last use: the element moves out.
+//     return t[0]  # tpyc: ok
 P elem_of_param(std::tuple<P, ::tpy::BigInt> t) {
-    return P(std::get<0>(t));
+    return std::move(std::get<0>(t));
 }
 
 // def main() -> None:
@@ -51,7 +50,7 @@ P elem_of_param(std::tuple<P, ::tpy::BigInt> t) {
 //     w = live_sub()
 //     w.v += 1
 //     print("live_subclass:", w.v)
-//     # a tuple element the tuple holds by value: copied out today.
+//     # a tuple element the tuple holds by value moves out at the last use.
 //     p = elem_of_local()
 //     p.v += 10
 //     print("tuple_elem_local:", p.v)

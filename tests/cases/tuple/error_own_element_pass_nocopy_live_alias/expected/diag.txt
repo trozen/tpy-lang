@@ -1,0 +1,1 @@
+main.py:21: error: @nocopy type 'N' cannot be passed as tuple element 0 Own[N]. Only the original owner can be moved at its last use.

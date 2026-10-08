@@ -36057,7 +36057,7 @@
  "tup_ri__ro__global_name__fn": [
   "ok",
   "",
-  "call(CALLEE, [form_convert[const borrow](%G)])"
+  "call(CALLEE, [%G])"
  ],
  "tup_ri__ro__global_name__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -36087,7 +36087,7 @@
  "tup_ri__ro__global_name__static": [
   "ok",
   "",
-  "call(CALLEE, [form_convert[const borrow](%G)])"
+  "call(CALLEE, [%G])"
  ],
  "tup_ri__ro__literal__ctor": [
   "ok",

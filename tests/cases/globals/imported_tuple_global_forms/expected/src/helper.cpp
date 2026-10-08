@@ -5,12 +5,12 @@ namespace tpyapp::helper {
 
 Cell* V{};
 std::tuple<Cell*, int32_t> pair{};
-std::tuple<int32_t, Cell> owned;
+std::tuple<int32_t, Cell*> owned{};
 
 // V = Cell(2)
 // # A tuple of references: the tuple of pointer slots, aliasing V.
 // pair: tuple[Cell, int32] = (V, 1)
-// # A fresh element: the global owns it (storage).
+// # A fresh element: parked in a static, the global's slot aims at it.
 // owned: tuple[int32, Cell] = (1, Cell(5))
 void __tpy_init() {
     static bool initialized = false;
@@ -20,7 +20,8 @@ void __tpy_init() {
     static Cell __global_slot_1 = Cell(2);
     V = &__global_slot_1;
     pair = std::tuple<Cell*, int32_t>{V, 1};
-    owned = std::tuple<int32_t, Cell>{1, Cell(5)};
+    static std::tuple<int32_t, Cell> __global_slot_2 = std::tuple<int32_t, Cell>{1, Cell(5)};
+    owned = ::tpy::tuple_to_pointer<std::tuple<int32_t, Cell*>>(__global_slot_2);
 }
 
 } // namespace tpyapp::helper

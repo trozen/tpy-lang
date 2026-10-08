@@ -194,8 +194,7 @@ the same output under TPy and CPython and compile with deleted C++ copy
 constructors. No source behavior, exception, numerical, truthiness or syntax
 change is proposed. General exception/cleanup analysis remains uncovered.
 Known global tuple copying and mixed-own parameter issues remain separate
-(`BUGS.md#global-tuple-ref-storage-form`,
-`BUGS.md#consume-own-element-of-mixed-tuple`); neither is claimed fixed.
+(`BUGS.md#consume-own-element-of-mixed-tuple`); it is not claimed fixed.
 
 Confidence: high in the bounded design and producer contract, based on direct
 THIR/C++ probes and the sibling survey. Implementation must update the full

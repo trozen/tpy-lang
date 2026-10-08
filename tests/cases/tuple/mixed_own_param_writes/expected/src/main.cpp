@@ -7,7 +7,7 @@
 namespace tpyapp::main {
 
 Box* GB{};
-std::tuple<Box, Box> G;
+std::tuple<Box*, Box*> G{};
 
 // # Reads the box it is handed and drops it: the sections only need a sink.
 // def sink(b: Own[Box]) -> int32:  # tpyc: warning(/Own\[Box\] param 'b' is never consumed/)
@@ -265,6 +265,29 @@ int32_t borrow_write(std::tuple<Box, Box*>&& p) {
 int32_t owned_live(std::tuple<Box, Box>&& p) {
     int32_t got = ::tpyapp::main::borrow_write(::tpy::tuple_to_pointer<std::tuple<Box, Box*>>(p));
     return (::tpy::add_check<int32_t>(got, std::get<1>(p).n));
+}
+
+// # an all-borrow tuple local at the mixed slot: the owned position copies its
+// # referent in, warned, and the borrowed one keeps pointing at the caller's
+// # object, which the callee writes through.
+// def borrow_local(a: Box, b: Box) -> int32:
+//     t = (a, b)
+//     got = borrow_write(t)  # tpyc: warning(/copies tuple\[Box, Box\] into owned storage/)
+//     return got + t[1].n
+int32_t borrow_local(Box& a, Box& b) {
+    auto t = std::tuple<Box*, Box*>{&(a), &(b)};
+    int32_t got = ::tpyapp::main::borrow_write(::tpy::tuple_to_storage<std::tuple<Box, Box*>>(t));
+    return (::tpy::add_check<int32_t>(got, std::get<1>(t)->n));
+}
+
+// # ... and returned into the mixed slot: the same lift, the owned position
+// # copied (warned), the borrowed one still the caller's object.
+// def borrow_local_return(a: Box, b: Box) -> tuple[Own[Box], Box]:
+//     t = (a, b)
+//     return t  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
+std::tuple<Box, Box*> borrow_local_return(Box& a, Box& b) {
+    auto t = std::tuple<Box*, Box*>{&(a), &(b)};
+    return ::tpy::tuple_to_storage<std::tuple<Box, Box*>>(t);
 }
 
 // # closure + unpack: a nested def captures the param and runs in the `return`,
@@ -565,6 +588,10 @@ int32_t pair_take(std::tuple<Tok, Tok>&& p) {
 //     sl = Slot()
 //     sl.put((Box(24), b))
 //     print("field-write", sl.pair[0].n, sl.pair[1].n)
+//     print("borrow-local", borrow_local(Box(3), b), b.n)
+//     rt = borrow_local_return(Box(4), b)
+//     rt[1].n += 1
+//     print("borrow-local-return", rt[0].n, b.n)
 void main() {
     Box b = Box(0);
     std::cout << "free" << " " << ::tpyapp::main::free_write(std::tuple<Box, Box*>{Box(1), &(b)}) << " " << b.n << "\n" << ::tpy::check_signals;
@@ -610,6 +637,12 @@ void main() {
     Slot sl = Slot();
     sl.put(std::tuple<Box, Box*>{Box(24), &(b)});
     std::cout << "field-write" << " " << std::get<0>(sl.pair).n << " " << std::get<1>(sl.pair).n << "\n" << ::tpy::check_signals;
+    Box __tmp_2 = Box(3);
+    std::cout << "borrow-local" << " " << ::tpyapp::main::borrow_local(__tmp_2, b) << " " << b.n << "\n" << ::tpy::check_signals;
+    Box __tmp_3 = Box(4);
+    auto rt = ::tpyapp::main::borrow_local_return(__tmp_3, b);
+    std::get<1>(rt)->n = ::tpy::add_check<int32_t>(std::get<1>(rt)->n, 1);
+    std::cout << "borrow-local-return" << " " << std::get<0>(rt).n << " " << b.n << "\n" << ::tpy::check_signals;
 }
 
 // def reader(p: tuple[Own[Box], Box]) -> int32:  # tpyc: warning(/owned tuple param 'p' is never consumed/)
@@ -662,7 +695,7 @@ std::expected<int32_t, ::tpy::StopIteration> __genexpr_module_1_frame<F_G>::__ne
     }
     while ((*__for_i_0) < (*__for_stop_0)) {
         _ = ((*__for_i_0))++;
-        return (::tpy::add_check<int32_t>(std::get<0>(G).n, std::get<1>(G).n));
+        return (::tpy::add_check<int32_t>(std::get<0>(G)->n, std::get<1>(G)->n));
     }
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
@@ -685,13 +718,14 @@ __genexpr_module_1_frame<F_G> __genexpr_module_1(int32_t __r0, F_G&& G) {
 //
 // main()
 //
-// # module global: a mixed global holds storage form, so a generator expression
-// # capturing it reads its elements in place, and its last use lifts into the
-// # mixed param element by element.
+// # module global: a mixed global is a tuple of pointer slots at its parked
+// # static, so a generator expression capturing it reads its elements in place;
+// # like a scalar reference global it does not own that static, so even its
+// # last module-level use is the warned copy.
 // GB = Box(71)
 // G = mk_box(GB)
 // print("global-genexpr", sum(G[0].n + G[1].n for _ in range(2)))  # tpyc: ok
-// print("global", reader(G))  # tpyc: ok
+// print("global", reader(G))  # tpyc: warning(/copies tuple\[Box, Box\] into owned storage/)
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -701,9 +735,10 @@ void __tpy_init() {
     ::tpyapp::main::main();
     static Box __global_slot_1 = Box(71);
     GB = &__global_slot_1;
-    G = ::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::mk_box((*GB)));
+    static std::tuple<Box, Box*> __global_slot_2 = ::tpyapp::main::mk_box((*GB));
+    G = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_2);
     std::cout << "global-genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(2, G)) << "\n" << ::tpy::check_signals;
-    std::cout << "global" << " " << ::tpyapp::main::reader(::tpy::tuple_to_pointer<std::tuple<Box, const Box*>>(G)) << "\n" << ::tpy::check_signals;
+    std::cout << "global" << " " << ::tpyapp::main::reader(::tpy::tuple_to_storage<std::tuple<Box, Box*>>(G)) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

@@ -1,8 +1,9 @@
-# A module GLOBAL of tuple type initialised from a fresh tuple LITERAL owns
-# its fresh element: sema marks it `Own` on the binding, the slot is storage
-# and the literal is spelled in storage form, no lift. (A tuple of NAMES is
-# the other form -- a tuple of pointer slots that aliases; a mixed one from a
-# call still copies, BUGS.md#global-tuple-ref-storage-form.)
+# A module GLOBAL of tuple type initialised from a tuple LITERAL with a fresh
+# element: the literal parks in a static of its own layout, built in place,
+# and the global is the tuple of the scalar globals' pointer slots aimed at
+# it (`std::tuple<int32_t, Cell*>`), as `V = Cell(2)` is `Cell* V` at its
+# parked `Cell`; a @nocopy element shows no copy is made. (A tuple of NAMES
+# builds the pointer tuple in place, parking nothing.)
 from tpy import int32, nocopy
 
 

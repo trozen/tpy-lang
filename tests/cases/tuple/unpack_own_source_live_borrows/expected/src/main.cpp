@@ -3,7 +3,7 @@
 
 namespace tpyapp::main {
 
-std::tuple<Box, int32_t> tg;
+std::tuple<Box*, int32_t> tg{};
 Box* gx{};
 int32_t gk{};
 Box* V{};
@@ -222,7 +222,7 @@ void unpack_borrow_global() {
 //     H().live_in_method()
 //     relayed_call()
 void main() {
-    std::cout << "module_level" << " " << std::get<0>(tg).n << " " << gk << "\n" << ::tpy::check_signals;
+    std::cout << "module_level" << " " << std::get<0>(tg)->n << " " << gk << "\n" << ::tpy::check_signals;
     ::tpyapp::main::unpack_borrow_global();
     ::tpyapp::main::live_local();
     ::tpyapp::main::last_use_moves();
@@ -252,13 +252,14 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    tg = ::tpyapp::main::mk();
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(tg);
+    static std::tuple<Box, int32_t> __global_slot_1 = ::tpyapp::main::mk();
+    tg = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(__global_slot_1);
+    auto& __tup_1 = tg;
     gx = std::get<0>(__tup_1);
     gk = std::get<1>(__tup_1);
     gx->n = 9;
-    static Box __global_slot_1 = Box(5);
-    V = &__global_slot_1;
+    static Box __global_slot_2 = Box(5);
+    V = &__global_slot_2;
     pair_g = std::tuple<Box*, int32_t>{V, 1};
     ::tpyapp::main::main();
 }

@@ -2,3 +2,5 @@ scalar 42
 tuple 43
 owned 9
 rebound 7 43
+local 43
+mixed_write 44

@@ -2100,9 +2100,10 @@ class _LowerCtx:
         # re-wrap through the optional (storage lift / owning-slot
         # emplace / nullopt).
         self.optional_borrow_tuple_locals: set[str] = set()
-        # Locals holding the MIXED borrow render of a per-element-Own tuple
-        # (`auto p = make_mixed(b)` -- owned elements by value, ref elements
-        # as pointers): the NAME leg of `_renders_own_borrow_tuple`, the
+        # Names holding the MIXED borrow render of a per-element-Own tuple
+        # (`auto p = make_mixed(b)`, a mixed module global -- owned elements
+        # by value, ref elements as pointers): the NAME leg of
+        # `_renders_own_borrow_tuple`, the
         # mirror of codegen's `own_borrow_tuple_locals`. Deliberately NOT in
         # `storage_tuple_locals` here (codegen holds them in both): THIR's
         # element-read arrow (`_subscript_yields_borrow_ptr`) treats a
@@ -2193,14 +2194,10 @@ class _LowerCtx:
             if isinstance(pu, TupleType) and pu.is_mixed_own():
                 # A mixed param holds the render a mixed call result binds
                 # (`std::tuple<A, B*>`), so it takes that render's rows. A
-                # capture holds whatever the enclosing variable holds: inside
-                # a function a mixed tuple is only ever a parameter or a call
-                # result, both the mixed render, while a module global holds
-                # storage.
-                if not func.is_capture(pname) or func.genexpr_owner is not None:
-                    self.own_borrow_tuple_locals.add(pname)
-                else:
-                    self.storage_tuple_locals.add(pname)
+                # capture holds whatever the enclosing variable holds: a
+                # parameter, a call result and a module global all hold that
+                # same render.
+                self.own_borrow_tuple_locals.add(pname)
             # A value-repr Optional[expensive-copy] param (`int | None` ->
             # std::optional<BigInt>, `str | None` -> optional<string_view>)
             # is movable at its narrowed last use -- seed_param_locals'

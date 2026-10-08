@@ -7,8 +7,15 @@ Box* V{};
 Box* W{};
 Box* singleton{};
 std::tuple<Box*, Box*> pair{};
-std::tuple<int32_t, Box> owned;
+std::tuple<int32_t, Box*> owned{};
 std::tuple<Box*, int32_t> pair2{};
+std::tuple<Box*, Box*> mixed{};
+
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
+//     return (Box(1), b)
+std::tuple<Box, Box*> make_mixed(Box& b) {
+    return std::tuple<Box, Box*>{Box(1), &(b)};
+}
 
 // def main() -> None:
 //     singleton.n = 42
@@ -23,16 +30,30 @@ std::tuple<Box*, int32_t> pair2{};
 //
 //     pair2[0].n = 7
 //     print("rebound", W.n, V.n)
+//
+//     # the mixed local and the mixed global both write through to V.
+//     p = make_mixed(V)
+//     p[1].n = 43
+//     print("local", V.n)
+//     V.n = 2
+//     mixed[1].n = 44  # tpyc: ok
+//     print("mixed_write", V.n)
 void main() {
     singleton->n = 42;
     std::cout << "scalar" << " " << V->n << "\n" << ::tpy::check_signals;
     V->n = 2;
     std::get<0>(pair)->n = 43;
     std::cout << "tuple" << " " << V->n << "\n" << ::tpy::check_signals;
-    std::get<1>(owned).n = 9;
-    std::cout << "owned" << " " << std::get<1>(owned).n << "\n" << ::tpy::check_signals;
+    std::get<1>(owned)->n = 9;
+    std::cout << "owned" << " " << std::get<1>(owned)->n << "\n" << ::tpy::check_signals;
     std::get<0>(pair2)->n = 7;
     std::cout << "rebound" << " " << W->n << " " << V->n << "\n" << ::tpy::check_signals;
+    auto p = ::tpyapp::main::make_mixed((*V));
+    std::get<1>(p)->n = 43;
+    std::cout << "local" << " " << V->n << "\n" << ::tpy::check_signals;
+    V->n = 2;
+    std::get<1>(mixed)->n = 44;
+    std::cout << "mixed_write" << " " << V->n << "\n" << ::tpy::check_signals;
 }
 
 // V = Box(2)
@@ -40,11 +61,13 @@ void main() {
 // singleton: Box = V  # tpyc: warning(/will not keep the object/)
 // # all-borrow tuple global: the tuple of the pointer slots, aliasing V.
 // pair: tuple[Box, Box] = (V, V)  # tpyc: ok
-// # a fresh element makes the global OWN it: storage, nothing to alias.
+// # a fresh element parks in a static; the global's slot aims at it.
 // owned: tuple[int32, Box] = (1, Box(5))  # tpyc: ok
 // # top-level rebind of a borrow tuple global re-points the slots, as `singleton = W` would.
 // pair2: tuple[Box, int32] = (V, 1)  # tpyc: ok
 // pair2 = (W, 2)  # tpyc: ok
+// # mixed: the borrowed element aliases V like the local twin's.
+// mixed: tuple[Box, Box] = make_mixed(V)  # tpyc: ok
 //
 // main()
 void __tpy_init() {
@@ -58,9 +81,12 @@ void __tpy_init() {
     W = &__global_slot_2;
     singleton = V;
     pair = std::tuple<Box*, Box*>{V, V};
-    owned = std::tuple<int32_t, Box>{1, Box(5)};
+    static std::tuple<int32_t, Box> __global_slot_3 = std::tuple<int32_t, Box>{1, Box(5)};
+    owned = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__global_slot_3);
     pair2 = std::tuple<Box*, int32_t>{V, 1};
     pair2 = std::tuple<Box*, int32_t>{W, 2};
+    static std::tuple<Box, Box*> __global_slot_4 = ::tpyapp::main::make_mixed((*V));
+    mixed = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_4);
     ::tpyapp::main::main();
 }
 

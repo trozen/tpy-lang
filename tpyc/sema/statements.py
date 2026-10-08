@@ -21,7 +21,8 @@ from ..typesys import (
     unwrap_readonly, unwrap_own, unwrap_qualifiers, is_any_str_type, is_any_bytes_type, TupleType, own_tuple_target,
     declared_result_readonly,
     RecursiveAliasInstanceType,
-    collapse_tuple_own_elements, global_binds_by_reference, type_contains_own,
+    collapse_tuple_own_elements,
+    global_binds_by_reference, type_contains_own,
     LiteralType,
     ViewTypeFamily, view_family_for_type, VIEW_TYPE_FAMILIES,
     PendingGenericInstanceType, contains_fn_type,
@@ -5007,25 +5008,6 @@ class StatementAnalyzer:
                 and global_binds_by_reference(existing_type)):
             raise self.ctx.error(
                 global_rebind_message(name, existing_type), node)
-        bare = unwrap_readonly(existing_type)
-        if (self.ctx.is_top_level and isinstance(bare, TupleType)
-                and bare.has_own_element()
-                and name in self.ctx.tuple_globals_aliased):
-            # A tuple global that OWNS a reference element is its own storage
-            # (no slot indirection), so once a module-level unpack has aimed
-            # a pointer-slot target into it, a rebind would overwrite the
-            # object that target points at -- the alias would follow the
-            # rebind where CPython keeps the old object. The scalar
-            # reference global re-points at fresh static backing instead;
-            # until the owning tuple global takes that form
-            # (BUGS.md#global-tuple-ref-storage-form) it is bound once
-            # after being borrowed from. With no alias the rebind is a plain
-            # storage assign and stays allowed.
-            raise self.ctx.error(
-                f"Cannot reassign global variable '{name}' of type "
-                f"'{collapse_tuple_own_elements(bare)}': a module-level "
-                f"unpack borrowed an element of it, and the alias would "
-                f"follow the rebind", node)
         if unwrap_readonly(existing_type).is_value_type():
             return
         # Check function parameters
@@ -5113,43 +5095,6 @@ class StatementAnalyzer:
         self.deduction.note_view_binding(family, var_id, init_expr)
         self.ctx.view_pending_resolutions(family).append(var_id)
         return family.pending_type_class(var_id)
-
-    def _tuple_global_binding_type(
-        self, var_type: TpyType, init: TpyExpr, init_type: TpyType | None,
-    ) -> TpyType:
-        """The type a module-slot TUPLE binding records, with the per-element
-        ownership its init decides spelled as `Own` on the element.
-
-        A tuple global takes the form its local twin takes: a literal of
-        NAMES is a borrow (the tuple of the pointer slots those globals are),
-        while a FRESH reference element, or an element an owning call hands
-        back, is owned inline. A function-local records that split in its
-        lowering facts; a global is read from other functions and modules by
-        its binding type alone, so the split is recorded here, once, and
-        `is_borrow_form_tuple_global` reads it off the type everywhere."""
-        bare = unwrap_readonly(var_type)
-        if not (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
-                and not bare.has_own_element()):
-            return var_type
-        if isinstance(init, TpyTupleLiteral):
-            if len(init.elements) != len(bare.element_types):
-                return var_type
-            elems = []
-            for elem, et in zip(init.elements, bare.element_types):
-                fresh = (not et.is_value_type()
-                         and not isinstance(elem, TpyNoneLiteral)
-                         and not self.compat.is_lvalue(elem))
-                elems.append(OwnType(et) if fresh else et)
-            return TupleType(tuple(elems))
-        init_bare = unwrap_readonly(init_type) if init_type is not None else None
-        if (isinstance(init, (TpyCall, TpyMethodCall))
-                and isinstance(init_bare, TupleType)
-                and init_bare.has_own_element()
-                and len(init_bare.element_types) == len(bare.element_types)):
-            return TupleType(tuple(
-                OwnType(et) if isinstance(it, OwnType) else et
-                for et, it in zip(bare.element_types, init_bare.element_types)))
-        return var_type
 
     def _infer_new_local_type(
         self, name: str, var_type: TpyType,
@@ -6498,22 +6443,16 @@ class StatementAnalyzer:
         else:
             self.ctx.func.current_scope.define(stmt.name, var_type)
         if self.ctx.is_module_slot_stmt(stmt):
-            if stmt.init is not None:
-                # The annotation (pre-registered before this statement) does
-                # not spell which tuple elements the global owns; its init
-                # does, and every reader of the binding needs that recorded.
-                bound = self._tuple_global_binding_type(
-                    var_type, stmt.init, init_type)
-                if bound is not var_type:
-                    var_type = bound
-                    self.ctx.var_types[stmt] = var_type
-                    self.ctx.func.current_scope.define(stmt.name, var_type)
             # An INFERRED module-slot binding is a global exactly as an
             # annotated one is; `global_scope` is the table the export
             # collection and the storage-durability checks read, so a binding
             # left only in the module-init scope is invisible to both.
-            self.ctx.define_module_global(
+            bound = self.ctx.define_module_global(
                 stmt.name, var_type, stmt.loc.line if stmt.loc else 0)
+            if bound is not var_type:
+                var_type = bound
+                self.ctx.var_types[stmt] = var_type
+                self.ctx.func.current_scope.define(stmt.name, var_type)
         # Reassignment revives a consumed variable
         self.ctx.func.consumed_vars.discard(stmt.name)
         # Flag the local if it's bound to a tuple literal with a FRESH
@@ -6868,9 +6807,6 @@ class StatementAnalyzer:
             or not isinstance(stmt.value, TpyName)
             or (not self.ctx.is_top_level
                 and self.compat.is_auto_move_use(stmt.value)))
-        if (self.ctx.is_top_level and isinstance(stmt.value, TpyName)
-                and has_owned_elem):
-            self.ctx.tuple_globals_aliased.add(stmt.value.name)
 
         # Per-element expressions for narrowing (range facts, etc.)
         has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
@@ -6879,10 +6815,13 @@ class StatementAnalyzer:
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
             owned = isinstance(elem_type, OwnType) and source_consumed
             stmt.is_owned.append(owned)
+            if rhs_readonly:
+                # Asked before the Own is peeled: readonly over an owned
+                # element protects nothing (the target owns the moved-in
+                # object), as over a scalar `readonly[Own[T]]` parameter.
+                elem_type = make_readonly(elem_type)
             if isinstance(elem_type, OwnType):
                 elem_type = elem_type.wrapped
-            if rhs_readonly:
-                elem_type = make_readonly(elem_type)
             is_ref = (not owned and not elem_type.is_value_type()
                       and not isinstance(elem_type, TypeParamRef))
             stmt.is_ref.append(is_ref)

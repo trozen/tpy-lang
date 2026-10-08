@@ -56,10 +56,12 @@ the raw grid.
   (`BUGS.md#tuple-elem-return-borrow-form-rejects`) and its generic twin is
   ill-formed C++ (`BUGS.md#generic-tuple-elem-return-ill-formed`); a `min` /
   `max` / `next` result over them is the same gap.
-- **D2** `BUGS.md#global-tuple-ref-storage-form` -- the MIXED tuple global
-  (an owned element beside a borrowed one, from a call) copies its borrowed
-  element SILENTLY; the all-borrow tuple global is a tuple of pointer slots
-  and aliases (closed in U1).
+- **D2** a tuple global is a tuple of scalar globals: each reference
+  element is the scalar's pointer slot, and a write whose value holds an
+  object (the MIXED call, the fully owned one, a literal with a fresh
+  element, a later one included) parks it in a static of its own layout and
+  points at it element-wise (closed in U5 step 4; the all-borrow global
+  closed in U1).
 - **D3 / D4** `BUGS.md#str-tuple-element-local-owned` and design-entry instance
   (1) -- a `str` / `bytes` element is owned storage at a param and a local where
   the scalar is a free view.
@@ -159,10 +161,11 @@ per shape; the mixed tuple global (D2) waits on that entry.
     a later module-level literal with a FRESH element into a borrow-slot
     tuple global (`P = (copy(W), 2)`) rejects where the scalar allocates a
     static slot -- the per-assignment backing item above.
-  - [ ] the MIXED tuple global (`BUGS.md#global-tuple-ref-storage-form`,
-    D2's remaining half) -- moved out of U1 to the module-scope design
-    entry (TODO: "Module scope is the body of __tpy_init"), with the
-    module-level rebind of an owning tuple global after an unpack.
+  - [x] the MIXED tuple global (D2's remaining half) -- DONE in U5 step 4:
+    the tuple of the scalar's pointer slots (`std::tuple<Box*, Box*> M{}`)
+    at a per-assignment parked static, which also lifts the module-level
+    rebind of an owning tuple global after an unpack and the later
+    fresh-element literal.
   - [x] the rebound borrow unpack target (was MED, entry removed) -- DONE on
     `u1-tuple-meds`: sema marks a borrowed target `is_rebound` (the loop
     body's rebinds for a for head, the function's for a standalone unpack)
@@ -341,8 +344,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     (`BUGS.md#yield-tuple-name-own-element`) and a name nested in a returned
     literal (`BUGS.md#nested-tuple-name-own-return`); a global name copies
     unwarned (`BUGS.md#global-tuple-name-own-return-unwarned`).
-  - [ ] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" -- only
-    worth taking if D2's full fix slips out of 0.7.0.
+  - [x] TODO: "Warn at the mixed-tuple module GLOBAL as a stopgap" --
+    dropped: D2's fix landed in U5 step 4, so there is no copy left to warn.
   - [x] The `Optional`-wrapped mixed return ABI (`tuple[Own[A], B] | None`),
     carved out of the design entry's step (b). Landed with U5 step 3: the
     optional is transparent to the tuple's return layout
@@ -478,7 +481,66 @@ per shape; the mixed tuple global (D2) waits on that entry.
     `error_own_element_optional_member_copy` and
     `error_own_tuple_still_live_storage_arg` pinned closed gaps and fold
     into them.
-  - [ ] step 4 -- the owned-param element places and the mixed global (D2).
+  - [x] step 4 -- the owned-param element places and the mixed global (D2).
+    - [x] element places: an element of a tuple the body OWNS -- a
+      `tuple[Own[Box], Own[Box]]` or mixed `tuple[Own[Box], Box]` parameter
+      (`&&`), an `Own[tuple]` parameter, an owned local -- is a place like
+      the same element of a borrowed tuple. The alias gate
+      (`_tuple_name_elem_subscript`) and the method receiver
+      (`_tuple_record_elem_subscript_recv`) no longer exclude an `Own`
+      element; the one arrow decision (`_subscript_yields_borrow_ptr`)
+      renders it: `Box& o = std::get<0>(p);` / `std::get<0>(p).inc();` for
+      the inline element, `(*std::get<1>(p))` / `->` for the borrowed one
+      (a readonly param's alias is `const Box&`; the field chain
+      `p[0].xs.pop()`, the closure and the genexpr reach too). ONE
+      `owned_element_read` answers both owned-tuple spellings, so
+      `sink(p[0])` and `return p[0]` into `-> Own[Box]` move at the
+      tuple's last use for the whole-own param and the owned local
+      (`std::move(std::get<0>(p))`, was a warned copy at the return), a
+      live alias `o = p[0]` is a borrower (warned copy, `@nocopy` errors).
+      The unpack's two owned-call element lists are one
+      (`_capture_value_elem`) and admit an enum beside an owned element
+      (`x, c = mk(Color.Blue)`; the enum binds by value). Sweep (7 param /
+      local spellings x int/int32 sibling x 5 places x 2 elements x
+      free/method, 280 programs) against master: 128 -> 232 compile, no
+      `ok -> reject`, every compiled program matches CPython; the 48 left
+      are a BORROWED element into an `Own` slot
+      (`BUGS.md#borrowed-tuple-element-own-slot-rejects`, a decision).
+      `tests/cases/tuple/owned_param_element_places` (26 sections),
+      `error_own_element_pass_nocopy_live_alias`; the pins
+      `error_mixed_own_param_element_{alias,genexpr,method}` fold into it;
+      `error_mixed_own_param_element_augassign` stays (`p[0] += q` is a
+      CPython `TypeError`:
+      `BUGS.md#tuple-element-augassign-not-refused-by-sema`).
+    - [x] the mixed global: a tuple global is a tuple of scalar globals.
+      Each reference element is the pointer slot a scalar reference global
+      is, so every tuple global holding a reference is the borrow tuple
+      (`std::tuple<Box*, Box*> M{}`, `extern std::tuple<int32_t, Cell*>
+      owned;`); its binding type drops every per-element `Own` (the static
+      owns, the global borrows), so every read and alias takes the
+      borrow-tuple rows in every position and in an importer
+      (`std::get<0>(::tpyapp::mod::M)->n`). A module-level write whose value
+      holds an object -- the mixed `M = make_mixed(V)`, the fully owned
+      `G = make_owned(70)`, a literal with a fresh element, a later one into
+      a global first bound from names -- parks the whole value in one static
+      of its own layout and converts element-wise (`static std::tuple<Box,
+      Box*> __global_slot_N = make_mixed((*V)); M =
+      ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_N);`);
+      a literal of names builds the pointer tuple in place and a tuple name
+      copies it (`M2 = M;`, an imported one too). A rebind parks a fresh
+      static (the unpacked names keep the old objects), a parking rebind in
+      a module-level loop rejects
+      (`BUGS.md#tuple-global-loop-rebind-unwarned`), an all-borrow one there
+      re-points, a function-body rebind is refused, no element is
+      default-constructed, and a last use at a mixed or fully owned
+      parameter is the warned copy (a borrow-form name at a mixed slot lifts
+      element-wise, `tuple_to_storage<std::tuple<Box, Box*>>(M)`, an
+      all-borrow local the same). `global_tuple_layout` is VALUE /
+      PTR_SLOTS. Deleted: `BACKED`, `global_is_pointer_slot`, the spelled
+      `(*M)` reads and their seeding, the whole-tuple slot write arm.
+      `tests/cases/tuple/mixed_tuple_global`. Left: `mod.M[1]` through the
+      module (`BUGS.md#module-qualified-tuple-global-rejects`), a nested
+      tuple element holding a reference (located reject).
   Also owned here, after the steps: the real fix of
   `BUGS.md#resumable-alias-identity` (the per-rebind-site element ownership
   verdict, decided in sema); the shared root `tpyc/sema/alias_rebind.py`

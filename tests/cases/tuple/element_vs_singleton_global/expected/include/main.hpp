@@ -13,10 +13,13 @@ extern Box* V;
 extern Box* W;
 extern Box* singleton;
 extern std::tuple<Box*, Box*> pair;
-extern std::tuple<int32_t, Box> owned;
+extern std::tuple<int32_t, Box*> owned;
 extern std::tuple<Box*, int32_t> pair2;
+extern std::tuple<Box*, Box*> mixed;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def make_mixed(b: Box) -> tuple[Own[Box], Box]:
+std::tuple<Box, Box*> make_mixed(Box& b);
 // def main() -> None:
 void main();
 

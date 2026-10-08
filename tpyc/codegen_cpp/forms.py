@@ -103,13 +103,6 @@ class LocalBinding(Enum):
     OTHER = auto()
 
 
-def is_borrow_form_tuple_global(t: TpyType | None) -> bool:
-    """`TupleType.takes_borrow_slot_as_global` over an optional, possibly
-    non-tuple binding type: the declaration, the extern, the module-init
-    write and every read consult this one verdict."""
-    return isinstance(t, TupleType) and t.takes_borrow_slot_as_global()
-
-
 def is_plain_nonvalue(t: TpyType) -> bool:
     """Non-value type needing indirection (record, list, dict, set, recursive-
     union wrapper). Unwraps `Own[T]`; excludes pointer-repr Optional and
@@ -205,8 +198,11 @@ def is_storage_tuple_alias_decl(
         return False
     if name in reassigned or name in hoisted or name in move_through:
         return False
+    # ... or holds a record element inline (`tuple[Own[Box], Own[Box]]`):
+    # the alias re-binds that storage exactly as it re-binds a pointer slot.
     if not (isinstance(target_type, TupleType)
-            and target_type.has_pointer_repr_element()):
+            and (target_type.has_pointer_repr_element()
+                 or target_type.has_own_element())):
         return False
     if isinstance(init, (TpyFieldAccess, TpySubscript)):
         return True

@@ -3947,17 +3947,67 @@ def own_tuple_target(expected: 'TpyType') -> 'TupleType | None':
     return None
 
 
+class TupleGlobalLayout(Enum):
+    """How a module global of a tuple type is held: the form the scalar at
+    the same position takes, so a one-element tuple global is held exactly
+    as its element would be. The tuple as a whole answers `is_value_type()`,
+    which is why a global's classification cannot ask that."""
+    # No reference anywhere: a namespace-scope value like a value global
+    # (`std::tuple<int32_t, std::string> g;`).
+    VALUE = "value"
+    # A reference anywhere: each reference element is the pointer slot a
+    # scalar reference global is (`std::tuple<int32_t, Box*> g{};`).
+    PTR_SLOTS = "ptr_slots"
+
+
+def global_tuple_layout(t: 'TpyType | None') -> 'TupleGlobalLayout | None':
+    """The layout of a module global of type `t`, or None when `t` is no
+    tuple. The one classifier the declaration, the extern, module init,
+    every read and sema's ownership and rebind rules dispatch on."""
+    if t is None:
+        return None
+    t = unwrap_readonly(t)
+    if not isinstance(t, TupleType):
+        return None
+    if not t.needs_wrapper() and t.has_nested_pointer_repr_element():
+        return TupleGlobalLayout.PTR_SLOTS
+    return TupleGlobalLayout.VALUE
+
+
+def global_tuple_binding_type(t: 'TpyType') -> 'TpyType':
+    """The type a module-level tuple binding records: every per-element
+    `Own` stripped, at any depth. The static the write parks the value in
+    owns the objects and the global borrows them, as `Box* V` borrows its
+    `__global_slot_N`; a fresh element's `Own` would spell it inline."""
+    bare = unwrap_readonly(t)
+    if not isinstance(bare, TupleType):
+        return t
+
+    def strip(e: 'TpyType') -> 'TpyType':
+        if isinstance(e, OwnType):
+            return strip(e.wrapped)
+        if isinstance(e, OptionalType) and isinstance(e.inner, OwnType):
+            return e.with_inner(strip(e.inner.wrapped))
+        if isinstance(e, TupleType):
+            return TupleType(tuple(strip(x) for x in e.element_types))
+        return e
+
+    stripped = strip(bare)
+    if stripped == bare:
+        return t
+    return make_readonly(stripped) if isinstance(t, ReadonlyType) else stripped
+
+
 def global_binds_by_reference(t: 'TpyType | None') -> bool:
-    """A module global whose binding is a POINTER SLOT (a reference type) or
-    a tuple of pointer slots (`TupleType.takes_borrow_slot_as_global`): bound
-    once at module init, so rebinding it from a function body is refused --
-    a slot aimed at a function's storage would dangle. The tuple form has to
-    be named here because `is_value_type()` alone calls it a value."""
+    """A module global whose binding is a POINTER SLOT, or a tuple of them:
+    bound at module init only, so rebinding it from a function body is
+    refused -- a slot aimed at a function's storage would dangle."""
     if t is None:
         return False
     t = unwrap_readonly(t)
-    if isinstance(t, TupleType):
-        return t.takes_borrow_slot_as_global()
+    layout = global_tuple_layout(t)
+    if layout is not None:
+        return layout is TupleGlobalLayout.PTR_SLOTS
     return not t.is_value_type()
 
 
@@ -4974,19 +5024,6 @@ class TupleType(TpyType):
         # materialize its borrowed half first. Whether a PARAMETER takes the
         # tuple by ownership transfer is `param_takes_ownership`.
         return self.has_own_element() and not self.has_ref_elements()
-
-    def takes_borrow_slot_as_global(self) -> bool:
-        """A module global of this tuple type is a tuple of POINTER SLOTS
-        (`std::tuple<T*, ...>`, bound once at module init, never rebound
-        from a function body) -- the tuple of the slot every reference-typed
-        global is, so an element aliases the object it was given as the
-        scalar global does. The tuple as a whole answers `is_value_type()`,
-        which is why the global classification cannot ask that. An owned
-        element (sema marks a fresh literal element or an owning call's
-        element `Own` on the binding) keeps the storage form: the owned
-        half needs static backing."""
-        return (self.has_pointer_repr_element() and not self.has_own_element()
-                and not self.needs_wrapper())
 
     def is_mixed_own(self) -> bool:
         # The complement of is_owned_movable() among Own-carrying tuples: an

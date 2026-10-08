@@ -1,0 +1,1 @@
+main.py:21: error: at module level: this construct is not yet supported by C++ code generation (stmt.var_decl:reseat.borrow_tuple_source)
