@@ -1,0 +1,5 @@
+main.py:32: warning: 'W2.__init__' does not call 'super().__init__(...)'; TPy default-constructs the 'W' part instead
+main.py:43: warning: upcast narrows 'W2' to 'W' -- only 'W' fields and methods will be accessible; keep the concrete type or make 'W' a @dynamic protocol
+main.py:43: warning: copies W2 into owned storage; use copy() to make this explicit
+main.py:57: warning: copies P into owned storage; use copy() to make this explicit
+main.py:63: warning: copies P into owned storage; use copy() to make this explicit

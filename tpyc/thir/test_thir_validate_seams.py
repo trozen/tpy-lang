@@ -569,7 +569,8 @@ class TestNodeStructuralRules:
             body=(THIRReturn(value=node),), layout=THIRFunctionLayout())
 
     def _self(self, deref: bool) -> THIRSelf:
-        return THIRSelf(result_type=INT32, form=Form.BORROW, deref=deref)
+        return THIRSelf(result_type=INT32, form=Form.BORROW, deref=deref,
+                        pointer=True)
 
     def test_arrow_field_over_bare_receiver_passes(self):
         validate_function(self._fn(THIRFieldAccess(

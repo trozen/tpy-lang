@@ -42,6 +42,7 @@ from ...identity_map import IdentityMap, IdentitySet
 from ..reject import (ThirUnsupported, begin_stmt, note, note_detail,
                         stmt_reject_reason)
 from ..faces import witness as _witness
+from ..source import Held, SelectResult
 from ..validate import validate_resumable_body, validate_stmts
 from ..nodes import (
     THIRDynIsinstanceMulti,
@@ -2676,6 +2677,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         then=_yield_borrow_name(yv_src.then_expr),
                         orelse=_yield_borrow_name(yv_src.else_expr),
                         form=Form.BORROW,
+                        normalized=SelectResult(Held.BORROWED,
+                                                temporary=False),
                         loc=getattr(yv_src, "loc", None))
                     _witness(f"res.yield_{half}_ternary")
                     return

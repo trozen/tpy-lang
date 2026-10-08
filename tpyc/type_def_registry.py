@@ -277,6 +277,11 @@ class TypeDef:
     # to the default: a value type passes VALUE, a reference type a
     # reference (const or not per the signature's const verdict).
     param_passing: Optional[ParamPassing] = None
+    # The owned C++ storage neither converts nor assigns from the type's own
+    # view form (`::tpy::Bytes` takes a `BytesView` only through its explicit
+    # constructor, where `std::string` takes a `string_view` in both), so a
+    # view source reaches an owned slot through a spelled copy.
+    owned_from_view_explicit: bool = False
     # A value holds no borrowed leaf and has no storage a compiler-introduced
     # borrow can point into, and it passes and returns by value: a loan can
     # neither start, pass through nor end at it (`typesys.loan_class`).
@@ -1104,6 +1109,11 @@ def is_borrowing_view_type(t: "TpyType") -> bool:
     return declares_borrowing_view(type_def_of(t))
 
 
+def owned_from_view_explicit(t: "TpyType") -> bool:
+    td = type_def_of(t)
+    return td is not None and td.owned_from_view_explicit
+
+
 def iter_yields_ref_tuple_proxies(t: "TpyType") -> bool:
     td = type_def_of(t)
     return td is not None and td.iter_yields_ref_tuple_proxies
@@ -1348,7 +1358,7 @@ def _populate() -> None:
         "builtins.bytes", TC.BYTES, cpp_default_init=_INERT, is_value_type=True, boundary_marshal=True,
         cpp_formatter=lambda args: "::tpy::Bytes",
         param_cpp_formatter=lambda args: "::tpy::BytesView",
-        param_passing=ParamPassing.VIEW,
+        param_passing=ParamPassing.VIEW, owned_from_view_explicit=True,
         is_expensive_copy=True, param_needs_copy_for_reassign=True,
         owned_leaf=True, primitive_ops=True, copy_may_raise=True, zero_value=b"",
         element_of=_u8_elem,

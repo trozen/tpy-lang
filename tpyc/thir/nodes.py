@@ -15,7 +15,7 @@ the form-carrying nodes slot in without reshaping the hierarchy.
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 from typing import TYPE_CHECKING, ClassVar, NamedTuple
 
@@ -31,6 +31,7 @@ from ..typesys import (
     unwrap_own, unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .scalar_leaves import view_compatible
+from .source import SelectResult, Source
 
 if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
@@ -205,12 +206,59 @@ class THIRExpr(THIRNode):
     """Base expression. `result_type` is always the fully-resolved type --
     no side-table lookup, no Own/Ref wrapper (those are stripped at lowering).
 
-    `form` is the borrow/storage form the expression renders as -- set by
-    lowering through the single binding classifier so the coerce boundary reads
-    one fact instead of re-deriving it. kw_only with a `VALUE` default so the
-    value-scalar slice (every current node) is untouched."""
+    `form` is the borrow/storage form the expression renders as, set by the
+    arm that builds the node. kw_only with a `VALUE` default so the
+    value-scalar slice is untouched. `source.held` is decided from the
+    expression's facts, never from `form`; the two sit side by side until
+    `form` becomes a view of `source`.
+
+    `source` is what the expression IS -- where the value lives, const,
+    movable, pointer-held (`tpyc/thir/source.py`) -- stamped once by
+    `_lower_expr` on every node it returns; None on a node built outside
+    it. Not part of node identity: two nodes that render alike compare
+    equal whatever was learned about their sources."""
     result_type: TpyType
     form: Form = field(default=Form.VALUE, kw_only=True)
+    source: Source | None = field(default=None, kw_only=True, compare=False,
+                                  repr=False)
+
+    @property
+    def uncoerced(self) -> 'THIRExpr':
+        """The value under any passthrough coercions wrapping it."""
+        return self
+
+    @property
+    def reads_raw_pointer(self) -> bool:
+        """The C++ value is a raw pointer (`T*`) -- read off the node as it
+        is now, so `source.pointer_held` can be kept equal to it."""
+        return False
+
+    @property
+    def reads_binding(self) -> bool:
+        """The C++ expression is the binding's own name (an id-expression,
+        which a `return` moves implicitly), not a deref or unwrap of it."""
+        return False
+
+    @property
+    def reads_unwrapped(self) -> bool:
+        """The read takes its binding's narrowed unwrap (the deref)."""
+        return False
+
+    def _restamp_reads(self) -> None:
+        # An arm that flips a read's deref (or form) with `replace` builds a
+        # new node; the stamped read facts must follow it, never keep the
+        # old node's answer.
+        s = self.source
+        if s is None:
+            return
+        held = (s.held if s.held_by_deref is None
+                else s.held_by_deref[self.reads_unwrapped])
+        if (s.pointer_held != self.reads_raw_pointer
+                or s.id_read != self.reads_binding or s.held is not held):
+            object.__setattr__(self, "source",
+                               replace(s, pointer_held=self.reads_raw_pointer,
+                                       id_read=self.reads_binding,
+                                       held=held))
 
 
 @dataclass(frozen=True)
@@ -376,17 +424,7 @@ class THIRName(THIRExpr):
     global_binding: THIRGlobalBinding | None = field(default=None, kw_only=True)
     optional_read: THIROptionalRead | None = field(default=None, kw_only=True)
     union_read: THIRUnionLayout | None = field(default=None, kw_only=True)
-    # The move facts, stamped by `_lower_expr` on a read of a source name:
-    # sema's last-use verdict for this read (`SemanticContext.is_last_use`),
-    # and whether a sink here may move the name (`_LowerCtx.movable_now`).
-    # A sink that consumes the value moves only when both hold.
-    is_last_use: bool = False
-    is_movable: bool = False
     deref: bool = False
-    # The binding is a POINTER (`T*`): stamped by `_lower_expr` from the
-    # pointer set. BORROW spells both `T&` and `T*`, so a consumer that
-    # must not bind a raw pointer bare asks `raw_pointer`.
-    indirect: bool = False
     # An UNPROVEN value-repr Optional[scalar] read consumed as its inner scalar:
     # renders `::tpy::deref_optional_check(name)` -- the runtime-checked
     # unwrap. Mutually exclusive with `deref` (the proven `(*name)` unwrap).
@@ -394,11 +432,37 @@ class THIRName(THIRExpr):
     cpp: str | None = None
 
     @property
+    def indirect(self) -> bool:
+        """The binding is a POINTER (`T*`), per the read's `source`. BORROW
+        spells both `T&` and `T*`, so a consumer that must not bind a raw
+        pointer bare asks `raw_pointer`."""
+        b = self.source.binding if self.source is not None else None
+        return b is not None and b.pointer and b.name == self.name
+
+    @property
     def raw_pointer(self) -> bool:
         """The read is the bare `T*`: a pointer binding read without the
         value-position deref. Only a whole lift consumes one; every other
         slot needs the deref the read did not take."""
         return self.indirect and not self.deref
+
+    @property
+    def reads_raw_pointer(self) -> bool:
+        return self.raw_pointer
+
+    @property
+    def reads_unwrapped(self) -> bool:
+        return self.deref
+
+    @property
+    def reads_binding(self) -> bool:
+        return (not self.deref and not self.opt_deref_check
+                and self.cpp is None
+                and (self.optional_read is None
+                     or not self.optional_read.extract))
+
+    def __post_init__(self) -> None:
+        self._restamp_reads()
 
 
 @dataclass(frozen=True)
@@ -430,10 +494,17 @@ class THIRSelf(THIRExpr):
 
     deref: bool = False
     cpp: str = "this"
-    # The move facts of a CONSUMING method's receiver (`self: Own[Self]`),
-    # stamped by `_lower_expr` exactly as on a name read.
-    is_last_use: bool = False
-    is_movable: bool = False
+    # The receiver binding is a pointer (`this`); a resumable frame captures
+    # it as a reference instead (`_LowerCtx.self_is_pointer`). No default: a
+    # builder that forgot it would read a frame's reference as a pointer.
+    pointer: bool = field(kw_only=True)
+
+    @property
+    def reads_raw_pointer(self) -> bool:
+        return self.pointer and not self.deref
+
+    def __post_init__(self) -> None:
+        self._restamp_reads()
 
 
 @dataclass(frozen=True)
@@ -565,6 +636,8 @@ class THIRValueSelect(THIRExpr):
     lhs_cast: 'str | None' = None
     rhs_cast: 'str | None' = None
     rhs_sv: bool = False
+    # The lowering's normalization decision; set by every lowering site.
+    normalized: SelectResult | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -816,6 +889,8 @@ class THIRIfExpr(THIRExpr):
     cond: THIRExpr
     then: THIRExpr
     orelse: THIRExpr
+    # The lowering's normalization decision; set by every lowering site.
+    normalized: SelectResult | None = field(default=None, kw_only=True)
 
 
 @dataclass(frozen=True)
@@ -1672,6 +1747,10 @@ class THIRCoerce(THIRExpr):
     coercion_name: str
     wrap: 'str | None' = None
 
+    @property
+    def uncoerced(self) -> THIRExpr:
+        return self.expr.uncoerced
+
     def _conversion(self) -> str:
         """One classification of the coercion for a loan model: "certified",
         "passthrough", or the reason it is neither. Decided here once, so no
@@ -1921,10 +2000,24 @@ class THIRSubscript(THIRExpr):
     # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
     # runtime-checked unwrap), the subscript twin of THIRName's flag.
     opt_deref_check: bool = False
+
     # A borrow-form tuple's pointer-repr element consumed as its REFERENT
     # (`std::get<N>` yields the element `T*`; a `T&` alias bind needs
     # `(*std::get<N>(t))`) -- the deref twin of THIRName's flag.
     deref: bool = False
+    # The receiver tuple holds this element as a pointer (`std::get<N>`
+    # yields `T*`): decided from the receiver's element layout where the
+    # read is built. A BORROW-form record element of a tuple holding it by
+    # value yields `T&` and is no pointer.
+    elem_pointer: bool = False
+
+    @property
+    def reads_raw_pointer(self) -> bool:
+        return (self.tuple_index is not None and self.elem_pointer
+                and not self.deref)
+
+    def __post_init__(self) -> None:
+        self._restamp_reads()
 
     @property
     def certified_op(self) -> bool:

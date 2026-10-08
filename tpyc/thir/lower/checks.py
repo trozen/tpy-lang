@@ -14807,15 +14807,6 @@ def _open_tparam_storage_slot(slot: 'TpyType | None') -> 'TypeParamRef | None':
     return u if isinstance(u, TypeParamRef) else None
 
 
-def _open_tparam_return_slot(slot: 'TpyType | None') -> 'TypeParamRef | None':
-    """The bare `T` behind a `val_or_ref_t<T>` RETURN slot, or None. `Own[T]`
-    is excluded by the caller: `own_return_t<T>` is already the storage form."""
-    if not isinstance(slot, TpyType):
-        return None
-    u = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
-    return u if isinstance(u, TypeParamRef) else None
-
-
 def _none_unit_arg(a: TpyExpr, ptype: 'TpyType | None') -> 'NoneType | None':
     """A `None` literal into a unit slot (`Own[None]` / bare `None` -- a
     generic call's substituted T=None param): renders the bare

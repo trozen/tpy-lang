@@ -5,6 +5,12 @@
 4
 2
 b'pq'
+b'op'
 b'ab'
+ctor.str_select lit xy
+method.str_ternary pq pq
+method.str_or lit lit
+method.str_or_lhs rs rs
+free.str_select lit uv
 3
 1

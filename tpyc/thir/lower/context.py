@@ -3,20 +3,24 @@
 from __future__ import annotations
 from collections.abc import Callable, Mapping, Set as AbstractSet
 from contextlib import contextmanager
-from dataclasses import dataclass, field, fields
+from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
 from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr, TpyFieldAccess,
                             TpyFunction, TpyGlobal, TpyIfExpr, TpyName,
                             TpyNamedExpr, TpySubscript, TpyVarDecl)
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
+from ...type_def_registry import has_view_param_form
 from ...typesys import (
+    AnyType,
     CallableType,
     ConcreteFrameType,
     OptionalType,
     OwnType,
     ReadonlyType,
+    RecursiveAliasInstanceType,
     TpyType,
+    TypeParamRef,
     TupleType,
     UnionType,
     VoidType,
@@ -28,11 +32,20 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
-from ...typesys import holds_borrowing_view
+from ...typesys import (
+    holds_borrowing_view,
+    property_getter_returns_storage_ref,
+    Representation,
+    return_representation,
+)
 from ...sema.own_copy import contains_reference_type
 from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRTupleLayout, THIRUnionExtraction, THIRUnionLayout
 from .captures import CaptureSites
 from .predicates import (
+    _callable_value,
+    _resolved_bytes_value,
+    _resolved_str_value,
+    _span_value,
     _borrow_tuple_return_type,
     _optional_borrow_tuple,
     _res_container_return,
@@ -75,6 +88,10 @@ from .predicates import (
     _wrapper_ref_tuple_return,
     _value_tuple_return,
     _union_elem_value_tuple,
+    _storage_copy_value,
+    _value_opt_owned_view,
+    _value_tuple,
+    record_like,
 )
 
 
@@ -563,14 +580,29 @@ class SlotConstruct(Enum):
     RETURN = auto()
 
 
-class SlotBorrow(Enum):
-    """Whether the destination holds a BORROW, and in which C++ shape: a
-    pointer (`T*`, reseatable, nullable) or a reference (`T&`, bound once).
-    A field or member-init slot holds storage, so it is NONE there; the
-    other members are the local / parameter / return destinations'."""
-    NONE = auto()
+class SlotHolds(Enum):
+    """What the slot holds, and so which conversions reach it -- the
+    HOLDING part of the slot (`Slot.holds`)."""
+    # Owned storage of the slot type: a record, a container, an Optional,
+    # a union, a tuple, an open `T` -- a borrow converts into it, a movable
+    # owned source moves in.
+    OWNS = auto()
+    # A plain value whose own construction / assignment takes the source
+    # as it renders: a scalar, an enum, a `Ptr`, a callable, a span, a
+    # value-repr Optional scalar, an owned str or bytes buffer.
+    VALUE = auto()
+    # A type-erased box (`Any`) the source's erasing coerce already built.
+    ERASED = auto()
+    # A slot no conversion is known for: only an owned value relocated whole
+    # reaches it.
+    RELOCATE = auto()
+    # A borrow: `T&` bound once / `T*` reseatable -- a reference return, a
+    # pointer-repr Optional / pointer-variant return.
+    BORROWS = auto()
     POINTER = auto()
-    REFERENCE = auto()
+    # An open `T` whose instantiation decides by value or by reference
+    # (`val_or_ref_t<T>`, `Representation.TRAIT`).
+    TRAIT = auto()
 
 
 class SlotPlacement(Enum):
@@ -594,15 +626,43 @@ class SlotPlacement(Enum):
 
 
 @dataclass(frozen=True, slots=True)
-class SlotDest:
-    """The DESTINATION part of the slot contract: the declared slot the
-    value lands in, the borrow shape it holds, and how it receives the
-    value. Distinct from `_ExprUse.slot_target`, the type a LITERAL renders
-    against, which can be another type (an `Optional[C]` field's literal
-    renders against `C`) or none at all."""
+class Slot:
+    """The place a value lands in -- everything `convert` may know about
+    the DESTINATION. Distinct from `_ExprUse.slot_target`, the type a
+    LITERAL renders against, which can be another type (an `Optional[C]`
+    field's literal renders against `C`) or none at all."""
     type: TpyType
     construct: SlotConstruct
-    borrow: SlotBorrow = SlotBorrow.NONE
+    holds: SlotHolds = SlotHolds.OWNS
+    # The const-ness the binding ASKS for (a `const T&` local, a readonly
+    # parameter); a field asks for none.
+    const: bool = False
+    # Whether a temporary may be hoisted before the statement here -- the
+    # REGION's grant (`_LowerCtx.placement`), carried as the answer.
+    placement: SlotPlacement = SlotPlacement.STATEMENT
+    lifetime: SlotLifetime = SlotLifetime.NONE
+
+
+def storage_type(t: 'TpyType | None') -> 'TpyType | None':
+    """A type as a storage slot sees it: the transparent wrappers and `Own`
+    peeled, also under an Optional (`Own[T] | None` stores the same
+    `std::optional<T>` a `T | None` field holds) and on tuple elements."""
+    if t is None:
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    if isinstance(t, OptionalType):
+        inner = unwrap_readonly(t.inner)
+        if isinstance(inner, OwnType):
+            t = replace(t, inner=unwrap_readonly(inner.wrapped))
+    if isinstance(t, TupleType) and any(
+            isinstance(unwrap_readonly(e), OwnType) for e in t.element_types):
+        elems = [unwrap_readonly(e) for e in t.element_types]
+        t = replace(t, element_types=tuple(
+            unwrap_readonly(e.wrapped) if isinstance(e, OwnType) else e
+            for e in elems))
+    return t
 
 
 def slot_lifetime(slot: 'TpyType | None') -> SlotLifetime:
@@ -628,9 +688,8 @@ class _ExprUse:
     asks of its source, decided from the slot, never from the source's
     spelling. Three separate parts:
 
-      * DESTINATION (`dest`): the declared slot type, the borrow shape it
-        holds and the construction mode (`SlotDest`). None where the site
-        has not stated it yet.
+      * DESTINATION (`dest`): the place the value lands in (`Slot`). None
+        where the site has not stated it yet.
       * LIFETIME (`lifetime`): what the source's storage must outlive
         (`slot_lifetime`).
       * GRANT (`allow_temps`): whether this expression may take the
@@ -662,7 +721,7 @@ class _ExprUse:
     # though their own render is retyped afterwards. None is TARGET-LESS
     # (print args, compare operands, user-record method args).
     slot_target: 'TpyType | None' = None
-    dest: 'SlotDest | None' = None
+    dest: 'Slot | None' = None
     lifetime: SlotLifetime = SlotLifetime.NONE
 
     def admits(self, form: SinkForm) -> bool:
@@ -673,18 +732,160 @@ class _ExprUse:
         return form in (_POS_FORMS[self.pos] if forms is None else forms)
 
 
-def field_slot_use(slot: 'TpyType | None',
-                   construct: SlotConstruct) -> _ExprUse:
-    """The slot contract a record FIELD hands its source, decided once per
-    statement from the declared slot -- a field write assigns, a member-init
-    direct-initializes. A field holds storage, so it borrows nothing; its
-    lifetime is the slot type's. It grants its source the temporary path
-    wherever it sits (grant vs placement: `SlotPlacement`). Each site then
-    names its sink and verdict with `dataclasses.replace`, keeping the
-    contract."""
+def opt_callable_slot(t: 'TpyType | None') -> bool:
+    """An `Optional[Callable]` slot (`std::optional<std::function>` by
+    value): its operator= absorbs the bare callable-name render a plain
+    Callable slot takes."""
+    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+         if t is not None else None)
+    return (isinstance(u, OptionalType)
+            and _callable_value(unwrap_readonly(u.inner)))
+
+
+class FieldSlot(Enum):
+    """What a FIELD of a given type stores, which decides the field write's
+    family and the slot's `SlotHolds` -- read off the slot type once
+    (`field_slot_class`)."""
+    # A plain value whose construction / assignment takes the source as it
+    # renders: a scalar, a char, an enum, a `Ptr`, a callable (or its
+    # Optional), a span.
+    PLAIN = auto()
+    # A value-repr `Optional[scalar]`.
+    VALUE_OPT = auto()
+    # The str family's value (`str`, `StrView`, `String`).
+    OWNED_STR = auto()
+    # An owned bytes buffer: the bytes family member passed as a view of
+    # its own storage (`has_view_param_form`).
+    OWNED_BYTES = auto()
+    # Owned storage a borrow converts into: a record or container, an
+    # Optional over one (or over a type parameter, an owned str / bytes, a
+    # value tuple), a recursive-alias wrapper, a stored union or tuple.
+    STORAGE = auto()
+    # A type-erased box (`Any`).
+    ERASED = auto()
+    # No family renders this slot.
+    UNCLASSIFIED = auto()
+
+    @property
+    def holds(self) -> 'SlotHolds':
+        return _FIELD_HOLDS[self]
+
+
+_FIELD_HOLDS = {
+    FieldSlot.PLAIN: SlotHolds.VALUE,
+    FieldSlot.VALUE_OPT: SlotHolds.VALUE,
+    FieldSlot.OWNED_STR: SlotHolds.VALUE,
+    FieldSlot.OWNED_BYTES: SlotHolds.VALUE,
+    FieldSlot.STORAGE: SlotHolds.OWNS,
+    FieldSlot.ERASED: SlotHolds.ERASED,
+    # The admission's gap: no conversion is known, so only an owned value
+    # relocated whole reaches the slot (BUGS.md#field-view-escape-needs-place
+    # keeps the view-family receivers out of the families that would).
+    FieldSlot.UNCLASSIFIED: SlotHolds.RELOCATE,
+}
+
+
+def field_slot_class(t: 'TpyType | None', analyzer) -> FieldSlot:
+    """The one classification of a field slot type."""
+    if t is None:
+        return FieldSlot.UNCLASSIFIED
+    if (_eligible_scalar(t) or _eligible_char(t)
+            or _eligible_enum(t, analyzer) is not None
+            or _eligible_ptr_value(t, analyzer)
+            or _callable_value(t) or opt_callable_slot(t) or _span_value(t)):
+        return FieldSlot.PLAIN
+    if _value_opt_scalar(t, analyzer) is not None:
+        return FieldSlot.VALUE_OPT
+    if _resolved_str_value(t, analyzer) is not None:
+        return FieldSlot.OWNED_STR
+    b = _resolved_bytes_value(t, analyzer)
+    if b is not None and has_view_param_form(b):
+        return FieldSlot.OWNED_BYTES
+    if isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t))),
+                  AnyType):
+        return FieldSlot.ERASED
+    if record_like(t, analyzer):
+        return FieldSlot.STORAGE
+    if isinstance(t, OptionalType):
+        inner = unwrap_readonly(t.inner)
+        if (record_like(inner, analyzer)
+                or isinstance(inner, TypeParamRef)
+                or _value_opt_owned_view(t, analyzer) is not None
+                or _value_tuple(inner, analyzer) is not None):
+            return FieldSlot.STORAGE
+    if (isinstance(t, RecursiveAliasInstanceType)
+            or _storage_copy_value(t, analyzer)):
+        return FieldSlot.STORAGE
+    return FieldSlot.UNCLASSIFIED
+
+
+def field_slot_use(slot: 'TpyType | None', construct: SlotConstruct,
+                   analyzer, placement: SlotPlacement) -> _ExprUse:
+    """The slot a record FIELD hands its source, decided once per statement
+    from the declared slot -- a field write assigns, a member-init
+    direct-initializes. A field holds storage or a plain value, never a
+    borrow; its lifetime is the slot type's. It grants its source the
+    temporary path wherever it sits (grant vs placement: `SlotPlacement`).
+    Each site then names its sink and verdict with `dataclasses.replace`,
+    keeping the slot."""
+    lifetime = slot_lifetime(slot)
     return _ExprUse(
-        dest=(SlotDest(slot, construct) if slot is not None else None),
-        lifetime=slot_lifetime(slot), allow_temps=True)
+        dest=(Slot(slot, construct,
+                   holds=field_slot_class(slot, analyzer).holds,
+                   placement=placement, lifetime=lifetime)
+              if slot is not None else None),
+        lifetime=lifetime, allow_temps=True)
+
+
+def _return_holds(rt: TpyType, getter: bool, analyzer) -> SlotHolds:
+    """How a function's result is handed back, as its signature spells it
+    (`return_representation`): a reference or a pointer into storage the
+    callee does not own, an open `T` the instantiation decides, or a value
+    the slot owns. A property getter of a pointer-repr shape hands back the
+    field's storage by reference instead
+    (`property_getter_returns_storage_ref`)."""
+    if getter and property_getter_returns_storage_ref(rt):
+        return SlotHolds.BORROWS
+    bare = unwrap_readonly(unwrap_send_sync(rt))
+    rep = return_representation(rt)
+    if rep is Representation.TRAIT:
+        return (SlotHolds.OWNS if isinstance(bare, OwnType)
+                else SlotHolds.TRAIT)
+    if rep is Representation.REFERENCE:
+        u = unwrap_ref_type(bare)
+        return (SlotHolds.POINTER
+                if isinstance(u, (OptionalType, UnionType))
+                and u.uses_pointer_repr() else SlotHolds.BORROWS)
+    if rep is Representation.VIEW:
+        return SlotHolds.VALUE
+    st = storage_type(rt)
+    cls = field_slot_class(st, analyzer)
+    if cls in (FieldSlot.STORAGE, FieldSlot.UNCLASSIFIED):
+        # The return builds its own result whatever the type: a value
+        # type's is a copy the construction takes as the source renders.
+        return SlotHolds.VALUE if st.is_value_type() else SlotHolds.OWNS
+    return cls.holds
+
+
+def return_slot(lc: '_LowerCtx') -> 'Slot | None':
+    """The slot a `return` in this body hands its value to, decided once per
+    body from the declared result type (`_Prescan.ret_type`, a per-@overload
+    stub's when one is lowered); None for a body with no result."""
+    pre = lc.prescan
+    if pre.ret_slot is not None or pre.ret_type is None:
+        return pre.ret_slot
+    rt = pre.ret_type
+    if isinstance(unwrap_readonly(unwrap_ref_type(rt)), VoidType):
+        return None
+    getter = bool(getattr(lc.func, "is_property_getter", False))
+    # Cached per body, so it carries nothing per region: the placement a
+    # nested region grants is the caller's to read where it lowers.
+    pre.ret_slot = Slot(
+        storage_type(rt), SlotConstruct.RETURN,
+        holds=_return_holds(rt, getter, lc.analyzer),
+        const=isinstance(unwrap_send_sync(rt), ReadonlyType),
+        lifetime=slot_lifetime(rt))
+    return pre.ret_slot
 
 
 def narrow_alias_taken(bound_names, frame_field_names, *,
@@ -775,7 +976,7 @@ class _Prescan:
                  "ret_dyn_borrow", "ret_dyn_own",
                  "ret_supported", "ret_callable",
                  "ret_value_opt", "ret_value_opt_view",
-                 "ret_value_opt_tuple",
+                 "ret_value_opt_tuple", "ret_type", "ret_slot",
                  "value_opt_params", "param_names", "bound_names",
                  "module_global_names",
                  "own_tuple_params",
@@ -875,6 +1076,9 @@ class _Prescan:
               if return_type_override is not None
               else (func.return_type
                     if isinstance(func.return_type, TpyType) else None))
+        self.ret_type: TpyType | None = rt
+        # `return_slot` fills it on first use.
+        self.ret_slot: 'Slot | None' = None
         self.ret_storage_opt = _storage_optional_return_wide(rt, analyzer)
         # The pointer-repr Optional return slot over the WIDE pointee class
         # (`A | None` / `T | None` / `W | None` -> a borrow `A*` returned by
@@ -1325,7 +1529,7 @@ _PRESCAN_NOT_NAME_KEYED = (
     "ret_union_borrow", "ret_own_union", "ret_genrec", "ret_own_wrapper",
     "ret_wrapper_borrow", "ret_dyn_borrow", "ret_dyn_own", "ret_supported",
     "ret_callable", "ret_value_opt", "ret_value_opt_view",
-    "ret_value_opt_tuple",
+    "ret_value_opt_tuple", "ret_type", "ret_slot",
     # Facts about the enclosing FUNCTION, not a name: a nested def swaps in
     # its own prescan, and a lambda parameter spelled `self` is shadowed
     # through `self_receiver` / `member_self` instead.

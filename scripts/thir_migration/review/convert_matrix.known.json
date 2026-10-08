@@ -1,0 +1,288 @@
+{
+ "tuple_elem_local__field__async": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "d4ebccd23ba4622092dfab211632bdae90852d963ae4268942253ef6df554329",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "441e41b17880d25f242c09af280a194c86af6e7a10285d1a2889329bce5619a6",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field__function": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "a5d464034be761cb2b5c989c863ad3e9e55a614d9689923c6279c5f93e122475",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field__generator": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "a5d464034be761cb2b5c989c863ad3e9e55a614d9689923c6279c5f93e122475",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field__method": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "5e2b8e50f835ca75be3166e804b7ece5e74e3489a27279dda7db6dde6158b54b",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field_opt__async": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "6c1e937d17915955e5b3074d1e704e21a27f35a424301c75f24f9168ec5f97bd",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field_opt__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "c7ea5e5944c5347676df0e15347cdf940bc1cde09c756a3307d37337814af9c9",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field_opt__function": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "7624fb1653f86aec3f510c01fb7b9d2321a01792503c51ffc71c53542f796596",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field_opt__generator": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "7624fb1653f86aec3f510c01fb7b9d2321a01792503c51ffc71c53542f796596",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__field_opt__method": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "64f5285f8ac2ca6a3a7f6ec5fdca18e0c724531fcc02ca6979b12a046b3c0d7c",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__member_init__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "51830107b43e976a522e4745dd1c5136aad5f6d04dedeb1fee9929cc4b563344",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_local__member_init_opt__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "362b0722a063d28b1b4ce75b5f3d285baef76e5e1423cb4c0a8994e85f5a412b",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "19e44bc0fadba96f6bc76af0ca6853bd8a79b5094cbac6e7e026e42dc268e71d",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field__function": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "b58e4148f71e6643e9cdcc4af8885499db6d41fb193413a665fe7965482aad23",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field__generator": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "b58e4148f71e6643e9cdcc4af8885499db6d41fb193413a665fe7965482aad23",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field__method": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "7a07c3d564b9fe98f69778c46d053ad0260985f04bd7f115a911565b6948804c",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field_opt__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "42a6799216b876bebdd54de642fece0e3b5b89ca94703d15b63287003ac75e7b",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field_opt__function": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "904fd1ee06a93598e409d96491a8abfe173f5cd8b8dcb8179011e60826dd0a3d",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field_opt__generator": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "904fd1ee06a93598e409d96491a8abfe173f5cd8b8dcb8179011e60826dd0a3d",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__field_opt__method": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "4871e5ac746495dee61d91fb9cab581bd41552975aee2264a9ae2fd5aad1196f",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__member_init__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "1f9fa5bf7f17801d93b5fc4808ad45cc97debd67d6b0b52c9d102fb85e58ae46",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ },
+ "tuple_elem_own_param__member_init_opt__constructor": {
+  "decided": "Tomek Rozen, 2026-10-07",
+  "expect": {
+   "cpp_sha256": "6477e2d49e830d47d2cef7b4702a8069278b83b9eef08a21e7291e0d0bb4cec3",
+   "minus": [],
+   "plus": [],
+   "verdict": "compiles",
+   "warnings": [
+    "copies P into field; use copy() to make this explicit"
+   ]
+  },
+  "reason": "admission widened: a tuple element written into a record field (plain or Optional, body write or member-init) is the warned copy"
+ }
+}

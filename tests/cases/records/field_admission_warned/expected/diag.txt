@@ -28,6 +28,9 @@ main.py:441: warning: copies P | None into field; use copy() to make this explic
 main.py:445: warning: copies P | R into field; use copy() to make this explicit
 main.py:452: warning: copies P | None into field; use copy() to make this explicit
 main.py:454: warning: copies P | R into field; use copy() to make this explicit
+main.py:527: warning: copies P into field; use copy() to make this explicit
+main.py:533: warning: copies P into field; use copy() to make this explicit
+main.py:544: warning: copies P into field; use copy() to make this explicit
 main.py:77: warning: copies P into field; use copy() to make this explicit
 main.py:79: warning: copies list[int32] into field; use copy() to make this explicit
 main.py:138: warning: copies list[int32] into field; use copy() to make this explicit
@@ -37,3 +40,4 @@ main.py:470: warning: copies P | None into field; use copy() to make this explic
 main.py:473: warning: copies P | R into field; use copy() to make this explicit
 main.py:475: warning: copies P | R into field; use copy() to make this explicit
 main.py:513: warning: copies P into field (tuple element 1); use copy() to make this explicit
+main.py:554: warning: copies P into field; use copy() to make this explicit

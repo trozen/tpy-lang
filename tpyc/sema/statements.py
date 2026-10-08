@@ -1100,6 +1100,13 @@ class StatementAnalyzer:
             f"{self.compat.copy_remedy(value)}", value)
         return True
 
+    def _note_live_name_copy(self, value: TpyExpr) -> None:
+        """Record the returned NAME a closure still reads as a read the
+        lowering must copy: C++ would move a bare `return x;`."""
+        name = self.compat.returned_captured_name(value)
+        if name is not None:
+            self.ctx.live_name_copies.add(name)
+
     def _analyze_return_value(self, stmt: TpyReturn) -> None:
         """The value half of a `return` statement's analysis."""
         if stmt.value:
@@ -1157,9 +1164,8 @@ class StatementAnalyzer:
                     copies = self._check_own_lvalue_return(
                         own_expected, stmt.value, "return type")
                     # A borrowed name's `return b;` copies in C++ already.
-                    stmt.copies_live_name = (
-                        copies and self.compat.returned_captured_name(
-                            stmt.value) is not None)
+                    if copies:
+                        self._note_live_name_copy(stmt.value)
             # Check Own[T] elements in tuple literals.
             if isinstance(stmt.value, TpyTupleLiteral):
                 tuple_target = own_tuple_target(expected)
@@ -1181,8 +1187,8 @@ class StatementAnalyzer:
             # element just above.
             if (not isinstance(own_expected, OwnType)
                     and stmt.value not in self.ctx.own_element_copies):
-                stmt.copies_live_name = self._warn_live_name_return(
-                    stmt.value, own_expected)
+                if self._warn_live_name_return(stmt.value, own_expected):
+                    self._note_live_name_copy(stmt.value)
             # Returning an ephemeral generator/iterator borrow lets it escape
             # its iteration step -- reject with the copy-out fix (before the
             # generic dangling check so the specific message wins).

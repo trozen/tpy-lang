@@ -1,20 +1,20 @@
 """Field-write lowering: `recv.field = <value>`.
 
-The write's slot contract is settled first, from the DECLARED field type
+The write's slot is settled first, from the DECLARED field type
 (`field_slot_use`); a family is then picked by the SLOT alone, each a
-(classify, lower) pair over a frozen plan. The storage family -- the
-reference axis, Optionals, unions, tuples -- lowers the source once under
-the use its slot hands it and picks the render from the lowered node's
-facts (form, type, last use, declared ownership): no source row names an
-expression kind except literal construction. Families are tried in
-declaration order -- the first non-None plan wins -- so a family whose
-field-type slice overlaps a later one (None at any Optional field, class
-constants before plain scalars) claims its statements by position.
+(classify, lower) pair over a frozen plan. A family decides what it
+admits (its receivers, the source types its slot takes) and how the source
+is LOWERED for the slot; how the lowered source then reaches the slot is
+the one conversion's (`convert`), read off the node's `Source` and the
+slot. No row here names an expression kind except literal construction.
+Families are tried in declaration order -- the first non-None plan wins --
+so a family whose field-type slice overlaps a later one (None at any
+Optional field, class constants before plain scalars) claims its
+statements by position.
 """
 from __future__ import annotations
 from collections.abc import Set as AbstractSet
 from dataclasses import dataclass, replace
-from enum import Enum, auto
 from typing import Callable
 
 from ...parse.nodes import (
@@ -25,7 +25,6 @@ from ...parse.nodes import (
     TpyAssign,
     TpyBoolLiteral,
     TpyDictLiteral,
-    TpyExpr,
     TpyFieldAccess,
     TpyFloatLiteral,
     TpyIntLiteral,
@@ -37,18 +36,9 @@ from ...parse.nodes import (
     TpySubscript,
     TpyTupleLiteral,
 )
-from ...type_def_registry import (
-    is_bytes_type,
-)
 from ...typesys import (
-    holds_borrowing_view,
-    lands_in_view_member,
     NoneType,
     OptionalType,
-    FloatLiteralType,
-    IntLiteralType,
-    LiteralType,
-    OwnType,
     RecursiveAliasInstanceType,
     TpyType,
     TupleType,
@@ -72,25 +62,20 @@ from ..nodes import (
     THIRFieldAccess,
     THIRFormConvert,
     THIRLiteral,
-    THIRCoerce,
-    THIRMove,
-    THIRName,
-    THIROptViewArg,
-    THIRSubscript,
 )
 from .context import (
     _NO_FORMS, _ONLY_BTUPLE_SLOT, _ExprResultUse, _ExprUse, _LowerCtx,
                       _slot_lift_forms, SinkForm, SinkPos,
-                      SlotConstruct, SlotLifetime, SlotPlacement,
-                      field_slot_use)
+                      SlotConstruct, SlotHolds, SlotLifetime,
+                      SlotPlacement, FieldSlot, field_slot_class,
+                      field_slot_use, opt_callable_slot)
+from .convert import Refuse, convert, landing, spelled, storage_type
 from .checks import (
     _borrow_tuple_local_type,
     _bytes_field_write_ok,
     _container_comp_arg,
     _container_literal_shape_ok,
     _container_storage_field,
-    _covariant_record_upcast_ok,
-    _record_slice_upcast_ok,
     _field_over_container_subscript_ok,
     _class_const_write_target_ok,
     _lambda_routable,
@@ -109,9 +94,7 @@ from .predicates import (
     tuple_stores_into,
     _comp_shadow_pointers,
     _eligible_char,
-    _eligible_enum,
     _eligible_ptr_union,
-    _eligible_ptr_value,
     _eligible_scalar,
     _eligible_value_union,
     record_like,
@@ -120,18 +103,12 @@ from .predicates import (
     _field_over_subscript_ok,
     _field_receiver_ok,
     _field_receiver_or_unbound_self_ok,
-    _callable_value,
-    _opt_view_arg_shim,
     _peel_coerce,
     _resolved_bytes_value,
     _resolved_str_value,
     _ru_instance_literal_ok,
-    _span_value,
-    _storage_copy_value,
     _tuple_literal_has_ref_elements,
     _user_deref_field_recv_ok,
-    _value_opt_owned_view,
-    _value_opt_scalar,
     _value_tuple,
     copy_call_arg,
     copy_ptr_optional_peel,
@@ -140,17 +117,15 @@ from ...value_category import CONTAINER_LITERAL_NODES, is_rvalue_source
 from . import comprehensions as _comprehensions
 from .expressions import (
     _flush_witness,
-    _node_moves,
     _lower_class_const_write_target,
     _lower_copy_record,
     _lower_expr,
     _lower_ru_literal,
     _lower_tuple_literal,
-    _param_declared_type,
     _slot_literal_retype,
     _subscript_yields_borrow_ptr,
+    binding_of,
 )
-from . import statements as _statements
 
 # Every storage slot's copy-assign takes a stored lvalue whole -- a field
 # read, a container element, a borrowed call result.
@@ -274,32 +249,22 @@ def _lower_class_const(stmt: TpyAssign, plan: _ClassConstPlan,
         recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
 
 
-class _ValueRender(Enum):
-    PLAIN = auto()      # scalar / char / enum / Ptr: target-typed flush
-    VALUE_OPT = auto()  # value-repr Optional[scalar | owned-str literal]
-    STR = auto()        # owned-str family: operator=(string_view) absorbs
-    BYTES = auto()      # owned bytes: a view (span) source takes `Bytes(x)`
-
-
 @dataclass(frozen=True)
 class _ValueFieldPlan:
-    """A value-family field write: no borrow<->storage lift beyond the bytes
-    view copy; the render kind is decided from the field type once, in chain
-    order, so overlapping slices (value-opt owned-str vs plain str) resolve
-    by position exactly as the arm chain did."""
-    render: _ValueRender
+    """A value-family field write: the slot holds a plain value, so the
+    source is lowered as the slot takes it and converted with no
+    borrow<->storage lift beyond the bytes view copy. How the source is
+    LOWERED is decided from the field type once, in chain order, so
+    overlapping slices resolve by position exactly as the arm chain did."""
     ftype: TpyType
-    bytes_ft: TpyType | None = None
-
-
-def _opt_callable_field(ftype) -> bool:
-    """An `Optional[Callable]` field slot (`std::optional<std::function>`
-    by value): the operator= absorbs the bare callable-name render the
-    plain Callable field row gets."""
-    u = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ftype)))
-         if ftype is not None else None)
-    return (isinstance(u, OptionalType)
-            and _callable_value(unwrap_readonly(u.inner)))
+    # An owned str / bytes slot reads the source as it renders (the slot's
+    # own construction takes a view or the owned value); every other value
+    # slot takes the target-typed STORAGE render, its literal retyped.
+    owned_viewfam: bool
+    # A value-repr Optional slot consumes a source typed as the Optional
+    # itself WHOLE (the `std::optional<T>` member copies bare).
+    whole_optional: bool = False
+    witness: str | None = None
 
 
 def _closure_field_fence(lam: TpyLambda, slot: _ExprUse, analyzer) -> None:
@@ -324,41 +289,40 @@ def _classify_value(stmt: TpyAssign, slot: _ExprUse,
     # the residual family WITHOUT evaluating the admission predicates --
     # some fire witnesses on success, and a witness must fire at most once
     # per statement.
-    plan = None
-    if (_eligible_scalar(ftype) or _eligible_char(ftype)
-            or _eligible_enum(ftype, analyzer) is not None
-            or _eligible_ptr_value(ftype, analyzer)
-            # A Callable field (`std::function` by value) and its Optional
-            # flavor: the copy or converting assignment absorbs the closure
-            # (None rides the opt-none family ahead of this chain).
-            or _callable_value(ftype) or _opt_callable_field(ftype)
-            # A Span field: a view slot, fenced at admission.
-            or _span_value(ftype)):
-        plan = _ValueFieldPlan(_ValueRender.PLAIN, ftype)
-    elif (_value_opt_scalar(ftype, analyzer) is not None
+    cls = field_slot_class(ftype, analyzer)
+    plain = cls is FieldSlot.PLAIN
+    if plain:
+        plan = _ValueFieldPlan(
+            ftype, owned_viewfam=False,
+            witness=("field_write.opt_callable_name"
+                     if opt_callable_slot(ftype) else None))
+    elif (cls is FieldSlot.VALUE_OPT
           and not isinstance(stmt.value, TpyNoneLiteral)):
-        plan = _ValueFieldPlan(_ValueRender.VALUE_OPT, ftype)
-    elif _resolved_str_value(ftype, analyzer) is not None:
-        plan = _ValueFieldPlan(_ValueRender.STR, ftype)
+        plan = _ValueFieldPlan(
+            ftype, owned_viewfam=False,
+            whole_optional=isinstance(
+                storage_type(analyzer.get_expr_type(stmt.value)),
+                OptionalType),
+            witness="field_write.value_opt_scalar")
+    elif cls is FieldSlot.OWNED_STR:
+        plan = _ValueFieldPlan(ftype, owned_viewfam=True,
+                               witness="field_write.str")
+    elif cls is FieldSlot.OWNED_BYTES:
+        plan = _ValueFieldPlan(ftype, owned_viewfam=True,
+                               witness="field_write.bytes")
     else:
-        bytes_ft = _resolved_bytes_value(ftype, analyzer)
-        if bytes_ft is not None and is_bytes_type(bytes_ft):
-            plan = _ValueFieldPlan(_ValueRender.BYTES, ftype,
-                                   bytes_ft=bytes_ft)
-    if plan is None:
         return None
     lam = _peel_coerce(stmt.value)
     if isinstance(lam, TpyLambda):
         _closure_field_fence(lam, slot, analyzer)
     view_slot = slot.lifetime is SlotLifetime.OUTLIVES_STATEMENT
-    if view_slot and plan.render is _ValueRender.PLAIN:
+    if view_slot and plain:
         # A view field keeps pointing into its source: a PLAIN one (a Span)
         # admits only a same-typed PARAM, whose buffer is the caller's.
-        v = _peel_coerce(stmt.value)
-        ok = (isinstance(v, TpyName) and v.name in lc.prescan.param_names
-              and v.name in declared
+        b = binding_of(_peel_coerce(stmt.value), lc, declared)
+        ok = (b is not None and b.is_param and b.type is not None
               and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                  declared[v.name]))) == unwrap_readonly(unwrap_ref_type(
+                  b.type))) == unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(ftype)))
               and _field_receiver_ok(stmt.target, declared, analyzer))
         return plan if ok else None
@@ -379,37 +343,23 @@ def _classify_value(stmt: TpyAssign, slot: _ExprUse,
 def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
                        slot: _ExprUse, lc: _LowerCtx,
                        declared: dict[str, TpyType], loc) -> THIRExpr:
-    # The `forms=_NO_FORMS` beside each `pos=SinkPos.FIELD_WRITE` below is
-    # the position's OWN row restated, not a narrowing of it: a field write
-    # keeps the value past the statement, so the dying-source lend is refused
-    # here on purpose, and restating it is what makes the site readable
-    # beside the arms that DO hand out a verdict.
-    # Every name's read is routed here, the unrouted Own payloads included:
-    # the sink reads the node's move facts (`_value_moved`), so a last use
+    # The `forms=_NO_FORMS` beside the `pos=` below is the position's OWN
+    # row restated, not a narrowing of it: a field write keeps the value
+    # past the statement, so the dying-source lend is refused here on
+    # purpose. Every name's read is routed here, the unrouted Own payloads
+    # included: the conversion reads the node's move facts, so a last use
     # moves and any other read copies.
-    if plan.render is _ValueRender.STR:
-        _witness("field_write.str")
+    if plan.owned_viewfam:
+        _witness(plan.witness)
         # A field-read source (`self.f = o.name`) is the bare member read
         # the assign copies from; a direct-init constructs the owned string
         # from whatever the source renders (the explicit view ctor fires).
-        return _value_moved(
-            _lower_expr(stmt.value, lc, declared,
-                        use=replace(slot, pos=_value_sink_pos(slot),
-                                    forms=_NO_FORMS),
-                        field_owned_str_ok=True,
-                        allow_unrouted_name=True),
-            plan.ftype, slot, loc)
-    if plan.render is _ValueRender.BYTES:
-        _witness("field_write.bytes")
-        bval = _lower_expr(stmt.value, lc, declared,
-                           use=replace(slot, pos=_value_sink_pos(slot),
-                                       forms=_NO_FORMS),
-                           field_owned_str_ok=True,
-                           allow_unrouted_name=True)
-        if bval.form is Form.BORROW:
-            bval = THIRFormConvert(result_type=plan.bytes_ft, value=bval,
-                                   form=Form.STORAGE, move=False, loc=loc)
-        return _value_moved(bval, plan.ftype, slot, loc)
+        value = _lower_expr(stmt.value, lc, declared,
+                            use=replace(slot, pos=_value_sink_pos(slot),
+                                        forms=_NO_FORMS),
+                            field_owned_str_ok=True,
+                            allow_unrouted_name=True)
+        return _converted(value, slot, lc)
     if isinstance(stmt.value, TpyNoneLiteral):
         # LITERAL construction: `None` into a `Ptr[T]` field is the null
         # pointer, into a `None`-typed field the monostate.
@@ -419,87 +369,29 @@ def _lower_value_field(stmt: TpyAssign, plan: _ValueFieldPlan,
                   if isinstance(unwrap_readonly(plan.ftype), NoneType)
                   else Form.VALUE),
             loc=loc)
-    if plan.render is _ValueRender.VALUE_OPT:
-        _witness("field_write.value_opt_scalar")
-    elif _opt_callable_field(plan.ftype):
-        _witness("field_write.opt_callable_name")
-    return _value_moved(_slot_literal_retype(
+    if plan.witness is not None:
+        _witness(plan.witness)
+    return _converted(_slot_literal_retype(
         _flush_witness(
             "flush.field_write",
             _lower_expr(stmt.value, lc, declared,
                         use=replace(slot, result=_ExprResultUse.STORAGE),
                         allow_unrouted_name=True,
-                        # A source typed as the value-repr Optional itself is
-                        # consumed WHOLE (the `std::optional<T>` member
-                        # copies bare); a narrowed one reads its inner.
-                        allow_whole_optional=(
-                            plan.render is _ValueRender.VALUE_OPT
-                            and isinstance(_source_type(stmt.value,
-                                                        lc.analyzer),
-                                           OptionalType)))),
-        plan.ftype, lc), plan.ftype, slot, loc)
+                        allow_whole_optional=plan.whole_optional)),
+        plan.ftype, lc), slot, lc)
 
 
-def _value_moved(value: THIRExpr, ftype: TpyType, slot: _ExprUse,
-                 loc) -> THIRExpr:
-    """A member-init moves a value-typed `Own` param NAME at its last use
-    (`s(std::move(s))` for an `Own[str]`); a body field write copies a
-    value-typed source even where `movable_now` holds -- a value-typed
-    frame local is in `movable_locals` for the sinks that move whole
-    storage, not for this one."""
-    if (not _is_direct_init(slot)
-            or not isinstance(value, THIRName) or not _node_moves(value)):
-        return value
-    return THIRMove(value=value, result_type=ftype, form=Form.STORAGE,
-                    loc=loc)
-
-
-def _object_source_materialize(lowered: THIRExpr, analyzer) -> 'bool | None':
-    """The ONE fact a field write's borrow->storage convert cannot derive
-    from (family, form): whether the SOURCE arrived as a view to copy into
-    the slot's buffer, or as the object itself. A source on the REFERENCE
-    axis is the object -- there is nothing to materialize, so the convert
-    moves or copies it -- and `False` pins that. `None` for every other
-    source leaves the emit's own (family, form) rule in charge, which is
-    what a VALUE-form view source needs: `bytes` / `str` / `BytesView` /
-    `StrView` all read as a span or a string_view and owe the owning slot
-    the copy.
-
-    Keyed on the source rather than on the slot because the slot's family
-    is exactly what does not decide it: `bytearray` is a reference type
-    whose storage is the same owned buffer `bytes` has, so at a bytearray
-    slot the (family, BORROW->STORAGE) pair has two correct renders and the
-    emitter refuses a convert that carries neither (validate.py). Read by
-    both convert sites of the reference field write -- the NAME row's move
-    wrap and the shared tail -- because such a write reaches whichever of
-    the two its slot shape routes to."""
-    rt = lowered.result_type
-    if rt is None:
-        return None
-    return (False
-            if record_like(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(rt))), analyzer)
-            else None)
-
-
-def _storage_slot(t: 'TpyType | None', analyzer) -> bool:
-    """The field slots whose value render is read off the LOWERED source:
-    the reference axis (records, builtin containers), an Optional over a
-    reference / type-param / owned str-bytes / value-tuple inner, a union
-    (pointer-variant or value), and every storage tuple. Scalar, str-family
-    and bytes slots keep the value family's renders."""
-    if t is None:
-        return False
-    if record_like(t, analyzer):
-        return True
-    if isinstance(t, OptionalType):
-        inner = unwrap_readonly(t.inner)
-        return (record_like(inner, analyzer)
-                or isinstance(inner, TypeParamRef)
-                or _value_opt_owned_view(t, analyzer) is not None
-                or _value_tuple(inner, analyzer) is not None)
-    return (isinstance(t, RecursiveAliasInstanceType)
-            or _storage_copy_value(t, analyzer))
+def _converted(value: THIRExpr, slot: _ExprUse, lc: _LowerCtx, *,
+               explicit_copy: bool = False) -> THIRExpr:
+    """The lowered source as the slot takes it (`convert`); a pair with no
+    conversion rejects under the field write's own reason family."""
+    plan = convert(value, slot.dest, lc.analyzer,
+                   explicit_copy=explicit_copy)
+    if isinstance(plan, Refuse):
+        raise ThirUnsupported("field_write." + plan.key, detail=True)
+    if plan.row is not None:
+        _witness("field_write." + plan.row)
+    return spelled(plan, lc.render_type)
 
 
 def _holds_viewfam(t: TpyType, analyzer) -> bool:
@@ -523,8 +415,8 @@ def _holds_viewfam(t: TpyType, analyzer) -> bool:
 @dataclass(frozen=True)
 class _StoragePlan:
     """A field write into a storage slot. The slot alone decides the plan;
-    the source is lowered once, and its node facts -- form, type, last use
-    -- pick the render (`_storage_value`)."""
+    a literal builds against it, any other source is lowered once and its
+    stamped facts (`Source`) pick the render (`convert`)."""
     # The DECLARED slot: a flow-narrowed `Optional[C]` field reads as `C`
     # but still stores the optional.
     slot_t: TpyType
@@ -535,7 +427,7 @@ def _classify_storage(stmt: TpyAssign, slot: _ExprUse, lc: _LowerCtx,
                       pointers: AbstractSet[str]) -> _StoragePlan | None:
     analyzer = lc.analyzer
     slot_t = _slot_type(slot)
-    if slot_t is None or not _storage_slot(slot_t, analyzer):
+    if field_slot_class(slot_t, analyzer) is not FieldSlot.STORAGE:
         return None
     if (slot.lifetime is SlotLifetime.OUTLIVES_STATEMENT
             and not view_slot_shape_ok(slot_t, stmt.value, analyzer)):
@@ -568,72 +460,6 @@ def _classify_storage(stmt: TpyAssign, slot: _ExprUse, lc: _LowerCtx,
             and _nondef_ctor_field(slot_t, analyzer)):
         return None
     return _StoragePlan(slot_t)
-
-
-def _absorbed_member(slot_t: TpyType, src_t: 'TpyType | None',
-                     analyzer) -> TpyType:
-    """The part of the slot a source of type `src_t` lands in: the slot
-    itself, or -- for a source typed as an Optional's inner or one union
-    member -- that inner / member, which `optional::operator=` and the
-    variant's converting assignment absorb. A str / bytes view lands in
-    its owned twin (the view->owned copy is the member's)."""
-    if src_t is None or src_t == slot_t:
-        return slot_t
-    if isinstance(slot_t, OptionalType):
-        members: tuple = (unwrap_readonly(slot_t.inner),)
-    elif isinstance(slot_t, UnionType):
-        members = tuple(unwrap_readonly(m) for m in slot_t.members)
-    else:
-        return slot_t
-    for m in members:
-        if src_t == m:
-            return m
-    for m in members:
-        if _same_viewfam(src_t, m, analyzer) or _record_upcast(src_t, m,
-                                                               analyzer):
-            return m
-    return slot_t
-
-
-def _record_upcast(src_t: TpyType, t: TpyType, analyzer) -> bool:
-    """A record source a record slot takes by conversion: a covariant
-    generic upcast (representation-preserving), or a subclass the assign
-    slices (sema warns the narrowing)."""
-    return (_covariant_record_upcast_ok(src_t, t, analyzer)
-            or _record_slice_upcast_ok(src_t, t, analyzer))
-
-
-def _same_viewfam(a: TpyType, b: TpyType, analyzer) -> bool:
-    return ((_resolved_str_value(a, analyzer) is not None
-             and _resolved_str_value(b, analyzer) is not None)
-            or (_resolved_bytes_value(a, analyzer) is not None
-                and _resolved_bytes_value(b, analyzer) is not None))
-
-
-def _storage_type(t: 'TpyType | None') -> 'TpyType | None':
-    """A type as the slot's storage sees it: the transparent wrappers and
-    `Own` peeled, also under an Optional (`Own[T] | None` stores the same
-    `std::optional<T>` a `T | None` field holds)."""
-    if t is None:
-        return None
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if isinstance(t, OwnType):
-        t = unwrap_readonly(t.wrapped)
-    if isinstance(t, OptionalType):
-        inner = unwrap_readonly(t.inner)
-        if isinstance(inner, OwnType):
-            t = replace(t, inner=unwrap_readonly(inner.wrapped))
-    if isinstance(t, TupleType) and any(
-            isinstance(unwrap_readonly(e), OwnType) for e in t.element_types):
-        elems = [unwrap_readonly(e) for e in t.element_types]
-        t = replace(t, element_types=tuple(
-            unwrap_readonly(e.wrapped) if isinstance(e, OwnType) else e
-            for e in elems))
-    return t
-
-
-def _source_type(v: TpyExpr, analyzer) -> 'TpyType | None':
-    return _storage_type(analyzer.get_expr_type(v))
 
 
 def _storage_literal(stmt: TpyAssign, plan: _StoragePlan, slot: _ExprUse,
@@ -813,203 +639,22 @@ def _storage_use(slot: _ExprUse, member_t: TpyType, analyzer) -> _ExprUse:
                    slot_target=member_t)
 
 
-def _borrow_tuple(node: THIRExpr) -> bool:
-    """A tuple that arrives in borrow form (`std::tuple<Box, Box*>`): a
-    mixed own / borrow name or call result, whatever its stripped type
-    says. The storage lift converts it; nothing moves it whole."""
-    rt = _storage_type(node.result_type)
-    return node.form is Form.BORROW and isinstance(rt, TupleType)
-
-
-def _raw_pointer(node: THIRExpr) -> bool:
-    """A source that arrives as a bare `T*` rather than a reference or a
-    value: a pointer binding read without its deref (`THIRName.raw_pointer`),
-    or a borrow element of a pointer-repr tuple. Only a whole lift consumes
-    one; every other slot needs the deref the read did not take."""
-    if isinstance(node, THIRName):
-        return node.raw_pointer
-    return (isinstance(node, THIRSubscript) and node.tuple_index is not None
-            and node.form is Form.BORROW)
-
-
-def _absorbs(member_t: TpyType, rt: 'TpyType | None', lc: _LowerCtx) -> bool:
-    """Whether the slot's own assignment takes a value of type `rt` as it
-    is: the same type, an Optional's inner or a union's member (the
-    converting assignment), a str / bytes value into its owned twin, a
-    record into its base (the assign slices -- sema warns), or a tuple
-    whose still-pending literal elements take the slot's element types."""
-    analyzer = lc.analyzer
-    if rt is None or rt == member_t:
-        return True
-    if isinstance(member_t, (OptionalType, UnionType)):
-        return _absorbed_member(member_t, rt, analyzer) != member_t
-    if _same_viewfam(rt, member_t, analyzer):
-        return True
-    if _record_upcast(rt, member_t, analyzer):
-        return True
-    if (isinstance(rt, TupleType) and isinstance(member_t, TupleType)
-            and len(rt.element_types) == len(member_t.element_types)):
-        # A still-pending literal element takes its type from the slot's
-        # element (pending-literal typing): a tuple literal written in
-        # place (`self.pair = copy((77, b))`); a tuple read from a
-        # function-local list has its cells' settled members.
-        return all(isinstance(e, (IntLiteralType, FloatLiteralType,
-                                  LiteralType))
-                   or _absorbs(unwrap_readonly(m), unwrap_readonly(e), lc)
-                   for e, m in zip(rt.element_types,
-                                   member_t.element_types))
-    return False
-
-
-def _storage_lift_renders(member_t: TpyType, rt: 'TpyType | None',
-                          lowered: THIRExpr, lc: _LowerCtx) -> bool:
-    """Whether the borrow->storage conversion has a render for this
-    (source, member) pair: the pointer-repr Optional and pointer-variant
-    lifts over a source of that very type, the tuple lift likewise, the
-    view->owned copy, the open-`T` construction, and a record / container
-    member off a reference (never a pointer) borrow it absorbs."""
-    analyzer = lc.analyzer
-    if isinstance(member_t, OptionalType):
-        return rt == member_t and (member_t.uses_pointer_repr()
-                                   or member_t.uses_generic_param_trait())
-    if isinstance(member_t, UnionType):
-        return (rt == member_t
-                and _eligible_ptr_union(member_t, analyzer) is not None)
-    if isinstance(member_t, TupleType):
-        return (isinstance(rt, TupleType) and tuple_stores_into(rt, member_t)
-                and (_f1_tuple(member_t, analyzer) is not None
-                     or _nested_storage_tuple(member_t, analyzer)
-                     is not None))
-    if (_resolved_str_value(member_t, analyzer) is not None
-            or _resolved_bytes_value(member_t, analyzer) is not None):
-        # The view->owned copy; a view member has no storage form to lift to.
-        return (rt is not None and not holds_borrowing_view(member_t)
-                and _same_viewfam(rt, member_t, analyzer))
-    if isinstance(member_t, TypeParamRef):
-        return True
-    return (record_like(member_t, analyzer)
-            and _absorbs(member_t, rt, lc)
-            and not _raw_pointer(lowered))
-
-
-def _storage_value(lowered: THIRExpr, member_t: TpyType, slot_t: TpyType,
-                   param_t: 'TpyType | None', mv: bool, whole: bool,
-                   direct: bool, lc: _LowerCtx, loc) -> THIRExpr:
-    """The render of a lowered source at a storage slot, read off the node:
-    a move at the last use of an owned name, the borrow->storage lift for a
-    borrowed source, the view->owned shim for a borrowed value-optional
-    view param, and the bare assignment -- the slot's own copy or
-    converting assignment -- for everything already in storage or value
-    form. A (form, member) pair with no render rejects, named by the
-    form.
-
-    `whole`: the source NAME's binding is the slot's own Optional / union,
-    read whole -- its node carries the flow-narrowed type, but what it
-    renders is the whole binding. `direct`: a member-init, whose direct-init
-    constructs an open `T` from the param form itself.
-
-    STORAGE on the node is the read arm's word that the source IS storage: a
-    member or element read names its slot's own optional / variant / tuple,
-    an `Own`-declared name or call result owns what it hands over. A mixed
-    own / borrow tuple, whatever its stripped type, arrives BORROW."""
-    analyzer = lc.analyzer
-    rt = member_t if whole else _storage_type(lowered.result_type)
-    if (isinstance(lowered, THIRName) and param_t is not None
-            and _opt_view_arg_shim(param_t, slot_t, analyzer)):
-        # A borrowed `optional<view>` PARAM into an owned `optional<str>`
-        # slot: the view->owned shim every other owned sink spells.
-        _witness("field_write.optview_shim")
-        return THIROptViewArg(result_type=slot_t, name=lowered.name,
-                              form=Form.VALUE, loc=loc)
-    named = lowered
-    while isinstance(named, THIRCoerce):
-        named = named.expr
-    if (isinstance(unwrap_readonly(slot_t), UnionType)
-            and lands_in_view_member(slot_t, named.result_type)):
-        # The view member of a union: a member-init direct-initializes it
-        # from the source; a body write from a NAME keeps master's reject
-        # (BUGS.md#record-view-field-escapes-local-buffer).
-        if direct and _absorbs(member_t, rt, lc):
-            return lowered
-        if not direct and isinstance(named, THIRName):
-            raise ThirUnsupported(
-                f"field_write.lift.{lowered.form.name.lower()}", detail=True)
-    stored = lowered.form is Form.STORAGE or isinstance(rt, NoneType)
-    if rt == member_t and stored:
-        if mv:
-            return THIRMove(value=lowered, result_type=member_t,
-                            form=Form.STORAGE, loc=loc)
-        return lowered
-    ptr_lift = (rt == member_t
-                and ((isinstance(member_t, OptionalType)
-                      and member_t.uses_pointer_repr())
-                     or _eligible_ptr_union(member_t, analyzer) is not None))
-    if (mv and not ptr_lift and not _borrow_tuple(lowered)
-            and not record_like(member_t, analyzer)
-            and not isinstance(member_t, TypeParamRef)
-            and not _raw_pointer(lowered)
-            and _absorbs(member_t, rt, lc)):
-        # An owned VALUE-typed name at its last use (a tuple / union /
-        # optional local the frame holds by value): it moves in whole. A
-        # pointer-repr tuple (the mixed own + borrow param, handed over and
-        # movable) is not: its borrowed element must materialize through
-        # the moving lift below.
-        return THIRMove(value=lowered, result_type=member_t,
-                        form=Form.STORAGE, loc=loc)
-    if (not mv and not ptr_lift
-            and not isinstance(member_t, TypeParamRef)
-            and not _raw_pointer(lowered)
-            and _absorbs(member_t, rt, lc)
-            and (lowered.form is not Form.BORROW
-                 or (member_t == slot_t and record_like(member_t, analyzer)))):
-        # A value / owned rvalue, or a REFERENCE borrow of a record or
-        # container at its own slot: the slot's copy or converting
-        # assignment takes it as it is. (Inside an Optional / union the
-        # borrow still converts to the member's storage.)
-        return lowered
-    if direct and not mv and isinstance(member_t, TypeParamRef):
-        return lowered
-    if not _storage_lift_renders(member_t, rt, lowered, lc):
-        raise ThirUnsupported(
-            f"field_write.lift.{lowered.form.name.lower()}", detail=True)
-    # The union STORAGE conversion never moves (to_value_variant deref-
-    # copies the active member), so the node's move flag stays a real-move
-    # claim.
-    union = _eligible_ptr_union(member_t, analyzer) is not None
-    value = lowered
-    pointee_move = mv and not union
-    if mv and isinstance(_storage_type(lowered.result_type), TupleType):
-        # A tuple owns only its INLINE elements; a pointer element borrows
-        # an object the source does not own (a mixed local's or param's
-        # borrowed half). A consuming store therefore moves the tuple VALUE
-        # -- the inline elements move through the rvalue (a widened scalar
-        # converts), the pointees copy -- and never the pointee-moving lift,
-        # which would move the caller's object out from behind the borrow.
-        value = THIRMove(value=lowered, result_type=lowered.result_type,
-                         form=lowered.form, loc=loc)
-        pointee_move = False
-    return THIRFormConvert(result_type=member_t, value=value,
-                           form=Form.STORAGE, move=pointee_move,
-                           materialize=_object_source_materialize(
-                               lowered, analyzer),
-                           loc=loc)
-
-
 def _lower_storage_field(stmt: TpyAssign, plan: _StoragePlan,
                          slot: _ExprUse, lc: _LowerCtx,
                          declared: dict[str, TpyType], loc) -> THIRExpr:
     value = _storage_literal(stmt, plan, slot, lc, declared, loc)
     if value is None:
-        value = _storage_source(stmt, plan.slot_t, slot, lc, declared, loc)
+        value = _storage_source(stmt, slot, lc, declared, loc)
     return value
 
 
-def _storage_source(stmt: TpyAssign, st: TpyType, slot: _ExprUse,
+def _storage_source(stmt: TpyAssign, slot: _ExprUse,
                     lc: _LowerCtx, declared: dict[str, TpyType],
                     loc) -> THIRExpr:
-    """Lower a non-literal source ONCE, under the use the slot settles, and
-    render it from the lowered node (`_storage_value`)."""
+    """Lower a non-literal source ONCE, under the use the slot settles for
+    the member it lands in, and convert it (`convert`)."""
     analyzer = lc.analyzer
+    st = slot.dest.type
     v = stmt.value
     record_st = record_like(st, analyzer)
     opt_inner = (unwrap_readonly(st.inner)
@@ -1030,55 +675,34 @@ def _storage_source(stmt: TpyAssign, st: TpyType, slot: _ExprUse,
         ctor_peel = copy_ctor_rvalue_source(v, analyzer)
         if ctor_peel is not None:
             _witness("field_write.record_copy_ctor")
-            return _lower_expr(ctor_peel, lc, declared,
-                               use=_storage_use(slot, copy_slot, analyzer))
+            return _converted(
+                _lower_expr(ctor_peel, lc, declared,
+                            use=_storage_use(slot, copy_slot, analyzer)),
+                slot, lc)
     peeled = copy_ptr_optional_peel(v, analyzer)
     src = peeled if peeled is not None else v
-    member_t = _absorbed_member(st, _source_type(src, analyzer), analyzer)
-    param_t = None
-    whole_binding = False
-    if isinstance(src, TpyName) and src.name in declared:
-        param_t = _param_declared_type(src.name, lc)
-        whole_binding = (_storage_type(declared[src.name]) == st
-                         and isinstance(st, (OptionalType, UnionType)))
-        if whole_binding:
-            # The NAME's storage is the slot's own Optional / union, flow
-            # narrowing notwithstanding: it is read WHOLE and lifts whole.
-            member_t = st
-        elif (src.name in lc.pointers and isinstance(st, OptionalType)
-              and st.uses_pointer_repr()):
-            # A POINTER-bound source is already the borrow form of the
-            # pointer-repr Optional slot: it lifts whole
-            # (`ptr_to_optional[_move](p)`), never dereffed into the inner.
-            member_t = st
-    use = _storage_use(slot, member_t, analyzer)
+    b = binding_of(src, lc, declared)
+    land = landing(b, analyzer.get_expr_type(src), st, analyzer)
+    use = _storage_use(slot, land.member, analyzer)
     # A pointer-slot GLOBAL is read as the pointer it is: the lift takes
     # the `T*` (`h->v = ptr_to_optional(g);`), so the value-position deref
     # every other sink applies to it must not fire.
-    if (isinstance(src, TpyName) and src.name in lc.prescan.global_slots
-            and not record_like(member_t, analyzer)):
+    if (b is not None and b.global_slot
+            and not record_like(land.member, analyzer)):
         use = replace(use, result=_ExprResultUse.RECEIVER, forms=None,
                       pos=SinkPos.UNSPECIFIED)
-    whole = member_t == st
+    whole = land.member == st
     lowered = _lower_expr(
         src, lc, declared, use=use,
-        # An owned name's write IS its routed read -- the sink reads the
-        # node's move facts and moves it at its last use or copies it.
+        # An owned name's write IS its routed read -- the conversion reads
+        # the node's move facts and moves it at its last use or copies it.
         allow_unrouted_name=True,
         # A source landing in the slot's own Optional / union is consumed
         # WHOLE: no narrowing deref, no member-typed divergence.
         allow_whole_optional=whole and isinstance(st, OptionalType),
         allow_union_divergent=whole and isinstance(st, UnionType))
     _flush_witness("flush.field_write", lowered)
-    pointer_bound = isinstance(src, TpyName) and src.name in lc.pointers
-    if member_t == st and not whole_binding and not pointer_bound:
-        # A source whose sema type is still pending (a literal-seeded local)
-        # lands in the member its LOWERED type names.
-        member_t = _absorbed_member(st, _storage_type(lowered.result_type),
-                                    analyzer)
-    mv = peeled is None and _node_moves(lowered)
-    return _storage_value(lowered, member_t, st, param_t, mv,
-                          whole_binding, _is_direct_init(slot), lc, loc)
+    return _converted(lowered, slot, lc, explicit_copy=peeled is not None)
 
 
 @dataclass(frozen=True)
@@ -1097,7 +721,7 @@ def _classify_any(stmt: TpyAssign, slot: _ExprUse,
                   pointers: AbstractSet[str]) -> _AnyFieldPlan | None:
     analyzer = lc.analyzer
     ftype = _slot_type(slot)
-    if not _statements._is_any_type(ftype):
+    if field_slot_class(ftype, analyzer) is not FieldSlot.ERASED:
         return None
     # LITERAL construction: a container literal's brace-init has no type to
     # deduce inside the `make_any` wrap, so it stays out.
@@ -1112,15 +736,8 @@ def _lower_any_field(stmt: TpyAssign, plan: _AnyFieldPlan,
                      slot: _ExprUse, lc: _LowerCtx,
                      declared: dict[str, TpyType], loc) -> THIRExpr:
     _witness("field_write.any")
-    value = _lower_expr(stmt.value, lc, declared, use=slot)
-    if _node_moves(value):
-        # The move peels the coerce and hands make_any's result to the
-        # field as an rvalue. The SOURCE name is still copy-constructed into
-        # make_any's by-value parameter, so a last-use write copies the
-        # payload once (BUGS.md#any-field-write-copies-source).
-        value = THIRMove(result_type=plan.ftype, value=value,
-                         form=Form.STORAGE, loc=loc)
-    return value
+    return _converted(_lower_expr(stmt.value, lc, declared, use=slot),
+                      slot, lc)
 
 
 @dataclass(frozen=True)
@@ -1129,12 +746,12 @@ class _ResidualPlan:
     value family's render rows do not claim but whose predicates admit -- a
     generic record's type-param `T` field (a plain assign whose
     BORROW->STORAGE convert renders the source bare/moved per instantiation)
-    and the readonly-wrapped borrow-tuple-element edge -- which take the
-    shared tail render (ftype is never Optional or a union there, so it
+    and the readonly-wrapped borrow-tuple-element edge -- which convert as
+    a storage slot (ftype is never Optional or a union there, so it
     collapses to the bare-copy-vs-FormConvert verdict). Any other slot no
     family renders (a recursive-alias wrapper, a tuple of type params) takes
-    ONE source, read off the lowered node: a name that moves here relocates
-    in whole (`t(std::move(t))`); every other source rejects by its form."""
+    ONE source: a name that moves here relocates in whole
+    (`t(std::move(t))`); every other source rejects by its form."""
     ftype: TpyType
     rows: bool
 
@@ -1162,21 +779,20 @@ def _lower_residual_field(stmt: TpyAssign, plan: _ResidualPlan,
             return THIRLiteral(result_type=plan.ftype, value=None,
                                form=Form.STORAGE, loc=loc)
         return _storage_source(
-            stmt, unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                plan.ftype))),
-            slot, lc, declared, loc)
+            stmt, replace(slot, dest=replace(
+                slot.dest, holds=SlotHolds.OWNS,
+                type=unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    plan.ftype))))),
+            lc, declared, loc)
     lowered = _lower_expr(stmt.value, lc, declared, use=slot,
                           allow_unrouted_name=True)
-    # A raw `T*` read (a narrowed pointer-bound local) is movable too, but
-    # what moves is the pointee the read did not deref; a borrow tuple's
-    # borrowed element must materialize: no render for either here.
-    if (not _node_moves(lowered) or _raw_pointer(lowered)
-            or _borrow_tuple(lowered)):
-        raise ThirUnsupported(
-            f"field_write.lift.{lowered.form.name.lower()}", detail=True)
+    # No family admitted this source at this slot: the slot's class says
+    # RELOCATE where no family renders the type at all; a classified slot
+    # whose admission refused this source relocates the same way.
+    value = _converted(lowered, replace(slot, dest=replace(
+        slot.dest, holds=SlotHolds.RELOCATE)), lc)
     _witness("field_write.owned_move")
-    return THIRMove(value=lowered, result_type=plan.ftype, form=Form.STORAGE,
-                    loc=loc)
+    return value
 
 
 # (classify, lower-the-value, the target lowers FIRST): each family keeps
@@ -1204,7 +820,7 @@ def _field_slot(stmt: TpyAssign, lc: _LowerCtx, declared: dict[str, TpyType],
         t = lc.analyzer.get_expr_type(stmt.target)
         decl_slot = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
                      if t is not None else None)
-    return field_slot_use(decl_slot, construct)
+    return field_slot_use(decl_slot, construct, lc.analyzer, lc.placement)
 
 
 def _slot_type(slot: _ExprUse) -> 'TpyType | None':
@@ -1251,8 +867,8 @@ def lower_member_init_value(stmt: TpyAssign, lc: _LowerCtx,
     `_lower_expr` -- that would hoist a declaration raises a
     `no_flush`-marked reject, and the caller demotes the init to the ctor
     body, where a statement hosts it."""
-    slot = _field_slot(stmt, lc, declared, SlotConstruct.DIRECT_INIT)
     with lc.placement_scope(SlotPlacement.NO_FLUSH_POINT):
+        slot = _field_slot(stmt, lc, declared, SlotConstruct.DIRECT_INIT)
         loc = getattr(stmt, "loc", None)
         arg = copy_call_arg(_peel_coerce(stmt.value), lc.analyzer)
         if arg is not None and not is_rvalue_source(lc.analyzer, arg):

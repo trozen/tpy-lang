@@ -515,6 +515,47 @@ def literal_list_elem() -> None:
     print("holder.literal_tuple_elem", k.t[0], k.t[1].v, pairs[0][1].v)
 
 
+class ElemHolder:
+    p: P
+
+    def __init__(self) -> None:
+        self.p = P(0)
+
+    def from_local(self) -> None:
+        # method: a tuple local's record element copies into the field.
+        t = (P(1), 2)
+        self.p = t[0]  # tpyc: warning(/copies P into field/)
+        t[0].v += 100
+        print("method.tuple_elem_local", self.p.v, t[0].v)
+
+    def from_own_param(self, t: Own[tuple[P, int32]]) -> None:
+        # method: an owned tuple param's record element copies likewise.
+        self.p = t[0]  # tpyc: warning(/copies P into field/)
+        t[0].v += 100
+        print("method.tuple_elem_param", self.p.v, t[0].v)
+
+
+class ElemInit:
+    p: P
+
+    def __init__(self, t: Own[tuple[P, int32]]) -> None:
+        # ctor: a member-init from an owned tuple param's record element
+        # copies it.
+        self.p = t[0]  # tpyc: warning(/copies P into field/)
+        t[0].v += 100
+        print("ctor.tuple_elem_param", self.p.v, t[0].v)
+
+
+def elem_holder_fn() -> None:
+    # local holder: a free function writes a tuple local's record element
+    # into a field; it copies.
+    h = ElemHolder()
+    t = (P(1), 2)
+    h.p = t[0]  # tpyc: warning(/copies P into field/)
+    t[0].v += 100
+    print("holder.tuple_elem_local", h.p.v, t[0].v)
+
+
 def main() -> None:
     xs = [1]
     h = Holder(xs)
@@ -544,6 +585,11 @@ def main() -> None:
     comp_elems()
     slot_writes()
     literal_list_elem()
+    eh = ElemHolder()
+    eh.from_local()
+    eh.from_own_param((P(5), 6))
+    ElemInit((P(7), 8))
+    elem_holder_fn()
 
 
 main()

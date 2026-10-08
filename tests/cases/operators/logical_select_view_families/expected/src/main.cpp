@@ -37,6 +37,15 @@ int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
     return ::tpy::__len__(v);
 }
 
+// def put_free(h: StrStore, a: str, first: bool) -> None:
+//     # free function: the same view select written through a holder.
+//     h.u = a if first else "lit"  # tpyc: ok
+//     h.o = a or "lit"  # tpyc: ok
+void put_free(StrStore& h, std::string_view a, bool first) {
+    h.u = std::string(((first) ? (a) : ("lit")));
+    h.o = std::string(((!a.empty()) ? a : std::string_view("lit")));
+}
+
 // def pick_owned(a: bytes, b: bytes) -> bytes:
 //     # The owned-RETURN sibling of the same select.
 //     return a or b  # tpyc: ok
@@ -60,7 +69,21 @@ int32_t pick_rebound(::tpy::BytesView a, ::tpy::BytesView __param_b) {
 //     st = Store(b"z")
 //     st.put(b"", b"pq")
 //     print(st.data)
+//     st.put_either(b"mn", b"op", False)
+//     print(st.data)
 //     print(pick_owned(b"", b"ab"))
+//     # str: the owning union / Optional fields keep the chosen text after
+//     # the argument buffer is gone.
+//     ss = StrStore("x" + "y", False)
+//     print("ctor.str_select", ss.u, ss.o)
+//     ss.put("p" + "q", True)
+//     print("method.str_ternary", ss.u, ss.o)
+//     ss.put_or("")
+//     print("method.str_or", ss.u, ss.o)
+//     ss.put_or("r" + "s")
+//     print("method.str_or_lhs", ss.u, ss.o)
+//     put_free(ss, "u" + "v", False)
+//     print("free.str_select", ss.u, ss.o)
 //
 //     xs = [1, 2, 3]
 //     ys: list[int32] = []
@@ -87,7 +110,19 @@ void main() {
     Store st = Store(::tpy::bytes_literal("z", 1));
     st.put(::tpy::BytesView{}, ::tpy::bytes_literal("pq", 2));
     std::cout << ::tpy::BytesPrinter(st.data) << "\n" << ::tpy::check_signals;
+    st.put_either(::tpy::bytes_literal("mn", 2), ::tpy::bytes_literal("op", 2), false);
+    std::cout << ::tpy::BytesPrinter(st.data) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpyapp::main::pick_owned(::tpy::BytesView{}, ::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
+    StrStore ss = StrStore((::tpy::str_concat("x", "y")), false);
+    std::cout << "ctor.str_select" << " " << ::tpy::__str__(ss.u) << " " << ::tpy::print_optional_val(ss.o) << "\n" << ::tpy::check_signals;
+    ss.put((::tpy::str_concat("p", "q")), true);
+    std::cout << "method.str_ternary" << " " << ::tpy::__str__(ss.u) << " " << ::tpy::print_optional_val(ss.o) << "\n" << ::tpy::check_signals;
+    ss.put_or("");
+    std::cout << "method.str_or" << " " << ::tpy::__str__(ss.u) << " " << ::tpy::print_optional_val(ss.o) << "\n" << ::tpy::check_signals;
+    ss.put_or((::tpy::str_concat("r", "s")));
+    std::cout << "method.str_or_lhs" << " " << ::tpy::__str__(ss.u) << " " << ::tpy::print_optional_val(ss.o) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::put_free(ss, (::tpy::str_concat("u", "v")), false);
+    std::cout << "free.str_select" << " " << ::tpy::__str__(ss.u) << " " << ::tpy::print_optional_val(ss.o) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> xs = {1, 2, 3};
     std::vector<int32_t> ys = std::vector<int32_t>{};
     std::span<int32_t> s = std::span<int32_t>(xs);

@@ -1126,11 +1126,6 @@ class TpyReturn(TpyStmt):
     # members that are such locals (each captured by pointer before the
     # chain); every other member is evaluated into a temporary there.
     finally_deferred_leaves: tuple[tuple[int, ...], ...] = ()
-    # Set by sema: the value is an owned NAME a closure of the body captures
-    # (it may read it after the return) at an owning slot. Sema warned that
-    # the slot copies it, and the lowering spells that copy: C++ would move a
-    # bare `return x;`.
-    copies_live_name: bool = False
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value] if self.value else []

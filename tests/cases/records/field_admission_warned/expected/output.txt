@@ -30,3 +30,7 @@ holder.opt_elem 51 52
 holder.pq_call 4
 holder.pq_field -22 -23
 holder.literal_tuple_elem 1 2 9
+method.tuple_elem_local 1 101
+method.tuple_elem_param 5 105
+ctor.tuple_elem_param 7 107
+holder.tuple_elem_local 1 101
