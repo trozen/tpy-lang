@@ -3,6 +3,7 @@
 
 from ..parse import SourceLocation
 from ..thir.nodes import THIRStubCallee
+from .call_contract import MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
@@ -41,6 +42,13 @@ def _call(call: MIRCall) -> str:
     if call.summary.borrowed_result is not None:
         effects += ", returns={" + ", ".join(sorted(f"param{o.parameter}" + "".join(_write_step(step) for step in o.path)
                                                    for o in call.summary.returns)) + "}"
+    if call.summary.transfers:
+        def end(index: object, path: tuple[object, ...]) -> str:
+            root = "result" if isinstance(index, MIRResultHolder) else "static" if isinstance(index, MIRStaticLoan) \
+                else f"param{index}"
+            return root + "".join(_write_step(step) for step in path)
+        effects += ", stores={" + ", ".join(sorted(f"{end(t.holder, t.path)} <- {end(t.source, t.source_path)}"
+                                                  for t in call.summary.transfers)) + "}"
     if call.summary.global_reads:
         effects += ", global-reads={" + ", ".join(sorted(f"{g.module}::{g.name}"
                                                         for g in call.summary.global_reads)) + "}"

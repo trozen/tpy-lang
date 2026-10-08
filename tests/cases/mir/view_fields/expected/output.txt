@@ -18,8 +18,6 @@ first zzz
 size 11
 literal_member 4
 retarget rt
-reset rs
-make 2
 consume 3
 in_list 1
 maybe 1

@@ -39,7 +39,9 @@ from .retention import INITIALIZING_WRITES, MIRRetention, analyze_retention, dum
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
-from .storage_evidence import MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes
+from .storage_evidence import (
+    MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
+)
 from ..mir_workspace import MIRCallWorkspace
 
 
@@ -142,8 +144,8 @@ class MIRBodySource:
 
 @dataclass(frozen=True, eq=False)
 class MIRAnalyses:
-    """The analyses the verdict runs over one lowered body (`--dump-mir`
-    prints all but the return escapes)."""
+    """The analyses the verdict runs over one lowered body, each of which
+    `--dump-mir` prints."""
     liveness: MIRLiveness
     dependencies: MIRDependencies | MIRNotCovered
     events: MIRStorageEvents | MIRNotCovered
@@ -152,6 +154,7 @@ class MIRAnalyses:
     retention: MIRRetention | MIRNotCovered
     payload: MIRPayloadInspection
     escapes: tuple[MIRStorageConflict, ...] | MIRNotCovered
+    store_escapes: tuple[MIRStorageConflict, ...] | MIRNotCovered
 
     @property
     def gaps(self) -> tuple[tuple[str, MIRNotCovered], ...]:
@@ -159,7 +162,7 @@ class MIRAnalyses:
                   ("scope conflicts", self.scope.conflicts), ("payload ends", self.payload.ends),
                   ("payload conflicts", self.payload.conflicts), ("storage", self.events),
                   ("call effects", self.effects), ("retention", self.retention),
-                  ("return escapes", self.escapes))
+                  ("return escapes", self.escapes), ("store escapes", self.store_escapes))
         return tuple((name, result) for name, result in staged if isinstance(result, MIRNotCovered))
 
     @property
@@ -175,6 +178,8 @@ class MIRAnalyses:
             found.append("stale_alias")
         if not isinstance(self.escapes, MIRNotCovered) and self.escapes:
             found.append("return_escape")
+        if not isinstance(self.store_escapes, MIRNotCovered) and self.store_escapes:
+            found.append("store_escape")
         return tuple(found)
 
 
@@ -185,7 +190,7 @@ def analyze_body(fn: MIRFunction) -> MIRAnalyses:
     return MIRAnalyses(liveness, dependencies, events, inspect_scope_lifetimes(fn),
                        analyze_call_effects(fn, dependencies),
                        analyze_retention(fn, liveness, dependencies, events), inspect_payload_lifetimes(fn),
-                       analyze_return_escapes(fn, dependencies))
+                       analyze_return_escapes(fn, dependencies), analyze_store_escapes(fn, dependencies))
 
 
 @dataclass(frozen=True)
@@ -698,4 +703,5 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
         lines.append(dump_retention(analyses.retention))
         lines.append(dump_payload_ends(analyses.payload.ends))
         lines.append(dump_payload_inspection(analyses.payload))
+        lines.append(dump_escapes(analyses.escapes, analyses.store_escapes))
     return "\n".join(lines) if lines else "(no emitted bodies in this module)\n"

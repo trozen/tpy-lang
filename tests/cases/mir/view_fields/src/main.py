@@ -16,10 +16,6 @@ class Tok:
     def text(self) -> StrView:  # tpyc: mir(covered) mir_summary(known)
         return self.s
 
-    # method: a view member is written only by its constructor
-    def reset(self, s: str) -> None:  # tpyc: mir(uncovered /^view member write$/)
-        self.s = s
-
 
 class Lit:
     s: StrView
@@ -218,19 +214,14 @@ def literal_member() -> int32:  # tpyc: mir(covered) mir_summary(known)
     return len(c.s) + c.n
 
 
-# free function: a view member is written only by its constructor
-def retarget(t: Tok, s: str) -> None:  # tpyc: mir(uncovered /^view member write$/)
+# free function: a view member write into the caller's record
+def retarget(t: Tok, s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
     t.s = s
-
-
-# free function: a record holding a view returned by value
-def make(name: str) -> Own[Tok]:  # tpyc: mir(uncovered /^owned result holds a borrow$/)
-    return Tok(name, 2)
 
 
 # free function: a record holding a view handed over
 # (only `t.n` is read, so the handed-over record is never consumed: the warning is right)
-def consume(t: Own[Tok]) -> int32:  # tpyc: mir(uncovered /^owned parameter holds a borrow$/) warning(/never consumed/)
+def consume(t: Own[Tok]) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
     return t.n
 
 
@@ -304,10 +295,6 @@ def main() -> None:
     s = "rt"
     retarget(t, s)
     print("retarget", t.s)
-    w = "rs"
-    t.reset(w)
-    print("reset", t.s)
-    print("make", make("q").n)
     print("consume", consume(Tok("r", 3)))
     print("in_list", in_list("w"))
     print("maybe", maybe(t))

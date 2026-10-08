@@ -10,11 +10,12 @@ from ..thir.scalar_leaves import (  # noqa: F401
 )
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, NominalType, Representation, TpyType, passing_representation,
-    through_view,
+    through_view, unwrap_readonly,
 )
 from ..type_def_registry import ParamPassing
 from .nodes import (
-    MIROptionalLayout, MIRSlot, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRTupleLayout, MIRValueKind,
+    MIRField, MIROptionalLayout, MIRPlace, MIRSlot, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRTupleLayout,
+    MIRValueKind,
 )
 
 
@@ -71,6 +72,13 @@ def view_holder(slot: MIRSlot) -> bool:
     (`view_leaf`): its referents are the owned-leaf storage it views."""
     return (slot.value_kind is MIRValueKind.BORROWED and slot.readonly and slot.form is th.Form.BORROW
             and view_leaf(slot.type))
+
+
+def view_member(place: MIRPlace) -> MIRField | None:
+    """The view member a place ends at -- the loan a record object stores,
+    read or rebound whole -- or None."""
+    last = place.projections[-1] if place.projections else None
+    return last if isinstance(last, MIRField) and view_leaf(unwrap_readonly(last.type)) else None
 
 
 def container_view_holder(slot: MIRSlot) -> bool:

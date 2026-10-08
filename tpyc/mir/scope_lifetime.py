@@ -7,7 +7,7 @@ from enum import Enum, auto
 from types import MappingProxyType
 
 from .coverage import owned_tuple, scalar_wrapper
-from .dependencies import MIRDependencies, MIRReferent, _dependencies, live_holders
+from .dependencies import MIRDependencies, MIRReferent, _dependencies
 from .dump import _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
@@ -193,13 +193,12 @@ def _scope_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
     conflicts = []
     for edge, events in ends.ends.items():
         target = regions.edges[edge].target
-        live = liveness.live_in[target] if target is not None else frozenset()
-        if not live:
+        # At a body exit, a loan stored in the caller's object is a store escape.
+        if target is None:
             continue
         block = blocks[edge.source]
         incoming = dependencies.referents[MIRPoint(block.id, len(block.statements))]
-        reached = live_holders(incoming, live, dependencies.stored_loans)
-        retained_holders = sorted(((holder, refs) for holder, refs in incoming.items() if holder in reached),
+        retained_holders = sorted(dependencies.live(incoming, liveness.live_in[target]).items(),
                                   key=lambda pair: _place(pair[0]))
         for event in events:
             if event.kind is MIRScopeEndKind.RECORD_WRAPPER:

@@ -12,7 +12,6 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import ParamPassing
 from ..typesys import Loan, NominalType, OptionalType, OwnType, TupleType, UnionType, loan_class
 from .call_contract import MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, summary_problem
 from .collect import MIRBodyVerdict, enumerate_bodies
@@ -26,7 +25,7 @@ from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction,
     MIRMemberInitMode, MIRMove, MIRNotCovered, MIROptionalLayout, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRTupleLayout,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRTupleLayout,
     MIRUnionLayout, MIRValueKind,
 )
 from .retention import affects, may_overlap
@@ -261,8 +260,6 @@ def test_a_view_member_stores_a_lent_loan(program: _Program) -> None:
     # A base or inherited constructor's stored loan would be the leg's, unmodeled.
     ("Derived", "base argument borrow not modeled"),
     ("Child", "inherited constructor borrow"),
-    # A member record's stored loans would be keyed under the record around it.
-    ("Holder", "record member holds a borrow"),
 ])
 def test_unmodeled_stored_loans_refuse(program: _Program, name: str, reason: str) -> None:
     assert _definition(program, name) == reason
@@ -274,7 +271,8 @@ def test_a_recursive_record_holding_a_view_holds_a_borrow(program: _Program) -> 
     with activate_compiler(program.compiler):
         assert loan_class(_record(program, "Tree")).holds is Loan.YES
     assert _definition(program, "Tree") == "record member holds a borrow"
-    assert _definition(program, "Forest") == "record member holds a borrow"
+    # A member record's own definition decides whether its loans are modeled.
+    assert _definition(program, "Forest") == "member definition: record member holds a borrow"
     assert program.verdicts["opt"].reason == "wrapper holds a borrow"
 
 
@@ -307,13 +305,20 @@ def test_a_record_without_a_definition_has_a_held_layout(program: _Program) -> N
     assert program.definitions.layouts[reader].fields[0].id.name == "data"
     head = _lowered(program, "Reader.head")
     assert reader in {r.type for r in head.records} and not program.verdicts["Reader.head"].conflicts
-    # A member record holding a loan has no layout either.
-    assert _record(program, "Holder") not in program.definitions.layouts
+    # A member record holding a loan keys it under the record around it.
+    assert _record(program, "Holder") in program.definitions.layouts
 
 
-def test_a_lent_member_holding_a_view_refuses(program: _Program) -> None:
-    # Its stored loans would be keyed under the record around it, which no entry seeds.
-    assert program.verdicts["lent_member"].reason == "lent member holds a borrow"
+def test_a_lent_member_keys_its_loans_under_the_record(program: _Program) -> None:
+    # The parameter's seeded entry sits at the member path; the callee's
+    # read of its parameter's loan resolves through the member's place.
+    fn = _lowered(program, "lent_member")
+    tok, member = _member(program, "Holder", "tok"), _member(program, "Tok", "s")
+    key = MIRPlace(fn.slots[0].id, (tok, member))
+    dependencies = analyze_dependencies(fn, analyze_liveness(fn))
+    assert dependencies.objects[fn.slots[0].id] == (key,)
+    assert dependencies.referents[MIRPoint(fn.entry, 0)][key] == frozenset({MIRReferent(key, True, held=True)})
+    assert program.verdicts["lent_member"].conflicts == ()
 
 
 # --- the dependency state ------------------------------------------------------------------
@@ -452,8 +457,8 @@ def test_a_view_member_place_is_read_whole(program: _Program) -> None:
     read = next(s for s in _assigns(fn) if isinstance(s.value, MIRBorrow) and s.value.source.root == holder
                 and s.value.source.projections)
     place = read.value.source
-    # Only the constructor's member initialization stores a loan.
-    with pytest.raises(MIRValidationError, match="view member replacement is unsupported"):
+    # A view member is rebound only to the loan a view holder holds.
+    with pytest.raises(MIRValidationError, match="view member write needs a view holder"):
         validate_function(_with_statement(fn, read, target=place, value=MIRCopy(place)))
     # Nothing projects through the loan.
     with pytest.raises(MIRValidationError, match="projection through a view member"):
@@ -506,17 +511,13 @@ def test_storage_that_would_move_a_stored_loan_refuses(program: _Program) -> Non
                  tuple_layout=MIRTupleLayout((MIRTupleElement(tok, MIRValueKind.BORROWED, True),)))):
         with pytest.raises(MIRValidationError, match="wrapper holds a borrow"):
             validate_function(_with_slot(fn, param, **changes))
-    # Handed over at OWN: the body's own storage, which a caller never lends a loan into.
-    with pytest.raises(MIRValidationError, match="owned parameter holds a borrow"):
-        validate_function(_with_slot(fn, param, value_kind=MIRValueKind.OWNED, form=th.Form.STORAGE,
-                                     readonly=False, passing=ParamPassing.OWN,
-                                     storage_duration=MIRStorageDuration.BODY))
-    # A record member holding a loan: its stored loans would be keyed under the outer record.
+    # A record member holding a loan keys it under the outer record, which needs the member's layout.
     holder = _record(program, "Holder")
     outer = replace(fn.records[0], type=holder, fields=(MIRField(replace(fn.records[0].fields[0].id, owner=holder,
                                                                           name="tok"), tok),), ancestors=())
-    with pytest.raises(MIRValidationError, match="record member holds a borrow"):
-        validate_function(replace(fn, records=(*fn.records, outer)))
+    validate_function(replace(fn, records=(*fn.records, outer)))
+    with pytest.raises(MIRValidationError, match="record field needs its layout"):
+        validate_function(replace(fn, records=(outer,)))
 
 
 def test_whole_writes_that_would_move_a_stored_loan_refuse(program: _Program) -> None:
@@ -528,11 +529,10 @@ def test_whole_writes_that_would_move_a_stored_loan_refuse(program: _Program) ->
     with pytest.raises(MIRValidationError, match="in-place replacement holds a borrow"):
         validate_function(_with_statement(fn, construct, target=MIRPlace(holder, (MIRDeref(),)),
                                           storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder)))
-    # A result by value: its stored loans would leave for the caller.
+    # A result by value hands its stored loans to the caller as transfers.
     storage = construct.target.root
     block = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     returned = replace(fn, return_type=OwnType(tok), blocks=tuple(
         replace(b, terminator=MIRReturn(storage)) if b is block else b for b in fn.blocks))
-    with pytest.raises(MIRValidationError, match="owned result holds a borrow"):
-        validate_function(returned)
+    validate_function(returned)
 

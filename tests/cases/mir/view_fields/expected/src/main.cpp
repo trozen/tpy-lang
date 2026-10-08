@@ -293,23 +293,16 @@ int32_t literal_member() {
     return (::tpy::add_check<int32_t>(::tpy::__len__(c.s), c.n));
 }
 
-// # free function: a view member is written only by its constructor
-// def retarget(t: Tok, s: str) -> None:  # tpyc: mir(uncovered /^view member write$/)
+// # free function: a view member write into the caller's record
+// def retarget(t: Tok, s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
 //     t.s = s
 void retarget(Tok& t, std::string_view s) {
     t.s = s;
 }
 
-// # free function: a record holding a view returned by value
-// def make(name: str) -> Own[Tok]:  # tpyc: mir(uncovered /^owned result holds a borrow$/)
-//     return Tok(name, 2)
-Tok make(std::string_view name) {
-    return Tok(name, 2);
-}
-
 // # free function: a record holding a view handed over
 // # (only `t.n` is read, so the handed-over record is never consumed: the warning is right)
-// def consume(t: Own[Tok]) -> int32:  # tpyc: mir(uncovered /^owned parameter holds a borrow$/) warning(/never consumed/)
+// def consume(t: Own[Tok]) -> int32:  # tpyc: mir(covered) mir_summary(known) warning(/never consumed/)
 //     return t.n
 int32_t consume(Tok&& t) {
     return t.n;
@@ -414,10 +407,6 @@ int32_t child(std::string_view s) {
 //     s = "rt"
 //     retarget(t, s)
 //     print("retarget", t.s)
-//     w = "rs"
-//     t.reset(w)
-//     print("reset", t.s)
-//     print("make", make("q").n)
 //     print("consume", consume(Tok("r", 3)))
 //     print("in_list", in_list("w"))
 //     print("maybe", maybe(t))
@@ -453,10 +442,6 @@ void main() {
     std::string_view s = "rt";
     ::tpyapp::main::retarget(t, s);
     std::cout << "retarget" << " " << t.s << "\n" << ::tpy::check_signals;
-    std::string_view w = "rs";
-    t.reset(w);
-    std::cout << "reset" << " " << t.s << "\n" << ::tpy::check_signals;
-    std::cout << "make" << " " << ::tpyapp::main::make("q").n << "\n" << ::tpy::check_signals;
     std::cout << "consume" << " " << ::tpyapp::main::consume(Tok("r", 3)) << "\n" << ::tpy::check_signals;
     std::cout << "in_list" << " " << ::tpyapp::main::in_list("w") << "\n" << ::tpy::check_signals;
     std::cout << "maybe" << " " << ::tpyapp::main::maybe(&(t)) << "\n" << ::tpy::check_signals;

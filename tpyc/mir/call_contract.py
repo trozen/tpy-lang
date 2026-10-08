@@ -78,6 +78,38 @@ class MIRReturnOrigin:
     path: MIRParameterPath = ()
 
 
+@dataclass(frozen=True)
+class MIRResultHolder:
+    """The record an owned-record result hands the caller, as the holder
+    of a loan transfer."""
+
+
+@dataclass(frozen=True)
+class MIRStaticLoan:
+    """A literal's static storage, as the source of a loan transfer."""
+
+
+MIR_RESULT = MIRResultHolder()
+MIR_STATIC = MIRStaticLoan()
+
+
+@dataclass(frozen=True)
+class MIRLoanTransfer:
+    """A loan the callee may store in an object the caller reaches: the
+    view member `path` names (fields through inline record members, ending
+    at a view member) under parameter `holder`, or under the record an
+    owned-record result hands over (`MIR_RESULT`), may hold the loan
+    `source` names -- parameter `source`'s own (the view it holds, the
+    owned leaf it lends; `source_path` empty) or the loan a view member
+    of it stores (`source_path`), or a literal's static storage
+    (`MIR_STATIC`). A may-effect: the caller joins it with what the
+    member held; a result member holds exactly its transfers."""
+    holder: 'int | MIRResultHolder'
+    path: MIRParameterPath
+    source: 'int | MIRStaticLoan'
+    source_path: MIRParameterPath = ()
+
+
 # One step of a parameter path: the record storage a field is read from and
 # the field, keyed by its declaring owner (that storage or a struct-base
 # ancestor of it).
@@ -127,7 +159,8 @@ class MIRCallSummary:
     explicit contract, not interpreting an absent root as an empty effect.
     Every effect is promised over ALL exits: the possible writes cover a
     prefix of the body ending in a throw, a raising nested call included,
-    and nothing is retained on either exit. `normal_return_only` is False
+    and the loans the callee may store in objects the caller reaches are
+    its `transfers`, on either exit. `normal_return_only` is False
     when the body may exit by exception. `global_reads` names the module
     globals the body (or a callee it consumes) may read; a KNOWN summary
     writes no global.
@@ -142,7 +175,7 @@ class MIRCallSummary:
     writes: frozenset[MIRParameterWrite]
     invalidates: frozenset[int]
     returns: frozenset[MIRReturnOrigin]
-    retains: frozenset[int]
+    transfers: frozenset[MIRLoanTransfer]
     normal_return_only: bool
     global_reads: frozenset[MIRGlobalId] = frozenset()
 
@@ -689,6 +722,117 @@ def write_problem(write: MIRParameterWrite, parameters: tuple[MIRParameterBindin
     return None
 
 
+def member_path(root: TpyType, path: object) -> tuple[MIRPathHop, ...] | None:
+    """The hops of a path of fields under record storage of type `root`
+    (an owned-record result, an `Own[R]` parameter), as `path_hops`
+    walks one under a borrowed record; None when it is malformed. Each
+    field's membership in its hop's layout is checked where layouts are
+    known (the call, the summary)."""
+    if not isinstance(path, tuple) or not path or not record_type(root):
+        return None
+    hops: list[MIRPathHop] = []
+    current = root
+    for field in path:
+        if not (isinstance(field, THIRFieldIdentity) and record_type(current) and record_type(field.owner)
+                and isinstance(field.name, str) and bool(field.name)):
+            return None
+        hops.append((current, field))
+        current = unwrap_readonly(field.type)
+    return tuple(hops)
+
+
+def _stored_member(hops: tuple[MIRPathHop, ...] | None) -> TpyType | None:
+    """The view member a path of hops ends at, or None."""
+    if not hops:
+        return None
+    last = hops[-1][1].type
+    return last if view_leaf(last) and not isinstance(last, ReadonlyType) else None
+
+
+@dataclass(frozen=True)
+class MIRTransferEnd:
+    """One end of a loan transfer that names a path. Under a lent record
+    parameter (`parameter`) the path's hops start at the record the argument
+    binds (`path_hops`), which only a call or a summary knows; under owned
+    record storage -- the record an owned-record result hands over, an
+    `Own[R]` parameter's object -- they are walked from its type
+    (`member_path`) into `owned_hops`, None when malformed."""
+    parameter: int | None
+    path: MIRParameterPath
+    owned_hops: tuple[MIRPathHop, ...] | None = None
+
+
+def transfer_end(end: object, path: object, parameters: tuple[MIRParameterBinding, ...],
+                 result: TpyType) -> MIRTransferEnd | None:
+    """Where one end of a transfer reads its path (`MIRTransferEnd`); None
+    for an end that is neither the result nor a parameter."""
+    if isinstance(end, MIRResultHolder):
+        owned = owned_record_result(result)
+        return MIRTransferEnd(None, path, member_path(owned, path) if owned is not None else None)
+    if type(end) is not int or not 0 <= end < len(parameters):
+        return None
+    binding = parameters[end]
+    if binding.borrowed_record is not None:
+        return MIRTransferEnd(end, path)
+    handed = binding.passing in OWNING_PASSINGS and record_type(binding.type)
+    return MIRTransferEnd(None, path, member_path(binding.type, path) if handed else None)
+
+
+def transfer_ends(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBinding, ...],
+                  result: TpyType) -> tuple[MIRTransferEnd | None, ...]:
+    """The holder's end of a transfer and, when the source is a view member
+    of a parameter's object, the source's (`transfer_end`)."""
+    ends = [transfer_end(transfer.holder, transfer.path, parameters, result)]
+    if not isinstance(transfer.source, MIRStaticLoan) and transfer.source_path:
+        ends.append(transfer_end(transfer.source, transfer.source_path, parameters, result))
+    return tuple(ends)
+
+
+def transfer_problem(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBinding, ...],
+                     result: TpyType) -> str | None:
+    """Check one published loan transfer: its holder path ends at a view
+    member under a record parameter lent mutably, or under the owned-record
+    result `result` hands over; its source is a literal, a view or lent
+    owned-leaf parameter of the member's family, or a view member of a
+    record parameter (lent, or handed over as `Own[R]`)."""
+    if not isinstance(transfer, MIRLoanTransfer):
+        return "invalid loan transfer"
+    holder = transfer.holder
+    end = transfer_end(holder, transfer.path, parameters, result)
+    if end is None or (end.parameter is None) is not isinstance(holder, MIRResultHolder):
+        # A parameter holds a transfer only when lent: what an `Own[R]`
+        # parameter's object stores, the caller never reads again.
+        hops = None
+    elif end.parameter is None:
+        hops = end.owned_hops
+    else:
+        resolved = resolve_path(holder, transfer.path, parameters)
+        hops = (resolved.hops if resolved is not None and resolved.projection is None and not resolved.readonly
+                else None)
+    member = _stored_member(hops)
+    if member is None:
+        return "invalid loan transfer holder"
+    source = transfer.source
+    if isinstance(source, MIRStaticLoan):
+        return None if transfer.source_path == () else "invalid loan transfer source"
+    if type(source) is not int or not 0 <= source < len(parameters) or not isinstance(transfer.source_path, tuple):
+        return "invalid loan transfer source"
+    binding = parameters[source]
+    if not transfer.source_path:
+        lent = (binding.borrowed_record is None and binding.readonly
+                and (view_leaf(binding.type) and binding.passing is ParamPassing.VALUE
+                     or owned_leaf(binding.type) and binding.passing in BORROWING_PASSINGS))
+        return None if lent and view_compatible(member, binding.type) else "invalid loan transfer source"
+    end = transfer_end(source, transfer.source_path, parameters, result)
+    if end.parameter is None:
+        hops = end.owned_hops
+    else:
+        resolved = resolve_path(source, transfer.source_path, parameters)
+        hops = resolved.hops if resolved is not None and resolved.projection is None else None
+    loan = unwrap_readonly(hops[-1][1].type) if hops else None
+    return None if view_leaf(loan) and view_compatible(member, loan) else "invalid loan transfer source"
+
+
 def summary_problem(summary: MIRCallSummary) -> str | None:
     """Validate the bounded contract without re-proving its supplying body.
     A stub summary must be exactly the one its declaration derives, so a
@@ -709,7 +853,8 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
             or not isinstance(signature, THIRCallableSignature)
             or not isinstance(signature.param_types, tuple) or not isinstance(summary.parameters, tuple)
             or any(not isinstance(indices, frozenset) or any(type(i) is not int for i in indices)
-                   for indices in (summary.reads, summary.invalidates, summary.retains))
+                   for indices in (summary.reads, summary.invalidates))
+            or not isinstance(summary.transfers, frozenset)
             or not isinstance(summary.returns, frozenset)
             or any(not isinstance(origin, MIRReturnOrigin) for origin in summary.returns)
             or not isinstance(summary.global_reads, frozenset)
@@ -721,7 +866,7 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
             or len(summary.parameters) != len(signature.param_types)
             or summary.reads != frozenset(range(len(summary.parameters)))
             or not isinstance(summary.writes, frozenset)
-            or any((summary.invalidates, summary.retains))
+            or summary.invalidates
             or type(summary.normal_return_only) is not bool):
         return "unsupported call summary contract"
     for typ, binding in zip(signature.param_types, summary.parameters):
@@ -745,6 +890,10 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
             return problem
     for write in summary.writes:
         problem = write_problem(write, summary.parameters)
+        if problem is not None:
+            return problem
+    for transfer in summary.transfers:
+        problem = transfer_problem(transfer, summary.parameters, signature.return_type)
         if problem is not None:
             return problem
     # The callee's published passings and its body's bindings are one fact.

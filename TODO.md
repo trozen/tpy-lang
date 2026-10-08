@@ -1724,7 +1724,12 @@ alongside related feature work; only the big-rock deferrals live here.
   `mir_owned(x)`, `mir_borrowed(x)`, `mir_borrows(x, a|b)`, `mir_copy(x)`
   and `mir_write(x)`, with `param(x)` / `local(x)` selectors for a name
   that has two slots, all read off one producer (`collect.line_facts`).
-  Deferred: a loan-end item and a conflict site selector; a condensed
+  Deferred: a loan-end item and a conflict site selector; a spelling for
+  a stored-loan key under an inline member record (`o.inner.s`):
+  `collect.line_facts` names a record's view members one level deep, so
+  `own_member_seed` in `tests/cases/mir/view_field_stores` pins its
+  verdict only -- listing the keys from `MIRDependencies.objects` would
+  give them a name, and the grammar for it is the user's call; a condensed
   `--dump-mir` rendering of the same facts hooks into `dump_codegen_mir`
   via `line_facts`. Unit files keep what the family cannot express (copy
   source and `may_raise`, passings, init vs replacement modes, regions,
@@ -1789,7 +1794,15 @@ alongside related feature work; only the big-rock deferrals live here.
   every other way such a record moves or is written refuses
   (`docs/MIR_ANALYSIS_PLAN.md` "View fields"); case
   `tests/cases/mir/view_fields`.
-  **B3 second half, retained loans** (next: view fields slice 2, below;
+  **B3 second half, view fields slice 2** (landed): a view member write
+  rebinds the stored loan (strong on the one owned object, a weak union
+  otherwise); a callee publishes the loans it may store as loan transfers
+  (`MIRLoanTransfer`) its callers join; a loan of the body's storage
+  stored where the caller reaches is a `store_escape` conflict; member
+  records, owned results and `Own[R]` parameters hold views
+  (`docs/MIR_ANALYSIS_PLAN.md` "View fields"); case
+  `tests/cases/mir/view_field_stores`.
+  **B3 second half, retained loans** (next: view fields slice 3, below;
   needs `/tpy-add-feature`; unit order in
   `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first order"):
   - `scalar_leaves._ELEMENT_DISPATCH_DUNDERS` (the comparison and hash
@@ -1836,36 +1849,55 @@ alongside related feature work; only the big-rock deferrals live here.
     operation" gate fails open there; unreachable in a build (every record of
     a compilation has a TypeDef), reachable from unit tests that lower outside
     an active compiler. Fail closed and activate a compiler in those tests.
-  - View fields slice 2 (slice 1 landed; `docs/MIR_ANALYSIS_PLAN.md`
-    "View fields" lists every refusal by reason):
-    - "view member write" (`t.s = s` after construction) and callees that
-      retain a loan: a loan-transfer contract (holder: a parameter or a
-      result member; source: a parameter path or static), a MAY-effect
-      applied as a weak union at the caller, never a `MIRParameterWrite`
-      (`call_effects` resolves a write destination as its old referents,
-      `dependencies.transfer` ignores `MIRCallStmt`); an exceptional exit
-      publishes every loan possibly retained before it. A write rooted in
-      a parameter or the constructor receiver (`def fill(t: Tok): buf =
-      ...; t.s = buf`) needs an escape obligation (the written referents
-      external or static). Strong update only for a uniquely identified
-      holder, a weak union otherwise.
-    - "in-place replacement holds a borrow": an IN_PLACE whole reseat of a
-      view-holding record (`t = Tok(a, 2)` inside a branch over an earlier
-      `t`) needs a strong update on a single referent, a weak one on
-      several (`branch`, `block_source` in
-      `/tmp/agents/b3v/codex_probes2/review.py`).
-    - "owned result holds a borrow" / "owned parameter holds a borrow":
-      `-> Own[R]` and `Own[R]` parameters of view-holding records. The
-      result's member loans are field-held return origins
-      (`_return_escapes` must run for them); an `Own[R]` parameter's stored
-      loans are body storage, not external.
-    - "wrapper holds a borrow" / "container holds a borrow" / "record
-      member holds a borrow": Optional, union and tuple members, container
-      elements and member records holding a view; union / Optional view
-      members (`StrView | None`); Span members
-      (the container helpers know root holders only).
-    - "base argument borrow not modeled" / "inherited constructor borrow":
-      inherited constructors and base legs passing a view.
+  - View fields slice 3 (slices 1 and 2 landed; `docs/MIR_ANALYSIS_PLAN.md`
+    "View fields" lists every refusal by reason; pinned in
+    `tests/cases/mir/view_field_stores`):
+    - Precision: `MIRUnseededLoan` refusals ("call transfer with no
+      origin", "view member write with no origin", ...) are raised by the
+      dependency transfer on every fixpoint iteration, while the call-return
+      gate checks only the final pass; an intermediate state that still
+      lacks an origin could refuse a body the fixpoint would cover
+      (fail-closed; not probed as reachable).
+    - A view member write through a member record of a BORROWED
+      parameter (`def f(o: Outer, buf: str): o.inner.s = buf`) refuses
+      "view member write of an object with no stored loan": the nested
+      key under a borrowed parameter's member record is not seeded
+      (`/tmp/agents/b3w/review_safety/probes1.py` p7 / p8).
+    - In-place reseat ("in-place replacement holds a borrow",
+      `reseat_self`) and whole-member replacement ("record member
+      replacement holds a borrow", `member_self`). The check over the
+      state a write leaves exists (retention); left: the dependency fill
+      for a write through a holder (strong on one owned object, a weak
+      union over several) and of a member's nested keys, and the
+      filled-entries check widened from a slot's own keys to those
+      objects and the member prefix.
+    - Wrapper members: Optional, union and tuple members holding a view,
+      an optional backing ("wrapper holds a borrow").
+    - Container elements holding a view ("container holds a borrow").
+    - Span members and union / Optional view members (`StrView | None`)
+      ("record member holds a borrow").
+    - "base argument borrow not modeled" / "member argument borrow not
+      modeled" / "inherited constructor borrow": inherited constructors
+      and base legs passing a view.
+    - Named records handed over: by copy or move to a record parameter
+      ("handed-over record holds a borrow", `wrap_copy`), at an `Own[R]`
+      parameter ("unsupported record argument", `consume_named`).
+    - Transfers into an `Own[R]` parameter's object are not published
+      (sound while its argument is a call temporary; a named argument
+      needs them). Publishing them removes the extraction's per-holder
+      skip in `summaries._transfers` but needs `transfer_problem` to admit
+      a handed-record holder ("invalid loan transfer holder" today) and
+      callers to apply into the temporary. Lifting `consume_named` also
+      needs the parameter's buffer modeled as possibly shared: the C++
+      parameter is `T&&` and a last-use argument is `std::move`d, so the
+      callee's object IS the caller's (`own_write_transfer` would otherwise
+      be covered while its caller reads a replaced buffer).
+    - Callers do not construct through a constructor whose body writes a
+      view member ("constructor body effects", `stamped`).
+    - Census blockers outside views: `records/viewfam_field_at_owning_sinks`
+      `sec_setitem` ("element write needs a stub contract");
+      `optional/view_at_owned_opt_decl` `Holder.__init__` ("member
+      definition: constructor owned-leaf constant").
     - "record member loan unknown beside a view member": a view member
       beside a member the loan classifier cannot decide (a `bytearray`, a
       native or protocol-typed field; recursion is decided). A record with
@@ -1892,10 +1924,6 @@ alongside related feature work; only the big-rock deferrals live here.
       either keep it as a deliberate re-check of the referents (and say so
       at the audit), or read `active` and make `test_storage_evidence`
       `_drop_origins` edit `active` too.
-    - Untested guards: "handed-over record holds a borrow" and "call
-      result holds a borrow", in the lowering and the validator (no
-      program reaches them; a test needs a KNOWN summary of a function
-      returning `Own[Tok]`).
     - Optional backstop: one slot-level validator rule that a
       loan-holding record type appears only as a BORROWED holder, OWNED
       local / temporary storage or a view holder, beside (not replacing)
@@ -2180,7 +2208,9 @@ alongside related feature work; only the big-rock deferrals live here.
     return today: one opaque method summary in the sample is recursive
     (`Counter.countdown`); the blockers behind the other 43 are the
     callee's own body or its record's constructor.
-  - `retains` on `MIRParameterWrite` (required empty today).
+  - Retention beyond view members: a summary publishes a kept loan only as
+    a loan transfer into a view member (`MIRLoanTransfer`); a callee
+    keeping one in a container element or a wrapper stays refused.
   - Nested container elements beyond one hop ("unsupported native
     container element"): `xss[0][0]`, `for v in rows[i]:` -- the shapes of
     `BUGS.md#elem-index-certainty-ignores-rebinds`, the `rows[0]` face of
