@@ -24,7 +24,9 @@ must not decide the type by which arm is read first
 (`check_arm_group`). Typed arms alone also get a cell, of the first
 arm's value, so a narrower arm read first does not fix the type.
 
-Per local there is one cell. The cells live on the context, not on the
+Per local there is one cell; a `for` head that declares its variable
+anew (loop-scoped, not rebinding a local) gives it a new one. The cells
+live on the context, not on the
 function state: a settle inside an overload trial that is rolled back stays
 settled, as the scope it publishes to does.
 """
@@ -94,6 +96,9 @@ class PendingNumCell:
     first_decl: TpyVarDecl | None
     derived: bool = False
     is_float: bool = False
+    # Declared by a `for` head: the name is handed back when the loop ends
+    # (`retire_loop_heads`).
+    loop_head: bool = False
     # The sibling-arm stores that are together the local's first binding
     # (empty for one), and what each stored: (the literal's type when it is
     # a literal of the family's default, the value's type, the value, the
@@ -655,7 +660,14 @@ class PendingNums:
                               is_float=is_float,
                               arm_sites=self.arm_group(name))
         self.ctx.pending_num_cells[cell.cid] = cell
-        self.ctx.func.pending_cell_of[name] = cell.cid
+        func = self.ctx.func
+        earlier = func.pending_cell_of.get(name)
+        if earlier is not None:
+            # A second declaration of the name (another `for` head binding
+            # it loop-scoped) takes the name; the earlier one's reads still
+            # settle with the function.
+            func.pending_unowned_cids.append(earlier)
+        func.pending_cell_of[name] = cell.cid
         return cell
 
     def new_elem_cell(self, name: str | None, record: ContainerRecord | None,
@@ -1957,10 +1969,22 @@ class PendingNums:
         to settle. For a reader that only inspects the type."""
         return with_container(t, self.tree_known(lc))
 
+    def retire_loop_heads(self, floor: int) -> None:
+        """Hand back the names of the `for`-head cells made after cell
+        `floor`: the loop that declared them has ended, and the cells
+        settle with the function."""
+        func = self.ctx.func
+        for name, cid in list(func.pending_cell_of.items()):
+            cell = self.ctx.pending_num_cells.get(cid)
+            if cid > floor and cell is not None and cell.loop_head:
+                del func.pending_cell_of[name]
+                func.pending_unowned_cids.append(cid)
+
     def _cids(self) -> list[int]:
         """Every cell of the function under analysis."""
         func = self.ctx.func
-        return [*func.pending_cell_of.values(), *func.pending_elem_cids]
+        return [*func.pending_cell_of.values(), *func.pending_elem_cids,
+                *func.pending_unowned_cids]
 
     def cell_type(self, cell: PendingNumCell) -> TpyType:
         """What a read of the cell's local is typed."""
@@ -2236,7 +2260,11 @@ class PendingNums:
             return
         if cell.record is not None:
             raise self.ctx.error(self._wider_store_refusal(cell, t), node)
-        fix = annotate_first_binding(cell.name, t, self._first_value(cell))
+        # A target bound without a declaration (a `for` head, a tuple-unpack
+        # target) has no first binding an annotation could be written on.
+        fix = (annotate_first_binding(cell.name, t, self._first_value(cell))
+               if cell.first_decl is not None
+               else f"bind the {python_type_name(t)} value to a new name")
         if cell.frozen_by is not None:
             use, what, via = cell.frozen_by
             line = getattr(getattr(use, "loc", None), "line", None)
@@ -3264,6 +3292,7 @@ class PendingNums:
             self.ctx.pending_num_cells.pop(cid, None)
         self.ctx.func.pending_cell_of = {}
         self.ctx.func.pending_elem_cids = []
+        self.ctx.func.pending_unowned_cids = []
 
 
 def _row_parts(tree: TpyType) -> list[TpyType]:

@@ -1,0 +1,1 @@
+main.py:19: error: 'xs' holds int32 elements since line 13 (through 'x', a match subject), and this value is int64; annotate its first binding: xs: list[int64] = [...]

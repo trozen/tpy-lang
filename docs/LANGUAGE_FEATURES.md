@@ -1387,13 +1387,16 @@ a width-blind use decides nothing. A dict's or
 set's width-blind uses: `len`, `print`, a truth test (`if d:`), `k in d`
 and `del d[k]` (they look the key up only), a method that hands back a
 part or a view (`d.get(k)` is a `V | None` that follows the cells,
-`d.pop(k)`, `d.items()`), a subscript or method receiver, and a second
-name. The method rule is the dict's and set's own: a list method outside
+`d.pop(k)`, `d.items()`), a subscript or method receiver, a second
+name, and a `for` statement over it or over one of its views (`for x in
+s`, `for k in d`, `for v in d.values()`, `for k, v in d.items()`; see
+"Iteration" below). The method rule is the dict's and set's own: a list method outside
 the deferring ones listed below decides the list whether its result is
-used or dropped (`xs.sort()` alone decides `xs`). Iteration (`for k, v in d.items()`,
-`for x in s`), a generic call no other argument decides (`sorted(s)`,
-`sum(d.values())`), a comparison, a select arm, a capture and any other
-method decide it on the spot, as for a list. A typed dict or set slot -- a
+used or dropped (`xs.sort()` alone decides `xs`). A comprehension over it,
+a generic call no other argument decides (`sorted(s)`,
+`sum(d.values())`), a membership test in a view (`20 in d.values()`), a
+comparison, a select arm, a capture and any other method decide it on
+the spot, as for a list. A typed dict or set slot -- a
 parameter, a field, a return (`-> Own[dict[str, int64]]`), the dict or set
 member of an optional or union slot -- confirms or widens its leaves as a
 typed list slot does a list's (`take32(d)` then `d["c"] = big64` is refused
@@ -1436,6 +1439,49 @@ comparison of a tuple read (`xs[0] == (1, 2)`), and a name for a row
 (`row = g[0]`, `row = g.pop()`: the row itself, one more list of the
 rows' element).
 
+**Iteration.** A `for` statement does not itself decide a container's
+numeric element width; evaluating its iterable or using its elements can.
+`for x in xs` binds `x` to each element as `x = xs[i]` would: `x` follows
+the element, so a wider store after the loop widens the loop too --
+
+```python
+xs = [1, 2]
+t = 0
+for x in xs:
+    t += x
+xs.append(a64())       # a64() -> int64
+print(t, xs)           # 3 [1, 2, 1099511627776]
+```
+
+renders `std::vector<int64_t> xs = {1, 2}; int64_t t = 0;` and `t =
+::tpy::add_check<int64_t>(t, x);` in the body. The same holds for a set, a
+dict and its views (`for k in d`, `d.keys()`, `d.values()`), a tuple-unpacking
+head (`for k, v in d.items()`, `for a, b in pairs`: each target follows its
+leaf), a nested list (`for row in g: for x in row`), and a `for` in a method,
+a generator or an `async def` body, suspensions inside the loop included. A
+store into the loop variable stays its own and never widens the container
+(`x += 10` is computed at the element's type; `x = a64()` over `int32`
+elements is refused, *'x' is int32 and this value is int64; bind the int64
+value to a new name*). A use of the loop variable that needs its type on the
+spot decides the container through it, as for `n = ys[0]` -- a `match`
+subject, a dict key, a walrus (`(w := x * 2)`), a capture by a nested
+function or lambda -- and a later wider store is refused naming it (*'xs'
+holds int32 elements since line N (through 'x', a match subject) ...*); an
+argument at a typed parameter (`take32(x)`), a store into a typed field or a
+typed list decide nothing and are checked once the element is known, so a
+later widening is refused at that call or store (*Type mismatch in argument
+'v': expected int32, got int64*). A head that rebinds an existing local
+(`x: int64 = 0; for x in xs:`) is checked once the element is known: the
+elements must have the local's type (`x: int64` over elements a later store
+widens to `int64` compiles; an `x = 0` local is an `int32`, and a widening of
+the elements is then refused at the loop). A name a loop declared is a new
+variable after it (`for x in xs: ...` then `x = a64()`). Mutating the list
+inside its own loop warns as before. Current limitation: a loop whose
+variable is read after it (`for x in xs: pass` then `print(x)`, or a later
+statement that can see a zero-trip loop's value) decides the container at
+the loop, as before -- *'xs' holds int32 elements since line N (a loop
+iterable) ...* (TODO.md slice (7d)).
+
 The rows of a nested list literal share one element and one representation:
 they are one C++ type, so a row that has to be a `list` -- mutated through
 `g[0]`, a second name for it mutated, passed to a `list[T]` parameter, of a
@@ -1475,10 +1521,12 @@ Current limitations:
 - These uses decide the element on the spot, from what the list holds so
   far, and a later use that would widen it is an error naming the deciding
   line (the fix is the annotation on the first binding,
-  `ys: list[int64] = [1]`): iterating the list (a `for` loop, a
-  comprehension; the loop variable does not follow a later widening), a
-  generic call no other argument gives the element (`sorted(ys)`,
-  `enumerate(ys)`, `def f[T](x: T)`), a slice, `+`, an alias
+  `ys: list[int64] = [1]`): iterating the list in a comprehension or a
+  generator expression (a derived collection would need a one-way
+  dependency on the source's cells), an `async for` (its iterable is no
+  container literal today), a generic call no other argument gives the
+  element (`sorted(ys)`, `enumerate(ys)`, `zip(ys, zs)` -- also as the
+  iterable of a `for` statement --, `def f[T](x: T)`), a slice, `+`, an alias
   through `:=` or through a ternary / `and` / `or` with no declared target,
   a capture by a nested function, lambda or generator expression (so a
   lambda that returns the list decides it before its return type is read),

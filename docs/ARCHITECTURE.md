@@ -1018,7 +1018,9 @@ store records what it admitted (`ListLiteralInfo.stored_rows`), and the
 store's own compatibility check reads that verdict instead of judging the
 list again. A list with an undecided element reaches only a
 consumer that named the node (`PendingNums.list_sink`: a subscript or method
-receiver, `print`, a second name, a row read bound to a name), a declared
+receiver, `print`, a second name, a row read bound to a name, a `for`
+statement's iterable unless the loop variable is read after the loop --
+`TpyForEach.var_live_after`, TODO.md slice (7d)), a declared
 slot the value is then coerced to that holds a typed container of numbers,
 or, as a literal-element view (`PendingNums.adaptive_view`), the arguments
 of a call whose candidates are scored or whose one candidate is generic
@@ -1058,8 +1060,16 @@ tuple read from a list of tuples -- passes one composite gate
 `xs[0][1]`, `print`, a tuple unpack, which binds each target to its leaf,
 a comparison operand) sees it undecided, every other settles all its
 leaves; the declarations, unpack targets and return values that hold such
-leaves are rewritten when they settle (`PendingNums.defer`). The deferral
-waits for every leaf of the types it names, and a type recorded at a value
+leaves are rewritten when they settle (`PendingNums.defer`). A target bound
+to such a leaf without a value of its own -- a `for` head, a tuple-unpack
+target -- is a local first bound over a pending read (`y = xs[0]`): it gets a
+derived cell (`StatementAnalyzer._derived_cell_type`), so a store into it
+never widens the container; a later `for` head declaring the same name
+takes the name and the earlier cell settles with the function
+(`FunctionTrackingState.pending_unowned_cids`); when the loop ends its head
+cells hand the name back (`PendingNums.retire_loop_heads`). A head that
+rebinds an existing local is judged against it once both settle
+(`_check_loop_var_rebind`). The deferral waits for every leaf of the types it names, and a type recorded at a value
 that holds a row -- a call's signature at the element
 (`PendingNums.when_elem_known`), a local bound to a row (`row = g[0]`) --
 is recorded again once the rows' list types are resolved
