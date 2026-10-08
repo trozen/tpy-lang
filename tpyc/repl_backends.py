@@ -37,7 +37,8 @@ def _fmt_ms(seconds: float) -> str:
 
 
 from . import get_runtime_dir
-from .toolchain import get_or_build_pch, pch_is_current, compile_pool
+from .toolchain import (PCH_DIR, compile_pool, get_or_build_pch, mark_cache_entry_used,
+                        pch_is_current, shared_cache_root)
 
 
 class BackendResult:
@@ -400,8 +401,9 @@ class CompileBackend(REPLBackend):
         opt = " ".join(self._OPT_FLAGS)
         key_data = f"{self._config.compiler_name}:{self._config.std}:{opt}:{runtime_dir}"
         key = hashlib.md5(key_data.encode()).hexdigest()[:12]
-        cache_dir = Path.home() / ".cache" / "tpyc" / f"pch_{key}"
+        cache_dir = shared_cache_root() / PCH_DIR / f"repl-{key}"
         cache_dir.mkdir(parents=True, exist_ok=True)
+        mark_cache_entry_used(cache_dir)
         return cache_dir
 
     def _pch_is_stale(self) -> bool:

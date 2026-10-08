@@ -27,6 +27,25 @@ re-key and can skip stale-green; run `--force-exec` after such an upgrade
 
 The ext-exec phase of `tests/test_interop_exec.py` is gated by the same cache.
 
+## Cache eviction
+
+The stdlib object and PCH caches are keyed on the compiler source and the
+runtime headers, so every edit adds an entry beside the old ones (about 80MB
+for a stdlib set). Each session marks the entries it uses (a `.used` file),
+and at configure time one process per machine, at most once an hour, removes
+the entries unused for `$TPYC_CACHE_MAX_AGE` (`"<n>d"`, default `3d`, `0`
+turns it off) and the exec-result markers unused for 30 days or that age,
+whichever is longer (a hit refreshes a marker). Remote workers sweep their
+own host's cache the same way. The REPL's PCH lives in the same `pch/`
+directory (`repl-<key>`). One `tpy| cache sweep:` line reports what went.
+An entry no session has marked yet counts as used when its loader file was
+last read (atime) or the entry itself last changed, and is kept for at least
+14 days, so a run with an older harness keeps its entries even where atime
+does not move. Only names the cache writes (sha256 keys, `repl-<key>`, exec
+markers) are touched, whatever else the root holds; an entry whose build
+lock is held is being built and stays. The sweep is `tpyc.toolchain.sweep_shared_cache`, unit-tested in
+`tpyc/test_cache_sweep.py`; `--clean` still wipes everything.
+
 ## Harness output
 
 Harness-emitted status lines (cache builds, toolchain/ccache status, the
