@@ -14,19 +14,19 @@ template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-std::vector<K> map_keys(const std::vector<T>& xs, __F0&& f);
+std::vector<K> map_keys(std::vector<T>& xs, __F0&& f);
 // def above_first[T, K: Comparable](xs: list[T], f: Fn[[T], K]) -> Own[list[T]]:
 template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-std::vector<T> above_first(const std::vector<T>& xs, __F0&& f);
+std::vector<T> above_first(std::vector<T>& xs, __F0&& f);
 // def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
 template<typename T>
-std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pairs);
+std::vector<std::string> names(std::vector<std::tuple<T, std::string>>& pairs);
 // def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 template<typename T>
-std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs);
+std::vector<std::tuple<T, int32_t>> keep(std::vector<std::tuple<T, int32_t>>& pairs);
 // def main() -> None:
 void main();
 
@@ -43,7 +43,7 @@ template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-std::vector<K> map_keys(const std::vector<T>& xs, __F0&& f) {
+std::vector<K> map_keys(std::vector<T>& xs, __F0&& f) {
     std::vector<K> out = std::vector<K>{};
     int32_t i = 0;
     while ((i < ::tpy::__len__(xs))) {
@@ -67,7 +67,7 @@ template<typename T, ::tpystd::tpy::Comparable K, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<K>;
   }
-std::vector<T> above_first(const std::vector<T>& xs, __F0&& f) {
+std::vector<T> above_first(std::vector<T>& xs, __F0&& f) {
     std::vector<T> out = std::vector<T>{};
     ::tpy::val_or_ref_t<K> threshold = f(::tpy::__getitem__(xs, 0));
     int32_t i = 0;
@@ -82,13 +82,13 @@ std::vector<T> above_first(const std::vector<T>& xs, __F0&& f) {
 // def names[T](pairs: list[tuple[T, str]]) -> Own[list[str]]:
 //     return map_keys(pairs, lambda p: p[1])  # tpyc: ok
 template<typename T>
-std::vector<std::string> names(const std::vector<std::tuple<T, std::string>>& pairs) {
+std::vector<std::string> names(std::vector<std::tuple<T, std::string>>& pairs) {
     return ::tpyapp::main::map_keys<std::tuple<T, std::string>, std::string>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, std::string>& p) -> std::string { return std::get<1>(p); });
 }
 // def keep[T](pairs: list[tuple[T, int32]]) -> Own[list[tuple[T, int32]]]:
 //     return above_first(pairs, lambda p: p[1])
 template<typename T>
-std::vector<std::tuple<T, int32_t>> keep(const std::vector<std::tuple<T, int32_t>>& pairs) {
+std::vector<std::tuple<T, int32_t>> keep(std::vector<std::tuple<T, int32_t>>& pairs) {
     return ::tpyapp::main::above_first<std::tuple<T, int32_t>, int32_t>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, int32_t>& p) -> int32_t { return std::get<1>(p); });
 }
 

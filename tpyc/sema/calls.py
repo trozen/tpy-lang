@@ -6951,18 +6951,17 @@ class CallAnalyzer:
                 continue
             if not param_has_mutable_borrow_surface(ptype):
                 continue
-            # Bare generic slots skip only the EAGER mutation mark (mirrors
-            # the tuple-slot rule in param_has_mutable_borrow_surface): a
-            # value-typed instantiation cannot mutate, and marking would cost
-            # const-ness on every generic combinator (`g(f, xs)` forwarding
-            # elements into f). The borrow-conflict check above is NOT skipped
-            # -- a live element borrow passed to a generic slot still warns.
-            if isinstance(unwrap_readonly(unwrap_ref_type(ptype)), TypeParamRef):
-                continue
             arg_root = _root_name_of_expr(expr.args[i])
-            if arg_root is not None:
-                self.ctx.mark_param_mutated(arg_root, through_field=True)
-                self.ctx.mark_param_structurally_mutated(arg_root)
+            if arg_root is None:
+                continue
+            # A bare generic slot is marked too: the template is one C++
+            # function for every instantiation, and at a reference-type one
+            # the callable takes `T&` and may write through it. The resize
+            # mark lands on the root parameter even when only an element is
+            # handed over, which over-warns
+            # (BUGS.md#callable-arg-structure-effect-depth).
+            self.ctx.mark_param_mutated(arg_root, through_field=True)
+            self.ctx.mark_param_structurally_mutated(arg_root)
         return return_type
 
     # -- Call-site macro expansion --

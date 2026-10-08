@@ -1012,9 +1012,9 @@ closures, context managers, `try`/`finally`, `@error_return` and `match`.
 Seventeen semantic checks cover invalid indices/signatures, single receiver
 analysis and protocol fields. Call-rooted receiver checks are semantic only:
 the separate shared lowering gap is `BUGS.md#call-rooted-container-field-index`.
-The pre-existing generic-method argument constness gap is tracked separately
-as `BUGS.md#generic-method-callable-param-forced-const`; the same failure occurs
-with named and direct-field callbacks, while the free-function twin works.
+A generic method passing an open-type reference argument to such a field
+takes it mutably, like the free-function twin (a bare generic callable slot is
+marked written, 2026-10-07).
 
 Validation: all 21 unit checks and both new snippet cases passed. The full
 remote `--force-exec` run passed **8,028 tests, 23 skipped**, with all **4,136

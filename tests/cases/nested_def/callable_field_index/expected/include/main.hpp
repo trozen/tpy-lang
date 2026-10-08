@@ -112,7 +112,7 @@ struct Generic {
 
     // def invoke(self, x: T) -> T:
     //     return self.callbacks[0](x)  # tpyc: ok
-    ::tpy::val_or_cref_t<T> invoke(::tpy::readonly_form_t<T> x) const {
+    ::tpy::val_or_cref_t<T> invoke(::tpy::param_val_or_ref_t<T> x) const {
         return (::tpy::__getitem__(this->callbacks, 0))(x);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Generic";

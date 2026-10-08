@@ -1,0 +1,3 @@
+main.py:48: warning: Passing borrowed container 'pts' to non-readonly parameter 'it' (function may invalidate references)
+main.py:52: warning: Passing borrowed container 'pts' to non-readonly parameter 'it' (function may invalidate references)
+main.py:56: warning: Passing borrowed container 'pts' to non-readonly parameter 'it' (function may invalidate references)

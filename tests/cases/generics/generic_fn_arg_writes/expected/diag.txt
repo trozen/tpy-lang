@@ -1,0 +1,2 @@
+main.py:137: warning: Passing borrowed container 'vs' to non-readonly parameter 'a' (function may invalidate references)
+main.py:139: warning: Passing borrowed container 'rs' to non-readonly parameter 'a' (function may invalidate references)
