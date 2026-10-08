@@ -9844,7 +9844,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                          allow_temps=True))
                         _witness("decl.opt_call_passthrough")
                         lc.pointers.add(stmt.name)
-                        lc.promote_movable(stmt.name)
                         declared[stmt.name] = vtype
                         return THIRVarDecl(
                             name=stmt.name, resolved_type=vtype, init=src,

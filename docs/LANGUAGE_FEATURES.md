@@ -2597,6 +2597,7 @@ Auto-move applies to:
 Auto-move does NOT apply to:
 - Regular parameters (borrowed by reference)
 - T& reference locals (lvalue-initialized aliases)
+- Locals bound from a call that lends what it returns: a reference return (`-> T`), and the pointer borrow forms `-> Optional[T]` and `-> A | B` over reference types (`q = d.get(k)`, `q = h.find()`). The local aliases the lent object, narrowed or not (`if q is not None: r = q` binds `R& r = (*q)`); an owning sink copies it with the `copies ... into owned storage` warning. Only an `Own[...]` return hands back a value the local owns
 - Reassigned locals with any borrow-source assignment -- not only a name/field/subscript lvalue, but also a reference-returning call or a ternary of reference lvalues (the source aliases existing storage, so a move would steal from it)
 - Field accesses (`self.x`)
 - Top-level (module scope) non-value-type variables

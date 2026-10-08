@@ -62,7 +62,7 @@ from ..typesys import (
     recorded_return_borrow_sources,
     is_any_str_type, is_numeric_type, unwrap_readonly, view_family_for_type,
 )
-from ..value_category import is_rvalue_source
+from ..value_category import binds_owned_value
 from .context import (
     BorrowKind, ITER_BORROWER, _borrow_storage_roots, _root_name_of_expr,
     addr_taken_roots, call_borrow_operands, call_lend_sources,
@@ -120,7 +120,7 @@ def bind_kind_of(ctx: 'SemanticContext',
         return None
     if isinstance(_peel(value), TpyNoneLiteral):
         return BindKind.NONE
-    return (BindKind.RVALUE if is_rvalue_source(ctx, value)
+    return (BindKind.RVALUE if binds_owned_value(ctx, value)
             else BindKind.LVALUE)
 
 
