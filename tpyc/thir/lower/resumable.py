@@ -198,6 +198,7 @@ from .statements import (
     _lower_frame_slot_write,
     _lower_narrow_cond,
     _lower_resumable_return_value,
+    _reject_tuple_site_own,
     _lower_stmt,
     _lower_stmts,
     _make_narrow_alias,
@@ -2084,6 +2085,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     def _lower_leaf_inner(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
+            _reject_tuple_site_own(stmt, stmt.name, analyzer)
             begin_stmt()
             if stmt.init is None:
                 # An annotation-only decl (`x: int32`) of a name the frame

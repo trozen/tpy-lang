@@ -2511,6 +2511,10 @@ class THIRPtrLocalRebind(THIRStmt):
     rebind_storage: 'RebindStorage | None' = None
     # See THIRAssign.rebuild: the slot holds a generator / coroutine frame.
     rebuild: bool = False
+    # A tuple global's pointer-tuple spelling (GLOBAL_HOIST_RVALUE only): the
+    # global points into the slot element-wise rather than at it,
+    # `M = ::tpy::tuple_to_pointer<{tuple_cpp}>(*(__global_slot_N = v));`.
+    tuple_cpp: str | None = None
 
 
 @dataclass(frozen=True)

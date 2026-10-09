@@ -1,0 +1,1 @@
+main.py:24: error: in function 'main': 'p' is stored elsewhere (a parameter, a loop variable or a borrowed value), or was deleted, so the object the rebind of 'p' creates needs storage of its own, which is not yet supported here; bind the new value to a name of its own
