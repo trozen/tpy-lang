@@ -14,7 +14,7 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
-from ..thir.scalar_leaves import owned_leaf, record_type, storage_leaf
+from ..thir.scalar_leaves import optional_record_field, owned_leaf, record_type, storage_leaf
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRSummaryResult
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
@@ -29,8 +29,8 @@ from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
     MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
-    function_body_kind, statement_target,
+    MIROptionalLayout, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRTupleLayout, MIRUnionPayload, MIRValueKind,
+    function_body_kind, place_layout, statement_target,
 )
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
@@ -515,14 +515,16 @@ class _Spelling:
         return text
 
 
-def _written_kind(place: MIRPlace, slot: MIRSlot) -> MIRValueKind | None:
+def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRValueKind | None:
+    slot = slots[place.root]
+    wrapper = place_layout(MIRPlace(place.root, place.projections[:-1]), slots) if place.projections else None
     match place.projections:
         case ():
             return slot.value_kind
-        case (MIRTupleIndex(index=index),) if slot.tuple_layout is not None:
-            return slot.tuple_layout.elements[index].kind
-        case (MIROptionalPayload(),) if slot.optional_layout is not None:
-            return slot.optional_layout.kind
+        case (*_, MIRTupleIndex(index=index)) if isinstance(wrapper, MIRTupleLayout):
+            return wrapper.elements[index].kind
+        case (*_, MIROptionalPayload()) if isinstance(wrapper, MIROptionalLayout):
+            return wrapper.kind
         case (*_, MIRDeref()):
             # Whole storage a holder points at: storage_destination's replacement.
             return MIRValueKind.OWNED
@@ -532,7 +534,7 @@ def _written_kind(place: MIRPlace, slot: MIRSlot) -> MIRValueKind | None:
             return MIRValueKind.SCALAR if scalar else MIRValueKind.OWNED
         case (*_, MIRField(type=field_type)):
             typ = unwrap_readonly(field_type)
-            if owned_leaf(typ) or record_type(typ):
+            if owned_leaf(typ) or record_type(typ) or optional_record_field(typ) is not None:
                 return MIRValueKind.OWNED
             return MIRValueKind.SCALAR if storage_leaf(typ) else None
     return None
@@ -596,7 +598,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             if (spelled := _spell(target, named)) is not None:
                 copy = isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCopy)
                 writes.setdefault((line, spelled), []).append(
-                    MIRLineWrite(block.id.index, _written_kind(target, slots[target.root]), copy))
+                    MIRLineWrite(block.id.index, _written_kind(target, slots), copy))
             mode = modes.get(MIRPoint(block.id, index))
             if mode is not None and mode not in INITIALIZING_WRITES and (spelled := _spell(target, storage)) is not None:
                 replaced.setdefault((line, spelled), []).append(mode.name.lower())
@@ -647,7 +649,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
         for slot in fn.slots:
             if slot.id not in named:
                 continue
-            for leaf in _leaves(slot):
+            for leaf in _leaves(slot, slots):
                 leaves.setdefault(named[slot.id], []).append(leaf)
                 if leaf.projections:
                     leaves.setdefault(_spell(leaf, named), []).append(leaf)

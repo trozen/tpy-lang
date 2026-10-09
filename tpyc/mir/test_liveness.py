@@ -142,7 +142,7 @@ def test_scalar_payload_alias_keeps_union_live_until_value_read() -> None:
         MIRSlot(Z, INT32, MIRSlotKind.TEMPORARY),
     )
     fn = MIRFunction(B, INT32, slots, (
-        MIRBlock(A, (MIRAssign(MIRPlace(X), MIRIsAlternative(P, (0,))),), MIRBranch(X, C, D)),
+        MIRBlock(A, (MIRAssign(MIRPlace(X), MIRIsAlternative(MIRPlace(P), (0,))),), MIRBranch(X, C, D)),
         MIRBlock(C, (MIRAssign(MIRPlace(Y), MIRUnionExtract(payload)),
                      MIRAssign(MIRPlace(Z), MIRRead(MIRPlace(Y)))), MIRReturn(Z)),
         MIRBlock(D, (MIRAssign(MIRPlace(Z), MIRConstant(0)),), MIRReturn(Z)),
@@ -212,12 +212,12 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
                         optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
         if operation == "optional":
-            value, expected = MIROptionalConstruct(P), {P}
+            value, expected = MIROptionalConstruct(MIRPlace(P)), {P}
         elif operation == "optional_copy":
-            value, expected = MIROptionalCopy(Y), {Y}
+            value, expected = MIROptionalCopy(MIRPlace(Y)), {Y}
         else:
             target = MIRSlot(Z, BOOL, MIRSlotKind.TEMPORARY)
-            value, expected = MIRIsPresent(Y), {Y}
+            value, expected = MIRIsPresent(MIRPlace(Y)), {Y}
     elif operation in ("union", "union_copy"):
         sibling = NominalType("Other", _module_qname="liveness.Other")
         other = MIRSlot(Y, UnionType((CELL, sibling)), MIRSlotKind.PARAMETER,
@@ -225,8 +225,8 @@ def test_rvalue_operands_survive_dead_destinations(operation: str) -> None:
                         union_layout=MIRUnionLayout(tuple(
                             MIRTupleElement(t, MIRValueKind.BORROWED) for t in (CELL, sibling))))
         target = replace(other, id=Z, kind=MIRSlotKind.TEMPORARY)
-        value, expected = ((MIRUnionConstruct(0, P), {P}) if operation == "union"
-                           else (MIRUnionCopy(Y), {Y}))
+        value, expected = ((MIRUnionConstruct(0, MIRPlace(P)), {P}) if operation == "union"
+                           else (MIRUnionCopy(MIRPlace(Y)), {Y}))
     fn = MIRFunction(B, VoidType(), (ref, scalar, other, target),
                      (MIRBlock(A, prefix + (MIRAssign(MIRPlace(Z), value),), MIRReturn()),), A, records=records)
     result = analyze_liveness(fn)

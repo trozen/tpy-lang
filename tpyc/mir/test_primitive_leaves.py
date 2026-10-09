@@ -416,12 +416,13 @@ def test_validator_rechecks_each_leaf_class(artifacts) -> None:
     with pytest.raises(MIRValidationError):
         validate_function(broken)
     with pytest.raises(MIRValidationError, match="not an inert leaf"):
-        _leaves(replace(slot, type=STR))
+        broken_slot = replace(slot, type=STR)
+        _leaves(broken_slot, {broken_slot.id: broken_slot})
     union = next(s for s in artifacts[1]["union"].slots if s.name == "u")
     member = replace(union, type=UnionType((STR, BOOL)),
                      union_layout=MIRUnionLayout((MIRTupleElement(STR), MIRTupleElement(BOOL))))
     with pytest.raises(MIRValidationError, match="not an inert leaf"):
-        _leaves(member)
+        _leaves(member, {member.id: member})
     constant = next((b, i) for b in fn.blocks for i, s in enumerate(b.statements)
                     if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstant))
     block, index = constant

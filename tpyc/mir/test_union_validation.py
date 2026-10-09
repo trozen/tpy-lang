@@ -36,13 +36,13 @@ SLOTS = (
     MIRSlot(ALIAS, INT32, MIRSlotKind.LOCAL, form=Form.BORROW, readonly=True,
             value_kind=MIRValueKind.PAYLOAD_ALIAS, alias_source=PAYLOAD),
 )
-CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(PARAM))
-TEST = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(CURRENT, (2,)))
+CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(PARAM)))
+TEST = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (2,)))
 CLEAR = MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(0))
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(PAYLOAD))
 EXTRACT = MIRAssign(MIRPlace(ALIAS), MIRUnionExtract(PAYLOAD))
 ALIAS_READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(ALIAS)))
-BUILD = MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(2, VALUE))
+BUILD = MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(2, MIRPlace(VALUE)))
 FALLBACK = MIRBlock(NO, (), MIRReturn(VALUE))
 
 
@@ -51,7 +51,7 @@ def function(*blocks: MIRBlock) -> MIRFunction:
 
 
 @pytest.mark.parametrize("mutation", [
-    CLEAR, MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(PARAM)),
+    CLEAR, MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(PARAM))),
     MIRAssign(MIRPlace(GUARD), MIRConstant(True)),
     MIRAssign(MIRPlace(GUARD), MIRRead(MIRPlace(FLAG))),
 ])
@@ -64,7 +64,7 @@ def test_stale_union_test_is_not_a_selection_proof(mutation: MIRAssign) -> None:
 
 @pytest.mark.parametrize("negated", [False, True])
 def test_complement_and_boolean_copy_select_one_alternative(negated: bool) -> None:
-    test = replace(TEST, value=MIRIsAlternative(CURRENT, (0, 1)))
+    test = replace(TEST, value=MIRIsAlternative(MIRPlace(CURRENT), (0, 1)))
     copy = MIRAssign(MIRPlace(COPY), MIRNot(GUARD) if negated else MIRRead(MIRPlace(GUARD)))
     branch = MIRBranch(COPY, YES, NO) if negated else MIRBranch(COPY, NO, YES)
     fn = function(MIRBlock(ENTRY, (CAPTURE, test, copy), branch),
@@ -75,7 +75,7 @@ def test_complement_and_boolean_copy_select_one_alternative(negated: bool) -> No
 
 
 def test_none_exclusion_does_not_select_a_concrete_member() -> None:
-    test = replace(TEST, value=MIRIsAlternative(CURRENT, (0,)))
+    test = replace(TEST, value=MIRIsAlternative(MIRPlace(CURRENT), (0,)))
     fn = function(MIRBlock(ENTRY, (CAPTURE, test), MIRBranch(GUARD, NO, YES)),
                   MIRBlock(YES, (READ,), MIRReturn(RESULT)), FALLBACK)
     with pytest.raises(MIRPresenceError):
@@ -202,13 +202,13 @@ def test_bad_union_layouts_and_alias_slots(bad: MIRSlot) -> None:
 
 @pytest.mark.parametrize("stmt", [
     MIRAssign(MIRPlace(PARAM), MIRUnionConstruct(0)),
-    MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(2, FLAG)),
+    MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(2, MIRPlace(FLAG))),
     MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(-1)),
-    MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(0, VALUE)),
-    MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(VALUE)),
-    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(CURRENT, ())),
-    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(CURRENT, (3,))),
-    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(CURRENT, (2, 2))),
+    MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(0, MIRPlace(VALUE))),
+    MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(VALUE))),
+    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), ())),
+    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (3,))),
+    MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (2, 2))),
     MIRAssign(MIRPlace(RESULT), MIRUnionExtract(PAYLOAD)),
     MIRAssign(MIRPlace(ALIAS), MIRRead(PAYLOAD)),
     MIRAssign(PAYLOAD, MIRConstant(1)),
@@ -237,11 +237,11 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
     )
     field = MIRField(MIRFieldId(cell, "value"), INT32)
     bind = MIRAssign(MIRPlace(ALIAS), MIRUnionExtract(MIRPlace(CURRENT, (MIRUnionPayload(0),))))
-    overwrite = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(SAVED))
+    overwrite = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(SAVED)))
     mutate = MIRAssign(MIRPlace(FLAG, (MIRDeref(), field)), MIRRead(MIRPlace(VALUE)))
     read = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(ALIAS, (MIRDeref(), field))))
     return MIRFunction(BODY, INT32, ref_slots, (
-        MIRBlock(ENTRY, (CAPTURE, replace(TEST, value=MIRIsAlternative(CURRENT, (0,)))), MIRBranch(GUARD, YES, NO)),
+        MIRBlock(ENTRY, (CAPTURE, replace(TEST, value=MIRIsAlternative(MIRPlace(CURRENT), (0,)))), MIRBranch(GUARD, YES, NO)),
         MIRBlock(YES, (bind, overwrite, mutate, read), MIRReturn(RESULT)), FALLBACK,
     ), ENTRY)
 
@@ -272,7 +272,7 @@ def test_record_member_construction_preserves_capability(source_const: bool, des
     source = replace(fn.slots[-2], readonly=source_const)
     # Construct directly from the record parameter, then retain the extracted
     # identity across wrapper replacement and mutate through a separate alias.
-    construction = MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(0, FLAG))
+    construction = MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(0, MIRPlace(FLAG)))
     mutable = MIRSlotId(BODY, 9)
     mutable_slot = replace(source, id=mutable, readonly=False)
     entry = replace(fn.blocks[0], statements=(construction, *fn.blocks[0].statements[1:]))

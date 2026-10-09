@@ -120,13 +120,13 @@ def test_aggregate_holders_retain_inline_member_after_tuple_ends(kind: str) -> N
             typ = OptionalType(CELL)
             options = dict(value_kind=MIRValueKind.OPTIONAL,
                            optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
-            capture, copy = MIROptionalConstruct(SAVED), MIROptionalCopy(holder)
+            capture, copy = MIROptionalConstruct(MIRPlace(SAVED)), MIROptionalCopy(MIRPlace(holder))
         case _:
             other = NominalType("Other", _module_qname="tuple_storage.Other")
             typ = UnionType((CELL, other))
             options = dict(value_kind=MIRValueKind.UNION,
                            union_layout=MIRUnionLayout((BORROWED, MIRTupleElement(other, MIRValueKind.BORROWED))))
-            capture, copy = MIRUnionConstruct(0, SAVED), MIRUnionCopy(holder)
+            capture, copy = MIRUnionConstruct(0, MIRPlace(SAVED)), MIRUnionCopy(MIRPlace(holder))
     fn = function()
     fn = replace(fn, slots=(*fn.slots, *(MIRSlot(s, typ, MIRSlotKind.LOCAL, residence=ROOT, **options)
                                        for s in (holder, copied))))

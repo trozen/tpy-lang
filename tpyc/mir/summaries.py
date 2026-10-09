@@ -2,7 +2,7 @@
 
 from ..thir import nodes as th
 from ..thir.scalar_leaves import (
-    native_container_subject, owned_value_type, record_type, storage_leaf, view_leaf,
+    native_container_subject, optional_record_field, owned_value_type, record_type, storage_leaf, view_leaf,
 )
 from ..type_def_registry import ParamPassing
 from ..typesys import TpyType, receiver_neutral_return, unwrap_readonly
@@ -21,8 +21,8 @@ from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct,
     MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered, MIROp,
-    MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
+    MIRIsPresent, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
+    MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
     MIRSlot, MIRSlotKind, MIRSlotId, MIRTupleIndex, MIRUnionPayload, MIRValueKind, statement_call,
 )
 from .validate import owned_leaf_place_type, statement_reads, validate_function
@@ -87,6 +87,11 @@ def _private_records(body: MIRFunction, dependencies: MIRDependencies) -> frozen
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRMove) and stmt.value.source in records:
                 transfers.append((stmt.value.source, point))
                 reads = tuple(r for r in reads if r != stmt.value.source)
+            if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIROptionalConstruct)
+                    and stmt.value.source is not None and stmt.value.source.root in records):
+                # A temporary moved into an Optional field's payload: a transfer.
+                transfers.append((stmt.value.source.root, point))
+                reads = tuple(r for r in reads if r != stmt.value.source.root)
             if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct):
                 # Owned temporary record storage a construct names as an
                 # operand is moved into the built record or element: a
@@ -121,17 +126,38 @@ def _member_chain(source: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: fr
     """Whether `source` reaches through inline record members of storage the
     summary accounts for: under a live borrowed record (one leading
     dereference of its holder) or under the body's private record storage,
-    one or more fields, every one before the last a record member. The last
-    field is the caller's to classify."""
+    one or more fields, every one before the last a record member or an
+    Optional record field followed by its inline payload (a selection the
+    body's presence proof checked). The last step is the caller's to
+    classify."""
     path = source.projections
     if slots[source.root].value_kind is MIRValueKind.BORROWED and path[:1] == (MIRDeref(),):
-        fields = path[1:]
+        steps = path[1:]
     elif source.root in private:
-        fields = path
+        steps = path
     else:
         return False
-    return (bool(fields) and all(isinstance(f, MIRField) for f in fields)
-            and all(record_type(unwrap_readonly(f.type)) for f in fields[:-1]))
+    for index, step in enumerate(steps):
+        if isinstance(step, MIROptionalPayload):
+            previous = steps[index - 1] if index else None
+            if not (isinstance(previous, MIRField) and optional_record_field(previous.type) is not None):
+                return False
+        elif not isinstance(step, MIRField):
+            return False
+        elif index < len(steps) - 1 and not (record_type(unwrap_readonly(step.type))
+                                             or isinstance(steps[index + 1], MIROptionalPayload)):
+            return False
+    return bool(steps)
+
+
+def _whole_wrapper_field(place: MIRPlace) -> MIRPlace:
+    """A write under an Optional record field's payload, published as a
+    write of the whole field: summary paths have no payload selector, and
+    replacing the field reaches everything a payload write does."""
+    for index, projection in enumerate(place.projections):
+        if isinstance(projection, MIROptionalPayload):
+            return MIRPlace(place.root, place.projections[:index])
+    return place
 
 
 def _published_path(place: MIRPlace) -> tuple[object, ...]:
@@ -212,9 +238,19 @@ def _transfer_in_layouts(declaration: th.THIRFunction, definitions: MIRDefinitio
 def _record_member(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
     """Whether `place` is an inline record member of storage the summary
     accounts for (`_member_chain`): a whole member a write replaces in
-    place or a copy reads."""
+    place or a copy reads, or an Optional record field's payload a holder
+    borrows."""
+    last = place.projections[-1] if place.projections else None
     return (_member_chain(place, slots, private)
-            and record_type(unwrap_readonly(place.projections[-1].type)))
+            and (isinstance(last, MIROptionalPayload) or record_type(unwrap_readonly(last.type))))
+
+
+def _optional_field(place: MIRPlace, slots: dict[MIRSlotId, MIRSlot], private: frozenset[MIRSlotId]) -> bool:
+    """Whether `place` is a whole Optional record field of storage the
+    summary accounts for (`_member_chain`): replaced, tested or copied."""
+    last = place.projections[-1] if place.projections else None
+    return (isinstance(last, MIRField) and optional_record_field(last.type) is not None
+            and _member_chain(place, slots, private))
 
 
 def _container_access(source: MIRPlace, target: MIRSlot) -> bool:
@@ -364,10 +400,11 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             # rule a caller checks it by; each field must be a member of the
             # layout of the storage its hop reads.
             index = parameters[origin.place.root]
-            write = MIRParameterWrite(index, _published_path(origin.place))
+            place = _whole_wrapper_field(origin.place)
+            write = MIRParameterWrite(index, _published_path(place))
             if write_problem(write, tuple(bindings)) is not None:
                 return "summary unsupported write origin"
-            if not _path_in_layouts(declaration, definitions, bindings[index], write.path, origin.place):
+            if not _path_in_layouts(declaration, definitions, bindings[index], write.path, place):
                 return "summary write field differs from definition"
             writes.add(write)
         return None
@@ -445,8 +482,10 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             # An inline record member replaced whole: published as a write of
             # the member under a parameter, nothing under private storage.
             member = _record_member(stmt.target, slots, private_records())
+            # An Optional record field replaced whole: published like a member.
+            wrapper = _optional_field(stmt.target, slots, private_records())
             if stmt.storage_write is not None and not (
-                    leaf_place or own_storage or elements or private_target or member):
+                    leaf_place or own_storage or elements or private_target or member or wrapper):
                 return MIRSummaryResult.opaque("summary storage operation")
             if stmt.target.projections:
                 problem = include_writes(origins or None)
@@ -505,6 +544,16 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                     # moved storage is a transfer of `_private_records`).
                     pass
                 case MIRIteratorInit() | MIRIteratorHasNext() | MIRIteratorRead() | MIRIteratorAdvance():
+                    pass
+                case MIROptionalConstruct(source=source) if wrapper and (
+                        source is None or slots[source.root].kind is MIRSlotKind.TEMPORARY):
+                    # Emptied, or engaged with a temporary moved into the payload.
+                    pass
+                case MIROptionalCopy(source=source) if wrapper and _optional_field(source, slots, private_records()):
+                    # Another Optional field's payload copied in. (An Optional
+                    # holder slot keeps the summary opaque above.)
+                    pass
+                case MIRIsPresent(source=source) if _optional_field(source, slots, private_records()):
                     pass
                 case _:
                     return MIRSummaryResult.opaque("summary unsupported operation")

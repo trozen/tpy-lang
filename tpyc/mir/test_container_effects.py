@@ -18,7 +18,7 @@ from ..typesys import BOOL, INT32, STR, NominalType, OwnType, RefType, VoidType,
 from .call_contract import (
     MIRCallSummary, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, stub_summary,
 )
-from .call_effects import call_write_places
+from .coverage import call_write_places
 from .collect import MIRBodyVerdict, MIRVerdictStatus, analyze_body, line_facts
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dependencies import MIRReferent, analyze_dependencies, resolve_referents

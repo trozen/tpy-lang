@@ -1952,7 +1952,11 @@ form facts, never on lists of accepted kinds.
   ([view fields](#view-fields)); a record written through a place (an
   in-place reseat, a member replaced whole) fills the entries of every
   object the place reaches; every other way such a record moves or
-  is written refuses. Remaining, in this order: view fields slice 4
+  is written refuses. A wrapper's layout belongs to the representation at
+  a place, and an Optional field of a loan-free record is a place of its
+  holder with its payload stored inline
+  ([Optional record fields](#optional-record-fields)). Remaining, in this
+  order: Optional scalar and tuple fields; view fields slice 4
   (wrapper and container members; TODO.md lists the items);
   nested container elements; record elements whose record has record
   fields (`list[Line]`); record-element literal member-init. From here
@@ -3387,10 +3391,13 @@ and setter and `getter_through_field`; `mir/method_calls`
   bases, record fields, the record members of container fields). A field is
   admitted by shape through one predicate, `scalar_leaves.modeled_field` (a
   leaf place, `modeled_leaf_field`: a scalar leaf, an owned leaf, a view
-  of an owned leaf or a native container; or a `record_type`, `readonly`
-  removed), which the definition, the validator's layouts and
-  `place_info` read; a layout holding any other field (an Optional, union,
-  tuple, `Ptr`, `Box` or `Rc` field) refuses "unsupported record fields".
+  of an owned leaf, a native container, or an Optional of a loan-free
+  record ([Optional record fields](#optional-record-fields)); or a
+  `record_type`, `readonly` removed), which the definition, the validator's
+  layouts and `place_info` read; a layout holding any other field (a union,
+  tuple, scalar-Optional, `str | None`, `Ptr`, `Box` or `Rc` field, or an
+  Optional whose payload holds a loan or has a record field) refuses
+  "unsupported record fields".
   Each member record's definition must verify (`_member_definitions`,
   "member definition: <reason>": `HasHooked` "... custom record special
   member", `HasEffect` "... constructor body effects", a value-type or
@@ -3573,9 +3580,11 @@ and setter and `getter_through_field`; `mir/method_calls`
   - A record ELEMENT whose record has record fields (`[Built(x, "e")]`),
     "unsupported native container element" (`listed`): a container element
     stays a record of leaf fields (`plain_record_element`).
-  - Optional, union, tuple, `Ptr`, `Box` and `Rc` fields, "unsupported
-    record fields" at the definition (a tuple and an Optional field pinned
-    in `test_owned.py`; an Optional record field probed).
+  - Union, tuple, scalar-Optional, `str | None`, `Ptr`, `Box` and `Rc`
+    fields, and Optional fields whose payload holds a loan or has a record
+    field, "unsupported record fields" at the definition (a tuple and an Optional
+    scalar field pinned in `test_owned.py`); Optional fields of loan-free
+    records are modeled since ([Optional record fields](#optional-record-fields)).
   - In a member initializer: a call result (`Called`, `self.a = mk(x)`),
     "constructor initializer needs parameter or literal"; a record argument
     of the member's constructor (`Nested`, `self.line = Line(a, b)`),
@@ -4098,6 +4107,105 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   before the slice found the view items block about 10 corpus bodies; the
   units split out of the list (TODO.md) and `Box`/`Rc` and `Ptr` members
   are where the corpus is.
+
+#### Optional record fields
+
+A record field `p: P | None` whose payload `P` is a plain record holding no
+loan is a place of its holder, with the payload stored inline (C++
+`std::optional<P> p;`). Analysis only: generated C++ and diagnostics do not
+change. Pinned by `tests/cases/mir/wrapper_fields` and
+`tpyc/mir/test_optional_fields.py`.
+
+- **Invariant.** A wrapper's layout belongs to the representation at a
+  place, never to the root slot alone: `nodes.place_layout(place, slots)`
+  answers the Optional / union / tuple layout of the value at a place (a
+  root place: its slot's own layout; a place ending in an Optional record
+  field: an OWNED `MIROptionalLayout`; any other projection: none). Every
+  payload, element and presence operation resolves the layout of the place
+  it operates on, and the wrapper rvalues (`MIROptionalConstruct`,
+  `MIROptionalCopy`, `MIRIsPresent` and the union twins) take a
+  `MIRPlace`. Root slots keep their SCALAR / BORROWED payload kinds; OWNED
+  exists only at a field place. The refactor that introduced the resolver
+  changed no verdict (census over the full test corpus and the stdlib:
+  0 of 29713 bodies).
+- **Admission.** `scalar_leaves.optional_record_field` admits an Optional
+  (not pointer-represented, `readonly` removed) whose payload passes
+  `plain_record_element` and holds no loan; `modeled_leaf_field` includes
+  it, so THIR publishes the field identity (metadata; no render reads it)
+  and `thir/validate.py` accepts a whole access (STORAGE form, the
+  Optional type, or the payload type at an assign target inside a
+  narrowed region) and a narrowed access (`narrowed_deref`, the payload
+  type). `scalar_leaves.inline_member_type` is the record a member stores
+  inline (the payload of such a field, else the member's own type).
+- **Reads.** A narrowed read `h.p.x` is the place `h.<p>.payload.x`; `is
+  None` / `is not None` on a field is `MIRIsPresent(place)`; `o = h.p`
+  binds an Optional holder of the inline payload (C++
+  `optional_to_ptr(h.p)`). An unproven read (`opt_deref_check`) refuses.
+- **Writes.** `h.p = None`, `h.p = P(..)`, `h.p = other.p` and `h.p = o`
+  are in-place replacement events through storage retention, so a live
+  holder of the old payload conflicts -- through the same name, through a
+  second parameter that may name the same holder (`retention.may_overlap`
+  treats distinct external origins as possibly one object), through a
+  callee's published write, and through `self`. Replacement is never
+  routed through payload_lifetime, which compares exact places and drops
+  external referents. A whole-field write that copies a payload marks the
+  copy `MIROptionalCopy.may_raise`. A callee's write under the payload is
+  published as a write of the whole field (summaries carry no payload
+  selectors).
+- **Presence kill rule** (`presence._reaches`, `_kill_field_facts`). A
+  presence fact on a field place dies at any statement or published call
+  write that may reach it, in the current state and on the outcomes stored
+  on boolean temporaries (`if a.p is not None and empties(b)`). May-reach
+  is decided by allow-lists: only a root write of a BORROWED holder is a
+  rebind that writes no storage, and only scalar leaves, owned leaves and
+  views cannot hold the member (`_may_hold`); any other type may. A read
+  after a killed fact refuses ("optional payload access without current
+  presence proof").
+- **Constructors.** A `P | None` parameter (`definitions.optional_parameter`,
+  borrow form `const P*`) is admitted; `_optional_initializer` handles the
+  parameter copied into the field, `None`, and a composed `P(..)`
+  (`_composed_member`, shared with the record member arm, which both check
+  the record is movable). Caller constructs take an Optional operand: none,
+  `&name`, `optional_to_ptr(field)`, an Optional name, or an argument
+  temporary (the construct carries the raise of its payload copy).
+- **Conflicts pinned.** `alias(h, h)` (`o = a.p; b.p = None; o.x`),
+  `callee` (`o = h.p; clear(h); o.x`), `H.via_self`, `copy_both`: a
+  `replacement` conflict each. Narrowings ended by a write through another
+  path (`fresh_alias`, `fresh_call`, `fresh_condition`) refuse. Safe
+  siblings stay covered (`alias_read_first`, `alias_other_field`,
+  `keep_other_field`, `refill`).
+- **Kept refusals**, by reason.
+  - A narrowed payload bound to a local (`q = h.p`): "optional payload
+    borrow without a storage borrow fact" -- THIR's `storage_borrow`
+    publishes nothing for a narrowed Optional payload (post-freeze fact).
+  - A constructor argument built in place (`H(P(1), 2)`): "named argument
+    needs complete temporary plan" (THIR's temporary planner).
+  - A store under the payload (`h.p.x = 5`): "optional field payload write".
+  - A payload copy into a field from a narrowed payload (`a.p = b.p` inside
+    `if b.p is not None`): "optional field copy from a narrowed payload".
+  - A whole-field store of a call's owned Optional result (`h.p =
+    find(11)`): "record initializer type mismatch" (`store_found`).
+  - An Optional argument at a free-function or method call: "call needs
+    unwrapped scalar binding" (`optional_operand` serves constructor calls
+    only).
+  - Union, tuple, scalar-Optional and `str | None` fields; payloads that
+    hold a loan or have a record field: "unsupported record fields".
+- **Precision.** Presence runs before dependencies, so its kill rule is a
+  layout-based may-alias model beside retention's referent-based one: a
+  write to a field of any parameter kills a local holder's fact (sound,
+  imprecise; TODO.md). A caller construct's Optional member re-derives
+  `may_raise` from the payload type. The storage certificate does not model
+  a payload holder (`o = a.p`): "borrow evidence: demanded operation is not
+  a supported record borrow" (the verdict stays covered or conflict).
+- **Measured** (`scripts/mir_coverage`, full test corpus and stdlib,
+  against the merged base): 82 bodies newly lower,
+  none lost, and no previously lowered body changes its verdict; certified
+  171 -> 184. The newly lowered bodies are mostly constructors of records
+  with an Optional record field and their callers (records 26, pointers
+  15, optional 10). One newly lowered body conflicts
+  (`pointers/escape_hoist_call_source` `while_nested_section`: a holder
+  into a loop-local replaced before a read MIR cannot prove the inner loop
+  skips; sema warns there too).
 
 ## Scope matrix and remaining increments
 

@@ -500,12 +500,12 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
         optional_layout=MIROptionalLayout(cell, MIRValueKind.BORROWED), residence=region),
         MIRSlot(guard, BOOL, MIRSlotKind.LOCAL, residence=region)), blocks=(replace(entry, statements=(
             *entry.statements, MIRAssign(MIRPlace(maybe), MIROptionalConstruct()),
-            MIRAssign(MIRPlace(guard), MIRIsPresent(maybe)))), *fn.blocks[1:]))
+            MIRAssign(MIRPlace(guard), MIRIsPresent(MIRPlace(maybe))))), *fn.blocks[1:]))
     assert certify_storage_origins(fn, frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
     prepared = _prepare_function(fn)
     presence = prepared.presence
     unknown = replace(prepared, presence=replace(presence, points=MappingProxyType(
-        {p: frozenset(f for f in facts if f[0] != maybe) for p, facts in presence.points.items()})))
+        {p: frozenset(f for f in facts if f[0] != MIRPlace(maybe)) for p, facts in presence.points.items()})))
     live = _liveness(unknown)
     evidence = _storage_evidence(unknown, live, _dependencies(unknown, live), frozenset({R_LOCAL}), definitions)
     assert evidence.verdict is MIRStorageVerdict.NOT_COVERED

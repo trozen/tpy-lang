@@ -402,7 +402,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
                               value_kind=MIRValueKind.OPTIONAL,
                               optional_layout=MIROptionalLayout(holder.type, MIRValueKind.BORROWED),
                               residence=holder.residence)
-            capture.append(MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(holder.id)))
+            capture.append(MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder.id))))
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
         else:
             other = NominalType("Other", _module_qname="select.Other")
@@ -410,7 +410,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
                               value_kind=MIRValueKind.UNION,
                               union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED))),
                               residence=holder.residence)
-            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, holder.id)))
+            capture.append(MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, MIRPlace(holder.id))))
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
         blocks = []
         for block in function.blocks:

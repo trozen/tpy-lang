@@ -11,8 +11,8 @@ from ..thir.nodes import (
 )
 from ..thir.scalar_leaves import (
     container_element, container_view, holds_loan, modeled_members, native_container_subject, native_container_type,
-    owned_leaf, owned_value_type, plain_record_element, readonly_elements, record_type, storage_leaf,
-    view_compatible, view_endpoint, view_leaf,
+    optional_record_field, owned_leaf, owned_value_type, plain_record_element, readonly_elements, record_type,
+    storage_leaf, view_compatible, view_endpoint, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
@@ -626,7 +626,8 @@ def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
 
     Under a record parameter (every field a `record_field`), a write needs
     a mutable path and ends at a scalar leaf (written in place), an owned
-    leaf (its buffer replaced), a record member (replaced whole) or a
+    leaf (its buffer replaced), a record member or an Optional record field
+    (replaced whole; a write under its payload is published as one) or a
     container projection of a container field whose members MIR models. A
     return ends at no projection: a view result views an owned-leaf field
     of its family or is the loan a view member of its family stores; a
@@ -648,7 +649,7 @@ def endpoint_admitted(binding: MIRParameterBinding, resolved: MIRResolvedPath,
             return False
         if resolved.projection is not None:
             return native_container_type(bare) and modeled_members(bare)
-        return storage_leaf(bare) or owned_leaf(bare) or record_type(bare)
+        return storage_leaf(bare) or owned_leaf(bare) or record_type(bare) or optional_record_field(bare) is not None
     if resolved.projection is not None:
         return False
     if view_leaf(result.type):

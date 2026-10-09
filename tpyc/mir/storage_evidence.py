@@ -312,12 +312,13 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                         if key.projections[:len(prefix)] == prefix and not state.get(key):
                             gap(f"live record %{ref.place.root.index} has unknown stored loans", point_loc(point))
             for sid in sorted(liveness.points[point], key=lambda s: s.index):
-                for leaf in _leaves(slots[sid]):
+                for leaf in _leaves(slots[sid], slots):
+                    wrapper = MIRPlace(leaf.root, leaf.projections[:-1])
                     match leaf.projections:
-                        case (MIROptionalPayload(),):
-                            engaged = 1 in selected.get(sid, presence.domains[sid])
-                        case (MIRUnionPayload(alternative=alternative),):
-                            engaged = alternative in selected.get(sid, presence.domains[sid])
+                        case (*_, MIROptionalPayload()):
+                            engaged = 1 in selected.get(wrapper, presence.domains[wrapper])
+                        case (*_, MIRUnionPayload(alternative=alternative)):
+                            engaged = alternative in selected.get(wrapper, presence.domains[wrapper])
                         case _:
                             engaged = True
                     if engaged and not state.get(leaf):

@@ -34,8 +34,8 @@ SLOTS = (
     MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
     MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )
-CAPTURE = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(PARAM))
-TEST = MIRAssign(MIRPlace(GUARD), MIRIsPresent(CURRENT))
+CAPTURE = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(PARAM)))
+TEST = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)))
 CLEAR = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct())
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(CURRENT, (MIROptionalPayload(),))))
 FALLBACK = MIRBlock(NO, (), MIRReturn(VALUE))
@@ -47,7 +47,7 @@ def function(*blocks: MIRBlock) -> MIRFunction:
 
 @pytest.mark.parametrize("mutation", [
     CLEAR,
-    MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(PARAM)),
+    MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(PARAM))),
     MIRAssign(MIRPlace(GUARD), MIRConstant(True)),
     MIRAssign(MIRPlace(GUARD), MIRRead(MIRPlace(FLAG))),
 ])
@@ -102,10 +102,10 @@ def test_loop_backedge_requires_a_new_test(fresh: bool) -> None:
 
 @pytest.mark.parametrize("self_copy", [False, True])
 def test_construction_and_copy_establish_presence(self_copy: bool) -> None:
-    build = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(VALUE))
-    save = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(CURRENT))
+    build = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(MIRPlace(VALUE)))
+    save = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(MIRPlace(CURRENT)))
     read = replace(READ, value=MIRRead(MIRPlace(SAVED, (MIROptionalPayload(),))))
-    overwrite = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(SAVED)) if self_copy else CLEAR
+    overwrite = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(MIRPlace(SAVED))) if self_copy else CLEAR
     fn = function(MIRBlock(ENTRY, (build, save, overwrite, read), MIRReturn(RESULT)))
     validate_function(fn)
     assert execute(fn, OptionalValue(None), 0, False) == 0
@@ -133,10 +133,10 @@ def test_malformed_optional_layout_is_rejected(bad: MIRSlot) -> None:
 
 @pytest.mark.parametrize("stmt", [
     MIRAssign(MIRPlace(PARAM), MIROptionalConstruct()),
-    MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(FLAG)),
-    MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(VALUE)),
+    MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(MIRPlace(FLAG))),
+    MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(VALUE))),
     MIRAssign(MIRPlace(CURRENT, (MIROptionalPayload(),)), MIRConstant(1)),
-    MIRAssign(MIRPlace(GUARD), MIRIsPresent(VALUE)),
+    MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(VALUE))),
 ])
 def test_malformed_optional_operations_are_rejected(stmt: MIRAssign) -> None:
     fn = function(MIRBlock(ENTRY, (CAPTURE, stmt), MIRReturn(VALUE)))
@@ -164,7 +164,7 @@ def test_unrelated_boolean_results_do_not_duplicate_holder_facts() -> None:
     booleans = {MIRSlotId(BODY, i + 200) for i in range(100)}
     state = _State()
     for holder in holders:
-        state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct(VALUE)), booleans)
+        state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct(MIRPlace(VALUE))), booleans)
     for boolean in booleans:
         state = _transfer(state, MIRAssign(MIRPlace(boolean), MIRRead(MIRPlace(FLAG))), booleans)
     # Repeated reseats must not scan a copy of every holder fact per boolean.
@@ -172,4 +172,4 @@ def test_unrelated_boolean_results_do_not_duplicate_holder_facts() -> None:
     assert not state.conditions
     for holder in holders:
         state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct()), booleans)
-    assert state.present == frozenset((holder, frozenset({0})) for holder in holders)
+    assert state.present == frozenset((MIRPlace(holder), frozenset({0})) for holder in holders)

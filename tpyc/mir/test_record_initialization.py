@@ -186,12 +186,12 @@ def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -
     elif shape == "optional":
         slot = MIRSlot(holder, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
                        residence=ROOT, optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
-        bind = MIRAssign(MIRPlace(holder), MIROptionalConstruct(CURRENT))
+        bind = MIRAssign(MIRPlace(holder), MIROptionalConstruct(MIRPlace(CURRENT)))
         payload = MIRPlace(holder, (MIROptionalPayload(), MIRDeref()))
     else:
         slot = MIRSlot(holder, UnionType((CELL, NoneType())), MIRSlotKind.LOCAL,
                        value_kind=MIRValueKind.UNION, residence=ROOT, union_layout=MIRUnionLayout((member, None)))
-        bind = MIRAssign(MIRPlace(holder), MIRUnionConstruct(0, CURRENT))
+        bind = MIRAssign(MIRPlace(holder), MIRUnionConstruct(0, MIRPlace(CURRENT)))
         payload = MIRPlace(holder, (MIRUnionPayload(0), MIRDeref()))
     read_holder = MIRAssign(MIRPlace(SAVED), MIRBorrow(payload))
     fn = function(MIRBlock(ENTRY, (INIT, WRITE, BIND, bind, WRITE, BIND, read_holder, MUTATE, READ),

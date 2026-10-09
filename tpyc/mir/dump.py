@@ -84,6 +84,8 @@ def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
             source = "construct (" + ", ".join(f"%{s.index}" for s in fields) + ")"
         case MIRMemberInits(fields=nested):
             source = "{" + ", ".join(_member_init(m, borrowed) for m in nested) + "}"
+        case MIROptionalConstruct(source=payload):
+            source = "absent" if payload is None else f"present {_place(payload)}"
         case _:
             source = f"(*%{member.source.index})" if member.source in borrowed else f"%{member.source.index}"
     match member.mode:
@@ -223,18 +225,18 @@ def dump_function(fn: MIRFunction) -> str:
                 case MIRTupleCopy(source=source):
                     rhs = f"tuple-copy %{source.index}"
                 case MIROptionalConstruct(source=source):
-                    rhs = "absent" if source is None else f"present %{source.index}"
+                    rhs = "absent" if source is None else f"present {_place(source)}"
                 case MIROptionalCopy(source=source):
-                    rhs = f"optional-copy %{source.index}"
+                    rhs = f"optional-copy {_place(source)}"
                 case MIRIsPresent(source=source):
-                    rhs = f"is-present %{source.index}"
+                    rhs = f"is-present {_place(source)}"
                 case MIRUnionConstruct(alternative=alternative, source=source):
-                    payload = f"%{source.index}" if source is not None else "absent"
+                    payload = _place(source) if source is not None else "absent"
                     rhs = f"union[{alternative}] {payload}"
                 case MIRUnionCopy(source=source):
-                    rhs = f"union-copy %{source.index}"
+                    rhs = f"union-copy {_place(source)}"
                 case MIRIsAlternative(source=source, alternatives=alternatives):
-                    rhs = f"is-alternative %{source.index} {alternatives}"
+                    rhs = f"is-alternative {_place(source)} {alternatives}"
                 case MIRUnionExtract(source=source):
                     rhs = f"extract {_place(source)}"
                 case MIRCopy(source=source, may_raise=may_raise):

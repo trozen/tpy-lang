@@ -339,7 +339,7 @@ def test_optional_transfer_capabilities(artifacts: Artifacts, copy: bool,
         else replace(source, readonly=source_readonly))
     slots[target.id.index] = replace(target, optional_layout=replace(
         target.optional_layout, readonly=target_readonly))
-    operation = MIROptionalCopy(source.id) if copy else MIROptionalConstruct(source.id)
+    operation = MIROptionalCopy(MIRPlace(source.id)) if copy else MIROptionalConstruct(MIRPlace(source.id))
     root = fn.blocks[0].region
     block = MIRBlock(fn.entry, (MIRAssign(MIRPlace(target.id), operation),), MIRReturn(), root)
     fn = replace(fn, slots=tuple(replace(s, residence=root) if s.residence else s for s in slots),

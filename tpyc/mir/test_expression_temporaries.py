@@ -183,7 +183,7 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
                               value_kind=MIRValueKind.OPTIONAL,
                               optional_layout=MIROptionalLayout(owned.type, MIRValueKind.BORROWED),
                               residence=result.region)
-            capture = (MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(holder)),)
+            capture = (MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder))),)
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
         case "union":
             other = NominalType("Other", _module_qname="temporary.Other")
@@ -191,7 +191,7 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
                               value_kind=MIRValueKind.UNION,
                               union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED))),
                               residence=result.region)
-            capture = (MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, holder)),)
+            capture = (MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, MIRPlace(holder))),)
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
     blocks = []
     for block in fn.blocks:

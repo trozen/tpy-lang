@@ -214,7 +214,7 @@ def test_skipped_construction_has_no_end_but_empty_wrapper_does(absent: bool) ->
 def test_last_activation_does_not_definitely_initialize_the_next() -> None:
     fn = conditional_region()
     entry, iteration, after, initialize = fn.blocks
-    read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(fn.slots[2].id))
+    read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(MIRPlace(fn.slots[2].id)))
     broken = replace(fn, blocks=(entry, replace(iteration, statements=(read,)), after, initialize))
     with pytest.raises(MIRValidationError, match="read before definite assignment"):
         validate_function(broken)

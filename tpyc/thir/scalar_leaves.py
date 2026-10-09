@@ -4,7 +4,8 @@ from ..type_def_registry import (
     NativeMembers, float_traits_of, int_traits_of, is_borrowing_view_type, type_def_of, zero_value_of,
 )
 from ..typesys import (
-    Loan, NominalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TypeParamRef, TypeRegistry,
+    Loan, NominalType, OptionalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TypeParamRef,
+    TypeRegistry,
     is_inert_leaf, loan_class, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
     view_family_of, view_owned_leaf,
 )
@@ -324,13 +325,38 @@ def record_type(typ: object) -> bool:
     return td is None or td.record is not None and not td.record.is_native and td.enum is None
 
 
+def optional_record_field(typ: object) -> NominalType | None:
+    """The payload record of a record member of declared type `typ` that is
+    an Optional MIR models in place (`std::optional<P>` storage), or None:
+    the payload is a plain record (`plain_record_element`: leaf fields
+    only, so a payload place is at most one field deep, and no user hook
+    runs on its copy or destruction) holding no loan (`loan_free`), so no
+    stored-loan entry sits under the payload."""
+    bare = unwrap_readonly(typ)
+    if not isinstance(bare, OptionalType) or bare.force_pointer_repr:
+        return None
+    inner = bare.inner
+    return inner if isinstance(inner, NominalType) and plain_record_element(inner) and loan_free(inner) else None
+
+
+def inline_member_type(typ: object) -> TpyType:
+    """What a record member of declared type `typ` stores inline: an
+    Optional record field's payload record (`optional_record_field`), else
+    the member's bare type -- so an inline record is found the same way
+    whether it is a record member or an Optional field's payload."""
+    return optional_record_field(typ) or unwrap_readonly(typ)
+
+
 def modeled_leaf_field(typ: object) -> bool:
     """Whether a record member of declared type `typ` is a place MIR models
-    with no record inside it: a scalar leaf, an owned leaf, a view of an
-    owned leaf (`view_leaf`, a stored loan) or a native container. THIR
-    publishes a field identity for exactly these and the records it
-    models (`storage.field_identity`)."""
-    return storage_leaf(typ) or owned_leaf(typ) or view_leaf(typ) or native_container_type(unwrap_readonly(typ))
+    with no record directly inside it: a scalar leaf, an owned leaf, a view
+    of an owned leaf (`view_leaf`, a stored loan), a native container, or an
+    Optional of a plain loan-free record (`optional_record_field`), whose
+    payload MIR reaches through the field's own layout. THIR publishes a
+    field identity for exactly these and the records it models
+    (`storage.field_identity`)."""
+    return (storage_leaf(typ) or owned_leaf(typ) or view_leaf(typ) or native_container_type(unwrap_readonly(typ))
+            or optional_record_field(typ) is not None)
 
 
 def modeled_field(typ: object) -> bool:

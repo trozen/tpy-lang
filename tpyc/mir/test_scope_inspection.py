@@ -154,7 +154,7 @@ def test_skipped_union_construction_keeps_old_payload_alias(read_inside: bool) -
     dependencies = _dependencies(prepared, _liveness(prepared))
     assert dependencies.referents[MIRPoint(skipped, 0)][MIRPlace(ALIAS)] == frozenset({
         MIRReferent(EXTRACT.value.source)})
-    assert CURRENT not in dict(prepared.presence.points[MIRPoint(skipped, 0)])
+    assert MIRPlace(CURRENT) not in dict(prepared.presence.points[MIRPoint(skipped, 0)])
     result = inspect_scope_lifetimes(fn)
     assert MIREdge(guard, 0) not in result.ends.ends
     assert bool(result.freshness) is not read_inside

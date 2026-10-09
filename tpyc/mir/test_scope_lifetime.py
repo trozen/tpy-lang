@@ -227,7 +227,7 @@ def region_fixture() -> MIRFunction:
     value, flag, local = (MIRSlotId(body, i) for i in range(3))
     entry, iteration, after = (MIRBlockId(body, i) for i in range(3))
     root, child = (MIRRegionId(body, i) for i in range(2))
-    init = MIRAssign(MIRPlace(local), MIROptionalConstruct(value),
+    init = MIRAssign(MIRPlace(local), MIROptionalConstruct(MIRPlace(value)),
                      storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
     return MIRFunction(body, INT32, (
         MIRSlot(value, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
@@ -281,7 +281,7 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
         interior = replace(iteration, id=MIRBlockId(fn.id, 3), statements=())
         fn = replace(fn, blocks=(replace(entry, terminator=MIRGoto(interior.id)), iteration, after, interior))
     elif damage == "read_before_init":
-        read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(fn.slots[2].id))
+        read = MIRAssign(MIRPlace(fn.slots[1].id), MIRIsPresent(MIRPlace(fn.slots[2].id)))
         fn = replace(fn, blocks=(entry, replace(iteration, statements=(read, *iteration.statements)), after))
     with pytest.raises(MIRValidationError, match=message):
         validate_function(fn)
@@ -306,9 +306,9 @@ def test_edge_selection_survives_equal_branch_destinations() -> None:
     parameter = replace(fn.slots[0], type=OptionalType(INT32), value_kind=MIRValueKind.OPTIONAL,
                         optional_layout=MIROptionalLayout(INT32))
     guard = MIRSlot(MIRSlotId(fn.id, 3), BOOL, MIRSlotKind.TEMPORARY, residence=iteration.region)
-    from_source = replace(iteration.statements[0], value=MIROptionalCopy(parameter.id))
+    from_source = replace(iteration.statements[0], value=MIROptionalCopy(MIRPlace(parameter.id)))
     fn = replace(fn, return_type=BOOL, slots=(parameter, *fn.slots[1:], guard), blocks=(
-        entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsPresent(fn.slots[2].id))),
+        entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsPresent(MIRPlace(fn.slots[2].id)))),
                        terminator=MIRBranch(guard.id, after.id, after.id)),
         replace(after, terminator=MIRReturn(fn.slots[1].id))))
     result = analyze_scope_ends(fn)

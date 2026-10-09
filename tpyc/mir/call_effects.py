@@ -4,22 +4,11 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from ..thir.nodes import THIRFieldIdentity
-from .dependencies import MIRDependencies, MIRReferent, MIRReferents, call_place, resolve_referents
+from .coverage import call_write_places
+from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
 from .dump import _place
-from .nodes import MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRSlot, MIRSlotId, statement_call
+from .nodes import MIRCall, MIRFunction, MIRNotCovered, MIRPoint, MIRSlot, MIRSlotId, statement_call
 from .validate import MIRValidationError, validate_function
-
-
-def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
-    return tuple(item.name if isinstance(item, THIRFieldIdentity) else type(item).__name__ for item in path)
-
-
-def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
-    """The caller's places a call may write: each summarized write's
-    parameter path (`call_place`)."""
-    return tuple(call_place(call, write.parameter, write.path, slots)
-                 for write in sorted(call.summary.writes, key=lambda w: (w.parameter, _path_key(w.path))))
 
 
 def resolve_call_writes(call: MIRCall, state: MIRReferents,

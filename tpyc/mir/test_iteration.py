@@ -112,13 +112,13 @@ def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> No
         case "optional":
             slot = MIRSlot(saved, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
                            optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
-            value, projection = MIROptionalConstruct(FIRST), MIROptionalPayload()
+            value, projection = MIROptionalConstruct(MIRPlace(FIRST)), MIROptionalPayload()
         case "union":
             other = NominalType("Other", _module_qname="iteration.Other")
             fn = replace(fn, records=(*fn.records, MIRRecordLayout(other, (), True, True)))
             slot = MIRSlot(saved, UnionType((CELL, other)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION,
                            union_layout=MIRUnionLayout((member, MIRTupleElement(other, MIRValueKind.BORROWED))))
-            value, projection = MIRUnionConstruct(0, FIRST), MIRUnionPayload(0)
+            value, projection = MIRUnionConstruct(0, MIRPlace(FIRST)), MIRUnionPayload(0)
         case "tuple":
             slot = MIRSlot(saved, TupleType((CELL,)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE,
                            tuple_layout=MIRTupleLayout((member,)))

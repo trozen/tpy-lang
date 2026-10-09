@@ -1,13 +1,19 @@
 """Immutable MIR with body-scoped holders and logical storage projections."""
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
 from ..type_def_registry import ParamPassing
-from ..typesys import NominalType, TpyType
+from ..thir.scalar_leaves import optional_record_field
+from ..typesys import NominalType, ReadonlyType, TpyType
 from .call_contract import MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId
+
+
+class MIRValidationError(ValueError):
+    """A producer supplied malformed MIR, rather than unsupported source."""
 
 
 @dataclass(frozen=True)
@@ -286,33 +292,39 @@ class MIRTupleCopy:
 
 @dataclass(frozen=True)
 class MIROptionalConstruct:
-    source: MIRSlotId | None = None
+    # The payload operand; None builds an empty wrapper.
+    source: MIRPlace | None = None
 
 
 @dataclass(frozen=True)
 class MIROptionalCopy:
-    source: MIRSlotId
+    source: MIRPlace
+    # Copying an engaged payload into OWNED payload storage (an Optional
+    # record field) copies the record, which may raise like any record copy
+    # (`layout_copy_may_raise`); a borrowed or scalar payload copies no buffer.
+    may_raise: bool = False
 
 
 @dataclass(frozen=True)
 class MIRIsPresent:
-    source: MIRSlotId
+    source: MIRPlace
 
 
 @dataclass(frozen=True)
 class MIRUnionConstruct:
     alternative: int
-    source: MIRSlotId | None = None
+    # The payload operand; None selects an absent alternative.
+    source: MIRPlace | None = None
 
 
 @dataclass(frozen=True)
 class MIRUnionCopy:
-    source: MIRSlotId
+    source: MIRPlace
 
 
 @dataclass(frozen=True)
 class MIRIsAlternative:
-    source: MIRSlotId
+    source: MIRPlace
     alternatives: tuple[int, ...]
 
 
@@ -468,6 +480,26 @@ class MIRPrint:
 MIRStatement = MIRAssign | MIRStorageInit | MIRRecordStorageInit | MIRCallStmt | MIRPrint
 
 
+MIRWrapperLayout = MIRTupleLayout | MIROptionalLayout | MIRUnionLayout
+
+
+def place_layout(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRWrapperLayout | None:
+    """The tuple / Optional / union layout of the value at a place, or None.
+    A layout belongs to the representation at the place, not to the root
+    slot: the root place's is its slot's own. A projected place has one
+    only as an Optional record field (`optional_record_field`), whose
+    payload record is stored inline: OWNED. A tuple member or payload is a
+    leaf or a record, and other wrapper fields are not modeled."""
+    if place.projections:
+        last = place.projections[-1]
+        payload = optional_record_field(last.type) if isinstance(last, MIRField) else None
+        return None if payload is None else MIROptionalLayout(payload, MIRValueKind.OWNED,
+                                                              isinstance(last.type, ReadonlyType))
+    slot = slots[place.root]
+    return next((layout for layout in (slot.tuple_layout, slot.optional_layout, slot.union_layout)
+                 if layout is not None), None)
+
+
 def statement_target(stmt: MIRStatement) -> MIRPlace | None:
     match stmt:
         case MIRAssign(target=target) | MIRStorageInit(target=target) | MIRRecordStorageInit(target=target):
@@ -520,7 +552,7 @@ class MIRBlock:
 
 
 class MIRMemberInitMode(Enum):
-    # An inert leaf, by value.
+    # An inert leaf, by value; an Optional record member left empty.
     SCALAR = auto()
     # An owned leaf copied from a parameter's storage (borrowed or owned) or
     # materialized from a constant: an allocation. A record copied through
@@ -551,8 +583,11 @@ class MIRMemberInit:
     """How one member of the receiver is initialized at entry, in layout order.
     A container member is copied from a container parameter, or MOVEd from
     the literal its `MIRConstruct` builds over parameters; a record member
-    built by its own constructor is MOVEd from its `MIRMemberInits`."""
-    source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits
+    built by its own constructor is MOVEd from its `MIRMemberInits`. An
+    Optional record member is left empty (`MIROptionalConstruct()`), COPYs
+    the payload an Optional record parameter lends, or MOVEs a payload its
+    own constructor builds (`MIRMemberInits`)."""
+    source: MIRSlotId | MIRConstant | MIRConstruct | MIRMemberInits | MIROptionalConstruct
     mode: MIRMemberInitMode = MIRMemberInitMode.SCALAR
     # The initialization can exit by exception (`TypeDef.copy_may_raise` of a
     # COPY, a record copy's layout, a literal's allocation, some field of a

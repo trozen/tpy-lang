@@ -1,5 +1,7 @@
 """Fail-closed checks shared by body and definition coverage."""
 
+from collections.abc import Mapping
+
 from ..thir import nodes as th
 from ..thir.metadata import unsupported_metadata
 # `view_compatible` is the one predicate between a view holder and what it
@@ -13,9 +15,10 @@ from ..typesys import (
     through_view, unwrap_readonly,
 )
 from ..type_def_registry import ParamPassing
+from .call_contract import MIRContainerElements, MIRContainerStructure
 from .nodes import (
-    MIRField, MIROptionalLayout, MIRPlace, MIRSlot, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRTupleLayout,
-    MIRValueKind,
+    MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalLayout, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration, MIRTupleElement, MIRTupleLayout, MIRValueKind,
 )
 
 
@@ -79,6 +82,37 @@ def view_member(place: MIRPlace) -> MIRField | None:
     read or rebound whole -- or None."""
     last = place.projections[-1] if place.projections else None
     return last if isinstance(last, MIRField) and view_leaf(unwrap_readonly(last.type)) else None
+
+
+def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
+    """One item of a summary's parameter path as a MIR projection."""
+    match item:
+        case th.THIRFieldIdentity(owner=owner, name=name, type=typ):
+            return MIRField(MIRFieldId(owner, name), typ)
+        case MIRContainerStructure() | MIRContainerElements():
+            return item
+    raise MIRValidationError("unknown call path item")
+
+
+def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
+               slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
+    """The caller's place a summary's parameter path names: under the
+    record a borrowed record argument points at, or directly under a
+    container argument (owned, borrowed, or a view)."""
+    argument = slots[call.arguments[parameter]]
+    through = argument.value_kind is MIRValueKind.BORROWED and not container_view_holder(argument)
+    return MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(path_step, path)))
+
+
+def _path_key(path: tuple[object, ...]) -> tuple[str, ...]:
+    return tuple(item.name if isinstance(item, th.THIRFieldIdentity) else type(item).__name__ for item in path)
+
+
+def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
+    """The caller's places a call may write: each summarized write's
+    parameter path (`call_place`)."""
+    return tuple(call_place(call, write.parameter, write.path, slots)
+                 for write in sorted(call.summary.writes, key=lambda w: (w.parameter, _path_key(w.path))))
 
 
 def container_view_holder(slot: MIRSlot) -> bool:
