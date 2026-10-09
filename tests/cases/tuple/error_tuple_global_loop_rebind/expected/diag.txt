@@ -1,1 +1,0 @@
-main.py:24: error: at module level: this construct is not yet supported by C++ code generation (stmt.var_decl:top_level.tuple_global_loop_rebind)

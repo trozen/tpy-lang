@@ -7129,8 +7129,13 @@ class StatementAnalyzer:
                                    and isinstance(stmt.value, TpyName)
                                    and self._owned_element_is_pointer(
                                        stmt.value.name, i))
+                # Off a tuple name the target points into element `i` of it.
+                unpacked = (("lit", i) if literal_src is None
+                            and elem_srcs is None
+                            and isinstance(stmt.value, TpyName) else None)
                 for lender in lenders:
                     bt.add_borrow(lender, name, BorrowKind.ELEMENT,
+                                  elem_index=unpacked,
                                   through_pointer=through_pointer)
                 # A reassigned target binds `T* x = &(element)`, one type
                 # for every referent it is re-pointed at, so the source must
@@ -7648,8 +7653,9 @@ class StatementAnalyzer:
             # keeping chains through reassigned vars valid.
             _handle_pinned_view_rebind(self.ctx, stmt.target.name, stmt)
             bt = self.ctx.func.borrow_tracker
-            stamp_bind_kind(self.ctx, stmt, stmt.target.name, stmt.value,
-                            target_type, rebind=True)
+            # Stamped below, once a tuple literal's element captures (what
+            # the binding owns) are annotated.
+            bind_value, bind_type = stmt.value, target_type
             bt.rebind_borrower(stmt.target.name, stmt.value)
             warn_value_call_binding(
                 self.ctx, stmt.value, f"local '{stmt.target.name}'")
@@ -7833,6 +7839,8 @@ class StatementAnalyzer:
                           else TupleSink.LOCAL))
         # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, TpyName):
+            stamp_bind_kind(self.ctx, stmt, stmt.target.name, bind_value,
+                            bind_type, rebind=True)
             _register_tuple_binding_borrows(
                 self.ctx, stmt.target.name, stmt.value, target_type)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):

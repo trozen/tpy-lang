@@ -1189,8 +1189,8 @@ class BorrowTracker:
         self.loans: dict[str, dict[str, LoanInfo]] = {}
         # The statement sema is analyzing (set by the statement dispatcher),
         # and every loan registered while it was current, as
-        # (storage key, holder, kind) per statement -- what the alias-rebind
-        # storage pass replays in program order after the walk.
+        # (storage key, holder, LoanInfo) per statement -- what the
+        # alias-rebind storage pass replays in program order after the walk.
         self.current_stmt: 'TpyStmt | None' = None
         self.stmt_loans: IdentityMap = IdentityMap()
 
@@ -1225,7 +1225,7 @@ class BorrowTracker:
         holders[borrower] = loan
         if self.current_stmt is not None:
             self.stmt_loans.setdefault(self.current_stmt, []).append(
-                (storage, borrower, loan.kind))
+                (storage, borrower, loan))
 
     def remove_borrower(self, borrower: str) -> None:
         """Remove all borrows held by ``borrower`` (e.g. on reassignment)."""
@@ -1696,7 +1696,15 @@ def _register_source_borrow(ctx: 'SemanticContext', name: str,
         bt.add_borrow(root, name, kind)
         return
     init_kind = _borrow_kind_of_init(unwrapped)
-    bt.add_borrow(root, name, init_kind)
+    # A tuple's elements are distinct objects, owned or borrowed one by one,
+    # so the loan names the element the binding points into.
+    obj_t = (ctx.get_expr_type(unwrapped.obj)
+             if isinstance(unwrapped, TpySubscript) else None)
+    elem_index = (element_index_key(unwrapped.index)
+                  if obj_t is not None and isinstance(
+                      unwrap_readonly(unwrap_ref_type(obj_t)), TupleType)
+                  else None)
+    bt.add_borrow(root, name, init_kind, elem_index=elem_index)
     if not (init_kind in (BorrowKind.ELEMENT, BorrowKind.ALIAS)
             or bt.is_deferred_borrow(root)):
         ctx.mark_param_mutated(root)
@@ -2727,6 +2735,15 @@ class SemanticContext:
     # --- Type cache ---
     expr_types: IdentityMap = field(default_factory=IdentityMap)
     var_types: IdentityMap = field(default_factory=IdentityMap)
+    # Per tuple binding (a var-decl, an assignment to a name, a walrus), the
+    # elements it holds as objects of its own (`alias_rebind.tuple_elem_owned`):
+    # the alias-rebind pass, the module-level park, the inline-element layout
+    # and the frame's tuple slot all read the one verdict.
+    tuple_elem_owned: IdentityMap = field(default_factory=IdentityMap)
+    # Each tuple rebind site inside a body whose verdict is OWN, with the
+    # name still holding what it would overwrite (None: storage the name
+    # does not own). The lowering has no OWN storage for such a site yet.
+    tuple_own_sites: IdentityMap = field(default_factory=IdentityMap)
     # The and/or and ternary nodes whose value is only tested for truth (a
     # condition, a `not` operand, the argument of `bool(...)`), so each
     # operand is tested on its own instead of the node needing one value type.

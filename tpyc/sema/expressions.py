@@ -73,7 +73,7 @@ from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root,
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
-from .alias_rebind import bind_kind_of
+from .alias_rebind import bind_kind_of, tuple_elem_owned
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
@@ -4184,7 +4184,11 @@ class ExpressionAnalyzer:
             # form and last-use moves); a borrow records the statement-level
             # borrow fact and registers the alias for mutation tracking,
             # exactly like `v = h.view()` would.
-            self.ctx.func.bind_kinds[expr] = bind_kind_of(self.ctx, expr.value)
+            owned = tuple_elem_owned(self.ctx, expr.value, resolved)
+            if owned is not None:
+                self.ctx.tuple_elem_owned[expr] = owned
+            self.ctx.func.bind_kinds[expr] = bind_kind_of(
+                self.ctx, expr.value, owned)
             # The walrus binds a fresh local, so its literal members take the
             # local sink's copy rule, as the decl `u = (1, (2, c))` does.
             bound_lit = peel_value_wrappers(expr.value)

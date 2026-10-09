@@ -3263,6 +3263,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A tuple global's write whose value holds an object: the value parks
     # in a static of its own layout, the global points at it element-wise.
     "top_level.tuple_global_park",
+    # ... inside a `for` body: the site's hoisted optional slot, assigned
+    # on every pass.
+    "top_level.tuple_global_park_loop",
     "top_level.global_null",        # `g = nullptr;`
     # A BORROW-returning method call at a global slot: the slot points AT
     # the callee-owned storage (`pt = &(points->load(0));`), no slot alloc.

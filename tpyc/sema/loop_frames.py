@@ -120,7 +120,7 @@ def storage_closure(stmt_loans, frames: 'frozenset[str]', roots: 'set[str]',
     lends: dict[str, set[str]] = {}
     borrows: dict[str, set[str]] = {}
     for entries in stmt_loans.values():
-        for storage, holder, _kind in entries:
+        for storage, holder, _loan in entries:
             if holder.startswith(ITER_BORROWER):
                 continue
             src = storage.split(".", 1)[0]

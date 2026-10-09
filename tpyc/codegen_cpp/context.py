@@ -29,7 +29,7 @@ from ..parse import (
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
     TpyIfExpr, TpyAssign, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
-    TpyNamedExpr, TpyTupleLiteral, TupleElemCapture, walrus_bindings,
+    TpyNamedExpr, walrus_bindings,
 )
 from ..namespace import Namespace, BindingKind
 from ..type_def_registry import (
@@ -3085,10 +3085,11 @@ class CodeGenContext:
             of the statement), or an owning call (`t = make_pair()`, whose
             result is equally the frame's).
 
-        Ownership is decided PER ELEMENT by each init (`init_verdict`) and
-        joined across every init of the name: element i is owned iff every init
-        hands it over. The verdict is expressed as an effective TupleType
-        with the owned reference elements wrapped in `Own[...]`, so
+        Ownership is decided PER ELEMENT by sema for each init
+        (`tuple_elem_owned`) and joined here across every init of the name:
+        element i is owned iff every init hands it over. The verdict is
+        expressed as an effective TupleType with the owned reference
+        elements wrapped in `Own[...]`, so
         `is_owned_movable` / `is_mixed_own` / `tuple_borrow_cpp` route it into
         the frame kinds that already exist. An element one init hands over and
         another only borrows has no single form and is rejected at the decl --
@@ -3129,49 +3130,17 @@ class CodeGenContext:
         elem_wanted: dict[str, list[bool]] = {}
         conflicts: dict[str, TpyStmt] = {}
 
-        def init_verdict(init: TpyExpr, inner: TupleType) -> list[bool]:
-            """Per-element ownership THIS ONE init implies, decided here and
-            nowhere else -- the join below only merges verdicts.
-
-            A tuple LITERAL owns the elements it VALUE-captures (a fresh
-            object no one else holds). An owning CALL hands the frame the
-            whole result, so every element the result owns is the frame's;
-            which those are is in the return type -- `Own[tuple[...]]` owns
-            each reference element, a per-element `tuple[Own[A], B]` owns
-            exactly its `Own` slots. Every other init (including a
-            borrow-returning call) contributes the borrow default."""
-            n = len(inner.element_types)
-            if isinstance(init, TpyTupleLiteral) and init.elem_capture:
-                verdict = [
-                    (init.elem_capture[i] is TupleElemCapture.VALUE
-                     and not unwrap_readonly(
-                         unwrap_ref_type(inner.element_types[i])).is_value_type())
-                    for i in range(min(n, len(init.elem_capture)))]
-            elif (isinstance(init, (TpyCall, TpyMethodCall))
-                    and self.is_storage_form_source(init)):
-                fi = init.resolved_function_info
-                rt = unwrap_readonly(fi.return_type) if fi is not None else None
-                if isinstance(rt, TupleType):
-                    verdict = [isinstance(et, OwnType)
-                               for et in rt.element_types][:n]
-                else:
-                    verdict = [
-                        not unwrap_readonly(
-                            unwrap_ref_type(et)).is_value_type()
-                        for et in inner.element_types]
-            else:
-                verdict = []
-            return verdict + [False] * (n - len(verdict))
-
-        def record(name: str | None, src: TpyExpr | None,
+        def record(name: str | None, binding: object,
                    at: 'TpyStmt | None') -> None:
-            """Join one init's per-element ownership into the name's verdict."""
+            """Join one init's per-element ownership (sema's
+            `tuple_elem_owned` for the binding) into the name's verdict."""
             ltype = gen_types.get(name) if name is not None else None
             inner = unwrap_ref_type(ltype) if ltype is not None else None
-            if name is None or src is None or not isinstance(inner, TupleType):
+            if name is None or not isinstance(inner, TupleType):
                 return
-            init = src.expr if isinstance(src, TpyCoerce) else src
-            verdict = init_verdict(init, inner)
+            n = len(inner.element_types)
+            owned = self.analyzer.ctx.tuple_elem_owned.get(binding) or ()
+            verdict = list(owned[:n]) + [False] * (n - len(owned[:n]))
             prev = elem_owned.get(name)
             if prev is None:
                 elem_owned[name] = verdict
@@ -3187,15 +3156,15 @@ class CodeGenContext:
         def visit(stmts: list[TpyStmt]) -> None:
             for stmt in stmts:
                 if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                    record(stmt.name, stmt.init, stmt)
+                    record(stmt.name, stmt, stmt)
                 elif (isinstance(stmt, TpyAssign)
                       and isinstance(stmt.target, TpyName)):
-                    record(stmt.target.name, stmt.value, stmt)
+                    record(stmt.target.name, stmt, stmt)
                 # A walrus binds in expression position: without this row its
                 # owning-call source is invisible here and the frame gets a
                 # borrow-form tuple field aliasing the dead result temporary.
                 for ne in walrus_bindings(stmt):
-                    record(ne.target, ne.value, stmt)
+                    record(ne.target, ne, stmt)
                 for body in stmt.sub_bodies():
                     visit(body)
 

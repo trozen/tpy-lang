@@ -3978,8 +3978,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # IN_PLACE reseat writes through the pointer.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            _rvalue_reseat(out, indent, name, val_cpp, stmt.rebind_storage,
-                           stmt.val_cpp, state, rebuild=stmt.rebuild)
+            if stmt.tuple_cpp is not None:
+                # A tuple global's write inside a loop: the site's slot is
+                # declared once and assigned on every pass.
+                slot = _own_slot(state, stmt.val_cpp)
+                out.write(f"{indent}{name} = ::tpy::tuple_to_pointer<"
+                          f"{stmt.tuple_cpp}>(*({slot} = {val_cpp}));\n")
+            else:
+                _rvalue_reseat(out, indent, name, val_cpp,
+                               stmt.rebind_storage, stmt.val_cpp, state,
+                               rebuild=stmt.rebuild)
             _witness("top_level.global_hoist_slot")
         elif stmt.kind is PtrSlotKind.GLOBAL_NULL:
             out.write(f"{indent}{name} = nullptr;\n")

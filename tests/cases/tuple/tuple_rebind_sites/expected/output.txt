@@ -1,0 +1,15 @@
+module-loop 3 100 3
+module-loop 4 10 4
+module-loop 5 20 5
+module-loop-call 5 30 5
+module-loop-call 5 31 5
+module-lender 41 50
+module-unpack 6 16 4
+module-literal 21 7 7
+mixed-in-place 14 7 7 5
+borrowed-names 104 5 104
+borrowing-call 1006 1006 7
+unpack-borrowed 10 9 10
+frame-literal 1 8
+frame-literal 10 9
+frame-literal 11 10

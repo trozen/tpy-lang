@@ -481,7 +481,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     `error_own_element_optional_member_copy` and
     `error_own_tuple_still_live_storage_arg` pinned closed gaps and fold
     into them.
-  - [x] step 4 -- the owned-param element places and the mixed global (D2).
+  - [x] step 4 (a9658364e5) -- the owned-param element places and the mixed
+    global (D2).
     - [x] element places: an element of a tuple the body OWNS -- a
       `tuple[Own[Box], Own[Box]]` or mixed `tuple[Own[Box], Box]` parameter
       (`&&`), an `Own[tuple]` parameter, an owned local -- is a place like
@@ -529,9 +530,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
       a literal of names builds the pointer tuple in place and a tuple name
       copies it (`M2 = M;`, an imported one too). A rebind parks a fresh
       static (the unpacked names keep the old objects), a parking rebind in
-      a module-level loop rejects
-      (`BUGS.md#tuple-global-loop-rebind-unwarned`), an all-borrow one there
-      re-points, a function-body rebind is refused, no element is
+      a module-level loop rejected (lifted in step 5.1), an all-borrow one
+      there re-points, a function-body rebind is refused, no element is
       default-constructed, and a last use at a mixed or fully owned
       parameter is the warned copy (a borrow-form name at a mixed slot lifts
       element-wise, `tuple_to_storage<std::tuple<Box, Box*>>(M)`, an
@@ -541,13 +541,59 @@ per shape; the mixed tuple global (D2) waits on that entry.
       `tests/cases/tuple/mixed_tuple_global`. Left: `mod.M[1]` through the
       module (`BUGS.md#module-qualified-tuple-global-rejects`), a nested
       tuple element holding a reference (located reject).
-  Also owned here, after the steps: the real fix of
-  `BUGS.md#resumable-alias-identity` (the per-rebind-site element ownership
-  verdict, decided in sema); the shared root `tpyc/sema/alias_rebind.py`
-  admits neither tuple locals nor multi-hop loans (two U1 stopgaps and
-  `BUGS.md#finally-mutate-then-rebind-return`,
-  `BUGS.md#nested-list-literal-alias-rebind-clobbers` come from it); the
-  container FIELD as a borrow-tuple element (`btuple.elem_container_field`).
+  - [ ] step 5 -- tuple bindings are rebind sites: the per-rebind-site
+    element ownership verdict, decided in sema, toward the real fix of
+    `BUGS.md#resumable-alias-identity`. One branch per sub-step.
+    - [x] 5.1 -- the facts and the pass. `tuple_elem_owned` per binding
+      (`tpyc/sema/alias_rebind.py`): a literal's VALUE-captured reference
+      elements, the `Own` positions of a call's declared return (every
+      reference element of `-> Own[tuple[...]]`), nothing for a name, a
+      borrowing call or a select. The pass, the module-level park, the
+      inline-element layout and the frame's tuple slot read that one
+      verdict (codegen's `init_verdict` derivation is gone; the per-name
+      join stays). A tuple binding holding a reference element of its own
+      is a rebind site (RVALUE iff some element is owned); a loan names
+      the tuple element it points into (`a = p[i]`, an unpack target) and
+      a whole alias (`u = p`) is a loan on each owned element; a loan
+      clashes only on an element an origin owned, so one through a
+      borrowed element never does (`generators/frame_tuple_elem_alias`
+      `mixed_borrowed_rebound` unchanged). Module level: a parking rebind
+      in a `for` body takes the scalar's hoisted slot (`static
+      std::optional<std::tuple<Box, Box*>> __global_slot_N;`, assigned
+      per pass) with the scalar's warning, minus the `copy()` remedy; a
+      `while` body keeps the scalar's reject. Function and frame bodies:
+      an OWN verdict is a located reject (`reseat.tuple_site_own`) where it
+      clobbered silently -- the four shapes of
+      `BUGS.md#tuple-rebind-clobbers-live-alias` and the whole alias of
+      `BUGS.md#mixed-local-name-copy-rebound-source`. `tests/cases/tuple/
+      tuple_rebind_sites`, `error_tuple_rebind_site_own`. The external lender of a
+      module-level call result (`R = ident(V); V = Box(8)`, the tuple and
+      the scalar twin alike) takes storage of its own: a module function's
+      borrow facts are not known when module statements are analyzed, and
+      unknown means aliased. Not reached: a pointer handed out INSIDE a
+      callee (`BUGS.md#module-loop-rebind-callee-pointer-escape-unwarned`);
+      an `Optional[tuple]` binding and a nested tuple element holding an
+      object are no sites.
+    - [ ] 5.2 -- locals and parameters, storage PER OBJECT (decided
+      2026-10-09): each owned element is a scalar reference local in its own
+      right over the scalar's per-site slot (`std::optional<Box> __slot_N`,
+      `&__slot_N.emplace(std::move(std::get<0>(__r)))` off a call result
+      received once in a temporary; a literal's fresh element emplaces
+      directly), the tuple variable always the pointer tuple; the verdict
+      is per element slot (in place for an unaliased element, own for an
+      aliased one), so no whole-tuple slot and no "the tuple holds its
+      objects" notion exist. The module-level park of 5.1 / U5 step 4 moves
+      to the same per-element statics in this step. Lifts 5.1's reject in
+      function bodies, closes `BUGS.md#tuple-rebind-clobbers-live-alias`
+      and `BUGS.md#mixed-local-name-copy-rebound-source`.
+    - [ ] 5.3 -- frames: the scalar's per-site frame slot per owned element
+      (OWN elements join `own_rebind_names`); narrows
+      `_rebound_tuple_alias_reject` to the paths the pass does not prove
+      (container-rooted, nested, multi-hop).
+  Also owned here, after the steps: multi-hop loans
+  (`BUGS.md#nested-list-literal-alias-rebind-clobbers`), the pending-return
+  holder (`BUGS.md#finally-mutate-then-rebind-return`), the container FIELD
+  as a borrow-tuple element (`btuple.elem_container_field`).
 
 ### After 0.7.0
 
