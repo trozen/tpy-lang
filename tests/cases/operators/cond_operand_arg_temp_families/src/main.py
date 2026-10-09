@@ -234,14 +234,14 @@ def bump(r: Ref) -> bool:
 
 def deref_or_rhs(r: Ref, flag: bool) -> bool:
     # `or` RHS, deref coercion: a `__deref__` wrapper at a plain record slot
-    # takes a VALUE copy of the pointee, and the mutation on the
-    # always-evaluated left runs first, so the copy must report the BUMPED
-    # value.
+    # binds the wrapped object in place, with no temp to hoist ahead of the
+    # guard, and the mutation on the always-evaluated left runs first, so the
+    # callee must report the BUMPED value.
     return flag or (bump(r) and shown("deref", r))
 
 
 def deref_ternary(r: Ref, flag: bool) -> bool:
-    # Ternary arm: the same deref-coercion temp at the other conditional
+    # Ternary arm: the same deref coercion at the other conditional
     # position.
     return shown("dereftern", r) if not flag else False
 

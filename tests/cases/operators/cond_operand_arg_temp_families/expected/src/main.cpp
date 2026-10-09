@@ -249,22 +249,20 @@ bool bump(Ref& r) {
 
 // def deref_or_rhs(r: Ref, flag: bool) -> bool:
 //     # `or` RHS, deref coercion: a `__deref__` wrapper at a plain record slot
-//     # takes a VALUE copy of the pointee, and the mutation on the
-//     # always-evaluated left runs first, so the copy must report the BUMPED
-//     # value.
+//     # binds the wrapped object in place, with no temp to hoist ahead of the
+//     # guard, and the mutation on the always-evaluated left runs first, so the
+//     # callee must report the BUMPED value.
 //     return flag or (bump(r) and shown("deref", r))
 bool deref_or_rhs(Ref& r, bool flag) {
-    std::optional<Point> __tmp_1;
-    return (flag || (::tpyapp::main::bump(r) && (__tmp_1.emplace(r.__deref__()), ::tpyapp::main::shown("deref", (*__tmp_1)))));
+    return (flag || (::tpyapp::main::bump(r) && ::tpyapp::main::shown("deref", r.__deref__())));
 }
 
 // def deref_ternary(r: Ref, flag: bool) -> bool:
-//     # Ternary arm: the same deref-coercion temp at the other conditional
+//     # Ternary arm: the same deref coercion at the other conditional
 //     # position.
 //     return shown("dereftern", r) if not flag else False
 bool deref_ternary(const Ref& r, bool flag) {
-    std::optional<Point> __tmp_1;
-    return (((!(flag))) ? (__tmp_1.emplace(r.__deref__()), ::tpyapp::main::shown("dereftern", (*__tmp_1))) : (false));
+    return (((!(flag))) ? (::tpyapp::main::shown("dereftern", r.__deref__())) : (false));
 }
 
 // def main() -> None:

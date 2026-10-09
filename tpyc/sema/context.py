@@ -140,13 +140,16 @@ def escaping_borrow_tuple(slot: TpyType) -> 'tuple[TupleType, bool] | None':
 
 
 def tuple_borrow_escape_roots(expr: 'TpyExpr', tuple_bare: 'TupleType', *,
-                              expr_type: 'ExprTypeOf | None') -> list[str]:
+                              expr_type: 'ExprTypeOf | None',
+                              storage: bool = False) -> list[str]:
     """The roots a borrow-form tuple escaping through a yield/return slot
     lends (`lent_operands`): the provenance the slot records, whatever
-    access each element grants."""
+    access each element grants -- or, with `storage`, the typed walk's
+    roots, the storage the elements ARE."""
     return [root
             for lent in lent_operands(expr, tuple_bare, expr_type=expr_type)
-            for root in addr_taken_roots(lent.expr)]
+            for root in addr_taken_roots(
+                lent.expr, expr_type if storage else None)]
 
 
 def _storage_key(expr: TpyExpr) -> str | None:
@@ -2445,6 +2448,10 @@ class FunctionTrackingState:
     # over them, an element or field borrow off them.
     current_elem_mutated_param_names: set[str] = field(default_factory=set)
     current_returned_param_names: set[str] = field(default_factory=set)
+    # The subset of what the return lends that is the param's OWN storage,
+    # reached without stepping through a `Ptr` / borrowing view; const
+    # inference reads it, lifetime checks read the set above.
+    current_storage_returned_param_names: set[str] = field(default_factory=set)
     current_consumed_own_params: set[OwnSlot] = field(default_factory=set)
     # A local that took what an Own param moved out -> the slot its consume
     # credits. A rebind of the local drops its entry.
@@ -4158,12 +4165,15 @@ class SemanticContext:
             self.mark_param_structurally_mutated(_storage_root(iterable))
 
     def mark_param_returned(self, name: str,
-                            _seen: 'set[str] | None' = None) -> None:
+                            _seen: 'set[str] | None' = None, *,
+                            storage: bool = False) -> None:
         """Mark a parameter as contributing to the return value (8b).
 
         Called when returning a reference derived from param storage, so we
         can record return_borrows_from on FunctionInfo. Mirrors mark_param_mutated
-        but writes to current_returned_param_names instead.
+        but writes to current_returned_param_names instead -- or, with
+        `storage`, to current_storage_returned_param_names, for a root found
+        by the typed walk (`addr_taken_roots` with `type_of`).
         Traces loop variables back to their source iterables transitively.
         """
         # The field climb below re-enters a name the loan walk already left,
@@ -4172,21 +4182,24 @@ class SemanticContext:
         if name in seen:
             return
         seen.add(name)
+        marked = (self.func.current_storage_returned_param_names if storage
+                  else self.func.current_returned_param_names)
         if name == "self":
-            self.func.current_returned_param_names.add("self")
+            marked.add("self")
             return
         if name in self.func.current_param_names and name not in self.func.current_rebound_params:
-            self.func.current_returned_param_names.add(name)
+            marked.add(name)
         for iterable in self.func.loop_var_iterable.get(name, ()):
-            self.mark_param_returned(_storage_root(iterable), seen)
+            self.mark_param_returned(_storage_root(iterable), seen,
+                                     storage=storage)
         for src in self.func.bp_borrow_source_roots(name):
-            self.mark_param_returned(src, seen)
+            self.mark_param_returned(src, seen, storage=storage)
         # A returned local alias (`t = b.m; return t`) lends what it borrows
         # from, and every source of a re-seated one: the caller cannot tell
         # which is live.
         for ultimate in self.func.borrow_tracker.all_storage_through_borrows(
                 name, proven_only=True):
-            self.mark_param_returned(ultimate, seen)
+            self.mark_param_returned(ultimate, seen, storage=storage)
         # A field-path key (`self.inner`, from `return self.inner.get()` or
         # from an alias of `b.m`) lends its owning param. Unlike the mutation
         # mark there is nothing speculative to guard: a returned reference
@@ -4194,7 +4207,7 @@ class SemanticContext:
         # only POINTS at the storage.
         field_root = _storage_root(name)
         if field_root != name and not self._key_member_is_indirection(name):
-            self.mark_param_returned(field_root, seen)
+            self.mark_param_returned(field_root, seen, storage=storage)
 
     def _key_member_is_indirection(self, key: str) -> bool:
         """Some field along the storage key `root.a.b` points AT storage (a

@@ -1790,10 +1790,9 @@ class TypeRegistrar:
                     (owning_type_qname, method.name), []).append(method)
             if method.is_generator:
                 # The frame also stores the receiver by reference, but -1 is
-                # NOT stamped: return_borrows_from containing -1 blocks
-                # readonly inference (a self-borrowing return pins non-const),
-                # which would flip every generator method non-readonly; the
-                # receiver borrow is tracked in BUGS.md instead.
+                # not stamped yet; the receiver borrow is tracked in BUGS.md.
+                # (Const inference reads `return_lends_self_storage`, so a -1
+                # here would no longer flip the method non-readonly.)
                 self._stamp_iterator_retention(method, func_info)
             elif method.declared_borrows is not None:
                 # What the stub declares replaces the signature inference.

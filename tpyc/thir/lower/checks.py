@@ -104,6 +104,7 @@ from ...typesys import (
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
+from ...prescan import chain_root_name
 from ...type_def_registry import (
     is_varargs,
     type_def_of,
@@ -2149,8 +2150,9 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # reseatable `Point* copy = &(::tpy::deref_check(ptr));`; both are the
         # same rows the container-element subscript source takes. Shares
         # `_deref_coerce_arg` with the ARG position so the key cannot drift;
-        # the record-wrapper `__deref__()` flavor has no borrow-slot render
-        # (it hoists a VALUE copy) and stays rejected.
+        # the record-wrapper `__deref__()` flavor stays rejected here: its
+        # borrow lives in the wrapper, which a held binding would need a loan
+        # on (BUGS.md#deref-coerce-position-gaps).
         if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and _deref_coerce_borrow_slot(stmt.init, target_type,
                                               declared, analyzer)):
@@ -6377,13 +6379,13 @@ def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
                       ) -> 'tuple[str, TpyType] | None':
     """A deref auto-coercion (`deref_to_target`) into a plain F1-record slot
     (`print_point(r)` on a Deref-implementing `Ref` / `describe(p)` on
-    `p: Ptr[Point]`). Two renders, keyed on the source: a `Ptr[T]` source is
-    the inline `::tpy::deref_check(<src>)` lvalue (binds the ref directly),
+    `p: Ptr[Point]`). Both renders bind the ref directly, keyed on the
+    source: a `Ptr[T]` source is the `::tpy::deref_check(<src>)` lvalue,
     for any source expression -- a local, a field (`m._a`), a call result,
-    an element; a record-wrapper source hoists the slot-typed VALUE copy
-    `Point __tmp_N = r.__deref__();` (the ref-param cascade's temporary row)
-    and passes the temp, for a bare local only. Returns
-    `("inline" | "temp", slot)` or None."""
+    an element; a record-wrapper source is the `<src>.__deref__()` lvalue
+    (a coercing `__deref__` returns a borrow), for named storage: a source
+    rooted at a name (`chain_root_name`) that is not a fresh value. Returns
+    `("inline" | "wrapper", slot)` or None."""
     if not (isinstance(a, TpyCoerce) and a.coercion.name == "deref_to_target"):
         return None
     src = a.expr
@@ -6403,13 +6405,14 @@ def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
         # whose lifetime does not depend on the pointer value, so the source
         # shape does not matter.
         return "inline", slot
-    # The wrapper flavor hands the callee a COPY, so a write through the
-    # param misses the wrapped object (BUGS.md#deref-wrapper-arg-mutates-copy);
-    # it stays at the bare-local slice until that is fixed rather than spread
-    # to more sources.
+    # The borrow lives in the wrapper, so the wrapper must be named storage:
+    # rooted at a name (not one a call hands back off a temporary receiver)
+    # and not a fresh value (`R()`, a property or `__getattr__` building
+    # one), either of which dies before the callee is done with it.
     if (isinstance(actual, NominalType) and actual.is_user_record
-            and is_local):
-        return "temp", slot
+            and chain_root_name(src) is not None
+            and not is_rvalue_source(analyzer, src)):
+        return "wrapper", slot
     return None
 
 
@@ -6417,8 +6420,9 @@ def _deref_coerce_borrow_slot(a: TpyExpr, slot: 'TpyType | None',
                               locals_: dict[str, TpyType], analyzer) -> bool:
     """`_deref_coerce_arg`'s INLINE flavor at a BORROW-form slot that binds the
     `deref_check` lvalue by reference -- a record borrow RETURN or a borrow
-    local's decl/reseat. The wrapper `__deref__()` flavor has no such render
-    (it hoists a slot-typed VALUE copy) and stays out.
+    local's decl/reseat. The wrapper `__deref__()` flavor stays out: its
+    borrow lives in the wrapper, which a held binding would need a loan on
+    (BUGS.md#deref-coerce-position-gaps).
 
     A `Ptr[readonly[T]]` source at a NON-readonly slot is excluded: the deref
     yields `const T&` while the slot spells `T&` --
@@ -11815,12 +11819,8 @@ def _r_value_record_field(req: _ArgReq) -> bool:
 
 
 def _r_deref_coerce(req: _ArgReq) -> bool:
-    # The flush test reads the PREDICATE'S verdict (the wrapper-`__deref__()`
-    # form needs a temp, the inline Ptr deref does not), so it cannot be a
-    # pre-guard -- the row owns the whole conjunct, like the temps_ok-taking
-    # `optional_ptr` / `protocol_slot` rows.
-    dc = _deref_coerce_arg(req.a, req.ptype, req.locals_, req.analyzer)
-    return dc is not None and (dc[0] == "inline" or req.temps_ok)
+    return _deref_coerce_arg(req.a, req.ptype, req.locals_,
+                             req.analyzer) is not None
 
 
 def _r_readonly_container_rvalue(req: _ArgReq) -> bool:
@@ -13280,8 +13280,8 @@ _PLAIN_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("borrow_tuple_field", _r_borrow_tuple_field),
         _ArgRow("borrow_tuple_subscript", _r_borrow_tuple_subscript),
         _ArgRow("record_field_ref", _r_record_field_ref),
-        # The deref auto-coercion name: inline Ptr deref_check, or the
-        # slot-typed wrapper-`__deref__()` copy temp (flush-gated).
+        # The deref auto-coercion: inline Ptr deref_check, or the wrapper's
+        # `__deref__()` borrow off a named source.
         _ArgRow("deref_coerce", _r_deref_coerce),
         _ArgRow("readonly_container_rvalue", _r_readonly_container_rvalue),
         # A borrow-form tuple NAME at the same borrow-tuple slot binds bare;

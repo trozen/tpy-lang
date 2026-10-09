@@ -1173,6 +1173,7 @@ class StatementAnalyzer:
             for src_e in frame_borrowed_operands(ret_call) or ():
                 for src in _borrow_storage_roots(src_e):
                     self.ctx.mark_param_returned(src)
+                    self.ctx.mark_param_returned(src, storage=True)
             # Check for a borrowed source returned as Own[T] without an
             # explicit copy(). `readonly` peels first: `readonly[Own[T]]`
             # is the same owning slot with a const view on top, so the
@@ -1271,6 +1272,15 @@ class StatementAnalyzer:
                                 self.ctx.mark_loop_var_mutated(write_root)
                     for ret_root in ret_roots:
                         self.ctx.mark_param_returned(ret_root)  # 8b: track which param storage the return borrows
+                    for ret_root in (
+                            tuple_borrow_escape_roots(
+                                stmt.value, borrow_tuple[0],
+                                expr_type=self.ctx.get_expr_type,
+                                storage=True)
+                            if borrow_tuple is not None
+                            else addr_taken_roots(stmt.value,
+                                                  self.ctx.get_expr_type)):
+                        self.ctx.mark_param_returned(ret_root, storage=True)
                     # 8b rule 3: transitive return -- if returning the result of a call
                     # whose return_borrows_from is known, propagate the borrow contract.
                     # e.g. `return inner(items)` where inner borrows param 0 -> mark items.
@@ -1290,6 +1300,7 @@ class StatementAnalyzer:
                                 if not returns_borrowing_view and not fi_ret.is_readonly:
                                     self.ctx.mark_param_mutated(src)
                                 self.ctx.mark_param_returned(src)
+                                self.ctx.mark_param_returned(src, storage=True)
 
     def _consuming_return_move_fields(self, stmt: TpyReturn) -> frozenset[str]:
         """The `self` fields this return of a consuming method moves out of.
@@ -5520,6 +5531,8 @@ class StatementAnalyzer:
                 self.ctx.mark_param_mutated(root)
             for root in addr_taken_roots(stmt.value):
                 self.ctx.mark_param_returned(root)
+            for root in addr_taken_roots(stmt.value, self.ctx.get_expr_type):
+                self.ctx.mark_param_returned(root, storage=True)
         # A tuple is a value type, but its borrow-form yield slot hands out
         # mutable element pointers into the source storage -- the same escape
         # as the mutable-borrow yield above, missed by the is_value_type()
@@ -5534,6 +5547,10 @@ class StatementAnalyzer:
                     stmt.value, borrow_tuple[0],
                     expr_type=self.ctx.get_expr_type):
                 self.ctx.mark_param_returned(root)
+            for root in tuple_borrow_escape_roots(
+                    stmt.value, borrow_tuple[0],
+                    expr_type=self.ctx.get_expr_type, storage=True):
+                self.ctx.mark_param_returned(root, storage=True)
         # The yield value above was analyzed pre-suspension; everything
         # after the yield runs post-resume, when the caller may have
         # mutated shared storage between next() calls.

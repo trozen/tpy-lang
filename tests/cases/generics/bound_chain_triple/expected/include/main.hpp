@@ -69,7 +69,7 @@ struct Holder {
 
     // def get(self) -> T:
     //     return self._payload
-    ::tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() const {
         return ::tpy::deref_check(this->_payload);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";

@@ -947,6 +947,8 @@ class TypeCompatibility:
         target_is_storage_form: bool = False,
         sink_owns: bool | None = None,
         commit: bool = False,
+        *,
+        slot_readonly: bool = False,
     ) -> CompatResult:
         """Core type compatibility check.
 
@@ -1098,13 +1100,13 @@ class TypeCompatibility:
             return self._check_compat(
                 unwrap_ref_type(actual), expected.wrapped, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                commit)
+                commit, slot_readonly=slot_readonly)
         # Strip Ref from actual too (Ref[T] is compatible with T)
         if isinstance(actual, RefType):
             return self._check_compat(
                 actual.wrapped, expected, context, loc,
                 source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns,
-                commit)
+                commit, slot_readonly=slot_readonly)
 
         # readonly[T] -> readonly[T]: unwrap and check inner types
         # T -> readonly[T]: always OK (adding const is safe)
@@ -1119,7 +1121,7 @@ class TypeCompatibility:
                 actual_inner = PtrType(actual_inner.inner_pointee)
             return self._check_compat(
                 actual_inner, expected.wrapped, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form,
-                sink_owns, commit
+                sink_owns, commit, slot_readonly=True
             )
 
         # readonly[T] -> T: error for non-value types (stripping const is unsafe)
@@ -1267,14 +1269,14 @@ class TypeCompatibility:
                     is_return, coercion_ctx, target_is_storage_form, sink_owns,
                     commit)
             for member in _union_member_order(actual_unwrapped, union_members):
-                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
+                result = self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, slot_readonly=slot_readonly)
                 if not isinstance(result, CompatError):
                     if commit:
                         # The member that admits the value is the slot it
                         # goes to: what the check writes about the value is
                         # written against that member, not against one
                         # tried and refused.
-                        return self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit)
+                        return self._check_compat(actual, member, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit, slot_readonly=slot_readonly)
                     return result
             # A concrete container variable whose elements would each fit a union
             # member is NOT implicitly converted: an element-wise rebuild into the
@@ -1350,7 +1352,7 @@ class TypeCompatibility:
                     source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns)
                 if inner_result is None:
                     return None
-            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit)
+            result = self._check_compat(actual_inner, expected.inner, context, loc, source_expr, is_return, coercion_ctx, target_is_storage_form, sink_owns, commit, slot_readonly=slot_readonly)
             # Rewrap inner-mismatch errors with the declared Optional types so
             # the diagnostic reads `expected str | None, got StrView | None`
             # rather than the truncated `expected str, got StrView | None`.
@@ -2119,6 +2121,17 @@ class TypeCompatibility:
                     # out the readonly pointee mutably.
                     deref_target = self.type_ops.get_deref_target_type(actual)
                 if deref_target is not None and unwrap_readonly(deref_target) == expected:
+                    # The slot binds the target itself, so a readonly target
+                    # meets the readonly rule a readonly value would.
+                    ro_err = (self._check_compat(
+                                  deref_target, expected, context, loc,
+                                  None, is_return, coercion_ctx,
+                                  target_is_storage_form, sink_owns, False)
+                              if (isinstance(deref_target, ReadonlyType)
+                                  and not slot_readonly)
+                              else None)
+                    if ro_err is not None:
+                        return ro_err
                     coercion = DEREF_COERCION
         if coercion is None:
             e, a = self._pair(expected, actual)

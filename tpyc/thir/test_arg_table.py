@@ -855,14 +855,6 @@ class TestPlainSinkShape:
             "union_dict_literal_temp",
         ]
 
-    def test_deref_coerce_reads_temps_ok_inside_the_row(self):
-        # Its flush test consults the PREDICATE'S verdict (inline vs the
-        # `__deref__()` copy temp), so it cannot be a pre-guard -- the row
-        # owns the whole conjunct rather than `extra` growing a post half.
-        row = next(r for r in _PLAIN_ARG_SINK.rows if r.row == "deref_coerce")
-        assert row.extra is None
-        assert "req.temps_ok" in inspect.getsource(row.fn)
-
     def test_family_carries_own_rows_and_no_mutated_policy(self):
         # Absence-preserving: the pre-fold ladder carried the Own cells and
         # never consulted `mutated_params` (only the ctor ladder does, and

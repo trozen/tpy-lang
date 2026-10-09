@@ -3382,12 +3382,15 @@ class SemanticAnalyzer:
                         returned = returned | frozenset([-1])
                     # Generator and async methods: union the frame's param
                     # captures, mirroring the free-function finalize. The
-                    # frame's self reference is deliberately not represented
-                    # as -1 (it would block readonly inference); see BUGS.md.
+                    # frame's self reference is not represented as -1 yet, a
+                    # lifetime gap only: const inference reads
+                    # return_lends_self_storage; see BUGS.md.
                     if method.is_generator or method.is_async:
                         returned = returned | TypeRegistrar.generator_borrow_param_indices(
                             [p.type for p in method_fi.params])
                     method_fi.return_borrows_from = returned
+                    method_fi.return_lends_self_storage = (
+                        "self" in self.ctx.func.current_storage_returned_param_names)
                     method_fi.addr_escapes_params = frozenset(
                         i for i, pname in enumerate(param_list)
                         if pname in self.ctx.func.current_addr_escape_param_names

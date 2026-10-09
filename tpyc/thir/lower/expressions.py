@@ -2716,7 +2716,11 @@ def _field_is_arrow(e: TpyFieldAccess, lc: '_LowerCtx') -> bool:
     element is a borrow `T*` (`_subscript_yields_borrow_ptr`): a bare-reference element
     off a borrow-form tuple param. An owned element (`std::get` yields `T&`) or a
     storage `auto&&` alias receiver reads `.`."""
-    obj = e.obj
+    return _recv_is_arrow(e.obj, lc)
+
+
+def _recv_is_arrow(obj: TpyExpr, lc: '_LowerCtx') -> bool:
+    """`_field_is_arrow`'s receiver rule, for any member reached off `obj`."""
     if isinstance(obj, TpySubscript):
         return _subscript_yields_borrow_ptr(obj, lc)
     return _name_recv_is_arrow(obj, lc)
@@ -14566,28 +14570,30 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                                             loc=getattr(a, "loc", None)), lc)
     dc = _deref_coerce_arg(a, ptype, declared, lc.analyzer)
     if dc is not None:
-        # The deref auto-coercion: a Ptr source renders the inline
-        # `::tpy::deref_check(<src>)` lvalue; a record-wrapper source hoists
-        # the slot-typed VALUE copy temp and passes the temp name. A call
-        # source may need temps of its own (`bump(ptr(a, []))`).
+        # The deref auto-coercion binds the slot to the target in place: the
+        # `::tpy::deref_check(<src>)` lvalue off a Ptr, or the borrow the
+        # wrapper's `__deref__()` returns, called like the user-Deref member
+        # arms call it. A call source may need temps of its own
+        # (`bump(ptr(a, []))`).
         dkind, dslot = dc
+        if dkind == "wrapper":
+            _witness("arg.deref_coerce_wrapper")
+            return _self_recv_positioned(THIRMethodCall(
+                result_type=dslot,
+                receiver=_lower_expr(
+                    a.expr, lc, declared,
+                    use=_ExprUse(result=_ExprResultUse.RECEIVER,
+                                 allow_temps=temp_args)),
+                method_cpp="__deref__", args=(),
+                is_arrow=_recv_is_arrow(a.expr, lc),
+                loc=getattr(a, "loc", None)))
         inner = _lower_expr(a.expr, lc, declared,
                             use=_ExprUse(allow_temps=temp_args))
-        wrap = ("::tpy::deref_check({0})" if dkind == "inline"
-                else "{0}.__deref__()")
-        coerced = THIRCoerce(result_type=dslot, expr=inner,
-                             coercion_name=a.coercion.name, wrap=wrap,
-                             form=inner.form, loc=getattr(a, "loc", None))
-        if dkind == "inline":
-            _witness("arg.deref_coerce_inline")
-            return coerced
-        if not temp_args:
-            raise ThirUnsupported(
-                "deref-coerce arg-temp outside a flush position")
-        _witness("argtemp.deref_coerce")
-        return _hoisted(THIRArgTemp(result_type=dslot, cpp_type=lc.render_type(dslot), movable=unwrap_ref_type(dslot).is_movable(),
-                                    init=coerced, form=Form.BORROW,
-                                    loc=getattr(a, "loc", None)), lc)
+        _witness("arg.deref_coerce_inline")
+        return THIRCoerce(result_type=dslot, expr=inner,
+                          coercion_name=a.coercion.name,
+                          wrap="::tpy::deref_check({0})",
+                          form=inner.form, loc=getattr(a, "loc", None))
     # The frame-capturing TEMPORARY argument: the free-call twin of the
     # factory-METHOD row.
     return _frame_temp_arg(

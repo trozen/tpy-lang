@@ -1,0 +1,2 @@
+main.py:42: warning: Iterator borrows from temporary argument 'p'; the temporary is destroyed before iteration begins
+main.py:42: error: in function 'main': this construct is not yet supported by C++ code generation (expr.call:call.arg_shape.record_f1)

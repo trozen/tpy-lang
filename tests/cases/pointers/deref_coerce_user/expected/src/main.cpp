@@ -18,8 +18,7 @@ void print_point(const Point& p) {
 void test() {
     Point pt = Point(10, 20);
     Ref r = Ref(pt);
-    Point __tmp_1 = r.__deref__();
-    ::tpyapp::main::print_point(__tmp_1);
+    ::tpyapp::main::print_point(r.__deref__());
 }
 
 // test()

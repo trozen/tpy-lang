@@ -371,7 +371,8 @@ Allowed:
    full rule set, including which methods are exempted (constructors,
    `__del__`, in-place operators, consuming methods, `@auto_readonly` mutable
    clones, methods overriding non-const `@dynamic` virtuals, and methods
-   whose return value borrows from `self`).
+   whose return value is `self`'s own storage -- not what a `Ptr` or view
+   `self` holds points at).
 
 3. **Container-mediated aliases** -- resolved by type-embedded refactor.
    ReadonlyType propagates through subscript (`readonly[list[T]][i]` ->

@@ -11,7 +11,7 @@ from typing import Optional
 
 from ..typesys import (
     FunctionInfo, MutationCallEdge, CONST_PARAMS_METHODS,
-    recorded_return_borrow_sources, view_is_inherently_const,
+    view_is_inherently_const,
     is_bodyless_binding,
 )
 
@@ -243,11 +243,13 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
     - It is not in _NEVER_INFER_CONST (constructors, in-place operators).
     - It is not a consuming method (Own[Self] receiver).
     - Phase 1 + Phase 2 determined self_mutated=False.
-    - The return value does not borrow from self (return_borrows_from does not contain -1).
+    - The return value is not self's own storage (`return_lends_self_storage`).
 
     The last condition prevents the compiler from silently changing "-> T" (mutable ref)
     to "const T&" behind the user's back. If a method returns a reference into self's
-    storage, making it const overrides the user's declared mutable return type.
+    storage, making it const overrides the user's declared mutable return type. A
+    reference reached through a `Ptr` or borrowing view self holds stays writable
+    under a const receiver, so it does not count.
 
     Setting is_readonly=True reuses all existing checks: codegen emits `const`,
     readonly-receiver enforcement passes, protocol conformance passes unchanged.
@@ -269,8 +271,8 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
         if fi.direct_self_mutated is None:
             # Phase 1 facts not collected (should not happen for local methods)
             continue
-        if -1 in recorded_return_borrow_sources(fi):
-            # Return value borrows from self's storage -- auto-const would change
+        if fi.root.return_lends_self_storage:
+            # Return value is self's storage -- auto-const would change
             # the return from T& to const T&, overriding the user's declared type.
             # Inherently-const views carry no mutable alias, so auto-const is safe.
             if not view_is_inherently_const(fi.return_type):
