@@ -39,8 +39,9 @@ and suspension lifetime. Tuple completeness remains a separate workstream.
 ## Existing decisions to reuse
 
 - Sema's move-through and last-use/borrow facts decide consume eligibility.
-- `classify_local_binding`, `HoistFlavor` and the shared hoist helpers
-  describe ordinary and hoisted local storage. Extend them coherently.
+- The binding table's classifier (`classify_binding`, `tpyc/thir/lower/
+  bindings.py`), `HoistFlavor` and the shared hoist helpers describe ordinary
+  and hoisted local storage. Extend them coherently.
 - `_rebind_slot_target`, `_rebind_rvalue_source_ok` and
   `_lower_storage_value` share stored-payload and source decisions.
 - `RebindStorage.OWN/IN_PLACE` remains the per-site replacement authority.
@@ -50,8 +51,8 @@ and suspension lifetime. Tuple completeness remains a separate workstream.
   nodes represent the operations. `storage.py` records semantic facts for
   MIR; its narrower type coverage must not become a frontend admission gate.
 - Record declared type, source access, constness and actual movability
-  together with the selected binding. Keep pointer aliases out of the
-  movable set; do not derive ownership from C++ spelling.
+  together with the selected binding. Keep pointer aliases non-movable (the
+  record's `movable`); do not derive ownership from C++ spelling.
 
 ## Factored scope and test matrix
 

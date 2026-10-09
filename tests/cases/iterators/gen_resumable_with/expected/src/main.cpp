@@ -76,9 +76,235 @@ __gen_gen_with_yield gen_with_yield(const std::vector<::tpy::BigInt>& xs) {
     return __gen_gen_with_yield(xs);
 }
 
+// def gen_with() -> Iterator[int]:
+//     # A later item's manager is a lambda reading an earlier item's target.
+//     with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
+//         yield n                                                             # -> S_RESUME_0
+//         yield result                                                        # -> S_RESUME_1
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Count(::tpy::BigInt(7)));
+        n = (*__with_ctx_0).__enter__();
+        __with_ctx_1.emplace(Cb([n = n]() -> ::tpy::BigInt { return n; }));
+        result = (*__with_ctx_1).__enter__();
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield n
+        try {
+            try {
+                __state = S_RESUME_1;
+                return result;
+            } catch (::tpy::BaseException& __exc_1) {
+                (*__with_ctx_1).__exit__({}, &__exc_1, {});
+                throw;
+            } catch (...) {
+                (*__with_ctx_1).__exit__({}, nullptr, {});
+                throw;
+            }
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield result
+        bool __fin_ran_6 = false;
+        try {
+            bool __fin_ran_7 = false;
+            try {
+                __fin_ran_7 = true;
+                (*__with_ctx_1).__exit__({}, nullptr, {});
+                __fin_ran_6 = true;
+                (*__with_ctx_0).__exit__({}, nullptr, {});
+                __state = S_JOIN_0;
+                continue;
+            } catch (::tpy::BaseException& __exc_1) {
+                if (__fin_ran_7) throw;
+                (*__with_ctx_1).__exit__({}, &__exc_1, {});
+                throw;
+            } catch (...) {
+                if (__fin_ran_7) throw;
+                (*__with_ctx_1).__exit__({}, nullptr, {});
+                throw;
+            }
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_6) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_6) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        __state = S_RESUME_0;
+        return n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_with() -> Iterator[int]:
+__gen_gen_with gen_with() {
+    return __gen_gen_with();
+}
+
+// def gen_comp_target(xs: list[int]) -> Iterator[int]:
+//     # A manager comprehension's variable has the item target's name.
+//     with Count(sum([n for n in xs])) as n:  # tpyc: ok
+//         yield n                                                       # -> S_RESUME_0
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_comp_target::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Count(::tpy::builtin_sum_bigint(({
+    std::vector<::tpy::BigInt> __result;
+    auto& __obj_0 = xs;
+    __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const ::tpy::BigInt& n = *__beg_0;
+        __result.push_back(n);
+    }
+    std::move(__result);
+}))));
+        n = (*__with_ctx_0).__enter__();
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield n
+        bool __fin_ran_8 = false;
+        try {
+            __fin_ran_8 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_8) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_8) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        __state = S_RESUME_0;
+        return n;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_comp_target(xs: list[int]) -> Iterator[int]:
+__gen_gen_comp_target gen_comp_target(const std::vector<::tpy::BigInt>& xs) {
+    return __gen_gen_comp_target(xs);
+}
+
+
+// def gen_with_then_yield(xs: list[int]) -> Iterator[int]:
+__gen_gen_with_then_yield gen_with_then_yield(const std::vector<::tpy::BigInt>& xs) {
+    return __gen_gen_with_then_yield(xs);
+}
+
+// def gen_hoist_ref(rows: list[int]) -> Iterator[int]:
+//     # A reference-type body name (a frame pointer) is also a manager
+//     # comprehension's variable; the alias is mutated after the with.
+//     with Items(len([ys for ys in rows])) as xs:  # tpyc: ok
+//         ys = xs
+//     yield len(ys)                                                     # -> S_RESUME_0
+//     ys.append(42)
+//     yield ys[1] + xs[1]                                               # -> S_RESUME_1
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_hoist_ref::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Items(::tpy::BigInt(::tpy::__len__(({
+            std::vector<::tpy::BigInt> __result;
+            auto& __obj_0 = rows;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& ys = *__beg_0;
+                __result.push_back(ys);
+            }
+            std::move(__result);
+        })))));
+        auto& __ctx_2 = (*__with_ctx_0);
+        xs.emplace(__ctx_2.__enter__());
+        try {
+            ys = &((*xs));
+            goto __with_exit_2;
+        } catch (::tpy::BaseException& __exc_2) {
+            __ctx_2.__exit__({}, &__exc_2, {});
+            throw;
+        } catch (...) {
+            __ctx_2.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_2:
+        __ctx_2.__exit__({}, nullptr, {});
+        __state = S_RESUME_0;
+        return ::tpy::BigInt(::tpy::__len__((*ys)));
+    }
+    case S_RESUME_0: {  // after: yield len(ys)
+        ys->push_back(42);
+        __state = S_RESUME_1;
+        return ((::tpy::__getitem__((*ys), 1)) + (::tpy::__getitem__((*xs), 1)));
+    }
+    case S_RESUME_1: {  // after: yield ys[1] + xs[1]
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_hoist_ref(rows: list[int]) -> Iterator[int]:
+__gen_gen_hoist_ref gen_hoist_ref(const std::vector<::tpy::BigInt>& rows) {
+    return __gen_gen_hoist_ref(rows);
+}
+
 // def main():
 //     for v in gen_with_yield([10, 20, 30]):
 //         print(v)
+//     print("gen_with:", list(gen_with()))
+//     print("gen_comp_target:", list(gen_comp_target([1, 2])))
+//     print("gen_with_then_yield:", list(gen_with_then_yield([1, 2])))
+//     print("gen_hoist_ref:", list(gen_hoist_ref([5, 6])))
 void main() {
     {
         std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
@@ -91,6 +317,13 @@ void main() {
             std::cout << v << "\n" << ::tpy::check_signals;
         }
     }
+    std::cout << "gen_with:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_with())) << "\n" << ::tpy::check_signals;
+    std::vector<::tpy::BigInt> __tmp_2 = {1, 2};
+    std::cout << "gen_comp_target:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_comp_target(__tmp_2))) << "\n" << ::tpy::check_signals;
+    std::vector<::tpy::BigInt> __tmp_3 = {1, 2};
+    std::cout << "gen_with_then_yield:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_with_then_yield(__tmp_3))) << "\n" << ::tpy::check_signals;
+    std::vector<::tpy::BigInt> __tmp_4 = {5, 6};
+    std::cout << "gen_hoist_ref:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_hoist_ref(__tmp_4))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

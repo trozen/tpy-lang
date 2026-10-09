@@ -165,7 +165,7 @@ def _btuple_elem_field_write_ok(stmt: TpyAssign, declared: dict[str, TpyType],
             and isinstance(target.obj.obj, TpyName)
             and _borrow_tuple_local_type(
                 target.obj.obj.name, declared,
-                lc.storage_tuple_locals) is not None
+                lc.names_with("storage_tuple")) is not None
             # Plain borrow elements only: an Optional element write needs
             # the deref_check machinery (rejects, pinned).
             and _subscript_yields_borrow_ptr(target.obj, lc)):
@@ -197,7 +197,7 @@ def _classify_opt_none(stmt: TpyAssign, slot: _ExprUse,
     if not (_field_receiver_ok(stmt.target, declared, lc.analyzer)
             or _field_over_subscript_ok(stmt.target, declared, lc.analyzer)
             or _field_over_container_subscript_ok(stmt.target, declared,
-                                                  lc.analyzer, lc.pointers)):
+                                                  lc.analyzer, lc.names_with("pointer"))):
         return None
     ft = _slot_type(slot)
     if not isinstance(ft, OptionalType):
@@ -226,7 +226,7 @@ def _classify_class_const(stmt: TpyAssign, slot: _ExprUse,
                           declared: dict[str, TpyType],
                           pointers: AbstractSet[str]
                           ) -> _ClassConstPlan | None:
-    if not _class_const_write_target_ok(stmt.target, declared, lc.pointers,
+    if not _class_const_write_target_ok(stmt.target, declared, lc.names_with("pointer"),
                                         lc.analyzer):
         return None
     return _ClassConstPlan(ftype=_slot_type(slot))
@@ -521,7 +521,7 @@ def _storage_literal(stmt: TpyAssign, plan: _StoragePlan, slot: _ExprUse,
                  else "field_write.container_comp")
         return _comprehensions._lower_comprehension(
             v, lit_t, lc, declared,
-            _comp_shadow_pointers(lc.pointers, declared, analyzer))
+            _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
     if isinstance(v, TpyTupleLiteral):
         return _storage_tuple_literal(v, st, lc, declared,
                                       stmt_reject_reason(stmt))
@@ -878,7 +878,7 @@ def lower_member_init_value(stmt: TpyAssign, lc: _LowerCtx,
             # which constructs it in place.
             stmt = replace(stmt, value=arg)
         for classify, lower, _target_first in _FAMILIES:
-            plan = classify(stmt, slot, lc, declared, lc.pointers)
+            plan = classify(stmt, slot, lc, declared, lc.names_with("pointer"))
             if plan is not None:
                 return lower(stmt, plan, slot, lc, declared, loc)
         note_detail("assign.field_write_shape")

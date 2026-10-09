@@ -31,7 +31,7 @@ from ..typesys import (
     unwrap_own, unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .scalar_leaves import view_compatible
-from .source import SelectResult, Source
+from .source import BindingRepr, SelectResult, Source
 
 if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
@@ -2263,6 +2263,8 @@ class THIRVarDecl(THIRStmt):
     carried verbatim: non-semantic COMPATIBILITY metadata that selects the exact
     C++ slot shape (REF_ALIAS `T&` vs OPTIONAL_TO_PTR `T*`); no other node
     may depend on it."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
@@ -2457,6 +2459,8 @@ class THIRPtrLocalDecl(THIRStmt):
     whose slots reuse `cpp_type`). An rvalue reseat of the name decides its
     own storage (`THIRAssign.rebind_storage` / `THIRPtrLocalRebind`), so
     the decl pre-declares no rebind slot."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
@@ -2493,6 +2497,8 @@ class THIRPtrLocalRebind(THIRStmt):
     `v = std::monostate{};`) and the union rvalue reseat (`.emplace` into a
     slot of the site's own + `to_ptr_variant(*slot)` re-lift). `val_cpp` is
     the union value-variant spelling (unused by the OPT_NONE kind)."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
@@ -2651,6 +2657,8 @@ class THIRFrameSlotWrite(THIRStmt):
     as a bare brace-init (`{n, n}` -> `std::array<int32_t, 2>{n, n}`, so it
     binds to `emplace`'s forwarding ref); a record-ctor value (non-brace)
     ignores it."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     value: THIRExpr
     cpp_type: str | None = None
@@ -2664,6 +2672,8 @@ class THIRCoroHandleMove(THIRStmt):
     members, so emplace move-CONSTRUCTS from the source payload and the
     source then resets. A self-write is a Python no-op and never
     constructs this node."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     target: str
     source: str
 
@@ -2900,6 +2910,8 @@ class THIRMatchFoldBind(THIRStmt):
     gate-rejected, so only the fresh-declaration forms exist here. Never
     carries a source comment (bindings emit comment-less between
     the match's source comment and the arm body)."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name_cpp: str
     source_cpp: str
     by_value: bool = True
@@ -3000,7 +3012,7 @@ class THIRIf(THIRStmt):
     `} else if (...)` (the alias must be declared inside the else block), so
     the chain breaks and the inner if emits as a nested statement --
     `} else {` + its own source comment + `if (...)` one level deeper
-    (the `_has_concrete_isinstance_facts` chain-collect gate).
+    (the `_facts_have_concrete` gate).
 
     `hoist_decls` mirrors `THIRTry.hoist_decls`: a var first-declared in a
     branch and definitely-assigned-after is predeclared `{cpp_type} v;` at
@@ -3110,6 +3122,8 @@ class THIRForRange(THIRStmt):
     restricted to bare literal / name / arith / call, step restricted to
     a bare (negated) int literal or a bare fixed-int name. `orelse` is the
     for/else block (see THIRWhile)."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     var: str
     elem_type: TpyType
     stop: THIRExpr
@@ -3236,6 +3250,9 @@ class THIRTupleUnpack(THIRStmt):
     `source`. The source HOLDER form is `source_bind` (TupleSourceBind --
     each value's render documented there); `source_wrap_cpp` is
     STORAGE_WRAP's spelled borrow-tuple type."""
+    # One record per target, in target order.
+    bindings: 'tuple[BindingRepr | None, ...]' = field(
+        default=(), kw_only=True, compare=False, repr=False)
     source: str
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
@@ -3323,6 +3340,8 @@ class THIRForEach(THIRStmt):
     / user iterators (the
     `__iter__`/`__next__` fallback), `dict.items()` / tuple-unpack, and hoisted loop vars
     ride later cells."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     var: str
     elem_type: TpyType
     iterable: THIRExpr
@@ -3394,6 +3413,8 @@ class THIRForIterProto(THIRStmt):
     capture) or a user-iterator local name (lvalue: `auto&`); the loop var
     binds through the shared `loop_var_binding`, same contract as
     `THIRForEach`."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     var: str
     elem_type: TpyType
     iterable: THIRExpr
@@ -3465,6 +3486,8 @@ class THIRWithItem:
     number (`resumable_state(func).with_owned_ctx_map`, declared by the
     skeleton), rendering `__with_ctx_K.emplace(...)` + the `auto& __ctx_N`
     bind through it; None keeps the plain bind."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     ctx_expr: THIRExpr
     manager_borrowed: bool
     deref_manager: bool
@@ -3659,6 +3682,8 @@ class THIRErrorReturnBind(THIRStmt):
     `target` replaces the name on the bind line with the rendered lvalue
     (`this->p = ::tpy::unwrap_ref_move(*__try_tmp_N);` -- the non-name
     branch, rendered as a plain lvalue)."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     call: THIRExpr
     decl_cpp: 'str | None' = None
@@ -3714,6 +3739,8 @@ class THIRMatchBinding:
     FIELD name), and later rows reach it via `base_name`, which switches
     a row's base from the subject to a previously-bound name (a field
     alias, or an `as` name whose nested keywords bind through it)."""
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     # 'assign' | 'assign_addr' | 'assign_move' | 'copy' | 'ref'
     # | 'frame_emplace' | 'field_alias'

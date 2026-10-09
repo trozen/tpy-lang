@@ -32,6 +32,8 @@ inline std::ostream& operator<<(std::ostream& __os, Color __e) {
 
 struct Dog;
 struct Cat;
+struct OptN;
+struct PlainN;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -57,6 +59,8 @@ void union_break(const std::vector<::tpy::Union<Cat, Dog>>& pets);
 ::tpy::BigInt switch_while_true(::tpy::Union<const Cat*, const Dog*> a);
 // def switch_try_finally(a: Dog | Cat) -> str:
 std::string switch_try_finally(::tpy::Union<const Cat*, const Dog*> a);
+// def same_capture(subject: OptN | PlainN, flag: bool) -> int32:
+int32_t same_capture(::tpy::Union<const OptN*, const PlainN*> subject, bool flag);
 // def main() -> None:
 void main();
 
@@ -108,6 +112,38 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
     return os;
 }
 
+// class OptN:
+struct OptN {
+    // n: Optional[int32]
+    std::optional<int32_t> n;
+
+    // def __init__(self, n: Optional[int32]) -> None:
+    OptN() = default;
+    explicit OptN(std::optional<int32_t> n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptN";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptN& obj) {
+    ::tpy::print_object_default(os, "OptN", obj);
+    return os;
+}
+
+// class PlainN:
+struct PlainN {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    PlainN() = default;
+    explicit PlainN(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PlainN";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PlainN& obj) {
+    ::tpy::print_object_default(os, "PlainN", obj);
+    return os;
+}
+
 
 inline Dog::Dog(std::string_view name) : name(name) {}
 
@@ -128,5 +164,13 @@ inline bool Cat::__eq__(const Cat& other) const {
 inline std::string Cat::__repr__() const {
     return std::format("Cat(name={})", ::tpy::repr_of(this->name));
 }
+
+// def __init__(self, n: Optional[int32]) -> None:
+//     self.n = n
+inline OptN::OptN(std::optional<int32_t> n) : n(n) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline PlainN::PlainN(int32_t n) : n(n) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -33,7 +33,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Union
 
-from ..identity_map import IdentityMap
+from ..identity_map import IdentityMap, IdentitySet
 from ..parse.nodes import (
     GENEXPR_FUNC_PREFIX,
     TpyAssert, TpyAssign, TpyAwait, TpyBreak, TpyContinue, TpyExceptHandler,
@@ -1017,6 +1017,9 @@ class CFG:
     # entry is (helper_name, body_stmts). Order matters for stable
     # output.
     finally_helpers: list[tuple[str, list[TpyStmt]]] = field(default_factory=list)
+    # The source statements and except handlers the builder split into
+    # blocks and terminators: none of them lowers as one statement.
+    decomposed: IdentitySet = field(default_factory=IdentitySet)
     # Cached emit-side maps. Populated lazily by the consumer (e.g.
     # AsyncCoroCodegen) on first use; reused across struct-emit + poll-
     # emit passes so we don't pay the O(N) predecessor walk + region-
@@ -1112,6 +1115,7 @@ class CFGBuilder:
         # by `_record_handler_entry` during try/except construction;
         # read by emitters via `get_handler_entry`.
         self._handler_entries: dict[tuple[int, int], int] = {}
+        self._decomposed: IdentitySet = IdentitySet()
 
     # -- Public entry point ---------------------------------------------
 
@@ -1132,6 +1136,7 @@ class CFGBuilder:
             blocks=self._blocks,
             yield_sites=self._yield_sites,
             finally_helpers=self._finally_helpers,
+            decomposed=self._decomposed,
         )
         self._mark_resume_entries(cfg)
         return cfg
@@ -1230,9 +1235,11 @@ class CFGBuilder:
             self._finish(cur, RaiseT(raise_stmt=stmt))
             return None
         if isinstance(stmt, TpyBreak):
+            self._decomposed.add(stmt)
             self._build_break(cur)
             return None
         if isinstance(stmt, TpyContinue):
+            self._decomposed.add(stmt)
             self._build_continue(cur)
             return None
         # Statements that may host a top-level await.
@@ -1252,21 +1259,27 @@ class CFGBuilder:
         # suspension OR an unbound break/continue inside a loop.
         if isinstance(stmt, TpyIf):
             if _stmt_has_any_suspension(stmt) or force_loop_decomp:
+                self._decomposed.add(stmt)
                 return self._build_if(cur, stmt)
         elif isinstance(stmt, TpyWhile):
             if _stmt_has_any_suspension(stmt):
+                self._decomposed.add(stmt)
                 return self._build_while(cur, stmt)
         elif isinstance(stmt, TpyForEach):
             if stmt.is_async or _stmt_has_any_suspension(stmt):
+                self._decomposed.add(stmt)
                 return self._build_for(cur, stmt)
         elif isinstance(stmt, TpyTry):
             if _stmt_has_any_suspension(stmt) or force_loop_decomp:
+                self._decomposed.add(stmt)
                 return self._build_try(cur, stmt)
         elif isinstance(stmt, TpyWith):
             if _stmt_has_any_suspension(stmt) or force_loop_decomp:
+                self._decomposed.add(stmt)
                 return self._build_with(cur, stmt)
         elif isinstance(stmt, TpyMatch):
             if _stmt_has_any_suspension(stmt) or force_loop_decomp:
+                self._decomposed.add(stmt)
                 return self._build_match(cur, stmt)
         # Leaf statement (or compound without suspensions). If a statement
         # reaches this point STILL containing a suspension, it's a statement
@@ -1860,6 +1873,7 @@ class CFGBuilder:
         # so the emit can find handler entries without mutating the
         # frozen region dataclass.
         self._handler_entries[(id(region), id(handler))] = entry_bb
+        self._decomposed.add(handler)
 
     def get_handler_entry(self, region: TryRegion,
                            handler: TpyExceptHandler) -> int | None:

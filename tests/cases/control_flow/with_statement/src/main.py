@@ -1,5 +1,7 @@
 # with statement: __enter__/__exit__ protocol, multiple managers, name reuse, post-with visibility
-from typing import Self
+from typing import Callable, Self
+
+from tpy import int32
 
 
 class Logger:
@@ -30,6 +32,32 @@ class Connection:
     def __exit__(self, exc_type, exc_val, exc_tb) -> None:
         self.active = False
         print("disconnected")
+
+
+class Count:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+    def __enter__(self) -> int32:
+        return self.v
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+
+class Cb:
+    f: Callable[[], int32]
+
+    def __init__(self, f: Callable[[], int32]) -> None:
+        self.f = f
+
+    def __enter__(self) -> int32:
+        return self.f() + 100
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
 
 
 def test_basic() -> None:
@@ -170,6 +198,62 @@ def test_continue_in_with() -> None:
     print("after continue loop")
 
 
+def test_later_item_reads_target() -> None:
+    # A later item's manager is a lambda reading an earlier item's target.
+    with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
+        print("later_item:", n, result)
+
+
+def comp_names_target(xs: list[int32]) -> int32:
+    # A manager comprehension's variable has the item target's name.
+    with Count(sum([n for n in xs])) as n:  # tpyc: ok
+        return n
+
+
+def later_comp_names_target(xs: list[int32]) -> int32:
+    # A later item's manager comprehension has that item's target name and
+    # reads an earlier target.
+    with Count(10) as a, Count(sum([b * a for b in xs])) as b:  # tpyc: ok
+        return a + b
+
+
+def test_comp_names_target() -> None:
+    print("comp_target:", comp_names_target([1, 2]))
+    print("later_comp_target:", later_comp_names_target([1, 2]))
+
+
+def test_comp_names_body_hoist(xs: list[int32]) -> None:
+    # A body name predeclared before the with (read after it) is also a
+    # manager comprehension's variable. A predeclared TARGET of that name
+    # is BUGS.md#with-existing-scalar-target-rejected.
+    with Count(sum([x for x in xs])) as n:  # tpyc: ok
+        x = n + 1
+    print("body_hoist:", x)
+
+
+class Items:
+    items: list[int]
+
+    def __init__(self, v: int) -> None:
+        self.items = [v]
+
+    def __enter__(self) -> list[int]:
+        return self.items
+
+    def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+        pass
+
+
+def test_comp_names_ref_body_hoist(rows: list[int]) -> None:
+    # A reference-type body name (a pointer predeclared before the manager)
+    # is also a manager comprehension's variable; the alias is mutated after
+    # the with.
+    with Items(len([ys for ys in rows])) as xs:  # tpyc: ok
+        ys = xs
+    ys.append(42)
+    print("hoist_ref:", ys, xs)
+
+
 test_basic()
 print("---")
 test_no_as()
@@ -199,3 +283,9 @@ print("---")
 test_break_in_with()
 print("---")
 test_continue_in_with()
+print("---")
+test_later_item_reads_target()
+print("---")
+test_comp_names_target()
+test_comp_names_body_hoist([1, 2])
+test_comp_names_ref_body_hoist([5, 6])

@@ -3,3 +3,7 @@ enter g
 20
 30
 exit g
+gen_with: [7, 107]
+gen_comp_target: [3]
+gen_with_then_yield: [3]
+gen_hoist_ref: [1, 84]

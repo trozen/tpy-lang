@@ -18,15 +18,15 @@ from __future__ import annotations
 
 from enum import Enum, auto
 
-from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpyNoneLiteral,
-                           TpySubscript, is_property_getter_read)
+from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpySubscript,
+                           is_property_getter_read)
 from ..typesys import pointer_repr_optional
 from ..typesys import (
     OwnType, TpyType, TupleType, UnionType,
     is_ptr_variant_union, property_getter_returns_storage_ref,
     unwrap_qualifiers, unwrap_readonly,
 )
-from ..value_category import call_returns_cpp_ref, is_rvalue_source
+from ..value_category import call_returns_cpp_ref
 
 
 class LoopBinding(Enum):
@@ -210,56 +210,3 @@ def is_storage_tuple_alias_decl(
             and init.name in storage_tuple_locals)
 
 
-def classify_local_binding(
-    target_type: TpyType | None,
-    init: TpyExpr | None,
-    analyzer,
-    *,
-    name: str,
-    reassigned: set[str],
-    rvalue_reassigned: set[str],
-    hoisted: set[str],
-    move_through: set[str],
-) -> LocalBinding:
-    """Classify a first-declaration non-value local's C++ binding shape.
-
-    Pure: a function of the resolved type, the init expression, and the
-    per-function prescan facts. Returns `OTHER` for anything outside the modeled
-    slice (hoisted / move-through / rvalue-sourced locals, tuples / unions /
-    protocols / generic slots, value types).
-
-    Callers consult this only *after* their own guards -- THIR lowering after
-    its eligibility gate -- so the guard-chain shapes need not be re-derived
-    here.
-    """
-    if init is None or target_type is None:
-        return LocalBinding.OTHER
-    if name in hoisted or name in move_through:
-        return LocalBinding.OTHER
-    is_reassigned = name in reassigned
-    if pointer_repr_optional(target_type) is not None:
-        # None-literal and rvalue inits take the slot-hoist pointer-local
-        # machinery (reassigned or not). THIR lowering sub-gates the
-        # admitted init/reseat shapes.
-        if isinstance(init, TpyNoneLiteral) or is_rvalue_source(analyzer, init):
-            return LocalBinding.OPT_PTR_SLOT
-        # A reassigned optional off an LVALUE init binds the same
-        # OPTIONAL_TO_PTR lift as the single-assignment shape; its reseats
-        # ride the pointer-local reseat arms (lvalue lift / nullptr /
-        # inline-rvalue slot).
-        if reads_storage_form_optional(analyzer, init):
-            return LocalBinding.OPTIONAL_TO_PTR
-        return LocalBinding.OTHER
-    if is_plain_nonvalue(target_type):
-        if is_rvalue_source(analyzer, init):
-            # An rvalue source (a ctor / by-value call). A name reassigned with an
-            # rvalue is a rebind-slot pointer-local; a single-assignment
-            # rvalue local needs no indirection
-            # (a plain value local) and is left to the caller's path.
-            return (LocalBinding.REBIND_SLOT if name in rvalue_reassigned
-                    else LocalBinding.OTHER)
-        # An lvalue source binds a `T&` alias (single-assignment) or a reseatable
-        # `T*` pointer-local (reassigned); both lift the lvalue storage to a borrow
-        # at the binding site.
-        return LocalBinding.POINTER if is_reassigned else LocalBinding.REF_ALIAS
-    return LocalBinding.OTHER

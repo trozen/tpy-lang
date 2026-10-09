@@ -7,6 +7,10 @@
 
 namespace tpyapp::main {
 
+struct Items;
+struct Rec;
+struct Meth;
+
 extern std::vector<int32_t>* x;
 extern std::vector<int32_t>* r1;
 extern ::tpy::ordered_set<int32_t>* r2;
@@ -15,10 +19,148 @@ extern std::vector<int32_t>* r4;
 extern std::vector<int32_t>* r5;
 extern std::vector<int32_t>* r6;
 extern std::array<::tpy::BigInt, 5>* r7;
+extern std::vector<int32_t>* row;
 inline constexpr std::string_view __name__ = "__main__";
 
+// def if_cond(rows: list[int]) -> None:
+void if_cond(std::vector<::tpy::BigInt>& rows);
+// def dict_comp(rows: list[int]) -> None:
+void dict_comp(std::vector<::tpy::BigInt>& rows);
+// def set_comp(rows: list[int]) -> None:
+void set_comp(std::vector<::tpy::BigInt>& rows);
+// def genexpr(rows: list[int]) -> None:
+void genexpr(std::vector<::tpy::BigInt>& rows);
+// def unpack_head(d: dict[str, int]) -> None:
+void unpack_head(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d);
+// def reassigned_rec(a: Rec, b: Rec, rows: list[int]) -> None:
+void reassigned_rec(Rec& a, Rec& b, const std::vector<::tpy::BigInt>& rows);
+// def array_range() -> None:
+void array_range();
+// def array_source(a: Array[int, 3]) -> None:
+void array_source(const std::array<::tpy::BigInt, 3>& a);
+// def in_lambda(rows: list[int]) -> None:
+void in_lambda(const std::vector<::tpy::BigInt>& rows);
+// def nested_def(rows: list[int]) -> None:
+void nested_def(const std::vector<::tpy::BigInt>& rows);
+// def nested_comp(rows: list[list[int]]) -> None:
+void nested_comp(const std::vector<std::vector<::tpy::BigInt>>& rows);
+// def later_clause(rows: list[list[int]]) -> None:
+void later_clause(const std::vector<std::vector<::tpy::BigInt>>& rows);
+// def two_ptrs() -> None:
+void two_ptrs();
+// def global_name(rows: list[list[int]]) -> None:
+void global_name(const std::vector<std::vector<::tpy::BigInt>>& rows);
 // def main() -> None:
 void main();
 
+// class Items:
+struct Items {
+    // items: list[int]
+    std::vector<::tpy::BigInt> items;
+
+    // def __init__(self, v: int) -> None:
+    Items() = default;
+    explicit Items(const ::tpy::BigInt& v);
+
+    // def __enter__(self) -> list[int]:
+    std::vector<::tpy::BigInt>& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Items";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
+    ::tpy::print_object_default(os, "Items", obj);
+    return os;
+}
+
+// class Rec:
+struct Rec {
+    // n: int
+    ::tpy::BigInt n;
+
+    // def __init__(self, n: int) -> None:
+    Rec() = default;
+    explicit Rec(const ::tpy::BigInt& n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
+    ::tpy::print_object_default(os, "Rec", obj);
+    return os;
+}
+
+// class Meth:
+struct Meth {
+    // v: int
+    ::tpy::BigInt v;
+
+    // def __init__(self) -> None:
+    Meth();
+
+    // def method(self, a: list[int], b: list[int], rows: list[int]) -> None:
+    void method(std::vector<::tpy::BigInt>& a, std::vector<::tpy::BigInt>& b, const std::vector<::tpy::BigInt>& rows) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Meth";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Meth& obj) {
+    ::tpy::print_object_default(os, "Meth", obj);
+    return os;
+}
+
+
+// def __init__(self, v: int) -> None:
+//     self.items = [v]
+inline Items::Items(const ::tpy::BigInt& v) : items(std::vector<::tpy::BigInt>{v}) {}
+
+// def __enter__(self) -> list[int]:
+//     return self.items
+inline std::vector<::tpy::BigInt>& Items::__enter__() {
+    return this->items;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Items::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, n: int) -> None:
+//     self.n = n
+inline Rec::Rec(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self) -> None:
+//     self.v = 1
+inline Meth::Meth() : v(::tpy::BigInt(1)) {}
+
+// def method(self, a: list[int], b: list[int], rows: list[int]) -> None:
+//     # A method body's comprehension hides a pointer local. The local is
+//     # reseated rather than hoisted from a `with` (a `with` here would
+//     # renumber every later function's context temporaries), and it is
+//     # read through `len` / subscript since printing it whole rejects
+//     # (BUGS.md#print-rebound-row-local-rejects).
+//     ys = a
+//     ys = b
+//     m = [ys + self.v for ys in rows]  # tpyc: ok
+//     ys.append(3)
+//     print("method:", m, len(ys), ys[-1], b)
+inline void Meth::method(std::vector<::tpy::BigInt>& a, std::vector<::tpy::BigInt>& b, const std::vector<::tpy::BigInt>& rows) const {
+    std::vector<::tpy::BigInt>* ys = &(a);
+    ys = &(b);
+    std::vector<::tpy::BigInt> m = ({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.push_back(((ys) + (this->v)));
+        }
+        std::move(__result);
+    });
+    ys->push_back(3);
+    std::cout << "method:" << " " << ::tpy::ListPrinter(m) << " " << ::tpy::__len__((*ys)) << " " << ::tpy::__getitem__((*ys), -1) << " " << ::tpy::ListPrinter(b) << "\n" << ::tpy::check_signals;
+}
 void __tpy_init();
 } // namespace tpyapp::main

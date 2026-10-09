@@ -102,6 +102,23 @@ int32_t union_tag(::tpy::Union<const UA*, const UB*> x) {
     return ((std::holds_alternative<const UA*>(x)) ? ((*std::get<const UA*>(x)).v) : (::tpy::neg_check<int32_t>((*std::get<const UB*>(x)).v)));
 }
 
+// def opt_loop_param(o: Optional[int32], xs: list[Optional[int32]]) -> None:
+//     # opt_loop_param: the same rebound param read after the loop.
+//     for o in xs:
+//         pass
+//     h = OptHolder(o, xs)
+//     print("opt_loop_param", o, h.o)  # tpyc: ok
+void opt_loop_param(std::optional<int32_t> o, const std::vector<std::optional<int32_t>>& xs) {
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        o = *__beg_0;
+    }
+    OptHolder h = OptHolder(o, xs);
+    std::cout << "opt_loop_param" << " " << ::tpy::print_optional_val(o) << " " << ::tpy::print_optional_val(h.o) << "\n" << ::tpy::check_signals;
+}
+
 // def view_of_borrow() -> None:
 //     # A view of a field read through a borrow-returning call lives as long
 //     # as the receiver.
@@ -183,6 +200,17 @@ void lambda_reads() {
 //     vs = ViewSlots("vs")
 //     vs.set(3)
 //     print("view_slots", vs.o is None)
+//     a: Array[int32, 2] = [1, 2]
+//     c: Array[int32, 2] = [7, 8]
+//     none: list[Span[int32]] = []
+//     sh = SpanHolder(a, none)
+//     a[0] = 3
+//     print("ctor.span_loop_param", sh.sp[0])
+//     sh.reset(c, none)
+//     c[1] = 9
+//     print("method.span_loop_param", sh.sp[0], sh.sp[1])
+//     opt_loop_param(4, [None, 5])
+//     opt_loop_param(None, [])
 //     view_of_borrow()
 void ctor_writes() {
     Src s = Src(show_cb, P(3));
@@ -203,6 +231,19 @@ void ctor_writes() {
     ViewSlots vs = ViewSlots("vs");
     vs.set(3);
     std::cout << "view_slots" << " " << ::tpy::print_bool((!vs.o.has_value())) << "\n" << ::tpy::check_signals;
+    std::array<int32_t, 2> a = {1, 2};
+    std::array<int32_t, 2> c = {7, 8};
+    std::vector<std::span<int32_t>> none = std::vector<std::span<int32_t>>{};
+    SpanHolder sh = SpanHolder(::tpy::as_mut_span(a), none);
+    ::tpy::__setitem__(a, 0, 3);
+    std::cout << "ctor.span_loop_param" << " " << ::tpy::__getitem__(sh.sp, 0) << "\n" << ::tpy::check_signals;
+    sh.reset(::tpy::as_mut_span(c), none);
+    ::tpy::__setitem__(c, 1, 9);
+    std::cout << "method.span_loop_param" << " " << ::tpy::__getitem__(sh.sp, 0) << " " << ::tpy::__getitem__(sh.sp, 1) << "\n" << ::tpy::check_signals;
+    std::vector<std::optional<int32_t>> __tmp_1 = {std::nullopt, 5};
+    ::tpyapp::main::opt_loop_param(4, __tmp_1);
+    std::vector<std::optional<int32_t>> __tmp_2 = std::vector<std::optional<int32_t>>{};
+    ::tpyapp::main::opt_loop_param(std::nullopt, __tmp_2);
     ::tpyapp::main::view_of_borrow();
 }
 

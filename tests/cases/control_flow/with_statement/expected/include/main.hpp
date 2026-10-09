@@ -9,6 +9,9 @@ namespace tpyapp::main {
 
 struct Logger;
 struct Connection;
+struct Count;
+struct Cb;
+struct Items;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -46,6 +49,18 @@ void test_with_in_try_finally();
 void test_break_in_with();
 // def test_continue_in_with() -> None:
 void test_continue_in_with();
+// def test_later_item_reads_target() -> None:
+void test_later_item_reads_target();
+// def comp_names_target(xs: list[int32]) -> int32:
+int32_t comp_names_target(const std::vector<int32_t>& xs);
+// def later_comp_names_target(xs: list[int32]) -> int32:
+int32_t later_comp_names_target(const std::vector<int32_t>& xs);
+// def test_comp_names_target() -> None:
+void test_comp_names_target();
+// def test_comp_names_body_hoist(xs: list[int32]) -> None:
+void test_comp_names_body_hoist(const std::vector<int32_t>& xs);
+// def test_comp_names_ref_body_hoist(rows: list[int]) -> None:
+void test_comp_names_ref_body_hoist(const std::vector<::tpy::BigInt>& rows);
 
 // class Logger:
 struct Logger {
@@ -93,6 +108,72 @@ inline std::ostream& operator<<(std::ostream& os, const Connection& obj) {
     return os;
 }
 
+// class Count:
+struct Count {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Count() = default;
+    explicit Count(int32_t v);
+
+    // def __enter__(self) -> int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Count";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Count& obj) {
+    ::tpy::print_object_default(os, "Count", obj);
+    return os;
+}
+
+// class Cb:
+struct Cb {
+    // f: Callable[[], int32]
+    std::function<int32_t()> f;
+
+    // def __init__(self, f: Callable[[], int32]) -> None:
+    Cb() = default;
+    explicit Cb(std::function<int32_t()> f);
+
+    // def __enter__(self) -> int32:
+    int32_t __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cb";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cb& obj) {
+    ::tpy::print_object_default(os, "Cb", obj);
+    return os;
+}
+
+// class Items:
+struct Items {
+    // items: list[int]
+    std::vector<::tpy::BigInt> items;
+
+    // def __init__(self, v: int) -> None:
+    Items() = default;
+    explicit Items(const ::tpy::BigInt& v);
+
+    // def __enter__(self) -> list[int]:
+    std::vector<::tpy::BigInt>& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Items";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
+    ::tpy::print_object_default(os, "Items", obj);
+    return os;
+}
+
 
 // def __init__(self, name: str) -> None:
 //     self.name = name
@@ -136,6 +217,51 @@ inline std::string Connection::__enter__() const {
 inline void Connection::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) {
     this->active = false;
     std::cout << "disconnected" << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Count::Count(int32_t v) : v(v) {}
+
+// def __enter__(self) -> int32:
+//     return self.v
+inline int32_t Count::__enter__() const {
+    return this->v;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Count::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, f: Callable[[], int32]) -> None:
+//     self.f = f
+inline Cb::Cb(std::function<int32_t()> f) : f(f) {}
+
+// def __enter__(self) -> int32:
+//     return self.f() + 100
+inline int32_t Cb::__enter__() const {
+    return (::tpy::add_check<int32_t>((*this).f(), 100));
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Cb::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, v: int) -> None:
+//     self.items = [v]
+inline Items::Items(const ::tpy::BigInt& v) : items(std::vector<::tpy::BigInt>{v}) {}
+
+// def __enter__(self) -> list[int]:
+//     return self.items
+inline std::vector<::tpy::BigInt>& Items::__enter__() {
+    return this->items;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Items::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -27,6 +27,7 @@ from ..parse.nodes import (
 from ..typesys import TpyType, TupleType, VoidType, unwrap_readonly
 from .emit import _EmitState, _emit_expr
 from .reject import ThirUnsupported, note
+from .lower import bindings
 from .lower.context import _LowerCtx
 from .lower.expressions import (
     _lower_char_targeted,
@@ -136,6 +137,7 @@ def lower_constant(expr, target_type: 'TpyType | None', analyzer, *,
                    render_resolve=render_resolve)
     declared = dict(const_scope)
     lc.prescan.global_readonly = frozenset(const_scope)
+    bindings.plan_and_install(lc, [], declared, const_scope=True)
     try:
         node = _lower_constant_expr(expr, target_type, lc, declared)
         state = _EmitState(

@@ -48,8 +48,10 @@ from __future__ import annotations
 
 import dataclasses
 from collections.abc import Sequence
+from contextvars import ContextVar
 
-from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union, LoopBinding, loop_binding_kind
+from ..codegen_cpp.forms import (LocalBinding, LoopBinding, is_plain_nonvalue,
+                                 is_ptr_variant_union, loop_binding_kind)
 from ..type_def_registry import (
     ParamPassing,
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
@@ -79,7 +81,9 @@ from .nodes import (
     THIRNode, THIRName, THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
     THIRPrint, THIRRaise, THIRReturn, THIRSetItem, THIRSliceAssign,
     THIRFinallyDeferredReturn, DeferredPartKind,
-    THIRSubscript, THIRTupleUnpack,
+    THIRSubscript, THIRTupleUnpack, THIRCoroHandleMove, THIRMatch,
+    THIRMatchBinding, THIRMatchFoldBind, THIRWith, THIRWithItem,
+    WithTargetArm,
     THIRFrameSlotWrite,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
@@ -429,7 +433,165 @@ def _select_ref_type(t: TpyType) -> TpyType:
     return unwrap_readonly(t.wrapped) if isinstance(t, OwnType) else t
 
 
+# Whether the body being validated came out of the lowering, which stamps a
+# record on every binding-emitting node (`statements.stamp_bindings`):
+# there a node without one is a lowering bug; hand-built THIR may omit it.
+_LOWERED: ContextVar[bool] = ContextVar("thir_validate_lowered", default=False)
+
+# The pointer-local declaration shapes (`T*`), and the PtrSlotKinds that
+# declare a pointer-variant union rather than a pointer.
+_POINTER_DECLS = frozenset({LocalBinding.POINTER, LocalBinding.OPTIONAL_TO_PTR,
+                            LocalBinding.REBIND_SLOT, LocalBinding.OPT_PTR_SLOT})
+_UNION_SLOT_KINDS = frozenset({PtrSlotKind.UNION_NONE, PtrSlotKind.UNION_RVALUE,
+                               PtrSlotKind.UNION_INLINE_SLOT,
+                               PtrSlotKind.UNION_ADDR})
+_POINTER_UNPACK_BINDS = frozenset({"ptr", "opt_ptr", "frame_ptr_elem",
+                                   "frame_opt_ptr"})
+
+
+def _parked_tuple_global(node: 'THIRPtrLocalDecl | THIRPtrLocalRebind',
+                         rec) -> bool:
+    """A module global held as a tuple of pointer slots whose write parks
+    its value in a static slot of its own: the global's record holds every
+    reference element through a pointer (`THIRBorrowedRecord`), none
+    inline, and the node is one of the two parking writes."""
+    layout = rec.tuple_layout
+    if (rec.row != "global.module" or layout is None or layout.owns_records
+            or not any(isinstance(m, THIRBorrowedRecord)
+                       for m in layout.elements)):
+        return False
+    if isinstance(node, THIRPtrLocalRebind):
+        return (node.kind is PtrSlotKind.GLOBAL_HOIST_RVALUE
+                and node.tuple_cpp is not None)
+    return (node.kind is PtrSlotKind.GLOBAL_RVALUE
+            and isinstance(node.resolved_type, TupleType))
+
+
+def _contract_problem(node: object, rec) -> 'str | None':
+    """The first representation fact of a binding-emitting node its record
+    contradicts. The checks read the record's fields, never its read form
+    (a BORROW binding cannot tell `T&` from `T*`)."""
+    if isinstance(node, THIRVarDecl):
+        rep = node.cpp_local_representation
+        if (rep is LocalBinding.REF_ALIAS) != rec.ref_alias:
+            return f"a {rep} declaration against ref_alias={rec.ref_alias}"
+        if rep in _POINTER_DECLS and not rec.pointer:
+            return f"a {rep} declaration of a non-pointer binding"
+        if rep is LocalBinding.REBIND_SLOT and not rec.rebind_slot:
+            return "a rebind-slot declaration of a binding without one"
+        if node.btuple_opt_borrow_cpp is not None and not rec.optional_borrow_tuple:
+            return "an optional borrow tuple declared for a binding that is none"
+        if rec.coro_frame and not (node.cpp_type or "").startswith("std::optional<"):
+            return "a coroutine frame binding declared outside its optional"
+        if rec.iterator_object and node.cpp_type not in ("auto", "auto&"):
+            return "an iterator object declared with a spelled type"
+        if rec.frame_slot:
+            return "a local declaration of a frame slot"
+        if (rep in (LocalBinding.REF_ALIAS, LocalBinding.POINTER,
+                    LocalBinding.OPTIONAL_TO_PTR)
+                and node.is_const != rec.const):
+            return f"a {rep} declared const={node.is_const} against const={rec.const}"
+        if (rec.tuple_layout is not None and node.tuple_layout is not None
+                and node.tuple_layout != rec.tuple_layout):
+            return "an owned tuple declared off its record's layout"
+        if node.tuple_storage_alias is not None and not rec.storage_tuple:
+            return "a storage-tuple alias of a binding that is no storage tuple"
+        if ((rep in _POINTER_DECLS or rep is LocalBinding.REF_ALIAS)
+                and (rec.storage_tuple or rec.value_opt is not None)):
+            return f"a {rep} declaration of a storage tuple or value optional"
+    elif isinstance(node, THIRPtrLocalDecl):
+        if node.kind in _UNION_SLOT_KINDS:
+            if not rec.ptr_variant:
+                return f"a {node.kind} declaration of a non-pointer-variant binding"
+        elif not (rec.pointer or _parked_tuple_global(node, rec)):
+            return f"a {node.kind} declaration of a non-pointer binding"
+    elif isinstance(node, THIRPtrLocalRebind):
+        if node.kind in _UNION_SLOT_KINDS:
+            if not rec.ptr_variant:
+                return f"a {node.kind} reseat of a non-pointer-variant binding"
+        elif not (rec.pointer or _parked_tuple_global(node, rec)):
+            return f"a {node.kind} reseat of a non-pointer binding"
+    elif isinstance(node, THIRErrorReturnBind):
+        if node.ptr_rebind and not rec.pointer:
+            return "a pointer error-return bind of a non-pointer binding"
+    elif isinstance(node, THIRFrameSlotWrite):
+        if not (rec.frame_slot or rec.coro_frame):
+            return "an emplace into a binding that is no frame slot"
+    elif isinstance(node, THIRCoroHandleMove):
+        if not (rec.coro_frame or rec.frame_slot):
+            return "a coroutine handle move into a binding holding no frame"
+    elif isinstance(node, THIRForEach) and not node.hoist_loop_var:
+        if node.consuming and not rec.movable:
+            return "a consuming loop variable whose record is not movable"
+    elif isinstance(node, THIRWithItem):
+        arm = node.target_arm
+        if arm in (WithTargetArm.PTR_DECL, WithTargetArm.ASSIGN_PTR) and not rec.pointer:
+            return f"a {arm} with target that is no pointer"
+        if arm is WithTargetArm.ASSIGN_OPT and not rec.optional_storage:
+            return "an optional-storage with target that is no optional storage"
+        if arm is WithTargetArm.FRAME_SLOT and not rec.frame_slot:
+            return "a frame-slot with target that is no frame slot"
+    elif isinstance(node, THIRMatchBinding):
+        if node.mode == "frame_emplace" and not rec.frame_slot:
+            return "a frame-slot match capture that is no frame slot"
+    return None
+
+
+def _contract_fail(owner: str, node: object, why: str) -> None:
+    _fail(owner, node, f"binding contract: {why}")
+
+
+def _check_contract(owner: str, node: object, name: 'str | None', rec) -> None:
+    if name is None:
+        return
+    if rec is None:
+        if _LOWERED.get():
+            _contract_fail(owner, node, f"{type(node).__name__} {name!r} carries no record")
+        return
+    if rec.row == "unbound":
+        return
+    why = _contract_problem(node, rec)
+    if why is not None:
+        _contract_fail(owner, node, f"{type(node).__name__} {name!r} ({rec.row}): {why}")
+
+
+def _check_binding_contracts(owner: str, node: object) -> None:
+    """A binding-emitting node against the binding table's record it carries
+    (`THIRVarDecl.binding` and its siblings)."""
+    if isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind,
+                         THIRErrorReturnBind, THIRFrameSlotWrite)):
+        _check_contract(owner, node, node.name, node.binding)
+    elif isinstance(node, THIRMatchFoldBind):
+        _check_contract(owner, node, node.name_cpp, node.binding)
+    elif isinstance(node, THIRCoroHandleMove):
+        _check_contract(owner, node, node.target, node.binding)
+    elif isinstance(node, (THIRForEach, THIRForIterProto, THIRForRange)):
+        _check_contract(owner, node, node.var, node.binding)
+    elif isinstance(node, THIRTupleUnpack):
+        recs = node.bindings or (None,) * len(node.targets)
+        if len(recs) != len(node.targets):
+            _contract_fail(owner, node, "one record per unpack target")
+        for i, (n, rec) in enumerate(zip(node.targets, recs)):
+            _check_contract(owner, node, n, rec)
+            bind = node.binds[i] if i < len(node.binds) else None
+            if rec is not None and n is not None and rec.row != "unbound":
+                if bind in _POINTER_UNPACK_BINDS and not rec.pointer:
+                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.row}) bound {bind} is no pointer")
+                if bind == "frame_emplace" and not rec.frame_slot:
+                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.row}) emplaced is no frame slot")
+    elif isinstance(node, THIRWith):
+        for item in node.items:
+            _check_contract(owner, item, item.target, item.binding)
+    elif isinstance(node, THIRMatch):
+        for arm in node.arms:
+            for entry in arm.entries:
+                for mb in (entry.binding, *entry.pre_bindings, *entry.field_bindings):
+                    if mb is not None:
+                        _check_contract(owner, mb, mb.name, mb.binding)
+
+
 def _check_node(owner: str, node: THIRNode) -> None:
+    _check_binding_contracts(owner, node)
     if (isinstance(node, (THIRIfExpr, THIRValueSelect))
             and node.form is Form.VALUE):
         # A prvalue `?:` of a reference type initializes its storage by
@@ -1297,7 +1459,17 @@ def _check_param(owner: str, param: THIRParam) -> None:
         _fail(owner, param, "borrowed record fact disagrees with parameter")
 
 
-def validate_function(fn: THIRFunction) -> None:
+def validate_function(fn: THIRFunction, *, lowered: bool = False) -> None:
+    """`lowered`: the lowering built `fn`, so every binding-emitting node
+    carries its record (`_LOWERED`)."""
+    token = _LOWERED.set(lowered)
+    try:
+        _validate_function(fn)
+    finally:
+        _LOWERED.reset(token)
+
+
+def _validate_function(fn: THIRFunction) -> None:
     if fn.receiver is not None:
         fact = fn.receiver
         if (not isinstance(fact, THIRBorrowedRecord) or not isinstance(fact.type, NominalType)
@@ -1379,7 +1551,16 @@ def _check_no_statement_temp(owner: str, node: THIRNode) -> None:
             _check_no_statement_temp(owner, child)
 
 
-def validate_constructor(ctor: THIRConstructor) -> None:
+def validate_constructor(ctor: THIRConstructor, *,
+                         lowered: bool = False) -> None:
+    token = _LOWERED.set(lowered)
+    try:
+        _validate_constructor(ctor)
+    finally:
+        _LOWERED.reset(token)
+
+
+def _validate_constructor(ctor: THIRConstructor) -> None:
     owner = f"{ctor.record_name}.__init__"
     for param in ctor.params:
         _check_param(owner, param)
@@ -1422,14 +1603,28 @@ def validate_definitions(functions: 'Sequence[THIRFunction]') -> None:
             _fail(twin.name, twin, "access twin disagrees with its definition")
 
 
-def validate_stmts(owner: str, stmts, return_type=None) -> None:
+def validate_stmts(owner: str, stmts, return_type=None, *,
+                   lowered: bool = False) -> None:
     """Validate a statement block that is not a whole function body -- a
     frame nested def's member body, a seam's leaf block."""
-    for stmt in stmts:
-        _walk(owner, stmt, return_type)
+    token = _LOWERED.set(lowered)
+    try:
+        for stmt in stmts:
+            _walk(owner, stmt, return_type)
+    finally:
+        _LOWERED.reset(token)
 
 
-def validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
+def validate_resumable_body(owner: str, body: THIRResumableBody, *,
+                            lowered: bool = False) -> None:
+    token = _LOWERED.set(lowered)
+    try:
+        _validate_resumable_body(owner, body)
+    finally:
+        _LOWERED.reset(token)
+
+
+def _validate_resumable_body(owner: str, body: THIRResumableBody) -> None:
     """Same structural gate the ordinary bodies get, applied to a resumable
     frame's leaf tables.
 

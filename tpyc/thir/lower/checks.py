@@ -133,7 +133,7 @@ from ...codegen_cpp import emit_prims
 from ...codegen_cpp.functions import literal_mangled_name
 from ...codegen_cpp.types import resolve_pending_container
 from ...typesys import make_list
-from ...codegen_cpp.forms import (LocalBinding, classify_local_binding,
+from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
                                       resolve_own_source_type)
@@ -1770,18 +1770,68 @@ def _opt_ptr_addr_of_record_source(init, declared: dict[str, TpyType],
                     st, unwrap_readonly(tt.inner)))
 
 
+def _local_binding_shape(
+    target_type: TpyType | None,
+    init: TpyExpr | None,
+    analyzer,
+    *,
+    name: str,
+    reassigned: set[str],
+    rvalue_reassigned: set[str],
+    hoisted: set[str],
+    move_through: set[str],
+) -> LocalBinding:
+    """A first-declaration non-value local's C++ binding shape from its
+    resolved type, its init and the per-function prescan facts; `OTHER`
+    outside the modeled slice (hoisted / move-through / rvalue-sourced
+    locals, tuples / unions / protocols / generic slots, value types). The
+    first step of `_borrow_local_binding`, which the binding table's
+    declaration row asks (`bindings._decl_local_binding`)."""
+    if init is None or target_type is None:
+        return LocalBinding.OTHER
+    if name in hoisted or name in move_through:
+        return LocalBinding.OTHER
+    is_reassigned = name in reassigned
+    if pointer_repr_optional(target_type) is not None:
+        # None-literal and rvalue inits take the slot-hoist pointer-local
+        # machinery (reassigned or not). THIR lowering sub-gates the
+        # admitted init/reseat shapes.
+        if isinstance(init, TpyNoneLiteral) or is_rvalue_source(analyzer, init):
+            return LocalBinding.OPT_PTR_SLOT
+        # A reassigned optional off an LVALUE init binds the same
+        # OPTIONAL_TO_PTR lift as the single-assignment shape; its reseats
+        # ride the pointer-local reseat arms (lvalue lift / nullptr /
+        # inline-rvalue slot).
+        if reads_storage_form_optional(analyzer, init):
+            return LocalBinding.OPTIONAL_TO_PTR
+        return LocalBinding.OTHER
+    if is_plain_nonvalue(target_type):
+        if is_rvalue_source(analyzer, init):
+            # An rvalue source (a ctor / by-value call). A name reassigned with an
+            # rvalue is a rebind-slot pointer-local; a single-assignment
+            # rvalue local needs no indirection
+            # (a plain value local) and is left to the caller's path.
+            return (LocalBinding.REBIND_SLOT if name in rvalue_reassigned
+                    else LocalBinding.OTHER)
+        # An lvalue source binds a `T&` alias (single-assignment) or a reseatable
+        # `T*` pointer-local (reassigned); both lift the lvalue storage to a borrow
+        # at the binding site.
+        return LocalBinding.POINTER if is_reassigned else LocalBinding.REF_ALIAS
+    return LocalBinding.OTHER
+
+
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
                           analyzer, pointers: 'AbstractSet[str]', lc
                           ) -> 'LocalBinding | None':
     """The binding for a non-value local var-decl's *first* declaration, or None
-    if it is outside the emit slice. The form decision comes from the shared
-    classifier; the slice additionally requires a field-access source off an
+    if it is outside the emit slice. The form decision comes from
+    `_local_binding_shape`; the slice additionally requires a field-access source off an
     F1-record receiver and an F1-record local (REF_ALIAS / POINTER) / inner
     (OPTIONAL_TO_PTR) type. REF_ALIAS and POINTER are the single-assignment and
     reassigned shapes of the same plain-record lvalue lift; POINTER's reseats are
     validated by declaration lowering."""
-    binding = classify_local_binding(
+    binding = _local_binding_shape(
         target_type, stmt.init, analyzer, name=stmt.name,
         reassigned=prescan.reassigned, rvalue_reassigned=prescan.rvalue_reassigned,
         hoisted=prescan.hoisted, move_through=prescan.move_through)
@@ -2760,7 +2810,7 @@ def _class_const_write_target_ok(target, declared: dict[str, TpyType],
     if not _eligible_scalar(analyzer.get_expr_type(target)):
         return False
     if target.needs_optional_runtime_check:
-        # `pointers` is lc.pointers (NOT admission_pointers, which excludes
+        # `pointers` is every pointer record (NOT admission_pointers, which excludes
         # the Optional-ptr borrows this arm exists for): the receiver must
         # render as the bare `T*` name deref_check takes.
         return (isinstance(target.obj, TpyName)
@@ -5098,7 +5148,7 @@ def _borrow_tuple_name_arg(a: TpyExpr, ptype: 'TpyType | None',
     BARE (`inner(p)`), no `tuple_to_pointer` lift.
 
     Keyed on POSITIVE evidence (the name is such a param) rather than on
-    absence from `lc.storage_tuple_locals`. Absence proves borrow form only
+    a record that is not `storage_tuple`. Absence proves borrow form only
     where that set is populated, and the resumable lane does not populate it
     (its owning tuples live in codegen's `storage_form_tuple_locals`).
     Reading absence as borrow form passed a storage source bare and dropped
@@ -7429,7 +7479,7 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     """Gate arm for the pointer-repr Optional slot faces -- the shared face
     verdict plus the local checks per face. The 'name' face admits both
     renders (`&(name)` and the pointer-local bare pass); lowering splits on
-    `lc.pointers`. A NARROWED union subject is admitted on the 'name' face
+    a pointer record. A NARROWED union subject is admitted on the 'name' face
     too: its read renames to the `T&` extraction alias inside `_lower_expr`,
     and the optional-ptr tail wraps the same alias
     (`&(__u)`), so no narrowed reject (the face is

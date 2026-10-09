@@ -106,3 +106,10 @@ enter CT
 4
 exit CT
 after continue loop
+---
+later_item: 7 107
+---
+comp_target: 3
+later_comp_target: 40
+body_hoist: 4
+hoist_ref: [2, 42] [2, 42]

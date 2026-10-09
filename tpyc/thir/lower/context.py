@@ -1,15 +1,16 @@
 """Per-function lowering state: _Prescan, _NarrowScope, and _LowerCtx."""
 
 from __future__ import annotations
-from collections.abc import Callable, Mapping, Set as AbstractSet
+import copy
+from collections.abc import Callable, Iterator, Mapping, Set as AbstractSet
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
-from ...parse.nodes import (TpyAssign, TpyCoerce, TpyExpr,
-                            TpyFunction, TpyGlobal, TpyIfExpr, TpyName,
+from ...parse.nodes import (TpyAssign, TpyExpr,
+                            TpyFunction, TpyGlobal, TpyName,
                             TpyNamedExpr, TpyVarDecl)
-from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
+from ...prescan import scan_reassigned_vars
 from ...typesys import pointer_repr_optional
 from ...type_def_registry import has_view_param_form
 from ...typesys import (
@@ -25,14 +26,12 @@ from ...typesys import (
     TupleType,
     UnionType,
     VoidType,
-    is_own_pointer_repr_optional,
     param_takes_ownership,
-    unwrap_optional_own,
     unwrap_readonly,
     unwrap_ref_type,
     unwrap_send_sync,
 )
-from ...codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
+from ...codegen_cpp.forms import is_plain_nonvalue
 from ...value_category import const_place
 from ...typesys import (
     holds_borrowing_view,
@@ -40,8 +39,8 @@ from ...typesys import (
     Representation,
     return_representation,
 )
-from ...sema.own_copy import contains_reference_type
-from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRTupleLayout, THIRUnionExtraction, THIRUnionLayout
+from ..source import UNBOUND, BindingRepr, NameFacts
+from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRUnionExtraction, THIRUnionLayout
 from .captures import CaptureSites
 from .predicates import (
     _callable_value,
@@ -62,10 +61,7 @@ from .predicates import (
     _optional_ptr_borrow,
     _record_class_binding,
     _optional_ptr_borrow_wide,
-    _nullable_static_protocol_param,
     _storage_optional_return_wide,
-    _own_opt_storage_binding,
-    _value_opt_string_owned,
     _own_viewfam_param,
     _param_is_const,
     _protocol_auto_slot,
@@ -132,8 +128,8 @@ class _RecordCtorUse(Enum):
 class ValueOptKind(Enum):
     """The value-repr `std::optional<T>` LOCAL binding families -- one
     kind-tagged registration where three parallel sets used to live. The
-    kinds differ only in the narrowed-deref FORM verdict (see the
-    `value_opt_bindings` field comment)."""
+    kinds differ only in the narrowed-deref FORM verdict (a binding record's
+    `value_opt`)."""
     SCALAR = auto()
     VIEW = auto()
     RECORD = auto()
@@ -1022,7 +1018,7 @@ class _Prescan:
         # (`native_global_names.get(name, name)`, unqualified).
         self.global_write_cpp: dict[str, str] = {}
         # POINTER-SLOT globals seeded read-only (non-value record/container
-        # `T* g{};` slots): also in lc.pointers, so reads take the slot
+        # `T* g{};` slots): also a pointer record, so reads take the slot
         # renders (`(*g)`, `g->`, `&(*g)`); imported ones carry their
         # qualified spelling in global_cpp.
         self.global_slots: frozenset[str] = frozenset()
@@ -1311,6 +1307,55 @@ class _Prescan:
                 | frozenset(self.native_globals))
 
 
+def prescan_without(prescan: _Prescan, names: AbstractSet[str]) -> _Prescan:
+    """A copy of `prescan` with `names` stripped from the per-name facts an
+    inner scope binding them does not inherit -- the view `shadow_scope`
+    gives the lowering of that scope, for the planner."""
+    out = copy.copy(prescan)
+    for a in _SHADOWED_PRESCAN_FACTS:
+        setattr(out, a, _without_names(getattr(prescan, a), names,
+                                       shared=True))
+    return out
+
+
+def nested_def_prescan(func: TpyFunction, outer: _Prescan, analyzer,
+                       nonlocal_names: 'AbstractSet[str]') -> _Prescan:
+    """The prescan a nested def's body lowers (and plans) under: its own
+    scan joined with the enclosing function's. Nested defs have no stored
+    move-through facts, so outer names cannot lend them."""
+    prescan = _Prescan(func, analyzer)
+    # Module-level facts carry over; the nested func has no global decls
+    # (gate-rejected), so the seeded-globals gating fields stay empty.
+    prescan.native_globals = outer.native_globals
+    prescan.global_readonly = outer.global_readonly
+    prescan.global_cpp = outer.global_cpp
+    # A CAPTURED outer param keeps its outer render inside the lambda (the
+    # capture holds the enclosing signature's form -- a `str` param is a
+    # `std::string_view` on both sides), so the form predicates that ask
+    # "is this name a param" must see the outer names too.
+    prescan.param_names = prescan.param_names | outer.param_names
+    prescan.owned_viewfam_params = (prescan.owned_viewfam_params
+                                    | outer.owned_viewfam_params)
+    # The nested body's OWN rebinds join the outer sets: a local the nested
+    # def declares and rebinds is a rebind-slot pointer-local like any
+    # other (its rebinds carry sema's storage verdict), while a captured
+    # name keeps the outer classification.
+    own_scan = analyzer.function_scan_results.get(func)
+    if own_scan is None:
+        own_scan = scan_reassigned_vars(
+            func.body, pre_declared={p for p, _ in func.params})
+    prescan.reassigned = outer.reassigned | own_scan.reassigned
+    prescan.rvalue_reassigned = (outer.rvalue_reassigned
+                                 | own_scan.rvalue_reassigned)
+    prescan.nonlocal_names = set(nonlocal_names)
+    # The nested body's OWN escape hoists join the outer set for the same
+    # reason its rebinds do: a local it declares and lends past a loop needs
+    # its slot inside the closure body.
+    prescan.hoisted = outer.hoisted | analyzer.function_hoisted_vars.get(
+        func, set())
+    return prescan
+
+
 @dataclass
 class _NarrowScope:
     """Lowering's branch/loop-scoped isinstance-narrowing state.
@@ -1374,23 +1419,10 @@ class _NarrowScope:
 # saw (the missed-restore bug class).
 #
 # BRANCH-SCOPED: snapshotted and restored by `branch_scope()`. `narrow` joins
-# the snapshot via its own `snapshot()`; `frame_slots` is here because the
-# for-each shadow REMOVES names for the body -- the same symmetric restore
-# re-adds them at the pop.
+# the snapshot via its own `snapshot()`.
 _BRANCH_SCOPED_SETS = (
-    "const_locals", "pointers", "ptr_variant_locals", "rebind_slot_locals",
-    "dyn_protocol_locals", "coro_frame_locals", "opt_storage_call_locals",
-    "optional_locals", "branch_hoisted", "match_ptr_hoists",
-    "iterator_object_locals",
-    "ref_alias_locals", "value_opt_bindings", "storage_opt_locals",
-    "const_storage_opt_locals",
-    "movable_locals", "storage_tuple_locals", "owned_tuple_layouts", "own_borrow_tuple_locals",
-    "inline_tuple_elems", "optional_borrow_tuple_locals",
-    "const_storage_tuple_locals",
-    # The for-body registration of sema's `const_loop_var` binding: scoped to
-    # the loop body, like every other name the loop head registers.
-    "const_loop_vars",
-    "frame_slots", "forbidden_reads", "forbidden_writes",
+    "dyn_protocol_locals", "branch_hoisted", "match_ptr_hoists",
+    "forbidden_reads", "forbidden_writes",
     # A `static __global_slot_N` allocated inside a branch is scoped to that
     # branch, so the "this global already has a reusable slot" fact must pop
     # with it: a later write outside the branch (or in a sibling branch)
@@ -1437,11 +1469,6 @@ _FUNCTION_SCOPED_STATE = (
     # chain do not change inside a branch.
     "global_ptr_slots", "import_calls",
     "pre_decl_import_cpp",
-    # The borrow-tuple const fixpoint (ensure_borrow_tuple_const): computed
-    # once over the whole body on first demand, immutable after -- the
-    # per-function fact discipline, not walk-order state.
-    "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
-    "_btuple_const_computed",
     # The memoized body-wide half of `alias_taken`: keyed on the state it
     # reads, so a branch cannot make it stale.
     "_alias_taken_memo",
@@ -1456,7 +1483,7 @@ _FUNCTION_SCOPED_STATE = (
 # computed inside the scope while its computed-flag survives.
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
     "nested_def_locals", "inline_narrowed",
-    "walrus_slot_locals", "sema_movable_locals", "own_params",
+    "walrus_slot_locals", "sema_movable_locals",
     "deref_view_spelled",
     "forwarded_map", "literal_facts", "global_ptr_slots",
     "frame_local_types", "frame_field_names", "frame_own_tuple_types",
@@ -1505,12 +1532,13 @@ _LC_NOT_NAME_KEYED = (
     "top_level_scope", "global_binding_scope", "top_level_line",
     # Keyed by statement id / a list of return nodes / enclosing functions.
     "import_calls", "nested_returns", "capture_funcs",
+    # The binding table's shadow check: the table models inner scopes itself.
+    "table", "cursor", "shadow_report", "move_region",
 )
 _LC_INHERITED_BY_DESIGN = (
-    # Lazily computed body-wide memos: a restore would discard a result
-    # computed inside the scope while its computed-flag survives.
-    "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
-    "_btuple_const_computed", "_alias_taken_memo",
+    # A lazily computed body-wide memo: a restore would discard a result
+    # computed inside the scope.
+    "_alias_taken_memo",
     # Per-function residue ledger: `_nested_def_state_scope` swaps in the
     # nested def's own, and a lambda body hoists nothing.
     "unhandled_hoists",
@@ -1561,8 +1589,26 @@ def _without_names(value: AbstractSet[str] | Mapping[str, object] | None,
             and (shared or isinstance(value, frozenset))):
         return value
     if isinstance(value, Mapping):
-        return {k: v for k, v in value.items() if k not in names}
+        stripped = {k: v for k, v in value.items() if k not in names}
+        rewrap = getattr(value, "rewrap", None)
+        return rewrap(stripped) if rewrap is not None else stripped
     return value - names
+
+
+class BindingTableError(RuntimeError):
+    """The binding table's planner and the lowering disagree about a scope
+    or a record: an internal error, never a user diagnostic."""
+
+    def __init__(self, msg: str) -> None:
+        super().__init__(f"binding table: {msg}")
+
+
+def names_with(binding: Callable[[str], BindingRepr], fact: str
+               ) -> NameFacts:
+    """The `NameFacts` of one `BindingRepr` field, over `binding`'s
+    records."""
+    assert fact in BindingRepr.__dataclass_fields__, fact
+    return NameFacts(lambda n: bool(getattr(binding(n), fact)))
 
 
 class _LowerCtx:
@@ -1582,26 +1628,13 @@ class _LowerCtx:
     for those slots."""
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
-                 "const_locals",
-                 "pointers", "ptr_variant_locals", "rebind_slot_locals",
-                 "dyn_protocol_locals", "coro_frame_locals",
-                 "opt_storage_call_locals",
-                 "optional_locals", "branch_hoisted", "match_ptr_hoists",
-                 "iterator_object_locals",
-                 "ref_alias_locals",
-                 "value_opt_bindings", "storage_opt_locals",
-                 "const_storage_opt_locals",
+                 "dyn_protocol_locals", "branch_hoisted", "match_ptr_hoists",
                  "deref_view_spelled", "forwarded_map",
-                 "movable_locals",
-                 "sema_movable_locals", "own_params",
+                 "sema_movable_locals",
                  "params", "capture_funcs", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
-                 "record_name", "storage_tuple_locals", "owned_tuple_layouts",
-                 "own_borrow_tuple_locals", "inline_tuple_elems",
-                 "optional_borrow_tuple_locals",
-                 "const_storage_tuple_locals", "const_loop_vars",
+                 "record_name",
                  "frame_own_tuple_types",
-                 "frame_slots",
                  "resumable_leaf_mode", "placement", "slot_hoist_ok",
                  "in_container_elem",
                  "nested_returns", "in_finally_helper",
@@ -1624,9 +1657,8 @@ class _LowerCtx:
                  "top_level_scope", "global_binding_scope", "global_ptr_slots", "global_slot_assigned",
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
-                 "member_self",
-                 "const_borrow_tuple_locals", "const_opt_borrow_tuple_locals",
-                 "_btuple_const_computed", "_alias_taken_memo")
+                 "member_self", "_alias_taken_memo",
+                 "table", "cursor", "shadow_report", "move_region")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -1717,8 +1749,8 @@ class _LowerCtx:
         # arm rejects without it.
         self.render_concept = render_concept
         # The receiver name (`self`) when `func` is an instance method, else
-        # None: it lowers to a THIRSelf and, unlike `pointers`, is not a
-        # liftable borrow source (`_is_borrow_ptr_local` must never treat it
+        # None: it lowers to a THIRSelf and, unlike a pointer binding, is not
+        # a liftable borrow source (`_is_borrow_ptr_local` must never treat it
         # as one). `self_cpp` is its C++ spelling (`this` for a plain method,
         # `__self` for a resumable method coro) and `self_is_pointer` selects
         # `->` vs `.` field/method access -- a plain method's `this` is a
@@ -1760,66 +1792,12 @@ class _LowerCtx:
         # exactly like overload_narrowing does for the isinstance families.
         self.overload_literal_facts: dict[str, TpyType] = {}
         self.overload_terminated: bool = False
-        self.const_locals: set[str] = set()
-        # Names whose C++ binding is a bare `T*` -- F2 pointer-locals
-        # (reseatable, recorded at first decl so a later reseat lowers
-        # correctly) plus the pointer-repr Optional borrow names (Optional-ptr
-        # params seeded below, OPTIONAL_TO_PTR locals added at their decl;
-        # never reseated -- sema rejects the param rebind and a reassigned
-        # Optional local classifies OTHER). Mirrors codegen's
-        # `ctx.pointer_locals` for every render that keys on it: `->` field/
-        # method access, the `(*p)` value deref, and the bare pass into `T*`
-        # slots. The GATE side has no pointer-set analog for the Optional
-        # names -- its faces key on the declared type in `ws.declared`.
-        # Mirrors all three `seed_param_locals` pointer arms: the wide
-        # ptr-repr Optional class, the nullable-static-protocol param, and
-        # the `Own[Opt[T_ref]]` storage param (also an `optional_locals`
-        # seed).
-        self.pointers: set[str] = set()
-        # Initialized here (full docstring below) -- the param loop seeds it.
-        self.optional_locals: set[str] = set()
-        for pname, ptype in self.params:
-            # WIDE pointee class: an Optional[wrapper] / `T | None` /
-            # Optional[dyn-protocol] param binds the same `T*` shape as the
-            # F1 slice, and every read/test render is pointee-blind.
-            if _optional_ptr_borrow_wide(ptype, analyzer) is not None:
-                self.pointers.add(pname)
-            elif _nullable_static_protocol_param(ptype) is not None:
-                # seed_param_locals' nullable-static-protocol arm: the param
-                # is the monomorphized `const T_x*` (always const-indirect),
-                # narrowed reads deref `(*x)`, and the None test is the
-                # nullproto constexpr swap.
-                self.pointers.add(pname)
-            elif is_own_pointer_repr_optional(
-                    unwrap_readonly(unwrap_send_sync(ptype))):
-                # The `Own[Opt[T_ref]]` param seed: BOTH pointer_locals
-                # (arrow reads via optional<P>::operator->) and
-                # optional_locals (the None test picks has_value over
-                # `!= nullptr`). The binding stays declared Own[Optional[P]]
-                # -- consumers key their rows on that type, not on a
-                # var_types rebind (`_own_storage_opt_param`); only the
-                # F1-record pointee routes reads (_unrouted_binding_read).
-                self.pointers.add(pname)
-                self.optional_locals.add(pname)
         # The enclosing functions a nested def captures names FROM,
         # outermost first. A capture's borrow is decided where the name is
         # DEFINED, so a predicate keyed on the enclosing signature (the
         # param const verdicts) has to ask that function and not `func`,
         # which inside a lambda is the nested one.
         self.capture_funcs: tuple = ()
-        # Names BOUND as `::tpy::Union<A*, B*>` -- codegen's
-        # `ctx.ptr_variant_locals`, which is a BINDING set, not a type
-        # verdict: a ptr-variant-typed union reaching a name through a
-        # container element / loop variable still binds the value variant.
-        # The narrow arms key their `std::get<T*>` render on this.
-        # Codegen registers from four producers; the two unmirrored ones cannot
-        # arise here -- a union-typed tuple-unpack target is not in the
-        # unpack classifier's admitted shapes, and a short @overload stub whose
-        # omitted params need a prologue local rejects at admission.
-        self.ptr_variant_locals: set[str] = set()
-        for pname, ptype in self.params:
-            if is_ptr_variant_union(unwrap_readonly(unwrap_send_sync(ptype))):
-                self.ptr_variant_locals.add(pname)
         # Walrus targets already pre-declared this FUNCTION -- codegen's
         # walrus_pre_declared asymmetry (function-scoped, never
         # branch-restored, unlike the branch-copied `declared` dict): a
@@ -1830,48 +1808,9 @@ class _LowerCtx:
         # codegen's register_walrus_deref substitution, NOT the pointer-local
         # arrow model. Function-scoped like the decl itself.
         self.walrus_slot_locals: set[str] = set()
-        # F2d rebind-slot subset of `pointers`: their reseats lower as rvalue
-        # rebinds (`p = &*(__slot_N = ...)`), not lvalue `&(...)` reseats.
-        self.rebind_slot_locals: set[str] = set()
         # First-declared @dynamic protocol locals that are reassigned: their
         # reseat statements take the rebind emit (hoisted optional slot).
-        # Async-factory locals holding the CONCRETE coro frame in optional
-        # storage (`std::optional<__coro_f> c = f(..);` -- erasure deferred
-        # to the Own[dyn] consumer arg). name -> the declared dyn proto.
-        self.coro_frame_locals: dict[str, object] = {}
         self.dyn_protocol_locals: set[str] = set()
-        # OPT_STORAGE_CALL-declared names (an Own[P|None]-returning call
-        # materialized in a `std::optional<P> __slot_N`): a reseat re-fills
-        # THAT slot and re-lifts (`__slot_N = make(43); z =
-        # optional_to_ptr(__slot_N);` -- the `rebind_slots` reuse); any
-        # other reseat shape for such a name rejects (the generic THIRAssign
-        # rebind emit would hijack it into the `&*(__slot = ...)` render).
-        self.opt_storage_call_locals: set[str] = set()
-        # OPTIONAL_STORAGE bindings (`std::optional<T>`), codegen's
-        # ctx.optional_locals: branch-hoisted locals (if-head predecl) and
-        # `Own[Opt[T_ref]]` params (`std::optional<P>&&`, seeded above). A
-        # subset of `pointers` for the read side (deref reads, `->` access);
-        # assigns write PLAIN into the optional (`name = <storage rvalue>;`)
-        # and the None test picks has_value over the pointer compare. Its
-        # SIBLING set
-        # `storage_form_optional_locals` (the storage-optional loop var /
-        # unpack target -- storage form like these, but NOT pointer-accessed,
-        # so it lifts via `optional_to_ptr` at a `T*` slot) has no mirror at
-        # all; the for-each Optional element family rejects before one can be
-        # bound. (Initialized above the param-seed loop.)
-        # Storage-optional comp/genexpr UNPACK targets -- the mirror of
-        # codegen's `storage_form_optional_locals` (a ptr-repr
-        # Optional[F1-record] tuple element bound `auto& p = std::get<i>(t)`:
-        # storage form, NOT pointer-accessed, so a `T*` slot lifts it via
-        # `optional_to_ptr`). Registered by the comp/genexpr heads for the
-        # body walk and discarded with it; the for-STATEMENT producer and
-        # the const twin (`const_storage_form_optional_locals`) stay
-        # unmirrored until witnessed.
-        self.storage_opt_locals: set[str] = set()
-        # The CONST subset of the above (a `const optional<P>&` loop var off
-        # a const-bound source): its consumers spell `const P*`. Mirrors
-        # codegen's `const_storage_form_optional_locals`.
-        self.const_storage_opt_locals: set[str] = set()
         # Branch-hoisted `T*` pointer-locals WITHOUT an if-head rebind slot
         # (reassigned but not rvalue-reassigned): an rvalue reseat allocates
         # its slot lazily at function top (PtrSlotKind.BRANCH_RVALUE);
@@ -1880,37 +1819,8 @@ class _LowerCtx:
         # Captures a routed match hoisted as `T*` pointer-locals. A NESTED
         # match may re-seat one (`q = &(__match_subject_2.inner);`); every
         # other pointer-local reuse keeps rejecting, so the admission keys
-        # on this set rather than on `pointers`.
+        # on this set rather than on the record's `pointer`.
         self.match_ptr_hoists: set[str] = set()
-        # Iterator-object locals (`it = g()`, the `auto` decl off a
-        # generator/iterator factory): the for-head's name arm admits one as
-        # a plain lvalue iterable despite its protocol declared type (a
-        # protocol PARAM stays deferred -- its C++ spelling is deduced).
-        self.iterator_object_locals: set[str] = set()
-        # REF_ALIAS-bound locals (`T& name = ...`) -- codegen's
-        # `ctx.ref_bound_locals`. Consumed by the `del x` skip ladder: the
-        # alias does not own the value, so no move-sink is emitted for it.
-        self.ref_alias_locals: set[str] = set()
-        # Value-repr Optional[scalar] LOCALS beyond the params: for-each LOOP
-        # VARS over `list[T | None]` (`std::optional<T> item = *__beg_N;`,
-        # registered by the for-each lowering for the loop's scope) and
-        # chain-optional match captures binding the full subject (sema's
-        # binds_full_optional; mirrors codegen's `ctx.var_types` registration
-        # for match-arm bindings -- never removed, the binding leaks
-        # function-wide like Python match scoping). The value-opt param render
-        # sites (deref-on-narrow, the whole-optional arg/None-test/truthiness
-        # renders) key on the declared binding shape, identical for a param
-        # and these locals, so all ride the same arms via
-        # `_value_opt_scalar_binding`; the movable-seeded last-use moves stay
-        # param-only through the `_is_move_source` movable guard.
-        # One kind-tagged map (name -> ValueOptKind) covers all three
-        # value-repr `std::optional<T>` LOCAL families; the kinds differ
-        # only in the narrowed-deref FORM verdict: SCALAR derefs a VALUE,
-        # VIEW an OWNED `std::string`/`vector` (STORAGE -- a param's deref
-        # is a BORROW view instead, keyed on `param_names`), RECORD a
-        # record lvalue consumed as a receiver. The None-test/truthiness
-        # read the whole optional (`.has_value()`) for every kind.
-        self.value_opt_bindings: dict[str, ValueOptKind] = {}
         # Deref-view narrowed subjects (the if-init cast local): branch-body
         # member calls carrying deref_narrowed_to read the wrapper var via
         # this spelling (`(*__b_ptr)`), never the deref chain. Registered
@@ -1920,28 +1830,6 @@ class _LowerCtx:
         # nothing and every read renders the BACKING param's name
         # (codegen's generator_storage_name substitution). Resumable-only.
         self.forwarded_map: dict[str, str] = {}
-        # The `Optional[Own[T_ref]]` PARAM seed (`Own[Point] | None` -- a
-        # by-value `std::optional<Point>`; the reverse `Own[Optional[T]]`
-        # nesting keeps its pointer_locals fence): the binding IS the
-        # RECORD kind -- has_value None-test, `(*p)` narrowed deref -- so
-        # it rides the same kind-tagged registration as the
-        # owned-optional-call decls.
-        for pname, ptype in self.params:
-            if _own_opt_storage_binding(ptype):
-                self.value_opt_bindings[pname] = ValueOptKind.RECORD
-            # The `Optional[String]` PARAM seed (`std::optional<std::string>`
-            # by value at the param too): the VIEW kind's owned-deref
-            # semantics -- has_value None-test, STORAGE `(*x)` narrowed
-            # deref (the name arm's owned-inner form override), the
-            # expensive-copy movable move at owned sinks.
-            elif _value_opt_string_owned(ptype) is not None:
-                self.value_opt_bindings[pname] = ValueOptKind.VIEW
-        # Resumable frame_slot locals (R1c): a non-value coro/generator local
-        # stored as `tpy::frame_slot<T>`. Reads render `(*name)` (deref=True on
-        # the THIRName; member access is `.` since the slot is not a pointer),
-        # writes render `name.emplace(value)` (THIRFrameSlotWrite). Populated
-        # only by `lower_resumable`; empty for every sync body.
-        self.frame_slots: set[str] = set()
         # Resumable CFG leaves reuse statement lowering for compound bodies.
         # Their nested frame writes and async-return shapes reject at the
         # statement arm rather than through a predictive leaf-tree scan.
@@ -2011,21 +1899,9 @@ class _LowerCtx:
         # owned elements out. Populated only by `lower_resumable`, empty
         # for every sync body.
         self.oneshot_lift_locals: frozenset = frozenset()
-        # For-each loop vars whose binding is const, from two deciders: SEMA
-        # (`TpyForEach.const_loop_var`, which chose `const auto&`) and this
-        # LOWERING (`_iteration_yields_const`, an `auto&&` over a const
-        # source deducing `const T&`). Both spell the same binding, and no
-        # consumer asks which decided an entry -- the sole reader
-        # (`_const_borrow_name`, which `_iteration_yields_const` asks in turn
-        # for a nested loop) only asks whether a borrow rooted here must be
-        # const -- so the set stays merged. Registered for the body only.
-        # No other set answers for a loop var: `const_locals` holds the DECL
-        # families and is read by ~30 unrelated predicates, so a loop var
-        # entered there would move all of them.
-        self.const_loop_vars: set[str] = set()
         # Pointer-alias frame locals (the skeleton's pointer_alias_locals,
         # minus the synthetic decomposition temps): `T*` fields aliasing
-        # live storage. Reads ride lc.pointers; the unpack arm binds one
+        # live storage. Reads ride a pointer record; the unpack arm binds one
         # via `= &(unwrap_ref(tuple_elem_ref(...)));` (frame_ptr_elem).
         # Populated only by `lower_resumable`, empty for every sync body.
         self.alias_ptr_locals: frozenset = frozenset()
@@ -2059,57 +1935,6 @@ class _LowerCtx:
         self.unhandled_hoists = set(
             analyzer.function_hoisted_vars.get(func, ())
             if hoisted_override is None else hoisted_override)
-        # F3 storage-tuple alias locals (`auto&& t = <storage tuple field>`): a read
-        # off one is STORAGE form, lifted via `tuple_to_pointer` at borrow boundaries.
-        # The two owned-tuple PARAM shapes seed below; the generator/resumable
-        # frame-local registrations are not mirrored, so such a name would
-        # read BORROW here off `_is_borrow_form_name`'s type verdict -- it
-        # stays unreachable via the call/subscript arms rejecting it.
-        self.storage_tuple_locals: set[str] = set()
-        # Only unconditional constructor locals and their fixed aliases carry these facts.
-        self.owned_tuple_layouts: dict[str, THIRTupleLayout] = {}
-        # Borrow-form tuple locals bound from a literal that holds a record
-        # element INLINE beside the pointer ones (`t = (Box(1), b)` is
-        # `std::tuple<Box, Box*>`): per element, whether `std::get` yields
-        # the object rather than a pointer to it. The declared type cannot
-        # say (it is `tuple[Box, Box]` either way), so element reads and
-        # aliases of such a name ask here.
-        self.inline_tuple_elems: dict[str, tuple[bool, ...]] = {}
-        # Two param shapes spell a STORAGE tuple in the signature, so their
-        # name reads are storage -- the unpack lift
-        # (`tuple_to_pointer<std::tuple<P*, P*>>(t)`), the optional-element
-        # decl lift, and the storage-name arg row all key on this membership:
-        # the `Own[tuple-with-pointer-repr-element]` param (by value), and
-        # the owned-MOVABLE per-element-Own param (`tuple[Own[A], int32]` ->
-        # `std::tuple<A, int32_t>&&`), whose elements a NON-consuming unpack
-        # borrows through the same lift.
-        for pname, ptype in self.params:
-            actual = unwrap_readonly(unwrap_send_sync(ptype))
-            if isinstance(actual, OwnType):
-                inner_t = unwrap_readonly(actual.wrapped)
-                if (isinstance(inner_t, TupleType)
-                        and inner_t.has_pointer_repr_element()):
-                    self.storage_tuple_locals.add(pname)
-            elif (isinstance(actual, TupleType)
-                  and actual.is_owned_movable()):
-                self.storage_tuple_locals.add(pname)
-        # Nullable borrow-form tuple locals (`tuple[.., ref] | None` ->
-        # `std::optional<std::tuple<.., T*>>` -- the OPTIONAL_BORROW_TUPLE
-        # LocalCppForm): None-tests read `.has_value()`, narrowed reads
-        # deref `(*t)` and take the borrow-tuple element arrows, reseats
-        # re-wrap through the optional (storage lift / owning-slot
-        # emplace / nullopt).
-        self.optional_borrow_tuple_locals: set[str] = set()
-        # Names holding the MIXED borrow render of a per-element-Own tuple
-        # (`auto p = make_mixed(b)`, a mixed module global -- owned elements
-        # by value, ref elements as pointers): the NAME leg of
-        # `_renders_own_borrow_tuple`, the
-        # mirror of codegen's `own_borrow_tuple_locals`. Deliberately NOT in
-        # `storage_tuple_locals` here (codegen holds them in both): THIR's
-        # element-read arrow (`_subscript_yields_borrow_ptr`) treats a
-        # storage name as `.`-access, so the pair must stay split until the
-        # read arms key on this set directly.
-        self.own_borrow_tuple_locals: set[str] = set()
         # Resumable-frame tuple locals whose per-element OWNERSHIP is not in
         # their declared type: a literal-bound owning/mixed frame slot, mapped
         # to the effective `Own[...]`-marked tuple (codegen's
@@ -2117,99 +1942,17 @@ class _LowerCtx:
         # and the slot's write both read the ownership off this, since a
         # literal's inferred type has no place to record it.
         self.frame_own_tuple_types: dict[str, 'TpyType'] = {}
-        # Subset of storage_tuple_locals bound from a const source (a const loop
-        # var, or an alias off a const receiver chain): the borrow tuple wrap
-        # spells `const T*` element pointers. Mirrors codegen's
-        # `const_storage_form_tuple_locals`.
-        self.const_storage_tuple_locals: set[str] = set()
-        # Borrow-form tuple locals whose element pointers spell `const T*`
-        # because SOME binding source reads const storage -- the mirror of
-        # codegen's `const_borrow_form_tuple_locals` (+ the nullable sibling),
-        # populated by `ensure_borrow_tuple_const`'s whole-body fixpoint on
-        # first demand (codegen computes both in setup_body_scope; here most
-        # bodies never ask, so the walk is lazy).
-        self.const_borrow_tuple_locals: set[str] = set()
-        self.const_opt_borrow_tuple_locals: set[str] = set()
-        self._btuple_const_computed = False
         self._alias_taken_memo: 'tuple | None' = None
         # F2e: sema's RAW owned-locals fact, the mirror of codegen's
         # `ctx.sema_movable_locals`. It means "sema proved this local owned",
-        # NOT "movable" -- a name becomes movable only by joining the working
-        # set below, at a decl arm that promotes. A MOVE reads it ONLY
-        # through `promote_movable`; a consumer moving off it directly
-        # re-introduces the conflation that made a value-typed local (a
-        # view-promoted `str`, a BigInt) and a ptr-variant alias move where
-        # they must be copied. A reject may ask it: "sema owns this name".
+        # NOT "movable" -- a binding is movable only where its record says
+        # so (the planner's promoting rows); a consumer moving off this
+        # directly re-introduces the conflation that made a value-typed
+        # local (a view-promoted `str`, a BigInt) and a ptr-variant alias
+        # move where they must be copied. A reject may ask it: "sema owns
+        # this name".
         self.sema_movable_locals: frozenset[str] = frozenset(
             analyzer.function_movable_locals.get(func, ()))
-        # The WORKING set the move sites read -- codegen's `ctx.movable_locals`.
-        # Starts at the param seeds below (codegen's seed_param_locals) and
-        # grows during the body walk at exactly the decl arms that promote a
-        # local to movable (`promote_movable`).
-        self.movable_locals: set[str] = set()
-        # The params the signature declares `Own[...]` (or `Own[T] | None`),
-        # whatever the payload: the caller handed over the value. A
-        # constructor member-init moves these and the ownership-transfer
-        # tuples (`handed_over_params`).
-        self.own_params: frozenset[str] = frozenset(
-            pname for pname, ptype in self.params
-            if isinstance(ptype, TpyType)
-            and unwrap_optional_own(unwrap_readonly(
-                unwrap_send_sync(ptype))) is not None)
-        # Own[T] / Own[T]|None params of non-value payload are movable (the
-        # caller gave up ownership) -- codegen seeds them at body-scope setup
-        # (seed_param_locals), not via sema's per-function set, so lowering
-        # mirrors that seeding here. Consumed by the Own-slot call-arg row's
-        # move-vs-copy pick and the own-tuple unpack's NAME_MOVE holder bind;
-        # the F2b/F2e write/return converts only ever see borrow-pointer
-        # sources, which are never Own params. The owned-movable TUPLE-param
-        # branch is mirrored below (the unpack's move-vs-copy pick reads it).
-        # The resumable RETURN leaf's direct-ready move reads the full
-        # working set, so any remaining seeding gap is masked only by the
-        # return-shape gate -- widening that gate to force-seeded shapes
-        # must extend this seeding in lockstep.
-        # A consuming method (`self: Own[Self]`) owns its receiver: it is this
-        # frame's value, so its last use relocates it exactly as an `Own[T]`
-        # param does. The receiver is not in `self.params`, so it is seeded
-        # here; sema reads the same fact (`_is_owned_var`) to stay silent
-        # about a copy that no longer happens.
-        if self_receiver is not None and func.is_consuming:
-            self.movable_locals.add(self_receiver)
-        for pname, ptype in self.params:
-            owns = func.takes_ownership_of(pname, ptype)
-            own = unwrap_optional_own(unwrap_readonly(unwrap_send_sync(ptype)))
-            # A tuple is a value type, but one holding a reference copies
-            # that reference's object as any `Own[record]` would, so its
-            # last use moves too.
-            if owns and own is not None and (
-                    not own.wrapped.is_value_type()
-                    or (isinstance(unwrap_readonly(own.wrapped), TupleType)
-                        and contains_reference_type(own.wrapped))):
-                self.movable_locals.add(pname)
-            # An ownership-transfer TUPLE param (`tuple[Own[A], B]` --
-            # `std::tuple<A, B*>&&`): seed_param_locals' tuple branch.
-            pu = unwrap_readonly(unwrap_send_sync(ptype))
-            if owns and isinstance(pu, TupleType):
-                self.movable_locals.add(pname)
-            if isinstance(pu, TupleType) and pu.is_mixed_own():
-                # A mixed param holds the render a mixed call result binds
-                # (`std::tuple<A, B*>`), so it takes that render's rows. A
-                # capture holds whatever the enclosing variable holds: a
-                # parameter, a call result and a module global all hold that
-                # same render.
-                self.own_borrow_tuple_locals.add(pname)
-            # A value-repr Optional[expensive-copy] param (`int | None` ->
-            # std::optional<BigInt>, `str | None` -> optional<string_view>)
-            # is movable at its narrowed last use -- seed_param_locals'
-            # value-optional arm, mirrored with its EXACT condition (no
-            # scalar/view split there; is_expensive_copy is the filter).
-            # readonly params are excluded to honor the no-mutation contract.
-            vopt_u = unwrap_readonly(unwrap_send_sync(ptype))
-            if (isinstance(vopt_u, OptionalType)
-                    and not vopt_u.uses_pointer_repr()
-                    and not isinstance(ptype, ReadonlyType)
-                    and vopt_u.inner.is_expensive_copy()):
-                self.movable_locals.add(pname)
         # U3/U4 isinstance-narrowing scope (see _NarrowScope's docstring),
         # snapshot/restored around branch and loop bodies.
         self.narrow = _NarrowScope()
@@ -2230,94 +1973,14 @@ class _LowerCtx:
         # return pass-through / return-tier raise admissions and rides
         # THIRFunction into the emit state.
         self.error_return_cpp: 'str | None' = None
-
-    def promote_movable(self, name: str) -> None:
-        """Mirror of codegen's `promote_movable`: a sema-owned local
-        joins the working movable set when its decl reaches a promoting arm.
-
-        Call this from a decl arm that actually promotes, and NOWHERE else --
-        the arms that stay silent (ptr-variant unions, non-Own @dynamic
-        locals, `val_or_ref_t` TypeParamRef locals, REF_ALIAS borrows,
-        frame-promoted pointer locals) hand back an alias, so a last-use read
-        there copies. Over-promoting stays invisible until some later arm
-        starts trusting the verdict, then renders a `std::move` that must
-        not be there."""
-        if name in self.sema_movable_locals:
-            self.movable_locals.add(name)
-
-    def ensure_borrow_tuple_const(self) -> None:
-        """Lazy mirror of `_compute_borrow_tuple_const`: OR const over every
-        binding source of a reassigned/hoisted ptr-repr-tuple local, to a
-        fixpoint over name chains (a bare-name source feeding from another
-        borrow-tuple local carries that local's verdict), populating BOTH
-        const sets in one pass. The declared const must be at least as const
-        as every source (mutable->const lift compiles, const->mutable does
-        not). Nullable targets are split by their DECLARED type
-        (`tuple[..] | None`), source-blind."""
-        if self._btuple_const_computed:
-            return
-        self._btuple_const_computed = True
-        analyzer = self.analyzer
-        reassigned = self.prescan.reassigned
-        hoisted = self.prescan.hoisted
-        bindings: dict[str, list] = {}
-        opt_bindings: dict[str, list] = {}
-        optional_targets: set[str] = set()
-
-        def record(tgt: str, src) -> None:
-            if tgt not in reassigned and tgt not in hoisted:
-                return
-            st = analyzer.get_expr_type(src)
-            stb = (unwrap_readonly(unwrap_ref_type(st))
-                   if st is not None else None)
-            is_pr_tuple = (
-                (isinstance(stb, TupleType)
-                 and stb.has_pointer_repr_element())
-                or (isinstance(stb, OptionalType)
-                    and stb.wraps_pointer_repr_tuple()))
-            if not is_pr_tuple:
-                return
-            (opt_bindings if tgt in optional_targets
-             else bindings).setdefault(tgt, []).append(src)
-
-        def collect(stmts) -> None:
-            for stmt in stmts:
-                if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                    tt = resolve_stmt_binding_type(
-                        stmt, analyzer, include_global_binding=False)
-                    if tt is None:
-                        tt = analyzer.get_expr_type(stmt.init)
-                    if tt is not None:
-                        tt = unwrap_readonly(
-                            unwrap_ref_type(unwrap_send_sync(tt)))
-                    if (isinstance(tt, OptionalType)
-                            and tt.wraps_pointer_repr_tuple()):
-                        optional_targets.add(stmt.name)
-                    record(stmt.name, stmt.init)
-                elif (isinstance(stmt, TpyAssign)
-                      and isinstance(stmt.target, TpyName)):
-                    record(stmt.target.name, stmt.value)
-                for e in stmt.exprs():
-                    for tgt, src in _walrus_pairs(e):
-                        record(tgt, src)
-                for body in stmt.sub_bodies():
-                    collect(body)
-
-        collect(self.func.body)
-        if not bindings and not opt_bindings:
-            return
-        pairs = [(bindings, self.const_borrow_tuple_locals),
-                 (opt_bindings, self.const_opt_borrow_tuple_locals)]
-        changed = True
-        while changed:
-            changed = False
-            for binds, const_set in pairs:
-                for name, srcs in binds.items():
-                    if name in const_set:
-                        continue
-                    if any(_btuple_src_const(s, self) for s in srcs):
-                        const_set.add(name)
-                        changed = True
+        # The binding table and the scope node the walk is at
+        # (`bindings.plan_and_install`, before the walk).
+        self.table = None
+        self.cursor = None
+        self.shadow_report = None
+        # The names a sink may move inside a `moves_only` region; None
+        # outside one, where the binding's record decides.
+        self.move_region: frozenset[str] | None = None
 
     @contextmanager
     def branch_scope(self):
@@ -2329,7 +1992,7 @@ class _LowerCtx:
         caller's job -- perform it in the enclosing frame, after (or outside)
         this context."""
         # `.copy()` covers both shapes here: plain name-sets and the
-        # kind-tagged `value_opt_bindings` dict.
+        # name-keyed dicts.
         saved = [getattr(self, name).copy() for name in _BRANCH_SCOPED_SETS]
         saved_narrow = self.narrow.snapshot()
         try:
@@ -2394,19 +2057,87 @@ class _LowerCtx:
 
     def movable_now(self, name: str) -> bool:
         """Whether a sink here may move `name` at its last use -- the one
-        question every move site asks (`movable_locals`, narrowed by
-        `moves_only`)."""
-        return name in self.movable_locals
+        question every move site asks: the binding's record, or the region
+        policy inside a `moves_only` region."""
+        if self.move_region is not None:
+            return name in self.move_region
+        rec = self.lookup_binding(name)
+        return rec is not None and rec.movable
+
+    def binding(self, name: str) -> BindingRepr:
+        """The record `name` resolves to where the walk is -- the one
+        accessor every per-name representation fact is read through -- or
+        `UNBOUND` for a name the table does not bind (a function, a class,
+        a synthesized alias, the narrowed `Any` global)."""
+        rec = self.lookup_binding(name)
+        return UNBOUND if rec is None else rec
+
+    def prior_binding(self, name: str) -> BindingRepr:
+        """The record `name` resolves to BEFORE the statement being lowered
+        declares anything: a declaration arm asking about an earlier
+        binding of the name it is about to declare."""
+        key, node = self.cursor
+        rec = node.lookup_before(name, key)
+        return UNBOUND if rec is None else rec
+
+    def names_with(self, fact: str, *, prior: bool = False) -> NameFacts:
+        """The names whose record has `fact`, resolved where the walk is
+        NOW (or, with `prior`, before the statement's own declarations),
+        for a helper that takes a name set -- a later move of the cursor
+        does not change the answer."""
+        assert fact in BindingRepr.__dataclass_fields__, fact
+        key, node = self.cursor
+        if fact == "movable" and self.move_region is not None:
+            region = self.move_region
+            return NameFacts(region.__contains__)
+
+        def look(n: str) -> bool:
+            rec = (node.lookup_before(n, key) if prior
+                   else node.lookup(n))
+            return rec is not None and bool(getattr(rec, fact))
+        return NameFacts(look)
+
+    def lookup_binding(self, name: str) -> 'BindingRepr | None':
+        """The record `name` resolves to where the walk is: the scope chain
+        at the cursor, and nothing else -- a miss is a name the table does
+        not bind here."""
+        return self.cursor[1].lookup(name)
+
+    def declaring(self, name: str) -> BindingRepr:
+        """The record the statement being lowered writes for `name`, for
+        the arm that declares it: the binding it reassigns where the chain
+        has one, else the record its own site declares, which enters the
+        chain only after the statement. A site declaring no record, or two
+        of that name, is an internal error."""
+        key, node = self.cursor
+        rec = node.lookup(name)
+        if rec is not None:
+            return rec
+        rec = self.table.declared_by(key, name) if key is not None else None
+        if rec is None:
+            raise BindingTableError(
+                f"no record for {name!r} declared at "
+                f"{type(key).__name__} in {self.func.name}")
+        return rec
 
     @property
     def handed_over_params(self) -> frozenset[str]:
         """The params the caller hands over, which a constructor member-init
-        may move: the `Own` params and the ownership-transfer tuples
-        (`param_takes_ownership` -- `std::tuple<A, B*>&&`), which the
-        `Own`-only `own_params` leaves out."""
-        return self.own_params | frozenset(
+        may move: the `Own` params (their records' `owned`) and the
+        ownership-transfer tuples (`param_takes_ownership` --
+        `std::tuple<A, B*>&&`), which an `owned` record leaves out."""
+        root = self.table.root.bindings
+        return frozenset(
             pname for pname, ptype in self.params
-            if isinstance(ptype, TpyType) and param_takes_ownership(ptype))
+            if (pname in root and root[pname].owned)
+            or (isinstance(ptype, TpyType)
+                and param_takes_ownership(ptype)))
+
+    def any_frame_slot(self) -> bool:
+        """Whether some frame field visible here is a `frame_slot<T>`: a
+        body nested in a resumable one (a frame member def) keeps the
+        frame's protocol-iterable fence while it can see one."""
+        return any(self.binding(n).frame_slot for n in self.frame_field_names)
 
     @property
     def may_hoist(self) -> bool:
@@ -2435,12 +2166,12 @@ class _LowerCtx:
         member-init (its `handed_over_params` -- the list runs before the
         body, so no local exists yet) or a comprehension element (its loop
         variable -- an outer name would be moved once per iteration)."""
-        saved = self.movable_locals
-        self.movable_locals = set(names)
+        saved = self.move_region
+        self.move_region = frozenset(names)
         try:
             yield
         finally:
-            self.movable_locals = saved
+            self.move_region = saved
 
     @contextmanager
     def shadow_scope(self, names: AbstractSet[str],
@@ -2505,39 +2236,42 @@ def _walrus_pairs(expr):
                     yield from _walrus_pairs(item)
 
 
-def _btuple_src_const(src, lc: _LowerCtx) -> bool:
-    """Const verdict for a borrow-tuple binding source, over lc verdicts: a
-    ternary is const if either arm is; a const-rooted lvalue chain or a
-    const-bound name is const; an explicitly `readonly[...]`-typed source is
-    const even without a const binding."""
-    if isinstance(src, TpyCoerce):
-        return _btuple_src_const(src.expr, lc)
-    if isinstance(src, TpyIfExpr):
-        return (_btuple_src_const(src.then_expr, lc)
-                or _btuple_src_const(src.else_expr, lc))
-    if _btuple_const_storage(src, lc):
-        return True
-    st = lc.analyzer.get_expr_type(src)
-    return isinstance(st, ReadonlyType)
+def binding_source_sites(body) -> 'Iterator[tuple[str, TpyExpr, object, bool]]':
+    """Every binding source in a body, in source order: `(target, source,
+    statement, is_walrus)` for each initialized VarDecl, each assignment to
+    a bare name and each walrus inside a statement's own expressions."""
+    for stmt in body:
+        if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
+            yield stmt.name, stmt.init, stmt, False
+        elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
+            yield stmt.target.name, stmt.value, stmt, False
+        for e in stmt.exprs():
+            for tgt, src in _walrus_pairs(e):
+                yield tgt, src, stmt, True
+        for sub in stmt.sub_bodies():
+            yield from binding_source_sites(sub)
 
 
 def _btuple_const_root(name: str, lc: _LowerCtx) -> bool:
     # `const_ref_params` | `const_indirect_locals` mirror: the inferred
     # const-borrow param verdict plus the const-classified locals (which
     # carry the readonly-method receiver).
-    return (name in lc.const_locals
+    return (lc.binding(name).const
             or _param_is_const(name, lc.func, lc.analyzer, lc.record_name))
 
 
 def _btuple_const_storage(expr, lc: _LowerCtx) -> bool:
     # `is_const_storage_source` mirror (including the
     # `is_const_union_source` lvalue-chain half).
-    return const_place(expr, lc.analyzer.get_expr_type, lambda e, stepped: (
-        isinstance(e, TpyName)
-        and (_btuple_const_root(e.name, lc)
-             or not stepped and (e.name in lc.const_storage_tuple_locals
-                                 or e.name in lc.const_borrow_tuple_locals
-                                 or e.name in lc.const_opt_borrow_tuple_locals))))
+    def const_root(e, stepped: bool) -> bool:
+        if not isinstance(e, TpyName):
+            return False
+        if _btuple_const_root(e.name, lc):
+            return True
+        b = lc.binding(e.name)
+        return not stepped and (b.const_storage_tuple or b.const_borrow_tuple
+                                or b.const_opt_borrow_tuple)
+    return const_place(expr, lc.analyzer.get_expr_type, const_root)
 
 
 @dataclass
@@ -2554,17 +2288,22 @@ class _LowerScope:
     branch_decls_ok: bool = False
     loop_depth: int = 0
 
-    def admission_pointers(self) -> set[str]:
+    def admission_pointers(self) -> NameFacts:
         """Pointer locals whose statement admission follows pointer rules:
         every pointer binding except the Optional-ptr borrow of a RECORD,
         whose bare-name reads stay bare and reach members through `->` (its
         admissions are the Optional record route's). A container pointee
         derefs at value positions like any other pointer binding
-        (`__setitem__((*xs), i, v)`), so it stays under the pointer rules."""
-        out = set()
-        for name in self.lc.pointers:
-            opt = _optional_ptr_borrow(self.declared.get(name),
-                                       self.lc.analyzer)
-            if opt is None or not _record_class_binding(opt.inner):
-                out.add(name)
-        return out
+        (`__setitem__((*xs), i, v)`), so it stays under the pointer rules.
+        Asked at the statement's entry, before its own declarations."""
+        pointers = self.lc.names_with("pointer", prior=True)
+        declared = dict(self.declared)
+        analyzer = self.lc.analyzer
+
+        def admitted(name: str) -> bool:
+            if name not in pointers:
+                return False
+            opt = _optional_ptr_borrow(declared.get(name), analyzer)
+            return opt is None or not _record_class_binding(opt.inner)
+        return NameFacts(admitted)
+

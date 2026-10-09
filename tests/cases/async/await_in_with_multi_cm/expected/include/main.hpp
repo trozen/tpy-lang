@@ -10,16 +10,25 @@
 namespace tpyapp::main {
 
 struct Tracer;
+struct Count;
+struct Cb;
+struct Items;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_value;
 struct __coro_caller;
+struct __coro_later_item_lambda;
+struct __coro_comp_hides_body_hoist;
 
 // async def value(n: int) -> int:
 __coro_value value(::tpy::BigInt n);
 // async def caller() -> int:
 __coro_caller caller();
+// async def later_item_lambda() -> int:
+__coro_later_item_lambda later_item_lambda();
+// async def comp_hides_body_hoist(rows: list[int]) -> None:
+__coro_comp_hides_body_hoist comp_hides_body_hoist(const std::vector<::tpy::BigInt>& rows);
 // def main() -> None:
 void main();
 
@@ -42,6 +51,72 @@ struct Tracer {
 
 inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
     ::tpy::print_object_default(os, "Tracer", obj);
+    return os;
+}
+
+// class Count:
+struct Count {
+    // self.v = v
+    ::tpy::BigInt v;
+
+    // def __init__(self, v: int) -> None:
+    Count() = default;
+    explicit Count(const ::tpy::BigInt& v);
+
+    // def __enter__(self) -> int:
+    ::tpy::BigInt __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Count";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Count& obj) {
+    ::tpy::print_object_default(os, "Count", obj);
+    return os;
+}
+
+// class Cb:
+struct Cb {
+    // self.f = f
+    std::function<::tpy::BigInt()> f;
+
+    // def __init__(self, f: Callable[[], int]) -> None:
+    Cb() = default;
+    explicit Cb(std::function<::tpy::BigInt()> f);
+
+    // def __enter__(self) -> int:
+    ::tpy::BigInt __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cb";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cb& obj) {
+    ::tpy::print_object_default(os, "Cb", obj);
+    return os;
+}
+
+// class Items:
+struct Items {
+    // items: list[int]
+    std::vector<::tpy::BigInt> items;
+
+    // def __init__(self, v: int) -> None:
+    Items() = default;
+    explicit Items(const ::tpy::BigInt& v);
+
+    // def __enter__(self) -> list[int]:
+    std::vector<::tpy::BigInt>& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Items";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
+    ::tpy::print_object_default(os, "Items", obj);
     return os;
 }
 
@@ -115,6 +190,82 @@ struct __coro_caller {
     }
 };
 
+// async def later_item_lambda() -> int:
+struct __coro_later_item_lambda {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::BigInt n;
+    ::tpy::BigInt result;
+    ::tpy::frame_slot<Count> __with_ctx_0;
+    ::tpy::frame_slot<Cb> __with_ctx_1;
+    std::optional<__coro_value> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_later_item_lambda()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    __coro_later_item_lambda(__coro_later_item_lambda&&) = default;
+    ~__coro_later_item_lambda() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_1).__exit__({}, &__tpy_ge, {});
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<::tpy::BigInt> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_later_item_lambda&) {
+        return os << "<coroutine later_item_lambda>";
+    }
+};
+
+// async def comp_hides_body_hoist(rows: list[int]) -> None:
+struct __coro_comp_hides_body_hoist {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    const std::vector<::tpy::BigInt>& rows;
+    ::tpy::frame_slot<::tpy::with_enter_t<Items>> xs;
+    std::vector<::tpy::BigInt>* ys = nullptr;
+    ::tpy::BigInt __await_lift_0;
+    ::tpy::frame_slot<Items> __with_ctx_0;
+    std::optional<__coro_value> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_comp_hides_body_hoist(const std::vector<::tpy::BigInt>& rows)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rows(rows) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_comp_hides_body_hoist&) {
+        return os << "<coroutine comp_hides_body_hoist>";
+    }
+};
+
 
 // def __init__(self, label: str) -> None:
 //     self.label = label
@@ -130,6 +281,51 @@ inline void Tracer::__enter__() const {
 //     print(f"exit {self.label}")
 inline void Tracer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     std::cout << std::format("exit {}", this->label) << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, v: int) -> None:
+//     self.v = v
+inline Count::Count(const ::tpy::BigInt& v) : v(v) {}
+
+// def __enter__(self) -> int:
+//     return self.v
+inline ::tpy::BigInt Count::__enter__() const {
+    return this->v;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Count::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, f: Callable[[], int]) -> None:
+//     self.f = f
+inline Cb::Cb(std::function<::tpy::BigInt()> f) : f(f) {}
+
+// def __enter__(self) -> int:
+//     return self.f() + 100
+inline ::tpy::BigInt Cb::__enter__() const {
+    return (((*this).f()) + (::tpy::BigInt(100)));
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Cb::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, v: int) -> None:
+//     self.items = [v]
+inline Items::Items(const ::tpy::BigInt& v) : items(std::vector<::tpy::BigInt>{v}) {}
+
+// def __enter__(self) -> list[int]:
+//     return self.items
+inline std::vector<::tpy::BigInt>& Items::__enter__() {
+    return this->items;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Items::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
 }
 void __tpy_init();
 } // namespace tpyapp::main

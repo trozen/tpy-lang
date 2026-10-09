@@ -84,9 +84,9 @@ class TestSeamBodiesAreValidated:
     def _record(self, monkeypatch, module, attr, real):
         seen = []
 
-        def spy(owner, body):
+        def spy(owner, body, **kw):
             seen.append((owner, body))
-            return real(owner, body)
+            return real(owner, body, **kw)
 
         monkeypatch.setattr(module, attr, spy)
         return seen
@@ -102,9 +102,9 @@ class TestSeamBodiesAreValidated:
         seen = []
         real = _validate.validate_stmts
 
-        def spy(owner, stmts, return_type=None):
+        def spy(owner, stmts, return_type=None, **kw):
             seen.append((owner, stmts))
-            return real(owner, stmts, return_type)
+            return real(owner, stmts, return_type, **kw)
 
         monkeypatch.setattr(_lower_resumable_mod, "validate_stmts", spy)
         _emit_thir(_PRE

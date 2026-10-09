@@ -370,8 +370,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "foreach.narrowed_value_opt_view",  # proven-narrowed str/bytes|None NAME:
                                     # begin/end loop over `(*b)` deref capture
     "comp.narrowed_value_opt_view",  # ... and its comprehension-source twin
-    "comp.global_shadow",           # comp var shadows a pointer-slot global:
-                                    # scoped pointer scrub for the walk
+    "comp.pointer_shadow",          # comp var hides a pointer local or
+                                    # pointer-slot global: bare in the walk
     "top_level.global_slot_proto",  # structural-protocol global: static auto
                                     # slot + addr assign / slot-reuse rebind
     "decl.own_copy_iter_slot",      # OwnIter/CopyIter decl slot: `auto`
@@ -2087,7 +2087,7 @@ THIR_FACES: frozenset[str] = frozenset({
     # THIRName.cpp -- imported_variable_cpp).
     "name.global_imported",
     # A read of a read-only-seeded POINTER-SLOT global (non-value record/
-    # container `T* g{};` -- rides the pointer-local arms via lc.pointers:
+    # container `T* g{};` -- rides the pointer-local arms (a pointer record):
     # `(*g)` value derefs, `->` receivers, the addr-coerce `&(*g)`, the
     # `T& q = (*g);` alias bind).
     "name.global_slot",
