@@ -23,7 +23,7 @@ class FakeToolchain:
 class FakeConfig:
     def __init__(self, **options) -> None:
         self.options = {"--update-snapshots": False, "--dep-mode": [], "--no-ccache": False,
-                        "--cxx": "auto", **options}
+                        "--cxx": "auto", "--clean": False, **options}
         self.option = type("Opt", (), {"update_snapshots": False})()
         self.invocation_params = pytest.Config.InvocationParams(args=(), plugins=None, dir=Path("/x"))
 
@@ -42,6 +42,8 @@ def worker(monkeypatch):
         return FakeToolchain(cxx, ccache=True)
     monkeypatch.setattr(conftest.CppCompilerConfig, "from_env", staticmethod(from_env))
     monkeypatch.setattr(conftest, "strict_warn_flags", lambda compiler: ["-Wall"])
+    # the real sweep would act on this machine's shared cache
+    monkeypatch.setattr(conftest, "_sweep_shared_cache", lambda: None)
     # pytest_configure mutates these module globals; the real ones must
     # survive for the rest of this worker's session
     monkeypatch.setattr(conftest, "DEP_MODES", {})
