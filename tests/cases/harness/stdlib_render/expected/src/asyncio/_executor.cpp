@@ -185,7 +185,42 @@ bool Executor::poll_slot(int32_t slot_id) {
     return true;
 }
 
-// def wait_for_event(self) -> bool:
+// # Polls the batch of slots runnable on entry; a slot woken meanwhile
+// # (a `sleep(0)` requeueing itself, a wake from a polled task) waits for
+// # the next pass, as in CPython's `_run_once`, so timers and I/O are
+// # collected between batches instead of being starved.
+// def drain_runnable(self) -> bool:
+//     any_polled = False
+//     # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
+//     # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
+//     # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
+//     # runnable_q O(n) pop.
+//     batch = len(self.runnable_q)
+//     i: int32 = 0
+//     while i < batch:
+//         slot_id = self.runnable_q.pop(0)
+//         if self.poll_slot(slot_id):
+//             any_polled = True
+//         i += 1
+//     return any_polled
+bool Executor::drain_runnable() {
+    bool any_polled = false;
+    int32_t batch = ::tpy::__len__(this->runnable_q);
+    int32_t i = 0;
+    while ((i < batch)) {
+        int32_t slot_id = ::tpy::list_pop_at(this->runnable_q, 0);
+        if (this->poll_slot(slot_id)) {
+            any_polled = true;
+        }
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    return any_polled;
+}
+
+// # Collects ready fds and due timers, waking their slots. `block` waits
+// # for the nearest one; without it (tasks are already runnable) only
+// # what is ready now is collected. Returns False when nothing is pending.
+// def wait_for_event(self, block: bool = True) -> bool:
 //     has_timer = len(self.timer_heap) > 0
 //     reactor = self.reactor
 //     fd_count: int32 = 0
@@ -194,19 +229,22 @@ bool Executor::poll_slot(int32_t slot_id) {
 //     if not has_timer and fd_count == 0:
 //         return False
 //     if reactor is not None and fd_count > 0:
-//         # Block in epoll_wait, bounded by the nearest timer (-1 ==
+//         # epoll_wait, bounded by the nearest timer when blocking (-1 ==
 //         # forever when only fds are pending). Ready fds' wakers are
 //         # woken inside poll(), marking their slots runnable for the
 //         # next drain.
-//         reactor.poll(self._next_timer_timeout_ms())
-//     else:
+//         timeout_ms: int32 = 0
+//         if block:
+//             timeout_ms = self._next_timer_timeout_ms()
+//         reactor.poll(timeout_ms)
+//     elif block:
 //         sleep_until_steady(self.timer_heap[0].deadline)
 //     now = monotonic()
 //     while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
 //         entry = heapq.heappop(self.timer_heap)
 //         entry.waker.wake()
 //     return True
-bool Executor::wait_for_event() {
+bool Executor::wait_for_event(bool block) {
     bool has_timer = (::tpy::__len__(this->timer_heap) > 0);
     EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
     int32_t fd_count = 0;
@@ -217,8 +255,12 @@ bool Executor::wait_for_event() {
         return false;
     }
     if (((reactor != nullptr) && (fd_count > 0))) {
-        reactor->poll(this->_next_timer_timeout_ms());
-    } else {
+        int32_t timeout_ms = 0;
+        if (block) {
+            timeout_ms = this->_next_timer_timeout_ms();
+        }
+        reactor->poll(timeout_ms);
+    } else if (block) {
         ::tpy::stdlib::time::sleep_until_steady(::tpy::__getitem__(this->timer_heap, 0).deadline);
     }
     double now = ::tpy::stdlib::time::monotonic();
@@ -258,39 +300,48 @@ void Executor::_check_shutdown_signal(int32_t main_id) {
 
 // # Returns True if a SIGINT interrupted the run (root cancelled for graceful
 // # shutdown), False on normal completion.
+// #
+// # Each pass mirrors CPython's `_run_once`: collect I/O and due timers
+// # (waiting for them only when nothing is runnable), then poll the batch
+// # runnable at that point, so a task requeued earlier runs before one
+// # whose timer or fd fired in the same pass.
 // def run_until(self, main_id: int32) -> bool:
 //     while True:
 //         if self.slot_done(main_id):
-//             return self.interrupt_count > 0
-//         if self.drain_runnable():
+//             # CPython stops the loop one pass after the root completes:
+//             # the tasks runnable at that point run once more, with no
+//             # events collected first (a timer or fd wake takes CPython
+//             # one more pass to reach its task).
+//             self.drain_runnable()
 //             self._check_shutdown_signal(main_id)
-//             continue
-//         if self.slot_done(main_id):
 //             return self.interrupt_count > 0
-//         if not self.wait_for_event():
+//         if len(self.runnable_q) > 0:
+//             self.wait_for_event(False)
+//         elif not self.wait_for_event():
 //             raise RuntimeError(
 //                 "asyncio.run: no progress possible (a coroutine "
 //                 "returned Pending with no pending timers and no "
 //                 "registered I/O)")
 //         self._check_shutdown_signal(main_id)
+//         # The non-blocking collect can fire (and so disarm) the wake fd
+//         # as well as the blocking one.
 //         self._rearm_shutdown_fd()
+//         self.drain_runnable()
 bool Executor::run_until(int32_t main_id) {
     while (true) {
         if (this->slot_done(main_id)) {
-            return (this->interrupt_count > 0);
-        }
-        if (this->drain_runnable()) {
+            this->drain_runnable();
             this->_check_shutdown_signal(main_id);
-            continue;
-        }
-        if (this->slot_done(main_id)) {
             return (this->interrupt_count > 0);
         }
-        if ((!(this->wait_for_event()))) {
+        if ((::tpy::__len__(this->runnable_q) > 0)) {
+            this->wait_for_event(false);
+        } else if ((!(this->wait_for_event()))) {
             throw ::tpy::RuntimeError("asyncio.run: no progress possible (a coroutine returned Pending with no pending timers and no registered I/O)");
         }
         this->_check_shutdown_signal(main_id);
         this->_rearm_shutdown_fd();
+        this->drain_runnable();
     }
 }
 
@@ -312,7 +363,16 @@ bool Executor::run_until(int32_t main_id) {
 //             if j != skip_id and not self.slots[j].is_done():
 //                 self.mark_runnable(j, self.slots[j].generation)
 //             j += 1
-//         if not self.drain_runnable():
+//         # Unlike a run_until pass, an attempt drains until nothing is
+//         # runnable, so a wake chain among the cancelled tasks finishes
+//         # within one attempt. `max_polls` bounds attempts, not polls: a
+//         # task that swallows the cancel and loops on `sleep(0)` keeps
+//         # one attempt going (CPython's _cancel_all_tasks hangs on it too).
+//         polled = False
+//         while len(self.runnable_q) > 0:
+//             if self.drain_runnable():
+//                 polled = True
+//         if not polled:
 //             break
 //         attempt += 1
 void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
@@ -337,7 +397,13 @@ void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
             }
             j = ::tpy::add_check<int32_t>(j, 1);
         }
-        if ((!(this->drain_runnable()))) {
+        bool polled = false;
+        while ((::tpy::__len__(this->runnable_q) > 0)) {
+            if (this->drain_runnable()) {
+                polled = true;
+            }
+        }
+        if ((!(polled))) {
             break;
         }
         attempt = ::tpy::add_check<int32_t>(attempt, 1);

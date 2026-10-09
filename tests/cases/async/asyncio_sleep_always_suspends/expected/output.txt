@@ -1,0 +1,14 @@
+bound_sleep: a
+bound_sleep: b
+sleep0_runs_spawned: zero True
+sleep0_runs_spawned: negative True
+sleep0_before_expired_timer: main
+sleep0_before_expired_timer: timer
+poll_loop: done
+staggered: a
+staggered: b
+staggered: c
+after_main: main done
+after_main: waiter woke
+after_main: waiter finally
+after_main: after run

@@ -8500,7 +8500,14 @@ Send/Sync rules for built-in types:
   `SIGINT` / `SIGTERM` / `SIGKILL` are exposed by a minimal `signal` stdlib
   module.)
   `asyncio.sleep(s)` is a real
-  wall-clock sleep; `asyncio.create_task(coro)` registers the task with
+  wall-clock sleep that, as in CPython, starts its delay when first
+  awaited (not when `sleep()` is called) and always suspends at least
+  once: `sleep(0)` (or a negative delay) yields to the other runnable
+  tasks, requeueing the caller behind them. The run loop works in
+  CPython's passes -- collect ready I/O and due timers, then poll the
+  tasks runnable at that point -- so sleepers wake in deadline order and
+  a `while not done: await asyncio.sleep(0)` loop does not starve
+  timers; `asyncio.create_task(coro)` registers the task with
   the executor for concurrent scheduling and returns an `Own[Task[T]]`
   handle (T inferred from the async def's return type) that shares state
   with the executor -- the caller binds it to a `Task[T]` local via the
@@ -8629,8 +8636,9 @@ Send/Sync rules for built-in types:
 - **Working (v2 I/O reactor M1)**: the executor gains a second wake
   source -- an epoll `Reactor` -- alongside the timer heap. `EpollReactor`
   owns an epoll fd + a single-waiter `fd -> Waker` registry (one-shot
-  arming); `Executor.wait_for_event` blocks in `epoll_wait` bounded by the
-  nearest timer deadline (forever when only fds are pending), so a coroutine
+  arming); when no task is runnable, `Executor.wait_for_event` blocks in
+  `epoll_wait` bounded by the nearest timer deadline (forever when only fds
+  are pending), and polls with a zero timeout otherwise, so a coroutine
   can wait on fd readiness without busy-looping. Low-level socket surface:
   `asyncio.get_running_loop()` returns an `EventLoop`; `loop.sock_recv(sock,
   n)` / `loop.sock_sendall(sock, data)` / `loop.sock_accept(sock)` /
@@ -8813,8 +8821,13 @@ Send/Sync rules for built-in types:
   coroutine against a steady-clock deadline. Returns the coroutine's
   value on success; on deadline expiry cancels the inner, pumps any
   `finally`-with-await cleanup, then raises `TimeoutError` (a
-  built-in re-export of `tpy::TimeoutError`). Non-positive timeout
-  triggers expiry on the first poll (matches CPython). Outer-cancel
+  built-in re-export of `tpy::TimeoutError`). The deadline starts when
+  the `wait_for` is first awaited, and a positive timeout never expires
+  before the inner has run to its first suspension (as CPython's
+  `call_at`-armed timeout). A non-positive timeout triggers expiry on
+  the first poll; unlike CPython, which never starts the inner, the
+  inner body still runs up to its first `await` (and a synchronous
+  inner returns its value) -- `BUGS.md#coroutine-cancelled-before-first-poll-runs-body`. Outer-cancel
   of a `wait_for` task propagates through to the inner coroutine
   (the resume-case cancel-check calls `cancel()` on the in-flight
   sub-coro before polling, so the inner observes `CancelledError`
