@@ -30,10 +30,11 @@ struct SpanIter {
     auto begin() const { return span_.begin() + static_cast<std::ptrdiff_t>(index_); }
     auto end() const { return span_.end(); }
 
-    // Iterator protocol
-    std::expected<std::remove_const_t<T>, StopIteration> __next__() {
+    // Iterator protocol: the step lends the element (`val_or_ref`, the slot
+    // form a borrowing generator yields), so a loop variable aliases it.
+    std::expected<val_or_ref<T>, StopIteration> __next__() {
         if (index_ >= span_.size()) return tpy::make_unexpected(StopIteration{});
-        return span_[index_++];
+        return val_or_ref<T>(span_[index_++]);
     }
 
     SpanIter& __iter__() { return *this; }
