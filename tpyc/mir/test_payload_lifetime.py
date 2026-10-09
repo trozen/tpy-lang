@@ -46,11 +46,11 @@ def wrapper_function(optional: bool, *blocks: MIRBlock) -> MIRFunction:
 def write(optional: bool, tag: int | MIRSlotId, *, target: MIRSlotId = CURRENT,
           fact: MIRPayloadWrite | None = ASSIGN) -> MIRAssign:
     if isinstance(tag, MIRSlotId):
-        value = MIROptionalCopy(tag) if optional else MIRUnionCopy(tag)
+        value = MIROptionalCopy(MIRPlace(tag)) if optional else MIRUnionCopy(MIRPlace(tag))
     elif optional:
-        value = MIROptionalConstruct(VALUE if tag else None)
+        value = MIROptionalConstruct(MIRPlace(VALUE) if tag else None)
     else:
-        value = MIRUnionConstruct(tag, None if tag == 0 else FLAG if tag == 1 else VALUE)
+        value = MIRUnionConstruct(tag, None if tag == 0 else MIRPlace(FLAG) if tag == 1 else MIRPlace(VALUE))
     return MIRAssign(MIRPlace(target), value, storage_write=fact)
 
 
@@ -83,8 +83,8 @@ def test_unknown_tag_is_full_domain_but_self_copy_is_correlated(optional: bool) 
     expected = {payload(True)} if optional else {payload(False, 1), payload(False, 2)}
     assert result.ends == {MIRPoint(ENTRY, 2): frozenset(expected)}
     presence = _analyze_presence(fn)
-    assert dict(presence.points[MIRPoint(ENTRY, 2)]).get(CURRENT) is None
-    assert presence.domains[CURRENT] == frozenset({0, 1} if optional else {0, 1, 2})
+    assert dict(presence.points[MIRPoint(ENTRY, 2)]).get(MIRPlace(CURRENT)) is None
+    assert presence.domains[MIRPlace(CURRENT)] == frozenset({0, 1} if optional else {0, 1, 2})
 
 
 @pytest.mark.parametrize("optional", [False, True])
@@ -101,7 +101,7 @@ def test_copy_has_independent_payload_storage(optional: bool) -> None:
 
 @pytest.mark.parametrize("optional", [False, True])
 def test_branch_selection_limits_ends_and_omits_infeasible_points(optional: bool) -> None:
-    test = MIRIsPresent(CURRENT) if optional else MIRIsAlternative(CURRENT, (2,))
+    test = MIRIsPresent(MIRPlace(CURRENT)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (2,))
     fn = wrapper_function(optional,
         MIRBlock(ENTRY, (write(optional, PARAM, fact=INIT), MIRAssign(MIRPlace(GUARD), test)),
                  MIRBranch(GUARD, YES, NO)),

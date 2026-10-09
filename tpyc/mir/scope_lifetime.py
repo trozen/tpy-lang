@@ -12,10 +12,10 @@ from .dump import _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRBlockId, MIREdge, MIRFunction,
-    MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
+    MIRNotCovered, MIROptionalLayout, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
     MIRUnionPayload, MIRValueKind, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRTupleInitialization, statement_target,
+    MIRTupleInitialization, place_layout, statement_target,
 )
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
 from .region_flow import MIRRegionFlow, outgoing_edges
@@ -57,6 +57,7 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
     for slot in roots.values():
         if slot.storage_duration is None:
             return MIRNotCovered(fn.id, "scope ends", f"missing storage placement for %{slot.id.index}")
+    slots = {s.id: s for s in fn.slots}
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
     initialized: dict[MIRBlockId, set[MIRSlotId]] = {}
@@ -115,13 +116,15 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
                     continue
                 payloads: set[MIRPlace] = set()
                 if scalar_wrapper(slot):
-                    selected = facts.get(sid, presence.domains[sid])
-                    if slot.value_kind is MIRValueKind.OPTIONAL:
+                    wrapper = MIRPlace(sid)
+                    selected = facts.get(wrapper, presence.domains[wrapper])
+                    layout = place_layout(wrapper, slots)
+                    if isinstance(layout, MIROptionalLayout):
                         if 1 in selected:
-                            payloads.add(MIRPlace(sid, (MIROptionalPayload(),)))
+                            payloads.add(MIRPlace(sid, (*wrapper.projections, MIROptionalPayload())))
                     else:
-                        payloads.update(MIRPlace(sid, (MIRUnionPayload(i),)) for i in selected
-                                        if slot.union_layout.elements[i] is not None)
+                        payloads.update(MIRPlace(sid, (*wrapper.projections, MIRUnionPayload(i))) for i in selected
+                                        if layout.elements[i] is not None)
                 if slot.record_storage is MIRRecordStorageKind.OPTIONAL:
                     events.append(MIRScopeEnd(rid, MIRPlace(sid), kind=MIRScopeEndKind.RECORD_WRAPPER))
                     if MIREngagement.ENGAGED not in dict(presence.edge_engagement[edge]).get(sid, frozenset()):

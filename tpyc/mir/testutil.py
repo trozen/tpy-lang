@@ -16,7 +16,7 @@ from .nodes import (
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements,
+    MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements, place_layout,
 )
 from .region_flow import MIRRegionFlow
 from .coverage import container_view_holder, owned_container, owned_tuple
@@ -257,7 +257,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     backing: Record = {}
                     for i, src in enumerate(rhs.elements):
                         if isinstance(src, MIRConstruct):
-                            layout = records[target.tuple_layout.elements[i].type]
+                            layout = records[place_layout(stmt.target, slots).elements[i].type]
                             backing[MIRTupleIndex(i)] = {f.id: values[s] for f, s in zip(layout.fields, src.fields)}
                             elements.append(Reference(next_identity, (MIRTupleIndex(i),)))
                         else:
@@ -271,23 +271,23 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     assert isinstance(source, TupleValue)
                     value = TupleValue(source.elements)
                 case MIROptionalConstruct():
-                    value = OptionalValue(values[rhs.source] if rhs.source is not None else None)
+                    value = OptionalValue(read(rhs.source) if rhs.source is not None else None)
                 case MIROptionalCopy():
-                    source = values[rhs.source]
+                    source = read(rhs.source)
                     assert isinstance(source, OptionalValue)
                     value = OptionalValue(source.payload)
                 case MIRIsPresent():
-                    source = values[rhs.source]
+                    source = read(rhs.source)
                     assert isinstance(source, OptionalValue)
                     value = source.payload is not None
                 case MIRUnionConstruct():
-                    value = UnionValue(rhs.alternative, values[rhs.source] if rhs.source is not None else None)
+                    value = UnionValue(rhs.alternative, read(rhs.source) if rhs.source is not None else None)
                 case MIRUnionCopy():
-                    source = values[rhs.source]
+                    source = read(rhs.source)
                     assert isinstance(source, UnionValue)
                     value = UnionValue(source.alternative, source.payload)
                 case MIRIsAlternative():
-                    source = values[rhs.source]
+                    source = read(rhs.source)
                     assert isinstance(source, UnionValue)
                     value = source.alternative in rhs.alternatives
                 case MIRUnionExtract():
@@ -297,7 +297,8 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     value = ContainerValue([values[src] for src in rhs.fields])
                 case MIRConstruct():
                     target = slots[stmt.target.root]
-                    typ = (target.optional_layout.type if stmt.target.projections == (MIROptionalPayload(), MIRDeref())
+                    typ = (place_layout(MIRPlace(stmt.target.root), slots).type
+                           if stmt.target.projections == (MIROptionalPayload(), MIRDeref())
                            else target.container_layout.subscript.type
                            if stmt.target.projections == (MIRContainerElements(),) else target.type)
                     layout = records[typ]

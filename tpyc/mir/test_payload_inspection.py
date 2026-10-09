@@ -148,7 +148,7 @@ def test_branch_and_loop_conflicts_are_possible_static_place_reports() -> None:
     fn = alias_function(EXTRACT, READ)
     fn = replace(fn, blocks=(
         MIRBlock(ENTRY, (write(False, PARAM, fact=INIT),
-                        MIRAssign(MIRPlace(GUARD), MIRIsAlternative(CURRENT, (2,)))), MIRBranch(GUARD, YES, NO)),
+                        MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (2,)))), MIRBranch(GUARD, YES, NO)),
         MIRBlock(YES, (EXTRACT,), MIRGoto(JOIN)),
         MIRBlock(JOIN, (write(False, 1), write(False, 2), READ), MIRBranch(FLAG, JOIN, NO)),
         MIRBlock(NO, (), MIRReturn(VALUE))))

@@ -63,13 +63,13 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
         case "optional":
             holder = MIRSlot(SAVED, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
                              optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
-            wrap, copy = MIROptionalConstruct(TEMP), MIROptionalCopy(SAVED)
+            wrap, copy = MIROptionalConstruct(MIRPlace(TEMP)), MIROptionalCopy(MIRPlace(SAVED))
             path = (MIROptionalPayload(),)
         case "union":
             other = NominalType("Other", _module_qname="retention.Other")
             holder = MIRSlot(SAVED, UnionType((CELL, other)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION,
                              union_layout=MIRUnionLayout((member, MIRTupleElement(other, MIRValueKind.BORROWED))))
-            wrap, copy = MIRUnionConstruct(0, TEMP), MIRUnionCopy(SAVED)
+            wrap, copy = MIRUnionConstruct(0, MIRPlace(TEMP)), MIRUnionCopy(MIRPlace(SAVED))
             path = (MIRUnionPayload(0),)
         case _:
             raise AssertionError(shape)
@@ -84,8 +84,8 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
     initial = MIRAssign(MIRPlace(INITIAL), MIRConstruct((N,)),
                         storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
     borrow = MIRAssign(MIRPlace(TEMP), MIRBorrow(MIRPlace(INITIAL)))
-    set_current = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(TEMP) if optional_owner else MIRAlias(TEMP))
-    capture = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(CURRENT) if optional_owner else wrap)
+    set_current = MIRAssign(MIRPlace(CURRENT), MIROptionalConstruct(MIRPlace(TEMP)) if optional_owner else MIRAlias(TEMP))
+    capture = MIRAssign(MIRPlace(SAVED), MIROptionalCopy(MIRPlace(CURRENT)) if optional_owner else wrap)
     copy_holder = MIRAssign(MIRPlace(COPIED), copy)
     observed = MIRPlace(COPIED if copied else SAVED, path)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(observed.root, (*path, MIRDeref(), FIELD))))
@@ -176,7 +176,7 @@ def test_optional_in_place_exempts_only_its_own_holder(live_alias: bool) -> None
         read = replace(read, value=MIRRead(MIRPlace(CURRENT, (*path, FIELD))))
     fn = replace(fn, slots=tuple(optional if s.id == CURRENT else s for s in fn.slots) + (
         MIRSlot(FLAG, BOOL, MIRSlotKind.LOCAL),), blocks=(
-        MIRBlock(A, (MIRAssign(MIRPlace(FLAG), MIRIsPresent(CURRENT)),), MIRBranch(FLAG, LOOP, END)),
+        MIRBlock(A, (MIRAssign(MIRPlace(FLAG), MIRIsPresent(MIRPlace(CURRENT))),), MIRBranch(FLAG, LOOP, END)),
         MIRBlock(LOOP, (alias, write, read), MIRReturn(OUT)),
         MIRBlock(END, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)),
     ))
@@ -213,7 +213,7 @@ def test_none_clear_removes_only_the_selected_optional_holder(clear_copy: bool) 
     statements = list(block.statements)
     if clear_copy:
         read_index = next(i for i, s in enumerate(statements) if s.target.root == OUT)
-        statements[read_index] = MIRAssign(MIRPlace(OUT), MIRIsPresent(COPIED))
+        statements[read_index] = MIRAssign(MIRPlace(OUT), MIRIsPresent(MIRPlace(COPIED)))
         fn = replace(fn, return_type=BOOL, slots=tuple(replace(s, type=BOOL) if s.id == OUT else s for s in fn.slots))
     clear = MIRAssign(MIRPlace(COPIED if clear_copy else SAVED), MIROptionalConstruct())
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(clear, *statements)), *fn.blocks[2:]))
@@ -370,9 +370,11 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
                 case MIRTupleConstruct(elements=elements):
                     value = tuple(values[s] for s in elements)
                 case MIROptionalConstruct(source=source) | MIRUnionConstruct(alternative=0, source=source):
-                    value = (values[source],) if source is not None else ()
-                case MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRUnionCopy(source=source):
+                    value = (values[source.root],) if source is not None else ()
+                case MIRTupleCopy(source=source):
                     value = tuple(values[source])
+                case MIROptionalCopy(source=source) | MIRUnionCopy(source=source):
+                    value = tuple(values[source.root])
                 case MIRRead(source=source):
                     value = values[source.root]
                     for projection in source.projections:
@@ -412,10 +414,11 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
                     uses = fields
                 case MIRRead(source=source) | MIRBorrow(source=source):
                     uses = (source.root,)
-                case (MIRAlias(source=source) | MIRTupleCopy(source=source)
-                      | MIROptionalCopy(source=source) | MIRUnionCopy(source=source)
-                      | MIROptionalConstruct(source=source) | MIRUnionConstruct(source=source)):
+                case MIRAlias(source=source) | MIRTupleCopy(source=source):
                     uses = (source,)
+                case (MIROptionalCopy(source=source) | MIRUnionCopy(source=source)
+                      | MIROptionalConstruct(source=source) | MIRUnionConstruct(source=source)):
+                    uses = () if source is None else (source.root,)
                 case MIRConstant():
                     uses = ()
                 case _:

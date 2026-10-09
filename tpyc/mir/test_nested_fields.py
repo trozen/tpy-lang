@@ -266,13 +266,13 @@ def test_captured_field_survives_wrapper_replacement(artifacts: Artifacts, union
                           value_kind=MIRValueKind.UNION,
                           union_layout=MIRUnionLayout((None, MIRTupleElement(
                               param.type, MIRValueKind.BORROWED))))
-        construct, clear = MIRUnionConstruct(1, param.id), MIRUnionConstruct(0)
+        construct, clear = MIRUnionConstruct(1, MIRPlace(param.id)), MIRUnionConstruct(0)
         payload = MIRUnionPayload(1)
     else:
         wrapper = MIRSlot(wrapper_id, OptionalType(param.type), MIRSlotKind.LOCAL,
                           value_kind=MIRValueKind.OPTIONAL,
                           optional_layout=MIROptionalLayout(param.type, MIRValueKind.BORROWED))
-        construct, clear = MIROptionalConstruct(param.id), MIROptionalConstruct()
+        construct, clear = MIROptionalConstruct(MIRPlace(param.id)), MIROptionalConstruct()
         payload = MIROptionalPayload()
     block = fn.blocks[0]
     borrow = block.statements[0]

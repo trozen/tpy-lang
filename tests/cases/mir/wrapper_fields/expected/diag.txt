@@ -1,0 +1,13 @@
+main.py:23: warning: copies P | None into field; use copy() to make this explicit
+main.py:34: warning: Mutation of 'self.p' while borrowed (field assignment may invalidate references)
+main.py:61: warning: copies P into field (tuple element 1); use copy() to make this explicit
+main.py:69: warning: copies P | None into field; use copy() to make this explicit
+main.py:135: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:185: warning: copies P | None into field; use copy() to make this explicit
+main.py:190: warning: copies P | None into field; use copy() to make this explicit
+main.py:196: warning: copies P | None into field; use copy() to make this explicit
+main.py:197: warning: copies P | None into field; use copy() to make this explicit
+main.py:203: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:209: warning: copies P into field; use copy() to make this explicit
+main.py:210: warning: Potential None access on optional value; generated code adds runtime null check. Use 'if x is not None' or 'assert x is not None' to prove safety and remove this warning.
+main.py:221: warning: copies P | None into field; use copy() to make this explicit

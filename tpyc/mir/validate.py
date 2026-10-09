@@ -10,7 +10,7 @@ from ..thir.nodes import COMPARISON_OPS, Form, THIRBorrowedRecord, THIRStubCalle
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
     binds_cursor, container_view, declared_members, holds_loan, leaf_constant, modeled_field, native_container_type,
-    owned_constant, owned_leaf,
+    optional_record_field, owned_constant, owned_leaf,
     owned_value_type, primitive_leaf, readonly_elements, record_type, storage_leaf, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of, zero_value_of
@@ -20,6 +20,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type, view_family_of,
 )
 from .nodes import (
+    MIRValidationError,
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref,
     MIRField, MIRFieldId, MIRGoto, MIRFunction, MIRNot, MIRPlace, MIRRead,
     MIRReturn, MIRRvalue, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind, MIRStorageDuration,
@@ -33,7 +34,7 @@ from .nodes import (
     MIRContainerLayout, MIRContainerElements, MIRContainerStructure, MIRRecordLayout,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIROp, MIRPrint,
-    statement_target,
+    place_layout, statement_target,
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import (
@@ -47,10 +48,6 @@ from .call_contract import (
     transfer_ends,
 )
 from .definitions import layout_copy_may_raise, with_access
-
-
-class MIRValidationError(ValueError):
-    """A producer supplied malformed MIR, rather than unsupported source."""
 
 
 def _expected_member(arg: TpyType, leaves_only: bool, readonly: bool,
@@ -202,18 +199,19 @@ def operands(value: MIRRvalue) -> tuple[MIRSlotId, ...]:
         case MIRCall(arguments=arguments):
             return arguments
         case (MIRRead(source=source) | MIRCopy(source=source)
-              | MIRUnionExtract(source=source) | MIRBorrow(source=source)):
+              | MIRUnionExtract(source=source) | MIRBorrow(source=source)
+              | MIROptionalCopy(source=source) | MIRIsPresent(source=source)
+              | MIRUnionCopy(source=source) | MIRIsAlternative(source=source)):
             _require(isinstance(source, MIRPlace), "invalid read place")
             return (source.root,)
         case (MIRAlias(source=source) | MIRMove(source=source)
               | MIRIteratorInit(source=source) | MIRIteratorHasNext(source=source)
               | MIRIteratorRead(source=source) | MIRIteratorAdvance(source=source)
-              | MIRRangeAdvance(source=source)
-              | MIRTupleCopy(source=source) | MIROptionalCopy(source=source) | MIRIsPresent(source=source)
-              | MIRUnionCopy(source=source) | MIRIsAlternative(source=source)):
+              | MIRRangeAdvance(source=source) | MIRTupleCopy(source=source)):
             return (source,)
         case MIROptionalConstruct(source=source) | MIRUnionConstruct(source=source):
-            return () if source is None else (source,)
+            _require(source is None or isinstance(source, MIRPlace), "invalid read place")
+            return () if source is None else (source.root,)
         case MIRConstruct(fields=fields):
             return fields
         case MIRTupleConstruct(elements=elements):
@@ -273,7 +271,7 @@ def statement_may_raise(stmt: MIRStatement, slots: 'Mapping[MIRSlotId, MIRSlot]'
             return True
         case MIRAssign(value=MIROp(may_raise=may_raise) | MIRCopy(may_raise=may_raise)
                        | MIRConstruct(may_raise=may_raise) | MIRRead(may_raise=may_raise)
-                       | MIRBorrow(may_raise=may_raise)):
+                       | MIRBorrow(may_raise=may_raise) | MIROptionalCopy(may_raise=may_raise)):
             return may_raise
         case MIRAssign(value=MIRTupleConstruct(elements=elements)):
             return any(isinstance(e, MIRConstruct) and e.may_raise for e in elements)
@@ -418,6 +416,10 @@ def _validate_structure(fn: MIRFunction) -> None:
             bare = unwrap_readonly(member.type)
             _require(not record_type(bare) or bare in records and not records[bare].opaque,
                      "record field needs its layout")
+            # An Optional record field stores its payload record inline.
+            payload = optional_record_field(member.type)
+            _require(payload is None or payload in records and not records[payload].opaque,
+                     "optional record field needs its payload layout")
             seen.add(member.id)
             # A field is one storage of one type in every layout carrying it
             # (its declaring owner's and each descendant's).
@@ -630,7 +632,16 @@ def _validate_structure(fn: MIRFunction) -> None:
             source = slots.get(src)
             if source is None:
                 return False
-            if record_type(bare := unwrap_readonly(member.type)):
+            if (payload := optional_record_field(member.type)) is not None:
+                # The payload a borrowed Optional holder lends, if engaged, is
+                # put into the member's inline payload storage (the definition
+                # decided copy or move; an empty one copies nothing).
+                layout = place_layout(MIRPlace(src), slots)
+                if not (isinstance(layout, MIROptionalLayout) and layout.kind is MIRValueKind.BORROWED
+                        and layout.type == payload and records.get(payload) is not None):
+                    return False
+                raises = raises or record_copy_may_raise(payload)
+            elif record_type(bare := unwrap_readonly(member.type)):
                 layout = records.get(bare)
                 if layout is None or layout.opaque or source.type != bare:
                     return False
@@ -701,6 +712,32 @@ def _validate_structure(fn: MIRFunction) -> None:
                 case _:
                     raise MIRValidationError("invalid receiver initializer")
             _require(init_member.may_raise is True, "receiver initializer exit fact mismatch")
+            return
+        if (payload := optional_record_field(member.type)) is not None:
+            # Empty, copied from the payload an Optional record parameter
+            # lends, or engaged with a payload its own constructor builds.
+            layout = records.get(payload)
+            _require(layout is not None and not layout.opaque, "optional record field needs its payload layout")
+            match value:
+                case MIROptionalConstruct(source=None):
+                    _require(mode is MIRMemberInitMode.SCALAR, "invalid receiver initializer mode")
+                    raises = False
+                case MIRSlotId():
+                    source = slots.get(value)
+                    source_layout = place_layout(MIRPlace(value), slots) if source is not None else None
+                    _require(source is not None and source.kind is MIRSlotKind.PARAMETER
+                             and mode is MIRMemberInitMode.COPY and layout.copyable
+                             and isinstance(source_layout, MIROptionalLayout)
+                             and source_layout.kind is MIRValueKind.BORROWED and source_layout.type == payload,
+                             "invalid receiver initializer parameter")
+                    raises = record_copy_may_raise(payload)
+                case MIRMemberInits():
+                    _require(mode is MIRMemberInitMode.MOVE and layout.movable, "invalid receiver initializer construct")
+                    validate_member_inits(value.fields, layout.fields)
+                    raises = any(nested.may_raise for nested in value.fields)
+                case _:
+                    raise MIRValidationError("invalid receiver initializer")
+            _require(init_member.may_raise is raises, "receiver initializer exit fact mismatch")
             return
         if record_type(bare := unwrap_readonly(member.type)):
             # Copied through a record parameter lent readonly, moved out of
@@ -813,8 +850,9 @@ def _validate_structure(fn: MIRFunction) -> None:
         whole_container = False
         # A view member: the loan stored in the record, read whole.
         at_view_member = False
-        for projection in place.projections:
+        for depth, projection in enumerate(place.projections):
             _require(not at_view_member, "projection through a view member")
+            layout = place_layout(MIRPlace(place.root, place.projections[:depth]), slots)
             if not isinstance(projection, MIRContainerElements):
                 container = None
             match projection:
@@ -831,26 +869,30 @@ def _validate_structure(fn: MIRFunction) -> None:
                     container = None
                     whole_container = False
                 case MIRUnionPayload():
-                    _require(kind is MIRValueKind.UNION and slot.union_layout is not None,
+                    _require(kind is MIRValueKind.UNION and isinstance(layout, MIRUnionLayout),
                              "union projection needs union payload")
                     _require(type(projection.alternative) is int
-                             and 0 <= projection.alternative < len(slot.union_layout.elements), "invalid union alternative")
-                    member = slot.union_layout.elements[projection.alternative]
+                             and 0 <= projection.alternative < len(layout.elements), "invalid union alternative")
+                    member = layout.elements[projection.alternative]
                     _require(member is not None, "absent union alternative has no payload")
                     typ, kind, readonly = member.type, member.kind, member.readonly
                     optional_member = True
                 case MIROptionalPayload():
-                    _require(kind is MIRValueKind.OPTIONAL and slot.optional_layout is not None,
+                    _require(kind is MIRValueKind.OPTIONAL and isinstance(layout, MIROptionalLayout),
                              "optional projection needs optional payload")
-                    member = slot.optional_layout
-                    typ, kind, readonly = member.type, member.kind, member.readonly
+                    member = layout
+                    # An inline payload is only as writable as the path to it.
+                    owned_payload = member.kind is MIRValueKind.OWNED
+                    typ, kind = member.type, member.kind
+                    readonly = (readonly or member.readonly) if owned_payload else member.readonly
+                    _require(not owned_payload or typ in records, "optional payload needs its layout")
                     optional_member = True
                 case MIRTupleIndex():
-                    _require(kind is MIRValueKind.TUPLE and slot.tuple_layout is not None,
+                    _require(kind is MIRValueKind.TUPLE and isinstance(layout, MIRTupleLayout),
                              "tuple projection needs tuple payload")
                     _require(type(projection.index) is int
-                             and 0 <= projection.index < len(slot.tuple_layout.elements), "tuple index out of range")
-                    member = slot.tuple_layout.elements[projection.index]
+                             and 0 <= projection.index < len(layout.elements), "tuple index out of range")
+                    member = layout.elements[projection.index]
                     typ, kind, readonly = member.type, member.kind, member.readonly
                     tuple_member = True
                 case MIRDeref():
@@ -894,7 +936,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                     # a loan, as a borrowed holder does.
                     at_view_member = view_leaf(projection.type)
                     kind = (MIRValueKind.OWNED if inline_record or leaf_storage
-                            else MIRValueKind.BORROWED if at_view_member else MIRValueKind.SCALAR)
+                            else MIRValueKind.BORROWED if at_view_member
+                            else MIRValueKind.OPTIONAL if optional_record_field(projection.type) is not None
+                            else MIRValueKind.SCALAR)
                     readonly = readonly or isinstance(projection.type, ReadonlyType)
                 case _:
                     raise MIRValidationError("unsupported place projections")
@@ -911,6 +955,13 @@ def _validate_structure(fn: MIRFunction) -> None:
 
     def place_type(place: MIRPlace, *, write: bool = False) -> TpyType:
         return place_info(place, write=write)[0]
+
+    def payload_operand(place: MIRPlace) -> MIRTupleElement:
+        """The payload a wrapper construction stores: a holder's whole value."""
+        _require(isinstance(place, MIRPlace) and not place.projections, "wrapper payload operand must be a holder")
+        slot_type(place.root)
+        slot = slots[place.root]
+        return MIRTupleElement(slot.type, slot.value_kind, slot.readonly)
 
     for slot in fn.slots:
         if slot.value_kind is MIRValueKind.PAYLOAD_ALIAS:
@@ -1158,6 +1209,42 @@ def _validate_structure(fn: MIRFunction) -> None:
                      "global value needs explicit read")
         validate_record_value(stmt.value, typ, stmt.target)
 
+    def validate_optional_field_write(stmt: MIRStatement) -> None:
+        """`h.p = v` on an Optional record field: the whole field replaced
+        in place under the record a holder reaches, which keeps its
+        identity. The value empties it, moves a record built in temporary
+        storage into its payload, or copies another Optional's payload."""
+        _require(isinstance(stmt, MIRAssign), "optional field write needs a replacement fact")
+        fact = stmt.storage_write
+        _require(isinstance(fact, MIRRecordWrite) and fact.mode is MIRRecordWriteMode.IN_PLACE
+                 and fact.rebind_owner is None, "optional field write needs a replacement fact")
+        _, kind, readonly = place_info(stmt.target, write=True)
+        _require(kind is MIRValueKind.OPTIONAL and not readonly, "store through readonly storage")
+        payload = optional_record_field(stmt.target.projections[-1].type)
+        layout = records.get(payload)
+        _require(layout is not None and not layout.opaque, "optional record field needs its payload layout")
+        for operand in operands(stmt.value):
+            _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
+                     "global value needs explicit read")
+        match stmt.value:
+            case MIROptionalConstruct(source=None):
+                pass
+            case MIROptionalConstruct(source=source):
+                operand = payload_operand(source)
+                _require(operand.type == payload and operand.kind is MIRValueKind.OWNED and not operand.readonly
+                         and slots[source.root].kind is MIRSlotKind.TEMPORARY and layout.movable,
+                         "optional field payload needs a moved temporary")
+            case MIROptionalCopy(source=source):
+                place_type(source)
+                source_layout = place_layout(source, slots)
+                _require(isinstance(source_layout, MIROptionalLayout) and source_layout.type == payload
+                         and source_layout.kind in (MIRValueKind.OWNED, MIRValueKind.BORROWED)
+                         and layout.copyable, "optional field copy source mismatch")
+                _require(stmt.value.may_raise is (record_copy_may_raise(payload) or reaches_element(source)),
+                         "optional field copy exit fact mismatch")
+            case _:
+                raise MIRValidationError("optional field write needs an optional construction or copy")
+
     def validate_view_member_write(stmt: MIRAssign, typ: TpyType) -> None:
         """`t.s = v`: a view member rebound to the loan a view holder holds,
         under a record a mutable path reaches. It replaces no storage, so it
@@ -1264,8 +1351,9 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and scalar_wrapper(target), "physical initialization needs local scalar wrapper")
                         _require(type(stmt.alternative) is int and stmt.alternative == 0
                                  and isinstance(stmt.value, MIRConstant), "invalid wrapper default")
-                        default_type = (None if target.value_kind is MIRValueKind.OPTIONAL
-                                        or target.union_layout.elements[0] is None else target.union_layout.elements[0].type)
+                        layout = place_layout(stmt.target, slots)
+                        default_type = (None if not isinstance(layout, MIRUnionLayout)
+                                        or layout.elements[0] is None else layout.elements[0].type)
                         expected = None if default_type is None else zero_value_of(default_type)
                         _require((default_type is None or expected is not None)
                                  and type(stmt.value.value) is type(expected) and stmt.value.value == expected,
@@ -1295,6 +1383,10 @@ def _validate_structure(fn: MIRFunction) -> None:
                 continue
             if stmt.target.projections and owned_leaf_place_type(stmt.target, slots) is not None:
                 validate_owned_field_write(stmt, target_type)
+                continue
+            if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
+                    and optional_record_field(member.type) is not None):
+                validate_optional_field_write(stmt)
                 continue
             if (stmt.target.projections and isinstance(member := stmt.target.projections[-1], MIRField)
                     and record_type(unwrap_readonly(member.type))):
@@ -1413,29 +1505,31 @@ def _validate_structure(fn: MIRFunction) -> None:
                 case MIRUnionConstruct() | MIRUnionCopy():
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.UNION
                              and target.kind is not MIRSlotKind.PARAMETER, "union operation needs local destination")
+                    target_layout = place_layout(stmt.target, slots)
                     if isinstance(value, MIRUnionCopy):
-                        source = slots[value.source]
-                        _require(source.value_kind is MIRValueKind.UNION and source.type == target.type,
+                        source_type = place_type(value.source)
+                        source_layout = place_layout(value.source, slots)
+                        _require(isinstance(source_layout, MIRUnionLayout) and source_type == target.type,
                                  "union copy layout mismatch")
                         _require(all(a is b if a is None or b is None else compatible_element(a, b)
-                                     for a, b in zip(source.union_layout.elements, target.union_layout.elements)),
+                                     for a, b in zip(source_layout.elements, target_layout.elements)),
                                  "union copy increases access")
                     else:
                         _require(type(value.alternative) is int
-                                 and 0 <= value.alternative < len(target.union_layout.elements), "invalid union construction alternative")
-                        member = target.union_layout.elements[value.alternative]
+                                 and 0 <= value.alternative < len(target_layout.elements), "invalid union construction alternative")
+                        member = target_layout.elements[value.alternative]
                         _require((member is None) == (value.source is None), "union construction payload mismatch")
                         if member is not None:
-                            source = slots[value.source]
-                            _require(compatible_element(MIRTupleElement(source.type, source.value_kind, source.readonly), member),
+                            _require(compatible_element(payload_operand(value.source), member),
                                      "union construction type or access mismatch")
                 case MIRIsAlternative():
-                    source = slots[value.source]
+                    place_type(value.source)
+                    source_layout = place_layout(value.source, slots)
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.SCALAR
-                             and target_type == BOOL and source.value_kind is MIRValueKind.UNION,
+                             and target_type == BOOL and isinstance(source_layout, MIRUnionLayout),
                              "union test type mismatch")
                     _require(bool(value.alternatives) and len(set(value.alternatives)) == len(value.alternatives)
-                             and all(type(i) is int and 0 <= i < len(source.union_layout.elements)
+                             and all(type(i) is int and 0 <= i < len(source_layout.elements)
                                      for i in value.alternatives), "invalid tested union alternatives")
                 case MIRUnionExtract():
                     source = value.source
@@ -1443,7 +1537,8 @@ def _validate_structure(fn: MIRFunction) -> None:
                              and isinstance(source.projections[0], MIRUnionPayload)
                              and target.kind is not MIRSlotKind.PARAMETER, "unsupported union extraction")
                     _require(place_type(source) == target_type, "union extraction type mismatch")
-                    member = slots[source.root].union_layout.elements[source.projections[0].alternative]
+                    wrapper = place_layout(MIRPlace(source.root, source.projections[:-1]), slots)
+                    member = wrapper.elements[source.projections[-1].alternative]
                     if member.kind is MIRValueKind.SCALAR:
                         _require(target.value_kind is MIRValueKind.PAYLOAD_ALIAS and target.alias_source == source,
                                  "scalar extraction must bind payload storage")
@@ -1454,29 +1549,40 @@ def _validate_structure(fn: MIRFunction) -> None:
                     target = slots[stmt.target.root]
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.OPTIONAL
                              and target.kind is not MIRSlotKind.PARAMETER, "optional operation needs local destination")
+                    target_layout = place_layout(stmt.target, slots)
                     if isinstance(value, MIROptionalCopy):
-                        source = slots[value.source]
-                        _require(source.value_kind is MIRValueKind.OPTIONAL, "optional copy needs optional source")
-                        member = source.optional_layout
+                        _, _, source_readonly = place_info(value.source)
+                        member = place_layout(value.source, slots)
+                        _require(isinstance(member, MIROptionalLayout) and value.may_raise is False,
+                                 "optional copy needs optional source")
+                        if member.kind is MIRValueKind.OWNED:
+                            # A holder of an inline payload borrows it with
+                            # the access of the place it lies in.
+                            _require(target_layout.kind is MIRValueKind.BORROWED,
+                                     "optional payload type or access mismatch")
+                            member = MIROptionalLayout(member.type, MIRValueKind.BORROWED,
+                                                       member.readonly or source_readonly)
                     elif value.source is not None:
-                        source = slots[value.source]
-                        member = MIROptionalLayout(source.type, source.value_kind, source.readonly)
+                        operand = payload_operand(value.source)
+                        member = MIROptionalLayout(operand.type, operand.kind, operand.readonly)
                     else:
-                        member = target.optional_layout
-                    _require(compatible_element(member, target.optional_layout), "optional payload type or access mismatch")
+                        member = target_layout
+                    _require(compatible_element(member, target_layout), "optional payload type or access mismatch")
                 case MIRIsPresent():
-                    _require(target_type == BOOL and slots[value.source].value_kind is MIRValueKind.OPTIONAL,
+                    place_type(value.source)
+                    _require(target_type == BOOL and isinstance(place_layout(value.source, slots), MIROptionalLayout),
                              "presence test needs optional source and bool destination")
                 case MIRTupleConstruct() | MIRTupleCopy():
                     target = slots[stmt.target.root]
                     _require(not stmt.target.projections and target.value_kind is MIRValueKind.TUPLE
                              and target.kind is not MIRSlotKind.PARAMETER,
                              "tuple operation needs tuple destination")
+                    target_layout = place_layout(stmt.target, slots)
                     if isinstance(value, MIRTupleConstruct):
-                        _require(len(value.elements) == len(target.tuple_layout.elements),
+                        _require(len(value.elements) == len(target_layout.elements),
                                  "tuple payload type or access mismatch")
                         elements = []
-                        for source, member in zip(value.elements, target.tuple_layout.elements):
+                        for source, member in zip(value.elements, target_layout.elements):
                             if isinstance(source, MIRConstruct):
                                 _require(member.kind is MIRValueKind.OWNED,
                                          "tuple constructor needs inline record member")
@@ -1490,12 +1596,13 @@ def _validate_structure(fn: MIRFunction) -> None:
                                                                slots[source].readonly))
                     else:
                         source = slots[value.source]
-                        _require(source.value_kind is MIRValueKind.TUPLE, "tuple copy needs tuple source")
+                        source_layout = place_layout(MIRPlace(value.source), slots)
+                        _require(isinstance(source_layout, MIRTupleLayout), "tuple copy needs tuple source")
                         _require(not owned_tuple(source) and not owned_tuple(target), "owning tuple copy is unsupported")
-                        elements = source.tuple_layout.elements
-                    _require(len(elements) == len(target.tuple_layout.elements)
+                        elements = source_layout.elements
+                    _require(len(elements) == len(target_layout.elements)
                              and all(compatible_element(src, dst)
-                                     for src, dst in zip(elements, target.tuple_layout.elements)),
+                                     for src, dst in zip(elements, target_layout.elements)),
                              "tuple payload type or access mismatch")
                 case MIRConstruct() | MIRCopy() | MIRMove() | MIRCall() if (
                         not isinstance(value, MIRCall) or isinstance(fact, MIRRecordWrite)):

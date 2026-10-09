@@ -787,6 +787,9 @@ def test_member_initializer_capability_refusals(program: _Program) -> None:
         program, "Point", copyable=False)) == "constructor copies a noncopyable record"
     assert _initialization_refusal(program.constructors["Line"], _with_member_layout(
         program, "Point", movable=False)) == "constructor moves a nonmovable record"
+    # A member its own constructor builds is moved in too.
+    assert _initialization_refusal(program.constructors["Built"], _with_member_layout(
+        program, "Point", movable=False)) == "constructor moves a nonmovable record"
     # An explicit copy into a member yields storage; THIR spells no other form.
     ctor = program.constructors["Copied"]
     mil = ctor.mil_inits[0]

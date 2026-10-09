@@ -1874,11 +1874,43 @@ alongside related feature work; only the big-rock deferrals live here.
     - Base-initializer arguments other than a matching owned parameter or a
       literal ("base argument needs matching parameter or literal", 17
       bodies: `super().__init__(n + 1)`).
-    - Larger neighbours, each its own unit: `Box`/`Rc` members and elements
-      (~80 bodies refuse as "record member holds a borrow" / "container holds
-      a borrow" because `Box[T]` stores a `Ptr[T]`; an owning pointer holds
-      what its pointee holds, not a borrow) and `Ptr` members (~55 bodies;
-      a stored loan of an object, reusing the stored-loan keys).
+    - `Ptr` members (~55 bodies; a stored loan of an object, reusing the
+      stored-loan keys), its own unit.
+    - `Box` / `Rc` ownership, measured 2026-10-09 (two probe censuses and a
+      MIR spike, branch `mir-box-probe` @ 6e5f090d96, not landed). Fixing
+      only the loan fact lifts 0 of 108 refused bodies; holding a box of a
+      loan-free `T` as owned storage lifts 14; the rest stop at other
+      unmodeled fields (~50, the Optional / union fields unit) or at the
+      box's own operations (~25). Ownership is derived, never declared (no
+      marker a user could forget): a `Ptr` field is OWNING when its record
+      is `@nocopy` with no hierarchy, its one constructor sets the field from
+      `unsafe_take(move(param))`, its `__del__` only releases it, and its own
+      methods touch it only as a deref borrow, `self.f = unsafe_replace(
+      self.f, move(v))` or a transfer in a consuming method; an owning field
+      is modeled as an inline member typed `T` (replace = a replacement
+      event, a new object at the same address), and the self-release-only
+      `__del__` is the owner's storage end. The spike decided every witness
+      with the nested-records machinery (`p = b.get(); b.set(x); p.x` and
+      a field replacement dropping the old box are conflicts; four
+      look-alike classes refused). Units, about 1.4k lines: (1) a heap-effect
+      keyword on the `unsafe_take` / `unsafe_release` / `unsafe_replace` /
+      `unsafe_transfer_ownership` stubs and its summary, refusing `@dynamic`
+      T (its overloads adopt an allocation); (2) THIR facts, after the
+      freeze: a field identity for a `Ptr` field, a receiver fact and callee
+      for consuming methods and `__del__`; (3) the owning certificate over
+      every module, lowering the field as the member, the owning field's
+      own loan class (`list[Box[T]]`), a may-raise `unsafe_take`; (4)
+      consuming methods (`take()`). Gated on generic bodies (M4): `Box`,
+      `Rc` and `Arc` are generic, so the corpus gains nothing before it.
+      `Rc` / `Weak` / `Arc` need more: `clone()` makes two owners, so a
+      strong drop may end every handle's payload (heap objects per
+      allocation and the general `__del__` below); `Weak` never proves
+      liveness; `Arc` adds cross-thread interference.
+    - A general `__del__` as a call at each drop (2-3 units, ~3k lines):
+      drop points in reverse declaration order, exceptional edges carrying
+      drops, drop flags for moved-from objects, member / base / element
+      drops, destructor summaries with effects beyond their parameters. MIR
+      refuses every record with a custom destructor until then.
   - View fields slice 4: holders inside wrappers and containers -- Optional,
     union and tuple members and locals holding a view, `Span` members,
     containers of views (keys under a payload, a tuple element or
@@ -2046,9 +2078,52 @@ alongside related feature work; only the big-rock deferrals live here.
       `plain_record_element` keeps a container element to a record of leaf
       fields (90 bodies in a census of the test corpus taken on master
       d762c4c0d9, before nested records).
-    - Optional, union, tuple, `Ptr`, `Box` and `Rc` record fields refuse
-      "unsupported record fields" at the definition (the same census:
-      union 162, tuple 56, Optional 21, `Ptr` / `Box` / `Rc` 50 bodies).
+    - Union, tuple, scalar-Optional, `str | None`, `Ptr`, `Box` and `Rc`
+      record fields, and Optional fields whose payload holds a loan or has a
+      record field, refuse "unsupported record fields" at the definition
+      (census 2026-10-09 after the Optional-fields slice, by field shape:
+      tuples holding a record ~75, optional scalars ~50, `str | None` ~50,
+      `R | None` whose payload holds a loan or a record field ~45, union of
+      records 38). Optional fields of loan-free records are modeled (landed with
+      the wrapper-layouts-per-place refactor; `tests/cases/mir/wrapper_fields`):
+      the next slices reuse `place_layout` -- optional scalars, then tuple
+      fields; union fields need a THIR union extraction keyed on a place
+      (`THIRUnionExtraction.source` is a local name), after the freeze.
+    - Left by the Optional-fields slice:
+      - A narrowed Optional field payload bound to a local (`q = h.p` after
+        `if h.p is not None`) refuses "optional payload borrow without a
+        storage borrow fact": `thir/lower/storage.py` `storage_borrow`
+        compares the field identity's type (`P | None`) with the payload
+        (`P`) and publishes nothing; MIR's `borrow_binding` needs that fact
+        (post-freeze). The Optional-holder spelling `o = h.p` is modeled.
+      - A constructor argument built in place (`H(P(1), 2)`) refuses "named
+        argument needs complete temporary plan": THIR's temporary planner
+        declines bodies with an `is None` test or a `print`, and the emitter
+        reads that plan.
+      - FIRST: Optional arguments are admitted only at constructor calls
+        (`optional_operand`), a gate keyed on the callee kind this slice
+        added; a free-function or method call still refuses an Optional
+        name ("call needs unwrapped scalar binding"). A `P | None` argument
+        binds the same way at every call kind: one argument binding.
+      - Presence's field kill rule (`presence._reaches` / `_may_hold`) is a
+        second, layout-based may-alias model beside retention's
+        referent-based `may_overlap`; it kills a local holder's field fact
+        on a write through any parameter (sound, imprecise). It cannot read
+        referents as is: dependencies consumes presence
+        (`dependencies.py` reads `prepared.presence.points`), so the fix is
+        a split -- a field-free presence pass, dependencies, then the field
+        facts -- or referents computed earlier. Its verdicts reach callers
+        too (`summaries._member_chain` accepts a payload step on the
+        presence proof); the soundness matrix to keep is the `fresh_*` /
+        `keep_*` sections of `tests/cases/mir/wrapper_fields` and the
+        `_reaches` / `_may_hold` unit tests.
+      - A caller construct's Optional member re-derives `may_raise` from the
+        payload type instead of reading the definition's initializer, the
+        single source the record member uses (over-reports for members
+        left empty or moved in; an over-report only refuses).
+      - The storage certificate does not model a payload holder (`o = a.p`):
+        "borrow evidence: demanded operation is not a supported record
+        borrow" (the verdict stays covered or conflict).
     - A record argument of a member's constructor (`self.ln = Line(a, b,
       0)` in `__init__`) refuses "member argument needs matching parameter
       or literal": `_base_leg` / `_compose` need record legs (a lend the

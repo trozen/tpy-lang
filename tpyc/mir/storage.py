@@ -6,8 +6,7 @@ from types import MappingProxyType
 
 from ..thir.scalar_leaves import storage_leaf, view_leaf
 from ..typesys import unwrap_readonly
-from .call_effects import call_write_places
-from .coverage import moved_storage
+from .coverage import call_write_places, moved_storage
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (

@@ -66,8 +66,8 @@ from ..typesys import (
 )
 from .scalar_leaves import (
     binds_cursor, binds_element, container_view, declared_members, holds_elements, leaf_constant, leaf_global,
-    modeled_ancestors, native_container_subject, native_container_type, owned_leaf, plain_record_element,
-    readonly_elements, storage_leaf,
+    modeled_ancestors, native_container_subject, native_container_type, optional_record_field, owned_leaf,
+    plain_record_element, readonly_elements, storage_leaf,
 )
 from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
@@ -725,12 +725,22 @@ def _check_node(owner: str, node: THIRNode) -> None:
         record = (isinstance(typ, NominalType) and not is_inert_leaf(typ)
                   and (not typ.type_args or native_container_type(typ)) and not typ.is_protocol)
         receiver = unwrap_readonly(unwrap_ref_type(node.receiver.result_type))
+        # An Optional record member is its own storage: read as its payload
+        # record once narrowed (`narrowed_deref`), else whole. Without the
+        # flag the payload type is accepted too, at any position: an assign
+        # target inside a narrowed region carries it while it writes the
+        # whole storage (BUGS.md#narrowed-optional-field-assign-target-type),
+        # and MIR keys on the flag, never on that type.
+        payload = optional_record_field(fact.type)
+        result = unwrap_readonly(unwrap_ref_type(node.result_type))
         # The declaring owner: the receiver's record or one of its struct-base ancestors.
         if (not direct or not fact.name
                 or receiver != fact.owner and fact.owner not in (modeled_ancestors(receiver) or ())
-                or (not record and (not storage_leaf(fact.type)
-                                    or node.result_type != fact.type or node.form is not Form.VALUE))
-                or (record and unwrap_readonly(unwrap_ref_type(node.result_type)) != typ)):
+                or (payload is not None and (node.form is not Form.STORAGE or result not in (
+                    (payload,) if node.narrowed_deref else (typ, payload))))
+                or (payload is None and not record and (not storage_leaf(fact.type)
+                                                        or node.result_type != fact.type or node.form is not Form.VALUE))
+                or (record and result != typ)):
             _fail(owner, node, "field identity disagrees with its access")
     if isinstance(node, (THIRFieldAccess, THIRMethodCall)):
         # A plain method's receiver read carries its own value-position

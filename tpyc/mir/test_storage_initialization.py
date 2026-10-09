@@ -58,10 +58,10 @@ def initialize(shape: str) -> MIRStorageInit:
 
 def write(shape: str) -> MIRAssign:
     if shape.startswith("optional"):
-        value = MIROptionalConstruct(FLAG if shape == "optional_bool" else VALUE)
+        value = MIROptionalConstruct(MIRPlace(FLAG if shape == "optional_bool" else VALUE))
     else:
         value = MIRUnionConstruct(2 if shape == "union_none" else 1,
-                                  FLAG if shape == "union_int" else VALUE)
+                                  MIRPlace(FLAG if shape == "union_int" else VALUE))
     return MIRAssign(MIRPlace(CURRENT), value, storage_write=ASSIGN)
 
 
@@ -76,7 +76,7 @@ def test_unassigned_wrapper_has_a_physical_scope_end(shape: str) -> None:
     assert not any(deps.referents.values())
     assert not analyze_storage(fn).writes
     assert not analyze_payload_ends(fn).ends
-    assert dict(_analyze_presence(fn).points[MIRPoint(ENTRY, 1)])[CURRENT] == frozenset({0})
+    assert dict(_analyze_presence(fn).points[MIRPoint(ENTRY, 1)])[MIRPlace(CURRENT)] == frozenset({0})
     event, = analyze_scope_ends(fn).ends[MIREdge(ENTRY)]
     assert event.storage == MIRPlace(CURRENT)
     assert event.payloads == (frozenset({MIRPlace(CURRENT, (MIRUnionPayload(0),))})
@@ -100,9 +100,9 @@ def test_first_source_write_assigns_existing_storage(shape: str) -> None:
 def test_default_tag_cannot_authorize_source_reads(optional: bool, operation: str) -> None:
     shape = "optional_int" if optional else "union_bool"
     if operation == "test":
-        stmt = MIRAssign(MIRPlace(GUARD), MIRIsPresent(CURRENT) if optional else MIRIsAlternative(CURRENT, (0,)))
+        stmt = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (0,)))
     else:
-        stmt = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(CURRENT) if optional else MIRUnionCopy(CURRENT),
+        stmt = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(CURRENT)) if optional else MIRUnionCopy(MIRPlace(CURRENT)),
                          storage_write=ASSIGN)
     fn = function(shape, MIRBlock(ENTRY, (initialize(shape), stmt), MIRReturn(VALUE), ROOT))
     with pytest.raises(MIRDefiniteAssignmentError, match="read before definite assignment"):
@@ -114,7 +114,7 @@ def test_default_tag_cannot_authorize_source_reads(optional: bool, operation: st
 @pytest.mark.parametrize("shape", ["optional_int", "union_bool"])
 def test_conditional_assignment_does_not_assign_the_missing_arm(shape: str) -> None:
     optional = shape.startswith("optional")
-    test = MIRAssign(MIRPlace(GUARD), MIRIsPresent(CURRENT) if optional else MIRIsAlternative(CURRENT, (0,)))
+    test = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)) if optional else MIRIsAlternative(MIRPlace(CURRENT), (0,)))
     fn = function(shape,
         MIRBlock(ENTRY, (initialize(shape),), MIRBranch(FLAG, YES, NO), ROOT),
         MIRBlock(YES, (write(shape),), MIRGoto(JOIN), ROOT),
@@ -138,8 +138,8 @@ def test_conditional_construction_is_a_may_end_but_not_a_must_write() -> None:
 
 @pytest.mark.parametrize("shape", ["optional_int", "union_bool"])
 def test_source_assignment_enables_tests_but_a_zero_trip_loop_does_not(shape: str) -> None:
-    guard = MIRAssign(MIRPlace(GUARD), MIRIsPresent(CURRENT) if shape == "optional_int"
-                      else MIRIsAlternative(CURRENT, (1,)))
+    guard = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)) if shape == "optional_int"
+                      else MIRIsAlternative(MIRPlace(CURRENT), (1,)))
     good = function(shape, MIRBlock(ENTRY, (initialize(shape), write(shape), guard), MIRReturn(GUARD), ROOT))
     good = replace(good, return_type=BOOL)
     validate_function(good)

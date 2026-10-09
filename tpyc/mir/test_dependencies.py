@@ -83,7 +83,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
                           value_kind=MIRValueKind.OPTIONAL,
                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
         scalar = MIRSlot(Z, BOOL, MIRSlotKind.TEMPORARY)
-        initial, copy, reseat = MIROptionalConstruct(P), MIROptionalCopy(X), MIROptionalConstruct()
+        initial, copy, reseat = MIROptionalConstruct(MIRPlace(P)), MIROptionalCopy(MIRPlace(X)), MIROptionalConstruct()
         path = (MIROptionalPayload(),)
     else:
         other = NominalType("Other", _module_qname="dependencies.Other")
@@ -91,14 +91,14 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
                           value_kind=MIRValueKind.UNION, union_layout=MIRUnionLayout((
                               member, MIRTupleElement(other, MIRValueKind.BORROWED))))
         scalar = MIRSlot(Z, BOOL, MIRSlotKind.TEMPORARY)
-        initial, copy, reseat = MIRUnionConstruct(0, P), MIRUnionCopy(X), MIRUnionConstruct(0, Q)
+        initial, copy, reseat = MIRUnionConstruct(0, MIRPlace(P)), MIRUnionCopy(MIRPlace(X)), MIRUnionConstruct(0, MIRPlace(Q))
         path = (MIRUnionPayload(0),)
     statements = (MIRAssign(MIRPlace(X), initial), MIRAssign(MIRPlace(Y), copy), MIRAssign(MIRPlace(X), reseat))
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(Y, (*path, MIRDeref(), FIELD))))
     if shape == "tuple":
         blocks = (MIRBlock(A, (*statements, read), MIRReturn(OUT)),)
     else:
-        guard = MIRIsPresent(Y) if shape == "optional" else MIRIsAlternative(Y, (0,))
+        guard = MIRIsPresent(MIRPlace(Y)) if shape == "optional" else MIRIsAlternative(MIRPlace(Y), (0,))
         blocks = (MIRBlock(A, (*statements, MIRAssign(MIRPlace(Z), guard)), MIRBranch(Z, C, D)),
                   MIRBlock(C, (read,), MIRReturn(OUT)),
                   MIRBlock(D, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)))
@@ -165,10 +165,10 @@ def test_record_union_extraction_survives_switch_to_other_alternative() -> None:
     slots = (reference(P, param=True), replace(reference(Q, param=True), type=other), wrapper,
              reference(Y), MIRSlot(FLAG, BOOL, MIRSlotKind.TEMPORARY), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
     fn = MIRFunction(B, INT32, slots, (
-        MIRBlock(A, (MIRAssign(MIRPlace(X), MIRUnionConstruct(0, P)),
-                     MIRAssign(MIRPlace(FLAG), MIRIsAlternative(X, (0,)))), MIRBranch(FLAG, C, D)),
+        MIRBlock(A, (MIRAssign(MIRPlace(X), MIRUnionConstruct(0, MIRPlace(P))),
+                     MIRAssign(MIRPlace(FLAG), MIRIsAlternative(MIRPlace(X), (0,)))), MIRBranch(FLAG, C, D)),
         MIRBlock(C, (MIRAssign(MIRPlace(Y), MIRUnionExtract(first)),
-                     MIRAssign(MIRPlace(X), MIRUnionConstruct(1, Q)),
+                     MIRAssign(MIRPlace(X), MIRUnionConstruct(1, MIRPlace(Q))),
                      MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(Y, (MIRDeref(), FIELD))))), MIRReturn(OUT)),
         MIRBlock(D, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)),
     ), A)
@@ -237,9 +237,9 @@ def test_scalar_union_alias_depends_on_wrapper_but_scalar_copy_does_not(local: b
     prefix = ()
     if local:
         slots += (replace(wrapper, id=Q, kind=MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY),)
-        prefix = (MIRAssign(MIRPlace(Q), MIRUnionCopy(P)),)
+        prefix = (MIRAssign(MIRPlace(Q), MIRUnionCopy(MIRPlace(P))),)
     fn = MIRFunction(B, INT32, slots, (
-        MIRBlock(A, (*prefix, MIRAssign(MIRPlace(FLAG), MIRIsAlternative(source, (0,)))), MIRBranch(FLAG, C, D)),
+        MIRBlock(A, (*prefix, MIRAssign(MIRPlace(FLAG), MIRIsAlternative(MIRPlace(source), (0,)))), MIRBranch(FLAG, C, D)),
         MIRBlock(C, (MIRAssign(MIRPlace(X), MIRUnionExtract(payload)),
                      MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(X)))), MIRReturn(OUT)),
         MIRBlock(D, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)),

@@ -10,7 +10,7 @@ from ..thir.validate import validate_function as validate_thir
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
+    MIRAlias, MIRBodyId, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
     MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRStorageDuration,
     MIRTupleConstruct,
 )
@@ -164,7 +164,8 @@ def test_cyclic_replacement_checks_retained_holder_leaves(shape: str, safe: bool
     stmts = (*block.statements[:point.index], write, *block.statements[point.index + 3:])
     capture = stmts[-1]
     value = (replace(capture.value, elements=(CURRENT, *capture.value.elements[1:]))
-             if isinstance(capture.value, MIRTupleConstruct) else replace(capture.value, source=CURRENT))
+             if isinstance(capture.value, MIRTupleConstruct)
+             else replace(capture.value, source=CURRENT if isinstance(capture.value, MIRAlias) else MIRPlace(CURRENT)))
     stmts = (*stmts[:-1], replace(capture, value=value))
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=stmts), *fn.blocks[2:]))
     result = analyze(fn)

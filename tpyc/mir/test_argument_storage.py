@@ -436,14 +436,14 @@ def test_retained_holders_observe_named_backing_scope_end(
             typ, form = OptionalType(storage.type), th.Form.VALUE
             options = dict(value_kind=MIRValueKind.OPTIONAL,
                            optional_layout=MIROptionalLayout(storage.type, MIRValueKind.BORROWED, True))
-            capture, copy = MIROptionalConstruct(source), MIROptionalCopy(holder)
+            capture, copy = MIROptionalConstruct(MIRPlace(source)), MIROptionalCopy(MIRPlace(holder))
         case _:
             other = NominalType("Other", _module_qname="main.Other")
             typ, form = UnionType((storage.type, other)), th.Form.VALUE
             options = dict(value_kind=MIRValueKind.UNION,
                            union_layout=MIRUnionLayout((member, MIRTupleElement(
                                other, MIRValueKind.BORROWED, readonly=True))))
-            capture, copy = MIRUnionConstruct(0, source), MIRUnionCopy(holder)
+            capture, copy = MIRUnionConstruct(0, MIRPlace(source)), MIRUnionCopy(MIRPlace(holder))
     slots = tuple(replace(slot, storage_duration=child, residence=child,
                           record_storage=MIRRecordStorageKind.OPTIONAL if optional_backing
                           else MIRRecordStorageKind.DIRECT) if slot.id == storage.id
