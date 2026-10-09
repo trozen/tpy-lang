@@ -9,8 +9,14 @@ from .. import get_lib_dir
 from ..compilation_context import activate_compiler
 from ..compiler import Compiler
 from ..type_def_registry import declared_native_facts, restore_declared_native_facts
+from ..parse.nodes import TpyFunction
 from .emit import emit_thir_constructor_tail
-from .lower import iter_module_callables, lower_function
+from .lower import bindings, iter_module_callables, lower_function
+from .lower import resumable as _resumable
+from .lower.bindings import BindingTable
+from .lower.context import _LowerCtx
+from .nodes import THIRResumableBody
+from .reject import is_bodyless_binding
 
 _STDLIB_DIRS = [get_lib_dir() / "tpy"]
 
@@ -40,6 +46,78 @@ def latch_builtin_stub_facts() -> None:
 
 def _entry(modules):
     return [m for m in modules if m.is_entry_point][0]
+
+
+def _body_key(record_name: str | None, func: TpyFunction) -> str:
+    # The two clones of an @auto_readonly method share their name; the
+    # const one is a body of its own.
+    name = (f"{func.name}[const]" if func.auto_readonly_polarity == "apply"
+            else func.name)
+    return f"{record_name}.{name}" if record_name else name
+
+
+def lower_bodies(source: str) -> tuple[dict[str, object],
+                                       dict[str, BindingTable]]:
+    """Lower every callable of `source`'s entry module the way a build
+    does -- an ordinary body through `lower_function`, an @overload body
+    once per stub, a generator or coroutine frame through codegen's frame
+    lowering -- and return `({body: lowered body}, {body: the binding table
+    it planned})`, both keyed by the body's qualified name (`f`, `Rec.f`
+    for a method, `f@i` for an @overload body specialized to its i-th
+    stub, `Rec.f[const]` for the const clone of an @auto_readonly method).
+    A frame of an @overload generator is keyed `f@i` by its lowering order.
+    Codegen re-lowers the ordinary bodies on its way to the frames; each
+    body keeps its first lowering and that lowering's table."""
+    compiler, modules = _compile(source)
+    entry = _entry(modules)
+    tables: dict[str, BindingTable] = {}
+    frames: dict[str, THIRResumableBody | None] = {}
+    lowering: list[str | None] = [None]
+    install = bindings.install
+    lower_frame = _resumable.lower_resumable
+
+    def capture_table(lc: _LowerCtx, table: BindingTable) -> None:
+        key = lowering[0] or _body_key(lc.record_name, lc.func)
+        tables.setdefault(key, table)
+        install(lc, table)
+
+    def capture_frame(func: TpyFunction, *args: object, **kwargs: object
+                      ) -> THIRResumableBody | None:
+        key = _body_key(kwargs.get("record_name"), func)
+        if func in entry.analyzer.overload_groups:
+            key = f"{key}@{sum(k.startswith(key + '@') for k in frames)}"
+        lowering[0] = key
+        try:
+            body = lower_frame(func, *args, **kwargs)
+        finally:
+            lowering[0] = None
+        frames.setdefault(key, body)
+        return body
+    bindings.install = capture_table
+    _resumable.lower_resumable = capture_frame
+    try:
+        bodies: dict[str, object] = {}
+        with activate_compiler(compiler):
+            callables = list(iter_module_callables(entry.ast, entry.analyzer))
+            for func, self_type in callables:
+                if (func.is_generator or func.is_async
+                        or is_bodyless_binding(func)):
+                    continue
+                key = _body_key(
+                    self_type.name if self_type is not None else None, func)
+                stubs = entry.analyzer.overload_groups.get(func) or [None]
+                for i, stub in enumerate(stubs):
+                    lowering[0] = key if stub is None else f"{key}@{i}"
+                    bodies[lowering[0]] = lower_function(
+                        func, entry.analyzer, self_type=self_type, stub=stub)
+            lowering[0] = None
+            if any(f.is_generator or f.is_async for f, _st in callables):
+                compiler.generate_inl_and_code_to_strings(entry)
+    finally:
+        bindings.install = install
+        _resumable.lower_resumable = lower_frame
+    bodies.update(frames)
+    return bodies, {k: t for k, t in tables.items() if k in bodies}
 
 
 def _lower_fn(source: str, name: str, default_int: str = "int32"):

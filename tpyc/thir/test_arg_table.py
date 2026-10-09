@@ -1798,8 +1798,8 @@ class TestRecordCtorFork:
             analyzer=None, prescan=types.SimpleNamespace(
                 param_names=frozenset()),
             narrow=types.SimpleNamespace(narrowed=frozenset()),
-            inline_narrowed={}, movable_locals=set(), pointers=set(),
-            func=None)
+            inline_narrowed={}, movable_locals=set(),
+            names_with=lambda fact, prior=False: frozenset(), func=None)
         expressions._record_ctor_arg_supported(
             TpyName("x"), INT32, 0, None, lc, {},
             _ExprUse(allow_temps=allow_temps, record_ctor=ctor_use))

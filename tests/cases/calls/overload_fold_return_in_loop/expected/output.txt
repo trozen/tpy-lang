@@ -8,3 +8,13 @@
 4
 2
 6
+dyn_local: 12 0
+both_arms: 4 1
+match_fold: 12 2 13
+partly: 2 0 -1
+walrus_elif: 4 3 -1
+match_decl: 4 21
+raises: caught
+raises: 4
+redecl: 4 1
+nested_def: 4 0

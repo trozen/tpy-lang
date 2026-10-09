@@ -34,6 +34,14 @@ audit):
       (literal construction, target / receiver predicates, the source's own
       lowering), each with its reason.
 
+  bindings -- the binding table's structure (`tpyc/thir/lower/bindings.py`
+      is the home of the per-name representation facts it models): writes
+      of a `_LowerCtx` set / dict attribute outside the planner, less an
+      allow-list of ledgers / grants / policies (`LEDGER_ATTRS`) -- the
+      per-name facts still outside the table, as a number;
+      `_BRANCH_SCOPED_SETS` entries outside that allow-list; and the
+      known binding classifiers that still exist (`BINDING_CLASSIFIERS`).
+
 The RETURN family is measured the same way, each site attributed to the
 row whose witness / reject key sits in the innermost `if` around it: a row
 landing 1 converts (its kind tests choose the source's READ and are
@@ -262,8 +270,8 @@ AUDIT_ALLOW_TESTS = {
                          "binding",
     ("_held_from_facts", "*"): "the Source stamp: per-kind facts decide "
                                 "where the value lives",
-    ("_name_read_form", "*"): "the Source stamp: a NAME read's binding "
-                               "representation",
+    ("_name_held", "*"): "the Source stamp: a NAME read's record, unless "
+                         "the arm renamed or spelled the read",
     ("_tuple_layout_elems", "*"): "the Source stamp: per-element facts of "
                                   "a tuple binding's layout",
     ("_dies", "*"): "the Source stamp: a member / element read off a "
@@ -792,10 +800,12 @@ def return_audit():
 STAMP_FUNCS = frozenset({"stamp_source", "stamped", "_tuple_layout_elems",
                          "_restamp_reads", "_lower_expr"})
 # The stamp's helpers that decide `held`: they may not read `.form`.
-HELD_FUNCS = ("stamp_source", "stamped", "_held_from_facts",
-              "_name_read_form", "_held_of_form", "_viewfam_of",
-              "_owned_buffer", "_tuple_layout_elems", "_dies",
-              "_temporary")
+HELD_FUNCS = ("stamp_source", "stamped", "_held_from_facts", "_name_held",
+              "_held_of_form", "_viewfam_of", "_owned_buffer",
+              "_tuple_layout_elems", "_dies", "_temporary",
+              # The binding table's projection (bindings.py), which the
+              # name arm's `form` reads too.
+              "project_held", "_value_opt_kind", "_held_of")
 # Every classifier of a FIELD slot type that has existed; one may remain.
 FIELD_CLASSIFIERS = ("_field_holds", "_storage_slot", "field_slot_class")
 
@@ -856,6 +866,139 @@ def source_numbers():
             "field_classifiers": classifiers}
 
 
+# `_LowerCtx` set / dict attributes that are NOT a per-name representation
+# fact, so writing them outside the planner is not a binding writer.
+LEDGER_ATTRS = {
+    "global_slot_assigned": "ledger: the global slots already emitted",
+    "walrus_predeclared": "ledger: the walrus decls already emitted",
+    "forbidden_reads": "policy: the reads a region refuses",
+    "forbidden_writes": "policy: the writes a region refuses",
+    "unhandled_hoists": "ledger: the function's hoists not lowered yet",
+    "import_calls": "per-statement import chain, keyed by statement",
+    "pre_decl_import_cpp": "an import's spelling, not a binding's",
+    "literal_facts": "flow fact: a name's literal value",
+    "overload_literal_facts": "flow fact: the stub's literal values",
+    "overload_narrowing": "narrowing: the stub's parameter types",
+    "inline_narrowed": "narrowing: one condition's extraction",
+    "deref_view_spelled": "narrowing: a branch's deref-view spelling",
+    "tparam_bounds": "type-parameter bounds, not a binding",
+    "sema_movable_locals": "sema's verdict, an input of the planner",
+}
+_SET_WRITE_METHODS = frozenset({"add", "discard", "update", "remove", "pop",
+                                "clear", "setdefault", "difference_update",
+                                "intersection_update"})
+# The functions that classify a name's binding. Only `classify_binding` is
+# the table's; the other two are classifiers still outside it.
+BINDING_CLASSIFIERS = (("bindings.py", "classify_binding"),
+                       ("checks.py", "_local_binding_shape"),
+                       ("resumable.py", "frame_local_class"))
+# The planner's own module: the one place a record is written.
+PLANNER_FILE = "bindings.py"
+
+
+def _lowerctx_container_attrs(tree):
+    """The `_LowerCtx` attributes `__init__` creates as a set, frozenset or
+    dict -- the shape a per-name fact outside the table takes."""
+    attrs = set()
+    for cls in ast.walk(tree):
+        if not (isinstance(cls, ast.ClassDef) and cls.name == "_LowerCtx"):
+            continue
+        for fn in cls.body:
+            if not (isinstance(fn, ast.FunctionDef)
+                    and fn.name == "__init__"):
+                continue
+            for n in ast.walk(fn):
+                if isinstance(n, ast.AnnAssign):
+                    targets, value = [n.target], n.value
+                elif isinstance(n, ast.Assign):
+                    targets, value = n.targets, n.value
+                else:
+                    continue
+                container = (isinstance(value, (ast.Dict, ast.Set))
+                             or (isinstance(value, ast.Call)
+                                 and isinstance(value.func, ast.Name)
+                                 and value.func.id in ("set", "frozenset",
+                                                       "dict")))
+                for t in targets:
+                    if (container and isinstance(t, ast.Attribute)
+                            and isinstance(t.value, ast.Name)
+                            and t.value.id == "self"):
+                        attrs.add(t.attr)
+    return attrs
+
+
+def binding_numbers():
+    """The binding table's structure: writers of a `_LowerCtx` set / dict
+    attribute outside the planner (a mutating method call, an item write
+    or delete, an augmented assignment, or an assignment of a built value
+    to `lc.<attr>`), less the ledgers / grants / policies of
+    `LEDGER_ATTRS`; `_BRANCH_SCOPED_SETS` entries outside that list; and
+    the known binding classifiers that exist."""
+    ctx_tree = _read(os.path.join(LOWER, "context.py"))
+    attrs = _lowerctx_container_attrs(ctx_tree) - set(LEDGER_ATTRS)
+    writers, scoped, classifiers = [], [], []
+
+    def lc_attr(e):
+        if isinstance(e, ast.Subscript):
+            e = e.value
+        if (isinstance(e, ast.Attribute) and e.attr in attrs
+                and isinstance(e.value, ast.Name) and e.value.id == "lc"):
+            return e.attr
+        return None
+
+    for rel in _lowering_files():
+        base = os.path.basename(rel)
+        tree = _read(rel)
+        defined = {n.name for n in ast.walk(tree)
+                   if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))}
+        classifiers += ["%s:%s" % (f, fn) for f, fn in BINDING_CLASSIFIERS
+                        if f == base and fn in defined]
+        if base == "context.py":
+            for n in ast.walk(tree):
+                if (isinstance(n, ast.Assign)
+                        and any(isinstance(t, ast.Name)
+                                and t.id == "_BRANCH_SCOPED_SETS"
+                                for t in n.targets)
+                        and isinstance(n.value, ast.Tuple)):
+                    scoped += [e.value for e in n.value.elts
+                               if isinstance(e, ast.Constant)
+                               and e.value not in LEDGER_ATTRS]
+        if base == PLANNER_FILE:
+            continue
+        for n in ast.walk(tree):
+            hit = None
+            if (isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+                    and n.func.attr in _SET_WRITE_METHODS):
+                a = lc_attr(n.func.value)
+                if a is not None and not isinstance(n.func.value,
+                                                    ast.Subscript):
+                    hit = "%s.%s" % (a, n.func.attr)
+            elif isinstance(n, ast.AugAssign):
+                a = lc_attr(n.target)
+                if a is not None:
+                    hit = "%s op=" % a
+            elif isinstance(n, ast.Delete):
+                for t in n.targets:
+                    if isinstance(t, ast.Subscript) and lc_attr(t):
+                        hit = "del %s[]" % lc_attr(t)
+            elif isinstance(n, (ast.Assign, ast.AnnAssign)):
+                targets = (n.targets if isinstance(n, ast.Assign)
+                           else [n.target])
+                for t in targets:
+                    a = lc_attr(t)
+                    if a is None:
+                        continue
+                    if isinstance(t, ast.Subscript):
+                        hit = "%s[]=" % a
+                    elif not isinstance(n.value, ast.Name):
+                        # A restore of a saved value is no new fact.
+                        hit = "%s=" % a
+            if hit is not None:
+                writers.append("%s:%d %s" % (base, n.lineno, hit))
+    return {"writers": writers, "branch_scoped": scoped,
+            "classifiers": classifiers}
+
+
 def measure():
     fw = family_numbers(field_write_units())
     ret = return_numbers()
@@ -879,6 +1022,7 @@ def measure():
                     "allowed": au["allowed"]},
         "_audit_rows": au["rows"],
         "source": source_numbers(),
+        "bindings": binding_numbers(),
     }
 
 
@@ -913,7 +1057,13 @@ def headline(m):
                 len(m["source"]["source_writers"]),
                 len(m["source"]["held_form_reads"]),
                 m["source"]["form_kwargs"],
-                len(m["source"]["field_classifiers"])))
+                len(m["source"]["field_classifiers"]))
+            + "\nbindings: %d writers outside the planner, %d binding sets "
+            "branch-scoped, %d name classifiers (%s)" % (
+                len(m["bindings"]["writers"]),
+                len(m["bindings"]["branch_scoped"]),
+                len(m["bindings"]["classifiers"]),
+                ", ".join(m["bindings"]["classifiers"])))
 
 
 def _gated(m):
@@ -939,6 +1089,9 @@ def _gated(m):
         "held_form_reads": len(m["source"]["held_form_reads"]),
         "form_kwargs": m["source"]["form_kwargs"],
         "field_classifiers": len(m["source"]["field_classifiers"]),
+        "binding_writers": len(m["bindings"]["writers"]),
+        "binding_sets_branch_scoped": len(m["bindings"]["branch_scoped"]),
+        "binding_classifiers": len(m["bindings"]["classifiers"]),
     }
 
 

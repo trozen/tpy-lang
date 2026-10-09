@@ -3,3 +3,5 @@ enter B
 exit B
 exit A
 7
+later_item: 7107
+hoist_ref: 2 42 42

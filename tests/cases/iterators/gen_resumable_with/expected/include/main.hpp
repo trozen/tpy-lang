@@ -8,13 +8,28 @@
 namespace tpyapp::main {
 
 struct Tracer;
+struct Count;
+struct Cb;
+struct Items;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_with_yield;
+struct __gen_gen_with;
+struct __gen_gen_comp_target;
+struct __gen_gen_with_then_yield;
+struct __gen_gen_hoist_ref;
 
 // def gen_with_yield(xs: list[int]) -> Iterator[int]:
 __gen_gen_with_yield gen_with_yield(const std::vector<::tpy::BigInt>& xs);
+// def gen_with() -> Iterator[int]:
+__gen_gen_with gen_with();
+// def gen_comp_target(xs: list[int]) -> Iterator[int]:
+__gen_gen_comp_target gen_comp_target(const std::vector<::tpy::BigInt>& xs);
+// def gen_with_then_yield(xs: list[int]) -> Iterator[int]:
+__gen_gen_with_then_yield gen_with_then_yield(const std::vector<::tpy::BigInt>& xs);
+// def gen_hoist_ref(rows: list[int]) -> Iterator[int]:
+__gen_gen_hoist_ref gen_hoist_ref(const std::vector<::tpy::BigInt>& rows);
 // def main():
 void main();
 
@@ -37,6 +52,72 @@ struct Tracer {
 
 inline std::ostream& operator<<(std::ostream& os, const Tracer& obj) {
     ::tpy::print_object_default(os, "Tracer", obj);
+    return os;
+}
+
+// class Count:
+struct Count {
+    // self.v = v
+    ::tpy::BigInt v;
+
+    // def __init__(self, v: int) -> None:
+    Count() = default;
+    explicit Count(const ::tpy::BigInt& v);
+
+    // def __enter__(self) -> int:
+    ::tpy::BigInt __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Count";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Count& obj) {
+    ::tpy::print_object_default(os, "Count", obj);
+    return os;
+}
+
+// class Cb:
+struct Cb {
+    // self.f = f
+    std::function<::tpy::BigInt()> f;
+
+    // def __init__(self, f: Callable[[], int]) -> None:
+    Cb() = default;
+    explicit Cb(std::function<::tpy::BigInt()> f);
+
+    // def __enter__(self) -> int:
+    ::tpy::BigInt __enter__() const;
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cb";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cb& obj) {
+    ::tpy::print_object_default(os, "Cb", obj);
+    return os;
+}
+
+// class Items:
+struct Items {
+    // items: list[int]
+    std::vector<::tpy::BigInt> items;
+
+    // def __init__(self, v: int) -> None:
+    Items() = default;
+    explicit Items(const ::tpy::BigInt& v);
+
+    // def __enter__(self) -> list[int]:
+    std::vector<::tpy::BigInt>& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Items";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Items& obj) {
+    ::tpy::print_object_default(os, "Items", obj);
     return os;
 }
 
@@ -87,6 +168,145 @@ struct __gen_gen_with_yield : public ::tpy::next_iter_mixin<__gen_gen_with_yield
     }
 };
 
+// def gen_with() -> Iterator[int]:
+struct __gen_gen_with : public ::tpy::next_iter_mixin<__gen_gen_with, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    ::tpy::BigInt n;
+    ::tpy::BigInt result;
+    ::tpy::frame_slot<Count> __with_ctx_0;
+    ::tpy::frame_slot<Cb> __with_ctx_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_gen_with() : __state(S_INITIAL) {}
+
+    __gen_gen_with(__gen_gen_with&&) = default;
+    ~__gen_gen_with() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_1).__exit__({}, &__tpy_ge, {});
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_with& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_with&) {
+        return os << "<generator gen_with>";
+    }
+};
+
+// def gen_comp_target(xs: list[int]) -> Iterator[int]:
+struct __gen_gen_comp_target : public ::tpy::next_iter_mixin<__gen_gen_comp_target, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    const std::vector<::tpy::BigInt>& xs;
+    ::tpy::BigInt n;
+    ::tpy::frame_slot<Count> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_comp_target(const std::vector<::tpy::BigInt>& xs)
+        : __state(S_INITIAL),
+          xs(xs) {}
+
+    __gen_gen_comp_target(__gen_gen_comp_target&&) = default;
+    ~__gen_gen_comp_target() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_comp_target& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_comp_target&) {
+        return os << "<generator gen_comp_target>";
+    }
+};
+
+// def gen_with_then_yield(xs: list[int]) -> Iterator[int]:
+struct __gen_gen_with_then_yield : public ::tpy::next_iter_mixin<__gen_gen_with_then_yield, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    const std::vector<::tpy::BigInt>& xs;
+    ::tpy::BigInt n;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_with_then_yield(const std::vector<::tpy::BigInt>& xs)
+        : __state(S_INITIAL),
+          xs(xs) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_with_then_yield& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_with_then_yield&) {
+        return os << "<generator gen_with_then_yield>";
+    }
+};
+
+// def gen_hoist_ref(rows: list[int]) -> Iterator[int]:
+struct __gen_gen_hoist_ref : public ::tpy::next_iter_mixin<__gen_gen_hoist_ref, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    const std::vector<::tpy::BigInt>& rows;
+    ::tpy::frame_slot<::tpy::with_enter_t<Items>> xs;
+    std::vector<::tpy::BigInt>* ys = nullptr;
+    ::tpy::frame_slot<Items> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_hoist_ref(const std::vector<::tpy::BigInt>& rows)
+        : __state(S_INITIAL),
+          rows(rows) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_hoist_ref& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_hoist_ref&) {
+        return os << "<generator gen_hoist_ref>";
+    }
+};
+
 
 // def __init__(self, label: str) -> None:
 //     self.label = label
@@ -102,6 +322,51 @@ inline void Tracer::__enter__() const {
 //     print("exit", self.label)
 inline void Tracer::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     std::cout << "exit" << " " << this->label << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, v: int) -> None:
+//     self.v = v
+inline Count::Count(const ::tpy::BigInt& v) : v(v) {}
+
+// def __enter__(self) -> int:
+//     return self.v
+inline ::tpy::BigInt Count::__enter__() const {
+    return this->v;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Count::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, f: Callable[[], int]) -> None:
+//     self.f = f
+inline Cb::Cb(std::function<::tpy::BigInt()> f) : f(f) {}
+
+// def __enter__(self) -> int:
+//     return self.f() + 100
+inline ::tpy::BigInt Cb::__enter__() const {
+    return (((*this).f()) + (::tpy::BigInt(100)));
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Cb::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+}
+
+// def __init__(self, v: int) -> None:
+//     self.items = [v]
+inline Items::Items(const ::tpy::BigInt& v) : items(std::vector<::tpy::BigInt>{v}) {}
+
+// def __enter__(self) -> list[int]:
+//     return self.items
+inline std::vector<::tpy::BigInt>& Items::__enter__() {
+    return this->items;
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     pass
+inline void Items::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
 }
 void __tpy_init();
 } // namespace tpyapp::main

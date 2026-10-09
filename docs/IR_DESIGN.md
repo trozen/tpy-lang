@@ -799,6 +799,24 @@ THIRVarDecl
                                    #   divergence risk + MIR's job).
 ```
 
+A binding's representation (pointer, rebind slot, `T&` alias, pointer
+variant, value or storage optional, storage / borrow / optional-borrow
+tuple and its layout, const, movable, frame slot, owned parameter, ...) is
+decided once per declaration site, before the walk, by the body's binding
+table (`tpyc/thir/lower/bindings.py`, `plan_bindings`): one `BindingRepr`
+record per C++ binding the body emits, in a scope chain that mirrors the
+lowering's block scoping. The lowering reads every per-name representation
+fact the table models from the record visible where it is
+(`_LowerCtx.binding`); the facts still kept outside it -- a reassigned
+`@dynamic` local, an owned-slot walrus target, a nested def's closure name,
+a pointer-slot module global, the resumable frame's write / bind families --
+are listed in TODO.md ("STILL OUTSIDE THE TABLE"). A NAME
+read's `Source.binding` is that record, and every node that emits a binding
+(`THIRVarDecl`, `THIRPtrLocalDecl`, the loop, unpack, with, match and
+error-return binds, the frame writes) carries it as `binding`, stamped by
+`stamp_bindings`. The validator checks the node's representation facts
+against the record's fields.
+
 #### THIRFormConvert -- the explicit conversion node
 
 ```
@@ -1495,13 +1513,13 @@ prove still apply to the committed-snapshot oracle that replaced them.
 - `ptr_to_optional` is reserved for **borrow-`T*`** sources; a record *value* source
   constructs the field (or its Optional) directly (`opt(Inner(v))`).
 - **Two distinct facts, once conflated:** `lc.sema_movable_locals` is sema's raw
-  "this local is owned"; `lc.movable_locals` is the WORKING set the move sites read,
-  which a name joins only via `promote_movable` at a decl arm that promotes -- the
-  mirror of `StatementGenerator.promote_movable`. Seeding the working set from the raw
-  fact moves a value-typed local (a view-promoted `str`, a BigInt) and a ptr-variant
-  alias where the AST copies. The promotion rule is per-ARM, not global: the frame and
-  owned-tuple arms promote value-typed names, the tier-1 fallthrough does not, so no
-  type-keyed filter over the raw set can express it.
+  "this local is owned"; the record's `movable` is what the move sites read, planned
+  by the binding table per declaration row (the mirror of codegen's
+  `promote_movable` in `emit_prims.py`). Taking it from the raw fact would move a
+  value-typed local (a view-promoted `str`, a BigInt) and a ptr-variant alias where
+  the AST copies. The rule is per ROW, not global: the frame and owned-tuple rows make
+  value-typed names movable, the tier-1 fallthrough does not, so no type-keyed filter
+  over the raw set can express it.
 - **Separately**, `_container_elem_move_source` carries a SINK rule, not a set
   correction, and the two sinks it serves DISAGREE on a value-typed movable payload:
   a container literal moves it (`make_vector<BigInt>(std::move(n))`), a tuple literal
@@ -1539,7 +1557,7 @@ prove still apply to the committed-snapshot oracle that replaced them.
   a branch lowers over a per-branch `declared` copy, so its lc-set registrations
   must pop with it. Hand-listed restore sites accreted six parallel mechanisms
   and each eventually missed a set -- the confirmed worst case was
-  a value-opt binding registration (today the `value_opt_bindings` map)
+  a value-opt binding registration
   leaking from a branch-local `x: int | None` decl into a
   sibling branch's plain `x`, rendering `(*x)` on an `int32_t` (uncompilable
   C++), masked only because no corpus case reused a name across sibling scopes.
@@ -1547,8 +1565,9 @@ prove still apply to the committed-snapshot oracle that replaced them.
   `_BRANCH_SCOPED_SETS` (mirroring the AST's `LocalScopeSnap`), a completeness
   unit test forces every new mutable `_LowerCtx` slot to be classified
   branch-scoped or function-scoped, and whole-set restore is symmetric -- it
-  undoes in-scope REMOVALS too, so shadowing (the for-each frame/pointer
-  shadow) needs no separate mechanism.
+  undoes in-scope REMOVALS too. The per-name representation facts are the
+  binding table's records, not sets: its scope chain models shadowing (a
+  loop variable over a frame field) by the loop's own record.
 - Registration that must OUTLIVE a scope (with-targets, match full-binds, a
   nested def's name) is done by ORDERING -- the caller registers in its own
   frame, outside the inner push/pop -- not by an exemption API. This matches
@@ -1708,21 +1727,40 @@ prove still apply to the committed-snapshot oracle that replaced them.
   dominated at 70 slots), and static-protocol params -- filed as needing a new capture tier
   -- were probe-verified byte-identical with the gate simply removed.
 
-**Binding facts vs type facts (the mirror ledger).** Codegen classifies a local
-through per-name `*_locals` SETS (`pointer_locals`, `ptr_variant_locals`,
-`optional_locals`, `storage_form_tuple_locals`, `const_indirect_locals`, ... --
-`local_cpp_form` is the ordered ladder over them). A type predicate is not a
-substitute: the same declared type can arrive through a binding with a different
-C++ form (a ptr-variant union as a container element binds the VALUE variant; a
-pointer-repr `Optional` as a loop var binds storage). Two divergences of exactly
-this shape were found by accident in wave 16 (union isinstance narrowing, then
-both union match tiers), which motivated a full sweep of the remaining sets.
+**Binding facts vs type facts (the binding table is the ledger).** A local's C++
+form is a fact of its BINDING, not of its type: the same declared type can arrive
+through a binding with a different C++ form (a ptr-variant union as a container
+element binds the VALUE variant; a pointer-repr `Optional` as a loop var binds
+storage). Codegen classified locals through per-name `*_locals` sets
+(`local_cpp_form` is the ordered ladder over them); the lowering reads the record
+the binding table planned for the binding (`_LowerCtx.binding`). Two divergences of
+exactly this shape were found by accident in wave 16 (union isinstance narrowing,
+then both union match tiers), which motivated a full sweep of the binding facts.
 
-- Rule: a THIR render that codegen keys on set membership must key on the mirror
-  set (`_narrow_subject_is_ptr` is the pattern), never on the type verdict. Where
-  the mirror is not yet known complete, REJECT rather than guess -- but that fence
-  is a stopgap, and it over-rejects: the union-narrowing one cost every
-  value-variant element binding until the mirror was audited and it came out.
+- The cursor contract: every scope the planner keys (a statement, a `with`
+  item, an `except` handler, a `case`, a live folded-`if` link, a
+  comprehension clause, a lambda, a nested def) is entered by the lowering
+  where the planner's walk put it (`bindings.enter` / `at` / `scoped`); a
+  read resolves through the scope chain at the cursor only, a miss being a
+  name the table does not bind there. A record is keyed only at the site that
+  declares it, and the arm that declares a name reads its own record
+  explicitly (`_LowerCtx.declaring`): the chain at the cursor first, which
+  holds the binding a reassignment writes, then the record the site itself
+  declares, which enters the chain only after the site. Two records of one
+  name at a site, or entering a key the planner never planned, is an
+  internal error -- except a lambda, which a lowering arm may build in
+  place of a callable name and which gets its parameter scope when entered
+  (`BindingTable.lambda_scope`). A `with` item, an `except` handler and a
+  `case` entry are built only with the cursor at their own scope
+  (`require_entered`). The statements a resumable body's CFG decomposes
+  have no lowering of their own: they are entered through their leaves
+  (condition, items, body statements), and the CFG records them
+  (`CFG.decomposed`) so they are not counted as unentered.
+- Rule: a THIR render keys on the binding's record (`_narrow_subject_is_ptr` is
+  the pattern), never on the type verdict. Where the record does not model a fact
+  yet, REJECT rather than guess -- but that fence is a stopgap, and it
+  over-rejects: the union-narrowing one cost every value-variant element binding
+  until the fact was audited and it came out.
 - The sweep (every producer of the pointer / ptr-variant / optional / storage-tuple
   sets, dual-path probed) found no further live divergence. It did find that several
   unmirrored registrations are unreachable only *emergently* -- the fence belongs to
@@ -1732,13 +1770,13 @@ both union match tiers), which motivated a full sweep of the remaining sets.
   since converted to cases, and each partial mirror names its unmirrored
   producers where it is declared.
 - Not swept to the same depth, and the place to look first if this class resurfaces:
-  `const_borrow_form_tuple_locals`, whose const verdict comes from a whole-body
-  fixpoint pre-pass (`_compute_borrow_tuple_const`) that THIR has no analog for --
-  its name-chain rung is fenced only by the storage-tuple alias arm requiring a
-  field source. `movable_locals` carries its own partiality caveats in `_LowerCtx`.
+  the borrow-tuple const bits (`const_borrow_tuple` / `const_opt_borrow_tuple`),
+  which the planner's whole-table fixpoint decides (`_plan_btuple_const`) -- its
+  name-chain rung is fenced only by the storage-tuple alias arm requiring a field
+  source.
 - Consequence for future cells: widening one of those gates is not a local change
-  -- it un-fences a binding whose mirror does not exist yet. Seed the mirror in
-  `_LowerCtx` in the same cell.
+  -- it un-fences a binding whose fact the table does not model yet. Add the fact
+  to the record (a planner row) in the same cell.
 
 ---
 

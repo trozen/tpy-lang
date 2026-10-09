@@ -9,10 +9,16 @@ body and do not construct THIR; lowering arms consume their results locally.
 
 from __future__ import annotations
 import math
-from dataclasses import replace
+from dataclasses import dataclass, field, replace
 from ...parse.nodes import (
     const_tuple_index,
     ResultForm,
+    TpyAsPattern,
+    TpyClassPattern,
+    TpyMatch,
+    TpyMatchCase,
+    TpyOrPattern,
+    TpyWildcardPattern,
     is_property_getter_read,
     FunctionLinkage,
     TpyArrayLiteral,
@@ -49,7 +55,8 @@ from ...parse.nodes import (
 )
 from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
-from ...sema.literal_utils import fixed_int_literal_value_from_expr
+from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
+                                   literal_value_from_expr)
 from ...sema.context import expr_lends_storage
 from ...typesys import make_readonly, pointer_repr_optional, readonly_access
 from ...typesys import (
@@ -62,6 +69,7 @@ from ...typesys import (
     RecursiveAliasInstanceType,
     AliasRef,
     AnyType,
+    BIGINT,
     CONST_PARAMS_METHODS,
     BYTES_FAMILY,
     CallableType,
@@ -69,7 +77,9 @@ from ...typesys import (
     FloatLiteralType,
     INT32,
     IntLiteralType,
+    LiteralTag,
     LiteralType,
+    LiteralValue,
     NoneType,
     is_polymorphic_subclass_fact,
     polymorphic_source_inner,
@@ -185,6 +195,7 @@ from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
 from ...prescan import chain_root_name, parse_deref_view_key
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
+from ..source import NameFacts
 from ..faces import witness as _witness
 from ..nodes import (
     COMPARISON_OPS,
@@ -272,7 +283,7 @@ _BIGINT_LIT_COERCION = "int_literal_to_bigint"
 
 # Address-taking Ptr coercions. An indirect-name inner is pre-dereferenced
 # (`&(*g)` for a pointer-slot global / pointer-local source), so the coerce
-# arm derefs names in lc.pointers; the `&{0}` render itself comes from the
+# arm derefs names with a pointer record; the `&{0}` render itself comes from the
 # rows (they are `context_free_wrap`).
 _ADDR_PTR_COERCIONS = frozenset({
     "record_to_ptr", "record_to_const_ptr", "value_to_ptr",
@@ -303,7 +314,7 @@ _SPAN_METHOD_COERCIONS = frozenset({"span_method_to_span",
 # The coercions that pre-deref an indirect-name inner (the "need
 # dereferencing for globals" set): the addr family, the method-calling BigInt
 # cast, and the `__span__()` call above -- the coerce arm derefs un-narrowed
-# names in lc.pointers, so an indirect receiver reaches its member as
+# names with a pointer record, so an indirect receiver reaches its member as
 # `(*name).__span__()`.
 _INDIRECT_DEREF_COERCIONS = (_ADDR_PTR_COERCIONS | {"bigint_to_fixed_int"}
                              | _SPAN_METHOD_COERCIONS)
@@ -579,11 +590,10 @@ def _for_each_elem_binding_ok(et: TpyType | None) -> bool:
 def _foreach_storage_opt_elem(et: TpyType | None, analyzer) -> bool:
     """A pointer-repr `Optional[F1-record]` CONTAINER element (`for v in
     d.values():` over `dict[str, P | None]`): the loop var binds the
-    STORAGE-form `std::optional<P>` (`const auto&` composite ref) and
-    registers in the storage-opt set -- the for-STATEMENT producer of
-    codegen's `storage_form_optional_locals`. Container route only: a
-    generator / iter-proto source yields the BORROW form (`T*`), which
-    must not register storage."""
+    STORAGE-form `std::optional<P>` (`const auto&` composite ref), so its
+    record is `storage_opt`. Container route only: a generator /
+    iter-proto source yields the BORROW form (`T*`), which holds no
+    storage."""
     if not isinstance(et, TpyType):
         return False
     t = pointer_repr_optional(et)
@@ -596,7 +606,7 @@ def _foreach_value_opt_elem(et: TpyType | None) -> 'OptionalType | None':
     (the same inner slice `_value_opt_scalar` admits for params, spelled
     locally so this gate does not move if that helper's slice widens). The
     loop var binds as a typed `std::optional<T>` copy and its body reads ride
-    the value-opt binding arms via `lc.value_opt_bindings`."""
+    the value-opt binding arms (its record's `value_opt`)."""
     if not isinstance(et, TpyType):
         return None
     t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(et)))
@@ -1350,8 +1360,8 @@ def _narrow_subject_union(dt: 'TpyType | None',
     if isinstance(dt, OwnType):
         # An `Own[A | B]` param binds the STORAGE variant
         # (`std::variant<A, B>&&`): sema peels Own before the union check
-        # (`_filter_union_codegen_facts`), and the binding is never in
-        # `ptr_variant_locals`, so the extraction reads by value
+        # (`_filter_union_codegen_facts`), and its record is no
+        # `ptr_variant`, so the extraction reads by value
         # (`std::get<A>(u)`) for free.
         dt = unwrap_readonly(dt.wrapped)
     u = (_eligible_value_union(dt) or _eligible_ptr_union_wide(dt, analyzer)
@@ -1759,17 +1769,23 @@ def _or_chain_narrow_info(
     return var, u, leaf_infos, negated
 
 
+def _flat_elif_chain(stmt: TpyIf) -> list[TpyIf]:
+    """`stmt` and its FLATTENABLE elif links (same column, no concrete
+    intermediate else-fact), in source order."""
+    chain = [stmt]
+    while ((nxt := _elif_link(chain[-1])) is not None
+           and not _facts_have_concrete(chain[-1].else_type_facts)):
+        chain.append(nxt)
+    return chain
+
+
 def _post_if_chain_tail(stmt: TpyIf) -> TpyIf:
     """The link post-narrowing runs on: the flat elif chain is collected
     first and `chain[-1]` taken, so the fact belongs to the last
-    FLATTENABLE link (same column, no concrete intermediate else-fact),
-    whatever the head condition's kind. A nested `else: if` is a body
-    statement of its else block and handles its own post-if there."""
-    last = stmt
-    while ((nxt := _elif_link(last)) is not None
-           and not _facts_have_concrete(last.else_type_facts)):
-        last = nxt
-    return last
+    FLATTENABLE link, whatever the head condition's kind. A nested
+    `else: if` is a body statement of its else block and handles its own
+    post-if there."""
+    return _flat_elif_chain(stmt)[-1]
 
 def _protocol_isinstance_condition(cond: TpyExpr) -> bool:
     """A protocol isinstance condition: a sema STAMP read under any number
@@ -2347,8 +2363,8 @@ def _readonly_global_type(gt: TpyType | None, analyzer) -> TpyType | None:
     # (None-tests, opt slots), `(*g)` on a narrowed occurrence, and
     # `deref_optional_check(g)` unproven -- the narrowed-global deref
     # family renders through the same local-shaped sites, keyed on
-    # `_declared_type_incl_globals`. Callers register the name in
-    # lc.value_opt_bindings so the reads ride _value_opt_scalar_binding.
+    # `_declared_type_incl_globals`. The name's record is
+    # value-opt, so the reads ride _value_opt_scalar_binding.
     if _value_opt_scalar(gt, analyzer) is not None:
         return gt
     return None
@@ -3375,7 +3391,7 @@ def _record_class_binding(t: 'TpyType | None') -> bool:
     rebound container) derefs at value positions like any other pointer.
 
     The formatter check is NARROWER than `_f1_record`'s category check, and
-    only reachability makes that safe: a name reaches `lc.pointers` through
+    only reachability makes that safe: a name gets a pointer record through
     the non-value-type binding forms, so a formatter-carrying RECORD-category
     builtin can only arrive here once one exists that is not a ValueType.
     Widen this to the category question at the same time as admitting one."""
@@ -4391,15 +4407,15 @@ def _storage_optional_return_wide(t: TpyType | None,
     return u if _sp(_unwrap_own(u.inner)) else None
 
 
-def _comp_shadow_pointers(pointers, declared, analyzer) -> frozenset:
+def _comp_shadow_pointers(pointers, declared, analyzer) -> 'NameFacts':
     """The comprehension shadow-check pointer set: every pointer-local name
     EXCEPT the Optional-ptr-borrow bindings (their loop-var shadowing rules
     differ). One shared source for the ~7 comprehension call sites -- the
     hand-copied filter drifted once (an unfiltered set slipped through in a
     review round), so new call sites must use this."""
-    return frozenset(n for n in pointers
-                     if _optional_ptr_borrow(declared.get(n), analyzer)
-                     is None)
+    declared = dict(declared)
+    return NameFacts(lambda n: n in pointers and _optional_ptr_borrow(
+        declared.get(n), analyzer) is None)
 
 
 def _optional_ptr_borrow(t: TpyType | None, analyzer) -> 'OptionalType | None':
@@ -4868,7 +4884,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
             or (isinstance(u, OptionalType)
                 and isinstance(u.inner, OwnType))):
         # The storage-form `Own[P | None]` param (`std::optional<P>&&`)
-        # routes: arrow reads via the pointers seed, has_value None tests,
+        # routes: arrow reads via its pointer record, has_value None tests,
         # whole-optional moves at its consumers (_own_storage_opt_param).
         if _own_storage_opt_param(u, analyzer) is not None:
             return None
@@ -4925,7 +4941,7 @@ def _unrouted_binding_read(t: 'TpyType | None', analyzer, *,
                     and (is_str_type(inner) or is_bytes_type(inner)))
                 # An `Own[pointer-repr F1 tuple]` PARAM: the signature
                 # spells the storage tuple by value, so name reads are
-                # STORAGE (the storage_tuple_locals seed); the unpack
+                # STORAGE (its record's `storage_tuple`); the unpack
                 # lift, the optional-element decl lift, and the
                 # storage-name arg rows gate their own uses.
                 or (is_param and isinstance(inner, TupleType)
@@ -5141,8 +5157,8 @@ def _is_borrow_form_name(t: TpyType | None) -> bool:
     name-read arm has already consulted. Precondition: callers must first exclude
     a STORAGE-form pointer-repr tuple (an F3 `auto&&` alias local), which has the
     same type but reads as STORAGE -- this query keys on the type alone and would
-    mistag it BORROW. The name-read call site checks `storage_tuple_locals` (and
-    the Own-param / value-opt / opt-record bindings) before falling through here.
+    mistag it BORROW. The name-read call site checks the record's `storage_tuple`
+    (and the Own-param / value-opt / opt-record bindings) before falling through here.
     The other call site -- the
     `TpySubscript` branch tagging a subscript *result* -- is safe without that check
     because an admitted element is only ever a value scalar or a plain record, never
@@ -5446,7 +5462,7 @@ def _value_opt_owned_view(t: 'TpyType | None', analyzer) -> 'OptionalType | None
     / `<std::vector<uint8_t>>` (owned inner), so its narrowed deref `(*acc)` is
     already OWNED (STORAGE). A view-INNER optional (`optional<string_view>`) is
     excluded: its LOCAL narrowed read stays on the str/bytes-name arm (no
-    deref), so it must not enter the VIEW-kind binding set."""
+    deref), so its record must not take the VIEW value-opt kind."""
     ov = _value_opt_view(t, analyzer)
     if ov is None:
         return None
@@ -6043,7 +6059,7 @@ def _slot_free_ptr_reseat_ok(init: 'TpyExpr | None', lc) -> bool:
     which constructs the renders directly)."""
     if isinstance(init, TpyNoneLiteral):
         return True
-    return (isinstance(init, TpyName) and init.name in lc.pointers
+    return (isinstance(init, TpyName) and lc.binding(init.name).pointer
             and init.name not in lc.narrow.narrowed)
 
 
@@ -6859,9 +6875,9 @@ def _container_record_elem(t: TpyType | None, analyzer) -> bool:
 def _container_opt_record_elem(t: TpyType | None, analyzer) -> bool:
     """A container whose element/value is a pointer-repr `Optional[F1-record]`
     (`dict[str, P | None]` / `list[P | None]`): iteration yields the
-    STORAGE-form `std::optional<P>` element, so the loop var registers in
-    the storage-opt binding set (reads render the bare optional, `T*` arg
-    slots lift via optional_to_ptr)."""
+    STORAGE-form `std::optional<P>` element, so the loop var's record is
+    `storage_opt` (reads render the bare optional, `T*` arg slots lift via
+    optional_to_ptr)."""
     def elem_ok(a: 'TpyType | int') -> bool:
         if not isinstance(a, TpyType):
             return False
@@ -7787,7 +7803,7 @@ def _f1_param_lvalue_reseat_ok(init: TpyExpr, pointee: TpyType,
     owned-local / rvalue source takes a different emit and rejects here."""
     if not isinstance(init, TpyName):
         return False
-    if init.name not in lc.prescan.param_names or init.name in lc.pointers:
+    if init.name not in lc.prescan.param_names or lc.binding(init.name).pointer:
         return False
     t = declared.get(init.name)
     if t is None:
@@ -8013,7 +8029,7 @@ def _renders_own_borrow_tuple(e: TpyExpr, own_locals: 'AbstractSet[str]',
     owned elements by value, ref elements as pointers). Only a
     per-element-Own RETURN produces the shape, so it survives in the call
     result, a both-arms ternary of such calls, and a local bound straight
-    from one (`own_locals` -- the lc.own_borrow_tuple_locals set). Every
+    from one (`own_locals` -- the `borrow_tuple_mixed` records). Every
     storage sink materializes the ref element via `tuple_to_storage`, so a
     container element / field / loop var is NOT this shape even though its
     tuple type still carries the Own."""
@@ -8307,7 +8323,7 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     assembler is how the `*args` leg below reached the loop-var question and
     not the standalone unpack, spelling `Box*` out of `varargs<const Holder>`.
 
-    The families: a const LOOP VAR (`lc.const_loop_vars`, where the for-each
+    The families: a const LOOP VAR (its record's `const_loop_var`, where the for-each
     head decides it -- it is in neither param set), an unmutated `*args` pack
     (its const-ness is the element flip, not a param verdict), a `@readonly`
     method's receiver (which never appears in the param-index verdict sets,
@@ -8326,14 +8342,14 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     The verdict cannot disagree with an unpack target's use -- a body that
     writes through an unpacked element marks the param mutated, which drops
     the const verdict."""
-    if name in lc.const_loop_vars:
+    if lc.binding(name).const_loop_var:
         return True
     # The `auto&&` storage alias of a const source keeps its const-ness in
     # the tuple set (`const_borrow_tuple_locals` is NOT read here: that
     # body-wide memo is inherited by a nested def whose own names may
     # shadow the outer tuple).
-    if const_locals and (name in lc.const_locals
-                         or name in lc.const_storage_tuple_locals):
+    if const_locals and (lc.binding(name).const
+                         or lc.binding(name).const_storage_tuple):
         return True
     f = _const_verdict_func(name, lc)
     if (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)
@@ -8358,15 +8374,15 @@ def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
     `T*` with no further lifting, so an `&(...)` lift would produce `T**`.
 
-    Both of codegen's disjuncts. The name half is `lc.pointers` plus the
+    Both of codegen's disjuncts. The name half is a pointer record plus the
     `self` receiver whose `this` is a prvalue pointer; the `Ptr[T]` half is
     the one an inline membership test misses --
-    a `Ptr[T]` source never enters `lc.pointers` (the `_eligible_ptr_value`
+    a `Ptr[T]` source never gets a pointer record (the `_eligible_ptr_value`
     family owns it), so a membership test alone answers "not a pointer" for
     exactly the type that most obviously is one. Takes an EXPRESSION, not a
     name, so subscript and field sources are covered too."""
     if isinstance(expr, TpyName):
-        if expr.name in lc.pointers:
+        if lc.binding(expr.name).pointer:
             return True
         if expr.name == lc.self_receiver and lc.self_is_pointer:
             return True
@@ -8583,11 +8599,11 @@ def _ptr_union_borrow_const(name: str, declared: dict[str, TpyType],
     `const_indirect_locals` from, which is why this combinator has to move
     with that one: a fourth const source added there and not here would let a
     mixed pair through as a compare that does not build."""
-    if name not in lc.ptr_variant_locals:
+    if not lc.binding(name).ptr_variant:
         return None
     dt = declared.get(name)
     return bool(
-        name in lc.const_locals
+        lc.binding(name).const
         or (dt is not None
             and isinstance(unwrap_ref_type(unwrap_send_sync(dt)),
                            ReadonlyType))
@@ -8955,8 +8971,8 @@ def _own_storage_opt_param(t: 'TpyType | None', analyzer) -> 'OptionalType | Non
     """The `Own[P | None]` param binding -- OwnType(pointer-repr Optional),
     the REVERSE of `_own_opt_storage_binding`'s Optional[Own] nesting. The
     C++ binding is the storage-form `std::optional<P>&&`: member reads spell
-    `->` via `optional<P>::operator->` (the pointers seed), the None test
-    reads has_value (the optional_locals seed), a whole-optional forward
+    `->` via `optional<P>::operator->` (the record's `pointer`), the None
+    test reads has_value (its `optional_storage`), a whole-optional forward
     moves. F1-record pointee only; other pointees keep rejecting at
     `_unrouted_binding_read`. Returns the bare Optional or None."""
     if not isinstance(t, TpyType):
@@ -10767,7 +10783,7 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     its optional-ptr arg face: 'none' (the `nullptr` literal), 'pass'
     (a pointer-repr Optional binding -- already `T*`, renders bare), 'name'
     (a plain record name -- `&(name)`, or bare for an F2 pointer-local, split
-    at LOWERING from `lc.pointers`), 'lift' (a storage-form Optional field
+    at LOWERING from a pointer record), 'lift' (a storage-form Optional field
     read, `::tpy::optional_to_ptr(...)`), or 'ctor' (a same-nominal
     record-ctor rvalue -- the `&(__tmp_N)` temp face, flushable positions
     only), or 'scalar_temp' (a call/binop rvalue at a SCALAR pointee -- the
@@ -11967,3 +11983,227 @@ def _inst_slice_arg_ok(arg: 'TpyExpr', analyzer) -> bool:
     sb = unwrap_readonly(unwrap_ref_type(
         unwrap_send_sync(analyzer.get_expr_type(arg))))
     return is_list(sb) or is_span(sb)
+
+
+def _overload_literal_facts(narrowing) -> dict:
+    """The per-stub literal fact map, as `_inject_literal_overload_facts`
+    builds it: LiteralType entries pass through, an
+    IntLiteralType with a known value promotes to a single-INT LiteralType."""
+    facts: dict = {}
+    for pname, t in (narrowing or {}).items():
+        if isinstance(t, LiteralType):
+            facts[pname] = t
+        elif isinstance(t, IntLiteralType) and t.value is not None:
+            facts[pname] = LiteralType(
+                BIGINT, (LiteralValue(LiteralTag.INT, t.value),))
+    return facts
+
+
+def _overload_fold_facts(narrowing, literal_facts: dict) -> dict:
+    """The literal-fact map the per-stub fold reads: the facts derived
+    from the stub narrowing (`_inject_literal_overload_facts`) plus a
+    literal-only group's injected map. A FROZEN snapshot of the
+    flow-sensitive literal facts -- sound because the literal-only
+    admission rejects writes to fact-carrying names; flow-refined facts
+    (==-narrowing branch seeds) stay a fenced gap (TODO's parked
+    registry)."""
+    facts = _overload_literal_facts(narrowing)
+    facts.update(literal_facts)
+    return facts
+
+
+def _fold_literal_comparison(e: TpyBinOp,
+                             literal_facts: dict) -> 'bool | None':
+    """Fold ==/!= when a name operand carries a LiteralType fact.
+    Single-value: decided either way; multi-value: decided only when the
+    compared value is NOT in the set."""
+    for var_side, lit_side in ((e.left, e.right), (e.right, e.left)):
+        if not isinstance(var_side, TpyName):
+            continue
+        lit_type = literal_facts.get(var_side.name)
+        if not isinstance(lit_type, LiteralType):
+            continue
+        lit_val = literal_value_from_expr(lit_side)
+        if lit_val is None:
+            continue
+        in_set = lit_val in lit_type.values
+        if len(lit_type.values) == 1:
+            return in_set if e.op == "==" else not in_set
+        if not in_set:
+            return False if e.op == "==" else True
+    return None
+
+
+def _overload_resolve_static(cond: TpyExpr,
+                             narrowing: 'dict[str, TpyType] | None',
+                             lit_facts: dict) -> 'bool | None':
+    """Resolve an isinstance condition statically for the per-stub fold,
+    plus its literal half over `lit_facts` (the stub-narrowing-derived
+    facts, plus a literal-only group's injected map): equality, bool
+    truthiness, membership (`check_literal_in`), and the
+    or-coverage/and-contradiction chain fold (`check_literal_chain`)."""
+    if lit_facts:
+        if isinstance(cond, TpyBinOp) and cond.op in ("==", "!="):
+            decided = _fold_literal_comparison(cond, lit_facts)
+            if decided is not None:
+                return decided
+        if isinstance(cond, TpyName):
+            # Bool truthiness: `if x:` on a Literal[True]/Literal[False] fact.
+            lit_type = lit_facts.get(cond.name)
+            if (isinstance(lit_type, LiteralType)
+                    and len(lit_type.values) == 1
+                    and lit_type.values[0].tag is LiteralTag.BOOL):
+                return bool(lit_type.values[0].value)
+    if narrowing:
+        if isinstance(cond, TpyCall) and cond.isinstance_var is not None:
+            concrete = narrowing.get(cond.isinstance_var)
+            check_type = cond.isinstance_type
+            if concrete is not None and check_type is not None:
+                if concrete == check_type:
+                    return True
+                if (isinstance(check_type, UnionType)
+                        and concrete in check_type.members):
+                    return True
+                return False
+        if isinstance(cond, TpyBinOp) and cond.op in ("is", "is not"):
+            for var_side, none_side in ((cond.left, cond.right),
+                                        (cond.right, cond.left)):
+                if (isinstance(var_side, TpyName)
+                        and isinstance(none_side, TpyNoneLiteral)
+                        and var_side.name in narrowing):
+                    concrete = narrowing[var_side.name]
+                    is_none = isinstance(concrete, NoneType)
+                    return is_none if cond.op == "is" else not is_none
+    if isinstance(cond, TpyBinOp) and cond.op in ("&&", "||"):
+        left = _overload_resolve_static(cond.left, narrowing, lit_facts)
+        right = _overload_resolve_static(cond.right, narrowing, lit_facts)
+        if cond.op == "||":
+            if left is True or right is True:
+                return True
+            if left is False and right is False:
+                return False
+        else:
+            if left is False or right is False:
+                return False
+            if left is True and right is True:
+                return True
+        # Coverage / contradiction on unresolved operands (the chain
+        # fold's fallthrough).
+        if lit_facts and left is None and right is None:
+            return emit_prims.check_literal_chain(cond, lit_facts)
+        return None
+    if (isinstance(cond, TpyBinOp) and cond.op in ("in", "not in")
+            and lit_facts):
+        result = emit_prims.check_literal_in(cond, lit_facts)
+        if result is not None:
+            return result
+    if isinstance(cond, TpyUnaryOp) and cond.op == "!":
+        inner = _overload_resolve_static(cond.operand, narrowing, lit_facts)
+        if inner is not None:
+            return not inner
+    return None
+
+@dataclass(frozen=True, eq=False)
+class OverloadIfFold:
+    """The @overload fold of an if / elif chain, read by the lowering and
+    the binding planner alike so both walk the same statements at the same
+    scope. Exactly one shape holds: `reject` (a detail the lowering
+    rejects with), `flat` (the statically-true arm, or the else of an
+    all-false chain, lowered flat in the enclosing block), or `live` (the
+    links decided at run time, lowered as a trimmed `if / else if` chain
+    with `else_body`)."""
+    flat: list | None = None
+    # A flat true arm ending in return / raise ends the function body's
+    # top-level statement list.
+    terminates: bool = False
+    live: tuple[TpyIf, ...] = ()
+    else_body: list = field(default_factory=list)
+    reject: str | None = None
+
+
+def overload_if_fold(stmt: TpyIf,
+                     narrowing: 'dict[str, TpyType] | None',
+                     literal_facts: 'dict[str, TpyType] | None'
+                     ) -> OverloadIfFold | None:
+    """The fold plan of `stmt` under one @overload stub's facts, or None
+    where no link of the chain resolves statically (the ordinary narrowing
+    arms take it)."""
+    if not (narrowing or literal_facts):
+        return None
+    facts = _overload_fold_facts(narrowing, literal_facts or {})
+    chain = _flat_elif_chain(stmt)
+    res = [_overload_resolve_static(n.condition, narrowing, facts)
+           for n in chain]
+    if all(r is None for r in res):
+        return None
+    live: list[TpyIf] = []
+    for node, resolved in zip(chain, res):
+        if resolved is True:
+            if live:
+                # Dropping the run-time links before a true one is a filed
+                # defect, so the shape is declined.
+                return OverloadIfFold(reject="if.overload_true_after_dynamic")
+            body = node.then_body
+            return OverloadIfFold(
+                flat=body,
+                terminates=bool(body) and isinstance(body[-1],
+                                                     (TpyReturn, TpyRaise)))
+        if resolved is None:
+            live.append(node)
+    if not live:
+        return OverloadIfFold(flat=chain[-1].else_body)
+    return OverloadIfFold(live=tuple(live),
+                          else_body=chain[-1].else_body)
+
+
+@dataclass(frozen=True, eq=False)
+class OverloadMatchFold:
+    """The @overload fold of a `match` on a union parameter the stub
+    narrows to one concrete type: the selected `case`, lowered flat in the
+    enclosing block, with `pattern` the class pattern whose keyword
+    captures bind (None for a wildcard case); or `reject`, a detail the
+    lowering rejects with."""
+    case: TpyMatchCase | None = None
+    pattern: TpyClassPattern | None = None
+    reject: str | None = None
+
+
+def overload_match_fold(stmt: TpyMatch,
+                        narrowing: 'dict[str, TpyType] | None'
+                        ) -> OverloadMatchFold | None:
+    """The fold plan of `stmt` under one @overload stub's narrowing, or None
+    where the fold does not apply (a non-name or non-union subject, or one
+    the stub does not narrow)."""
+    if not narrowing or not isinstance(stmt.subject, TpyName):
+        return None
+    subject_type = (unwrap_readonly(stmt.subject_type)
+                    if stmt.subject_type is not None else None)
+    if not isinstance(subject_type, UnionType):
+        return None
+    concrete = narrowing.get(stmt.subject.name)
+    if concrete is None:
+        return None
+    for case in stmt.cases:
+        if case.guard is not None:
+            # Folding a guarded case would silently drop the guard.
+            return OverloadMatchFold(reject="match.overload_fold_guard")
+        pattern = case.pattern
+        if isinstance(pattern, TpyAsPattern):
+            return OverloadMatchFold(reject="match.overload_fold_as")
+        if isinstance(pattern, TpyClassPattern):
+            if (pattern.resolved_type is not None
+                    and pattern.resolved_type == concrete):
+                return OverloadMatchFold(case=case, pattern=pattern)
+        elif isinstance(pattern, TpyOrPattern):
+            for alt in pattern.patterns:
+                if (isinstance(alt, TpyClassPattern)
+                        and alt.resolved_type == concrete):
+                    return OverloadMatchFold(case=case, pattern=alt)
+        elif isinstance(pattern, TpyWildcardPattern):
+            return OverloadMatchFold(case=case)
+        else:
+            # Capture patterns bind the whole subject; value / literal
+            # patterns compare it -- neither is lowered on this tier.
+            return OverloadMatchFold(reject="match.overload_fold_pattern")
+    # No case matches the narrowed type, which should be unreachable.
+    return OverloadMatchFold(reject="match.overload_fold_arm")

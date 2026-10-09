@@ -465,6 +465,40 @@ std::string switch_try_finally(::tpy::Union<const Cat*, const Dog*> a) {
     return "after";
 }
 
+// # Guarded union switch tier, two guarded arms binding one capture name at
+// # different field types (Optional[int32] vs int32): the second guard reads
+// # its own case's capture, not the first case's.
+// def same_capture(subject: OptN | PlainN, flag: bool) -> int32:
+//     # Both arms are guarded, so no member is covered unconditionally.
+//     match subject:  # tpyc: warning(/non-exhaustive match/)
+//         case OptN(n=v) if flag:
+//             return 1
+//         case PlainN(n=v) if v > 0:  # tpyc: ok
+//             return 2
+//     return 0
+int32_t same_capture(::tpy::Union<const OptN*, const PlainN*> subject, bool flag) {
+    auto& __match_subject_1 = subject;
+    switch (__match_subject_1.index()) {
+    case 0: {
+        auto& __case_0 = *std::get<0>(__match_subject_1);
+        auto& v = __case_0.n;
+        if (flag) {
+            return 1;
+        }
+        break;
+    }
+    case 1: {
+        auto& __case_1 = *std::get<1>(__match_subject_1);
+        auto v = __case_1.n;
+        if ((v > 0)) {
+            return 2;
+        }
+        break;
+    }
+    }
+    return 0;
+}
+
 // def main() -> None:
 //     d1: Dog | Cat = Dog("Rex")
 //     d2: Dog | Cat = Dog("Buddy")
@@ -508,6 +542,9 @@ std::string switch_try_finally(::tpy::Union<const Cat*, const Dog*> a) {
 //     print("switch_try_finally:", r)
 //     r = switch_try_finally(c1)
 //     print("switch_try_finally:", r)
+//     print("same_capture:", same_capture(OptN(3), True),
+//           same_capture(OptN(None), False), same_capture(PlainN(5), False),
+//           same_capture(PlainN(-1), False))
 void main() {
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> d1 = ::tpy::to_ptr_variant(__slot_1);
@@ -563,6 +600,11 @@ void main() {
     std::cout << "switch_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
     r = ::tpyapp::main::switch_try_finally(c1.as_const());
     std::cout << "switch_try_finally:" << " " << r << "\n" << ::tpy::check_signals;
+    OptN __tmp_3 = OptN(3);
+    OptN __tmp_4 = OptN(std::nullopt);
+    PlainN __tmp_5 = PlainN(5);
+    PlainN __tmp_6 = PlainN(-1);
+    std::cout << "same_capture:" << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_3}, true) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_4}, false) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_5}, false) << " " << ::tpyapp::main::same_capture(::tpy::Union<const OptN*, const PlainN*>{&__tmp_6}, false) << "\n" << ::tpy::check_signals;
 }
 
 // # match/case with guard clauses (if conditions); the terminator sections pin

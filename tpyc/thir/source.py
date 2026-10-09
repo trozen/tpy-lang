@@ -13,10 +13,16 @@ can name the type and every consumer can read it without a cycle.
 """
 from __future__ import annotations
 
+from collections.abc import Callable, Set as AbstractSet
 from dataclasses import dataclass
 from enum import Enum, auto
+from typing import TYPE_CHECKING
 
 from ..typesys import TpyType
+
+if TYPE_CHECKING:
+    from .lower.context import ValueOptKind
+    from .nodes import THIRTupleLayout
 
 
 class Held(Enum):
@@ -53,21 +59,126 @@ class SelectResult:
     temporary: bool
 
 
-@dataclass(frozen=True, slots=True)
-class Binding:
-    """The local / parameter / global a NAME read reads, as the read sees
-    it. `type` is the binding's declared type (a flow-narrowed read has a
-    narrower `result_type`); `param_type` is set for a parameter of the
-    function being lowered."""
+@dataclass(frozen=True, slots=True, eq=False)
+class BindingRepr:
+    """How one C++ binding holds its value, decided once per declaration
+    site by the binding table (`lower/bindings.py`): the home of the
+    per-name representation facts the lowering reads (`_LowerCtx.binding`),
+    and the record a NAME read reads (`Source.binding`). Every THIR node
+    that declares or reseats a binding carries its record as `binding`;
+    the validator checks the node's facts against it."""
     name: str
+    # The declaring statement, comprehension clause, walrus or match case;
+    # None for a parameter, a seeded global or a frame field.
+    site: object | None
+    # The declared type (a flow-narrowed read has a narrower
+    # `result_type`).
     type: TpyType | None
-    param_type: TpyType | None
-    is_param: bool
-    # The binding is a pointer (`T*`): its read without a deref is the raw
-    # pointer, which only a whole lift consumes.
-    pointer: bool
+    # The classifier row that decided the record.
+    row: str
+    is_param: bool = False
+    # The type the parameter list the body is lowered under (`lc.params`)
+    # gives the name, `Ref[...]` and all: set for the function's own
+    # parameters and, inside a lambda, the lambda's; a nested def's
+    # parameters are bound as its locals.
+    param_type: TpyType | None = None
+    # `T*`: a read without a deref is the raw pointer, which only a whole
+    # lift consumes.
+    pointer: bool = False
+    # A first local declaration's C++ shape where the borrow-local rows
+    # decide it (`T&`, `T*`, a rebind slot, an Optional pointer slot or
+    # lift): the declaration arm builds that shape.
+    local_binding: 'LocalBinding | None' = None
+    # A pointer whose rvalue reseats go through a pre-declared slot.
+    rebind_slot: bool = False
+    # `T&`.
+    ref_alias: bool = False
+    # `::tpy::Union<A*, B*>`.
+    ptr_variant: bool = False
+    # A value-repr `std::optional<T>`, by the kind its narrowed deref reads.
+    value_opt: 'ValueOptKind | None' = None
+    # A storage-form `std::optional<P>` of a pointer-repr Optional.
+    storage_opt: bool = False
+    const_storage_opt: bool = False
+    # A pointer-repr tuple held in storage form (`std::tuple<A, B>`).
+    storage_tuple: bool = False
+    const_storage_tuple: bool = False
+    # The mixed own / borrow render of a per-element-Own tuple.
+    borrow_tuple_mixed: bool = False
+    # `std::optional<std::tuple<.., T*>>`.
+    optional_borrow_tuple: bool = False
+    # An owned tuple constructed in place, and its element layout.
+    tuple_layout: 'THIRTupleLayout | None' = None
+    # Per element of a borrow tuple: held inline rather than by pointer.
+    inline_elems: tuple[bool, ...] | None = None
+    # A const declaration (the decl families; a parameter's const is its
+    # reading function's verdict).
+    const: bool = False
+    # A loop variable bound const.
+    const_loop_var: bool = False
+    # The whole-body borrow-tuple const fixpoint, per NAME as the lowering
+    # keeps it: every record of a marked name carries the bit.
+    const_borrow_tuple: bool = False
+    const_opt_borrow_tuple: bool = False
+    # A sink may move from it at its last use (outside a `moves_only`
+    # region, which decides there).
+    movable: bool = False
+    # A resumable frame's `tpy::frame_slot<T>` field.
+    frame_slot: bool = False
+    # A `std::optional<T>` holding a pointer-repr Optional's value (an
+    # OPTIONAL_STORAGE hoist, an `Own[P | None]` param's
+    # `std::optional<P>&&`): read through as the `T*` it holds, assigned
+    # plainly, tested with `has_value`.
+    optional_storage: bool = False
+    # The concrete coroutine frame in `std::optional<__coro_f>`, its
+    # erasure deferred to the `Own[dyn]` consumer: a reseat emplaces.
+    coro_frame: bool = False
+    # A reassigned pointer local lifted off the `std::optional<P> __slot_N`
+    # an owning call fills: a reseat re-fills that slot.
+    opt_storage_call: bool = False
+    # An `auto` iterator object off a generator call, or an `auto&` second
+    # name for one.
+    iterator_object: bool = False
+    # An `Own[...]` parameter: the caller handed the value over.
+    owned: bool = False
+    # A frame field's layout facts the declared type cannot show.
+    effective_type: TpyType | None = None
+    payload: str | None = None
+    global_cpp: str | None = None
     # A pointer-slot module global, read as the pointer it is.
-    global_slot: bool
+    global_slot: bool = False
+    # A nested def's name: the lowering binds it as a closure local
+    # (`lc.nested_def_locals`), never in `declared`.
+    nested_def: bool = False
+
+
+# The record a name with no binding answers with (a function, a class, a
+# synthesized narrowing alias): every representation fact false.
+UNBOUND = BindingRepr(name="", site=None, type=None, row="unbound")
+
+
+class NameFacts:
+    """The names whose binding has one representation fact, for a helper
+    that takes a name set: membership asks the record. It cannot be
+    iterated -- the table answers per name, never by listing."""
+    __slots__ = ("_test",)
+
+    def __init__(self, test: Callable[[str], bool]) -> None:
+        self._test = test
+
+    def __contains__(self, name) -> bool:
+        return isinstance(name, str) and self._test(name)
+
+    def __or__(self, other: AbstractSet[str]) -> 'NameFacts':
+        return NameFacts(lambda n: n in self or n in other)
+
+    __ror__ = __or__
+
+    def __sub__(self, other: AbstractSet[str]) -> 'NameFacts':
+        return NameFacts(lambda n: n in self and n not in other)
+
+    def __iter__(self):
+        raise TypeError("NameFacts answers membership only")
 
 
 @dataclass(frozen=True, slots=True)
@@ -107,7 +218,7 @@ class Source:
     # Per element of a tuple-typed literal or name, else None.
     elems: 'tuple[Source, ...] | None' = None
     # The binding a NAME read reads; None for every other expression.
-    binding: Binding | None = None
+    binding: BindingRepr | None = None
     # The type sema analyzed the source expression at (`get_expr_type`),
     # before lowering settled a still-pending literal type.
     analyzed_type: TpyType | None = None

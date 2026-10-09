@@ -30,6 +30,8 @@ struct Derived;
 struct Q0;
 struct BasedOrder;
 struct ViewSlots;
+struct SpanHolder;
+struct OptHolder;
 struct Tagged;
 struct Holds;
 struct Reads;
@@ -62,6 +64,8 @@ int32_t count(const std::vector<int32_t>& xs);
 std::vector<int32_t> mk(const std::vector<int32_t>& xs);
 // def union_tag(x: UA | UB) -> int32:
 int32_t union_tag(::tpy::Union<const UA*, const UB*> x);
+// def opt_loop_param(o: Optional[int32], xs: list[Optional[int32]]) -> None:
+void opt_loop_param(std::optional<int32_t> o, const std::vector<std::optional<int32_t>>& xs);
 // def view_of_borrow() -> None:
 void view_of_borrow();
 // def nested_writes(p: Own[str], t: tuple[int, int32] | None,
@@ -504,6 +508,41 @@ inline std::ostream& operator<<(std::ostream& os, const ViewSlots& obj) {
     return os;
 }
 
+// class SpanHolder:
+struct SpanHolder {
+    // sp: Span[int32]
+    std::span<int32_t> sp;
+
+    // def __init__(self, sp: Span[int32], sps: list[Span[int32]]) -> None:
+    SpanHolder() = default;
+    explicit SpanHolder(std::span<int32_t> sp, const std::vector<std::span<int32_t>>& sps);
+
+    // def reset(self, sp: Span[int32], sps: list[Span[int32]]) -> None:
+    void reset(std::span<int32_t> sp, const std::vector<std::span<int32_t>>& sps);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.SpanHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const SpanHolder& obj) {
+    ::tpy::print_object_default(os, "SpanHolder", obj);
+    return os;
+}
+
+// class OptHolder:
+struct OptHolder {
+    // o: Optional[int32]
+    std::optional<int32_t> o;
+
+    // def __init__(self, o: Optional[int32], xs: list[Optional[int32]]) -> None:
+    OptHolder() = default;
+    explicit OptHolder(std::optional<int32_t> o, const std::vector<std::optional<int32_t>>& xs);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OptHolder& obj) {
+    ::tpy::print_object_default(os, "OptHolder", obj);
+    return os;
+}
+
 // class Tagged:
 struct Tagged {
     // name: str
@@ -943,6 +982,57 @@ inline ViewSlots::ViewSlots(std::string_view s)
 inline void ViewSlots::set(int32_t k) {
     this->u = k;
     this->o = std::nullopt;
+}
+
+// def __init__(self, sp: Span[int32], sps: list[Span[int32]]) -> None:
+//     self.sp = sp
+//     # ctor: a loop variable rebinding a Span param is still a view of
+//     # the caller's buffer. A list of views cannot be built yet
+//     # (BUGS.md#generic-slot-view-enum-arg-rejects), so the callers pass
+//     # an empty one: exec and cpy pin the pre-loop write, and the loop
+//     # write is pinned at compile time by its `# tpyc: ok`.
+//     for sp in sps:
+//         self.sp = sp  # tpyc: ok
+inline SpanHolder::SpanHolder(std::span<int32_t> sp, const std::vector<std::span<int32_t>>& sps) : sp(sp) {
+    auto& __obj_0 = sps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        sp = *__beg_0;
+        this->sp = sp;
+    }
+}
+
+// def reset(self, sp: Span[int32], sps: list[Span[int32]]) -> None:
+//     self.sp = sp
+//     # method: the same.
+//     for sp in sps:
+//         self.sp = sp  # tpyc: ok
+inline void SpanHolder::reset(std::span<int32_t> sp, const std::vector<std::span<int32_t>>& sps) {
+    this->sp = sp;
+    auto& __obj_0 = sps;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        sp = *__beg_0;
+        this->sp = sp;
+    }
+}
+
+// def __init__(self, o: Optional[int32], xs: list[Optional[int32]]) -> None:
+//     # ctor.opt_loop_param: an `Optional[int32]` param rebound by a loop
+//     # variable, written to a field after the loop.
+//     for o in xs:
+//         pass
+//     self.o = o  # tpyc: ok
+inline OptHolder::OptHolder(std::optional<int32_t> o, const std::vector<std::optional<int32_t>>& xs) {
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        o = *__beg_0;
+    }
+    this->o = o;
 }
 
 // def __init__(self, name: str) -> None:

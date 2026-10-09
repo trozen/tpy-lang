@@ -91,6 +91,37 @@ Scripts (run from the repo root with `uv run python`):
   [--jobs 4] [-k SUBSTR]`; programs and dumps land in
   `build/convert_matrix` (not committed). A manual instrument (tens of
   minutes at `--jobs 4`), never part of the pytest run.
+- `binding_shadow.py` -- **the binding table's shadow count** (TODO.md "One
+  conversion boundary for every value sink", the per-function binding
+  table). Compiles every non-error case in-process with
+  `tpyc.thir.lower.bindings.SHADOW_SINK` set; every lowered body plans its
+  `BindingTable` (`tpyc/thir/lower/bindings.py`), the home of the per-name
+  representation facts it models, and `tpyc/thir/lower/binding_shadow.py`
+  checks every name read against what the lowering knows apart from the
+  table: the record's scope against `declared` and the closure locals, the
+  stamped const against the parameter verdict, the record's held under its
+  declared type against the read's, and the record `binding_of` hands a
+  conversion against the parameter list and the prescan. It prints the
+  disagreements by class with examples and the record population (records,
+  records per classifier row, `unplanned` reads -- a name in `declared`
+  with no record) and the scope counters: `cursor_miss` (the walk entered
+  a key the planner never planned, an internal error), `scope_unentered`
+  (a planned scope the walk never entered; the gate is 0) and
+  `scope_unentered_cfg` (one a resumable body's CFG decomposed, whose
+  parts enter their own keys). `uv run python
+  scripts/thir_migration/review/binding_shadow.py [--jobs 4] [-k SUBSTR,...]
+  [--every N] [--examples N] [--json OUT.json] [--verify-cpp]`: `-k` keeps
+  the cases whose path contains any of the comma-separated substrings,
+  `--every N` every Nth case, `--examples` caps the examples per class,
+  `--json` dumps the classes and the population, `--verify-cpp` also
+  generates each module with and without the check and reports any C++
+  difference. A manual instrument (about fifteen minutes over the corpus at
+  `--jobs 4`), never part of the pytest run; `convert_gates.py` counts the
+  table's structure (the per-name facts still written outside the planner,
+  the `_BRANCH_SCOPED_SETS` entries that are no ledger, the binding
+  classifiers that exist). The declaration side -- every node that emits a
+  binding against the record it carries -- is the THIR validator's own
+  check.
 - `property_position_sweep.py` -- **the property x position verdict ratchet.**
   The matrix is (position x getter flavour x receiver kind), for the accessor
   spelling and for its spelled-METHOD twin, and it records a

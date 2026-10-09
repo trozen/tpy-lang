@@ -498,6 +498,212 @@ void test_continue_in_with() {
     std::cout << "after continue loop" << "\n" << ::tpy::check_signals;
 }
 
+// def test_later_item_reads_target() -> None:
+//     # A later item's manager is a lambda reading an earlier item's target.
+//     with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
+//         print("later_item:", n, result)
+void test_later_item_reads_target() {
+    auto __ctx_20 = Count(7);
+    auto n = __ctx_20.__enter__();
+    auto __ctx_21 = Cb([n]() -> int32_t { return n; });
+    auto result = __ctx_21.__enter__();
+    try {
+        try {
+            std::cout << "later_item:" << " " << n << " " << result << "\n" << ::tpy::check_signals;
+            goto __with_exit_21;
+        } catch (::tpy::BaseException& __exc_21) {
+            __ctx_21.__exit__({}, &__exc_21, {});
+            throw;
+        } catch (...) {
+            __ctx_21.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_21:
+        __ctx_21.__exit__({}, nullptr, {});
+        goto __with_exit_20;
+    } catch (::tpy::BaseException& __exc_20) {
+        __ctx_20.__exit__({}, &__exc_20, {});
+        throw;
+    } catch (...) {
+        __ctx_20.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_20:
+    __ctx_20.__exit__({}, nullptr, {});
+}
+
+// def comp_names_target(xs: list[int32]) -> int32:
+//     # A manager comprehension's variable has the item target's name.
+//     with Count(sum([n for n in xs])) as n:  # tpyc: ok
+//         return n
+int32_t comp_names_target(const std::vector<int32_t>& xs) {
+    auto __ctx_22 = Count(::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        auto& __obj_0 = xs;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t n = *__beg_0;
+            __result.push_back(n);
+        }
+        std::move(__result);
+    })));
+    auto n = __ctx_22.__enter__();
+    bool __fin_ran_23 = false;
+    try {
+        int32_t __tpy_ret_1 = n;
+        __fin_ran_23 = true;
+        __ctx_22.__exit__({}, nullptr, {});
+        return __tpy_ret_1;
+    } catch (::tpy::BaseException& __exc_22) {
+        if (__fin_ran_23) throw;
+        __ctx_22.__exit__({}, &__exc_22, {});
+        throw;
+    } catch (...) {
+        if (__fin_ran_23) throw;
+        __ctx_22.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// def later_comp_names_target(xs: list[int32]) -> int32:
+//     # A later item's manager comprehension has that item's target name and
+//     # reads an earlier target.
+//     with Count(10) as a, Count(sum([b * a for b in xs])) as b:  # tpyc: ok
+//         return a + b
+int32_t later_comp_names_target(const std::vector<int32_t>& xs) {
+    auto __ctx_23 = Count(10);
+    auto a = __ctx_23.__enter__();
+    auto __ctx_24 = Count(::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        auto& __obj_0 = xs;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t b = *__beg_0;
+            __result.push_back((::tpy::mul_check<int32_t>(b, a)));
+        }
+        std::move(__result);
+    })));
+    auto b = __ctx_24.__enter__();
+    bool __fin_ran_24 = false;
+    try {
+        bool __fin_ran_25 = false;
+        try {
+            int32_t __tpy_ret_1 = (::tpy::add_check<int32_t>(a, b));
+            __fin_ran_25 = true;
+            __ctx_24.__exit__({}, nullptr, {});
+            __fin_ran_24 = true;
+            __ctx_23.__exit__({}, nullptr, {});
+            return __tpy_ret_1;
+        } catch (::tpy::BaseException& __exc_24) {
+            if (__fin_ran_25) throw;
+            __ctx_24.__exit__({}, &__exc_24, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_25) throw;
+            __ctx_24.__exit__({}, nullptr, {});
+            throw;
+        }
+    } catch (::tpy::BaseException& __exc_23) {
+        if (__fin_ran_24) throw;
+        __ctx_23.__exit__({}, &__exc_23, {});
+        throw;
+    } catch (...) {
+        if (__fin_ran_24) throw;
+        __ctx_23.__exit__({}, nullptr, {});
+        throw;
+    }
+}
+
+// def test_comp_names_target() -> None:
+//     print("comp_target:", comp_names_target([1, 2]))
+//     print("later_comp_target:", later_comp_names_target([1, 2]))
+void test_comp_names_target() {
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    std::cout << "comp_target:" << " " << ::tpyapp::main::comp_names_target(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::vector<int32_t> __tmp_2 = {1, 2};
+    std::cout << "later_comp_target:" << " " << ::tpyapp::main::later_comp_names_target(__tmp_2) << "\n" << ::tpy::check_signals;
+}
+
+// def test_comp_names_body_hoist(xs: list[int32]) -> None:
+//     # A body name predeclared before the with (read after it) is also a
+//     # manager comprehension's variable. A predeclared TARGET of that name
+//     # is BUGS.md#with-existing-scalar-target-rejected.
+//     with Count(sum([x for x in xs])) as n:  # tpyc: ok
+//         x = n + 1
+//     print("body_hoist:", x)
+void test_comp_names_body_hoist(const std::vector<int32_t>& xs) {
+    int32_t x;
+    auto __ctx_25 = Count(::tpy::builtin_sum<int32_t>(({
+        std::vector<int32_t> __result;
+        auto& __obj_0 = xs;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            int32_t x = *__beg_0;
+            __result.push_back(x);
+        }
+        std::move(__result);
+    })));
+    auto n = __ctx_25.__enter__();
+    try {
+        x = (::tpy::add_check<int32_t>(n, 1));
+        goto __with_exit_25;
+    } catch (::tpy::BaseException& __exc_25) {
+        __ctx_25.__exit__({}, &__exc_25, {});
+        throw;
+    } catch (...) {
+        __ctx_25.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_25:
+    __ctx_25.__exit__({}, nullptr, {});
+    std::cout << "body_hoist:" << " " << x << "\n" << ::tpy::check_signals;
+}
+
+// def test_comp_names_ref_body_hoist(rows: list[int]) -> None:
+//     # A reference-type body name (a pointer predeclared before the manager)
+//     # is also a manager comprehension's variable; the alias is mutated after
+//     # the with.
+//     with Items(len([ys for ys in rows])) as xs:  # tpyc: ok
+//         ys = xs
+//     ys.append(42)
+//     print("hoist_ref:", ys, xs)
+void test_comp_names_ref_body_hoist(const std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_26 = Items(::tpy::BigInt(::tpy::__len__(({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.push_back(ys);
+        }
+        std::move(__result);
+    }))));
+    auto& xs = __ctx_26.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_26;
+    } catch (::tpy::BaseException& __exc_26) {
+        __ctx_26.__exit__({}, &__exc_26, {});
+        throw;
+    } catch (...) {
+        __ctx_26.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_26:
+    __ctx_26.__exit__({}, nullptr, {});
+    ys->push_back(42);
+    std::cout << "hoist_ref:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
 // test_basic()
 // print("---")
 // test_no_as()
@@ -527,6 +733,12 @@ void test_continue_in_with() {
 // test_break_in_with()
 // print("---")
 // test_continue_in_with()
+// print("---")
+// test_later_item_reads_target()
+// print("---")
+// test_comp_names_target()
+// test_comp_names_body_hoist([1, 2])
+// test_comp_names_ref_body_hoist([5, 6])
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -561,6 +773,14 @@ void __tpy_init() {
     ::tpyapp::main::test_break_in_with();
     std::cout << "---" << "\n" << ::tpy::check_signals;
     ::tpyapp::main::test_continue_in_with();
+    std::cout << "---" << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::test_later_item_reads_target();
+    std::cout << "---" << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::test_comp_names_target();
+    std::vector<int32_t> __tmp_1 = {1, 2};
+    ::tpyapp::main::test_comp_names_body_hoist(__tmp_1);
+    std::vector<::tpy::BigInt> __tmp_2 = {5, 6};
+    ::tpyapp::main::test_comp_names_ref_body_hoist(__tmp_2);
 }
 
 } // namespace tpyapp::main

@@ -4,6 +4,9 @@
 # would show up in the output.
 from dataclasses import dataclass
 from enum import Enum
+from typing import Optional
+
+from tpy import int32
 
 @dataclass
 class Dog:
@@ -158,6 +161,30 @@ def switch_try_finally(a: Dog | Cat) -> str:
             print("switch_try_finally: cat")
     return "after"
 
+class OptN:
+    n: Optional[int32]
+
+    def __init__(self, n: Optional[int32]) -> None:
+        self.n = n
+
+class PlainN:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+# Guarded union switch tier, two guarded arms binding one capture name at
+# different field types (Optional[int32] vs int32): the second guard reads
+# its own case's capture, not the first case's.
+def same_capture(subject: OptN | PlainN, flag: bool) -> int32:
+    # Both arms are guarded, so no member is covered unconditionally.
+    match subject:  # tpyc: warning(/non-exhaustive match/)
+        case OptN(n=v) if flag:
+            return 1
+        case PlainN(n=v) if v > 0:  # tpyc: ok
+            return 2
+    return 0
+
 def main() -> None:
     d1: Dog | Cat = Dog("Rex")
     d2: Dog | Cat = Dog("Buddy")
@@ -201,5 +228,8 @@ def main() -> None:
     print("switch_try_finally:", r)
     r = switch_try_finally(c1)
     print("switch_try_finally:", r)
+    print("same_capture:", same_capture(OptN(3), True),
+          same_capture(OptN(None), False), same_capture(PlainN(5), False),
+          same_capture(PlainN(-1), False))
 
 main()

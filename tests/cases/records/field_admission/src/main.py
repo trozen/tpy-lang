@@ -2,7 +2,8 @@
 # position (warned copies live in records/field_admission_warned).
 import asyncio
 from typing import Any, Callable, Iterator, Optional
-from tpy import Own, StrView, ValueType, copy, float64, int32, int64, nocopy
+from tpy import (Array, Own, Span, StrView, ValueType, copy, float64, int32,
+                 int64, nocopy)
 
 
 class P:
@@ -487,6 +488,45 @@ class ViewSlots:
         self.o = None  # tpyc: ok
 
 
+class SpanHolder:
+    sp: Span[int32]
+
+    def __init__(self, sp: Span[int32], sps: list[Span[int32]]) -> None:
+        self.sp = sp
+        # ctor: a loop variable rebinding a Span param is still a view of
+        # the caller's buffer. A list of views cannot be built yet
+        # (BUGS.md#generic-slot-view-enum-arg-rejects), so the callers pass
+        # an empty one: exec and cpy pin the pre-loop write, and the loop
+        # write is pinned at compile time by its `# tpyc: ok`.
+        for sp in sps:
+            self.sp = sp  # tpyc: ok
+
+    def reset(self, sp: Span[int32], sps: list[Span[int32]]) -> None:
+        self.sp = sp
+        # method: the same.
+        for sp in sps:
+            self.sp = sp  # tpyc: ok
+
+
+class OptHolder:
+    o: Optional[int32]
+
+    def __init__(self, o: Optional[int32], xs: list[Optional[int32]]) -> None:
+        # ctor.opt_loop_param: an `Optional[int32]` param rebound by a loop
+        # variable, written to a field after the loop.
+        for o in xs:
+            pass
+        self.o = o  # tpyc: ok
+
+
+def opt_loop_param(o: Optional[int32], xs: list[Optional[int32]]) -> None:
+    # opt_loop_param: the same rebound param read after the loop.
+    for o in xs:
+        pass
+    h = OptHolder(o, xs)
+    print("opt_loop_param", o, h.o)  # tpyc: ok
+
+
 class Tagged:
     name: str
 
@@ -592,6 +632,17 @@ def ctor_writes() -> None:
     vs = ViewSlots("vs")
     vs.set(3)
     print("view_slots", vs.o is None)
+    a: Array[int32, 2] = [1, 2]
+    c: Array[int32, 2] = [7, 8]
+    none: list[Span[int32]] = []
+    sh = SpanHolder(a, none)
+    a[0] = 3
+    print("ctor.span_loop_param", sh.sp[0])
+    sh.reset(c, none)
+    c[1] = 9
+    print("method.span_loop_param", sh.sp[0], sh.sp[1])
+    opt_loop_param(4, [None, 5])
+    opt_loop_param(None, [])
     view_of_borrow()
 
 

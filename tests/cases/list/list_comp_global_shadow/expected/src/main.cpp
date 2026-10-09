@@ -11,6 +11,542 @@ std::vector<int32_t>* r4{};
 std::vector<int32_t>* r5{};
 std::vector<int32_t>* r6{};
 std::array<::tpy::BigInt, 5>* r7{};
+std::vector<int32_t>* row{};
+
+// def if_cond(rows: list[int]) -> None:
+//     # An `if` condition's comprehension variable is the body's pointer local.
+//     if len([ys for ys in rows]) > 1:  # tpyc: ok
+//         ys = rows
+//     else:
+//         return
+//     ys.append(9)
+//     print("if_cond:", ys, rows)
+void if_cond(std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    if ((::tpy::__len__(({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.push_back(ys);
+        }
+        std::move(__result);
+    })) > 1)) {
+        ys = &(rows);
+    } else {
+        return;
+    }
+    ys->push_back(9);
+    std::cout << "if_cond:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
+}
+
+// def dict_comp(rows: list[int]) -> None:
+//     # The same through a dict comprehension.
+//     if len({ys: ys * 2 for ys in rows}) > 1:  # tpyc: ok
+//         ys = rows
+//     else:
+//         return
+//     ys.append(9)
+//     print("dict_comp:", ys, rows)
+void dict_comp(std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    if ((::tpy::__len__(({
+        ::tpy::ordered_map<::tpy::BigInt, ::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.insert_or_assign(ys, ((ys) * (::tpy::BigInt(2))));
+        }
+        std::move(__result);
+    })) > 1)) {
+        ys = &(rows);
+    } else {
+        return;
+    }
+    ys->push_back(9);
+    std::cout << "dict_comp:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
+}
+
+// def set_comp(rows: list[int]) -> None:
+//     # The same through a set comprehension.
+//     if len({ys + 1 for ys in rows}) > 1:  # tpyc: ok
+//         ys = rows
+//     else:
+//         return
+//     ys.append(9)
+//     print("set_comp:", ys, rows)
+void set_comp(std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    if ((::tpy::__len__(({
+        ::tpy::ordered_set<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.insert(((ys) + (::tpy::BigInt(1))));
+        }
+        std::move(__result);
+    })) > 1)) {
+        ys = &(rows);
+    } else {
+        return;
+    }
+    ys->push_back(9);
+    std::cout << "set_comp:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
+}
+
+namespace {
+
+// if sum(ys for ys in rows) > 1:  # tpyc: ok
+struct __genexpr_genexpr_2_frame : public ::tpy::next_iter_mixin<__genexpr_genexpr_2_frame, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    const std::vector<::tpy::BigInt>& __src;
+    ::tpy::BigInt ys;
+    using __for_src_0_t = decltype((__src));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __genexpr_genexpr_2_frame(const std::vector<::tpy::BigInt>& __src)
+        : __state(S_INITIAL),
+          __src(__src) { __for_it_0.emplace((this->__src).begin()); __for_end_0.emplace((this->__src).end()); }
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __genexpr_genexpr_2_frame& __iter__() { return *this; }
+
+    [[maybe_unused]] friend std::ostream& operator<<(std::ostream& os, const __genexpr_genexpr_2_frame&) {
+        return os << "<generator __genexpr_genexpr_2>";
+    }
+};
+
+// # A generator expression lowers as its own function (its variable is a
+// # frame field), so it never meets the pointer-hide admission; this pins
+// # that the enclosing body's later pointer local is unaffected by it.
+// if sum(ys for ys in rows) > 1:  # tpyc: ok  # -> S_RESUME_0
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __genexpr_genexpr_2_frame::__next__() {
+    while (!((*__for_it_0) == (*__for_end_0))) {
+        ys = *((*__for_it_0))++;
+        return ys;
+    }
+    return ::tpy::make_unexpected(::tpy::StopIteration{});
+}
+
+// if sum(ys for ys in rows) > 1:  # tpyc: ok
+__genexpr_genexpr_2_frame __genexpr_genexpr_2(const std::vector<::tpy::BigInt>& __src) {
+    return __genexpr_genexpr_2_frame(__src);
+}
+
+}  // namespace
+
+// def genexpr(rows: list[int]) -> None:
+//     # A generator expression lowers as its own function (its variable is a
+//     # frame field), so it never meets the pointer-hide admission; this pins
+//     # that the enclosing body's later pointer local is unaffected by it.
+//     if sum(ys for ys in rows) > 1:  # tpyc: ok
+//         ys = rows
+//     else:
+//         return
+//     ys.append(9)
+//     print("genexpr:", ys, rows)
+void genexpr(std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    if ((::tpy::builtin_sum_bigint(::tpyapp::main::__genexpr_genexpr_2(rows)) > 1)) {
+        ys = &(rows);
+    } else {
+        return;
+    }
+    ys->push_back(9);
+    std::cout << "genexpr:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(rows) << "\n" << ::tpy::check_signals;
+}
+
+// def unpack_head(d: dict[str, int]) -> None:
+//     # An unpacked comprehension target hides a pointer local live after it.
+//     with Items(1) as xs:
+//         ys = xs
+//     m = {k: ys * 2 for k, ys in d.items()}  # tpyc: ok
+//     ys.append(3)
+//     print("unpack_head:", m, ys, xs)
+void unpack_head(const ::tpy::ordered_map<std::string, ::tpy::BigInt>& d) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_1 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_1.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_1;
+    } catch (::tpy::BaseException& __exc_1) {
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_1:
+    __ctx_1.__exit__({}, nullptr, {});
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> m = ({
+        ::tpy::ordered_map<std::string, ::tpy::BigInt> __result;
+        auto __obj_0 = ::tpy::dict_items(d);
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& __for_tup_0 = *__beg_0;
+            const auto& __tup_1 = __for_tup_0;
+            std::string k = std::get<0>(__tup_1);
+            ::tpy::BigInt ys = std::get<1>(__tup_1);
+            __result.insert_or_assign(k, ((ys) * (::tpy::BigInt(2))));
+        }
+        std::move(__result);
+    });
+    ys->push_back(3);
+    std::cout << "unpack_head:" << " " << ::tpy::DictPrinter(m) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def reassigned_rec(a: Rec, b: Rec, rows: list[int]) -> None:
+//     # The hidden local is a reassigned record (a pointer slot).
+//     r = a
+//     r = b
+//     m = [r + 1 for r in rows]  # tpyc: ok
+//     r.n += 5
+//     print("reassigned_rec:", m, r.n, b.n)
+void reassigned_rec(Rec& a, Rec& b, const std::vector<::tpy::BigInt>& rows) {
+    Rec* r = &(a);
+    r = &(b);
+    std::vector<::tpy::BigInt> m = ({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& r = *__beg_0;
+            __result.push_back(((r) + (::tpy::BigInt(1))));
+        }
+        std::move(__result);
+    });
+    r->n = (r->n) + (::tpy::BigInt(5));
+    std::cout << "reassigned_rec:" << " " << ::tpy::ListPrinter(m) << " " << r->n << " " << b.n << "\n" << ::tpy::check_signals;
+}
+
+// def array_range() -> None:
+//     # The Array-demoted range comprehension.
+//     with Items(1) as xs:
+//         ys = xs
+//     m: Array[int, 3] = [ys * ys for ys in range(3)]  # tpyc: ok
+//     ys.append(5)
+//     print("array_range:", list(m), ys, xs)
+void array_range() {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_2 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_2.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_2;
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
+    std::array<::tpy::BigInt, 3> m = ::tpy::array_from_index<::tpy::BigInt, 3>([&](std::size_t __i_0) -> ::tpy::BigInt {
+        int32_t ys = int32_t(__i_0);
+        return ::tpy::BigInt((::tpy::mul_check<int32_t>(ys, ys)));
+    });
+    ys->push_back(5);
+    std::cout << "array_range:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(m)) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def array_source(a: Array[int, 3]) -> None:
+//     # The Array-source comprehension.
+//     with Items(1) as xs:
+//         ys = xs
+//     m: Array[int, 3] = [ys * 2 for ys in a]  # tpyc: ok
+//     ys.append(3)
+//     print("array_source:", list(m), ys, xs)
+void array_source(const std::array<::tpy::BigInt, 3>& a) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_3 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_3.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_3;
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
+    } catch (...) {
+        __ctx_3.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
+    std::array<::tpy::BigInt, 3> m = ({
+        auto& __obj_0 = a;
+        ::tpy::array_from_index<::tpy::BigInt, 3>([&](std::size_t __i_0) -> ::tpy::BigInt {
+            ::tpy::BigInt ys = __obj_0[__i_0];
+            return ((ys) * (::tpy::BigInt(2)));
+        });
+    });
+    ys->push_back(3);
+    std::cout << "array_source:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(m)) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def in_lambda(rows: list[int]) -> None:
+//     # A lambda body's comprehension.
+//     with Items(1) as xs:
+//         ys = xs
+//     f: Callable[[], int] = lambda: len([ys for ys in rows])  # tpyc: ok
+//     ys.append(3)
+//     print("in_lambda:", f(), ys, xs)
+void in_lambda(const std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_4 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_4.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_4;
+    } catch (::tpy::BaseException& __exc_4) {
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
+    } catch (...) {
+        __ctx_4.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
+    std::function<::tpy::BigInt()> f = [rows, ys]() -> ::tpy::BigInt { return ::tpy::BigInt(::tpy::__len__(({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.push_back(ys);
+        }
+        std::move(__result);
+    }))); };
+    ys->push_back(3);
+    std::cout << "in_lambda:" << " " << f() << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def nested_def(rows: list[int]) -> None:
+//     # A nested def's comprehension hides the enclosing function's pointer local.
+//     with Items(1) as xs:
+//         ys = xs
+//
+//     def inner() -> int:
+//         return len([ys for ys in rows])  # tpyc: ok
+//
+//     ys.append(3)
+//     print("nested_def:", inner(), ys, xs)
+void nested_def(const std::vector<::tpy::BigInt>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_5 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_5.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_5;
+    } catch (::tpy::BaseException& __exc_5) {
+        __ctx_5.__exit__({}, &__exc_5, {});
+        throw;
+    } catch (...) {
+        __ctx_5.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_5:
+    __ctx_5.__exit__({}, nullptr, {});
+    auto inner = [&rows, &ys]() -> ::tpy::BigInt {
+        return ::tpy::BigInt(::tpy::__len__(({
+            std::vector<::tpy::BigInt> __result;
+            auto& __obj_0 = rows;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& ys = *__beg_0;
+                __result.push_back(ys);
+            }
+            std::move(__result);
+        })));
+    };
+    ys->push_back(3);
+    std::cout << "nested_def:" << " " << inner() << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def nested_comp(rows: list[list[int]]) -> None:
+//     # The inner comprehension of a nested one hides a pointer local.
+//     with Items(1) as xs:
+//         ys = xs
+//     m = [[ys * 2 for ys in r] for r in rows]  # tpyc: ok
+//     ys.append(3)
+//     print("nested_comp:", m, ys, xs)
+void nested_comp(const std::vector<std::vector<::tpy::BigInt>>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_6 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_6.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_6;
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
+    } catch (...) {
+        __ctx_6.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_6:
+    __ctx_6.__exit__({}, nullptr, {});
+    std::vector<std::vector<::tpy::BigInt>> m = ({
+        std::vector<std::vector<::tpy::BigInt>> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& r = *__beg_0;
+            __result.push_back(({
+                std::vector<::tpy::BigInt> __result;
+                auto& __obj_1 = r;
+                __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+                auto __beg_1 = __obj_1.begin();
+                auto __end_1 = __obj_1.end();
+                for (; __beg_1 != __end_1; ++__beg_1) {
+                    const ::tpy::BigInt& ys = *__beg_1;
+                    __result.push_back(((ys) * (::tpy::BigInt(2))));
+                }
+                std::move(__result);
+            }));
+        }
+        std::move(__result);
+    });
+    ys->push_back(3);
+    std::cout << "nested_comp:" << " " << ::tpy::ListPrinter(m) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def later_clause(rows: list[list[int]]) -> None:
+//     # A later `for` clause's variable hides a pointer local.
+//     with Items(1) as xs:
+//         ys = xs
+//     m = [ys for r in rows for ys in r if ys > 1]  # tpyc: ok
+//     ys.append(3)
+//     print("later_clause:", m, ys, xs)
+void later_clause(const std::vector<std::vector<::tpy::BigInt>>& rows) {
+    std::vector<::tpy::BigInt>* ys;
+    auto __ctx_7 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_7.__enter__();
+    try {
+        ys = &(xs);
+        goto __with_exit_7;
+    } catch (::tpy::BaseException& __exc_7) {
+        __ctx_7.__exit__({}, &__exc_7, {});
+        throw;
+    } catch (...) {
+        __ctx_7.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_7:
+    __ctx_7.__exit__({}, nullptr, {});
+    std::vector<::tpy::BigInt> m = ({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = rows;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& r = *__beg_0;
+            auto& __obj_1 = r;
+            auto __beg_1 = __obj_1.begin();
+            auto __end_1 = __obj_1.end();
+            for (; __beg_1 != __end_1; ++__beg_1) {
+                const ::tpy::BigInt& ys = *__beg_1;
+                if ((ys > 1)) {
+                    __result.push_back(ys);
+                }
+            }
+        }
+        std::move(__result);
+    });
+    ys->push_back(3);
+    std::cout << "later_clause:" << " " << ::tpy::ListPrinter(m) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def two_ptrs() -> None:
+//     # The hidden variable and the clause-0 iterable are both pointer locals.
+//     with Items(1) as xs:
+//         ys = xs
+//         zs = xs
+//     zs.append(2)
+//     m = [ys * 2 for ys in zs]  # tpyc: ok
+//     ys.append(3)
+//     print("two_ptrs:", m, ys, zs, xs)
+void two_ptrs() {
+    std::vector<::tpy::BigInt>* ys;
+    std::vector<::tpy::BigInt>* zs;
+    auto __ctx_8 = Items(::tpy::BigInt(1));
+    auto& xs = __ctx_8.__enter__();
+    try {
+        ys = &(xs);
+        zs = &(xs);
+        goto __with_exit_8;
+    } catch (::tpy::BaseException& __exc_8) {
+        __ctx_8.__exit__({}, &__exc_8, {});
+        throw;
+    } catch (...) {
+        __ctx_8.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_8:
+    __ctx_8.__exit__({}, nullptr, {});
+    zs->push_back(2);
+    std::vector<::tpy::BigInt> m = ({
+        std::vector<::tpy::BigInt> __result;
+        auto& __obj_0 = (*zs);
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const ::tpy::BigInt& ys = *__beg_0;
+            __result.push_back(((ys) * (::tpy::BigInt(2))));
+        }
+        std::move(__result);
+    });
+    ys->push_back(3);
+    std::cout << "two_ptrs:" << " " << ::tpy::ListPrinter(m) << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter((*zs)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def global_name(rows: list[list[int]]) -> None:
+//     # A function comprehension variable named like a module-level global.
+//     print("global_name:", [len(row) for row in rows])  # tpyc: ok
+//     row.append(1)
+//     print("global_name:", row)
+void global_name(const std::vector<std::vector<::tpy::BigInt>>& rows) {
+    std::cout << "global_name:" << " " << ::tpy::ListPrinter(({
+        std::vector<int32_t> __result;
+        auto& __obj_0 = rows;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& row = *__beg_0;
+            __result.push_back(::tpy::__len__(row));
+        }
+        std::move(__result);
+    })) << "\n" << ::tpy::check_signals;
+    row->push_back(1);
+    std::cout << "global_name:" << " " << ::tpy::ListPrinter((*row)) << "\n" << ::tpy::check_signals;
+}
 
 // def main() -> None:
 //     print(x)
@@ -21,6 +557,22 @@ std::array<::tpy::BigInt, 5>* r7{};
 //     print(r5)
 //     print(r6)
 //     print(r7)
+//     if_cond([5, 6])
+//     dict_comp([5, 6])
+//     set_comp([5, 6])
+//     genexpr([5, 6])
+//     unpack_head({"a": 1, "b": 2})
+//     reassigned_rec(Rec(1), Rec(2), [1, 2])
+//     array_range()
+//     array_source([1, 2, 3])
+//     in_lambda([1, 2])
+//     Meth().method([0], [1], [1, 2])
+//     nested_def([1, 2])
+//     nested_comp([[1, 2], [3]])
+//     later_clause([[1, 2], [3]])
+//     two_ptrs()
+//     global_name([[1, 2], [3]])
+//     print("global_name:", row)
 void main() {
     std::cout << ::tpy::ListPrinter((*x)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter((*r1)) << "\n" << ::tpy::check_signals;
@@ -30,6 +582,38 @@ void main() {
     std::cout << ::tpy::ListPrinter((*r5)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter((*r6)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::ListPrinter((*r7)) << "\n" << ::tpy::check_signals;
+    std::vector<::tpy::BigInt> __tmp_1 = {5, 6};
+    ::tpyapp::main::if_cond(__tmp_1);
+    std::vector<::tpy::BigInt> __tmp_2 = {5, 6};
+    ::tpyapp::main::dict_comp(__tmp_2);
+    std::vector<::tpy::BigInt> __tmp_3 = {5, 6};
+    ::tpyapp::main::set_comp(__tmp_3);
+    std::vector<::tpy::BigInt> __tmp_4 = {5, 6};
+    ::tpyapp::main::genexpr(__tmp_4);
+    ::tpy::ordered_map<std::string, ::tpy::BigInt> __tmp_5 = ::tpy::ordered_map<std::string, ::tpy::BigInt>({{"a", ::tpy::BigInt(1)}, {"b", ::tpy::BigInt(2)}});
+    ::tpyapp::main::unpack_head(__tmp_5);
+    Rec __tmp_6 = Rec(::tpy::BigInt(1));
+    Rec __tmp_7 = Rec(::tpy::BigInt(2));
+    std::vector<::tpy::BigInt> __tmp_8 = {1, 2};
+    ::tpyapp::main::reassigned_rec(__tmp_6, __tmp_7, __tmp_8);
+    ::tpyapp::main::array_range();
+    std::array<::tpy::BigInt, 3> __tmp_9 = {::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
+    ::tpyapp::main::array_source(__tmp_9);
+    std::vector<::tpy::BigInt> __tmp_10 = {1, 2};
+    ::tpyapp::main::in_lambda(__tmp_10);
+    std::vector<::tpy::BigInt> __tmp_11 = {0};
+    std::vector<::tpy::BigInt> __tmp_12 = {1};
+    Meth().method(__tmp_11, __tmp_12, {1, 2});
+    std::vector<::tpy::BigInt> __tmp_13 = {1, 2};
+    ::tpyapp::main::nested_def(__tmp_13);
+    std::vector<std::vector<::tpy::BigInt>> __tmp_14 = {{1, 2}, {3}};
+    ::tpyapp::main::nested_comp(__tmp_14);
+    std::vector<std::vector<::tpy::BigInt>> __tmp_15 = {{1, 2}, {3}};
+    ::tpyapp::main::later_clause(__tmp_15);
+    ::tpyapp::main::two_ptrs();
+    std::vector<std::vector<::tpy::BigInt>> __tmp_16 = {{1, 2}, {3}};
+    ::tpyapp::main::global_name(__tmp_16);
+    std::cout << "global_name:" << " " << ::tpy::ListPrinter((*row)) << "\n" << ::tpy::check_signals;
 }
 
 namespace {
@@ -126,6 +710,8 @@ __genexpr_module_1_frame<std::invoke_result_t<F_make>> __genexpr_module_1(std::i
 // # Array comprehension path (range-based, promotes to std::array)
 // r7: Array[int, 5] = [x * x for x in range(5)]
 //
+// row = [9]
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
@@ -202,6 +788,8 @@ void __tpy_init() {
         return ::tpy::BigInt((::tpy::mul_check<int32_t>(x, x)));
     });
     r7 = &__global_slot_8;
+    static std::vector<int32_t> __global_slot_9 = {9};
+    row = &__global_slot_9;
     ::tpyapp::main::main();
 }
 

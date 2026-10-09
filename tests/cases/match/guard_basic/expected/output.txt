@@ -29,3 +29,4 @@ switch_try_finally: finally
 switch_try_finally: ret
 switch_try_finally: cat
 switch_try_finally: after
+same_capture: 1 0 2 0

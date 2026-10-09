@@ -94,8 +94,8 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
     for name in node.captured_names:
         typ = declared.get(name)
         if (typ is None or name in lc.narrow.narrowed or name in lc.narrow.spelled
-                or name in lc.frame_field_names or name in lc.pointers
-                or name in lc.rebind_slot_locals or name in lc.branch_hoisted
+                or name in lc.frame_field_names or lc.binding(name).pointer
+                or lc.binding(name).rebind_slot or name in lc.branch_hoisted
                 or name in lc.nested_def_locals):
             return identity, None
         match node:
@@ -121,7 +121,7 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
             if name not in params and name not in lc.capture_sites.entry_locals:
                 return identity, None
             relation = THIRCaptureRelation.SCALAR_BINDING if by_ref else THIRCaptureRelation.SCALAR_SNAPSHOT
-            readonly = not by_ref or name in lc.const_locals
+            readonly = not by_ref or lc.binding(name).const
         elif name in params and by_ref:
             reference = borrowed_record(typ, _param_is_const(name, lc.func, lc.analyzer, lc.record_name),
                                         lc.analyzer)

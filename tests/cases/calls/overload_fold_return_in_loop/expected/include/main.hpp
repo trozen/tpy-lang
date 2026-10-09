@@ -7,10 +7,32 @@
 
 namespace tpyapp::main {
 
+struct Shape;
+// @dynamic
+// class Shape(Protocol):
+template<typename T>
+concept __Shape_Concept__ = requires(T& t) {
+    { t.area() } -> std::convertible_to<::tpy::BigInt>;
+};
+
+struct Shape {
+    virtual ::tpy::BigInt area() = 0;
+    virtual ~Shape() = default;
+};
+
+} // namespace tpyapp::main
+
+template<> struct tpy::is_dyn_protocol_base<tpyapp::main::Shape> : std::true_type {};
+
+namespace tpyapp::main {
+
 struct A;
 struct B;
+struct Sq;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_nums;
 
 // @overload
 // def in_loop(v: A, k: int) -> int: ...
@@ -30,6 +52,64 @@ inline constexpr std::string_view __name__ = "__main__";
 // @overload
 // def toplevel(v: B) -> int: ...
 ::tpy::BigInt toplevel(const B& v);
+// def nums() -> Iterator[int]:
+__gen_nums nums();
+// @overload
+// def dyn_local(x: int) -> int: ...
+::tpy::BigInt dyn_local(const ::tpy::BigInt& x);
+// @overload
+// def dyn_local(x: str) -> int: ...
+::tpy::BigInt dyn_local(std::string_view x);
+// def bump(a: A) -> None:
+void bump(A& a);
+// @overload
+// def both_arms(x: int) -> int: ...
+::tpy::BigInt both_arms(const ::tpy::BigInt& x);
+// @overload
+// def both_arms(x: str) -> int: ...
+::tpy::BigInt both_arms(std::string_view x);
+// @overload
+// def match_fold(v: A) -> int: ...
+::tpy::BigInt match_fold(A& v);
+// @overload
+// def match_fold(v: B) -> int: ...
+::tpy::BigInt match_fold(B& v);
+// @overload
+// def partly(x: int, k: int) -> int: ...
+::tpy::BigInt partly(const ::tpy::BigInt& x, const ::tpy::BigInt& k);
+// @overload
+// def partly(x: str, k: int) -> int: ...
+::tpy::BigInt partly(std::string_view x, const ::tpy::BigInt& k);
+// @overload
+// def walrus_elif(x: int, k: int) -> int: ...
+::tpy::BigInt walrus_elif(const ::tpy::BigInt& x, const ::tpy::BigInt& k);
+// @overload
+// def walrus_elif(x: str, k: int) -> int: ...
+::tpy::BigInt walrus_elif(std::string_view x, const ::tpy::BigInt& k);
+// @overload
+// def match_decl(v: A) -> int: ...
+::tpy::BigInt match_decl(const A& v);
+// @overload
+// def match_decl(v: B) -> int: ...
+::tpy::BigInt match_decl(const B& v);
+// @overload
+// def raises(x: int) -> int: ...
+::tpy::BigInt raises(const ::tpy::BigInt& x);
+// @overload
+// def raises(x: str) -> int: ...
+::tpy::BigInt raises(std::string_view x);
+// @overload
+// def redecl(x: int) -> int: ...
+::tpy::BigInt redecl(const ::tpy::BigInt& x);
+// @overload
+// def redecl(x: str) -> int: ...
+::tpy::BigInt redecl(std::string_view x);
+// @overload
+// def nested_def(x: int) -> int: ...
+::tpy::BigInt nested_def(const ::tpy::BigInt& x);
+// @overload
+// def nested_def(x: str) -> int: ...
+::tpy::BigInt nested_def(std::string_view x);
 // def main() -> None:
 void main();
 
@@ -65,6 +145,65 @@ inline std::ostream& operator<<(std::ostream& os, const B& obj) {
     return os;
 }
 
+// class Sq:
+struct Sq {
+    // self.n = n
+    ::tpy::BigInt n;
+
+    // def __init__(self, n: int) -> None:
+    Sq() = default;
+    explicit Sq(const ::tpy::BigInt& n);
+
+    // def area(self) -> int:
+    ::tpy::BigInt area() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Sq";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Sq& obj) {
+    ::tpy::print_object_default(os, "Sq", obj);
+    return os;
+}
+
+} // namespace tpyapp::main
+
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::Adapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
+    T inner;
+    template<typename... Args>
+    Adapter(Args&&... args) : inner(std::forward<Args>(args)...) {}
+    ::tpy::BigInt area() override { return inner.area(); }
+};
+
+template<tpyapp::main::__Shape_Concept__ T>
+struct tpy::RefAdapter<tpyapp::main::Shape, T> : tpyapp::main::Shape {
+    T& inner;
+    RefAdapter(T& ref) : inner(ref) {}
+    ::tpy::BigInt area() override { return inner.area(); }
+};
+
+namespace tpyapp::main {
+
+// def nums() -> Iterator[int]:
+struct __gen_nums : public ::tpy::next_iter_mixin<__gen_nums, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_nums() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_nums& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_nums&) {
+        return os << "<generator nums>";
+    }
+};
+
 
 // def __init__(self, x: int) -> None:
 //     self.x = x
@@ -73,5 +212,15 @@ inline A::A(const ::tpy::BigInt& x) : x(x) {}
 // def __init__(self, y: int) -> None:
 //     self.y = y
 inline B::B(const ::tpy::BigInt& y) : y(y) {}
+
+// def __init__(self, n: int) -> None:
+//     self.n = n
+inline Sq::Sq(const ::tpy::BigInt& n) : n(n) {}
+
+// def area(self) -> int:
+//     return self.n * self.n
+inline ::tpy::BigInt Sq::area() const {
+    return ((this->n) * (this->n));
+}
 void __tpy_init();
 } // namespace tpyapp::main

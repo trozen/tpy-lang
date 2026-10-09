@@ -103,16 +103,155 @@ __coro_caller caller() {
     return __coro_caller();
 }
 
-// def main() -> None:
-//     print(asyncio.run(caller()))
-void main() {
-    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n" << ::tpy::check_signals;
+// async def later_item_lambda() -> int:
+//     # A later item's manager is a lambda reading an earlier item's target.
+//     with Count(7) as n, Cb(lambda: n) as result:  # tpyc: ok
+//         await value(0)                                                      # -> S_RESUME_0
+//         return n * 1000 + result
+::tpystd::tpy::Poll<::tpy::BigInt> __coro_later_item_lambda::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Count(::tpy::BigInt(7)));
+        n = (*__with_ctx_0).__enter__();
+        __with_ctx_1.emplace(Cb([n = n]() -> ::tpy::BigInt { return n; }));
+        result = (*__with_ctx_1).__enter__();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await value(0)
+        bool __fin_ran_3 = false;
+        try {
+            bool __fin_ran_4 = false;
+            try {
+                auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+                if (__r0.is_pending()) return ::tpystd::tpy::Poll<::tpy::BigInt>::pending();
+                (void)std::move(__r0).value();
+                __sub_0.reset();
+                ::tpy::BigInt __tpy_async_ret_0 = ((((n) * (::tpy::BigInt(1000)))) + (result));
+                __fin_ran_4 = true;
+                (*__with_ctx_1).__exit__({}, nullptr, {});
+                __fin_ran_3 = true;
+                (*__with_ctx_0).__exit__({}, nullptr, {});
+                __state = S_DONE;
+                return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret_0));
+            } catch (::tpy::BaseException& __exc_1) {
+                if (__fin_ran_4) throw;
+                (*__with_ctx_1).__exit__({}, &__exc_1, {});
+                throw;
+            } catch (...) {
+                if (__fin_ran_4) throw;
+                (*__with_ctx_1).__exit__({}, nullptr, {});
+                throw;
+            }
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_3) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_3) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __sub_0.emplace(::tpy::BigInt(0));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
 }
 
-// # Two context managers in a single `with` stmt, with `await` in
-// # the body (v1.5 M3.2). Verifies that `_build_with` /
-// # `_prescan_with_stmts` handle N items: per-CM frame slot,
-// # per-CM region wrap, innermost-first __exit__ on normal exit.
+
+// async def later_item_lambda() -> int:
+__coro_later_item_lambda later_item_lambda() {
+    return __coro_later_item_lambda();
+}
+
+// async def comp_hides_body_hoist(rows: list[int]) -> None:
+//     # A reference-type body name (a frame pointer) is also a manager
+//     # comprehension's variable; the alias is mutated after the with.
+//     with Items(len([ys for ys in rows])) as xs:  # tpyc: ok
+//         ys = xs
+//     ys.append(await value(42))                                              # -> S_RESUME_0
+//     # Elements, not the lists: printing a frame-pointer list whole rejects
+//     # (BUGS.md#frame-pointer-list-print-rejects).
+//     print("hoist_ref:", ys[0], ys[1], xs[1])
+::tpystd::tpy::Poll<::std::monostate> __coro_comp_hides_body_hoist::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Items(::tpy::BigInt(::tpy::__len__(({
+            std::vector<::tpy::BigInt> __result;
+            auto& __obj_0 = rows;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& ys = *__beg_0;
+                __result.push_back(ys);
+            }
+            std::move(__result);
+        })))));
+        auto& __ctx_1 = (*__with_ctx_0);
+        xs.emplace(__ctx_1.__enter__());
+        try {
+            ys = &((*xs));
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
+        __sub_0.emplace(::tpy::BigInt(42));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: ys.append(await value(42))
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_0 = std::move(__r0).value();
+        __sub_0.reset();
+        ys->push_back(__await_lift_0);
+        std::cout << "hoist_ref:" << " " << ::tpy::__getitem__((*ys), 0) << " " << ::tpy::__getitem__((*ys), 1) << " " << ::tpy::__getitem__((*xs), 1) << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def comp_hides_body_hoist(rows: list[int]) -> None:
+__coro_comp_hides_body_hoist comp_hides_body_hoist(const std::vector<::tpy::BigInt>& rows) {
+    return __coro_comp_hides_body_hoist(rows);
+}
+
+// def main() -> None:
+//     print(asyncio.run(caller()))
+//     print("later_item:", asyncio.run(later_item_lambda()))
+//     asyncio.run(comp_hides_body_hoist([5, 6]))
+void main() {
+    std::cout << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::caller())) << "\n" << ::tpy::check_signals;
+    std::cout << "later_item:" << " " << ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::later_item_lambda())) << "\n" << ::tpy::check_signals;
+    std::vector<::tpy::BigInt> __tmp_1 = {5, 6};
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::comp_hides_body_hoist(__tmp_1)));
+}
+
+// # `with` items around an `await` in an async def: two managers exit innermost
+// # first; item targets and comprehensions in a manager expression bind correctly.
 // import asyncio
 //
 // main()

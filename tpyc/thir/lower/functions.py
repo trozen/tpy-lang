@@ -136,10 +136,10 @@ from .predicates import (
     _value_opt_scalar,
     _value_opt_view,
 )
+from . import bindings
 from .context import (
     _LowerCtx,
     SlotPlacement,
-    ValueOptKind,
 )
 from .checks import (
     _builtin_container_type,
@@ -422,7 +422,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         # (`gen_method_def` branches on `is_const and not is_static`): the const
         # overload and forced-const params are signature-only, emitted by the
         # structural path. The static body has no `self`, so the only
-        # readonly-keyed body effect (`const_locals.add("self")`) is unreachable
+        # readonly-keyed body effect (a const `self` record) is unreachable
         # -- the body lowers identically to a plain static.
     elif func.is_staticmethod:
         raise ThirUnsupported("sig.staticmethod_flag")
@@ -645,7 +645,7 @@ def _seed_readonly_globals(
     that render bare, the native/imported names mapped to their
     pre-rendered spelling (THIRName.cpp), and the POINTER-SLOT names
     (non-value record/container globals -- `T* g{};` slots whose reads
-    ride the pointer-local arms via lc.pointers; Final and native-linkage
+    ride the pointer-local arms (a pointer record); Final and native-linkage
     names are excluded, matching the generator's pointer_globals set).
 
     Sema resolves an unassigned name to the module global, and a value
@@ -778,10 +778,6 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
                     and n not in native_globals)):
             params_set[n] = gt
             global_seeded.add(n)
-            if _value_opt_scalar(gt, analyzer) is not None:
-                # Value-opt globals read/write like value-opt locals
-                # (`= std::nullopt`, `.has_value()`, narrowed `(*g)`).
-                lc.value_opt_bindings[n] = ValueOptKind.SCALAR
             if n in native_globals:
                 # A native-linkage global writes through its BARE C name
                 # (`g_counter = val;` -- the native_global_names target,
@@ -805,16 +801,6 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
      lc.prescan.global_slots) = _seed_readonly_globals(
         func, analyzer, params_set, native_globals)
     lc.prescan.global_slots = lc.prescan.global_slots | frozenset(decl_slots)
-    # Pointer-slot globals ride every pointer-local render arm (`->`
-    # receivers, `(*g)` derefs, alias binds); read-only / rebind-forbidden
-    # seeding means no write/reseat arm can ever fire on them.
-    lc.pointers.update(lc.prescan.global_slots)
-    for n in lc.prescan.global_readonly:
-        if _value_opt_scalar(params_set.get(n), analyzer) is not None:
-            # Read-only value-opt globals ride the value-opt local read
-            # arms (bare whole-optional, narrowed `(*g)`, unproven
-            # deref_optional_check).
-            lc.value_opt_bindings[n] = ValueOptKind.SCALAR
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
         # `::`-qualified native-read spelling (the read arm is
@@ -944,12 +930,13 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         lc.member_self = True
     elif has_self:
         params_set["self"] = self_type  # the record receiver, a field source
-        if func.is_readonly:
-            # A readonly method's `this` is const, so a borrow local off `self.opt`
-            # lifts to `const T*` (the OPTIONAL_TO_PTR const bump keys on the
-            # receiver being in const_locals -- see _f1_is_const).
-            lc.const_locals.add("self")
     _seed_global_scope(func, analyzer, lc, params_set, native_globals)
+    # Seeded with params (and `self`): a write to such a name is a reassignment.
+    declared: dict[str, TpyType] = dict(params_set)
+    bindings.plan_and_install(
+        lc, func.body, declared,
+        readonly_self=bool(has_self and value_self is None
+                           and func.is_readonly))
     src_params = (func.params if stub is None or literal_group
                   else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
@@ -966,8 +953,6 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
                                             readonly=_param_is_deep_const(n, func, analyzer, record_name)),
     ) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
-    # Seeded with params (and `self`): a write to such a name is a reassignment.
-    declared: dict[str, TpyType] = dict(params_set)
     try:
         param_copies = _param_reassign_copies(func, analyzer, params=src_params)
         if stub is not None and default_locals:
@@ -1001,7 +986,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         fn = replace(fn, temp_plan=plan, storage_facts=collect_storage_facts(
             fn.body, plan, borrowed_result=(fn.resolved_callee.signature.borrowed_result
                                            if fn.resolved_callee is not None else None)))
-        validate_function(fn)
+        bindings.report_unentered(lc)
+        validate_function(fn, lowered=True)
         return fn
     except ThirUnsupported as ex:
         note(ex.reason, ex.loc, ex.message)
@@ -1100,6 +1086,7 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # function-kind-blind, so a ctor's `g = v;` renders exactly like a
     # sync function's).
     _seed_global_scope(init_method, analyzer, lc, declared, native_globals)
+    bindings.plan_and_install(lc, init_method.body, declared)
     # Every lowering call sits inside this boundary: expression admission can
     # raise, and a raise outside here would escape this reject boundary.
     try:
@@ -1269,7 +1256,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
         plan = prepare_temporaries(ctor.body)
         ctor = replace(ctor, temp_plan=plan, storage_facts=collect_storage_facts(
             ctor.body, plan, ctor.mil_inits + ctor.base_inits))
-        validate_constructor(ctor)
+        bindings.report_unentered(lc)
+        validate_constructor(ctor, lowered=True)
         return ctor
     except ThirUnsupported as ex:
         note(ex.reason, ex.loc, ex.message)
@@ -1316,7 +1304,8 @@ def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
                 compiler._move_verdict_journal = set(mj_snap)
 
     try:
-        with lc.branch_scope(), lc.moves_only(lc.handed_over_params):
+        with lc.branch_scope(), lc.moves_only(lc.handed_over_params), \
+                bindings.at(lc, stmt):
             return THIRMilInit(
                 field_cpp=escape_cpp_name(stmt.target.field),
                 value=lower_member_init_value(stmt, lc, declared))
@@ -1441,7 +1430,8 @@ def _lower_base_inits(init_method: TpyFunction, ri, declared: dict[str, TpyType]
         if analyzer.registry.base_init_sets_message(
                 ri, stmt.expr.base_init_direct_base):
             continue
-        lowered = _lower_base_init(stmt, ri, declared, lc)
+        with bindings.at(lc, stmt):
+            lowered = _lower_base_init(stmt, ri, declared, lc)
         if lowered is None:
             return None
         bi, base_type = lowered
@@ -1474,16 +1464,17 @@ def _lower_message_init(init_method: TpyFunction, ri: RecordInfo,
             continue
         assert isinstance(stmt, TpyExprStmt) and isinstance(stmt.expr, TpyMethodCall)
         expr = stmt.expr
-        arg = lc.analyzer.registry.base_init_message_arg(ri, expr)
-        if arg is None:
-            continue
-        if (expr.kwargs or expr.double_star_unpack is not None
-                or len(expr.args) != 1
-                or not _base_init_arg_ok(arg, declared, lc)):
-            raise ThirUnsupported("ctor.base_init", loc=stmt.loc)
-        return THIRMilInit(
-            field_cpp=escape_cpp_name(qnames.EXCEPTION_MESSAGE_FIELD),
-            value=_lower_base_init_arg(arg, lc, declared))
+        with bindings.at(lc, stmt):
+            arg = lc.analyzer.registry.base_init_message_arg(ri, expr)
+            if arg is None:
+                continue
+            if (expr.kwargs or expr.double_star_unpack is not None
+                    or len(expr.args) != 1
+                    or not _base_init_arg_ok(arg, declared, lc)):
+                raise ThirUnsupported("ctor.base_init", loc=stmt.loc)
+            return THIRMilInit(
+                field_cpp=escape_cpp_name(qnames.EXCEPTION_MESSAGE_FIELD),
+                value=_lower_base_init_arg(arg, lc, declared))
     return None
 
 def _base_init_arg_ok(a: TpyExpr, declared: dict[str, TpyType], lc: _LowerCtx) -> bool:
@@ -2013,22 +2004,14 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         if gt is None:
             continue
         declared[name] = gt
-        if _value_opt_scalar(gt, analyzer) is not None:
-            # A value-repr `Optional[scalar]` global IS a `std::optional<T>`
-            # binding at namespace scope, so its reads/writes take the
-            # value-opt LOCAL arms (bare whole-optional pass, narrowed `(*g)`,
-            # `= std::nullopt`) -- the same seeding a function body gives the
-            # same global.
-            lc.value_opt_bindings[name] = ValueOptKind.SCALAR
         if not gt.is_value_type() and not gt.needs_wrapper():
             # `std::vector<T>* g{}` at namespace scope: reads deref through
             # the pointer-local arms, writes take the static-slot render.
-            # `global_slots` too, not just `pointers`: a pointer-slot GLOBAL
-            # derefs at EVERY value position whatever its family (the
+            # In `global_slots` besides its pointer record: a pointer-slot
+            # GLOBAL derefs at EVERY value position whatever its family (the
             # indirect-name render), where a pointer LOCAL of
             # record type stays bare and reaches its members via `->`.
             lc.global_ptr_slots.add(name)
-            lc.pointers.add(name)
             lc.prescan.global_slots = lc.prescan.global_slots | {name}
     for name, ft in (final_types or {}).items():
         # A `Final` global lives at namespace scope as a `const T` and is
@@ -2057,7 +2040,6 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
     # bare-reading `global_readonly` set.
     lc.prescan.global_cpp = {**lc.prescan.global_cpp, **imported_cpp}
     lc.prescan.global_slots = lc.prescan.global_slots | frozenset(imported_slots)
-    lc.pointers.update(imported_slots)
     # A native-linkage global splits its spelling exactly as it does inside a
     # function body: writes take the BARE C name, reads the `::`-qualified
     # one (the `native_global_names` write target vs the qualified read).
@@ -2077,6 +2059,9 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                                          if user_module_imports is None
                                          else user_module_imports),
                     all_user_modules=all_user_modules, emitted=emitted))
+    bindings.plan_and_install(
+        lc, carrier.body, declared, top_level=True,
+        module_globals={n for n, gt in global_types.items() if gt is not None})
     try:
         body = _lower_stmts(carrier.body, lc, declared, top_level=True)
         if lc.unhandled_hoists:
@@ -2090,7 +2075,8 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         if slot_node is not None:
             raise ThirUnsupported("top_level.slot_alloc",
                                   loc=getattr(slot_node, "loc", None))
-        validate_function(fn)
+        bindings.report_unentered(lc)
+        validate_function(fn, lowered=True)
         return fn
     except ThirUnsupported as ex:
         note(ex.reason, ex.loc, ex.message)

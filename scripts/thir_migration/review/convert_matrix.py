@@ -107,7 +107,33 @@ SOURCES = {
     "opt_str_narrowed": ("a: Optional[str]", ["assert a is not None"], "a",
                          False, "str"),
     "str_call": ("", [], "sval()", False, "str"),
+    # Binding sources: the record a read resolves to through a scope, a
+    # region, a frame or an overload's stub default. A cell pins the C++
+    # the sink renders from that record against the base tree, so a record
+    # that answers differently shows as a differing cell.
+    "comp_shadowed_local": ("xs: list[P]", [
+        "x = P(1)", "n = len([x.v for x in xs])", "x.v = n"], "x", False,
+        "P"),
+    "walrus_leaked": ("p: P", [
+        "if (w := pick(p)).v > 0:", "    w.v = 2"], "w", False, "P"),
+    "nonlocal_rebound": ("", [
+        "x = P(1)", "", "def bump() -> None:", "    nonlocal x",
+        "    x = P(2)", "", "bump()", "x.v = 3"], "x", False, "P"),
+    "own_param": ("p: Own[P]", ["p.v = 2"], "p", False, "P"),
+    "comp_element_outer": ("", [
+        "x = P(1)", "ys = [x for _i in range(2)]", "ys[0].v = 5"], "x",
+        False, "P"),
+    "stub_default_local": ('s: str = "d"', [], "s", False, "str"),
+    "frame_local": ("", ["x = P(1)", "{suspend}", "x.v = 4"], "x", False,
+                    "P"),
 }
+
+# Sources a position cannot spell on its own: a stub-default local needs
+# the function to be an overloaded implementation (two stubs, one taking
+# the defaulted param); a frame local needs a suspension in the body.
+STUB_DEFAULT_SOURCES = ("stub_default_local",)
+FRAME_SOURCES = ("frame_local",)
+TICK = "\n\nasync def tick() -> None:\n    pass\n"
 
 # Each sink: (declared result or None for a field, the statement, the
 # source families it takes).
@@ -163,6 +189,19 @@ def cell_program(src, sink, pos):
     ret_t, stmt, takes = SINKS[sink]
     if family not in takes:
         return None
+    if src in STUB_DEFAULT_SOURCES and pos != "function":
+        return None
+    prelude = PRELUDE
+    if src in FRAME_SOURCES:
+        if pos == "async":
+            suspend = "await tick()"
+            prelude = PRELUDE + TICK
+        elif pos == "generator" and ret_t is not None:
+            suspend = "yield " + stmt[len("return "):].format(
+                e=expr.format(recv="h"))
+        else:
+            return None
+        setup = [suspend if ln == "{suspend}" else ln for ln in setup]
     member_init = sink.startswith("member_init")
     if needs_self and pos not in ("method",):
         return None
@@ -195,7 +234,7 @@ def cell_program(src, sink, pos):
             body = body + _inits(skip=target)
         cls = ["", "class C:"] + _DECLS + [""] + _indent(
             [head] + _indent(body, 1), 1)
-        return PRELUDE + HOLDER + "\n".join(cls) + "\n"
+        return prelude + HOLDER + "\n".join(cls) + "\n"
     if ret_t is None:
         rt = "None"
     elif pos == "generator":
@@ -210,11 +249,22 @@ def cell_program(src, sink, pos):
             "        super().__init__(0)"] + [
             "        " + ln for ln in _inits()] + [""]
         cls += _indent([head] + _indent(body, 1), 1)
-        return PRELUDE + HOLDER + "\n".join(cls) + "\n"
+        return prelude + HOLDER + "\n".join(cls) + "\n"
     kw = "async def" if pos == "async" else "def"
     head = "%s f(%s) -> %s:" % (kw, ", ".join(plist), rt)
-    return PRELUDE + HOLDER + "\n" + "\n".join([head] + _indent(body, 1)) \
-        + "\n"
+    stubs = []
+    if src in STUB_DEFAULT_SOURCES:
+        stub_params = [p.split("=")[0].strip() for p in plist]
+        prelude = prelude.replace("from typing import Iterator, Optional, Self",
+                                  "from typing import (Iterator, Optional, Self,\n"
+                                  "                    overload)")
+        stubs = ["@overload",
+                 "def f(%s) -> %s: ..." % (", ".join(stub_params[:-1]), rt),
+                 "", "", "@overload",
+                 "def f(%s) -> %s: ..." % (", ".join(stub_params), rt),
+                 "", ""]
+    return prelude + HOLDER + "\n" + "\n".join(
+        stubs + [head] + _indent(body, 1)) + "\n"
 
 
 _ERR = re.compile(r"error: (.*)")

@@ -5,4 +5,49 @@
 
 namespace tpyapp::main {
 
+// def gen_with_then_yield(xs: list[int]) -> Iterator[int]:
+//     # A with holding no yield, then a yield: the with lowers inside the frame.
+//     with Count(sum([n for n in xs])) as n:  # tpyc: ok
+//         pass
+//     yield n                                                                     # -> S_RESUME_0
+inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_with_then_yield::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto __ctx_1 = Count(::tpy::builtin_sum_bigint(({
+            std::vector<::tpy::BigInt> __result;
+            auto& __obj_0 = xs;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const ::tpy::BigInt& n = *__beg_0;
+                __result.push_back(n);
+            }
+            std::move(__result);
+        })));
+        n = __ctx_1.__enter__();
+        try {
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
+        __state = S_RESUME_0;
+        return n;
+    }
+    case S_RESUME_0: {  // after: yield n
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 } // namespace tpyapp::main

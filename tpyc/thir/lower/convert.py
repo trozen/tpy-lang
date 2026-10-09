@@ -50,7 +50,7 @@ from ..nodes import (
     THIROptionalPtrArg,
     THIROptViewArg,
 )
-from ..source import Binding, Held, Source
+from ..source import BindingRepr, Held, Source
 from .context import Slot, SlotConstruct, SlotHolds, storage_type
 from .checks import _covariant_record_upcast_ok, _record_slice_upcast_ok
 from .predicates import (
@@ -287,7 +287,7 @@ class Landing:
     whole_binding: bool
 
 
-def landing(binding: Binding | None, analyzed_t: 'TpyType | None',
+def landing(binding: BindingRepr | None, analyzed_t: 'TpyType | None',
             slot_t: TpyType, types) -> Landing:
     member = absorbed_member(slot_t, storage_type(analyzed_t), types)
     whole = (binding is not None and binding.type is not None
