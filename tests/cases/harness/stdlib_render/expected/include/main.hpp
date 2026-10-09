@@ -68,6 +68,7 @@
 #include "tpystd/tplib/rc.hpp"
 #include "tpystd/tplib/requests.hpp"
 #include "tpystd/tty.hpp"
+#include "tpystd/types.hpp"
 #include "tpystd/urllib.hpp"
 #include "tpystd/urllib/parse.hpp"
 #include "tpystd/urllib/request.hpp"

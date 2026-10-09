@@ -20,6 +20,11 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_producer;
 struct __coro_consumer;
 struct __coro_main_co;
+struct __coro_cancel_consumer;
+struct __coro_cancel_producer;
+struct __coro_cancel_co;
+struct __coro_woken_consumer;
+struct __coro_woken_co;
 
 // async def producer(tx: Own[Sender[Counter]]) -> None:
 __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx);
@@ -27,6 +32,16 @@ __coro_producer producer(::tpystd::tpy::channel::Sender<Counter> tx);
 __coro_consumer consumer(::tpystd::tpy::channel::Receiver<Counter> rx);
 // async def main_co() -> None:
 __coro_main_co main_co();
+// async def cancel_consumer(rx: Own[Receiver[Counter]]) -> None:
+__coro_cancel_consumer cancel_consumer(::tpystd::tpy::channel::Receiver<Counter> rx);
+// async def cancel_producer(tx: Own[Sender[Counter]]) -> None:
+__coro_cancel_producer cancel_producer(::tpystd::tpy::channel::Sender<Counter> tx);
+// async def cancel_co() -> None:
+__coro_cancel_co cancel_co();
+// async def woken_consumer(rx: Own[Receiver[Counter]]) -> None:
+__coro_woken_consumer woken_consumer(::tpystd::tpy::channel::Receiver<Counter> rx);
+// async def woken_co() -> None:
+__coro_woken_co woken_co();
 
 // @nocopy
 // class Counter:
@@ -136,6 +151,181 @@ struct __coro_main_co {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_co&) {
         return os << "<coroutine main_co>";
+    }
+};
+
+// async def cancel_consumer(rx: Own[Receiver[Counter]]) -> None:
+struct __coro_cancel_consumer {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpystd::tpy::channel::Receiver<Counter> rx;
+    ::tpy::frame_slot<Counter> c;
+    ::tpy::frame_slot<Counter> c2;
+    std::optional<::tpystd::tpy::channel::_Recv<Counter>> __sub_0;
+    std::optional<::tpystd::tpy::channel::_Recv<Counter>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_cancel_consumer(::tpystd::tpy::channel::Receiver<Counter>&& rx_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rx(std::move(rx_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_cancel_consumer&) {
+        return os << "<coroutine cancel_consumer>";
+    }
+};
+
+// async def cancel_producer(tx: Own[Sender[Counter]]) -> None:
+struct __coro_cancel_producer {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpystd::tpy::channel::Sender<Counter> tx;
+    std::optional<::tpystd::tpy::channel::_Send<Counter>> __sub_0;
+    std::optional<::tpystd::tpy::channel::_Send<Counter>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_cancel_producer(::tpystd::tpy::channel::Sender<Counter>&& tx_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tx(std::move(tx_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_cancel_producer&) {
+        return os << "<coroutine cancel_producer>";
+    }
+};
+
+// async def cancel_co() -> None:
+struct __coro_cancel_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Sender<Counter>> tx;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<Counter>> rx;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Sender<Counter>> tx2;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<Counter>> rx2;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t2;
+    ::tpy::frame_slot<Counter> first;
+    ::tpy::frame_slot<Counter> second;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+    std::optional<::tpystd::tpy::channel::_Send<Counter>> __sub_2;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_3 = nullptr;
+    std::optional<::tpystd::tpy::channel::_Send<Counter>> __sub_4;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_5;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_6;
+    std::optional<::tpystd::tpy::channel::_Recv<Counter>> __sub_7;
+    std::optional<::tpystd::tpy::channel::_Recv<Counter>> __sub_8;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_9 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_RESUME_4 = 5,
+        S_RESUME_5 = 6,
+        S_RESUME_6 = 7,
+        S_RESUME_7 = 8,
+        S_RESUME_8 = 9,
+        S_RESUME_9 = 10,
+        S_DONE = 11,
+    };
+
+    __coro_cancel_co()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_cancel_co&) {
+        return os << "<coroutine cancel_co>";
+    }
+};
+
+// async def woken_consumer(rx: Own[Receiver[Counter]]) -> None:
+struct __coro_woken_consumer {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpystd::tpy::channel::Receiver<Counter> rx;
+    ::tpy::frame_slot<Counter> c;
+    ::tpy::frame_slot<Counter> c2;
+    std::optional<::tpystd::tpy::channel::_Recv<Counter>> __sub_0;
+    std::optional<::tpystd::tpy::channel::_Recv<Counter>> __sub_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_woken_consumer(::tpystd::tpy::channel::Receiver<Counter>&& rx_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          rx(std::move(rx_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_woken_consumer&) {
+        return os << "<coroutine woken_consumer>";
+    }
+};
+
+// async def woken_co() -> None:
+struct __coro_woken_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Sender<Counter>> tx;
+    ::tpy::frame_slot<::tpystd::tpy::channel::Receiver<Counter>> rx;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::tpy::channel::_Send<Counter>> __sub_1;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_2 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_woken_co()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_woken_co&) {
+        return os << "<coroutine woken_co>";
     }
 };
 

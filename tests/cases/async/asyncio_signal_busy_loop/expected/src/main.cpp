@@ -126,7 +126,7 @@ void main() {
 // # SIGINT while the root keeps itself runnable (an `await asyncio.sleep(0)`
 // # loop): the run loop sees the signal without blocking and cancels the root.
 // # A second SIGINT raised in the cleanup, before it blocks in a long sleep,
-// # must still wake that wait (the wake fd is re-armed after every collect) and
+// # must still wake that wait (the wake fd is re-armed once it fires) and
 // # escapes as KeyboardInterrupt. Matches CPython's asyncio.run.
 // import asyncio
 // import time

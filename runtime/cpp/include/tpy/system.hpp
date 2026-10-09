@@ -38,8 +38,11 @@ inline double time_time() {
 /**
  * time_sleep - Suspend execution for the given number of seconds.
  *
- * Equivalent to Python's time.sleep(). With the SIGINT layer armed a Ctrl-C
- * ends the sleep early with KeyboardInterrupt (on the interrupt target thread).
+ * Equivalent to Python's time.sleep(). With the signal layer armed, on the
+ * interrupt target thread, signals arriving meanwhile are delivered inside
+ * the sleep: a Ctrl-C ends it with KeyboardInterrupt, a `signal.signal`
+ * handler's exception ends it too, and a handler that returns lets it sleep
+ * on to the same deadline (PEP 475).
  */
 inline void time_sleep(double seconds) {
     if (seconds < 0) {
@@ -53,9 +56,7 @@ inline void time_sleep(double seconds) {
             check_signals();
             return;
         }
-        if (ops->sleep(seconds) == interrupt_detail::kInterrupted) {
-            throw KeyboardInterrupt();
-        }
+        ops->sleep(seconds);
         return;
     }
 #endif

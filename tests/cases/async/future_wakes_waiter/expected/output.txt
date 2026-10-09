@@ -1,1 +1,11 @@
 7
+cancel: a cancelled
+cancel: saw the cancel
+cancel: done True
+cancel: set_result rejected
+cancel: b cancelled
+cancel: saw the cancel
+direct: done True
+cancel: direct cancelled
+direct: saw the cancel
+direct: set_result rejected: invalid state

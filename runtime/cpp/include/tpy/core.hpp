@@ -200,14 +200,15 @@ struct KeyboardInterrupt : BaseException {
 
 #ifndef TPY_NO_SIGNALS
 
-// True while the process-wide SIGINT layer is armed (see interrupt.hpp).
+// True while the process-wide signal layer is armed (see interrupt.hpp).
 inline bool interrupt_armed() noexcept {
     return interrupt_detail::ops.load(std::memory_order_acquire) != nullptr;
 }
 
-// True where a blocking wait should also watch for a Ctrl-C: this thread
-// would be raised a KeyboardInterrupt by one. Elsewhere an interruptible wait
-// buys nothing over the plain blocking call.
+// True where a blocking wait should also watch for signals: they would be
+// delivered on this thread (a Ctrl-C raising KeyboardInterrupt, a
+// `signal.signal` handler running). Elsewhere an interruptible wait buys
+// nothing over the plain blocking call.
 inline bool signals_deliverable() noexcept {
     const interrupt_detail::Ops* ops =
         interrupt_detail::ops.load(std::memory_order_acquire);
@@ -217,16 +218,17 @@ inline bool signals_deliverable() noexcept {
 [[gnu::cold, gnu::noinline]] inline void deliver_interrupt() {
     const interrupt_detail::Ops* ops =
         interrupt_detail::ops.load(std::memory_order_acquire);
-    if (ops != nullptr && ops->take() != 0) {
-        throw KeyboardInterrupt();
+    if (ops != nullptr) {
+        ops->deliver();
     }
 }
 
 // The point where pending signals are acted on (CPython's PyErr_CheckSignals):
-// today that is SIGINT's default handler, raising KeyboardInterrupt when a
-// Ctrl-C is pending for this thread; user `signal.signal` handlers would run
-// here too. Called after operations that cannot wait on the wake fd themselves
-// (stdout / file I/O, raise_signal); one relaxed load when nothing is pending.
+// on the interrupt target thread a Ctrl-C under default_int_handler raises
+// KeyboardInterrupt and a signal with a `signal.signal` handler runs it (its
+// exception propagates from here). Called after operations that cannot wait
+// on the wake fd themselves (stdout / file I/O, raise_signal, os.kill); one
+// relaxed load when nothing is pending.
 inline void check_signals() {
     if (interrupt_detail::pending.load(std::memory_order_relaxed) != 0) [[unlikely]] {
         deliver_interrupt();
@@ -244,12 +246,16 @@ inline std::ostream& check_signals(std::ostream& os) {
 }
 
 // Embedding API for --no-main builds, whose host owns signal dispositions.
-// install_interrupt_handler() arms the SIGINT layer with the calling thread as
+// install_interrupt_handler() arms the signal layer with the calling thread as
 // the interrupt target (what generated main() does for a standalone program)
-// and installs its SIGINT handler; returns false on failure. A host that keeps
-// its own SIGINT handler passes false and calls request_interrupt() from that
+// and installs its SIGINT handler; returns false on failure. Armed, the layer
+// also lets TPy code install `signal.signal` handlers. A host that keeps its
+// own SIGINT handler passes false and calls request_interrupt() from that
 // handler (async-signal-safe). Either way the Ctrl-C reaches the host as a
-// tpy::KeyboardInterrupt thrown out of the TPy call that was running.
+// tpy::KeyboardInterrupt thrown out of the TPy call that was running -- or,
+// once TPy code has installed a SIGINT handler with `signal.signal`, runs
+// that handler there instead (asyncio.run installs one for its run, whose
+// first Ctrl-C cancels the root task).
 inline bool install_interrupt_handler(bool install_sigint_handler = true) {
     return tpy_interrupt_install(install_sigint_handler ? 1 : 0) == 0;
 }

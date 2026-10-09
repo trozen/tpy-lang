@@ -108,7 +108,7 @@ Library breadth + first real I/O. Each item is sized to land independently.
 
 | Item | Description |
 |------|-------------|
-| Sync primitives | `Lock`, `Semaphore`, `BoundedSemaphore`, `Queue` **SHIPPED** (FIFO `list[Waker]` waiter queue, `async with` for the locks; mirror the early-shipped `Event`; `BoundedSemaphore` is a `Semaphore` subclass whose `release` rejects an over-release; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`join`/`task_done`). All built on the same `Waker`-parking shape. |
+| Sync primitives | `Lock`, `Semaphore`, `BoundedSemaphore`, `Queue` **SHIPPED** (FIFO `_WaitQueue` waiter queue a cancelled waiter leaves (see Cancellation), `async with` for the locks; mirror the early-shipped `Event`; `BoundedSemaphore` is a `Semaphore` subclass whose `release` rejects an over-release; `Queue[T]` adds getter/putter/joiner waiter sets + `maxsize`/`join`/`task_done`). All built on the same `Waker`-parking shape. |
 | Multi-awaiter `Future[T]` | If single-awaiter v1 turns out to be limiting in practice. |
 | Task introspection | `Task.add_done_callback`, `get_name`, `set_name`, `done`, `result`, `exception`. |
 | `Reactor` interface | **SHIPPED (M1)** -- the `Reactor` protocol in `asyncio/_executor.py`, designed against epoll. Concrete-typed on the executor for M1; making it a swap-in (`@dynamic` field + `asyncio.run` factory arg) is a follow-up. |
@@ -135,11 +135,42 @@ All TPy + a thin reactor binding (epoll on Linux, kqueue on macOS / *BSD).
 - **Executor integration**: a lazily-created `reactor` field (a pure-timer /
   pure-CPU program never opens an epoll fd). When no task is runnable,
   `wait_for_event` blocks in `epoll_wait` bounded by the nearest timer
-  deadline (-1 == forever when only fds are pending); while tasks are
-  runnable it polls with a zero timeout. Either way it then fires expired
+  deadline (-1 == forever when only fds are pending), then fires expired
   timers; it returns `False` (the
   "no progress possible" condition) only when neither timers nor fds are
   pending. The timer-only fast path keeps using `sleep_until_steady`.
+  `run_until` runs one batch of ready tasks per loop iteration, the way
+  CPython's `_run_once` runs the callbacks ready at its start: `run_batch`
+  polls the tasks queued when it starts, and a task woken or spawned
+  meanwhile (a `set`, a `put`, a released `Lock`) runs in the next batch.
+  Between two batches the loop polls the reactor without blocking
+  (`poll_without_waiting`) and fires due timers when tasks are still
+  runnable, or blocks in `wait_for_event` when none is, then delivers
+  pending signals -- so a task looping on `await asyncio.sleep(0)` cannot
+  starve timers, I/O or a Ctrl-C. A task woken by fd readiness or a due
+  timer runs one batch later than that: in CPython the ready fd / timer
+  callback runs in the batch after the wait and only completes the future
+  the task awaits, whose wakeup (a `call_soon`) runs in the batch after.
+  The executor stages those wakes (`staged_q`) and queues them behind the
+  wakes of the batch that follows the wait; a task that wakes a staged
+  task during that batch (a `cancel()`, an `Event.set`, the Ctrl-C
+  handler's cancel of the root) moves it into the next batch at that
+  point, as CPython schedules the wakeup where the future completes and
+  the timer / reader callback then finds it done. When the root
+  completes, the loop runs one more iteration -- a non-blocking poll,
+  signal delivery and one batch -- before it returns, as CPython's stop
+  is itself a callback the root's completion schedules, so the tasks
+  runnable then take one more step before the shutdown drain cancels them.
+  **Scheduling boundary.** Task interleaving follows CPython's loop for
+  `sleep(0)` batches, timer and I/O wakes (the one-batch hop), cancels and
+  the stop after the root. The executor queues tasks, not callbacks, so
+  the exact order in rarer races can differ: `wait_for` decides its
+  timeout by the clock at its next poll
+  (BUGS.md#asyncio-wait-for-timeout-by-clock), and a `gather` reaches its
+  awaiter one batch earlier than CPython's two callback hops
+  (BUGS.md#asyncio-gather-wake-one-pass-early).
+  Modelling the loop as CPython's callback queue is the TODO.md entry
+  "Model the asyncio loop as CPython's callback queue".
 - **fd awaitables + surface**: `_SockRecv` / `_SockSendAll` / `_SockAccept` /
   `_SockConnect` are hand-written awaitables (not `async def`s -- the retry
   loop parks by returning Pending + arming the reactor). Each holds a
@@ -221,9 +252,9 @@ Independent extensions, listed in no particular order. Each is its own design ex
 
 3. **Single-threaded by default.** v1 executor is single-threaded; no `Send`/`Sync` constraints surface. Public APIs stay neutral on threading.
 
-4. **Exception-based cancellation.** `Task.cancel()` injects `CancelledError` at the next suspension point.
+4. **Exception-based cancellation.** `Task.cancel()` injects `CancelledError` at the next suspension point (one requested during the task's own poll at the next real suspension, or as the task returns -- CPython's `_must_cancel`; see "Cancellation" below).
 
-   **Graceful shutdown on SIGINT (SHIPPED).** `asyncio.run` owns Ctrl-C delivery for the duration of the run, matching CPython's asyncio.run: the first Ctrl-C cancels the root task (so its `finally`/`__aexit__`/`wait_closed` cleanup runs via the normal cancellation path above, and spawned tasks are cancelled by the run's teardown), then `run` raises `KeyboardInterrupt`; a second Ctrl-C raises `KeyboardInterrupt` out of `run`, and the run's teardown first cancels every unfinished task once more, the root included (CPython's `Runner.close` -> `_cancel_all_tasks`), so a hung cleanup `await` ends with `CancelledError` and the cleanup around it runs; the teardown drain is bounded and does not wait on timers or I/O (BUGS.md#asyncio-drain-no-wait). Any exception that leaves `run_until` (the second Ctrl-C, a task's `SystemExit` / `KeyboardInterrupt`, the no-progress `RuntimeError`) takes that path; a normal completion only cancels the spawned tasks. The signal side is the runtime's process-wide SIGINT layer (`runtime/cpp/src/stdlib/signal_impl.cpp`, behind `posix_signal`; see LANGUAGE_FEATURES.md "Ctrl-C (SIGINT) -> `KeyboardInterrupt`"): an async-signal-safe `SA_RESTART` handler that sets a flag and writes a wake fd (an `eventfd` on Linux, a self-pipe on macOS / *BSD, which lack `eventfd`). Outside `asyncio.run` that layer raises `KeyboardInterrupt` at synchronous check points; `_SignalScope` (`posix_signal.async_begin()` / `async_end()`) takes delivery over for the run -- synchronous check points inside coroutines then never consume the interrupt -- and registers the wake fd in the reactor, so a signal wakes a blocked `epoll_wait` / `kevent` race-free (the byte is pending even if the signal lands just before the wait). `run_until` calls `posix_signal.async_consume()` once per pass, after collecting events (blocking or not) and before polling the batch, plus once after the final batch that follows the root's completion, counting interrupts in `Executor.interrupt_count`; after each collect it re-registers the wake fd, because the reactor disarms an fd once it fires and the zero-timeout poll can fire it as well as the blocking one. Consuming drains the fd before clearing the flag, so a signal landing in between is never lost. Without a process-level layer (`--no-main` / extension builds) `async_begin()` installs the handler for the run and `async_end()` restores the host's; with SIGINT inherited as ignored, off the thread that armed the layer, or inside a `tpy::DeferSignals` scope (a run started from a `__del__` or another cleanup body, where delivery is deferred past the body), the run handles no SIGINT (CPython installs its handler only on the main thread over the default one). Two deliberate consequences: SIGTERM keeps its default (terminate), matching CPython (graceful SIGTERM is a divergent enhancement, see TODO.md); and because the wake fd keeps the reactor fd-count >= 1, the "no progress possible" deadlock guard is suppressed during a signal-armed run (also CPython-faithful -- it has no such guard).
+   **Graceful shutdown on SIGINT (SHIPPED).** `asyncio.run` handles Ctrl-C for the duration of the run as CPython's asyncio.run does: the first Ctrl-C cancels the root task (so its `finally`/`__aexit__`/`wait_closed` cleanup runs via the normal cancellation path above, and spawned tasks are cancelled by the run's teardown), then `run` raises `KeyboardInterrupt`; a second Ctrl-C raises `KeyboardInterrupt` where it is delivered (in the running coroutine, or out of the loop), and the run's teardown first cancels every unfinished task once more, the root included (CPython's `Runner.close` -> `_cancel_all_tasks`), so a hung cleanup `await` ends with `CancelledError` and the cleanup around it runs; the teardown drain is bounded and does not wait on timers or I/O (BUGS.md#asyncio-drain-no-wait). Any exception that leaves `run_until` (the second Ctrl-C, a task's `SystemExit` / `KeyboardInterrupt`, the no-progress `RuntimeError`) takes that path; a normal completion only cancels the spawned tasks. The mechanism is CPython's Runner's: when SIGINT is at `signal.default_int_handler` as the run starts, `_SignalScope` installs `asyncio._on_sigint` as SIGINT's handler (`signal._install_run_handler`) -- an ordinary user handler of the runtime's process-wide signal layer (`runtime/cpp/src/stdlib/signal_impl.cpp`, behind `posix_signal`; see LANGUAGE_FEATURES.md "Ctrl-C (SIGINT) -> `KeyboardInterrupt`"), whose async-signal-safe `SA_RESTART` handler sets a flag and writes a wake fd (an `eventfd` on Linux, a self-pipe on macOS / *BSD, which lack `eventfd`). `_on_sigint` calls `Executor.on_sigint`, which counts the Ctrl-C in `Executor.interrupt_count` and cancels the root task on the first (requested from a check point inside another task's poll it takes effect at the root's next suspension; one requested during the root's own poll is held in `TaskState.must_cancel` until that poll returns, as CPython's `Task._must_cancel`: an `await` that completes without suspending still runs, a Pending poll hands the cancel to the frame and wakes the root to take it at that suspension, and a Ready one ends the root cancelled with its value dropped) and raises `KeyboardInterrupt` on a later one. At the end of the run, before the shutdown drain (CPython's Runner restores its handler before `close()`, so a Ctrl-C during the drain raises `KeyboardInterrupt` instead of cancelling the root again), `_SignalScope.restore_sigint` puts `default_int_handler` back only while `_on_sigint` is still the handler (compared by function identity), so a `signal.signal(SIGINT, ...)` made inside the run replaces it for the rest of the run and stays afterwards. Like every handler, it runs in the coroutine that reaches a synchronous check point, or from the loop: `_SignalScope` (`posix_signal.async_begin()` / `async_end()`) registers the wake fd in the reactor, so a signal wakes a blocked `epoll_wait` / `kevent` race-free (the byte is pending even if the signal lands just before the wait), and `run_until` calls `posix_signal.async_deliver()` after each wait, the non-blocking poll between two batches of ready tasks included (it runs a handler only when something is pending); after a wait the wake fd fired on (the one-shot reactor no longer holds it) the delivery also drains the fd with nothing pending, so a byte left by a delivery that raced a signal does not keep the reactor firing, and the loop re-registers the fd, because the reactor disarms an fd once it fires -- a wait that ended on I/O or a timer pays no read. A delivery drains the fd before clearing the flag, so a signal landing in between is never lost. Without a process-level layer (`--no-main` / extension builds) `async_begin()` arms one, with the SIGINT handler, for the run and `async_end()` restores the host's (`_on_sigint` is installed there too, through `tpy_signal_set_for_run` -- SIGINT only, the one disposition the run's disarm restores -- which the public `signal.signal` refuses on a layer the run armed itself); with SIGINT inherited as ignored, off the thread that armed the layer, or inside a `tpy::DeferSignals` scope (a run started from a `__del__` or another cleanup body, where delivery is deferred past the body), the run handles no SIGINT (CPython installs its handler only on the main thread over the default one). Two deliberate consequences: SIGTERM keeps its default (terminate), matching CPython (graceful SIGTERM is a divergent enhancement, see TODO.md); and because the wake fd keeps the reactor fd-count >= 1, the "no progress possible" deadlock guard is suppressed during a signal-armed run (also CPython-faithful -- it has no such guard).
 
 5. **Minimal compiler surface, maximal library surface.** Compiler knows about a small set of types in `tpy`; everything user-facing lives in `asyncio` and is replaceable.
 
@@ -549,6 +580,7 @@ Exception-based: `task.cancel()` injects `CancelledError` at the next suspension
 - Each frame has a `cancel_pending: bool`.
 - `Task.cancel()` calls into the task's `AsyncFrameBase::cancel()`, which sets `cancel_pending = true` on the coroutine frame, then calls the task's waker.
   - If task state is `Done` or `Cancelled`: no-op.
+  - If the task is being polled (the cancel comes from code its own poll runs, e.g. a Ctrl-C handler at one of its check points): the frame is left alone and `TaskState.must_cancel` records the request -- CPython's `Task._must_cancel`. When the poll returns Pending the cancel goes to the frame and the task is woken, so it lands at the suspension it just reached (an `await` that completed without suspending in that poll was not cancelled); when it returns Ready the task completes as cancelled, its value dropped.
 - At every suspension's resume point (inside the wrapping try/finally for that suspension), the case body checks `cancel_pending`. If set, clear and `throw CancelledError()`.
 - The throw propagates through wrapping try/except/finally per the source structure. `try`/`finally` runs cleanup; `except CancelledError as e:` catches if the user wants to consume cancellation.
 - The throw exits `poll()`; the Task observes the throw and transitions to `Cancelled`.
@@ -559,7 +591,9 @@ Putting the cancel check before `switch (state)` and throwing from there leaves 
 
 ### Sub-future propagation
 
-Cancelling a parent does not directly cancel child coroutines awaited via `await`. The parent throws `CancelledError` *before* polling the child; the child's frame is destroyed in place via `std::optional::reset()` (or via the frame destructor if the throw escapes). The child never gets to run its own `finally` -- it was suspended, never resumed. Matches CPython.
+A cancelled frame hands the cancel to the awaitable it is suspended on before polling it again (`tpy::poll_with_cancel`, `runtime/cpp/include/tpy/async.hpp`): a child coroutine frame takes it at its own suspension and runs its `finally` / `__aexit__` on the way out, as in CPython, where the cancel is thrown into the innermost awaited coroutine. A child that returns Ready on that poll is overruled: the parent raises `CancelledError` anyway.
+
+The leaf awaitables -- the ones that park a waker themselves -- each implement `cancel()` so the cancel lands there: the next poll raises `CancelledError` and the parked waker leaves the primitive. `SleepFuture` and the socket awaitables flag the poll (a socket one also disarms its reactor fd). `Lock.acquire`, `Semaphore.acquire` and `Queue.get` / `put` / `join` share `_PrimitiveWait`, which removes its entry from the condition's FIFO `_WaitQueue` (each entry has a ticket; tickets grow and wakes pop from the front, so a waiter tells a spurious re-poll from its wake in O(1)): a later release / put / get neither wakes the cancelled task nor hands it the resource, a cancelled acquirer never holds the lock or a permit, and a waiter woken but cancelled before it ran passes the wake to the next one when the condition still holds (CPython's wake-up-next on a cancelled acquire / get / put). `Event` (its own awaitable) frees its single waiter slot when the cancelled task holds it (a task woken and cancelled before it ran may have been replaced there by another waiter, which keeps its place); `Future.cancel()` cancels the Future as CPython's does -- it is done, awaiting it raises `CancelledError`, `set_result` / `set_exception` raise `InvalidStateError` -- and cancelling the task awaiting a Future cancels the Future too (CPython's `Task.cancel` cancels the future it waits on). `tpy.channel`'s `recv` / `send` free their park slot the same way.
 
 Cancelling sub-tasks created via `create_task` requires explicit `subtask.cancel()`. A future `TaskGroup` primitive (v2+) handles cooperative cancellation.
 
@@ -667,7 +701,7 @@ class Future[T]:
 
     def set_result(self, value: T) -> None:
         if self._done:
-            raise InvalidStateError("Future already done")
+            raise InvalidStateError("invalid state")
         self._result.set(value)
         self._done = True
         if self._waiter is not None:
@@ -681,12 +715,12 @@ class Future[T]:
 ### Design choices
 
 - **`UninitStorage[T]`** rather than `T | None`: avoids the "T can be None" ambiguity, supports non-default-constructible T.
-- **Single-awaiter for v1.** A second waiter is an explicit `RuntimeError`, not silent replacement. CPython allows multiple awaiters; we treat this as a TPy v1 limitation. Multi-awaiter `Future[T]` is a v2 extension if it turns out to matter.
+- **Single-awaiter for v1.** A second waiter is an explicit `ValueError`, not silent replacement. CPython allows multiple awaiters; we treat this as a TPy v1 limitation. Multi-awaiter `Future[T]` is a v2 extension if it turns out to matter.
 - **Result ownership: `Future.__poll__` consumes.** `_result.take()` moves the stored value out. After it's been polled to Ready once, the Future is empty -- a subsequent poll raises (also matches the single-awaiter model). CPython allows repeated `Future.result()` after done; v1 diverges intentionally to keep ownership simple. Multi-awaiter v2 will need to address this (probably via reference return or by caching the result).
 
 ### Cancellation interaction
 
-If a task awaiting a Future is cancelled, the parent's cancel-throw fires before re-polling. The Future's stored Waker becomes stale (generation mismatch); when `set_result` later wakes, it's a no-op. The Future itself doesn't need cancellation awareness.
+`Future.cancel()` cancels the Future, as CPython's does: it becomes done and cancelled, its parked awaiter is woken and raises `CancelledError`, and a later `set_result` / `set_exception` raises `InvalidStateError("invalid state")`. Cancelling the task that awaits a Future cancels the Future too (CPython's `Task.cancel` cancels the future the task waits on), so the producer's `set_result` then raises `InvalidStateError` rather than storing a value nobody will take. A Future already done is left as is by either cancel.
 
 ---
 
@@ -760,36 +794,40 @@ A future v3+ extension could move `__anext__` to `@error_return` once async + `@
 
 The v1 executor drives tasks against a runnable deque + timer min-heap. Public surface: `asyncio.run()`, `asyncio.create_task()`, `asyncio.sleep()`. The `Executor` class is internal.
 
-Each pass mirrors CPython's `BaseEventLoop._run_once` (`Executor.run_until`):
+Each iteration of `Executor.run_until` is one pass of CPython's
+`BaseEventLoop._run_once`, seen from its batch:
 
 ```
+stopping = false
 loop:
-    if main task done:
-        # CPython stops one pass later: what is runnable now runs once more,
-        # with no events collected first
-        poll the batch runnable now; check SIGINT; return
-    # collect events: wake the slots of ready fds and due timers
-    if runnable not empty:
+    # poll the batch runnable NOW; wakes during the batch wait for the next pass
+    repeat len(runnable) times:
+        task_id = runnable.pop_front()
+        task.__poll__(Waker{exec, task_id, gen})   # Ready -> retire the slot
+    runnable.extend(staged); staged.clear()   # the previous wait's wakes
+    if stopping: return
+    # CPython stops one pass after the root completes: what is runnable now
+    # takes one more step
+    stopping = main task done
+    # collect events, staging the slots of ready fds and due timers
+    if stopping or runnable not empty:
         reactor.poll(0)                       # non-blocking
     elif no timers and no fds:
         raise "no progress possible"
     else:
         reactor.poll(until nearest timer)     # or sleep_until(nearest timer)
     while timers.peek().deadline <= now():
-        timers.pop().waker.wake()             # deadline order
-    check SIGINT; re-arm the SIGINT wake fd   # either poll may have fired it
-    # poll the batch runnable NOW; wakes during the batch wait for the next pass
-    repeat len(runnable) times:
-        task_id = runnable.pop_front()
-        task.__poll__(Waker{exec, task_id, gen})   # Ready -> retire the slot
+        timers.pop().waker.wake()             # deadline order, staged
+    run the pending signal handlers; re-arm the wake fd if it fired
 ```
 
 Because a task woken during a batch runs in the next pass, after the events
 collected in between, a task requeueing itself (`await asyncio.sleep(0)`)
 cannot starve timers or I/O, and a task requeued earlier runs before one
-whose timer or fd fired in the same pass. (A timer or fd wake still reaches
-its task one pass earlier than in CPython, where a callback first resolves a
-future: BUGS.md#timer-wake-one-pass-early.)
+whose timer or fd fired in the same pass. A timer or fd wake is staged and
+reaches its task one batch later still, CPython's callback that resolves the
+future and then the task's wakeup; a task that wakes a staged task in
+between (a `cancel()`, an `Event.set`) moves it into the next batch.
 `asyncio.sleep(d)` starts its delay at its first poll and always suspends
 there -- a positive delay registers a timer, a non-positive one wakes its
 own task (CPython's bare `yield`).
@@ -861,7 +899,7 @@ Deliberately unresolved in v1; flagged for future work.
 
 1. **`Waker` by value vs by reference.** Doc assumes by value (small POD). Confirm during runtime implementation.
 2. **`CancelledError` re-throw semantics.** Sema warning for "caught without re-raise"? Probably yes; specifics in implementation.
-3. **`gather` exception propagation policy.** RESOLVED in v1.5 M9: match CPython's `return_exceptions=False` default -- on the first sub-task failure, propagate `cancel()` to siblings, wait for them to settle, then re-raise the first exception observed. `return_exceptions=True` (collect into list[T | Throwable]) is a future extension.
+3. **`gather` exception propagation policy.** RESOLVED in v1.5 M9 as: on the first sub-task failure, propagate `cancel()` to siblings, wait for them to settle, then re-raise the first exception observed. That diverges from CPython's `return_exceptions=False` default, which re-raises at once and leaves the siblings running (BUGS.md#asyncio-gather-cancels-siblings-on-failure). `return_exceptions=True` is covered by `gather_list_settled`.
 4. **`gather` heterogeneous result type.** RESOLVED in v1.5 M9 by splitting on homogeneity: ship `gather(*tasks: Task[T]) -> list[T]` (homogeneous variadic-positional, sync factory) and `gather_list(tasks: list[Task[T]]) -> list[T]` (homogeneous list-shaped) today. The heterogeneous variadic-tuple form `gather[*Ts](*coros) -> tuple[*Ts]` (needs variadic generics + the BUGS.md async-def `*args` codegen fix) remains deferred and will coexist as an overload of `gather` distinguished by element-type uniformity.
 5. **Top-level `await` in REPL.** Out of scope for v1; needed eventually for the REPL.
 6. **Sub-future field reuse.** Distinct awaits of the same coroutine type at non-overlapping suspension intervals could share storage via `std::variant<Coro1, Coro2, ...>` (one slot, tagged by current suspension state). Optimization, not correctness; planned approach but not v1 critical.

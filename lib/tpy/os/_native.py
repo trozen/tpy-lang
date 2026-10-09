@@ -255,7 +255,7 @@ def terminal_size_raw(fd: int64) -> tuple[int64, int64]: ...
 
 
 # Process control.
-@native("tpy::stdlib::os::kill_pid")
+@native("tpy::stdlib::os::kill_pid", checks_signals=True)
 def kill_pid(pid: int64, sig: int64) -> None: ...
 
 

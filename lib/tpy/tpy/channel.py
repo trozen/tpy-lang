@@ -11,9 +11,11 @@ and one parked receiver, mirroring `Future`'s single-waiter model. Shared
 state is `Rc`-backed (single-threaded; the cross-thread Arc-backed channel
 is Phase 6).
 """
-from tpy import Own, int32, uint32, nocopy, Send
+from tpy import Own, int32, uint32, nocopy, Send, CancelledError
 from tpy.mem import UninitHeapStorage, UninitStorage
-from tpy.coro import Waker, Poll, poll_ready, poll_pending, poll_ready_none
+from tpy.coro import (
+    Waker, Poll, poll_ready, poll_pending, poll_ready_none, same_task,
+)
 from tplib.rc import Rc
 
 
@@ -97,16 +99,26 @@ class _Recv[T: Send]:
     when data is present; raises `ChannelClosed` once closed and drained;
     parks the receiver otherwise."""
     _state: Rc[_ChanState[T]]
+    _cancelled: bool
 
     def __init__(self, state: Own[Rc[_ChanState[T]]]) -> None:
         self._state = state
+        self._cancelled = False
 
-    # Cancellation is task-level (the awaiting Task throws CancelledError
-    # before re-polling); the channel has no per-await state to flip.
+    # The cancel of the awaiting task. The cancelled task's poll follows it
+    # at once: it raises CancelledError without popping, and frees the park
+    # slot if that task holds it, so a later send does not wake it. A
+    # receiver woken and cancelled before it ran no longer holds the slot;
+    # the value that woke it stays for the next recv.
     def cancel(self) -> None:
-        pass
+        self._cancelled = True
 
     def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+        if self._cancelled:
+            if (self._state._has_recv_waiter
+                    and same_task(self._state._recv_waker, waker)):
+                self._state._has_recv_waiter = False
+            raise CancelledError()
         if not self._state._is_empty():
             return poll_ready(self._state._pop())
         if self._state._closed:
@@ -123,9 +135,11 @@ class _Send[T: Send]:
     if the receiver is gone."""
     _state: Rc[_ChanState[T]]
     _value: UninitStorage[T]
+    _cancelled: bool
 
     def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:
         self._state = state
+        self._cancelled = False
         self._value = UninitStorage[T]()
         self._value.construct(value)
 
@@ -134,10 +148,16 @@ class _Send[T: Send]:
         if self._value.has():
             self._value.reset()
 
+    # As `_Recv.cancel`; the unsent value is dropped with the awaitable.
     def cancel(self) -> None:
-        pass
+        self._cancelled = True
 
     def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._cancelled:
+            if (self._state._has_send_waiter
+                    and same_task(self._state._send_waker, waker)):
+                self._state._has_send_waiter = False
+            raise CancelledError()
         if self._state._closed:
             raise ChannelClosed("send on closed channel")
         if not self._state._is_full():

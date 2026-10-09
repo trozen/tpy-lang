@@ -89,28 +89,36 @@ private:
     std::future<R> future_;
 };
 
-// Keeps SIGINT blocked on the calling thread while a worker is created, so the
-// worker inherits the blocked mask and the kernel delivers every Ctrl-C to the
-// interrupt target thread. Only while the SIGINT layer is armed; the creator's
-// mask is restored on scope exit, also when thread creation throws.
-class SpawnSigintBlock {
+// Keeps the asynchronous signals blocked on the calling thread while a worker
+// is created, so the worker inherits the blocked mask and the kernel delivers
+// each of them to the interrupt target thread: a Ctrl-C, a `signal.signal`
+// handler's signal, and raise_signal / os.kill(os.getpid(), ...) stay
+// synchronous on the target. The faults and SIGPIPE stay unblocked: they are
+// sent to the thread that caused them. SIGPROF and SIGVTALRM stay unblocked
+// too: a profiler's process-directed ticks sample whichever thread is
+// running. Only while the signal layer is armed; the creator's mask is
+// restored on scope exit, also when thread creation throws.
+class SpawnSignalBlock {
 public:
-    SpawnSigintBlock() : active_(interrupt_armed()) {
+    SpawnSignalBlock() : active_(interrupt_armed()) {
         if (active_) {
             sigset_t block;
             // Unqualified: function-like macros on macOS/BSD.
-            sigemptyset(&block);
-            sigaddset(&block, SIGINT);
+            sigfillset(&block);
+            for (int sig : {SIGSEGV, SIGBUS, SIGFPE, SIGILL, SIGTRAP, SIGSYS,
+                            SIGABRT, SIGPIPE, SIGPROF, SIGVTALRM}) {
+                sigdelset(&block, sig);
+            }
             pthread_sigmask(SIG_BLOCK, &block, &saved_);
         }
     }
-    ~SpawnSigintBlock() {
+    ~SpawnSignalBlock() {
         if (active_) {
             pthread_sigmask(SIG_SETMASK, &saved_, nullptr);
         }
     }
-    SpawnSigintBlock(const SpawnSigintBlock&) = delete;
-    SpawnSigintBlock& operator=(const SpawnSigintBlock&) = delete;
+    SpawnSignalBlock(const SpawnSignalBlock&) = delete;
+    SpawnSignalBlock& operator=(const SpawnSignalBlock&) = delete;
 
 private:
     bool active_;
@@ -143,7 +151,7 @@ auto spawn_thread(T task) {
             }
         });
     std::future<R> future = job.get_future();
-    SpawnSigintBlock sigint_block;
+    SpawnSignalBlock signal_block;
     std::thread thread(std::move(job));
     return JoinHandle<R>(std::move(thread), std::move(future));
 }

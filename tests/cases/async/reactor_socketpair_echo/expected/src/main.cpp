@@ -164,16 +164,182 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
+// async def io_reader(sock: socket) -> None:
+//     loop = asyncio.get_running_loop()
+//     data = await loop.sock_recv(sock, 16)   # -> S_RESUME_0
+//     print("io-hop: reader got", data)
+::tpystd::tpy::Poll<::std::monostate> __coro_io_reader::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        loop.emplace(::tpystd::asyncio::get_running_loop());
+        __sub_0.emplace(std::move((*loop).sock_recv(sock, 16)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: data = await loop.sock_recv(sock, 16)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        data = std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "io-hop: reader got" << " " << ::tpy::BytesPrinter(data) << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def io_reader(sock: socket) -> None:
+__coro_io_reader io_reader(::tpystd::socket::socket& sock) {
+    return __coro_io_reader(sock);
+}
+
+// async def io_spins(n: int32) -> None:
+//     for i in range(n):
+//         print("io-hop: spin", i)
+//         await asyncio.sleep(0)         # -> S_RESUME_0
+::tpystd::tpy::Poll<::std::monostate> __coro_io_spins::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+        }
+        i = ((*__for_i_0))++;
+        std::cout << "io-hop: spin" << " " << i << "\n" << ::tpy::check_signals;
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def io_spins(n: int32) -> None:
+__coro_io_spins io_spins(int32_t n) {
+    return __coro_io_spins(n);
+}
+
+// async def io_hop() -> None:
+//     a, b = socketpair()
+//     a.setblocking(False)
+//     r = asyncio.create_task(io_reader(a))
+//     await asyncio.sleep(0)                                                                      # -> S_RESUME_0
+//     s = asyncio.create_task(io_spins(4))
+//     b.send(b"x")
+//     for i in range(3):
+//         print("io-hop: main", i)
+//         await asyncio.sleep(0)  # tpyc: ok -- the reader resumes one batch after the readiness  # -> S_RESUME_1
+//     await r                                                                                     # -> S_RESUME_2
+//     await s                                                                                     # -> S_RESUME_3
+::tpystd::tpy::Poll<::std::monostate> __coro_io_hop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto __tup_1 = ::tpystd::socket::socketpair();
+        a.emplace(std::move(std::get<0>(__tup_1)));
+        b.emplace(std::move(std::get<1>(__tup_1)));
+        (*a).setblocking(false);
+        r.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::io_reader((*a)))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        s.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::io_spins(4))));
+        (*b).send(::tpy::bytes_literal("x", 1));
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(3));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)  # tpyc: ok -- the reader resumes one batch after the readiness
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await r
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        __sub_3 = &((*s));
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await s
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r3).value();
+        __sub_3 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __sub_2 = &((*r));
+            __state = S_RESUME_2;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        std::cout << "io-hop: main" << " " << i << "\n" << ::tpy::check_signals;
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def io_hop() -> None:
+__coro_io_hop io_hop() {
+    return __coro_io_hop();
+}
+
 // def main() -> None:
 //     asyncio.run(main_coro())
+//     asyncio.run(io_hop())
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::io_hop()));
 }
 
 // # asyncio epoll reactor (v2): two concurrent coroutines on one executor
 // # echo bytes over a non-blocking socketpair. The server task parks in the
 // # reactor (real epoll would-block) until the client sends; the round-tripped
-// # bytes confirm data actually moved through the fd-backed awaitables.
+// # bytes confirm data actually moved through the fd-backed awaitables. A task
+// # looping on sleep(0) does not keep a reader woken by fd readiness from
+// # running, which resumes one batch after the readiness is seen (CPython's
+// # reader callback, then the task's wakeup).
 // import asyncio
 // from socket import socketpair, socket
 //

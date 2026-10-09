@@ -4,6 +4,20 @@
 namespace tpystd::coro {
 
 
+// # Whether two wakers wake the same executor task: the awaitables with a
+// # single waiter slot use it to tell their parked task from another one.
+// # Null wakers (a hand-driven poll) name no task.
+// def same_task(a: Waker, b: Waker) -> bool:
+//     if a.awaker is None or b.awaker is None:
+//         return False
+//     return a.task_id == b.task_id and a.generation == b.generation
+bool same_task(::tpystd::coro::Waker a, ::tpystd::coro::Waker b) {
+    if (((a.awaker == nullptr) || (b.awaker == nullptr))) {
+        return false;
+    }
+    return ((a.task_id == b.task_id) && (a.generation == b.generation));
+}
+
 // # Separate factory because `poll_ready[T](value)` needs an `Own[T]`
 // # argument that `Own[None]` can't satisfy with no payload.
 // def poll_ready_none() -> Own[Poll[None]]:

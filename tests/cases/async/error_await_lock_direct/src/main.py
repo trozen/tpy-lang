@@ -1,6 +1,6 @@
 # A Lock/Semaphore is not awaitable directly (matching CPython, which raises
 # TypeError) -- acquisition goes through acquire() / async with. The private
-# _LockAcquire awaitable keeps __poll__ off the public Lock type.
+# _PrimitiveWait awaitable keeps __poll__ off the public Lock type.
 import asyncio
 from asyncio import Lock
 

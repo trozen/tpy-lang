@@ -6,3 +6,22 @@ get_nowait: 99
 caught empty
 caught full
 unbounded full: False qsize: 2
+cancel get: a cancelled
+cancel get: saw the cancel
+cancel get: b got 1
+cancel get: c cancelled
+cancel get: d got 2
+cancel get: saw the cancel
+cancel put: a cancelled
+cancel put: saw the cancel
+cancel put: got 0
+cancel put: b put 2
+cancel put: got 2
+handoff put: got 0
+handoff put: a cancelled
+handoff put: b put 2
+handoff put: saw the cancel
+handoff put: got 2
+handoff join: a cancelled
+handoff join: b joined
+handoff join: saw the cancel

@@ -7,15 +7,52 @@
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
 #include "tpystd/asyncio/_executor/_executor.hpp"
+#include <tpy/system.hpp>
+#include <tpy/stdlib/time.hpp>
 
 namespace tpyapp::main {
 
+extern bool ran;
+extern bool flag;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_main_coro;
+struct __coro_sets_ran;
+struct __coro_ticks;
+struct __coro_yields;
+struct __coro_sets_flag_later;
+struct __coro_busy_waits;
+struct __coro_hop_sleeper;
+struct __coro_hop_spins;
+struct __coro_timer_hop;
+struct __coro_staged_sleeper;
+struct __coro_staged_waiter;
+struct __coro_staged_cancel;
 
 // async def main_coro() -> None:
 __coro_main_coro main_coro();
+// async def sets_ran() -> None:
+__coro_sets_ran sets_ran();
+// async def ticks(name: str, n: int) -> None:
+__coro_ticks ticks(std::string_view name, ::tpy::BigInt n);
+// async def yields() -> None:
+__coro_yields yields();
+// async def sets_flag_later() -> None:
+__coro_sets_flag_later sets_flag_later();
+// async def busy_waits() -> None:
+__coro_busy_waits busy_waits();
+// async def hop_sleeper() -> None:
+__coro_hop_sleeper hop_sleeper();
+// async def hop_spins(n: int32) -> None:
+__coro_hop_spins hop_spins(int32_t n);
+// async def timer_hop() -> None:
+__coro_timer_hop timer_hop();
+// async def staged_sleeper() -> None:
+__coro_staged_sleeper staged_sleeper();
+// async def staged_waiter(e: asyncio.Event) -> None:
+__coro_staged_waiter staged_waiter(::tpystd::asyncio::Event& e);
+// async def staged_cancel() -> None:
+__coro_staged_cancel staged_cancel();
 // def main() -> None:
 void main();
 
@@ -42,6 +79,323 @@ struct __coro_main_coro {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";
+    }
+};
+
+// async def sets_ran() -> None:
+struct __coro_sets_ran {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_sets_ran()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_sets_ran&) {
+        return os << "<coroutine sets_ran>";
+    }
+};
+
+// async def ticks(name: str, n: int) -> None:
+struct __coro_ticks {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string name;
+    ::tpy::BigInt n;
+    ::tpy::BigInt i;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_i_0;
+    ::tpy::frame_loop_slot<::tpy::BigInt> __for_stop_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_ticks(std::string_view name_, ::tpy::BigInt n_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          name(std::string(name_)),
+          n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_ticks&) {
+        return os << "<coroutine ticks>";
+    }
+};
+
+// async def yields() -> None:
+struct __coro_yields {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> a;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> b;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_1 = nullptr;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_2 = nullptr;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_3 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_yields()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_yields&) {
+        return os << "<coroutine yields>";
+    }
+};
+
+// async def sets_flag_later() -> None:
+struct __coro_sets_flag_later {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_sets_flag_later()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_sets_flag_later&) {
+        return os << "<coroutine sets_flag_later>";
+    }
+};
+
+// async def busy_waits() -> None:
+struct __coro_busy_waits {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    int32_t n;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_1 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_busy_waits()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_busy_waits&) {
+        return os << "<coroutine busy_waits>";
+    }
+};
+
+// async def hop_sleeper() -> None:
+struct __coro_hop_sleeper {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_hop_sleeper()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_hop_sleeper&) {
+        return os << "<coroutine hop_sleeper>";
+    }
+};
+
+// async def hop_spins(n: int32) -> None:
+struct __coro_hop_spins {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_hop_spins(int32_t n_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_hop_spins&) {
+        return os << "<coroutine hop_spins>";
+    }
+};
+
+// async def timer_hop() -> None:
+struct __coro_timer_hop {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> a;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> s;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_2 = nullptr;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_3 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_JOIN_0 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_timer_hop()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_timer_hop&) {
+        return os << "<coroutine timer_hop>";
+    }
+};
+
+// async def staged_sleeper() -> None:
+struct __coro_staged_sleeper {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_staged_sleeper()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_staged_sleeper&) {
+        return os << "<coroutine staged_sleeper>";
+    }
+};
+
+// async def staged_waiter(e: asyncio.Event) -> None:
+struct __coro_staged_waiter {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpystd::asyncio::Event& e;
+    std::optional<::tpystd::asyncio::__coro_Event_wait> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_staged_waiter(::tpystd::asyncio::Event& e)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          e(e) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_staged_waiter&) {
+        return os << "<coroutine staged_waiter>";
+    }
+};
+
+// async def staged_cancel() -> None:
+struct __coro_staged_cancel {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> e;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> t;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> w;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_2;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_3 = nullptr;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_4 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_RESUME_4 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_staged_cancel()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_staged_cancel&) {
+        return os << "<coroutine staged_cancel>";
     }
 };
 

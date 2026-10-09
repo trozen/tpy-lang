@@ -1,0 +1,65 @@
+handler: got True
+handler: after raise_signal
+exit: finally ran
+exit: code 143
+hup: KeyboardInterrupt from the handler
+sigint: user handler ran
+sigint: no KeyboardInterrupt
+sigint: KeyboardInterrupt again
+sigint: default_int_handler raises
+kill: hits 1
+replace: first ran and replaced itself
+replace: second ran
+del: dropped
+del: hits 1
+generator: got 1
+generator: finally ran
+generator: Stop out of the loop
+async: root cleanup
+async: background cleanup
+async: Stop out of the run
+async catch: caught Stop in the coroutine
+async catch: result 2
+async returns: result 1
+async sigint: hits 2
+run sigint: user handler ran
+run sigint: KeyboardInterrupt in the coroutine
+run sigint: result 1
+kept sigint: root cancelled
+kept sigint: KeyboardInterrupt out of run
+kept sigint: user handler ran
+same step: after raise_signal
+same step: KeyboardInterrupt out of run
+same step finally: after raise_signal
+same step finally: finally ran
+same step finally: KeyboardInterrupt out of run
+step awaits: quick ran 3
+step awaits: cancelled at the sleep
+step awaits: KeyboardInterrupt out of run
+step sleep0: cancelled
+step sleep0: KeyboardInterrupt out of run
+spawned: child after raise_signal
+spawned: root cancelled
+spawned: KeyboardInterrupt out of run
+late: root returns
+late: child runs after the root returned
+late: KeyboardInterrupt in the child
+late: KeyboardInterrupt out of run
+drain: child cancelled by the shutdown
+drain: KeyboardInterrupt out of run
+staged: Ctrl-C, then set
+staged: root finally
+staged: event waiter woke
+staged: event waiter finally
+staged: KeyboardInterrupt out of run
+task: root still running
+task: awaiting re-raised Stop
+task: result 1
+worker: hits before join 1
+worker: joined 7
+thread: ValueError: signal only works in main thread of the main interpreter
+errors: SIGKILL 22 [Errno 22] Invalid argument
+errors: 0 signal number out of range
+errors: -1 signal number out of range
+errors: 1000 signal number out of range
+errors: FrameType cannot create 'frame' instances

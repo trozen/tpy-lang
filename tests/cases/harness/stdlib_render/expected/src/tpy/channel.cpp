@@ -19,7 +19,9 @@ namespace tpystd::tpy::channel {
 // """
 //
 // from tpy.mem import UninitHeapStorage, UninitStorage
-// from tpy.coro import Waker, Poll, poll_ready, poll_pending, poll_ready_none
+// from tpy.coro import (
+//     Waker, Poll, poll_ready, poll_pending, poll_ready_none, same_task,
+// )
 // from tplib.rc import Rc
 void __tpy_init() {
     static bool initialized = false;

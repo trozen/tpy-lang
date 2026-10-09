@@ -97,17 +97,293 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
+// async def primitives() -> None:
+//     q: Queue[int32] = Queue(0)
+//     try:
+//         await asyncio.wait_for(q.get(), 0.01)  # tpyc: ok -- the parked get takes the cancel             # -> S_RESUME_0
+//         print("queue: got (WRONG)")
+//     except TimeoutError:
+//         print("queue: get timed out")
+//     q.put_nowait(5)
+//     print("queue: get after", await q.get())                                                             # -> S_RESUME_1
+//     lock = Lock()
+//     await lock.acquire()                                                                                 # -> S_RESUME_2
+//     try:
+//         await asyncio.wait_for(lock.acquire(), 0.01)  # tpyc: ok -- the parked acquire takes the cancel  # -> S_RESUME_3
+//         print("lock: acquired (WRONG)")
+//     except TimeoutError:
+//         print("lock: acquire timed out, locked", lock.locked())
+//     lock.release()
+//     await lock.acquire()                                                                                 # -> S_RESUME_4
+//     print("lock: acquired after")
+::tpystd::tpy::Poll<::std::monostate> __coro_primitives::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        q.emplace(::tpystd::asyncio::Queue<int32_t>(0));
+        __state = S_JOIN_2;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.wait_for(q.get(), 0.01)  # tpyc: ok -- the parked get takes the cancel
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << "queue: got (WRONG)" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::TimeoutError&) {
+            __sub_0.reset();
+            std::cout << "queue: get timed out" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: print("queue: get after", await q.get())
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        __await_lift_0 = std::move(__r1).value();
+        __sub_1.reset();
+        std::cout << "queue: get after" << " " << __await_lift_0 << "\n" << ::tpy::check_signals;
+        lock.emplace(::tpystd::asyncio::Lock());
+        __sub_2.emplace((*lock));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await lock.acquire()
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2.reset();
+        __state = S_JOIN_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await asyncio.wait_for(lock.acquire(), 0.01)  # tpyc: ok -- the parked acquire takes the cancel
+        try {
+            auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+            if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r3).value();
+            __sub_3.reset();
+            std::cout << "lock: acquired (WRONG)" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_1;
+            continue;
+        } catch (const ::tpy::TimeoutError&) {
+            __sub_3.reset();
+            std::cout << "lock: acquire timed out, locked" << " " << ::tpy::print_bool((*lock).locked()) << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_1;
+            continue;
+        } catch (...) {
+            __sub_3.reset();
+            throw;
+        }
+    }
+    case S_RESUME_4: {  // after: await lock.acquire()
+        auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
+        if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r4).value();
+        __sub_4.reset();
+        std::cout << "lock: acquired after" << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_0: {
+        (*q).put_nowait(5);
+        __sub_1.emplace((*q));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_JOIN_1: {
+        (*lock).release();
+        __sub_4.emplace((*lock));
+        __state = S_RESUME_4;
+        continue;
+    }
+    case S_JOIN_2: {
+        try {
+            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>((*q).get()), 0.01);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::TimeoutError&) {
+            std::cout << "queue: get timed out" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_JOIN_3: {
+        try {
+            __sub_3.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<bool>>((*lock).acquire()), 0.01);
+            __state = S_RESUME_3;
+            continue;
+        } catch (const ::tpy::TimeoutError&) {
+            std::cout << "lock: acquire timed out, locked" << " " << ::tpy::print_bool((*lock).locked()) << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_1;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def primitives() -> None:
+__coro_primitives primitives() {
+    return __coro_primitives();
+}
+
+// async def hop_getter(q: Queue[int32]) -> None:
+//     try:
+//         await asyncio.wait_for(q.get(), 0.01)   # -> S_RESUME_0
+//         print("timeout-hop: got (WRONG)")
+//     except TimeoutError:
+//         print("timeout-hop: getter timed out")
+::tpystd::tpy::Poll<::std::monostate> __coro_hop_getter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await asyncio.wait_for(q.get(), 0.01)
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << "timeout-hop: got (WRONG)" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::TimeoutError&) {
+            __sub_0.reset();
+            std::cout << "timeout-hop: getter timed out" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        try {
+            __sub_0.emplace(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(q.get()), 0.01);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::TimeoutError&) {
+            std::cout << "timeout-hop: getter timed out" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def hop_getter(q: Queue[int32]) -> None:
+__coro_hop_getter hop_getter(::tpystd::asyncio::Queue<int32_t>& q) {
+    return __coro_hop_getter(q);
+}
+
+// async def timeout_hop() -> None:
+//     q: Queue[int32] = Queue()
+//     a = asyncio.create_task(hop_getter(q))
+//     await asyncio.sleep(0)                                                                        # -> S_RESUME_0
+//     time.sleep(0.03)  # blocks past the getter's deadline
+//     for i in range(5):
+//         print("timeout-hop: main", i)
+//         await asyncio.sleep(0)  # tpyc: ok -- the getter resumes one batch after the timer fires  # -> S_RESUME_1
+//     await a                                                                                       # -> S_RESUME_2
+::tpystd::tpy::Poll<::std::monostate> __coro_timeout_hop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        q.emplace(::tpystd::asyncio::Queue<int32_t>());
+        a.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::hop_getter((*q)))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        ::tpy::time_sleep(0.03);
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(5));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)  # tpyc: ok -- the getter resumes one batch after the timer fires
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await a
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __sub_2 = &((*a));
+            __state = S_RESUME_2;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        std::cout << "timeout-hop: main" << " " << i << "\n" << ::tpy::check_signals;
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def timeout_hop() -> None:
+__coro_timeout_hop timeout_hop() {
+    return __coro_timeout_hop();
+}
+
 // def main() -> None:
 //     asyncio.run(main_coro())
+//     asyncio.run(primitives())
+//     asyncio.run(timeout_hop())
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::primitives()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::timeout_hop()));
 }
 
 // # Timeout path: inner coroutine still pending when the deadline fires.
 // # `wait_for` must cancel the inner, pump it to completion, and raise
 // # `TimeoutError` (a builtin, propagated through the @native
-// # `tpy::TimeoutError` exception type).
+// # `tpy::TimeoutError` exception type). The inner can be parked on a
+// # Queue.get or a Lock.acquire, which stays usable after the timeout. The
+// # timed-out task resumes one batch after the deadline timer fires.
 // import asyncio
+// import time
 //
 // main()
 void __tpy_init() {

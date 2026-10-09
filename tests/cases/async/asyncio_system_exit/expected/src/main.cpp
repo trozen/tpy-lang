@@ -379,6 +379,179 @@ __coro_main_returns main_returns() {
     return __coro_main_returns();
 }
 
+// async def batch_exiter() -> None:
+//     await asyncio.sleep(0)                                                          # -> S_RESUME_0
+//     # The subject: the exit leaves the batch while x and y are still queued in it.
+//     sys.exit(4)  # tpyc: ok
+::tpystd::tpy::Poll<::std::monostate> __coro_batch_exiter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        ::tpystd::sys::exit(4);
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def batch_exiter() -> None:
+__coro_batch_exiter batch_exiter() {
+    return __coro_batch_exiter();
+}
+
+// async def batch_spinner(tag: str) -> None:
+//     try:
+//         while True:
+//             await asyncio.sleep(0)            # -> S_RESUME_0
+//     finally:
+//         print("batch-exit:", tag, "finally")
+::tpystd::tpy::Poll<::std::monostate> __coro_batch_spinner::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            this->__finally_0();
+            throw;
+        }
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_2:
+    case S_JOIN_0: {
+        bool __fin_ran_7 = false;
+        try {
+            if (true) {
+                __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+                __state = S_RESUME_0;
+                continue;
+            } else {
+                __fin_ran_7 = true;
+                this->__finally_0();
+                __state = S_JOIN_1;
+                continue;
+            }
+        } catch (...) {
+            if (!__fin_ran_7) {
+                this->__finally_0();
+            }
+            throw;
+        }
+    }
+    case S_JOIN_1: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+void __coro_batch_spinner::__finally_0() {
+    std::cout << "batch-exit:" << " " << tag << " " << "finally" << "\n" << ::tpy::check_signals;
+}
+
+// async def batch_spinner(tag: str) -> None:
+__coro_batch_spinner batch_spinner(std::string_view tag) {
+    return __coro_batch_spinner(tag);
+}
+
+// async def main_batch_exit() -> None:
+//     e = asyncio.create_task(batch_exiter())
+//     x = asyncio.create_task(batch_spinner("x"))
+//     y = asyncio.create_task(batch_spinner("y"))
+//     try:
+//         await asyncio.sleep(0.05)                    # -> S_RESUME_0
+//         print("batch-exit: main continued (wrong)")
+//     finally:
+//         print("batch-exit: main's finally ran")
+::tpystd::tpy::Poll<::std::monostate> __coro_main_batch_exit::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        e.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::batch_exiter())));
+        x.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::batch_spinner("x"))));
+        y.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::batch_spinner("y"))));
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.05)
+        bool __fin_ran_9 = false;
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << "batch-exit: main continued (wrong)" << "\n" << ::tpy::check_signals;
+            __fin_ran_9 = true;
+            this->__finally_0();
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            if (!__fin_ran_9) {
+                this->__finally_0();
+            }
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_1: {
+        try {
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.05)));
+            __state = S_RESUME_0;
+            continue;
+        } catch (...) {
+            this->__finally_0();
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+void __coro_main_batch_exit::__finally_0() {
+    std::cout << "batch-exit: main's finally ran" << "\n" << ::tpy::check_signals;
+}
+
+// async def main_batch_exit() -> None:
+__coro_main_batch_exit main_batch_exit() {
+    return __coro_main_batch_exit();
+}
+
 // def main() -> None:
 //     # Section main task: sys.exit in the main task.
 //     try:
@@ -406,6 +579,11 @@ __coro_main_returns main_returns() {
 //         print("drain: run returned (wrong)")
 //     except SystemExit as e:
 //         print("drain: out of run", e.code)
+//     # Section batch-exit: sys.exit leaving a batch with siblings still queued.
+//     try:
+//         asyncio.run(main_batch_exit())
+//     except SystemExit as e:
+//         print("batch-exit: out of run", e.code)
 void main() {
     {
         try {
@@ -443,12 +621,20 @@ void main() {
             std::cout << "drain: out of run" << " " << ::tpy::__str__(e.code) << "\n" << ::tpy::check_signals;
         }
     }
+    {
+        try {
+            ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_batch_exit()));
+        } catch (const ::tpy::SystemExit& e) {
+            std::cout << "batch-exit: out of run" << " " << ::tpy::__str__(e.code) << "\n" << ::tpy::check_signals;
+        }
+    }
 }
 
 // # sys.exit (and an explicit KeyboardInterrupt) inside asyncio.run ends the
 // # run, not just the task: it leaves asyncio.run from the main task, a spawned
 // # task, a gather child and a cleanup the shutdown drain runs; a main task
-// # suspended at the time is cancelled so its finally runs.
+// # suspended at the time is cancelled so its finally runs, and so are tasks
+// # still queued in the batch the exit left.
 // import asyncio
 // import sys
 //

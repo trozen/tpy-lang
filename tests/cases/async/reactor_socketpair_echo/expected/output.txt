@@ -1,2 +1,10 @@
 b'ping'
 done
+io-hop: main 0
+io-hop: spin 0
+io-hop: main 1
+io-hop: spin 1
+io-hop: main 2
+io-hop: reader got b'x'
+io-hop: spin 2
+io-hop: spin 3

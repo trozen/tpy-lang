@@ -22,6 +22,10 @@ namespace tpystd::asyncio {
 //         interrupted = executor.run_until(main_id)
 //         completed = True
 //     finally:
+//         # Before the drain, as CPython's Runner.run restores its handler
+//         # before close(): a Ctrl-C during the drain raises KeyboardInterrupt
+//         # instead of cancelling the root again.
+//         signals.restore_sigint()
 //         # A run left by an exception (a task's SystemExit, a second Ctrl-C)
 //         # cancels the root too, so its finally / __aexit__ run as in
 //         # CPython's Runner.close.
@@ -49,6 +53,7 @@ bool _run_drain_main_task(::tpystd::tplib::box::Box<::tpystd::asyncio::_executor
             interrupted = executor.run_until(main_id);
             completed = true;
         } catch (...) {
+            signals.restore_sigint();
             skip_id = ((completed) ? (main_id) : (-1));
             {
                 try {
@@ -62,6 +67,7 @@ bool _run_drain_main_task(::tpystd::tplib::box::Box<::tpystd::asyncio::_executor
             }
             throw;
         }
+        signals.restore_sigint();
         skip_id = ((completed) ? (main_id) : (-1));
         {
             try {
@@ -90,6 +96,41 @@ void _register_timer_at(double deadline_seconds, ::tpystd::coro::Waker waker) {
         return;
     }
     handle->register_timer(deadline_seconds, waker);
+}
+
+// # asyncio.run's SIGINT handler for the run (CPython's Runner._on_sigint): the
+// # first Ctrl-C cancels the root task, a later one raises KeyboardInterrupt
+// # where it is delivered. It runs on the loop's thread only -- at a coroutine's
+// # check point or from the loop -- so the loop is never blocked when the root
+// # is marked runnable.
+// def _on_sigint(signum: int32, frame: FrameType | None) -> None:
+//     executor = _get_current_executor()
+//     if executor is None:
+//         raise KeyboardInterrupt()
+//     executor.on_sigint()
+void _on_sigint(int32_t signum, const ::tpystd::types::FrameType* frame) {
+    ::tpystd::asyncio::_executor::Executor* executor = ::tpystd::asyncio::_executor::_get_current_executor();
+    if ((executor == nullptr)) {
+        throw ::tpy::KeyboardInterrupt{};
+    }
+    executor->on_sigint();
+}
+
+// # Whether _on_sigint is still SIGINT's handler (CPython's Runner compares
+// # getsignal(SIGINT) with its own). Compared by function name: passed through
+// # a Callable parameter, the function would be held converted, and the
+// # comparison could not see through that.
+// def _sigint_is_ours() -> bool:
+//     if posix_signal.handler_kind(_signal.SIGINT) != _signal._KIND_USER:
+//         return False
+//     current = _signal._handlers[_signal.SIGINT]
+//     return _signal._same_function(current, _on_sigint)
+bool _sigint_is_ours() {
+    if ((::tpy_signal_kind(::tpy_const_sigint) != ::tpystd::signal::_KIND_USER)) {
+        return false;
+    }
+    std::function<void(int32_t, ::tpystd::types::FrameType*)> current = ::tpy::__getitem__((*::tpystd::signal::_handlers), ::tpy_const_sigint);
+    return ::tpy_signal_same_function(current, _on_sigint);
 }
 
 // # Reactor access mirrors `_register_timer_at`: no-op when no executor is
@@ -128,38 +169,6 @@ void _reactor_unregister_fd(int32_t fd) {
 //     return task_from_coro[None](SleepFuture(seconds))
 ::tpystd::asyncio::_executor::Task<std::monostate> sleep(double seconds) {
     return ::tpystd::asyncio::_executor::task_from_coro<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(SleepFuture(seconds)));
-}
-
-// # A stale-generation wake (the front waiter's task since cancelled or
-// # completed) is swallowed by the Waker's own generation guard, so the
-// # resource it would have claimed just waits for the next signal -- a
-// # documented v1 cancel-while-parked gap, not a correctness issue here.
-// def _wake_one(waiters: list[Waker]) -> None:
-//     if len(waiters) > 0:
-//         w = waiters.pop(0)
-//         w.wake()
-void _wake_one(std::vector<::tpystd::coro::Waker>& waiters) {
-    if ((::tpy::__len__(waiters) > 0)) {
-        ::tpystd::coro::Waker w = ::tpy::list_pop_at(waiters, 0);
-        w.wake();
-    }
-}
-
-// # Wake every parked waiter and clear the queue -- for a broadcast condition
-// # where, once it holds, every parked waiter should proceed.
-// def _wake_all(waiters: list[Waker]) -> None:
-//     for w in waiters:
-//         w.wake()
-//     waiters.clear()
-void _wake_all(std::vector<::tpystd::coro::Waker>& waiters) {
-    auto& __obj_0 = waiters;
-    auto __beg_0 = __obj_0.begin();
-    auto __end_0 = __obj_0.end();
-    for (; __beg_0 != __end_0; ++__beg_0) {
-        ::tpystd::coro::Waker w = *__beg_0;
-        w.wake();
-    }
-    waiters.clear();
 }
 
 // # Return a handle to the running event loop. Raises RuntimeError outside
@@ -358,17 +367,17 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def acquire(self) -> bool:
-//     await _LockAcquire(self)      # -> S_RESUME_0
+//     await _PrimitiveWait[Lock](self, 0, self._waiters)  # -> S_RESUME_0
 //     return True
 ::tpystd::tpy::Poll<bool> __coro_Lock_acquire::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __sub_0.emplace(std::move(_LockAcquire(&__self)));
+        __sub_0.emplace(std::move(_PrimitiveWait<Lock>(&__self, 0, &__self._waiters)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {  // after: await _LockAcquire(self)
+    case S_RESUME_0: {  // after: await _PrimitiveWait[Lock](self, 0, self._waiters)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -426,17 +435,17 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 
 
 // async def acquire(self) -> bool:
-//     await _SemAcquire(self)       # -> S_RESUME_0
+//     await _PrimitiveWait[Semaphore](self, 0, self._waiters)  # -> S_RESUME_0
 //     return True
 ::tpystd::tpy::Poll<bool> __coro_Semaphore_acquire::__poll__(::tpystd::coro::Waker waker) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        __sub_0.emplace(std::move(_SemAcquire(&__self)));
+        __sub_0.emplace(std::move(_PrimitiveWait<Semaphore>(&__self, 0, &__self._waiters)));
         __state = S_RESUME_0;
         continue;
     }
-    case S_RESUME_0: {  // after: await _SemAcquire(self)
+    case S_RESUME_0: {  // after: await _PrimitiveWait[Semaphore](self, 0, self._waiters)
         auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<bool>::pending();
         (void)std::move(__r0).value();
@@ -920,23 +929,27 @@ __coro_start_server start_server(std::function<std::unique_ptr<::tpystd::coro::C
 // def __init__(self, executor: Executor) -> None:
 //     self._armed = False
 //     self._fd = -1
+//     self._sigint = False
 //     fd = posix_signal.async_begin()
 //     if fd >= 0:
 //         executor.register_fd(fd, EPOLLIN, Waker())
-//         executor.shutdown_armed = True
-//         executor.shutdown_fd = fd
+//         executor.signals_armed = True
+//         executor.signal_fd = fd
 //         self._armed = True
 //         self._fd = fd
+//         self._sigint = _signal._install_run_handler(_on_sigint)
 _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     : _armed(false),
-      _fd(-1) {
+      _fd(-1),
+      _sigint(false) {
     int32_t fd = ::tpy_interrupt_async_begin();
     if ((fd >= 0)) {
         executor.register_fd(fd, EPOLLIN, ::tpystd::coro::Waker());
-        executor.shutdown_armed = true;
-        executor.shutdown_fd = fd;
+        executor.signals_armed = true;
+        executor.signal_fd = fd;
         this->_armed = true;
         this->_fd = fd;
+        this->_sigint = ::tpystd::signal::_install_run_handler(_on_sigint);
     }
 }
 
@@ -1128,6 +1141,70 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
     }
     return ::tpystd::coro::poll_pending<std::monostate>();
 }
+
+// def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+//     if self._cancel_pending:
+//         self._cancel_pending = False
+//         if self._has_waiter and same_task(self._waiter, waker):
+//             self._has_waiter = False
+//         raise CancelledError()
+//     if self._is_set:
+//         return poll_ready_none()
+//     # A re-poll by the parked task (a spurious wake) keeps its place.
+//     if self._has_waiter and not same_task(self._waiter, waker):
+//         raise ValueError(
+//             "Event already has a waiter (single-awaiter v1)")
+//     self._waiter = waker
+//     self._has_waiter = True
+//     return poll_pending()
+::tpystd::tpy::Poll<std::monostate> Event::__poll__(::tpystd::coro::Waker waker) {
+    if (this->_cancel_pending) {
+        this->_cancel_pending = false;
+        if ((this->_has_waiter && ::tpystd::coro::same_task(this->_waiter, waker))) {
+            this->_has_waiter = false;
+        }
+        throw ::tpy::CancelledError{};
+    }
+    if (this->_is_set) {
+        return ::tpystd::coro::poll_ready_none();
+    }
+    if ((this->_has_waiter && (!(::tpystd::coro::same_task(this->_waiter, waker))))) {
+        throw ::tpy::ValueError("Event already has a waiter (single-awaiter v1)");
+    }
+    this->_waiter = waker;
+    this->_has_waiter = true;
+    return ::tpystd::coro::poll_pending<std::monostate>();
+}
+
+// # Drops a parked entry; False when it was already woken.
+// def remove(self, ticket: uint64) -> bool:
+//     if not self.parked(ticket):
+//         return False
+//     n = len(self._tickets)
+//     i: int32 = 0
+//     while i < n:
+//         if self._tickets[i] == ticket:
+//             del self._tickets[i]
+//             del self._wakers[i]
+//             return True
+//         i += 1
+//     return False
+bool _WaitQueue::remove(uint64_t ticket) {
+    if ((!(this->parked(ticket)))) {
+        return false;
+    }
+    int32_t n = ::tpy::__len__(this->_tickets);
+    int32_t i = 0;
+    while ((i < n)) {
+        if ((::tpy::__getitem__(this->_tickets, i) == ticket)) {
+            ::tpy::__delitem__(this->_tickets, i);
+            ::tpy::__delitem__(this->_wakers, i);
+            return true;
+        }
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    return false;
+}
 // # tpy: cpp_namespace("tpystd::asyncio")
 // """asyncio v1 -- minimum viable async runtime.
 //
@@ -1140,7 +1217,7 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 //
 // from tpy.coro import (
 //     Waker, Poll, Cancellable,
-//     poll_ready, poll_pending, poll_ready_none,
+//     poll_ready, poll_pending, poll_ready_none, same_task,
 // )
 // from tpy.mem import UninitStorage
 // from tplib import Box
@@ -1150,6 +1227,8 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 //     socket, SocketError, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET,
 //     SOCK_STREAM, _maybe_raise_connection_error, _strerror)
 // from _bindings import posix_signal
+// import signal as _signal
+// from types import FrameType
 // from ._executor import (
 //     Task, AnyTask,
 //     task_from_coro, make_executor_owned_task, task_to_any_box,
@@ -1165,6 +1244,8 @@ void __tpy_init() {
     ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::rc::__tpy_init();
     ::tpystd::socket::__tpy_init();
+    ::tpystd::signal::__tpy_init();
+    ::tpystd::types::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
 }
 

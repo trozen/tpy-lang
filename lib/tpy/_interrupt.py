@@ -1,16 +1,18 @@
 # tpy: cpp_namespace("tpystd::_interrupt")
-"""Ctrl-C delivery for the stdlib's blocking operations.
+"""Signal delivery for the stdlib's blocking operations.
 
-The SIGINT layer (runtime/cpp/src/stdlib/signal_impl.cpp) turns a Ctrl-C into
-a pending flag plus a byte on a wake fd; KeyboardInterrupt is raised later, on
-the thread that armed the layer, by whichever interruptible operation runs
-next. The stdlib builds its fd waits from the pieces here (a wait that is
-not on an fd, `tpy.thread`'s join, takes only the check, straight from the
-binding):
-`check()` where a Ctrl-C that is already pending must be delivered, and
-`wait_readable` / `wait_writable` for a wait on an fd that a Ctrl-C also
-ends. A timeout is one monotonic deadline for the whole operation
-(`deadline_after`), so each retry waits only for the time left.
+The signal layer (runtime/cpp/src/stdlib/signal_impl.cpp) turns a signal
+into a pending flag plus a byte on a wake fd; what it does -- a Ctrl-C's
+KeyboardInterrupt, a `signal.signal` handler -- runs later, on the thread
+that armed the layer, in whichever interruptible operation runs next. The
+stdlib builds its fd waits from the pieces here (a wait that is not on an
+fd, `tpy.thread`'s join, takes only the check, straight from the binding):
+`check()` where a signal that is already pending must be delivered, and
+`wait_readable` / `wait_writable` for a wait on an fd that delivers the
+signals arriving meanwhile: an exception from one (a Ctrl-C) ends the wait,
+a handler that returns lets it go on to its deadline. A timeout is one
+monotonic deadline for the whole operation (`deadline_after`), so each retry
+waits only for the time left.
 
 The wait belongs to whoever owns the blocking resource and knows its mode:
 `socket` for its fd, `subprocess.Popen` for its pipes and its child. A raw
@@ -32,11 +34,11 @@ import time
 READY: Final[int32] = 1
 WAIT_ERROR: Final[int32] = -1
 TIMED_OUT: Final[int32] = -2
-_INTERRUPTED: Final[int32] = -3
 
 
 def check() -> None:
-    """Raise KeyboardInterrupt if a Ctrl-C is pending for this thread."""
+    """Deliver the signals pending for this thread: raise KeyboardInterrupt
+    for a Ctrl-C, run `signal.signal` handlers."""
     posix_signal.check_signals()
 
 
@@ -59,8 +61,9 @@ def remaining(deadline: float) -> float:
 
 def wait_readable(fd: int32, deadline: float) -> int32:
     """Wait until `fd` is readable or `deadline` passes: READY, TIMED_OUT or
-    WAIT_ERROR. A Ctrl-C raises KeyboardInterrupt. An already expired
-    deadline still polls once, so an fd that is ready counts as ready."""
+    WAIT_ERROR. A Ctrl-C raises KeyboardInterrupt, a `signal.signal`
+    handler runs inside the wait. An already expired deadline still polls
+    once, so an fd that is ready counts as ready."""
     return _wait(fd, 0, deadline)
 
 
@@ -70,9 +73,10 @@ def wait_writable(fd: int32, deadline: float) -> int32:
 
 
 def deliverable() -> bool:
-    """Whether a Ctrl-C would be raised on this thread right now (the
-    interrupt target, outside asyncio.run and a cleanup body). Where it would
-    not, an interruptible wait buys nothing over the plain blocking call."""
+    """Whether a signal would be delivered on this thread right now (the
+    interrupt target outside a cleanup body, inside asyncio.run too). Where it
+    would not, an interruptible wait buys nothing over the plain blocking
+    call."""
     return posix_signal.deliverable()
 
 
@@ -97,7 +101,4 @@ def before_write(fd: int32) -> None:
 
 
 def _wait(fd: int32, want_write: int32, deadline: float) -> int32:
-    rc = posix_signal.wait(fd, want_write, remaining(deadline))
-    if rc == _INTERRUPTED:
-        raise KeyboardInterrupt()
-    return rc
+    return posix_signal.wait(fd, want_write, remaining(deadline))

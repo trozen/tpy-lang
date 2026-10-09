@@ -11,17 +11,47 @@
 #include "tpystd/tpy/thread.hpp"
 #include "tpystd/tpy/version.hpp"
 #include <tpy/stdlib/signal_h.hpp>
+#include "tpystd/types.hpp"
 
+extern "C" int32_t tpy_const_sighup;
 extern "C" int32_t tpy_const_sigint;
-extern "C" int32_t tpy_const_sigterm;
+extern "C" int32_t tpy_const_sigquit;
 extern "C" int32_t tpy_const_sigkill;
+extern "C" int32_t tpy_const_sigusr1;
+extern "C" int32_t tpy_const_sigusr2;
+extern "C" int32_t tpy_const_sigpipe;
+extern "C" int32_t tpy_const_sigalrm;
+extern "C" int32_t tpy_const_sigterm;
+extern "C" int32_t tpy_const_sigchld;
+extern "C" int32_t tpy_const_sigcont;
+extern "C" int32_t tpy_const_sigtstp;
+extern "C" int32_t tpy_const_sigwinch;
 
 namespace tpystd::signal {
 
-inline constexpr std::string_view __name__ = "signal";
+using ::tpystd::types::FrameType;
 
+extern ::tpy::ordered_map<int32_t, std::function<void(int32_t, ::tpystd::types::FrameType*)>>* _handlers;
+inline constexpr std::string_view __name__ = "signal";
+// _KIND_DEFAULT_INT: Final[int32] = 1
+inline constexpr int32_t _KIND_DEFAULT_INT = 1;
+// _KIND_USER: Final[int32] = 2
+inline constexpr int32_t _KIND_USER = 2;
+
+// def default_int_handler(signum: int32, frame: FrameType | None) -> None:
+void default_int_handler(int32_t signum, const ::tpystd::types::FrameType* frame);
+// def signal(signalnum: int32,
+//            handler: Callable[[int32, FrameType | None], None]) -> None:
+void signal(int32_t signalnum, const std::function<void(int32_t, ::tpystd::types::FrameType*)>& handler);
+// def _install_run_handler(
+//         handler: Callable[[int32, FrameType | None], None]) -> bool:
+bool _install_run_handler(const std::function<void(int32_t, ::tpystd::types::FrameType*)>& handler);
+// def _restore_default_int() -> None:
+void _restore_default_int();
 // def raise_signal(sig: int32) -> None:
 void raise_signal(int32_t sig);
+
+extern "C" void tpy_signal_dispatch(int32_t sig);
 
 void __tpy_init();
 } // namespace tpystd::signal

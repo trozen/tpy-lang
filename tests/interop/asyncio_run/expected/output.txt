@@ -1,0 +1,10 @@
+default before True
+result 42
+default after True
+raise after KeyboardInterrupt
+interrupted 42
+default after interrupt True
+raise after interrupt KeyboardInterrupt
+result with handler 10
+handler kept True
+handler ran True

@@ -1,2 +1,9 @@
 fast True
 slow True
+cancel: a cancelled
+cancel: saw the cancel
+cancel: b woken
+evict: a saw the cancel
+evict: b woken
+woken-cancel: saw the cancel
+woken-cancel: b woken

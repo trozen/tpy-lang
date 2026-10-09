@@ -56,6 +56,8 @@ namespace tpystd::coro {
 
 inline constexpr std::string_view __name__ = "tpy.coro";
 
+// def same_task(a: Waker, b: Waker) -> bool:
+bool same_task(::tpystd::coro::Waker a, ::tpystd::coro::Waker b);
 // def poll_ready[T](value: Own[T]) -> Own[Poll[T]]:
 template<typename T>
 ::tpystd::tpy::Poll<T> poll_ready(::tpy::own_param_t<T> value);
