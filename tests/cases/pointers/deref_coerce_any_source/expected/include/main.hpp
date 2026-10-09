@@ -58,10 +58,10 @@ struct M {
     explicit M(A& a);
 
     // def get(self) -> A:
-    A& get();
+    A& get() const;
 
     // def ro(self) -> readonly[A]:
-    const A& ro();
+    const A& ro() const;
 
     // @property
     // def P(self) -> A:
@@ -92,13 +92,13 @@ inline M::M(A& a) : _a(&a) {}
 
 // def get(self) -> A:
 //     return self._a  # tpyc: ok
-inline A& M::get() {
+inline A& M::get() const {
     return ::tpy::deref_check(this->_a);
 }
 
 // def ro(self) -> readonly[A]:
 //     return self._a  # tpyc: ok
-inline const A& M::ro() {
+inline const A& M::ro() const {
     return ::tpy::deref_check(this->_a);
 }
 

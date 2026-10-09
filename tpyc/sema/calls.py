@@ -14,6 +14,7 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
+    is_indirection_type,
     make_readonly,
     param_may_be_written,
     any_default_suppressed,
@@ -3782,7 +3783,15 @@ class CallAnalyzer:
                 if (src.slot is None or not src.grants_write
                         or unwrap_readonly(src.slot).is_value_type()):
                     continue
-                arg_root = _root_name_of_expr(src.expr)
+                lent = src.expr
+                # A wrapper's `__deref__()` is called on the source itself, so
+                # the source binds mutable; a `Ptr` deref writes its pointee.
+                if (isinstance(lent, TpyCoerce)
+                        and lent.coercion.name == "deref_to_target"
+                        and not is_indirection_type(
+                            self.ctx.get_expr_type(lent.expr))):
+                    lent = lent.expr
+                arg_root = _root_name_of_expr(lent)
                 if arg_root is not None:
                     self.ctx.mark_loop_var_mutated(arg_root)
 

@@ -152,8 +152,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # into a same-wrapper arg slot
     "expr.lambda_void_print",       # void print-body lambda -> the
                                     # statement-body closure { cout << ...; }
-    "argtemp.deref_coerce",         # wrapper `__deref__()` coercion -> the
-                                    # slot-typed VALUE copy temp
+    "arg.deref_coerce_wrapper",     # wrapper `__deref__()` coercion at a
+                                    # record slot -> inline `r.__deref__()`
     "argtemp.ctor_mut_rvalue",      # record rvalue into a MUTATED ctor slot
     "ctor.const_rvalue_arg",        # record rvalue inline into a const ctor slot
     "argtemp.own_copy",             # Own-slot copy+move `__tmp_N` temp

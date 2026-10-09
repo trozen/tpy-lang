@@ -138,7 +138,7 @@ struct Tagged {
 
     // def get(self) -> T:
     //     return self._ptr
-    ::tpy::val_or_ref_t<T> get() {
+    ::tpy::val_or_ref_t<T> get() const {
         return ::tpy::deref_check(this->_ptr);
     }
 

@@ -21,8 +21,7 @@ void test() {
     Box<Point> b = Box<Point>(Point(5, 15));
     std::cout << b.__deref__().x << "\n" << ::tpy::check_signals;
     std::cout << b.__deref__().y << "\n" << ::tpy::check_signals;
-    Point __tmp_1 = b.__deref__();
-    ::tpyapp::main::print_point(__tmp_1);
+    ::tpyapp::main::print_point(b.__deref__());
 }
 
 // test()

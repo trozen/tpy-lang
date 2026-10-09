@@ -1,0 +1,2 @@
+readonly 1102 12
+own 5

@@ -7745,6 +7745,10 @@ class FunctionInfo:
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
     # None = not yet analyzed; frozenset() = no borrow (value/local return).
+    # Whether the return value is SELF's own storage -- `return_borrows_from`
+    # holding -1 minus what is reached through a `Ptr` / borrowing view the
+    # receiver only holds, which a const receiver still lends writable.
+    return_lends_self_storage: bool = False
     # `return_borrows_from` was DECLARED (`borrows=` / `element_of=`) rather than
     # inferred: the result is one of those arguments or an element of one,
     # so its access is theirs at each call (`@readonly` on the stub says only

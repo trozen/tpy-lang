@@ -1,0 +1,20 @@
+local 1
+field 3
+optfield 1
+element 1
+param 5
+reseat 0 1
+readonly 5
+readonly target 3
+loop 1 2
+comp [2, 3]
+ptr loop 1
+gen 6
+frame 7 7
+async 8
+closure 9
+finally 10
+match 11
+nocopy 1
+box 1
+module 1 1

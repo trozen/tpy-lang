@@ -1,0 +1,1 @@
+__deref__() is a TurboPython-specific protocol, not supported in CPython.
