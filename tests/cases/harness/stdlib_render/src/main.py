@@ -93,6 +93,7 @@ import tpy.thread
 import tpy.unsafe
 import tpy.version
 import tty
+import types
 import typing
 import urllib
 import urllib.parse

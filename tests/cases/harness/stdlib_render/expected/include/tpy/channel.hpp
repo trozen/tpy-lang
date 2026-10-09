@@ -11,6 +11,7 @@ namespace tpystd::tpy::channel {
 using ::tpystd::coro::poll_pending;
 using ::tpystd::coro::poll_ready;
 using ::tpystd::coro::poll_ready_none;
+using ::tpystd::coro::same_task;
 
 using ::tpystd::tplib::rc::Rc;
 
@@ -209,25 +210,39 @@ template<typename T>
 struct _Recv {
     // _state: Rc[_ChanState[T]]
     ::tpystd::tplib::rc::Rc<_ChanState<T>> _state;
+    // _cancelled: bool
+    bool _cancelled;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]]) -> None:
     //     self._state = state
+    //     self._cancelled = False
     _Recv() = default;
-    explicit _Recv(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state) : _state(std::move(state)) {}
+    explicit _Recv(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state)
+        : _state(std::move(state)),
+          _cancelled(false) {}
     // non-copyable (@nocopy)
     _Recv(const _Recv&) = delete;
     _Recv& operator=(const _Recv&) = delete;
     _Recv(_Recv&&) = default;
     _Recv& operator=(_Recv&&) = default;
 
-    // # Cancellation is task-level (the awaiting Task throws CancelledError
-    // # before re-polling); the channel has no per-await state to flip.
+    // # The cancel of the awaiting task. The cancelled task's poll follows it
+    // # at once: it raises CancelledError without popping, and frees the park
+    // # slot if that task holds it, so a later send does not wake it. A
+    // # receiver woken and cancelled before it ran no longer holds the slot;
+    // # the value that woke it stays for the next recv.
     // def cancel(self) -> None:
-    //     pass
-    void cancel() const {
+    //     self._cancelled = True
+    void cancel() {
+        this->_cancelled = true;
     }
 
     // def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+    //     if self._cancelled:
+    //         if (self._state._has_recv_waiter
+    //                 and same_task(self._state._recv_waker, waker)):
+    //             self._state._has_recv_waiter = False
+    //         raise CancelledError()
     //     if not self._state._is_empty():
     //         return poll_ready(self._state._pop())
     //     if self._state._closed:
@@ -236,6 +251,12 @@ struct _Recv {
     //     self._state._has_recv_waiter = True
     //     return poll_pending()
     ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) {
+        if (this->_cancelled) {
+            if ((this->_state.__deref__()._has_recv_waiter && ::tpystd::coro::same_task(this->_state.__deref__()._recv_waker, waker))) {
+                this->_state.__deref__()._has_recv_waiter = false;
+            }
+            throw ::tpy::CancelledError{};
+        }
         if ((!(this->_state.__deref__()._is_empty()))) {
             return ::tpystd::coro::poll_ready<T>(this->_state.__deref__()._pop());
         }
@@ -261,16 +282,20 @@ template<typename T>
 struct _Send {
     // _state: Rc[_ChanState[T]]
     ::tpystd::tplib::rc::Rc<_ChanState<T>> _state;
+    // _cancelled: bool
+    bool _cancelled;
     // _value: UninitStorage[T]
     ::tpy::UninitStorage<T> _value;
     bool __tpy_owned_ = true;
 
     // def __init__(self, state: Own[Rc[_ChanState[T]]], value: Own[T]) -> None:
     //     self._state = state
+    //     self._cancelled = False
     //     self._value = UninitStorage[T]()
     //     self._value.construct(value)
     explicit _Send(::tpystd::tplib::rc::Rc<_ChanState<T>>&& state, ::tpy::own_param_t<T> value)
         : _state(std::move(state)),
+          _cancelled(false),
           _value(::tpy::UninitStorage<T>()) {
         this->_value.construct(std::move(value));
     }
@@ -279,6 +304,7 @@ struct _Send {
     _Send& operator=(const _Send&) = delete;
     _Send(_Send&& other) noexcept
         : _state(std::move(other._state)),
+          _cancelled(std::move(other._cancelled)),
           _value(std::move(other._value)) {
         other.__tpy_owned_ = false;
     }
@@ -302,12 +328,19 @@ struct _Send {
         }
     }
 
+    // # As `_Recv.cancel`; the unsent value is dropped with the awaitable.
     // def cancel(self) -> None:
-    //     pass
-    void cancel() const {
+    //     self._cancelled = True
+    void cancel() {
+        this->_cancelled = true;
     }
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+    //     if self._cancelled:
+    //         if (self._state._has_send_waiter
+    //                 and same_task(self._state._send_waker, waker)):
+    //             self._state._has_send_waiter = False
+    //         raise CancelledError()
     //     if self._state._closed:
     //         raise ChannelClosed("send on closed channel")
     //     if not self._state._is_full():
@@ -317,6 +350,12 @@ struct _Send {
     //     self._state._has_send_waiter = True
     //     return poll_pending()
     ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) {
+        if (this->_cancelled) {
+            if ((this->_state.__deref__()._has_send_waiter && ::tpystd::coro::same_task(this->_state.__deref__()._send_waker, waker))) {
+                this->_state.__deref__()._has_send_waiter = false;
+            }
+            throw ::tpy::CancelledError{};
+        }
         if (this->_state.__deref__()._closed) {
             throw ChannelClosed("send on closed channel");
         }

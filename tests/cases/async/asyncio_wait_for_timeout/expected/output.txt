@@ -1,1 +1,11 @@
 timed out
+queue: get timed out
+queue: get after 5
+lock: acquire timed out, locked True
+lock: acquired after
+timeout-hop: main 0
+timeout-hop: main 1
+timeout-hop: main 2
+timeout-hop: getter timed out
+timeout-hop: main 3
+timeout-hop: main 4

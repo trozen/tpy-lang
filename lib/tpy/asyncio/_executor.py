@@ -17,7 +17,10 @@ import heapq
 from typing import Final, Protocol
 from builtins import BaseException
 from time import monotonic, sleep_until_steady
-from tpy import int32, uint32, Own, Ptr, Array, Throwable, dynamic, nocopy, readonly
+from tpy import (
+    int32, uint32, Own, Ptr, Array, CancelledError, Throwable, dynamic,
+    nocopy, readonly,
+)
 from tpy.extern import builtin_type, cpp_template
 from tpy.coro import Awaker, Cancellable, Poll, Waker, poll_ready, poll_pending
 from tpy.mem import UninitStorage
@@ -64,6 +67,15 @@ class TaskState[T]:
     awaiter: Waker
     done: bool
     executor_owned: bool
+    # True while the frame is being polled. A cancel requested then (by
+    # code the poll runs: a Ctrl-C delivered at a check point, a
+    # `Task.cancel()` of the running task) is recorded in `must_cancel`
+    # rather than flagged on the frame, so it lands at the next real
+    # suspension as CPython's Task._must_cancel does: an await that
+    # completes without suspending still runs, and a frame that returns
+    # in this poll completes as cancelled.
+    polling: bool
+    must_cancel: bool
 
     def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
         self.frame = frame
@@ -72,6 +84,8 @@ class TaskState[T]:
         self.awaiter = Waker()
         self.done = False
         self.executor_owned = False
+        self.polling = False
+        self.must_cancel = False
 
     def __del__(self) -> None:
         # Redundant with the slot's own RAII drop -- left until removing this
@@ -99,14 +113,40 @@ class TaskState[T]:
         if frame is None:
             raise RuntimeError("Task: __poll__ on empty TaskState")
         try:
+            self.polling = True
             p = frame.get().__poll__(w)
+            self.polling = False
+            if self._take_must_cancel(p.is_ready(), w):
+                return poll_pending()
             if p.is_ready():
                 self.done = True
             return p
         except BaseException as e:
+            self._end_poll()
             self.done = True
             self.exc = Box(e.clone())
             raise
+
+    # Applies a cancel requested during the poll that just returned (see
+    # `polling`). Pending: the cancel goes to the frame, and the task is
+    # woken so the next poll delivers it at the suspension. Ready: the
+    # task is cancelled instead of completing (CPython's Task.__step); the
+    # value is dropped. Returns True when the task is still pending.
+    def _take_must_cancel(self, ready: bool, w: Waker) -> bool:
+        if not self.must_cancel:
+            return False
+        self.must_cancel = False
+        if ready:
+            raise CancelledError()
+        frame = self.frame
+        if frame is not None:
+            frame.get().cancel()
+        w.wake()
+        return True
+
+    def _end_poll(self) -> None:
+        self.polling = False
+        self.must_cancel = False
 
     # AnyTask interface: drives the frame and caches result/exc. Used
     # by the executor's slot table via the TaskStateView adapter.
@@ -117,7 +157,11 @@ class TaskState[T]:
         if frame is None:
             return True
         try:
+            self.polling = True
             p = frame.get().__poll__(w)
+            self.polling = False
+            if self._take_must_cancel(p.is_ready(), w):
+                return False
             if p.is_ready():
                 self.done = True
                 self.result.construct(p.value())
@@ -127,11 +171,13 @@ class TaskState[T]:
         except (SystemExit, KeyboardInterrupt) as e:
             # Stored like any outcome, then raised out of the run, as
             # CPython's Task.__step does: these end the program, not the task.
+            self._end_poll()
             self.done = True
             self.exc = Box(e.clone())
             self.awaiter.wake()
             raise
         except BaseException as e:
+            self._end_poll()
             self.done = True
             self.exc = Box(e.clone())
             self.awaiter.wake()
@@ -139,6 +185,9 @@ class TaskState[T]:
 
     def cancel_any(self) -> None:
         if self.done:
+            return
+        if self.polling:
+            self.must_cancel = True
             return
         frame = self.frame
         if frame is not None:
@@ -297,17 +346,20 @@ class Slot:
 
     `runnable` mirrors the slot's presence in the executor's runnable
     deque: set true when `mark_runnable` adds the slot's id to the
-    queue, cleared when the executor pops it to poll.
+    queue, cleared when the executor pops it to poll. `staged` is set
+    while the runnable slot waits in the executor's staged queue instead.
     """
 
     box: Box[AnyTask] | None
     generation: int32
     runnable: bool
+    staged: bool
 
     def __init__(self) -> None:
         self.box = None
         self.generation = 0
         self.runnable = False
+        self.staged = False
 
     @readonly
     def is_done(self) -> bool:
@@ -453,20 +505,30 @@ class Executor(Awaker):
 
     slots: list[Slot]
     runnable_q: list[int32]
+    # Tasks woken by a wait's wake sources (fd readiness, due timers). They
+    # join runnable_q after the batch that follows the wait: CPython runs
+    # the ready fd / timer callback in that batch, and it only completes
+    # the future the task awaits, whose wakeup the task gets in the batch
+    # after (a call_soon). A task waking one during that batch moves it
+    # into runnable_q at that point (see mark_runnable).
+    staged_q: list[int32]
+    # True while the wait's wake sources run, so mark_runnable stages.
+    staging: bool
     timer_heap: list[TimerEntry]
     # Lazily created on the first fd registration: a pure-timer / pure-CPU
     # program never opens an epoll fd. The second wake source alongside the
     # timer heap.
     reactor: EpollReactor | None
-    # True while SIGINT graceful-shutdown handling is active; gates the
-    # signal-flag poll in run_until.
-    shutdown_armed: bool
-    # The SIGINT layer's wake fd while armed (else -1).
-    shutdown_fd: int32
-    # Ctrl-Cs seen during this run: the first cancels the root, a second
-    # raises KeyboardInterrupt out of the run (CPython's escape hatch for a
-    # hung cleanup).
+    # True while the run takes part in signal delivery: the loop runs the
+    # handlers of the signals that arrive while it waits; gates the signal
+    # poll in run_until.
+    signals_armed: bool
+    # The signal layer's wake fd while armed (else -1).
+    signal_fd: int32
+    # Ctrl-Cs asyncio.run's SIGINT handler saw during this run (on_sigint).
     interrupt_count: int32
+    # The root task's slot, once run_until starts (else -1).
+    root_id: int32
 
     def __init__(self) -> None:
         # Backstop for `asyncio.run`'s nested-loop check: a non-null
@@ -479,11 +541,14 @@ class Executor(Awaker):
                 "(nested asyncio.run or leaked _ExecutorScope)")
         self.slots = []
         self.runnable_q = []
+        self.staged_q = []
+        self.staging = False
         self.timer_heap = []
         self.reactor = None
-        self.shutdown_armed = False
-        self.shutdown_fd = -1
+        self.signals_armed = False
+        self.signal_fd = -1
         self.interrupt_count = 0
+        self.root_id = -1
 
     def register_timer(self, deadline_seconds: float, waker: Waker) -> None:
         heapq.heappush(self.timer_heap, TimerEntry(deadline_seconds, waker))
@@ -539,10 +604,30 @@ class Executor(Awaker):
         if slot_id >= len(self.slots):
             return
         slot = self.slots[slot_id]
-        if slot.is_done() or slot.generation != generation or slot.runnable:
+        if slot.is_done() or slot.generation != generation:
+            return
+        if slot.runnable:
+            # A task's wake (cancel, Event.set, Queue.put, ...) of a slot a
+            # wait staged queues it right here: CPython schedules the wakeup
+            # where the future completes, and the staged timer / I/O
+            # callback then finds the future already done.
+            if slot.staged and not self.staging:
+                slot.staged = False
+                self.staged_q.remove(slot_id)
+                self.runnable_q.append(slot_id)
             return
         slot.runnable = True
-        self.runnable_q.append(slot_id)
+        if self.staging:
+            slot.staged = True
+            self.staged_q.append(slot_id)
+        else:
+            self.runnable_q.append(slot_id)
+
+    def _unstage(self) -> None:
+        for slot_id in self.staged_q:
+            self.slots[slot_id].staged = False
+        self.runnable_q.extend(self.staged_q)
+        self.staged_q.clear()
 
     def poll_slot(self, slot_id: int32) -> bool:
         if slot_id >= len(self.slots):
@@ -576,24 +661,37 @@ class Executor(Awaker):
         self.slots[slot_id].box = None
         self.slots[slot_id].generation += 1
 
-    # Polls the batch of slots runnable on entry; a slot woken meanwhile
-    # (a `sleep(0)` requeueing itself, a wake from a polled task) waits for
-    # the next pass, as in CPython's `_run_once`, so timers and I/O are
-    # collected between batches instead of being starved.
+    # The shutdown drain's poll: unlike a run_until batch, it polls until
+    # nothing is runnable, so a wake chain among the cancelled tasks finishes
+    # within one drain attempt.
     def drain_runnable(self) -> bool:
+        self._unstage()
         any_polled = False
         # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
         # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
         # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
         # runnable_q O(n) pop.
-        batch = len(self.runnable_q)
-        i: int32 = 0
-        while i < batch:
+        while len(self.runnable_q) > 0:
             slot_id = self.runnable_q.pop(0)
             if self.poll_slot(slot_id):
                 any_polled = True
-            i += 1
         return any_polled
+
+    # Polls the tasks that are runnable as the batch starts -- CPython's one
+    # pass over the ready callbacks per loop iteration. A task woken or
+    # spawned during the batch runs in the next one, after I/O, timers and
+    # signals had their turn, so a task re-queueing itself (`sleep(0)` in a
+    # loop) cannot starve them; the tasks the previous wait woke (staged_q)
+    # queue up behind those. Pops one at a time so that an exception
+    # leaving the run keeps the rest queued for the shutdown drain.
+    def run_batch(self) -> None:
+        n = len(self.runnable_q)
+        i: int32 = 0
+        while i < n:
+            slot_id = self.runnable_q.pop(0)
+            self.poll_slot(slot_id)
+            i += 1
+        self._unstage()
 
     @readonly
     def slot_done(self, slot_id: int32) -> bool:
@@ -611,10 +709,9 @@ class Executor(Awaker):
             i += 1
         return False
 
-    # Collects ready fds and due timers, waking their slots. `block` waits
-    # for the nearest one; without it (tasks are already runnable) only
-    # what is ready now is collected. Returns False when nothing is pending.
-    def wait_for_event(self, block: bool = True) -> bool:
+    # Blocks until the nearest ready fd or due timer and collects them,
+    # staging the slots they wake. Returns False when nothing is pending.
+    def wait_for_event(self) -> bool:
         has_timer = len(self.timer_heap) > 0
         reactor = self.reactor
         fd_count: int32 = 0
@@ -622,26 +719,45 @@ class Executor(Awaker):
             fd_count = reactor.count()
         if not has_timer and fd_count == 0:
             return False
-        if reactor is not None and fd_count > 0:
-            # epoll_wait, bounded by the nearest timer when blocking (-1 ==
-            # forever when only fds are pending). Ready fds' wakers are
-            # woken inside poll(), marking their slots runnable for the
-            # next drain.
-            timeout_ms: int32 = 0
-            if block:
-                timeout_ms = self._next_timer_timeout_ms()
-            reactor.poll(timeout_ms)
-        elif block:
-            sleep_until_steady(self.timer_heap[0].deadline)
+        self.staging = True
+        try:
+            if reactor is not None and fd_count > 0:
+                # Block in epoll_wait, bounded by the nearest timer (-1 ==
+                # forever when only fds are pending). Ready fds' wakers are
+                # woken inside poll(), staging their slots.
+                reactor.poll(self._next_timer_timeout_ms())
+            else:
+                sleep_until_steady(self.timer_heap[0].deadline)
+            self._fire_due_timers()
+        finally:
+            self.staging = False
+        return True
+
+    # The wait between two batches while tasks are still runnable: I/O is
+    # polled without blocking and due timers fire, as CPython's _run_once
+    # selects with timeout 0 when callbacks are ready. The tasks they wake
+    # are staged (see staged_q).
+    def poll_without_waiting(self) -> None:
+        self.staging = True
+        try:
+            reactor = self.reactor
+            if reactor is not None:
+                reactor.poll(0)
+            self._fire_due_timers()
+        finally:
+            self.staging = False
+
+    def _fire_due_timers(self) -> None:
         now = monotonic()
         while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
             entry = heapq.heappop(self.timer_heap)
             entry.waker.wake()
-        return True
 
     # Cancel the root task so its CancelledError unwinds normal cleanup
     # (finally / __aexit__ / wait_closed), then mark it runnable so the next
-    # drain delivers the cancel at its suspension point.
+    # drain delivers the cancel at its suspension point. Requested during the
+    # root's own poll, the cancel waits in TaskState.must_cancel until that
+    # poll returns.
     def _cancel_root(self, main_id: int32) -> None:
         if main_id >= len(self.slots) or self.slots[main_id].is_done():
             return
@@ -650,58 +766,65 @@ class Executor(Awaker):
             box.get().cancel_any()
         self.mark_runnable(main_id, self.slots[main_id].generation)
 
-    # Counts a SIGINT delivered since the last check: the first cancels the
-    # root for graceful shutdown, a second raises KeyboardInterrupt out of the
-    # run, whose drain then cancels the root once more, like CPython's
-    # asyncio.run (Runner.close cancels every unfinished task).
-    def _check_shutdown_signal(self, main_id: int32) -> None:
-        if not self.shutdown_armed:
-            return
-        if posix_signal.async_consume() == 0:
-            return
+    # asyncio.run's SIGINT handler (CPython's Runner._on_sigint): the first
+    # Ctrl-C cancels the root for graceful shutdown, a later one -- or one
+    # after the root finished -- raises KeyboardInterrupt where it is
+    # delivered. Out of the run, the drain then cancels the root once more,
+    # like CPython's asyncio.run (Runner.close cancels every unfinished
+    # task). Delivered inside a task's poll -- the root's own included -- the
+    # cancel takes effect at the root's next suspension, or cancels the root
+    # if it returns first.
+    def on_sigint(self) -> None:
         self.interrupt_count += 1
-        if self.interrupt_count > 1:
-            raise KeyboardInterrupt()
-        self._cancel_root(main_id)
+        if (self.interrupt_count == 1 and self.root_id >= 0
+                and not self.slot_done(self.root_id)):
+            self._cancel_root(self.root_id)
+            return
+        raise KeyboardInterrupt()
 
-    # The reactor disarms an fd once it fires (one-shot), so re-arm the wake fd
-    # after every wait or a later Ctrl-C would not wake the next one.
-    def _rearm_shutdown_fd(self) -> None:
-        if not self.shutdown_armed:
+    # Runs, after each wait (blocking or not), the handlers of the signals no
+    # coroutine's check point took (they arrived while the loop waited, or
+    # while a task computed with no check point); a handler's exception
+    # leaves the run. The reactor disarms an fd once it fires (one-shot), so
+    # a wake fd no longer registered is one that fired: only then is it
+    # drained (even with nothing pending, a byte left by a delivery that
+    # raced a signal) and re-armed, or a later signal would not wake the
+    # next wait. A wait that ended on I/O or a timer pays no read.
+    def _deliver_after_wait(self) -> None:
+        if not self.signals_armed:
             return
         reactor = self.reactor
-        if reactor is not None and not reactor.has_fd(self.shutdown_fd):
-            reactor.register_fd(self.shutdown_fd, _EPOLLIN, Waker())
+        if reactor is None or reactor.has_fd(self.signal_fd):
+            posix_signal.async_deliver(0)
+            return
+        posix_signal.async_deliver(1)
+        reactor.register_fd(self.signal_fd, _EPOLLIN, Waker())
 
     # Returns True if a SIGINT interrupted the run (root cancelled for graceful
     # shutdown), False on normal completion.
     #
-    # Each pass mirrors CPython's `_run_once`: collect I/O and due timers
-    # (waiting for them only when nothing is runnable), then poll the batch
-    # runnable at that point, so a task requeued earlier runs before one
-    # whose timer or fd fired in the same pass.
+    # Each iteration is one CPython `_run_once` pass seen from its batch: the
+    # batch of tasks runnable at its start, then the wait that collects I/O
+    # and due timers (without blocking while tasks are runnable), then the
+    # signal handlers. CPython stops the loop one pass after the root
+    # completes (the stop is a callback the completion schedules), so the
+    # tasks runnable then take one more step, after a non-blocking wait.
     def run_until(self, main_id: int32) -> bool:
+        self.root_id = main_id
+        stopping = False
         while True:
-            if self.slot_done(main_id):
-                # CPython stops the loop one pass after the root completes:
-                # the tasks runnable at that point run once more, with no
-                # events collected first (a timer or fd wake takes CPython
-                # one more pass to reach its task).
-                self.drain_runnable()
-                self._check_shutdown_signal(main_id)
+            self.run_batch()
+            if stopping:
                 return self.interrupt_count > 0
-            if len(self.runnable_q) > 0:
-                self.wait_for_event(False)
+            stopping = self.slot_done(main_id)
+            if stopping or len(self.runnable_q) > 0:
+                self.poll_without_waiting()
             elif not self.wait_for_event():
                 raise RuntimeError(
                     "asyncio.run: no progress possible (a coroutine "
                     "returned Pending with no pending timers and no "
                     "registered I/O)")
-            self._check_shutdown_signal(main_id)
-            # The non-blocking collect can fire (and so disarm) the wake fd
-            # as well as the blocking one.
-            self._rearm_shutdown_fd()
-            self.drain_runnable()
+            self._deliver_after_wait()
 
     def drain_spawned_with_cancel(self, skip_id: int32,
                                   max_polls: int32 = 8) -> None:
@@ -721,16 +844,10 @@ class Executor(Awaker):
                 if j != skip_id and not self.slots[j].is_done():
                     self.mark_runnable(j, self.slots[j].generation)
                 j += 1
-            # Unlike a run_until pass, an attempt drains until nothing is
-            # runnable, so a wake chain among the cancelled tasks finishes
-            # within one attempt. `max_polls` bounds attempts, not polls: a
-            # task that swallows the cancel and loops on `sleep(0)` keeps
-            # one attempt going (CPython's _cancel_all_tasks hangs on it too).
-            polled = False
-            while len(self.runnable_q) > 0:
-                if self.drain_runnable():
-                    polled = True
-            if not polled:
+            # `max_polls` bounds attempts, not polls: a task that swallows
+            # the cancel and loops on `sleep(0)` keeps one attempt going
+            # (CPython's _cancel_all_tasks hangs on it too).
+            if not self.drain_runnable():
                 break
             attempt += 1
 

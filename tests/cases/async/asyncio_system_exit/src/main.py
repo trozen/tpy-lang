@@ -1,7 +1,8 @@
 # sys.exit (and an explicit KeyboardInterrupt) inside asyncio.run ends the
 # run, not just the task: it leaves asyncio.run from the main task, a spawned
 # task, a gather child and a cleanup the shutdown drain runs; a main task
-# suspended at the time is cancelled so its finally runs.
+# suspended at the time is cancelled so its finally runs, and so are tasks
+# still queued in the batch the exit left.
 import asyncio
 import sys
 from tpy import int32
@@ -71,6 +72,31 @@ async def main_returns() -> None:
     await asyncio.sleep(0.001)
 
 
+async def batch_exiter() -> None:
+    await asyncio.sleep(0)
+    # The subject: the exit leaves the batch while x and y are still queued in it.
+    sys.exit(4)  # tpyc: ok
+
+
+async def batch_spinner(tag: str) -> None:
+    try:
+        while True:
+            await asyncio.sleep(0)
+    finally:
+        print("batch-exit:", tag, "finally")
+
+
+async def main_batch_exit() -> None:
+    e = asyncio.create_task(batch_exiter())
+    x = asyncio.create_task(batch_spinner("x"))
+    y = asyncio.create_task(batch_spinner("y"))
+    try:
+        await asyncio.sleep(0.05)
+        print("batch-exit: main continued (wrong)")
+    finally:
+        print("batch-exit: main's finally ran")
+
+
 def main() -> None:
     # Section main task: sys.exit in the main task.
     try:
@@ -98,6 +124,11 @@ def main() -> None:
         print("drain: run returned (wrong)")
     except SystemExit as e:
         print("drain: out of run", e.code)
+    # Section batch-exit: sys.exit leaving a batch with siblings still queued.
+    try:
+        asyncio.run(main_batch_exit())
+    except SystemExit as e:
+        print("batch-exit: out of run", e.code)
 
 
 main()

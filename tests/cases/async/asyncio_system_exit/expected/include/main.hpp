@@ -23,6 +23,9 @@ struct __coro_interrupter;
 struct __coro_main_interrupted;
 struct __coro_stubborn;
 struct __coro_main_returns;
+struct __coro_batch_exiter;
+struct __coro_batch_spinner;
+struct __coro_main_batch_exit;
 
 // async def main_exits() -> None:
 __coro_main_exits main_exits();
@@ -44,6 +47,12 @@ __coro_main_interrupted main_interrupted();
 __coro_stubborn stubborn();
 // async def main_returns() -> None:
 __coro_main_returns main_returns();
+// async def batch_exiter() -> None:
+__coro_batch_exiter batch_exiter();
+// async def batch_spinner(tag: str) -> None:
+__coro_batch_spinner batch_spinner(std::string_view tag);
+// async def main_batch_exit() -> None:
+__coro_main_batch_exit main_batch_exit();
 // def main() -> None:
 void main();
 
@@ -319,6 +328,120 @@ struct __coro_main_returns {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_returns&) {
         return os << "<coroutine main_returns>";
+    }
+};
+
+// async def batch_exiter() -> None:
+struct __coro_batch_exiter {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_batch_exiter()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_batch_exiter&) {
+        return os << "<coroutine batch_exiter>";
+    }
+};
+
+// async def batch_spinner(tag: str) -> None:
+struct __coro_batch_spinner {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string tag;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_JOIN_2 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_batch_spinner(std::string_view tag_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)) {}
+
+    __coro_batch_spinner(__coro_batch_spinner&&) = default;
+    ~__coro_batch_spinner() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+    void __finally_0();
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_batch_spinner&) {
+        return os << "<coroutine batch_spinner>";
+    }
+};
+
+// async def main_batch_exit() -> None:
+struct __coro_main_batch_exit {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> e;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> x;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> y;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_main_batch_exit()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    __coro_main_batch_exit(__coro_main_batch_exit&&) = default;
+    ~__coro_main_batch_exit() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                this->__finally_0();
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+    void __finally_0();
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_main_batch_exit&) {
+        return os << "<coroutine main_batch_exit>";
     }
 };
 

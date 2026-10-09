@@ -17,6 +17,13 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_setter;
 struct __coro_fast;
 struct __coro_slow;
+struct __coro_event_waiter;
+struct __coro_reap;
+struct __coro_cancel_wait;
+struct __coro_plain_waiter;
+struct __coro_evict;
+struct __coro_parks_after;
+struct __coro_woken_then_cancelled;
 struct __coro_main_coro;
 
 // async def setter(e: Event) -> None:
@@ -25,6 +32,20 @@ __coro_setter setter(::tpystd::asyncio::Event& e);
 __coro_fast fast();
 // async def slow() -> None:
 __coro_slow slow();
+// async def event_waiter(tag: str, e: Event) -> None:
+__coro_event_waiter event_waiter(std::string_view tag, ::tpystd::asyncio::Event& e);
+// async def reap(tag: str, t: asyncio.Task[None]) -> None:
+__coro_reap reap(std::string_view tag, ::tpystd::asyncio::_executor::Task<std::monostate>& t);
+// async def cancel_wait() -> None:
+__coro_cancel_wait cancel_wait();
+// async def plain_waiter(tag: str, e: Event) -> None:
+__coro_plain_waiter plain_waiter(std::string_view tag, ::tpystd::asyncio::Event& e);
+// async def evict() -> None:
+__coro_evict evict();
+// async def parks_after(go: Event, e: Event) -> None:
+__coro_parks_after parks_after(::tpystd::asyncio::Event& go, ::tpystd::asyncio::Event& e);
+// async def woken_then_cancelled() -> None:
+__coro_woken_then_cancelled woken_then_cancelled();
 // async def main_coro() -> None:
 __coro_main_coro main_coro();
 // def main() -> None:
@@ -106,18 +127,238 @@ struct __coro_slow {
     }
 };
 
-// async def main_coro() -> None:
-struct __coro_main_coro {
+// async def event_waiter(tag: str, e: Event) -> None:
+struct __coro_event_waiter {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    std::optional<__coro_fast> __sub_0;
-    std::optional<__coro_slow> __sub_1;
+    std::string tag;
+    ::tpystd::asyncio::Event& e;
+    std::optional<::tpystd::asyncio::__coro_Event_wait> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_event_waiter(std::string_view tag_, ::tpystd::asyncio::Event& e)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)),
+          e(e) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_event_waiter&) {
+        return os << "<coroutine event_waiter>";
+    }
+};
+
+// async def reap(tag: str, t: asyncio.Task[None]) -> None:
+struct __coro_reap {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string tag;
+    ::tpystd::asyncio::_executor::Task<std::monostate>& t;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_reap(std::string_view tag_, ::tpystd::asyncio::_executor::Task<std::monostate>& t)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)),
+          t(t) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_reap&) {
+        return os << "<coroutine reap>";
+    }
+};
+
+// async def cancel_wait() -> None:
+struct __coro_cancel_wait {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> e;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> ta;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> tb;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<__coro_reap> __sub_1;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_2;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_3 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_DONE = 5,
+    };
+
+    __coro_cancel_wait()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_cancel_wait&) {
+        return os << "<coroutine cancel_wait>";
+    }
+};
+
+// async def plain_waiter(tag: str, e: Event) -> None:
+struct __coro_plain_waiter {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string tag;
+    ::tpystd::asyncio::Event& e;
+    std::optional<::tpystd::asyncio::__coro_Event_wait> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_plain_waiter(std::string_view tag_, ::tpystd::asyncio::Event& e)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          tag(std::string(tag_)),
+          e(e) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_plain_waiter&) {
+        return os << "<coroutine plain_waiter>";
+    }
+};
+
+// async def evict() -> None:
+struct __coro_evict {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> e;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> tb;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> ta;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<__coro_reap> __sub_1;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_2 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_evict()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_evict&) {
+        return os << "<coroutine evict>";
+    }
+};
+
+// async def parks_after(go: Event, e: Event) -> None:
+struct __coro_parks_after {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpystd::asyncio::Event& go;
+    ::tpystd::asyncio::Event& e;
+    std::optional<::tpystd::asyncio::__coro_Event_wait> __sub_0;
+    std::optional<::tpystd::asyncio::__coro_Event_wait> __sub_1;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
         S_DONE = 3,
+    };
+
+    __coro_parks_after(::tpystd::asyncio::Event& go, ::tpystd::asyncio::Event& e)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          go(go),
+          e(e) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_parks_after&) {
+        return os << "<coroutine parks_after>";
+    }
+};
+
+// async def woken_then_cancelled() -> None:
+struct __coro_woken_then_cancelled {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> e;
+    ::tpy::frame_slot<::tpystd::asyncio::Event> go;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> ta;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> tb;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<__coro_reap> __sub_1;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_2 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_woken_then_cancelled()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_woken_then_cancelled&) {
+        return os << "<coroutine woken_then_cancelled>";
+    }
+};
+
+// async def main_coro() -> None:
+struct __coro_main_coro {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::optional<__coro_fast> __sub_0;
+    std::optional<__coro_slow> __sub_1;
+    std::optional<__coro_cancel_wait> __sub_2;
+    std::optional<__coro_evict> __sub_3;
+    std::optional<__coro_woken_then_cancelled> __sub_4;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_RESUME_4 = 5,
+        S_DONE = 6,
     };
 
     __coro_main_coro()

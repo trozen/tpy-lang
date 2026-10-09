@@ -704,6 +704,9 @@ void kill_pid(int64_t pid, int64_t sig) {
     // divergence, and -1 gets that verdict from kill() itself.
     int s = (sig < INT_MIN || sig > INT_MAX) ? -1 : static_cast<int>(sig);
     if (::kill(p, s) != 0) raise_errno();
+    // A check point, as in CPython: a signal sent to this very process has
+    // its handler run before os.kill returns.
+    ::tpy::check_signals();
 }
 
 std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options) {
@@ -946,9 +949,10 @@ spawn_raw(const std::vector<std::string>& args, int64_t stdin_spec,
     sigaddset(&defaults, SIGPIPE);
     sigaddset(&defaults, SIGXFSZ);
     check_spawn_rc(::posix_spawnattr_setsigdefault(&attr.attr, &defaults));
-    // A worker thread runs with SIGINT blocked (SpawnSigintBlock), and exec
-    // keeps the mask, so the child would be deaf to Ctrl-C. TPy code cannot
-    // block signals itself, so every blocked signal is the runtime's.
+    // A worker thread runs with the asynchronous signals blocked
+    // (SpawnSignalBlock), and exec keeps the mask, so the child would be deaf
+    // to them. TPy code cannot block signals itself, so every blocked signal
+    // is the runtime's.
     // (Caught signals need no reset: exec reverts a handler to SIG_DFL.)
     sigset_t unblocked;
     sigemptyset(&unblocked);

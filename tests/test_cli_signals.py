@@ -4,15 +4,17 @@ Ctrl-C -> KeyboardInterrupt delivery with a real SIGINT from the parent."""
 import os
 import selectors
 import signal
+import socket
 import subprocess
 import sys
 import tempfile
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
 
-from conftest import CPY_LIB_DIR, exec_is_cross
+from conftest import CPP_CONFIG, CPY_LIB_DIR, exec_is_cross
 
 
 PROGRAM = """\
@@ -256,6 +258,7 @@ import socket
 import subprocess
 import sys
 import time
+from asyncio import Queue
 from tpy import int32, int64
 from tpy.thread import spawn
 
@@ -660,6 +663,80 @@ def mode_async_spawned() -> None:
         print("KeyboardInterrupt")
 
 
+async def sync_sleeper() -> None:
+    try:
+        ready("ready")
+        time.sleep(1.0)
+        print("sleep finished")
+        await asyncio.sleep(30.0)
+        print("not reached (WRONG)")
+    finally:
+        print("finally")
+
+
+def mode_async_sync_sleep() -> None:
+    try:
+        asyncio.run(sync_sleeper())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt out of run")
+
+
+async def sync_sleeper_twice() -> None:
+    try:
+        ready("ready")
+        time.sleep(1.0)
+        ready("ready2")
+        time.sleep(30.0)
+        print("not reached (WRONG)")
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt in the coroutine")
+        raise
+    finally:
+        print("finally")
+
+
+def mode_async_sync_sleep_twice() -> None:
+    try:
+        asyncio.run(sync_sleeper_twice())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt out of run")
+
+
+async def sleep0_loop() -> None:
+    try:
+        ready("ready")
+        while True:
+            await asyncio.sleep(0)
+    except asyncio.CancelledError:
+        print("cancelled at sleep(0)")
+        raise
+
+
+def mode_async_sleep0_loop() -> None:
+    try:
+        asyncio.run(sleep0_loop())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt out of run")
+
+
+async def queue_root() -> None:
+    q: Queue[int32] = Queue(0)
+    try:
+        ready("ready")
+        v = await q.get()
+        print("got (WRONG)", v)
+    except asyncio.CancelledError:
+        print("queue root cancelled")
+        raise
+
+
+def mode_async_queue_get() -> None:
+    try:
+        asyncio.run(queue_root())
+    except KeyboardInterrupt:
+        print("KeyboardInterrupt out of run")
+
+
 async def self_signal() -> int32:
     signal.raise_signal(signal.SIGINT)
     await asyncio.sleep(0.2)
@@ -724,6 +801,14 @@ def main() -> None:
         mode_async_with()
     elif mode == "async_spawned":
         mode_async_spawned()
+    elif mode == "async_sync_sleep":
+        mode_async_sync_sleep()
+    elif mode == "async_sync_sleep_twice":
+        mode_async_sync_sleep_twice()
+    elif mode == "async_sleep0_loop":
+        mode_async_sleep0_loop()
+    elif mode == "async_queue_get":
+        mode_async_queue_get()
     elif mode == "ignored":
         mode_ignored()
 
@@ -860,6 +945,22 @@ class _Child:
     ("async_with", ["ready"], "aenter\nready\naexit\nKeyboardInterrupt\n"),
     # a live spawned task is cancelled and cleaned up too
     ("async_spawned", ["ready"], "ready\nbackground cleanup\nKeyboardInterrupt\n"),
+    # a Ctrl-C in a coroutine's synchronous sleep runs asyncio.run's handler
+    # there: the sleep finishes, then the root is cancelled at its next await
+    ("async_sync_sleep", ["ready"],
+     "ready\nsleep finished\nfinally\nKeyboardInterrupt out of run\n"),
+    # ... and a second one raises KeyboardInterrupt in the coroutine, as
+    # CPython's Runner does (the first was delivered, so it does not kill)
+    ("async_sync_sleep_twice", ["ready", "ready2"],
+     "ready\nready2\nKeyboardInterrupt in the coroutine\nfinally\n"
+     "KeyboardInterrupt out of run\n"),
+    # a root that only loops on sleep(0) still sees the Ctrl-C: the loop
+    # checks for signals between batches of ready tasks
+    ("async_sleep0_loop", ["ready"],
+     "ready\ncancelled at sleep(0)\nKeyboardInterrupt out of run\n"),
+    # ... and so does a root parked on Queue.get (the cancel lands there)
+    ("async_queue_get", ["ready"],
+     "ready\nqueue root cancelled\nKeyboardInterrupt out of run\n"),
     # a Ctrl-C during a __del__'s sleep is deferred: the sleep and the
     # destructor complete, and the next print after it raises
     ("del_sleep", ["ready"], "ready\ndel: slept\ndel: after\ndel: caught True\n"),
@@ -1013,6 +1114,314 @@ def test_inherited_sigint_ignore_is_kept(interrupt_binary: Path) -> None:
     assert (returncode, out, err) == (0, "survived\nasync: 1\n", "")
 
 
+# `signal.signal` handlers fed real signals from the parent: each mode installs
+# its handlers, prints a readiness line and blocks; the parent signals it.
+HANDLER_PROGRAM = """\
+import asyncio
+import signal
+import socket
+import subprocess
+import sys
+import time
+from types import FrameType
+from tpy import int32
+
+
+def ready(tag: str) -> None:
+    print(tag)
+    sys.stdout.flush()
+
+
+def exit_by_signal(signum: int, frame: FrameType | None) -> None:
+    sys.exit(128 + signum)
+
+
+winches: int32 = 0
+
+
+def count_winch(signum: int, frame: FrameType | None) -> None:
+    global winches
+    winches += 1
+
+
+def show_winch(signum: int, frame: FrameType | None) -> None:
+    ready("winch")
+
+
+def on_sigint(signum: int, frame: FrameType | None) -> None:
+    print("sigint handler")
+
+
+def mode_term_loop() -> None:
+    signal.signal(signal.SIGTERM, exit_by_signal)
+    signal.signal(signal.SIGHUP, exit_by_signal)
+    try:
+        ready("ready")
+        while True:
+            time.sleep(0.05)
+    finally:
+        print("finally")
+
+
+def mode_winch_sleep() -> None:
+    signal.signal(signal.SIGWINCH, count_winch)
+    ready("ready")
+    t0 = time.monotonic()
+    time.sleep(1.0)
+    print("full sleep", time.monotonic() - t0 >= 1.0, "winches", winches)
+
+
+def mode_winch_input() -> None:
+    signal.signal(signal.SIGWINCH, show_winch)
+    ready("ready")
+    print("line:" + input())
+
+
+def mode_user_sigint() -> None:
+    signal.signal(signal.SIGINT, on_sigint)
+    ready("ready")
+    time.sleep(1.0)
+    print("slept")
+
+
+def mode_cpu_sigint() -> None:
+    signal.signal(signal.SIGINT, on_sigint)
+    deadline = time.monotonic() + 20.0
+    n = 0
+    ready("ready")
+    while time.monotonic() < deadline:
+        n += 1
+    print("loop ended (WRONG)", n > 0)
+
+
+async def serve() -> None:
+    try:
+        ready("ready")
+        await asyncio.sleep(30.0)
+    finally:
+        print("async cleanup")
+
+
+def mode_async_term() -> None:
+    signal.signal(signal.SIGTERM, exit_by_signal)
+    asyncio.run(serve())
+    print("returned (WRONG)")
+
+
+class Stop(Exception):
+    pass
+
+
+def raise_stop(signum: int, frame: FrameType | None) -> None:
+    raise Stop()
+
+
+async def sync_sleep_catches() -> int32:
+    try:
+        ready("ready")
+        time.sleep(30.0)
+        print("slept (WRONG)")
+    except Stop:
+        print("caught Stop in the coroutine")
+    await asyncio.sleep(0.01)
+    return 3
+
+
+def mode_async_term_sync() -> None:
+    signal.signal(signal.SIGTERM, raise_stop)
+    r = asyncio.run(sync_sleep_catches())
+    print("result", r)
+
+
+# The fd waits a returning handler resumes: each completes with its result.
+# Bound before the print, which writes its label before evaluating the rest
+# (BUGS.md#print-partial-output-on-raise).
+def mode_winch_recv() -> None:
+    signal.signal(signal.SIGWINCH, show_winch)
+    conn = socket.create_connection(("127.0.0.1", int32(sys.argv[2])))
+    ready("ready")
+    data = conn.recv(16)
+    print("recv:", data)
+
+
+def mode_winch_wait() -> None:
+    signal.signal(signal.SIGWINCH, show_winch)
+    p = subprocess.Popen(["sleep", "1.5"], stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL)
+    ready("ready")
+    rc = p.wait()
+    print("wait:", rc)
+
+
+def mode_winch_pipe() -> None:
+    signal.signal(signal.SIGWINCH, show_winch)
+    p = subprocess.Popen(["sh", "-c", "sleep 1.5; printf abcd"],
+                         stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    assert p.stdout is not None
+    ready("ready")
+    data = p.stdout.read(4)
+    print("read:", data)
+    print("wait:", p.wait())
+
+
+def main() -> None:
+    mode = sys.argv[1]
+    if mode == "term_loop":
+        mode_term_loop()
+    elif mode == "winch_sleep":
+        mode_winch_sleep()
+    elif mode == "winch_input":
+        mode_winch_input()
+    elif mode == "user_sigint":
+        mode_user_sigint()
+    elif mode == "cpu_sigint":
+        mode_cpu_sigint()
+    elif mode == "async_term":
+        mode_async_term()
+    elif mode == "async_term_sync":
+        mode_async_term_sync()
+    elif mode == "winch_recv":
+        mode_winch_recv()
+    elif mode == "winch_wait":
+        mode_winch_wait()
+    elif mode == "winch_pipe":
+        mode_winch_pipe()
+
+
+main()
+"""
+
+
+@pytest.fixture(scope="module")
+def handler_binary(tmp_path_factory: pytest.TempPathFactory,
+                   request: pytest.FixtureRequest) -> Path:
+    return _build_signal_program(tmp_path_factory.mktemp("handlers"),
+                                 HANDLER_PROGRAM, request)
+
+
+@pytest.mark.parametrize("sig", [signal.SIGTERM, signal.SIGHUP])
+@pytest.mark.parametrize("sigint_ignored", [False, True])
+def test_handler_exits_a_sleep_loop(
+    handler_binary: Path, sig: int, sigint_ignored: bool,
+) -> None:
+    # The handler's sys.exit unwinds the loop through its finally, and the
+    # status is the handler's. SIGINT inherited as ignored (a `&` job) still
+    # arms the layer for the other signals.
+    child = _Child(handler_binary, "term_loop", sigint_ignored=sigint_ignored)
+    child.wait_line("ready")
+    time.sleep(0.2)
+    child.proc.send_signal(sig)
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (128 + sig, "ready\nfinally\n", "")
+
+
+def test_handler_that_returns_resumes_the_sleep(handler_binary: Path) -> None:
+    # PEP 475: the sleep goes on to its deadline after the handler returns.
+    child = _Child(handler_binary, "winch_sleep")
+    child.wait_line("ready")
+    time.sleep(0.2)
+    child.proc.send_signal(signal.SIGWINCH)
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (0, "ready\nfull sleep True winches 1\n", "")
+
+
+def test_handler_that_returns_resumes_a_socket_recv(handler_binary: Path) -> None:
+    # The data is sent only once the handler has run, so the recv is still
+    # waiting when the handler returns.
+    with socket.create_server(("127.0.0.1", 0)) as srv:
+        srv.settimeout(30)
+        port = srv.getsockname()[1]
+        child = _Child([str(handler_binary), "winch_recv"], str(port))
+        conn, _ = srv.accept()
+        with conn:
+            child.wait_line("ready")
+            time.sleep(0.2)
+            child.proc.send_signal(signal.SIGWINCH)
+            child.wait_line("winch")
+            conn.sendall(b"hello")
+            returncode, out, err = child.finish()
+    assert (returncode, out, err) == (0, "ready\nwinch\nrecv: b'hello'\n", "")
+
+
+@pytest.mark.parametrize("mode, stdout", [
+    # a subprocess wait() (a pidfd, or the polling backoff)
+    ("winch_wait", "ready\nwinch\nwait: 0\n"),
+    # a read on a pipe Popen created
+    ("winch_pipe", "ready\nwinch\nread: b'abcd'\nwait: 0\n"),
+])
+def test_handler_that_returns_resumes_a_subprocess_wait(
+    handler_binary: Path, mode: str, stdout: str,
+) -> None:
+    child = _Child(handler_binary, mode)
+    child.wait_line("ready")
+    time.sleep(0.2)
+    child.proc.send_signal(signal.SIGWINCH)
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (0, stdout, "")
+
+
+def test_handler_that_returns_keeps_the_partial_input_line(
+    handler_binary: Path,
+) -> None:
+    child = _Child(handler_binary, "winch_input", stdin_pipe=True)
+    child.wait_line("ready")
+    assert child.proc.stdin is not None
+    child.proc.stdin.write(b"ab")
+    child.proc.stdin.flush()
+    time.sleep(0.2)
+    child.proc.send_signal(signal.SIGWINCH)
+    child.wait_line("winch")
+    returncode, out, err = child.finish(stdin=b"c\n")
+    assert (returncode, out, err) == (0, "ready\nwinch\nline:abc\n", "")
+
+
+def test_user_sigint_handler_replaces_keyboard_interrupt(
+    handler_binary: Path,
+) -> None:
+    child = _Child(handler_binary, "user_sigint")
+    child.wait_line("ready")
+    child.interrupt()
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (0, "ready\nsigint handler\nslept\n", "")
+
+
+def test_second_sigint_kills_under_a_user_handler(handler_binary: Path) -> None:
+    # The handler waits for a check point the CPU loop never reaches; the
+    # second Ctrl-C is still the way out.
+    child = _Child(handler_binary, "cpu_sigint")
+    child.wait_line("ready")
+    child.interrupt()
+    time.sleep(0.5)
+    assert child.proc.poll() is None
+    child.interrupt()
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (-signal.SIGINT, "ready\n", "")
+
+
+def test_handler_exits_asyncio_run(handler_binary: Path) -> None:
+    # The loop runs the handler; its SystemExit leaves the run after the
+    # root task's cleanup.
+    child = _Child(handler_binary, "async_term")
+    child.wait_line("ready")
+    time.sleep(0.2)
+    child.proc.send_signal(signal.SIGTERM)
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (
+        128 + signal.SIGTERM, "ready\nasync cleanup\n", "")
+
+
+def test_handler_raises_into_a_coroutine_sync_sleep(handler_binary: Path) -> None:
+    # A coroutine's synchronous sleep runs the handler inside the sleep, so
+    # its exception comes out there and the coroutine catches it.
+    child = _Child(handler_binary, "async_term_sync")
+    child.wait_line("ready")
+    time.sleep(0.2)
+    child.proc.send_signal(signal.SIGTERM)
+    returncode, out, err = child.finish()
+    assert (returncode, out, err) == (
+        0, "ready\ncaught Stop in the coroutine\nresult 3\n", "")
+
+
 # `--no-signals`: the Ctrl-C layer compiled out. "run" passes every kind of
 # check point once, so the opted-out stdlib composition is shown to work; the
 # other modes show that no signal becomes a KeyboardInterrupt.
@@ -1023,9 +1432,14 @@ import socket
 import subprocess
 import sys
 import time
+from types import FrameType
 from typing import Iterator
 from tpy import int32
 from tpy.thread import spawn
+
+
+def handler(signum: int, frame: FrameType | None) -> None:
+    print("handler (WRONG)")
 
 
 class Res:
@@ -1134,6 +1548,11 @@ def main() -> None:
         mode_raise()
     elif mode == "raise_msg":
         mode_raise_msg()
+    elif mode == "handler":
+        try:
+            signal.signal(signal.SIGTERM, handler)
+        except ValueError as e:
+            print("ValueError:", e)
 
 
 main()
@@ -1201,6 +1620,12 @@ def test_no_signals_keeps_explicit_keyboard_interrupt(
         -signal.SIGINT, "", "KeyboardInterrupt: why\n")
 
 
+def test_no_signals_refuses_signal_handlers(no_signals_binary: Path) -> None:
+    returncode, out, err = _Child(no_signals_binary, "handler").finish()
+    assert (returncode, out, err) == (
+        0, "ValueError: signal.signal is not available in a --no-signals build\n", "")
+
+
 def test_no_signals_asyncio_reports_a_deadlock(no_signals_binary: Path) -> None:
     # With no SIGINT to wait for, a run whose tasks all wait on nothing can
     # never be woken: the reactor's no-progress guard raises instead of
@@ -1247,3 +1672,176 @@ def test_no_signals_does_not_apply_to_the_repl(tmp_path: Path) -> None:
         timeout=120)
     assert result.returncode == 2, result.stderr
     assert "--no-signals does not apply to the REPL" in result.stderr
+
+
+# A --no-main library whose signal.signal handlers raise into a C++ host.
+HOST_MODULE = """\
+import signal
+from types import FrameType
+from tpy import int32
+
+
+def on_usr1(signum: int32, frame: FrameType | None) -> None:
+    raise ValueError("usr1 handled")
+
+
+def on_int(signum: int32, frame: FrameType | None) -> None:
+    raise ValueError("int handled")
+
+
+def install_usr1() -> None:
+    signal.signal(signal.SIGUSR1, on_usr1)
+
+
+def install_int() -> None:
+    signal.signal(signal.SIGINT, on_int)
+
+
+def reach_check_point() -> int32:
+    print("check point")
+    return 1
+"""
+
+# Arms the layer with TPy's SIGINT handler, or (`host`) keeps its own and
+# forwards through tpy::request_interrupt(); then sends itself a signal and
+# reports what the next TPy check point raised.
+HOST_PROGRAM = """\
+#include <csignal>
+#include <cstdio>
+#include <cstring>
+
+#include "sigmod.hpp"
+
+int __tpy_main(int argc, char* argv[]);
+
+namespace {
+
+volatile std::sig_atomic_t host_ran = 0;
+
+void host_sigint(int) {
+    host_ran = 1;
+    tpy::request_interrupt();
+}
+
+void reach(const char* what) {
+    try {
+        tpyapp::sigmod::reach_check_point();
+        std::printf("%s: returned\\n", what);
+    } catch (const tpy::ValueError& e) {
+        std::printf("%s: ValueError %s\\n", what, e.what());
+    } catch (const tpy::KeyboardInterrupt&) {
+        std::printf("%s: KeyboardInterrupt\\n", what);
+    }
+    std::fflush(stdout);
+}
+
+}  // namespace
+
+int main(int argc, char* argv[]) {
+    bool host_keeps_sigint = argc > 1 && std::strcmp(argv[1], "host") == 0;
+    if (host_keeps_sigint) {
+        struct sigaction sa{};
+        sa.sa_handler = host_sigint;
+        sigemptyset(&sa.sa_mask);
+        ::sigaction(SIGINT, &sa, nullptr);
+    }
+    if (!tpy::install_interrupt_handler(!host_keeps_sigint)) {
+        std::printf("arm failed\\n");
+        return 2;
+    }
+    __tpy_main(argc, argv);
+    if (host_keeps_sigint) {
+        tpyapp::sigmod::install_int();
+        ::raise(SIGINT);
+        reach("sigint");
+        struct sigaction cur{};
+        ::sigaction(SIGINT, nullptr, &cur);
+        std::printf("host handler kept %d, ran %d\\n",
+                    cur.sa_handler == host_sigint ? 1 : 0, host_ran ? 1 : 0);
+        return 0;
+    }
+    reach("before");
+    tpyapp::sigmod::install_usr1();
+    ::raise(SIGUSR1);
+    reach("usr1");
+    reach("after");
+    ::raise(SIGINT);
+    reach("sigint");
+    return 0;
+}
+"""
+
+
+def _cmake_list(cmake: str, name: str, root: Path) -> list[str]:
+    body = cmake.split(f"set({name}\n", 1)[1].split(")", 1)[0]
+    return [line.strip().replace("${CMAKE_CURRENT_LIST_DIR}", str(root))
+            for line in body.splitlines() if line.strip()]
+
+
+@pytest.fixture(scope="module")
+def host_binary(tmp_path_factory: pytest.TempPathFactory,
+                request: pytest.FixtureRequest) -> Path:
+    """HOST_MODULE generated with --no-main and linked into HOST_PROGRAM the
+    way a host build does it, from sources.cmake."""
+    if os.name != "posix":
+        pytest.skip("requires POSIX signals")
+    if (exec_is_cross() or request.config.getoption("--build-only")
+            or request.config.getoption("--no-exec")):
+        pytest.skip("needs a host-runnable binary")
+    work = tmp_path_factory.mktemp("host")
+    (work / "sigmod.py").write_text(HOST_MODULE)
+    (work / "host.cpp").write_text(HOST_PROGRAM)
+    gen = subprocess.run(
+        [sys.executable, "-c",
+         "import sys\nfrom tpyc.cli import main_tpyc\n"
+         "sys.argv = ['tpyc', *sys.argv[1:]]\nsys.exit(main_tpyc())\n",
+         "-q", "--no-main", "sigmod.py", "-o", "out"],
+        cwd=work, capture_output=True, text=True, timeout=600)
+    assert gen.returncode == 0, gen.stdout + gen.stderr
+    out = work / "out"
+    cmake = (out / "sources.cmake").read_text()
+    includes = [f"-I{d}" for d in _cmake_list(cmake, "TPYC_INCLUDE_DIRS", out)]
+    prefix = ["ccache"] if CPP_CONFIG.ccache else []
+    env = {**os.environ, "CCACHE_BASEDIR": str(work)}
+    sources = [*_cmake_list(cmake, "TPYC_SOURCES", out), str(work / "host.cpp")]
+    compiles = [
+        [*prefix, *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
+         *CPP_CONFIG.extra_flags, *includes, "-c", src, "-o", f"{work}/{i}.o"]
+        for i, src in enumerate(sources)]
+    with ThreadPoolExecutor(max_workers=4) as pool:
+        for result in pool.map(
+                lambda cmd: subprocess.run(cmd, cwd=work, env=env,
+                                           capture_output=True, text=True),
+                compiles):
+            assert result.returncode == 0, result.stderr
+    binary = work / "host"
+    link = subprocess.run(
+        [*CPP_CONFIG.compiler, *(f"{work}/{i}.o" for i in range(len(sources))),
+         *_cmake_list(cmake, "TPYC_LIBRARIES", out), "-pthread",
+         "-o", str(binary)],
+        cwd=work, capture_output=True, text=True)
+    assert link.returncode == 0, link.stderr
+    return binary
+
+
+def test_no_main_host_gets_the_handler_exception(host_binary: Path) -> None:
+    # The real dispatcher: signal.py's handler runs at the next check point
+    # after the signal and its exception reaches the host as the C++ type.
+    # A check point with nothing pending returns, and SIGINT still raises.
+    run = subprocess.run([str(host_binary)], capture_output=True, text=True,
+                         timeout=60)
+    assert (run.returncode, run.stdout, run.stderr) == (
+        0, "check point\nbefore: returned\n"
+           "check point\nusr1: ValueError usr1 handled\n"
+           "check point\nafter: returned\n"
+           "check point\nsigint: KeyboardInterrupt\n", "")
+
+
+def test_no_main_host_keeps_its_sigint_handler(host_binary: Path) -> None:
+    # signal.signal(SIGINT, h) under a host that forwards Ctrl-C: the host's
+    # handler stays SIGINT's disposition and its forwarded request runs h.
+    run = subprocess.run([str(host_binary), "host"], capture_output=True,
+                         text=True, timeout=60)
+    assert (run.returncode, run.stdout, run.stderr) == (
+        0, "check point\nsigint: ValueError int handled\n"
+           "host handler kept 1, ran 1\n", "")

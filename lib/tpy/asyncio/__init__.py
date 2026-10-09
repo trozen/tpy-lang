@@ -7,7 +7,7 @@
 `runtime/cpp/include/tpy/async.hpp` and the TPy Executor in
 `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
-from typing import Final, Callable
+from typing import Final, Callable, Protocol
 from builtins import BaseException, Exception, TimeoutError, EOFError
 from tpy import (
     Own, int32, uint32, uint64, Ptr,
@@ -15,7 +15,7 @@ from tpy import (
 )
 from tpy.coro import (
     Waker, Poll, Cancellable,
-    poll_ready, poll_pending, poll_ready_none,
+    poll_ready, poll_pending, poll_ready_none, same_task,
 )
 from tpy.mem import UninitStorage
 from tplib import Box
@@ -25,6 +25,8 @@ from socket import (
     socket, SocketError, SOL_SOCKET, SO_ERROR, SO_REUSEADDR, AF_INET,
     SOCK_STREAM, _maybe_raise_connection_error, _strerror)
 from _bindings import posix_signal
+import signal as _signal
+from types import FrameType
 from ._executor import (
     Task, AnyTask,
     task_from_coro, make_executor_owned_task, task_to_any_box,
@@ -73,6 +75,10 @@ def _run_drain_main_task(box: Own[Box[AnyTask]]) -> bool:
         interrupted = executor.run_until(main_id)
         completed = True
     finally:
+        # Before the drain, as CPython's Runner.run restores its handler
+        # before close(): a Ctrl-C during the drain raises KeyboardInterrupt
+        # instead of cancelling the root again.
+        signals.restore_sigint()
         # A run left by an exception (a task's SystemExit, a second Ctrl-C)
         # cancels the root too, so its finally / __aexit__ run as in
         # CPython's Runner.close.
@@ -104,37 +110,75 @@ EPOLLIN: Final[uint32] = uint32(0x001)
 EPOLLOUT: Final[uint32] = uint32(0x004)
 
 
+# asyncio.run's SIGINT handler for the run (CPython's Runner._on_sigint): the
+# first Ctrl-C cancels the root task, a later one raises KeyboardInterrupt
+# where it is delivered. It runs on the loop's thread only -- at a coroutine's
+# check point or from the loop -- so the loop is never blocked when the root
+# is marked runnable.
+def _on_sigint(signum: int32, frame: FrameType | None) -> None:
+    executor = _get_current_executor()
+    if executor is None:
+        raise KeyboardInterrupt()
+    executor.on_sigint()
+
+
+# Whether _on_sigint is still SIGINT's handler (CPython's Runner compares
+# getsignal(SIGINT) with its own). Compared by function name: passed through
+# a Callable parameter, the function would be held converted, and the
+# comparison could not see through that.
+def _sigint_is_ours() -> bool:
+    if posix_signal.handler_kind(_signal.SIGINT) != _signal._KIND_USER:
+        return False
+    current = _signal._handlers[_signal.SIGINT]
+    return _signal._same_function(current, _on_sigint)
+
+
 @nocopy
 class _SignalScope:
-    """RAII guard giving `asyncio.run` Ctrl-C delivery for its duration
-    (SIGINT only, matching CPython; SIGTERM keeps its default).
+    """RAII guard joining `asyncio.run`'s loop to signal delivery for the
+    run's duration: the handlers of signals that arrive while the loop waits
+    run from the loop (a coroutine's check points -- `print`, `raise_signal`,
+    `time.sleep`, ... -- run them in that coroutine, as in CPython), and,
+    when SIGINT is at `signal.default_int_handler` as the run starts,
+    `_on_sigint` is SIGINT's handler until the run ends, as CPython's Runner
+    installs its own. The end of the run, before the shutdown drain
+    (`restore_sigint`, as CPython's Runner restores its handler before
+    close()), restores `default_int_handler` only while `_on_sigint` is
+    still the handler: one the user set inside the run stays.
 
-    Takes delivery over from the process-wide SIGINT layer (synchronous check
-    points stop raising KeyboardInterrupt while the run lasts) and registers
-    the layer's wake fd in the executor's epoll set (no-op waker) so a signal
-    wakes a blocked `epoll_wait`; `__del__` unregisters the fd and hands
-    delivery back. A run that gets no fd (not on the interrupt target thread,
-    SIGINT inherited as ignored, or a failed install) stays unarmed. Note: the
-    registered fd keeps the reactor fd count >= 1, so the "no progress
-    possible" deadlock guard stays quiet while armed (CPython has no such
-    guard)."""
+    Registers the layer's wake fd in the executor's epoll set (no-op waker)
+    so a signal wakes a blocked `epoll_wait`; `__del__` unregisters it. A
+    run that gets no fd (not on the interrupt target thread, inside a
+    cleanup body, a `--no-signals` build, or a failed install) stays
+    unarmed and installs no handler. Note: the registered fd keeps the
+    reactor fd count >= 1, so the "no progress possible" deadlock guard
+    stays quiet while armed (CPython has no such guard)."""
 
     _armed: bool
     _fd: int32
+    _sigint: bool
 
     def __init__(self, executor: Executor) -> None:
         self._armed = False
         self._fd = -1
+        self._sigint = False
         fd = posix_signal.async_begin()
         if fd >= 0:
             executor.register_fd(fd, EPOLLIN, Waker())
-            executor.shutdown_armed = True
-            executor.shutdown_fd = fd
+            executor.signals_armed = True
+            executor.signal_fd = fd
             self._armed = True
             self._fd = fd
+            self._sigint = _signal._install_run_handler(_on_sigint)
+
+    def restore_sigint(self) -> None:
+        if self._sigint and _sigint_is_ours():
+            _signal._restore_default_int()
+        self._sigint = False
 
     def __del__(self) -> None:
         if self._armed:
+            self.restore_sigint()
             # Unregister before async_end() may close the fd, so the reactor's
             # waiter table is not left with a stale (closed) entry. The current
             # executor is still set here (this scope tears down before the
@@ -159,7 +203,7 @@ def _reactor_unregister_fd(fd: int32) -> None:
     handle.unregister_fd(fd)
 
 
-# The socket awaitables are hand-written (like SleepFuture / _QueueWait),
+# The socket awaitables are hand-written (like SleepFuture / _PrimitiveWait),
 # NOT `async def`s, for two reasons: each parks by returning Pending +
 # arming the reactor (no nested await), and an `async def` taking a
 # reference-type by-value param (`data: bytes`) hits a coro-frame
@@ -924,6 +968,7 @@ class Future[T]:
     """
 
     _done: bool
+    _cancelled: bool
     _has_waiter: bool
     _exception: Box[Throwable] | None
     _waiter: Waker
@@ -931,6 +976,7 @@ class Future[T]:
 
     def __init__(self) -> None:
         self._done = False
+        self._cancelled = False
         self._has_waiter = False
         self._exception = None
         self._waiter = Waker()
@@ -948,7 +994,7 @@ class Future[T]:
         # `__copy__` opt-in. Callers passing a named local must use
         # `tpy.copy(x)` explicitly to keep their reference alive.
         if self._done:
-            raise InvalidStateError("Future already done")
+            raise InvalidStateError("invalid state")
         self._result.construct(value)
         self._done = True
         if self._has_waiter:
@@ -957,24 +1003,31 @@ class Future[T]:
 
     def set_exception(self, exc: Own[Throwable]) -> None:
         if self._done:
-            raise InvalidStateError("Future already done")
+            raise InvalidStateError("invalid state")
         self._exception = Box(exc)
         self._done = True
         if self._has_waiter:
             self._waiter.wake()
             self._has_waiter = False
 
-    # Required for structural conformance to `@dynamic Cancellable[T]`
-    # (in `tpy.coro`). Future cancellation is task-level: the
-    # awaiting Task throws CancelledError before re-polling the Future,
-    # so the Future itself has no inner state to flip. This is the
-    # protocol hook called via the type-erased Adapter; the body is
-    # intentionally a no-op.
+    # Cancels the Future, as CPython's Future.cancel: it is done, its
+    # awaiter is woken to raise CancelledError, and set_result /
+    # set_exception refuse it. Cancelling the task that awaits it lands
+    # here too (CPython's Task.cancel cancels the future it waits on). A
+    # Future already done is left as is.
     def cancel(self) -> None:
-        pass
+        if self._done:
+            return
+        self._done = True
+        self._cancelled = True
+        if self._has_waiter:
+            self._has_waiter = False
+            self._waiter.wake()
 
     def __poll__(self, waker: Waker) -> Own[Poll[T]]:
         if self._done:
+            if self._cancelled:
+                raise CancelledError()
             if self._exception is not None:
                 raise self._exception
             if not self._result.has():
@@ -984,7 +1037,8 @@ class Future[T]:
             # nocopy types (T with __del__ but no __copy__) flow through
             # without requiring a copy ctor.
             return poll_ready(self._result.take())
-        if self._has_waiter:
+        # A re-poll by the parked task (a spurious wake) keeps its place.
+        if self._has_waiter and not same_task(self._waiter, waker):
             raise ValueError(
                 "Future already has a waiter (single-awaiter v1)")
         self._waiter = waker
@@ -1004,11 +1058,13 @@ class Event:
     _is_set: bool
     _has_waiter: bool
     _waiter: Waker
+    _cancel_pending: bool
 
     def __init__(self) -> None:
         self._is_set = False
         self._has_waiter = False
         self._waiter = Waker()
+        self._cancel_pending = False
 
     def is_set(self) -> bool:
         return self._is_set
@@ -1030,16 +1086,26 @@ class Event:
     def clear(self) -> None:
         self._is_set = False
 
-    # Required for structural conformance to `@dynamic Cancellable[T]`
-    # (in `tpy.coro`). Event cancellation is task-level (see
-    # Future.cancel above for the rationale); body is a no-op.
+    # The cancel of the task awaiting the Event (the Event is its own
+    # awaitable). The cancelled task's poll follows it at once: it raises
+    # CancelledError and frees the waiter slot if that task holds it, so a
+    # later `set` does not wake it and another task can wait. A task woken
+    # and cancelled before it ran no longer holds the slot, and another
+    # waiter parked there keeps it. Unlike a Future, the Event itself is
+    # not cancelled.
     def cancel(self) -> None:
-        pass
+        self._cancel_pending = True
 
     def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._cancel_pending:
+            self._cancel_pending = False
+            if self._has_waiter and same_task(self._waiter, waker):
+                self._has_waiter = False
+            raise CancelledError()
         if self._is_set:
             return poll_ready_none()
-        if self._has_waiter:
+        # A re-poll by the parked task (a spurious wake) keeps its place.
+        if self._has_waiter and not same_task(self._waiter, waker):
             raise ValueError(
                 "Event already has a waiter (single-awaiter v1)")
         self._waiter = waker
@@ -1047,22 +1113,129 @@ class Event:
         return poll_pending()
 
 
-# A stale-generation wake (the front waiter's task since cancelled or
-# completed) is swallowed by the Waker's own generation guard, so the
-# resource it would have claimed just waits for the next signal -- a
-# documented v1 cancel-while-parked gap, not a correctness issue here.
-def _wake_one(waiters: list[Waker]) -> None:
-    if len(waiters) > 0:
-        w = waiters.pop(0)
-        w.wake()
+@nocopy
+class _WaitQueue:
+    """FIFO of the wakers parked on one condition of a `Lock`, `Semaphore`
+    or `Queue`. Each entry has a ticket, which the parked `_PrimitiveWait`
+    keeps. Tickets grow and wakes pop from the front, so a ticket no greater
+    than `_last_woken` was woken: the awaitable tells a spurious re-poll
+    (still parked, no second entry) from its wake in O(1), and a cancelled
+    one removes its own entry."""
+
+    _tickets: list[uint64]
+    _wakers: list[Waker]
+    _next: uint64
+    _last_woken: uint64
+
+    def __init__(self) -> None:
+        self._tickets = []
+        self._wakers = []
+        self._next = 0
+        self._last_woken = 0
+
+    def __len__(self) -> int32:
+        return len(self._tickets)
+
+    def park(self, waker: Waker) -> uint64:
+        self._next += 1
+        self._tickets.append(self._next)
+        self._wakers.append(waker)
+        return self._next
+
+    def parked(self, ticket: uint64) -> bool:
+        return ticket > self._last_woken
+
+    def wake_one(self) -> None:
+        if len(self._tickets) > 0:
+            self._last_woken = self._tickets.pop(0)
+            self._wakers.pop(0).wake()
+
+    # For a broadcast condition: once it holds, every parked waiter proceeds.
+    def wake_all(self) -> None:
+        if len(self._tickets) > 0:
+            self._last_woken = self._tickets[len(self._tickets) - 1]
+        for w in self._wakers:
+            w.wake()
+        self._tickets.clear()
+        self._wakers.clear()
+
+    # Drops a parked entry; False when it was already woken.
+    def remove(self, ticket: uint64) -> bool:
+        if not self.parked(ticket):
+            return False
+        n = len(self._tickets)
+        i: int32 = 0
+        while i < n:
+            if self._tickets[i] == ticket:
+                del self._tickets[i]
+                del self._wakers[i]
+                return True
+            i += 1
+        return False
 
 
-# Wake every parked waiter and clear the queue -- for a broadcast condition
-# where, once it holds, every parked waiter should proceed.
-def _wake_all(waiters: list[Waker]) -> None:
-    for w in waiters:
-        w.wake()
-    waiters.clear()
+# What `_PrimitiveWait` needs of the primitive it parks on; `kind` names the
+# condition (one per waiter queue).
+class _Parking(Protocol):
+    def _ready(self, kind: int32) -> bool: ...
+    def _take(self, kind: int32) -> None: ...
+
+
+@nocopy
+class _PrimitiveWait[P: _Parking]:
+    """Private awaitable backing `Lock.acquire`, `Semaphore.acquire` and
+    `Queue.get` / `put` / `join`. Holds a `Ptr` to the primitive (it
+    outlives the in-flight wait) rather than making the primitive its own
+    awaitable, so `await lock` stays rejected like CPython. Ready once the
+    condition holds (taking the resource, for a lock or a permit); else it
+    parks in the condition's `_WaitQueue`.
+
+    `cancel()` -- the cancel of the awaiting task -- removes the parked
+    entry, so a later release / put / get neither wakes the cancelled task
+    nor hands it the resource, and the next poll raises CancelledError
+    without taking anything. A waiter that was woken but is cancelled
+    before it ran passes the wake to the next one when the condition still
+    holds (CPython's wake-up-next on a cancelled acquire / get / put)."""
+
+    _owner: Ptr[P]
+    _kind: int32
+    # The owner's waiter queue for the condition.
+    _queue: Ptr[_WaitQueue]
+    # The parked entry's ticket; 0 when not parked.
+    _ticket: uint64
+    _cancelled: bool
+
+    def __init__(self, owner: Ptr[P], kind: int32,
+                 queue: Ptr[_WaitQueue]) -> None:
+        self._owner = owner
+        self._kind = kind
+        self._queue = queue
+        self._ticket = 0
+        self._cancelled = False
+
+    def cancel(self) -> None:
+        if self._cancelled:
+            return
+        self._cancelled = True
+        if self._ticket == 0:
+            return
+        if (not self._queue.remove(self._ticket)
+                and self._owner._ready(self._kind)):
+            self._queue.wake_one()
+        self._ticket = 0
+
+    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+        if self._cancelled:
+            raise CancelledError()
+        if self._ticket != 0:
+            if self._queue.parked(self._ticket):
+                return poll_pending()
+            self._ticket = 0
+        if self._owner._ready(self._kind):
+            self._owner._take(self._kind)
+            return poll_ready_none()
+        self._ticket = self._queue.park(waker)
+        return poll_pending()
 
 
 @nocopy
@@ -1071,38 +1244,40 @@ class Lock:
 
     `acquire` / `release` / `locked` match CPython; use as an async
     context manager (`async with lock:`). Contending acquirers park in
-    FIFO order and are woken one at a time on release.
+    FIFO order and are woken one at a time on release; a cancelled
+    acquirer leaves the queue and never ends up holding the lock.
 
     Not awaitable directly (`await lock` is rejected, matching CPython):
     acquisition goes through `acquire`, which awaits a private
-    `_LockAcquire` holding a Ptr to the lock, so the lock itself never
+    `_PrimitiveWait` holding a Ptr to the lock, so the lock itself never
     exposes `__poll__`.
 
     Fairness: a freshly-arriving acquirer can claim a just-released lock
     ahead of an already-parked waiter (the woken waiter re-checks and
     re-parks). Safe -- every poll re-validates `_locked` -- but not
-    strictly FIFO-fair under heavy contention; benign single-threaded.
+    strictly FIFO-fair, unlike CPython, which serves the woken waiter
+    (BUGS.md#asyncio-lock-release-not-handed-to-waiter).
     """
 
     _locked: bool
-    _waiters: list[Waker]
+    _waiters: _WaitQueue
 
     def __init__(self) -> None:
         self._locked = False
-        self._waiters = []
+        self._waiters = _WaitQueue()
 
     def locked(self) -> bool:
         return self._locked
 
     async def acquire(self) -> bool:
-        await _LockAcquire(self)
+        await _PrimitiveWait[Lock](self, 0, self._waiters)
         return True
 
     def release(self) -> None:
         if not self._locked:
             raise RuntimeError("Lock is not acquired.")
         self._locked = False
-        _wake_one(self._waiters)
+        self._waiters.wake_one()
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -1111,38 +1286,12 @@ class Lock:
                         exc_tb: None) -> None:
         self.release()
 
-    # Called by `_LockAcquire.__poll__` through a `Ptr[Lock]`: grab the
-    # lock if free, else park `waker` in FIFO order. Returns True iff
-    # acquired this poll.
-    def _try_acquire(self, waker: Waker) -> bool:
-        if not self._locked:
-            self._locked = True
-            return True
-        self._waiters.append(waker)
-        return False
+    # `_Parking`, for `_PrimitiveWait` (one condition: the lock is free).
+    def _ready(self, kind: int32) -> bool:
+        return not self._locked
 
-
-@nocopy
-class _LockAcquire:
-    """Private awaitable backing `Lock.acquire`. Holds a `Ptr[Lock]` (the
-    lock outlives the in-flight acquire) rather than making the lock its
-    own awaitable, so `await lock` stays rejected like CPython.
-    """
-
-    _lock: Ptr[Lock]
-
-    def __init__(self, lock: Ptr[Lock]) -> None:
-        self._lock = lock
-
-    # Task-level cancellation (the parked acquirer throws at its
-    # suspension); no inner state to flip.
-    def cancel(self) -> None:
-        pass
-
-    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-        if self._lock._try_acquire(waker):
-            return poll_ready_none()
-        return poll_pending()
+    def _take(self, kind: int32) -> None:
+        self._locked = True
 
 
 @nocopy
@@ -1153,11 +1302,11 @@ class Semaphore:
     would go below zero; `release` increments it and wakes one waiter.
     `locked` reports whether the counter is exhausted. Matches CPython.
     Usable as an async context manager; not awaitable directly (see
-    `Lock`). Same fairness note as `Lock`.
+    `Lock`). Same fairness and cancellation notes as `Lock`.
     """
 
     _value: int32
-    _waiters: list[Waker]
+    _waiters: _WaitQueue
     # Upper bound for release(); -1 means unbounded (plain Semaphore). The
     # bound lives here, gated in release(), rather than in a BoundedSemaphore
     # override -- TPy uses static method dispatch, so an override would only
@@ -1168,24 +1317,23 @@ class Semaphore:
         if value < 0:
             raise ValueError("Semaphore initial value must be >= 0")
         self._value = value
-        self._waiters = []
+        self._waiters = _WaitQueue()
         self._bound = -1
 
     def locked(self) -> bool:
         # CPython also reports locked while acquirers are parked, not only
-        # when the count hits 0. `_waiters` may retain a since-cancelled
-        # waker (the cancel-while-parked gap), so this can over-report.
+        # when the count hits 0.
         return self._value == 0 or len(self._waiters) > 0
 
     async def acquire(self) -> bool:
-        await _SemAcquire(self)
+        await _PrimitiveWait[Semaphore](self, 0, self._waiters)
         return True
 
     def release(self) -> None:
         if self._bound >= 0 and self._value >= self._bound:
             raise ValueError("BoundedSemaphore released too many times")
         self._value += 1
-        _wake_one(self._waiters)
+        self._waiters.wake_one()
 
     async def __aenter__(self) -> None:
         await self.acquire()
@@ -1194,31 +1342,12 @@ class Semaphore:
                         exc_tb: None) -> None:
         self.release()
 
-    # See `Lock._try_acquire`: take a permit if available, else park.
-    def _try_acquire(self, waker: Waker) -> bool:
-        if self._value > 0:
-            self._value -= 1
-            return True
-        self._waiters.append(waker)
-        return False
+    # `_Parking`, for `_PrimitiveWait` (one condition: a permit is left).
+    def _ready(self, kind: int32) -> bool:
+        return self._value > 0
 
-
-@nocopy
-class _SemAcquire:
-    """Private awaitable backing `Semaphore.acquire` (see `_LockAcquire`)."""
-
-    _sem: Ptr[Semaphore]
-
-    def __init__(self, sem: Ptr[Semaphore]) -> None:
-        self._sem = sem
-
-    def cancel(self) -> None:
-        pass
-
-    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-        if self._sem._try_acquire(waker):
-            return poll_ready_none()
-        return poll_pending()
+    def _take(self, kind: int32) -> None:
+        self._value -= 1
 
 
 class BoundedSemaphore(Semaphore):
@@ -1241,13 +1370,21 @@ class QueueFull(Exception):
     pass
 
 
+# `_PrimitiveWait` kinds of a Queue: get (non-empty), put (not full), join
+# (no unfinished tasks).
+_QUEUE_GET: Final[int32] = 0
+_QUEUE_PUT: Final[int32] = 1
+_QUEUE_JOIN: Final[int32] = 2
+
+
 @nocopy
 class Queue[T]:
     """FIFO async queue. `put`/`get` block (park, FIFO) when the queue is
     full / empty; `put_nowait`/`get_nowait` raise `QueueFull`/`QueueEmpty`
     instead. `maxsize <= 0` is unbounded. `join` blocks until every item
     delivered by `put` has been marked done via `task_done`. Matches
-    CPython; single-threaded, same fairness note as `Lock`.
+    CPython; single-threaded, same fairness and cancellation notes as
+    `Lock`.
 
     Built on the `Waker`-parking mechanism: getters park while empty,
     putters while full, joiners while work is outstanding. Not awaitable
@@ -1257,17 +1394,17 @@ class Queue[T]:
     _items: list[T]
     # Public, like CPython's Queue.maxsize; <= 0 means unbounded.
     maxsize: int32
-    _getters: list[Waker]
-    _putters: list[Waker]
-    _joiners: list[Waker]
+    _getters: _WaitQueue
+    _putters: _WaitQueue
+    _joiners: _WaitQueue
     _unfinished: int32
 
     def __init__(self, maxsize: int32 = 0) -> None:
         self._items = []
         self.maxsize = maxsize
-        self._getters = []
-        self._putters = []
-        self._joiners = []
+        self._getters = _WaitQueue()
+        self._putters = _WaitQueue()
+        self._joiners = _WaitQueue()
         self._unfinished = 0
 
     def qsize(self) -> int32:
@@ -1284,22 +1421,22 @@ class Queue[T]:
             raise QueueFull("Queue full")
         self._items.append(item)
         self._unfinished += 1
-        _wake_one(self._getters)
+        self._getters.wake_one()
 
     def get_nowait(self) -> Own[T]:
         if self.empty():
             raise QueueEmpty("Queue empty")
         # A slot is about to free; wake a parked putter before the pop (it
         # re-polls later, by which point this synchronous pop has run).
-        _wake_one(self._putters)
+        self._putters.wake_one()
         return self._items.pop(0)
 
     async def put(self, item: Own[T]) -> None:
-        await _QueueWait[T](self, 1)
+        await _PrimitiveWait[Queue[T]](self, _QUEUE_PUT, self._putters)
         self.put_nowait(item)
 
     async def get(self) -> Own[T]:
-        await _QueueWait[T](self, 0)
+        await _PrimitiveWait[Queue[T]](self, _QUEUE_GET, self._getters)
         return self.get_nowait()
 
     def task_done(self) -> None:
@@ -1307,53 +1444,22 @@ class Queue[T]:
             raise ValueError("task_done() called too many times")
         self._unfinished -= 1
         if self._unfinished == 0:
-            _wake_all(self._joiners)
+            self._joiners.wake_all()
 
     async def join(self) -> None:
-        await _QueueWait[T](self, 2)
+        await _PrimitiveWait[Queue[T]](self, _QUEUE_JOIN, self._joiners)
 
-    # Called by `_QueueWait.__poll__` through a `Ptr[Queue[T]]`. Returns
-    # True if the awaited condition holds now; else parks `waker` and
-    # returns False. kind: 0 = get (non-empty), 1 = put (not full),
-    # 2 = join (no unfinished tasks).
-    def _wait_ready(self, kind: int32, waker: Waker) -> bool:
-        if kind == 0:
-            if len(self._items) > 0:
-                return True
-            self._getters.append(waker)
-            return False
-        if kind == 1:
-            if not self.full():
-                return True
-            self._putters.append(waker)
-            return False
-        if self._unfinished == 0:
-            return True
-        self._joiners.append(waker)
-        return False
+    # `_Parking`, for `_PrimitiveWait`. Waiting is all a queue condition
+    # does: `get` / `put` take the item / slot after the wait.
+    def _ready(self, kind: int32) -> bool:
+        if kind == _QUEUE_GET:
+            return len(self._items) > 0
+        if kind == _QUEUE_PUT:
+            return not self.full()
+        return self._unfinished == 0
 
-
-@nocopy
-class _QueueWait[T]:
-    """Private awaitable backing `Queue.get` / `put` / `join` (see
-    `_LockAcquire`). Holds a `Ptr[Queue[T]]`; the `kind` selects the park
-    condition checked by `Queue._wait_ready`.
-    """
-
-    _q: Ptr[Queue[T]]
-    _kind: int32
-
-    def __init__(self, q: Ptr[Queue[T]], kind: int32) -> None:
-        self._q = q
-        self._kind = kind
-
-    def cancel(self) -> None:
+    def _take(self, kind: int32) -> None:
         pass
-
-    def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-        if self._q._wait_ready(self._kind, waker):
-            return poll_ready_none()
-        return poll_pending()
 
 
 class EventLoop:

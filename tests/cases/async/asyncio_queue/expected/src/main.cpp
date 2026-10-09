@@ -97,6 +97,333 @@ __coro_consumer consumer(::tpystd::asyncio::Queue<int32_t>& q, std::vector<int32
     return __coro_consumer(q, out);
 }
 
+// async def q_getter(tag: str, q: Queue[int32]) -> None:
+//     try:
+//         v = await q.get()                               # -> S_RESUME_0
+//         print("cancel get:", tag, "got", v)
+//     except asyncio.CancelledError:
+//         print("cancel get:", tag, "cancelled")
+//         raise
+::tpystd::tpy::Poll<::std::monostate> __coro_q_getter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: v = await q.get()
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            v = std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << "cancel get:" << " " << tag << " " << "got" << " " << v << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0.reset();
+            std::cout << "cancel get:" << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        try {
+            __sub_0.emplace(q);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            std::cout << "cancel get:" << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def q_getter(tag: str, q: Queue[int32]) -> None:
+__coro_q_getter q_getter(std::string_view tag, ::tpystd::asyncio::Queue<int32_t>& q) {
+    return __coro_q_getter(tag, q);
+}
+
+// async def q_putter(section: str, tag: str, q: Queue[int32],
+//                    v: int32) -> None:
+//     try:
+//         await q.put(v)                                       # -> S_RESUME_0
+//         print(section, tag, "put", v)
+//     except asyncio.CancelledError:
+//         print(section, tag, "cancelled")
+//         raise
+::tpystd::tpy::Poll<::std::monostate> __coro_q_putter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await q.put(v)
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << section << " " << tag << " " << "put" << " " << v << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0.reset();
+            std::cout << section << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        try {
+            int32_t __tmp_1 = v;
+            __sub_0.emplace(q, std::move(__tmp_1));
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            std::cout << section << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def q_putter(section: str, tag: str, q: Queue[int32],
+//                    v: int32) -> None:
+__coro_q_putter q_putter(std::string_view section, std::string_view tag, ::tpystd::asyncio::Queue<int32_t>& q, int32_t v) {
+    return __coro_q_putter(section, tag, q, v);
+}
+
+// async def reap(tag: str, t: asyncio.Task[None]) -> None:
+//     try:
+//         await t                                           # -> S_RESUME_0
+//         print(tag, "not cancelled (WRONG)")
+//     except asyncio.CancelledError:
+//         print(tag, "saw the cancel")
+::tpystd::tpy::Poll<::std::monostate> __coro_reap::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await t
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0 = nullptr;
+            std::cout << tag << " " << "not cancelled (WRONG)" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0 = nullptr;
+            std::cout << tag << " " << "saw the cancel" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0 = nullptr;
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        __sub_0 = &(t);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def reap(tag: str, t: asyncio.Task[None]) -> None:
+__coro_reap reap(std::string_view tag, ::tpystd::asyncio::_executor::Task<std::monostate>& t) {
+    return __coro_reap(tag, t);
+}
+
+// async def cancel_get() -> None:
+//     q: Queue[int32] = Queue(0)
+//     ta = asyncio.create_task(q_getter("a", q))
+//     tb = asyncio.create_task(q_getter("b", q))
+//     await asyncio.sleep(0.01)                                                                 # -> S_RESUME_0
+//     ta.cancel()  # tpyc: ok -- a leaves the getters, so the put below goes to b
+//     await reap("cancel get:", ta)                                                             # -> S_RESUME_1
+//     q.put_nowait(1)
+//     await tb                                                                                  # -> S_RESUME_2
+//     tc = asyncio.create_task(q_getter("c", q))
+//     td = asyncio.create_task(q_getter("d", q))
+//     await asyncio.sleep(0.01)                                                                 # -> S_RESUME_3
+//     q.put_nowait(2)
+//     tc.cancel()  # tpyc: ok -- woken by the put but cancelled before it ran: d gets the item
+//     await reap("cancel get:", tc)                                                             # -> S_RESUME_4
+//     await td                                                                                  # -> S_RESUME_5
+::tpystd::tpy::Poll<::std::monostate> __coro_cancel_get::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        q.emplace(::tpystd::asyncio::Queue<int32_t>(0));
+        ta.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_getter("a", (*q)))));
+        tb.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_getter("b", (*q)))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        (*ta).cancel();
+        __sub_1.emplace("cancel get:", (*ta));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await reap("cancel get:", ta)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        (*q).put_nowait(1);
+        __sub_2 = &((*tb));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await tb
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        tc.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_getter("c", (*q)))));
+        td.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_getter("d", (*q)))));
+        __sub_3.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await asyncio.sleep(0.01)
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r3).value();
+        __sub_3.reset();
+        (*q).put_nowait(2);
+        (*tc).cancel();
+        __sub_4.emplace("cancel get:", (*tc));
+        __state = S_RESUME_4;
+        continue;
+    }
+    case S_RESUME_4: {  // after: await reap("cancel get:", tc)
+        auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
+        if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r4).value();
+        __sub_4.reset();
+        __sub_5 = &((*td));
+        __state = S_RESUME_5;
+        continue;
+    }
+    case S_RESUME_5: {  // after: await td
+        auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
+        if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r5).value();
+        __sub_5 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def cancel_get() -> None:
+__coro_cancel_get cancel_get() {
+    return __coro_cancel_get();
+}
+
+// async def cancel_put() -> None:
+//     q: Queue[int32] = Queue(1)
+//     q.put_nowait(0)
+//     ta = asyncio.create_task(q_putter("cancel put:", "a", q, 1))
+//     tb = asyncio.create_task(q_putter("cancel put:", "b", q, 2))
+//     await asyncio.sleep(0.01)                                        # -> S_RESUME_0
+//     ta.cancel()  # tpyc: ok -- a's item never enters the full queue
+//     await reap("cancel put:", ta)                                    # -> S_RESUME_1
+//     print("cancel put: got", q.get_nowait())
+//     await tb                                                         # -> S_RESUME_2
+//     print("cancel put: got", q.get_nowait())
+::tpystd::tpy::Poll<::std::monostate> __coro_cancel_put::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        q.emplace(::tpystd::asyncio::Queue<int32_t>(1));
+        (*q).put_nowait(0);
+        ta.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_putter("cancel put:", "a", (*q), 1))));
+        tb.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_putter("cancel put:", "b", (*q), 2))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        (*ta).cancel();
+        __sub_1.emplace("cancel put:", (*ta));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await reap("cancel put:", ta)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        std::cout << "cancel put: got" << " " << (*q).get_nowait() << "\n" << ::tpy::check_signals;
+        __sub_2 = &((*tb));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await tb
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        std::cout << "cancel put: got" << " " << (*q).get_nowait() << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def cancel_put() -> None:
+__coro_cancel_put cancel_put() {
+    return __coro_cancel_put();
+}
+
 // async def main_coro() -> None:
 //     q: Queue[int32] = Queue(2)
 //     print("empty:", q.empty(), "full:", q.full(), "qsize:", q.qsize(),
@@ -222,15 +549,188 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
+// async def q_joiner(tag: str, q: Queue[int32]) -> None:
+//     try:
+//         await q.join()                                  # -> S_RESUME_0
+//         print("handoff join:", tag, "joined")
+//     except asyncio.CancelledError:
+//         print("handoff join:", tag, "cancelled")
+//         raise
+::tpystd::tpy::Poll<::std::monostate> __coro_q_joiner::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await q.join()
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << "handoff join:" << " " << tag << " " << "joined" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0.reset();
+            std::cout << "handoff join:" << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        try {
+            __sub_0.emplace(q);
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            std::cout << "handoff join:" << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def q_joiner(tag: str, q: Queue[int32]) -> None:
+__coro_q_joiner q_joiner(std::string_view tag, ::tpystd::asyncio::Queue<int32_t>& q) {
+    return __coro_q_joiner(tag, q);
+}
+
+// async def handoff() -> None:
+//     q: Queue[int32] = Queue(1)
+//     q.put_nowait(0)
+//     ta = asyncio.create_task(q_putter("handoff put:", "a", q, 1))
+//     tb = asyncio.create_task(q_putter("handoff put:", "b", q, 2))
+//     await asyncio.sleep(0.01)                                                   # -> S_RESUME_0
+//     print("handoff put: got", q.get_nowait())
+//     ta.cancel()  # tpyc: ok -- a was woken by the get; the free slot goes to b
+//     await reap("handoff put:", ta)                                              # -> S_RESUME_1
+//     await tb                                                                    # -> S_RESUME_2
+//     print("handoff put: got", q.get_nowait())
+//     qj: Queue[int32] = Queue(0)
+//     qj.put_nowait(1)
+//     ja = asyncio.create_task(q_joiner("a", qj))
+//     jb = asyncio.create_task(q_joiner("b", qj))
+//     await asyncio.sleep(0.01)                                                   # -> S_RESUME_3
+//     qj.get_nowait()
+//     qj.task_done()
+//     ja.cancel()  # tpyc: ok -- a was woken by task_done; b still joins
+//     await reap("handoff join:", ja)                                             # -> S_RESUME_4
+//     await jb                                                                    # -> S_RESUME_5
+::tpystd::tpy::Poll<::std::monostate> __coro_handoff::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        q.emplace(::tpystd::asyncio::Queue<int32_t>(1));
+        (*q).put_nowait(0);
+        ta.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_putter("handoff put:", "a", (*q), 1))));
+        tb.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_putter("handoff put:", "b", (*q), 2))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "handoff put: got" << " " << (*q).get_nowait() << "\n" << ::tpy::check_signals;
+        (*ta).cancel();
+        __sub_1.emplace("handoff put:", (*ta));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await reap("handoff put:", ta)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __sub_2 = &((*tb));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await tb
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        std::cout << "handoff put: got" << " " << (*q).get_nowait() << "\n" << ::tpy::check_signals;
+        qj.emplace(::tpystd::asyncio::Queue<int32_t>(0));
+        (*qj).put_nowait(1);
+        ja.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_joiner("a", (*qj)))));
+        jb.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::q_joiner("b", (*qj)))));
+        __sub_3.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await asyncio.sleep(0.01)
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r3).value();
+        __sub_3.reset();
+        (*qj).get_nowait();
+        (*qj).task_done();
+        (*ja).cancel();
+        __sub_4.emplace("handoff join:", (*ja));
+        __state = S_RESUME_4;
+        continue;
+    }
+    case S_RESUME_4: {  // after: await reap("handoff join:", ja)
+        auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
+        if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r4).value();
+        __sub_4.reset();
+        __sub_5 = &((*jb));
+        __state = S_RESUME_5;
+        continue;
+    }
+    case S_RESUME_5: {  // after: await jb
+        auto __r5 = ::tpy::poll_with_cancel(__sub_5, __cancel_pending, waker);
+        if (__r5.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r5).value();
+        __sub_5 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def handoff() -> None:
+__coro_handoff handoff() {
+    return __coro_handoff();
+}
+
 // def main() -> None:
 //     asyncio.run(main_coro())
+//     asyncio.run(cancel_get())
+//     asyncio.run(cancel_put())
+//     asyncio.run(handoff())
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::cancel_get()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::cancel_put()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::handoff()));
 }
 
 // # asyncio.Queue: bounded producer/consumer with backpressure (maxsize 2),
 // # join/task_done, the nowait paths + bounds, an unbounded queue, and the
-// # task_done() over-call guard.
+// # task_done() over-call guard. Cancelling a task parked in get / put / join
+// # delivers CancelledError there and the queue keeps serving the others; a
+// # putter or joiner woken but cancelled before it ran leaves the slot or the
+// # wake to the next one.
 // import asyncio
 //
 // main()

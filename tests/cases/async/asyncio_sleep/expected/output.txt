@@ -1,3 +1,23 @@
 first
 second
 third
+yield: spawned task ran True
+ticks: a 0
+ticks: b 0
+ticks: a 1
+ticks: b 1
+ticks: a 2
+ticks: b 2
+busy-wait: flag seen True
+timer-hop: main 0
+timer-hop: spin 0
+timer-hop: main 1
+timer-hop: spin 1
+timer-hop: main 2
+timer-hop: sleeper woke
+timer-hop: spin 2
+timer-hop: spin 3
+staged-cancel: main cancels, then sets
+staged-cancel: sleeper cancelled
+staged-cancel: event waiter woke
+staged-cancel: main after

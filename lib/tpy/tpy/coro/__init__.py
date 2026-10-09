@@ -63,6 +63,15 @@ class Waker(ValueType):
             pass
 
 
+# Whether two wakers wake the same executor task: the awaitables with a
+# single waiter slot use it to tell their parked task from another one.
+# Null wakers (a hand-driven poll) name no task.
+def same_task(a: Waker, b: Waker) -> bool:
+    if a.awaker is None or b.awaker is None:
+        return False
+    return a.task_id == b.task_id and a.generation == b.generation
+
+
 # Structural awaitable. Distinct from `typing.Awaitable[T]` (CPython's
 # `__await__`-based shape) -- TPy uses `__poll__(Waker) -> Poll[T]`.
 # The dunder name matches how other TPy/typing structural protocols

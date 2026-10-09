@@ -122,3 +122,11 @@ self-check additionally requires `Python.h`.
   the BigInt hex round-trip), `float`, `bool`, `str`. `ext_checks.py` asserts a
   `Final[char]` (a non-boundary type) is *not* exposed -- it exists on the
   source but not the `.so`, so that check is ext-only.
+- **`asyncio_run/`** (`arun.py`) -- an `@export` function running
+  `asyncio.run(...)` inside the host interpreter: the run arms the signal layer
+  for its own duration and hands CPython its SIGINT handling back. `driver.py`
+  checks the result, that `signal.getsignal(SIGINT)` is still
+  `default_int_handler` before and after, that a later `raise_signal(SIGINT)`
+  raises `KeyboardInterrupt` (CPython's C handler is back), that a Ctrl-C
+  inside the run cancels its root task, and that a Python-level SIGINT handler
+  the driver set stays in place and runs. All source-parity.

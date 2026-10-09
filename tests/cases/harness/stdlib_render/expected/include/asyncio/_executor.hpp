@@ -123,6 +123,10 @@ struct TaskState {
     bool done;
     // executor_owned: bool
     bool executor_owned;
+    // polling: bool
+    bool polling;
+    // must_cancel: bool
+    bool must_cancel;
     bool __tpy_owned_ = true;
 
     // def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
@@ -132,13 +136,17 @@ struct TaskState {
     //     self.awaiter = Waker()
     //     self.done = False
     //     self.executor_owned = False
+    //     self.polling = False
+    //     self.must_cancel = False
     explicit TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame)
         : frame(std::move(frame)),
           result(::tpy::UninitStorage<T>()),
           exc(std::nullopt),
           awaiter(::tpystd::coro::Waker()),
           done(false),
-          executor_owned(false) {}
+          executor_owned(false),
+          polling(false),
+          must_cancel(false) {}
     // non-copyable (@nocopy)
     TaskState(const TaskState&) = delete;
     TaskState& operator=(const TaskState&) = delete;
@@ -148,7 +156,9 @@ struct TaskState {
           exc(std::move(other.exc)),
           awaiter(std::move(other.awaiter)),
           done(std::move(other.done)),
-          executor_owned(std::move(other.executor_owned)) {
+          executor_owned(std::move(other.executor_owned)),
+          polling(std::move(other.polling)),
+          must_cancel(std::move(other.must_cancel)) {
         other.__tpy_owned_ = false;
     }
     TaskState& operator=(TaskState&& other) noexcept {
@@ -192,11 +202,16 @@ struct TaskState {
     //     if frame is None:
     //         raise RuntimeError("Task: __poll__ on empty TaskState")
     //     try:
+    //         self.polling = True
     //         p = frame.get().__poll__(w)
+    //         self.polling = False
+    //         if self._take_must_cancel(p.is_ready(), w):
+    //             return poll_pending()
     //         if p.is_ready():
     //             self.done = True
     //         return p
     //     except BaseException as e:
+    //         self._end_poll()
     //         self.done = True
     //         self.exc = Box(e.clone())
     //         raise
@@ -222,17 +237,63 @@ struct TaskState {
         std::optional<::tpystd::tpy::Poll<T>> p;
         {
             try {
+                this->polling = true;
                 p = frame->get().__poll__(w);
+                this->polling = false;
+                if (this->_take_must_cancel(p->is_ready(), w)) {
+                    return ::tpystd::coro::poll_pending<T>();
+                }
                 if (p->is_ready()) {
                     this->done = true;
                 }
                 return std::move((*p));
             } catch (const ::tpy::BaseException& e) {
+                this->_end_poll();
                 this->done = true;
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
                 throw;
             }
         }
+    }
+
+    // # Applies a cancel requested during the poll that just returned (see
+    // # `polling`). Pending: the cancel goes to the frame, and the task is
+    // # woken so the next poll delivers it at the suspension. Ready: the
+    // # task is cancelled instead of completing (CPython's Task.__step); the
+    // # value is dropped. Returns True when the task is still pending.
+    // def _take_must_cancel(self, ready: bool, w: Waker) -> bool:
+    //     if not self.must_cancel:
+    //         return False
+    //     self.must_cancel = False
+    //     if ready:
+    //         raise CancelledError()
+    //     frame = self.frame
+    //     if frame is not None:
+    //         frame.get().cancel()
+    //     w.wake()
+    //     return True
+    bool _take_must_cancel(bool ready, ::tpystd::coro::Waker w) {
+        if ((!(this->must_cancel))) {
+            return false;
+        }
+        this->must_cancel = false;
+        if (ready) {
+            throw ::tpy::CancelledError{};
+        }
+        ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
+        if ((frame != nullptr)) {
+            frame->get().cancel();
+        }
+        w.wake();
+        return true;
+    }
+
+    // def _end_poll(self) -> None:
+    //     self.polling = False
+    //     self.must_cancel = False
+    void _end_poll() {
+        this->polling = false;
+        this->must_cancel = false;
     }
 
     // # AnyTask interface: drives the frame and caches result/exc. Used
@@ -244,7 +305,11 @@ struct TaskState {
     //     if frame is None:
     //         return True
     //     try:
+    //         self.polling = True
     //         p = frame.get().__poll__(w)
+    //         self.polling = False
+    //         if self._take_must_cancel(p.is_ready(), w):
+    //             return False
     //         if p.is_ready():
     //             self.done = True
     //             self.result.construct(p.value())
@@ -254,11 +319,13 @@ struct TaskState {
     //     except (SystemExit, KeyboardInterrupt) as e:
     //         # Stored like any outcome, then raised out of the run, as
     //         # CPython's Task.__step does: these end the program, not the task.
+    //         self._end_poll()
     //         self.done = True
     //         self.exc = Box(e.clone())
     //         self.awaiter.wake()
     //         raise
     //     except BaseException as e:
+    //         self._end_poll()
     //         self.done = True
     //         self.exc = Box(e.clone())
     //         self.awaiter.wake()
@@ -274,7 +341,12 @@ struct TaskState {
         std::optional<::tpystd::tpy::Poll<T>> p;
         {
             try {
+                this->polling = true;
                 p = frame->get().__poll__(w);
+                this->polling = false;
+                if (this->_take_must_cancel(p->is_ready(), w)) {
+                    return false;
+                }
                 if (p->is_ready()) {
                     this->done = true;
                     this->result.construct(std::move(*p).value());
@@ -283,16 +355,19 @@ struct TaskState {
                 }
                 return false;
             } catch (const ::tpy::SystemExit& e) {
+                this->_end_poll();
                 this->done = true;
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
                 this->awaiter.wake();
                 throw;
             } catch (const ::tpy::KeyboardInterrupt& e) {
+                this->_end_poll();
                 this->done = true;
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
                 this->awaiter.wake();
                 throw;
             } catch (const ::tpy::BaseException& e) {
+                this->_end_poll();
                 this->done = true;
                 this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
                 this->awaiter.wake();
@@ -304,11 +379,18 @@ struct TaskState {
     // def cancel_any(self) -> None:
     //     if self.done:
     //         return
+    //     if self.polling:
+    //         self.must_cancel = True
+    //         return
     //     frame = self.frame
     //     if frame is not None:
     //         frame.get().cancel()
     void cancel_any() {
         if (this->done) {
+            return;
+        }
+        if (this->polling) {
+            this->must_cancel = true;
             return;
         }
         ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
@@ -476,6 +558,8 @@ struct Slot {
     int32_t generation;
     // runnable: bool
     bool runnable;
+    // staged: bool
+    bool staged;
 
     // def __init__(self) -> None:
     Slot();
@@ -553,16 +637,22 @@ struct Executor : ::tpystd::coro::Awaker {
     std::vector<Slot> slots;
     // runnable_q: list[int32]
     std::vector<int32_t> runnable_q;
+    // staged_q: list[int32]
+    std::vector<int32_t> staged_q;
+    // staging: bool
+    bool staging;
     // timer_heap: list[TimerEntry]
     std::vector<TimerEntry> timer_heap;
     // reactor: EpollReactor | None
     std::optional<EpollReactor> reactor;
-    // shutdown_armed: bool
-    bool shutdown_armed;
-    // shutdown_fd: int32
-    int32_t shutdown_fd;
+    // signals_armed: bool
+    bool signals_armed;
+    // signal_fd: int32
+    int32_t signal_fd;
     // interrupt_count: int32
     int32_t interrupt_count;
+    // root_id: int32
+    int32_t root_id;
 
     // def __init__(self) -> None:
     Executor();
@@ -593,6 +683,9 @@ struct Executor : ::tpystd::coro::Awaker {
     // def mark_runnable(self, slot_id: int32, generation: int32) -> None:
     void mark_runnable(int32_t slot_id, int32_t generation) override;
 
+    // def _unstage(self) -> None:
+    void _unstage();
+
     // def poll_slot(self, slot_id: int32) -> bool:
     bool poll_slot(int32_t slot_id);
 
@@ -602,6 +695,9 @@ struct Executor : ::tpystd::coro::Awaker {
     // def drain_runnable(self) -> bool:
     bool drain_runnable();
 
+    // def run_batch(self) -> None:
+    void run_batch();
+
     // @readonly
     // def slot_done(self, slot_id: int32) -> bool:
     bool slot_done(int32_t slot_id) const;
@@ -610,17 +706,23 @@ struct Executor : ::tpystd::coro::Awaker {
     // def has_live_tasks(self, skip_id: int32) -> bool:
     bool has_live_tasks(int32_t skip_id) const;
 
-    // def wait_for_event(self, block: bool = True) -> bool:
-    bool wait_for_event(bool block = true);
+    // def wait_for_event(self) -> bool:
+    bool wait_for_event();
+
+    // def poll_without_waiting(self) -> None:
+    void poll_without_waiting();
+
+    // def _fire_due_timers(self) -> None:
+    void _fire_due_timers();
 
     // def _cancel_root(self, main_id: int32) -> None:
     void _cancel_root(int32_t main_id);
 
-    // def _check_shutdown_signal(self, main_id: int32) -> None:
-    void _check_shutdown_signal(int32_t main_id);
+    // def on_sigint(self) -> None:
+    void on_sigint();
 
-    // def _rearm_shutdown_fd(self) -> None:
-    void _rearm_shutdown_fd();
+    // def _deliver_after_wait(self) -> None:
+    void _deliver_after_wait();
 
     // def run_until(self, main_id: int32) -> bool:
     bool run_until(int32_t main_id);
@@ -698,10 +800,12 @@ inline bool TimerEntry::__lt__(const TimerEntry& other) const {
 //     self.box = None
 //     self.generation = 0
 //     self.runnable = False
+//     self.staged = False
 inline Slot::Slot()
     : box(std::nullopt),
       generation(0),
-      runnable(false) {}
+      runnable(false),
+      staged(false) {}
 
 // @readonly
 // def is_done(self) -> bool:
@@ -870,24 +974,21 @@ inline int32_t Executor::spawn(::tpystd::tplib::box::Box<AnyTask>&& box) {
     return new_id;
 }
 
-// def mark_runnable(self, slot_id: int32, generation: int32) -> None:
-//     if slot_id >= len(self.slots):
-//         return
-//     slot = self.slots[slot_id]
-//     if slot.is_done() or slot.generation != generation or slot.runnable:
-//         return
-//     slot.runnable = True
-//     self.runnable_q.append(slot_id)
-inline void Executor::mark_runnable(int32_t slot_id, int32_t generation) {
-    if ((slot_id >= ::tpy::__len__(this->slots))) {
-        return;
+// def _unstage(self) -> None:
+//     for slot_id in self.staged_q:
+//         self.slots[slot_id].staged = False
+//     self.runnable_q.extend(self.staged_q)
+//     self.staged_q.clear()
+inline void Executor::_unstage() {
+    auto& __obj_0 = this->staged_q;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t slot_id = *__beg_0;
+        ::tpy::__getitem__(this->slots, slot_id).staged = false;
     }
-    Slot& slot = ::tpy::__getitem__(this->slots, slot_id);
-    if (((slot.is_done() || (slot.generation != generation)) || slot.runnable)) {
-        return;
-    }
-    slot.runnable = true;
-    this->runnable_q.push_back(slot_id);
+    ::tpy::list_extend(this->runnable_q, this->staged_q);
+    this->staged_q.clear();
 }
 
 // def _retire(self, slot_id: int32) -> None:
@@ -896,6 +997,59 @@ inline void Executor::mark_runnable(int32_t slot_id, int32_t generation) {
 inline void Executor::_retire(int32_t slot_id) {
     ::tpy::__getitem__(this->slots, slot_id).box = std::nullopt;
     ::tpy::__getitem__(this->slots, slot_id).generation = ::tpy::add_check<int32_t>(::tpy::__getitem__(this->slots, slot_id).generation, 1);
+}
+
+// # The shutdown drain's poll: unlike a run_until batch, it polls until
+// # nothing is runnable, so a wake chain among the cancelled tasks finishes
+// # within one drain attempt.
+// def drain_runnable(self) -> bool:
+//     self._unstage()
+//     any_polled = False
+//     # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
+//     # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
+//     # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
+//     # runnable_q O(n) pop.
+//     while len(self.runnable_q) > 0:
+//         slot_id = self.runnable_q.pop(0)
+//         if self.poll_slot(slot_id):
+//             any_polled = True
+//     return any_polled
+inline bool Executor::drain_runnable() {
+    this->_unstage();
+    bool any_polled = false;
+    while ((::tpy::__len__(this->runnable_q) > 0)) {
+        int32_t slot_id = ::tpy::list_pop_at(this->runnable_q, 0);
+        if (this->poll_slot(slot_id)) {
+            any_polled = true;
+        }
+    }
+    return any_polled;
+}
+
+// # Polls the tasks that are runnable as the batch starts -- CPython's one
+// # pass over the ready callbacks per loop iteration. A task woken or
+// # spawned during the batch runs in the next one, after I/O, timers and
+// # signals had their turn, so a task re-queueing itself (`sleep(0)` in a
+// # loop) cannot starve them; the tasks the previous wait woke (staged_q)
+// # queue up behind those. Pops one at a time so that an exception
+// # leaving the run keeps the rest queued for the shutdown drain.
+// def run_batch(self) -> None:
+//     n = len(self.runnable_q)
+//     i: int32 = 0
+//     while i < n:
+//         slot_id = self.runnable_q.pop(0)
+//         self.poll_slot(slot_id)
+//         i += 1
+//     self._unstage()
+inline void Executor::run_batch() {
+    int32_t n = ::tpy::__len__(this->runnable_q);
+    int32_t i = 0;
+    while ((i < n)) {
+        int32_t slot_id = ::tpy::list_pop_at(this->runnable_q, 0);
+        this->poll_slot(slot_id);
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    this->_unstage();
 }
 
 // @readonly
@@ -931,9 +1085,55 @@ inline bool Executor::has_live_tasks(int32_t skip_id) const {
     return false;
 }
 
+// # The wait between two batches while tasks are still runnable: I/O is
+// # polled without blocking and due timers fire, as CPython's _run_once
+// # selects with timeout 0 when callbacks are ready. The tasks they wake
+// # are staged (see staged_q).
+// def poll_without_waiting(self) -> None:
+//     self.staging = True
+//     try:
+//         reactor = self.reactor
+//         if reactor is not None:
+//             reactor.poll(0)
+//         self._fire_due_timers()
+//     finally:
+//         self.staging = False
+inline void Executor::poll_without_waiting() {
+    this->staging = true;
+    EpollReactor* reactor;
+    {
+        try {
+            reactor = ::tpy::optional_to_ptr(this->reactor);
+            if ((reactor != nullptr)) {
+                reactor->poll(0);
+            }
+            this->_fire_due_timers();
+        } catch (...) {
+            this->staging = false;
+            throw;
+        }
+        this->staging = false;
+    }
+}
+
+// def _fire_due_timers(self) -> None:
+//     now = monotonic()
+//     while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
+//         entry = heapq.heappop(self.timer_heap)
+//         entry.waker.wake()
+inline void Executor::_fire_due_timers() {
+    double now = ::tpy::stdlib::time::monotonic();
+    while (((::tpy::__len__(this->timer_heap) > 0) && (::tpy::__getitem__(this->timer_heap, 0).deadline <= now))) {
+        TimerEntry entry = ::tpystd::heapq::heappop<TimerEntry>(this->timer_heap);
+        entry.waker.wake();
+    }
+}
+
 // # Cancel the root task so its CancelledError unwinds normal cleanup
 // # (finally / __aexit__ / wait_closed), then mark it runnable so the next
-// # drain delivers the cancel at its suspension point.
+// # drain delivers the cancel at its suspension point. Requested during the
+// # root's own poll, the cancel waits in TaskState.must_cancel until that
+// # poll returns.
 // def _cancel_root(self, main_id: int32) -> None:
 //     if main_id >= len(self.slots) or self.slots[main_id].is_done():
 //         return
@@ -952,22 +1152,28 @@ inline void Executor::_cancel_root(int32_t main_id) {
     this->mark_runnable(main_id, ::tpy::__getitem__(this->slots, main_id).generation);
 }
 
-// # The reactor disarms an fd once it fires (one-shot), so re-arm the wake fd
-// # after every wait or a later Ctrl-C would not wake the next one.
-// def _rearm_shutdown_fd(self) -> None:
-//     if not self.shutdown_armed:
+// # asyncio.run's SIGINT handler (CPython's Runner._on_sigint): the first
+// # Ctrl-C cancels the root for graceful shutdown, a later one -- or one
+// # after the root finished -- raises KeyboardInterrupt where it is
+// # delivered. Out of the run, the drain then cancels the root once more,
+// # like CPython's asyncio.run (Runner.close cancels every unfinished
+// # task). Delivered inside a task's poll -- the root's own included -- the
+// # cancel takes effect at the root's next suspension, or cancels the root
+// # if it returns first.
+// def on_sigint(self) -> None:
+//     self.interrupt_count += 1
+//     if (self.interrupt_count == 1 and self.root_id >= 0
+//             and not self.slot_done(self.root_id)):
+//         self._cancel_root(self.root_id)
 //         return
-//     reactor = self.reactor
-//     if reactor is not None and not reactor.has_fd(self.shutdown_fd):
-//         reactor.register_fd(self.shutdown_fd, _EPOLLIN, Waker())
-inline void Executor::_rearm_shutdown_fd() {
-    if ((!(this->shutdown_armed))) {
+//     raise KeyboardInterrupt()
+inline void Executor::on_sigint() {
+    this->interrupt_count = ::tpy::add_check<int32_t>(this->interrupt_count, 1);
+    if ((((this->interrupt_count == 1) && (this->root_id >= 0)) && (!(this->slot_done(this->root_id))))) {
+        this->_cancel_root(this->root_id);
         return;
     }
-    EpollReactor* reactor = ::tpy::optional_to_ptr(this->reactor);
-    if (((reactor != nullptr) && (!(reactor->has_fd(this->shutdown_fd))))) {
-        reactor->register_fd(this->shutdown_fd, _EPOLLIN, ::tpystd::coro::Waker());
-    }
+    throw ::tpy::KeyboardInterrupt{};
 }
 
 // def __init__(self, executor: Executor) -> None:

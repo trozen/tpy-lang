@@ -72,13 +72,251 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
+// async def future_waiter(tag: str, f: Future[int32]) -> None:
+//     try:
+//         v = await f                                           # -> S_RESUME_0
+//         print("cancel:", tag, "got", v)
+//     except asyncio.CancelledError:
+//         print("cancel:", tag, "cancelled")
+//         raise
+::tpystd::tpy::Poll<::std::monostate> __coro_future_waiter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: v = await f
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            v = std::move(__r0).value();
+            __sub_0 = nullptr;
+            std::cout << "cancel:" << " " << tag << " " << "got" << " " << v << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0 = nullptr;
+            std::cout << "cancel:" << " " << tag << " " << "cancelled" << "\n" << ::tpy::check_signals;
+            throw;
+        } catch (...) {
+            __sub_0 = nullptr;
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        __sub_0 = &(f);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def future_waiter(tag: str, f: Future[int32]) -> None:
+__coro_future_waiter future_waiter(std::string_view tag, ::tpystd::asyncio::Future<int32_t>& f) {
+    return __coro_future_waiter(tag, f);
+}
+
+// async def reap(tag: str, t: asyncio.Task[None]) -> None:
+//     try:
+//         await t                                           # -> S_RESUME_0
+//         print(tag, "not cancelled (WRONG)")
+//     except asyncio.CancelledError:
+//         print(tag, "saw the cancel")
+::tpystd::tpy::Poll<::std::monostate> __coro_reap::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await t
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0 = nullptr;
+            std::cout << tag << " " << "not cancelled (WRONG)" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0 = nullptr;
+            std::cout << tag << " " << "saw the cancel" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0 = nullptr;
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        __sub_0 = &(t);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def reap(tag: str, t: asyncio.Task[None]) -> None:
+__coro_reap reap(std::string_view tag, ::tpystd::asyncio::_executor::Task<std::monostate>& t) {
+    return __coro_reap(tag, t);
+}
+
+// async def cancel_wait() -> None:
+//     f: Future[int32] = Future[int32]()
+//     ta = asyncio.create_task(future_waiter("a", f))
+//     await asyncio.sleep(0.01)                                 # -> S_RESUME_0
+//     ta.cancel()  # tpyc: ok -- cancels the Future a waits on
+//     await reap("cancel:", ta)                                 # -> S_RESUME_1
+//     print("cancel: done", f.done())
+//     try:
+//         f.set_result(1)
+//         print("cancel: set_result accepted (WRONG)")
+//     except InvalidStateError:
+//         print("cancel: set_result rejected")
+//     tb = asyncio.create_task(future_waiter("b", f))
+//     await reap("cancel:", tb)                                 # -> S_RESUME_2
+::tpystd::tpy::Poll<::std::monostate> __coro_cancel_wait::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        f.emplace(::tpystd::asyncio::Future<int32_t>());
+        ta.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::future_waiter("a", (*f)))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        (*ta).cancel();
+        __sub_1.emplace("cancel:", (*ta));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await reap("cancel:", ta)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        std::cout << "cancel: done" << " " << ::tpy::print_bool((*f).done()) << "\n" << ::tpy::check_signals;
+        {
+            try {
+                (*f).set_result(1);
+                std::cout << "cancel: set_result accepted (WRONG)" << "\n" << ::tpy::check_signals;
+            } catch (const ::tpystd::asyncio::InvalidStateError&) {
+                std::cout << "cancel: set_result rejected" << "\n" << ::tpy::check_signals;
+            }
+        }
+        tb.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::future_waiter("b", (*f)))));
+        __sub_2.emplace("cancel:", (*tb));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await reap("cancel:", tb)
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2.reset();
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def cancel_wait() -> None:
+__coro_cancel_wait cancel_wait() {
+    return __coro_cancel_wait();
+}
+
+// async def direct_cancel() -> None:
+//     f: Future[int32] = Future[int32]()
+//     t = asyncio.create_task(future_waiter("direct", f))
+//     await asyncio.sleep(0.01)                                                       # -> S_RESUME_0
+//     f.cancel()  # tpyc: ok -- the parked waiter is woken and raises CancelledError
+//     print("direct: done", f.done())
+//     await reap("direct:", t)                                                        # -> S_RESUME_1
+//     try:
+//         f.set_result(1)
+//         print("direct: set_result accepted (WRONG)")
+//     except InvalidStateError as e:
+//         print("direct: set_result rejected:", str(e))
+::tpystd::tpy::Poll<::std::monostate> __coro_direct_cancel::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        f.emplace(::tpystd::asyncio::Future<int32_t>());
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::future_waiter("direct", (*f)))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        (*f).cancel();
+        std::cout << "direct: done" << " " << ::tpy::print_bool((*f).done()) << "\n" << ::tpy::check_signals;
+        __sub_1.emplace("direct:", (*t));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await reap("direct:", t)
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        {
+            try {
+                (*f).set_result(1);
+                std::cout << "direct: set_result accepted (WRONG)" << "\n" << ::tpy::check_signals;
+            } catch (const ::tpystd::asyncio::InvalidStateError& e) {
+                std::cout << "direct: set_result rejected:" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
+            }
+        }
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def direct_cancel() -> None:
+__coro_direct_cancel direct_cancel() {
+    return __coro_direct_cancel();
+}
+
 // def main() -> None:
 //     asyncio.run(main_coro())
+//     asyncio.run(cancel_wait())
+//     asyncio.run(direct_cancel())
 void main() {
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::cancel_wait()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::direct_cancel()));
 }
 
 // # A Future completed by a spawned task should wake the coroutine awaiting it.
+// # Cancelling the awaiting task cancels the Future, as in CPython, and so does
+// # a direct Future.cancel() while a waiter is parked.
 // import asyncio
 //
 // main()

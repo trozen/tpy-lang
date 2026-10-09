@@ -5,6 +5,8 @@
 
 namespace tpyapp::main {
 
+bool ran{};
+bool flag{};
 
 // async def main_coro() -> None:
 //     print("first")
@@ -51,13 +53,579 @@ __coro_main_coro main_coro() {
     return __coro_main_coro();
 }
 
-// def main() -> None:
-//     asyncio.run(main_coro())
-void main() {
-    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
+// async def sets_ran() -> None:
+//     global ran
+//     ran = True
+::tpystd::tpy::Poll<::std::monostate> __coro_sets_ran::__poll__(::tpystd::coro::Waker waker) {
+    (void)waker;
+    switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        ran = true;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
 }
 
+
+// async def sets_ran() -> None:
+__coro_sets_ran sets_ran() {
+    return __coro_sets_ran();
+}
+
+// async def ticks(name: str, n: int) -> None:
+//     for i in range(n):
+//         print("ticks:", name, i)
+//         await asyncio.sleep(0)  # tpyc: ok -- the other ticker runs before this one resumes  # -> S_RESUME_0
+::tpystd::tpy::Poll<::std::monostate> __coro_ticks::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_i_0.emplace(::tpy::BigInt(0));
+        __for_stop_0.emplace(static_cast<::tpy::BigInt>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)  # tpyc: ok -- the other ticker runs before this one resumes
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+        }
+        i = ((*__for_i_0))++;
+        std::cout << "ticks:" << " " << name << " " << i << "\n" << ::tpy::check_signals;
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def ticks(name: str, n: int) -> None:
+__coro_ticks ticks(std::string_view name, ::tpy::BigInt n) {
+    return __coro_ticks(name, n);
+}
+
+// async def yields() -> None:
+//     t = asyncio.create_task(sets_ran())
+//     await asyncio.sleep(0)  # tpyc: ok -- sets_ran runs here  # -> S_RESUME_0
+//     print("yield: spawned task ran", ran)
+//     await t                                                   # -> S_RESUME_1
+//     a = asyncio.create_task(ticks("a", 3))
+//     b = asyncio.create_task(ticks("b", 3))
+//     await a                                                   # -> S_RESUME_2
+//     await b                                                   # -> S_RESUME_3
+::tpystd::tpy::Poll<::std::monostate> __coro_yields::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::sets_ran())));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)  # tpyc: ok -- sets_ran runs here
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "yield: spawned task ran" << " " << ::tpy::print_bool(ran) << "\n" << ::tpy::check_signals;
+        __sub_1 = &((*t));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await t
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1 = nullptr;
+        a.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::ticks("a", ::tpy::BigInt(3)))));
+        b.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::ticks("b", ::tpy::BigInt(3)))));
+        __sub_2 = &((*a));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await a
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        __sub_3 = &((*b));
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await b
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r3).value();
+        __sub_3 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def yields() -> None:
+__coro_yields yields() {
+    return __coro_yields();
+}
+
+// async def sets_flag_later() -> None:
+//     global flag
+//     await asyncio.sleep(0.02)         # -> S_RESUME_0
+//     flag = True
+::tpystd::tpy::Poll<::std::monostate> __coro_sets_flag_later::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.02)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.02)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        flag = true;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def sets_flag_later() -> None:
+__coro_sets_flag_later sets_flag_later() {
+    return __coro_sets_flag_later();
+}
+
+// async def busy_waits() -> None:
+//     t = asyncio.create_task(sets_flag_later())
+//     n = 0
+//     while not flag:
+//         n += 1
+//         await asyncio.sleep(0)  # tpyc: ok -- the timer of sets_flag_later still fires  # -> S_RESUME_0
+//     print("busy-wait: flag seen", n > 0)
+//     await t                                                                             # -> S_RESUME_1
+::tpystd::tpy::Poll<::std::monostate> __coro_busy_waits::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::sets_flag_later())));
+        n = 0;
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)  # tpyc: ok -- the timer of sets_flag_later still fires
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await t
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_0: {
+        if ((!(flag))) {
+            n = ::tpy::add_check<int32_t>(n, 1);
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_0;
+            continue;
+        } else {
+            std::cout << "busy-wait: flag seen" << " " << ::tpy::print_bool((n > 0)) << "\n" << ::tpy::check_signals;
+            __sub_1 = &((*t));
+            __state = S_RESUME_1;
+            continue;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def busy_waits() -> None:
+__coro_busy_waits busy_waits() {
+    return __coro_busy_waits();
+}
+
+// async def hop_sleeper() -> None:
+//     await asyncio.sleep(0.01)         # -> S_RESUME_0
+//     print("timer-hop: sleeper woke")
+::tpystd::tpy::Poll<::std::monostate> __coro_hop_sleeper::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.01)));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.01)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "timer-hop: sleeper woke" << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def hop_sleeper() -> None:
+__coro_hop_sleeper hop_sleeper() {
+    return __coro_hop_sleeper();
+}
+
+// async def hop_spins(n: int32) -> None:
+//     for i in range(n):
+//         print("timer-hop: spin", i)
+//         await asyncio.sleep(0)          # -> S_RESUME_0
+::tpystd::tpy::Poll<::std::monostate> __coro_hop_spins::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(n));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_DONE;
+            return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+        }
+        i = ((*__for_i_0))++;
+        std::cout << "timer-hop: spin" << " " << i << "\n" << ::tpy::check_signals;
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def hop_spins(n: int32) -> None:
+__coro_hop_spins hop_spins(int32_t n) {
+    return __coro_hop_spins(n);
+}
+
+// async def timer_hop() -> None:
+//     a = asyncio.create_task(hop_sleeper())
+//     await asyncio.sleep(0)                                                                       # -> S_RESUME_0
+//     s = asyncio.create_task(hop_spins(4))
+//     time.sleep(0.03)  # blocks past the sleeper's deadline
+//     for i in range(3):
+//         print("timer-hop: main", i)
+//         await asyncio.sleep(0)  # tpyc: ok -- the sleeper wakes one batch after its timer fires  # -> S_RESUME_1
+//     await a                                                                                      # -> S_RESUME_2
+//     await s                                                                                      # -> S_RESUME_3
+::tpystd::tpy::Poll<::std::monostate> __coro_timer_hop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        a.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::hop_sleeper())));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        s.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::hop_spins(4))));
+        ::tpy::time_sleep(0.03);
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(3));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)  # tpyc: ok -- the sleeper wakes one batch after its timer fires
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await a
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2 = nullptr;
+        __sub_3 = &((*s));
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await s
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r3).value();
+        __sub_3 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __sub_2 = &((*a));
+            __state = S_RESUME_2;
+            continue;
+        }
+        i = ((*__for_i_0))++;
+        std::cout << "timer-hop: main" << " " << i << "\n" << ::tpy::check_signals;
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def timer_hop() -> None:
+__coro_timer_hop timer_hop() {
+    return __coro_timer_hop();
+}
+
+// async def staged_sleeper() -> None:
+//     try:
+//         await asyncio.sleep(0.005)                    # -> S_RESUME_0
+//         print("staged-cancel: sleeper woke (wrong)")
+//     except asyncio.CancelledError:
+//         print("staged-cancel: sleeper cancelled")
+::tpystd::tpy::Poll<::std::monostate> __coro_staged_sleeper::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_RESUME_0: {  // after: await asyncio.sleep(0.005)
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            std::cout << "staged-cancel: sleeper woke (wrong)" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            __sub_0.reset();
+            std::cout << "staged-cancel: sleeper cancelled" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            __sub_0.reset();
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_INITIAL:  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        [[fallthrough]];
+    case S_JOIN_1: {
+        try {
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(0.005)));
+            __state = S_RESUME_0;
+            continue;
+        } catch (const ::tpy::CancelledError&) {
+            std::cout << "staged-cancel: sleeper cancelled" << "\n" << ::tpy::check_signals;
+            __state = S_JOIN_0;
+            continue;
+        } catch (...) {
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def staged_sleeper() -> None:
+__coro_staged_sleeper staged_sleeper() {
+    return __coro_staged_sleeper();
+}
+
+// async def staged_waiter(e: asyncio.Event) -> None:
+//     await e.wait()                                  # -> S_RESUME_0
+//     print("staged-cancel: event waiter woke")
+::tpystd::tpy::Poll<::std::monostate> __coro_staged_waiter::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __sub_0.emplace(e);
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await e.wait()
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        std::cout << "staged-cancel: event waiter woke" << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def staged_waiter(e: asyncio.Event) -> None:
+__coro_staged_waiter staged_waiter(::tpystd::asyncio::Event& e) {
+    return __coro_staged_waiter(e);
+}
+
+// async def staged_cancel() -> None:
+//     e = asyncio.Event()
+//     t = asyncio.create_task(staged_sleeper())
+//     w = asyncio.create_task(staged_waiter(e))
+//     await asyncio.sleep(0)                                                            # -> S_RESUME_0
+//     time.sleep(0.02)  # blocks past the sleeper's deadline
+//     await asyncio.sleep(0)  # the sleeper's timer fires: its wake is staged           # -> S_RESUME_1
+//     print("staged-cancel: main cancels, then sets")
+//     t.cancel()  # tpyc: ok -- the cancel wakes the sleeper here, ahead of the waiter
+//     e.set()
+//     await asyncio.sleep(0)                                                            # -> S_RESUME_2
+//     print("staged-cancel: main after")
+//     await t                                                                           # -> S_RESUME_3
+//     await w                                                                           # -> S_RESUME_4
+::tpystd::tpy::Poll<::std::monostate> __coro_staged_cancel::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        e.emplace(::tpystd::asyncio::Event());
+        t.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::staged_sleeper())));
+        w.emplace(::tpystd::asyncio::create_task<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::staged_waiter((*e)))));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        ::tpy::time_sleep(0.02);
+        __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_1;
+        continue;
+    }
+    case S_RESUME_1: {  // after: await asyncio.sleep(0)  # the sleeper's timer fires: its wake is staged
+        auto __r1 = ::tpy::poll_with_cancel(__sub_1, __cancel_pending, waker);
+        if (__r1.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r1).value();
+        __sub_1.reset();
+        std::cout << "staged-cancel: main cancels, then sets" << "\n" << ::tpy::check_signals;
+        (*t).cancel();
+        (*e).set();
+        __sub_2.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_2;
+        continue;
+    }
+    case S_RESUME_2: {  // after: await asyncio.sleep(0)
+        auto __r2 = ::tpy::poll_with_cancel(__sub_2, __cancel_pending, waker);
+        if (__r2.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r2).value();
+        __sub_2.reset();
+        std::cout << "staged-cancel: main after" << "\n" << ::tpy::check_signals;
+        __sub_3 = &((*t));
+        __state = S_RESUME_3;
+        continue;
+    }
+    case S_RESUME_3: {  // after: await t
+        auto __r3 = ::tpy::poll_with_cancel(__sub_3, __cancel_pending, waker);
+        if (__r3.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r3).value();
+        __sub_3 = nullptr;
+        __sub_4 = &((*w));
+        __state = S_RESUME_4;
+        continue;
+    }
+    case S_RESUME_4: {  // after: await w
+        auto __r4 = ::tpy::poll_with_cancel(__sub_4, __cancel_pending, waker);
+        if (__r4.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
+        (void)std::move(__r4).value();
+        __sub_4 = nullptr;
+        __state = S_DONE;
+        return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def staged_cancel() -> None:
+__coro_staged_cancel staged_cancel() {
+    return __coro_staged_cancel();
+}
+
+// def main() -> None:
+//     asyncio.run(main_coro())
+//     asyncio.run(yields())
+//     asyncio.run(busy_waits())
+//     asyncio.run(timer_hop())
+//     asyncio.run(staged_cancel())
+void main() {
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_coro()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::yields()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::busy_waits()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::timer_hop()));
+    ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::staged_cancel()));
+}
+
+// # asyncio.sleep suspends for its delay; sleep(0) suspends once, letting the
+// # other ready tasks run first (CPython's bare-yield sleep(0)), and a task
+// # looping on sleep(0) still lets timers fire between loop iterations. A task
+// # woken by a due timer runs one batch after the timer fires, as in CPython,
+// # unless a task wakes it first (a cancel), which queues it at that point.
 // import asyncio
+// import time
+//
+// ran = False
+// flag = False
 //
 // main()
 void __tpy_init() {
@@ -66,6 +634,8 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
+    ran = false;
+    flag = false;
     ::tpyapp::main::main();
 }
 

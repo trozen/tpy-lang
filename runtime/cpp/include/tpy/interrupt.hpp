@@ -1,15 +1,18 @@
 #pragma once
-// Process-wide Ctrl-C state shared by the SIGINT layer
-// (runtime/cpp/src/stdlib/signal_impl.cpp) and the header-only interrupt
-// check points (core.hpp's check_signals(), time.sleep, input()).
+// Process-wide signal state shared by the signal layer
+// (runtime/cpp/src/stdlib/signal_impl.cpp) and the header-only check points
+// (core.hpp's check_signals(), time.sleep, input()).
 //
-// Model: the SIGINT handler only sets `pending` and writes a wake fd; the
-// KeyboardInterrupt is raised later, on the thread that armed the layer, at the
-// next interruptible operation (every generated print chain ends in the
-// check_signals manipulator). An operation that can block on an fd waits on
-// the wake fd too, so a Ctrl-C wakes it without EINTR (the handler is installed
-// with SA_RESTART, so no other syscall ever sees one). The stdlib's TPy code
-// composes its blocking operations from check_signals() and
+// Model: the layer's C-level handler only marks its signal tripped, sets
+// `pending` and writes a wake fd; what the signal does runs later, on the
+// thread that armed the layer, at the next check point (every generated print
+// chain ends in the check_signals manipulator): a Ctrl-C under
+// default_int_handler raises KeyboardInterrupt, a `signal.signal` handler is
+// called. An operation that can block on an fd waits on the wake fd too, so a
+// signal wakes it without EINTR (the handler is installed with SA_RESTART, so
+// no other syscall ever sees one) and is delivered inside the wait; a handler
+// that returns lets the wait go on to its deadline (PEP 475). The stdlib's
+// TPy code composes its blocking operations from check_signals() and
 // tpy_interrupt_wait() (signal_h.hpp) through lib/tpy/_interrupt.py: whoever
 // owns a blocking fd waits for it there first (socket; subprocess.Popen for
 // its pipes, and for its child's exit as a pidfd where the OS has one). A wait
@@ -18,10 +21,11 @@
 //
 // A body that must not throw (a destructor, a noexcept move, a host's C
 // callback) opens a tpy::DeferSignals scope (below): inside it no check point
-// or wait raises, and the Ctrl-C is raised at the first check point after it.
+// or wait delivers, and pending signals are delivered at the first check point
+// after it.
 //
 // A build that defines TPY_NO_SIGNALS compiles the layer out: check_signals()
-// and DeferSignals are empty, nothing installs a SIGINT handler and no
+// and DeferSignals are empty, nothing installs a signal handler and no
 // KeyboardInterrupt comes from a signal -- for generated code embedded in a
 // host that owns its signals. The define must be set on every TU of the target,
 // the runtime sources included (the link guard at the end of this header
@@ -30,50 +34,63 @@
 // Free of system headers so it can sit under every generated TU.
 
 #include <atomic>
+#include <cstdint>
 #include <string>
 
 namespace tpy::interrupt_detail {
 
-// Result codes of the layer's waits: tpy_interrupt_wait() returns all four,
-// the Ops table's sleep and read_line kInterrupted. lib/tpy/_interrupt.py
-// mirrors the values.
+// Result codes of tpy_interrupt_wait(); lib/tpy/_interrupt.py mirrors the
+// values.
 inline constexpr int kWaitReady = 1;
 inline constexpr int kWaitError = -1;  // errno set
 inline constexpr int kTimedOut = -2;
-inline constexpr int kInterrupted = -3;  // a Ctrl-C was consumed
 
 #ifndef TPY_NO_SIGNALS
 
-// What the SIGINT layer publishes while armed. Header check points reach the
+// What the signal layer publishes while armed. Header check points reach the
 // layer through this table rather than by calling signal_impl.cpp directly, so
 // a build that never arms it and links no runtime impls (the clang-repl JIT)
 // still resolves every symbol the headers reference.
 struct Ops {
-    // 1 when an interrupt was pending for the calling thread and is now
-    // consumed, else 0.
-    int (*take)();
-    // 0 once `seconds` elapsed, kInterrupted when a Ctrl-C cut it short.
-    int (*sleep)(double seconds);
-    // 1 with the next stdin line in `out` (newline stripped), 0 at EOF,
-    // kInterrupted when a Ctrl-C arrived while waiting for input.
+    // Delivers the signals pending for the calling thread, if it is
+    // deliverable: raises KeyboardInterrupt for a Ctrl-C, calls the
+    // `signal.signal` handler of the others. An exception from either
+    // propagates, and the signals after it stay pending.
+    void (*deliver)();
+    // Sleeps `seconds`, delivering the signals that arrive meanwhile; a
+    // handler that returns lets the sleep go on to its deadline.
+    void (*sleep)(double seconds);
+    // 1 with the next stdin line in `out` (newline stripped), 0 at EOF.
+    // Delivers the signals that arrive while it waits; the part of the line
+    // read so far is kept when the handler returns and dropped when it
+    // raises (a Ctrl-C), as CPython's input() does.
     int (*read_line)(std::string& out);
-    // 1 when a Ctrl-C can be delivered to the calling thread right now (the
-    // interrupt target, outside asyncio.run and outside a DeferSignals
-    // scope): the threads on which a wait is worth routing through the wake
+    // 1 when a signal can be delivered to the calling thread right now (the
+    // interrupt target, outside a DeferSignals scope; inside asyncio.run
+    // too): the threads on which a wait is worth routing through the wake
     // fd.
     int (*deliverable)();
 };
 
-// Set by the SIGINT handler (or request_interrupt()) and cleared by whoever
-// consumes it. A lock-free atomic is both signal-safe and visible across
-// threads -- the handler may run on any thread that leaves SIGINT unblocked.
+// Some signal is pending: set by the layer's C-level handler (or
+// request_interrupt()) after it marks its signal tripped, and cleared by the
+// delivery that takes the tripped signals. The one flag the check points
+// load. A lock-free atomic is both signal-safe and visible across threads --
+// the handler may run on any thread that leaves the signal unblocked.
 inline std::atomic<int> pending{0};
 
 // Non-null while the layer is armed.
 inline std::atomic<const Ops*> ops{nullptr};
 
+// signal.py's dispatcher, called for a signal with a `signal.signal`
+// handler; published by tpy_signal_enable_dispatch() (stdlib/signal_h.hpp)
+// the first time signal.signal installs one. A pointer for the same reason as
+// `ops`: the layer never names the symbol, so a binary that does not arm it
+// resolves without it.
+inline std::atomic<void (*)(std::int32_t)> dispatch{nullptr};
+
 // Open DeferSignals scopes on this thread. A plain constant-initialized int so
-// no TLS guard or destructor is involved; the SIGINT handler never reads it
+// no TLS guard or destructor is involved; the C-level handler never reads it
 // (thread-local access is not signal-safe), only the layer's check points and
 // waits do.
 inline constinit thread_local int defer_depth = 0;
@@ -86,13 +103,13 @@ namespace tpy {
 
 #ifndef TPY_NO_SIGNALS
 
-// Defers Ctrl-C delivery on this thread for the scope's lifetime. While one is
-// open the SIGINT layer treats the thread as not deliverable: a check point
-// returns instead of throwing KeyboardInterrupt, a wait (time.sleep, input(),
-// blocking socket I/O, a subprocess wait or pipe) runs to completion without
-// watching the wake fd, and an
-// asyncio.run started inside declines SIGINT handling. The Ctrl-C stays
-// pending and is raised at the first check point after the scope closes.
+// Defers signal delivery on this thread for the scope's lifetime. While one is
+// open the signal layer treats the thread as not deliverable: a check point
+// returns instead of throwing KeyboardInterrupt or running a `signal.signal`
+// handler, a wait (time.sleep, input(), blocking socket I/O, a subprocess
+// wait or pipe) runs to completion without watching the wake fd, and an
+// asyncio.run started inside declines signal handling. The signals stay
+// pending and are delivered at the first check point after the scope closes.
 // Generated code opens one in a body that runs under noexcept or a catch-all
 // (a __del__ destructor, a __move__ constructor, the std::hash wrapper, an
 // abandoned generator frame's cleanup), where a throw would terminate the

@@ -31,10 +31,11 @@ namespace tpy {
 // -- stdin helper --
 
 // Read a line from stdin (newline stripped). Raises EOFError on EOF,
-// like CPython's `input()`. Powers the `input()` builtin. With the SIGINT
-// layer armed the read goes through it, so a Ctrl-C while waiting for input
-// raises KeyboardInterrupt and, as in CPython, discards the part of the line
-// typed before it.
+// like CPython's `input()`. Powers the `input()` builtin. With the signal
+// layer armed the read goes through it, so a signal arriving while it waits
+// is delivered there: a Ctrl-C raises KeyboardInterrupt and, as in CPython,
+// discards the part of the line typed before it; a `signal.signal` handler
+// that returns lets the read go on with that part kept.
 inline std::string input_line() {
     std::string line;
 #ifndef TPY_NO_SIGNALS
@@ -44,11 +45,7 @@ inline std::string input_line() {
         if (std::ostream* tied = std::cin.tie()) {
             tied->flush();
         }
-        int r = ops->read_line(line);
-        if (r == interrupt_detail::kInterrupted) {
-            throw KeyboardInterrupt();
-        }
-        if (r == 0) {
+        if (ops->read_line(line) == 0) {
             raise_eof_error("EOF when reading a line");
         }
         return line;
@@ -62,8 +59,8 @@ inline std::string input_line() {
 
 // input(prompt): CPython writes the prompt to stdout with no trailing
 // newline and flushes it, so the prompt is visible before the read blocks.
-// A Ctrl-C already pending is taken first: CPython raises it before input()
-// runs, so no prompt appears.
+// A signal already pending is delivered first: CPython raises a Ctrl-C before
+// input() runs, so no prompt appears.
 inline std::string input_line(std::string_view prompt) {
     check_signals();
     std::cout << prompt << std::flush;

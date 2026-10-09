@@ -1,0 +1,22 @@
+order: one check point
+  ran SIGHUP
+  ran SIGUSR1
+  ran SIGUSR2
+raising: check point
+  ran SIGHUP
+  ran SIGTERM, raising
+raising: caught Stop
+  ran SIGWINCH
+raising: done
+del: body finished
+del: after the drop
+  ran SIGTERM, raising
+del: caught Stop after the __del__
+no handler: nothing ran
+  ran SIGUSR1
+mixed: after raise_signal
+mixed: root cancelled
+mixed: KeyboardInterrupt out of the run
+restore: SIGINT kind in the run 2
+restore: after a run 1
+restore: after a run that set one 2

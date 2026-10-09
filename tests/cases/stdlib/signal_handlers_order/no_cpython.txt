@@ -1,0 +1,1 @@
+request_signal is a TPy-runtime binding; CPython cannot hold several signals back without pthread_sigmask.

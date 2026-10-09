@@ -3,3 +3,10 @@
 2
 3
 4
+cancel recv: cancelled
+cancel recv: got 7
+cancel send: cancelled
+cancel send: got 1
+cancel send: got 3
+woken recv: cancelled
+woken recv: got 8

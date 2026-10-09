@@ -3,3 +3,12 @@ locked_full: True
 locked_extra: False
 peak: 2
 caught negative
+cancel: a cancelled
+cancel: saw the cancel
+cancel: locked with one waiter left True
+cancel: b acquired
+cancel: locked at the end False
+handoff: a cancelled
+handoff: b acquired
+handoff: saw the cancel
+handoff: locked at the end False

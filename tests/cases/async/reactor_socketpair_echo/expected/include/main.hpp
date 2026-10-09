@@ -20,6 +20,9 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __coro_server;
 struct __coro_client;
 struct __coro_main_coro;
+struct __coro_io_reader;
+struct __coro_io_spins;
+struct __coro_io_hop;
 
 // async def server(sock: socket) -> None:
 __coro_server server(::tpystd::socket::socket& sock);
@@ -27,6 +30,12 @@ __coro_server server(::tpystd::socket::socket& sock);
 __coro_client client(::tpystd::socket::socket& sock);
 // async def main_coro() -> None:
 __coro_main_coro main_coro();
+// async def io_reader(sock: socket) -> None:
+__coro_io_reader io_reader(::tpystd::socket::socket& sock);
+// async def io_spins(n: int32) -> None:
+__coro_io_spins io_spins(int32_t n);
+// async def io_hop() -> None:
+__coro_io_hop io_hop();
 // def main() -> None:
 void main();
 
@@ -118,6 +127,102 @@ struct __coro_main_coro {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_main_coro&) {
         return os << "<coroutine main_coro>";
+    }
+};
+
+// async def io_reader(sock: socket) -> None:
+struct __coro_io_reader {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpystd::socket::socket& sock;
+    ::tpy::frame_slot<::tpystd::asyncio::EventLoop> loop;
+    ::tpy::Bytes data;
+    std::optional<::tpystd::asyncio::_SockRecv> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_io_reader(::tpystd::socket::socket& sock)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          sock(sock) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_io_reader&) {
+        return os << "<coroutine io_reader>";
+    }
+};
+
+// async def io_spins(n: int32) -> None:
+struct __coro_io_spins {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t n;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_io_spins(int32_t n_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_io_spins&) {
+        return os << "<coroutine io_spins>";
+    }
+};
+
+// async def io_hop() -> None:
+struct __coro_io_hop {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::socket::socket> a;
+    ::tpy::frame_slot<::tpystd::socket::socket> b;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> r;
+    ::tpy::frame_slot<::tpystd::asyncio::_executor::Task<std::monostate>> s;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_2 = nullptr;
+    ::tpystd::asyncio::_executor::Task<std::monostate>* __sub_3 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_RESUME_3 = 4,
+        S_JOIN_0 = 5,
+        S_DONE = 6,
+    };
+
+    __coro_io_hop()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_io_hop&) {
+        return os << "<coroutine io_hop>";
     }
 };
 

@@ -739,7 +739,8 @@ status).
 Ctrl-C then does whatever the host's
 disposition says, and `time.sleep` / `input()` / blocking sockets /
 `subprocess` waits and pipes in TPy code are not interruptible. (`asyncio.run` still installs a SIGINT handler for the
-duration of the run and restores the host's afterwards.)
+duration of the run, whatever the host's disposition, and restores the
+host's afterwards; BUGS.md#ext-asyncio-run-ignores-host-sigint-handler.)
 
 A host that wants Ctrl-C delivered into TPy code opts in with one of two calls
 from `<tpy/core.hpp>`:
@@ -763,8 +764,15 @@ one: a `false` call after a `true` one leaves TPy's handler in place.
 The interrupt then surfaces as a `tpy::KeyboardInterrupt` C++ exception (a
 `std::exception`) thrown out of whichever TPy call was running on that thread,
 at its next interruptible operation. Threads spawned through `tpy.thread` block
-SIGINT so the kernel delivers it to the target thread; host-created threads
-should do the same if they may run while TPy code waits.
+the asynchronous signals so the kernel delivers them to the target thread;
+host-created threads should do the same if they may run while TPy code waits.
+
+TPy code's `signal.signal` needs the layer armed this way: without it, and
+under the arming an `asyncio.run` makes for its own duration, it raises
+`ValueError`. Its handlers run on the target thread at the check points, and
+their exceptions come out of the TPy call as C++ exceptions like the
+`KeyboardInterrupt`. A host that keeps its own SIGINT handler keeps it under
+`signal.signal(SIGINT, h)` too; its `tpy::request_interrupt()` then runs `h`.
 
 A host context that must not throw (a C callback, a destructor) can call TPy
 code inside a deferral scope from `<tpy/core.hpp>`:

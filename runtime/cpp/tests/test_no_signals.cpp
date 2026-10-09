@@ -9,7 +9,8 @@
  *     its full time) and raise_signal are the plain operations;
  *   - DeferSignals is an empty scope that still declares cleanly under
  *     -Wall -Wextra -Werror, the flags the harness builds this file with;
- *   - asyncio.run's hooks decline SIGINT handling;
+ *   - asyncio.run's hooks decline SIGINT handling, and signal.signal's
+ *     runtime half raises ValueError;
  *   - the fd wait still reports readiness and timeouts.
  *
  * Exits non-zero on failure; the harness treats output as the assertion.
@@ -79,7 +80,15 @@ int main() {
     }
 
     check(tpy_interrupt_async_begin() == -1, "asyncio.run handles no SIGINT");
-    check(tpy_interrupt_async_consume() == 0, "nothing to consume");
+    tpy_interrupt_async_deliver(1);
+    check(tpy_signal_kind(SIGINT) == kSignalKindNone, "no signal has a kind");
+    bool refused = false;
+    try {
+        tpy_signal_set(SIGTERM, kSignalKindUser);
+    } catch (const tpy::ValueError&) {
+        refused = true;
+    }
+    check(refused, "signal.signal is refused");
     struct sigaction current{};
     ::sigaction(SIGINT, nullptr, &current);
     check(current.sa_handler == host_handler, "the host's handler stays installed");

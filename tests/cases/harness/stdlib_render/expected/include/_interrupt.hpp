@@ -23,8 +23,6 @@ inline constexpr int32_t READY = 1;
 inline constexpr int32_t WAIT_ERROR = -1;
 // TIMED_OUT: Final[int32] = -2
 inline constexpr int32_t TIMED_OUT = -2;
-// _INTERRUPTED: Final[int32] = -3
-inline constexpr int32_t _INTERRUPTED = -3;
 
 // def check() -> None:
 void check();

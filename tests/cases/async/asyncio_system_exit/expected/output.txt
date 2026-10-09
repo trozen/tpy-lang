@@ -5,3 +5,7 @@ spawned task: out of run 5
 gather: out of run 7
 interrupt: out of run x
 drain: out of run 9
+batch-exit: x finally
+batch-exit: y finally
+batch-exit: main's finally ran
+batch-exit: out of run 4

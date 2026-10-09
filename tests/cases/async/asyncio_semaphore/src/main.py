@@ -1,6 +1,8 @@
 # asyncio.Semaphore: caps concurrency (peak=2 for Semaphore(2)); locked()
 # tracks an exhausted counter; release past the initial value grows it
-# (plain Semaphore, not Bounded); negative initial value is rejected.
+# (plain Semaphore, not Bounded); negative initial value is rejected. A
+# cancelled acquirer leaves the waiters and takes no permit; one woken by a
+# release but cancelled before it ran hands the permit to the next waiter.
 import asyncio
 from asyncio import Semaphore
 from tpy import int32
@@ -22,6 +24,38 @@ async def worker(sem: Semaphore, c: Counters) -> None:
             c.peak = c.active
         await asyncio.sleep(0.001)
         c.active -= 1
+
+
+async def sem_acquirer(section: str, tag: str, sem: Semaphore) -> None:
+    try:
+        await sem.acquire()
+        print(section, tag, "acquired")
+        sem.release()
+    except asyncio.CancelledError:
+        print(section, tag, "cancelled")
+        raise
+
+
+async def reap(tag: str, t: asyncio.Task[None]) -> None:
+    try:
+        await t
+        print(tag, "not cancelled (WRONG)")
+    except asyncio.CancelledError:
+        print(tag, "saw the cancel")
+
+
+async def cancel_acquire() -> None:
+    sem = Semaphore(1)
+    await sem.acquire()
+    ta = asyncio.create_task(sem_acquirer("cancel:", "a", sem))
+    tb = asyncio.create_task(sem_acquirer("cancel:", "b", sem))
+    await asyncio.sleep(0.01)
+    ta.cancel()  # tpyc: ok -- a leaves the waiters, so the release below goes to b
+    await reap("cancel:", ta)
+    print("cancel: locked with one waiter left", sem.locked())
+    sem.release()
+    await tb
+    print("cancel: locked at the end", sem.locked())
 
 
 async def main_coro() -> None:
@@ -53,8 +87,22 @@ async def main_coro() -> None:
         print("caught negative")
 
 
+async def handoff() -> None:
+    sem = Semaphore(0)
+    ta = asyncio.create_task(sem_acquirer("handoff:", "a", sem))
+    tb = asyncio.create_task(sem_acquirer("handoff:", "b", sem))
+    await asyncio.sleep(0.01)
+    sem.release()
+    ta.cancel()  # tpyc: ok -- a was woken by the release; the permit goes to b
+    await reap("handoff:", ta)
+    await tb
+    print("handoff: locked at the end", sem.locked())
+
+
 def main() -> None:
     asyncio.run(main_coro())
+    asyncio.run(cancel_acquire())
+    asyncio.run(handoff())
 
 
 main()

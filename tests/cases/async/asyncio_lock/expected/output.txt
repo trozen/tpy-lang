@@ -5,3 +5,10 @@ caught release-unheld
 caught, locked: False
 after raise: False
 count: 5
+cancel: a cancelled, locked True
+cancel: saw the cancel
+cancel: b acquired
+cancel: c cancelled, locked False
+cancel: d acquired
+cancel: saw the cancel
+cancel: locked at the end False

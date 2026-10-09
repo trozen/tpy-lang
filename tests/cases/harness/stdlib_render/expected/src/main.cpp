@@ -128,6 +128,7 @@ int32_t _pin_cycle_copy() {
 // import tpy.unsafe
 // import tpy.version
 // import tty
+// import types
 //
 // import urllib
 // import urllib.parse
@@ -196,6 +197,7 @@ void __tpy_init() {
     ::tpystd::tpy::thread::__tpy_init();
     ::tpystd::tpy::version::__tpy_init();
     ::tpystd::tty::__tpy_init();
+    ::tpystd::types::__tpy_init();
     ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
     ::tpystd::urllib::request::__tpy_init();
