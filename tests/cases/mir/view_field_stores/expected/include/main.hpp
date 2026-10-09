@@ -14,6 +14,11 @@ struct R;
 struct Buf;
 struct Wrap;
 struct Holder;
+struct Base;
+struct Derived;
+struct Fixed;
+struct Kid;
+struct Shell;
 
 extern std::string G;
 inline constexpr std::string_view __name__ = "__main__";
@@ -84,8 +89,12 @@ int32_t private_own_alias(int32_t k);
 void store_replace(Tok& t, std::string_view s, Buf&& b, bool flag);
 // def own_write_transfer(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^unsupported record argument$/)
 void own_write_transfer(int32_t k, bool flag);
-// def wrap_copy(t: Tok) -> int32:  # tpyc: mir(uncovered /^handed-over record holds a borrow$/)
+// def wrap_copy(t: Tok) -> int32:  # tpyc: mir(covered)
 int32_t wrap_copy(const Tok& t);
+// def wrap_copy_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void wrap_copy_replaced(int32_t k, bool flag);
+// def wrap_move(k: int32) -> int32:  # tpyc: mir(uncovered /^move needs fixed movable owned local$/)
+int32_t wrap_move(int32_t k);
 // def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void store_and_replace(Tok& t, std::string_view s, Buf& b, bool flag);
 // def transfer_replace(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
@@ -118,10 +127,44 @@ void call_fill_control(int32_t k);
 void reused_construct(int32_t n);
 // def stamped(s: str) -> int32:  # tpyc: mir(uncovered /^constructor body effects$/)
 int32_t stamped(std::string_view s);
-// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^in-place replacement holds a borrow$/)
+// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void reseat_self(int32_t k, bool flag);
-// def member_self(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^record member replacement holds a borrow$/)
+// def member_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void member_self(int32_t k, bool flag);
+// def member_fresh(k: int32) -> None:  # tpyc: mir(covered)
+void member_fresh(int32_t k);
+// def member_alias(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void member_alias(int32_t k, bool flag);
+// def member_param(o: Holder, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+void member_param(Holder& o, std::string_view s);
+// def fill_inner(o: Holder, s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
+void fill_inner(Holder& o, std::string_view s);
+// def fill_inner_replaced(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void fill_inner_replaced(int32_t k, bool flag);
+// def derived_lent(s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
+int32_t derived_lent(std::string_view s);
+// def derived_temp(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /scope_end/)
+void derived_temp(int32_t k, bool flag);
+// def kid_temp(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /scope_end/)
+void kid_temp(int32_t k, bool flag);
+// def fixed_base() -> int32:  # tpyc: mir(covered) mir_summary(known)
+int32_t fixed_base();
+// def shell_temp(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /scope_end/)
+void shell_temp(int32_t k, bool flag);
+// def nested_read(o: Holder) -> StrView:  # tpyc: mir(covered) mir_summary(known)
+std::string_view nested_read(const Holder& o);
+// def member_param_local(o: Holder, k: int32) -> None:  # tpyc: mir(conflict /store_escape/)
+void member_param_local(Holder& o, int32_t k);
+// def member_own_local(o: Own[Holder], k: int32) -> int32:  # tpyc: mir(conflict /store_escape/) warning(/never consumed/)
+int32_t member_own_local(Holder&& o, int32_t k);
+// def member_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void member_either(int32_t k, bool flag);
+// def make_r(s: str) -> Own[R]:
+R make_r(std::string_view s);
+// def member_from_call(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void member_from_call(int32_t k, bool flag);
+// def copy_either(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+void copy_either(int32_t k, bool flag);
 // def main(flag: bool) -> None:
 void main(bool flag);
 
@@ -246,11 +289,87 @@ struct Holder {
     // def __init__(self, inner: R) -> None:
     Holder() = default;
     explicit Holder(const R& inner);
+
+    // def swap(self, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+    void swap(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// class Base:
+struct Base {
+    // s: StrView
+    std::string_view s;
+
+    // def __init__(self, s: str) -> None:
+    Base() = default;
+    explicit Base(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
+    ::tpy::print_object_default(os, "Base", obj);
+    return os;
+}
+
+// class Shell:
+struct Shell {
+    // inner: Tok
+    Tok inner;
+
+    // def __init__(self, s: str) -> None:  # tpyc: mir(covered)
+    Shell() = default;
+    explicit Shell(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Shell";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Shell& obj) {
+    ::tpy::print_object_default(os, "Shell", obj);
+    return os;
+}
+
+// class Kid(Tok):
+struct Kid : Tok {
+
+    using Tok::Tok;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Kid";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Kid& obj) {
+    ::tpy::print_object_default(os, "Kid", obj);
+    return os;
+}
+
+// class Derived(Base):
+struct Derived : Base {
+    // k: int32
+    int32_t k;
+
+    // def __init__(self, s: str, k: int32) -> None:  # tpyc: mir(covered)
+    Derived() = default;
+    explicit Derived(std::string_view s, int32_t k);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Derived";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Derived& obj) {
+    ::tpy::print_object_default(os, "Derived", obj);
+    return os;
+}
+
+// class Fixed(Base):
+struct Fixed : Base {
+
+    // def __init__(self) -> None:  # tpyc: mir(covered)
+    Fixed();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Fixed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
+    ::tpy::print_object_default(os, "Fixed", obj);
     return os;
 }
 
@@ -327,5 +446,35 @@ inline Wrap::Wrap(Tok&& t) : t(std::move(t)) {}
 // def __init__(self, inner: R) -> None:
 //     self.inner = copy(inner)
 inline Holder::Holder(const R& inner) : inner(inner) {}
+
+// # method: a whole member replaced through self stores s's loan in the caller's object (a transfer);
+// # the conflict over-reports as member_param's does
+// def swap(self, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+//     self.inner = R(s, s)
+inline void Holder::swap(std::string_view s) {
+    this->inner = R(s, s);
+}
+
+// def __init__(self, s: str) -> None:
+//     self.s = s
+inline Base::Base(std::string_view s) : s(s) {}
+
+// # constructor: a member built by its own constructor stores the loan the parameter lends
+// def __init__(self, s: str) -> None:  # tpyc: mir(covered)
+//     self.inner = Tok(s, 1)
+inline Shell::Shell(std::string_view s) : inner(Tok(s, 1)) {}
+
+// # constructor: the base's view member stores the loan the derived constructor's parameter lends
+// def __init__(self, s: str, k: int32) -> None:  # tpyc: mir(covered)
+//     super().__init__(s)
+//     self.k = k
+inline Derived::Derived(std::string_view s, int32_t k)
+    : Base(s),
+      k(k) {}
+
+// # constructor: a literal base argument stores static storage
+// def __init__(self) -> None:  # tpyc: mir(covered)
+//     super().__init__("abc")
+inline Fixed::Fixed() : Base("abc") {}
 void __tpy_init();
 } // namespace tpyapp::main

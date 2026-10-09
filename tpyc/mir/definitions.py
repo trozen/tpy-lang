@@ -77,6 +77,15 @@ def view_parameter(p: th.THIRParam) -> bool:
     return view_leaf(p.type) and p.passing is ParamPassing.VALUE
 
 
+def lends_view(p: th.THIRParam, view: TpyType) -> bool:
+    """Whether a parameter holds a loan a `view` member may store: a view
+    parameter's own, or a borrow of an owned-leaf parameter the caller lends.
+    A parameter the callee owns (by value or `Own[str]`) dies with the call."""
+    return (view_parameter(p) and view_compatible(view, p.type)
+            or owned_parameter(p) and p.passing in BORROWING_PASSINGS
+            and view_compatible(view, owned_value_type(p.type)))
+
+
 def record_parameter(p: th.THIRParam) -> bool:
     """A constructor parameter holding a record: lent readonly at CONST_REF
     (the borrowed-record fact) or handed over at OWN (`Own[R]`). A record
@@ -240,34 +249,42 @@ def _record_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam], f
     raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
 
 
-def _view_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam],
-                      field: MIRField) -> MIRFieldInitializer:
-    """A view member stores a loan: the one a view parameter holds, a
-    borrow of an owned-leaf parameter's lent storage (`coerce(%s -> StrView)`
-    of a `str` view parameter), or a literal's static storage. A parameter
-    the callee owns (by value or `Own[str]`) dies with the call, so it is
-    never lent to the record."""
-    typ = field.type
+def _view_loan_source(expr: th.THIRExpr, params: Mapping[str, th.THIRParam], view: TpyType, *,
+                      conversion: str, lent: str, literal: str) -> str | MIRConstant:
+    """What a constructor's `view` slot (a view member, or a base's view
+    parameter) borrows: the parameter whose loan it takes -- a view
+    parameter, or a borrow of an owned-leaf parameter's lent storage
+    (`coerce(%s -> StrView)` of a `str` view parameter) -- or a literal's
+    static storage. A parameter the callee owns (by value or `Own[str]`)
+    dies with the call, so it is never lent. Each refusal names its reason."""
     source = expr
     if isinstance(expr, th.THIRCoerce):
         plain(expr, {"expr", "coercion_name"})
-        require(expr, expr.form is th.Form.BORROW and expr.result_type == typ, "constructor view conversion")
+        require(expr, expr.form is th.Form.BORROW and expr.result_type == view, conversion)
         source = expr.expr
     match source:
         case th.THIRName():
             plain(source, {"name", "is_last_use", "is_movable"})
             param = params.get(source.name)
-            require(source, param is not None and (
-                view_parameter(param) and view_compatible(typ, param.type)
-                or owned_parameter(param) and param.passing in BORROWING_PASSINGS
-                and view_compatible(typ, owned_value_type(param.type))), "constructor view needs a lent parameter")
-            return MIRFieldInitializer(field, param.name, MIRMemberInitMode.BORROW, False, expr.loc)
-        case th.THIRStrLiteral() | th.THIRBytesLiteral():
+            require(source, param is not None and lends_view(param, view), lent)
+            return param.name
+        case th.THIRStrLiteral():
+            # A str literal is a `const char[N]` of static storage wherever a
+            # view takes it; a bytes literal's default form builds an owned
+            # temporary (`bytes_literal_owned`), so it stays refused.
             plain(source, {"value"})
-            require(source, view_compatible(typ, source.result_type)
-                    and owned_constant(source.result_type, source.value), "constructor literal value")
-            return MIRFieldInitializer(field, MIRConstant(source.value), MIRMemberInitMode.BORROW, False, expr.loc)
-    raise MIRUnsupported(expr, "constructor view needs a lent parameter")
+            require(source, view_compatible(view, source.result_type)
+                    and owned_constant(source.result_type, source.value), literal)
+            return MIRConstant(source.value)
+    raise MIRUnsupported(expr, lent)
+
+
+def _view_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam],
+                      field: MIRField) -> MIRFieldInitializer:
+    """A view member stores the loan its source lends (`_view_loan_source`)."""
+    source = _view_loan_source(expr, params, field.type, conversion="constructor view conversion",
+                               lent="constructor view needs a lent parameter", literal="constructor literal value")
+    return MIRFieldInitializer(field, source, MIRMemberInitMode.BORROW, False, expr.loc)
 
 
 def _initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam],
@@ -349,6 +366,10 @@ class _BaseLeg:
     # moved for the call), so an argument nothing consumes is an effect.
     owning: bool
     loc: SourceLocation | None
+    # A literal the base parameter views in place (a view parameter, or one
+    # passed as a view), so a member borrowing it stores static storage; a
+    # literal bound to a reference parameter is a temporary of the call.
+    static: bool = False
 
 
 def _base_leg(arg: th.THIRExpr, target: th.THIRParam, params: Mapping[str, th.THIRParam],
@@ -362,6 +383,11 @@ def _base_leg(arg: th.THIRExpr, target: th.THIRParam, params: Mapping[str, th.TH
     the leg does not model, and a record argument a lend or move it does not
     model; either refuses with `mismatch`."""
     owning = target.passing in OWNING_PASSINGS
+    if view_parameter(target):
+        # A view parameter takes a loan: one the child's lent parameter
+        # holds, or a literal's static storage.
+        source = _view_loan_source(arg, params, target.type, conversion=mismatch, lent=mismatch, literal=mismatch)
+        return _BaseLeg(source, False, False, arg.loc, static=isinstance(source, MIRConstant))
     if scalar_param(target):
         match arg:
             case th.THIRName():
@@ -396,7 +422,8 @@ def _base_leg(arg: th.THIRExpr, target: th.THIRParam, params: Mapping[str, th.TH
         case th.THIRStrLiteral() | th.THIRBytesLiteral() | th.THIRLiteral():
             plain(arg, {"value", "int_cpp"} if isinstance(arg, th.THIRLiteral) else {"value"})
             require(arg, arg.result_type == owned and owned_constant(owned, arg.value), mismatch)
-            return _BaseLeg(MIRConstant(arg.value), False, owning, arg.loc)
+            return _BaseLeg(MIRConstant(arg.value), False, owning, arg.loc,
+                            static=target.passing is ParamPassing.VIEW and isinstance(arg, th.THIRStrLiteral))
     raise MIRUnsupported(arg, mismatch)
 
 
@@ -408,8 +435,16 @@ def _compose(init: MIRFieldInitializer, legs: Mapping[str, _BaseLeg], role: str 
     may raise); a constant is materialized (an owned leaf's by a copy, which
     may raise); a composed member composes each of its initializers."""
     effect = f"{role} argument effect not modeled"
-    # A stored loan's lifetime would be the leg's, which `_base_leg` does not model.
-    require(init.field, init.mode is not MIRMemberInitMode.BORROW, f"{role} argument borrow not modeled")
+    if init.mode is MIRMemberInitMode.BORROW:
+        # The member stores the loan the leg lends: the child's lent
+        # parameter, the initializer a direct member init of it would be, or
+        # a literal's static storage. A moved or owning leg dies with the call.
+        if isinstance(init.source, MIRConstant):
+            return replace(init, loc=None)
+        leg = legs[init.source]
+        require(init.field, not leg.move and not leg.owning
+                and (isinstance(leg.source, str) or leg.static), f"{role} argument borrow not modeled")
+        return replace(init, source=leg.source, loc=leg.loc)
     # A member the callee builds on its own has no line in the caller's body.
     match init.source:
         case MIRConstant():
@@ -652,9 +687,8 @@ def _inherited(inherited: th.THIRInheritedConstructor, base: MIRConstructorDefin
             and not (layout.custom_copy or layout.custom_move or layout.custom_destructor)
             and layout.copyable is base.layout.copyable and layout.movable is base.layout.movable,
             "inherited constructor shape")
-    # The base's initializers are reused whole, past `_compose`'s refusal.
-    require(inherited, all(init.mode is not MIRMemberInitMode.BORROW for init in base.initializers),
-            "inherited constructor borrow")
+    # The base's initializers are reused whole: the record's parameters are
+    # the base's, so a stored loan is the one the base's parameter lends.
     return MIRConstructorDefinition(base.constructor, MIRRecordLayout(
         layout.type, fields, layout.copyable, layout.movable, ancestors=layout.ancestors), base.initializers)
 

@@ -545,7 +545,6 @@ class _Coverage:
         definition = self.records[reference.type]
         _require(arg, not placement.optional or definition.layout.movable and arg.would_bank(),
                  "deferred argument needs movable backing")
-        _require(arg, not placement.optional or not holds_loan(reference.type), "deferred argument holds a borrow")
         self.argument_temporaries[arg] = reference
 
     def select_temporary(self, expr: th.THIRSlotEmplace, reference: th.THIRBorrowedRecord) -> None:
@@ -555,7 +554,6 @@ class _Coverage:
         _require(expr, placement.optional and placement.initialization is expr,
                  "select storage needs conditional emplacement")
         _require(expr, isinstance(expr.value, th.THIRCtorCall), "select storage needs record constructor")
-        _require(expr, not holds_loan(reference.type), "select storage holds a borrow")
         self.record_value(expr.value, reference.type)
         self.stable_constructor_operands(expr.value)
         _require(expr, self.records[reference.type].layout.movable, "select storage needs movable backing")
@@ -1435,11 +1433,8 @@ class _Coverage:
         owned local moved out."""
         _require(arg, isinstance(arg, (th.THIRCtorCall, th.THIRCopy, th.THIRMove)) or _user_call(arg),
                  "constructor argument type")
-        # A temporary built or returned for the call stores loans its
-        # construct or the callee's transfers name; a named record's
-        # storage handed over is not modeled where it holds one.
-        _require(arg, not isinstance(arg, (th.THIRCopy, th.THIRMove)) or not holds_loan(typ),
-                 "handed-over record holds a borrow")
+        # The temporary stores the loans its construct, the callee's
+        # transfers or the copied or moved object name.
         _require(arg, self.active_temporaries is not None, "temporary needs full-expression boundary")
         self.record_value(arg, typ, call=True)
         self.active_temporaries.append(arg)
@@ -1498,10 +1493,6 @@ class _Coverage:
         _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE
                  or not self.references[name].readonly, "readonly in-place replacement")
         typ = self.references[name].type
-        # The holder may reach several objects, so no write through it
-        # replaces exactly one object's stored borrows.
-        _require(stmt, stmt.rebind_storage is not RebindStorage.IN_PLACE or not holds_loan(typ),
-                 "in-place replacement holds a borrow")
 
         def value() -> TpyType:
             self.record_value(stmt.value, typ, call=True)
@@ -1524,8 +1515,9 @@ class _Coverage:
         member = self.field(stmt.target, write=True)
         _require(stmt, isinstance(member, th.THIRBorrowedRecord) and stmt.target.form is th.Form.STORAGE,
                  "record member write needs member storage")
-        # The replacing record's loans may view the member it replaces.
-        _require(stmt, not holds_loan(member.type), "record member replacement holds a borrow")
+        if holds_loan(member.type):
+            # The write fills the member's entries under the object around it.
+            self.held_root(stmt.target)
 
         def value() -> TpyType:
             self.record_value(stmt.value, member.type, call=True)
@@ -1561,12 +1553,19 @@ class _Coverage:
         if not (holds_loan(slot) or holds_loan(storage)):
             return
         self.held_layout(arg, storage)
-        root = arg
+        self.held_root(arg)
+
+    def held_root(self, place: th.THIRExpr) -> None:
+        """The layout of the record a place's root name holds: a view member
+        under it, through inline members, is keyed under that object, so
+        the entry exists only with the root's layout (a borrowed
+        parameter's included, which nothing else registers)."""
+        root = place
         while isinstance(root, th.THIRFieldAccess):
             root = root.receiver
         name = root.name if isinstance(root, th.THIRName) else "self" if isinstance(root, th.THIRSelf) else None
         if name is not None and (reference := self.references.get(name)) is not None:
-            self.held_layout(arg, reference.type)
+            self.held_layout(place, reference.type)
 
     def held_layout(self, node: object, typ: NominalType) -> MIRRecordLayout:
         """The layout of a record the body reaches through a holder, which a
@@ -2224,6 +2223,7 @@ class _Coverage:
             _require(expr, expr.result_type == fact.type and expr.form is th.Form.BORROW,
                      "unsupported field type or form")
             self.held_layout(expr, reference.type)
+            self.held_root(expr)
             return fact.type
         if owned_leaf(fact.type):
             # The field is a place of the record's storage: its buffer is

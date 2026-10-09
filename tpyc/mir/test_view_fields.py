@@ -16,7 +16,7 @@ from ..typesys import Loan, NominalType, OptionalType, OwnType, TupleType, Union
 from .call_contract import MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, summary_problem
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .coverage import MIRUnsupported
-from .definitions import MIRDefinitions, MIRHeldLayout, constructor_initialization
+from .definitions import MIRDefinitions, MIRHeldLayout, _BaseLeg, _compose, constructor_initialization
 from .dependencies import (
     MIRReferent, MIRUnseededLoan, analyze_dependencies, dump_dependencies, live_holders, object_keys,
     resolve_referents, stored_on_fill,
@@ -24,7 +24,7 @@ from .dependencies import (
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction,
-    MIRMemberInitMode, MIRMove, MIRNotCovered, MIROptionalLayout, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
+    MIRMemberInitMode, MIRMove, MIRNotCovered, MIROptionalLayout, MIRPlace,
     MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRTupleLayout,
     MIRUnionLayout, MIRValueKind,
 )
@@ -86,6 +86,15 @@ class Derived(Base):
 class Child(Tok):
     pass
 
+
+class ViewLent(Viewed):
+    def __init__(self, s: str) -> None:
+        super().__init__(s)
+
+
+class ViewLit(Viewed):
+    def __init__(self) -> None:
+        super().__init__("abc")
 
 class Holder:
     tok: Tok
@@ -257,12 +266,34 @@ def test_a_view_member_stores_a_lent_loan(program: _Program) -> None:
 @pytest.mark.parametrize("name,reason", [
     # The constructor's own copy dies at return: no record may keep its loan.
     ("Owning", "constructor view needs a lent parameter"),
-    # A base or inherited constructor's stored loan would be the leg's, unmodeled.
-    ("Derived", "base argument borrow not modeled"),
-    ("Child", "inherited constructor borrow"),
 ])
 def test_unmodeled_stored_loans_refuse(program: _Program, name: str, reason: str) -> None:
     assert _definition(program, name) == reason
+
+
+def test_a_base_leg_lends_the_derived_parameter_s_loan(program: _Program) -> None:
+    # The base's BORROW initializer becomes the one a direct `self.s = s`
+    # in the derived constructor would be; a literal leg stores static storage.
+    def borrows(name: str) -> list:
+        return [(i.field.id.name, i.source) for i in _definition(program, name).initializers
+                if i.mode is MIRMemberInitMode.BORROW]
+    assert borrows("Derived") == [("s", "s")]
+    assert borrows("ViewLent") == [("v", "s")]
+    assert borrows("ViewLit") == [("v", MIRConstant("abc"))]
+    # An inherited constructor reuses the base's initializers: its parameters are the base's.
+    assert _definition(program, "Child").initializers == _definition(program, "Tok").initializers
+
+
+def test_a_borrow_leg_lends_storage_that_outlives_the_call(program: _Program) -> None:
+    init = _definition(program, "Tok").initializers[0]
+    # A literal a reference parameter binds is a temporary of the call, not
+    # static storage; a moved or owning leg is the base's own copy, which
+    # dies with the call. (THIR builds neither shape into a base today.)
+    literal = _BaseLeg(MIRConstant("abc"), False, False, None)
+    for leg in (literal, _BaseLeg("s", True, True, None), _BaseLeg("s", False, True, None)):
+        with pytest.raises(MIRUnsupported, match="base argument borrow not modeled"):
+            _compose(init, {"s": leg})
+    assert _compose(init, {"s": replace(literal, static=True)}).source == MIRConstant("abc")
 
 
 def test_a_recursive_record_holding_a_view_holds_a_borrow(program: _Program) -> None:
@@ -520,15 +551,10 @@ def test_storage_that_would_move_a_stored_loan_refuses(program: _Program) -> Non
         validate_function(replace(fn, records=(outer,)))
 
 
-def test_whole_writes_that_would_move_a_stored_loan_refuse(program: _Program) -> None:
+def test_whole_writes_of_a_record_holding_a_loan_validate(program: _Program) -> None:
     fn = _lowered(program, "built")
     tok = _record(program, "Tok")
     construct = next(s for s in _assigns(fn) if isinstance(s.value, MIRConstruct))
-    holder = next(s.id for s in fn.slots if s.name == "t")
-    # An in-place reseat through a holder that may reach several objects.
-    with pytest.raises(MIRValidationError, match="in-place replacement holds a borrow"):
-        validate_function(_with_statement(fn, construct, target=MIRPlace(holder, (MIRDeref(),)),
-                                          storage_write=MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, holder)))
     # A result by value hands its stored loans to the caller as transfers.
     storage = construct.target.root
     block = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))

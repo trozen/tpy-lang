@@ -1949,10 +1949,11 @@ form facts, never on lists of accepted kinds.
   keyed through inline member records, handed out by an owned result and
   in by an `Own[R]` parameter, and read whole; a loan of the body's
   storage stored where the caller reaches is a `store_escape` conflict
-  ([view fields](#view-fields)); every other way such a record moves or
-  is written refuses. Remaining, in this order: view fields slice 3
-  (in-place reseats and whole-member replacement of view-holding
-  records, wrapper and container members; TODO.md lists the items);
+  ([view fields](#view-fields)); a record written through a place (an
+  in-place reseat, a member replaced whole) fills the entries of every
+  object the place reaches; every other way such a record moves or
+  is written refuses. Remaining, in this order: view fields slice 4
+  (wrapper and container members; TODO.md lists the items);
   nested container elements; record elements whose record has record
   fields (`list[Line]`); record-element literal member-init. From here
   on each step builds the call-effect contracts it needs -- invalidation,
@@ -2251,9 +2252,9 @@ as the corpus grows).
   live. `temporary_borrow` is `scope_end` whose ended storage is a
   TEMPORARY. Last-use precision follows from liveness: a view dead at the
   write is no conflict even where sema warns.
-- **Deferred (not covered), B3 or later.** In-place reseats, whole-member
-  replacement and wrapper or container storage of a view-holding record
-  (view fields slice 3, [view fields](#view-fields)); method calls on owned leaves and views
+- **Deferred (not covered), B3 or later.** Wrapper or container storage
+  of a view-holding record (view fields slice 4,
+  [view fields](#view-fields)); method calls on owned leaves and views
   (`s.strip()`, `String` in-place methods beyond `+=`, `THIRMethodCall`
   stub contracts; a user method call such as `r.rename(s)` publishes its
   write through the method's summary, B3 second half); views and owned
@@ -3659,7 +3660,8 @@ and setter and `getter_through_field`; `mir/method_calls`
 
 A record member of a view type (`StrView`, `BytesView`;
 `scalar_leaves.view_leaf`) stores a loan in the record object: its
-constructor sets it, a view member write (`t.s = v`) or a callee's
+constructor sets it (a base's or member's constructor included), a view
+member write (`t.s = v`), a record written through a place or a callee's
 published loan transfer rebinds it, a copy or move carries it, an inline
 member record keys it under the member, an owned record result hands it
 to the caller and an `Own[R]` parameter brings it in; every read of it
@@ -3733,6 +3735,40 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   no origin or into an object with no entry refuses ("view member write
   with no origin", "view member write of an object with no stored
   loan").
+- **Record writes through a place.** A record written whole through a
+  place -- an IN_PLACE reseat through its rebind-slot holder (`(*r) =
+  R(...)`: `reseat_self`, `branch`) or an inline member replaced in place
+  (`o.inner = R(...)`: `member_self`) -- fills every entry under each
+  object the place may reach from the loans the written record stores
+  (`dependencies.fill_through` over `record_fill`, the fill a slot's own
+  whole write takes: a construct's operands, a copy's or move's source
+  object, a call's RESULT transfers), read off the state before the
+  write. STRONG when the place reaches exactly one object the body owns
+  (a local's storage, an `Own[R]` parameter's object), a weak union
+  otherwise (several objects, or a borrowed parameter's, which may alias
+  another): `store_loan`'s rule, member by member. An entry the object
+  lacks refuses ("record write into an object with no stored loan",
+  "record write into no object"). The write stays a replacement event
+  of the place, checked over the state it leaves, so a new record
+  viewing the storage the same write replaces (`r = R(mk(k + 1), r.buf)`)
+  is a `replacement` conflict; `member_fresh` (the new member views
+  static storage) is covered, and so is `branch` (the old object's loan
+  was static). A holder of the member sees the new record: in
+  `member_alias`, `a = o.inner` is `R& a`, and `a.s` reads the replacing
+  record's view of the buffer it replaced. A view member write or a
+  member record write through a borrowed parameter's member registers
+  the parameter's layout (`lower.held_root`, as a nested view read does),
+  so its nested entries exist: `fill_inner` (`o.inner.s = s`) publishes
+  `param0.inner.s <- param1` and its caller `fill_inner_replaced`
+  conflicts. A named record copied into a constructor operand
+  (`Wrap(copy(t))`) fills the fresh temporary from the union of the
+  entries of every object the source place reaches (`wrap_copy`
+  covered, `wrap_copy_replaced` a conflict); a move still needs a fixed
+  owned local of the move's own form (`wrap_move` refuses as for any
+  record). An optional backing (a deferred argument, a select's storage)
+  is filled by the write that engages it; on a path that leaves it empty
+  it has no entries and the join keeps the engaged path's (`deferred`,
+  `selected` certified).
 - **Liveness.** A stored loan is live while a live holder reaches its
   object: `dependencies.live_holders` is the one closure (a state entry
   whose slot is live, plus each stored-loan entry, one of
@@ -3799,9 +3835,11 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   a record argument lent to a callee whose parameter type, or the
   argument's own type, holds a loan (`lower.lent_loans`); registering
   every borrowed record parameter's layout up front refuses covered
-  stdlib bodies (25 on the census). A member place lent there (`o.inner`)
-  registers the root object's layout too: its loans are keyed on the full
-  member path under that object.
+  stdlib bodies (25 on the census). A member place lent there (`o.inner`),
+  read (`o.inner.s`) or written (`o.inner.s = v`, `o.inner = R(...)` of a
+  record holding a loan) registers the root object's layout too
+  (`lower.held_root`): its loans are keyed on the full member path under
+  that object.
 - **BORROW member initializer** (`MIRMemberInitMode.BORROW`,
   `definitions._view_initializer`). A view member stores the loan of a
   `str` / `bytes` parameter the caller lends (CONST_REF or VIEW, read
@@ -3815,7 +3853,22 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   static storage the construct builds. The validator checks the receiver
   side ("invalid receiver initializer mode / parameter / constant") and
   the caller side (`construct_members_ok`: a holder lending an owned leaf
-  of the member's family, `coverage.leaf_borrow`).
+  of the member's family, `coverage.leaf_borrow`). A base's or member
+  constructor's BORROW initializer composes with the leg that feeds it
+  (`definitions._compose`): a name of the derived constructor's lent
+  parameter (`definitions.lends_view`: a view parameter of the member's
+  family or an owned-leaf one lent) becomes the initializer a direct
+  `self.s = s` would be (`Derived`, `Shell` building `Tok(s, 1)` as a
+  member); a str / bytes literal the base parameter views in place (a
+  view parameter, or one passed as a view: `_BaseLeg.static`) becomes the
+  static loan (`Fixed`); a moved or owning leg (the callee's own copy)
+  and a literal a reference parameter binds (a temporary of the call)
+  refuse ("base argument borrow not modeled", "member argument borrow
+  not modeled"). An inherited constructor (`using Base::Base`) reuses the
+  base's initializers, BORROW included: its parameters are the base's
+  (`Kid`, `child`). A temporary argument is a `scope_end` conflict where
+  the member is read after the declaration (`derived_temp`, `kid_temp`,
+  `shell_temp`); `derived_lent` and `fixed_base` are covered.
 - **Summary endpoint.** A view member of a view result's family is a
   return endpoint (`call_contract.endpoint_admitted`,
   `dependencies.call_return_problem`): `first(t: Tok) -> StrView: return
@@ -3926,12 +3979,23 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   (`reused_construct`), the caller of a storing and replacing callee
   (`transfer_replace`, `call_fill_other`, `made_replace` and its callee
   `make_replace`), an owned result keeping its `Own[R]` argument's loan
-  (`own_result_seed`, `own_member_seed`, `ident_kept`), and a lent
+  (`own_result_seed`, `own_member_seed`, `ident_kept`), a lent
   parameter's replacement reaching what an `Own[R]` parameter's object
-  views (`change`); `store_escape` for `fill`, `make_local`,
-  `own_store_local` and `loop_store` (also `scope_end`).
-  Sema is silent on the replacements and escapes: `temporary_source`,
-  `fill`, `make_local`, `own_store_local` and `loop_store` are faces of
+  views (`change`), a record written through a place whose new record
+  views the storage it replaces (`reseat_self`, `member_self`,
+  `member_alias`), a copy handed to a constructor (`wrap_copy_replaced`)
+  a callee's store under a member record (`fill_inner_replaced`), a
+  write through a name reaching either of two objects (`member_either`,
+  `copy_either`: each keeps what it stored) and a member filled from a
+  call's owned result (`member_from_call`); `store_escape` for `fill`,
+  `make_local`, `own_store_local`, `loop_store` (also `scope_end`)
+  and a body-local buffer stored by a member replacement into the caller's
+  or an `Own` parameter's object (`member_param_local`,
+  `member_own_local`); `scope_end` for a temporary argument a base,
+  inherited or member constructor stores (`derived_temp`, `kid_temp`,
+  `shell_temp`). Sema is silent on all of them but `member_alias`, which
+  it warns as a mutation while borrowed: `temporary_source`, the escapes
+  and the constructor-leg temporaries are faces of
   `BUGS.md#record-view-field-escapes-local-buffer`, every `replacement`
   face one of `BUGS.md#record-view-member-source-replaced`. Covered with
   no conflict: `static_source`, `callee_reads` (the reads end before the
@@ -3945,10 +4009,9 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   a view: the caller's own stored loan is not pinned in the callee).
 - **Refusals**, by reason. In the definition: an `Own[str]` or by-value
   owned parameter ("constructor view needs a lent parameter": it dies
-  with the call); a base or member construct passing a view ("base
-  argument borrow not modeled", "member argument borrow not modeled":
-  the leg's lifetime is unmodeled); an inherited constructor whose base
-  stores one ("inherited constructor borrow"); a container field holding
+  with the call); a base or member leg that moves or owns what it passes,
+  or a literal a reference parameter binds ("base argument borrow not
+  modeled", "member argument borrow not modeled"); a container field holding
   a view, an Optional, union or tuple member with a view inside
   (`StrView | None`), or a Span member ("record member holds a borrow":
   its loans would be keyed under an element or a payload); a member
@@ -3961,21 +4024,17 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   refuses as "record member holds a borrow". In the dependency pass: a
   whole write of view-holding record storage that names no stored loan
   ("record move of an object with no stored loan", "record storage filled
-  with no stored loan"). At a caller: constructing through a constructor
+  with no stored loan"), and a write of a loan-holding value under a
+  place no entry keys -- an element, a tuple member, a union payload, a
+  wrapper member ("loan-holding write under an unmodeled place"; a
+  container's elements are judged by its element types, since a Span holds
+  a loan its elements need not). At a caller: constructing through a constructor
   whose body has effects, a view member write included ("constructor
-  body effects", `stamped`). In the body: a NAMED record holding a view
-  handed to a record parameter by copy or move ("handed-over record
-  holds a borrow", `wrap_copy`), a named record at an `Own[R]` parameter
-  ("unsupported record argument", `consume_named`); a record holding a
-  view held by an Optional, union or tuple, or an optional backing
-  ("wrapper holds a borrow"), a container element ("container holds a
-  borrow"), a deferred argument or a select's storage ("deferred
-  argument holds a borrow", "select storage holds a borrow"), reseated
-  IN_PLACE (`t = Tok(a, 2)` in a branch over an earlier `t`, "in-place
-  replacement holds a borrow", `reseat_self`), or replaced as a whole
-  member ("record member replacement holds a borrow", `member_self`):
-  in both the new record's loans may view the storage the same write
-  replaces (`r = R(mk(k), r.buf)`). One predicate,
+  body effects", `stamped`). In the body: a named record at an `Own[R]`
+  FUNCTION parameter ("unsupported record argument", `consume_named`); a
+  record holding a view held by an Optional, union or tuple, or a hoisted
+  optional backing ("wrapper holds a borrow"), or a container element
+  ("container holds a borrow"). One predicate,
   `scalar_leaves.holds_loan`, decides "holds a borrow" for the
   definitions, the stub contract, the lowering and the validator.
 - **Precision.** A parameter's held loan conflicts in the callee only
@@ -3990,8 +4049,19 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   does a view member stored straight from another record's (`a.s = b.s`
   rejects at `field.result_type`,
   `BUGS.md#view-member-from-view-member-rejects`; `v: StrView = b.s; a.s =
-  v` lowers). Slice 3 is in TODO.md (MIR entry,
-  "View fields slice 3").
+  v` lowers). A whole member replaced through a BORROWED parameter
+  (`member_param`: `o.inner = R(s, s)`; through `self` in a method,
+  `Holder.swap`) reports a `replacement` C++ does
+  not have: the weak update keeps the caller's seeded loan at
+  `o.inner.s`, and that loan (any storage outside the body) may lie
+  under the member the write replaces; a strong update of one external
+  object would change the store rule above. A record written through a
+  place is checked against the state it enters as well as the one it
+  leaves, so reseating a record whose member viewed its own buffer
+  (`r.s = r.buf`, then `r = R(mk(k), "lit")`) reports a replacement
+  although the write overwrites that member too. What is left is in
+  TODO.md (MIR entry, "View fields, left after slices 1-3", "View fields
+  slice 4" and the units split out above them).
 - **Measured** (`scripts/mir_coverage`, corpus sample, against the
   nested-records base): 13 bodies gained, none lost, no verdict changed on
   a body both runs hold. Over every case and the stdlib, the bodies
@@ -4019,7 +4089,15 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   `records/field_admission` `ViewSlots.set` ("missing field identity"),
   and, outside views, `sec_setitem` ("element write needs a stub
   contract") and `optional/view_at_owned_opt_decl` `Holder.__init__`
-  ("member definition: constructor owned-leaf constant").
+  ("member definition: constructor owned-leaf constant"). Records written
+  through a place, copied operands, optional backings and constructor legs,
+  against the slice-2 base over every case and the stdlib (29528 common
+  bodies): 4 bodies changed their first blocker, all from a lifted refusal
+  to covered or certified (certified 169 -> 171), none the other way; all
+  four are the slice's own witnesses in `tests/cases/mir`. The census
+  before the slice found the view items block about 10 corpus bodies; the
+  units split out of the list (TODO.md) and `Box`/`Rc` and `Ptr` members
+  are where the corpus is.
 
 ## Scope matrix and remaining increments
 

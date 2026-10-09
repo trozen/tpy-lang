@@ -67,13 +67,13 @@ int32_t in_list(std::string_view name);
 int32_t maybe(const Tok* t);
 // def paired(t: Tok) -> int32:  # tpyc: mir(uncovered /^wrapper holds a borrow$/)
 int32_t paired(Tok& t);
-// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(uncovered /^deferred argument holds a borrow$/)
+// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(certified)
 int32_t deferred(std::string_view name, bool flag);
-// def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(uncovered /^select storage holds a borrow$/)
+// def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(certified)
 int32_t selected(Tok& owner, std::string_view a, bool flag);
-// def branch(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^in-place replacement holds a borrow$/)
+// def branch(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 void branch(int32_t k, bool flag);
-// def child(s: str) -> int32:  # tpyc: mir(uncovered /^inherited constructor borrow$/)
+// def child(s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t child(std::string_view s);
 // def main() -> None:
 void main();

@@ -37,3 +37,21 @@ reused_construct 52
 stamped 1
 reseat_self static
 member_self static
+wrap_copy_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx 1
+wrap_move 1
+member_fresh lit
+member_alias static
+member_param p
+fill_inner q
+nested_read q
+member_own_local 41
+member_either xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx lit
+member_from_call xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+copy_either static
+swap z
+fill_inner_replaced xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+derived_lent 3
+derived_temp 1
+kid_temp 1
+fixed_base 3
+shell_temp 1
