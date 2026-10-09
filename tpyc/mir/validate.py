@@ -432,7 +432,6 @@ def _validate_structure(fn: MIRFunction) -> None:
                      and slot.kind is MIRSlotKind.LOCAL
                      and not slot.readonly and slot.storage_duration is not None,
                      "optional backing needs local record storage")
-            _require(not holds_loan(slot.type), "wrapper holds a borrow")
         if slot.storage_duration is not None:
             _require(isinstance(slot.storage_duration, (MIRStorageDuration, MIRRegionId))
                      and (slot.value_kind is MIRValueKind.OWNED or scalar_wrapper(slot) or owned_tuple(slot)
@@ -1154,8 +1153,6 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(kind is MIRValueKind.OWNED and not readonly, "store through readonly storage")
         _require(typ in records and not records[typ].opaque and records[typ].movable,
                  "record member replacement needs movable record")
-        # The replacing record's loans may view the member it replaces.
-        _require(not holds_loan(typ), "record member replacement holds a borrow")
         for operand in operands(stmt.value):
             _require(operand in slots and slots[operand].kind is not MIRSlotKind.GLOBAL,
                      "global value needs explicit read")
@@ -1363,7 +1360,6 @@ def _validate_structure(fn: MIRFunction) -> None:
                                       or (target.value_kind is MIRValueKind.OPTIONAL
                                           and stmt.target.projections == (MIROptionalPayload(), MIRDeref()))),
                                  "invalid in-place rebind owner or target")
-                        _require(not holds_loan(target_type), "in-place replacement holds a borrow")
             else:
                 _require(fact is None, "invalid storage write fact")
             if owned_tuple(target) and not stmt.target.projections:

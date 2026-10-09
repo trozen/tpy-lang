@@ -1,8 +1,10 @@
-main.py:267: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:274: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:283: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:303: warning: Own[R] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:316: warning: copies R into owned storage; use copy() to make this explicit
-main.py:321: warning: Own[Buf] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:332: warning: copies Buf into owned storage; use copy() to make this explicit
-main.py:397: warning: Mutation of 't' while borrowed (field assignment may invalidate references)
+main.py:265: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:272: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:281: warning: Own[Tok] param 't' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:301: warning: Own[R] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:314: warning: copies R into owned storage; use copy() to make this explicit
+main.py:319: warning: Own[Buf] param 'b' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:330: warning: copies Buf into owned storage; use copy() to make this explicit
+main.py:414: warning: Mutation of 't' while borrowed (field assignment may invalidate references)
+main.py:540: warning: Mutation of 'o.inner' while borrowed (field assignment may invalidate references)
+main.py:656: warning: Own[Holder] param 'o' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

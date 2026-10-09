@@ -338,16 +338,16 @@ int32_t paired(Tok& t) {
     return std::get<0>(pair)->n;
 }
 
-// # free function: a record argument built on one branch is a deferred temporary
-// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(uncovered /^deferred argument holds a borrow$/)
+// # free function: a record argument built on one branch is a deferred temporary; its backing stores name's loan
+// def deferred(name: str, flag: bool) -> int32:  # tpyc: mir(certified)
 //     return size(Tok(name, 1)) if flag else 0
 int32_t deferred(std::string_view name, bool flag) {
     std::optional<Tok> __tmp_1;
     return ((flag) ? (__tmp_1.emplace(Tok(name, 1)), ::tpyapp::main::size((*__tmp_1))) : (0));
 }
 
-// # free function: a select's conditional record storage
-// def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(uncovered /^select storage holds a borrow$/)
+// # free function: a select's conditional record storage stores a's loan where it is engaged
+// def selected(owner: Tok, a: str, flag: bool) -> int32:  # tpyc: mir(certified)
 //     saved = owner if flag else Tok(a, 2)
 //     return saved.n
 int32_t selected(Tok& owner, std::string_view a, bool flag) {
@@ -356,8 +356,8 @@ int32_t selected(Tok& owner, std::string_view a, bool flag) {
     return saved.n;
 }
 
-// # free function: an in-place reseat cannot name the one object it replaces
-// def branch(k: int32, flag: bool) -> None:  # tpyc: mir(uncovered /^in-place replacement holds a borrow$/)
+// # free function: an in-place reseat replaces the one object's stored loan; nothing views what it replaces
+// def branch(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 //     a = mk(k)
 //     t = Tok("lit", 1)
 //     if flag:
@@ -374,7 +374,7 @@ void branch(int32_t k, bool flag) {
 }
 
 // # free function: an inherited constructor reuses the base's stored loan
-// def child(s: str) -> int32:  # tpyc: mir(uncovered /^inherited constructor borrow$/)
+// def child(s: str) -> int32:  # tpyc: mir(covered) mir_summary(known)
 //     c = Child(s, 1)
 //     return c.n
 int32_t child(std::string_view s) {

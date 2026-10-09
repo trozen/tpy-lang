@@ -1802,8 +1802,9 @@ alongside related feature work; only the big-rock deferrals live here.
   records, owned results and `Own[R]` parameters hold views
   (`docs/MIR_ANALYSIS_PLAN.md` "View fields"); case
   `tests/cases/mir/view_field_stores`.
-  **B3 second half, retained loans** (next: view fields slice 3, below;
-  needs `/tpy-add-feature`; unit order in
+  **B3 second half, retained loans** (next: one of the units split out of
+  the view-fields list, or view fields slice 4, below; each needs
+  `/tpy-add-feature`; unit order in
   `docs/MIR_ANALYSIS_PLAN.md` "Breadth-first order"):
   - `scalar_leaves._ELEMENT_DISPATCH_DUNDERS` (the comparison and hash
     dunders that make a record element non-plain) stays a name list: no
@@ -1849,51 +1850,69 @@ alongside related feature work; only the big-rock deferrals live here.
     operation" gate fails open there; unreachable in a build (every record of
     a compilation has a TypeDef), reachable from unit tests that lower outside
     an active compiler. Fail closed and activate a compiler in those tests.
-  - View fields slice 3 (slices 1 and 2 landed; `docs/MIR_ANALYSIS_PLAN.md`
-    "View fields" lists every refusal by reason; pinned in
-    `tests/cases/mir/view_field_stores`):
+  - Units split out of the view-fields list (2026-10-08 census, full test
+    corpus + stdlib, `scripts/mir_coverage`): each is general, not
+    view-specific, and blocks more bodies than the view items together.
+    - Named records at `Own[R]` parameters ("unsupported record argument",
+      32 bodies, mostly records holding no view: `consume(item)`). The C++
+      parameter is `T&&` and a last-use argument is `std::move`d, so the
+      callee's object is the caller's. The view face also needs the
+      transfers into an `Own[R]` parameter's object published (today
+      `summaries._transfers` skips them, sound only while the argument is a
+      call temporary): `transfer_problem` must admit a handed-record holder
+      ("invalid loan transfer holder" today), callers apply into the
+      temporary, and the parameter's buffer is modeled as possibly shared
+      (`own_write_transfer` would otherwise be covered while its caller reads
+      a replaced buffer).
+    - Callers constructing through a constructor whose body has effects
+      ("constructor body effects", 20 bodies: `__post_init__`, counters, a
+      `print` in `__init__`; `stamped` is the view face): a constructor
+      summary at the call.
+    - Base-initializer arguments other than a matching owned parameter or a
+      literal ("base argument needs matching parameter or literal", 17
+      bodies: `super().__init__(n + 1)`).
+    - Larger neighbours, each its own unit: `Box`/`Rc` members and elements
+      (~80 bodies refuse as "record member holds a borrow" / "container holds
+      a borrow" because `Box[T]` stores a `Ptr[T]`; an owning pointer holds
+      what its pointee holds, not a borrow) and `Ptr` members (~55 bodies;
+      a stored loan of an object, reusing the stored-loan keys).
+  - View fields slice 4: holders inside wrappers and containers -- Optional,
+    union and tuple members and locals holding a view, `Span` members,
+    containers of views (keys under a payload, a tuple element or
+    `[elements]`, always weak for elements). Most spellings stop at THIR
+    first (`BUGS.md#view-wrapper-shapes-reject`); about 8 corpus bodies
+    reach MIR today.
+  - View fields, left after slices 1-3 (slice 3: records written through a
+    place, constructor operands copied from named records, optional
+    backings, base / member / inherited constructor legs;
+    `docs/MIR_ANALYSIS_PLAN.md` "View fields" lists every refusal by
+    reason; pinned in `tests/cases/mir/view_field_stores`). Left:
     - Precision: `MIRUnseededLoan` refusals ("call transfer with no
       origin", "view member write with no origin", ...) are raised by the
       dependency transfer on every fixpoint iteration, while the call-return
       gate checks only the final pass; an intermediate state that still
       lacks an origin could refuse a body the fixpoint would cover
       (fail-closed; not probed as reachable).
-    - A view member write through a member record of a BORROWED
-      parameter (`def f(o: Outer, buf: str): o.inner.s = buf`) refuses
-      "view member write of an object with no stored loan": the nested
-      key under a borrowed parameter's member record is not seeded
-      (`/tmp/agents/b3w/review_safety/probes1.py` p7 / p8).
-    - In-place reseat ("in-place replacement holds a borrow",
-      `reseat_self`) and whole-member replacement ("record member
-      replacement holds a borrow", `member_self`). The check over the
-      state a write leaves exists (retention); left: the dependency fill
-      for a write through a holder (strong on one owned object, a weak
-      union over several) and of a member's nested keys, and the
-      filled-entries check widened from a slot's own keys to those
-      objects and the member prefix.
-    - Wrapper members: Optional, union and tuple members holding a view,
-      an optional backing ("wrapper holds a borrow").
-    - Container elements holding a view ("container holds a borrow").
-    - Span members and union / Optional view members (`StrView | None`)
-      ("record member holds a borrow").
-    - "base argument borrow not modeled" / "member argument borrow not
-      modeled" / "inherited constructor borrow": inherited constructors
-      and base legs passing a view.
-    - Named records handed over: by copy or move to a record parameter
-      ("handed-over record holds a borrow", `wrap_copy`), at an `Own[R]`
-      parameter ("unsupported record argument", `consume_named`).
-    - Transfers into an `Own[R]` parameter's object are not published
-      (sound while its argument is a call temporary; a named argument
-      needs them). Publishing them removes the extraction's per-holder
-      skip in `summaries._transfers` but needs `transfer_problem` to admit
-      a handed-record holder ("invalid loan transfer holder" today) and
-      callers to apply into the temporary. Lifting `consume_named` also
-      needs the parameter's buffer modeled as possibly shared: the C++
-      parameter is `T&&` and a last-use argument is `std::move`d, so the
-      callee's object IS the caller's (`own_write_transfer` would otherwise
-      be covered while its caller reads a replaced buffer).
-    - Callers do not construct through a constructor whose body writes a
-      view member ("constructor body effects", `stamped`).
+    - Precision, one rule for two over-reports: a whole member replaced
+      through a BORROWED parameter or `self` (`member_param`,
+      `Holder.swap`: `o.inner = R(s, s)`) and a reseat of a record whose
+      member viewed its own buffer (`r.s = r.buf`, then
+      `r = R(mk(k), "lit")`) report a replacement C++ does not have. The
+      write through a place is checked against the state it enters, where
+      the entries it overwrites still hold their old loans (the caller's
+      seeded loan, which may lie under the replaced member; a view of the
+      record's own buffer). Fix: a write reaching exactly ONE object -- an
+      external one too -- replaces that object's entries (`_strong_write`),
+      and the entering-state check skips only the OLD loans of the entries
+      the write strongly overwrites, never the new ones: `reseat_self`'s new
+      `r.s` is filled from the old `r.buf` and must keep its conflict.
+      Changes slice 2's store rule and its pins (`fill_static`'s
+      `mir_borrows(t.s, t.s|static)`, the extraction's seeded-loan skip in
+      `summaries._transfers`).
+    - `mir_borrows` does not resolve a nested entry: `mir_borrows(o.inner.s,
+      s)` after `fill_inner(o, s)` (`view_field_stores`) reports "o.inner.s
+      holds no loan" although the entry holds `s` (the section's
+      `replacement` conflict needs it).
     - Census blockers outside views: `records/viewfam_field_at_owning_sinks`
       `sec_setitem` ("element write needs a stub contract");
       `optional/view_at_owned_opt_decl` `Holder.__init__` ("member

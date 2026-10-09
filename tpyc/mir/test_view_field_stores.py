@@ -21,10 +21,14 @@ from .call_contract import (
 )
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRDefinitions
-from .dependencies import MIRReferent, analyze_dependencies, path_step, seeded_loan
+from .dependencies import (
+    MIRReferent, MIRReferents, MIRUnseededLoan, _DependencyRefusal, analyze_dependencies, path_step, record_fill,
+    seeded_loan, written_record,
+)
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRCall, MIRCallStmt, MIREdge, MIRField, MIRFunction, MIRPlace, MIRReturn, MIRValueKind,
+    MIRAlias, MIRAssign, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIRDeref, MIREdge, MIRField, MIRFunction,
+    MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRTupleIndex, MIRValueKind,
 )
 from .retention import analyze_retention
 from .storage import analyze_storage, owned_field
@@ -160,6 +164,63 @@ def own_local(t: Own[Tok], k: int32) -> int32:
     buf = mk(k)
     t.s = buf
     return t.n
+
+
+class R:
+    buf: str
+    s: StrView
+
+    def __init__(self, buf: str, s: StrView) -> None:
+        self.buf = buf
+        self.s = s
+
+
+class Holder:
+    inner: R
+
+    def __init__(self, inner: R) -> None:
+        self.inner = copy(inner)
+
+
+class Wrap:
+    t: Tok
+
+    def __init__(self, t: Own[Tok]) -> None:
+        self.t = t
+
+
+def reseat(k: int32, f: bool) -> int32:
+    r = R(mk(k), "static")
+    if f:
+        r = R(mk(k + 1), r.buf)
+    return len(r.s)
+
+
+def member(k: int32) -> int32:
+    o = Holder(R(mk(k), "static"))
+    b = mk(k + 1)
+    o.inner = R(mk(k + 2), b)
+    return len(o.inner.s)
+
+
+def member_into(o: Holder, s: str) -> None:
+    o.inner = R(s, s)
+
+
+def nested_fill(o: Holder, s: str) -> None:
+    o.inner.s = s
+
+
+def own_member(o: Own[Holder], s: str) -> int32:
+    o.inner = R(s, s)
+    return len(o.inner.s)
+
+
+def wrapped(k: int32) -> int32:
+    b = Buf(mk(k))
+    t = Tok(b.text, 1)
+    w = Wrap(copy(t))
+    return len(w.t.s) + t.n
 """
 
 
@@ -476,3 +537,116 @@ def test_a_replacement_is_checked_against_the_state_it_leaves(program: _Program)
     retention = analyze_retention(fn, analyze_liveness(fn), dependencies, analyze_storage(fn))
     assert [c.point for c in retention.conflicts] == [point]
     assert retention.conflicts[0].affected == MIRReferent(_named(fn, "buf"))
+
+
+# --- record writes through a place ----------------------------------------------------------
+
+def _in_place(fn: MIRFunction) -> tuple[MIRPoint, MIRAssign]:
+    return next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
+                if isinstance(s, MIRAssign) and isinstance(s.storage_write, MIRRecordWrite)
+                and s.storage_write.mode is MIRRecordWriteMode.IN_PLACE and s.target.projections)
+
+
+def _field(program: _Program, record: str, name: str) -> MIRField:
+    layout = next(layout for typ, layout in program.definitions.layouts.items() if typ.name == record)
+    return next(f for f in layout.fields if f.id.name == name)
+
+
+def _identity(member: MIRField) -> th.THIRFieldIdentity:
+    return th.THIRFieldIdentity(member.id.owner, member.id.name, member.type)
+
+
+def _object(state: MIRReferents, holder: MIRPlace) -> MIRPlace:
+    (ref,) = state[holder]
+    return ref.place
+
+
+def test_an_in_place_reseat_fills_the_one_object(program: _Program) -> None:
+    # `r = R(mk(k + 1), r.buf)` through the rebind-slot holder: the one
+    # object it reaches stores the new record's loan, a view of the buffer
+    # the same write replaces.
+    fn = _lowered(program, "reseat")
+    point, write = _in_place(fn)
+    assert write.target.projections == (MIRDeref(),)
+    _, state = _after(fn, point)
+    storage = _object(state, _named(fn, "r"))
+    buf, s = _field(program, "R", "buf"), _field(program, "R", "s")
+    assert state[MIRPlace(storage.root, (s,))] == frozenset({MIRReferent(MIRPlace(storage.root, (buf,)))})
+    assert program.verdicts["reseat"].conflicts == ("replacement",)
+
+
+def test_a_member_replacement_fills_the_member_s_entries(program: _Program) -> None:
+    # One owned object: the member's entry holds the new record's loan only.
+    fn = _lowered(program, "member")
+    point, write = _in_place(fn)
+    inner, s = _field(program, "Holder", "inner"), _field(program, "R", "s")
+    assert write.target.projections[-1] == inner
+    _, state = _after(fn, point)
+    storage = _object(state, _named(fn, "o"))
+    assert state[MIRPlace(storage.root, (inner, s))] == frozenset({MIRReferent(_named(fn, "b"))})
+    assert program.verdicts["member"].conflicts == ()
+
+
+def test_a_loan_holding_write_no_entry_keys_refuses(program: _Program) -> None:
+    # A whole record written through a member is filled; a loan-free member
+    # write fills nothing; a loan-holding write under a place no stored-loan
+    # entry keys (a tuple member here) refuses rather than storing nothing.
+    fn = _lowered(program, "member")
+    slots = {s.id: s for s in fn.slots}
+    o = _named(fn, "o")
+    inner, buf = _field(program, "Holder", "inner"), _field(program, "R", "buf")
+    assert written_record(MIRPlace(o.root, (inner,)), slots) == inner.type
+    assert written_record(MIRPlace(o.root, (inner, buf)), slots) is None
+    with pytest.raises(_DependencyRefusal, match="loan-holding write under an unmodeled place"):
+        written_record(MIRPlace(o.root, (MIRTupleIndex(0),)), slots)
+    # A value naming no stored loan refuses the fill, whatever the statement.
+    layouts = {r.type: r for r in fn.records}
+    with pytest.raises(MIRUnseededLoan, match="record storage filled with no stored loan"):
+        record_fill(MIRPlace(o.root, (inner,)), inner.type, MIRConstant(1), {}, slots, layouts)
+
+
+def test_a_member_replacement_through_a_parameter_joins_and_transfers(program: _Program) -> None:
+    fn = _lowered(program, "member_into")
+    point, _ = _in_place(fn)
+    inner, s = _field(program, "Holder", "inner"), _field(program, "R", "s")
+    key = MIRPlace(fn.slots[0].id, (inner, s))
+    _, state = _after(fn, point)
+    assert state[key] == frozenset({seeded_loan(key), MIRReferent(_named(fn, "s"), external=True)})
+    summary = _summary(program, "member_into")
+    assert summary.transfers == frozenset({MIRLoanTransfer(0, (_identity(inner), _identity(s)), 1)})
+    # The weak join keeps the caller's own loan under the member the write
+    # replaces: a replacement conflict C++ would not have (fail-closed).
+    assert program.verdicts["member_into"].conflicts == ("replacement",)
+
+
+def test_a_nested_member_write_through_a_parameter_transfers(program: _Program) -> None:
+    # The parameter's layout is registered by the write, so its nested entry exists.
+    inner, s = _field(program, "Holder", "inner"), _field(program, "R", "s")
+    summary = _summary(program, "nested_fill")
+    transfer = MIRLoanTransfer(0, (_identity(inner), _identity(s)), 1)
+    assert summary.transfers == frozenset({transfer})
+    assert transfer_problem(transfer, summary.parameters, summary.callee.signature.return_type) is None
+    assert program.verdicts["nested_fill"].conflicts == ()
+
+
+def test_a_member_replacement_of_an_own_parameter_replaces_its_loan(program: _Program) -> None:
+    # The handed-over object is one the body owns: a strong update, never published.
+    fn = _lowered(program, "own_member")
+    point, _ = _in_place(fn)
+    inner, s = _field(program, "Holder", "inner"), _field(program, "R", "s")
+    _, state = _after(fn, point)
+    assert state[MIRPlace(fn.slots[0].id, (inner, s))] == frozenset({MIRReferent(_named(fn, "s"), external=True)})
+    assert _summary(program, "own_member").transfers == frozenset()
+    assert program.verdicts["own_member"].conflicts == ()
+
+
+def test_a_copy_handed_to_a_constructor_carries_the_source_s_loan(program: _Program) -> None:
+    fn = _lowered(program, "wrapped")
+    s = _field(program, "Tok", "s")
+    point = next(MIRPoint(b.id, i) for b in fn.blocks for i, st in enumerate(b.statements)
+                 if isinstance(st, MIRAssign) and isinstance(st.value, MIRCopy) and not st.target.projections)
+    copy = _statement(fn, point)
+    _, state = _after(fn, point)
+    source = _object(state, MIRPlace(copy.value.source.root))
+    assert state[MIRPlace(copy.target.root, (s,))] == state[MIRPlace(source.root, (s,))]
+    assert program.verdicts["wrapped"].conflicts == ()
