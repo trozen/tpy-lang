@@ -576,16 +576,23 @@ class Executor(Awaker):
         self.slots[slot_id].box = None
         self.slots[slot_id].generation += 1
 
+    # Polls the batch of slots runnable on entry; a slot woken meanwhile
+    # (a `sleep(0)` requeueing itself, a wake from a polled task) waits for
+    # the next pass, as in CPython's `_run_once`, so timers and I/O are
+    # collected between batches instead of being starved.
     def drain_runnable(self) -> bool:
         any_polled = False
         # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
         # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
         # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
         # runnable_q O(n) pop.
-        while len(self.runnable_q) > 0:
+        batch = len(self.runnable_q)
+        i: int32 = 0
+        while i < batch:
             slot_id = self.runnable_q.pop(0)
             if self.poll_slot(slot_id):
                 any_polled = True
+            i += 1
         return any_polled
 
     @readonly
@@ -604,7 +611,10 @@ class Executor(Awaker):
             i += 1
         return False
 
-    def wait_for_event(self) -> bool:
+    # Collects ready fds and due timers, waking their slots. `block` waits
+    # for the nearest one; without it (tasks are already runnable) only
+    # what is ready now is collected. Returns False when nothing is pending.
+    def wait_for_event(self, block: bool = True) -> bool:
         has_timer = len(self.timer_heap) > 0
         reactor = self.reactor
         fd_count: int32 = 0
@@ -613,12 +623,15 @@ class Executor(Awaker):
         if not has_timer and fd_count == 0:
             return False
         if reactor is not None and fd_count > 0:
-            # Block in epoll_wait, bounded by the nearest timer (-1 ==
+            # epoll_wait, bounded by the nearest timer when blocking (-1 ==
             # forever when only fds are pending). Ready fds' wakers are
             # woken inside poll(), marking their slots runnable for the
             # next drain.
-            reactor.poll(self._next_timer_timeout_ms())
-        else:
+            timeout_ms: int32 = 0
+            if block:
+                timeout_ms = self._next_timer_timeout_ms()
+            reactor.poll(timeout_ms)
+        elif block:
             sleep_until_steady(self.timer_heap[0].deadline)
         now = monotonic()
         while len(self.timer_heap) > 0 and self.timer_heap[0].deadline <= now:
@@ -662,22 +675,33 @@ class Executor(Awaker):
 
     # Returns True if a SIGINT interrupted the run (root cancelled for graceful
     # shutdown), False on normal completion.
+    #
+    # Each pass mirrors CPython's `_run_once`: collect I/O and due timers
+    # (waiting for them only when nothing is runnable), then poll the batch
+    # runnable at that point, so a task requeued earlier runs before one
+    # whose timer or fd fired in the same pass.
     def run_until(self, main_id: int32) -> bool:
         while True:
             if self.slot_done(main_id):
-                return self.interrupt_count > 0
-            if self.drain_runnable():
+                # CPython stops the loop one pass after the root completes:
+                # the tasks runnable at that point run once more, with no
+                # events collected first (a timer or fd wake takes CPython
+                # one more pass to reach its task).
+                self.drain_runnable()
                 self._check_shutdown_signal(main_id)
-                continue
-            if self.slot_done(main_id):
                 return self.interrupt_count > 0
-            if not self.wait_for_event():
+            if len(self.runnable_q) > 0:
+                self.wait_for_event(False)
+            elif not self.wait_for_event():
                 raise RuntimeError(
                     "asyncio.run: no progress possible (a coroutine "
                     "returned Pending with no pending timers and no "
                     "registered I/O)")
             self._check_shutdown_signal(main_id)
+            # The non-blocking collect can fire (and so disarm) the wake fd
+            # as well as the blocking one.
             self._rearm_shutdown_fd()
+            self.drain_runnable()
 
     def drain_spawned_with_cancel(self, skip_id: int32,
                                   max_polls: int32 = 8) -> None:
@@ -697,7 +721,16 @@ class Executor(Awaker):
                 if j != skip_id and not self.slots[j].is_done():
                     self.mark_runnable(j, self.slots[j].generation)
                 j += 1
-            if not self.drain_runnable():
+            # Unlike a run_until pass, an attempt drains until nothing is
+            # runnable, so a wake chain among the cancelled tasks finishes
+            # within one attempt. `max_polls` bounds attempts, not polls: a
+            # task that swallows the cancel and loops on `sleep(0)` keeps
+            # one attempt going (CPython's _cancel_all_tasks hangs on it too).
+            polled = False
+            while len(self.runnable_q) > 0:
+                if self.drain_runnable():
+                    polled = True
+            if not polled:
                 break
             attempt += 1
 

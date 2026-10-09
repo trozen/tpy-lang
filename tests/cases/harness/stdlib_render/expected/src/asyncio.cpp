@@ -121,9 +121,9 @@ void _reactor_unregister_fd(int32_t fd) {
 }
 
 // # Park the calling coroutine for `seconds` seconds. Returns an
-// # Own[Task[None]] whose underlying SleepFuture registers a timer with
-// # the current executor on first poll; the run loop wakes when the
-// # deadline arrives.
+// # Own[Task[None]] whose underlying SleepFuture starts the delay and
+// # suspends on its first poll; the run loop wakes it when the deadline
+// # arrives (or on the next pass, for a non-positive delay).
 // def sleep(seconds: float) -> Own[Task[None]]:
 //     return task_from_coro[None](SleepFuture(seconds))
 ::tpystd::asyncio::_executor::Task<std::monostate> sleep(double seconds) {
@@ -1097,23 +1097,34 @@ _SignalScope::_SignalScope(::tpystd::asyncio::_executor::Executor& executor)
 //         # from the executor here before throwing. Needs an executor
 //         # `cancel_timer(timer_id)` primitive.
 //         raise CancelledError()
-//     if monotonic() >= self.deadline:
-//         return poll_ready_none()
 //     if not self.registered:
-//         _register_timer_at(self.deadline, waker)
 //         self.registered = True
+//         if self.seconds <= 0.0:
+//             waker.wake()
+//         else:
+//             self.deadline = monotonic() + self.seconds
+//             _register_timer_at(self.deadline, waker)
+//         return poll_pending()
+//     if self.seconds <= 0.0 or monotonic() >= self.deadline:
+//         return poll_ready_none()
 //     return poll_pending()
 ::tpystd::tpy::Poll<std::monostate> SleepFuture::__poll__(::tpystd::coro::Waker waker) {
     if (this->_cancel_pending) {
         this->_cancel_pending = false;
         throw ::tpy::CancelledError{};
     }
-    if ((::tpy::stdlib::time::monotonic() >= this->deadline)) {
-        return ::tpystd::coro::poll_ready_none();
-    }
     if ((!(this->registered))) {
-        ::tpystd::asyncio::_register_timer_at(this->deadline, waker);
         this->registered = true;
+        if ((this->seconds <= 0.0)) {
+            waker.wake();
+        } else {
+            this->deadline = ((::tpy::stdlib::time::monotonic()) + (this->seconds));
+            ::tpystd::asyncio::_register_timer_at(this->deadline, waker);
+        }
+        return ::tpystd::coro::poll_pending<std::monostate>();
+    }
+    if (((this->seconds <= 0.0) || (::tpy::stdlib::time::monotonic() >= this->deadline))) {
+        return ::tpystd::coro::poll_ready_none();
     }
     return ::tpystd::coro::poll_pending<std::monostate>();
 }

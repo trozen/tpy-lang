@@ -1,0 +1,4 @@
+spinning
+cleanup
+caught KeyboardInterrupt
+woke promptly: True

@@ -254,9 +254,9 @@ def ro_gen(d: readonly[dict[str, P]], fb: P) -> Iterator[int32]:
         yield r.n
 
 
-# only reads: a caller write between two resumptions needs another task to
-# run at `await asyncio.sleep(0)`, which TPy's zero sleep does not yield to
-# yet (the BUGS.md `asyncio.sleep(0)` entry)
+# only reads: the coroutine is the only task of its `asyncio.run`, so no
+# other task runs at `await asyncio.sleep(0)` and nothing writes `d` while
+# it is suspended
 async def ro_co(d: readonly[dict[str, P]], fb: P) -> int32:
     v = d.get("a", fb)  # tpyc: type(/readonly/)
     await asyncio.sleep(0)

@@ -610,8 +610,8 @@ struct Executor : ::tpystd::coro::Awaker {
     // def has_live_tasks(self, skip_id: int32) -> bool:
     bool has_live_tasks(int32_t skip_id) const;
 
-    // def wait_for_event(self) -> bool:
-    bool wait_for_event();
+    // def wait_for_event(self, block: bool = True) -> bool:
+    bool wait_for_event(bool block = true);
 
     // def _cancel_root(self, main_id: int32) -> None:
     void _cancel_root(int32_t main_id);
@@ -896,28 +896,6 @@ inline void Executor::mark_runnable(int32_t slot_id, int32_t generation) {
 inline void Executor::_retire(int32_t slot_id) {
     ::tpy::__getitem__(this->slots, slot_id).box = std::nullopt;
     ::tpy::__getitem__(this->slots, slot_id).generation = ::tpy::add_check<int32_t>(::tpy::__getitem__(this->slots, slot_id).generation, 1);
-}
-
-// def drain_runnable(self) -> bool:
-//     any_polled = False
-//     # TODO(async-v1.2): `list.pop(0)` is O(n); draining N runnable tasks costs
-//     # O(N^2). Swap `runnable_q` to `collections.deque[int32]` and use
-//     # `popleft()` once deque lands in TPy stdlib. See BUGS.md entry on
-//     # runnable_q O(n) pop.
-//     while len(self.runnable_q) > 0:
-//         slot_id = self.runnable_q.pop(0)
-//         if self.poll_slot(slot_id):
-//             any_polled = True
-//     return any_polled
-inline bool Executor::drain_runnable() {
-    bool any_polled = false;
-    while ((::tpy::__len__(this->runnable_q) > 0)) {
-        int32_t slot_id = ::tpy::list_pop_at(this->runnable_q, 0);
-        if (this->poll_slot(slot_id)) {
-            any_polled = true;
-        }
-    }
-    return any_polled;
 }
 
 // @readonly

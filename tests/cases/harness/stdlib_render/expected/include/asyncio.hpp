@@ -320,6 +320,8 @@ inline std::ostream& operator<<(std::ostream& os, const _SockConnect& obj) {
 
 // class SleepFuture:
 struct SleepFuture {
+    // seconds: float
+    double seconds;
     // deadline: float
     double deadline;
     // registered: bool
@@ -350,6 +352,8 @@ template<typename T>
 struct _WaitForFuture {
     // _inner: Box[Cancellable[T]]
     ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>> _inner;
+    // _timeout: float
+    double _timeout;
     // _deadline: float
     double _deadline;
     // _registered: bool
@@ -363,7 +367,8 @@ struct _WaitForFuture {
 
     // def __init__(self, coro: Own[Cancellable[T]], timeout: float) -> None:
     //     self._inner = Box[Cancellable[T]](coro)
-    //     self._deadline = monotonic() + timeout
+    //     self._timeout = timeout
+    //     self._deadline = 0.0
     //     self._registered = False
     //     self._cleanup = False
     //     self._timed_out = False
@@ -371,7 +376,8 @@ struct _WaitForFuture {
     _WaitForFuture() = default;
     explicit _WaitForFuture(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout)
         : _inner(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>(std::move(coro))),
-          _deadline(((::tpy::stdlib::time::monotonic()) + (timeout))),
+          _timeout(timeout),
+          _deadline(0.0),
           _registered(false),
           _cleanup(false),
           _timed_out(false),
@@ -406,14 +412,19 @@ struct _WaitForFuture {
     //         self._cleanup = True
     //         self._inner.get().cancel()
     //
+    //     expired = self._timeout <= 0.0
     //     if not self._registered:
-    //         _register_timer_at(self._deadline, waker)
     //         self._registered = True
+    //         self._deadline = monotonic() + self._timeout
+    //         if not expired:
+    //             _register_timer_at(self._deadline, waker)
+    //     elif not expired:
+    //         expired = monotonic() >= self._deadline
     //
     //     # Deadline elapsed and we have not started cleanup yet:
     //     # propagate cancel to the inner and pump it until it returns.
     //     # A non-positive timeout takes this branch on the first poll.
-    //     if not self._cleanup and monotonic() >= self._deadline:
+    //     if not self._cleanup and expired:
     //         self._cleanup = True
     //         self._timed_out = True
     //         self._inner.get().cancel()
@@ -431,11 +442,17 @@ struct _WaitForFuture {
             this->_cleanup = true;
             this->_inner.get().cancel();
         }
+        bool expired = (this->_timeout <= 0.0);
         if ((!(this->_registered))) {
-            ::tpystd::asyncio::_register_timer_at(this->_deadline, waker);
             this->_registered = true;
+            this->_deadline = ((::tpy::stdlib::time::monotonic()) + (this->_timeout));
+            if ((!(expired))) {
+                ::tpystd::asyncio::_register_timer_at(this->_deadline, waker);
+            }
+        } else if ((!(expired))) {
+            expired = (::tpy::stdlib::time::monotonic() >= this->_deadline);
         }
-        if (((!(this->_cleanup)) && (::tpy::stdlib::time::monotonic() >= this->_deadline))) {
+        if (((!(this->_cleanup)) && expired)) {
             this->_cleanup = true;
             this->_timed_out = true;
             this->_inner.get().cancel();
@@ -2566,8 +2583,9 @@ struct __coro_wait_for {
 // # Returns the coroutine's value if it completes before the deadline.
 // # Otherwise propagates `cancel()` to the coroutine, pumps it until it
 // # observes the cancellation, then raises `TimeoutError`. A non-
-// # positive `timeout` triggers the deadline on the first poll (matches
-// # CPython).
+// # positive `timeout` triggers the deadline on the first poll; the inner
+// # still runs up to its first `await`, where CPython never starts it
+// # (BUGS.md#coroutine-cancelled-before-first-poll-runs-body).
 // #
 // # Outer cancellation of a task awaiting `wait_for` propagates through
 // # to the inner coroutine: the resume-case cancel-check (in every
@@ -2955,11 +2973,13 @@ inline void _SockConnect::cancel() {
 }
 
 // def __init__(self, seconds: float) -> None:
-//     self.deadline = monotonic() + seconds
+//     self.seconds = seconds
+//     self.deadline = 0.0
 //     self.registered = False
 //     self._cancel_pending = False
 inline SleepFuture::SleepFuture(double seconds)
-    : deadline(((::tpy::stdlib::time::monotonic()) + (seconds))),
+    : seconds(seconds),
+      deadline(0.0),
       registered(false),
       _cancel_pending(false) {}
 

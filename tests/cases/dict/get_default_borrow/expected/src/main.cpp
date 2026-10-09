@@ -370,9 +370,9 @@ __gen_ro_gen ro_gen(const ::tpy::ordered_map<std::string, P>& d, const P& fb) {
     return __gen_ro_gen(d, fb);
 }
 
-// # only reads: a caller write between two resumptions needs another task to
-// # run at `await asyncio.sleep(0)`, which TPy's zero sleep does not yield to
-// # yet (the BUGS.md `asyncio.sleep(0)` entry)
+// # only reads: the coroutine is the only task of its `asyncio.run`, so no
+// # other task runs at `await asyncio.sleep(0)` and nothing writes `d` while
+// # it is suspended
 // async def ro_co(d: readonly[dict[str, P]], fb: P) -> int32:
 //     v = d.get("a", fb)  # tpyc: type(/readonly/)
 //     await asyncio.sleep(0)                                   # -> S_RESUME_0

@@ -327,18 +327,26 @@ class _SockConnect:
 
 
 class SleepFuture:
-    """Awaits a steady-clock deadline. Registers a timer with the
-    current executor on first poll and returns Pending until the
-    deadline elapses; conforms to the Awaitable[None] shape (poll +
-    `_cancel_pending` field that the runtime's `Task::cancel` flips).
+    """Awaits a steady-clock deadline; conforms to the Awaitable[None]
+    shape (poll + `_cancel_pending` field that the runtime's
+    `Task::cancel` flips).
+
+    Like CPython's `asyncio.sleep`, the delay starts when the sleep is
+    first polled (not when `sleep()` is called) and the first poll always
+    suspends: a positive delay registers a timer, a non-positive one
+    requeues the task once (CPython's bare `yield` in `__sleep0`). Timers
+    therefore wake sleepers in the order their delays started, even when
+    a task was preempted before its first poll.
     """
 
+    seconds: float
     deadline: float
     registered: bool
     _cancel_pending: bool
 
     def __init__(self, seconds: float) -> None:
-        self.deadline = monotonic() + seconds
+        self.seconds = seconds
+        self.deadline = 0.0
         self.registered = False
         self._cancel_pending = False
 
@@ -360,18 +368,23 @@ class SleepFuture:
             # from the executor here before throwing. Needs an executor
             # `cancel_timer(timer_id)` primitive.
             raise CancelledError()
-        if monotonic() >= self.deadline:
-            return poll_ready_none()
         if not self.registered:
-            _register_timer_at(self.deadline, waker)
             self.registered = True
+            if self.seconds <= 0.0:
+                waker.wake()
+            else:
+                self.deadline = monotonic() + self.seconds
+                _register_timer_at(self.deadline, waker)
+            return poll_pending()
+        if self.seconds <= 0.0 or monotonic() >= self.deadline:
+            return poll_ready_none()
         return poll_pending()
 
 
 # Park the calling coroutine for `seconds` seconds. Returns an
-# Own[Task[None]] whose underlying SleepFuture registers a timer with
-# the current executor on first poll; the run loop wakes when the
-# deadline arrives.
+# Own[Task[None]] whose underlying SleepFuture starts the delay and
+# suspends on its first poll; the run loop wakes it when the deadline
+# arrives (or on the next pass, for a non-positive delay).
 def sleep(seconds: float) -> Own[Task[None]]:
     return task_from_coro[None](SleepFuture(seconds))
 
@@ -407,8 +420,12 @@ def create_task[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 class _WaitForFuture[T]:
     """Drives an inner Cancellable[T] against a steady-clock deadline.
 
-    Registers a one-shot timer with the current executor on first
-    poll. When the deadline elapses, propagates `cancel()` to the
+    Starts the deadline and, for a positive timeout, registers a one-shot
+    timer with the current executor on first poll; a positive timeout
+    never expires on that
+    poll, so the inner always runs to its first suspension (CPython arms
+    its timeout with `call_at`). When the deadline elapses, propagates
+    `cancel()` to the
     inner frame and keeps polling it until it returns -- translating
     the resulting `CancelledError` into `TimeoutError`. An external
     cancel (outer task cancellation) propagates to the inner unchanged
@@ -418,6 +435,7 @@ class _WaitForFuture[T]:
     """
 
     _inner: Box[Cancellable[T]]
+    _timeout: float
     _deadline: float
     _registered: bool
     _cleanup: bool
@@ -426,7 +444,8 @@ class _WaitForFuture[T]:
 
     def __init__(self, coro: Own[Cancellable[T]], timeout: float) -> None:
         self._inner = Box[Cancellable[T]](coro)
-        self._deadline = monotonic() + timeout
+        self._timeout = timeout
+        self._deadline = 0.0
         self._registered = False
         self._cleanup = False
         self._timed_out = False
@@ -453,14 +472,19 @@ class _WaitForFuture[T]:
             self._cleanup = True
             self._inner.get().cancel()
 
+        expired = self._timeout <= 0.0
         if not self._registered:
-            _register_timer_at(self._deadline, waker)
             self._registered = True
+            self._deadline = monotonic() + self._timeout
+            if not expired:
+                _register_timer_at(self._deadline, waker)
+        elif not expired:
+            expired = monotonic() >= self._deadline
 
         # Deadline elapsed and we have not started cleanup yet:
         # propagate cancel to the inner and pump it until it returns.
         # A non-positive timeout takes this branch on the first poll.
-        if not self._cleanup and monotonic() >= self._deadline:
+        if not self._cleanup and expired:
             self._cleanup = True
             self._timed_out = True
             self._inner.get().cancel()
@@ -477,8 +501,9 @@ class _WaitForFuture[T]:
 # Returns the coroutine's value if it completes before the deadline.
 # Otherwise propagates `cancel()` to the coroutine, pumps it until it
 # observes the cancellation, then raises `TimeoutError`. A non-
-# positive `timeout` triggers the deadline on the first poll (matches
-# CPython).
+# positive `timeout` triggers the deadline on the first poll; the inner
+# still runs up to its first `await`, where CPython never starts it
+# (BUGS.md#coroutine-cancelled-before-first-poll-runs-body).
 #
 # Outer cancellation of a task awaiting `wait_for` propagates through
 # to the inner coroutine: the resume-case cancel-check (in every
