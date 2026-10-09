@@ -555,8 +555,8 @@ machinery, never by the binding site:
   of `Ptr`-returning accessors and of `Rc.clone` / `Weak.upgrade` then keep the receiver const.
   Beyond that, exact (annotation-free, least-solution) inference is a MIR-based re-layering:
   docs/CONST_INFERENCE_TARGET_DESIGN.md.
-  Separately, BUGS.md#spaniter-next-copies-element makes an `ArrayList` / span loop variable a
-  copy, so writes through it miss the container regardless of const.
+  An `ArrayList` / span loop variable is the element itself (the `SpanIter` step lends it), so
+  a write through it reaches the container and demotes the iterated source like any loop write.
 - **A reference** (the whole result, a tuple element): the call loans its receiver to whatever
   binds the result (`_register_call_result_borrow` reads `typesys.result_borrow_sources`; a
   `for` over the call files it as the iteration's loan), so a write through any place derived
