@@ -8,3 +8,4 @@ records 1 2 9
 bytearray 1 3 3
 bytearray 2 2 2
 method 1 3 4
+readonly 1 3 3

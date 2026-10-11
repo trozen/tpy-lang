@@ -807,15 +807,21 @@ table (`tpyc/thir/lower/bindings.py`, `plan_bindings`): one `BindingRepr`
 record per C++ binding the body emits, in a scope chain that mirrors the
 lowering's block scoping. The lowering reads every per-name representation
 fact the table models from the record visible where it is
-(`_LowerCtx.binding`); the facts still kept outside it -- a reassigned
-`@dynamic` local, an owned-slot walrus target, a nested def's closure name,
-a pointer-slot module global, the resumable frame's write / bind families --
-are listed in TODO.md ("STILL OUTSIDE THE TABLE"). A NAME
-read's `Source.binding` is that record, and every node that emits a binding
-(`THIRVarDecl`, `THIRPtrLocalDecl`, the loop, unpack, with, match and
-error-return binds, the frame writes) carries it as `binding`, stamped by
-`stamp_bindings`. The validator checks the node's representation facts
-against the record's fields.
+(`_LowerCtx.binding`); the facts still kept outside it -- a pointer-slot
+module global, the resumable frame's write / bind families, the emitter's
+rebind-slot numbering -- are listed in TODO.md ("STILL OUTSIDE THE
+TABLE"). A NAME read's `Source.binding` is that record, and every node that
+emits a binding (`THIRVarDecl`, `THIRPtrLocalDecl`, the loop, unpack, with,
+match and error-return binds, the frame writes) carries it as `binding`,
+stamped by `stamp_bindings`. A binding site builds the form its record's
+kind names: a first declaration (`_lower_first_decl` dispatches on
+`BindingRepr.kind`), a statement's hoist predecl (`_HOIST_BUILDERS`), an
+unpack, `with`, match capture or walrus target; a site that declares no
+fresh record of its own (`fresh_record`) writes the binding in scope. A
+declaring node takes its shape and const from the record, so the validator
+has nothing to check on it; `THIRPtrLocalDecl` and its reseat, the
+error-return, frame-write and loop binds are still checked against the
+record's fields.
 
 #### THIRFormConvert -- the explicit conversion node
 
@@ -1771,7 +1777,7 @@ then both union match tiers), which motivated a full sweep of the binding facts.
   producers where it is declared.
 - Not swept to the same depth, and the place to look first if this class resurfaces:
   the borrow-tuple const bits (`const_borrow_tuple` / `const_opt_borrow_tuple`),
-  which the planner's whole-table fixpoint decides (`_plan_btuple_const`) -- its
+  which the planner's whole-table fixpoint decides (`_plan_const`) -- its
   name-chain rung is fenced only by the storage-tuple alias arm requiring a field
   source.
 - Consequence for future cells: widening one of those gates is not a local change

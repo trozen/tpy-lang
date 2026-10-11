@@ -1108,14 +1108,13 @@ the listed later stage. Existing M1-M2.4 coverage remains available unchanged.
 | Operation | Whole-wrapper copies and supported local reseats; member/None construction without effects or new backing storage; typed isinstance/None tests; guarded scalar reads and record-field reads/writes | General equality/truthiness, effects/calls, runtime-checked extraction, widening/conversion across different layouts, writes through scalar payload aliases: later M2/M3 |
 
 Readonly refers to the selected payload capability, including inferred constness.
-Direct readonly parameter extraction is included. The existing source path
-copying a readonly record union into a local currently emits a mutable pointer
-union and fails C++ compilation (`BUGS.md#readonly-record-union-local-copy`);
-exclude it until fixed separately. Readonly
+Direct readonly parameter extraction is included, and so is copying a
+readonly record union into a local, which binds a const pointer union
+(`::tpy::Union<const Cell*, const Other*>`). Readonly
 construction/copy directions are covered by internal IR tests. Scalar-union parameter
-reseats also currently emit writes through a const reference
-(`BUGS.md#scalar-union-parameter-reassign-const`) and remain excluded.
-Both defects are recorded for separate fixes with user approval.
+reseats currently emit writes through a const reference
+(`BUGS.md#scalar-union-parameter-reassign-const`) and remain excluded,
+recorded for a separate fix with user approval.
 No frontend gate is relaxed to manufacture a source witness.
 Direct record-member construction and reseating are likewise tested at the
 internal IR boundary: their source forms still hit `decl.ptr_union_source` and

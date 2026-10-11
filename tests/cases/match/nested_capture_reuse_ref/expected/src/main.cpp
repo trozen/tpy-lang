@@ -4,31 +4,6 @@
 namespace tpyapp::main {
 
 
-// def reseats(h: Holder, g: Holder) -> int:
-//     match h:
-//         case Holder(inner=q):
-//             match g:
-//                 case Holder(inner=q):   # tpyc: ok
-//                     pass
-//             g.inner.n = 99              # mutate what q now aliases
-//             return q.n                  # 99 if aliased; 2 if copied
-//     return -1
-::tpy::BigInt reseats(const Holder& h, Holder& g) {
-    const Inner* q;
-    auto& __match_subject_1 = h;
-    {
-        q = &(__match_subject_1.inner);
-        auto& __match_subject_2 = g;
-        {
-            q = &(__match_subject_2.inner);
-        }
-        g.inner.n = ::tpy::BigInt(99);
-        return q->n;
-    }
-    ::std::unreachable();
-    return ::tpy::BigInt(-1);
-}
-
 // def outer_untouched(h: Holder, g: Holder) -> int:
 //     # The re-seat must not write THROUGH the outer binding: h keeps its own
 //     # object (CPython rebinds the local, leaving the matched object alone).
@@ -51,20 +26,20 @@ namespace tpyapp::main {
     return h.inner.n;
 }
 
-// def mixed_const(h: Holder, g: Holder) -> int:
-//     # The outer subject is mutated (so it binds mutably) while the inner one is
-//     # only read (so it binds const). Both re-seat one shared slot, so the slot
-//     # must take the const form for either bind to compile.
+// def reseats_mutable(h: Holder, g: Holder) -> int:
+//     # Both subjects are written, so every source of the shared slot is
+//     # mutable (a read-only one beside them rejects).
 //     match h:
 //         case Holder(inner=q):
 //             h.inner.n = 5
 //             match g:
-//                 case Holder(inner=q):
+//                 case Holder(inner=q):   # tpyc: ok
 //                     pass
-//             return q.n
+//             g.inner.n = 99              # mutate what q now aliases
+//             return q.n                  # 99 if aliased; 2 if copied
 //     return -1
-::tpy::BigInt mixed_const(Holder& h, const Holder& g) {
-    const Inner* q;
+::tpy::BigInt reseats_mutable(Holder& h, Holder& g) {
+    Inner* q;
     auto& __match_subject_1 = h;
     {
         q = &(__match_subject_1.inner);
@@ -73,34 +48,39 @@ namespace tpyapp::main {
         {
             q = &(__match_subject_2.inner);
         }
+        g.inner.n = ::tpy::BigInt(99);
         return q->n;
     }
     ::std::unreachable();
     return ::tpy::BigInt(-1);
 }
 
-// def as_pattern(h: Holder, g: Holder) -> int:
-//     # `case ... as name` binds through the same capture machinery, and binds
-//     # the WHOLE object -- mutate through the re-seated target to prove it
-//     # aliased `g` rather than copying it.
+// def as_pattern_mutable(h: Holder, g: Holder) -> int:
+//     # `case ... as name` binds the WHOLE object through the same machinery;
+//     # both subjects are written, and a write after the re-seat shows the
+//     # target aliases `g`.
 //     match h:
 //         case Holder() as w:
+//             h.inner.n = 5
 //             match g:
 //                 case Holder() as w:     # tpyc: ok
 //                     pass
 //             g.inner.n = 55
-//             return w.inner.n            # 55 if aliased; 2 if copied
+//             w.inner.n += 1
+//             return w.inner.n            # 56 if aliased
 //     return -1
-::tpy::BigInt as_pattern(const Holder& h, Holder& g) {
-    const Holder* w;
+::tpy::BigInt as_pattern_mutable(Holder& h, Holder& g) {
+    Holder* w;
     auto& __match_subject_1 = h;
     {
         w = &(__match_subject_1);
+        h.inner.n = ::tpy::BigInt(5);
         auto& __match_subject_2 = g;
         {
             w = &(__match_subject_2);
         }
         g.inner.n = ::tpy::BigInt(55);
+        w->inner.n = (w->inner.n) + (::tpy::BigInt(1));
         return w->inner.n;
     }
     ::std::unreachable();
@@ -108,23 +88,24 @@ namespace tpyapp::main {
 }
 
 // def main() -> None:
-//     print(reseats(Holder(Inner(1)), Holder(Inner(2))))          # 99
-//     print(outer_untouched(Holder(Inner(1)), Holder(Inner(2))))   # 1
-//     print(mixed_const(Holder(Inner(1)), Holder(Inner(2))))       # 2
-//     print(as_pattern(Holder(Inner(1)), Holder(Inner(2))))        # 55
+//     print("outer_untouched:",
+//           outer_untouched(Holder(Inner(1)), Holder(Inner(2))))  # 1
+//     print("reseats_mutable:",
+//           reseats_mutable(Holder(Inner(1)), Holder(Inner(2))))  # 99
+//     h = Holder(Inner(1))
+//     g = Holder(Inner(2))
+//     print("as_pattern_mutable:", as_pattern_mutable(h, g), h.inner.n,
+//           g.inner.n)
 void main() {
     Holder __tmp_1 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_2 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << ::tpyapp::main::reseats(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "outer_untouched:" << " " << ::tpyapp::main::outer_untouched(__tmp_1, __tmp_2) << "\n" << ::tpy::check_signals;
     Holder __tmp_3 = Holder(Inner(::tpy::BigInt(1)));
     Holder __tmp_4 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << ::tpyapp::main::outer_untouched(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
-    Holder __tmp_5 = Holder(Inner(::tpy::BigInt(1)));
-    Holder __tmp_6 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << ::tpyapp::main::mixed_const(__tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
-    Holder __tmp_7 = Holder(Inner(::tpy::BigInt(1)));
-    Holder __tmp_8 = Holder(Inner(::tpy::BigInt(2)));
-    std::cout << ::tpyapp::main::as_pattern(__tmp_7, __tmp_8) << "\n" << ::tpy::check_signals;
+    std::cout << "reseats_mutable:" << " " << ::tpyapp::main::reseats_mutable(__tmp_3, __tmp_4) << "\n" << ::tpy::check_signals;
+    Holder h = Holder(Inner(::tpy::BigInt(1)));
+    Holder g = Holder(Inner(::tpy::BigInt(2)));
+    std::cout << "as_pattern_mutable:" << " " << ::tpyapp::main::as_pattern_mutable(h, g) << " " << h.inner.n << " " << g.inner.n << "\n" << ::tpy::check_signals;
 }
 
 // main()

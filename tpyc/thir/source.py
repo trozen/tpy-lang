@@ -59,6 +59,172 @@ class SelectResult:
     temporary: bool
 
 
+class BindingKind(Enum):
+    """The planner row that decided a binding's record: its C++
+    representation family. The lowering arm that declares a name builds the
+    node for its record's kind; the value spells `<site family>.<row>`."""
+    DECL_NO_INIT_OPT_PTR = "decl.no_init_opt_ptr"
+    DECL_NO_INIT_VALUE = "decl.no_init_value"
+    DECL_CLOSED_FRAME = "decl.closed_frame"
+    DECL_ER_ALIAS = "decl.er_alias"
+    DECL_ER_BIND = "decl.er_bind"
+    DECL_OWN_ELEM_TUPLE = "decl.own_elem_tuple"
+    DECL_RECORD_SLOT = "decl.record_slot"
+    DECL_RECORD_HOISTED_SLOT = "decl.record_hoisted_slot"
+    DECL_CONTAINER_SLOT = "decl.container_slot"
+    DECL_STORAGE_OPT_LIFT = "decl.storage_opt_lift"
+    DECL_DYN_OWN_ERASED = "decl.dyn_own_erased"
+    DECL_CORO_FRAME_LOCAL = "decl.coro_frame_local"
+    DECL_DYN = "decl.dyn"
+    DECL_OPT_BTUPLE = "decl.opt_btuple"
+    DECL_REF_ALIAS = "decl.ref_alias"
+    DECL_POINTER = "decl.pointer"
+    DECL_REBIND_SLOT = "decl.rebind_slot"
+    DECL_OPT_CALL_PASSTHROUGH = "decl.opt_call_passthrough"
+    DECL_OPT_STORAGE_CALL = "decl.opt_storage_call"
+    DECL_OPT_PTR = "decl.opt_ptr"
+    DECL_OPTIONAL_TO_PTR = "decl.optional_to_ptr"
+    DECL_OPT_OWN_PARAM_LIFT = "decl.opt_own_param_lift"
+    DECL_MIXED_ELEM_PTR = "decl.mixed_elem_ptr"
+    DECL_STORAGE_TUPLE_ALIAS = "decl.storage_tuple_alias"
+    DECL_STORAGE_TUPLE_CHAIN = "decl.storage_tuple_chain"
+    DECL_COMPREHENSION = "decl.comprehension"
+    DECL_TPARAM_CALL = "decl.tparam_call"
+    DECL_PTR_VARIANT = "decl.ptr_variant"
+    DECL_PTR_VARIANT_SLOT = "decl.ptr_variant_slot"
+    DECL_STORAGE_CALL_TUPLE = "decl.storage_call_tuple"
+    DECL_ITERATOR_OBJECT = "decl.iterator_object"
+    DECL_BTUPLE_REBOUND = "decl.btuple_rebound"
+    DECL_BTUPLE_ALIAS = "decl.btuple_alias"
+    DECL_BTUPLE_REF_ALIAS = "decl.btuple_ref_alias"
+    DECL_BTUPLE_INLINE_ARMS = "decl.btuple_inline_arms"
+    DECL_BTUPLE_REASSIGNED = "decl.btuple_reassigned"
+    DECL_OPTVIEW_SHIM = "decl.optview_shim"
+    DECL_BTUPLE_LITERAL = "decl.btuple_literal"
+    DECL_TUPLE_LITERAL_WIDE = "decl.tuple_literal_wide"
+    DECL_TUPLE_LITERAL_RECORD = "decl.tuple_literal_record"
+    DECL_OPT_RECORD_CALL = "decl.opt_record_call"
+    DECL_VALUE_OPT = "decl.value_opt"
+    DECL_OPT_VALUE_RECORD = "decl.opt_value_record"
+    DECL_OWNED = "decl.owned"
+    DECL_PLAIN = "decl.plain"
+    HOIST_VALUE = "hoist.value"
+    HOIST_OPT_BTUPLE = "hoist.opt_btuple"
+    # The borrow tuple a branch binds (`std::tuple<.., T*>`, const elements
+    # from the whole-body fixpoint, a rebind slot for an owning-call source)
+    # and the loop variable's (the plain borrow spelling).
+    HOIST_BTUPLE_BRANCH = "hoist.btuple_branch"
+    HOIST_BTUPLE_LOOP = "hoist.btuple_loop"
+    HOIST_DYN = "hoist.dyn"
+    HOIST_PTR_NULL = "hoist.ptr_null"
+    HOIST_CONST_POINTER = "hoist.const_pointer"
+    HOIST_POINTER = "hoist.pointer"
+    HOIST_OPT_STORAGE = "hoist.opt_storage"
+    # A hoist with no C++ form (the statement rejects): a non-value in a
+    # resumable body (a loop head's owned slot apart), a move-through
+    # payload outside the owned-slot family, a const borrow rebound to
+    # rvalues outside an if chain or match, a name the body reads as a
+    # module global, any type no other hoist kind holds.
+    HOIST_PLAIN = "hoist.plain"
+    LOOP_VAR = "loop.var"
+    LOOP_UNPACK_HOLDER = "loop.unpack_holder"
+    LOOP_PLAIN = "loop.plain"
+    # A fresh unpack target, by the C++ its unpack declares: `T* a` of a
+    # pointer-repr Optional element, `::tpy::Union<A*, B*>` lifted per
+    # element, a rebound `T*`, `auto&&` aliasing a reference element
+    # (`unwrap_ref` of a recursive wrapper's live `X&`), the owned local
+    # moved out of the holder, `const T&` of a value element, `T` copied;
+    # `unpack.plain` is a target with no fresh C++ form (the unpack
+    # rejects).
+    UNPACK_OPT_PTR = "unpack.opt_ptr"
+    UNPACK_PTR_VARIANT = "unpack.ptr_variant"
+    UNPACK_PTR = "unpack.ptr"
+    UNPACK_REF = "unpack.ref"
+    UNPACK_UNWRAP_REF = "unpack.unwrap_ref"
+    UNPACK_MOVE = "unpack.move"
+    UNPACK_CREF = "unpack.cref"
+    UNPACK_VALUE = "unpack.value"
+    UNPACK_PLAIN = "unpack.plain"
+    # A fresh sync `with ... as` target: `T* name = &(...)` of a reassigned
+    # record, `auto& name` of any other record, `auto name` of a value;
+    # `with.plain` has no form here (a frame field's arms, or a reject).
+    WITH_POINTER = "with.pointer"
+    WITH_REF = "with.ref"
+    WITH_VALUE = "with.value"
+    WITH_PLAIN = "with.plain"
+    # A walrus target's first binding, by the pre-declaration its walrus
+    # places: `[const ]T* n = nullptr;` of a borrow-only record or a
+    # pointer-repr Optional, the borrow tuple `std::tuple<.., T*> t;`, the
+    # reassigned borrow tuple over its owning `__slot_N`, the deferred-init
+    # `std::optional<T>` of an owned non-value, the value-repr Optional,
+    # the plain value slot; `walrus.plain` has no form (the walrus
+    # rejects).
+    WALRUS_PTR_ALIAS = "walrus.ptr_alias"
+    WALRUS_OPT_PTR = "walrus.opt_ptr"
+    WALRUS_BTUPLE = "walrus.btuple"
+    WALRUS_BTUPLE_SLOT = "walrus.btuple_slot"
+    WALRUS_OWNED_SLOT = "walrus.owned_slot"
+    WALRUS_VALUE_OPT = "walrus.value_opt"
+    WALRUS_VALUE = "walrus.value"
+    WALRUS_PLAIN = "walrus.plain"
+    # A comprehension unpack target: the `auto&` reference of a record or a
+    # storage-form Optional element, or the element's rendered value type.
+    COMP_UNPACK_REF = "comp.unpack_ref"
+    COMP_UNPACK_STORAGE_OPT = "comp.unpack_storage_opt"
+    COMP_UNPACK_VALUE = "comp.unpack_value"
+    COMP_STORAGE_TUPLE = "comp.storage_tuple"
+    COMP_STORAGE_OPT = "comp.storage_opt"
+    COMP_PLAIN = "comp.plain"
+    # A fresh match capture: `auto& x` aliasing what it matched, `auto x`
+    # copying it (sema's `bind_by_value`), or the `auto x` copy of a
+    # pointer subject an Optional chain binds whole.
+    MATCH_REF = "match.ref"
+    MATCH_COPY = "match.copy"
+    MATCH_SUBJECT_PTR = "match.subject_ptr"
+    DEF_CLOSURE_LOCAL = "def.closure_local"
+    DEF_PLAIN = "def.plain"
+    PARAM_SEED = "param.seed"
+    PARAM_RECEIVER = "param.receiver"
+    PARAM_PLAIN = "param.plain"
+    RECEIVER_PLAIN = "receiver.plain"
+    GLOBAL_SEED = "global.seed"
+    GLOBAL_MODULE = "global.module"
+    GLOBAL_PLAIN = "global.plain"
+    MODULE_GLOBAL_PLAIN = "module_global.plain"
+    FRAME_LAYOUT = "frame.layout"
+    FRAME_PLAIN = "frame.plain"
+    ASSIGN_PLAIN = "assign.plain"
+    EXCEPT_PLAIN = "except.plain"
+    CONST_PLAIN = "const.plain"
+    STUB_DEFAULT_PLAIN = "stub_default.plain"
+    LAMBDA_PLAIN = "lambda.plain"
+    NESTED_PARAM_PLAIN = "nested_param.plain"
+    UNBOUND = "unbound"
+    # A name narrowing renamed whole (an `Any` global read as its alias).
+    NARROWED_GLOBAL = "narrowed_global"
+
+    @property
+    def family(self) -> str:
+        """The site family (`decl`, `hoist`, `loop`, ...)."""
+        return self.value.split(".")[0]
+
+    @classmethod
+    def plain(cls, site_kind: str) -> 'BindingKind':
+        """The kind a site of `site_kind` gets when no row decides it."""
+        return cls(f"{site_kind}.plain")
+
+
+class BindingRefinement(Enum):
+    """A record re-derived from an earlier one at a later site, which keeps
+    that record's kind: a whole-Optional match capture into it, a frame
+    hoist's value-opt kind, a standalone unpack's move promotion, a nested
+    def's view of an enclosing global slot."""
+    MATCH_BIND = "match_bind"
+    FRAME_HOIST = "frame_hoist"
+    UNPACK_PROMOTE = "unpack_promote"
+    NESTED_DEF = "nested_def"
+
+
 @dataclass(frozen=True, slots=True, eq=False)
 class BindingRepr:
     """How one C++ binding holds its value, decided once per declaration
@@ -75,7 +241,9 @@ class BindingRepr:
     # `result_type`).
     type: TpyType | None
     # The classifier row that decided the record.
-    row: str
+    kind: BindingKind
+    # The later sites that re-derived it, in order (the kind stays).
+    refinements: tuple[BindingRefinement, ...] = ()
     is_param: bool = False
     # The type the parameter list the body is lowered under (`lc.params`)
     # gives the name, `Ref[...]` and all: set for the function's own
@@ -85,12 +253,15 @@ class BindingRepr:
     # `T*`: a read without a deref is the raw pointer, which only a whole
     # lift consumes.
     pointer: bool = False
-    # A first local declaration's C++ shape where the borrow-local rows
-    # decide it (`T&`, `T*`, a rebind slot, an Optional pointer slot or
-    # lift): the declaration arm builds that shape.
-    local_binding: 'LocalBinding | None' = None
     # A pointer whose rvalue reseats go through a pre-declared slot.
     rebind_slot: bool = False
+    # A hoisted pointer without a rebind slot of its own: an rvalue reseat
+    # fills one it allocates at function top (BRANCH_RVALUE).
+    lazy_rebind_slot: bool = False
+    # A match capture's borrow-only pointer hoist (`T* q;`, `const T*`
+    # where a nested match re-seats it off a const subject): a capture
+    # into it, this match's or a nested one's, assigns its address.
+    borrowed_capture: bool = False
     # `T&`.
     ref_alias: bool = False
     # `::tpy::Union<A*, B*>`.
@@ -114,6 +285,11 @@ class BindingRepr:
     # A const declaration (the decl families; a parameter's const is its
     # reading function's verdict).
     const: bool = False
+    # Some value bound into this record is a const borrow (the planner's
+    # const fixpoint). A declaration, hoist or walrus pointer slot holding
+    # one is `const T*` (`const`): a slot holding a mutable source too
+    # rejects at planning.
+    const_source: bool = False
     # A loop variable bound const.
     const_loop_var: bool = False
     # The whole-body borrow-tuple const fixpoint, per NAME as the lowering
@@ -147,14 +323,15 @@ class BindingRepr:
     global_cpp: str | None = None
     # A pointer-slot module global, read as the pointer it is.
     global_slot: bool = False
-    # A nested def's name: the lowering binds it as a closure local
-    # (`lc.nested_def_locals`), never in `declared`.
+    # A nested def's name: the lowering binds it as a closure local, never
+    # in `declared`.
     nested_def: bool = False
 
 
 # The record a name with no binding answers with (a function, a class, a
 # synthesized narrowing alias): every representation fact false.
-UNBOUND = BindingRepr(name="", site=None, type=None, row="unbound")
+UNBOUND = BindingRepr(name="", site=None, type=None,
+                      kind=BindingKind.UNBOUND)
 
 
 class NameFacts:

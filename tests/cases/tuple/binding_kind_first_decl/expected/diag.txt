@@ -1,0 +1,1 @@
+main.py:63: warning: Own[Box | None] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

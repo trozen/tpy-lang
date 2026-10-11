@@ -1,0 +1,13 @@
+self_rebind_owned 5 2
+self_rebind_borrowed 7 2
+own_param_lift 4 0
+storage_alias 5 7
+rebound_call_source 11 11 102
+elem_cast 2 2
+elem_typed_dict 3 5
+elem_enum_value BLUE 6
+elem_call_macro (1, 2) 6
+elem_asdict 3
+method_self_rebind 7 2
+branch_first_self_rebind 9
+loop_self_rebind 3

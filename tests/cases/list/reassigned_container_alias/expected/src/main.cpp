@@ -119,6 +119,21 @@ void bytearrays(::tpy::ByteArray& a, ::tpy::ByteArray& b, bool go) {
     std::cout << "bytearray" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }
 
+// # two readonly sources: a const pointer re-pointed between them; a write
+// # through the caller's mutable name for `b` shows the alias
+// def readonly_params(a: readonly[list[int32]], b: readonly[list[int32]],
+//                     c: list[int32]) -> None:
+//     x = a
+//     x = b  # tpyc: ok
+//     c.append(9)
+//     print("readonly", len(a), len(b), len(x))
+void readonly_params(const std::vector<int32_t>& a, const std::vector<int32_t>& b, std::vector<int32_t>& c) {
+    const std::vector<int32_t>* x = &(a);
+    x = &(b);
+    c.push_back(9);
+    std::cout << "readonly" << " " << ::tpy::__len__(a) << " " << ::tpy::__len__(b) << " " << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     params([1], [2, 2])
 //     locals_()
@@ -133,6 +148,8 @@ void bytearrays(::tpy::ByteArray& a, ::tpy::ByteArray& b, bool go) {
 //     p = [1]
 //     q = [2, 2]
 //     h.swap(p, q)
+//     r = [2, 2]
+//     readonly_params([1], r, r)
 void main() {
     std::vector<int32_t> __tmp_1 = {1};
     std::vector<int32_t> __tmp_2 = {2, 2};
@@ -163,6 +180,9 @@ void main() {
     std::vector<int32_t> p = {1};
     std::vector<int32_t> q = {2, 2};
     h.swap(p, q);
+    std::vector<int32_t> r = {2, 2};
+    std::vector<int32_t> __tmp_17 = {1};
+    ::tpyapp::main::readonly_params(__tmp_17, r, r);
 }
 
 // main()

@@ -204,7 +204,7 @@ def test_range_head_arguments_leave_body_unplanned(functions: dict[str, th.THIRF
 
 @pytest.mark.parametrize("field,value", [
     ("consuming", True), ("hoisted_tuple_lift_cpp", "tuple"),
-    ("hoist_ptr_inits", ("source",)), ("str_literal_iterable", True),
+    ("str_literal_iterable", True),
     ("frame_src_field", "source"), ("iterable_lvalue", False),
 ])
 def test_unhandled_native_metadata_leaves_body_unplanned(

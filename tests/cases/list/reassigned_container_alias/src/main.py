@@ -2,7 +2,7 @@
 # local (`std::vector<int32_t>* x = &(a); x = &(b);`) instead of copying, so a
 # mutation through the alias is observed on the source it names. One section
 # per position and per pointee family; every section reads BOTH sources back.
-from tpy import int32
+from tpy import int32, readonly
 
 
 class Node:
@@ -99,6 +99,16 @@ def bytearrays(a: bytearray, b: bytearray, go: bool) -> None:
     print("bytearray", len(a), len(b), len(x))
 
 
+# two readonly sources: a const pointer re-pointed between them; a write
+# through the caller's mutable name for `b` shows the alias
+def readonly_params(a: readonly[list[int32]], b: readonly[list[int32]],
+                    c: list[int32]) -> None:
+    x = a
+    x = b  # tpyc: ok
+    c.append(9)
+    print("readonly", len(a), len(b), len(x))
+
+
 def main() -> None:
     params([1], [2, 2])
     locals_()
@@ -113,6 +123,8 @@ def main() -> None:
     p = [1]
     q = [2, 2]
     h.swap(p, q)
+    r = [2, 2]
+    readonly_params([1], r, r)
 
 
 main()

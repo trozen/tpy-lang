@@ -2590,7 +2590,7 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__ctor__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:call.callee_kind",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "",
   ""
  ],
@@ -3135,7 +3135,7 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__fn__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:call.callee_kind",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "",
   ""
  ],
@@ -4005,7 +4005,7 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__meth__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:call.callee_kind",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "",
   ""
  ],
@@ -4575,7 +4575,7 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
  ],
  "bytearray__nested__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:call.callee_kind",
+  "reject:stmt.var_decl:decl.container_call_reassigned",
   "",
   ""
  ],
@@ -5600,7 +5600,7 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -5630,9 +5630,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%o0])]) "
  ],
  "deref_list__ctor__narrowed_opt__recv_mut": [
   "reject:expr.method_call:method.marker.deref.plain",
@@ -5660,9 +5660,9 @@
   "%h.f [storage] = *%pv print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__ctor__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%pv])]) "
  ],
  "deref_list__ctor__narrowed_opt_param__recv_mut": [
   "reject:expr.method_call:method.marker.deref.plain",
@@ -6160,7 +6160,7 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -6190,9 +6190,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%o0])]) "
  ],
  "deref_list__fn__narrowed_opt__recv_mut": [
   "reject:expr.method_call:method.marker.deref.plain",
@@ -6220,9 +6220,9 @@
   "%h.f [storage] = *%pv print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__fn__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%pv])]) "
  ],
  "deref_list__fn__narrowed_opt_param__recv_mut": [
   "reject:expr.method_call:method.marker.deref.plain",
@@ -7030,7 +7030,7 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -7060,9 +7060,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%o0])]) "
  ],
  "deref_list__meth__narrowed_opt__recv_mut": [
   "reject:expr.method_call:method.marker.deref.plain",
@@ -7090,9 +7090,9 @@
   "%h.f [storage] = *%pv print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw])"
  ],
  "deref_list__meth__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DL* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [*%pv])]) "
  ],
  "deref_list__meth__narrowed_opt_param__recv_mut": [
   "reject:expr.method_call:method.marker.deref.plain",
@@ -7600,7 +7600,7 @@
   "%h.f [storage] = %s0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -7630,7 +7630,7 @@
   "%h.f [storage] = *%o0 print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%h.f [storage]])]) [raw]) call(nested_inner, [])"
  ],
  "deref_list__nested__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -8450,7 +8450,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -8480,9 +8480,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %o0: [if_elif_record] case default: as %v [assign] %v->x = coerce(lit(9) -> int32) print(%o0->x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -8510,9 +8510,9 @@
   "%h.f [storage] = *%pv print(%h.f [storage].x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %pv: [if_elif_record] case default: as %v [assign] %v->x = coerce(lit(9) -> int32) print(%pv->x [raw])"
  ],
  "deref_rec__ctor__narrowed_opt_param__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -9010,7 +9010,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -9040,9 +9040,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %o0: [if_elif_record] case default: as %v [assign] %v->x = coerce(lit(9) -> int32) print(%o0->x [raw])"
  ],
  "deref_rec__fn__narrowed_opt__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -9070,9 +9070,9 @@
   "%h.f [storage] = *%pv print(%h.f [storage].x [raw])"
  ],
  "deref_rec__fn__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %pv: [if_elif_record] case default: as %v [assign] %v->x = coerce(lit(9) -> int32) print(%pv->x [raw])"
  ],
  "deref_rec__fn__narrowed_opt_param__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -9880,7 +9880,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -9910,9 +9910,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %o0: [if_elif_record] case default: as %v [assign] %v->x = coerce(lit(9) -> int32) print(%o0->x [raw])"
  ],
  "deref_rec__meth__narrowed_opt__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -9940,9 +9940,9 @@
   "%h.f [storage] = *%pv print(%h.f [storage].x [raw])"
  ],
  "deref_rec__meth__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: DR* match %pv: [if_elif_record] case default: as %v [assign] %v->x = coerce(lit(9) -> int32) print(%pv->x [raw])"
  ],
  "deref_rec__meth__narrowed_opt_param__recv_mut": [
   "reject:stmt.assign:assign.field_write_shape",
@@ -10450,7 +10450,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -10480,7 +10480,7 @@
   "%h.f [storage] = *%o0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -13850,7 +13850,7 @@
   ""
  ],
  "gen_rec__ctor__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -13880,9 +13880,9 @@
   ""
  ],
  "gen_rec__ctor__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%o0, ->"
  ],
  "gen_rec__ctor__narrowed_opt__recv_mut": [
   "ok",
@@ -13910,9 +13910,9 @@
   ""
  ],
  "gen_rec__ctor__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, ->"
  ],
  "gen_rec__ctor__narrowed_opt_param__recv_mut": [
   "ok",
@@ -14375,7 +14375,7 @@
   ""
  ],
  "gen_rec__fn__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -14405,9 +14405,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%o0, ->"
  ],
  "gen_rec__fn__narrowed_opt__recv_mut": [
   "ok",
@@ -14435,9 +14435,9 @@
   ""
  ],
  "gen_rec__fn__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, ->"
  ],
  "gen_rec__fn__narrowed_opt_param__recv_mut": [
   "ok",
@@ -15210,7 +15210,7 @@
   ""
  ],
  "gen_rec__meth__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -15240,9 +15240,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(method_call(%h.f [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%o0, ->"
  ],
  "gen_rec__meth__narrowed_opt__recv_mut": [
   "ok",
@@ -15270,9 +15270,9 @@
   ""
  ],
  "gen_rec__meth__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, ->"
  ],
  "gen_rec__meth__narrowed_opt_param__recv_mut": [
   "ok",
@@ -15745,7 +15745,7 @@
   ""
  ],
  "gen_rec__nested__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -15775,7 +15775,7 @@
   "%h.f [storage] = *%o0 print(method_call(%h.f [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -21700,7 +21700,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -21730,9 +21730,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %o0: [if_elif_record] case default: as %v [assign] %v->x = binop(%v->x, +, lit(1)) print(%o0->x [raw])"
  ],
  "rec__ctor__narrowed_opt__recv_mut": [
   "ok",
@@ -21760,9 +21760,9 @@
   "%h.f [storage] = *%pv print(%h.f [storage].x [raw])"
  ],
  "rec__ctor__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %pv: [if_elif_record] case default: as %v [assign] %v->x = binop(%v->x, +, lit(1)) print(%pv->x [raw])"
  ],
  "rec__ctor__narrowed_opt_param__recv_mut": [
   "ok",
@@ -22290,7 +22290,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "rec__fn__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -22320,9 +22320,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
  ],
  "rec__fn__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %o0: [if_elif_record] case default: as %v [assign] %v->x = binop(%v->x, +, lit(1)) print(%o0->x [raw])"
  ],
  "rec__fn__narrowed_opt__recv_mut": [
   "ok",
@@ -22350,9 +22350,9 @@
   "%h.f [storage] = *%pv print(%h.f [storage].x [raw])"
  ],
  "rec__fn__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %pv: [if_elif_record] case default: as %v [assign] %v->x = binop(%v->x, +, lit(1)) print(%pv->x [raw])"
  ],
  "rec__fn__narrowed_opt_param__recv_mut": [
   "ok",
@@ -23190,7 +23190,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw])"
  ],
  "rec__meth__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_const_loop_var",
   "",
   ""
  ],
@@ -23220,9 +23220,9 @@
   "%h.f [storage] = form_convert[storage](*%o0) print(%h.f [storage].x [raw])"
  ],
  "rec__meth__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %o0: [if_elif_record] case default: as %v [assign] %v->x = binop(%v->x, +, lit(1)) print(%o0->x [raw])"
  ],
  "rec__meth__narrowed_opt__recv_mut": [
   "ok",
@@ -23250,9 +23250,9 @@
   "%h.f [storage] = *%pv print(%h.f [storage].x [raw])"
  ],
  "rec__meth__narrowed_opt_param__match_capture": [
-  "reject:stmt.match",
+  "ok",
   "",
-  ""
+  "hoist %v: R* match %pv: [if_elif_record] case default: as %v [assign] %v->x = binop(%v->x, +, lit(1)) print(%pv->x [raw])"
  ],
  "rec__meth__narrowed_opt_param__recv_mut": [
   "ok",
@@ -23790,7 +23790,7 @@
   "%h.f [storage] = %s0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__loop_var__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],
@@ -23820,7 +23820,7 @@
   "%h.f [storage] = *%o0 print(%h.f [storage].x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__narrowed_opt__match_capture": [
-  "reject:stmt.match",
+  "reject:stmt.match:match.capture_shape",
   "",
   ""
  ],

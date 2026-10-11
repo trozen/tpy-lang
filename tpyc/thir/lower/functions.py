@@ -933,10 +933,14 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     _seed_global_scope(func, analyzer, lc, params_set, native_globals)
     # Seeded with params (and `self`): a write to such a name is a reassignment.
     declared: dict[str, TpyType] = dict(params_set)
-    bindings.plan_and_install(
-        lc, func.body, declared,
-        readonly_self=bool(has_self and value_self is None
-                           and func.is_readonly))
+    try:
+        bindings.plan_and_install(
+            lc, func.body, declared,
+            readonly_self=bool(has_self and value_self is None
+                               and func.is_readonly))
+    except ThirUnsupported as ex:
+        note(ex.reason, ex.loc, ex.message)
+        return None
     src_params = (func.params if stub is None or literal_group
                   else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
@@ -1086,7 +1090,11 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
     # function-kind-blind, so a ctor's `g = v;` renders exactly like a
     # sync function's).
     _seed_global_scope(init_method, analyzer, lc, declared, native_globals)
-    bindings.plan_and_install(lc, init_method.body, declared)
+    try:
+        bindings.plan_and_install(lc, init_method.body, declared)
+    except ThirUnsupported as ex:
+        note(ex.reason, ex.loc, ex.message)
+        return None
     # Every lowering call sits inside this boundary: expression admission can
     # raise, and a raise outside here would escape this reject boundary.
     try:
@@ -1270,16 +1278,13 @@ def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
     would hoist a declaration before a statement raises a `no_flush`-marked
     reject: the list has no statement, the body does. Every other reject
     rejects the whole ctor. The rejected attempt's side effects roll back: `declared` by
-    copy, the branch-scoped lc name-sets via branch_scope, the
-    FUNCTION-scoped walrus sets by explicit copy (branch_scope deliberately
-    skips them), and the faces / move-verdict journals by delta
+    copy, the branch-scoped lc name-sets via branch_scope, and the faces /
+    move-verdict journals by delta
     subtraction (the flat one-window journal design forbids a nested
     begin/rollback here)."""
     from ...compilation_context import get_current_compiler
     compiler = get_current_compiler()
     decl_snap = dict(declared)
-    walrus_pre_snap = set(lc.walrus_predeclared)
-    walrus_slot_snap = set(lc.walrus_slot_locals)
     fw_snap = (dict(compiler._thir_face_witnesses)
                if compiler is not None else None)
     fj = getattr(compiler, "_thir_face_journal", None)
@@ -1290,10 +1295,6 @@ def _attempt_ctor_mil_init(stmt, own_field_names, declared: dict,
     def rollback() -> None:
         declared.clear()
         declared.update(decl_snap)
-        lc.walrus_predeclared.clear()
-        lc.walrus_predeclared.update(walrus_pre_snap)
-        lc.walrus_slot_locals.clear()
-        lc.walrus_slot_locals.update(walrus_slot_snap)
         if compiler is not None:
             compiler._thir_face_witnesses = dict(fw_snap)
             if fj is not None:
@@ -2059,9 +2060,14 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                                          if user_module_imports is None
                                          else user_module_imports),
                     all_user_modules=all_user_modules, emitted=emitted))
-    bindings.plan_and_install(
-        lc, carrier.body, declared, top_level=True,
-        module_globals={n for n, gt in global_types.items() if gt is not None})
+    try:
+        bindings.plan_and_install(
+            lc, carrier.body, declared, top_level=True,
+            module_globals={n for n, gt in global_types.items()
+                            if gt is not None})
+    except ThirUnsupported as ex:
+        note(ex.reason, ex.loc, ex.message)
+        return None
     try:
         body = _lower_stmts(carrier.body, lc, declared, top_level=True)
         if lc.unhandled_hoists:

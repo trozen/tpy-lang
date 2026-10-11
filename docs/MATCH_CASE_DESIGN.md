@@ -535,14 +535,25 @@ match binding the name at a different type is rejected at the nested capture
 C++ silently truncates wherever an implicit conversion exists. The check needs
 both types known, so an untyped binding passes rather than reject on a message
 naming no type.
-Because one slot serves every bind, its const-ness is the OR over all of them:
-codegen re-asks each binding subject's const verdict at the decl site
-(`_match_capture_borrows_const`), since sema fixes its stmt-borrow const flag
-in Phase 1, before mutation propagation has decided whether a borrowed param
-renders `const T&`. That re-ask is deliberately NOT widened to the plain
-single-match hoist, which drops const the same way (BUGS.md): widening it
-would change the emit for shapes THIR still routes, and THIR's hoist admission
-rejects the const-indirect rung rather than carrying it.
+Because one slot serves every bind, its const-ness is decided over all of
+them: the binding planner's const fixpoint (`_plan_const`, `bindings.py`)
+takes a capture's subject as one more source bound into the slot, judged by
+the one const-source verdict every binding reads (asked there, not taken
+from sema's Phase-1 stmt-borrow flag, because mutation propagation decides
+later whether a borrowed param renders `const T&`). Every source const
+makes the slot `const T*`, and a name bound from the hoist later reads that
+const -- except a capture of a loop variable bound const, which the planner
+refuses at the match (`match.capture_const_loop_var`): sema does not credit
+a write through the capture to the loop variable, so that const is
+unproven (BUGS.md#match-capture-loop-var-write-not-credited); none makes it
+`T*`; a slot holding both rejects at the bind of the
+first const source (`decl.reseat_source`), whether or not anything writes
+through it (BUGS.md#match-capture-write-before-const-nested-rebind). A
+capture the case declares itself is local to its arm: a later binding of
+the name declares its own. The record is the
+shared `hoist.const_pointer` kind: a match's non-value hoist takes the answer
+an if chain's takes (`_nonvalue_hoist_kind`) at the same position, a branch,
+loop or handler body included.
 
 A literal field sub-pattern (`case Dog(legs=4):`) is a *conditional* arm: it
 matches only when the variant type *and* the field value match. Such an arm

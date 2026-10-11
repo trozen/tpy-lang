@@ -1,0 +1,19 @@
+unpack_opt: 13 5
+head_opt: 7
+unpack_ref: 18
+match_ref: 14
+with_alias: 14
+match_branch: 14 24
+head_branch: 12
+alias_head: 11
+reseat: 16
+try_alias: 14
+subject_alias: 12
+hoisted_capture: 13
+alias_chain: 18
+two_slots: 9 6
+later_slot_repointed: 3224 224
+with_targets: 112
+readonly_union_copy: 12 12
+readonly_union_reseat: 13
+with_targets_method: 112

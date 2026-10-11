@@ -1915,11 +1915,6 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
     # (the planner's input for their value-opt kinds).
     frame_setup: list[tuple[str, TpyType, str]] = []
     lc.frame_own_tuple_types = frame_own_tuple_types
-    # Frame nested defs are struct members callable from EVERY resume
-    # case, so their names register up front (the
-    # `collect_frame_nested_defs` pass), not just at their statement.
-    for _nd in collect_frame_nested_defs(list(func.body)):
-        lc.nested_def_locals.add(_nd.func.name)
     # Pointer-form loop vars and Optional-ptr locals: their writes are not
     # plain-field assigns (skeleton binds / pointer-slot sources), so both
     # stay out of plain_frame_fields.
@@ -2441,7 +2436,7 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
             m_route = _match._select_match_route(
                 t.match_stmt, analyzer, declared, lc.names_with("pointer", prior=True),
                 lc.narrow.narrowed.keys(), lc.names_with("storage_tuple"),
-                lc.prescan, lc, in_branch=False, in_loop=False)
+                lc.prescan, lc)
             m_node = _match._lower_match(
                 t.match_stmt, m_route, lc, declared, lc.names_with("pointer", prior=True),
                 getattr(t.match_stmt, "loc", None), arm_body_hooks=True)

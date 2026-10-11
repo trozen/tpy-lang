@@ -212,11 +212,6 @@ __coro_co co(H& h) {
 //     f = fget(h)  # tpyc: ok
 //     h.bump(10)
 //     print("free_decl", f.x if f is not None else -1)
-//     # reassignment: a local bound to the field, rebound to the readonly result
-//     r = h._alt
-//     r = h.get()  # tpyc: ok
-//     h.bump(10)
-//     print("reassign", r.x if r is not None else -1)
 //     # relay through a return, method and free function
 //     rm = relay_method(h)  # tpyc: ok
 //     rf = relay_free(h)  # tpyc: ok
@@ -256,10 +251,6 @@ void main() {
     const R* f = ::tpyapp::main::fget(h);
     h.bump(10);
     std::cout << "free_decl" << " " << (((f != nullptr)) ? (f->x) : (-1)) << "\n" << ::tpy::check_signals;
-    const R* r = ::tpy::optional_to_ptr(h._alt);
-    r = h.get();
-    h.bump(10);
-    std::cout << "reassign" << " " << (((r != nullptr)) ? (r->x) : (-1)) << "\n" << ::tpy::check_signals;
     const R* rm = ::tpyapp::main::relay_method(h);
     const R* rf = ::tpyapp::main::relay_free(h);
     h.bump(10);

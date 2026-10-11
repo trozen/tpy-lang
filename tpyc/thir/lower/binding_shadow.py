@@ -33,19 +33,15 @@ def check_read(e, node, lc, declared, source) -> None:
         if name in declared:
             shadow_emit(lc, "unplanned", name, loc, type(key).__name__)
         return
-    if rec.nested_def:
-        if name not in lc.nested_def_locals:
-            shadow_emit(lc, "wrong_scope:nested_def_not_local", name, loc,
-                        rec.row)
-    elif name not in declared and node.cpp is None:
+    if not rec.nested_def and name not in declared and node.cpp is None:
         shadow_emit(lc, "wrong_scope:record_not_declared", name, loc,
-                    rec.row)
+                    rec.kind.value)
     pn = lc.prescan.param_names
     const = rec.const or (
         name in pn and _param_is_const(name, lc.func, lc.analyzer,
                                        lc.record_name))
     if const != source.const:
-        shadow_emit(lc, f"read:const:expected={const}", name, loc, rec.row)
+        shadow_emit(lc, f"read:const:expected={const}", name, loc, rec.kind.value)
     if node.cpp is not None:
         return
     an = lc.analyzer
@@ -67,7 +63,7 @@ def check_read(e, node, lc, declared, source) -> None:
         static = project_held(rec, read_type(rec.type), deref, an, pn, ov)
         if static is not mine:
             shadow_emit(lc, f"held_type:{label}:{mine.name}/{static.name}",
-                        name, loc, rec.row)
+                        name, loc, rec.kind.value)
 
 
 def check_binding(e, rec, lc, declared) -> None:
@@ -85,7 +81,7 @@ def check_binding(e, rec, lc, declared) -> None:
             "is_param": name in lc.prescan.param_names}
     # The prescan names the pointer-slot GLOBALS; a local record that
     # shadows one (a comprehension variable in module init) is none.
-    if rec.row.startswith("global."):
+    if rec.kind.family == "global":
         want["global_slot"] = name in lc.prescan.global_slots
     for fld, v in want.items():
         have = getattr(rec, fld)
@@ -94,7 +90,7 @@ def check_binding(e, rec, lc, declared) -> None:
         if not same:
             shadow_emit(lc, f"binding:{fld}", name, loc,
                         f"expected={v}:{type(v).__name__} "
-                        f"actual={have}:{type(have).__name__} row={rec.row}")
+                        f"actual={have}:{type(have).__name__} row={rec.kind.value}")
 
 
 def _view_axis_split(binding_type: TpyType | None,

@@ -700,7 +700,7 @@ def const_place(expr: TpyExpr, type_of: "ExprTypeOf",
     step rather than being `expr` itself)."""
     stepped = False
     while True:
-        referent = _deref_step_const(expr, type_of, const_referent)
+        referent = deref_step_const(expr, type_of, const_referent)
         if referent is not None:
             return referent
         expr = peel_coerce(expr)
@@ -714,7 +714,7 @@ def const_place(expr: TpyExpr, type_of: "ExprTypeOf",
         expr, stepped = expr.obj, True
 
 
-def _deref_step_const(expr: TpyExpr, type_of: "ExprTypeOf",
+def deref_step_const(expr: TpyExpr, type_of: "ExprTypeOf",
                       const_referent: Callable[[TpyExpr], bool]) -> bool | None:
     """A deref coercion over a handle (`x: A = m._a` on `_a: Ptr[A]`) is a
     step through that handle, so it ends `const_place`'s walk with the

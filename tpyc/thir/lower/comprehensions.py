@@ -45,6 +45,7 @@ from ...codegen_cpp.context import (
     contains_named_expr, free_callee_cpp, is_lvalue_iterable)
 from ...codegen_cpp.types import resolve_pending_container
 from ..reject import ThirUnsupported
+from ..source import BindingKind
 from ..faces import witness as _witness
 from ..nodes import (
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
@@ -82,6 +83,7 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
+    BindingTableError,
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
@@ -683,23 +685,28 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
     return is_list(su) or is_array(su) or is_dict(su)
 
-def _unpack_target_cpps(unpack_types, lc: '_LowerCtx',
-                        const_loop_var: bool = True) -> tuple:
-    """The per-target decl spellings of a comp unpack head: None for `_`
-    discards, the ref binding for F1-record targets (`const auto&` /
-    `auto&`, keyed on const_loop_var alone, like the inline tuple unpack's
-    ref binding), the rendered type otherwise.
-    Shared by the begin_end and array_source arms."""
-    ref = "const auto&" if const_loop_var else "auto&"
-    return tuple(
-        None if tt is None
-        else (ref if (record_like(
-                          unwrap_readonly(unwrap_send_sync(tt)), lc.analyzer)
-                      # A storage-optional element binds the same reference
-                      # (`auto& p = std::get<0>(t);`).
-                      or _optional_ptr_borrow(tt, lc.analyzer) is not None)
-              else lc.render_type(tt))
-        for tt in unpack_types)
+def _unpack_target_cpps(gen, unpack_types, lc: '_LowerCtx') -> tuple:
+    """The per-target decl spellings of a comp unpack head, by each
+    target's record: None for `_` discards, the reference (`const auto&` /
+    `auto&`, as the record's const) of a record or storage-form Optional
+    element, the rendered type otherwise. Shared by the begin_end and
+    array_source arms."""
+    out = []
+    for name, tt in zip(gen.unpack_vars, unpack_types):
+        if tt is None or name is None:
+            out.append(None)
+            continue
+        rec = lc.table.declared_by(gen, name)
+        if rec is None:
+            raise BindingTableError(
+                f"comprehension target {name!r} has no record in "
+                f"{lc.func.name}")
+        if rec.kind in (BindingKind.COMP_UNPACK_REF,
+                        BindingKind.COMP_UNPACK_STORAGE_OPT):
+            out.append("const auto&" if rec.const else "auto&")
+        else:
+            out.append(lc.render_type(tt))
+    return tuple(out)
 
 
 def _comp_result_slots_ok(
@@ -947,8 +954,7 @@ def _lower_array_source_comprehension(
             if name is not None:
                 body_declared[name] = tt
         unpack_targets = tuple(gen.unpack_vars)
-        unpack_cpps = _unpack_target_cpps(route.unpack_types, lc,
-                                  gen.const_loop_var)
+        unpack_cpps = _unpack_target_cpps(gen, route.unpack_types, lc)
     else:
         body_declared[gen.var] = route.et
     if isinstance(it, TpyFieldAccess):
@@ -1303,8 +1309,8 @@ def _build_comprehension_body(init, result_type, lc, declared,
                 _witness("comp.unpack")
                 body = (THIRTupleUnpack(
                     source=gen.var, targets=tuple(gen.unpack_vars),
-                    target_cpps=_unpack_target_cpps(route.unpack_types, lc,
-                                                    gen.const_loop_var),
+                    target_cpps=_unpack_target_cpps(gen, route.unpack_types,
+                                                    lc),
                     source_bind=(TupleSourceBind.NAME_CREF
                                  if gen.const_loop_var
                                  else TupleSourceBind.NAME_REF),

@@ -2224,8 +2224,6 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     # not hardcoded).
     indent = INDENT * indent_level
     for name, cpp_type, init in stmt.hoist_decls:
-        if name in stmt.hoist_ptr_inits:
-            init = " = nullptr"
         out.write(f"{indent}{cpp_type} {name}{init};\n")
     saved_depth = _push_loop_frame(state, has_else=bool(stmt.orelse))
     n = state.next_loop_index()
@@ -2869,13 +2867,7 @@ def _emit_match(out: TextIO, stmt: THIRMatch, indent_level: int,
     # Optional-tier concern); the guarded tiers' second draw is
     # gate-rejected.
     indent = INDENT * indent_level
-    # A hoist_slots entry allocates that name's rebind slot immediately
-    # before its predecl line (THIRIf's rvalue-reassigned arm).
-    slot_types = dict(stmt.hoist_slots)
     for name, cpp_type, init in stmt.hoist_decls:
-        if name in slot_types:
-            slot = (state.assert_local_slot() or state.next_slot())
-            _declare_rebind_slot(state, name, slot, slot_types[name])
         out.write(f"{indent}{cpp_type} {name}{init};\n")
     state.match_counter += 1
     subject = f"__match_subject_{state.match_counter}"

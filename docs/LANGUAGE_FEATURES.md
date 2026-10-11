@@ -2784,8 +2784,12 @@ def main():
   `Array`) pointees alike, in a function, method, constructor or `if` arm,
   from a parameter or local NAME and from a container element (`x = rows[0];
   x = rows[1]`). A FIELD source (`x = h.f0` then `x = h.f1`) is refused at the
-  reassignment, and so is a `readonly` source -- the reseat has no const
-  pointer form. A `ValueType` record local is not an alias: it stays a plain
+  reassignment. When every source bound into the pointer is `readonly` (two
+  readonly parameters, a readonly result), it is a const pointer
+  (`const std::vector<int32_t>* x = &(a); x = &(b);`); a pointer bound to
+  both a readonly and a mutable source has no single C++ form and is refused
+  where the readonly one binds (BUGS.md#hoist-const-from-name-wide-borrow-bit).
+  A `ValueType` record local is not an alias: it stays a plain
   value and copies on rebind (see "Scalar-like binding" under `ValueType`).
 
 - Returning a @nocopy local at last use works (C++ NRVO/implicit move)

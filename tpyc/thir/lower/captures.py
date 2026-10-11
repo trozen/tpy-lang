@@ -95,8 +95,9 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
         typ = declared.get(name)
         if (typ is None or name in lc.narrow.narrowed or name in lc.narrow.spelled
                 or name in lc.frame_field_names or lc.binding(name).pointer
-                or lc.binding(name).rebind_slot or name in lc.branch_hoisted
-                or name in lc.nested_def_locals):
+                or lc.binding(name).rebind_slot
+                or lc.binding(name).lazy_rebind_slot
+                or lc.binding(name).nested_def):
             return identity, None
         match node:
             case TpyLambda():

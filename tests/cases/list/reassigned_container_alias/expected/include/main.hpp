@@ -28,6 +28,9 @@ void sets(::tpy::ordered_set<int32_t>& a, ::tpy::ordered_set<int32_t>& b);
 void records(std::vector<Node>& a, std::vector<Node>& b);
 // def bytearrays(a: bytearray, b: bytearray, go: bool) -> None:
 void bytearrays(::tpy::ByteArray& a, ::tpy::ByteArray& b, bool go);
+// def readonly_params(a: readonly[list[int32]], b: readonly[list[int32]],
+//                     c: list[int32]) -> None:
+void readonly_params(const std::vector<int32_t>& a, const std::vector<int32_t>& b, std::vector<int32_t>& c);
 // def main() -> None:
 void main();
 

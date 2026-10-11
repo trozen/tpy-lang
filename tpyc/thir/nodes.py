@@ -3368,10 +3368,6 @@ class THIRForEach(THIRStmt):
     hoisted_tuple_lift_cpp: 'str | None' = None
     # Branch-first-declared value locals used after the loop (see THIRForRange).
     hoist_decls: tuple[HoistDecl, ...] = ()
-    # hoist_decls names whose pointer predecl null-initializes
-    # (`std::vector<int32_t>* v = nullptr;` -- the hoisted container
-    # unpack-target flavor; the with-family pointer hoist stays bare).
-    hoist_ptr_inits: tuple[str, ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     iteration: THIRNativeIteration | None = None
     # The frame field that OWNS this loop's source, and the field's own C++
@@ -3897,9 +3893,6 @@ class THIRMatch(THIRStmt):
     subject_ref: bool = True          # auto& (lvalue subject) vs auto
     arms: tuple[THIRMatchArm, ...] = ()
     hoist_decls: tuple[HoistDecl, ...] = ()
-    # Hoists that reserve a slot beside their predecl (THIRIf.hoist_slots);
-    # no match hoist does today.
-    hoist_slots: tuple[tuple[str, str], ...] = ()
     is_exhaustive: bool = False
     emit_unreachable: bool = False    # is_exhaustive AND every arm terminates
     synthetic_default: bool = False   # no wildcard AND not exhaustive

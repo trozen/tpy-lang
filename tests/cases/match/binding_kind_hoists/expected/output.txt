@@ -1,0 +1,28 @@
+same_field: 11
+const_capture: 12 12
+owned_or_field: 2 106
+nullable_or_none: 13 0
+nullable_rebound: 3 3
+readonly_one: 14 0
+readonly_both: 15 15
+try_capture: 1207 1103
+existing_local: 8 8
+guard_binds: 101 201 201 2
+nested_recapture: 102 1 102
+gen_capture: 101 2
+async_capture: 101 2
+capture_then_with: 13 4
+capture_again: first 3
+capture_again: 9
+plain_after: 10 2 10
+for_after: 12 2
+nested_container: 4
+match_in_if: 101 101
+match_in_loop: 208 101 2
+match_in_handler: 101
+match_in_while: 101
+reseat_in_if: 13 13 7 7 12
+reseat_in_while: 99 99
+on_self: 100 100
+container_existing: 7 [[7, 0, 1]]
+narrowed_method: 4 4

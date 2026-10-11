@@ -12,14 +12,12 @@ struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
-// def reseats(h: Holder, g: Holder) -> int:
-::tpy::BigInt reseats(const Holder& h, Holder& g);
 // def outer_untouched(h: Holder, g: Holder) -> int:
 ::tpy::BigInt outer_untouched(const Holder& h, const Holder& g);
-// def mixed_const(h: Holder, g: Holder) -> int:
-::tpy::BigInt mixed_const(Holder& h, const Holder& g);
-// def as_pattern(h: Holder, g: Holder) -> int:
-::tpy::BigInt as_pattern(const Holder& h, Holder& g);
+// def reseats_mutable(h: Holder, g: Holder) -> int:
+::tpy::BigInt reseats_mutable(Holder& h, Holder& g);
+// def as_pattern_mutable(h: Holder, g: Holder) -> int:
+::tpy::BigInt as_pattern_mutable(Holder& h, Holder& g);
 // def main() -> None:
 void main();
 

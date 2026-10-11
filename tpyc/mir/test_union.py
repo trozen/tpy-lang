@@ -289,12 +289,10 @@ def test_selection_and_construction_facts_are_required(artifacts: Artifacts, com
 
 
 @pytest.mark.parametrize("body,reason", [
-    ("def excluded(a: readonly[Cell | Other]) -> int32:\n    saved = a\n    return 1\n", "payload copy"),
     ("def excluded(a: bool | int32) -> int32:\n    a = True\n    return 1\n", "union destination"),
 ])
 def test_filed_codegen_defects_cannot_acquire_mir_coverage(body: str, reason: str) -> None:
-    # BUGS.md#readonly-record-union-local-copy and
-    # BUGS.md#scalar-union-parameter-reassign-const still emit invalid C++.
+    # BUGS.md#scalar-union-parameter-reassign-const still emits invalid C++.
     compiler, modules = _compile(SOURCE + "\n" + body)
     _, ctx = compiler.generate_code_and_thir(_entry(modules))
     fn = next(fn for node, fn in ctx.thir_functions.items() if node.name == "excluded")

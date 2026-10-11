@@ -7,9 +7,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
 from typing import NamedTuple
-from ...parse.nodes import (TpyAssign, TpyExpr,
+from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
-                            TpyNamedExpr, TpyVarDecl)
+                            TpyNamedExpr, TpyVarDecl, TpyWith,
+                            iter_capture_bindings)
 from ...prescan import scan_reassigned_vars
 from ...typesys import pointer_repr_optional
 from ...type_def_registry import has_view_param_form
@@ -32,7 +33,6 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...codegen_cpp.forms import is_plain_nonvalue
-from ...value_category import const_place
 from ...typesys import (
     holds_borrowing_view,
     property_getter_returns_storage_ref,
@@ -63,7 +63,6 @@ from .predicates import (
     _optional_ptr_borrow_wide,
     _storage_optional_return_wide,
     _own_viewfam_param,
-    _param_is_const,
     _protocol_auto_slot,
     _dyn_borrow_return,
     _own_dyn_return,
@@ -1421,41 +1420,30 @@ class _NarrowScope:
 # BRANCH-SCOPED: snapshotted and restored by `branch_scope()`. `narrow` joins
 # the snapshot via its own `snapshot()`.
 _BRANCH_SCOPED_SETS = (
-    "dyn_protocol_locals", "branch_hoisted", "match_ptr_hoists",
     "forbidden_reads", "forbidden_writes",
     # A `static __global_slot_N` allocated inside a branch is scoped to that
     # branch, so the "this global already has a reusable slot" fact must pop
     # with it: a later write outside the branch (or in a sibling branch)
     # allocates its own, while a second write WITHIN the branch reuses.
     "global_slot_assigned",
-    # A walrus's pre-decl lands on the named row of the statement it sits in,
-    # so it is in C++ scope exactly as long as this block: a sibling branch
-    # binding the same name must declare it again.
-    "walrus_predeclared",
 )
 # DELIBERATELY NOT branch-scoped. Registration that must survive a scope
-# (with-targets, match full-binds, a nested def's name) is done by ORDERING:
+# (with-targets, match full-binds) is done by ORDERING:
 # the caller registers in its own frame, outside the inner push/pop.
 #   unhandled_hoists -- function-scoped residue ledger; branch drains ARE the
 #       accounting, restoring them would fake un-lowered hoists.
-#   nested_def_locals -- the bound name outlives its block (Python names are
-#       function-scoped, so it is re-added after the scope restore).
 #   nested_returns -- function-scoped resumable accumulator (the seam table).
 #   inline_narrowed -- condition-scoped: saved/restored by _lower_narrow_cond
 #       within a single condition, never live across statements.
 #   tparam_bounds -- init-only per-function fact.
-#   walrus_slot_locals -- the owned-slot walrus targets: the decl is
-#       function-scoped (named row) and the binding outlives its branch
-#       (Python scoping), so reads after the branch keep the `(*n)` render.
 #   frame_local_types -- the frame's resolved slot types, seeded once by
 #       lower_resumable (the frame ctx's var_types); a frame field's
 #       slot is one type for the whole body, position-blind.
 #   frame_field_names -- the frame's member set, seeded once by
 #       lower_resumable; membership is a layout fact, not a scope one.
 _FUNCTION_SCOPED_STATE = (
-    "unhandled_hoists", "nested_def_locals", "nested_returns",
+    "unhandled_hoists", "nested_returns",
     "inline_narrowed", "tparam_bounds",
-    "walrus_slot_locals",
     "frame_local_types",
     "frame_field_names",
     # Forwarded proto-param aliases (`xs = it` in a resumable): a
@@ -1477,13 +1465,12 @@ _FUNCTION_SCOPED_STATE = (
 # Every per-name classification an inner Python scope (a nested def, a
 # lambda) would otherwise inherit from the enclosing body: `shadow_scope`
 # strips the names the inner scope binds from each. The branch-scoped sets,
-# plus the frame layout, walrus, alias and sema-ownership facts that are
+# plus the frame layout, alias and sema-ownership facts that are
 # function-scoped for the ENCLOSING body. The lazily computed borrow-tuple
 # const sets and the alias memo stay out: a restore would discard a result
 # computed inside the scope while its computed-flag survives.
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
-    "nested_def_locals", "inline_narrowed",
-    "walrus_slot_locals", "sema_movable_locals",
+    "inline_narrowed", "sema_movable_locals",
     "deref_view_spelled",
     "forwarded_map", "literal_facts", "global_ptr_slots",
     "frame_local_types", "frame_field_names", "frame_own_tuple_types",
@@ -1628,7 +1615,6 @@ class _LowerCtx:
     for those slots."""
     __slots__ = ("analyzer", "func", "prescan", "render_type",
                  "render_type_stored", "render_resolve", "tparam_bounds",
-                 "dyn_protocol_locals", "branch_hoisted", "match_ptr_hoists",
                  "deref_view_spelled", "forwarded_map",
                  "sema_movable_locals",
                  "params", "capture_funcs", "capture_sites",
@@ -1649,8 +1635,7 @@ class _LowerCtx:
                  "unpack_ptr_targets", "source_typed_holders",
                  "unhandled_hoists", "narrow", "literal_facts",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
-                 "nested_def_locals", "error_return_cpp",
-                 "walrus_predeclared", "walrus_slot_locals",
+                 "error_return_cpp",
                  "overload_narrowing", "overload_stub_return",
                  "overload_literal_facts",
                  "overload_terminated", "render_concept",
@@ -1798,29 +1783,6 @@ class _LowerCtx:
         # param const verdicts) has to ask that function and not `func`,
         # which inside a lambda is the nested one.
         self.capture_funcs: tuple = ()
-        # Walrus targets already pre-declared this FUNCTION -- codegen's
-        # walrus_pre_declared asymmetry (function-scoped, never
-        # branch-restored, unlike the branch-copied `declared` dict): a
-        # sibling-branch re-bind assigns in place, no second decl.
-        self.walrus_predeclared: set[str] = set()
-        # Owned-slot walrus targets (`std::optional<T> n;` + walrus-deref
-        # reads): every read renders `(*n)` with DOT member access --
-        # codegen's register_walrus_deref substitution, NOT the pointer-local
-        # arrow model. Function-scoped like the decl itself.
-        self.walrus_slot_locals: set[str] = set()
-        # First-declared @dynamic protocol locals that are reassigned: their
-        # reseat statements take the rebind emit (hoisted optional slot).
-        self.dyn_protocol_locals: set[str] = set()
-        # Branch-hoisted `T*` pointer-locals WITHOUT an if-head rebind slot
-        # (reassigned but not rvalue-reassigned): an rvalue reseat allocates
-        # its slot lazily at function top (PtrSlotKind.BRANCH_RVALUE);
-        # codegen's ctx.branch_hoisted_vars.
-        self.branch_hoisted: set[str] = set()
-        # Captures a routed match hoisted as `T*` pointer-locals. A NESTED
-        # match may re-seat one (`q = &(__match_subject_2.inner);`); every
-        # other pointer-local reuse keeps rejecting, so the admission keys
-        # on this set rather than on the record's `pointer`.
-        self.match_ptr_hoists: set[str] = set()
         # Deref-view narrowed subjects (the if-init cast local): branch-body
         # member calls carrying deref_narrowed_to read the wrapper var via
         # this spelling (`(*__b_ptr)`), never the deref chain. Registered
@@ -1963,11 +1925,6 @@ class _LowerCtx:
         self.inline_narrowed: dict[str, tuple[str, bool, THIRUnionExtraction | None]] = {}
         self.forbidden_reads: set[str] = set()
         self.forbidden_writes: set[str] = set()
-        # Closure locals bound by a lowered TpyNestedDef. Sole consumer: the
-        # Callable-return arm (`return add;`); closure CALLS key on
-        # `fi.frame_captures` in `_free_callee_kind` instead. The name
-        # survives the nested scope (Python names are function-scoped).
-        self.nested_def_locals: set[str] = set()
         # The enclosing function's @error_return error type render
         # (ctx.current_error_return) -- set by lower_function; drives the
         # return pass-through / return-tier raise admissions and rides
@@ -2236,10 +2193,14 @@ def _walrus_pairs(expr):
                     yield from _walrus_pairs(item)
 
 
-def binding_source_sites(body) -> 'Iterator[tuple[str, TpyExpr, object, bool]]':
+def binding_source_sites(body, *, all_binders: bool = False
+                         ) -> 'Iterator[tuple[str, object, object, bool]]':
     """Every binding source in a body, in source order: `(target, source,
     statement, is_walrus)` for each initialized VarDecl, each assignment to
-    a bare name and each walrus inside a statement's own expressions."""
+    a bare name and each walrus inside a statement's own expressions; with
+    `all_binders`, each match capture too, its source the subject, and each
+    `with ... as` target, its source the with item (the bound value is
+    its `__enter__` result)."""
     for stmt in body:
         if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
             yield stmt.name, stmt.init, stmt, False
@@ -2248,30 +2209,16 @@ def binding_source_sites(body) -> 'Iterator[tuple[str, TpyExpr, object, bool]]':
         for e in stmt.exprs():
             for tgt, src in _walrus_pairs(e):
                 yield tgt, src, stmt, True
+        if all_binders and isinstance(stmt, TpyMatch):
+            for case in stmt.cases:
+                for cap in iter_capture_bindings(case.pattern):
+                    yield cap.name, stmt.subject, stmt, False
+        if all_binders and isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.target is not None:
+                    yield item.target, item, stmt, False
         for sub in stmt.sub_bodies():
-            yield from binding_source_sites(sub)
-
-
-def _btuple_const_root(name: str, lc: _LowerCtx) -> bool:
-    # `const_ref_params` | `const_indirect_locals` mirror: the inferred
-    # const-borrow param verdict plus the const-classified locals (which
-    # carry the readonly-method receiver).
-    return (lc.binding(name).const
-            or _param_is_const(name, lc.func, lc.analyzer, lc.record_name))
-
-
-def _btuple_const_storage(expr, lc: _LowerCtx) -> bool:
-    # `is_const_storage_source` mirror (including the
-    # `is_const_union_source` lvalue-chain half).
-    def const_root(e, stepped: bool) -> bool:
-        if not isinstance(e, TpyName):
-            return False
-        if _btuple_const_root(e.name, lc):
-            return True
-        b = lc.binding(e.name)
-        return not stepped and (b.const_storage_tuple or b.const_borrow_tuple
-                                or b.const_opt_borrow_tuple)
-    return const_place(expr, lc.analyzer.get_expr_type, const_root)
+            yield from binding_source_sites(sub, all_binders=all_binders)
 
 
 @dataclass

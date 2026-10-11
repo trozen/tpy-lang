@@ -28,7 +28,7 @@ from .nodes import (
     Form, THIRExpr, THIRFieldAccess, THIRLiteral, THIRName, THIRSelf,
     THIRSubscript,
 )
-from .source import UNBOUND, BindingRepr, Held, Source
+from .source import UNBOUND, BindingKind, BindingRepr, Held, Source
 from .testutil import _compile, _entry, lower_bodies
 from .validate import _iter_children
 
@@ -36,7 +36,7 @@ _REC = NominalType("P")
 
 
 def _binding(name: str, *, pointer: bool) -> BindingRepr:
-    return BindingRepr(name=name, site=None, type=_REC, row="test",
+    return BindingRepr(name=name, site=None, type=_REC, kind=BindingKind.DECL_PLAIN,
                        pointer=pointer)
 
 
@@ -566,8 +566,8 @@ def _expected_record(table: BindingTable, node: object, name: str,
     def own_at(want: Callable[[int | None], bool]) -> list[BindingRepr]:
         found = {id(rec): rec for site in table.sites if want(_line_of(site))
                  for rec in table.sites[site] if rec.name == name
-                 and ((rec.row.split(".")[0] in fams) if fams is not None
-                      else rec.row.split(".")[0] not in _SCOPED_FAMILIES)}
+                 and ((rec.kind.family in fams) if fams is not None
+                      else rec.kind.family not in _SCOPED_FAMILIES)}
         return list(found.values())
     own = own_at(lambda ln: ln == line)
     if not own and fams == {"match"} and line is not None:
@@ -575,19 +575,19 @@ def _expected_record(table: BindingTable, node: object, name: str,
         # match statement's: the first case after it that binds the name.
         after = [ln for site in table.sites
                  if (ln := _line_of(site)) is not None and ln > line
-                 and any(r.name == name and r.row.startswith("match.")
+                 and any(r.name == name and r.kind.family == "match"
                          for r in table.sites[site])]
         if after:
             own = own_at(lambda ln: ln == min(after))
     if len(own) == 1:
         return own[0]
     assert not own, (type(node).__name__, name, line,
-                     [r.row for r in own])
+                     [r.kind for r in own])
     seen = {id(r): r for key, scope in table.scope_at.items()
             if _line_of(key) == line
             for r in (scope.lookup(name),) if r is not None}
     assert len(seen) <= 1, (type(node).__name__, name, line,
-                            [r.row for r in seen.values()])
+                            [r.kind for r in seen.values()])
     return next(iter(seen.values()), UNBOUND)
 
 
@@ -618,10 +618,10 @@ def _assert_carries_table_records(body: object, table: BindingTable
                 continue
             assert rec is not None, (type(node).__name__, n)
             assert rec is UNBOUND or (id(rec) in known and rec.name == n), (
-                type(node).__name__, n, rec.row)
+                type(node).__name__, n, rec.kind)
             want = _expected_record(table, node, n, line)
-            assert rec is want, (type(node).__name__, n, line, rec.row,
-                                 want.row)
+            assert rec is want, (type(node).__name__, n, line, rec.kind,
+                                 want.kind)
     return decls
 
 

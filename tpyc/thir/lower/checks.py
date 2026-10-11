@@ -8,6 +8,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence, Set as AbstractSet
 from dataclasses import field, replace
+from enum import Enum, auto
 from typing import Callable, NamedTuple
 from ...parse.nodes import (
     ResultForm,
@@ -158,6 +159,8 @@ from ... import qnames
 from ..faces import witness as _witness
 from ..reject import note_detail
 from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
+from ..scalar_leaves import storage_leaf
+from .storage import tuple_layout
 from .generics import expand_fi_template
 from ..nodes import (
     PrintForm,
@@ -171,6 +174,7 @@ from ..nodes import (
     THIRMethodCall,
     THIRSelf,
     THIRStrSlice,
+    THIRTupleLayout,
 )
 from .predicates import (
     _expr_is_const_source,
@@ -1651,7 +1655,7 @@ def _bare_nonvalue_name_alias_ok(init: TpyExpr, target_type: TpyType | None,
     bare -- NOT a pointer-local / Optional-ptr name (those alias as `(*p)`) and
     NOT a module global (rendered `T*`, aliased via `(*g)`); both reject.
     The const verdict follows the source name's own
-    const-ness (see `_f1_is_const` / `_f1_const_rooted_source`)."""
+    const-ness (see `_walrus_src_is_const` / `_f1_const_rooted_source`)."""
     if not isinstance(init, TpyName):
         return False
     if init.name in pointers:
@@ -1965,7 +1969,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         #
         # A borrow-returning call (`p = shared(x)` -> `Pair& p = shared(x);`,
         # `std::vector<T>& items = c.get_item();` -- the classifier's
-        # lvalue-source verdict). Const rides `_f1_is_const`'s raw-sema
+        # lvalue-source verdict). Const rides `_walrus_src_is_const`'s raw-sema
         # check (a `readonly[T]` return arrives ReadonlyType-wrapped) plus
         # the readonly-method ref-return branch: a readonly callee returning
         # a C++ reference binds const. Other call bindings (an
@@ -1994,7 +1998,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     # the pointer (`h->g`); its const verdict is computable exactly --
     # seed_param_locals seeds const_indirect_locals from the readonly
     # annotation or the DEEP-const verdict, both computed in
-    # `_f1_is_const` / `_f1_const_rooted_source`. The sibling
+    # `_f1_const_rooted_source`. The sibling
     # const-spelling sinks still pin on `_const_exact_field_receiver_ok`
     # pending their own const wiring.
     recv_opt_ptr = (isinstance(stmt.init, TpyFieldAccess)
@@ -2004,7 +2008,8 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     # A base-qualified field source (`nums = A.buf` -> `this->A::buf`) has no
     # value-typed receiver at all, so it rides its own admission beside the
     # receiver-shape gate (exactly like the read arm); const follows the raw
-    # sema type (`readonly[...]` in an @readonly method) via `_f1_is_const`.
+    # sema type (`readonly[...]` in an @readonly method) via
+    # `_walrus_src_is_const`.
     if not (_const_exact_field_receiver_ok(stmt.init, declared, analyzer)
             or recv_opt_ptr
             or _unbound_self_field_ok(stmt.init)):
@@ -2096,7 +2101,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # reassigned, the reseatable `P* p = &(::tpy::__getitem__(ps, i));` --
         # the same lift the `reseat.subscript_elem` arm applies to every later
         # `p = ps[j]`. Optional sources keep the field-receiver pin. The const
-        # verdict follows element-borrow propagation (`_f1_is_const`).
+        # verdict follows element-borrow propagation (`_walrus_src_is_const`).
         if (binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER)
                 and record_like(target_type, analyzer)
                 and _container_record_elem_subscript(stmt.init, declared,
@@ -2171,7 +2176,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
         # same row: its friend shim returns `[const] Acc&`, so the result IS an
         # operand's lvalue and the alias binds the operator render directly
         # (`const Acc& c = ((a) + (b));`). The `[const]` comes from
-        # `_f1_is_const`'s dunder arms: a readonly dunder's borrow
+        # `_walrus_src_is_const`'s dunder arms: a readonly dunder's borrow
         # return binds const.
         if (binding is LocalBinding.REF_ALIAS
                 and record_like(target_type, analyzer)
@@ -6394,6 +6399,90 @@ def _typed_dict_ctor_call(e: TpyExpr, analyzer) -> 'RecordInfo | None':
     if not ri.init_params or len(e.args) != len(ri.init_params):
         return None
     return ri
+
+class CallForm(Enum):
+    """What a plain-name call lowers as, by its callee: the one dispatch the
+    call lowering branches on (`_lower_expr`'s call arm, past the builtin
+    special forms keyed on their own callees)."""
+    MACRO = auto()               # its call-macro expansion
+    DYN_HASATTR = auto()         # the `hasattr` runtime probe
+    DYN_GETATTR_DEFAULT = auto()  # `getattr(obj, name, default)`
+    CAST_ANY = auto()            # `typing.cast` from Any: a checked extract
+    CAST = auto()                # `typing.cast`: its source, unchanged
+    ENUM_FROM_VALUE = auto()     # `E(x)`
+    TYPED_DICT_CTOR = auto()     # a TypedDict built in place
+    RECORD_CTOR = auto()         # a record built in place by its ctor
+    OTHER = auto()
+
+
+def call_form(e: TpyCall, analyzer) -> CallForm:
+    if e.macro_expansion is not None:
+        return CallForm.MACRO
+    if e.dyn_hasattr_call is not None:
+        return CallForm.DYN_HASATTR
+    if e.dyn_getattr_default_call is not None:
+        return CallForm.DYN_GETATTR_DEFAULT
+    if e.cast_target_type is not None:
+        return CallForm.CAST_ANY if e.cast_source_is_any else CallForm.CAST
+    if e.enum_from_value is not None:
+        return CallForm.ENUM_FROM_VALUE
+    fi = e.resolved_function_info
+    if fi is None:
+        return (CallForm.TYPED_DICT_CTOR
+                if _typed_dict_ctor_call(e, analyzer) is not None
+                else CallForm.OTHER)
+    return CallForm.RECORD_CTOR if fi.is_constructor else CallForm.OTHER
+
+
+def constructs_in_place(e: TpyExpr, analyzer) -> bool:
+    """Whether the call lowering builds `e` as a constructor call
+    (`THIRCtorCall`), following a call macro's expansion and a cast to the
+    expression each lowers as."""
+    while isinstance(e, TpyCall) and isinstance(e.func, TpyName):
+        form = call_form(e, analyzer)
+        if form is CallForm.MACRO:
+            e = e.macro_expansion
+        elif form is CallForm.CAST and len(e.args) == 2:
+            e = e.args[1]
+        else:
+            return form in (CallForm.RECORD_CTOR, CallForm.TYPED_DICT_CTOR)
+    return False
+
+
+def tuple_elem_payload(slot: TpyType) -> TpyType:
+    """The value a tuple-literal element slot holds: an Optional's or an
+    `Own`'s payload."""
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
+    return unwrap_readonly(_unwrap_own(
+        bare.inner if isinstance(bare, OptionalType) else bare))
+
+
+def own_element_copied(member: TpyExpr, payload: TpyType, analyzer) -> bool:
+    """A borrowed tuple element sema declared a copy of: it builds as its
+    explicit `copy(member)` would."""
+    return (member in analyzer.ctx.own_element_copies
+            and own_element_copy_type(member, analyzer) == payload)
+
+
+def tuple_elem_constructed(member: TpyExpr, slot: TpyType,
+                           analyzer) -> bool:
+    """Whether a tuple literal's element at `slot` is built in place by its
+    constructor."""
+    return (not own_element_copied(member, tuple_elem_payload(slot), analyzer)
+            and constructs_in_place(member, analyzer))
+
+
+def owned_literal_layout(lit: TpyTupleLiteral, tuple_t: TupleType,
+                         analyzer) -> 'THIRTupleLayout | None':
+    """The owned layout of a VALUE-capture tuple literal whose every element
+    is a scalar leaf or a record its constructor builds in place; None when
+    an element is anything else."""
+    if not all(storage_leaf(t) or tuple_elem_constructed(v, t, analyzer)
+               for t, v in zip(tuple_t.element_types, lit.elements)):
+        return None
+    return tuple_layout(tuple_t, analyzer, captures=lit.elem_capture,
+                        own_records=True)
+
 
 def _record_rvalue_temp_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer, *,
@@ -11892,9 +11981,6 @@ def _r_generic_btuple_name(req: _ArgReq) -> bool:
             # BINDING-form keyed, not type-keyed: an Own-element literal
             # decl registers storage form (std::tuple<int32_t, Box>) and
             # needs the tuple_to_pointer lift.
-            # NB if a future decl arm registers such bindings in a SECOND
-            # registry (the walrus_slot_locals precedent), that set must
-            # join this exclusion.
             and a.name not in req.storage_tuple_locals):
         return False
     _bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(

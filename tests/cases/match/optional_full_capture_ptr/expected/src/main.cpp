@@ -142,7 +142,7 @@ int32_t in_try(Cat* o) {
             if (__match_subject_1 != nullptr && (*__match_subject_1).lives == 1) {
                 total = -1;
             } else {
-                auto v = __match_subject_1;
+                v = __match_subject_1;
                 if ((v != nullptr)) {
                     v->lives = ::tpy::add_check<int32_t>(v->lives, 100);
                     total = v->lives;

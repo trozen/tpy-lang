@@ -178,7 +178,7 @@ from ...sema.type_ops import signature_may_return_borrow
 from ...sema.own_copy import contains_reference_type
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import render_int_literal_value
-from ..source import BindingRepr, Held, SelectResult, Source
+from ..source import BindingKind, BindingRepr, Held, SelectResult, Source
 from ..nodes import (
     THIRBorrowedRecord,
     THIROwnedRecord,
@@ -356,7 +356,6 @@ from .predicates import (
     _native_cond_scalar,
     _truthiness_mode,
     _f1_const_rooted_source,
-    _walrus_src_is_const,
     _plain_container_read,
     _container_field_bare_read,
     _method_member_cpp,
@@ -616,6 +615,10 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 
 
 from .checks import (
+    CallForm,
+    call_form,
+    own_element_copied,
+    tuple_elem_payload,
     _record_copy_borrow_ret,
     _declared_call_at_owning_elem,
     declared_call_elem_copy_ok,
@@ -915,6 +918,12 @@ def lower_copy_construct(src: TpyExpr, payload: TpyType, lc: '_LowerCtx',
                     loc=loc)
 
 
+# The callee forms whose lowering admits every use itself.
+_SELF_ADMITTED_CALL_FORMS = frozenset({
+    CallForm.MACRO, CallForm.CAST, CallForm.CAST_ANY,
+    CallForm.ENUM_FROM_VALUE, CallForm.RECORD_CTOR, CallForm.TYPED_DICT_CTOR})
+
+
 def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                         declared: dict[str, TpyType], use: _ExprUse,
                         allow_whole_optional: bool = False,
@@ -922,15 +931,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
     result = use.result
     analyzer = lc.analyzer
     fi = e.resolved_function_info
-    if e.macro_expansion is not None:
-        ok = True
-    elif e.cast_target_type is not None:
-        ok = True
-    elif e.enum_from_value is not None:
-        ok = True
-    elif fi is not None and fi.is_constructor:
-        ok = True
-    elif fi is None and _typed_dict_ctor_call(e, analyzer) is not None:
+    if call_form(e, analyzer) in _SELF_ADMITTED_CALL_FORMS:
         ok = True
     elif e.call_type is not None:
         _ct_ret = analyzer.get_expr_type(e)
@@ -2582,7 +2583,7 @@ def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
                 # A walrus-slot tuple (`std::optional<std::tuple<..>>`)
                 # holds its elements BY VALUE: `std::get<i>((*t))` yields
                 # a `T&`, `.` access -- the storage-alias rule.
-                or sub.obj.name in lc.walrus_slot_locals):
+                or lc.binding(sub.obj.name).kind is BindingKind.WALRUS_OWNED_SLOT):
             return False
         # A literal-bound local holds its VALUE-captured record elements
         # inline (`t = (Box(1), b)` is `std::tuple<Box, Box*>`): the
@@ -5145,7 +5146,8 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
                 return True
     if use.admits(SinkForm.INDIRECT_READ) and _ptr_read_derefs(name, lc):
         return True
-    if lc.binding(name).frame_slot or name in lc.walrus_slot_locals:
+    if (lc.binding(name).frame_slot
+            or lc.binding(name).kind is BindingKind.WALRUS_OWNED_SLOT):
         return True
     if (lc.binding(name).pointer and binding_type is not None
             and use.result not in (_ExprResultUse.RECEIVER,
@@ -5700,7 +5702,7 @@ def _read_binding(name: str, lc: '_LowerCtx',
                 or name in lc.inline_narrowed), (
             f"binding table: no record for {name!r} in {lc.func.name}")
         rec = BindingRepr(name=name, site=None, type=declared.get(name),
-                          row="narrowed_global")
+                          kind=BindingKind.NARROWED_GLOBAL)
     return rec
 
 
@@ -6074,7 +6076,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("name.forwarded_alias")
             return _lower_expr(fwd, lc, declared, use=use,
                                allow_whole_optional=allow_whole_optional)
-        if (e.is_function_ref and e.name not in lc.nested_def_locals
+        if (e.is_function_ref and not lc.binding(e.name).nested_def
                 and _func_ref_routable(e, analyzer)):
             # A function used as a value -> the plain function-ref render,
             # carried on the pre-spelled `cpp` slot: the qualified name for a
@@ -6092,7 +6094,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             _witness("name.func_ref")
             return THIRName(result_type=rtype, name=e.name, cpp=cpp,
                             form=Form.VALUE, loc=loc)
-        if e.is_function_ref and e.name not in lc.nested_def_locals:
+        if e.is_function_ref and not lc.binding(e.name).nested_def:
             wrap_cpp = _async_factory_wrap_cpp(e, rtype, lc)
             if wrap_cpp is not None:
                 # An `async def` referenced as a value at a Callable slot
@@ -6101,7 +6103,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 _witness("name.async_factory_wrap")
                 return THIRName(result_type=rtype, name=e.name, cpp=wrap_cpp,
                                 form=Form.VALUE, loc=loc)
-        if e.is_function_ref and e.name in lc.nested_def_locals:
+        if e.is_function_ref and lc.binding(e.name).nested_def:
             # A closure local read as a value (`callbacks.append(add_offset)`):
             # the nested def bound a lambda under its own name, so the read is
             # the bare local -- never the module-qualified spelling.
@@ -8042,18 +8044,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         return _lower_chained_compare_stmtexpr(e, rtype, lc, declared, loc,
                                                temps_ok=use.allow_temps)
     if isinstance(e, TpyNamedExpr):
-        # The walrus target-class ladder. Lowered classes: value
-        # scalars (`(n = v)`), pointer-repr Optional targets
-        # (`T* n = nullptr;` + the borrow-lifted assign), borrow-alias
-        # pointer targets (`(n = &(v), *n)`). The remaining classes
-        # (tuples, non-value optional slots, hoisted names) reject as
-        # `expr.walrus` -- their renders carry registry side effects this
-        # lowering does not model. `walrus_predeclared` pops with the block
-        # its pre-decl lands in, so a sibling-branch re-bind declares its own.
-        vt = (resolve_int_literals(rtype, analyzer.ctx.default_int_for_literal)
-              if rtype is not None else None)
-        vtu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
-               if vt is not None else None)
+        # The walrus that declares its target's record pre-declares the
+        # binding as the record's kind says; any other walrus writes the
+        # binding in scope, by the value's shape.
+        vtu = bindings.walrus_value_type(e, analyzer)
         if vtu is None:
             raise ThirUnsupported("expr.walrus")
         if (lc.binding(e.target).rebind_slot
@@ -8082,8 +8076,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 tail="name", loc=loc)
         if e.target in lc.prescan.hoisted:
             raise ThirUnsupported("expr.walrus")
-        need_predecl = (e.target not in lc.walrus_predeclared
-                        and e.target not in declared)
+        # The walrus that declares its target's record pre-declares it; any
+        # other writes the binding in scope.
+        wrec = bindings.fresh_record(lc.table, e, e.target)
+        need_predecl = wrec is not None
         borrow_decls = analyzer.function_stmt_borrow_decls.get(
             lc.func, {})
         ever_owned = analyzer.function_ever_owned_locals.get(
@@ -8100,9 +8096,32 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # case-block local in front of the field and the write would die
             # at the next suspension.
             return _lower_frame_walrus(e, vtu, lc, declared, loc)
-        if (not resumable
-                and e.target in borrow_decls and e.target not in ever_owned
-                and is_plain_nonvalue(vtu)):
+        if need_predecl:
+            # The first binding builds its record's kind.
+            wkind = wrec.kind
+            wal_value_opt = wrec.value_opt
+            rung_alias = wkind is BindingKind.WALRUS_PTR_ALIAS
+            rung_opt = wkind is BindingKind.WALRUS_OPT_PTR
+            rung_bslot = wkind is BindingKind.WALRUS_BTUPLE_SLOT
+            rung_btuple = wkind is BindingKind.WALRUS_BTUPLE
+            rung_owned = wkind is BindingKind.WALRUS_OWNED_SLOT
+            rung_vopt = wkind is BindingKind.WALRUS_VALUE_OPT
+            rung_value = wkind is BindingKind.WALRUS_VALUE
+        else:
+            # A write into the binding in scope, by its record: a pointer
+            # (a statement's hoist of a borrow) re-points, a value-repr
+            # Optional assigns in place, any other value the value tail
+            # (sema admits a walrus re-binding of no other non-value local).
+            trec = lc.binding(e.target)
+            wal_value_opt = trec.value_opt
+            rung_alias = (trec.pointer and is_plain_nonvalue(vtu)
+                          and record_like(vtu, analyzer))
+            rung_opt = (trec.pointer
+                        and _optional_ptr_borrow(vtu, analyzer) is not None)
+            rung_bslot = rung_btuple = rung_owned = False
+            rung_vopt = wal_value_opt is not None
+            rung_value = True
+        if rung_alias:
             # Borrow-alias pointer target (`(q := b)` on a record/container
             # lvalue, `(v := h.view())` on a ref-returning call):
             # `[const ]T* q = nullptr;` + `(q = &(v), *q)`; an
@@ -8110,9 +8129,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # of those (its `T* g{}` slot is a pointer record), so it
             # copies the slot pointer instead of addressing it.
             src = e.value
-            if not record_like(vtu, analyzer):
-                note_detail("walrus.borrow_alias_shape")
-                raise ThirUnsupported("expr.walrus")
             if isinstance(src, TpyName):
                 if src.name not in declared:
                     note_detail("walrus.borrow_alias_shape")
@@ -8143,17 +8159,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # The comma form consumes the raw pointer; the value-read
                 # deref belongs to the `*n` tail, not the source.
                 lowered_value = replace(lowered_value, deref=False)
-            # A const-rooted source makes the alias `const T*` whatever sema's
-            # borrow-decl verdict says: that verdict is keyed on the target's
-            # USES and never sees the source's indirect const.
-            is_const = (borrow_decls[e.target]
-                        or _walrus_src_is_const(src, lc))
             declared[e.target] = vtu
             cpp_type = None
             if need_predecl:
-                cpp_type = (("const " if is_const else "")
+                cpp_type = (("const " if wrec.const else "")
                             + lc.render_type(vtu) + "*")
-                lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_ptr_alias")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -8161,9 +8171,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 value=lowered_value, cpp_type=cpp_type,
                 init="nullptr" if cpp_type is not None else None,
                 tail="deref", addr_of=not already_ptr, loc=loc)
-        opt_ptr = (None if resumable
-                   else _optional_ptr_borrow(vtu, analyzer))
-        if opt_ptr is not None:
+        if rung_opt:
+            opt_ptr = _optional_ptr_borrow(vtu, analyzer)
             # Pointer-repr Optional target (`(t := h.opt)`): `[const ]T* t =
             # nullptr;` + the borrow-lifted assign -- a storage-Optional
             # FIELD or container-ELEMENT source lifts via optional_to_ptr
@@ -8176,15 +8185,11 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail("walrus.opt_ptr_src")
                 raise ThirUnsupported("expr.walrus")
             declared[e.target] = vtu
-            # A const-rooted source lifts to `const T*`; sema's borrow-decl
-            # verdict is keyed on the target's USES and does not see it.
-            opt_const = _walrus_src_is_const(e.value, lc)
             cpp_type = None
             if need_predecl:
-                cpp_type = (("const " if opt_const else "")
+                cpp_type = (("const " if wrec.const else "")
                             + lc.render_type(unwrap_readonly(opt_ptr.inner))
                             + "*")
-                lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_opt_ptr")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -8192,8 +8197,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 value=lowered_value, cpp_type=cpp_type,
                 init="nullptr" if cpp_type is not None else None,
                 loc=loc)
-        if (not resumable and isinstance(vtu, TupleType)
-                and e.target in lc.prescan.reassigned):
+        if rung_bslot:
             # REASSIGNED borrow-tuple walrus (`(t := make_pair(9))` later
             # rebound to a storage alias): per-element-Own collapses to the
             # unified borrow type; the borrow local pre-declares and the
@@ -8224,7 +8228,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 use=_ExprUse(result=_ExprResultUse.STORAGE,
                              pos=SinkPos.WALRUS_TARGET))
             declared[e.target] = cvt
-            lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_btuple_slot")
             return THIRWalrus(
                 result_type=cvt, name=e.target,
@@ -8238,12 +8241,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # deferred-init OPTIONAL slot, not the borrow predecl.
         wal_owned_tuple = (_owned_tuple_call_source(e.value, analyzer)
                            and not contains_pending_leaf(vtu))
-        if (not resumable
-                and isinstance(vtu, TupleType)
-                and vtu.has_pointer_repr_element()
-                and e.target not in lc.prescan.reassigned
-                and need_predecl
-                and not wal_owned_tuple):
+        if rung_btuple:
             # Non-reassigned borrow-tuple walrus (`(t := (1, b))` /
             # `(t := items[0])` / `(p := make_mixed(b))`): predecl
             # `std::tuple<..., T*> t;` + the plain assign -- a literal
@@ -8287,7 +8285,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 note_detail("walrus.btuple_src")
                 raise ThirUnsupported("expr.walrus")
             declared[e.target] = vtu
-            lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_btuple")
             cpp_type = vtu.to_cpp_return()
             return THIRWalrus(
@@ -8296,21 +8293,18 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 value=lowered_value, cpp_type=cpp_type,
                 placeholder=emit_prims.placeholder_init(vtu, cpp_type),
                 loc=loc)
-        if (not resumable
-                and need_predecl
-                and ((is_plain_nonvalue(vtu) and e.target in ever_owned
-                      and record_like(vtu, analyzer))
-                     # An OWNED-MOVABLE tuple walrus (`(t := make_pair(5))`
-                     # at a declared `tuple[int32, Own[Box]]` return): the
-                     # same deferred-init slot; reads deref `(*t)` and
-                     # elements read STORAGE (`std::get<i>((*t))`, dot
-                     # access -- no borrow elements by definition of
-                     # owned-movable).
-                     or wal_owned_tuple)
-                and ((isinstance(e.value, (TpyCall, TpyMethodCall))
-                      and not call_returns_cpp_ref(
-                          analyzer, e.value.resolved_function_info))
-                     or isinstance(e.value, TpyListComprehension))):
+        if rung_owned:
+            # An owned record, or an OWNED-MOVABLE tuple (`(t :=
+            # make_pair(5))` at a declared `tuple[int32, Own[Box]]` return):
+            # reads deref `(*t)` and elements read STORAGE
+            # (`std::get<i>((*t))`, dot access -- no borrow elements by
+            # definition of owned-movable). Only a call or a comprehension
+            # constructs into the slot.
+            if not ((isinstance(e.value, (TpyCall, TpyMethodCall))
+                     and not call_returns_cpp_ref(
+                         analyzer, e.value.resolved_function_info))
+                    or isinstance(e.value, TpyListComprehension)):
+                raise ThirUnsupported("expr.walrus")
             # Owned non-value walrus (`(fresh := make())` off an Own-return
             # call, `(cols := [..comp..])`): deferred-init slot
             # `std::optional<T> fresh;` + `(fresh = make(), *fresh)`; reads
@@ -8336,8 +8330,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                  forms=(None if wal_owned_tuple
                                         else _NO_FORMS)))
             declared[e.target] = vtu
-            lc.walrus_slot_locals.add(e.target)
-            lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_owned_slot")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -8345,18 +8337,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 value=lowered_value,
                 cpp_type=f"std::optional<{lc.render_type(vtu)}>",
                 tail="deref", loc=loc)
-        wal_value_opt = (
-            ValueOptKind.SCALAR
-            if not resumable and _value_opt_scalar(vtu, analyzer) is not None
-            # The OWNED-view twin (`str | None` / `bytes | None`): the same
-            # bare `std::optional<std::string>` slot and in-place assign, one
-            # binding kind over -- what differs is only the narrowed deref
-            # verdict the binding registration carries.
-            else ValueOptKind.VIEW
-            if (not resumable
-                and _value_opt_owned_view(vtu, analyzer) is not None)
-            else None)
-        if wal_value_opt is not None:
+        if rung_vopt:
             # Value-opt scalar walrus: REASSIGN (`(x := None)` on a
             # declared `int32 | None` local) is the plain in-place assign
             # -- `None` renders `std::nullopt`, a scalar RHS assigns bare
@@ -8389,7 +8370,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             cpp_type = None
             if need_predecl:
                 cpp_type = lc.render_type(vtu)
-                lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_value_opt")
             return THIRWalrus(
                 result_type=vtu, name=e.target,
@@ -8401,6 +8381,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                      and not is_str_view_type(wal_str)
                      else wal_bytes if wal_bytes is not None
                      and not is_bytes_view_type(wal_bytes) else None)
+        if not rung_value:
+            raise ThirUnsupported("expr.walrus")
         if wal_owned is not None and not resumable:
             # Owned str/bytes walrus (`(s := s + "!")` reassign, or a
             # FIRST-DECL like `(hostname := host)` off a view param -- the
@@ -8416,7 +8398,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             cpp_type = None
             if need_predecl:
                 cpp_type = lc.render_type(wal_owned)
-                lc.walrus_predeclared.add(e.target)
             _witness("expr.walrus_owned_viewfam")
             return THIRWalrus(
                 result_type=wal_owned, name=e.target,
@@ -8441,7 +8422,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         cpp_type = None
         if need_predecl:
             cpp_type = lc.render_type(vtu)
-            lc.walrus_predeclared.add(e.target)
         _witness("expr.walrus_scalar")
         return THIRWalrus(
             result_type=vtu, name=e.target,
@@ -8675,7 +8655,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                    allow_whole_optional=allow_whole_optional,
                                    error_return_raw=error_return_raw):
             raise ThirUnsupported(call_reject_reason("expr.call"))
-        if e.macro_expansion is not None:
+        form = call_form(e, analyzer)
+        if form is CallForm.MACRO:
             # `@call_macro` / getattr / hasattr: the sema-synthesized
             # replacement renders in place, so the call node lowers to its
             # expansion.
@@ -8693,7 +8674,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 return lowered_ga
             _witness("call.macro_expansion")
             return _lower_expr(e.macro_expansion, lc, declared)
-        if e.dyn_hasattr_call is not None:
+        if form is CallForm.DYN_HASATTR:
             # `hasattr(obj, name)` runtime probe: the try/catch stmt-expr
             # over the synthesized `obj.__getattr__(name)`.
             inner = _lower_dyn_synth_call(
@@ -8709,7 +8690,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     "catch (const ::tpy::AttributeError&) {{ __ok = false; }} "
                     "__ok; }})"),
                 loc=loc)
-        if e.dyn_getattr_default_call is not None:
+        if form is CallForm.DYN_GETATTR_DEFAULT:
             # `getattr(obj, name, default)`: the optional-deferred stmt-expr
             # yielding the dunder's result or the default on AttributeError.
             # The default renders against the dunder's return type.
@@ -8732,12 +8713,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     "{{ __r.emplace({1}); }} "
                     "std::move(*__r); }})"),
                 loc=loc)
-        if e.cast_target_type is not None:
+        if form in (CallForm.CAST, CallForm.CAST_ANY):
             if (len(e.args) != 2 or e.kwargs
                     or e.double_star_unpack is not None):
                 note_detail("call.cast.shape")
                 raise ThirUnsupported(call_reject_reason("expr.call"))
-            if e.cast_source_is_any:
+            if form is CallForm.CAST_ANY:
                 # `typing.cast(T, x)` from Any: the runtime checked-extract
                 # `::tpy::any_cast_or_panic<T>(x)`.
                 _witness("call.cast_any")
@@ -8752,7 +8733,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # bare source.
             _witness("call.cast_passthrough")
             return _lower_expr(e.args[1], lc, declared)
-        if e.enum_from_value is not None:
+        if form is CallForm.ENUM_FROM_VALUE:
             if (_eligible_enum(e.enum_from_value, analyzer) is None
                     or len(e.args) != 1 or e.kwargs):
                 note_detail("call.enum_from_value.shape")
@@ -8790,33 +8771,32 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 constructs=True,
                 loc=loc)
         fi = e.resolved_function_info
-        if fi is None:
+        if form is CallForm.TYPED_DICT_CTOR:
             td_ri = _typed_dict_ctor_call(e, analyzer)
-            if td_ri is not None:
-                # TypedDict ctor (the kwargs-pack rewrite): the record-branch
-                # tail's spelling over init_params -- no fi, no mutation
-                # facts, field-ordered positional args.
-                _witness("ctor.typed_dict")
-                qual = lc.analyzer.registry.record_qualification(
-                    td_ri, lc.analyzer.ctx.module_name)
-                td_type_cpp = (qualified_cpp_name(*qual) if qual is not None
-                               else e.func_name)
-                td_args = []
-                for i, (a, trip) in enumerate(zip(e.args, td_ri.init_params)):
-                    p_type = trip[1]
-                    if not _record_ctor_arg_supported(
-                            a, p_type, i, None, lc, declared,
-                            _ExprUse(allow_temps=False)):
-                        note_detail("call.ctor_arg."
-                                    + _type_family_tag(p_type, analyzer))
-                        raise ThirUnsupported(call_reject_reason("expr.call"))
-                    td_args.append(_lower_call_arg(
-                        a, p_type, lc, declared, temp_args=False,
-                        protocol_slots=True))
-                return THIRCtorCall(
-                    result_type=rtype, type_cpp=td_type_cpp,
-                    args=tuple(td_args), form=Form.STORAGE, loc=loc)
-        if fi is not None and fi.is_constructor:
+            # TypedDict ctor (the kwargs-pack rewrite): the record-branch
+            # tail's spelling over init_params -- no fi, no mutation
+            # facts, field-ordered positional args.
+            _witness("ctor.typed_dict")
+            qual = lc.analyzer.registry.record_qualification(
+                td_ri, lc.analyzer.ctx.module_name)
+            td_type_cpp = (qualified_cpp_name(*qual) if qual is not None
+                           else e.func_name)
+            td_args = []
+            for i, (a, trip) in enumerate(zip(e.args, td_ri.init_params)):
+                p_type = trip[1]
+                if not _record_ctor_arg_supported(
+                        a, p_type, i, None, lc, declared,
+                        _ExprUse(allow_temps=False)):
+                    note_detail("call.ctor_arg."
+                                + _type_family_tag(p_type, analyzer))
+                    raise ThirUnsupported(call_reject_reason("expr.call"))
+                td_args.append(_lower_call_arg(
+                    a, p_type, lc, declared, temp_args=False,
+                    protocol_slots=True))
+            return THIRCtorCall(
+                result_type=rtype, type_cpp=td_type_cpp,
+                args=tuple(td_args), form=Form.STORAGE, loc=loc)
+        if form is CallForm.RECORD_CTOR:
             if not _record_ctor_shape_supported(e, lc, use):
                 raise ThirUnsupported(call_reject_reason("expr.call"))
             # A same-module user-record ctor rvalue (the `Own[union]`-slot
@@ -13055,10 +13035,8 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         elem_slot = slot.element_types[i]
         bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(elem_slot)))
         member = e.elements[i]
-        payload = unwrap_readonly(_unwrap_own(
-            bare.inner if isinstance(bare, OptionalType) else bare))
-        if (member in lc.analyzer.ctx.own_element_copies
-                and own_element_copy_type(member, lc.analyzer) == payload):
+        payload = tuple_elem_payload(elem_slot)
+        if own_element_copied(member, payload, lc.analyzer):
             # A borrowed member sema declared a copy of builds as its
             # explicit `copy(member)` would.
             return _lower_copy_special(member, "copy", payload, lc, declared,

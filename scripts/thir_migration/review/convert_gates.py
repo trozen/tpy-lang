@@ -870,7 +870,6 @@ def source_numbers():
 # fact, so writing them outside the planner is not a binding writer.
 LEDGER_ATTRS = {
     "global_slot_assigned": "ledger: the global slots already emitted",
-    "walrus_predeclared": "ledger: the walrus decls already emitted",
     "forbidden_reads": "policy: the reads a region refuses",
     "forbidden_writes": "policy: the writes a region refuses",
     "unhandled_hoists": "ledger: the function's hoists not lowered yet",

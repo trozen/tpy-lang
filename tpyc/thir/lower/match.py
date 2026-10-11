@@ -28,7 +28,6 @@ from ...typesys import (
     NominalType,
     NoneType,
     OptionalType,
-    ReadonlyType,
     TpyType,
     UnionType,
     deref_dispatch_inner,
@@ -40,8 +39,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
-from ...codegen_cpp.forms import is_plain_nonvalue
-from ...codegen_cpp.types import resolve_pending_container
+from ..source import BindingKind, BindingRepr
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.emit_prims import (
@@ -97,7 +95,6 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
-    _btuple_const_storage,
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
@@ -1052,12 +1049,9 @@ def _record_arm_ok(
 @dataclass(frozen=True)
 class _MatchRoute:
     kind: str
-    # (name, resolved type, hoist kind): 'value' is the plain-value predecl;
-    # 'ptr' the borrow-only pointer-local (`T* name;` -- an aliasing
-    # whole-subject capture of an lvalue subject); 'opt_storage' the owned
-    # `std::optional<T> name;` slot (rvalue-bound -- a capture of a
-    # materialized rvalue subject, or an arm-body first-decl).
-    hoist_types: tuple[tuple[str, TpyType, str], ...]
+    # (name, sema hoist type, record) of every name the match predeclares:
+    # its record's kind picks the predecl (`_statements._HOIST_BUILDERS`).
+    hoist_types: tuple[tuple[str, TpyType, BindingRepr], ...]
     union_route: 'str | None' = None
     # A call/ctor F1-record rvalue subject on the record capture tier:
     # `auto __match_subject_N = <call>;` (subject_ref=False), captures move
@@ -1090,131 +1084,57 @@ def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
                 or root in storage_tuple_locals)
 
 
-def _match_capture_borrows_const(stmt: TpyMatch, name: str,
-                                 lc: '_LowerCtx') -> bool:
-    """Whether capture `name` is re-seated by a NESTED match and any match
-    binding it reads a const subject, so the shared `T*` slot must spell
-    `const T*`. A decl-site re-ask: sema fixes
-    its stmt-borrow const flag in Phase 1, before mutation propagation
-    settles whether a borrowed param renders `const T&`, so the question is
-    asked again here. Match-rooted nested reuse only -- the single-match
-    shape is an open defect (BUGS.md) and stays on the Phase-1 verdict."""
-    found_nested = False
-    const = False
-
-    def visit(s, nested: bool) -> None:
-        nonlocal found_nested, const
-        if (isinstance(s, TpyMatch)
-                and any(name == n.name
-                        for case in s.cases
-                        for n in iter_capture_bindings(case.pattern))):
-            found_nested = found_nested or nested
-            const = const or _btuple_const_storage(s.subject, lc)
-        for body in s.sub_bodies():
-            for inner in body:
-                visit(inner, True)
-
-    visit(stmt, False)
-    return found_nested and const
+def _nullable_match_hoist(rec: BindingRepr) -> bool:
+    """A match's pointer hoist of a pointer-repr Optional capture: the
+    nullable pointer over its inner."""
+    return (rec.kind is BindingKind.HOIST_POINTER
+            and pointer_repr_optional(rec.type) is not None)
 
 
 def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
-                  prescan: _Prescan, lc: '_LowerCtx', *, in_branch: bool,
-                  in_loop: bool, nonvalue_ok: bool = False,
+                  prescan: _Prescan, lc: '_LowerCtx', *,
+                  nonvalue_ok: bool = False,
                   ptr_slot_ok: bool = False,
-                  ) -> 'tuple[tuple[str, TpyType, str], ...] | None':
-    """The arm-declared hoist admission shared by every routed tier (the
-    try arm's discipline): already-declared names skip, a name the
-    resumable frame already declares takes the decl-less "frame" kind,
-    fresh plain-value names admit in straight-line function scope only.
-    Ordinary non-value assignments share the pointer/owned-optional flavors.
-    `nonvalue_ok` additionally admits the record tiers' pattern captures,
-    whose write modes depend on the subject strategy. None rejects the match."""
-    hoist_declared: list[tuple[str, TpyType, str]] = []
-    borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
-    ever_owned = analyzer.function_ever_owned_locals.get(lc.func, set())
+                  ) -> 'tuple[tuple[str, TpyType, BindingRepr], ...] | None':
+    """The arm-declared hoists a routed tier admits, by their records:
+    already-declared names skip; a resumable frame's member registers only;
+    a predecl is position-neutral -- the branch-decl render puts it at
+    the match site wherever the match sits (a nested match's leaked capture
+    hoists inside the outer arm), and the planner's hoist kind decides its
+    form there as an if chain's at the same position. `nonvalue_ok`
+    admits the record and Optional-chain tiers' pattern captures, whose
+    write modes depend on the subject strategy; a captured name sharing a
+    move target must still be a record (or, for a capture, a container
+    field read); `ptr_slot_ok` admits the rvalue-reassigned pointer (its
+    reseats fill a rebind slot) on the record tiers. None rejects the
+    match."""
+    hoist_declared: list[tuple[str, TpyType, BindingRepr]] = []
     captures = {binding.name for case in stmt.cases
                 for binding in iter_capture_bindings(case.pattern)}
     for name, raw in analyzer.if_branch_decls.get(stmt, {}).items():
         if name in declared:
             continue
-        if prescan.binds_global(name):
-            return None
-        if _statements._frame_declares_hoist(name, lc):
-            hoist_declared.append((name, unwrap_ref_type(raw), "frame"))
+        rec = _statements._hoist_record(stmt, name, lc)
+        if rec.kind in (BindingKind.FRAME_LAYOUT, BindingKind.HOIST_VALUE):
+            hoist_declared.append((name, raw, rec))
             continue
-        vtype = unwrap_ref_type(raw)
-        # A plain-VALUE hoist decl (`T t;`) is position-neutral: the
-        # branch-decl render puts it at the match site wherever the
-        # match sits (a nested match's leaked capture hoists inside the
-        # outer arm), so only the non-value flavors are function-top-only.
-        if _statements._try_hoist_type_ok(vtype, analyzer):
-            hoist_declared.append((name, vtype, "value"))
-            continue
-        if in_branch or in_loop:
-            return None
-        # Pattern captures have strategy-specific writes. Ordinary body
-        # assignments use the same storage adapters for every subject kind.
         if not nonvalue_ok and name in captures:
             return None
-        vtype = resolve_pending_container(vtype, analyzer) or vtype
-        vopt = pointer_repr_optional(vtype)
-        if (vopt is not None
-                and not isinstance(vopt.inner, ReadonlyType)
-                and record_like(vopt.inner, analyzer)):
-            # Pointer-repr Optional hoist: the bare inner `T* name;`
-            # (nullable pointer-local, `_emit_branch_decls`' Optional arm) --
-            # a full-Optional whole-subject capture of a pointer-repr
-            # subject. Reads/writes deref via `pointers`; the declared entry
-            # keeps the Optional so unproven writes draw deref_check.
-            if (name in prescan.move_through
-                    or name in prescan.rvalue_reassigned):
-                return None
-            if lc.func.is_generator or lc.func.is_async:
-                # A frame FIELD took the decl-less "frame" kind above; what
-                # is left in a resumable body is a non-resident capture,
-                # whose `T* name;` decl has no drain point in the leaves.
-                return None
-            hoist_declared.append((name, vtype, "opt_ptr"))
+        if _nullable_match_hoist(rec):
+            hoist_declared.append((name, raw, rec))
             continue
-        # Captures sharing a move target must still satisfy their capture-write gates.
-        family_ok = ((record_like(vtype, analyzer) or _container_scalar_read(vtype, analyzer))
-                     if name in captures else record_like(vtype, analyzer))
-        if not (is_plain_nonvalue(vtype) and family_ok):
+        if rec.kind not in (BindingKind.HOIST_POINTER,
+                            BindingKind.HOIST_CONST_POINTER,
+                            BindingKind.HOIST_OPT_STORAGE):
             return None
-        if lc.func.is_generator or lc.func.is_async:
-            # Both non-value flavors hoist storage to function top; resumable
-            # leaves cannot drain those lines (the if cascade's guard).
+        vtype = _statements._hoist_type(rec, analyzer)
+        if not (record_like(vtype, analyzer)
+                or (name in captures
+                    and _container_scalar_read(vtype, analyzer))):
             return None
-        if borrow_decls.get(name, False):
-            # The borrow-decl const bit is the const-indirect rung. NB it is
-            # the Phase-1 verdict, which understates const for a capture of a
-            # never-mutated param; `_match_capture_borrows_const` re-asks at
-            # the decl site. Nested-reuse arms are safe here only because
-            # `forbidden_writes` rejects them first -- widening that gate
-            # without carrying the const rung would emit `T*` where
-            # `const T*` is required.
+        if rec.rebind_slot and not ptr_slot_ok:
             return None
-        if name in borrow_decls and name not in ever_owned:
-            if name in prescan.rvalue_reassigned:
-                # Rvalue reseats need the function-top rebind slot rung.
-                return None
-            hoist_declared.append(
-                (name, vtype,
-                 "ptr_const" if _match_capture_borrows_const(stmt, name, lc)
-                 else "ptr"))
-            continue
-        if (_statements._nonvalue_hoist_flavor(name, vtype, lc)
-                is _statements.HoistFlavor.OPT_STORAGE):
-            hoist_declared.append((name, vtype, "opt_storage"))
-            continue
-        if ptr_slot_ok and name in prescan.rvalue_reassigned:
-            # The reassigned-with-rvalues flavor: `T* name;` plus the
-            # match-head rebind slot (the if cascade's hoist_slots arm) --
-            # record tiers only (the slot pre-decl emit is threaded there).
-            hoist_declared.append((name, vtype, "ptr_slot"))
-            continue
-        return None
+        hoist_declared.append((name, raw, rec))
     return tuple(hoist_declared)
 
 
@@ -1222,8 +1142,7 @@ def _match_route(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
-        lc: '_LowerCtx', *, in_branch: bool,
-                     in_loop: bool) -> "_MatchRoute | None":
+        lc: '_LowerCtx') -> "_MatchRoute | None":
     """Return the strategy data consumed while lowering a match, or None.
 
     M1 covers the unguarded scalar switch tiers
@@ -1235,10 +1154,9 @@ def _match_route(
     set for plain enum/fixed-int subjects -- defensive) reject,
     which keeps the guarded tiers' second counter draw
     (`__match_end_N`) and the bind-mode machinery unreachable. The sema
-    hoist (`if_branch_decls`) follows the try arm's discipline exactly:
-    already-declared names skip, fresh plain-value names admit in
-    straight-line function scope only, and every arm body walks with them
-    in scope."""
+    hoist (`if_branch_decls`) follows the try arm's discipline:
+    already-declared names skip, fresh names admit by their hoist records
+    (`_route_hoists`), and every arm body walks with them in scope."""
     if stmt.polymorphic_dispatch:
         subj = stmt.subject
         if isinstance(subj, TpyName):
@@ -1247,8 +1165,7 @@ def _match_route(
             if (subj.name in pointers or subj.name in narrowed
                     or subj.name in storage_tuple_locals):
                 return None
-        hoist_types = _route_hoists(stmt, analyzer, declared, prescan, lc,
-                                    in_branch=in_branch, in_loop=in_loop)
+        hoist_types = _route_hoists(stmt, analyzer, declared, prescan, lc)
         if hoist_types is None:
             return None
         # Guarded-vs-chain dispatch keys on the field-condition fact;
@@ -1358,7 +1275,6 @@ def _match_route(
             return None
     hoist_types = _route_hoists(
         stmt, analyzer, declared, prescan, lc,
-        in_branch=in_branch, in_loop=in_loop,
         nonvalue_ok=kind in ("if_elif_record", "guarded_record",
                              "if_elif_optional",
                              "if_elif_optional_guarded"),
@@ -1407,8 +1323,7 @@ def _select_match_route(
         stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         pointers: AbstractSet[str], narrowed: AbstractSet[str],
         storage_tuple_locals: AbstractSet[str], prescan: _Prescan,
-        lc: '_LowerCtx', *,
-        in_branch: bool, in_loop: bool) -> _MatchRoute:
+        lc: '_LowerCtx') -> _MatchRoute:
     """Select a match lowering strategy or reject at the lowering boundary."""
     # A capture that lands in a `P*` frame field points INTO the subject, so a
     # subject that is not stable storage leaves the field dangling at the
@@ -1429,18 +1344,26 @@ def _select_match_route(
                     reject_nonlvalue_resumable_match_ptr_bind(stmt.loc)
     route = _match_route(
         stmt, analyzer, declared, pointers, narrowed,
-        storage_tuple_locals, prescan, lc,
-        in_branch=in_branch, in_loop=in_loop)
+        storage_tuple_locals, prescan, lc)
     if route is None:
         raise ThirUnsupported("stmt.match")
     return route
 
-def _scalar_bind_mode(bnode, declared: dict[str, TpyType]) -> str:
-    """`_emit_binding`'s value-subject mode ternary, shared by every tier's
-    whole-subject binding: pre-declared/hoisted names assign, free-copy
-    scalars copy, everything else binds by reference."""
-    return ("assign" if bnode.name in declared
-            else "copy" if bnode.bind_by_value else "ref")
+# The bind mode a fresh capture's kind declares (`THIRMatchBinding.mode`).
+_CAPTURE_MODES: dict = {
+    BindingKind.MATCH_REF: "ref",
+    BindingKind.MATCH_COPY: "copy",
+    BindingKind.MATCH_SUBJECT_PTR: "copy",
+}
+
+
+def _capture_mode(bnode, lc: '_LowerCtx') -> str:
+    """A capture's bind mode: a capture the case declares binds as its
+    record's kind says (`auto&` alias, `auto` copy); any other writes the
+    binding in scope (assigned)."""
+    key, _node = lc.cursor
+    rec = _bindings.fresh_record(lc.table, key, bnode.name)
+    return "assign" if rec is None else _CAPTURE_MODES[rec.kind]
 
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:
@@ -1535,8 +1458,9 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             "if_elif_optional_guarded", "switch_str")
             # `frame` IS a frame-field binding (no decl mechanics); every
             # other non-value hoist kind stays out of hook mode.
-            or any(hk not in ("value", "frame")
-                   for _n, _t, hk in route.hoist_types)
+            or any(rec.kind not in (BindingKind.HOIST_VALUE,
+                                    BindingKind.FRAME_LAYOUT)
+                   for _n, _t, rec in route.hoist_types)
             or (kind == "switch_union"
                 and route.union_route == "guarded_union"
                 and not _guarded_hook_alias_agree(stmt, lc.analyzer))):
@@ -1554,56 +1478,14 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind != "switch_union":  # the union lowerers witness their route
         _witness(f"match.{kind}")
     predeclared = set(declared)
+    hoist = _statements._Hoist(stmt, "match")
     hoist_decls: list[HoistDecl] = []
-    hoist_slots: list[tuple[str, str]] = []
-    hoist_kinds: dict[str, str] = {}
-    for name, vtype, hkind in route.hoist_types:
-        hoist_kinds[name] = hkind
-        if hkind == "frame":
-            # The frame struct already declares the member, so the hoist
-            # registers the name only -- no decl line at the match site.
-            _statements._register_frame_hoist(
-                name, _statements._frame_hoist_type(name, vtype, lc),
-                declared, lc)
-            continue
-        if hkind in ("ptr", "ptr_const"):
-            # Borrow-only pointer-local (`T* name;`): reads/writes deref via
-            # a pointer record, reseats ride the hoisted-record arms. The const
-            # flavor is the nested-reuse re-ask (`const T* name;`): one slot
-            # shared by binds off subjects of differing const-ness, so it
-            # takes the const form for either to compile.
-            _cq = "const " if hkind == "ptr_const" else ""
-            hoist_decls.append(HoistDecl(name, f"{_cq}{lc.render_type(vtype)}*"))
-            lc.branch_hoisted.add(name)
-            lc.match_ptr_hoists.add(name)
-            declared[name] = vtype
-            _witness("match.hoist_ptr_local")
-            if _cq:
-                _witness("match.hoist_ptr_const")
-            continue
-        if hkind == "ptr_slot":
-            # Route-gated to the record tiers (ptr_slot_ok).
-            hoist_decls.append(HoistDecl(name, f"{lc.render_type(vtype)}*"))
-            declared[name] = vtype
-            _witness("match.hoist_ptr_slot")
-            continue
-        if hkind == "opt_storage":
-            hoist_decls.append(_statements._optional_storage_hoist_entry(
-                name, vtype, declared, lc))
-            _witness("match.hoist_optional_storage")
-            continue
-        if hkind == "opt_ptr":
-            # `T* name;` for a pointer-repr Optional binding: the declared
-            # entry keeps the Optional so body reads classify as the
-            # nullable borrow name (deref_check on unproven access).
-            hoist_decls.append(
-                HoistDecl(name, f"{lc.render_type(vtype.inner)}*"))
-            lc.branch_hoisted.add(name)
-            declared[name] = vtype
-            _witness("match.hoist_opt_ptr_local")
-            continue
-        hoist_decls.append(
-            _statements._value_hoist_entry(name, vtype, declared, lc))
+    for name, raw, rec in route.hoist_types:
+        decl = _statements._build_hoist(hoist, name, raw, rec, declared, lc)
+        if decl is not None:
+            hoist_decls.append(decl)
+    # The names this match predeclares; their records say how.
+    hoisted = frozenset(name for name, _raw, _rec in route.hoist_types)
     if hoist_decls:
         _witness("match.hoist_decl")
     if kind == "switch_union":
@@ -1623,8 +1505,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
     if kind in ("if_elif_record", "guarded_record"):
         return _lower_match_record(stmt, lc, declared, loc, pointers,
                                    hoist_decls, kind, loop_depth=loop_depth,
-                                   hoist_kinds=hoist_kinds,
-                                   hoist_slots=tuple(hoist_slots),
+                                   hoisted=hoisted,
                                    subject_rvalue=route.subject_rvalue,
                                    arm_body_hooks=arm_body_hooks)
     if kind == "optional_partition":
@@ -1636,7 +1517,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
         return _lower_match_optional_chain(stmt, lc, declared, loc, pointers,
                                            hoist_decls, kind,
                                            loop_depth=loop_depth,
-                                           hoist_kinds=hoist_kinds,
+                                           hoisted=hoisted,
                                            arm_body_hooks=arm_body_hooks)
     if kind == "switch_str":
         return _lower_match_switch_str(stmt, lc, declared, loc, pointers,
@@ -1772,7 +1653,7 @@ def _lower_scalar_arms(
             if (node.name in pointers or node.name in lc.narrow.narrowed
                     or lc.binding(node.name).storage_tuple):
                 raise ThirUnsupported("stmt.match")
-            mode = _scalar_bind_mode(node, declared)
+            mode = _capture_mode(node, lc)
             _witness(f"match.bind_{mode}")
             arm_declared[node.name] = bind_type
             return THIRMatchBinding(name=node.name, mode=mode,
@@ -1913,8 +1794,7 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
             if as_node is not None:
                 # The `as` name aliases the field the condition just tested,
                 # independently of the condition's own base composition.
-                mode = ("assign" if as_node.name in declared
-                        else "copy" if as_node.bind_by_value else "ref")
+                mode = _capture_mode(as_node, lc)
                 _witness("match.field_cond_as")
                 field_bindings.append(THIRMatchBinding(
                     name=as_node.name, mode=mode, from_case_var=from_case_var,
@@ -1977,8 +1857,7 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                     arm_declared[inner.name] = _pft
                     continue
                 raise ThirUnsupported("match.field_bind_ptr_hoist")
-            mode = ("assign" if inner.name in declared
-                    else "copy" if inner.bind_by_value else "ref")
+            mode = _capture_mode(inner, lc)
             _witness("match.field_bind")
             field_bindings.append(THIRMatchBinding(
                 name=inner.name, mode=mode, from_case_var=from_case_var,
@@ -2009,8 +1888,7 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                 n_cpre, n_csuf = cpre, f"{csuf}.{fname}"
                 a_pre, a_suf = bpre, f"{bsuf}.{fname}"
             if as_node is not None:
-                mode = ("assign" if as_node.name in declared
-                        else "copy" if as_node.bind_by_value else "ref")
+                mode = _capture_mode(as_node, lc)
                 _witness("match.field_guard_as")
                 field_bindings.append(THIRMatchBinding(
                     name=as_node.name, mode=mode, from_case_var=from_case_var,
@@ -2148,8 +2026,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                         pointers: AbstractSet[str],
                         hoist_decls: 'list[HoistDecl]',
                         kind: str, *, loop_depth: int = 0,
-                        hoist_kinds: 'dict[str, str] | None' = None,
-                        hoist_slots: 'tuple[tuple[str, str], ...]' = (),
+                        hoisted: AbstractSet[str] = frozenset(),
                         subject_rvalue: bool = False,
                         arm_body_hooks: bool = False) -> THIRMatch:
     """Lower a record-tier `match` (if_elif_record / guarded_record):
@@ -2165,8 +2042,6 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
     subj_type = (declared.get(stmt.subject.name)
                  if isinstance(stmt.subject, TpyName)
                  else stmt.subject_type)
-    if hoist_kinds is None:
-        hoist_kinds = {}
     # Whether the subject renders as a pointer, over the routed slice:
     # the only admitted name subject rendering as a `T*` is the pointer-repr
     # Optional borrow name (pointer/narrowed/tuple-alias names reject at the
@@ -2182,7 +2057,7 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 case, lc.analyzer, declared, pointers,
                 lc.narrow.narrowed.keys(), lc.names_with("storage_tuple"),
                 subj_type,
-                match_ptr=lc.match_ptr_hoists,
+                match_ptr=lc.names_with("borrowed_capture"),
                 # The exemption requires an LVALUE subject: a capture off a
                 # materialized rvalue subject would dangle across a
                 # suspension -- a genuine UAF, so withhold it and let the
@@ -2209,38 +2084,32 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
             or_conds = _lower_or_field_conds(test, lc)
         binding = None
         if bnode is not None:
-            hkind = hoist_kinds.get(bnode.name)
-            if hkind in ("ptr", "ptr_const"):
+            brec = lc.binding(bnode.name)
+            here = bnode.name in hoisted
+            if brec.borrowed_capture:
                 # `_emit_binding`'s declared pointer-local arm: a pointer-repr
                 # subject assigns the pointer directly, a value lvalue subject
-                # aliases via address-of. An rvalue subject never reaches this
-                # form (sema records no borrow fact for it) -- defensive.
+                # aliases via address-of -- this match's hoist, or an
+                # ENCLOSING match's this (nested) match re-seats. An rvalue
+                # subject never reaches this form (sema records no borrow
+                # fact for it) -- defensive.
                 if subject_rvalue:
                     raise ThirUnsupported("match.capture_shape", detail=True)
                 mode = "assign" if subject_is_ptr else "assign_addr"
-            elif bnode.name in lc.match_ptr_hoists:
-                # An ENCLOSING match hoisted this capture as a pointer local;
-                # this (nested) match re-seats it. Same declared-pointer arm
-                # as above -- `hoist_kinds` is per-match, so the plain
-                # `in declared` tail below would spell a value copy.
-                if subject_rvalue:
-                    raise ThirUnsupported("match.capture_shape", detail=True)
-                mode = "assign" if subject_is_ptr else "assign_addr"
-                _witness("match.bind_reuse_ptr")
-            elif hkind == "opt_storage":
+                if not here:
+                    _witness("match.bind_reuse_ptr")
+            elif here and brec.kind is BindingKind.HOIST_OPT_STORAGE:
                 # The owned optional slot moves from the MATERIALIZED rvalue
                 # subject only; an lvalue subject or a guarded arm (later
                 # arms could re-read the moved-from subject) rejects.
                 if not subject_rvalue or case.guard is not None:
                     raise ThirUnsupported("match.capture_shape", detail=True)
                 mode = "assign_move"
-            elif bnode.name in declared:
-                mode = "assign"
             else:
-                mode = "copy" if bnode.bind_by_value else "ref"
+                mode = _capture_mode(bnode, lc)
             _witness(f"match.bind_{mode}")
             binding = THIRMatchBinding(name=bnode.name, mode=mode)
-            if hkind is None and bnode.name not in lc.match_ptr_hoists:
+            if not here and not brec.borrowed_capture:
                 # A reused hoist keeps the declaring match's type: a
                 # RE-TYPING nested reuse is a sema error, so overwriting
                 # here could only paper over one.
@@ -2278,7 +2147,6 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
         subject_ref=not subject_rvalue,
         arms=tuple(arms),
         hoist_decls=tuple(hoist_decls),
-        hoist_slots=hoist_slots,
         is_exhaustive=stmt.is_exhaustive,
         emit_unreachable=emit_unreachable,
         synthetic_default=False,
@@ -2439,7 +2307,7 @@ def _lower_match_poly(stmt: TpyMatch, lc: _LowerCtx,
             pre_bindings: tuple[THIRMatchBinding, ...] = ()
 
             def poly_binding(node) -> THIRMatchBinding:
-                mode = _scalar_bind_mode(node, declared)
+                mode = _capture_mode(node, lc)
                 _witness(f"match.bind_{mode}")
                 arm_declared[node.name] = bind_base_type
                 return THIRMatchBinding(name=node.name, mode=mode,
@@ -2610,7 +2478,7 @@ def _lower_match_optional(stmt: TpyMatch, lc: _LowerCtx,
                     or bnode.name in lc.narrow.narrowed
                     or lc.binding(bnode.name).storage_tuple):
                 raise ThirUnsupported("stmt.match")
-            mode = "copy" if bnode.bind_by_value else "ref"
+            mode = _capture_mode(bnode, lc)
             _witness(f"match.bind_{mode}")
             _witness("match.optional_inner_bind")
             binding = THIRMatchBinding(name=bnode.name, mode=mode,
@@ -2712,7 +2580,7 @@ def _lower_optional_inner_record(
             or_conds = _lower_or_field_conds(test, lc)
         binding = None
         if bnode is not None:
-            mode = _scalar_bind_mode(bnode, declared)
+            mode = _capture_mode(bnode, lc)
             _witness(f"match.bind_{mode}")
             _witness("match.optional_inner_bind")
             binding = THIRMatchBinding(name=bnode.name, mode=mode,
@@ -2891,7 +2759,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                                 hoist_decls: 'list[HoistDecl]',
                                 kind: str, *,
                                 loop_depth: int = 0,
-                                hoist_kinds: 'dict[str, str] | None' = None,
+                                hoisted: AbstractSet[str] = frozenset(),
                                 arm_body_hooks: bool = False,
                                 ) -> THIRMatch:
     """Lower a chain-optional `match` (the non-partitioned Optional subject):
@@ -2911,16 +2779,10 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
     subj_type = unwrap_readonly(stmt.subject_type)
     uses_ptr = subj_type.uses_pointer_repr()
     inner_type = subj_type.inner
-    if hoist_kinds is None:
-        hoist_kinds = {}
     null_piece = (("", " == nullptr") if uses_ptr
                   else ("!", ".has_value()"))
     hasval_piece = (("", " != nullptr") if uses_ptr
                     else ("", ".has_value()"))
-    # A pointer-slot global reads as `(*g)`, so the subject spelling is the
-    # POINTEE, not the whole-Optional pointer an arm-local capture copies.
-    subject_derefs = (isinstance(stmt.subject, TpyName)
-                      and stmt.subject.name in lc.prescan.global_slots)
     arms: list[THIRMatchArm] = []
     always_arms = 0
     for i, case in enumerate(_bindings.scoped(lc, stmt.cases)):
@@ -3022,29 +2884,40 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                         and lc.binding(bnode.name).value_opt
                         is ValueOptKind.SCALAR)):
                 raise ThirUnsupported("match.optional_bind_name", detail=True)
-            hkind = hoist_kinds.get(bnode.name)
-            if hkind not in (None, "value", "frame") and not (
-                    hkind == "opt_ptr" and binds_full):
+            hrec = (lc.binding(bnode.name) if bnode.name in hoisted
+                    else None)
+            hkind = hrec.kind if hrec is not None else None
+            nullable_hoist = hrec is not None and _nullable_match_hoist(hrec)
+            if hkind not in (None, BindingKind.HOIST_VALUE,
+                             BindingKind.FRAME_LAYOUT) and not (
+                    nullable_hoist and binds_full):
                 # A non-value hoisted capture on this tier is routed only as
                 # the full-Optional pointer bind; inner-binding hoisted
                 # captures (`case Box() as bb:` leaked) reject. Value
                 # hoists keep the existing declared-assign paths, and a
                 # frame-declared one is a value hoist minus the decl line.
                 raise ThirUnsupported("match.optional_hoist_kind", detail=True)
-            if binds_full and uses_ptr and (
-                    hkind == "opt_ptr"
-                    or (hkind is None and not subject_derefs)):
-                # The pointer subject binds whole: the hoisted `T* q;` takes
+            crec = _bindings.fresh_record(lc.table, case, bnode.name)
+            # A capture the case declares binds as its record says; one of
+            # a pointer in scope (this match's nullable hoist, an enclosing
+            # statement's, a local) assigns it.
+            subject_ptr = (crec is not None
+                           and crec.kind is BindingKind.MATCH_SUBJECT_PTR)
+            prec = lc.binding(bnode.name)
+            writes_ptr = (crec is None and prec.pointer
+                          and pointer_repr_optional(prec.type) is not None)
+            if binds_full and uses_ptr and (writes_ptr or subject_ptr):
+                # The pointer subject binds whole: a pointer in scope takes
                 # the assign (`q = __match_subject_N;` -- _emit_binding's
                 # declared pointer-local arm), an arm-local capture the
                 # in-place decl (`auto q = __match_subject_N;`). Either way
                 # the declared Optional entry keeps body reads on the
                 # nullable borrow model (deref_check on unproven access).
-                mode = "assign" if hkind == "opt_ptr" else "copy"
+                mode = "assign" if writes_ptr else "copy"
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                            from_case_var=False)
-                if hkind is None:
+                if crec is not None:
                     _witness("match.optional_full_bind")
                     arm_declared[bnode.name] = subj_type
             elif binds_full:
@@ -3054,14 +2927,14 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                 if (uses_ptr
                         or _value_opt_scalar(subj_type, lc.analyzer) is None):
                     raise ThirUnsupported("match.optional_full_bind_shape", detail=True)
-                mode = _scalar_bind_mode(bnode, declared)
+                mode = _capture_mode(bnode, lc)
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                            from_case_var=False)
                 arm_declared[bnode.name] = subj_type
                 _witness("match.optional_full_bind")
             else:
-                mode = _scalar_bind_mode(bnode, declared)
+                mode = _capture_mode(bnode, lc)
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                            from_case_var=True)
@@ -3195,8 +3068,7 @@ def _lower_match_switch_str(stmt: TpyMatch, lc: _LowerCtx,
                 or lc.binding(bnode.name).value_opt
                 is ValueOptKind.SCALAR):
             raise ThirUnsupported("stmt.match")
-        mode = ("assign" if bnode.name in declared
-                else "copy" if bnode.bind_by_value else "ref")
+        mode = _capture_mode(bnode, lc)
         _witness(f"match.bind_{mode}")
         arm_declared[bnode.name] = bind_type
         b = THIRMatchBinding(name=bnode.name, mode=mode)
@@ -3430,7 +3302,7 @@ def _lower_match_union(stmt: TpyMatch, lc: _LowerCtx,
                 variant_index = _union_member_index(members, NoneType())
                 labels = (str(variant_index),)
             if bnode is not None:
-                mode = _scalar_bind_mode(bnode, declared)
+                mode = _capture_mode(bnode, lc)
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                            from_case_var=member is not None)
@@ -3578,7 +3450,7 @@ def _lower_match_guarded_union(stmt: TpyMatch, lc: _LowerCtx,
                     _witness("match.union_field_cond")
             binding = None
             if bnode is not None:
-                mode = _scalar_bind_mode(bnode, declared)
+                mode = _capture_mode(bnode, lc)
                 _witness(f"match.bind_{mode}")
                 binding = THIRMatchBinding(name=bnode.name, mode=mode,
                                            from_case_var=kind == "class")
@@ -3698,8 +3570,6 @@ def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
 
     def _splice(pattern: TpyClassPattern, case) -> 'THIRFoldedBlock':
         _bindings.require_entered(lc, case)
-        bind_modes = {n.name: n.bind_by_value
-                      for n in iter_capture_bindings(case.pattern)}
         binds: list = []
         for field_name, sub_pattern in pattern.keywords:
             if isinstance(sub_pattern, TpyWildcardPattern):
@@ -3714,9 +3584,15 @@ def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
                 # A non-value capture aliases record storage (`auto&`) --
                 # the body's reads would need the alias binding class.
                 _reject("match.overload_fold_capture")
-            by_value = bind_modes.get(sub_pattern.name)
-            if by_value is None:
+            frec = _bindings.fresh_record(lc.table, case, sub_pattern.name)
+            if frec is None or sub_pattern.name in lc.prescan.hoisted:
+                # Pre-declared/hoisted targets take the assignment forms.
+                _reject("match.overload_fold_predeclared")
+            if frec.kind is BindingKind.MATCH_SUBJECT_PTR:
+                # The fold splices field captures; a whole pointer subject
+                # has no fold render.
                 _reject("match.overload_fold_bind_mode")
+            by_value = _CAPTURE_MODES[frec.kind] == "copy"
             if not by_value and _statements._body_writes_name(
                     case.body, sub_pattern.name, match_binds=False):
                 # An `auto&` capture would write through to the
@@ -3724,14 +3600,10 @@ def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
                 # match_binds=False follows sema: a nested match REBINDS the
                 # name without writing through this arm's alias.
                 _reject("match.overload_fold_ref_write")
-            if (sub_pattern.name in declared
-                    or sub_pattern.name in lc.prescan.hoisted):
-                # Pre-declared/hoisted targets take the assignment forms.
-                _reject("match.overload_fold_predeclared")
             binds.append(THIRMatchFoldBind(
                 name_cpp=escape_cpp_name(sub_pattern.name),
                 source_cpp=f"{subject_name}.{field_name}",
-                by_value=bool(by_value),
+                by_value=by_value,
                 binding=_statements._declared_record(sub_pattern.name, case,
                                                      lc)))
             declared[sub_pattern.name] = ft

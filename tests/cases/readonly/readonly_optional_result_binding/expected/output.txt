@@ -1,16 +1,15 @@
 method_decl 11
 free_decl 21
-reassign 31
-relay_method 41
-relay_free 41
-member 52
-overload 62
-overload_ro 71
-try 1081
-with 91
-field_try 1091
-param_with 101
+relay_method 31
+relay_free 31
+member 42
+overload 52
+overload_ro 61
+try 1071
+with 81
+field_try 1081
+param_with 91
 gen 0
-gen 111
-async 121
+gen 101
+async 111
 module 11 13

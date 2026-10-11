@@ -50,7 +50,7 @@ import dataclasses
 from collections.abc import Sequence
 from contextvars import ContextVar
 
-from ..codegen_cpp.forms import (LocalBinding, LoopBinding, is_plain_nonvalue,
+from ..codegen_cpp.forms import (LoopBinding, is_plain_nonvalue,
                                  is_ptr_variant_union, loop_binding_kind)
 from ..type_def_registry import (
     ParamPassing,
@@ -100,6 +100,7 @@ from .nodes import (
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
     hoists_declaration, record_rvalue_storage,
 )
+from .source import BindingKind
 from .temp_plan import if_chain
 
 
@@ -438,10 +439,8 @@ def _select_ref_type(t: TpyType) -> TpyType:
 # there a node without one is a lowering bug; hand-built THIR may omit it.
 _LOWERED: ContextVar[bool] = ContextVar("thir_validate_lowered", default=False)
 
-# The pointer-local declaration shapes (`T*`), and the PtrSlotKinds that
-# declare a pointer-variant union rather than a pointer.
-_POINTER_DECLS = frozenset({LocalBinding.POINTER, LocalBinding.OPTIONAL_TO_PTR,
-                            LocalBinding.REBIND_SLOT, LocalBinding.OPT_PTR_SLOT})
+# The PtrSlotKinds that declare a pointer-variant union rather than a
+# pointer.
 _UNION_SLOT_KINDS = frozenset({PtrSlotKind.UNION_NONE, PtrSlotKind.UNION_RVALUE,
                                PtrSlotKind.UNION_INLINE_SLOT,
                                PtrSlotKind.UNION_ADDR})
@@ -456,7 +455,8 @@ def _parked_tuple_global(node: 'THIRPtrLocalDecl | THIRPtrLocalRebind',
     reference element through a pointer (`THIRBorrowedRecord`), none
     inline, and the node is one of the two parking writes."""
     layout = rec.tuple_layout
-    if (rec.row != "global.module" or layout is None or layout.owns_records
+    if (rec.kind is not BindingKind.GLOBAL_MODULE or rec.refinements
+            or layout is None or layout.owns_records
             or not any(isinstance(m, THIRBorrowedRecord)
                        for m in layout.elements)):
         return False
@@ -470,36 +470,12 @@ def _parked_tuple_global(node: 'THIRPtrLocalDecl | THIRPtrLocalRebind',
 def _contract_problem(node: object, rec) -> 'str | None':
     """The first representation fact of a binding-emitting node its record
     contradicts. The checks read the record's fields, never its read form
-    (a BORROW binding cannot tell `T&` from `T*`)."""
-    if isinstance(node, THIRVarDecl):
-        rep = node.cpp_local_representation
-        if (rep is LocalBinding.REF_ALIAS) != rec.ref_alias:
-            return f"a {rep} declaration against ref_alias={rec.ref_alias}"
-        if rep in _POINTER_DECLS and not rec.pointer:
-            return f"a {rep} declaration of a non-pointer binding"
-        if rep is LocalBinding.REBIND_SLOT and not rec.rebind_slot:
-            return "a rebind-slot declaration of a binding without one"
-        if node.btuple_opt_borrow_cpp is not None and not rec.optional_borrow_tuple:
-            return "an optional borrow tuple declared for a binding that is none"
-        if rec.coro_frame and not (node.cpp_type or "").startswith("std::optional<"):
-            return "a coroutine frame binding declared outside its optional"
-        if rec.iterator_object and node.cpp_type not in ("auto", "auto&"):
-            return "an iterator object declared with a spelled type"
-        if rec.frame_slot:
-            return "a local declaration of a frame slot"
-        if (rep in (LocalBinding.REF_ALIAS, LocalBinding.POINTER,
-                    LocalBinding.OPTIONAL_TO_PTR)
-                and node.is_const != rec.const):
-            return f"a {rep} declared const={node.is_const} against const={rec.const}"
-        if (rec.tuple_layout is not None and node.tuple_layout is not None
-                and node.tuple_layout != rec.tuple_layout):
-            return "an owned tuple declared off its record's layout"
-        if node.tuple_storage_alias is not None and not rec.storage_tuple:
-            return "a storage-tuple alias of a binding that is no storage tuple"
-        if ((rep in _POINTER_DECLS or rep is LocalBinding.REF_ALIAS)
-                and (rec.storage_tuple or rec.value_opt is not None)):
-            return f"a {rep} declaration of a storage tuple or value optional"
-    elif isinstance(node, THIRPtrLocalDecl):
+    (a BORROW binding cannot tell `T&` from `T*`). A `THIRVarDecl` has no
+    clause: a first declaration's node takes its shape and const from its
+    record and the first-declaration dispatch refuses a frame slot, while
+    the hoist, unpack, with, match and walrus arms still build theirs from
+    their own conditions, unchecked here."""
+    if isinstance(node, THIRPtrLocalDecl):
         if node.kind in _UNION_SLOT_KINDS:
             if not rec.ptr_variant:
                 return f"a {node.kind} declaration of a non-pointer-variant binding"
@@ -548,11 +524,11 @@ def _check_contract(owner: str, node: object, name: 'str | None', rec) -> None:
         if _LOWERED.get():
             _contract_fail(owner, node, f"{type(node).__name__} {name!r} carries no record")
         return
-    if rec.row == "unbound":
+    if rec.kind is BindingKind.UNBOUND:
         return
     why = _contract_problem(node, rec)
     if why is not None:
-        _contract_fail(owner, node, f"{type(node).__name__} {name!r} ({rec.row}): {why}")
+        _contract_fail(owner, node, f"{type(node).__name__} {name!r} ({rec.kind.value}): {why}")
 
 
 def _check_binding_contracts(owner: str, node: object) -> None:
@@ -574,11 +550,11 @@ def _check_binding_contracts(owner: str, node: object) -> None:
         for i, (n, rec) in enumerate(zip(node.targets, recs)):
             _check_contract(owner, node, n, rec)
             bind = node.binds[i] if i < len(node.binds) else None
-            if rec is not None and n is not None and rec.row != "unbound":
+            if rec is not None and n is not None and rec.kind is not BindingKind.UNBOUND:
                 if bind in _POINTER_UNPACK_BINDS and not rec.pointer:
-                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.row}) bound {bind} is no pointer")
+                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.kind.value}) bound {bind} is no pointer")
                 if bind == "frame_emplace" and not rec.frame_slot:
-                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.row}) emplaced is no frame slot")
+                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.kind.value}) emplaced is no frame slot")
     elif isinstance(node, THIRWith):
         for item in node.items:
             _check_contract(owner, item, item.target, item.binding)

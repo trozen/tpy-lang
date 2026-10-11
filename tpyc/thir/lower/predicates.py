@@ -159,7 +159,7 @@ from ...value_category import (
     call_hands_back_value, call_value_optional,
     call_result_is_reference,
     call_returns_cpp_ref,
-    const_place,
+    const_place, deref_step_const,
     receiver_const, call_result_const,
     FrameTempElem,
     frame_temp_elem_plan,
@@ -170,7 +170,6 @@ from ...value_category import (
 )
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...codegen_cpp.forms import (
-    LocalBinding,
     is_ptr_variant_union,
     reads_storage_form_optional,
 )
@@ -7323,9 +7322,9 @@ def _storage_tuple_alias_src_ok(init: TpyExpr, declared: dict[str, TpyType],
 
     A FIELD source keeps the const-spelling receiver gate, because the decl
     derives the alias's const-ness from it. A subscript (off a field, a
-    local or a parameter) and a bare name take the `_btuple_const_storage`
-    walk -- the counterpart of `is_const_storage_source` -- so a const
-    source makes the alias const instead of rejecting it."""
+    local or a parameter) and a bare name take the one source verdict
+    (`_walrus_src_is_const`), so a const source makes the alias const
+    instead of rejecting it."""
     if isinstance(init, TpyFieldAccess):
         return _const_exact_field_receiver_ok(init, declared, analyzer)
     if isinstance(init, TpySubscript):
@@ -8336,12 +8335,12 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     consulted.
 
     `const_locals=True` adds the locally declared readonly names -- the
-    tuple-unpack RECEIVER asks it, because a `tuple_to_pointer` wrap off a
-    const local must spell `const T*` elements; the for-each capture does
-    not, its const wrap being unresolved (see `_iteration_yields_const`).
-    The verdict cannot disagree with an unpack target's use -- a body that
-    writes through an unpacked element marks the param mutated, which drops
-    the const verdict."""
+    tuple-unpack receiver and the iteration source ask it, because a
+    `tuple_to_pointer` wrap off a const local must spell `const T*`
+    elements, and a borrow out of one is const. The verdict cannot
+    disagree with an unpack target's use -- a body that writes through an
+    unpacked element marks the param mutated, which drops the const
+    verdict."""
     if lc.binding(name).const_loop_var:
         return True
     # The `auto&&` storage alias of a const source keeps its const-ness in
@@ -8408,66 +8407,6 @@ def _poly_subject_const(expr: TpyExpr, lc) -> bool:
         and (isinstance(lc.analyzer.get_expr_type(e), ReadonlyType)
              or _const_borrow_name(e.name, lc))), lambda h: _const_pack(h, lc))
 
-def _f1_is_const(binding: 'LocalBinding', target_type: TpyType | None,
-                 stmt: TpyVarDecl, lc) -> bool:
-    """The const-ness of an F1 borrow local's decl (`const T&` / `const T*`).
-
-    A field source is const through the ReadonlyType reads (the optional
-    inner, the init's raw sema type, the var_types entry); OPTIONAL_TO_PTR
-    adds the storage-optional const bump (`is_const_union_source`: the
-    receiver in const_ref_params (param) or const_indirect_locals (a const F1
-    local, tracked in `const_locals`)); a method-call source adds the
-    readonly-method ref-return branch. The bare-NAME const rule does not
-    apply to a field/call source.
-
-    The arms that read only the init EXPRESSION live in
-    `_expr_is_const_source`, shared with the walrus derivation; what stays
-    here is what needs the decl node or the binding kind."""
-    func, analyzer = lc.func, lc.analyzer
-    record_name = lc.record_name
-    if isinstance(target_type, OptionalType) and isinstance(target_type.inner, ReadonlyType):
-        return True
-    svt = analyzer.var_types.get(stmt)
-    if isinstance(svt, OptionalType) and isinstance(svt.inner, ReadonlyType):
-        return True
-    if _expr_is_const_source(stmt.init, lc):
-        return True
-    if binding is LocalBinding.OPTIONAL_TO_PTR:
-        if isinstance(stmt.init, TpyName):
-            # The name-copy row: const-ness follows the SOURCE pointer
-            # (`const Point* q = a;` off a const Optional param/local).
-            if _const_borrow_name(stmt.init.name, lc, const_locals=True):
-                return True
-        elif isinstance(stmt.init, (TpyFieldAccess, TpySubscript)):
-            # The storage-optional const bump reads the field/subscript
-            # receiver; other init shapes (a ternary) have no receiver and
-            # get const only via the shared raw-sema branches above --
-            # exactly `is_const_union_source`'s reach (it returns False
-            # for them).
-            recv = stmt.init.obj
-            if isinstance(recv, TpyName):
-                if (_const_borrow_name(recv.name, lc, const_locals=True)
-                        or _opt_ptr_param_deep_const(recv.name, func,
-                                                     analyzer, record_name)):
-                    return True
-            # A method-call receiver (`child.get().parent`) contributes NO
-            # const of its own: `is_const_union_source` stops at a call
-            # node unconditionally, so the lift is const only via the
-            # raw-sema branches above (a readonly receiver makes the field
-            # read's sema type ReadonlyType, caught there). Adding a
-            # const-rooted or readonly-fi disjunct here gives the WRONG
-            # const-ness on an inferred-readonly inner method.
-    # Borrow-alias of an lvalue rooted in a const source (`p = ps[i]`,
-    # `r = obj.field`, `c = self.store[k]`): REF_ALIAS const propagation
-    # via `is_const_union_source` -- recurse through chained field/subscript
-    # access to the base name. The reassigned POINTER sibling (`x = a` off a
-    # const-ref param -> `const T* x = &(a);`) roots the same way -- the
-    # bare-name branch.
-    if binding in (LocalBinding.REF_ALIAS, LocalBinding.POINTER) \
-            and _f1_const_rooted_source(stmt.init, lc):
-        return True
-    return False
-
 def _f1_const_rooted_source(expr: TpyExpr, lc) -> bool:
     """Mirror of codegen's `is_const_union_source`: True when `expr` is an
     lvalue rooted in a const source (`const_place`). Which SOURCES are const
@@ -8501,8 +8440,7 @@ def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     resolved; the receiver is itself such a source, `w.me().ref()`), and an
     element of a const-rooted container.
 
-    Shared by the decl (`_f1_is_const`) and walrus (`_walrus_src_is_const`)
-    derivations so the two cannot drift; each adds the arms only it can see."""
+    The core of `_walrus_src_is_const`, the one source verdict."""
     type_of = lc.analyzer.get_expr_type
     if isinstance(src, TpyMethodCall):
         return call_result_const(src, type_of,
@@ -8523,17 +8461,30 @@ def receiver_is_const(obj: TpyExpr, lc) -> bool:
                           lambda h: _const_pack(h, lc))
 
 def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
-    """`const T*` for a walrus borrow-alias / pointer-Optional predecl: the
-    source expression is const on its own (`_expr_is_const_source`), it is a
-    select with a const arm, or its lvalue is rooted in a const param / const
-    F1 local.
-
-    The decl sibling of this is `_f1_is_const`, which cannot serve a walrus: it
-    keys `var_types` and `stmt.init` off a TpyVarDecl node a walrus has not
-    got. What the two share is the expression-keyed core; the rest of
-    `_f1_is_const` reads a binding kind the walrus ladder decides for itself."""
+    """Whether a value bound into a name is a const borrow: the source
+    expression is const on its own (`_expr_is_const_source`), it is a
+    select with a const arm, its lvalue is rooted in a const param / const
+    local, or it is a bare borrow-tuple name marked const. The one source
+    verdict: a declaration's, a reseat's, a walrus's, a capture's subject's
+    and a tuple alias's or standalone unpack's source const is judged by
+    it, a pointer slot's over all its sources (`_plan_const`). Not by it:
+    an unpack target over a readonly ELEMENT type and a for head's element
+    (`_iteration_yields_const`), facts of the element, not the source."""
+    if isinstance(src, TpyCoerce):
+        # A deref step reads the handle's referent access: a `Ptr`'s
+        # pointee does not inherit the holder's const.
+        step = deref_step_const(src, lc.analyzer.get_expr_type,
+                                lambda h: _const_pack(h, lc))
+        return (step if step is not None
+                else _walrus_src_is_const(src.expr, lc))
     if _expr_is_const_source(src, lc):
         return True
+    if isinstance(src, TpyName) and _tuple_typed(src, lc):
+        # The borrow-tuple bits are per NAME, so a nested def's own
+        # non-tuple name of the same spelling must not read them.
+        b = lc.binding(src.name)
+        if b.const_borrow_tuple or b.const_opt_borrow_tuple:
+            return True
     if isinstance(src, TpyIfExpr):
         # A select is const-rooted iff EITHER arm is: the C++ `?:` over a const
         # and a non-const pointer yields the const type. The recursion lives
@@ -8543,6 +8494,12 @@ def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
         return (_walrus_src_is_const(src.then_expr, lc)
                 or _walrus_src_is_const(src.else_expr, lc))
     return _f1_const_rooted_source(src, lc)
+
+def _tuple_typed(e: TpyExpr, lc) -> bool:
+    t = lc.analyzer.get_expr_type(e)
+    t = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
+    return isinstance(t, TupleType) or (isinstance(t, OptionalType)
+                                        and t.wraps_pointer_repr_tuple())
 
 def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
     # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type of

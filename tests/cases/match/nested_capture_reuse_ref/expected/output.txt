@@ -1,4 +1,3 @@
-99
-1
-2
-55
+outer_untouched: 1
+reseats_mutable: 99
+as_pattern_mutable: 56 5 56
