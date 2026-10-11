@@ -95,6 +95,19 @@ class Diagnostic:
         return f"{filename}: {self.level.value}: {self.message}"
 
 
+def insert_in_source_order(diagnostics: list[Diagnostic], diagnostic: Diagnostic) -> None:
+    """Add a diagnostic a later phase found to a module's list, ahead of
+    the first one on a later line, so a reader sees the module's
+    diagnostics in source order whichever phase found them."""
+    line = diagnostic.loc.line if diagnostic.loc is not None else None
+    if line is not None:
+        for index, existing in enumerate(diagnostics):
+            if existing.loc is not None and existing.loc.line > line:
+                diagnostics.insert(index, diagnostic)
+                return
+    diagnostics.append(diagnostic)
+
+
 def format_diagnostics(
         compiler: 'Compiler', modules: 'Iterable[CompiledModule]', *,
         prog_name: str = "tpyc",

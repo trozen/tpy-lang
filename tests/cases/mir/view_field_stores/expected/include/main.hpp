@@ -67,7 +67,7 @@ void own_member_seed(int32_t k, bool flag);
 Tok ident(Tok&& r);
 // def ident_kept(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void ident_kept(int32_t k, bool flag);
-// def make_replace(s: str, b: Buf, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /replacement/)
+// def make_replace(s: str, b: Buf, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /alias_obligation/)
 Tok make_replace(std::string_view s, Buf& b, bool flag);
 // def made_replace(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void made_replace(int32_t k, bool flag);
@@ -95,7 +95,7 @@ int32_t wrap_copy(const Tok& t);
 void wrap_copy_replaced(int32_t k, bool flag);
 // def wrap_move(k: int32) -> int32:  # tpyc: mir(uncovered /^move needs fixed movable owned local$/)
 int32_t wrap_move(int32_t k);
-// def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+// def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
 void store_and_replace(Tok& t, std::string_view s, Buf& b, bool flag);
 // def transfer_replace(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void transfer_replace(bool flag);
@@ -135,7 +135,7 @@ void member_self(int32_t k, bool flag);
 void member_fresh(int32_t k);
 // def member_alias(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void member_alias(int32_t k, bool flag);
-// def member_param(o: Holder, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+// def member_param(o: Holder, s: str) -> None:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
 void member_param(Holder& o, std::string_view s);
 // def fill_inner(o: Holder, s: str) -> None:  # tpyc: mir(covered) mir_summary(known)
 void fill_inner(Holder& o, std::string_view s);
@@ -290,7 +290,7 @@ struct Holder {
     Holder() = default;
     explicit Holder(const R& inner);
 
-    // def swap(self, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+    // def swap(self, s: str) -> None:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
     void swap(std::string_view s);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
@@ -448,8 +448,8 @@ inline Wrap::Wrap(Tok&& t) : t(std::move(t)) {}
 inline Holder::Holder(const R& inner) : inner(inner) {}
 
 // # method: a whole member replaced through self stores s's loan in the caller's object (a transfer);
-// # the conflict over-reports as member_param's does
-// def swap(self, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+// # s viewing the replaced member is a precondition the body publishes, checked at callers MIR analyzes, as member_param's
+// def swap(self, s: str) -> None:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
 //     self.inner = R(s, s)
 inline void Holder::swap(std::string_view s) {
     this->inner = R(s, s);

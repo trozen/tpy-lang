@@ -52,6 +52,7 @@ from tpyc.codegen_cpp.context import ThirRejectError
 # The committed cutover gate owns the body/skeleton boundary; a second copy of
 # the module list here would drift the moment the boundary moves.
 from tpyc.compilation_context import activate_compiler
+from tpyc.identity_map import IdentityMap
 from tpyc.parse import Parser, ParseError
 from tpyc.sema import (SemanticAnalyzer, SemanticError, Diagnostic,
                        DiagnosticLevel, format_diagnostics)
@@ -1041,24 +1042,31 @@ def _failed(compiler, error_line: str) -> CompileResult:
 def _mir_verdicts(compiler, local_contexts, entry_module) -> tuple[
         dict[tuple[int, str], tuple[MIRBodyVerdict, ...]], dict[MIRBodyId, MIRLineFacts | None]]:
     """MIR over the case's own modules, the program `--dump-mir` sees, with
-    the entry module's per-line facts.
+    the entry module's per-line facts; the MIR warnings join the modules'
+    diagnostics.
 
     Runs for every case, annotated or not, so a MIR exception surfaces on the
     whole corpus; it propagates as the case's failure (with its traceback),
-    never as a compile diagnostic, since diag.txt pins the compiler's output
-    and MIR is not part of it. Refusal, incompleteness and conflicts are
+    never as a compile diagnostic: a MIR defect is not a warning the compiler
+    reports. Refusal, incompleteness and conflicts are
     verdicts, checked only where an annotation asks."""
     verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] = {}
     facts: dict[MIRBodyId, MIRLineFacts | None] = {}
     try:
+        analyzed = IdentityMap()
         with compiler.mir_analysis(local_contexts) as mir:
             for mod, ctx in local_contexts:
                 bodies = enumerate_bodies(mod.ast, mod.analyzer, ctx, mod.name, mir.definitions,
                                           compiler.thir_reject_by_node, mir.workspace)
+                analyzed[mod.ast] = [(v.function, v.analyses) for v in bodies if v.analyses is not None]
                 if mod is entry_module:
                     verdicts = key_mir_verdicts(bodies)
                     # Field kinds read this compilation's TypeDefs, so the facts are taken here.
                     facts = {verdict.body: line_facts(verdict) for verdict in bodies}
+            # The warnings the CLI reports after codegen, read off these
+            # verdicts' analyses. Strict: a MIR exception fails the case
+            # instead of silently dropping the warnings.
+            compiler.report_mir_warnings(local_contexts, mir, analyzed=analyzed, strict=True)
     except (CompileError, SemanticError, ParseError, CodeGenError) as e:
         # The caller's handlers turn these four into a failed compile with a
         # diagnostic; a MIR failure must stay a test failure.
@@ -1190,6 +1198,8 @@ def compile_with_diagnostics(
         record_thir_faces(compiler._thir_face_witnesses)
 
         mir_verdicts, mir_line_facts = _mir_verdicts(compiler, local_contexts, entry_module)
+        # MIR's warnings joined sema's: the diagnostics are read again.
+        diagnostics = "".join(f"{line}\n" for _, line in format_diagnostics(compiler, compiled_modules))
 
         # Return paths for the entry point module
         layout = BuildLayout(output_dir, entry_module.name)

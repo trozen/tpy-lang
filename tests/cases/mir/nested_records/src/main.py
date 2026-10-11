@@ -120,9 +120,9 @@ def replace_live(ln: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_sum
     return held.x > 0
 
 
-# free function, conflict: the member of a parameter that may alias the holder's owner
-# (unwarned divergence: BUGS.md#aliased-record-params-member-replaced)
-def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+# free function: the member of a parameter that may alias the holder's owner, a precondition the
+# body publishes, checked at callers MIR analyzes (BUGS.md#aliased-record-params-member-replaced)
+def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
     held = left.a
     right.a = Point(9, "new")  # tpyc: mir_write(right.a)
     return held.x > 0

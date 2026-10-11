@@ -11,8 +11,8 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, NominalType
 from .call_contract import (
-    MIRContainerStructure, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult, MIRSummaryState,
-    summary_problem,
+    MIRAliasObligation, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRParameterWrite,
+    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
@@ -256,11 +256,20 @@ def test_a_method_growing_the_iterated_field_conflicts(program: _Program) -> Non
     assert (verdict.status, verdict.conflicts) == (MIRVerdictStatus.COVERED, ("replacement",))
 
 
-def test_an_aliased_record_argument_conflicts_at_the_callee(program: _Program) -> None:
-    # A body assumes its borrowed parameters may alias: the caller passing two records is not checked again.
-    assert program.verdicts["Counter.merge_from"].conflicts == ("replacement",)
+def test_an_aliased_record_argument_is_an_obligation_of_the_callers(program: _Program) -> None:
+    # Growing `self.items` while iterating `other.items` conflicts only when
+    # the two records alias: the body publishes that as a no-alias
+    # obligation and keeps it as an `alias_obligation` conflict, and a
+    # caller passing two of its own parameters publishes it again.
+    items = _field(program, "Counter", "items", INTS)
+    grown = MIRParameterWrite(0, (items, MIRContainerStructure()))
+    expected = frozenset({MIRAliasObligation(1, (items, MIRContainerElements()), grown),
+                          MIRAliasObligation(1, (items, MIRContainerStructure()), grown)})
+    assert program.verdicts["Counter.merge_from"].conflicts == ("alias_obligation",)
+    assert _known(program, "Counter.merge_from").obligations == expected
     caller = program.verdicts["call_merge"]
-    assert (caller.status, caller.conflicts) == (MIRVerdictStatus.COVERED, ())
+    assert (caller.status, caller.conflicts) == (MIRVerdictStatus.COVERED, ("alias_obligation",))
+    assert _known(program, "call_merge").obligations == expected
 
 
 def test_a_container_returned_from_the_receiver_names_its_field(program: _Program) -> None:

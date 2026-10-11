@@ -103,9 +103,9 @@ class Counter:
             t += x
         return t
 
-    # aliased argument: a body assumes its borrowed parameters may alias, so iterating
-    # other.items while growing self.items conflicts at the callee
-    def merge_from(self, other: "Counter") -> None:  # tpyc: mir(conflict /replacement/)
+    # aliased argument: iterating other.items while growing self.items conflicts only
+    # when the two records alias, a precondition the body publishes, checked at callers MIR analyzes
+    def merge_from(self, other: "Counter") -> None:  # tpyc: mir(conflict /alias_obligation/)
         for x in other.items:
             self.items.append(x)
 
@@ -316,8 +316,8 @@ def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(conflic
     return len(v)
 
 
-# aliased argument: the caller passes two records; the possible alias is the callee's
-def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(covered)
+# aliased argument: the caller passes two of its own records, so the precondition is its own too
+def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(conflict /alias_obligation/)
     a.merge_from(b)  # tpyc: mir_write(a.items[structure])
 
 

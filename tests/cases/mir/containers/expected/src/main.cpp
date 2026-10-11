@@ -173,9 +173,9 @@ int32_t replace_after_use(std::vector<Point>& ps) {
 }
 
 // # free function: an augmented write of a str element, then a str parameter read -- the
-// # parameter may view the very element the write replaces (the conservative
-// # external-alias class: distinct parameters may alias)
-// def str_elem_aug(ys: list[str], k: str) -> int:  # tpyc: mir(conflict /replacement/)
+// # parameter may view the very element the write replaces: a precondition the body
+// # publishes, checked at callers MIR analyzes (distinct parameters may alias)
+// def str_elem_aug(ys: list[str], k: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
 //     ys[0] += "a"  # tpyc: mir_write(ys[elements])
 //     return len(k)
 ::tpy::BigInt str_elem_aug(std::vector<std::string>& ys, std::string_view k) {
@@ -345,9 +345,9 @@ int32_t field_callee_after_iter(Bag& r) {
 }
 
 // # free function: one parameter iterated while another is grown -- the two may name one
-// # list, so MIR reports it by the external-alias rule even when the caller passes two
+// # list, a precondition the body publishes, checked at callers MIR analyzes
 // # (BUGS.md#aliased-args-iterated-param-grown)
-// def copy_into(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(conflict /replacement/)
+// def copy_into(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(conflict /alias_obligation/)
 //     for v in src:
 //         out.append(v)
 void copy_into(const std::vector<int32_t>& src, std::vector<int32_t>& out) {

@@ -38,7 +38,7 @@ int32_t forwarded_after_use(std::vector<Point>& ps, bool flag);
 int32_t replace_elem(std::vector<Point>& ps, bool flag);
 // def replace_after_use(ps: list[Point]) -> int32:  # tpyc: mir(covered)
 int32_t replace_after_use(std::vector<Point>& ps);
-// def str_elem_aug(ys: list[str], k: str) -> int:  # tpyc: mir(conflict /replacement/)
+// def str_elem_aug(ys: list[str], k: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
 ::tpy::BigInt str_elem_aug(std::vector<std::string>& ys, std::string_view k);
 // def str_elem_aug_after_use(ys: list[str], k: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt str_elem_aug_after_use(std::vector<std::string>& ys, std::string_view k);
@@ -58,7 +58,7 @@ void grow_ints(std::vector<int32_t>& ys, bool flag);
 int32_t field_iter_callee(Bag& r, bool flag);
 // def field_callee_after_iter(r: Bag) -> int32:  # tpyc: mir(covered)
 int32_t field_callee_after_iter(Bag& r);
-// def copy_into(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(conflict /replacement/)
+// def copy_into(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(conflict /alias_obligation/)
 void copy_into(const std::vector<int32_t>& src, std::vector<int32_t>& out);
 // def copy_count(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(covered)
 void copy_count(const std::vector<int32_t>& src, std::vector<int32_t>& out);

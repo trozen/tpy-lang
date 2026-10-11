@@ -42,6 +42,8 @@ from tpyc.mir.collect import (  # noqa: E402
     MIRBodyVerdict, MIRRefusalKind, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, enumerate_body_sources,
     verdict_of,
 )
+from tpyc.mir.nodes import MIRNotCovered  # noqa: E402
+from tpyc.mir_diagnostics import obligation_callees, obligation_calls  # noqa: E402
 from tpyc.parse import nodes as pn  # noqa: E402
 
 TPY_LIB = REPO / "lib" / "tpy"
@@ -302,9 +304,8 @@ def run_job(job: dict) -> dict:
         with compiler.mir_analysis(collected) as mir:
             for m, ctx in collected:
                 if is_user[m.name] == report_user:
-                    out["bodies"].extend(body_records(m, ctx, mir.definitions, mir.workspace,
-                                                      compiler.thir_reject_by_node, is_user[m.name],
-                                                      body_ranges))
+                    out["bodies"].extend(body_records(m, ctx, mir, compiler.thir_reject_by_node,
+                                                      is_user[m.name], body_ranges))
         _attribute_diags(out, modules, is_user, body_ranges)
         out["unattributed_events"] = dict(hooks.UNATTRIBUTED)
         out["status"] = "ok"
@@ -360,12 +361,13 @@ def _events_for(func, nested) -> dict:
     return dict(c)
 
 
-def body_records(module, ctx, definitions, workspace, reasons, user, body_ranges) -> list[dict]:
+def body_records(module, ctx, program, reasons, user, body_ranges) -> list[dict]:
     """One record per body of `collect.enumerate_body_sources`, the walk and
     identities `dump_codegen_mir` uses, measured by `collect.verdict_of`; the
     survey columns are this tool's own."""
     tpy = module.ast
     analyzer = module.analyzer
+    definitions, workspace = program.definitions, program.workspace
     recs: list[dict] = []
     ranges = body_ranges.setdefault(module.name, [])
 
@@ -379,6 +381,19 @@ def body_records(module, ctx, definitions, workspace, reasons, user, body_ranges
         r.update(measured or {})
         recs.append(r)
 
+    callees = obligation_callees(program)
+
+    def obligation_columns(source, verdict) -> dict:
+        """Calls to a summary with no-alias obligations, and those left
+        undischarged: the body did not lower or its retention is unresolved."""
+        thir = source.source
+        if thir is None:
+            thir = ctx.thir_top_level if source.func is None else ctx.thir_functions.get(source.func)
+        calls = obligation_calls(thir, callees) if thir is not None and callees else 0
+        resolved = (verdict is not None and verdict.analyses is not None
+                    and not isinstance(verdict.analyses.retention, MIRNotCovered))
+        return {"obligation_calls": calls, "undischarged_obligation_calls": 0 if resolved else calls}
+
     def measure(source) -> dict:
         """The body's verdict as `rec` arguments. A MIR exception is recorded
         rather than raised, so one body cannot end the program's measurement."""
@@ -386,14 +401,16 @@ def body_records(module, ctx, definitions, workspace, reasons, user, body_ranges
         try:
             verdict = verdict_of(source, definitions, workspace, fresh=True)
         except Exception as e:  # noqa: BLE001
-            return {"status": "not_covered", "raw": f"MIR crash: {type(e).__name__}: {str(e)[:120]}"}
+            return {"status": "not_covered", "raw": f"MIR crash: {type(e).__name__}: {str(e)[:120]}",
+                    "measured": obligation_columns(source, None)}
         refusal = verdict.refusal
         if refusal is None:
-            return {"status": "covered", "raw": None, "measured": lowered_columns(verdict)}
+            return {"status": "covered", "raw": None,
+                    "measured": lowered_columns(verdict) | obligation_columns(source, verdict)}
         return {"status": "no_body" if refusal.kind is MIRRefusalKind.NO_BODY else "not_covered",
                 "raw": refusal.display, "node_kind": refusal.node_kind,
                 "line": refusal.loc.line if refusal.loc is not None else None,
-                "btype": blocker_type(refusal.reason)}
+                "btype": blocker_type(refusal.reason), "measured": obligation_columns(source, verdict)}
 
     for source in enumerate_body_sources(tpy, analyzer, ctx, module.name, reasons):
         body, func = source.body, source.func

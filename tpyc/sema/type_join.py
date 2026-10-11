@@ -19,9 +19,9 @@ from dataclasses import dataclass, replace
 from enum import Enum, auto
 from typing import Callable, Sequence
 
-from ..parse.nodes import (TpyArrayLiteral, TpyDictLiteral, TpyExpr,
+from ..parse.nodes import (TpyArrayLiteral, TpyDictLiteral, TpyExpr, TpyFieldAccess,
                            TpyFloatLiteral, TpyIntLiteral, TpyListRepeat,
-                           TpyNamedExpr, TpySetLiteral, TpyTupleLiteral)
+                           TpyNamedExpr, TpySetLiteral, TpySlice, TpySubscript, TpyTupleLiteral)
 from ..typesys import (BIGINT, IntLiteralType, FloatLiteralType,
                        LiteralType, NominalType, OptionalType, OwnType,
                        PendingDictType, PendingNumType, PendingListType,
@@ -257,6 +257,30 @@ def operand_spelling(e: TpyExpr) -> str | None:
     if spelled is not None and spelled.startswith("__"):
         return None
     return spelled
+
+
+def expression_spelling(e: TpyExpr) -> str | None:
+    """The source spelling of an argument-like expression: a simple operand
+    (`operand_spelling`), or a field, element or slice of one, nested
+    (`xs[0].f`, `m[i][1]`, `xs[-1]`, `r.name[3:]`); None for anything longer."""
+    e = peel_coerce(e)
+    spelled = operand_spelling(e)
+    if spelled is not None:
+        return spelled
+    if isinstance(e, TpyFieldAccess):
+        base = expression_spelling(e.obj)
+        return f"{base}.{e.field}" if base is not None else None
+    if not isinstance(e, TpySubscript):
+        return None
+    base = expression_spelling(e.obj)
+    if isinstance(e.index, TpySlice):
+        if e.index.step is not None:
+            return None
+        bounds = [expression_spelling(b) if b is not None else "" for b in (e.index.lower, e.index.upper)]
+        index = None if None in bounds else ":".join(bounds)
+    else:
+        index = int_literal_spelling(e.index) or expression_spelling(e.index)
+    return f"{base}[{index}]" if base is not None and index is not None else None
 
 
 def int_literal_spellings(mix: InferredJoin,

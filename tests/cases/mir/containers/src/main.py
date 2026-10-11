@@ -178,9 +178,9 @@ def replace_after_use(ps: list[Point]) -> int32:  # tpyc: mir(covered)
 
 
 # free function: an augmented write of a str element, then a str parameter read -- the
-# parameter may view the very element the write replaces (the conservative
-# external-alias class: distinct parameters may alias)
-def str_elem_aug(ys: list[str], k: str) -> int:  # tpyc: mir(conflict /replacement/)
+# parameter may view the very element the write replaces: a precondition the body
+# publishes, checked at callers MIR analyzes (distinct parameters may alias)
+def str_elem_aug(ys: list[str], k: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
     ys[0] += "a"  # tpyc: mir_write(ys[elements])
     return len(k)
 
@@ -264,9 +264,9 @@ def field_callee_after_iter(r: Bag) -> int32:  # tpyc: mir(covered)
 
 
 # free function: one parameter iterated while another is grown -- the two may name one
-# list, so MIR reports it by the external-alias rule even when the caller passes two
+# list, a precondition the body publishes, checked at callers MIR analyzes
 # (BUGS.md#aliased-args-iterated-param-grown)
-def copy_into(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(conflict /replacement/)
+def copy_into(src: list[int32], out: list[int32]) -> None:  # tpyc: mir(conflict /alias_obligation/)
     for v in src:
         out.append(v)
 

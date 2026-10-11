@@ -48,6 +48,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .build.third_party import ThirdPartyBuildPlan
+    from .codegen_cpp.context import CodeGenContext
     from .compiler import Compiler, CompiledModule
 
 # Only light modules at top level: the build cache's warm path (unchanged
@@ -887,11 +888,12 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
         has_errors = False
         warning_messages: list[str] = []
         n_warnings = 0
+
+        def source_name_of(module: 'CompiledModule') -> str:
+            return "<stdin>" if reading_from_stdin else os.path.relpath(module.path)
+
         for diag, line in format_diagnostics(
-                compiler, compiled_modules, prog_name=prog_name,
-                source_name=lambda m: (
-                    "<stdin>" if reading_from_stdin
-                    else os.path.relpath(m.path))):
+                compiler, compiled_modules, prog_name=prog_name, source_name=source_name_of):
             if diag.level == DiagnosticLevel.ERROR:
                 has_errors = True
                 print(line, file=sys.stderr)
@@ -925,6 +927,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
                 print(msg, file=sys.stderr)
 
         t_codegen_start = time.monotonic()
+        mir_inputs: list[tuple['CompiledModule', 'CodeGenContext']] = []
         if args.dump_mir:
             from .mir.collect import dump_codegen_mir
 
@@ -932,7 +935,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             for compiled in compiled_modules:
                 if not compiler.is_user_module(compiled):
                     continue
-                source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
+                source_name = source_name_of(compiled)
                 with stamp_codegen_error_file(source_name, compiled.is_entry_point):
                     ctx = compiler.collect_thir(compiled, options, tolerate_reject=True)
                 collected.append((compiled, ctx))
@@ -946,7 +949,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             return 0
 
         for i, compiled in enumerate(compiled_modules, 1):
-            source_name = "<stdin>" if reading_from_stdin else os.path.relpath(compiled.path)
+            source_name = source_name_of(compiled)
 
             if args.dump_thir:
                 # User modules only -- the implicit stdlib would bury the
@@ -1001,17 +1004,32 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             t_file_start = time.monotonic()
             with stamp_codegen_error_file(source_name,
                                           compiled.is_entry_point):
-                hpp_path, cpp_path = compiler.generate_code(compiled, output_dir, options=options,
-                                                            flat=explicit_output)
+                hpp_path, cpp_path, mod_ctx = compiler.generate_code_and_context(
+                    compiled, output_dir, options=options, flat=explicit_output)
+            if compiler.is_user_module(compiled):
+                mir_inputs.append((compiled, mod_ctx))
             t_file = time.monotonic() - t_file_start
             if cpp_path is not None:
                 all_cpp_paths.append(cpp_path)
                 progress.translated(compiled.name, t_file)
 
-        t_codegen = time.monotonic() - t_codegen_start
-
         if args.dump_code or args.dump_thir:
             return 0
+
+        # MIR reads the THIR the emission just lowered.
+        mir_warnings = compiler.report_mir_warnings(
+            mir_inputs, on_failure=(lambda why: print(f"tpyc: {why}", file=sys.stderr)) if args.verbose >= 1 else None)
+        if mir_warnings:
+            if not building:
+                # Sema's warnings were printed before codegen.
+                for compiled, diag in mir_warnings:
+                    print(diag.format(source_name_of(compiled)), file=sys.stderr)
+            # The summary and the build cache list every warning in source order.
+            warning_messages = [line for diag, line in format_diagnostics(
+                compiler, compiled_modules, prog_name=prog_name, source_name=source_name_of)
+                if diag.level != DiagnosticLevel.ERROR]
+
+        t_codegen = time.monotonic() - t_codegen_start
 
         # The CPython extension glue TUs (one per ext_module) are emitted
         # alongside their module .cpp during generate_code but tracked

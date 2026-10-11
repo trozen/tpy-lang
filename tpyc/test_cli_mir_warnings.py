@@ -1,0 +1,63 @@
+"""The argument-alias warning through the real CLI: printed by a compile
+that emits C++ only, and by a cold build, then replayed from the build
+cache by a warm one."""
+
+import sys
+from pathlib import Path
+
+import pytest
+
+from .cli import main_tpyc
+from .toolchain import CompilerNotFoundError, CppCompilerConfig, ToolchainUnsupportedError
+
+_PROG = """\
+def bound(events: list[int], tag: int, value: int) -> int:
+    events.append(tag)
+    return value
+
+
+def alias(xs: list[int]) -> int:
+    return bound(xs, 1, xs[0])
+
+
+print(bound([1], 2, 3))
+"""
+
+_WARNING = ("prog.py:7: warning: argument 'xs[0]' points into 'xs', which 'bound' modifies through "
+            "parameter 'events' while it still uses 'value'")
+
+
+def _toolchain() -> bool:
+    try:
+        CppCompilerConfig.from_env(cxx="auto")
+    except (CompilerNotFoundError, ToolchainUnsupportedError):
+        return False
+    return True
+
+
+def _build(monkeypatch, capsys, prog: Path, out: Path) -> tuple[int, str]:
+    monkeypatch.setattr(sys, "argv", ["tpyc", str(prog), "--build", "--debug", "-o", str(out)])
+    rc = main_tpyc()
+    return rc, capsys.readouterr().err
+
+
+@pytest.mark.skipif(not _toolchain(), reason="no C++ toolchain")
+def test_the_warning_is_printed_and_replayed_by_a_warm_build(tmp_path, monkeypatch, capsys) -> None:
+    prog = tmp_path / "prog.py"
+    prog.write_text(_PROG)
+    monkeypatch.chdir(tmp_path)
+    out = tmp_path / "out"
+    rc, cold = _build(monkeypatch, capsys, prog, out)
+    assert rc == 0 and cold.count(_WARNING) == 1, cold
+    rc, warm = _build(monkeypatch, capsys, prog, out)
+    assert rc == 0 and warm.count(_WARNING) == 1, warm
+
+
+def test_a_compile_without_a_build_prints_the_warning_once(tmp_path, monkeypatch, capsys) -> None:
+    prog = tmp_path / "prog.py"
+    prog.write_text(_PROG)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(sys, "argv", ["tpyc", str(prog), "-o", str(tmp_path / "out")])
+    assert main_tpyc() == 0
+    err = capsys.readouterr().err
+    assert err.count(_WARNING) == 1, err

@@ -2092,6 +2092,65 @@ alongside related feature work; only the big-rock deferrals live here.
       the next slices reuse `place_layout` -- optional scalars, then tuple
       fields; union fields need a THIR union extraction keyed on a place
       (`THIRUnionExtraction.source` is a local name), after the freeze.
+    - The argument-alias warning finds the analyzed call by position plus
+      the resolved callable (`mir_diagnostics.CallSites`), because THIR
+      call nodes carry no reference to the parse call they lowered. A
+      reference (or the argument spellings) on the THIR call, decided where
+      THIR lowers the call, would remove the lookup and its fallbacks
+      (two calls to one callee at one position, a starred argument). Owner:
+      the lowering session (`tpyc/thir/lower/` is frozen).
+    - The argument-alias warning's list / record remedy (`copy(<arg>)`) is not
+      confirmed by MIR: `walk(copy(xs), xs)` and `alias_external(ln,
+      copy(ln))` are silent only because MIR does not lower those callers
+      (`tests/cases/mir/argument_alias` `list_copy`, `line_copy` pin them
+      `mir(uncovered ...)`). Flip them to `covered` once a `copy()` argument
+      of a list / record lowers.
+    - Warning vs a fix in the generated code: the warned calls still compile
+      to the use-after-free. For an `int` / `str` argument CPython semantics
+      allow a copy at the call (what `BUGS.md#borrowed-arg-into-mutated-storage`
+      calls a guaranteed copy). MIR runs after codegen, so it cannot feed
+      emission today; a copy at the call needs MIR (or the obligation
+      check) before emission -- a direction to decide with the B6 authority
+      question, not a patch.
+    - An acknowledgment for the argument-alias warning (user 2026-10-10):
+      a way for a user who knows a call's aliasing is safe (the callee reads
+      the borrowed argument only before its write) to silence the warning
+      without `copy()`. The spelling is a user decision (an annotation, a
+      directive, or a declared fact on the callee that it reads the borrow
+      first); until then the warning has no escape but restructuring or
+      a copy. The hint follows the argument's type (a value type: bind it
+      to a local first; a list or record: `copy()`). MIR does not lower a
+      caller passing `copy(xs)`, so that remedy is silent because the caller
+      goes unchecked, not because MIR proved it apart.
+    - Relieving a body of its `alias_obligation` conflicts (user decision
+      2026-10-10, option A: the body keeps them for now). A published
+      no-alias obligation is checked only at callers MIR analyzes; the
+      census measured 24 of 42 calls undischarged (generator, async,
+      constructor, module-level, `Callable`-value, implicit-dunder and `-L`
+      callers). Relief needs a fact that EVERY caller is known and checked
+      -- a private, non-escaping function whose every call site MIR
+      lowers -- and then drops the body's `alias_obligation` conflict.
+    - MIR precision before an advisory checker (measured 2026-10-10 over
+      the census conflicts at master 3eecfd2807): 104 conflicting bodies,
+      88 of them the annotated witnesses of `tests/cases/mir`; of the 16 in
+      the rest of the corpus, 10 are real (9 use-after-free, 8 of them
+      only when a caller passes an argument aliasing storage the body
+      mutates -- `BUGS.md#borrowed-arg-into-mutated-storage`, now a no-alias
+      obligation checked at each call -- and 1 replaced-object divergence)
+      and 6 are false.
+      The false causes, the precision work list:
+      - infeasible paths: a zero-iteration constant `range(2)`, a branch
+        condition that stays true once true (`pointers/escape_hoist_*`; sema
+        reports the same false positive);
+      - a scalar field write treated as replacing the whole record, so a
+        holder of the record conflicts (`imports/cross_module_dup_name_union`
+        `shift`, `tuple/frame_tuple_param_temp_element` `total`); only
+        storage inside the written field should;
+      - alternatives of one union parameter assumed to alias each other;
+      - `len()` of a view counted as a read of its buffer
+        (`exceptions/keyboard_interrupt_print` `write`): a view keeps its
+        length itself.
+      Per-body verdicts: /tmp/agents/b3y/prec/ (transient).
     - Left by the Optional-fields slice:
       - A narrowed Optional field payload bound to a local (`q = h.p` after
         `if h.p is not None`) refuses "optional payload borrow without a
@@ -2334,6 +2393,14 @@ alongside related feature work; only the big-rock deferrals live here.
   - Sibling-element precision: element identity is not tracked, so
     `xs[i] = v` / `d[k] = v` under a live iterator over the same container
     conflict (conservative; CPython raises only for a dict that grows).
+    The same missing fact keeps the argument-alias warning silent on
+    element writes (user decision 2026-10-10: no warning on valid code
+    before element identity exists): `set_first(ys, ys[0])` with
+    `events[0] = ...` in the callee is a silent use-after-free
+    (`BUGS.md#borrowed-arg-into-mutated-storage`), while
+    `set_first(ys, ys[1])` is valid; with element identity (which index a
+    write reaches vs which an argument borrows) the first warns and the
+    second stays silent.
   - Protocol `for` over user iterators and generators, comprehensions and
     generator expressions are frames (B4).
   - `bytearray` (a reference type) and tuple / Optional / union elements.
@@ -2415,19 +2482,27 @@ alongside related feature work; only the big-rock deferrals live here.
     the verdict to C++ (`sema/expressions.py`, the comparison arm); THIR's
     reject gate refuses unlike builtin pairs, so nothing is silent, but the
     acceptance should be sema's.
-  - Precision: distinct external roots are assumed to alias, so every
-    two-field setter (`ssl.SSLContext.load_cert_chain`) gets a
-    `replacement` conflict; the body cannot tell, only a caller can. Design
-    (B5/B6): the conflict record carries its alias BASIS (same root: the
-    body wrote the storage it views, certain; two external roots: possible),
-    an advisory checker reports only certain ones in the body, and a
-    possible one becomes a summary PRECONDITION ("parameter `s` must not
-    view field `name` of parameter `r`") the caller discharges from its
-    argument origins -- `f(r, r.name[3:])` violates it, `f(r, "x")`
-    satisfies it, an unknown origin passes the obligation up -- the mirror
-    of `summary.returns`. The true positive this keeps is
-    `BUGS.md#param-view-of-replaced-field`; sema today never considers the
-    aliasing and compiles it silently.
+  - Argument-alias obligations, left by the first unit (2026-10-10,
+    `tests/cases/mir/argument_alias`): a conflict between two parameters'
+    storage is a `MIRAliasObligation` of the summary, discharged at each
+    call, warned as `argument_alias`. Open: (a) a call in a body MIR does
+    not lower, or to a callee whose summary is opaque (an Optional holder,
+    an output effect), is not checked -- the census line "no-alias
+    obligations: N/M calls undischarged" counts them; (b) an element write
+    reaches every element holder (element identity), so such an overlap at
+    a call stays a `replacement` conflict of the caller, not a warning;
+    (c) a stored loan (`held`) or a global retained across a callee's
+    write stays a body conflict, never an obligation; (d) the body keeps
+    each published obligation as an `alias_obligation` conflict (relief is
+    its own item above), and the storage certificate reports the external
+    replacement behind it as a gap;
+    (e) MIR runs in the normal compile only after codegen, over user
+    modules -- `--dump-code`, `--dump-thir` and the REPL do not report it;
+    (f) a call in a constructor (`self.n = bound(xs, 1, xs[0])`) is not
+    checked: MIR does not lower a constructor initializer or body
+    statement holding a user call ("constructor initializer needs
+    parameter or literal", "unsupported expression type"); a generator or
+    `async def` caller is a resumable body MIR does not lower either.
   - `--dump-mir` prints no section for the return-escapes analysis.
   - Bytes twins still unpinned in `tests/cases/mir/views_as_places` (the
     family path is one rule, so each is a cheap section when a bytes shape

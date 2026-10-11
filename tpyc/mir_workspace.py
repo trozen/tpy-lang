@@ -1,7 +1,7 @@
 """Workspace scheduling of MIR evidence after emitted THIR has been collected."""
 
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Iterator, Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
@@ -37,15 +37,19 @@ class MIRCallWorkspace:
         return self.bodies.get(body)
 
 
-def _dependencies(fn: th.THIRFunction) -> set[th.THIRFunctionIdentity]:
-    result: set[th.THIRFunctionIdentity] = set()
-    pending = list(fn.body)
+def resolved_calls(fn: th.THIRFunction | th.THIRConstructor) -> Iterator[th.THIRCall | th.THIRMethodCall]:
+    """Every call in a body to a resolved user callee, a constructor's
+    member and base initializers included."""
+    pending = list(_iter_children(fn))
     while pending:
         node = pending.pop()
         if isinstance(node, (th.THIRCall, th.THIRMethodCall)) and node.resolved_callee is not None:
-            result.add(node.resolved_callee.identity)
+            yield node
         pending.extend(_iter_children(node))
-    return result
+
+
+def _dependencies(fn: th.THIRFunction) -> set[th.THIRFunctionIdentity]:
+    return {call.resolved_callee.identity for call in resolved_calls(fn)}
 
 
 def _twin_checked(known: MIRSummaryResult, twin: tuple[MIRBodyId, th.THIRFunction], definitions: MIRDefinitions,

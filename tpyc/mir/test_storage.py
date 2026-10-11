@@ -10,7 +10,7 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, NominalType
+from ..typesys import BOOL, INT32, NominalType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
@@ -271,6 +271,11 @@ def test_semantic_facts_are_required(functions: dict[str, th.THIRFunction]) -> N
         store.target, field_identity=None)), ret)), "missing field identity")
     not_covered(replace(fn, body=(replace(alias, alias_binding=replace(
         alias.alias_binding, source="missing")), store, ret)), "alias source mismatch")
+    # An identity of a member type MIR does not model refuses by that type.
+    for unmodeled in (OptionalType(INT32), UnionType((INT32, BOOL))):
+        not_covered(replace(fn, body=(alias, replace(store, target=replace(
+            store.target, field_identity=replace(store.target.field_identity, type=unmodeled))), ret)),
+            "unsupported field type or form")
     # Unsupported unreachable statements must still prevent a whole-body proof.
     not_covered(replace(fn, body=(alias, store, ret, replace(store, target=replace(
         store.target, field_identity=None)))), "missing field identity")

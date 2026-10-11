@@ -16,15 +16,15 @@ from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
 from ..thir.scalar_leaves import optional_record_field, owned_leaf, record_type, storage_leaf
 from ..typesys import TpyType, unwrap_readonly
-from .call_contract import MIRSummaryResult
+from .call_contract import MIRAliasObligation, MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
 from .definitions import MIRDefinitions, view_members
 from .dependencies import (
-    MIRDependencies, MIRReferent, MIRUnseededLoan, _leaves, analyze_dependencies, dump_dependencies,
+    MIRDependencies, MIRReferent, MIRUnseededLoan, _leaves, dump_dependencies,
     resolve_referents,
 )
 from .dump import dump_function
-from .liveness import MIRLiveness, MIRPoint, analyze_liveness, dump_liveness
+from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
@@ -35,9 +35,12 @@ from .nodes import (
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )
-from .retention import INITIALIZING_WRITES, MIRRetention, analyze_retention, dump_retention, static_referent
+from .retention import (
+    INITIALIZING_WRITES, MIRRetention, MIRRetentionClasses, analyze_body_retention, classify_retention,
+    dump_retention, static_referent,
+)
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
-from .storage import MIRStorageEvents, analyze_storage, dump_storage
+from .storage import MIRStorageEvents, dump_storage
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
     MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
@@ -155,6 +158,16 @@ class MIRAnalyses:
     payload: MIRPayloadInspection
     escapes: tuple[MIRStorageConflict, ...] | MIRNotCovered
     store_escapes: tuple[MIRStorageConflict, ...] | MIRNotCovered
+    # The no-alias obligations the body's KNOWN summary publishes: a caller
+    # MIR analyzes checks each, and the body keeps them as `alias_obligation`
+    # conflicts, apart from its replacements.
+    obligations: frozenset[MIRAliasObligation] = frozenset()
+
+    @property
+    def retention_classes(self) -> MIRRetentionClasses | None:
+        if isinstance(self.retention, MIRNotCovered):
+            return None
+        return classify_retention(self.retention, self.obligations)
 
     @property
     def gaps(self) -> tuple[tuple[str, MIRNotCovered], ...]:
@@ -172,8 +185,13 @@ class MIRAnalyses:
             found.append("scope_end")
         if not isinstance(self.payload.conflicts, MIRNotCovered) and self.payload.conflicts:
             found.append("payload_end")
-        if not isinstance(self.retention, MIRNotCovered) and self.retention.conflicts:
-            found.append("replacement")
+        if (classes := self.retention_classes) is not None:
+            if classes.replacements:
+                found.append("replacement")
+            if classes.argument_aliases:
+                found.append("argument_alias")
+            if classes.alias_obligations:
+                found.append("alias_obligation")
         if self.scope.freshness:
             found.append("stale_alias")
         if not isinstance(self.escapes, MIRNotCovered) and self.escapes:
@@ -183,14 +201,21 @@ class MIRAnalyses:
         return tuple(found)
 
 
-def analyze_body(fn: MIRFunction) -> MIRAnalyses:
-    liveness = analyze_liveness(fn)
-    dependencies = analyze_dependencies(fn, liveness)
-    events = analyze_storage(fn)
-    return MIRAnalyses(liveness, dependencies, events, inspect_scope_lifetimes(fn),
-                       analyze_call_effects(fn, dependencies),
-                       analyze_retention(fn, liveness, dependencies, events), inspect_payload_lifetimes(fn),
-                       analyze_return_escapes(fn, dependencies), analyze_store_escapes(fn, dependencies))
+def analyze_body(fn: MIRFunction, obligations: frozenset[MIRAliasObligation] = frozenset()) -> MIRAnalyses:
+    ran = analyze_body_retention(fn)
+    dependencies = ran.dependencies
+    return MIRAnalyses(ran.liveness, dependencies, ran.events, inspect_scope_lifetimes(fn),
+                       analyze_call_effects(fn, dependencies), ran.retention, inspect_payload_lifetimes(fn),
+                       analyze_return_escapes(fn, dependencies), analyze_store_escapes(fn, dependencies),
+                       obligations)
+
+
+def published_obligations(summary: MIRSummaryResult | None) -> frozenset[MIRAliasObligation]:
+    """What a body's own summary publishes for its callers to discharge;
+    nothing unless it is KNOWN, so an unpublished conflict stays a replacement."""
+    if summary is None or summary.state is not MIRSummaryState.KNOWN:
+        return frozenset()
+    return summary.summary.obligations
 
 
 @dataclass(frozen=True)
@@ -344,13 +369,29 @@ def lower_body(source: MIRBodySource, definitions: MIRDefinitions, workspace: MI
     return lower_function(source.source, source.body, definitions=definitions, summaries=summaries)
 
 
+def body_summary(source: MIRBodySource, workspace: MIRCallWorkspace | None) -> MIRSummaryResult | None:
+    """The call summary a body publishes, when it publishes one."""
+    identity = source.summary_identity
+    return workspace.summaries.get(identity) if workspace is not None and identity is not None else None
+
+
+def lower_and_analyze(source: MIRBodySource, definitions: MIRDefinitions, workspace: MIRCallWorkspace | None,
+                      *, fresh: bool = False) -> tuple[MIRFunction | MIRNotCovered, MIRAnalyses | None]:
+    """Lower one body (`fresh` as in `lower_body`) and run the analyses
+    under the obligations its own summary publishes: the verdict's middle
+    step, and all a warning needs."""
+    lowered = lower_body(source, definitions, workspace, fresh=fresh)
+    if isinstance(lowered, MIRNotCovered):
+        return lowered, None
+    return lowered, analyze_body(lowered, published_obligations(body_summary(source, workspace)))
+
+
 def verdict_of(source: MIRBodySource, definitions: MIRDefinitions,
                workspace: MIRCallWorkspace | None, *, fresh: bool = False) -> MIRBodyVerdict:
     """Lower one body (`fresh` as in `lower_body`), run the analyses and ask
     for the storage certificate. A MIR exception propagates: it is a
     compiler defect, not a verdict."""
-    identity = source.summary_identity
-    summary = workspace.summaries.get(identity) if workspace is not None and identity is not None else None
+    summary = body_summary(source, workspace)
 
     def verdict(status: MIRVerdictStatus, reason: str | None, *, refusal: MIRRefusal | None = None,
                 conflicts: tuple[str, ...] = (), exceptional_exits: bool = False,
@@ -361,12 +402,11 @@ def verdict_of(source: MIRBodySource, definitions: MIRDefinitions,
 
     if source.refusal is not None:
         return verdict(MIRVerdictStatus.UNCOVERED, source.refusal.reason, refusal=source.refusal)
-    lowered = lower_body(source, definitions, workspace, fresh=fresh)
+    lowered, analyses = lower_and_analyze(source, definitions, workspace, fresh=fresh)
     if isinstance(lowered, MIRNotCovered):
         refusal = MIRRefusal(MIRRefusalKind.MIR_NOT_COVERED, lowered.reason, lowered.node_kind, lowered.loc)
         return verdict(MIRVerdictStatus.UNCOVERED, lowered.reason, refusal=refusal)
-    assert source.source is not None and source.kind is not None
-    analyses = analyze_body(lowered)
+    assert source.source is not None and source.kind is not None and analyses is not None
     storage = check_storage(source.source, source.body, source.kind, definitions,
                             workspace.summaries if workspace is not None else {})
     conflicts = analyses.conflicts + tuple(k for k in storage.conflicts if k not in analyses.conflicts)
@@ -702,7 +742,7 @@ def dump_codegen_mir(module: TpyModule, analyzer: SemanticAnalyzer,
         lines.append(dump_dependencies(analyses.dependencies))
         lines.append(dump_call_effects(analyses.effects))
         lines.append(dump_storage(analyses.events))
-        lines.append(dump_retention(analyses.retention))
+        lines.append(dump_retention(analyses.retention, analyses.obligations))
         lines.append(dump_payload_ends(analyses.payload.ends))
         lines.append(dump_payload_inspection(analyses.payload))
         lines.append(dump_escapes(analyses.escapes, analyses.store_escapes))

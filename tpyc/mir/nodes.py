@@ -1,7 +1,7 @@
 """Immutable MIR with body-scoped holders and logical storage projections."""
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 
 from ..parse import SourceLocation
@@ -242,6 +242,11 @@ class MIRCall:
     # The call can exit by exception: the consumed summary's
     # `not normal_return_only`, so the caller's own exit fact sees it.
     may_raise: bool = False
+    # Where the call expression is, and whether its receiver is bound
+    # (`h.m(x)`, not `H.m(h, x)`): what a diagnostic needs to find the
+    # analyzed call and its argument for each parameter. No MIR fact.
+    site: SourceLocation | None = field(default=None, compare=False)
+    bound_receiver: bool = field(default=False, compare=False)
 
 
 @dataclass(frozen=True)

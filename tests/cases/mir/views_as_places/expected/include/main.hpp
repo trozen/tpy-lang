@@ -67,7 +67,7 @@ std::string read_copy(const Rec& r);
 void write_field(Rec& r, std::string_view s);
 // def append_field(r: Rec, s: str) -> None:  # tpyc: mir(covered)
 void append_field(Rec& r, std::string_view s);
-// def write_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /^replacement$/)
+// def write_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
 ::tpy::BigInt write_then_reuse(Rec& r, std::string_view s);
 // def field_view(r: Rec) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt field_view(const Rec& r);
@@ -77,7 +77,7 @@ void rename(Rec& r, std::string_view s);
 void forwarded_write(Rec& r, std::string_view s);
 // def field_view_then_write(r: Rec, s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt field_view_then_write(Rec& r, std::string_view s);
-// def forwarded_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /^replacement$/)
+// def forwarded_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
 ::tpy::BigInt forwarded_then_reuse(Rec& r, std::string_view s);
 // def sibling(r: Rec) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt sibling(const Rec& r);

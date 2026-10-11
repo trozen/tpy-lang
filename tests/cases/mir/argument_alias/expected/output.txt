@@ -1,0 +1,13 @@
+other_int 2
+local_copy 3
+scalar_field 0
+walk 3
+other_field 1
+copied_list 15
+str_local 3
+list_copy 9
+forwarded_then_reuse 3
+alias_external True
+merge_from 1
+member_param zz
+line_copy True

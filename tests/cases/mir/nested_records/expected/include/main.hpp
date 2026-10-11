@@ -28,7 +28,7 @@ void replace_member(Line& ln);
 int32_t mutate_through_member(Line& ln);
 // def replace_live(ln: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 bool replace_live(Line& ln);
-// def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+// def alias_external(left: Line, right: Line) -> bool:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
 bool alias_external(const Line& left, Line& right);
 // def replace_ancestor(f: Frame) -> bool:  # tpyc: mir(conflict /replacement/) mir_summary(known)
 bool replace_ancestor(Frame& f);

@@ -16,8 +16,8 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType
 from .call_contract import (
-    MIR_RESULT, MIR_STATIC, MIRLoanTransfer, MIRParameterBinding, MIRSummaryState, summary_problem,
-    transfer_problem,
+    MIR_RESULT, MIR_STATIC, MIRAliasObligation, MIRLoanTransfer, MIRParameterBinding, MIRParameterWrite,
+    MIRSummaryState, summary_problem, transfer_problem,
 )
 from .collect import MIRBodyVerdict, enumerate_bodies
 from .definitions import MIRDefinitions
@@ -614,9 +614,13 @@ def test_a_member_replacement_through_a_parameter_joins_and_transfers(program: _
     assert state[key] == frozenset({seeded_loan(key), MIRReferent(_named(fn, "s"), external=True)})
     summary = _summary(program, "member_into")
     assert summary.transfers == frozenset({MIRLoanTransfer(0, (_identity(inner), _identity(s)), 1)})
-    # The weak join keeps the caller's own loan under the member the write
-    # replaces: a replacement conflict C++ would not have (fail-closed).
-    assert program.verdicts["member_into"].conflicts == ("replacement",)
+    # The new member stores `s`'s loan while the old member is replaced: a
+    # conflict only when `s` views storage inside `o.inner`, so it is a
+    # no-alias obligation, checked at callers MIR analyzes and kept by the
+    # body as a conflict of its own kind.
+    assert summary.obligations == frozenset({
+        MIRAliasObligation(1, (), MIRParameterWrite(0, (_identity(inner),)))})
+    assert program.verdicts["member_into"].conflicts == ("alias_obligation",)
 
 
 def test_a_nested_member_write_through_a_parameter_transfers(program: _Program) -> None:

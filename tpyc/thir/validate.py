@@ -56,7 +56,7 @@ from ..type_def_registry import (
     ParamPassing,
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
     is_slice_type, is_span, is_str_type, is_str_view_type, is_string_type,
-    zero_value_of,
+    type_def_of, zero_value_of,
 )
 from ..typesys import pointer_repr_optional
 from ..typesys import (
@@ -75,7 +75,7 @@ from .nodes import (
     FLUSHING_REBIND_KINDS, Form, THIRArgTemp, THIRAssign, THIRCall, THIRChainedCompareStmtExpr,
     THIRCoerce, THIRConstructor, THIRCopy, THIRMove,
     THIRCtorCall, THIRErrorReturnBind, THIRErrorReturnDiscard,
-    THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFormConvert,
+    THIRErrorReturnUnwrap, THIRExprStmt, THIRFieldAccess, THIRFieldIdentity, THIRFormConvert,
     THIRBinOp, THIRExpr, THIRForIterProto, THIRFunction, THIRIf,
     THIRIfExpr, THIRMethodCall, declared_param_type, effective_params,
     THIRNode, THIRName, THIRInplaceContainerOp, THIRParam, THIRWhile, THIRModuleVar, THIRWalrus, THIRGlobalBinding,
@@ -115,6 +115,35 @@ def _user_container_call(node: object, container: TpyType) -> bool:
     return (isinstance(node, (THIRCall, THIRMethodCall)) and node.resolved_callee is not None
             and node.resolved_callee.signature.return_representation is Representation.REFERENCE
             and native_container_subject(node.resolved_callee.signature.return_type) == container)
+
+
+def _declared_member(fact: THIRFieldIdentity) -> bool:
+    """Whether a field identity names a member its owner declares, at the
+    member's declared type. An owner with no TypeDef (THIR lowered outside
+    its compilation) has nothing to check against."""
+    td = type_def_of(fact.owner)
+    if td is None or td.record is None:
+        return td is None
+    member = next((f for f in td.record.fields if f.name == fact.name), None)
+    return member is not None and member.type == fact.type
+
+
+def _member_read(declared: TpyType, result: TpyType) -> bool:
+    """Whether `result` is how an access reads a member of type `declared`:
+    whole, or as flow narrowing reads it -- an Optional's payload, a union
+    member or a smaller union."""
+    if result == declared:
+        return True
+    if isinstance(declared, OptionalType):
+        inner = unwrap_readonly(declared.inner)
+        if isinstance(result, OptionalType):
+            return _member_read(inner, unwrap_readonly(result.inner))
+        return _member_read(inner, result)
+    if isinstance(declared, UnionType):
+        parts = result.members if isinstance(result, UnionType) else (result,)
+        return all(any(_member_read(unwrap_readonly(m), unwrap_readonly(p)) for m in declared.members)
+                   for p in parts)
+    return False
 
 
 def _check_native_container(owner: str, node: object, fact: THIRNativeContainer, typ: TpyType) -> None:
@@ -871,13 +900,23 @@ def _check_node(owner: str, node: THIRNode) -> None:
         # and MIR keys on the flag, never on that type.
         payload = optional_record_field(fact.type)
         result = unwrap_readonly(unwrap_ref_type(node.result_type))
+        # A scalar leaf reads by value at its declared type (a readonly
+        # leaf's read may drop the wrapper).
+        scalar = payload is None and not record and storage_leaf(typ)
+        # Any other member reads whole or narrowed, a narrowed deref reading
+        # an Optional's payload; its form is the read type's own at the slot
+        # (a `Literal` str member reads as a view).
+        other = payload is None and not record and not scalar
+        deref = not node.narrowed_deref or isinstance(typ, OptionalType) and result == unwrap_readonly(typ.inner)
         # The declaring owner: the receiver's record or one of its struct-base ancestors.
         if (not direct or not fact.name
                 or receiver != fact.owner and fact.owner not in (modeled_ancestors(receiver) or ())
+                or not _declared_member(fact)
                 or (payload is not None and (node.form is not Form.STORAGE or result not in (
                     (payload,) if node.narrowed_deref else (typ, payload))))
-                or (payload is None and not record and (not storage_leaf(fact.type)
-                                                        or node.result_type != fact.type or node.form is not Form.VALUE))
+                or (scalar and (node.form is not Form.VALUE or node.result_type != fact.type and not (
+                    isinstance(fact.type, ReadonlyType) and node.result_type == typ)))
+                or (other and (not deref or not _member_read(typ, result)))
                 or (record and result != typ)):
             _fail(owner, node, "field identity disagrees with its access")
     if isinstance(node, (THIRFieldAccess, THIRMethodCall)):

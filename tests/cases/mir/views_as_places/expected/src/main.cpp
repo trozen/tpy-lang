@@ -259,9 +259,9 @@ void append_field(Rec& r, std::string_view s) {
 }
 
 // # free function: a str parameter may view the very field the write replaces (the caller
-// # can pass `r.name`), so reading `s` after the write is a possible conflict sema does not
-// # see (BUGS.md#param-view-of-replaced-field)
-// def write_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /^replacement$/)
+// # can pass `r.name`), so reading `s` after the write is a precondition the body publishes,
+// # checked at callers MIR analyzes; sema does not see it (BUGS.md#param-view-of-replaced-field)
+// def write_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
 //     r.name = s  # tpyc: mir_write(r.name)
 //     return len(s)
 ::tpy::BigInt write_then_reuse(Rec& r, std::string_view s) {
@@ -305,8 +305,8 @@ void forwarded_write(Rec& r, std::string_view s) {
 }
 
 // # free function: the callee's published field write reaches the caller's str parameter,
-// # which may view that field, so reading it after the call is a possible conflict
-// def forwarded_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /^replacement$/)
+// # which may view that field, so reading it after the call is a precondition checked at callers MIR analyzes
+// def forwarded_then_reuse(r: Rec, s: str) -> int:  # tpyc: mir(conflict /alias_obligation/)
 //     rename(r, s)
 //     return len(s)
 ::tpy::BigInt forwarded_then_reuse(Rec& r, std::string_view s) {

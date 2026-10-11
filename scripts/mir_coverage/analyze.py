@@ -183,6 +183,15 @@ def report(out_dir: Path, sample: dict | None, compare_dir: Path | None, cases_d
     ck = Counter(k for r in bodies for k in (r.get("analysis_conflicts") or []) + (r.get("storage_conflicts") or []))
     if ck:
         emit("   conflict kinds: " + ", ".join(f"{k}={v}" for k, v in ck.most_common()))
+    obliged = [r for r in bodies if "alias_obligation" in (r.get("analysis_conflicts") or [])]
+    only = sum(set(r.get("analysis_conflicts") or []) | set(r.get("storage_conflicts") or [])
+               == {"alias_obligation"} for r in obliged)
+    emit(f"   alias_obligation bodies (in the conflict column): {len(obliged)}, "
+         f"{only} with no other conflict kind")
+    calls = sum(r.get("obligation_calls", 0) for r in bodies)
+    undischarged = sum(r.get("undischarged_obligation_calls", 0) for r in bodies)
+    emit(f"   no-alias obligations: {undischarged}/{calls} calls undischarged "
+         "(caller does not lower or its retention is unresolved)")
 
     emit("\n== 2. four-count by position (all corpora) ==")
     emit(f"{'position':18} {FOUR_HEAD}")

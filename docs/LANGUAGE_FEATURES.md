@@ -9619,9 +9619,10 @@ and consuming call/return boundaries remain outside its internal coverage.
 `uv run tpyc --dump-mir program.py` exposes the supported CFGs for user modules
 and explicit reasons for uncovered or unavailable bodies. It uses actual
 emitted THIR, writes no generated files and does not execute the program.
-There is no normal compilation hook or MIR borrow checker yet. Current provenance
-checks remain authoritative. Callable admission remains planned, with no new
-acceptance rule or diagnostic enabled by this foundation.
+Every compile that emits C++ runs MIR after codegen for one diagnostic, the
+argument-alias warning ("Argument-Alias Warning" below); there is no MIR
+borrow checker otherwise, current provenance checks remain authoritative, and
+callable admission remains planned.
 
 M3.1 adds internal backward may-liveness for that bounded subset, visible in
 `--dump-mir` as block entry/exit and statement-boundary live sets. Projected
@@ -9900,6 +9901,30 @@ c.items.append(Point(7, 8))  # warning: Mutation of 'c.items' while borrowed
 ```
 
 **Scope**: Single-level field paths only (`obj.field`). Deeper nesting (`obj.a.b`) is conservatively not tracked (no false positives, but no warnings either). Reassigning the root variable (`c = Container()`) clears all field-path borrows for that root.
+
+### Argument-Alias Warning (Working)
+
+A call that hands a callee one object through two parameters, where the callee writes through one of them while it still uses the other, is warned at the call. The callee's body is analyzed by MIR: a write through one parameter that may reach what the body still holds through another (a borrowed `int` / `str` argument, an iteration, a view stored in a record) is recorded as a no-alias obligation of the callee, and every call checks it against the arguments it passes:
+
+```python
+def bound(events: list[int], tag: int, value: int) -> int:
+    events.append(tag)    # may reallocate the list `value` points into
+    return value
+
+bound(xs, 1, xs[0])   # warning: argument 'xs[0]' points into 'xs', which 'bound' modifies through
+                      # parameter 'events' while it still uses 'value'; bind it to a local first
+                      # ('v = xs[0]') or restructure so the call does not hand over both
+bound(xs, 1, ys[0])   # silent: two different lists
+walk(xs, xs)          # warning: 'xs' is passed as both 'src' and 'dst' of 'walk', which modifies it
+                      # through 'dst' while it still uses 'src'; pass a copy ('copy(xs)') or ...
+alias_external(ln, ln)  # warning: argument 'ln' contains 'ln.a', which 'alias_external' modifies
+                        # through parameter 'right' while it still uses 'left'; pass a copy ...
+h.setname(h.name, s)  # warning: argument 'h.name' is what 'H.setname' modifies through parameter 'self' ...
+```
+
+The wording follows how the argument the callee still uses relates to the storage it writes through the other parameter: the same object passed to both parameters (`is passed as both`), an argument that is itself the written storage while the other argument is its owner (`is what`, `h.setname(h.name, s)`), an argument strictly inside the written storage (`points into`, `xs[0]` of `xs`), or an argument containing it (`contains`, a record whose member the callee replaces).
+
+A function passing two of its own parameters (`def f(xs, ys): return bound(xs, 1, ys[0])`) does not decide the question: the obligation becomes its own, checked at its callers (`f(xs, xs)` warns). The check runs only where MIR covers both the callee's summary and the calling body; a call MIR does not analyze is not warned -- a call in a generator, an `async def`, a constructor or at module level among them. An element write is not warned at all, because element identity is not tracked: neither `set_first(ys, ys[1])` (another element, which would be valid) nor `set_first(ys, ys[0])` (the same element, a real alias) with `def set_first(xs: list[str], v: str): xs[0] = "x"; print(v)`. The warning does not change the generated C++: the program still reads the replaced storage at run time (`BUGS.md#borrowed-arg-into-mutated-storage`). The remedy it names follows the argument's type: a value-type argument (`int`, `str`, a view) is copied by binding it to a local first (`v = xs[0]`, then `bound(xs, 1, v)`); a list or a record by `copy()`. The callee's MIR verdict keeps each published precondition as an `alias_obligation` conflict: a caller MIR does not analyze is never checked.
 
 ## Open Questions
 

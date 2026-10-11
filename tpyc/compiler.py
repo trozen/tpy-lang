@@ -22,6 +22,7 @@ from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, rout
 from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
+from .diagnostics import insert_in_source_order
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.own_copy import OwnCopyVerdicts
 from .modules.resolver import ModuleResolver, ResolvedModule
@@ -68,9 +69,12 @@ from .symbol_binding import (
 from .mir.collect import call_definitions
 from .mir.definitions import MIRDefinitions
 from .mir_workspace import MIRProgram, analyze_call_workspace
+from .mir_diagnostics import CallSites, alias_check_bodies, analyze_alias_body, body_alias_warnings
 
 if TYPE_CHECKING:
     from .codegen_cpp.context import CodeGenContext
+    from .mir.collect import MIRAnalyses
+    from .mir.nodes import MIRFunction
     from .parse.nodes import TpyFunction, TpyName
     from .typesys import ModuleInfo, ModuleVarInfo
 
@@ -3914,6 +3918,90 @@ class Compiler:
                 item for compiled, ctx in collected for item in call_definitions(ctx, compiled.name)),
                 definitions)
             yield MIRProgram(definitions, workspace)
+
+    def report_mir_warnings(self, collected: Iterable[tuple[CompiledModule, 'CodeGenContext']],
+                            program: MIRProgram | None = None, *,
+                            analyzed: IdentityMap[TpyModule, list[tuple['MIRFunction', 'MIRAnalyses']]] | None = None,
+                            strict: bool = False,
+                            on_failure: Callable[[str], None] | None = None
+                            ) -> list[tuple[CompiledModule, Diagnostic]]:
+        """Add MIR's warnings over `collect_thir` results to each module's
+        diagnostics, in source order among sema's, and return them.
+
+        The warnings are the `argument_alias` conflicts of each body's
+        analyses (`collect.lower_and_analyze`): the verdict pass's, which a
+        caller inside `mir_analysis` passes as `analyzed` (by the module's
+        tree) with its `program`; otherwise the bodies that call a callee
+        with obligations are analyzed here, over a workspace built here when
+        no `program` is given. One call site warns once, though the clone
+        bodies of an `@auto_readonly` def each find it.
+
+        MIR is advisory in a compile: an exception inside it costs only that
+        body's warnings and never fails the build (`strict` lets it
+        propagate, so the test harness still surfaces it as a defect;
+        `on_failure` hears each contained one, so `-v` can show it)."""
+        collected = tuple(collected)
+        if program is None:
+            try:
+                with self.mir_analysis(collected) as built:
+                    return self.report_mir_warnings(collected, built, analyzed=analyzed, strict=strict,
+                                                    on_failure=on_failure)
+            except Exception as failure:
+                if strict:
+                    raise
+                if on_failure is not None:
+                    on_failure(f"MIR workspace skipped: {failure!r}")
+                return []
+        by_tree: IdentityMap[TpyModule, CompiledModule] = IdentityMap(
+            (compiled.ast, compiled) for compiled, _ctx in collected)
+        work: list[tuple[CompiledModule, Callable[[], tuple['MIRFunction', 'MIRAnalyses'] | None]]] = []
+        if analyzed is not None:
+            work = [(compiled, lambda pair=pair: pair) for compiled, _ctx in collected
+                    for pair in analyzed.get(compiled.ast, ())]
+        else:
+            try:
+                sources = list(alias_check_bodies(
+                    ((compiled.ast, compiled.analyzer, ctx, compiled.name)
+                     for compiled, ctx in collected if compiled.analyzer is not None),
+                    program, self.thir_reject_by_node))
+            except Exception as failure:
+                if strict:
+                    raise
+                if on_failure is not None:
+                    on_failure(f"MIR body enumeration skipped: {failure!r}")
+                return []
+            work = [(by_tree[module], lambda source=source: analyze_alias_body(source, program))
+                    for module, source in sources]
+        order: IdentityMap[TpyModule, int] = IdentityMap(
+            (compiled.ast, index) for index, (compiled, _ctx) in enumerate(collected))
+        sites: IdentityMap[TpyModule, CallSites] = IdentityMap()
+        seen: set[tuple[int, int, int, str]] = set()
+        added: list[tuple[CompiledModule, Diagnostic]] = []
+        for compiled, analyze in work:
+            try:
+                pair = analyze()
+                if pair is None:
+                    continue
+                site = sites.setdefault(compiled.ast, CallSites(compiled.ast, compiled.analyzer))
+                warnings = body_alias_warnings(*pair, program, site)
+            except Exception as failure:
+                if strict:
+                    raise
+                if on_failure is not None:
+                    on_failure(f"MIR body skipped in {compiled.name}: {failure!r}")
+                continue
+            for warning in warnings:
+                loc = warning.loc
+                key = (order[compiled.ast], loc.line if loc else 0, loc.column if loc else 0, warning.message)
+                if key in seen:
+                    continue
+                seen.add(key)
+                insert_in_source_order(compiled.analyzer.diagnostics, warning)
+                added.append((compiled, warning))
+        # Bodies are analyzed in emission order (methods after functions);
+        # a reader gets the warnings in source order, module by module.
+        added.sort(key=lambda item: (order[item[0].ast], item[1].loc.line if item[1].loc else 0))
+        return added
 
     def _propagate_package_directives(self) -> None:
         """Reserved for future package-level directive propagation.

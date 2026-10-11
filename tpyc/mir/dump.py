@@ -3,7 +3,7 @@
 
 from ..parse import SourceLocation
 from ..thir.nodes import THIRStubCallee
-from .call_contract import MIRResultHolder, MIRStaticLoan
+from .call_contract import MIRAliasObligation, MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
     MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
@@ -49,10 +49,20 @@ def _call(call: MIRCall) -> str:
             return root + "".join(_write_step(step) for step in path)
         effects += ", stores={" + ", ".join(sorted(f"{end(t.holder, t.path)} <- {end(t.source, t.source_path)}"
                                                   for t in call.summary.transfers)) + "}"
+    if call.summary.obligations:
+        effects += ", no-alias={" + ", ".join(sorted(map(obligation_text, call.summary.obligations))) + "}"
     if call.summary.global_reads:
         effects += ", global-reads={" + ", ".join(sorted(f"{g.module}::{g.name}"
                                                         for g in call.summary.global_reads)) + "}"
     return f"call {callee}({args}) [{effects}, {'may-raise' if call.may_raise else 'normal-return'}]"
+
+
+def obligation_text(obligation: MIRAliasObligation) -> str:
+    """`param2 vs param0[structure]`: the place the callee still uses, then
+    the one it writes."""
+    write = obligation.written
+    return (f"param{obligation.parameter}" + "".join(map(_write_step, obligation.path))
+            + f" vs param{write.parameter}" + "".join(map(_write_step, write.path)))
 
 
 def _write_step(step: object) -> str:

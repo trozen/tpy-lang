@@ -294,9 +294,9 @@ void ident_kept(int32_t k, bool flag) {
     std::cout << "ident_kept" << " " << t.s << "\n" << ::tpy::check_signals;
 }
 
-// # free function: an owned result built in the body views s, which may view b.text, replaced before the return
-// # (BUGS.md#record-view-member-source-replaced)
-// def make_replace(s: str, b: Buf, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /replacement/)
+// # free function: an owned result built in the body views s, which may view b.text, replaced before the
+// # return: a precondition the body publishes, checked at callers MIR analyzes (BUGS.md#record-view-member-source-replaced)
+// def make_replace(s: str, b: Buf, flag: bool) -> Own[Tok]:  # tpyc: mir(conflict /alias_obligation/)
 //     t = Tok(s, 1)
 //     if flag:
 //         b.text = mk(4)
@@ -309,11 +309,11 @@ Tok make_replace(std::string_view s, Buf& b, bool flag) {
     return t;
 }
 
-// # free function: the call replaces b.text and fills t with its loan
-// # (BUGS.md#record-view-member-source-replaced)
+// # free function: the call replaces b.text and fills t with its loan, so passing b.text beside b is
+// # warned at the call: make_replace's no-alias obligation (BUGS.md#record-view-member-source-replaced)
 // def made_replace(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     b = Buf(mk(k))
-//     t = make_replace(b.text, b, flag)
+//     t = make_replace(b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'make_replace' modifies/)
 //     print("made_replace", t.s)
 void made_replace(int32_t k, bool flag) {
     Buf b = Buf(::tpyapp::main::mk(k));
@@ -469,9 +469,9 @@ int32_t wrap_move(int32_t k) {
     return w.t.n;
 }
 
-// # free function: the callee stores s in t, then replaces b.text, which s may view
-// # (BUGS.md#record-view-member-source-replaced)
-// def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+// # free function: the callee stores s in t, then replaces b.text, which s may view: a precondition the
+// # body publishes, checked at callers MIR analyzes (BUGS.md#record-view-member-source-replaced)
+// def store_and_replace(t: Tok, s: str, b: Buf, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
 //     t.s = s
 //     if flag:
 //         b.text = mk(3)
@@ -482,12 +482,12 @@ void store_and_replace(Tok& t, std::string_view s, Buf& b, bool flag) {
     }
 }
 
-// # free function: the caller half: the call replaces b.text, whose loan it stores in t
-// # (BUGS.md#record-view-member-source-replaced)
+// # free function: the caller half: the call replaces b.text, whose loan it stores in t, so passing
+// # b.text beside b is warned at the call (BUGS.md#record-view-member-source-replaced)
 // def transfer_replace(flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 //     b = Buf(mk(2))
 //     t = Tok("static", 1)
-//     store_and_replace(t, b.text, b, flag)
+//     store_and_replace(t, b.text, b, flag)  # tpyc: warning(/argument 'b.text' is what 'store_and_replace' modifies/)
 //     print("transfer_replace", t.s)
 void transfer_replace(bool flag) {
     Buf b = Buf(::tpyapp::main::mk(2));
@@ -745,9 +745,9 @@ void member_alias(int32_t k, bool flag) {
 }
 
 // # free function: a whole member replaced through a borrowed parameter stores s's loan (a transfer).
-// # The conflict over-reports: the write joins the caller's own loan at o.inner.s, which may view any
-// # storage outside the body -- the replaced member included -- where C++ overwrites it.
-// def member_param(o: Holder, s: str) -> None:  # tpyc: mir(conflict /replacement/) mir_summary(known)
+// # The new o.inner.s views s, so s viewing the replaced member (`member_param(o, o.inner.buf)`)
+// # dangles: a precondition the body publishes, checked at callers MIR analyzes.
+// def member_param(o: Holder, s: str) -> None:  # tpyc: mir(conflict /alias_obligation/) mir_summary(known)
 //     o.inner = R(s, s)
 void member_param(Holder& o, std::string_view s) {
     o.inner = R(s, s);

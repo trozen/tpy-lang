@@ -17,7 +17,7 @@ from ..typesys import (
 from ..type_def_registry import ParamPassing
 from .call_contract import MIRContainerElements, MIRContainerStructure
 from .nodes import (
-    MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalLayout, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalLayout, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRStorageDuration, MIRTupleElement, MIRTupleLayout, MIRValueKind,
 )
 
@@ -92,6 +92,24 @@ def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerEl
         case MIRContainerStructure() | MIRContainerElements():
             return item
     raise MIRValidationError("unknown call path item")
+
+
+def whole_wrapper_field(place: MIRPlace) -> MIRPlace:
+    """A place under an Optional record field's payload, published as the
+    whole field: summary paths have no payload selector, and replacing the
+    field reaches everything a payload write does."""
+    for index, projection in enumerate(place.projections):
+        if isinstance(projection, MIROptionalPayload):
+            return MIRPlace(place.root, place.projections[:index])
+    return place
+
+
+def summary_path(place: MIRPlace) -> tuple[object, ...]:
+    """The projections of a place under a parameter, spelled as a summary
+    path (`path_step` reads it back): each field by its THIR identity, any
+    other step as it is (the path grammar refuses what it does not admit)."""
+    return tuple(th.THIRFieldIdentity(p.id.owner, p.id.name, p.type) if isinstance(p, MIRField) else p
+                 for p in place.projections)
 
 
 def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],

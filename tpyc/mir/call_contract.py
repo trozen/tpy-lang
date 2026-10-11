@@ -66,6 +66,20 @@ class MIRParameterWrite:
 
 
 @dataclass(frozen=True)
+class MIRAliasObligation:
+    """A no-alias condition the callee's body is correct under: while the
+    callee still uses the place `path` names under parameter `parameter`
+    (a loan it holds, an iteration over it), it may replace `written`
+    through another parameter. Each call MIR analyzes discharges it by
+    checking that the two arguments do not reach overlapping storage; the
+    body keeps it as an `alias_obligation` conflict, since other callers
+    are not checked."""
+    parameter: int
+    path: MIRParameterPath
+    written: MIRParameterWrite
+
+
+@dataclass(frozen=True)
 class MIRReturnOrigin:
     """What a borrowed result may reach through parameter `parameter`: the
     place `path` names under it, in the write-path alphabet (`(F::items,)`
@@ -163,7 +177,8 @@ class MIRCallSummary:
     its `transfers`, on either exit. `normal_return_only` is False
     when the body may exit by exception. `global_reads` names the module
     globals the body (or a callee it consumes) may read; a KNOWN summary
-    writes no global.
+    writes no global. `obligations` are the no-alias conditions its
+    arguments must meet (`MIRAliasObligation`), each checked at the call.
 
     A stub callee (`THIRStubCallee`) has no body: its summary is derived
     from the declaration alone (`stub_summary`), and its owned-leaf result
@@ -178,6 +193,7 @@ class MIRCallSummary:
     transfers: frozenset[MIRLoanTransfer]
     normal_return_only: bool
     global_reads: frozenset[MIRGlobalId] = frozenset()
+    obligations: frozenset[MIRAliasObligation] = frozenset()
 
     @property
     def borrowed_result(self) -> THIRBorrowedRecord | None:
@@ -834,6 +850,18 @@ def transfer_problem(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBi
     return None if view_leaf(loan) and view_compatible(member, loan) else "invalid loan transfer source"
 
 
+def obligation_problem(obligation: MIRAliasObligation, summary: MIRCallSummary) -> str | None:
+    """Check one published no-alias obligation: its written place is one of
+    the summary's writes, and the place it retains is a path of the grammar
+    (`resolve_path`) under another parameter."""
+    if not isinstance(obligation, MIRAliasObligation) or obligation.written not in summary.writes:
+        return "invalid alias obligation write"
+    if (obligation.parameter == obligation.written.parameter
+            or resolve_path(obligation.parameter, obligation.path, summary.parameters) is None):
+        return "invalid alias obligation parameter"
+    return None
+
+
 def summary_problem(summary: MIRCallSummary) -> str | None:
     """Validate the bounded contract without re-proving its supplying body.
     A stub summary must be exactly the one its declaration derives, so a
@@ -856,6 +884,7 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
             or any(not isinstance(indices, frozenset) or any(type(i) is not int for i in indices)
                    for indices in (summary.reads, summary.invalidates))
             or not isinstance(summary.transfers, frozenset)
+            or not isinstance(summary.obligations, frozenset)
             or not isinstance(summary.returns, frozenset)
             or any(not isinstance(origin, MIRReturnOrigin) for origin in summary.returns)
             or not isinstance(summary.global_reads, frozenset)
@@ -895,6 +924,10 @@ def summary_problem(summary: MIRCallSummary) -> str | None:
             return problem
     for transfer in summary.transfers:
         problem = transfer_problem(transfer, summary.parameters, signature.return_type)
+        if problem is not None:
+            return problem
+    for obligation in summary.obligations:
+        problem = obligation_problem(obligation, summary)
         if problem is not None:
             return problem
     # The callee's published passings and its body's bindings are one fact.

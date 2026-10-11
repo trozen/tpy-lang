@@ -1248,14 +1248,24 @@ def test_member_writes_lower_without_conflict(program: _Program, name: str) -> N
 @pytest.mark.parametrize("name", [
     # `held = ln.a; ln.a = Point(..)`: held reads the replaced member.
     "replace_live",
-    # `held = left.a; right.a = Point(..)`: the two parameters may alias.
-    "alias_external",
     # `held = f.line; f.line = Line(..)`: the member itself is replaced.
     "replace_enclosing",
 ])
 def test_a_member_write_reaches_a_live_borrow_of_it(program: _Program, name: str) -> None:
     verdict = program.verdicts[name]
     assert verdict.status in _COVERED and set(verdict.conflicts) == {"replacement"}, verdict.describe()
+
+
+def test_a_member_write_through_another_parameter_is_an_obligation(program: _Program) -> None:
+    # `held = left.a; right.a = Point(..)`: a conflict only when the two
+    # parameters alias, published for callers MIR analyzes and kept by the
+    # body as an `alias_obligation` conflict.
+    verdict = program.verdicts["alias_external"]
+    assert verdict.status in _COVERED and verdict.conflicts == ("alias_obligation",), verdict.describe()
+    assert verdict.summary is not None and verdict.summary.state is MIRSummaryState.KNOWN
+    [obligation] = verdict.summary.summary.obligations
+    assert (obligation.parameter, obligation.written.parameter) == (0, 1)
+    assert [f.name for f in obligation.path] == ["a"] and [f.name for f in obligation.written.path] == ["a"]
 
 
 def _member_writes(fn: MIRFunction) -> list[MIRAssign]:

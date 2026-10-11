@@ -15,19 +15,19 @@ import pytest
 
 from ..codegen_cpp.context import CodeGenOptions
 from ..compilation_context import activate_compiler
-from ..typesys import BOOL, INT32, NominalType, VoidType
+from ..typesys import BOOL, INT32, NominalType, UnionType, VoidType, unwrap_readonly, unwrap_ref_type
 from .nodes import (
     Form, HoistDecl, THIRArgTemp, THIRBaseInit, THIRBinOp, THIRCall,
     THIRCoerce, THIRComprehensionBlock, THIRCompInsert, THIRConstructor,
     THIRExpr, THIRExprStmt, THIRForEach, THIRForRange,
     THIRMilInit,
-    THIRFieldAccess, THIRFormConvert, THIRFunction, THIRFunctionLayout,
+    THIRFieldAccess, THIRFieldIdentity, THIRFormConvert, THIRFunction, THIRFunctionLayout,
     THIRIf, THIRIfExpr, THIRLiteral,
     THIRMethodCall, THIRRaise, THIRResumableBody, THIRReturn, THIRSelf,
     THIRUnionArgLift,
 )
 from . import validate as _validate
-from .lower import iter_module_constructors, lower_constructor
+from .lower import iter_module_callables, iter_module_constructors, lower_constructor, lower_function
 from .lower import resumable as _lower_resumable_mod
 from .testutil import _compile, _entry, _lower_fn
 from .validate import (
@@ -337,6 +337,44 @@ class TestValidator:
         with pytest.raises(THIRValidationError,
                            match="pointer-lifted field-write"):
             validate_function(dataclasses.replace(fn, body=(bad,)))
+
+    # --- a field identity names a declared member of any type: it holds
+    # --- when it names the member's declared type, and the access reads
+    # --- that member whole or narrowed.
+
+    def test_field_identity_of_an_unmodeled_member(self):
+        compiler, modules = _compile(_PTR_RECORDS + "def wf(h: H, v: A | B) -> None:\n    h.u = v\n")
+        entry = _entry(modules)
+        func = next(f for f, _ in iter_module_callables(entry.ast, entry.analyzer) if f.name == "wf")
+        with activate_compiler(compiler):
+            self._check_field_identity(lower_function(func, entry.analyzer))
+
+    def _check_field_identity(self, fn: THIRFunction) -> None:
+        assign = fn.body[0]
+        target = assign.target
+        owner = unwrap_readonly(unwrap_ref_type(target.receiver.result_type))
+        union = target.result_type
+        assert isinstance(union, UnionType)
+        identity = THIRFieldIdentity(owner, "u", union)
+        assert target.field_identity in (None, identity)
+
+        def check(access: THIRFieldAccess) -> None:
+            validate_function(dataclasses.replace(fn, body=(dataclasses.replace(assign, target=access),)))
+
+        check(dataclasses.replace(target, field_identity=identity))
+        # Narrowing reads a union member.
+        check(dataclasses.replace(target, field_identity=identity, result_type=union.members[0]))
+        for bad in (
+                # Not the member's declared type, or not a member of the owner.
+                dataclasses.replace(target, field_identity=dataclasses.replace(identity, type=union.members[0])),
+                dataclasses.replace(target, field_identity=dataclasses.replace(identity, name="n")),
+                dataclasses.replace(target, field_identity=dataclasses.replace(identity, name="missing")),
+                # A read of another type than the member's.
+                dataclasses.replace(target, field_identity=identity, result_type=INT32),
+                # A narrowed deref reads an Optional's payload only.
+                dataclasses.replace(target, field_identity=identity, narrowed_deref=True)):
+            with pytest.raises(THIRValidationError, match="field identity disagrees with its access"):
+                check(bad)
 
     # --- prvalue select: every arm is the select's own type, so the `?:`
     # --- initializes its storage by elision; an arm of another type

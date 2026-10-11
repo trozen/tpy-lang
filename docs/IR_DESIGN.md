@@ -27,7 +27,7 @@
 | Ordinary iteration | M3.19 models native iterator identities and dependencies; M3.20 connects unit-step int32 range CFG; M3.21 connects fixed borrowed native scalar/record sources, readonly and retained aliases ([iteration plan](MIR_M3_ORDINARY_FOR_PLAN.md)); protocol iteration and other shapes remain open |
 | Remaining M3 scope | [Completion checklist](MIR_M3_COMPLETION_PLAN.md): storage lifecycle, additional CFG positions, cleanup, suspension and complete holder propagation; each open item is scheduled under a breadth-first B-step |
 | MIR move/copy lowering and move optimization | Explicit bounded record copy/move operations implemented; move optimization not started |
-| MIR advisory loan checker (default mode) | Not started; step B6 of the [breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order), which also decides per-family vs single authority transition |
+| MIR advisory loan checker (default mode) | First family landed: the argument-alias warning (normal compilation runs MIR for it; [plan](MIR_ANALYSIS_PLAN.md#argument-alias-obligations-the-first-mir-diagnostic)); the rest is step B6 of the [breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order), which also decides per-family vs single authority transition |
 | MIR safe opt-in enforcement mode | Not started |
 | MIR-backed codegen | Not started |
 | Retirement of old sema/codegen ownership logic | Not started |
@@ -38,8 +38,10 @@ B1 loan classification of representations, B2 owned leaves (BigInt, str,
 String, bytes) then views as places (both landed), B3 containers as places
 (first half landed; in the retained-loans half declared storage members,
 user method summaries, property accessors with projected return origins,
-inherited records, owned record results, nested records and view fields
-slices 1 to 3 landed), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
+inherited records, owned record results, nested records, view fields
+slices 1 to 3 and Optional record fields landed; the first advisory warning,
+for arguments aliasing storage the callee writes, landed with no-alias
+obligations in call summaries), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
 the advisory checker and authority transition
 ([breadth-first order](MIR_ANALYSIS_PLAN.md#breadth-first-order)). Lifetime and
 loan defects are routed to MIR, not patched in sema (`BUGS.md` entries tagged

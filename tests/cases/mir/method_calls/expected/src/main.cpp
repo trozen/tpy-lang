@@ -301,8 +301,8 @@ int32_t bump_under_iter(Counter& c) {
     return ::tpy::BigInt(::tpy::__len__(v));
 }
 
-// # aliased argument: the caller passes two records; the possible alias is the callee's
-// def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(covered)
+// # aliased argument: the caller passes two of its own records, so the precondition is its own too
+// def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(conflict /alias_obligation/)
 //     a.merge_from(b)  # tpyc: mir_write(a.items[structure])
 void call_merge(Counter& a, const Counter& b) {
     a.merge_from(b);

@@ -6,8 +6,9 @@ On 2026-09-17 the user approved bringing analysis-only MIR forward before the
 coupled callable contract, following `CALLABLE_CONTRACT_FEASIBILITY.md`.
 That approves the sequence, not the proposed admission restrictions or every
 implementation detail below. **M1's implementation scope was then approved and
-is implemented in `tpyc/mir/`.** It is an internal API used by tests; normal
-compilation, source acceptance and generated C++ are unchanged.
+is implemented in `tpyc/mir/`.** Source acceptance and generated C++ are
+unchanged; since 2026-10-10 normal compilation runs MIR for one advisory
+warning ([argument-alias obligations](#argument-alias-obligations-the-first-mir-diagnostic)).
 
 The first increment builds and verifies a real control-flow graph from a small
 THIR subset. It does not check callable lifetimes yet. Later increments must
@@ -1971,7 +1972,10 @@ form facts, never on lists of accepted kinds.
   callbacks) proceed alongside B1-B4 as each step needs them.
 - **B6: advisory checker and authority transition.** Whether authority moves
   per diagnostic family or in one switch is decided here; this supersedes
-  M5's single switch.
+  M5's single switch. The first advisory family landed early (2026-10-10,
+  [argument-alias obligations](#argument-alias-obligations-the-first-mir-diagnostic)):
+  a MIR warning beside sema's checks, which stay authoritative; it decides
+  nothing about authority.
 
 **Constraint on B1-B5**, so both B6 outcomes stay possible: evidence --
 structured conflict kinds, explicit unknowns, locations, complete obligation
@@ -4205,6 +4209,81 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   (`pointers/escape_hoist_call_source` `while_nested_section`: a holder
   into a loop-local replaced before a read MIR cannot prove the inner loop
   skips; sema warns there too).
+
+#### Argument-alias obligations: the first MIR diagnostic
+
+A call whose borrowed argument points into storage the callee writes through
+another parameter is warned at the call (`BUGS.md#borrowed-arg-into-mutated-storage`):
+
+```python
+def bound(events: list[int], tag: int, value: int) -> int:
+    events.append(tag)       # may reallocate the list `value` points into
+    return value
+bound(xs, 1, xs[0])          # warning: argument 'xs[0]' points into 'xs', which 'bound'
+                             # modifies through parameter 'events' while it still uses
+                             # 'value'; bind it to a local first ('v = xs[0]') or restructure
+                             # so the call does not hand over both
+walk(xs, xs)                 # warning: 'xs' is passed as both 'src' and 'dst' of 'walk', which
+                             # modifies it through 'dst' while it still uses 'src'; pass a
+                             # copy ('copy(xs)') or restructure ...
+alias_external(ln, ln)       # warning: argument 'ln' contains 'ln.a', which 'alias_external'
+                             # modifies through parameter 'right' while it still uses 'left'; ...
+```
+
+The phrase is the relation of the two places in the caller, decided where
+the message is built (`mir_diagnostics._relation`): the argument's place
+equal to the written object and to the other argument (`is passed as
+both`), equal to the written object only (`is what`, `h.setname(h.name,
+s)`), the written object a proper part of the argument (`contains`), or
+the argument strictly under the written object (`points into`).
+
+Generated C++ is unchanged; only the diagnostic is new. Pinned by
+`tests/cases/mir/argument_alias`, `tpyc/mir/test_argument_alias.py` and
+`tpyc/test_cli_mir_warnings.py`.
+
+- **Obligations.** A retention conflict whose retained and replaced
+  referents are both external, neither held nor static, with origins in two
+  different parameter slots, exists only if a caller passes aliasing
+  arguments. `retention.alias_obligation` (the one home of that rule) turns
+  it into a `MIRAliasObligation(parameter, path, written)` that the body's
+  KNOWN summary publishes (`summaries`, validated by `obligation_problem`);
+  an obligation the summary cannot state keeps the body conflict.
+- **Discharge.** At each call to a summary with obligations, the argument for
+  the retained parameter acts as a holder, the write through the other
+  parameter is resolved on its argument, and overlap is tested with the
+  existing `affects` rule; an overlap is an `argument_alias` conflict at the
+  call (`classify_retention` sorts body replacements from call aliases). A
+  caller passing two of its own parameters publishes the obligation again.
+  Element writes do not warn: element identity is not tracked, so a write to
+  one element would flag a borrow of another.
+- **Normal compilation.** `Compiler.report_mir_warnings` runs MIR over the
+  user modules' THIR after codegen, analyzing only bodies that call a callee
+  with obligations, and adds each `argument_alias` conflict as a warning
+  through the sema diagnostics stream (printed, replayed by the build cache,
+  recorded in a case's `diag.txt`). A MIR exception drops only that body's
+  warnings; the test harness runs it strictly, so an exception fails the case.
+  The remedy is named by the argument's type: bind an `int` / `str` argument
+  to a local first, pass a `copy()` of a list or record.
+- **Body verdicts** (user decision 2026-10-10). A body whose cross-parameter
+  conflict is published as an obligation keeps it as an `alias_obligation`
+  conflict, a kind apart from `replacement`, so the census and the pins tell
+  a precondition from a defect of the body; it never reads `covered`
+  because of an obligation. Obligations are discharged only where MIR
+  analyzes the caller -- generator, async, constructor, module-level,
+  `Callable`-value, implicit-dunder and `-L` callers are unchecked.
+  Relieving a body is a later unit: it needs the fact that every caller is
+  known and checked (a private, non-escaping function).
+- **Not checked** (the call stays silent; BUGS entry above): callers MIR does
+  not lower, callees without a KNOWN summary, record-element arguments,
+  native stub callees (a `std::vector` must accept an argument aliasing its
+  own element), element writes. The census counts calls to summaries with
+  obligations from bodies it does not analyze.
+- **Cost.** The MIR step adds 0.006-0.34s per program on the corpus (largest
+  share on MIR-heavy test cases, about half of the front end there; under
+  1% on the largest cases). The warnings are the verdict pass's
+  `argument_alias` conflicts: the harness reads them off the verdicts, and
+  a compile without a verdict pass runs `analyze_body` only on bodies
+  that call a callee with obligations.
 
 ## Scope matrix and remaining increments
 

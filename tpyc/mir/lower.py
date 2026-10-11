@@ -13,7 +13,8 @@ from ..thir import nodes as th
 from ..thir.temp_plan import if_chain, validate_plan
 from ..thir.scalar_leaves import (
     binds_cursor, container_view, converted_literal, declared_members, holds_loan, inline_member_type, leaf_constant,
-    leaf_global, native_container_subject, native_container_type, optional_record_field, owned_constant, owned_leaf,
+    leaf_global, modeled_field, native_container_subject, native_container_type, optional_record_field,
+    owned_constant, owned_leaf,
     owned_value_type, primitive_leaf, primitive_owned_leaf, readonly_elements, record_type, storage_leaf,
     view_compatible, view_leaf,
 )
@@ -2308,6 +2309,8 @@ class _Coverage:
             case _:
                 reference = self.references[self.reference_name(expr.receiver, qualified=True)]
         _require(expr, isinstance(fact, th.THIRFieldIdentity), "missing field identity")
+        # An identity names a declared member of any type, not only one MIR models.
+        _require(expr, modeled_field(fact.type), "unsupported field type or form")
         # A field of a derived record is a member of its layout, keyed by its
         # declaring owner; the layout comes along so a shadowed name is seen
         # under both owners. A flat record's own field needs no layout, and a
@@ -3519,7 +3522,8 @@ class _Builder:
         # A method's receiver is parameter 0, lent as the holder of its place.
         arguments = tuple(self.argument(arg, binding)
                           for arg, binding in zip(_call_arguments(expr), summary.parameters))
-        return MIRCall(summary, arguments, not summary.normal_return_only)
+        return MIRCall(summary, arguments, not summary.normal_return_only, expr.loc,
+                       isinstance(expr, th.THIRMethodCall))
 
     def argument(self, arg: th.THIRExpr, binding: MIRParameterBinding) -> MIRSlotId:
         if binding.borrowed_record is not None:

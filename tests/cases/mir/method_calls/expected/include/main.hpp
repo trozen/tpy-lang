@@ -98,7 +98,7 @@ int32_t bump_under_iter(Counter& c);
 ::tpy::BigInt view_before_rename(Counter& c, std::string_view s);
 // def tag_across_rename(c: Counter, s: str, go: bool) -> int:  # tpyc: mir(conflict /replacement/)
 ::tpy::BigInt tag_across_rename(Counter& c, std::string_view s, bool go);
-// def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(covered)
+// def call_merge(a: Counter, b: Counter) -> None:  # tpyc: mir(conflict /alias_obligation/)
 void call_merge(Counter& a, const Counter& b);
 // def call_virtual(b: Base) -> None:  # tpyc: mir(uncovered /^unsupported expression type$/)
 void call_virtual(Base& b);
@@ -205,7 +205,7 @@ struct Counter {
     // def bump_under_iter(self) -> int32:  # tpyc: mir(covered)
     int32_t bump_under_iter();
 
-    // def merge_from(self, other: "Counter") -> None:  # tpyc: mir(conflict /replacement/)
+    // def merge_from(self, other: "Counter") -> None:  # tpyc: mir(conflict /alias_obligation/)
     void merge_from(const Counter& other);
 
     // def countdown(self, k: int32) -> int32:  # tpyc: mir_summary(opaque /^recursive or recursion-dependent call$/)
@@ -648,9 +648,9 @@ inline int32_t Counter::bump_under_iter() {
     return t;
 }
 
-// # aliased argument: a body assumes its borrowed parameters may alias, so iterating
-// # other.items while growing self.items conflicts at the callee
-// def merge_from(self, other: "Counter") -> None:  # tpyc: mir(conflict /replacement/)
+// # aliased argument: iterating other.items while growing self.items conflicts only
+// # when the two records alias, a precondition the body publishes, checked at callers MIR analyzes
+// def merge_from(self, other: "Counter") -> None:  # tpyc: mir(conflict /alias_obligation/)
 //     for x in other.items:
 //         self.items.append(x)
 inline void Counter::merge_from(const Counter& other) {
