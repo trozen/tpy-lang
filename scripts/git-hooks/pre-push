@@ -1,0 +1,79 @@
+#!/bin/sh
+# Refuses a push that would publish a commit (or an annotated tag) whose
+# message check-message rejects. Push is the public boundary: cherry-pick,
+# rebase, am, commit-tree and `commit --no-verify` all skip commit-msg.
+# Install it, with commit-msg, as README "Development" says.
+
+remote=$1
+failed=
+self=$0
+link=
+checker=
+out=
+range=
+msg=
+tip=
+
+# The hook runs through a symlink in .git/hooks; the checker sits next to
+# the link's target.
+while [ -L "$self" ]; do
+    link=$(readlink "$self") || exit 1
+    case $link in
+        /*) self=$link ;;
+        *) self=$(dirname "$self")/$link ;;
+    esac
+done
+checker=$(dirname "$self")/check-message
+if [ ! -f "$checker" ]; then
+    echo "pre-push: refused -- $checker is missing" >&2
+    exit 1
+fi
+
+is_zero() {
+    case $1 in
+        *[!0]*) return 1 ;;
+        *) return 0 ;;
+    esac
+}
+
+msg=$(mktemp) || exit 1
+trap 'rm -f "$msg"' EXIT
+
+# check <label> <object type> <sha>: the raw object, so the stored bytes
+# are checked, not a re-encoding.
+check() {
+    git cat-file "$2" "$3" >"$msg" || exit 1
+    if ! out=$(sed '1,/^$/d' "$msg" | sh "$checker" 2>&1); then
+        printf 'pre-push: refused -- %s\n%s\n' "$1" "$out" >&2
+        failed=1
+    fi
+}
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+    is_zero "$local_sha" && continue
+
+    if [ "$(git cat-file -t "$local_sha")" = tag ]; then
+        check "tag $local_ref" tag "$local_sha"
+    fi
+    # A tag of a tree or blob publishes no commit.
+    if ! tip=$(git rev-parse -q --verify "$local_sha^{commit}"); then
+        git cat-file -e "$local_sha" || exit 1
+        continue
+    fi
+
+    if is_zero "$remote_sha" ||
+        ! git cat-file -e "$remote_sha^{commit}" 2>/dev/null; then
+        # A new ref, or a remote tip this clone lacks: everything not yet
+        # on a tracking branch of that remote.
+        range=$(git rev-list "$tip" --not --remotes="$remote") || exit 1
+    else
+        range=$(git rev-list "$remote_sha..$tip") || exit 1
+    fi
+
+    for c in $range; do
+        check "commit $c $(git log -1 --format=%s "$c")" commit "$c"
+    done
+done
+
+[ -z "$failed" ] || exit 1
+exit 0

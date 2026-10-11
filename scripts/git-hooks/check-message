@@ -1,0 +1,110 @@
+#!/bin/sh
+# Reads one commit or tag message on stdin and exits 1, listing the offending
+# lines, when it carries tool attribution or matches the local banned list.
+# The repository is public, so neither may reach history. It rejects, never
+# strips: the author fixes the message. Every doubt rejects too.
+#
+# Callers: `commit-msg` (each new message) and `pre-push` (each commit a
+# push would publish); see README "Development" for installing them.
+#
+# Banned list: `.commit-banned-words` (gitignored) in the parent of the
+# common git dir -- the main checkout's root in a normal clone. It must be
+# a readable regular file, even empty, so a checkout that cannot see it
+# commits nothing. A bare-repo, `--separate-git-dir` or submodule layout
+# puts that parent elsewhere and needs the list there. A list in the current
+# worktree's root adds to it. One case-insensitive extended regex per line;
+# blank lines and `#` lines are skipped.
+#
+# --scissors: stop at git's scissors line, below which `commit -v` puts the
+# diff git cuts away. Only commit-msg passes it: a stored message keeps
+# everything below a scissors line, so pre-push checks all of it.
+
+fail() {
+    printf 'check-message: rejected -- %s\n' "$1" >&2
+    exit 1
+}
+
+scissors=
+patterns=
+seen=
+top=
+common=
+main_top=
+status=
+hits=
+bom=
+
+[ "${1-}" = --scissors ] && scissors=1
+
+top=$(git rev-parse --show-toplevel) || fail "not inside a git worktree"
+common=$(git rev-parse --path-format=absolute --git-common-dir 2>/dev/null) ||
+    fail "needs git >= 2.31"
+# Older git echoes an option it does not know back as output.
+case $common in
+    '' | -*) fail "needs git >= 2.31" ;;
+esac
+main_top=$(dirname "$common")
+
+main_list=$main_top/.commit-banned-words
+wt_list=$top/.commit-banned-words
+# A missing list and an invisible one look the same from here; either way
+# the private words would go unchecked.
+if [ ! -f "$main_list" ] || [ ! -r "$main_list" ]; then
+    printf 'check-message: rejected -- cannot read %s\n' "$main_list" >&2
+    echo "  (create it there, even empty; see README \"Development\")" >&2
+    exit 1
+fi
+if [ -e "$wt_list" ] || [ -L "$wt_list" ]; then
+    if [ ! -f "$wt_list" ] || [ ! -r "$wt_list" ]; then
+        fail "cannot read $wt_list"
+    fi
+fi
+
+patterns=$(mktemp) || fail "cannot create a temporary file"
+trap 'rm -f "$patterns"' EXIT
+
+# Attribution a coding tool may add; holds in every clone, list or not.
+# Leading whitespace: `merge --squash` indents the squashed messages.
+printf '%s\n' \
+    '^[[:space:]]*Claude-Session:' \
+    '^[[:space:]]*Co-Authored-By:.*(Claude|anthropic)' \
+    'Generated with \[Claude Code\]' \
+    'claude\.ai/code' >"$patterns" || fail "cannot write $patterns"
+
+bom=$(printf '\357\273\277')
+for list in "$main_list" "$wt_list"; do
+    if [ -f "$list" ] && [ "$list" != "$seen" ]; then
+        # An editor's CRLF, BOM or trailing blank would otherwise turn a
+        # pattern into one that never matches. awk ends every line, so two
+        # lists cannot run together.
+        LC_ALL=C awk -v bom="$bom" '
+            NR == 1 && substr($0, 1, 3) == bom { $0 = substr($0, 4) }
+            { gsub(/\r/, ""); sub(/[ \t\f\v]+$/, "") }
+            /^[ \t\f\v]*#/ || /^[ \t\f\v]*$/ { next }
+            { print }
+        ' "$list" >>"$patterns" || fail "cannot read $list"
+        seen=$list
+    fi
+done
+
+# `#` lines are checked too: `-m`, `-F`, `--cleanup=verbatim` and a
+# non-`#` comment char keep them in the message. The editor template's own
+# comment lines can therefore reject a clean message; that errs closed.
+if [ -n "$scissors" ]; then
+    hits=$(LC_ALL=C sed -n \
+        -e '/^[^ ][^ ]* ------------------------ >8 ------------------------$/q' \
+        -e p | grep -a -i -E -f "$patterns")
+else
+    hits=$(grep -a -i -E -f "$patterns")
+fi
+status=$?
+# grep exits 2 on a malformed pattern or a read error: nothing was checked.
+if [ "$status" -gt 1 ]; then
+    fail "a banned pattern is not a valid regex, or the message is unreadable"
+fi
+if [ "$status" -eq 0 ]; then
+    echo "check-message: rejected -- these lines match a banned pattern:" >&2
+    printf '%s\n' "$hits" | sed 's/^/  /' >&2
+    exit 1
+fi
+exit 0

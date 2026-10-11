@@ -25,3 +25,6 @@ __tpyc__/
 # pytest-hosts per-checkout override (personal experiments)
 .pytest-hosts.toml
 scripts/alias_kill_matrix/build/
+
+# Local banned-word list for scripts/git-hooks/commit-msg (private)
+/.commit-banned-words

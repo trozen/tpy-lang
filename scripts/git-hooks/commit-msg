@@ -1,0 +1,22 @@
+#!/bin/sh
+# Rejects a commit message that check-message rejects. Install it, with
+# pre-push, as README "Development" says. Commands that skip this hook
+# (cherry-pick, rebase, am, commit-tree) are caught by pre-push.
+
+# The hook runs through a symlink in .git/hooks; the checker sits next to
+# the link's target.
+self=$0
+while [ -L "$self" ]; do
+    link=$(readlink "$self") || exit 1
+    case $link in
+        /*) self=$link ;;
+        *) self=$(dirname "$self")/$link ;;
+    esac
+done
+checker=$(dirname "$self")/check-message
+if [ ! -f "$checker" ]; then
+    echo "commit-msg: rejected -- $checker is missing" >&2
+    exit 1
+fi
+
+exec sh "$checker" --scissors <"$1"

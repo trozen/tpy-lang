@@ -278,6 +278,25 @@ refreshes them.
 From a source checkout: `uv sync`, then `uv run tpy app.py` and
 `uv run pytest`. `docs/ARCHITECTURE.md` describes the compiler.
 
+Before committing, install the commit-message checks once per clone, from
+its main checkout (`-f` replaces an older hook):
+
+```
+ln -sf ../../scripts/git-hooks/commit-msg .git/hooks/commit-msg
+ln -sf ../../scripts/git-hooks/pre-push .git/hooks/pre-push
+```
+
+and create a gitignored `.commit-banned-words` in the main checkout's
+root: one case-insensitive extended regex per line, blank lines and `#`
+comments allowed. It may be empty, but it must be a readable file, or every
+commit and push is rejected. A worktree's own `.commit-banned-words` adds
+to it. `commit-msg` rejects each new message carrying tool attribution
+or a listed pattern; `pre-push` refuses a push of any such commit,
+including ones made by cherry-pick, rebase or am, which skip
+`commit-msg`. The links point into the main checkout's working tree, so
+the hooks only run while its branch has `scripts/git-hooks/`; otherwise
+the links dangle and git skips them.
+
 ## License
 
 Apache License 2.0 with the LLVM Exceptions -- see
