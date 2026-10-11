@@ -1,7 +1,9 @@
 # An `Own[T]` loop variable over a source that only LENDS its elements owns a
 # COPY (warned at the call), never the caller's element, whatever the body does
 # with it; a source at its last use, a fresh container temporary, `own_iter`
-# and a multi-input `map` over a dead container hand their elements over.
+# and a multi-input `map` over a dead container hand their elements over. The
+# builtin collectors (dict(), set(), extend, slice assignment) likewise move
+# in what they are handed and copy what a source lends.
 import asyncio
 from tpy import int32, Own, nocopy, copy_iter, own_iter
 from typing import Iterable, Iterator, Self
@@ -217,6 +219,35 @@ def make_cs() -> Own[list[C]]:
     return out
 
 
+def make_pairs() -> Own[list[tuple[str, C]]]:
+    out: list[tuple[str, C]] = []
+    out.append(("a", C(9)))
+    return out
+
+
+def fresh_cs(k: int32) -> Iterator[Own[C]]:
+    yield C(k)
+    yield C(k + 1)
+
+
+class Key:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __hash__(self) -> int:
+        return len(self.name)
+
+    def __eq__(self, o: Self) -> bool:
+        return self.name == o.name
+
+
+def lend_keys(ks: list[Key]) -> Iterator[Key]:
+    for k in ks:
+        yield k
+
+
 def keep_c(source: Iterable[Own[C]]) -> Own[list[C]]:
     return [c for c in source]
 
@@ -323,6 +354,28 @@ def main() -> None:
     # elements are copies, so moving them leaves `xs` whole.
     built2 = via_comp(repeat(xs))  # tpyc: warning(/copies list\[int32\] elements/)
     print("comp gen", built2, xs)
+    # dict(), extend and slice assignment move in what they are handed: a
+    # container handed over and a generator's fresh values (the hook would
+    # print on a copy); a lent source keeps its elements.
+    by_name = dict(make_pairs())  # tpyc: ok
+    print("collect dict", len(by_name), by_name["a"].n)
+    grown: list[C] = []
+    gen3 = fresh_cs(3)
+    grown.extend(gen3)  # tpyc: ok
+    grown[0:1] = fresh_cs(5)  # tpyc: ok
+    print("collect extend", len(grown), grown[0].n, grown[2].n)
+    grown[::2] = fresh_cs(7)  # tpyc: ok
+    print("collect stepped", len(grown), grown[0].n, grown[1].n, grown[2].n)
+    names = ["r"]
+    by_row = dict(zip(names, rows))  # tpyc: warning(/copies tuple\[str, list\[int32\]\] elements/)
+    nested: list[list[int32]] = []
+    lending = repeat(xs)
+    nested.extend(lending)  # tpyc: warning(/copies list\[int32\] elements/)
+    print("collect lent", by_row["r"], rows, len(nested), xs)
+    # set() over a generator lending the caller's records copies each one.
+    ks = [Key("ab")]
+    key_set = set(lend_keys(ks))  # tpyc: warning(/copies Key elements/)
+    print("collect lent set", len(key_set), ks[0].name)
 
 
 main()

@@ -14,6 +14,7 @@ struct Cell;
 struct Sink;
 struct Item;
 struct C;
+struct Key;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -21,6 +22,8 @@ template <::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 struct __gen_via_gen;
 template <::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 struct __coro_via_async;
+struct __gen_fresh_cs;
+struct __gen_lend_keys;
 struct __gen_repeat;
 
 // def collect(source: Iterable[Own[list[int32]]]) -> Own[list[list[int32]]]:
@@ -84,6 +87,12 @@ int32_t total_c(T_source&& source);
 std::vector<Cell> make_cells();
 // def make_cs() -> Own[list[C]]:
 std::vector<C> make_cs();
+// def make_pairs() -> Own[list[tuple[str, C]]]:
+std::vector<std::tuple<std::string, C>> make_pairs();
+// def fresh_cs(k: int32) -> Iterator[Own[C]]:
+__gen_fresh_cs fresh_cs(int32_t k);
+// def lend_keys(ks: list[Key]) -> Iterator[Key]:
+__gen_lend_keys lend_keys(std::vector<Key>& ks);
 // def keep_c(source: Iterable[Own[C]]) -> Own[list[C]]:
 template<::tpystd::typing::Iterable<C> T_source>
 std::vector<C> keep_c(T_source&& source);
@@ -197,6 +206,42 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
     ::tpy::print_object_default(os, "C", obj);
     return os;
 }
+
+// class Key:
+struct Key {
+    // name: str
+    std::string name;
+
+    // def __init__(self, name: str) -> None:
+    Key() = default;
+    explicit Key(std::string_view name);
+
+    // def __hash__(self) -> int:
+    ::tpy::BigInt __hash__() const;
+
+    // def __eq__(self, o: Self) -> bool:
+    bool __eq__(const Key& o) const;
+
+    friend bool operator==(const Key& lhs, const Key& o) {
+        return lhs.__eq__(o);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Key";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
+    ::tpy::print_object_default(os, "Key", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Key> {
+    size_t operator()(const ::tpyapp::main::Key& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
 
 // async def via_async(source: Iterable[Own[list[int32]]]) -> int32:
 template <::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
@@ -347,6 +392,58 @@ __gen_via_gen<T_source> via_gen(T_source&& source) {
     return __gen_via_gen<T_source>(std::forward<T_source>(source));
 }
 
+// def fresh_cs(k: int32) -> Iterator[Own[C]]:
+struct __gen_fresh_cs : public ::tpy::next_iter_mixin<__gen_fresh_cs, C> {
+    ::tpy::frame_state __state;
+    int32_t k;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_fresh_cs(int32_t k_)
+        : __state(S_INITIAL),
+          k(std::move(k_)) {}
+
+    std::expected<C, ::tpy::StopIteration> __next__();
+    __gen_fresh_cs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fresh_cs&) {
+        return os << "<generator fresh_cs>";
+    }
+};
+
+// def lend_keys(ks: list[Key]) -> Iterator[Key]:
+struct __gen_lend_keys : public ::tpy::next_iter_mixin<__gen_lend_keys, ::tpy::val_or_ref<Key>> {
+    ::tpy::frame_state __state;
+    std::vector<Key>& ks;
+    using __for_src_0_t = decltype((ks));
+    ::tpy::begin_elem_t<__for_src_0_t>* k = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_lend_keys(std::vector<Key>& ks)
+        : __state(S_INITIAL),
+          ks(ks) {}
+
+    std::expected<::tpy::val_or_ref<Key>, ::tpy::StopIteration> __next__();
+    __gen_lend_keys& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_lend_keys&) {
+        return os << "<generator lend_keys>";
+    }
+};
+
 // def repeat(xs: list[int32]) -> Iterator[list[int32]]:
 struct __gen_repeat : public ::tpy::next_iter_mixin<__gen_repeat, ::tpy::val_or_ref<std::vector<int32_t>>> {
     ::tpy::frame_state __state;
@@ -411,6 +508,22 @@ inline C& C::operator=(const C& other) {
 inline C C::__copy__() const {
     std::cout << "copy" << " " << this->n << "\n" << ::tpy::check_signals;
     return C(this->n);
+}
+
+// def __init__(self, name: str) -> None:
+//     self.name = name
+inline Key::Key(std::string_view name) : name(name) {}
+
+// def __hash__(self) -> int:
+//     return len(self.name)
+inline ::tpy::BigInt Key::__hash__() const {
+    return ::tpy::BigInt(::tpy::__len__(this->name));
+}
+
+// def __eq__(self, o: Self) -> bool:
+//     return self.name == o.name
+inline bool Key::__eq__(const Key& o) const {
+    return (this->name == o.name);
 }
 // def collect(source: Iterable[Own[list[int32]]]) -> Own[list[list[int32]]]:
 //     out: list[list[int32]] = []

@@ -176,15 +176,25 @@ struct NextIterator {
 };
 
 // The begin/end twin of own_bind: the element a begin/end loop hands an
-// OWNING binding (an `Own[T]` loop variable) -- an rvalue reference to a step
-// the iterator itself owns (`__tpy_take()`) or to a move iterator's element;
-// any other element is a container's own, lent to the loop, so the binding
+// OWNING binding (an `Own[T]` loop variable, a runtime collector's store) -- an
+// rvalue reference to a step the iterator itself owns (`__tpy_take()`) or to a
+// move iterator's element; any other element is a container's own, lent to the loop, so the binding
 // gets a copy (a prvalue) and the container keeps it.
 template<typename It>
 decltype(auto) take_elem(It& it) {
     if constexpr (requires { it.__tpy_take(); }) return it.__tpy_take();
     else if constexpr (std::is_rvalue_reference_v<decltype(*it)>) return *it;
     else return detail::owned_value_t<decltype(*it)>(*it);
+}
+
+// take_elem for a consumer that may keep nothing (a set or dict insert that
+// finds the key present): an element the iterator owns is handed over as
+// take_elem hands it, a lent one as the iterator lends it, so the consumer
+// copies only what it keeps.
+template<typename It>
+decltype(auto) take_or_lend(It& it) {
+    if constexpr (std::is_rvalue_reference_v<decltype(take_elem(it))>) return take_elem(it);
+    else return *it;
 }
 
 // CRTP mixin: adds begin()/end() to any class with __next__().

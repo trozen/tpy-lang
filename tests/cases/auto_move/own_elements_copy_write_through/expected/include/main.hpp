@@ -8,8 +8,11 @@
 namespace tpyapp::main {
 
 struct Item;
+struct H;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_fresh_hs;
 
 // def bump_all(source: Iterable[Own[Item]]) -> Own[list[Item]]:
 template<::tpystd::typing::Iterable<Item> T_source>
@@ -23,6 +26,12 @@ int32_t bump_only(T_source&& source);
 // def closure_write(source: Iterable[Own[list[int32]]]) -> int32:
 template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
 int32_t closure_write(T_source&& source);
+// def make_hs() -> Own[list[H]]:
+std::vector<H> make_hs();
+// def make_h_set() -> Own[set[H]]:
+::tpy::ordered_set<H> make_h_set();
+// def fresh_hs() -> Iterator[Own[H]]:
+__gen_fresh_hs fresh_hs();
 // def bump(k: int32, x: Own[Item]) -> int32:  # tpyc: warning(/Own\[Item\] param 'x' is never consumed/)
 int32_t bump(int32_t k, Item&& x);
 // def main() -> None:
@@ -44,10 +53,104 @@ inline std::ostream& operator<<(std::ostream& os, const Item& obj) {
     return os;
 }
 
+// class H:
+struct H {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    H() = default;
+    explicit H(int32_t n);
+    // copyable via __copy__
+    H(const H& other);
+    H& operator=(const H& other);
+    H(H&&) = default;
+    H& operator=(H&&) = default;
+
+    // def __copy__(self) -> Own[Self]:
+    H __copy__() const;
+
+    // def __hash__(self) -> int:
+    ::tpy::BigInt __hash__() const;
+
+    // def __eq__(self, o: H) -> bool:
+    bool __eq__(const H& o) const;
+
+    friend bool operator==(const H& lhs, const H& o) {
+        return lhs.__eq__(o);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.H";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const H& obj) {
+    ::tpy::print_object_default(os, "H", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::H> {
+    size_t operator()(const ::tpyapp::main::H& val) const noexcept {
+        return static_cast<size_t>(::tpy::__hash__(val));
+    }
+};
+
+namespace tpyapp::main {
+
+
+// def fresh_hs() -> Iterator[Own[H]]:
+struct __gen_fresh_hs : public ::tpy::next_iter_mixin<__gen_fresh_hs, H> {
+    ::tpy::frame_state __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_fresh_hs() : __state(S_INITIAL) {}
+
+    std::expected<H, ::tpy::StopIteration> __next__();
+    __gen_fresh_hs& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_fresh_hs&) {
+        return os << "<generator fresh_hs>";
+    }
+};
+
 
 // def __init__(self, v: int32) -> None:
 //     self.value = v
 inline Item::Item(int32_t v) : value(v) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline H::H(int32_t n) : n(n) {}
+
+inline H::H(const H& other) : H(other.__copy__()) {}
+inline H& H::operator=(const H& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
+
+// def __copy__(self) -> Own[Self]:
+//     print("copy", self.n)
+//     return H(self.n)
+inline H H::__copy__() const {
+    std::cout << "copy" << " " << this->n << "\n" << ::tpy::check_signals;
+    return H(this->n);
+}
+
+// def __hash__(self) -> int:
+//     return self.n
+inline ::tpy::BigInt H::__hash__() const {
+    return ::tpy::BigInt(this->n);
+}
+
+// def __eq__(self, o: H) -> bool:
+//     return self.n == o.n
+inline bool H::__eq__(const H& o) const {
+    return (this->n == o.n);
+}
 // def bump_all(source: Iterable[Own[Item]]) -> Own[list[Item]]:
 //     out: list[Item] = []
 //     for x in source:

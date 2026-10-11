@@ -29,6 +29,28 @@ std::vector<C> make_cs() {
     return out;
 }
 
+// def make_pairs() -> Own[list[tuple[str, C]]]:
+//     out: list[tuple[str, C]] = []
+//     out.append(("a", C(9)))
+//     return out
+std::vector<std::tuple<std::string, C>> make_pairs() {
+    std::vector<std::tuple<std::string, C>> out = std::vector<std::tuple<std::string, C>>{};
+    out.push_back(std::tuple<std::string, C>{"a", C(9)});
+    return out;
+}
+
+
+// def fresh_cs(k: int32) -> Iterator[Own[C]]:
+__gen_fresh_cs fresh_cs(int32_t k) {
+    return __gen_fresh_cs(k);
+}
+
+
+// def lend_keys(ks: list[Key]) -> Iterator[Key]:
+__gen_lend_keys lend_keys(std::vector<Key>& ks) {
+    return __gen_lend_keys(ks);
+}
+
 // def take(k: int32, xs: Own[list[int32]]) -> Own[list[int32]]:
 //     return xs
 std::vector<int32_t> take(int32_t k, std::vector<int32_t>&& xs) {
@@ -130,6 +152,28 @@ __gen_repeat repeat(std::vector<int32_t>& xs) {
 //     # elements are copies, so moving them leaves `xs` whole.
 //     built2 = via_comp(repeat(xs))  # tpyc: warning(/copies list\[int32\] elements/)
 //     print("comp gen", built2, xs)
+//     # dict(), extend and slice assignment move in what they are handed: a
+//     # container handed over and a generator's fresh values (the hook would
+//     # print on a copy); a lent source keeps its elements.
+//     by_name = dict(make_pairs())  # tpyc: ok
+//     print("collect dict", len(by_name), by_name["a"].n)
+//     grown: list[C] = []
+//     gen3 = fresh_cs(3)
+//     grown.extend(gen3)  # tpyc: ok
+//     grown[0:1] = fresh_cs(5)  # tpyc: ok
+//     print("collect extend", len(grown), grown[0].n, grown[2].n)
+//     grown[::2] = fresh_cs(7)  # tpyc: ok
+//     print("collect stepped", len(grown), grown[0].n, grown[1].n, grown[2].n)
+//     names = ["r"]
+//     by_row = dict(zip(names, rows))  # tpyc: warning(/copies tuple\[str, list\[int32\]\] elements/)
+//     nested: list[list[int32]] = []
+//     lending = repeat(xs)
+//     nested.extend(lending)  # tpyc: warning(/copies list\[int32\] elements/)
+//     print("collect lent", by_row["r"], rows, len(nested), xs)
+//     # set() over a generator lending the caller's records copies each one.
+//     ks = [Key("ab")]
+//     key_set = set(lend_keys(ks))  # tpyc: warning(/copies Key elements/)
+//     print("collect lent set", len(key_set), ks[0].name)
 void main() {
     std::vector<std::vector<int32_t>> ll = {{1, 2}};
     std::vector<std::vector<int32_t>> got = ::tpyapp::main::collect(ll);
@@ -264,12 +308,32 @@ void main() {
     auto __tmp_7 = ::tpyapp::main::repeat(xs);
     std::vector<std::vector<int32_t>> built2 = ::tpyapp::main::via_comp(__tmp_7);
     std::cout << "comp gen" << " " << ::tpy::ListPrinter(built2) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    ::tpy::ordered_map<std::string, C> by_name = ::tpy::dict_construct<std::string, C>(::tpy::own_iter(::tpyapp::main::make_pairs()));
+    std::cout << "collect dict" << " " << ::tpy::__len__(by_name) << " " << ::tpy::__getitem__(by_name, "a").n << "\n" << ::tpy::check_signals;
+    std::vector<C> grown = std::vector<C>{};
+    __gen_fresh_cs gen3 = ::tpyapp::main::fresh_cs(3);
+    ::tpy::list_extend(grown, gen3);
+    ::tpy::list_set_slice(grown, ::tpy::BasicSlice{0, 1}, ::tpyapp::main::fresh_cs(5));
+    std::cout << "collect extend" << " " << ::tpy::__len__(grown) << " " << ::tpy::__getitem__(grown, 0).n << " " << ::tpy::__getitem__(grown, 2).n << "\n" << ::tpy::check_signals;
+    ::tpy::list_set_stepped_slice(grown, ::tpy::Slice{std::nullopt, std::nullopt, 2}, ::tpyapp::main::fresh_cs(7));
+    std::cout << "collect stepped" << " " << ::tpy::__len__(grown) << " " << ::tpy::__getitem__(grown, 0).n << " " << ::tpy::__getitem__(grown, 1).n << " " << ::tpy::__getitem__(grown, 2).n << "\n" << ::tpy::check_signals;
+    std::array<std::string, 1> names = {"r"};
+    ::tpy::ordered_map<std::string, std::vector<int32_t>> by_row = ::tpy::dict_construct<std::string, std::vector<int32_t>>(::tpy::builtin_zip(names, rows));
+    std::vector<std::vector<int32_t>> nested = std::vector<std::vector<int32_t>>{};
+    __gen_repeat lending = ::tpyapp::main::repeat(xs);
+    ::tpy::list_extend(nested, lending);
+    std::cout << "collect lent" << " " << ::tpy::ListPrinter(::tpy::__getitem__(by_row, "r")) << " " << ::tpy::ListPrinter(rows) << " " << ::tpy::__len__(nested) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
+    std::vector<Key> ks = {Key("ab")};
+    ::tpy::ordered_set<Key> key_set = ::tpy::set_construct<Key>(::tpyapp::main::lend_keys(ks));
+    std::cout << "collect lent set" << " " << ::tpy::__len__(key_set) << " " << ::tpy::__getitem__(ks, 0).name << "\n" << ::tpy::check_signals;
 }
 
 // # An `Own[T]` loop variable over a source that only LENDS its elements owns a
 // # COPY (warned at the call), never the caller's element, whatever the body does
 // # with it; a source at its last use, a fresh container temporary, `own_iter`
-// # and a multi-input `map` over a dead container hand their elements over.
+// # and a multi-input `map` over a dead container hand their elements over. The
+// # builtin collectors (dict(), set(), extend, slice assignment) likewise move
+// # in what they are handed and copy what a source lends.
 // import asyncio
 //
 // main()

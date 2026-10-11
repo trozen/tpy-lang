@@ -2470,6 +2470,11 @@ holds for an iterable whose elements a callable argument takes as `Own[X]`:
 `map(take, keys, rows)` with `def take(k: int32, row: Own[list[int32]])` warns
 `copies list[int32] elements` for a live `rows`, moves a dead one, and copies
 what a dict view or a generator lends.
+The builtin collectors -- `list()`, `set()`, `dict()`, `extend` and slice
+assignment -- consume a handed-over source and a generator's fresh values the
+same way: each element is moved in, and only a lent one is copied (a set
+element or dict key is still copied once more into the table:
+BUGS.md#ordered-set-map-key-stored-twice).
 
 #### `copy_iter()` for Bulk Operations (Working)
 

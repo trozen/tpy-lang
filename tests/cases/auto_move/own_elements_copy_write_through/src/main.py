@@ -1,11 +1,12 @@
 # The warned divergence of an owning element slot fed a live source: the `Own`
 # loop variable / callback parameter is a COPY, so a write through it does not
 # reach the caller's element where CPython (which aliases) writes it -- also
-# when the body only writes it, never moving it. No CPython run: the outputs
-# differ by design.
+# when the body only writes it, never moving it. Also the copy hooks a `set`
+# runs: one per stored element, never one per element `set()` / `extend` is
+# handed over. No CPython run: the outputs differ by design.
 from __future__ import annotations
 from tpy import int32, Own
-from typing import Iterable
+from typing import Iterable, Iterator, Self
 
 
 class Item:
@@ -49,6 +50,39 @@ def closure_write(source: Iterable[Own[list[int32]]]) -> int32:
     return n
 
 
+class H:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def __copy__(self) -> Own[Self]:
+        print("copy", self.n)
+        return H(self.n)
+
+    def __hash__(self) -> int:
+        return self.n
+
+    def __eq__(self, o: H) -> bool:
+        return self.n == o.n
+
+
+def make_hs() -> Own[list[H]]:
+    out: list[H] = []
+    out.append(H(1))
+    return out
+
+
+def make_h_set() -> Own[set[H]]:
+    out: set[H] = set()
+    out.add(H(3))  # the set's own copy of the element (BUGS.md#ordered-set-map-key-stored-twice)
+    return out
+
+
+def fresh_hs() -> Iterator[Own[H]]:
+    yield H(2)
+
+
 # The callback writes and returns a field, never the `Own` object itself.
 def bump(k: int32, x: Own[Item]) -> int32:  # tpyc: warning(/Own\[Item\] param 'x' is never consumed/)
     x.value += k  # writes the callback parameter's own copy
@@ -66,6 +100,25 @@ def main() -> None:
     print("append only", append_only(ll), ll)  # tpyc: warning(/copies list\[int32\] elements/)
     print("bump only", bump_only(items), items[0].value)  # tpyc: warning(/copies Item elements/)
     print("closure write", closure_write(ll), ll)  # tpyc: warning(/copies list\[int32\] elements/)
+    # set() and extend move in what they are handed; the one copy per element
+    # left is the set's own (BUGS.md#ordered-set-map-key-stored-twice).
+    print("set of list")
+    hs = set(make_hs())  # tpyc: ok
+    print("set of gen")
+    gen = fresh_hs()
+    hs2 = set(gen)  # tpyc: ok
+    print("extend of set")
+    hl: list[H] = []
+    hl.extend(make_h_set())  # tpyc: ok
+    print("sets", len(hs), len(hs2), len(hl))
+    # Regression guard: a lent duplicate is not copied before the set finds
+    # it present, so two equal elements store (and copy) once.
+    dup: list[H] = []
+    dup.append(H(4))
+    dup.append(H(4))
+    print("set of lent duplicates")
+    hs3 = set(dup)  # tpyc: warning(/copies H elements/)
+    print("dups", len(hs3), len(dup))
 
 
 main()

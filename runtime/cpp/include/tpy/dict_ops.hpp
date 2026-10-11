@@ -33,12 +33,17 @@ namespace tpy {
 
 // -- Constructors -----------------------------------------------------------
 
-// dict(native_iterable) -- construct from range of tuples
+// dict(native_iterable) -- construct from range of tuples. A pair the range
+// owns (a container handed over by `own_iter`) is moved in; a lent one is
+// copied only into the entry it creates or the value it replaces.
 template<typename K, typename V, std::ranges::input_range R>
 ordered_map<K, V> dict_from_pairs(R&& range) {
     ordered_map<K, V> result;
-    for (auto&& elem : range) {
-        result.insert_or_assign(std::get<0>(elem), std::get<1>(elem));
+    auto end = std::ranges::end(range);
+    for (auto it = std::ranges::begin(range); it != end; ++it) {
+        auto&& elem = take_or_lend(it);
+        result.insert_or_assign(std::get<0>(std::forward<decltype(elem)>(elem)),
+                                std::get<1>(std::forward<decltype(elem)>(elem)));
     }
     return result;
 }

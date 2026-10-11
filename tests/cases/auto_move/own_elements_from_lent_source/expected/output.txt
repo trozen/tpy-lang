@@ -41,3 +41,8 @@ map gen 1
 map gen 1
 map gen after 1
 comp gen [[7], [7]] [7]
+collect dict 1 9
+collect extend 3 5 4
+collect stepped 3 7 6 8
+collect lent [7] [[7]] 2 [7]
+collect lent set 1 ab

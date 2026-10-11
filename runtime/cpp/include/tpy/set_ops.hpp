@@ -22,12 +22,15 @@ namespace tpy {
 
 // -- Constructors -----------------------------------------------------------
 
-// set(native_iterable) -- construct from range
+// set(native_iterable) -- construct from range. An element the range owns (a
+// container handed over by `own_iter`) is moved in, a lent one copied when
+// it is not already present.
 template<typename T, std::ranges::input_range R>
 ordered_set<T> set_from_range(R&& range) {
     ordered_set<T> result;
-    for (auto&& elem : range) {
-        result.insert(elem);
+    auto end = std::ranges::end(range);
+    for (auto it = std::ranges::begin(range); it != end; ++it) {
+        result.insert(take_or_lend(it));
     }
     return result;
 }
@@ -39,7 +42,7 @@ ordered_set<T> set_collect(Iter&& iter) {
     for (;;) {
         auto __r = iter.__next__();
         if (!__r.has_value()) break;
-        result.insert(unwrap_ref(*__r));
+        result.insert(unwrap_ref_move(*__r));
     }
     return result;
 }

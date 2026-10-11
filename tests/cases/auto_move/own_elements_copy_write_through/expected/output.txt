@@ -4,3 +4,14 @@ map after 1
 append only 3 [[1, 2]]
 bump only 2 1
 closure write 3 [[1, 2]]
+set of list
+copy 1
+set of gen
+copy 2
+extend of set
+copy 3
+sets 1 1 1
+set of lent duplicates
+copy 4
+copy 4
+dups 1 2

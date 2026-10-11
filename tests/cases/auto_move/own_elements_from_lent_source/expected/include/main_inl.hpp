@@ -5,6 +5,57 @@
 
 namespace tpyapp::main {
 
+// def fresh_cs(k: int32) -> Iterator[Own[C]]:
+//     yield C(k)                               # -> S_RESUME_0
+//     yield C(k + 1)                           # -> S_RESUME_1
+inline std::expected<C, ::tpy::StopIteration> __gen_fresh_cs::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __state = S_RESUME_0;
+        return C(k);
+    }
+    case S_RESUME_0: {  // after: yield C(k)
+        __state = S_RESUME_1;
+        return C((::tpy::add_check<int32_t>(k, 1)));
+    }
+    case S_RESUME_1: {  // after: yield C(k + 1)
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// def lend_keys(ks: list[Key]) -> Iterator[Key]:
+//     for k in ks:
+//         yield k                                 # -> S_RESUME_0
+inline std::expected<::tpy::val_or_ref<Key>, ::tpy::StopIteration> __gen_lend_keys::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = ks;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0:  // after: yield k
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        k = &(*((*__for_it_0))++);
+        __state = S_RESUME_0;
+        return (*k);
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // def repeat(xs: list[int32]) -> Iterator[list[int32]]:
 //     yield xs                                           # -> S_RESUME_0
 //     yield xs                                           # -> S_RESUME_1
