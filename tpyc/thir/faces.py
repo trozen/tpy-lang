@@ -513,6 +513,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.strlit_overload_pin",     # str literal pinned to its overloaded slot
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
     "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
+    "call.own_iter_rvalue_arg",     # fresh container temporary into an Iterable[Own[T]] slot (reference T) -> ::tpy::own_iter(<temp>)
     "call.own_iter_explicit",       # explicit own_iter(x) -> ::tpy::own_iter(std::move(x))
     "call.copy_iter_explicit",      # copy_iter(it) -> ::tpy::copy_iter<Elem>(<it>)
     "call.try_parse",               # try_parse(Enum, s) -> EnumUtil<E>::

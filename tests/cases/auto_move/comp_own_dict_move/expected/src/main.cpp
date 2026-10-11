@@ -32,7 +32,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& w = *__beg_0;
+            auto&& w = ::tpy::take_elem(__beg_0);
             auto __dk_1 = w.id;
             __result.insert_or_assign(std::move(__dk_1), std::move(w));
         }
@@ -62,7 +62,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& w = *__beg_0;
+            auto&& w = ::tpy::take_elem(__beg_0);
             auto __dk_1 = 7;
             __result.insert_or_assign(std::move(__dk_1), std::move(w));
         }
@@ -87,7 +87,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& node = *__beg_0;
+            auto&& node = ::tpy::take_elem(__beg_0);
             __result.insert_or_assign(node, node.id);
         }
         std::move(__result);
@@ -118,7 +118,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& w = *__beg_0;
+            auto&& w = ::tpy::take_elem(__beg_0);
             if ((w.id > 0)) {
                 auto __dk_1 = w.id;
                 __result.insert_or_assign(std::move(__dk_1), std::move(w));
@@ -149,7 +149,7 @@ __gen_nodes nodes(::tpy::BigInt n) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& node = *__beg_0;
+            auto&& node = ::tpy::take_elem(__beg_0);
             auto __dk_1 = node;
             __result.insert_or_assign(std::move(__dk_1), std::move(node));
         }

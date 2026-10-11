@@ -2835,7 +2835,7 @@ void lc_owned() {
             auto __beg_1 = __obj_1.begin();
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
-                auto&& w = *__beg_1;
+                auto&& w = ::tpy::take_elem(__beg_1);
                 __result.push_back(std::move(w));
             }
         }
@@ -2886,7 +2886,7 @@ void lc_owned_outer() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& cs = *__beg_0;
+            auto&& cs = ::tpy::take_elem(__beg_0);
             auto& __obj_1 = cs;
             auto __beg_1 = __obj_1.begin();
             auto __end_1 = __obj_1.end();
@@ -2903,7 +2903,7 @@ void lc_owned_outer() {
         auto __beg_2 = __obj_2.begin();
         auto __end_2 = __obj_2.end();
         for (; __beg_2 != __end_2; ++__beg_2) {
-            auto&& cs = *__beg_2;
+            auto&& cs = ::tpy::take_elem(__beg_2);
             if ((::tpy::__len__(cs) > 1)) {
                 auto& __obj_3 = cs;
                 auto __beg_3 = __obj_3.begin();
@@ -2924,7 +2924,7 @@ void lc_owned_outer() {
         auto __beg_4 = __obj_4.begin();
         auto __end_4 = __obj_4.end();
         for (; __beg_4 != __end_4; ++__beg_4) {
-            auto&& cs = *__beg_4;
+            auto&& cs = ::tpy::take_elem(__beg_4);
             if (::tpyapp::main::grow_cs(cs)) {
                 auto& __obj_5 = cs;
                 auto __beg_5 = __obj_5.begin();
@@ -2944,7 +2944,7 @@ void lc_owned_outer() {
         auto __beg_6 = __obj_6.begin();
         auto __end_6 = __obj_6.end();
         for (; __beg_6 != __end_6; ++__beg_6) {
-            auto&& cs = *__beg_6;
+            auto&& cs = ::tpy::take_elem(__beg_6);
             if (((k = ::tpy::__len__(cs)) > 1)) {
                 auto& __obj_7 = cs;
                 auto __beg_7 = __obj_7.begin();
@@ -2963,7 +2963,7 @@ void lc_owned_outer() {
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
-            auto&& cs = *__beg_8;
+            auto&& cs = ::tpy::take_elem(__beg_8);
             auto& __obj_9 = cs;
             auto __beg_9 = __obj_9.begin();
             auto __end_9 = __obj_9.end();
@@ -2982,7 +2982,7 @@ void lc_owned_outer() {
         auto __beg_10 = __obj_10.begin();
         auto __end_10 = __obj_10.end();
         for (; __beg_10 != __end_10; ++__beg_10) {
-            auto&& cs = *__beg_10;
+            auto&& cs = ::tpy::take_elem(__beg_10);
             auto& __obj_11 = cs;
             auto __beg_11 = __obj_11.begin();
             auto __end_11 = __obj_11.end();
@@ -2999,7 +2999,7 @@ void lc_owned_outer() {
         auto __beg_12 = __obj_12.begin();
         auto __end_12 = __obj_12.end();
         for (; __beg_12 != __end_12; ++__beg_12) {
-            auto&& cs = *__beg_12;
+            auto&& cs = ::tpy::take_elem(__beg_12);
             auto& __obj_13 = cs;
             auto __beg_13 = __obj_13.begin();
             auto __end_13 = __obj_13.end();
@@ -3016,7 +3016,7 @@ void lc_owned_outer() {
         auto __beg_14 = __obj_14.begin();
         auto __end_14 = __obj_14.end();
         for (; __beg_14 != __end_14; ++__beg_14) {
-            auto&& s = *__beg_14;
+            auto&& s = ::tpy::take_elem(__beg_14);
             auto& __obj_15 = s.cs;
             auto __beg_15 = __obj_15.begin();
             auto __end_15 = __obj_15.end();
@@ -3033,13 +3033,13 @@ void lc_owned_outer() {
         auto __beg_16 = __obj_16.begin();
         auto __end_16 = __obj_16.end();
         for (; __beg_16 != __end_16; ++__beg_16) {
-            auto&& cs = *__beg_16;
+            auto&& cs = ::tpy::take_elem(__beg_16);
             int32_t __tmp_1 = ::tpy::__len__(cs);
             auto __obj_17 = ::tpyapp::main::widgets(::tpy::BigInt(__tmp_1));
             auto __beg_17 = __obj_17.begin();
             auto __end_17 = __obj_17.end();
             for (; __beg_17 != __end_17; ++__beg_17) {
-                auto&& w = *__beg_17;
+                auto&& w = ::tpy::take_elem(__beg_17);
                 __result.push_back(std::move(w));
             }
         }
@@ -3063,7 +3063,7 @@ void lc_owned_outer() {
         auto __beg_19 = __obj_19.begin();
         auto __end_19 = __obj_19.end();
         for (; __beg_19 != __end_19; ++__beg_19) {
-            auto&& cs = *__beg_19;
+            auto&& cs = ::tpy::take_elem(__beg_19);
             for (int32_t _ = 0; _ < 2; ++_) {
                 __result.push_back(cs);
             }
@@ -3098,7 +3098,7 @@ void own_for_stmt() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& cs = ::tpy::unwrap_ref(*__r_1);
+            auto&& cs = ::tpy::own_bind(*__r_1);
             cs.push_back(C(::tpy::BigInt(7)));
             auto& __obj_2 = cs;
             auto __beg_2 = __obj_2.begin();
@@ -3140,7 +3140,7 @@ std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_own_gen::__next__() {
             auto __beg_0 = __obj_0.begin();
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
-                auto&& cs = *__beg_0;
+                auto&& cs = ::tpy::take_elem(__beg_0);
                 auto& __obj_1 = cs;
                 auto __beg_1 = __obj_1.begin();
                 auto __end_1 = __obj_1.end();
@@ -3221,7 +3221,7 @@ __gen_own_gen own_gen(::tpy::BigInt n) {
             auto __beg_0 = __obj_0.begin();
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
-                auto&& cs = *__beg_0;
+                auto&& cs = ::tpy::take_elem(__beg_0);
                 auto& __obj_1 = cs;
                 auto __beg_1 = __obj_1.begin();
                 auto __end_1 = __obj_1.end();
@@ -3239,7 +3239,7 @@ __gen_own_gen own_gen(::tpy::BigInt n) {
             for (;;) {
                 auto __r_3 = __itr_2.__next__();
                 if (!__r_3.has_value()) break;
-                const auto& ds = ::tpy::unwrap_ref(*__r_3);
+                auto&& ds = ::tpy::own_bind(*__r_3);
                 auto& __obj_4 = ds;
                 auto __beg_4 = __obj_4.begin();
                 auto __end_4 = __obj_4.end();
@@ -3296,7 +3296,7 @@ void own_positions(const ::tpy::BigInt& k) {
             auto __beg_0 = __obj_0.begin();
             auto __end_0 = __obj_0.end();
             for (; __beg_0 != __end_0; ++__beg_0) {
-                auto&& cs = *__beg_0;
+                auto&& cs = ::tpy::take_elem(__beg_0);
                 auto& __obj_1 = cs;
                 auto __beg_1 = __obj_1.begin();
                 auto __end_1 = __obj_1.end();
@@ -3320,7 +3320,7 @@ void own_positions(const ::tpy::BigInt& k) {
                 auto __beg_2 = __obj_2.begin();
                 auto __end_2 = __obj_2.end();
                 for (; __beg_2 != __end_2; ++__beg_2) {
-                    auto&& cs = *__beg_2;
+                    auto&& cs = ::tpy::take_elem(__beg_2);
                     auto& __obj_3 = cs;
                     auto __beg_3 = __obj_3.begin();
                     auto __end_3 = __obj_3.end();
@@ -3346,7 +3346,7 @@ void own_positions(const ::tpy::BigInt& k) {
             auto __beg_4 = __obj_4.begin();
             auto __end_4 = __obj_4.end();
             for (; __beg_4 != __end_4; ++__beg_4) {
-                auto&& cs = *__beg_4;
+                auto&& cs = ::tpy::take_elem(__beg_4);
                 auto& __obj_5 = cs;
                 auto __beg_5 = __obj_5.begin();
                 auto __end_5 = __obj_5.end();
@@ -3374,7 +3374,7 @@ void own_positions(const ::tpy::BigInt& k) {
             auto __beg_6 = __obj_6.begin();
             auto __end_6 = __obj_6.end();
             for (; __beg_6 != __end_6; ++__beg_6) {
-                auto&& cs = *__beg_6;
+                auto&& cs = ::tpy::take_elem(__beg_6);
                 auto& __obj_7 = cs;
                 auto __beg_7 = __obj_7.begin();
                 auto __end_7 = __obj_7.end();
@@ -3393,7 +3393,7 @@ void own_positions(const ::tpy::BigInt& k) {
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
-            auto&& cs = *__beg_8;
+            auto&& cs = ::tpy::take_elem(__beg_8);
             auto& __obj_9 = cs;
             auto __beg_9 = __obj_9.begin();
             auto __end_9 = __obj_9.end();
@@ -4112,7 +4112,7 @@ void __tpy_init() {
         auto __beg_8 = __obj_8.begin();
         auto __end_8 = __obj_8.end();
         for (; __beg_8 != __end_8; ++__beg_8) {
-            auto&& cs = *__beg_8;
+            auto&& cs = ::tpy::take_elem(__beg_8);
             auto& __obj_9 = cs;
             auto __beg_9 = __obj_9.begin();
             auto __end_9 = __obj_9.end();

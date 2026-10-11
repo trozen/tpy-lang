@@ -23,7 +23,7 @@ void main() {
     std::array<Point, 2> pts = {Point(1, 2), Point(3, 4)};
     std::array<Point, 2> extras = {Point(10, 0), Point(20, 0)};
     {
-        auto __src_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, extras);
+        auto __src_0 = ::tpy::builtin_map_n<::tpy::val_or_ref<Point>>(combine, pts, ::tpy::own_iter(std::move(extras)));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

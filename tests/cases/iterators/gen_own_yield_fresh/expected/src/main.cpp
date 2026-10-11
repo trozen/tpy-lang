@@ -71,7 +71,7 @@ void main() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& b = ::tpy::unwrap_ref(*__r_1);
+            auto&& b = ::tpy::own_bind(*__r_1);
             total = ((total) + (b.val));
         }
     }
@@ -84,7 +84,7 @@ void main() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            const auto& b2 = ::tpy::unwrap_ref(*__r_3);
+            auto&& b2 = ::tpy::own_bind(*__r_3);
             kept.push_back(b2.val);
         }
     }
@@ -98,7 +98,7 @@ void main() {
         for (;;) {
             auto __r_5 = __itr_4.__next__();
             if (!__r_5.has_value()) break;
-            const auto& r = ::tpy::unwrap_ref(*__r_5);
+            auto&& r = ::tpy::own_bind(*__r_5);
             kept_rows.push_back(::tpy::__len__(r));
         }
     }
@@ -112,7 +112,7 @@ void main() {
         for (;;) {
             auto __r_7 = __itr_6.__next__();
             if (!__r_7.has_value()) break;
-            const auto& b3 = ::tpy::unwrap_ref(*__r_7);
+            auto&& b3 = ::tpy::own_bind(*__r_7);
             kept_m.push_back(b3.val);
         }
     }

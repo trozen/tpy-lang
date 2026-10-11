@@ -81,6 +81,50 @@ auto unwrap_ref_move(std::tuple<Ts...>& t) {
     return unwrap_tuple_refs(t, std::index_sequence_for<Ts...>{});
 }
 
+namespace detail {
+// Whether an iterator step holds its value rather than lending an element its
+// source keeps: a `val_or_ref` over a value payload, or a plain value.
+template<typename V>
+constexpr bool step_owns_value() {
+    if constexpr (requires { typename V::is_val_or_ref_tag; }) return V::is_val;
+    else return true;
+}
+
+// The type an owning binding holds for a step value of type `T`: `T` itself,
+// except that a tuple's reference members become values of their own, nested
+// tuples included -- a `std::tuple<int32_t, Cell&>` step lends its `Cell`.
+template<typename T>
+struct owned_value { using type = T; };
+template<typename... Ms>
+struct owned_value<std::tuple<Ms...>> {
+    using type = std::tuple<typename owned_value<std::remove_cvref_t<Ms>>::type...>;
+};
+template<typename T>
+using owned_value_t = typename owned_value<std::remove_cvref_t<T>>::type;
+}
+
+// The value an OWNING binding (an `Own[T]` loop variable, `auto&& x = ...`)
+// takes from one step: a step that owns its value hands it over as `T&&`, so
+// the binding holds it in place with no copy and no move; a step that lends an
+// element its source keeps hands over a copy, so neither a move out of the
+// binding nor a write through it reaches the source. A tuple comes back as a
+// value whose every member is its own (`detail::owned_value_t`): a reference
+// member, even of a tuple the step owns, is an element the source keeps, so it
+// is copied -- the binding never aliases the source through a member.
+template<typename S>
+decltype(auto) own_bind(S& step) {
+    if constexpr (!detail::step_owns_value<S>()) {
+        return detail::owned_value_t<decltype(step.get())>(step.get());
+    } else if constexpr (std::is_same_v<
+            detail::owned_value_t<decltype(unwrap_ref_move(step))>,
+            std::remove_cvref_t<decltype(unwrap_ref_move(step))>>) {
+        return unwrap_ref_move(step);
+    } else {
+        return detail::owned_value_t<decltype(unwrap_ref_move(step))>(
+            unwrap_ref_move(step));
+    }
+}
+
 struct NextSentinel {};
 
 template<typename Parent, typename T>
@@ -125,8 +169,23 @@ struct NextIterator {
     }
     decltype(auto) operator*() { return unwrap_ref(*current); }
     decltype(auto) operator*() const { return unwrap_ref(*current); }
+    // The step is this iterator's own: what it owns is bound in place, what
+    // it lends is copied (see take_elem).
+    decltype(auto) __tpy_take() { return own_bind(*current); }
     bool operator!=(NextSentinel) const { return current.has_value(); }
 };
+
+// The begin/end twin of own_bind: the element a begin/end loop hands an
+// OWNING binding (an `Own[T]` loop variable) -- an rvalue reference to a step
+// the iterator itself owns (`__tpy_take()`) or to a move iterator's element;
+// any other element is a container's own, lent to the loop, so the binding
+// gets a copy (a prvalue) and the container keeps it.
+template<typename It>
+decltype(auto) take_elem(It& it) {
+    if constexpr (requires { it.__tpy_take(); }) return it.__tpy_take();
+    else if constexpr (std::is_rvalue_reference_v<decltype(*it)>) return *it;
+    else return detail::owned_value_t<decltype(*it)>(*it);
+}
 
 // CRTP mixin: adds begin()/end() to any class with __next__().
 template<typename Derived, typename T>

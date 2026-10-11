@@ -2974,6 +2974,11 @@ class SemanticContext:
     # (`returned_captured_name`) at an owning slot: sema warned the copy,
     # and the read is copied, never moved.
     live_name_copies: IdentitySet = field(default_factory=IdentitySet)
+    # Per call whose callable argument takes an `Own[X]` parameter fed by an
+    # `Iterable[T]` argument (`map(take, ks, rows)`): argument index ->
+    # the effective `Iterable[Own[X]]` slot, an owning element slot like a
+    # spelled one.
+    own_callback_feeds: IdentityMap = field(default_factory=IdentityMap)
     # The `return <name>` values under a non-suspending finally
     # (liveness.collect_finally_return_candidates; every such return -- the
     # finally can reach the local through aliases/closures, so candidacy is

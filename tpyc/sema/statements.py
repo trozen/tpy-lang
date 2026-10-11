@@ -135,7 +135,7 @@ from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
     async_return_form, AsyncReturnForm, iterator_source_callee,
     peel_value_wrappers, tuple_literal_elems, peel_coerce,
-    binds_fresh_call_value, binds_owned_value,
+    binds_fresh_call_value, binds_owned_value, consuming_iter_of,
 )
 from .expressions import (_nested_def_free_names, _find_list_member,
                           _names_rebound_by, generic_constructor_factory,
@@ -2109,18 +2109,14 @@ class StatementAnalyzer:
         elem = builtin_modules.get_iterable_element_type(iterable_type, registry=self.ctx.registry)
         if elem is not None and elem.is_value_type():
             return None
-        record_info = self.ctx.registry.get_record_for_type(iterable_type)
-        if record_info is None:
+        fi = consuming_iter_of(iterable_type, self.ctx.registry)
+        if fi is None:
             return None
-        overloads = record_info.get_method_overloads("__iter__")
-        for fi in overloads:
-            if fi.is_consuming:
-                # Build type substitution for generic types
-                type_subst = self.type_ops.build_type_substitution(iterable_type)
-                if type_subst:
-                    fi = self.type_ops.substitute_method_type_params(fi, type_subst)
-                return fi
-        return None
+        # Build type substitution for generic types
+        type_subst = self.type_ops.build_type_substitution(iterable_type)
+        if type_subst:
+            fi = self.type_ops.substitute_method_type_params(fi, type_subst)
+        return fi
 
     def _resolve_enum_iterable(self, stmt: TpyForEach) -> NominalType | None:
         """Check if for-each iterates over an enum type (e.g. `for c in Color`).

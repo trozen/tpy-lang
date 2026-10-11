@@ -2169,6 +2169,16 @@ def strip_own_type_args(typ: 'NominalType') -> 'NominalType':
         tuple(unwrap_own(a) for a in typ.inner_types()))
 
 
+def borrow_form_differs(t: 'TpyType') -> bool:
+    """Whether a value of this shape is handed out in a borrow form of its
+    own rather than as a reference to its storage form: a tuple (per-member
+    references, `tuple_to_pointer`), an Optional (`T*`), a union (a pointer
+    variant). Holding such a value as an owned one takes a materialization
+    into its storage type, not a reference binding."""
+    return isinstance(unwrap_ref_type(unwrap_readonly(t)),
+                      (TupleType, OptionalType, UnionType))
+
+
 def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
     """Whether a generator / genexpr yield of this element uses the plain
     `val_or_ref<T>` borrow slot -- i.e. a bare reference type (record / class)
@@ -2206,8 +2216,7 @@ def yield_uses_borrow_slot(elem_type: 'TpyType') -> bool:
         return False
     if isinstance(unwrap_readonly(unwrap_ref_type(elem_type)), OwnType):
         return False
-    bare = unwrap_ref_type(unwrap_readonly(elem_type))
-    return not isinstance(bare, (TupleType, OptionalType, UnionType))
+    return not borrow_form_differs(elem_type)
 
 
 def yield_always_borrows(elem_type: 'TpyType') -> bool:

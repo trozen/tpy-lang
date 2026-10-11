@@ -1080,7 +1080,7 @@ inline OwnRows::OwnRows(const ::tpy::BigInt& n) : ns(({
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& cs = *__beg_0;
+        auto&& cs = ::tpy::take_elem(__beg_0);
         auto& __obj_1 = cs;
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
@@ -1103,7 +1103,7 @@ inline std::vector<::tpy::BigInt> OwnRows::doubled() const {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& cs = *__beg_0;
+            auto&& cs = ::tpy::take_elem(__beg_0);
             auto& __obj_1 = cs;
             auto __beg_1 = __obj_1.begin();
             auto __end_1 = __obj_1.end();

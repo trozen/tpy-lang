@@ -474,8 +474,7 @@ T builtin_max_key(Iter&& iterable, KeyFn&& key) {
 // Whether an iterator's step payload is a reference to an element the source
 // owns (a class instance), rather than a value.
 template<typename S>
-inline constexpr bool steps_reference =
-    requires { typename S::is_val_or_ref_tag; } && requires { requires !S::is_val; };
+inline constexpr bool steps_reference = !detail::step_owns_value<S>();
 
 // -- min/max returning the element itself --
 //

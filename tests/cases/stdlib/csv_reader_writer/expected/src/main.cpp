@@ -20,7 +20,7 @@ void read_basic() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
@@ -41,7 +41,7 @@ void read_quoted() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__len__(row) << " " << ::tpy::str_join("::", row) << "\n" << ::tpy::check_signals;
         }
     }
@@ -58,7 +58,7 @@ void read_custom_delim() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
@@ -75,7 +75,7 @@ void read_skipinitialspace() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }
@@ -92,7 +92,7 @@ void read_empty_fields() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n" << ::tpy::check_signals;
         }
     }
@@ -115,7 +115,7 @@ void read_blank_and_empty() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__len__(row) << " " << (::tpy::str_concat((::tpy::str_concat("[", ::tpy::str_join("|", row))), "]")) << "\n" << ::tpy::check_signals;
         }
     }
@@ -127,7 +127,7 @@ void read_blank_and_empty() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_3);
+            auto&& row = ::tpy::own_bind(*__r_3);
             count = ::tpy::add_check<int32_t>(count, 1);
         }
     }
@@ -153,7 +153,7 @@ void read_then_mutate() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             row.push_back("EXTRA");
             rows.push_back(std::move(row));
         }
@@ -224,7 +224,7 @@ void roundtrip() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::str_join("|", row) << "\n" << ::tpy::check_signals;
         }
     }

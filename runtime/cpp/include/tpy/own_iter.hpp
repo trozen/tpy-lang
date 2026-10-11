@@ -1,9 +1,10 @@
 /**
  * TurboPython Runtime - OwnIter
  *
- * Drain iterator for heap-backed containers (std::vector). Owns a moved
- * vector and yields elements by move. O(1) construction (vector move is
- * pointer swap). Unconsumed elements are destructed when OwnIter is dropped.
+ * Drain iterator over a container it owns: a `std::vector` (moving it in is a
+ * pointer swap) or a `std::array` (a list literal local kept as an array; moved
+ * in element by element). Yields elements by move; unconsumed elements are
+ * destructed when OwnIter is dropped.
  *
  * Implements both C++ range (begin/end with move iterators) and the
  * TurboPython Iterator protocol (__next__/__iter__).
@@ -13,18 +14,20 @@
 
 #include "core.hpp"
 
+#include <array>
+#include <cstddef>
 #include <expected>
 #include <iterator>
 #include <vector>
 
 namespace tpy {
 
-template<typename T>
+template<typename T, typename C = std::vector<T>>
 struct OwnIter {
-    std::vector<T> data;
+    C data;
     std::size_t pos = 0;
 
-    explicit OwnIter(std::vector<T>&& v) : data(std::move(v)) {}
+    explicit OwnIter(C&& c) : data(std::move(c)) {}
 
     // NativeIterable: range-based iteration with move semantics.
     // Do not mix range-based (begin/end) and __next__-based iteration on the
@@ -45,10 +48,15 @@ struct OwnIter {
     }
 };
 
-// Factory: create OwnIter from an rvalue vector.
+// Factory: create OwnIter from an rvalue vector or array.
 template<typename T>
 OwnIter<T> own_iter(std::vector<T>&& v) {
     return OwnIter<T>{std::move(v)};
+}
+
+template<typename T, std::size_t N>
+OwnIter<T, std::array<T, N>> own_iter(std::array<T, N>&& a) {
+    return OwnIter<T, std::array<T, N>>{std::move(a)};
 }
 
 } // namespace tpy

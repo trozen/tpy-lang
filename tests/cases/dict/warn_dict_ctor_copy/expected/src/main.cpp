@@ -39,7 +39,7 @@ void test_dict_ctor_value_types_no_warn() {
 //     print(len(pairs))
 void test_dict_ctor_copy_no_warn() {
     std::vector<std::tuple<std::string, Node>> pairs = {::tpy::tuple_to_storage<std::tuple<std::string, Node>>(std::tuple<std::string, Node>{"a", Node(1)})};
-    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(std::vector<std::tuple<std::string, Node>>(pairs));
+    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(::tpy::own_iter(std::vector<std::tuple<std::string, Node>>(pairs)));
     std::cout << ::tpy::__len__(pairs) << "\n" << ::tpy::check_signals;
 }
 
@@ -59,7 +59,7 @@ void test_dict_ctor_last_use_no_warn() {
 //     d = dict(make_pairs())  # tpyc: ok
 //     print(len(d))
 void test_dict_ctor_rvalue_no_warn() {
-    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(::tpyapp::main::make_pairs());
+    ::tpy::ordered_map<std::string, Node> d = ::tpy::dict_construct<std::string, Node>(::tpy::own_iter(::tpyapp::main::make_pairs()));
     std::cout << ::tpy::__len__(d) << "\n" << ::tpy::check_signals;
 }
 

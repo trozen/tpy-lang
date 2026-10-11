@@ -2140,9 +2140,10 @@ def _for_iter_proto_route(
                 # A plain `Own[T]` element (`for x in source:` over
                 # `Iterable[Own[T]]`): the SAME universal-loop bind --
                 # loop_var_binding peels Own, so a value T is the typed
-                # copy and a ref T the `auto&&` alias -- plus the
-                # consuming movable-locals seed the lowering already keys
-                # off `stmt.elem_type`.
+                # copy, a reference T an OWNED binding and a tuple / union /
+                # optional T an OWNED_STORAGE one (its own value either
+                # way) -- and the binding table's loop row marks the
+                # variable `movable` (`_loop_row`, bindings.py).
                 # Split faces so the value leg cannot witness the ref leg.
                 _witness("foreach.proto_own_elem_val"
                          if unwrap_readonly(

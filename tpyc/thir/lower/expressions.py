@@ -166,7 +166,7 @@ from ...value_category import (
     lends_from_dying_source,
     property_access_returns_cpp_ref,
     frame_factory_callee, call_hands_back_value, call_returns_cpp_ref,
-    is_rvalue_source,
+    handed_over_iter, is_rvalue_source,
     materializing_temp_source,
 )
 from ..reject import (ThirUnsupported, call_reject_reason, expr_kind_tag,
@@ -14545,7 +14545,8 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
             readonly_target=readonly_target, frame_capturing=frame_capturing,
             inline_template=kind is not None
             and kind[0] in ("native", "native_c", "template"),
-            callee_fi=_lend_fi, arg_index=arg_index),
+            callee_fi=_lend_fi, arg_index=arg_index,
+            own_wrap_slot=(analyzer.ctx.own_callback_feeds.get(e) or {}).get(arg_index)),
         lower_owned=lambda owned: _lower_call_arg(
             _peel_coerce(a), owned, lc, declared, temp_args=True,
             callee_fi=_lend_fi, arg_index=arg_index))
@@ -14805,6 +14806,32 @@ def _lower_range_object(call, lc: '_LowerCtx',
                     loc=getattr(call, "loc", None))
 
 
+def _own_element_slot(ptype: 'TpyType | None') -> bool:
+    """`ptype` is an owning element slot: `Iterable[...]` with an `Own[...]`
+    element."""
+    it_pb = _protocol_binding(ptype)
+    return (it_pb is not None and it_pb.name == "Iterable"
+            and any(isinstance(t, OwnType)
+                    for t in getattr(it_pb, "type_args", ()) or ()))
+
+
+def _own_iter_handover(citer: 'FunctionInfo', a: TpyExpr, arg: THIRExpr,
+                       *, move: bool) -> THIRCall:
+    """`a`'s consuming `__iter__` applied to its lowered `arg`; a consuming
+    `__iter__` WITHOUT a native symbol raises (the `std::move(x).__iter__()`
+    spelling is not lowered)."""
+    if not citer.native_name:
+        raise ThirUnsupported(call_reject_reason("expr.call"))
+    native = qualify_native_name(citer.native_name)
+    return THIRCall(
+        result_type=arg.result_type or VoidType(),
+        callee="__iter__",
+        cpp_template=(f"{native}(std::move({{0}}))" if move
+                      else f"{native}({{0}})"),
+        args=(arg,),
+        loc=getattr(a, "loc", None))
+
+
 def _consuming_iter_wrap(a: TpyExpr, ptype: 'TpyType | None',
                          lc: '_LowerCtx',
                          declared: dict[str, TpyType]) -> 'THIRCall | None':
@@ -14813,38 +14840,39 @@ def _consuming_iter_wrap(a: TpyExpr, ptype: 'TpyType | None',
     -> `::tpy::own_iter(std::move(b))`). The wrap
     fires only for an `Own[...]`-element slot; a borrowing slot
     (`join(items: Iterable[str])`) binds the name bare even at its last
-    use. Returns None when the slice does not apply; a consuming
-    __iter__ WITHOUT a native symbol raises (the `std::move(x).__iter__()`
-    spelling is not lowered)."""
-    it_pb = _protocol_binding(ptype)
-    if it_pb is None or it_pb.name != "Iterable":
-        return None
-    if not any(isinstance(t, OwnType)
-               for t in getattr(it_pb, "type_args", ()) or ()):
+    use. Returns None when the slice does not apply."""
+    if not _own_element_slot(ptype):
         return None
     if not isinstance(a, TpyName) or not _is_move_source(a, lc):
         return None
-    at = lc.analyzer.get_expr_type(a)
-    if isinstance(at, OwnType):
-        at = at.wrapped
-    rec = lc.analyzer.registry.get_record_for_type(at)
-    citer = next(
-        (fi2 for fi2 in (rec.get_method_overloads("__iter__")
-                         if rec is not None else [])
-         if fi2.is_consuming), None)
+    citer = handed_over_iter(lc.analyzer, a, dead=True)
     if citer is None:
         return None
-    if not citer.native_name:
-        raise ThirUnsupported(call_reject_reason("expr.call"))
     _witness("call.own_iter_arg")
-    return THIRCall(
-        result_type=lc.analyzer.get_expr_type(a) or VoidType(),
-        callee="__iter__",
-        cpp_template=(
-            f"{qualify_native_name(citer.native_name)}"
-            "(std::move({0}))"),
-        args=(_lower_expr(a, lc, declared),),
-        loc=getattr(a, "loc", None))
+    return _own_iter_handover(citer, a, _lower_expr(a, lc, declared),
+                              move=True)
+
+
+def _rvalue_iter_handover(a: TpyExpr, ptype: 'TpyType | None',
+                          lc: '_LowerCtx', arg: THIRExpr) -> THIRExpr:
+    """A fresh temporary at an owning element slot whose element is a
+    reference type hands its elements over through its consuming
+    `__iter__` (`total(make())` -> `total(::tpy::own_iter(make()))`), so
+    the callee's steps own them and its loop variable binds in place
+    rather than copying each one. A hoisted temp is a named local, moved
+    from; a prvalue binds bare."""
+    if isinstance(a, TpyName) or not _own_element_slot(ptype):
+        return arg
+    it_pb = _protocol_binding(ptype)
+    if not any(isinstance(t, OwnType) and contains_reference_type(t.wrapped)
+               for t in it_pb.type_args):
+        return arg
+    citer = handed_over_iter(lc.analyzer, a, dead=False)
+    if citer is None:
+        return arg
+    _witness("call.own_iter_rvalue_arg")
+    return _own_iter_handover(citer, a, arg,
+                              move=isinstance(arg, THIRArgTemp))
 
 
 def _lower_dyn_own_conformer(a: TpyExpr, ptype: 'TpyType | None',
@@ -15008,6 +15036,16 @@ def arg_lend_ok(fi: 'FunctionInfo | None', index: int) -> bool:
 
 
 def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
+                    declared: dict[str, TpyType], **kw) -> THIRExpr:
+    """One call argument against its param slot (`_lower_call_arg_at`),
+    then a fresh temporary at an owning element slot handed over
+    (`_rvalue_iter_handover`) -- whichever arm rendered it."""
+    arg = _lower_call_arg_at(a, ptype, lc, declared, **kw)
+    return _rvalue_iter_handover(a, kw.get("own_wrap_slot") or ptype, lc,
+                                 arg)
+
+
+def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     declared: dict[str, TpyType], *, temp_args: bool = False,
                     nested_temps: bool = False,
                     readonly_target: bool = False,
@@ -15031,7 +15069,11 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                     # or the arm's own shape guard admits only bare names and
                     # literals, which never lend.
                     callee_fi: 'FunctionInfo | None' = None,
-                    arg_index: int = -1) -> THIRExpr:
+                    arg_index: int = -1,
+                    # The argument's effective `Iterable[Own[X]]` slot where its
+                    # declared `Iterable[T]` feeds a callable argument's
+                    # `Own[X]` parameter (sema's `own_callback_feeds`).
+                    own_wrap_slot: 'TpyType | None' = None) -> THIRExpr:
     """Lower one call argument against its param slot. A str literal into a
     char slot renders as a target-typed char literal (via
     `_lower_char_targeted`); a bytes literal into a bytes/BytesView slot
@@ -16563,7 +16605,8 @@ def _lower_call_arg(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         # arg; corpus-verified bare), a still-live name, a family with NO
         # consuming __iter__ (Array, Span) -- binds bare, because the wrap
         # keys those facts itself and returns None.
-        wrapped = _consuming_iter_wrap(a, ptype, lc, declared)
+        wrapped = _consuming_iter_wrap(a, own_wrap_slot or ptype, lc,
+                                       declared)
         if wrapped is not None:
             return wrapped
         return _lower_expr(a, lc, declared)

@@ -1,0 +1,4 @@
+Documented divergence: an Own loop variable or Own callback parameter fed
+a live source holds a COPY of each element (warned at the call site), so a
+write through it never reaches the caller's element; CPython passes the
+same object and the write shows up in the source.

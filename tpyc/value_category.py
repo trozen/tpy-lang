@@ -27,7 +27,7 @@ from .typesys import (
     declares_whole_result_following,
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
-    unwrap_send_sync,
+    unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -39,7 +39,7 @@ from .parse import (
     TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
     is_property_getter_read,
 )
-from .type_def_registry import (is_bool_type, is_borrowing_view_type,
+from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
                                 is_str_type, is_str_view_type)
 from . import qnames
@@ -657,6 +657,39 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
             return not call_returns_cpp_ref(analyzer, expr.resolved_function_info)
         return True  # Default: treat unknown calls as rvalue
     return True  # Default: rvalue
+
+
+def consuming_iter_of(t: 'TpyType | None', registry: Any) -> 'FunctionInfo | None':
+    """The `__iter__(self: Own[Self])` overload of `t`'s class: iterating a
+    value of `t` the caller gives up hands over the elements it owns. A
+    container literal not decided yet asks the container it spells; a
+    readonly value has none (its storage is not the caller's to give up)."""
+    if not isinstance(t, TpyType):
+        return None
+    if isinstance(t, OwnType):
+        t = t.wrapped
+    record = registry.get_record_for_type(bound_as_spelled(t, lists=True))
+    if record is None:
+        return None
+    return next((fi for fi in record.get_method_overloads("__iter__")
+                 if fi.is_consuming), None)
+
+
+def handed_over_iter(analyzer: ValueCategoryAnalyzer, source: TpyExpr, *,
+                     dead: bool) -> 'FunctionInfo | None':
+    """The consuming `__iter__` through which `source`, at an owning element
+    slot, hands its elements over: `source` is given up -- a name at its last
+    use (`dead`, the caller's movability verdict) or a fresh temporary -- and
+    its type defines one. None when the source keeps its elements."""
+    if not (dead or (not isinstance(source, TpyName)
+                     and is_rvalue_source(analyzer, source))):
+        return None
+    t = analyzer.get_expr_type(source)
+    if (isinstance(source, PendingListType.written_as())
+            and isinstance(t, NominalType) and is_array(t)):
+        # A list literal kept as an Array is still the list it spells.
+        t = make_list(t.type_args[0])
+    return consuming_iter_of(t, analyzer.registry)
 
 
 def for_source_is_rvalue(stmt: TpyForEach,

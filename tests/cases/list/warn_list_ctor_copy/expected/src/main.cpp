@@ -39,7 +39,7 @@ void test_list_ctor_value_type_no_warn() {
 //     print(len(b))
 void test_list_ctor_copy_no_warn() {
     std::vector<Node> b = {Node(1)};
-    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(std::vector<Node>(b));
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::own_iter(std::vector<Node>(b)));
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
@@ -60,7 +60,7 @@ void test_list_ctor_last_use_no_warn() {
 //     b = list([Node(int32(2))])  # tpyc: ok
 //     print(len(a))
 void test_list_ctor_rvalue_no_warn() {
-    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpyapp::main::make_nodes());
+    std::vector<Node> a = ::tpy::construct<std::vector<Node>>(::tpy::own_iter(::tpyapp::main::make_nodes()));
     std::vector<Node> b = std::vector<Node>({Node(2)});
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }

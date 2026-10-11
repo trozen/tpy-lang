@@ -1,0 +1,6 @@
+loop 11 1
+map 11
+map after 1
+append only 3 [[1, 2]]
+bump only 2 1
+closure write 3 [[1, 2]]

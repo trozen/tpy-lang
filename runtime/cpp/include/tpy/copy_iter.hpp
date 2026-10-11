@@ -62,6 +62,9 @@ struct CopyIter {
             return *this;
         }
         T& operator*() { return *current; }
+        // `current` is the copy this adapter made, so an owning binding takes
+        // it in place (take_elem).
+        T&& __tpy_take() { return std::move(*current); }
         bool operator!=(Sentinel) const { return current.has_value(); }
     };
 

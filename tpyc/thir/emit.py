@@ -24,10 +24,11 @@ from ..codegen_cpp.context import (
     any_isinstance_check, cpp_bytes_literal_owned, cpp_bytes_literal_span,
     cpp_string_literal_expr, escape_cpp_char, escape_cpp_name,
     escape_cpp_string, expand_cpp_template, loop_var_binding,
+    owned_storage_binding,
     qualify_native_name,
 )
 from ..codegen_cpp import emit_prims
-from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue
+from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue, owns_loop_var
 from ..type_def_registry import (
     is_array, is_big_int_type, is_bytearray_type, is_bytes_type,
     is_bytes_view_type, is_dict,
@@ -935,8 +936,14 @@ def _emit_array_comprehension(e: 'THIRArrayComprehension',
             buf.write(f"{ind2}{e.unpack_target_cpps[i]} "
                       f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
     else:
-        binding = loop_var_binding(
-            e.elem_type, cpp_var, f"{obj}[__i_{n}]", False)
+        elem = f"{obj}[__i_{n}]"
+        if owns_loop_var(e.elem_type):
+            # The array is built by index from a container the prelude
+            # borrows, so an owned element is always a copy of the indexed
+            # one, declared in storage of its own.
+            binding = owned_storage_binding(e.elem_type, cpp_var, elem)
+        else:
+            binding = loop_var_binding(e.elem_type, cpp_var, elem, False)
         buf.write(f"{ind2}{binding}\n")
     buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
     buf.write(f"{ind1}}});\n")
@@ -2255,7 +2262,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
                               f"*{beg}", stmt.const_loop_var,
                               hoisted=stmt.hoist_loop_var,
                               consuming=stmt.consuming,
-                              hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp)
+                              hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp,
+                              owned_step_expr=f"::tpy::take_elem({beg})")
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, indent_level + 1, state, scope_owner=stmt, scope_role="loop")
@@ -2301,7 +2309,8 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
     out.write(f"{inner}auto {r} = {itr}.__next__();\n")
     out.write(f"{inner}if (!{r}.has_value()) break;\n")
     binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
-                               f"::tpy::unwrap_ref(*{r})", stmt.const_loop_var)
+                               f"::tpy::unwrap_ref(*{r})", stmt.const_loop_var,
+                               owned_step_expr=f"::tpy::own_bind(*{r})")
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
     _emit_stmts(out, stmt.body, lvl + 1, state)

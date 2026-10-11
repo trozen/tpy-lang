@@ -7,7 +7,7 @@
 | Copy warning: `Iterable[Own[T]]` param coercion with Own-stripping | Done |
 | `copy_iter(x)` -- explicit element-by-element copy acknowledgment | Done (CopyIter codegen + CopyIterType sema type) |
 | `own_iter(x)` -- explicit consuming iteration | Done (list via own_iter(); set/dict via auto-consuming __iter__) |
-| `OwnIter[T]` / `OwnIterSet[T]` / `OwnIterDict[K,V]` runtime types | Done (vector, ordered_set, ordered_map) |
+| `OwnIter[T]` / `OwnIterSet[T]` / `OwnIterDict[K,V]` runtime types | Done (vector or std::array, ordered_set, ordered_map) |
 | `CopyIter[T]` runtime type (element-by-element copy adapter) | Done (with begin/end for for-loops) |
 | `CopyIterType` / `OwnIterType` as concrete sema types | Done |
 | `__iter__(self: Own[Self]) -> Iterator[Own[T]]` overload for list | Done (used by explicit `b.__iter__()` at last use) |
@@ -156,6 +156,39 @@ the difference is **observable** (the source is still alive after the operation)
 - Last use of a container -- source is dead after this, no observable
   aliasing divergence
 
+**Error instead of a warning** when the element is `@nocopy`: a live source
+at an owning element slot would need a copy it cannot make, so it is refused
+with the non-copyable message a direct `Own[T]` argument gets (`cannot copy
+non-copyable type 'Cell' into owned storage ...`). A dead source still moves.
+
+The same slot, unspelled: an `Iterable[T]` argument whose elements a callable
+argument takes as `Own[X]` (`map(take, ks, rows)` with `take(k, xs:
+Own[list[int32]])`) is checked as an `Iterable[Own[X]]` slot -- warned for a
+live source, refused for a live `@nocopy` one, handed over
+(`own_iter(std::move(rows))`) at its last use.
+
+A fresh container temporary at an owning element slot -- a call result or a
+list literal (`total(make_rows())`, `total([C(1), C(2)])`), whose element is a
+reference type -- is handed over through its type's consuming `__iter__` the
+same way (`total(::tpy::own_iter(make_rows()))`), so the callee's steps own
+their values rather than lending the temporary's elements to a copy.
+
+An `Own[T]` loop variable over such a slot always holds its own value,
+whatever the body does with it (reads it, writes it, moves it on): moved in
+when the caller handed the container over (an owning step), copied when the
+caller kept it (a lent step). So the call-site copy warning and the `@nocopy`
+refusal above are always true. One runtime helper picks the binding per
+instantiation from the step type -- `auto&& x = ::tpy::own_bind(*__r);` in a
+statement loop, its begin/end twin `auto&& x = ::tpy::take_elem(__beg);` in a
+comprehension: an owned step binds as `T&&` in place (no copy, no move), a
+lent one binds a copy. A tuple, union or optional element is declared in
+storage of its own instead (`T x(::tpy::own_bind(*__r));`), since a step of
+these may carry borrow-form pointers; `own_bind` itself hands a tuple back
+with every reference member copied into a value of its own, so no binding
+aliases the source through a member. Statement loops and
+comprehensions bind alike; a generator or `async` frame binds its loop
+variable by its own rule (`BUGS.md#frame-own-loop-var-copies-owned-step`).
+
 In a generic body the element type decides per instantiation, so a
 reference-capable `T` hedges ("may copy T elements if not a value type") and
 a `T: ValueType` bound stays quiet.
@@ -282,15 +315,16 @@ class MyStack[T]:
 
 ## Concrete types
 
-### `OwnIter[T]` -- for heap-backed containers (list[T])
+### `OwnIter[T]` -- for list[T]
 
-`OwnIter[T]` is the drain iterator for `list[T]`. It owns a moved `std::vector<T>`
-and exposes move iterators over it.
+`OwnIter[T]` is the drain iterator for `list[T]`. It owns the moved container
+-- a `std::vector<T>`, or a `std::array<T, N>` for a list literal local kept as
+a fixed array -- and exposes move iterators over it.
 
 ```cpp
-template<typename T>
+template<typename T, typename C = std::vector<T>>
 struct OwnIter {
-    std::vector<T> data;
+    C data;
     std::size_t pos = 0;
 
     auto begin() { return std::make_move_iterator(data.begin()); }
@@ -304,7 +338,8 @@ struct OwnIter {
 ```
 
 - Freely returnable: owns heap storage, no dangling risk.
-- O(1) construction: `std::vector` move is pointer swap.
+- Construction: O(1) for a `std::vector` (the move is a pointer swap); a
+  `std::array` moves in element by element.
 - Unconsumed elements are destructed normally when `OwnIter` is dropped.
 
 ### `CopyIter[T]` -- for `copy_iter()` function
@@ -373,7 +408,7 @@ semantics guarantee). No special cleanup needed.
 
 | Type | Ownership | Returnable | Borrow tracked |
 |------|-----------|------------|----------------|
-| `OwnIter[T]` | Owns `std::vector<T>` | Yes | No |
+| `OwnIter[T]` | Owns `std::vector<T>` or `std::array<T, N>` | Yes | No |
 | `CopyIter[T]` | Borrows source iterator | Depends on inner | Yes |
 | `ArrayListDrainIter[T]` | Borrows inline storage | No | Yes |
 

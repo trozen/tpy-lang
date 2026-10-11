@@ -1,0 +1,43 @@
+free 2 2
+free explicit 2 2
+method 1 2
+closure 2 2
+try 2 2
+match 2 2
+comp 2 2
+gen 2
+gen after 2
+async 2 2
+capture 2 2
+tuple 1 [(0, [1, 2])]
+union 2 [[1, 2], 'a']
+read-only 2 [[1, 2]]
+extend [1, 2] [[1, 2]]
+del 2 [[1, 2]]
+optional slot 2 1 [1]
+consuming method 3 2 [2]
+optional elements 2 [[1, 2], None]
+return [1, 2] [[1, 2]]
+dead 3
+own_iter 3
+literal 9
+rvalue literal 3
+rvalue call 13
+rvalue hook literal 3
+rvalue hook call 8
+copy 1
+copy 2
+copy_iter 2 50 1
+comp own_iter [1, 2]
+comp dead [3]
+map live 1
+map live after 1
+map copy_iter 1
+map rvalue 5
+map dead 6
+map view 1
+map view after 1
+map gen 1
+map gen 1
+map gen after 1
+comp gen [[7], [7]] [7]

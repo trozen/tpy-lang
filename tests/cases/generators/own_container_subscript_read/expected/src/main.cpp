@@ -27,7 +27,7 @@ void read_dicts() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& d = ::tpy::unwrap_ref(*__r_1);
+            auto&& d = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(d, "k") << "\n" << ::tpy::check_signals;
         }
     }
@@ -44,7 +44,7 @@ void read_list_normalized() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& xs = ::tpy::unwrap_ref(*__r_1);
+            auto&& xs = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(xs, -1) << "\n" << ::tpy::check_signals;
             std::cout << ::tpy::__getitem__(xs, 0) << "\n" << ::tpy::check_signals;
         }
@@ -73,7 +73,7 @@ void list_oob_raises() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& xs = ::tpy::unwrap_ref(*__r_1);
+            auto&& xs = ::tpy::own_bind(*__r_1);
             {
                 try {
                     std::cout << ::tpy::__getitem__(xs, 99) << "\n" << ::tpy::check_signals;
@@ -102,7 +102,7 @@ void dict_missing_raises() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& d = ::tpy::unwrap_ref(*__r_1);
+            auto&& d = ::tpy::own_bind(*__r_1);
             {
                 try {
                     std::cout << ::tpy::__getitem__(d, "absent") << "\n" << ::tpy::check_signals;

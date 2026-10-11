@@ -3288,6 +3288,48 @@ class CallAnalyzer:
             f"evaluated operand; assign it to a local before the expression "
             f"to make the unconditional build explicit", arg)
 
+    def check_own_callback_feeds(self, expr: TpyCall,
+                                 params: 'list[ParamInfo]',
+                                 args: 'list[TpyExpr]',
+                                 arg_types: 'list[TpyType | None]') -> None:
+        """An iterable argument whose elements a callable argument receives
+        as `Own[X]` is an owning element slot: `params` (the callee's
+        declaration, type parameters unsubstituted) types the callable slot
+        `Fn[[..., T, ...], U]` and the iterable slot `Iterable[T]` with the
+        same `T`, and the callable's own parameter there is `Own[X]`. Each such
+        argument gets the `Iterable[Own[X]]` parameter's element-copy check,
+        and that effective slot lands in `ctx.own_callback_feeds` for the
+        lowering."""
+        owned_elems: dict[str, OwnType] = {}
+        for p, arg_t in zip(params, arg_types):
+            slot = unwrap_send_sync(unwrap_ref_type(p.type))
+            fn_t = (unwrap_send_sync(unwrap_ref_type(unwrap_readonly(arg_t)))
+                    if arg_t is not None else None)
+            if not (isinstance(slot, CallableType) and isinstance(fn_t, CallableType)):
+                continue
+            for slot_pt, fn_pt in zip(slot.param_types, fn_t.param_types):
+                if isinstance(slot_pt, TypeParamRef) and isinstance(fn_pt, OwnType):
+                    owned_elems[slot_pt.name] = fn_pt
+        if not owned_elems:
+            return
+        feeds: dict[int, TpyType] = {}
+        for i, (p, arg, arg_t) in enumerate(zip(params, args, arg_types)):
+            slot = unwrap_send_sync(unwrap_ref_type(p.type))
+            if not (isinstance(slot, NominalType)
+                    and slot.qualified_name() == qnames.ITERABLE
+                    and len(slot.type_args) == 1
+                    and isinstance(slot.type_args[0], TypeParamRef)
+                    and slot.type_args[0].name in owned_elems
+                    and arg_t is not None):
+                continue
+            owning_slot = slot.with_inner_types((owned_elems[slot.type_args[0].name],))
+            feeds[i] = owning_slot
+            self.compat.check_type_compatible(
+                arg_t, owning_slot, f"argument '{p.name}'", source_expr=arg,
+                coercion_ctx=CoercionContext.ARG)
+        if feeds:
+            self.ctx.own_callback_feeds[expr] = feeds
+
     def check_own_param(self, arg: TpyExpr, arg_type: TpyType,
                         pname: str, ptype: TpyType) -> None:
         """Run Own[T] / Own[T]|None param checks: @nocopy error and unnecessary-copy warning.
@@ -5426,6 +5468,9 @@ class CallAnalyzer:
             self._validate_lvalue_params(expr)
             self._check_error_return_handled(expr, matched)
             self._record_mutation_call_edges(expr)
+            if result.matched_origin is not None:
+                self.check_own_callback_feeds(
+                    expr, result.matched_origin[0].params, expr.args, arg_types)
             for i, (arg, arg_t, (pname, ptype)) in enumerate(zip(expr.args, arg_types, matched.params)):
                 self._maybe_coerce_empty_list_to_protocol(arg_t, ptype)
                 self.check_own_param(arg, arg_t, pname, ptype)

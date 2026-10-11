@@ -86,7 +86,7 @@
 // varargs<T>: dual-mode span for *args (direct contiguous or indirect pointer array)
 #include "varargs.hpp"
 
-// OwnIter: drain iterator for std::vector (depends on core)
+// OwnIter: drain iterator for std::vector / std::array (depends on core)
 #include "own_iter.hpp"
 
 // CopyIter: copying iterator adapter (depends on dunder for __iter__)

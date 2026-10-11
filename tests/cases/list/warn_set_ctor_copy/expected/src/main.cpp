@@ -39,7 +39,7 @@ void test_set_ctor_value_type_no_warn() {
 //     print(len(b))
 void test_set_ctor_copy_no_warn() {
     std::vector<Node> b = {Node(1)};
-    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(std::vector<Node>(b));
+    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(::tpy::own_iter(std::vector<Node>(b)));
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
@@ -60,7 +60,7 @@ void test_set_ctor_last_use_no_warn() {
 //     b = set([Node(int32(2))])  # tpyc: ok
 //     print(len(a))
 void test_set_ctor_rvalue_no_warn() {
-    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(::tpyapp::main::make_nodes());
+    ::tpy::ordered_set<Node> a = ::tpy::set_construct<Node>(::tpy::own_iter(::tpyapp::main::make_nodes()));
     ::tpy::ordered_set<Node> b = ::tpy::ordered_set<Node>({Node(2)});
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }

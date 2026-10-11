@@ -164,7 +164,7 @@ void main() {
         auto __beg_9 = __obj_9.begin();
         auto __end_9 = __obj_9.end();
         for (; __beg_9 != __end_9; ++__beg_9) {
-            auto&& node = *__beg_9;
+            auto&& node = ::tpy::take_elem(__beg_9);
             __result.push_back(std::move(node));
         }
         std::move(__result);

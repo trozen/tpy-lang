@@ -405,7 +405,7 @@ struct ArrayList {
     //         self._size += u_size
     //     elif isinstance(items, Iterable):
     //         for item in items:
-    //             self.append(copy(item))
+    //             self.append(item)
     template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
     void extend(T_items& items) {
@@ -421,8 +421,8 @@ struct ArrayList {
             for (;;) {
                 auto __r_1 = __itr_0.__next__();
                 if (!__r_1.has_value()) break;
-                const auto& item = ::tpy::unwrap_ref(*__r_1);
-                this->append(T(item));
+                auto&& item = ::tpy::own_bind(*__r_1);
+                this->append(std::move(item));
             }
         }
     }

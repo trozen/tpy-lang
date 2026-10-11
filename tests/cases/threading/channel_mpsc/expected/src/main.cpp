@@ -30,7 +30,7 @@ void main() {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        const auto& item = ::tpy::unwrap_ref(*__r_1);
+        auto&& item = ::tpy::own_bind(*__r_1);
         total = ::tpy::add_check<int32_t>(total, item.v);
         count = ::tpy::add_check<int32_t>(count, 1);
     }

@@ -126,7 +126,7 @@ void main() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            auto&& snap = ::tpy::unwrap_ref(*__r_3);
+            auto&& snap = ::tpy::own_bind(*__r_3);
             snap.push_back(42);
             std::cout << "self_yield_own:" << " " << ::tpy::__len__(snap) << "\n" << ::tpy::check_signals;
         }

@@ -466,6 +466,36 @@ template<has_call_op F> struct fn_params<F> : fn_params<decltype(&std::remove_cv
 
 template<typename F, size_t N>
 using fn_param_t = std::tuple_element_t<N, typename fn_params<std::remove_cvref_t<F>>::types>;
+
+// Whether the source a combinator holds as argument form X (`C&` borrowed, `C`
+// owned) hands out elements it OWNS: only a container the combinator holds
+// (see owned_source_member_t). `void` is a source held by no one but the
+// caller.
+template<typename X>
+constexpr bool source_owns_elements() {
+    if constexpr (std::is_void_v<X> || std::is_lvalue_reference_v<X>) return false;
+    else return std::is_rvalue_reference_v<owned_source_member_t<X>>;
+}
+
+}
+
+// One step's element as callback parameter P. A reference parameter binds the
+// element itself (a callback that mutates it mutates the source, as in
+// CPython). An owning parameter (`Own[T]`: `T&&` or by value) takes the
+// element's value: moved when nothing else holds it -- the step owns it, or the
+// source is a container the combinator owns -- and otherwise COPIED, so a
+// caller's container keeps its element.
+template<typename P, typename Src, typename V>
+decltype(auto) callback_arg(V& step) {
+    if constexpr (std::is_lvalue_reference_v<P>) {
+        return unwrap_ref(step);
+    } else if constexpr (detail::step_owns_value<V>()) {
+        return unwrap_ref_move(step);
+    } else if constexpr (detail::source_owns_elements<Src>()) {
+        return std::move(unwrap_ref(step));
+    } else {
+        return std::remove_cvref_t<P>(unwrap_ref(step));
+    }
 }
 
 // lvalue: direct iteration for containers (preserves references),
@@ -817,8 +847,9 @@ class map_multi_iter : public next_iter_mixin<map_multi_iter<U, Fn, IterTuple>, 
         auto results = std::tuple{std::get<Is>(iters_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
             return tpy::make_unexpected(StopIteration{});
-        // static_cast forwards Own[T] args (Point&&) as rvalues, others as lvalues
-        return fn_(static_cast<detail::fn_param_t<Fn, Is>>(unwrap_ref(*std::get<Is>(results)))...);
+        // Every iterator here is the caller's or lends from the caller's
+        // storage, so only a step's own value may move.
+        return fn_(callback_arg<detail::fn_param_t<Fn, Is>, void>(*std::get<Is>(results))...);
     }
 
 public:
@@ -847,7 +878,9 @@ class owning_map_multi_iter
         auto results = std::tuple{std::get<Is>(srcs_).__next__()...};
         if ((!std::get<Is>(results).has_value() || ...))
             return tpy::make_unexpected(StopIteration{});
-        return fn_(static_cast<detail::fn_param_t<Fn, Is>>(unwrap_ref(*std::get<Is>(results)))...);
+        return fn_(callback_arg<detail::fn_param_t<Fn, Is>,
+                                std::tuple_element_t<Is, std::tuple<Containers...>>>(
+            *std::get<Is>(results))...);
     }
 
 public:

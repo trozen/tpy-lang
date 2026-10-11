@@ -23,7 +23,7 @@ from ..parse.nodes import (TpyExpr, TpyFieldAccess, TpyName, TpySubscript,
 from ..typesys import pointer_repr_optional
 from ..typesys import (
     OwnType, TpyType, TupleType, UnionType,
-    is_ptr_variant_union, property_getter_returns_storage_ref,
+    borrow_form_differs, is_ptr_variant_union, property_getter_returns_storage_ref,
     unwrap_qualifiers, unwrap_readonly,
 )
 from ..value_category import call_returns_cpp_ref
@@ -35,22 +35,46 @@ class LoopBinding(Enum):
     REFERENCE = auto()
     CONST_REFERENCE = auto()
     CONST_TYPED_REFERENCE = auto()
+    # An `Own[T]` loop variable of a plain reference type T holds its own
+    # value: `auto&& x = <owned step>`, where the owned step (`own_bind`,
+    # `take_elem`) is the step's value itself when the iterator owns it and a
+    # copy when the source only lends it -- so no move out of x and no write
+    # through it reaches the source.
+    OWNED = auto()
+    # The same for an `Own[...]` element whose borrow form differs from its
+    # storage form (`borrow_form_differs`: a tuple, union or optional),
+    # declared with its storage type: a step of these may carry reference
+    # members or borrow-form pointers, which only a materialization into
+    # storage of its own turns into an owned value.
+    OWNED_STORAGE = auto()
 
 
 def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
                       hoisted: bool = False, consuming: bool = False) -> LoopBinding:
-    if isinstance(elem_type, OwnType):
+    owned = isinstance(elem_type, OwnType)
+    if owned:
         elem_type = elem_type.wrapped
     if hoisted:
         return LoopBinding.ASSIGN
     if consuming:
         return LoopBinding.REFERENCE
+    if owned and borrow_form_differs(elem_type):
+        return LoopBinding.OWNED_STORAGE
     if isinstance(unwrap_readonly(elem_type), (UnionType, TupleType)):
         return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
     if elem_type.is_value_type():
         return (LoopBinding.CONST_TYPED_REFERENCE if const_loop_var and elem_type.is_expensive_copy()
                 else LoopBinding.VALUE)
+    if owned:
+        return LoopBinding.OWNED
     return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
+
+
+def owns_loop_var(elem_type: TpyType) -> bool:
+    """Whether a loop variable over `elem_type` holds its own value (an
+    `Own[T]` element of a reference type T: OWNED / OWNED_STORAGE)."""
+    return loop_binding_kind(elem_type, False) in (LoopBinding.OWNED,
+                                                   LoopBinding.OWNED_STORAGE)
 
 
 def _expr_type(analyzer, expr: TpyExpr) -> TpyType | None:

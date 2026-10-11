@@ -711,11 +711,20 @@ def enum_member_cpp(enum_type: TpyType, current_module: str, member: str) -> str
     return f"{enum_cpp_name(enum_type, current_module, einfo=einfo)}::{member_cpp}"
 
 
+def owned_storage_binding(elem_type: OwnType, cpp_var: str,
+                          init_expr: str) -> str:
+    """An `Own[T]` variable declared with T's storage type, initialized from
+    `init_expr` -- an owned step, or a copy of a lent element."""
+    storage = OwnType(unwrap_readonly(elem_type.wrapped)).to_cpp_return()
+    return f"{storage} {cpp_var}({init_expr});"
+
+
 def loop_var_binding(
     elem_type: TpyType, cpp_var: str, deref_expr: str,
     const_loop_var: bool, hoisted: bool = False,
     consuming: bool = False,
     hoisted_tuple_lift_cpp: str | None = None,
+    owned_step_expr: str | None = None,
 ) -> str:
     """Return the C++ loop variable binding line (no trailing newline).
 
@@ -730,8 +739,18 @@ def loop_var_binding(
     declared in BORROW form (std::tuple<..., T*>, see the branch-hoist
     pre-declaration), so the per-iteration assignment from the storage
     element must lift element-wise; the caller passes the borrow C++ type.
+
+    owned_step_expr: the loop's step as an owned value for an `Own[T]` loop
+    variable (OWNED / OWNED_STORAGE) -- the step's own value as an rvalue
+    reference when the iterator owns it, else a copy.
     """
-    kind = loop_binding_kind(elem_type, const_loop_var, hoisted=hoisted, consuming=consuming)
+    kind = loop_binding_kind(elem_type, const_loop_var, hoisted=hoisted,
+                             consuming=consuming)
+    if kind in (LoopBinding.OWNED, LoopBinding.OWNED_STORAGE):
+        assert owned_step_expr is not None, "an Own loop variable needs the owned step"
+        if kind is LoopBinding.OWNED:
+            return f"auto&& {cpp_var} = {owned_step_expr};"
+        return owned_storage_binding(elem_type, cpp_var, owned_step_expr)
     if isinstance(elem_type, OwnType):
         elem_type = elem_type.wrapped
     match kind:

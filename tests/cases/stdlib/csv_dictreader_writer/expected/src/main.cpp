@@ -20,7 +20,7 @@ void read_header_derived() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << " " << ::tpy::__getitem__(row, "city") << "\n" << ::tpy::check_signals;
         }
     }
@@ -44,7 +44,7 @@ void read_explicit_fieldnames() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(row, "name") << " " << ::tpy::__getitem__(row, "age") << "\n" << ::tpy::check_signals;
         }
     }
@@ -63,7 +63,7 @@ void read_quoted() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(row, "name") << " " << "::" << " " << ::tpy::__getitem__(row, "note") << "\n" << ::tpy::check_signals;
         }
     }
@@ -86,7 +86,7 @@ void read_short_row() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__len__(row) << " " << ::tpy::print_bool((row.contains("c"))) << " " << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n" << ::tpy::check_signals;
         }
     }
@@ -108,7 +108,7 @@ void read_long_row() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(row, "a") << " " << ::tpy::__getitem__(row, "b") << "\n" << ::tpy::check_signals;
         }
     }
@@ -198,7 +198,7 @@ void roundtrip() {
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            const auto& row = ::tpy::unwrap_ref(*__r_1);
+            auto&& row = ::tpy::own_bind(*__r_1);
             std::cout << ::tpy::__getitem__(row, "name") << " " << "->" << " " << ::tpy::__getitem__(row, "note") << "\n" << ::tpy::check_signals;
         }
     }

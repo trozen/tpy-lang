@@ -45,7 +45,7 @@ void test_extend_value_type_no_warn() {
 void test_extend_copy_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
     std::vector<Node> b = {Node(1)};
-    ::tpy::list_extend(a, std::vector<Node>(b));
+    ::tpy::list_extend(a, ::tpy::own_iter(std::vector<Node>(b)));
     std::cout << ::tpy::__len__(b) << "\n" << ::tpy::check_signals;
 }
 
@@ -70,8 +70,8 @@ void test_extend_last_use_no_warn() {
 //     print(len(a))
 void test_extend_rvalue_no_warn() {
     std::vector<Node> a = std::vector<Node>{};
-    ::tpy::list_extend(a, ::tpyapp::main::make_nodes());
-    ::tpy::list_extend(a, std::array<Node, 1>{Node(2)});
+    ::tpy::list_extend(a, ::tpy::own_iter(::tpyapp::main::make_nodes()));
+    ::tpy::list_extend(a, ::tpy::own_iter(std::array<Node, 1>{Node(2)}));
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 

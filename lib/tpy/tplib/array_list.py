@@ -175,7 +175,7 @@ class ArrayList[T, N: int](Spannable[T], MutableSequence[T]):
             self._size += u_size
         elif isinstance(items, Iterable):
             for item in items:
-                self.append(copy(item))
+                self.append(item)
 
     def clear(self) -> None:
         self._storage.drop_n(uint32(0), self._size)

@@ -240,7 +240,7 @@ int32_t keysum(T_xs&& xs) {
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
-        const auto& it = ::tpy::unwrap_ref(*__r_1);
+        auto&& it = ::tpy::own_bind(*__r_1);
         s = ::tpy::add_check<int32_t>(s, it.key);
     }
     return s;

@@ -545,7 +545,7 @@ inline std::vector<std::string> Pattern::findall(std::string_view subject) const
         for (;;) {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
-            auto&& m = ::tpy::unwrap_ref(*__r_1);
+            auto&& m = ::tpy::own_bind(*__r_1);
             out.push_back(m.group(0));
         }
     }

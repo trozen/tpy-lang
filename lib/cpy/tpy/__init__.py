@@ -885,10 +885,11 @@ def copy(obj):
 def copy_iter(iterable):
     """Explicit element-by-element copy acknowledgment for iterables.
 
-    In CPython, returns the iterable as-is (CPython uses references, no copy).
-    In TurboPython, wraps in CopyIter for element-by-element copy.
+    Copies each element through copy() as it is iterated, as TurboPython's
+    CopyIter does, so a write through an element never reaches the source
+    in either runtime.
     """
-    return iterable
+    return (copy(x) for x in iterable)
 
 
 def own_iter(iterable):

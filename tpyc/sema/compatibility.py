@@ -421,10 +421,21 @@ class TypeCompatibility:
         for check in self.pending_iter_copy_checks:
             if iteration_copies_lent_reference(
                     self.ctx, check.source_expr, check.elem_type):
-                self.ctx.warning_from_loc(
-                    f"copies {check.display_type} elements; {check.hint}",
-                    check.loc)
+                self._element_copy(check.elem_type, check.display_type,
+                                   check.hint, check.loc)
         self.pending_iter_copy_checks.clear()
+
+    def _element_copy(self, elem_type: TpyType, display_type: TpyType,
+                      hint: str, loc: SourceLocation | None) -> None:
+        """An owning element slot copies each element of a source that
+        lends them: warned, or refused for a non-copyable element."""
+        if self.ctx.is_type_non_copyable(elem_type):
+            _, msg = own_copy.slot_message(
+                display_type, display_type, "owned storage",
+                own_copy.KIND_ELEMENTS, hint, non_copyable=True)
+            raise self.ctx.error_from_loc(msg, loc)
+        self.ctx.warning_from_loc(
+            f"copies {self.diag_type(display_type)} elements; {hint}", loc)
 
     def _mark_addr_taken(self, expr: TpyExpr) -> None:
         """Mark all param roots of expr as mutated because their address is taken.
@@ -1467,11 +1478,9 @@ class TypeCompatibility:
                                     "owned storage", source_expr,
                                     kind=own_copy.KIND_ELEMENTS, hint=hint):
                                 continue
-                            self.ctx.warning(
-                                f"copies {self.diag_type(display_type)} "
-                                f"elements; {hint}",
-                                source_expr,
-                            )
+                            self._element_copy(
+                                elem_type, display_type, hint,
+                                self.ctx._resolve_loc(source_expr))
                 return None
             if is_protocol_type(expected):
                 return CompatError(

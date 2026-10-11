@@ -828,7 +828,7 @@ void main() {
         for (;;) {
             auto __r_3 = __itr_2.__next__();
             if (!__r_3.has_value()) break;
-            auto&& g = ::tpy::unwrap_ref(*__r_3);
+            auto&& g = ::tpy::own_bind(*__r_3);
             g.push_back(7);
             std::cout << "gen.lists" << " " << ::tpy::__len__(g) << " " << (::tpy::add_check<int64_t>(::tpy::__getitem__(g, 2), 1)) << " " << ::tpy::__getitem__(g, 3) << "\n" << ::tpy::check_signals;
         }
