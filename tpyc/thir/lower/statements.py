@@ -5,7 +5,7 @@ branches, loops, with, try, raise, and narrowing statements.
 from __future__ import annotations
 import copy
 from collections.abc import Callable, Set as AbstractSet
-from .storage import alias_binding, borrowed_record, full_expression_record, native_container, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
+from .storage import alias_binding, borrowed_record, full_expression_record, native_container, native_container_field, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .callables import setitem_stub_callee, with_method_callee, with_method_stub
 from .captures import capture_facts
 from contextlib import contextmanager
@@ -1108,8 +1108,7 @@ def _native_iteration(iterable: THIRExpr, source: TpyExpr, et: TpyType,
         if isinstance(iterable, THIRName):
             source_fact = native_container(iterable.result_type,
                                            _const_borrow_name(iterable.name, lc, const_locals=True), analyzer)
-        elif (isinstance(iterable, THIRFieldAccess) and iterable.field_identity is not None
-              and isinstance(iterable.receiver, (THIRName, THIRSelf))):
+        elif native_container_field(iterable) and isinstance(iterable.receiver, (THIRName, THIRSelf)):
             # A container field of a named record: const when the
             # receiver lends const (C++ propagates it through the member).
             source_fact = native_container(
@@ -4361,8 +4360,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
             alias_binding=alias_binding(src, vtype, is_const, lc.analyzer),
             # An alias of a named container, or of a container field.
             native_container=(native_container(vtype, is_const, lc.analyzer)
-                              if isinstance(src, THIRName) or isinstance(src, THIRFieldAccess)
-                              and src.field_identity is not None else None),
+                              if isinstance(src, THIRName) or native_container_field(src) else None),
             storage_borrow=storage_borrow(src, vtype, is_const, lc.analyzer),
             cpp_type=lc.render_type(vtype), form=Form.BORROW, is_const=is_const,
             cpp_local_representation=binding, loc=loc)

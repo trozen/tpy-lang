@@ -14,7 +14,7 @@ from ...typesys import (
 )
 from ..scalar_leaves import (
     binds_cursor, container_view, declared_members, holds_elements, leaf_constant, leaf_global, modeled_hierarchy,
-    modeled_leaf_field, modeled_members, native_container_subject, native_container_type, owned_leaf,
+    modeled_members, native_container_subject, native_container_type, owned_leaf,
     readonly_elements, record_owner, storage_leaf,
 )
 from ..nodes import (
@@ -351,8 +351,8 @@ def field_identity(receiver: NominalType, name: str, analyzer: 'SemanticAnalyzer
     """The identity of field `name` read through a `receiver` record: keyed
     by the record that declares it (`TypeRegistry.declaring_record`), seen
     from `start` (an explicit `Start.name`, `start` a struct-base ancestor of
-    `receiver`) or from `receiver` itself. None unless the member's type is
-    one MIR models."""
+    `receiver`) or from `receiver` itself, for every declared member: which
+    shapes a consumer models is that consumer's question."""
     registry = analyzer.registry
     info = registry.get_record_for_type(receiver)
     start_info = registry.get_record_for_type(start) if start is not None else None
@@ -362,6 +362,12 @@ def field_identity(receiver: NominalType, name: str, analyzer: 'SemanticAnalyzer
     if found is None:
         return None
     declaring, member = found
-    if not modeled_leaf_field(member.type) and borrowed_record(member.type, False, analyzer) is None:
-        return None
     return THIRFieldIdentity(record_owner(declaring), member.name, member.type)
+
+
+def native_container_field(expr: THIRExpr) -> bool:
+    """Whether `expr` reads a record field declared as a native container.
+    A field identity is published for every declared member, so a field
+    of another type (a `Span`, a tuple) must not pass for a container."""
+    return (isinstance(expr, THIRFieldAccess) and expr.field_identity is not None
+            and native_container_type(unwrap_readonly(expr.field_identity.type)))

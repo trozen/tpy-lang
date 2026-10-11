@@ -352,9 +352,7 @@ def modeled_leaf_field(typ: object) -> bool:
     with no record directly inside it: a scalar leaf, an owned leaf, a view
     of an owned leaf (`view_leaf`, a stored loan), a native container, or an
     Optional of a plain loan-free record (`optional_record_field`), whose
-    payload MIR reaches through the field's own layout. THIR publishes a
-    field identity for exactly these and the records it models
-    (`storage.field_identity`)."""
+    payload MIR reaches through the field's own layout."""
     return (storage_leaf(typ) or owned_leaf(typ) or view_leaf(typ) or native_container_type(unwrap_readonly(typ))
             or optional_record_field(typ) is not None)
 

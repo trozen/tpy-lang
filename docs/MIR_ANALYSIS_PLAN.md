@@ -3633,12 +3633,13 @@ and setter and `getter_through_field`; `mir/method_calls`
     a dead holder borrow at entry (`%2 = borrow %1` in `Line.__init__`);
     an elements write on an external list conflicts with any live external
     record holder (`held = ln.a; xs[0] = 1`, probed), the may-alias branch.
-  - One predicate not consolidated: THIR's `storage.field_identity` admits
-    a record member through `borrowed_record` (a modeled hierarchy), MIR's
-    definitions through `modeled_field` (`record_type`); they differ on a
-    value-type, generic-base, typed-dict or exception record member, which
-    the member definition refuses (the value-type and exception members
-    pinned: "member definition: missing constructor definition").
+  - Identity and modeling are separate questions: THIR's
+    `storage.field_identity` publishes an identity for every declared
+    member, keyed by its declaring record; MIR's `modeled_field`
+    (`record_type`) alone decides which members MIR models. A value-type,
+    generic-base, typed-dict or exception record member is identified, and
+    MIR's member definition refuses it (the value-type and exception
+    members pinned: "member definition: missing constructor definition").
 - **Measured, nested records** (`scripts/mir_coverage --corpus tests`).
   Base master d762c4c0d9: 2470 of 11258 test bodies lowered (21.9%; 26.3%
   excluding module init), 19 bodies with a conflict, 63 certified, 1156
@@ -4134,11 +4135,11 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
 - **Admission.** `scalar_leaves.optional_record_field` admits an Optional
   (not pointer-represented, `readonly` removed) whose payload passes
   `plain_record_element` and holds no loan; `modeled_leaf_field` includes
-  it, so THIR publishes the field identity (metadata; no render reads it)
-  and `thir/validate.py` accepts a whole access (STORAGE form, the
-  Optional type, or the payload type at an assign target inside a
-  narrowed region) and a narrowed access (`narrowed_deref`, the payload
-  type). `scalar_leaves.inline_member_type` is the record a member stores
+  it, so MIR models the field. THIR publishes its field identity as it
+  does for every declared member (metadata; no render reads it), and
+  `thir/validate.py` accepts a whole access (STORAGE form, the Optional
+  type, or the payload type at an assign target inside a narrowed region)
+  and a narrowed access (`narrowed_deref`, the payload type). `scalar_leaves.inline_member_type` is the record a member stores
   inline (the payload of such a field, else the member's own type).
 - **Reads.** A narrowed read `h.p.x` is the place `h.<p>.payload.x`; `is
   None` / `is not None` on a field is `MIRIsPresent(place)`; `o = h.p`

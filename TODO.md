@@ -2279,12 +2279,12 @@ alongside related feature work; only the big-rock deferrals live here.
       byte-identical, 4 bodies gained, none lost, no new conflict, and one
       THIR pin flipping
       (`test_storage_facts.py::test_other_call_results_have_no_full_expression_storage[borrowed]`).
-    - One predicate for "a record field MIR models": THIR's
-      `storage.field_identity` asks `borrowed_record` (a modeled
-      hierarchy), MIR's definitions and validator ask
-      `scalar_leaves.modeled_field` (`record_type`); they differ on a
-      value-type, generic-base, typed-dict or exception record member,
-      which MIR's member definition refuses.
+    - One predicate for "a record field MIR models", MIR-only now (THIR
+      identifies every declared member): MIR's definitions and validator
+      ask `scalar_leaves.modeled_field`, while `mir/lower.py` re-derives
+      the container-field case by hand
+      (`native_container_type(unwrap_readonly(fact.type))`, the copy of
+      `thir/lower/storage.native_container_field`).
   - A `Span` over a field as a return origin (`return self.items[0:]` at
     `-> Span[int32]`) summarizes OPAQUE ("summary unsupported return origin"): the origin is
     a region under the field, which the return grammar does not spell.
@@ -2367,6 +2367,14 @@ alongside related feature work; only the big-rock deferrals live here.
     return today: one opaque method summary in the sample is recursive
     (`Counter.countdown`); the blockers behind the other 43 are the
     callee's own body or its record's constructor.
+  - Publish the parameters a callee's result borrows on
+    `THIRCallableSignature` together with its MIR reader (a field with no
+    reader was taken back out). The source must be complete: the
+    call-graph fixpoint or MIR's own summary, not sema's per-body
+    `return_borrows_from`, which misses a callee analyzed later and a
+    recursive one (`BUGS.md#return-borrows-forward-callee-incomplete`).
+    Keep element and whole-object borrows apart, and publish one value
+    per callee identity across the two clones of an `@auto_readonly` pair.
   - Retention beyond view members: a summary publishes a kept loan only as
     a loan transfer into a view member (`MIRLoanTransfer`); a callee
     keeping one in a container element or a wrapper stays refused.
