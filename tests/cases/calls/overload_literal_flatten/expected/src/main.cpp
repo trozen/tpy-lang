@@ -25,7 +25,7 @@ std::string get_field__lit_name(std::string_view name) {
 
 // @overload
 // def get_field(name: str) -> int32 | str: ...
-::tpy::Union<int32_t, std::string> get_field(std::string_view name) {
+::tpy::Union<int32_t, std::string> get_field__str(std::string_view name) {
     if ((name == "age")) {
         return 42;
     }

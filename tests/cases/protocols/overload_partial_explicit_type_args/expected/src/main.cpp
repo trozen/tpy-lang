@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // @dispatch
 // def stub(val: str) -> str:
 //     return val
-std::string stub(std::string_view val) {
+std::string stub__str(std::string_view val) {
     return std::string(val);
 }
 
@@ -15,7 +15,7 @@ std::string stub(std::string_view val) {
 //     r: int32 = stub[int32](lambda x: x * int32(2))
 //     print(r)
 void main() {
-    int32_t r = ::tpyapp::main::stub<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
+    int32_t r = ::tpyapp::main::stub__Fn_T_U<int32_t, int32_t>([](int32_t x) -> int32_t { return (::tpy::mul_check<int32_t>(x, 2)); });
     std::cout << r << "\n" << ::tpy::check_signals;
 }
 

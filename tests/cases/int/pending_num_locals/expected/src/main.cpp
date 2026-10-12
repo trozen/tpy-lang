@@ -536,7 +536,7 @@ void overload_trial() {
     int32_t t = 7;
     t = p;
     ::tpy::BigInt q = ((::tpy::BigInt(p)) + (::tpy::BigInt(static_cast<int64_t>(3000000000LL))));
-    std::cout << "overload_trial" << " " << ::tpyapp::main::apply_one<int32_t, int32_t>([&p](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, p)); }, 0) << " " << t << " " << q << "\n" << ::tpy::check_signals;
+    std::cout << "overload_trial" << " " << ::tpyapp::main::apply_one__Fn_int32_U__T<int32_t, int32_t>([&p](int32_t a) -> int32_t { return (::tpy::add_check<int32_t>(a, p)); }, 0) << " " << t << " " << q << "\n" << ::tpy::check_signals;
     p = ::tpyapp::main::w32(2);
     std::cout << "overload_trial" << " " << p << "\n" << ::tpy::check_signals;
 }

@@ -19,7 +19,7 @@ A& ret_field(const M& m) {
 
 // def ret_call(m: M) -> A:
 //     return m.ptr()  # tpyc: ok
-A& ret_call(M& m) {
+A& ret_call(const M& m) {
     return ::tpy::deref_check(m.ptr());
 }
 

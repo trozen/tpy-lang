@@ -8,7 +8,8 @@
 
 namespace tpyapp::main {
 
-using ::tpyapp::animals::describe;
+using ::tpyapp::animals::describe__Dog;
+using ::tpyapp::animals::describe__Cat;
 
 using ::tpyapp::animals::Cat;
 using ::tpyapp::animals::Dog;

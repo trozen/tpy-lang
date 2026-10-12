@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // @dispatch
 // def wrap(x: str) -> Own[Rc[Box[str]]]:
 //     return Rc.new(Box(x))
-::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) {
+::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap__str(std::string_view x) {
     return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::string(x)));
 }
 
@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     r: Rc[Box[Pet]] = wrap(Box(Dog("Rex")))  # tpyc: type(Rc[Box[Pet]])
 //     print(r.get().get().name())
 void main() {
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = ::tpyapp::main::wrap<Pet>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<Pet>> r = ::tpyapp::main::wrap__Own_Box_T<Pet>(::tpystd::tplib::box::Box<Pet>(::tpy::make_adapter<Pet>(Dog("Rex"))));
     std::cout << r.get().get().name() << "\n" << ::tpy::check_signals;
 }
 

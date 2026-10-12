@@ -6,7 +6,8 @@ Main orchestrator that wires all components together.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import Callable, Optional
+from contextlib import AbstractContextManager, nullcontext
+from typing import Callable, Optional, Sequence
 
 from ..typesys import resolve_int_literals
 from ..typesys import (
@@ -529,11 +530,9 @@ class SemanticAnalyzer:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
             self.ctx.imported_names[name] = ("builtins", name)
 
-    # Sub-phase indices used by the phase-counter assertion. The five
-    # public methods below must be called in this exact order; calling
-    # them out of order raises AssertionError.  Compiler still drives
-    # all five through `analyze()` today; future phases (Phase 3+) will
-    # call individual sub-phases workspace-wide.
+    # Sub-phase indices used by the phase-counter assertion: the three
+    # declaration sub-phases, then the body phases `analyze_component_bodies`
+    # drives, in this exact order; out of order raises AssertionError.
     _PHASE_NONE = 0
     _PHASE_BIND_IMPORTS = 1
     _PHASE_REGISTER_RECORDS_AND_PROTOCOLS = 2
@@ -570,16 +569,14 @@ class SemanticAnalyzer:
         Note: User module dependencies should be registered in registry.modules
         before calling this method (via register_module).
 
-        This drives the five public sub-phases in order. Workspace-wide
-        callers (Phase 3+) will eventually call the sub-phases directly
-        across all modules; for now `analyze()` is a thin wrapper that
-        preserves the legacy per-module-with-publishing pipeline.
+        Drives the declaration sub-phases, then the body phases as a
+        one-module import component -- the same driver the Compiler runs
+        per component.
         """
         self.bind_imports(module, module_name, cpp_module_name=cpp_module_name)
         self.register_records_and_protocols(module)
         self.register_signatures(module)
-        self.analyze_bodies(module)
-        self.run_phase2_fixpoint(module)
+        analyze_component_bodies([(self, module)])
 
     def _warn_export_class_return_alias(self, module: TpyModule) -> None:
         warn_export_class_return_alias(self.ctx, module)
@@ -958,35 +955,31 @@ class SemanticAnalyzer:
             self._PHASE_REGISTER_SIGNATURES,
         )
 
-    def analyze_bodies(self, module: TpyModule) -> None:
-        """Sub-phase 4: analyze class-constant initializers, builder-trace
-        expansion, record method bodies, free function bodies. Top-level
-        statement analysis moved into `register_signatures` so peer
-        modules' decl pass sees globals defined via tuple-unpack
-        assignments.
+    def prepare_bodies(self, module: TpyModule) -> IdentitySet:
+        """Body phase 1: class-constant initializers, function-macro and
+        builder-trace expansion. Returns the FunctionInfos whose bodies this
+        module will analyze, for `analyze_component_bodies` to install as the
+        component's pending set.
         """
-        # Fifth pass: analyze class-constant initializers. Runs after
-        # `_analyze_top_level` so module-level Final globals are in scope, and
-        # before `_analyze_record_methods` so methods see typed constants.
+        # Runs after `_analyze_top_level` so module-level Final globals are
+        # in scope, and before the method bodies so they see typed constants.
         for record in module.all_records():
             self._analyze_class_constants(record)
 
-        # Pass 5.5: function-macro expansion, then builder-trace expansion.
         self._expand_function_macros(module)
         self._expand_builder_traces(module)
-
-        # Bodies analyzed below still carry return_borrows_from=None for
-        # ordering reasons (caller above callee); seed the pending set so
-        # call-result binds from them register a conservative OPAQUE borrow
-        # instead of silently assuming "borrows nothing".
-        self._seed_pending_borrow_fact_fis(module)
+        self._decide_const_withheld(module)
         self.ctx.deferred_generic_yield_settles.clear()
+        # Collected after expansion: a synthesized body is analyzed too.
+        return self._collect_pending_borrow_fact_fis(module)
 
-        # Sixth pass: analyze record methods (including nested records)
+    def analyze_body_passes(self, module: TpyModule) -> None:
+        """Body phase 2: record method bodies, free function bodies, then
+        the post-sema deferred function macros."""
         for record in module.all_records():
             self._analyze_record_methods(record)
 
-        # Seventh pass: analyze function bodies (skip bodyless @overload stubs and @inline)
+        # Skip bodyless @overload stubs and @inline functions.
         for func in module.functions:
             if func.is_inline and not func.is_stub:
                 func.skip_codegen = True
@@ -996,24 +989,23 @@ class SemanticAnalyzer:
         # Drain post-sema deferred function macros now, while this module's
         # expr_types are populated -- they read inferred types Pass 7 just set.
         self._drain_deferred_sema_macros(module)
-        # Every callee's return-borrow fact is final now, so the generic
-        # yield-slot verdicts can be answered order-independently.
+
+    def settle_body_facts(self) -> None:
+        """Body phase 3, once every body of the import component is
+        analyzed: every callee's return-borrow fact is final, so the generic
+        yield-slot verdicts and the deferred escapes answer independently of
+        definition order -- across the component's modules too."""
         self._settle_deferred_generic_yields()
         self.stmts.scopes.settle_deferred_escapes()
-        decide_frame_close(self.ctx.frame_close_fis)
-        self._advance_phase(
-            self._PHASE_REGISTER_SIGNATURES,
-            self._PHASE_ANALYZE_BODIES,
-        )
 
-    def _seed_pending_borrow_fact_fis(self, module: TpyModule) -> None:
-        """Collect the FunctionInfos whose bodies the passes below will
-        analyze, mirroring their skip conditions and FI lookups -- exactly
-        the FIs whose return_borrows_from=None means "not yet", never
-        "opaque stub". Entries become inert once finalize fills the fact.
+    def _collect_pending_borrow_fact_fis(self, module: TpyModule) -> IdentitySet:
+        """The FunctionInfos whose bodies the body passes will analyze,
+        mirroring their skip conditions and FI lookups -- exactly the FIs
+        whose return_borrows_from=None means "not yet", never "opaque stub".
+        Entries become inert once finalize fills the fact. Resolved through
+        this module's own registry: a peer's names are not bound here.
         """
-        pending = self.ctx.pending_borrow_fact_fis
-        pending.clear()
+        pending = IdentitySet()
         for record in module.all_records():
             record_info = self.ctx.registry.get_record(record.name)
             if record_info is None:
@@ -1032,21 +1024,24 @@ class SemanticAnalyzer:
             func_info = body_function_info(self.ctx.registry, func)
             if func_info is not None and func_info.return_borrows_from is None:
                 pending.add(func_info)
+        return pending
 
-    def run_phase2_fixpoint(self, module: TpyModule) -> None:
-        """Sub-phase 5: call-graph mutation-fact propagation + readonly
-        inference. Borrow-check resolution is deferred to a post-pass
+    def publish_phase2_facts(self, module: TpyModule) -> None:
+        """Sub-phase 5, after the component's mutation-fact propagation and
+        readonly inference: copy the verdicts onto this module's AST.
+        Borrow-check resolution is deferred to a post-pass
         (`finalize_borrow_checks`) that the Compiler runs after every
-        module's propagation has completed so cross-module mutation
-        facts are settled before borrow warnings are emitted.
+        component's propagation has completed.
         """
-        self._propagate_mutation_facts()
         self._sync_inferred_const(module)
         self._sync_inferred_vararg_readonly(module)
         self._advance_phase(
             self._PHASE_ANALYZE_BODIES,
             self._PHASE_PHASE2_FIXPOINT,
         )
+        self._warn_export_class_return_alias(module)
+        self._validate_export_class_dunders(module)
+        self._warn_export_class_unexposed_dunders(module)
 
     def discharge_own_copy_verdicts(
         self, seen: 'set | None' = None,
@@ -1077,13 +1072,11 @@ class SemanticAnalyzer:
     def finalize_borrow_checks(self) -> None:
         """Emit / suppress deferred borrow warnings using fully-propagated
         cross-module facts. Compiler runs this once per analyzer in a
-        third workspace-wide pass after every module has completed
-        `run_phase2_fixpoint`, guaranteeing that
+        third workspace-wide pass after every import component has
+        published its Phase 2 facts, guaranteeing that
         `resolve_pending_borrow_checks` reads finalized
         `mutated_params` / `structural_mutated_params` regardless of
-        body-sema iteration order. This is what makes the suite pass
-        byte-identical when body sema runs in reverse-topo order
-        (Phase 6 acceptance criterion).
+        body-sema iteration order.
         """
         self.discharge_own_copy_verdicts()
         self.ctx.apply_own_copy_verdicts(self._own_copy_verdicts)
@@ -1148,17 +1141,19 @@ class SemanticAnalyzer:
                     fi.return_type = make_ref(fi.return_type)
                     fi.params = _ref_params(fi.params)
 
-    def _propagate_mutation_facts(self) -> None:
-        """Run call-graph mutation-fact propagation, taking advantage of
-        the workspace-shared `registry.modules` dict to pull peer
-        modules' FunctionInfos in addition to this module's own.
+    @staticmethod
+    def _propagate_mutation_facts(analyzers: 'Sequence[SemanticAnalyzer]') -> None:
+        """Run call-graph mutation-fact propagation once over an import
+        component: every member's own registry (a genexpr's FunctionInfo is
+        registered only there) plus the workspace-shared `registry.modules`
+        dict, which also holds every peer's exported FunctionInfos.
 
-        Each per-analyzer call walks the workspace once. After the
-        first call clears `call_edges` on its propagated FIs, the
-        gate (`call_edges is not None`) excludes them from later
-        analyzers' collections, so subsequent calls only process
-        whatever module just finished body sema -- effectively
-        incremental rather than re-doing all modules' work.
+        Every member's bodies are analyzed before this runs, so a call into a
+        cycle peer reads its facts rather than the conservative leg an
+        unanalyzed callee takes. Propagation clears `call_edges` on what it
+        processed, and the gate (`call_edges is not None`) excludes those FIs
+        from later components' collections -- each call processes only the
+        component that just finished body sema.
 
         The `originating_module` distinction from Phase 6 stays
         (gates body-sema-time fact production); cross-module
@@ -1187,16 +1182,13 @@ class SemanticAnalyzer:
                             seen.add(id(fi))
                             all_fis.append(fi)
 
-        _collect_from(self.ctx.registry)
-        for mod_info in self.ctx.registry.modules.values():
+        for analyzer in analyzers:
+            _collect_from(analyzer.ctx.registry)
+        for mod_info in analyzers[0].ctx.registry.modules.values():
             if not mod_info.is_builtin:
                 _collect_from(mod_info)
         propagate_mutation_facts(all_fis)
-        # An accessor's receiver keeps its declared const-ness: an inferred
-        # enum getter returning a module list would const-project the list
-        # (BUGS.md#enum-property-getter-non-const).
-        infer_method_const([fi for fi in all_fis
-                            if not (fi.is_property_getter or fi.is_property_setter)])
+        infer_method_const(all_fis)
         # Materialize per-param const ABI facts AFTER readonly is finalized
         # (infer_method_const sets is_readonly): the union deep-const verdict
         # keys off fi.is_readonly, so it must run last. Imported inside the
@@ -1204,6 +1196,16 @@ class SemanticAnalyzer:
         from ..codegen_cpp.param_const import populate_const_borrow_params
         for fi in all_fis:
             populate_const_borrow_params(fi)
+
+    def _receiver_deferred_params(self, param_list: list[str]) -> frozenset[int]:
+        """The params a receiver call left to Phase 2, for the initial
+        estimate only: a reader before Phase 2 (a constructor call's copy of
+        the facts, the loop-variable argument check) sees them mutated, since
+        the callee's final fact is not known yet. The estimate is still not
+        the final fact: writes through calls arrive only with Phase 2."""
+        deferred = self.ctx.func.current_receiver_deferred_param_names
+        return frozenset(i for i, pname in enumerate(param_list)
+                         if pname in deferred)
 
     def _sync_inferred_const(self, module: TpyModule) -> None:
         """Copy inferred is_readonly=True from FunctionInfo back to TpyFunction nodes.
@@ -1228,7 +1230,25 @@ class SemanticAnalyzer:
                 if method.is_auto_readonly_mutable_clone:
                     continue
                 fi = body_method_info(record_info, method, sema=True)
-                if fi is None or not fi.is_readonly:
+                if fi is None or not fi.is_readonly or fi.root.const_withheld:
+                    continue
+                method.is_readonly = True
+
+    def _decide_const_withheld(self, module: TpyModule) -> None:
+        """Mark the methods whose C++ member stays non-const even when
+        inference proves them readonly (`FunctionInfo.const_withheld`).
+
+        Decided before Phase 2, which reads it: a receiver edge into such a
+        method must keep the caller's receiver mutable.
+        """
+        for record in module.all_records():
+            record_info = self.ctx.registry.get_record(record.name)
+            if record_info is None:
+                continue
+            for method in record.methods:
+                if (method.is_readonly
+                        or method.overload_form is OverloadForm.OVERLOAD
+                        or method.is_auto_readonly_mutable_clone):
                     continue
                 # @readonly(False) is an explicit opt-out -- respect it.
                 # For @dynamic protocol overrides, the const-ness of the concrete
@@ -1237,9 +1257,9 @@ class SemanticAnalyzer:
                 # it would produce a different C++ signature and break the override.
                 if (method.readonly_opt_out
                         or self._dynamic_proto_requires_nonconst(record_info, method.name)):
-                    fi.root.const_withheld = True
-                    continue
-                method.is_readonly = True
+                    fi = body_method_info(record_info, method, sema=True)
+                    if fi is not None:
+                        fi.root.const_withheld = True
 
     def _dynamic_proto_requires_nonconst(self, record_info: RecordInfo, method_name: str) -> bool:
         """Return True if method_name must remain non-const due to a @dynamic protocol override.
@@ -1837,9 +1857,9 @@ class SemanticAnalyzer:
             func_info.representational_type_params = frozenset(self.ctx.func.current_representational_params)
             (func_info.own_copy_obligations,
              func_info.own_copy_forwards) = self.ctx.own_copy_drain(own_copy_mark)
-            # Set mutated_params to direct facts as initial estimate;
-            # Phase 2 propagation will replace with the complete transitive set.
-            func_info.mutated_params = direct
+            # Initial estimate until Phase 2 replaces it with the complete
+            # transitive set; read as the callee's facts before then.
+            func_info.mutated_params = direct | self._receiver_deferred_params(param_list)
             # Structural mutation facts (append/insert/clear/del/etc.)
             direct_struct = frozenset(
                 i for i, pname in enumerate(param_list)
@@ -2483,6 +2503,11 @@ class SemanticAnalyzer:
         """
         pending_stubs: dict[str, list[TpyFunction]] = {}
         declaration_counts: dict[str, int] = {}
+        # A variant's C++ name must not clash with a name the module binds:
+        # its defs, and the records, protocols, enums and imports already in
+        # its attribute table (module globals are registered later).
+        function_names = (frozenset(f.name for f in functions)
+                          | frozenset(self.ctx.module_attributes or ()))
         for func in functions:
             declaration_counts[func.name] = declaration_counts.get(func.name, 0) + 1
 
@@ -2515,7 +2540,7 @@ class SemanticAnalyzer:
             stubs = pending_stubs.pop(func.name, None)
             if stubs:
                 self._require_overload_form(stubs, func.name, impl=func)
-                self._register_overload_group(func, stubs)
+                self._register_overload_group(func, stubs, function_names)
             else:
                 self.registrar.register_function(func, unique_declaration=declaration_counts[func.name] == 1)
 
@@ -2523,7 +2548,7 @@ class SemanticAnalyzer:
         # a @overload set left here is missing its implementation.
         for name, stubs in pending_stubs.items():
             self._require_overload_form(stubs, name, impl=None)
-            self.registrar.register_overload_group(stubs)
+            self.registrar.register_overload_group(stubs, None, function_names)
 
     @staticmethod
     def _require_overload_form(
@@ -2564,6 +2589,7 @@ class SemanticAnalyzer:
 
     def _register_overload_group(
         self, impl: TpyFunction, stubs: list[TpyFunction],
+        function_names: 'frozenset[str]',
     ) -> None:
         """Validate and register an @overload group.
 
@@ -2574,7 +2600,7 @@ class SemanticAnalyzer:
         self._validate_overload_signatures(impl, stubs, impl.name)
 
         # Register each stub as a callable overload via a single binding
-        self.registrar.register_overload_group(stubs)
+        self.registrar.register_overload_group(stubs, impl, function_names)
 
         # The implementation builds no ParamInfo (see below), but codegen
         # emits ITS defaults into every specialization, so they need the same
@@ -3352,7 +3378,7 @@ class SemanticAnalyzer:
                     method_fi.direct_mutated_params = direct
                     method_fi.direct_self_mutated = self.ctx.func.current_self_mutated
                     method_fi.call_edges = list(self.ctx.func.current_call_edges)
-                    method_fi.mutated_params = direct
+                    method_fi.mutated_params = direct | self._receiver_deferred_params(param_list)
                     method_fi.representational_type_params = frozenset(self.ctx.func.current_representational_params)
                     (method_fi.own_copy_obligations,
                      method_fi.own_copy_forwards) = self.ctx.own_copy_drain(own_copy_mark)
@@ -4530,3 +4556,47 @@ class SemanticAnalyzer:
                         SymbolKind.ENUM, enum_type,
                         defining_module=ult_mod, canonical_name=enum_type.name,
                     )
+
+
+def analyze_component_bodies(
+    members: Sequence[tuple[SemanticAnalyzer, TpyModule]],
+    errors_in: Callable[[int], AbstractContextManager] | None = None,
+) -> None:
+    """Analyze the bodies of one import component and settle its facts.
+
+    A fact that is final only once a SET of bodies is analyzed -- a callee's
+    return borrow, the frame-close verdict, the call-graph mutation facts --
+    is settled after every member's bodies, so a call into a cycle peer
+    never reads an unanalyzed callee. A module outside a cycle is a
+    one-module component. `errors_in(i)` wraps the work done for member i,
+    so the caller can attribute a SemanticError to its module.
+    """
+    scope = errors_in or (lambda _i: nullcontext())
+    analyzers = [analyzer for analyzer, _ in members]
+    pending = IdentitySet()
+    for i, (analyzer, module) in enumerate(members):
+        with scope(i):
+            pending |= analyzer.prepare_bodies(module)
+    # Installed once, before any body: a peer's body analyzed later in the
+    # component is as unanalyzed as a later body of the same module, so a
+    # call-result bind from it must register a conservative OPAQUE borrow
+    # rather than read its None as "borrows nothing".
+    for analyzer in analyzers:
+        analyzer.ctx.pending_borrow_fact_fis = pending
+    for i, (analyzer, module) in enumerate(members):
+        with scope(i):
+            analyzer.analyze_body_passes(module)
+    for i, analyzer in enumerate(analyzers):
+        with scope(i):
+            analyzer.settle_body_facts()
+    # One fixpoint over the whole component: deciding a member alone reads
+    # an undecided peer frame as "runs user code" and never reconsiders it.
+    decide_frame_close([fi for analyzer in analyzers
+                        for fi in analyzer.ctx.frame_close_fis])
+    for analyzer in analyzers:
+        analyzer._advance_phase(analyzer._PHASE_REGISTER_SIGNATURES,
+                                analyzer._PHASE_ANALYZE_BODIES)
+    SemanticAnalyzer._propagate_mutation_facts(analyzers)
+    for i, (analyzer, module) in enumerate(members):
+        with scope(i):
+            analyzer.publish_phase2_facts(module)

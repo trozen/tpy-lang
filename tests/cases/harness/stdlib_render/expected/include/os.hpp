@@ -91,10 +91,10 @@ __gen_walk walk(std::string_view top, bool topdown = true, std::optional<std::fu
 void mkdir(std::string_view path, int64_t mode = 511);
 // @dispatch
 // def getenv(key: str) -> str | None:
-std::optional<std::string> getenv(std::string_view key);
+std::optional<std::string> getenv__str(std::string_view key);
 // @dispatch
 // def getenv(key: str, default: str) -> str:
-std::string getenv(std::string_view key, std::string_view default_);
+std::string getenv__str__str(std::string_view key, std::string_view default_);
 // def putenv(key: str, value: str) -> None:
 void putenv(std::string_view key, std::string_view value);
 // def unsetenv(key: str) -> None:

@@ -13,6 +13,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def on_init(mod: Module):
 void on_init(Module& mod);
+// def on_announce(mod: Module):
+void on_announce(const Module& mod);
 // @readonly
 // def get_description(mod: Module) -> str:
 std::string get_description(const Module& mod);
@@ -29,13 +31,15 @@ struct Module {
     std::string _name;
     // _items: list[int32]
     std::vector<int32_t> _items;
+    // _logged: int32
+    int32_t _logged;
 
     // def __init__(self, name: str) -> None:
     Module() = default;
     explicit Module(std::string_view name);
 
     // def log(self, s: str):
-    void log(std::string_view s) const;
+    void log(std::string_view s);
 
     // def init(self):
     void init();
@@ -48,6 +52,9 @@ struct Module {
 
     // def reinit(self):
     void reinit();
+
+    // def announce(self):
+    void announce() const;
 
     // def add_item(self, val: int32):
     void add_item(int32_t val);
@@ -63,13 +70,17 @@ inline std::ostream& operator<<(std::ostream& os, const Module& obj) {
 // def __init__(self, name: str) -> None:
 //     self._name = name
 //     self._items = []
+//     self._logged = 0
 inline Module::Module(std::string_view name)
     : _name(name),
-      _items(std::vector<int32_t>{}) {}
+      _items(std::vector<int32_t>{}),
+      _logged(0) {}
 
 // def log(self, s: str):
+//     self._logged += 1
 //     print(self._name + ": " + s)
-inline void Module::log(std::string_view s) const {
+inline void Module::log(std::string_view s) {
+    this->_logged = ::tpy::add_check<int32_t>(this->_logged, 1);
     std::cout << (::tpy::str_concat((::tpy::str_concat(this->_name, ": ")), s)) << "\n" << ::tpy::check_signals;
 }
 
@@ -101,6 +112,14 @@ inline std::string Module::name_upper() const {
 //     self.init()
 inline void Module::reinit() {
     this->init();
+}
+
+// # Passes self to a free function that only calls a read-only method on
+// # it -- SHOULD be const
+// def announce(self):
+//     on_announce(self)
+inline void Module::announce() const {
+    ::tpyapp::main::on_announce((*this));
 }
 
 // # Passes self to a free function that structurally mutates a field

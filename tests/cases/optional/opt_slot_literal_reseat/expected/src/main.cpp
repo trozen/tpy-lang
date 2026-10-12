@@ -38,7 +38,7 @@ int32_t none_then_literal(bool c) {
 //         return 0
 //     a.append(4)
 //     return len(a)
-int32_t call_then_literal(F& f) {
+int32_t call_then_literal(const F& f) {
     std::vector<int32_t> __slot_1 = f.make();
     std::vector<int32_t>* a = &__slot_1;
     (*a) = std::vector<int32_t>{1, 2, 3};
@@ -109,7 +109,7 @@ int32_t literal_none_literal(bool c) {
 //         return 0
 //     xs.append(4)
 //     return len(xs)
-int32_t branch_hoisted(F& f, bool c, bool d) {
+int32_t branch_hoisted(const F& f, bool c, bool d) {
     std::optional<std::vector<int32_t>> __slot_1;
     std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
@@ -135,8 +135,8 @@ __gen_gen_literal gen_literal(bool c) {
 }
 
 
-// def gen_call_then_literal(f: F) -> Iterator[int32]:
-__gen_gen_call_then_literal gen_call_then_literal(F& f) {
+// def gen_call_then_literal(f: readonly[F]) -> Iterator[int32]:
+__gen_gen_call_then_literal gen_call_then_literal(const F& f) {
     return __gen_gen_call_then_literal(f);
 }
 
@@ -188,6 +188,116 @@ __coro_coro_literal coro_literal(bool c) {
     return __coro_coro_literal(c);
 }
 
+// # async: the coroutine sibling of the call-result section; the owned result is
+// # written through after the suspension
+// async def coro_call_then_literal(f: readonly[F]) -> int32:
+//     a: list[int32] | None = f.make()  # tpyc: ok
+//     await asyncio.sleep(0)                                  # -> S_RESUME_0
+//     a = [1, 2, 3]  # tpyc: ok
+//     if a is None:
+//         return 0
+//     a.append(4)
+//     return len(a)
+::tpystd::tpy::Poll<int32_t> __coro_coro_call_then_literal::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        a = &*(__ptr_slot_f0 = f.make());
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        (*a) = std::vector<int32_t>{1, 2, 3};
+        if ((a == nullptr)) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = 0;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        a->push_back(4);
+        __state = S_DONE;
+        int32_t __tpy_async_ret = ::tpy::__len__((*a));
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def coro_call_then_literal(f: readonly[F]) -> int32:
+__coro_coro_call_then_literal coro_call_then_literal(const F& f) {
+    return __coro_coro_call_then_literal(f);
+}
+
+
+// def gen_find_loop(ts: list[Tree]) -> Iterator[int32]:
+__gen_gen_find_loop gen_find_loop(const std::vector<Tree>& ts) {
+    return __gen_gen_find_loop(ts);
+}
+
+
+// def gen_find_param(t: Tree) -> Iterator[int32]:
+__gen_gen_find_param gen_find_param(const Tree& t) {
+    return __gen_gen_find_param(t);
+}
+
+// # async: the coroutine sibling of the loop-variable borrow, same
+// # `const Node* o` across the suspension
+// async def coro_find_loop(ts: list[Tree]) -> int32:
+//     total = 0
+//     for t in ts:
+//         o = t.find()  # tpyc: ok
+//         await asyncio.sleep(0)                      # -> S_RESUME_0
+//         total += 0 if o is None else o.v
+//     return total
+::tpystd::tpy::Poll<int32_t> __coro_coro_find_loop::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        total = 0;
+        auto& __for_obj_0 = ts;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        total = ::tpy::add_check<int32_t>(total, (((o == nullptr)) ? (0) : (o->v)));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            int32_t __tpy_async_ret = total;
+            return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+        }
+        t = &(*((*__for_it_0))++);
+        o = t->find();
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def coro_find_loop(ts: list[Tree]) -> int32:
+__coro_coro_find_loop coro_find_loop(const std::vector<Tree>& ts) {
+    return __coro_coro_find_loop(ts);
+}
+
 // def main() -> None:
 //     print("none then literal:", none_then_literal(True),
 //           none_then_literal(False))
@@ -208,6 +318,17 @@ __coro_coro_literal coro_literal(bool c) {
 //         print("gen call then literal:", n)
 //     print("coro literal:", asyncio.run(coro_literal(True)),
 //           asyncio.run(coro_literal(False)))
+//     print("coro call then literal:", asyncio.run(coro_call_then_literal(F(3))))
+//     # the node is mutated between the yields and `o` observes it
+//     ts = [Tree(5)]
+//     for n in gen_find_loop(ts):
+//         print("gen find loop:", n)
+//         ts[0].nodes[0].v = 7
+//     t = Tree(5)
+//     for n in gen_find_param(t):
+//         print("gen find param:", n)
+//         t.nodes[0].v = 8
+//     print("coro find loop:", asyncio.run(coro_find_loop([Tree(2), Tree(3)])))
 void main() {
     std::cout << "none then literal:" << " " << ::tpyapp::main::none_then_literal(true) << " " << ::tpyapp::main::none_then_literal(false) << "\n" << ::tpy::check_signals;
     F __tmp_1 = F(3);
@@ -252,6 +373,34 @@ void main() {
         }
     }
     std::cout << "coro literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(true))) << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_literal(false))) << "\n" << ::tpy::check_signals;
+    F __tmp_7 = F(3);
+    std::cout << "coro call then literal:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_call_then_literal(__tmp_7))) << "\n" << ::tpy::check_signals;
+    std::vector<Tree> ts = {Tree(5)};
+    {
+        auto __src_6 = ::tpyapp::main::gen_find_loop(ts);
+        auto&& __itr_6 = ::tpy::__iter__(__src_6);
+        for (;;) {
+            auto __r_7 = __itr_6.__next__();
+            if (!__r_7.has_value()) break;
+            int32_t n = ::tpy::unwrap_ref(*__r_7);
+            std::cout << "gen find loop:" << " " << n << "\n" << ::tpy::check_signals;
+            ::tpy::__getitem__(::tpy::__getitem__(ts, 0).nodes, 0).v = 7;
+        }
+    }
+    Tree t = Tree(5);
+    {
+        auto __src_8 = ::tpyapp::main::gen_find_param(t);
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t n = ::tpy::unwrap_ref(*__r_9);
+            std::cout << "gen find param:" << " " << n << "\n" << ::tpy::check_signals;
+            ::tpy::__getitem__(t.nodes, 0).v = 8;
+        }
+    }
+    std::vector<Tree> __tmp_8 = {Tree(2), Tree(3)};
+    std::cout << "coro find loop:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::coro_find_loop(__tmp_8))) << "\n" << ::tpy::check_signals;
 }
 
 // # REBINDING a pointer-repr `Optional[container]` local to a container LITERAL.
@@ -266,6 +415,9 @@ void main() {
 // # In a resumable body the slot is a PRESCANNED frame field instead (an inline
 // # slot would die at the next suspension), so the same rebind renders
 // # `xs = &*(__ptr_slot_fN = ...)`.
+// # The inverse of the owned-result rule: a BORROWED result (an @auto_readonly
+// # method returning a pointer into its receiver) on a const receiver keeps the
+// # frame field `const Node*`.
 // import asyncio
 //
 // main()

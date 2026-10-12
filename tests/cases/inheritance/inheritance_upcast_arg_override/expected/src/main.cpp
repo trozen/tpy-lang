@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def describe(a: Animal) -> str:
 //     return a.speak()
-std::string describe(Animal& a) {
+std::string describe(const Animal& a) {
     return a.speak();
 }
 

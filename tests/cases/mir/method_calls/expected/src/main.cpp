@@ -124,7 +124,7 @@ int32_t call_me_ro(const Counter& c) {
 // def call_other(c: Counter, d: Counter) -> None:  # tpyc: mir(covered)
 //     r = c.other(d)  # tpyc: mir_borrows(r, d)
 //     r.n += 1
-void call_other(Counter& c, Counter& d) {
+void call_other(const Counter& c, Counter& d) {
     Counter& r = c.other(d);
     r.n = ::tpy::add_check<int32_t>(r.n, 1);
 }
@@ -133,7 +133,7 @@ void call_other(Counter& c, Counter& d) {
 // def call_first(c: Counter, s: str) -> int:  # tpyc: mir(covered)
 //     v: StrView = c.first(s)  # tpyc: mir_borrows(v, s)
 //     return len(v)
-::tpy::BigInt call_first(Counter& c, std::string_view s) {
+::tpy::BigInt call_first(const Counter& c, std::string_view s) {
     std::string_view v = c.first(s);
     return ::tpy::BigInt(::tpy::__len__(v));
 }
@@ -419,7 +419,7 @@ void inherited(Dog& d) {
 // # kept refusal: a recursive method's caller
 // def call_countdown(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
 //     return c.countdown(3)
-int32_t call_countdown(Counter& c) {
+int32_t call_countdown(const Counter& c) {
     return c.countdown(3);
 }
 

@@ -15,14 +15,14 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init);
+::tpy::val_or_ref_t<U> f__Fn_U_T_U__list_T__U(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init);
 // @dispatch
 // def f[T](g: Fn[[T, T], T], a: list[T]) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> f(__F0&& g, std::vector<T>& a);
+::tpy::val_or_ref_t<T> f__Fn_T_T_T__list_T(__F0&& g, std::vector<T>& a);
 // def main() -> None:
 void main();
 
@@ -33,7 +33,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<U> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-::tpy::val_or_ref_t<U> f(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init) {
+::tpy::val_or_ref_t<U> f__Fn_U_T_U__list_T__U(__F0&& g, const std::vector<T>& a, ::tpy::param_val_or_ref_t<U> init) {
     return ::tpy::param_to_return<U>(init);
 }
 // @dispatch
@@ -43,7 +43,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> f(__F0&& g, std::vector<T>& a) {
+::tpy::val_or_ref_t<T> f__Fn_T_T_T__list_T(__F0&& g, std::vector<T>& a) {
     return ::tpy::__getitem__(a, 0);
 }
 

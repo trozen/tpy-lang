@@ -12,7 +12,7 @@ struct Wrapper;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def borrow_through_method(w: Wrapper) -> StrView:
-std::string_view borrow_through_method(Wrapper& w);
+std::string_view borrow_through_method(const Wrapper& w);
 // def main() -> None:
 void main();
 

@@ -512,7 +512,7 @@ void abandon_exc(const std::vector<int32_t>& xs) {
 // def abandon_method(h: Holder) -> None:
 //     o = h.items()
 //     first_of("method", o)
-void abandon_method(Holder& h) {
+void abandon_method(const Holder& h) {
     __gen_Holder_items o = h.items();
     ::tpyapp::main::first_of("method", o);
 }

@@ -201,7 +201,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer_Layer_Deep& obj) {
 }
 
 // def delegated(inner: Outer.Inner) -> Iterator[int]:
-__gen_delegated delegated(Outer::Inner& inner);
+__gen_delegated delegated(const Outer::Inner& inner);
 // async def nested_compute(inner: Outer.Inner, delta: int = 1) -> int:
 __coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta = ::tpy::BigInt(1));
 // async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
@@ -843,7 +843,7 @@ struct __coro_async_sections {
 // def delegated(inner: Outer.Inner) -> Iterator[int]:
 struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::BigInt> {
     ::tpy::frame_state __state;
-    Outer::Inner& inner;
+    const Outer::Inner& inner;
     ::tpy::BigInt value;
     using __for_src_0_t = ::tpy::for_source_t<decltype((inner.values()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -857,7 +857,7 @@ struct __gen_delegated : public ::tpy::next_iter_mixin<__gen_delegated, ::tpy::B
         S_DONE = 4,
     };
 
-    __gen_delegated(Outer::Inner& inner)
+    __gen_delegated(const Outer::Inner& inner)
         : __state(S_INITIAL),
           inner(inner) {}
 

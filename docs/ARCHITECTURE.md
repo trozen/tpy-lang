@@ -321,11 +321,19 @@ tuple members does not create loans. This is production sema behavior and does
 not depend on MIR coverage.
 
 The sema half runs as a workspace-wide two-pass loop: every module
-finalizes declarations first, then bodies run as a second sweep.
-Inside each module, sema is factored into five publicly callable
-sub-phases (`bind_imports`, `register_records_and_protocols`,
-`register_signatures`, `analyze_bodies`, `run_phase2_fixpoint`) with
-a phase-counter assertion enforcing the ordering. The ModuleInfo
+finalizes declarations first (`bind_imports`,
+`register_records_and_protocols`, `register_signatures`), then bodies
+run as a second sweep, one import component (Tarjan SCC,
+`Compiler.compile_components`) at a time in dependency order. A module
+outside a cycle is a one-module component. `analyze_component_bodies`
+drives the body phases over a component: every member's bodies are
+analyzed (with the union of the members' not-yet-analyzed bodies as the
+pending borrow-fact set) before any of the component's post-body
+settles -- generic yield slots, deferred escapes, one frame-close
+fixpoint -- and before its Phase 2 runs once over the union of the
+members' functions; only then does each member publish the inferred
+const-ness onto its AST. A phase-counter assertion enforces the
+ordering per analyzer. The ModuleInfo
 `registry.modules` dict is shared across all analyzers in a single
 compilation; per-module short-name bindings (records / functions /
 protocols / enums / type aliases) stay per-analyzer.
@@ -385,16 +393,18 @@ Writers and readers find it with `typesys.body_function_info` /
 positional pick left is a `typing.overload` implementation's, which has no
 `FunctionInfo` of its own.
 
-Phase 2 mutation propagation runs workspace-wide: each analyzer's
-`_propagate_mutation_facts` collects FunctionInfos from every
-ModuleInfo in the shared `registry.modules` dict (deduplicated by
-`id()`), so cross-module mutating calls propagate facts uniformly
+Phase 2 mutation propagation runs once per import component:
+`_propagate_mutation_facts` collects FunctionInfos from every member's
+own registry (a genexpr's function is registered only there) and from
+every ModuleInfo in the shared `registry.modules` dict (deduplicated
+by `id()`), so cross-module mutating calls propagate facts uniformly
 through the workspace call graph instead of getting conservative
-defaults at module boundaries. The edges are seeded during body sema
+defaults at module boundaries, and a call into a cycle peer reads the
+peer's body facts. The edges are seeded during body sema
 (`_record_mutation_call_edges`), so a callee's facts may be at
-different maturity depending on import order: `infer_method_const`
-has already run for a peer module's methods but not for this
-module's own. An edge gate must therefore never read `is_readonly`
+different maturity: `infer_method_const` has already run for an
+earlier component's methods but not for this component's own,
+cycle peers included. An edge gate must therefore never read `is_readonly`
 -- a RECEIVER fact that also arrives late -- as "the callee mutates
 nothing"; only a callee with no body facts at all (`native` /
 builtin stub) may stand on the declaration. Such a callee is
@@ -800,7 +810,7 @@ writing one.
 
 6. **`TpyTypeRef` flows to `TpyType` via `resolve_refs`
    (in `parse/resolve_refs.py`)** which runs early in
-   `compiler._analyze_module`. Downstream passes read `TpyType`. New
+   `compiler._resolve_types_for_module`. Downstream passes read `TpyType`. New
    passes that read annotation fields must run after this.
 
 7. **Pending\* types share builtin qnames** with their resolved form

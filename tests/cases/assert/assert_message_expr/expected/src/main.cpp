@@ -41,7 +41,7 @@ int32_t check_property(int32_t n, const Error& e) {
 // def check_method(n: int32, e: Error) -> int32:
 //     assert n > 0, e.described()  # tpyc: ok
 //     return n
-int32_t check_method(int32_t n, Error& e) {
+int32_t check_method(int32_t n, const Error& e) {
     if (!((n > 0))) {
         ::tpy::raise_assertion_error(e.described());
     }

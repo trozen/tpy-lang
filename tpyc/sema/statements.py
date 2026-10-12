@@ -259,8 +259,8 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
     # loan: a write through the result climbs it, and nothing invalidates it.
     sources, declared_only = result_borrow_sources(fi)
     if fi.return_borrows_from is None:
-        # The callee's body has not been analyzed yet (forward reference in
-        # this module), so whether the result borrows an argument is
+        # The callee's body has not been analyzed yet (a forward reference
+        # in this import component), so whether the result borrows an argument is
         # unknown. Assume it does: register an OPAQUE borrow from every
         # name-rooted argument so the auto-move gate demotes a later
         # consume to the copy path. Opaque stubs (native, builtin,

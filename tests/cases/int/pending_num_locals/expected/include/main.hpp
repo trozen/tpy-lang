@@ -101,14 +101,14 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t apply_one(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
+int32_t apply_one__Fn_str_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def apply_one[T, U](f: Fn[[int32], U], x: T) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t apply_one(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
+int32_t apply_one__Fn_int32_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def overload_trial() -> None:
 void overload_trial();
 // def uses(xs: list[int32], a: int32) -> int:
@@ -445,7 +445,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, std::string_view __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t apply_one(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
+int32_t apply_one__Fn_str_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return 1;
 }
 // @dispatch
@@ -455,7 +455,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, int32_t __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t apply_one(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
+int32_t apply_one__Fn_int32_U__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return 1;
 }
 

@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "animals";
 
 // @overload
 // def describe(animal: Dog) -> str: ...
-std::string describe(const Dog& animal);
+std::string describe__Dog(const Dog& animal);
 // @overload
 // def describe(animal: Cat) -> str: ...
-std::string describe(const Cat& animal);
+std::string describe__Cat(const Cat& animal);
 
 // class Dog:
 struct Dog {

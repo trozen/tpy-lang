@@ -22,7 +22,7 @@ void prop_moved(const Src& s) {
 //     v2 = v  # tpyc: ok
 //     v2.append(3)
 //     print("meth_moved", len(v2), len(s.own_m()))
-void meth_moved(Src& s) {
+void meth_moved(const Src& s) {
     std::vector<int32_t> v = s.own_m();
     std::vector<int32_t> v2 = std::move(v);
     v2.push_back(3);
@@ -47,7 +47,7 @@ void prop_aliased(const Src& s) {
 //     v2 = v  # tpyc: ok
 //     v2.append(3)
 //     print("meth_aliased", len(v), len(v2))
-void meth_aliased(Src& s) {
+void meth_aliased(const Src& s) {
     std::vector<int32_t> v = s.own_m();
     std::vector<int32_t>& v2 = v;
     v2.push_back(3);

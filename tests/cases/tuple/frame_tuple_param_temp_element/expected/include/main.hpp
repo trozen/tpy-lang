@@ -92,7 +92,7 @@ void loop_var_element();
 // async def abump(p: tuple[A, int]) -> None:
 __coro_abump abump(std::tuple<A*, ::tpy::BigInt> p);
 // def meth_callee(k: K, a: A) -> int:
-::tpy::BigInt meth_callee(K& k, A& a);
+::tpy::BigInt meth_callee(const K& k, A& a);
 // async def async_callee(a: A) -> int:
 __coro_async_callee async_callee(A& a);
 // def callee_kinds() -> None:

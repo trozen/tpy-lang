@@ -21,9 +21,9 @@ Point owned(int32_t n);
 // def owned_copy(n: int32) -> Own[Point]:
 Point owned_copy(int32_t n);
 // def owned_method(f: Factory) -> Own[Point]:
-Point owned_method(Factory& f);
+Point owned_method(const Factory& f);
 // def owned_method_copy(f: Factory) -> Own[Point]:
-Point owned_method_copy(Factory& f);
+Point owned_method_copy(const Factory& f);
 // def main() -> None:
 void main();
 

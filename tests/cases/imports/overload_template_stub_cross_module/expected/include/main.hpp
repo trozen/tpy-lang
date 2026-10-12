@@ -8,7 +8,8 @@
 
 namespace tpyapp::main {
 
-using ::tpyapp::agg::total;
+using ::tpyapp::agg::total__Iterable_Own_int32;
+using ::tpyapp::agg::total__int32;
 
 inline constexpr std::string_view __name__ = "__main__";
 

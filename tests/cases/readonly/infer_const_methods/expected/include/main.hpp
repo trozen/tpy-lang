@@ -4,6 +4,9 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
@@ -39,11 +42,33 @@ struct Inner;
 struct Outer;
 struct WithOpt;
 struct Valued;
+struct Holder;
+struct Bumper;
+struct Calc;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_bump_gen;
+struct __coro_bump_async;
+
 // def show(v: DynValued) -> None:
 void show(DynValued& v);
+// def read_counter(c: Counter) -> int32:  # c.get() is inferred const -- c is const
+int32_t read_counter(const Counter& c);
+// def read_holder(h: Holder) -> int32:    # h.inner.get() -- h is const
+int32_t read_holder(const Holder& h);
+// def bump_counter(c: Counter) -> None:   # c.increment() writes -- c stays mutable
+void bump_counter(Counter& c);
+// def read_valued(v: Valued) -> int32:    # value() is kept non-const -- v stays mutable
+int32_t read_valued(Valued& v);
+// def poke_holder(h: Holder, v: int32) -> None:  # h.inner.set() writes -- h stays mutable
+void poke_holder(Holder& h, int32_t v);
+// def bump_gen(c: Counter) -> Iterator[int32]:
+__gen_bump_gen bump_gen(Counter& c);
+// async def bump_async(c: Counter) -> int32:
+__coro_bump_async bump_async(Counter& c);
+// def use_static(k: Calc) -> int32:      # a staticmethod through k writes nothing -- k is const
+int32_t use_static(const Calc& k);
 // def main() -> None:
 void main();
 
@@ -133,6 +158,9 @@ struct Inner {
 
     // def get(self) -> int32:
     int32_t get() const;
+
+    // def set(self, v: int32) -> None:
+    void set(int32_t v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -204,6 +232,54 @@ inline std::ostream& operator<<(std::ostream& os, const Valued& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // inner: Inner
+    Inner inner;
+
+    // def __init__(self) -> None:
+    Holder();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// class Bumper:
+struct Bumper {
+
+
+    // def bump(self, c: Counter) -> None:
+    void bump(Counter& c) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bumper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bumper& obj) {
+    ::tpy::print_object_default(os, "Bumper", obj);
+    return os;
+}
+
+// class Calc:
+struct Calc {
+    // base: int32
+    int32_t base;
+
+    // def __init__(self) -> None:
+    Calc();
+
+    // @staticmethod
+    // def add(a: int32, b: int32) -> int32:
+    static int32_t add(int32_t a, int32_t b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Calc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Calc& obj) {
+    ::tpy::print_object_default(os, "Calc", obj);
+    return os;
+}
+
 } // namespace tpyapp::main
 
 template<tpyapp::main::__DynValued_Concept__ T>
@@ -222,6 +298,55 @@ struct tpy::RefAdapter<tpyapp::main::DynValued, T> : tpyapp::main::DynValued {
 };
 
 namespace tpyapp::main {
+
+// async def bump_async(c: Counter) -> int32:
+struct __coro_bump_async {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    Counter& c;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_bump_async(Counter& c)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_bump_async&) {
+        return os << "<coroutine bump_async>";
+    }
+};
+
+// def bump_gen(c: Counter) -> Iterator[int32]:
+struct __gen_bump_gen : public ::tpy::next_iter_mixin<__gen_bump_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Counter& c;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_bump_gen(Counter& c)
+        : __state(S_INITIAL),
+          c(c) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_bump_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_bump_gen&) {
+        return os << "<generator bump_gen>";
+    }
+};
 
 
 // def __init__(self) -> None:
@@ -310,6 +435,12 @@ inline int32_t Inner::get() const {
     return this->value;
 }
 
+// def set(self, v: int32) -> None:
+//     self.value = v
+inline void Inner::set(int32_t v) {
+    this->value = v;
+}
+
 // def __init__(self) -> None:
 //     self.items = [Inner(1), Inner(2)]
 //     self.extra = Inner(3)
@@ -371,6 +502,27 @@ inline Valued::Valued(int32_t n) : _n(n) {}
 //     return self._n
 inline int32_t Valued::value() {
     return this->_n;
+}
+
+// def __init__(self) -> None:
+//     self.inner = Inner(9)
+inline Holder::Holder() : inner(Inner(9)) {}
+
+// def bump(self, c: Counter) -> None:
+//     c.increment()
+inline void Bumper::bump(Counter& c) const {
+    c.increment();
+}
+
+// def __init__(self) -> None:
+//     self.base = 0
+inline Calc::Calc() : base(0) {}
+
+// @staticmethod
+// def add(a: int32, b: int32) -> int32:
+//     return a + b
+inline int32_t Calc::add(int32_t a, int32_t b) {
+    return (::tpy::add_check<int32_t>(a, b));
 }
 void __tpy_init();
 } // namespace tpyapp::main

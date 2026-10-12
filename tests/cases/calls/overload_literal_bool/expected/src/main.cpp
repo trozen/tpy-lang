@@ -25,7 +25,7 @@ std::string describe__lit_False(bool x) {
 
 // @overload
 // def describe(x: bool) -> str: ...
-std::string describe(bool x) {
+std::string describe__bool(bool x) {
     if (x) {
         return "yes";
     }
@@ -44,7 +44,7 @@ void main() {
     std::cout << ::tpyapp::main::describe__lit_True(true) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::describe__lit_False(false) << "\n" << ::tpy::check_signals;
     bool val = true;
-    std::cout << ::tpyapp::main::describe(val) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__bool(val) << "\n" << ::tpy::check_signals;
 }
 
 // main()

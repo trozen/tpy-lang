@@ -120,7 +120,7 @@ void bump_all(const std::vector<A*>& ps);
 // def bump_list(ps: list[Ptr[A]]) -> None:
 void bump_list(const std::vector<A*>& ps);
 // def bump_or_zero(m: M) -> int32:
-int32_t bump_or_zero(M& m);
+int32_t bump_or_zero(const M& m);
 // def main() -> None:
 void main();
 

@@ -1,0 +1,4 @@
+ba.py:27: warning: Import statement should be at the top of the file
+ba.py:20: warning: copies list[Item] into owned storage; use copy() to make this explicit
+bb.py:19: warning: copies list[Item] into owned storage; use copy() to make this explicit
+ry.py:26: warning: Import statement should be at the top of the file

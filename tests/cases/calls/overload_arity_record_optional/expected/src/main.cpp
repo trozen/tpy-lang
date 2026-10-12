@@ -12,13 +12,13 @@ namespace tpyapp::main {
 //     return tag.name + "=" + str(value)
 // @overload
 // def fmt(value: int) -> str: ...  # tpyc: ok
-std::string fmt(const ::tpy::BigInt& value) {
+std::string fmt__int(const ::tpy::BigInt& value) {
     return (value).to_string();
 }
 
 // @overload
 // def fmt(value: int, tag: Tag) -> str: ...  # tpyc: ok
-std::string fmt(const ::tpy::BigInt& value, const Tag& tag) {
+std::string fmt__int__Tag(const ::tpy::BigInt& value, const Tag& tag) {
     return (::tpy::str_concat((::tpy::str_concat(tag.name, "=")), (value).to_string()));
 }
 
@@ -27,9 +27,9 @@ std::string fmt(const ::tpy::BigInt& value, const Tag& tag) {
 //     print(fmt(42))
 //     print(fmt(42, Tag("temp")))
 void main() {
-    std::cout << ::tpyapp::main::fmt(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fmt__int(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
     Tag __tmp_1 = Tag("temp");
-    std::cout << ::tpyapp::main::fmt(::tpy::BigInt(42), __tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::fmt__int__Tag(::tpy::BigInt(42), __tmp_1) << "\n" << ::tpy::check_signals;
 }
 
 // main()

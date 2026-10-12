@@ -7,3 +7,16 @@ False
 7
 5
 7
+param: 0
+param: 2
+param: 9
+param: 10
+param: 8
+field write: 12
+method: 2
+generator: 3
+generator: 4
+async: 5
+async: 6
+static: 3
+static: 3 5

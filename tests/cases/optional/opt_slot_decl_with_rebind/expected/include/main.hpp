@@ -13,9 +13,9 @@ struct Builder;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def literal_position(f: F) -> int32:
-int32_t literal_position(F& f);
+int32_t literal_position(const F& f);
 // def none_arm_position(f: F, c: bool) -> int32:
-int32_t none_arm_position(F& f, bool c);
+int32_t none_arm_position(const F& f, bool c);
 // def main() -> None:
 void main();
 

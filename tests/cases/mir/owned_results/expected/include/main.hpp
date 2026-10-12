@@ -38,7 +38,7 @@ int32_t use_result(int32_t n);
 // def use_temp(n: int32) -> int32:  # tpyc: mir(certified) mir_summary(known)
 int32_t use_temp(int32_t n);
 // def spawn_temp(pool: Pool) -> int32:  # tpyc: mir(certified)
-int32_t spawn_temp(Pool& pool);
+int32_t spawn_temp(const Pool& pool);
 // def reseat(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t reseat(int32_t n);
 // def collect(n: int32) -> int32:  # tpyc: mir(covered)
@@ -46,7 +46,7 @@ int32_t collect(int32_t n);
 // def named_caller(s: str) -> int32:  # tpyc: mir(covered)
 int32_t named_caller(std::string_view s);
 // def spawned(pool: Pool) -> int32:  # tpyc: mir(covered)
-int32_t spawned(Pool& pool);
+int32_t spawned(const Pool& pool);
 // def take(p: Own[Point]) -> int32:  # tpyc: warning(/never consumed/) mir(covered) mir_summary(known)
 int32_t take(Point&& p);
 // def give(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)

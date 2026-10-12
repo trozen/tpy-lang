@@ -20,10 +20,10 @@ inline constexpr std::string_view __name__ = "__main__";
 // @dispatch
 // def describe(x: Animal) -> str:  # tpyc: ok
 template<Animal T_x>
-std::string describe(T_x& x);
+std::string describe__Animal(T_x& x);
 // @dispatch
 // def describe(x: Dog) -> str:  # tpyc: ok
-std::string describe(Dog& x);
+std::string describe__Dog(const Dog& x);
 // def main() -> None:
 void main();
 
@@ -58,7 +58,7 @@ inline std::string Dog::name() const {
 // def describe(x: Animal) -> str:  # tpyc: ok
 //     return "animal: " + x.name()
 template<Animal T_x>
-std::string describe(T_x& x) {
+std::string describe__Animal(T_x& x) {
     return (::tpy::str_concat("animal: ", x.name()));
 }
 

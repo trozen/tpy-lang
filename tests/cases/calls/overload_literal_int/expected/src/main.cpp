@@ -57,7 +57,7 @@ std::string classify__lit_neg1__neg2(int32_t x) {
 
 // @overload
 // def classify(x: int32) -> str: ...
-std::string classify(int32_t x) {
+std::string classify__int32(int32_t x) {
     if ((x == 1)) {
         return "one";
     } else if ((x == 2)) {
@@ -119,7 +119,7 @@ void main() {
     std::cout << ::tpyapp::main::classify__lit_neg1__neg2(-1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::classify__lit_neg1__neg2(-2) << "\n" << ::tpy::check_signals;
     int32_t x = 5;
-    std::cout << ::tpyapp::main::classify(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__int32(x) << "\n" << ::tpy::check_signals;
     std::cout << "only_lit:" << " " << (::tpy::add_check<int32_t>(::tpyapp::main::only_lit__lit_1(1), 1)) << " " << (::tpy::str_concat(::tpyapp::main::only_lit__lit_2(2), "!")) << "\n" << ::tpy::check_signals;
 }
 

@@ -18,7 +18,7 @@ namespace tpyapp::main {
         __state = S_DONE;  // until a yield sets where to resume
         {
             try {
-                ::tpystd::sys::exit(6);
+                ::tpystd::sys::exit__int32(6);
             } catch (...) {
                 std::cout << "main task: finally ran" << "\n" << ::tpy::check_signals;
                 throw;
@@ -47,7 +47,7 @@ __coro_main_exits main_exits() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        ::tpystd::sys::exit(5);
+        ::tpystd::sys::exit__int32(5);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
@@ -148,7 +148,7 @@ __coro_main_waits main_waits() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        ::tpystd::sys::exit(7);
+        ::tpystd::sys::exit__int32(7);
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
@@ -340,7 +340,7 @@ __coro_main_interrupted main_interrupted() {
 }
 
 void __coro_stubborn::__finally_0() {
-    ::tpystd::sys::exit(9);
+    ::tpystd::sys::exit__int32(9);
 }
 
 // async def stubborn() -> None:
@@ -396,7 +396,7 @@ __coro_main_returns main_returns() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<::std::monostate>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        ::tpystd::sys::exit(4);
+        ::tpystd::sys::exit__int32(4);
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }

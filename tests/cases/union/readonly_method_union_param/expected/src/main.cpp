@@ -14,10 +14,10 @@ void main() {
     Speaker s = Speaker();
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> d = ::tpy::to_ptr_variant(__slot_1);
-    std::cout << s.voice(d) << "\n" << ::tpy::check_signals;
+    std::cout << s.voice(d.as_const()) << "\n" << ::tpy::check_signals;
     ::tpy::Union<Cat, Dog> __slot_2 = Cat();
     ::tpy::Union<Cat*, Dog*> c = ::tpy::to_ptr_variant(__slot_2);
-    std::cout << s.voice(c) << "\n" << ::tpy::check_signals;
+    std::cout << s.voice(c.as_const()) << "\n" << ::tpy::check_signals;
 }
 
 // main()

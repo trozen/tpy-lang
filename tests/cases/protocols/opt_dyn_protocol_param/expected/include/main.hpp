@@ -34,7 +34,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def greet(p: Optional[Pet]) -> str:
 std::string greet(Pet* p);
 // def describe(p: Optional[Pet]) -> str:
-std::string describe(Pet* p);
+std::string describe(const Pet* p);
 // def main() -> None:
 void main();
 

@@ -206,45 +206,54 @@ def unpack_source_has_const_slots(ctx: 'CodeGenContext',
             or stmt.value.name in ctx.const_storage_form_tuple_locals)
 
 
+def ptr_write_fills_slot(ctx: 'CodeGenContext', init: 'TpyExpr') -> bool:
+    """Whether a write of `init` into a pointer-form frame local
+    materializes storage of its own (a frame slot the pointer then aims
+    at), rather than aliasing storage that already exists (None literal,
+    alias, optional_to_ptr lift forms, a borrowed `T*`). The routing
+    order mirrors the emit arms."""
+    if isinstance(init, TpyNoneLiteral):
+        return False
+    if ctx.callee_returns_own_ptr_optional(init):
+        return True
+    if (isinstance(init, TpyName)
+            and ctx.needs_optional_to_ptr_lift(init.name)):
+        return False
+    if pointer_repr_optional(ctx.get_expr_type(init)) is not None:
+        if (ctx.is_storage_form_optional_source(init)
+                and not ctx.is_rvalue_source(init)):
+            return False
+        if not ctx.is_value_emit_rvalue(init):
+            return False
+    return ctx.is_rvalue_source(init)
+
+
 def ptr_slot_field_type(ctx: 'CodeGenContext', init: 'TpyExpr',
                         target_type: TpyType | None,
                         cpp_type: str) -> str | None:
     """The frame-field C++ type an rvalue write into a pointer-form
     frame local needs for its materialization slot, or None when the
-    write materializes no storage (None literal, alias, optional_to_ptr
-    lift forms).
+    write materializes no storage (`ptr_write_fills_slot`).
 
     Single source of truth shared by the resumable ptr-slot prescan
     (which reserves the field) and the pointer-local reseat lowering
     (which consumes it): the two MUST agree
     on which writes need a slot, or a frame write lands back in a
     dying case-block local -- the reseat lowering rejects a missing
-    entry rather than guessing. The routing order mirrors the emit arms.
+    entry rather than guessing.
     """
-    if isinstance(init, TpyNoneLiteral):
+    if not ptr_write_fills_slot(ctx, init):
         return None
     if ctx.callee_returns_own_ptr_optional(init):
         # Own[Optional[T]]-returning call: the slot holds the returned
         # optional<T> whole; the pointer is lifted via optional_to_ptr.
         return f"std::optional<{cpp_type}>"
-    if (isinstance(init, TpyName)
-            and ctx.needs_optional_to_ptr_lift(init.name)):
-        return None
-    init_type = ctx.get_expr_type(init)
-    if pointer_repr_optional(init_type) is not None:
-        if (ctx.is_storage_form_optional_source(init)
-                and not ctx.is_rvalue_source(init)):
-            return None
-        if not ctx.is_value_emit_rvalue(init):
-            return None
-    if not ctx.is_rvalue_source(init):
-        return None
     # Polymorphic refinement: a per-site slot can hold the subclass
     # whole (the shared-slot slicing reject still fires upstream for
     # the sync-shared shapes; this only spells the site's storage).
     slot_cpp = cpp_type
     sub = polymorphic_subclass_into_optional(
-        target_type, init_type, ctx.analyzer.registry)
+        target_type, ctx.get_expr_type(init), ctx.analyzer.registry)
     if sub is not None:
         slot_cpp = sub.name
     return f"std::optional<{slot_cpp}>"
@@ -1589,6 +1598,7 @@ __all__ = [
     "pattern_has_field_condition",
     "promote_movable",
     "ptr_slot_field_type",
+    "ptr_write_fills_slot",
     "push_finally",
     "reject_nondef_ctor_field_in_body",
     "reject_nonlvalue_resumable_match_ptr_bind",

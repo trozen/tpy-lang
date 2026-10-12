@@ -18,7 +18,7 @@ Point make(int32_t n);
 // def owned(n: int32) -> Own[Point]:
 Point owned(int32_t n);
 // def owned_method(f: Factory) -> Own[Point]:
-Point owned_method(Factory& f);
+Point owned_method(const Factory& f);
 // def issue(n: int32) -> Own[Ticket]:
 Ticket issue(int32_t n);
 // def main() -> None:

@@ -1,0 +1,29 @@
+literal: dash
+literal: underscore
+literal: mode rb Rex
+literal: mode r Max
+mixed: int 1
+mixed: str a r
+mixed: str a rb
+clash: dog Rex
+clash: cat Tom
+clash: user Rex
+clash: dog Max user Max
+clash: tag Max tag int 3
+cross: box
+cross: w 12
+cross: list
+cross: xs [1, 0, 5]
+cross: 4 2
+ref: int 7
+overload: int
+overload: user int
+overload: dog Rex
+overload: dog Max
+guard: bool one
+shape: shape 2 bare
+shape: shape 3
+head: 7
+head: 9
+kept: 0.0 3.0
+kept: 4

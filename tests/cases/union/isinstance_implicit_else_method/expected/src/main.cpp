@@ -8,12 +8,12 @@ namespace tpyapp::main {
 //     if isinstance(x, Cat):
 //         return x.speak()
 //     return x.speak()        # x is Dog here; resolves Dog.speak via the narrowed alias
-::tpy::BigInt show(::tpy::Union<Cat*, Dog*> x) {
-    if (std::holds_alternative<Cat*>(x)) {
-        auto& __x = *std::get<Cat*>(x);
+::tpy::BigInt show(::tpy::Union<const Cat*, const Dog*> x) {
+    if (std::holds_alternative<const Cat*>(x)) {
+        auto& __x = *std::get<const Cat*>(x);
         return __x.speak();
     }
-    auto& __x = *std::get<Dog*>(x);
+    auto& __x = *std::get<const Dog*>(x);
     return __x.speak();
 }
 
@@ -22,9 +22,9 @@ namespace tpyapp::main {
 //     print(show(Dog(2)))
 void main() {
     Cat __tmp_1 = Cat(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::show(::tpy::Union<Cat*, Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(::tpy::Union<const Cat*, const Dog*>{&__tmp_1}) << "\n" << ::tpy::check_signals;
     Dog __tmp_2 = Dog(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::show(::tpy::Union<Cat*, Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::show(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

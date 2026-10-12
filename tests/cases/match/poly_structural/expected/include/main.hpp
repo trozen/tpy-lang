@@ -32,7 +32,7 @@ struct Rect;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def classify(s: Shape) -> str:
-std::string classify(Shape& s);
+std::string classify(const Shape& s);
 // def main() -> None:
 void main();
 

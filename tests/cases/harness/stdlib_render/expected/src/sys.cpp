@@ -21,21 +21,21 @@ const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 // @dispatch
 // def exit() -> None:
 //     raise SystemExit()
-void exit() {
+void exit__noargs() {
     throw ::tpy::SystemExit{};
 }
 
 // @dispatch
 // def exit(code: int32) -> None:
 //     raise SystemExit(code)
-void exit(int32_t code) {
+void exit__int32(int32_t code) {
     throw ::tpy::SystemExit(code);
 }
 
 // @dispatch
 // def exit(code: str) -> None:
 //     raise SystemExit(code)
-void exit(std::string_view code) {
+void exit__str(std::string_view code) {
     throw ::tpy::SystemExit(code);
 }
 
@@ -44,7 +44,7 @@ void exit(std::string_view code) {
 //     # CPython's sys.exit(None) raises with args () and str '', unlike an
 //     # explicit SystemExit(None).
 //     raise SystemExit()
-void exit(std::monostate code) {
+void exit__None(std::monostate code) {
     throw ::tpy::SystemExit{};
 }
 
@@ -55,7 +55,7 @@ void exit(std::monostate code) {
 //     if isinstance(code, str):
 //         raise SystemExit(code)
 //     raise SystemExit()
-void exit(const ::tpy::Union<std::monostate, int32_t, std::string>& code) {
+void exit__None_int32_str(const ::tpy::Union<std::monostate, int32_t, std::string>& code) {
     if (std::holds_alternative<int32_t>(code)) {
         const auto& __code = std::get<int32_t>(code);
         throw ::tpy::SystemExit(__code);

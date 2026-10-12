@@ -55,7 +55,7 @@ void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::t
 // def has_str(box: Labels[str, 4], k: str) -> bool:
 //     # The readonly `const T&` spelling, fed a view.
 //     return box.has(k)  # tpyc: ok
-bool has_str(Labels<std::string, 4>& box, std::string_view k) {
+bool has_str(const Labels<std::string, 4>& box, std::string_view k) {
     return box.has(k);
 }
 

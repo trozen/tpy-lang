@@ -22,7 +22,7 @@ int32_t pick__lit_r__w(std::string_view v) {
 
 // @overload
 // def pick(v: str) -> int32: ...
-int32_t pick(std::string_view v) {
+int32_t pick__str(std::string_view v) {
     return 99;
 }
 

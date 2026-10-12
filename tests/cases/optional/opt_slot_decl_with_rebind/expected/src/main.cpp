@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //         return -1
 //     a.append(4)
 //     return len(a)
-int32_t literal_position(F& f) {
+int32_t literal_position(const F& f) {
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t>* a = &__slot_1;
     if ((a != nullptr)) {
@@ -39,7 +39,7 @@ int32_t literal_position(F& f) {
 //     if a is None:
 //         return -1
 //     return len(a)
-int32_t none_arm_position(F& f, bool c) {
+int32_t none_arm_position(const F& f, bool c) {
     std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t>* a = &__slot_1;

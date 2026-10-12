@@ -245,7 +245,7 @@ double degrees(double x) {
 // @dispatch
 // def perm(n: int) -> int:
 //     return factorial(n)
-::tpy::BigInt perm(const ::tpy::BigInt& n) {
+::tpy::BigInt perm__int(const ::tpy::BigInt& n) {
     return ::tpystd::math::factorial(n);
 }
 
@@ -261,7 +261,7 @@ double degrees(double x) {
 //         result = result * (n - i)
 //         i = i + 1
 //     return result
-::tpy::BigInt perm(const ::tpy::BigInt& n, const ::tpy::BigInt& k) {
+::tpy::BigInt perm__int__int(const ::tpy::BigInt& n, const ::tpy::BigInt& k) {
     if (((n < 0) || (k < 0))) {
         throw ::tpy::ValueError("perm() arguments must be non-negative");
     }

@@ -68,9 +68,9 @@ void call_me(Counter& c);
 // def call_me_ro(c: Counter) -> int32:  # tpyc: mir(covered)
 int32_t call_me_ro(const Counter& c);
 // def call_other(c: Counter, d: Counter) -> None:  # tpyc: mir(covered)
-void call_other(Counter& c, Counter& d);
+void call_other(const Counter& c, Counter& d);
 // def call_first(c: Counter, s: str) -> int:  # tpyc: mir(covered)
-::tpy::BigInt call_first(Counter& c, std::string_view s);
+::tpy::BigInt call_first(const Counter& c, std::string_view s);
 // def take(n: int32, k: int32) -> int32:
 int32_t take(int32_t n, int32_t k);
 // def call_as_argument(c: Counter) -> int32:  # tpyc: mir(covered)
@@ -131,7 +131,7 @@ int32_t static_call(int32_t x);
 // def inherited(d: Dog) -> None:  # tpyc: mir(covered) mir_summary(known)
 void inherited(Dog& d);
 // def call_countdown(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs finalized known summary$/)
-int32_t call_countdown(Counter& c);
+int32_t call_countdown(const Counter& c);
 // def call_all_items(c: Counter) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt call_all_items(Counter& c);
 // def main() -> None:

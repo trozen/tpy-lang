@@ -169,7 +169,7 @@ void abandon_method(Rows& r);
 // def run_method_count(r: Rows) -> None:
 void run_method_count(Rows& r);
 // def run_method_plain(r: Rows) -> None:
-void run_method_plain(Rows& r);
+void run_method_plain(const Rows& r);
 // def main() -> None:
 void main();
 

@@ -13,10 +13,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def fmt(value: int) -> str: ...  # tpyc: ok
-std::string fmt(const ::tpy::BigInt& value);
+std::string fmt__int(const ::tpy::BigInt& value);
 // @overload
 // def fmt(value: int, tag: Tag) -> str: ...  # tpyc: ok
-std::string fmt(const ::tpy::BigInt& value, const Tag& tag);
+std::string fmt__int__Tag(const ::tpy::BigInt& value, const Tag& tag);
 // def main() -> None:
 void main();
 

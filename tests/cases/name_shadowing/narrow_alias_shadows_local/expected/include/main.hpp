@@ -52,17 +52,17 @@ struct __coro_coro_complement;
 struct __coro_coro_global;
 
 // def plain(a: Dog | Cat) -> None:
-void plain(::tpy::Union<Cat*, Dog*> a);
+void plain(::tpy::Union<const Cat*, const Dog*> a);
 // def bumped_twice(a: Dog | Cat) -> None:
-void bumped_twice(::tpy::Union<Cat*, Dog*> a);
+void bumped_twice(::tpy::Union<const Cat*, const Dog*> a);
 // def cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> None:
-void cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed);
+void cross(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> a_narrowed);
 // def multi_cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> None:
-void multi_cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed);
+void multi_cross(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> a_narrowed);
 // def global_read(gsub: Dog | Cat) -> None:
-void global_read(::tpy::Union<Cat*, Dog*> gsub);
+void global_read(::tpy::Union<const Cat*, const Dog*> gsub);
 // def match_capture(a: Dog | Cat, other: Dog | Cat) -> None:
-void match_capture(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<const Cat*, const Dog*> other);
+void match_capture(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> other);
 // def bump(c: Cat, k: int32) -> int32:
 int32_t bump(Cat& c, int32_t k);
 // def call_cat(f: Fn[[Cat], int32], c: Cat) -> int32:
@@ -74,37 +74,37 @@ int32_t call_cat(__F0&& f, Cat& c);
 // def lambda_param(a: Dog | Cat) -> None:
 void lambda_param(::tpy::Union<Cat*, Dog*> a);
 // def multi(a: Dog | Cat, b: Dog | Cat) -> None:
-void multi(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> b);
+void multi(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> b);
 // def asserted(a: Dog | Cat) -> None:
-void asserted(::tpy::Union<Cat*, Dog*> a);
+void asserted(::tpy::Union<const Cat*, const Dog*> a);
 // def complement(a: Dog | Cat) -> None:
-void complement(::tpy::Union<Cat*, Dog*> a);
+void complement(::tpy::Union<const Cat*, const Dog*> a);
 // def inner_decl(a: Dog | Cat) -> None:
-void inner_decl(::tpy::Union<Cat*, Dog*> a);
+void inner_decl(::tpy::Union<const Cat*, const Dog*> a);
 // def comprehension(a: Dog | Cat) -> None:
-void comprehension(::tpy::Union<Cat*, Dog*> a);
+void comprehension(::tpy::Union<const Cat*, const Dog*> a);
 // def nested(a: Dog | Cat) -> None:
-void nested(::tpy::Union<Cat*, Dog*> a);
+void nested(::tpy::Union<const Cat*, const Dog*> a);
 // def poly(p: Pet) -> None:
 void poly(Pet& p);
 // def gen(a: Dog | Cat) -> Iterator[int32]:
-__gen_gen gen(::tpy::Union<Cat*, Dog*> a);
+__gen_gen gen(::tpy::Union<const Cat*, const Dog*> a);
 // def gen_across(a: Dog | Cat) -> Iterator[int32]:
-__gen_gen_across gen_across(::tpy::Union<Cat*, Dog*> a);
+__gen_gen_across gen_across(::tpy::Union<const Cat*, const Dog*> a);
 // def gen_cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> Iterator[int32]:
-__gen_gen_cross gen_cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed);
+__gen_gen_cross gen_cross(::tpy::Union<const Cat*, const Dog*> a, ::tpy::Union<const Cat*, const Dog*> a_narrowed);
 // def gen_assert(a: Dog | Cat) -> Iterator[int32]:
-__gen_gen_assert gen_assert(::tpy::Union<Cat*, Dog*> a);
+__gen_gen_assert gen_assert(::tpy::Union<const Cat*, const Dog*> a);
 // def gen_bumped_frame(a: Dog | Cat) -> Iterator[int32]:
-__gen_gen_bumped_frame gen_bumped_frame(::tpy::Union<Cat*, Dog*> a);
+__gen_gen_bumped_frame gen_bumped_frame(::tpy::Union<const Cat*, const Dog*> a);
 // def gen_resume_cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> Iterator[int32]:
-__gen_gen_resume_cross gen_resume_cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<Cat*, Dog*> a_narrowed);
+__gen_gen_resume_cross gen_resume_cross(::tpy::Union<Cat*, Dog*> a, ::tpy::Union<const Cat*, const Dog*> a_narrowed);
 // def gen_sibling(a: Dog | Cat, a_narrowed: int32) -> Iterator[int32]:
 __gen_gen_sibling gen_sibling(::tpy::Union<Cat*, Dog*> a, int32_t a_narrowed);
 // async def coro(a: Dog | Cat) -> None:
-__coro_coro coro(::tpy::Union<Cat*, Dog*> a);
+__coro_coro coro(::tpy::Union<const Cat*, const Dog*> a);
 // async def coro_complement(a: Dog | Cat) -> str:
-__coro_coro_complement coro_complement(::tpy::Union<Cat*, Dog*> a);
+__coro_coro_complement coro_complement(::tpy::Union<const Cat*, const Dog*> a);
 // async def coro_global(acache: Dog | Cat) -> str:
 __coro_coro_global coro_global(::tpy::Union<Cat*, Dog*> acache);
 // def main() -> None:
@@ -202,7 +202,7 @@ namespace tpyapp::main {
 struct __coro_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t __a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -212,7 +212,7 @@ struct __coro_coro {
         S_DONE = 2,
     };
 
-    __coro_coro(::tpy::Union<Cat*, Dog*> a_)
+    __coro_coro(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           __cancel_pending(false),
           a(a_) {}
@@ -229,7 +229,7 @@ struct __coro_coro {
 struct __coro_coro_complement {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t __a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -239,7 +239,7 @@ struct __coro_coro_complement {
         S_DONE = 2,
     };
 
-    __coro_coro_complement(::tpy::Union<Cat*, Dog*> a_)
+    __coro_coro_complement(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           __cancel_pending(false),
           a(a_) {}
@@ -282,7 +282,7 @@ struct __coro_coro_global {
 // def gen(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t __a;
 
     enum : int32_t {
@@ -291,7 +291,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
         S_DONE = 2,
     };
 
-    __gen_gen(::tpy::Union<Cat*, Dog*> a_)
+    __gen_gen(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 
@@ -306,7 +306,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
 // def gen_across(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_across : public ::tpy::next_iter_mixin<__gen_gen_across, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t __a;
 
     enum : int32_t {
@@ -316,7 +316,7 @@ struct __gen_gen_across : public ::tpy::next_iter_mixin<__gen_gen_across, int32_
         S_DONE = 3,
     };
 
-    __gen_gen_across(::tpy::Union<Cat*, Dog*> a_)
+    __gen_gen_across(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 
@@ -331,8 +331,8 @@ struct __gen_gen_across : public ::tpy::next_iter_mixin<__gen_gen_across, int32_
 // def gen_cross(a: Dog | Cat, a_narrowed: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_cross : public ::tpy::next_iter_mixin<__gen_gen_cross, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
-    ::tpy::Union<Cat*, Dog*> a_narrowed;
+    ::tpy::Union<const Cat*, const Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a_narrowed;
     int32_t __a;
 
     enum : int32_t {
@@ -341,7 +341,7 @@ struct __gen_gen_cross : public ::tpy::next_iter_mixin<__gen_gen_cross, int32_t>
         S_DONE = 2,
     };
 
-    __gen_gen_cross(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<Cat*, Dog*> a_narrowed_)
+    __gen_gen_cross(::tpy::Union<const Cat*, const Dog*> a_, ::tpy::Union<const Cat*, const Dog*> a_narrowed_)
         : __state(S_INITIAL),
           a(a_),
           a_narrowed(a_narrowed_) {}
@@ -357,7 +357,7 @@ struct __gen_gen_cross : public ::tpy::next_iter_mixin<__gen_gen_cross, int32_t>
 // def gen_assert(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_assert : public ::tpy::next_iter_mixin<__gen_gen_assert, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t __a;
 
     enum : int32_t {
@@ -366,7 +366,7 @@ struct __gen_gen_assert : public ::tpy::next_iter_mixin<__gen_gen_assert, int32_
         S_DONE = 2,
     };
 
-    __gen_gen_assert(::tpy::Union<Cat*, Dog*> a_)
+    __gen_gen_assert(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 
@@ -381,7 +381,7 @@ struct __gen_gen_assert : public ::tpy::next_iter_mixin<__gen_gen_assert, int32_
 // def gen_bumped_frame(a: Dog | Cat) -> Iterator[int32]:
 struct __gen_gen_bumped_frame : public ::tpy::next_iter_mixin<__gen_gen_bumped_frame, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     int32_t __a;
     int32_t __a_narrowed;
 
@@ -392,7 +392,7 @@ struct __gen_gen_bumped_frame : public ::tpy::next_iter_mixin<__gen_gen_bumped_f
         S_DONE = 3,
     };
 
-    __gen_gen_bumped_frame(::tpy::Union<Cat*, Dog*> a_)
+    __gen_gen_bumped_frame(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 
@@ -408,7 +408,7 @@ struct __gen_gen_bumped_frame : public ::tpy::next_iter_mixin<__gen_gen_bumped_f
 struct __gen_gen_resume_cross : public ::tpy::next_iter_mixin<__gen_gen_resume_cross, int32_t> {
     ::tpy::frame_state __state;
     ::tpy::Union<Cat*, Dog*> a;
-    ::tpy::Union<Cat*, Dog*> a_narrowed;
+    ::tpy::Union<const Cat*, const Dog*> a_narrowed;
     int32_t __a;
 
     enum : int32_t {
@@ -417,7 +417,7 @@ struct __gen_gen_resume_cross : public ::tpy::next_iter_mixin<__gen_gen_resume_c
         S_DONE = 2,
     };
 
-    __gen_gen_resume_cross(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<Cat*, Dog*> a_narrowed_)
+    __gen_gen_resume_cross(::tpy::Union<Cat*, Dog*> a_, ::tpy::Union<const Cat*, const Dog*> a_narrowed_)
         : __state(S_INITIAL),
           a(a_),
           a_narrowed(a_narrowed_) {}

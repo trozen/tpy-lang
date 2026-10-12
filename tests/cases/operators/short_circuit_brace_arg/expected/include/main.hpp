@@ -56,7 +56,7 @@ int64_t free_type_param(bool flag);
 // def free_generator(flag: bool) -> int64:
 int64_t free_generator(bool flag);
 // def method_generator(bx: Bx, flag: bool) -> int64:
-int64_t method_generator(Bx& bx, bool flag);
+int64_t method_generator(const Bx& bx, bool flag);
 // def protocol_union(flag: bool) -> int64:
 int64_t protocol_union(bool flag);
 // def narrow_int(flag: bool) -> bool:

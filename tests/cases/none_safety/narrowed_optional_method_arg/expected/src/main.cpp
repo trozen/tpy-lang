@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def test_method_arg(x: str | None, p: Printer) -> None:
 //     if x is not None:
 //         p.show(x)
-void test_method_arg(std::optional<std::string_view> x, Printer& p) {
+void test_method_arg(std::optional<std::string_view> x, const Printer& p) {
     if ((x.has_value())) {
         p.show((*x));
     }
@@ -16,7 +16,7 @@ void test_method_arg(std::optional<std::string_view> x, Printer& p) {
 // def test_method_arg_int(x: int | None, p: Printer) -> None:
 //     if x is not None:
 //         p.show_int(x)
-void test_method_arg_int(std::optional<::tpy::BigInt> x, Printer& p) {
+void test_method_arg_int(std::optional<::tpy::BigInt> x, const Printer& p) {
     if ((x.has_value())) {
         p.show_int((*x));
     }
@@ -25,7 +25,7 @@ void test_method_arg_int(std::optional<::tpy::BigInt> x, Printer& p) {
 // def test_self_call(p: Printer) -> None:
 //     p.process("self-call")
 //     p.process(None)
-void test_self_call(Printer& p) {
+void test_self_call(const Printer& p) {
     p.process("self-call");
     p.process(std::nullopt);
 }

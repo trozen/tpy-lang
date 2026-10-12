@@ -11,10 +11,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @dispatch
 // def f32d(d: dict[str, float32]) -> float32:
-float f32d(const ::tpy::ordered_map<std::string, float>& d);
+float f32d__dict_str_float32(const ::tpy::ordered_map<std::string, float>& d);
 // @dispatch
 // def f32d(s: str) -> str:
-std::string f32d(std::string_view s);
+std::string f32d__str(std::string_view s);
 // def rebind() -> None:
 void rebind();
 

@@ -28,7 +28,7 @@ double random() {
 //     # No-arg form: re-seed from OS entropy (matches CPython's seed()
 //     # default behavior when called without arguments).
 //     _inst._seed(_os_entropy_uint32())
-void seed() {
+void seed__noargs() {
     _inst->_seed(::tpy::stdlib::random::os_entropy_uint32());
 }
 
@@ -41,7 +41,7 @@ void seed() {
 //         _inst._seed(uint32.sub_wrap(uint32(0), uint32.trunc(n)))
 //     else:
 //         _inst._seed(uint32(n))
-void seed(int32_t n) {
+void seed__int32(int32_t n) {
     if ((n < 0)) {
         _inst->_seed(static_cast<uint32_t>(0 - static_cast<uint32_t>(n)));
     } else {
@@ -64,21 +64,21 @@ int32_t randint(int32_t a, int32_t b) {
 // @dispatch
 // def randrange(stop: int32) -> int32:
 //     return _inst.randrange(stop)
-int32_t randrange(int32_t stop) {
+int32_t randrange__int32(int32_t stop) {
     return _inst->randrange(stop);
 }
 
 // @dispatch
 // def randrange(start: int32, stop: int32) -> int32:
 //     return _inst.randrange(start, stop)
-int32_t randrange(int32_t start, int32_t stop) {
+int32_t randrange__int32__int32(int32_t start, int32_t stop) {
     return _inst->randrange(start, stop);
 }
 
 // @dispatch
 // def randrange(start: int32, stop: int32, step: int32) -> int32:
 //     return _inst.randrange(start, stop, step)
-int32_t randrange(int32_t start, int32_t stop, int32_t step) {
+int32_t randrange__int32__int32__int32(int32_t start, int32_t stop, int32_t step) {
     return _inst->randrange(start, stop, step);
 }
 

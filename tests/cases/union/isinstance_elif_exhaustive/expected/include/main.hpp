@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def by_field(pet: Dog | Cat) -> int:
 ::tpy::BigInt by_field(::tpy::Union<const Cat*, const Dog*> pet);
 // def by_method(pet: Dog | Cat) -> int:
-::tpy::BigInt by_method(::tpy::Union<Cat*, Dog*> pet);
+::tpy::BigInt by_method(::tpy::Union<const Cat*, const Dog*> pet);
 // def main() -> None:
 void main();
 

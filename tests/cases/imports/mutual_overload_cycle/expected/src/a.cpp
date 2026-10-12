@@ -8,13 +8,13 @@ namespace tpyapp::a {
 // def use_g_int(n: int32) -> int32:
 //     return g(n)
 int32_t use_g_int(int32_t n) {
-    return ::tpyapp::b::g(n);
+    return ::tpyapp::b::g__int32(n);
 }
 
 // def use_g_str(s: str) -> int32:
 //     return g(s)
 int32_t use_g_str(std::string_view s) {
-    return ::tpyapp::b::g(s);
+    return ::tpyapp::b::g__str(s);
 }
 
 // # Cycle peer that imports an @overload-grouped function from `b` and

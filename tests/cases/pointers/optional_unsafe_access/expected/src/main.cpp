@@ -9,7 +9,7 @@ std::vector<Point>* points{};
 // # Compiles with warning and inserts a runtime null check.
 // def use_without_check(p: Point | None) -> int32:
 //     return p.mag()  # tpyc: warning(/Potential None access on optional value/)
-int32_t use_without_check(Point* p) {
+int32_t use_without_check(const Point* p) {
     return ::tpy::deref_check(p).mag();
 }
 

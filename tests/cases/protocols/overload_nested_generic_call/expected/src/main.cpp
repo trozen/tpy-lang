@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // @dispatch
 // def double_wrap(inner: str) -> Own[Box[Rc[str]]]:
 //     return Box(Rc.new(inner))
-::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap(std::string_view inner) {
+::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>> double_wrap__str(std::string_view inner) {
     return ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<std::string>>(Rc<std::string>::new_<std::string>(std::string(inner)));
 }
 
@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     b: Box[Rc[Pet]] = double_wrap(Rc.new(Dog("Spot")))  # tpyc: type(Box[Rc[Pet]])
 //     print(b.get().get().name())
 void main() {
-    ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<Pet>> b = ::tpyapp::main::double_wrap<Pet>(Rc<Pet>::new_<::tpy::Adapter<Pet, Dog>>(Dog("Spot")));
+    ::tpystd::tplib::box::Box<::tpystd::tplib::rc::Rc<Pet>> b = ::tpyapp::main::double_wrap__Own_Rc_T<Pet>(Rc<Pet>::new_<::tpy::Adapter<Pet, Dog>>(Dog("Spot")));
     std::cout << b.get().get().name() << "\n" << ::tpy::check_signals;
 }
 

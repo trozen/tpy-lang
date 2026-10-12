@@ -12,17 +12,17 @@ inline constexpr std::string_view __name__ = "__main__";
 // @overload
 // def pick[T: Comparable](xs: list[T]) -> int32: ...
 template<::tpystd::tpy::Comparable T>
-int32_t pick(const std::vector<T>& xs);
+int32_t pick__list_T(const std::vector<T>& xs);
 // @overload
 // def pick(xs: str) -> int32: ...
-int32_t pick(std::string_view xs);
+int32_t pick__str(std::string_view xs);
 // def main() -> None:
 void main();
 
 // @overload
 // def pick[T: Comparable](xs: list[T]) -> int32: ...
 template<::tpystd::tpy::Comparable T>
-int32_t pick(const std::vector<T>& xs) {
+int32_t pick__list_T(const std::vector<T>& xs) {
     int32_t n = 0;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -36,7 +36,7 @@ int32_t pick(const std::vector<T>& xs) {
 
 // @overload
 // def pick(xs: str) -> int32: ...
-inline int32_t pick(std::string_view xs) {
+inline int32_t pick__str(std::string_view xs) {
     return ::tpy::__len__(xs);
 }
 

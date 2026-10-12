@@ -336,7 +336,7 @@ void forwarded_write(Rec& r, std::string_view s) {
 // def method_view(r: Rec) -> int:  # tpyc: mir(covered)
 //     v = r.name_view()
 //     return len(v)
-::tpy::BigInt method_view(Rec& r) {
+::tpy::BigInt method_view(const Rec& r) {
     std::string v = std::string(r.name_view());
     return ::tpy::BigInt(::tpy::__len__(v));
 }

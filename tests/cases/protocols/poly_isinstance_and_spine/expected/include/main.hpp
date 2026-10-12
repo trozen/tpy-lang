@@ -29,7 +29,7 @@ struct Dog;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def check_and(p: Pet, threshold: int32) -> bool:
-bool check_and(Pet& p, int32_t threshold);
+bool check_and(const Pet& p, int32_t threshold);
 // def main() -> None:
 void main();
 

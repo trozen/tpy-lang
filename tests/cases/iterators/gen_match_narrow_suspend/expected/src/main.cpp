@@ -7,7 +7,7 @@ namespace tpyapp::main {
 
 
 // def voices(a: Dog | Cat) -> Iterator[str]:
-__gen_voices voices(::tpy::Union<Cat*, Dog*> a) {
+__gen_voices voices(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_voices(a);
 }
 
@@ -178,7 +178,7 @@ __gen_kill kill(::tpy::Union<::tpy::BigInt, std::string> a) {
 void main() {
     {
         Dog __tmp_1 = Dog();
-        auto __src_0 = ::tpyapp::main::voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = ::tpyapp::main::voices(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -189,7 +189,7 @@ void main() {
     }
     {
         Cat __tmp_2 = Cat();
-        auto __src_2 = ::tpyapp::main::voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
+        auto __src_2 = ::tpyapp::main::voices(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();

@@ -17,14 +17,14 @@ namespace tpyapp::main {
 //     return result
 // @overload
 // def repeat(s: str) -> str: ...  # tpyc: ok
-std::string repeat(std::string_view s) {
+std::string repeat__str(std::string_view s) {
     ::tpy::BigInt count = ::tpy::BigInt(0);
     return std::string(s);
 }
 
 // @overload
 // def repeat(s: str, count: int) -> str: ...  # tpyc: ok
-std::string repeat(std::string_view s, const ::tpy::BigInt& count) {
+std::string repeat__str__int(std::string_view s, const ::tpy::BigInt& count) {
     if ((count == 0)) {
         return std::string(s);
     }
@@ -42,8 +42,8 @@ std::string repeat(std::string_view s, const ::tpy::BigInt& count) {
 //     print(repeat("ab"))
 //     print(repeat("ab", 3))
 void main() {
-    std::cout << ::tpyapp::main::repeat(std::string_view("ab")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::repeat(std::string_view("ab"), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::repeat__str(std::string_view("ab")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::repeat__str__int(std::string_view("ab"), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

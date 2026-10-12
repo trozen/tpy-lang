@@ -19,7 +19,7 @@ int32_t h__lit_x(std::string_view a, int32_t b) {
 
 // @overload
 // def h(a: str, b: int32) -> int32: ...  # tpyc: ok
-int32_t h(std::string_view a, int32_t b) {
+int32_t h__str__int32(std::string_view a, int32_t b) {
     if ((a == "x")) {
         return (::tpy::add_check<int32_t>(b, 100));
     }
@@ -30,7 +30,7 @@ int32_t h(std::string_view a, int32_t b) {
 // def main() -> None:
 //     print(h("x"), h("y", 2))
 void main() {
-    std::cout << ::tpyapp::main::h__lit_x("x") << " " << ::tpyapp::main::h(std::string_view("y"), 2) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::h__lit_x("x") << " " << ::tpyapp::main::h__str__int32(std::string_view("y"), 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

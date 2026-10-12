@@ -39,7 +39,7 @@ inline std::ostream& operator<<(std::ostream& os, const Shutdown& obj) {
 inline void Shutdown::stop(int32_t code) const {
     {
         try {
-            ::tpystd::sys::exit(code);
+            ::tpystd::sys::exit__int32(code);
         } catch (...) {
             std::cout << "stop: finally" << "\n" << ::tpy::check_signals;
             throw;

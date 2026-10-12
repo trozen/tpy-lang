@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def h(a: str, b: int32 = 0) -> int32:
 int32_t h__lit_x(std::string_view a, int32_t b = 0);
 // def h(a: str, b: int32 = 0) -> int32:
-int32_t h(std::string_view a, int32_t b = 0);
+int32_t h__str__int32(std::string_view a, int32_t b = 0);
 // def main() -> None:
 void main();
 

@@ -20,8 +20,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        if (std::holds_alternative<Cat*>(a)) {
-            auto& __a_narrowed = *std::get<Cat*>(a);
+        if (std::holds_alternative<const Cat*>(a)) {
+            auto& __a_narrowed = *std::get<const Cat*>(a);
             std::cout << "gen" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
         }
         __state = S_DONE;
@@ -44,18 +44,18 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_across::__next__()
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __a = 8;
-        if (std::holds_alternative<Cat*>(a)) {
-            auto& __a_narrowed = *std::get<Cat*>(a);
+        if (std::holds_alternative<const Cat*>(a)) {
+            auto& __a_narrowed = *std::get<const Cat*>(a);
             __state = S_RESUME_0;
             return 1;
         } else {
-            auto& __a_narrowed = *std::get<Dog*>(a);
+            auto& __a_narrowed = *std::get<const Dog*>(a);
             __state = S_JOIN_0;
             continue;
         }
     }
     case S_RESUME_0: {  // after: yield 1
-        auto& __a_narrowed = *std::get<Cat*>(a);
+        auto& __a_narrowed = *std::get<const Cat*>(a);
         std::cout << "gen_across" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
@@ -86,10 +86,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_cross::__next__() 
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        if (std::holds_alternative<Cat*>(a)) {
-            auto& __a_narrowed = *std::get<Cat*>(a);
-            if (std::holds_alternative<Dog*>(a_narrowed)) {
-                auto& __a_narrowed_narrowed = *std::get<Dog*>(a_narrowed);
+        if (std::holds_alternative<const Cat*>(a)) {
+            auto& __a_narrowed = *std::get<const Cat*>(a);
+            if (std::holds_alternative<const Dog*>(a_narrowed)) {
+                auto& __a_narrowed_narrowed = *std::get<const Dog*>(a_narrowed);
                 std::cout << "gen_cross" << " " << __a_narrowed.sound() << " " << __a_narrowed_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
             }
         }
@@ -116,8 +116,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_assert::__next__()
         return 3;
     }
     case S_RESUME_0: {  // after: yield 3
-        if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
-        auto& __a_narrowed = *std::get<Cat*>(a);
+        if (!(std::holds_alternative<const Cat*>(a))) ::tpy::raise_assertion_error();
+        auto& __a_narrowed = *std::get<const Cat*>(a);
         std::cout << "gen_assert" << " " << __a_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -141,18 +141,18 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_bumped_frame::__ne
         __state = S_DONE;  // until a yield sets where to resume
         __a = 5;
         __a_narrowed = 6;
-        if (std::holds_alternative<Cat*>(a)) {
-            auto& __a_narrowed_2 = *std::get<Cat*>(a);
+        if (std::holds_alternative<const Cat*>(a)) {
+            auto& __a_narrowed_2 = *std::get<const Cat*>(a);
             __state = S_RESUME_0;
             return 1;
         } else {
-            auto& __a_narrowed_2 = *std::get<Dog*>(a);
+            auto& __a_narrowed_2 = *std::get<const Dog*>(a);
             __state = S_JOIN_0;
             continue;
         }
     }
     case S_RESUME_0: {  // after: yield 1
-        auto& __a_narrowed_2 = *std::get<Cat*>(a);
+        auto& __a_narrowed_2 = *std::get<const Cat*>(a);
         std::cout << "gen_bumped_frame" << " " << __a_narrowed_2.sound() << " " << __a << " " << __a_narrowed << "\n" << ::tpy::check_signals;
         __state = S_JOIN_0;
         continue;
@@ -182,14 +182,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_resume_cross::__ne
         __a = 5;
         if (!(std::holds_alternative<Cat*>(a))) ::tpy::raise_assertion_error();
         auto& __a_narrowed = *std::get<Cat*>(a);
-        if (!(std::holds_alternative<Dog*>(a_narrowed))) ::tpy::raise_assertion_error();
-        auto& __a_narrowed_2 = *std::get<Dog*>(a_narrowed);
+        if (!(std::holds_alternative<const Dog*>(a_narrowed))) ::tpy::raise_assertion_error();
+        auto& __a_narrowed_2 = *std::get<const Dog*>(a_narrowed);
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
         auto& __a_narrowed = *std::get<Cat*>(a);
-        auto& __a_narrowed_narrowed = *std::get<Dog*>(a_narrowed);
+        auto& __a_narrowed_narrowed = *std::get<const Dog*>(a_narrowed);
         __a_narrowed.n = ::tpy::add_check<int32_t>(__a_narrowed.n, 1);
         std::cout << "gen_resume_cross" << " " << __a_narrowed.sound() << " " << __a_narrowed_narrowed.sound() << " " << __a << "\n" << ::tpy::check_signals;
         __state = S_DONE;

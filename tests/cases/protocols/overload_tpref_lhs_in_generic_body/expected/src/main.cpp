@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // @dispatch
 // def pick(x: int32, y: int32) -> int32:
 //     return x
-int32_t pick(int32_t x, int32_t y) {
+int32_t pick__int32__int32(int32_t x, int32_t y) {
     return x;
 }
 

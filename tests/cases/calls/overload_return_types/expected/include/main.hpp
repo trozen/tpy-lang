@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def get_value(animal: Dog) -> str: ...  # tpyc: ok
-std::string get_value(const Dog& animal);
+std::string get_value__Dog(const Dog& animal);
 // @overload
 // def get_value(animal: Cat) -> int: ...  # tpyc: ok
-::tpy::BigInt get_value(const Cat& animal);
+::tpy::BigInt get_value__Cat(const Cat& animal);
 // def use_dog_result(name: str) -> None:
 void use_dog_result(std::string_view name);
 // def use_cat_result(lives: int) -> None:

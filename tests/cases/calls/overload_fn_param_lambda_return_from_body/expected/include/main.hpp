@@ -15,14 +15,14 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t m(__F0&& f, const std::vector<T>& xs);
+int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs);
 // @dispatch
 // def m[T, U](f: Fn[[T, T], U], xs: list[T]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-int32_t m(__F0&& f, const std::vector<T>& xs);
+int32_t m__Fn_T_T_U__list_T(__F0&& f, const std::vector<T>& xs);
 // def main() -> None:
 void main();
 
@@ -33,7 +33,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t m(__F0&& f, const std::vector<T>& xs) {
+int32_t m__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
     return ::tpy::__len__(xs);
 }
 // @dispatch
@@ -43,7 +43,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<U>;
   }
-int32_t m(__F0&& f, const std::vector<T>& xs) {
+int32_t m__Fn_T_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
     return (::tpy::mul_check<int32_t>(2, ::tpy::__len__(xs)));
 }
 

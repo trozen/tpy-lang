@@ -1,8 +1,12 @@
 # Auto-infer const for methods that never mutate self (no explicit @readonly needed).
 # Covers: pure readers, self-delegation chains, inherited protocols, dynamic vtable guard,
-# field.method() deferred inference, Optional field const propagation.
+# field.method() deferred inference, Optional field const propagation, parameter
+# receivers (a read-only call keeps the param const; a writing call, a write
+# through a field, in a free function, method, generator or async body, keeps it
+# mutable; a @staticmethod called through a param instance writes nothing).
+import asyncio
 from tpy import int32, dynamic
-from typing import Optional, Protocol
+from typing import Iterator, Optional, Protocol
 
 class Counter:
     count: int32
@@ -72,6 +76,9 @@ class Inner:
     def get(self) -> int32:
         return self.value
 
+    def set(self, v: int32) -> None:
+        self.value = v
+
 class Outer:
     items: list[Inner]
     extra: Inner
@@ -133,6 +140,69 @@ def show(v: DynValued) -> None:
     print(v.value())
 
 
+# Parameter receivers: the call's receiver mutation is decided in Phase 2, as
+# for self, so a param only calling inferred-const methods stays const.
+class Holder:
+    inner: Inner
+
+    def __init__(self) -> None:
+        self.inner = Inner(9)
+
+
+def read_counter(c: Counter) -> int32:  # c.get() is inferred const -- c is const
+    return c.get()
+
+
+def read_holder(h: Holder) -> int32:    # h.inner.get() -- h is const
+    return h.inner.get()
+
+
+def bump_counter(c: Counter) -> None:   # c.increment() writes -- c stays mutable
+    c.increment()
+
+
+def read_valued(v: Valued) -> int32:    # value() is kept non-const -- v stays mutable
+    return v.value()
+
+
+def poke_holder(h: Holder, v: int32) -> None:  # h.inner.set() writes -- h stays mutable
+    h.inner.set(v)
+
+
+# method position: a writing call on a param, not on self -- c stays mutable
+class Bumper:
+    def bump(self, c: Counter) -> None:
+        c.increment()
+
+
+# generator position: a writing call on a param -- c stays mutable
+def bump_gen(c: Counter) -> Iterator[int32]:
+    c.increment()
+    yield c.get()
+
+
+# async position: a writing call on a param -- c stays mutable
+async def bump_async(c: Counter) -> int32:
+    c.increment()
+    await asyncio.sleep(0)
+    return c.get()
+
+
+class Calc:
+    base: int32
+
+    def __init__(self) -> None:
+        self.base = 0
+
+    @staticmethod
+    def add(a: int32, b: int32) -> int32:
+        return a + b
+
+
+def use_static(k: Calc) -> int32:      # a staticmethod through k writes nothing -- k is const
+    return k.add(1, 2)
+
+
 def main() -> None:
     c = Counter()
     c.increment()
@@ -160,5 +230,34 @@ def main() -> None:
     print(wo.get_child_value())
 
     show(Valued(7))
+
+    pc = Counter()
+    print("param:", read_counter(pc))
+    bump_counter(pc)
+    pc.increment()
+    print("param:", read_counter(pc))
+    ph = Holder()
+    print("param:", read_holder(ph))
+    ph.inner.value = 10
+    print("param:", read_holder(ph))
+    print("param:", read_valued(Valued(8)))
+    poke_holder(ph, 11)  # tpyc: ok
+    ph.inner.value += 1
+    print("field write:", read_holder(ph))
+    wc = Counter()
+    Bumper().bump(wc)  # tpyc: ok
+    wc.increment()
+    print("method:", wc.get())
+    for n in bump_gen(wc):  # tpyc: ok
+        print("generator:", n)
+    wc.increment()
+    print("generator:", wc.get())
+    print("async:", asyncio.run(bump_async(wc)))  # tpyc: ok
+    wc.increment()
+    print("async:", wc.get())
+    k = Calc()
+    print("static:", use_static(k))  # tpyc: ok
+    k.base = 5
+    print("static:", use_static(k), k.base)
 
 main()

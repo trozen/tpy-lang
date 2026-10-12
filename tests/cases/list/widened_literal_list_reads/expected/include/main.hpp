@@ -49,10 +49,10 @@ template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def total(v: Span[int32]) -> int64:
-int64_t total(std::span<int32_t> v);
+int64_t total__Span_int32(std::span<int32_t> v);
 // @dispatch
 // def total(v: str) -> int64:
-int64_t total(std::string_view v);
+int64_t total__str(std::string_view v);
 // def param_widens() -> None:
 void param_widens();
 // def param_confirms() -> None:

@@ -103,7 +103,7 @@ int32_t use_temp(int32_t n) {
 // # free function: a method call's result as a temporary receiver
 // def spawn_temp(pool: Pool) -> int32:  # tpyc: mir(certified)
 //     return pool.spawn(4).y
-int32_t spawn_temp(Pool& pool) {
+int32_t spawn_temp(const Pool& pool) {
     return pool.spawn(4).y;
 }
 
@@ -143,7 +143,7 @@ int32_t named_caller(std::string_view s) {
 // def spawned(pool: Pool) -> int32:  # tpyc: mir(covered)
 //     p = pool.spawn(4)
 //     return p.x + p.y
-int32_t spawned(Pool& pool) {
+int32_t spawned(const Pool& pool) {
     Point p = pool.spawn(4);
     return (::tpy::add_check<int32_t>(p.x, p.y));
 }

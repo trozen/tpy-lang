@@ -13,7 +13,7 @@ struct Dog;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def name_of(a: Animal) -> str:
-std::string name_of(Animal& a);
+std::string name_of(const Animal& a);
 // def main() -> None:
 void main();
 

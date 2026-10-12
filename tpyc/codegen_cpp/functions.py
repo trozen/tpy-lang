@@ -34,6 +34,7 @@ from ..typesys import (
     property_getter_returns_storage_ref,
     bare_name, TupleGlobalLayout, global_tuple_layout,
     body_function_info, body_method_info,
+    overload_variant_cpp_name, variant_cpp_name_of,
 )
 from ..parse import TpyFunction, TpyVarDecl, VarLinkage
 from ..type_def_registry import is_varargs, is_char_type, is_str_type, is_bytes_type, is_bytes_view_type, protocol_info_of
@@ -176,31 +177,6 @@ def overload_stubs_are_literal_only(
         for stub in stubs
         for _, ptype in stub.params
     )
-
-
-def literal_mangled_name(base_name: str, stub_or_info: TpyFunction | FunctionInfo) -> str:
-    """Generate a mangled C++ name for a literal-specialized function.
-
-    Collects all LiteralType values from stub params and appends them
-    as __lit_{sanitized}. Multi-value stubs join with double underscore.
-    E.g. Literal["age"] -> __lit_age, Literal[1, 2] -> __lit_1__2,
-    Literal[-1] -> __lit_neg1. Accepts TpyFunction (params as tuples)
-    or FunctionInfo (params as ParamInfo objects).
-    """
-    parts: list[str] = []
-    params = stub_or_info.params
-    for p in params:
-        ptype = p[1] if isinstance(p, tuple) else p.type
-        if isinstance(ptype, LiteralType):
-            for v in ptype.values:
-                s = str(v.value)
-                if s.startswith("-"):
-                    s = "neg" + s[1:]
-                sanitized = "".join(c if c.isalnum() else "_" for c in s)
-                parts.append(sanitized)
-    if not parts:
-        return base_name
-    return f"{base_name}__lit_{'__'.join(parts)}"
 
 
 # Zero-arg scalar constructors that codegen to `0` (as opposed to
@@ -898,14 +874,14 @@ class FunctionGenerator:
         if overload_stubs:
             if self._overload_stubs_are_literal_only(overload_stubs, func):
                 for stub in overload_stubs:
-                    mangled = self._literal_mangled_name(func.name, stub)
                     self._gen_function_forward_decl_single(
-                        out, func, cpp_name=mangled,
+                        out, func, cpp_name=self._emitted_name(stub),
                         return_type_override=stub.return_type,
                     )
             else:
                 for stub in overload_stubs:
-                    self._gen_function_forward_decl_single(out, stub)
+                    self._gen_function_forward_decl_single(
+                        out, stub, cpp_name=self._emitted_name(stub))
             return True
         if func.is_stub and not func.is_overload_stub:
             return False
@@ -914,7 +890,8 @@ class FunctionGenerator:
         if func.is_overload_stub and func.is_stub:
             return False
 
-        self._gen_function_forward_decl_single(out, func)
+        self._gen_function_forward_decl_single(
+            out, func, cpp_name=self._emitted_name(func))
         return True
 
     def _gen_function_forward_decl_single(
@@ -1127,7 +1104,7 @@ class FunctionGenerator:
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            addr_escapes_params=ae, func=func))
-            out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
+            out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(func))}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(func.return_type, const=func.is_readonly,
                                                   error_return=func.error_return)
@@ -1135,7 +1112,7 @@ class FunctionGenerator:
                       else self.gen_params(func.params, func.type_params,
                                            reassigned_params=rp, mutated_params=mp,
                                            addr_escapes_params=ae, func=func))
-            out.write(f"{ret_type} {escape_cpp_name(func.name)}({params}) {{\n")
+            out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(func))}({params}) {{\n")
 
         self.gen_body(out, func, return_cpp=ret_type)
 
@@ -1143,7 +1120,12 @@ class FunctionGenerator:
 
     _overload_stubs_are_literal_only = staticmethod(overload_stubs_are_literal_only)
 
-    _literal_mangled_name = staticmethod(literal_mangled_name)
+    def _emitted_name(self, decl: TpyFunction) -> str:
+        """The C++ name a free function -- or one variant of a free overload
+        set, by the def it was registered from -- is defined and declared
+        under."""
+        return (variant_cpp_name_of(self.ctx.analyzer.registry.get_function(decl.name), decl)
+                or decl.name)
 
 
     def _gen_literal_specialized_function(
@@ -1157,7 +1139,7 @@ class FunctionGenerator:
         """
         self.ctx.emit_declaration_echo(out, stub.loc)
 
-        mangled = self._literal_mangled_name(impl.name, stub)
+        mangled = self._emitted_name(stub)
         rp = self._get_reassigned_params(impl)
         mp = self._get_func_mutated_params(impl)
 
@@ -1229,14 +1211,14 @@ class FunctionGenerator:
                       if has_proto_params or has_dynamic
                       else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp, func=stub))
-            out.write(f"{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
+            out.write(f"{ret_type} {escape_cpp_name(self._emitted_name(stub))}({params}) {{\n")
         else:
             ret_type = self._resolve_return_type(stub.return_type)
             params = (self.gen_params_with_protocols(stub.params, mutated_params=mp) if has_dynamic
                       else self.gen_params(stub.params, stub.type_params,
                                            reassigned_params=rp, mutated_params=mp, func=stub))
             inline_kw = "inline " if in_header else ""
-            out.write(f"{inline_kw}{ret_type} {escape_cpp_name(stub.name)}({params}) {{\n")
+            out.write(f"{inline_kw}{ret_type} {escape_cpp_name(self._emitted_name(stub))}({params}) {{\n")
 
         # Request synthetic locals for missing impl params at the top of the body.
         self.ctx.overload_missing_param_locals = self._missing_param_local_specs(
@@ -1386,7 +1368,11 @@ class FunctionGenerator:
         a mangled method name. Injects literal narrowing facts for dead
         branch elimination.
         """
-        mangled = literal_mangled_name(impl.name, stub)
+        # Methods keep one shared name except for their literal variants
+        # (`method_literal_mangled_cpp` spells the same rule at the call).
+        mangled = (overload_variant_cpp_name(impl.name, stub.params)
+                   if any(isinstance(t, LiteralType) for _, t in stub.params)
+                   else impl.name)
         synth = TpyFunction(
             name=mangled,
             params=list(impl.params),

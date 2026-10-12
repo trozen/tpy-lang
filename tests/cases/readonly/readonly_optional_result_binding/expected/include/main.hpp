@@ -30,16 +30,16 @@ const R* relay_method(const H& h);
 const R* relay_free(H& h);
 // @overload
 // def pick(h: H, k: int32) -> readonly[Optional[R]]: ...
-const R* pick(H& h, int32_t k);
+const R* pick__H__int32(H& h, int32_t k);
 // @overload
 // def pick(h: H, k: str) -> readonly[Optional[R]]: ...
-const R* pick(H& h, std::string_view k);
+const R* pick__H__str(H& h, std::string_view k);
 // @overload
 // def pick_ro(h: readonly[H], k: int32) -> readonly[Optional[R]]: ...
-const R* pick_ro(const H& h, int32_t k);
+const R* pick_ro__readonly_H__int32(const H& h, int32_t k);
 // @overload
 // def pick_ro(h: readonly[H], k: str) -> readonly[Optional[R]]: ...
-const R* pick_ro(const H& h, std::string_view k);
+const R* pick_ro__readonly_H__str(const H& h, std::string_view k);
 // def show(tag: str, v: readonly[Optional[R]]) -> None:
 void show(std::string_view tag, const R* v);
 // def in_try(h: H) -> int32:

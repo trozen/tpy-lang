@@ -9,7 +9,7 @@ namespace tpyapp::main {
 // def floor_b(xs: list[int]) -> str:
 //     xs.append(7)
 //     return "int"
-std::string floor_b(std::vector<::tpy::BigInt>& xs) {
+std::string floor_b__list_int(std::vector<::tpy::BigInt>& xs) {
     xs.push_back(7);
     return "int";
 }
@@ -18,7 +18,7 @@ std::string floor_b(std::vector<::tpy::BigInt>& xs) {
 // def floor_b(xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "int64"
-std::string floor_b(std::vector<int64_t>& xs) {
+std::string floor_b__list_int64(std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "int64";
 }
@@ -28,7 +28,7 @@ std::string floor_b(std::vector<int64_t>& xs) {
 // @dispatch
 // def concrete_first(xs: list[int64]) -> str:
 //     return "list64"
-std::string concrete_first(const std::vector<int64_t>& xs) {
+std::string concrete_first__list_int64(const std::vector<int64_t>& xs) {
     return "list64";
 }
 
@@ -37,14 +37,14 @@ std::string concrete_first(const std::vector<int64_t>& xs) {
 // @dispatch
 // def scalar32(n: int32, xs: list[int64]) -> str:
 //     return "list"
-std::string scalar32(int32_t n, const std::vector<int64_t>& xs) {
+std::string scalar32__int32__list_int64(int32_t n, const std::vector<int64_t>& xs) {
     return "list";
 }
 
 // @dispatch
 // def scalar_big(n: int, xs: list[int64]) -> str:
 //     return "list"
-std::string scalar_big(const ::tpy::BigInt& n, const std::vector<int64_t>& xs) {
+std::string scalar_big__int__list_int64(const ::tpy::BigInt& n, const std::vector<int64_t>& xs) {
     return "list";
 }
 
@@ -52,7 +52,7 @@ std::string scalar_big(const ::tpy::BigInt& n, const std::vector<int64_t>& xs) {
 // @dispatch
 // def to_big(xs: list[int]) -> str:
 //     return "big"
-std::string to_big(const std::vector<::tpy::BigInt>& xs) {
+std::string to_big__list_int(const std::vector<::tpy::BigInt>& xs) {
     return "big";
 }
 
@@ -62,7 +62,7 @@ std::string to_big(const std::vector<::tpy::BigInt>& xs) {
 // def tiers(xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "list[int64]"
-std::string tiers(std::vector<int64_t>& xs) {
+std::string tiers__list_int64(std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "list[int64]";
 }
@@ -84,17 +84,17 @@ std::string tiers(std::vector<int64_t>& xs) {
 void main() {
     std::vector<int64_t> fb = {1};
     fb.push_back(static_cast<int64_t>(2));
-    std::cout << "floor b:" << " " << ::tpyapp::main::floor_b(fb) << " " << ::tpy::ListPrinter(fb) << "\n" << ::tpy::check_signals;
+    std::cout << "floor b:" << " " << ::tpyapp::main::floor_b__list_int64(fb) << " " << ::tpy::ListPrinter(fb) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> cf = {1, 2};
-    std::cout << "concrete first:" << " " << ::tpyapp::main::concrete_first(cf) << " " << ::tpy::ListPrinter(cf) << "\n" << ::tpy::check_signals;
+    std::cout << "concrete first:" << " " << ::tpyapp::main::concrete_first__Iterable_int32(cf) << " " << ::tpy::ListPrinter(cf) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> s1 = {1, 2};
-    std::cout << "scalar int32:" << " " << ::tpyapp::main::scalar32(1, s1) << " " << ::tpy::ListPrinter(s1) << "\n" << ::tpy::check_signals;
+    std::cout << "scalar int32:" << " " << ::tpyapp::main::scalar32__int32__Iterable_int64(1, s1) << " " << ::tpy::ListPrinter(s1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> s2 = {1, 2};
-    std::cout << "scalar int:" << " " << ::tpyapp::main::scalar_big(::tpy::BigInt(1), s2) << " " << ::tpy::ListPrinter(s2) << "\n" << ::tpy::check_signals;
+    std::cout << "scalar int:" << " " << ::tpyapp::main::scalar_big__int__Iterable_int64(::tpy::BigInt(1), s2) << " " << ::tpy::ListPrinter(s2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> b1 = {1, 2};
-    std::cout << "to big:" << " " << ::tpyapp::main::to_big(b1) << " " << ::tpy::ListPrinter(b1) << "\n" << ::tpy::check_signals;
+    std::cout << "to big:" << " " << ::tpyapp::main::to_big__Iterable_int64(b1) << " " << ::tpy::ListPrinter(b1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ti = {1, 2};
-    std::cout << "tiers:" << " " << ::tpyapp::main::tiers<int32_t>(ti) << " " << ::tpy::ListPrinter(ti) << "\n" << ::tpy::check_signals;
+    std::cout << "tiers:" << " " << ::tpyapp::main::tiers__list_T<int32_t>(ti) << " " << ::tpy::ListPrinter(ti) << "\n" << ::tpy::check_signals;
 }
 
 // main()

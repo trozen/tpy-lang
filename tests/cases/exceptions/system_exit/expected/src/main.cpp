@@ -19,7 +19,7 @@ void finally_runs() {
         try {
             {
                 try {
-                    ::tpystd::sys::exit(3);
+                    ::tpystd::sys::exit__int32(3);
                 } catch (...) {
                     std::cout << "finally: body ran" << "\n" << ::tpy::check_signals;
                     throw;
@@ -45,7 +45,7 @@ void with_exit() {
             auto __ctx_1 = Guard("with");
             __ctx_1.__enter__();
             try {
-                ::tpystd::sys::exit(4);
+                ::tpystd::sys::exit__int32(4);
                 goto __with_exit_1;
             } catch (::tpy::BaseException& __exc_1) {
                 __ctx_1.__exit__({}, &__exc_1, {});
@@ -65,7 +65,7 @@ void with_exit() {
 // def leave_with(code: int32 | str | None) -> None:
 //     sys.exit(code)  # tpyc: ok
 void leave_with(const ::tpy::Union<std::monostate, int32_t, std::string>& code) {
-    ::tpystd::sys::exit(code);
+    ::tpystd::sys::exit__None_int32_str(code);
 }
 
 // def raise_code(u: int32 | str | None) -> None:
@@ -145,28 +145,28 @@ void show(std::string_view tag, const ::tpy::SystemExit& e) {
 void codes() {
     {
         try {
-            ::tpystd::sys::exit(5);
+            ::tpystd::sys::exit__int32(5);
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes int", e);
         }
     }
     {
         try {
-            ::tpystd::sys::exit(std::string_view("bye"));
+            ::tpystd::sys::exit__str(std::string_view("bye"));
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes str", e);
         }
     }
     {
         try {
-            ::tpystd::sys::exit();
+            ::tpystd::sys::exit__noargs();
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes exit()", e);
         }
     }
     {
         try {
-            ::tpystd::sys::exit(std::monostate{});
+            ::tpystd::sys::exit__None(std::monostate{});
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes exit(None)", e);
         }
@@ -195,7 +195,7 @@ void codes() {
     ::tpy::BigInt k = ::tpy::BigInt(2);
     {
         try {
-            ::tpystd::sys::exit((((k) + (::tpy::BigInt(4)))).to_fixed_check<int32_t>());
+            ::tpystd::sys::exit__int32((((k) + (::tpy::BigInt(4)))).to_fixed_check<int32_t>());
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes int arg", e);
         }
@@ -256,7 +256,7 @@ void not_an_exception() {
         try {
             {
                 try {
-                    ::tpystd::sys::exit(1);
+                    ::tpystd::sys::exit__int32(1);
                 } catch (const ::tpy::Exception&) {
                     std::cout << "not_an_exception: WRONG, caught as Exception" << "\n" << ::tpy::check_signals;
                 }
@@ -322,7 +322,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_RESUME_0: {  // after: yield 1
         try {
-            ::tpystd::sys::exit(8);
+            ::tpystd::sys::exit__int32(8);
             __state = S_RESUME_1;
             return 2;
         } catch (...) {
@@ -411,7 +411,7 @@ std::expected<int32_t, BadInput> checked(int32_t n) {
     if ((n < 0)) {
         return ::tpy::make_unexpected(BadInput{});
     }
-    ::tpystd::sys::exit(n);
+    ::tpystd::sys::exit__int32(n);
     return n;
 }
 
@@ -453,7 +453,7 @@ void in_error_return() {
 int32_t swallowed() {
     {
         try {
-            ::tpystd::sys::exit(3);
+            ::tpystd::sys::exit__int32(3);
         } catch (...) {
             return 7;
         }
@@ -504,7 +504,7 @@ void __tpy_init() {
     ::tpyapp::main::main();
     {
         try {
-            ::tpystd::sys::exit(11);
+            ::tpystd::sys::exit__int32(11);
         } catch (const ::tpy::SystemExit& e) {
             std::cout << "module level: caught" << " " << ::tpy::__str__(e.code) << "\n" << ::tpy::check_signals;
         }

@@ -11,10 +11,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def log(x: float) -> float: ...  # tpyc: ok
-double log(double x);
+double log__float(double x);
 // @overload
 // def log(x: float, base: float) -> float: ...  # tpyc: ok
-double log(double x, double base);
+double log__float__float(double x, double base);
 // def main() -> None:
 void main();
 

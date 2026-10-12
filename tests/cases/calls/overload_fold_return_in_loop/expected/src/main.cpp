@@ -16,7 +16,7 @@ namespace tpyapp::main {
 //     return 0            # reachable when k <= 0 -- must not be truncated
 // @overload
 // def in_loop(v: A, k: int) -> int: ...
-::tpy::BigInt in_loop(const A& v, const ::tpy::BigInt& k) {
+::tpy::BigInt in_loop__A__int(const A& v, const ::tpy::BigInt& k) {
     while ((k > 0)) {
         return ((v.x) + (k));
     }
@@ -25,7 +25,7 @@ namespace tpyapp::main {
 
 // @overload
 // def in_loop(v: B, k: int) -> int: ...
-::tpy::BigInt in_loop(const B& v, const ::tpy::BigInt& k) {
+::tpy::BigInt in_loop__B__int(const B& v, const ::tpy::BigInt& k) {
     while ((k > 0)) {
         return ((v.y) - (k));
     }
@@ -44,7 +44,7 @@ namespace tpyapp::main {
 //     return -1           # reachable when gate is False -- must not be truncated
 // @overload
 // def in_branch(v: A, gate: bool) -> int: ...
-::tpy::BigInt in_branch(const A& v, bool gate) {
+::tpy::BigInt in_branch__A__bool(const A& v, bool gate) {
     if (gate) {
         return v.x;
     }
@@ -53,7 +53,7 @@ namespace tpyapp::main {
 
 // @overload
 // def in_branch(v: B, gate: bool) -> int: ...
-::tpy::BigInt in_branch(const B& v, bool gate) {
+::tpy::BigInt in_branch__B__bool(const B& v, bool gate) {
     if (gate) {
         return v.y;
     }
@@ -69,13 +69,13 @@ namespace tpyapp::main {
 //     return v.y
 // @overload
 // def toplevel(v: A) -> int: ...
-::tpy::BigInt toplevel(const A& v) {
+::tpy::BigInt toplevel__A(const A& v) {
     return v.x;
 }
 
 // @overload
 // def toplevel(v: B) -> int: ...
-::tpy::BigInt toplevel(const B& v) {
+::tpy::BigInt toplevel__B(const B& v) {
     return v.y;
 }
 
@@ -99,7 +99,7 @@ __gen_nums nums() {
 //     return 0
 // @overload
 // def dyn_local(x: int) -> int: ...
-::tpy::BigInt dyn_local(const ::tpy::BigInt& x) {
+::tpy::BigInt dyn_local__int(const ::tpy::BigInt& x) {
     ::tpy::Adapter<Shape, Sq> __slot_1{Sq(x)};
     Shape* s = &__slot_1;
     __gen_nums it = ::tpyapp::main::nums();
@@ -117,7 +117,7 @@ __gen_nums nums() {
 
 // @overload
 // def dyn_local(x: str) -> int: ...
-::tpy::BigInt dyn_local(std::string_view x) {
+::tpy::BigInt dyn_local__str(std::string_view x) {
     return ::tpy::BigInt(0);
 }
 
@@ -141,7 +141,7 @@ void bump(A& a) {
 //     return y.x
 // @overload
 // def both_arms(x: int) -> int: ...
-::tpy::BigInt both_arms(const ::tpy::BigInt& x) {
+::tpy::BigInt both_arms__int(const ::tpy::BigInt& x) {
     A __slot_1 = A(x);
     A* y = &__slot_1;
     ::tpyapp::main::bump((*y));
@@ -150,7 +150,7 @@ void bump(A& a) {
 
 // @overload
 // def both_arms(x: str) -> int: ...
-::tpy::BigInt both_arms(std::string_view x) {
+::tpy::BigInt both_arms__str(std::string_view x) {
     A __slot_1 = A(::tpy::BigInt(0));
     A* y = &__slot_1;
     ::tpyapp::main::bump((*y));
@@ -175,7 +175,7 @@ void bump(A& a) {
 //     return 0
 // @overload
 // def match_fold(v: A) -> int: ...
-::tpy::BigInt match_fold(A& v) {
+::tpy::BigInt match_fold__A(A& v) {
     auto& x = v.x;
     ::tpy::Adapter<Shape, Sq> __slot_1{Sq(x)};
     Shape* s = &__slot_1;
@@ -196,7 +196,7 @@ void bump(A& a) {
 
 // @overload
 // def match_fold(v: B) -> int: ...
-::tpy::BigInt match_fold(B& v) {
+::tpy::BigInt match_fold__B(B& v) {
     auto& y = v.y;
     return y;
     return ::tpy::BigInt(0);
@@ -214,7 +214,7 @@ void bump(A& a) {
 //         return 0
 // @overload
 // def partly(x: int, k: int) -> int: ...
-::tpy::BigInt partly(const ::tpy::BigInt& x, const ::tpy::BigInt& k) {
+::tpy::BigInt partly__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k) {
     if ((k > 0)) {
         return k;
     } else {
@@ -224,7 +224,7 @@ void bump(A& a) {
 
 // @overload
 // def partly(x: str, k: int) -> int: ...
-::tpy::BigInt partly(std::string_view x, const ::tpy::BigInt& k) {
+::tpy::BigInt partly__str__int(std::string_view x, const ::tpy::BigInt& k) {
     return ::tpy::BigInt(-1);
 }
 
@@ -241,7 +241,7 @@ void bump(A& a) {
 //     return m
 // @overload
 // def walrus_elif(x: int, k: int) -> int: ...
-::tpy::BigInt walrus_elif(const ::tpy::BigInt& x, const ::tpy::BigInt& k) {
+::tpy::BigInt walrus_elif__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k) {
     ::tpy::BigInt m;
     if (((m = ((k) * (::tpy::BigInt(2)))) > 2)) {
         return m;
@@ -253,7 +253,7 @@ void bump(A& a) {
 
 // @overload
 // def walrus_elif(x: str, k: int) -> int: ...
-::tpy::BigInt walrus_elif(std::string_view x, const ::tpy::BigInt& k) {
+::tpy::BigInt walrus_elif__str__int(std::string_view x, const ::tpy::BigInt& k) {
     return ::tpy::BigInt(-1);
 }
 
@@ -270,7 +270,7 @@ void bump(A& a) {
 //     return r.x
 // @overload
 // def match_decl(v: A) -> int: ...
-::tpy::BigInt match_decl(const A& v) {
+::tpy::BigInt match_decl__A(const A& v) {
     auto& x = v.x;
     A __slot_1 = A(x);
     A* r = &__slot_1;
@@ -280,7 +280,7 @@ void bump(A& a) {
 
 // @overload
 // def match_decl(v: B) -> int: ...
-::tpy::BigInt match_decl(const B& v) {
+::tpy::BigInt match_decl__B(const B& v) {
     auto& y = v.y;
     A __slot_1 = A(((y) * (::tpy::BigInt(10))));
     A* r = &__slot_1;
@@ -297,13 +297,13 @@ void bump(A& a) {
 //     return x                # tpyc: ok
 // @overload
 // def raises(x: int) -> int: ...
-::tpy::BigInt raises(const ::tpy::BigInt& x) {
+::tpy::BigInt raises__int(const ::tpy::BigInt& x) {
     return x;
 }
 
 // @overload
 // def raises(x: str) -> int: ...
-::tpy::BigInt raises(std::string_view x) {
+::tpy::BigInt raises__str(std::string_view x) {
     throw ::tpy::ValueError("str");
 }
 
@@ -319,7 +319,7 @@ void bump(A& a) {
 //     return y.x
 // @overload
 // def redecl(x: int) -> int: ...
-::tpy::BigInt redecl(const ::tpy::BigInt& x) {
+::tpy::BigInt redecl__int(const ::tpy::BigInt& x) {
     A __slot_1 = A(x);
     A* y = &__slot_1;
     (*y) = A(((y->x) + (::tpy::BigInt(1))));
@@ -328,7 +328,7 @@ void bump(A& a) {
 
 // @overload
 // def redecl(x: str) -> int: ...
-::tpy::BigInt redecl(std::string_view x) {
+::tpy::BigInt redecl__str(std::string_view x) {
     A __slot_1 = A(::tpy::BigInt(0));
     A* y = &__slot_1;
     (*y) = A(((y->x) + (::tpy::BigInt(1))));
@@ -346,7 +346,7 @@ void bump(A& a) {
 //     return 0
 // @overload
 // def nested_def(x: int) -> int: ...
-::tpy::BigInt nested_def(const ::tpy::BigInt& x) {
+::tpy::BigInt nested_def__int(const ::tpy::BigInt& x) {
     auto g = [](const ::tpy::BigInt& n) -> ::tpy::BigInt {
         return ((n) + (::tpy::BigInt(1)));
     };
@@ -355,7 +355,7 @@ void bump(A& a) {
 
 // @overload
 // def nested_def(x: str) -> int: ...
-::tpy::BigInt nested_def(std::string_view x) {
+::tpy::BigInt nested_def__str(std::string_view x) {
     return ::tpy::BigInt(0);
 }
 
@@ -388,45 +388,45 @@ void bump(A& a) {
 //     print("nested_def:", nested_def(3), nested_def("a"))
 void main() {
     A __tmp_1 = A(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::in_loop(__tmp_1, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__A__int(__tmp_1, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
     A __tmp_2 = A(::tpy::BigInt(5));
-    std::cout << ::tpyapp::main::in_loop(__tmp_2, ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__A__int(__tmp_2, ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
     B __tmp_3 = B(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::in_loop(__tmp_3, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__B__int(__tmp_3, ::tpy::BigInt(0)) << "\n" << ::tpy::check_signals;
     B __tmp_4 = B(::tpy::BigInt(7));
-    std::cout << ::tpyapp::main::in_loop(__tmp_4, ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_loop__B__int(__tmp_4, ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
     A __tmp_5 = A(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::in_branch(__tmp_5, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__A__bool(__tmp_5, false) << "\n" << ::tpy::check_signals;
     A __tmp_6 = A(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::in_branch(__tmp_6, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__A__bool(__tmp_6, true) << "\n" << ::tpy::check_signals;
     B __tmp_7 = B(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::in_branch(__tmp_7, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__B__bool(__tmp_7, false) << "\n" << ::tpy::check_signals;
     B __tmp_8 = B(::tpy::BigInt(4));
-    std::cout << ::tpyapp::main::in_branch(__tmp_8, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::in_branch__B__bool(__tmp_8, true) << "\n" << ::tpy::check_signals;
     A __tmp_9 = A(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::toplevel(__tmp_9) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::toplevel__A(__tmp_9) << "\n" << ::tpy::check_signals;
     B __tmp_10 = B(::tpy::BigInt(6));
-    std::cout << ::tpyapp::main::toplevel(__tmp_10) << "\n" << ::tpy::check_signals;
-    std::cout << "dyn_local:" << " " << ::tpyapp::main::dyn_local(::tpy::BigInt(3)) << " " << ::tpyapp::main::dyn_local(std::string_view("a")) << "\n" << ::tpy::check_signals;
-    std::cout << "both_arms:" << " " << ::tpyapp::main::both_arms(::tpy::BigInt(3)) << " " << ::tpyapp::main::both_arms(std::string_view("a")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::toplevel__B(__tmp_10) << "\n" << ::tpy::check_signals;
+    std::cout << "dyn_local:" << " " << ::tpyapp::main::dyn_local__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::dyn_local__str(std::string_view("a")) << "\n" << ::tpy::check_signals;
+    std::cout << "both_arms:" << " " << ::tpyapp::main::both_arms__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::both_arms__str(std::string_view("a")) << "\n" << ::tpy::check_signals;
     A a = A(::tpy::BigInt(3));
     B __tmp_11 = B(::tpy::BigInt(2));
-    std::cout << "match_fold:" << " " << ::tpyapp::main::match_fold(a) << " " << ::tpyapp::main::match_fold(__tmp_11) << " " << a.x << "\n" << ::tpy::check_signals;
-    std::cout << "partly:" << " " << ::tpyapp::main::partly(::tpy::BigInt(1), ::tpy::BigInt(2)) << " " << ::tpyapp::main::partly(::tpy::BigInt(1), ::tpy::BigInt(0)) << " " << ::tpyapp::main::partly(std::string_view("a"), ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
-    std::cout << "walrus_elif:" << " " << ::tpyapp::main::walrus_elif(::tpy::BigInt(1), ::tpy::BigInt(2)) << " " << ::tpyapp::main::walrus_elif(::tpy::BigInt(1), ::tpy::BigInt(1)) << " " << ::tpyapp::main::walrus_elif(std::string_view("a"), ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "match_fold:" << " " << ::tpyapp::main::match_fold__A(a) << " " << ::tpyapp::main::match_fold__B(__tmp_11) << " " << a.x << "\n" << ::tpy::check_signals;
+    std::cout << "partly:" << " " << ::tpyapp::main::partly__int__int(::tpy::BigInt(1), ::tpy::BigInt(2)) << " " << ::tpyapp::main::partly__int__int(::tpy::BigInt(1), ::tpy::BigInt(0)) << " " << ::tpyapp::main::partly__str__int(std::string_view("a"), ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
+    std::cout << "walrus_elif:" << " " << ::tpyapp::main::walrus_elif__int__int(::tpy::BigInt(1), ::tpy::BigInt(2)) << " " << ::tpyapp::main::walrus_elif__int__int(::tpy::BigInt(1), ::tpy::BigInt(1)) << " " << ::tpyapp::main::walrus_elif__str__int(std::string_view("a"), ::tpy::BigInt(2)) << "\n" << ::tpy::check_signals;
     A __tmp_12 = A(::tpy::BigInt(3));
     B __tmp_13 = B(::tpy::BigInt(2));
-    std::cout << "match_decl:" << " " << ::tpyapp::main::match_decl(__tmp_12) << " " << ::tpyapp::main::match_decl(__tmp_13) << "\n" << ::tpy::check_signals;
+    std::cout << "match_decl:" << " " << ::tpyapp::main::match_decl__A(__tmp_12) << " " << ::tpyapp::main::match_decl__B(__tmp_13) << "\n" << ::tpy::check_signals;
     {
         try {
-            ::tpyapp::main::raises(std::string_view("a"));
+            ::tpyapp::main::raises__str(std::string_view("a"));
         } catch (const ::tpy::ValueError&) {
             std::cout << "raises: caught" << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "raises:" << " " << ::tpyapp::main::raises(::tpy::BigInt(4)) << "\n" << ::tpy::check_signals;
-    std::cout << "redecl:" << " " << ::tpyapp::main::redecl(::tpy::BigInt(3)) << " " << ::tpyapp::main::redecl(std::string_view("a")) << "\n" << ::tpy::check_signals;
-    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def(::tpy::BigInt(3)) << " " << ::tpyapp::main::nested_def(std::string_view("a")) << "\n" << ::tpy::check_signals;
+    std::cout << "raises:" << " " << ::tpyapp::main::raises__int(::tpy::BigInt(4)) << "\n" << ::tpy::check_signals;
+    std::cout << "redecl:" << " " << ::tpyapp::main::redecl__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::redecl__str(std::string_view("a")) << "\n" << ::tpy::check_signals;
+    std::cout << "nested_def:" << " " << ::tpyapp::main::nested_def__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::nested_def__str(std::string_view("a")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

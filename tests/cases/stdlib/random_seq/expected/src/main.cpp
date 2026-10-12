@@ -104,7 +104,7 @@ namespace tpyapp::main {
 //     c1: int = random.getrandbits(int32(32))
 //     print("seed_int32min_reproducible:", c0 == c1)
 void main() {
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::vector<int32_t> items = {10, 20, 30, 40, 50};
     std::cout << "choice_seed42:" << "\n" << ::tpy::check_signals;
     int32_t i = 0;
@@ -112,7 +112,7 @@ void main() {
         std::cout << ::tpystd::random::choice<int32_t>(items) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    ::tpystd::random::seed(7);
+    ::tpystd::random::seed__int32(7);
     std::vector<std::string> words = {"alpha", "beta", "gamma", "delta"};
     std::cout << "choice_str:" << "\n" << ::tpy::check_signals;
     i = 0;
@@ -120,7 +120,7 @@ void main() {
         std::cout << ::tpystd::random::choice<std::string>(words) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    ::tpystd::random::seed(99);
+    ::tpystd::random::seed__int32(99);
     std::vector<int32_t> deck = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
     ::tpystd::random::shuffle<int32_t>(deck);
     std::cout << "shuffle_99:" << "\n" << ::tpy::check_signals;
@@ -131,7 +131,7 @@ void main() {
         int32_t v = *__beg_0;
         std::cout << v << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(123);
+    ::tpystd::random::seed__int32(123);
     std::vector<int32_t> arr = {1, 2, 3, 4, 5};
     ::tpystd::random::shuffle<int32_t>(arr);
     int32_t s = 0;
@@ -149,46 +149,46 @@ void main() {
     std::vector<int32_t> single = {42};
     ::tpystd::random::shuffle<int32_t>(single);
     std::cout << "shuffle_single:" << " " << ::tpy::__getitem__(single, 0) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "getrandbits_32:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 4)) {
         std::cout << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "getrandbits_33:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 3)) {
         std::cout << ::tpystd::random::getrandbits(33) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "getrandbits_64:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 3)) {
         std::cout << ::tpystd::random::getrandbits(64) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "getrandbits_100:" << "\n" << ::tpy::check_signals;
     i = 0;
     while ((i < 2)) {
         std::cout << ::tpystd::random::getrandbits(100) << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "getrandbits_small:" << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::random::getrandbits(1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::random::getrandbits(7) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(-42);
+    ::tpystd::random::seed__int32(-42);
     ::tpy::BigInt a0 = ::tpystd::random::getrandbits(32);
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     ::tpy::BigInt b0 = ::tpystd::random::getrandbits(32);
     std::cout << "seed_neg_eq_pos:" << " " << ::tpy::print_bool((a0 == b0)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(-2147483648);
+    ::tpystd::random::seed__int32(-2147483648);
     ::tpy::BigInt c0 = ::tpystd::random::getrandbits(32);
-    ::tpystd::random::seed(-2147483648);
+    ::tpystd::random::seed__int32(-2147483648);
     ::tpy::BigInt c1 = ::tpystd::random::getrandbits(32);
     std::cout << "seed_int32min_reproducible:" << " " << ::tpy::print_bool((c0 == c1)) << "\n" << ::tpy::check_signals;
 }

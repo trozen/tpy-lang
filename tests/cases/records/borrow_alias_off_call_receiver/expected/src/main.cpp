@@ -32,7 +32,7 @@ int32_t free_container(H& h) {
 //     j = h.own_peek().jar  # tpyc: ok
 //     j.x = 5
 //     return h.mid.jar.x
-int32_t free_own_receiver(H& h) {
+int32_t free_own_receiver(const H& h) {
     Jar j = h.own_peek().jar;
     j.x = 5;
     return h.mid.jar.x;

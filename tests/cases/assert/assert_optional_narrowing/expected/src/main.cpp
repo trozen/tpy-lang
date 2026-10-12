@@ -16,7 +16,7 @@ int32_t get_x(const Point* p) {
 // def get_mag(p: Point | None) -> int32:
 //     assert p is not None, "point required"
 //     return p.mag()
-int32_t get_mag(Point* p) {
+int32_t get_mag(const Point* p) {
     if (!((p != nullptr))) ::tpy::raise_assertion_error("point required");
     return p->mag();
 }

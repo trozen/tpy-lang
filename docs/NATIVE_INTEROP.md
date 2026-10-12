@@ -1068,6 +1068,15 @@ These are orthogonal to the import/export system and remain unchanged:
 
 ## Future ideas
 
+### Calling an overloaded TPy function from C++
+
+Known limitation today: hand-written C++ should not call an overloaded TPy
+function. Each variant of a free overload set is emitted under a generated
+name (`describe__Dog`, `area__Box__v0`, see `docs/OVERLOAD_DESIGN.md` "C++
+names of variants") that follows the parameter types and declaration order,
+and `@export` / `binding="C"` reject overloaded names. A stable entry point
+would be an explicit, user-chosen C++ name per variant.
+
 ### C header generation
 
 Generate a standalone C header from `@export(binding="C")` declarations:

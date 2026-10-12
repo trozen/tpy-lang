@@ -131,9 +131,8 @@ from ...type_def_registry import (
     is_string_type,
 )
 from ...codegen_cpp import emit_prims
-from ...codegen_cpp.functions import literal_mangled_name
 from ...codegen_cpp.types import resolve_pending_container
-from ...typesys import make_list
+from ...typesys import make_list, overload_variant_cpp_name
 from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
                                   reads_storage_form_optional)
 from ...codegen_cpp.protocols import (classify_dyn_own_arg, dyn_forward_ok,
@@ -3788,24 +3787,6 @@ def copy_ctor_rvalue_source(e: TpyExpr, analyzer) -> 'TpyExpr | None':
     return _record_ctor_arg(copy_call_arg(e, analyzer), analyzer)
 
 
-def free_literal_mangled_name(e: TpyCall, fi, analyzer) -> 'str | None':
-    """The `f__lit_N` rename of a literal-specialized free callee, or None
-    when the plain name applies -- the free-call sibling of
-    `method_literal_mangled_cpp`. Mangling applies only when there are
-    MULTIPLE overloads (a single Literal-param stub is a plain call) AND the
-    callee is not a @native import (a native literal overload's name is its
-    resolved native symbol, picked by sema's overload resolution -- no
-    `__lit_` mangling). The rename threads into the same-module and imported
-    spellings alike; the generic pairing keeps its reject."""
-    if not any(isinstance(p.type, LiteralType) for p in fi.params):
-        return None
-    overloads = analyzer.registry.get_function(e.func_name)
-    if (overloads is None or len(overloads) <= 1
-            or fi.native_function or fi.native_name):
-        return None
-    return literal_mangled_name(e.func_name, fi)
-
-
 def _bare_callee_shadows_import(name: str, analyzer) -> bool:
     """Does a BARE-name callee (a nested def's frame lambda, a `Callable`/`Fn`
     value) also name an import?
@@ -3914,7 +3895,8 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     if fi.error_return_type is not None and not error_return_ok:
         note_detail("call.error_return")
         return None
-    lit_mangled = free_literal_mangled_name(e, fi, analyzer)
+    # The resolved variant's own C++ name, the one the definition carries.
+    variant_name = fi.variant_cpp_name
     if fi.frame_captures is not None:
         # A closure local (nested def): the bare lambda-variable call --
         # the callee is a C++ LOCAL, so no namespace can name it. Decided
@@ -4017,7 +3999,7 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         note_detail("call.linkage")
         return None
     icc = imported_free_callee_cpp(analyzer.ctx.module_attributes, e.func_name,
-                                   lit_mangled)
+                                   variant_name)
     if fi.type_params or has_targs:
         # A plain TPy generic callee spells explicit template args
         # (`f<int32_t>(args)`, type_to_cpp_stored per arg) over the plain /
@@ -4025,20 +4007,13 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
         # params with the inferred substitution (the TypeParamRef ref-slot
         # temp rule). An OVERLOAD GROUP resolves to the sema-selected stub --
         # the `func_info` pick, which the arity of the template-arg
-        # list depends on -- and still spells the plain name
-        # (`apply<int32_t>(f1, 5)`).
+        # list depends on -- and spells that variant's own name
+        # (`apply__Fn_T_T__T<int32_t>(f1, 5)`).
         fis = analyzer.registry.get_function(e.func_name)
         if fis is None:
             note_detail("call.callee_kind.generic")
             return None
         if len(fis) > 1:
-            # The `is_literal_mangled` condition: a Literal-param stub
-            # in a group renames the callee. No corpus case selects one from
-            # a GENERIC group, so the rename condition is checked rather
-            # than relying on sema never producing that pairing.
-            if any(isinstance(p.type, LiteralType) for p in fi.params):
-                note_detail("call.callee_kind.literal_mangled")
-                return None
             root = fi
         else:
             root = fis[0]
@@ -4058,7 +4033,8 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
                 return None
         gcpp = free_callee_cpp(analyzer.ctx.module_attributes,
                                analyzer.ctx.module_name,
-                               analyzer.ctx.cpp_module_name, e.func_name, fi)
+                               analyzer.ctx.cpp_module_name, e.func_name, fi,
+                               variant_name)
         if gcpp is None:
             note_detail("call.callee_kind.generic")
             return None
@@ -4080,7 +4056,7 @@ def _free_callee_kind(e: TpyCall, analyzer, *,
     cpp = free_callee_cpp(analyzer.ctx.module_attributes,
                           analyzer.ctx.module_name,
                           analyzer.ctx.cpp_module_name, e.func_name, fi,
-                          lit_mangled)
+                          variant_name)
     if cpp is None:
         # No namespace names this callee. Both shapes that legitimately spell
         # the bare name -- a nested def's frame lambda and a `Callable`/`Fn`
@@ -13634,7 +13610,7 @@ def method_literal_mangled_cpp(e: TpyMethodCall, analyzer) -> 'str | None':
     record = analyzer.registry.get_record_for_type(obj_type)
     if record is None or len(record.get_method_overloads(e.method)) <= 1:
         return None
-    return literal_mangled_name(e.method, fi)
+    return overload_variant_cpp_name(e.method, fi.params)
 
 
 def _enum_receiver(recv: TpyExpr, analyzer) -> 'TpyType | None':

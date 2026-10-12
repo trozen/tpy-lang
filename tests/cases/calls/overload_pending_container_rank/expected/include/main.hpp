@@ -11,49 +11,49 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @dispatch
 // def floor_b(xs: list[int]) -> str:
-std::string floor_b(std::vector<::tpy::BigInt>& xs);
+std::string floor_b__list_int(std::vector<::tpy::BigInt>& xs);
 // @dispatch
 // def floor_b(xs: list[int64]) -> str:
-std::string floor_b(std::vector<int64_t>& xs);
+std::string floor_b__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def concrete_first(xs: list[int64]) -> str:
-std::string concrete_first(const std::vector<int64_t>& xs);
+std::string concrete_first__list_int64(const std::vector<int64_t>& xs);
 // @dispatch
 // def concrete_first(xs: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string concrete_first(const T_xs& xs);
+std::string concrete_first__Iterable_int32(const T_xs& xs);
 // @dispatch
 // def scalar32(n: int32, xs: list[int64]) -> str:
-std::string scalar32(int32_t n, const std::vector<int64_t>& xs);
+std::string scalar32__int32__list_int64(int32_t n, const std::vector<int64_t>& xs);
 // @dispatch
 // def scalar32(n: int32, xs: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string scalar32(int32_t n, const T_xs& xs);
+std::string scalar32__int32__Iterable_int64(int32_t n, const T_xs& xs);
 // @dispatch
 // def scalar_big(n: int, xs: list[int64]) -> str:
-std::string scalar_big(const ::tpy::BigInt& n, const std::vector<int64_t>& xs);
+std::string scalar_big__int__list_int64(const ::tpy::BigInt& n, const std::vector<int64_t>& xs);
 // @dispatch
 // def scalar_big(n: int, xs: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string scalar_big(const ::tpy::BigInt& n, const T_xs& xs);
+std::string scalar_big__int__Iterable_int64(const ::tpy::BigInt& n, const T_xs& xs);
 // @dispatch
 // def to_big(xs: list[int]) -> str:
-std::string to_big(const std::vector<::tpy::BigInt>& xs);
+std::string to_big__list_int(const std::vector<::tpy::BigInt>& xs);
 // @dispatch
 // def to_big(xs: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string to_big(const T_xs& xs);
+std::string to_big__Iterable_int64(const T_xs& xs);
 // @dispatch
 // def tiers(xs: list[int64]) -> str:
-std::string tiers(std::vector<int64_t>& xs);
+std::string tiers__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def tiers[T](xs: list[T]) -> str:
 template<typename T>
-std::string tiers(std::vector<T>& xs);
+std::string tiers__list_T(std::vector<T>& xs);
 // @dispatch
 // def tiers(xs: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string tiers(const T_xs& xs);
+std::string tiers__Iterable_int32(const T_xs& xs);
 // def main() -> None:
 void main();
 
@@ -61,28 +61,28 @@ void main();
 // def concrete_first(xs: Iterable[int32]) -> str:
 //     return "iter32"
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string concrete_first(const T_xs& xs) {
+std::string concrete_first__Iterable_int32(const T_xs& xs) {
     return "iter32";
 }
 // @dispatch
 // def scalar32(n: int32, xs: Iterable[int64]) -> str:
 //     return "Iterable"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string scalar32(int32_t n, const T_xs& xs) {
+std::string scalar32__int32__Iterable_int64(int32_t n, const T_xs& xs) {
     return "Iterable";
 }
 // @dispatch
 // def scalar_big(n: int, xs: Iterable[int64]) -> str:
 //     return "Iterable"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string scalar_big(const ::tpy::BigInt& n, const T_xs& xs) {
+std::string scalar_big__int__Iterable_int64(const ::tpy::BigInt& n, const T_xs& xs) {
     return "Iterable";
 }
 // @dispatch
 // def to_big(xs: Iterable[int64]) -> str:
 //     return "iter64"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string to_big(const T_xs& xs) {
+std::string to_big__Iterable_int64(const T_xs& xs) {
     return "iter64";
 }
 // @dispatch
@@ -90,7 +90,7 @@ std::string to_big(const T_xs& xs) {
 //     xs.append(xs[0])
 //     return "generic"
 template<typename T>
-std::string tiers(std::vector<T>& xs) {
+std::string tiers__list_T(std::vector<T>& xs) {
     xs.push_back(::tpy::__getitem__(xs, 0));
     return "generic";
 }
@@ -98,7 +98,7 @@ std::string tiers(std::vector<T>& xs) {
 // def tiers(xs: Iterable[int32]) -> str:
 //     return "Iterable[int32]"
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string tiers(const T_xs& xs) {
+std::string tiers__Iterable_int32(const T_xs& xs) {
     return "Iterable[int32]";
 }
 

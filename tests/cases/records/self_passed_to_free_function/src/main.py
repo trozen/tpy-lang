@@ -7,12 +7,15 @@ from tpy import readonly, int32
 class Module:
     _name: str
     _items: list[int32]
+    _logged: int32
 
     def __init__(self, name: str) -> None:
         self._name = name
         self._items = []
+        self._logged = 0
 
     def log(self, s: str):
+        self._logged += 1
         print(self._name + ": " + s)
 
     # Passes self to mutating free function -- must NOT be const
@@ -33,6 +36,11 @@ class Module:
     def reinit(self):
         self.init()
 
+    # Passes self to a free function that only calls a read-only method on
+    # it -- SHOULD be const
+    def announce(self):
+        on_announce(self)
+
     # Passes self to a free function that structurally mutates a field
     # -- must NOT be const
     def add_item(self, val: int32):
@@ -41,6 +49,10 @@ class Module:
 
 def on_init(mod: Module):
     mod.log("initialized")
+
+
+def on_announce(mod: Module):
+    print(mod.describe())
 
 
 @readonly
@@ -62,6 +74,7 @@ def main() -> None:
     print(m.describe())
     print(m.name_upper())
     m.reinit()
+    m.announce()
     m.add_item(42)
     print(m._items)
 

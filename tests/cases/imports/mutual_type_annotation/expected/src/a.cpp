@@ -22,7 +22,7 @@ int32_t A::go() const {
 // # mutual case: a uses H by call, b uses A as a parameter type.
 // def twice(self) -> int32:
 //     return H(self) * 2
-int32_t A::twice() {
+int32_t A::twice() const {
     return (::tpy::mul_check<int32_t>(::tpyapp::b::H((*this)), 2));
 }
 // from b import H

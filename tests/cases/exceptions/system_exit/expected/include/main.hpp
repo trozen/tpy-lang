@@ -172,7 +172,7 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 // def stop(self, code: int32) -> None:
 //     sys.exit(code)  # tpyc: ok
 inline void Shutdown::stop(int32_t code) const {
-    ::tpystd::sys::exit(code);
+    ::tpystd::sys::exit__int32(code);
 }
 void __tpy_init();
 } // namespace tpyapp::main

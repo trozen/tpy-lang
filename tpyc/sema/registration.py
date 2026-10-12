@@ -28,7 +28,7 @@ def _adopt_skeleton(skeleton, full):
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
     ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
-    mark_overload_group,
+    mark_overload_group, name_overload_variants,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     InteriorMutableType,
@@ -185,6 +185,24 @@ _LINKAGE_MAP = {
     'NATIVE_C': FunctionLinkage.NATIVE_C,
     'EXPORT_C': FunctionLinkage.EXPORT_C,
 }
+
+
+def _emits_own_variant(variant: TpyFunction, impl: TpyFunction | None) -> bool:
+    """Whether one member of a free overload set is emitted as a C++ function
+    of its own (a bodied `@dispatch` variant, a `typing.overload` stub's
+    specialization), so it can take its own name. A `@native` /
+    `@cpp_template` member keeps its runtime symbol: C++ chooses among the
+    hand-written runtime overloads. A resumable body is emitted once (a
+    `typing.overload` generator or coroutine implementation is not
+    specialized per stub), and a resumable `@dispatch` pair does not compile
+    yet (BUGS.md#dispatch-generator-pair-sema-crash): its frame and factory
+    are named by the source name."""
+    if (_LINKAGE_MAP[variant.linkage.name] is not FunctionLinkage.DEFAULT
+            or variant.cpp_template is not None
+            or variant.builtin_function_key is not None):
+        return False
+    body = impl if impl is not None else variant
+    return not (body.is_generator or body.is_async)
 
 
 def _contains_self_type(typ: TpyType) -> bool:
@@ -4133,11 +4151,15 @@ class TypeRegistrar:
         func.params = list(resolved_params)
         func.return_type = resolved_return
 
-    def register_overload_group(self, stubs: list[TpyFunction]) -> None:
+    def register_overload_group(self, stubs: list[TpyFunction],
+                                impl: TpyFunction | None,
+                                module_function_names: 'frozenset[str]',
+                                ) -> None:
         """Register a group of @overload stubs as a single overloaded function binding.
 
         Each stub is resolved and validated. All stubs are bound together so
-        call-site resolution can pick the best match.
+        call-site resolution can pick the best match. `impl` is the trailing
+        implementation of a `typing.overload` set (None for `@dispatch`).
         """
         infos: list[FunctionInfo] = []
         for func in stubs:
@@ -4207,6 +4229,7 @@ class TypeRegistrar:
                     if func.error_return else None),
                 qualified_name=f"{self.ctx.module_name}.{func.name}",
                 originating_module=self.ctx.module_name,
+                variant_decl=func,
             )
             self._stamp_result_borrows(func, info)
             self._qualify_error_return(func, info)
@@ -4217,6 +4240,9 @@ class TypeRegistrar:
 
         if infos:
             self._reject_same_param_overloads(infos, stubs)
+            name_overload_variants([
+                info for info, func in zip(infos, stubs)
+                if _emits_own_variant(func, impl)], module_function_names)
             # Adopt the pre-populated skeleton list (if any) by mutating
             # it in place. Cycle peers' bind_imports may have captured a
             # reference to that single-element placeholder list before

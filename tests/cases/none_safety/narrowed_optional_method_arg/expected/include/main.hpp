@@ -13,11 +13,11 @@ struct Node;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def test_method_arg(x: str | None, p: Printer) -> None:
-void test_method_arg(std::optional<std::string_view> x, Printer& p);
+void test_method_arg(std::optional<std::string_view> x, const Printer& p);
 // def test_method_arg_int(x: int | None, p: Printer) -> None:
-void test_method_arg_int(std::optional<::tpy::BigInt> x, Printer& p);
+void test_method_arg_int(std::optional<::tpy::BigInt> x, const Printer& p);
 // def test_self_call(p: Printer) -> None:
-void test_self_call(Printer& p);
+void test_self_call(const Printer& p);
 // def main() -> None:
 void main();
 

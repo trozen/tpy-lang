@@ -31,7 +31,7 @@ void main() {
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_M_A")) << " " << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_M_B")) << "\n" << ::tpy::check_signals;
     std::cout << (*::tpystd::os::_environ::environ).setdefault("TPY_M_A", "x") << "\n" << ::tpy::check_signals;
     std::cout << (*::tpystd::os::_environ::environ).setdefault("TPY_M_C", "3") << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv(std::string_view("TPY_M_C"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv__str(std::string_view("TPY_M_C"))) << "\n" << ::tpy::check_signals;
     std::cout << (*::tpystd::os::_environ::environ).pop("TPY_M_A", "d") << "\n" << ::tpy::check_signals;
     std::cout << (*::tpystd::os::_environ::environ).pop("TPY_M_GONE", "d") << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_M_A"))) << "\n" << ::tpy::check_signals;

@@ -12,10 +12,10 @@ inline constexpr std::string_view __name__ = "b";
 
 // @overload
 // def g(x: int32) -> int32: ...
-int32_t g(int32_t x);
+int32_t g__int32(int32_t x);
 // @overload
 // def g(x: str) -> int32: ...
-int32_t g(std::string_view x);
+int32_t g__str(std::string_view x);
 // def relay(n: int32) -> int32:
 int32_t relay(int32_t n);
 

@@ -57,7 +57,7 @@ void abandon_return(const std::vector<int32_t>& xs);
 // def abandon_exc(xs: list[int32]) -> None:
 void abandon_exc(const std::vector<int32_t>& xs);
 // def abandon_method(h: Holder) -> None:
-void abandon_method(Holder& h);
+void abandon_method(const Holder& h);
 // def main() -> None:
 void main();
 

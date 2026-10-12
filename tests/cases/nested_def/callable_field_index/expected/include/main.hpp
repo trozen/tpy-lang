@@ -37,7 +37,7 @@ __gen_generate generate(const App& app);
 // async def async_read(app: App) -> int32:
 __coro_async_read async_read(const App& app);
 // def mutate_then_read(app: App, values: list[int32]):
-void mutate_then_read(App& app, std::vector<int32_t>& values);
+void mutate_then_read(const App& app, std::vector<int32_t>& values);
 // @error_return(Failure)
 // def error_return_read(app: App) -> int32:
 std::expected<int32_t, Failure> error_return_read(const App& app);

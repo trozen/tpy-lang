@@ -7574,6 +7574,69 @@ def mark_overload_group(infos: list["FunctionInfo"]) -> None:
             fi.root._overloaded = True
 
 
+def _ident_part(text: str) -> str:
+    return "".join(c if c.isascii() and c.isalnum() else "_" for c in text)
+
+
+def overload_variant_cpp_name(base_name: str, params: 'Sequence') -> str:
+    """The readable C++ name of one variant of an overload set: `base_name`
+    plus a suffix spelled from the variant's declared parameters. A variant
+    with a `Literal` parameter is named by its literal values
+    (`Literal["age"]` -> `__lit_age`, `Literal[1, 2]` -> `__lit_1__2`,
+    `Literal[-1]` -> `__lit_neg1`), any other by its parameter types
+    (`(x: Dog)` -> `__Dog`, `(xs: list[int32], n: int)` -> `__list_int32__int`).
+    Not injective (`"a-b"` and `"a_b"` both give `__lit_a_b`): a set's
+    names are made unique by `name_overload_variants`. Accepts
+    `(name, type)` tuples or ParamInfo objects."""
+    types = [p[1] if isinstance(p, tuple) else p.type for p in params]
+    lit_parts: list[str] = []
+    for ptype in types:
+        if isinstance(ptype, LiteralType):
+            for v in ptype.values:
+                s = str(v.value)
+                if s.startswith("-"):
+                    s = "neg" + s[1:]
+                lit_parts.append(_ident_part(s))
+    if lit_parts:
+        return f"{base_name}__lit_{'__'.join(lit_parts)}"
+    type_parts = ["_".join(w for w in _ident_part(str(t)).split("_") if w)
+                  for t in types]
+    return f"{base_name}__{'__'.join(type_parts) if type_parts else 'noargs'}"
+
+
+def name_overload_variants(variants: list['FunctionInfo'],
+                           reserved: 'frozenset[str]' = frozenset()) -> None:
+    """Give each variant of one overload set its own C++ name, so a call
+    names the variant sema resolved instead of leaving C++ overload
+    resolution to re-decide it. Readable where the readable names are
+    distinct and not `reserved` (the module's other function names);
+    the rest take their declaration index."""
+    if len(variants) < 2:
+        return
+    bases = [overload_variant_cpp_name(fi.name, fi.params) for fi in variants]
+    taken = set(reserved) | {b for b in bases
+                             if bases.count(b) == 1 and b not in reserved}
+    for idx, (fi, base) in enumerate(zip(variants, bases)):
+        name = base
+        if bases.count(base) > 1 or base in reserved:
+            name = f"{base}__v{idx}"
+            while name in taken:
+                name += "_"
+            taken.add(name)
+        fi.root._variant_cpp_name = name
+
+
+def variant_cpp_name_of(candidates: 'list[FunctionInfo] | None',
+                        decl: 'TpyFunction') -> 'str | None':
+    """The C++ name `name_overload_variants` gave the variant registered from
+    `decl` (a `@dispatch` body or a `typing.overload` stub), or None when it
+    is emitted under its source name."""
+    for fi in candidates or ():
+        if fi.root.variant_decl is decl:
+            return fi.variant_cpp_name
+    return None
+
+
 class FunctionLinkage(Enum):
     """Linkage mode for functions."""
     DEFAULT = "default"
@@ -7798,9 +7861,9 @@ class FunctionInfo:
     # Self-mutation inference (Phase 1 + Phase 2, methods only)
     # None = not yet analyzed; True/False = Phase 1 direct fact; finalized by Phase 2.
     direct_self_mutated: Optional[bool] = None
-    # Set by `_sync_inferred_const` when inference proved the method readonly
-    # but the emitted C++ member stays non-const (a `@readonly(False)` opt-out,
-    # a `@dynamic` protocol override): a const receiver still cannot call it.
+    # The emitted C++ member stays non-const even when inference proves the
+    # method readonly (a `@readonly(False)` opt-out, a `@dynamic` protocol
+    # override), set before Phase 2: a const receiver cannot call it.
     const_withheld: bool = False
     self_mutated: bool = True  # conservative default until Phase 2 resolves
     # Back-pointer to the canonical registry FunctionInfo. Set on ephemeral
@@ -7830,6 +7893,16 @@ class FunctionInfo:
     # by name. Stored on the RAW fi and read through `root` (the `overloaded`
     # property), so a substituted / rebuilt fi cannot lose it.
     _overloaded: bool = field(default=False, compare=False)
+    # The C++ name of this variant of a free overload set with several
+    # emitted variants (`name_overload_variants`); None = emitted under its
+    # source name. Every definition, declaration, re-export, call and
+    # function reference spells it, so C++ never re-resolves sema's pick.
+    # Stored on the RAW fi, read through `root` (`variant_cpp_name`).
+    _variant_cpp_name: str | None = field(default=None, compare=False)
+    # The def a variant of a free overload set was registered from (the
+    # `@dispatch` body or the `typing.overload` stub): how an emitter
+    # holding the def finds its FunctionInfo (`variant_cpp_name_of`).
+    variant_decl: TpyFunction | None = field(default=None, repr=False, compare=False)
     # Synthesized for a call through a callable VALUE (an Fn/Callable-typed
     # param, local or field). The signature comes from the Fn type, not from
     # a declaration the compiler has checked, so nothing about the callee's
@@ -7899,6 +7972,10 @@ class FunctionInfo:
     @property
     def overloaded(self) -> bool:
         return self.root._overloaded
+
+    @property
+    def variant_cpp_name(self) -> str | None:
+        return self.root._variant_cpp_name
 
     @property
     def const_borrow_params(self) -> Optional[frozenset[int]]:

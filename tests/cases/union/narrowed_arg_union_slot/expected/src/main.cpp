@@ -530,7 +530,7 @@ __coro_async_total async_total(::tpy::Union<const A*, const B*> v) {
 //     for e in xs:
 //         k = k + r.read(e)  # tpyc: ok
 //     return k
-int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, Reader& r) {
+int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, const Reader& r) {
     int32_t k = 0;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
@@ -699,7 +699,7 @@ int32_t vu_peek(const ::tpy::Union<double, int32_t>& u) {
 //     if isinstance(v, int32):
 //         return box.go(v)  # tpyc: ok
 //     return -1
-int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, VuBox& box) {
+int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, const VuBox& box) {
     if (std::holds_alternative<int32_t>(v)) {
         const auto& __v = std::get<int32_t>(v);
         return box.go(__v);

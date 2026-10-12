@@ -106,7 +106,7 @@ std::expected<int32_t, ::tpy::StopIteration> __gen_gen_body::__next__() {
 
 
 // def gen_body(b: Bag) -> Iterator[int32]:
-__gen_gen_body gen_body(Bag& b) {
+__gen_gen_body gen_body(const Bag& b) {
     return __gen_gen_body(b);
 }
 
@@ -149,7 +149,7 @@ __gen_gen_body gen_body(Bag& b) {
 
 
 // async def async_body(b: Bag) -> int32:
-__coro_async_body async_body(Bag& b) {
+__coro_async_body async_body(const Bag& b) {
     return __coro_async_body(b);
 }
 

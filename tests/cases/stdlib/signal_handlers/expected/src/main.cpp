@@ -24,7 +24,7 @@ void on_usr1(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* fram
 // def on_term(signum: int, frame: FrameType | None) -> None:
 //     sys.exit(128 + signum)
 void on_term(const ::tpy::BigInt& signum, const ::tpystd::types::FrameType* frame) {
-    ::tpystd::sys::exit((((::tpy::BigInt(::tpy::BigInt(128))) + (signum))).to_fixed_check<int32_t>());
+    ::tpystd::sys::exit__int32((((::tpy::BigInt(::tpy::BigInt(128))) + (signum))).to_fixed_check<int32_t>());
 }
 
 // def on_hup(signum: int, frame: FrameType | None) -> None:

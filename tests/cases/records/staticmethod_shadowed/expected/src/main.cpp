@@ -9,7 +9,7 @@ Helper* h{};
 //     # Inside this function, 'Helper' is the parameter (an instance), not the class
 //     # So Helper.get() should call the instance method, not try to find a static method
 //     return Helper.get()
-int32_t use_helper(Helper& Helper) {
+int32_t use_helper(const Helper& Helper) {
     return Helper.get();
 }
 

@@ -20,7 +20,7 @@ int32_t main() {
 // args = parser.parse_args(["alice"])
 void __tpy_builder_argparse_help_1() {
     std::cout << "usage: prog [-h] name\n\npositional arguments:\n  name\n\noptions:\n  -h, --help  show this help message and exit" << "\n" << ::tpy::check_signals;
-    ::tpystd::sys::exit(0);
+    ::tpystd::sys::exit__int32(0);
 }
 
 // args = parser.parse_args(["alice"])
@@ -45,13 +45,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
                 __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             } else {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unexpected positional argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-                ::tpystd::sys::exit(2);
+                ::tpystd::sys::exit__int32(2);
             }
         }
     }
     if ((__tpy_argparse_pi < 1)) {
         ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat("prog: error: ", "missing required positional argument(s)")) << "\n" << ::tpy::check_signals;
-        ::tpystd::sys::exit(2);
+        ::tpystd::sys::exit__int32(2);
     }
     return __tpy_builder_argparse_args_1(name);
 }

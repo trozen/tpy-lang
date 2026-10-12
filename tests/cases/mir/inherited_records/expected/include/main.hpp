@@ -57,7 +57,7 @@ int32_t use_deep(Deep& d);
 // def use_dog(d: Dog) -> int32:  # tpyc: mir(covered)
 int32_t use_dog(Dog& d);
 // def use_ab(ab: AB) -> int32:  # tpyc: mir(covered)
-int32_t use_ab(AB& ab);
+int32_t use_ab(const AB& ab);
 // def make_dog() -> int32:  # tpyc: mir(covered)
 int32_t make_dog();
 // def elements(ds: list[Dog]) -> int32:  # tpyc: mir(covered)

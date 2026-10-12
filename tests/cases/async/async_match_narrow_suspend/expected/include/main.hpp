@@ -19,7 +19,7 @@ struct __coro_voice;
 struct __coro_amain;
 
 // async def voice(a: Dog | Cat) -> str:
-__coro_voice voice(::tpy::Union<Cat*, Dog*> a);
+__coro_voice voice(::tpy::Union<const Cat*, const Dog*> a);
 // async def amain() -> None:
 __coro_amain amain();
 
@@ -55,7 +55,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct __coro_voice {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -64,7 +64,7 @@ struct __coro_voice {
         S_DONE = 2,
     };
 
-    __coro_voice(::tpy::Union<Cat*, Dog*> a_)
+    __coro_voice(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           __cancel_pending(false),
           a(a_) {}

@@ -69,10 +69,10 @@ int32_t make_all(__F0&& f, int32_t n);
 ::tpy::BigInt sendy(const std::function<::tpy::BigInt()>& f);
 // @dispatch
 // def conv(f: Callable[[str], int], s: str) -> int:
-::tpy::BigInt conv(const std::function<::tpy::BigInt(std::string_view)>& f, std::string_view s);
+::tpy::BigInt conv__Callable_str_int__str(const std::function<::tpy::BigInt(std::string_view)>& f, std::string_view s);
 // @dispatch
 // def conv(f: Callable[[int], str], s: int) -> str:
-std::string conv(const std::function<std::string(const ::tpy::BigInt&)>& f, const ::tpy::BigInt& s);
+std::string conv__Callable_int_str__int(const std::function<std::string(const ::tpy::BigInt&)>& f, const ::tpy::BigInt& s);
 // def ret_factory() -> Callable[[], Pt]:
 std::function<Pt()> ret_factory();
 // def gen() -> Iterator[int]:

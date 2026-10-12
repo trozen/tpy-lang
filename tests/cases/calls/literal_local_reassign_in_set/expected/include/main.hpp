@@ -12,7 +12,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def pick(v: str) -> int32:
 int32_t pick__lit_r__w(std::string_view v);
 // def pick(v: str) -> int32:
-int32_t pick(std::string_view v);
+int32_t pick__str(std::string_view v);
 // def main() -> None:
 void main();
 

@@ -40,36 +40,36 @@ int32_t _b64_char_to_value(int32_t c, int32_t c62, int32_t c63);
 ::tpy::Bytes b64encode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars = std::nullopt);
 // @dispatch
 // def b64decode(data: bytes, altchars: bytes | None = None, validate: bool = False) -> bytes:
-::tpy::Bytes b64decode(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars = std::nullopt, bool validate = false);
+::tpy::Bytes b64decode__bytes__bytes_None__bool(::tpy::BytesView data, std::optional<::tpy::BytesView> altchars = std::nullopt, bool validate = false);
 // @dispatch
 // def b64decode(data: str, altchars: bytes | None = None, validate: bool = False) -> bytes:
-::tpy::Bytes b64decode(std::string_view data, std::optional<::tpy::BytesView> altchars = std::nullopt, bool validate = false);
+::tpy::Bytes b64decode__str__bytes_None__bool(std::string_view data, std::optional<::tpy::BytesView> altchars = std::nullopt, bool validate = false);
 // def standard_b64encode(data: bytes) -> bytes:
 ::tpy::Bytes standard_b64encode(::tpy::BytesView data);
 // @dispatch
 // def standard_b64decode(data: bytes) -> bytes:
-::tpy::Bytes standard_b64decode(::tpy::BytesView data);
+::tpy::Bytes standard_b64decode__bytes(::tpy::BytesView data);
 // @dispatch
 // def standard_b64decode(data: str) -> bytes:
-::tpy::Bytes standard_b64decode(std::string_view data);
+::tpy::Bytes standard_b64decode__str(std::string_view data);
 // def urlsafe_b64encode(data: bytes) -> bytes:
 ::tpy::Bytes urlsafe_b64encode(::tpy::BytesView data);
 // @dispatch
 // def urlsafe_b64decode(data: bytes) -> bytes:
-::tpy::Bytes urlsafe_b64decode(::tpy::BytesView data);
+::tpy::Bytes urlsafe_b64decode__bytes(::tpy::BytesView data);
 // @dispatch
 // def urlsafe_b64decode(data: str) -> bytes:
-::tpy::Bytes urlsafe_b64decode(std::string_view data);
+::tpy::Bytes urlsafe_b64decode__str(std::string_view data);
 // def b16encode(data: bytes) -> bytes:
 ::tpy::Bytes b16encode(::tpy::BytesView data);
 // def _b16_char_to_value(c: int32, casefold: bool) -> int32:
 int32_t _b16_char_to_value(int32_t c, bool casefold);
 // @dispatch
 // def b16decode(data: bytes, casefold: bool = False) -> bytes:
-::tpy::Bytes b16decode(::tpy::BytesView data, bool casefold = false);
+::tpy::Bytes b16decode__bytes__bool(::tpy::BytesView data, bool casefold = false);
 // @dispatch
 // def b16decode(data: str, casefold: bool = False) -> bytes:
-::tpy::Bytes b16decode(std::string_view data, bool casefold = false);
+::tpy::Bytes b16decode__str__bool(std::string_view data, bool casefold = false);
 // def b32encode(data: bytes) -> bytes:
 ::tpy::Bytes b32encode(::tpy::BytesView data);
 // def _b32_char_to_value(c: int32) -> int32:
@@ -78,10 +78,10 @@ int32_t _b32_char_to_value(int32_t c);
 ::tpy::Bytes _b32_preprocess(::tpy::BytesView data, bool casefold, std::optional<::tpy::BytesView> map01);
 // @dispatch
 // def b32decode(data: bytes, casefold: bool = False, map01: bytes | None = None) -> bytes:
-::tpy::Bytes b32decode(::tpy::BytesView data, bool casefold = false, std::optional<::tpy::BytesView> map01 = std::nullopt);
+::tpy::Bytes b32decode__bytes__bool__bytes_None(::tpy::BytesView data, bool casefold = false, std::optional<::tpy::BytesView> map01 = std::nullopt);
 // @dispatch
 // def b32decode(data: str, casefold: bool = False, map01: bytes | None = None) -> bytes:
-::tpy::Bytes b32decode(std::string_view data, bool casefold = false, std::optional<::tpy::BytesView> map01 = std::nullopt);
+::tpy::Bytes b32decode__str__bool__bytes_None(std::string_view data, bool casefold = false, std::optional<::tpy::BytesView> map01 = std::nullopt);
 // def _b32decode_impl(data: bytes) -> bytes:
 ::tpy::Bytes _b32decode_impl(::tpy::BytesView data);
 // def encodebytes(data: bytes) -> bytes:

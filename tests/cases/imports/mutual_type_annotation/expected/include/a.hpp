@@ -25,7 +25,7 @@ struct A {
     int32_t go() const;
 
     // def twice(self) -> int32:
-    int32_t twice();
+    int32_t twice() const;
     static constexpr std::string_view __tpy_class_name__ = "a.A";
 };
 

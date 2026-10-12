@@ -333,7 +333,7 @@ __coro_drive_aro drive_aro(const std::vector<int32_t>& xs) {
 //     for v in g.scan(ys):
 //         t += v
 //     return t
-int32_t drive_scan(Bag& g, const std::vector<int32_t>& ys) {
+int32_t drive_scan(const Bag& g, const std::vector<int32_t>& ys) {
     int32_t t = 0;
     {
         auto __src_0 = g.scan(ys);

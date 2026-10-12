@@ -32,7 +32,7 @@ struct Dog;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def generic_on_optional(b: Bag | None) -> int32:
-int32_t generic_on_optional(Bag* b);
+int32_t generic_on_optional(const Bag* b);
 // def dyn_on_optional(p: Pet | None) -> int32:
 int32_t dyn_on_optional(Pet* p);
 // def main() -> None:

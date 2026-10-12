@@ -20,7 +20,7 @@
 |---------|-------|
 | Partial union stubs | Stub takes `Dog \| Cat` when impl has `Dog \| Cat \| Bird`. Needs `resolve_overload` to match concrete arg against union stub params via member containment. |
 | Non-union overloads | Overloads distinguished by coercion-compatible types (e.g., `int32` vs `float`). Needs a different dispatch mechanism since isinstance doesn't apply. Start with union-only -- it's the natural pattern. |
-| Overload on arity | Different parameter counts per stub. Maps to C++ overloads with different parameter counts. |
+| Overload on arity | Different parameter counts per stub. A free function's variants get distinct C++ names (`f__int32`, `f__int32__int32`, see "C++ names of variants"); a method's map to C++ overloads with different parameter counts. |
 | Dead branch elimination generalization | Extend dead-branch elimination beyond overload dispatch -- e.g. when isinstance/match has only a single possible type, eliminate the check entirely even without `@overload`. |
 | `register`-style `@dispatch` variants; `singledispatch` | A `@area.variant` registration form (variants named `_`, as in `functools.singledispatch`) is the only spelling type checkers accept for self-contained variants; `singledispatch` itself maps onto a first-argument-only `@dispatch` set with a generic fallback variant. Low priority; tracked in TODO.md. |
 | Move return type validation to sema | Currently done in codegen (post dead branch elimination). Moving to sema would surface errors in IDE diagnostics and avoid reimplementing compatibility rules. |
@@ -55,20 +55,63 @@ def describe(x: Dog | Cat | Bird) -> str | int32:
 Generated C++:
 
 ```cpp
-std::string describe(const Dog& x) {
+std::string describe__Dog(const Dog& x) {
     return std::string("woof: ") + x.name;
 }
 
-std::string describe(const Cat& x) {
+std::string describe__Cat(const Cat& x) {
     return std::string("meow: ") + x.name;
 }
 
-int32_t describe(const Bird& x) {
+int32_t describe__Bird(const Bird& x) {
     return x.wing_count;
 }
+
+// describe(d) with d: Dog
+::tpyapp::main::describe__Dog(d);
 ```
 
-No union wrapper function is emitted. Each stub becomes a standalone C++ overload.
+No union wrapper function is emitted. Each stub becomes a standalone C++
+function with its own name (see "C++ names of variants" below), and each call
+names the variant the compiler resolved.
+
+### C++ names of variants
+
+Each variant of a FREE overload set that is emitted as a C++ function of its
+own -- a bodied `@dispatch` variant, a `typing.overload` stub's
+specialization -- gets its own C++ name when the set has more than one such
+variant. The call then names the variant sema resolved, so C++ overload
+resolution never re-decides it (left to C++, a protocol variant's `T&`
+template beats a concrete variant's `const Dog&` for a non-const argument,
+and two constrained templates over unrelated protocols are unordered).
+
+- The name is the Python name plus a suffix spelled from the declared
+  parameter types (`describe__Dog`, `prod__Iterable_int32__int32`,
+  `seed__noargs`), or from the literal values for a variant with a `Literal`
+  parameter (`pick__lit_r__rb`). When two variants of a set spell the same
+  suffix (`a.Dog` vs `b.Dog`, `Literal["a-b"]` vs `Literal["a_b"]`), each of
+  them takes its declaration index (`pick__lit_a_b__v0`, `pick__lit_a_b__v1`);
+  so does a variant whose readable name the module already binds -- a def,
+  record, protocol, enum or import (`describe__Dog__v0` beside a user
+  `def describe__Dog`). Module globals are not reserved yet
+  (BUGS.md#imported-variant-name-collides-with-local-def).
+- It is decided once, at registration (`name_overload_variants`), and stored
+  on the variant's `FunctionInfo` (`variant_cpp_name`, read through `root`).
+  The definition, the declaration, the cross-module re-export (one `using`
+  per variant), every call (same-module, imported, `import m; m.f(x)`, a
+  from-import alias) and a function reference (`apply(label, 7)` names the
+  variant matched to the `Callable` slot) read that one fact.
+- Kept: `@native` / `@cpp_template` variants keep their runtime symbols (C++
+  chooses among the hand-written runtime overloads), so `math.log` -- one
+  native and one bodied variant -- keeps `log` for its bodied one. A
+  `typing.overload` generator or coroutine implementation is emitted once,
+  not per stub, and keeps its name.
+- Methods, operator dunders and constructors still share one C++ name per
+  set and leave the choice to C++: protocol conformance calls a method by
+  its Python name (BUGS.md#dispatch-method-variant-reresolved-by-cpp).
+- Not an interop API (a known limitation): the name follows the parameter
+  types' spelling and, on a collision, the declaration order, so
+  hand-written C++ should not call a variant -- or the set -- by name.
 
 ## Design Principles
 
@@ -108,7 +151,7 @@ form is chosen by name rather than inferred from whether a def has a body:
 
 Both register one overload set in sema and share call-site resolution
 (below); the compiler emits one specialized C++ function per variant
-either way. The parser records the decorator as `TpyFunction.overload_form`
+either way, each free variant under its own name. The parser records the decorator as `TpyFunction.overload_form`
 and validates each def against it (a `@overload` stub with a body or a
 native binding, a `@dispatch` variant with neither); sema's
 `_require_overload_form` validates the group (no mixing under one name, a
@@ -165,10 +208,9 @@ Rules:
 - The implementation's union-typed parameters must be supertypes of each stub's params
 - Stubs can have different return types (the key use case)
 - Two stubs cannot share identical positional + keyword-only parameter
-  types (sema rejects the overload set up front). C++ realises overloads
-  by parameter shape only, so two stubs with the same params and
-  different return types would produce an "ambiguating new declaration"
-  linker error. The check applies to free functions and methods
+  types (sema rejects the overload set up front): call-site resolution
+  could not tell them apart, and a method set -- whose variants share one
+  C++ name -- would produce an "ambiguating new declaration" error. The check applies to free functions and methods
   (`tpyc/sema/registration.py:_reject_same_param_overloads`); method
   overloads that differ only in `is_readonly` / `is_consuming` (auto_readonly
   / auto_own const-qualified clones) are exempt because C++ emits them
@@ -369,6 +411,12 @@ the dict it spells, never by its value type.
 **Concrete-over-generic invariant.** Because generic tiers (2, 5, 6, 7) all
 rank weaker than their concrete counterparts (1, 3, 4), concrete overloads
 always beat equally-matching generics. Stub ordering cannot change this.
+The compiler does not honour this yet for a bare `T` (tier 7): the
+candidate is ranked after `T` is substituted, so it scores as tier 1. It
+then beats an applicable protocol or base-class variant, and against a
+shape variant or a concrete one whose substituted signature is the same,
+the identical-signature dedupe below keeps the first declared
+(BUGS.md#overload-rank-protocol-vs-generic).
 
 **Ambiguity.** When the top candidates tie on both score components AND have
 distinct signatures, the compiler refuses to pick arbitrarily. Declaration

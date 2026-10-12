@@ -14,14 +14,14 @@ namespace tpyapp::main {
 //             return s * s
 // @overload
 // def area(shape: Circle) -> float: ...
-double area(const Circle& shape) {
+double area__Circle(const Circle& shape) {
     auto r = shape.radius;
     return ((((3.14) * (r))) * (r));
 }
 
 // @overload
 // def area(shape: Square) -> float: ...
-double area(const Square& shape) {
+double area__Square(const Square& shape) {
     auto s = shape.side;
     return ((s) * (s));
 }
@@ -35,8 +35,8 @@ double area(const Square& shape) {
 void main() {
     Circle c = Circle(5.0);
     Square s = Square(3.0);
-    std::cout << ::tpy::print_float(::tpyapp::main::area(c)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_float(::tpyapp::main::area(s)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::area__Circle(c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::area__Square(s)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

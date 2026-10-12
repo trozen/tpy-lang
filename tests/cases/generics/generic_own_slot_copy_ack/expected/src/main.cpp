@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def dup_bounded_twin(h: IntHolder) -> Own[int32]:
 //     return h.borrow()  # tpyc: ok
-int32_t dup_bounded_twin(IntHolder& h) {
+int32_t dup_bounded_twin(const IntHolder& h) {
     return h.borrow();
 }
 

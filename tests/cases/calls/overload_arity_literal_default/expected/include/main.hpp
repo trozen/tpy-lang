@@ -11,10 +11,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def repeat(s: str) -> str: ...  # tpyc: ok
-std::string repeat(std::string_view s);
+std::string repeat__str(std::string_view s);
 // @overload
 // def repeat(s: str, count: int) -> str: ...  # tpyc: ok
-std::string repeat(std::string_view s, const ::tpy::BigInt& count);
+std::string repeat__str__int(std::string_view s, const ::tpy::BigInt& count);
 // def main() -> None:
 void main();
 

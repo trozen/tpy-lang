@@ -33,7 +33,7 @@ from ..typesys import (
     receiver_lends,
 )
 from .context import (
-    _is_self_call_deferred, _local_traces_to_self, _root_name_of_expr,
+    _local_traces_to_self, _root_name_of_expr,
     receiver_leaves, receiver_root,
     call_param_args, element_index_key, element_loan_mutation_warning,
     loan_mutation_warning,
@@ -304,19 +304,18 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
     obj_root = receiver_root(recv, ctx.get_expr_type)
     if obj_root is not None:
         ctx.mark_loop_var_mutated(obj_root)
-        receiver_idx = ctx.self_receiver_index()
-        defers = not eager and (edges_recorded or (callee is not None
-                                                   and receiver_idx is not None))
-        deferred = defers and _is_self_call_deferred(
-            recv, obj_root, fn.loop_var_iterable, fn.borrow_tracker,
-            ctx.get_expr_type)
-        if deferred and not edges_recorded:
-            assert callee is not None
-            fn.current_call_edges.append(MutationCallEdge(
-                callee_fi=callee.root, param_map={},
-                receiver_idx=receiver_idx))
-        elif not deferred:
+        defers = not eager and (edges_recorded or callee is not None)
+        receiver_idx = ctx.deferred_receiver_index(recv) if defers else None
+        if receiver_idx is None:
             ctx.mark_param_mutated(obj_root)
+        else:
+            if obj_root != "self" and obj_root in fn.current_param_name_to_idx:
+                fn.current_receiver_deferred_param_names.add(obj_root)
+            if not edges_recorded:
+                assert callee is not None
+                fn.current_call_edges.append(MutationCallEdge(
+                    callee_fi=callee.root, param_map={},
+                    receiver_idx=receiver_idx))
         # Structural mutation is tracked directly: Phase 2 does not
         # propagate structural self-mutation through call edges. A direct
         # `self` receiver is the callee's own self and stays with its facts.

@@ -35,13 +35,13 @@ Point owned_copy(int32_t n) {
 //     # Owning METHOD receiver on a named parameter: the intermediate link is an
 //     # rvalue, which used to clear the chain and no longer does.
 //     return f.make().updated()  # tpyc: warning(/copies Point into owned storage/)
-Point owned_method(Factory& f) {
+Point owned_method(const Factory& f) {
     return f.make().updated();
 }
 
 // def owned_method_copy(f: Factory) -> Own[Point]:
 //     return copy(f.make().updated())  # tpyc: ok
-Point owned_method_copy(Factory& f) {
+Point owned_method_copy(const Factory& f) {
     return Point(f.make().updated());
 }
 

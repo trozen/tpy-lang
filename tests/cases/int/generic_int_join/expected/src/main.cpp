@@ -10,14 +10,14 @@ namespace tpyapp::main {
 // @dispatch
 // def which(x: int64, y: int64) -> str:
 //     return "concrete"
-std::string which(int64_t x, int64_t y) {
+std::string which__int64__int64(int64_t x, int64_t y) {
     return "concrete";
 }
 
 // @dispatch
 // def which_g(x: int64, y: int64) -> str:
 //     return "concrete"
-std::string which_g(int64_t x, int64_t y) {
+std::string which_g__int64__int64(int64_t x, int64_t y) {
     return "concrete";
 }
 
@@ -25,28 +25,28 @@ std::string which_g(int64_t x, int64_t y) {
 // @dispatch
 // def width(x: int8) -> str:
 //     return "int8"
-std::string width(int8_t x) {
+std::string width__int8(int8_t x) {
     return "int8";
 }
 
 // @dispatch
 // def width(x: uint8) -> str:
 //     return "uint8"
-std::string width(uint8_t x) {
+std::string width__uint8(uint8_t x) {
     return "uint8";
 }
 
 // @dispatch
 // def width(x: int32) -> str:
 //     return "int32"
-std::string width(int32_t x) {
+std::string width__int32(int32_t x) {
     return "int32";
 }
 
 // @dispatch
 // def width(x: int64) -> str:
 //     return "int64"
-std::string width(int64_t x) {
+std::string width__int64(int64_t x) {
     return "int64";
 }
 
@@ -96,8 +96,8 @@ void free_function() {
     int16_t r = ::tpyapp::main::last3<int16_t>(static_cast<int16_t>(-1), static_cast<int16_t>(200), 300);
     int16_t s = ::tpyapp::main::last3<int16_t>(300, static_cast<int16_t>(-1), static_cast<int16_t>(200));
     std::cout << "free last3" << " " << r << " " << s << "\n" << ::tpy::check_signals;
-    std::cout << "free which" << " " << ::tpyapp::main::which(static_cast<int64_t>(1), 2) << "\n" << ::tpy::check_signals;
-    std::cout << "free which_g" << " " << ::tpyapp::main::which_g(static_cast<int64_t>(1), 2) << "\n" << ::tpy::check_signals;
+    std::cout << "free which" << " " << ::tpyapp::main::which__int64__int64(static_cast<int64_t>(1), 2) << "\n" << ::tpy::check_signals;
+    std::cout << "free which_g" << " " << ::tpyapp::main::which_g__int64__int64(static_cast<int64_t>(1), 2) << "\n" << ::tpy::check_signals;
     int64_t m = ::std::max<int64_t>(static_cast<int64_t>(5), 100000);
     int64_t k = ::std::max<int64_t>(static_cast<int64_t>(b), a);
     int64_t n = ::tpy::min3<int64_t>(a, static_cast<int64_t>(b), static_cast<int64_t>(3));
@@ -107,7 +107,7 @@ void free_function() {
     uint8_t su = ::std::max<uint8_t>(200, 100);
     int8_t si = ::std::max<int8_t>(100, 90);
     int64_t sl = ::std::max<int64_t>(a, 7);
-    std::cout << "free same-width" << " " << ::tpyapp::main::width(su) << " " << static_cast<int>(static_cast<uint8_t>(~(su))) << " " << ::tpyapp::main::width(si) << " " << static_cast<int>((::tpy::add_check<int8_t>(si, 20))) << " " << ::tpyapp::main::width(sl) << "\n" << ::tpy::check_signals;
+    std::cout << "free same-width" << " " << ::tpyapp::main::width__uint8(su) << " " << static_cast<int>(static_cast<uint8_t>(~(su))) << " " << ::tpyapp::main::width__int8(si) << " " << static_cast<int>((::tpy::add_check<int8_t>(si, 20))) << " " << ::tpyapp::main::width__int64(sl) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt w = ::std::max(::tpy::BigInt(1), ::tpy::BigInt(2));
     std::cout << "free no-common" << " " << w << "\n" << ::tpy::check_signals;
     int64_t total = 0;

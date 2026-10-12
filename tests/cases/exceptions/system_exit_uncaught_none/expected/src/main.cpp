@@ -22,7 +22,7 @@ void work() {
         {
             try {
                 std::cout << "work: exiting" << "\n" << ::tpy::check_signals;
-                ::tpystd::sys::exit();
+                ::tpystd::sys::exit__noargs();
             } catch (...) {
                 std::cout << "work: finally" << "\n" << ::tpy::check_signals;
                 throw;

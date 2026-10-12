@@ -325,7 +325,7 @@ void mkdir(std::string_view path, int64_t mode) {
 //     if key in environ:
 //         return environ[key]
 //     return None
-std::optional<std::string> getenv(std::string_view key) {
+std::optional<std::string> getenv__str(std::string_view key) {
     if (((*::tpystd::os::_environ::environ).__contains__(key))) {
         return (*::tpystd::os::_environ::environ)[key];
     }
@@ -337,7 +337,7 @@ std::optional<std::string> getenv(std::string_view key) {
 //     if key in environ:
 //         return environ[key]
 //     return default
-std::string getenv(std::string_view key, std::string_view default_) {
+std::string getenv__str__str(std::string_view key, std::string_view default_) {
     if (((*::tpystd::os::_environ::environ).__contains__(key))) {
         return (*::tpystd::os::_environ::environ)[key];
     }

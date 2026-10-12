@@ -20,7 +20,7 @@ std::string bucket__lit_1__2(int32_t x);
 // def bucket(x: int32) -> str:
 std::string bucket__lit_3__4(int32_t x);
 // def bucket(x: int32) -> str:
-std::string bucket(int32_t x);
+std::string bucket__int32(int32_t x);
 // def dispatch_int(x: Literal[1, 2, 3, 4]) -> None:
 void dispatch_int(int32_t x);
 // def dispatch_ne(mode: Literal["r", "rb"]) -> None:

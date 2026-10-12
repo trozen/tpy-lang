@@ -32,7 +32,7 @@ void arg_select(bool c);
 // def receiver_mutate(c: bool, p: C | None, q: C | None) -> None:
 void receiver_mutate(bool c, C* p, C* q);
 // def receiver_read(c: bool, p: C | None, q: C | None) -> None:
-void receiver_read(bool c, C* p, C* q);
+void receiver_read(bool c, const C* p, const C* q);
 // def receiver_pointer_local(c: bool, a: C, b: C) -> None:
 void receiver_pointer_local(bool c, C& a, C& b);
 // def main() -> None:

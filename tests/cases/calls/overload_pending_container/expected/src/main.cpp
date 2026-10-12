@@ -19,7 +19,7 @@ int64_t a64() {
 // def f_list(xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "list[int64]"
-std::string f_list(std::vector<int64_t>& xs) {
+std::string f_list__list_int64(std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "list[int64]";
 }
@@ -27,7 +27,7 @@ std::string f_list(std::vector<int64_t>& xs) {
 // @dispatch
 // def f_list(xs: str) -> str:
 //     return "str"
-std::string f_list(std::string_view xs) {
+std::string f_list__str(std::string_view xs) {
     return "str";
 }
 
@@ -35,7 +35,7 @@ std::string f_list(std::string_view xs) {
 // def f_dict(d: dict[str, int64]) -> str:
 //     d["z"] = 9
 //     return "dict[str, int64]"
-std::string f_dict(::tpy::ordered_map<std::string, int64_t>& d) {
+std::string f_dict__dict_str_int64(::tpy::ordered_map<std::string, int64_t>& d) {
     ::tpy::__setitem__(d, "z", 9);
     return "dict[str, int64]";
 }
@@ -43,7 +43,7 @@ std::string f_dict(::tpy::ordered_map<std::string, int64_t>& d) {
 // @dispatch
 // def f_dict(d: str) -> str:
 //     return "str"
-std::string f_dict(std::string_view d) {
+std::string f_dict__str(std::string_view d) {
     return "str";
 }
 
@@ -51,7 +51,7 @@ std::string f_dict(std::string_view d) {
 // def f_set(s: set[int64]) -> str:
 //     s.add(9)
 //     return "set[int64]"
-std::string f_set(::tpy::ordered_set<int64_t>& s) {
+std::string f_set__set_int64(::tpy::ordered_set<int64_t>& s) {
     s.insert(9);
     return "set[int64]";
 }
@@ -59,7 +59,7 @@ std::string f_set(::tpy::ordered_set<int64_t>& s) {
 // @dispatch
 // def f_set(s: str) -> str:
 //     return "str"
-std::string f_set(std::string_view s) {
+std::string f_set__str(std::string_view s) {
     return "str";
 }
 
@@ -67,7 +67,7 @@ std::string f_set(std::string_view s) {
 // def f_rows(g: list[list[int64]]) -> str:
 //     g.append([5])
 //     return "list[list[int64]]"
-std::string f_rows(std::vector<std::vector<int64_t>>& g) {
+std::string f_rows__list_list_int64(std::vector<std::vector<int64_t>>& g) {
     g.push_back(std::vector<int64_t>{5});
     return "list[list[int64]]";
 }
@@ -75,7 +75,7 @@ std::string f_rows(std::vector<std::vector<int64_t>>& g) {
 // @dispatch
 // def f_rows(g: str) -> str:
 //     return "str"
-std::string f_rows(std::string_view g) {
+std::string f_rows__str(std::string_view g) {
     return "str";
 }
 
@@ -83,7 +83,7 @@ std::string f_rows(std::string_view g) {
 // def f_pairs(ps: list[tuple[int64, float]]) -> str:
 //     ps.append((3, 0.5))
 //     return "list[tuple[int64, float]]"
-std::string f_pairs(std::vector<std::tuple<int64_t, double>>& ps) {
+std::string f_pairs__list_tuple_int64_float(std::vector<std::tuple<int64_t, double>>& ps) {
     ps.push_back(std::tuple<int64_t, double>{3, 0.5});
     return "list[tuple[int64, float]]";
 }
@@ -91,7 +91,7 @@ std::string f_pairs(std::vector<std::tuple<int64_t, double>>& ps) {
 // @dispatch
 // def f_pairs(ps: str) -> str:
 //     return "str"
-std::string f_pairs(std::string_view ps) {
+std::string f_pairs__str(std::string_view ps) {
     return "str";
 }
 
@@ -99,7 +99,7 @@ std::string f_pairs(std::string_view ps) {
 // def f_floats(xs: list[float]) -> str:
 //     xs.append(1.5)
 //     return "list[float]"
-std::string f_floats(std::vector<double>& xs) {
+std::string f_floats__list_float(std::vector<double>& xs) {
     xs.push_back(1.5);
     return "list[float]";
 }
@@ -107,7 +107,7 @@ std::string f_floats(std::vector<double>& xs) {
 // @dispatch
 // def f_floats(xs: str) -> str:
 //     return "str"
-std::string f_floats(std::string_view xs) {
+std::string f_floats__str(std::string_view xs) {
     return "str";
 }
 
@@ -116,7 +116,7 @@ std::string f_floats(std::string_view xs) {
 //     if xs is not None:
 //         xs.append(7)
 //     return "list[int64] | None"
-std::string f_opt(std::vector<int64_t>* xs) {
+std::string f_opt__list_int64_None(std::vector<int64_t>* xs) {
     if ((xs != nullptr)) {
         xs->push_back(7);
     }
@@ -126,7 +126,7 @@ std::string f_opt(std::vector<int64_t>* xs) {
 // @dispatch
 // def f_opt(xs: str) -> str:
 //     return "str"
-std::string f_opt(std::string_view xs) {
+std::string f_opt__str(std::string_view xs) {
     return "str";
 }
 
@@ -134,7 +134,7 @@ std::string f_opt(std::string_view xs) {
 // def f_own(xs: Own[list[int64]]) -> Own[list[int64]]:
 //     xs.append(7)
 //     return xs
-std::vector<int64_t> f_own(std::vector<int64_t>&& xs) {
+std::vector<int64_t> f_own__Own_list_int64(std::vector<int64_t>&& xs) {
     xs.push_back(7);
     return xs;
 }
@@ -142,7 +142,7 @@ std::vector<int64_t> f_own(std::vector<int64_t>&& xs) {
 // @dispatch
 // def f_own(xs: str) -> Own[list[int64]]:
 //     return []
-std::vector<int64_t> f_own(std::string_view xs) {
+std::vector<int64_t> f_own__str(std::string_view xs) {
     return std::vector<int64_t>{};
 }
 
@@ -150,7 +150,7 @@ std::vector<int64_t> f_own(std::string_view xs) {
 // def f_words(ws: list[str]) -> str:
 //     ws.append("c")
 //     return "list[str]"
-std::string f_words(std::vector<std::string>& ws) {
+std::string f_words__list_str(std::vector<std::string>& ws) {
     ws.push_back("c");
     return "list[str]";
 }
@@ -158,7 +158,7 @@ std::string f_words(std::vector<std::string>& ws) {
 // @dispatch
 // def f_words(ws: str) -> str:
 //     return "str"
-std::string f_words(std::string_view ws) {
+std::string f_words__str(std::string_view ws) {
     return "str";
 }
 
@@ -167,7 +167,7 @@ std::string f_words(std::string_view ws) {
 // def fill_list(xs: list[float]) -> int32:
 //     xs.append(1.5)
 //     return len(xs)
-int32_t fill_list(std::vector<double>& xs) {
+int32_t fill_list__list_float(std::vector<double>& xs) {
     xs.push_back(1.5);
     return ::tpy::__len__(xs);
 }
@@ -175,7 +175,7 @@ int32_t fill_list(std::vector<double>& xs) {
 // @dispatch
 // def fill_list(xs: str) -> int32:
 //     return -1
-int32_t fill_list(std::string_view xs) {
+int32_t fill_list__str(std::string_view xs) {
     return -1;
 }
 
@@ -183,7 +183,7 @@ int32_t fill_list(std::string_view xs) {
 // def fill_dict(d: dict[str, float]) -> int32:
 //     d["a"] = 1.5
 //     return len(d)
-int32_t fill_dict(::tpy::ordered_map<std::string, double>& d) {
+int32_t fill_dict__dict_str_float(::tpy::ordered_map<std::string, double>& d) {
     ::tpy::__setitem__(d, "a", 1.5);
     return ::tpy::__len__(d);
 }
@@ -191,7 +191,7 @@ int32_t fill_dict(::tpy::ordered_map<std::string, double>& d) {
 // @dispatch
 // def fill_dict(d: str) -> int32:
 //     return -1
-int32_t fill_dict(std::string_view d) {
+int32_t fill_dict__str(std::string_view d) {
     return -1;
 }
 
@@ -199,7 +199,7 @@ int32_t fill_dict(std::string_view d) {
 // def fill_set(s: set[float]) -> int32:
 //     s.add(1.5)
 //     return len(s)
-int32_t fill_set(::tpy::ordered_set<double>& s) {
+int32_t fill_set__set_float(::tpy::ordered_set<double>& s) {
     s.insert(1.5);
     return ::tpy::__len__(s);
 }
@@ -207,7 +207,7 @@ int32_t fill_set(::tpy::ordered_set<double>& s) {
 // @dispatch
 // def fill_set(s: str) -> int32:
 //     return -1
-int32_t fill_set(std::string_view s) {
+int32_t fill_set__str(std::string_view s) {
     return -1;
 }
 
@@ -215,56 +215,56 @@ int32_t fill_set(std::string_view s) {
 // @dispatch
 // def dict_rank(d: dict[str, int32]) -> str:
 //     return "32"
-std::string dict_rank(const ::tpy::ordered_map<std::string, int32_t>& d) {
+std::string dict_rank__dict_str_int32(const ::tpy::ordered_map<std::string, int32_t>& d) {
     return "32";
 }
 
 // @dispatch
 // def dict_rank(d: dict[str, int64]) -> str:
 //     return "64"
-std::string dict_rank(const ::tpy::ordered_map<std::string, int64_t>& d) {
+std::string dict_rank__dict_str_int64(const ::tpy::ordered_map<std::string, int64_t>& d) {
     return "64";
 }
 
 // @dispatch
 // def set_rank(s: set[int64]) -> str:
 //     return "64"
-std::string set_rank(const ::tpy::ordered_set<int64_t>& s) {
+std::string set_rank__set_int64(const ::tpy::ordered_set<int64_t>& s) {
     return "64";
 }
 
 // @dispatch
 // def set_rank(s: set[int32]) -> str:
 //     return "32"
-std::string set_rank(const ::tpy::ordered_set<int32_t>& s) {
+std::string set_rank__set_int32(const ::tpy::ordered_set<int32_t>& s) {
     return "32";
 }
 
 // @dispatch
 // def lit_rows(d: dict[str, list[int64]]) -> int64:
 //     return d["a"][1]
-int64_t lit_rows(const ::tpy::ordered_map<std::string, std::vector<int64_t>>& d) {
+int64_t lit_rows__dict_str_list_int64(const ::tpy::ordered_map<std::string, std::vector<int64_t>>& d) {
     return ::tpy::__getitem__(::tpy::__getitem__(d, "a"), 1);
 }
 
 // @dispatch
 // def lit_rows(d: str) -> int64:
 //     return 0
-int64_t lit_rows(std::string_view d) {
+int64_t lit_rows__str(std::string_view d) {
     return 0;
 }
 
 // @dispatch
 // def lit_keys(d: dict[tuple[int64, int64], int64]) -> int32:
 //     return len(d)
-int32_t lit_keys(const ::tpy::ordered_map<std::tuple<int64_t, int64_t>, int64_t>& d) {
+int32_t lit_keys__dict_tuple_int64_int64_int64(const ::tpy::ordered_map<std::tuple<int64_t, int64_t>, int64_t>& d) {
     return ::tpy::__len__(d);
 }
 
 // @dispatch
 // def lit_keys(d: str) -> int32:
 //     return -1
-int32_t lit_keys(std::string_view d) {
+int32_t lit_keys__str(std::string_view d) {
     return -1;
 }
 
@@ -273,7 +273,7 @@ int32_t lit_keys(std::string_view d) {
 // def f_span(xs: Span[int64]) -> str:
 //     xs[0] = 1099511627776
 //     return "Span[int64]"
-std::string f_span(std::span<int64_t> xs) {
+std::string f_span__Span_int64(std::span<int64_t> xs) {
     ::tpy::__setitem__(xs, 0, static_cast<int64_t>(1099511627776));
     return "Span[int64]";
 }
@@ -281,7 +281,7 @@ std::string f_span(std::span<int64_t> xs) {
 // @dispatch
 // def f_span(xs: str) -> str:
 //     return "str"
-std::string f_span(std::string_view xs) {
+std::string f_span__str(std::string_view xs) {
     return "str";
 }
 
@@ -289,7 +289,7 @@ std::string f_span(std::string_view xs) {
 // def f_array(xs: Array[int64, 2]) -> str:
 //     xs[1] = 1099511627776
 //     return "Array[int64, 2]"
-std::string f_array(std::array<int64_t, 2>& xs) {
+std::string f_array__Array_int64_2(std::array<int64_t, 2>& xs) {
     ::tpy::__setitem__(xs, 1, static_cast<int64_t>(1099511627776));
     return "Array[int64, 2]";
 }
@@ -297,7 +297,7 @@ std::string f_array(std::array<int64_t, 2>& xs) {
 // @dispatch
 // def f_array(xs: str) -> str:
 //     return "str"
-std::string f_array(std::string_view xs) {
+std::string f_array__str(std::string_view xs) {
     return "str";
 }
 
@@ -306,7 +306,7 @@ std::string f_array(std::string_view xs) {
 // def own_pick(xs: Own[list[int32]]) -> Own[list[int32]]:
 //     xs.append(3)
 //     return xs
-std::vector<int32_t> own_pick(std::vector<int32_t>&& xs) {
+std::vector<int32_t> own_pick__Own_list_int32(std::vector<int32_t>&& xs) {
     xs.push_back(3);
     return xs;
 }
@@ -315,7 +315,7 @@ std::vector<int32_t> own_pick(std::vector<int32_t>&& xs) {
 // def own_pick(xs: Own[list[int64]]) -> Own[list[int64]]:
 //     xs.append(1099511627776)
 //     return xs
-std::vector<int64_t> own_pick(std::vector<int64_t>&& xs) {
+std::vector<int64_t> own_pick__Own_list_int64(std::vector<int64_t>&& xs) {
     xs.push_back(static_cast<int64_t>(1099511627776));
     return xs;
 }
@@ -325,7 +325,7 @@ std::vector<int64_t> own_pick(std::vector<int64_t>&& xs) {
 // def rank32(xs: list[int32]) -> str:
 //     xs.append(7)
 //     return "32"
-std::string rank32(std::vector<int32_t>& xs) {
+std::string rank32__list_int32(std::vector<int32_t>& xs) {
     xs.push_back(7);
     return "32";
 }
@@ -334,7 +334,7 @@ std::string rank32(std::vector<int32_t>& xs) {
 // def rank32(xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "64"
-std::string rank32(std::vector<int64_t>& xs) {
+std::string rank32__list_int64(std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "64";
 }
@@ -343,7 +343,7 @@ std::string rank32(std::vector<int64_t>& xs) {
 // def rank_wide(xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "64"
-std::string rank_wide(std::vector<int64_t>& xs) {
+std::string rank_wide__list_int64(std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "64";
 }
@@ -352,7 +352,7 @@ std::string rank_wide(std::vector<int64_t>& xs) {
 // def rank_wide(xs: list[int32]) -> str:
 //     xs.append(7)
 //     return "32"
-std::string rank_wide(std::vector<int32_t>& xs) {
+std::string rank_wide__list_int32(std::vector<int32_t>& xs) {
     xs.push_back(7);
     return "32";
 }
@@ -361,7 +361,7 @@ std::string rank_wide(std::vector<int32_t>& xs) {
 // def floor_a(xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "int64"
-std::string floor_a(std::vector<int64_t>& xs) {
+std::string floor_a__list_int64(std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "int64";
 }
@@ -370,7 +370,7 @@ std::string floor_a(std::vector<int64_t>& xs) {
 // def floor_a(xs: list[int]) -> str:
 //     xs.append(7)
 //     return "int"
-std::string floor_a(std::vector<::tpy::BigInt>& xs) {
+std::string floor_a__list_int(std::vector<::tpy::BigInt>& xs) {
     xs.push_back(7);
     return "int";
 }
@@ -379,7 +379,7 @@ std::string floor_a(std::vector<::tpy::BigInt>& xs) {
 // def pair(xs: list[int32], n: int32) -> str:
 //     xs.append(n)
 //     return "32"
-std::string pair(std::vector<int32_t>& xs, int32_t n) {
+std::string pair__list_int32__int32(std::vector<int32_t>& xs, int32_t n) {
     xs.push_back(n);
     return "32";
 }
@@ -388,7 +388,7 @@ std::string pair(std::vector<int32_t>& xs, int32_t n) {
 // def pair(xs: list[int64], n: int64) -> str:
 //     xs.append(n)
 //     return "64"
-std::string pair(std::vector<int64_t>& xs, int64_t n) {
+std::string pair__list_int64__int64(std::vector<int64_t>& xs, int64_t n) {
     xs.push_back(n);
     return "64";
 }
@@ -398,7 +398,7 @@ std::string pair(std::vector<int64_t>& xs, int64_t n) {
 //     xs.append(7)
 //     ys.append(8)
 //     return "64"
-std::string two(std::vector<int64_t>& xs, std::vector<int64_t>& ys) {
+std::string two__list_int64__list_int64(std::vector<int64_t>& xs, std::vector<int64_t>& ys) {
     xs.push_back(7);
     ys.push_back(8);
     return "64";
@@ -407,35 +407,35 @@ std::string two(std::vector<int64_t>& xs, std::vector<int64_t>& ys) {
 // @dispatch
 // def two(xs: list[int32], ys: list[int32]) -> str:
 //     return "32"
-std::string two(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys) {
+std::string two__list_int32__list_int32(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys) {
     return "32";
 }
 
 // @dispatch
 // def gen_or_str(xs: str, v: str) -> str:
 //     return v
-std::string gen_or_str(std::string_view xs, std::string_view v) {
+std::string gen_or_str__str__str(std::string_view xs, std::string_view v) {
     return std::string(v);
 }
 
 // @dispatch
 // def view_first(n: int32, xs: list[int64]) -> str:
 //     return "list"
-std::string view_first(int32_t n, const std::vector<int64_t>& xs) {
+std::string view_first__int32__list_int64(int32_t n, const std::vector<int64_t>& xs) {
     return "list";
 }
 
 // @dispatch
 // def view_first_big(n: int, xs: list[int64]) -> str:
 //     return "list"
-std::string view_first_big(const ::tpy::BigInt& n, const std::vector<int64_t>& xs) {
+std::string view_first_big__int__list_int64(const ::tpy::BigInt& n, const std::vector<int64_t>& xs) {
     return "list";
 }
 
 // @dispatch
 // def joint_views(a: list[int32], b: list[int64]) -> str:
 //     return "storage"
-std::string joint_views(const std::vector<int32_t>& a, const std::vector<int64_t>& b) {
+std::string joint_views__list_int32__list_int64(const std::vector<int32_t>& a, const std::vector<int64_t>& b) {
     return "storage";
 }
 
@@ -443,7 +443,7 @@ std::string joint_views(const std::vector<int32_t>& a, const std::vector<int64_t
 // def joint_wide(a: list[int64], b: list[int64]) -> str:
 //     b.append(7)
 //     return "both int64"
-std::string joint_wide(const std::vector<int64_t>& a, std::vector<int64_t>& b) {
+std::string joint_wide__list_int64__list_int64(const std::vector<int64_t>& a, std::vector<int64_t>& b) {
     b.push_back(7);
     return "both int64";
 }
@@ -451,14 +451,14 @@ std::string joint_wide(const std::vector<int64_t>& a, std::vector<int64_t>& b) {
 // @dispatch
 // def joint_wide(a: list[int32], b: list[int64]) -> str:
 //     return "split"
-std::string joint_wide(const std::vector<int32_t>& a, const std::vector<int64_t>& b) {
+std::string joint_wide__list_int32__list_int64(const std::vector<int32_t>& a, const std::vector<int64_t>& b) {
     return "split";
 }
 
 // @dispatch
 // def gen_kw(xs: str) -> str:
 //     return xs
-std::string gen_kw(std::string_view xs) {
+std::string gen_kw__str(std::string_view xs) {
     return std::string(xs);
 }
 
@@ -468,7 +468,7 @@ std::string gen_kw(std::string_view xs) {
 //     a.append(1)
 //     b.append(2)
 //     return "both int64"
-std::string linked(std::vector<int64_t>& a, std::vector<int64_t>& b) {
+std::string linked__list_int64__list_int64(std::vector<int64_t>& a, std::vector<int64_t>& b) {
     a.push_back(1);
     b.push_back(2);
     return "both int64";
@@ -478,7 +478,7 @@ std::string linked(std::vector<int64_t>& a, std::vector<int64_t>& b) {
 // def linked(a: list[int32], b: list[int64]) -> str:
 //     a.append(1)
 //     return "split"
-std::string linked(std::vector<int32_t>& a, const std::vector<int64_t>& b) {
+std::string linked__list_int32__list_int64(std::vector<int32_t>& a, const std::vector<int64_t>& b) {
     a.push_back(1);
     return "split";
 }
@@ -488,7 +488,7 @@ std::string linked(std::vector<int32_t>& a, const std::vector<int64_t>& b) {
 // def two_names(a: list[int64], b: list[int64]) -> str:
 //     a.append(1)
 //     return "lists"
-std::string two_names(std::vector<int64_t>& a, const std::vector<int64_t>& b) {
+std::string two_names__list_int64__list_int64(std::vector<int64_t>& a, const std::vector<int64_t>& b) {
     a.push_back(1);
     return "lists";
 }
@@ -498,7 +498,7 @@ std::string two_names(std::vector<int64_t>& a, const std::vector<int64_t>& b) {
 // def one_way(a: list[int64], b: list[int64]) -> str:
 //     a.append(8)
 //     return "both int64"
-std::string one_way(std::vector<int64_t>& a, const std::vector<int64_t>& b) {
+std::string one_way__list_int64__list_int64(std::vector<int64_t>& a, const std::vector<int64_t>& b) {
     a.push_back(8);
     return "both int64";
 }
@@ -507,7 +507,7 @@ std::string one_way(std::vector<int64_t>& a, const std::vector<int64_t>& b) {
 // def one_way(a: list[int64], b: list[int32]) -> str:
 //     a.append(7)
 //     return "split"
-std::string one_way(std::vector<int64_t>& a, const std::vector<int32_t>& b) {
+std::string one_way__list_int64__list_int32(std::vector<int64_t>& a, const std::vector<int32_t>& b) {
     a.push_back(7);
     return "split";
 }
@@ -515,42 +515,42 @@ std::string one_way(std::vector<int64_t>& a, const std::vector<int32_t>& b) {
 // @dispatch
 // def from_view_big(xs: list[int64]) -> str:
 //     return "list64"
-std::string from_view_big(const std::vector<int64_t>& xs) {
+std::string from_view_big__list_int64(const std::vector<int64_t>& xs) {
     return "list64";
 }
 
 // @dispatch
 // def view_first32(xs: list[int64]) -> str:
 //     return "list64"
-std::string view_first32(const std::vector<int64_t>& xs) {
+std::string view_first32__list_int64(const std::vector<int64_t>& xs) {
     return "list64";
 }
 
 // @dispatch
 // def view_first64(xs: list[int]) -> str:
 //     return "big"
-std::string view_first64(const std::vector<::tpy::BigInt>& xs) {
+std::string view_first64__list_int(const std::vector<::tpy::BigInt>& xs) {
     return "big";
 }
 
 // @dispatch
 // def gv(xs: list[int64], t: int32) -> str:
 //     return "list64"
-std::string gv(const std::vector<int64_t>& xs, int32_t t) {
+std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t) {
     return "list64";
 }
 
 // @dispatch
 // def hv(xs: list[int64], t: int32) -> str:
 //     return "list64"
-std::string hv(const std::vector<int64_t>& xs, int32_t t) {
+std::string hv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t) {
     return "list64";
 }
 
 // @dispatch
 // def rc_rank(xs: list[int64], f: Callable[[int64], int64]) -> str:
 //     return "list64"
-std::string rc_rank(const std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f) {
+std::string rc_rank__list_int64__Callable_int64_int64(const std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f) {
     return "list64";
 }
 
@@ -558,14 +558,14 @@ std::string rc_rank(const std::vector<int64_t>& xs, const std::function<int64_t(
 // @dispatch
 // def one(a: int32) -> int32:
 //     return a
-int32_t one(int32_t a) {
+int32_t one__int32(int32_t a) {
     return a;
 }
 
 // @dispatch
 // def one(a: int32, b: int32) -> int32:
 //     return a + b
-int32_t one(int32_t a, int32_t b) {
+int32_t one__int32__int32(int32_t a, int32_t b) {
     return (::tpy::add_check<int32_t>(a, b));
 }
 
@@ -573,7 +573,7 @@ int32_t one(int32_t a, int32_t b) {
 // def outer(n: int32, xs: list[int64]) -> str:
 //     xs.append(7)
 //     return "list[int64]"
-std::string outer(int32_t n, std::vector<int64_t>& xs) {
+std::string outer__int32__list_int64(int32_t n, std::vector<int64_t>& xs) {
     xs.push_back(7);
     return "list[int64]";
 }
@@ -581,7 +581,7 @@ std::string outer(int32_t n, std::vector<int64_t>& xs) {
 // @dispatch
 // def outer(n: int32, xs: str) -> str:
 //     return "str"
-std::string outer(int32_t n, std::string_view xs) {
+std::string outer__int32__str(int32_t n, std::string_view xs) {
     return "str";
 }
 
@@ -590,7 +590,7 @@ std::string outer(int32_t n, std::string_view xs) {
 // def lose_array(xs: list[int32], n: int32) -> str:
 //     xs.append(n)
 //     return f"list[int32] {len(xs)}"
-std::string lose_array(std::vector<int32_t>& xs, int32_t n) {
+std::string lose_array__list_int32__int32(std::vector<int32_t>& xs, int32_t n) {
     xs.push_back(n);
     return std::format("list[int32] {}", ::tpy::__len__(xs));
 }
@@ -598,7 +598,7 @@ std::string lose_array(std::vector<int32_t>& xs, int32_t n) {
 // @dispatch
 // def lose_array(xs: Array[int64, 2], n: str) -> str:
 //     return "Array"
-std::string lose_array(const std::array<int64_t, 2>& xs, std::string_view n) {
+std::string lose_array__Array_int64_2__str(const std::array<int64_t, 2>& xs, std::string_view n) {
     return "Array";
 }
 
@@ -606,7 +606,7 @@ std::string lose_array(const std::array<int64_t, 2>& xs, std::string_view n) {
 // def lose_span(xs: list[int32], n: int32) -> str:
 //     xs.append(n)
 //     return "list[int32]"
-std::string lose_span(std::vector<int32_t>& xs, int32_t n) {
+std::string lose_span__list_int32__int32(std::vector<int32_t>& xs, int32_t n) {
     xs.push_back(n);
     return "list[int32]";
 }
@@ -614,7 +614,7 @@ std::string lose_span(std::vector<int32_t>& xs, int32_t n) {
 // @dispatch
 // def lose_span(xs: Span[int64], n: str) -> str:
 //     return "Span"
-std::string lose_span(std::span<int64_t> xs, std::string_view n) {
+std::string lose_span__Span_int64__str(std::span<int64_t> xs, std::string_view n) {
     return "Span";
 }
 
@@ -623,7 +623,7 @@ std::string lose_span(std::span<int64_t> xs, std::string_view n) {
 // def apply(xs: list[int64], f: Callable[[int64], int64]) -> int64:
 //     xs.append(7)
 //     return f(xs[0])
-int64_t apply(std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f) {
+int64_t apply__list_int64__Callable_int64_int64(std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f) {
     xs.push_back(7);
     return f(::tpy::__getitem__(xs, 0));
 }
@@ -631,7 +631,7 @@ int64_t apply(std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f
 // @dispatch
 // def apply(xs: str, f: Callable[[str], int32]) -> int32:
 //     return 0
-int32_t apply(std::string_view xs, const std::function<int32_t(std::string_view)>& f) {
+int32_t apply__str__Callable_str_int32(std::string_view xs, const std::function<int32_t(std::string_view)>& f) {
     return 0;
 }
 
@@ -653,7 +653,7 @@ __gen_in_generator in_generator() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         ms.emplace(std::vector<int64_t>{1, 2});
-        r = ::tpyapp::main::f_list((*ms));
+        r = ::tpyapp::main::f_list__list_int64((*ms));
         (*ms).push_back(::tpyapp::main::a64());
         __state = S_DONE;
         std::string __tpy_async_ret = std::format("{} {}", r, ::tpy::__getitem__((*ms), 3));
@@ -674,7 +674,7 @@ __coro_in_async in_async() {
 // def f_list32(xs: list[int32]) -> str:
 //     xs.append(7)
 //     return "list[int32]"
-std::string f_list32(std::vector<int32_t>& xs) {
+std::string f_list32__list_int32(std::vector<int32_t>& xs) {
     xs.push_back(7);
     return "list[int32]";
 }
@@ -682,7 +682,7 @@ std::string f_list32(std::vector<int32_t>& xs) {
 // @dispatch
 // def f_list32(xs: str) -> str:
 //     return "str"
-std::string f_list32(std::string_view xs) {
+std::string f_list32__str(std::string_view xs) {
     return "str";
 }
 
@@ -950,46 +950,46 @@ std::string f_list32(std::string_view xs) {
 //     print("module level:", f_list32(MS), MS)
 void main() {
     std::vector<int64_t> ms = {1, 2};
-    std::cout << "list:" << " " << ::tpyapp::main::f_list(ms) << " " << ::tpy::__getitem__(ms, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "list:" << " " << ::tpyapp::main::f_list__list_int64(ms) << " " << ::tpy::__getitem__(ms, 2) << "\n" << ::tpy::check_signals;
     ms.push_back(::tpyapp::main::a64());
     std::cout << "list:" << " " << ::tpy::__getitem__(ms, 3) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int64_t> d = ::tpy::ordered_map<std::string, int64_t>({{"a", 1}});
-    std::cout << "dict:" << " " << ::tpyapp::main::f_dict(d) << " " << ::tpy::__getitem__(d, "z") << "\n" << ::tpy::check_signals;
+    std::cout << "dict:" << " " << ::tpyapp::main::f_dict__dict_str_int64(d) << " " << ::tpy::__getitem__(d, "z") << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(d, "w", ::tpyapp::main::a64());
     std::cout << "dict:" << " " << ::tpy::__getitem__(d, "w") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int64_t> s = ::tpy::ordered_set<int64_t>({1, 2});
-    std::cout << "set:" << " " << ::tpyapp::main::f_set(s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
+    std::cout << "set:" << " " << ::tpyapp::main::f_set__set_int64(s) << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     s.insert(::tpyapp::main::a64());
     std::cout << "set:" << " " << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int64_t>> g = {{1}, {2}};
-    std::cout << "rows:" << " " << ::tpyapp::main::f_rows(g) << " " << ::tpy::__len__(g) << "\n" << ::tpy::check_signals;
+    std::cout << "rows:" << " " << ::tpyapp::main::f_rows__list_list_int64(g) << " " << ::tpy::__len__(g) << "\n" << ::tpy::check_signals;
     ::tpy::__getitem__(g, 0).push_back(::tpyapp::main::a64());
     std::cout << "rows:" << " " << ::tpy::__getitem__(::tpy::__getitem__(g, 0), 1) << "\n" << ::tpy::check_signals;
     std::vector<std::tuple<int64_t, double>> ps = {std::tuple<int64_t, double>{1, 2.0}};
-    std::cout << "tuples:" << " " << ::tpyapp::main::f_pairs(ps) << " " << ::tpy::__len__(ps) << "\n" << ::tpy::check_signals;
+    std::cout << "tuples:" << " " << ::tpyapp::main::f_pairs__list_tuple_int64_float(ps) << " " << ::tpy::__len__(ps) << "\n" << ::tpy::check_signals;
     ps.push_back(std::tuple<int64_t, double>{::tpyapp::main::a64(), 1.0});
     std::cout << "tuples:" << " " << std::get<0>(::tpy::__getitem__(ps, 2)) << "\n" << ::tpy::check_signals;
     std::vector<double> es = std::vector<double>{};
-    std::cout << "empty local:" << " " << ::tpyapp::main::f_floats(es) << " " << ::tpy::print_float(::tpy::__getitem__(es, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "empty local:" << " " << ::tpyapp::main::f_floats__list_float(es) << " " << ::tpy::print_float(::tpy::__getitem__(es, 0)) << "\n" << ::tpy::check_signals;
     es.push_back(2.5);
     std::cout << "empty local:" << " " << ::tpy::ListPrinter(es) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int64_t> ed = ::tpy::ordered_map<std::string, int64_t>();
-    std::cout << "empty dict local:" << " " << ::tpyapp::main::f_dict(ed) << " " << ::tpy::__getitem__(ed, "z") << "\n" << ::tpy::check_signals;
+    std::cout << "empty dict local:" << " " << ::tpyapp::main::f_dict__dict_str_int64(ed) << " " << ::tpy::__getitem__(ed, "z") << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(ed, "w", ::tpyapp::main::a64());
     std::cout << "empty dict local:" << " " << ::tpy::__getitem__(ed, "w") << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int64_t> eset = ::tpy::ordered_set<int64_t>();
-    std::cout << "empty set local:" << " " << ::tpyapp::main::f_set(eset) << " " << ::tpy::__len__(eset) << "\n" << ::tpy::check_signals;
+    std::cout << "empty set local:" << " " << ::tpyapp::main::f_set__set_int64(eset) << " " << ::tpy::__len__(eset) << "\n" << ::tpy::check_signals;
     eset.insert(::tpyapp::main::a64());
     std::cout << "empty set local:" << " " << ::tpy::__len__(eset) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> __tmp_1 = {1, 2};
-    std::cout << "inline:" << " " << ::tpyapp::main::f_list(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "inline:" << " " << ::tpyapp::main::f_list__list_int64(__tmp_1) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_2 = std::vector<double>{};
-    std::cout << "inline empty:" << " " << ::tpyapp::main::f_floats(__tmp_2) << "\n" << ::tpy::check_signals;
+    std::cout << "inline empty:" << " " << ::tpyapp::main::f_floats__list_float(__tmp_2) << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_3 = std::vector<double>{};
     std::vector<double> __tmp_4 = std::vector<double>();
     ::tpy::ordered_map<std::string, double> __tmp_5 = ::tpy::ordered_map<std::string, double>();
     ::tpy::ordered_set<double> __tmp_6 = ::tpy::ordered_set<double>();
-    std::cout << "written empty:" << " " << ::tpyapp::main::fill_list(__tmp_3) << " " << ::tpyapp::main::fill_list(__tmp_4) << " " << ::tpyapp::main::fill_dict(__tmp_5) << " " << ::tpyapp::main::fill_set(__tmp_6) << "\n" << ::tpy::check_signals;
+    std::cout << "written empty:" << " " << ::tpyapp::main::fill_list__list_float(__tmp_3) << " " << ::tpyapp::main::fill_list__list_float(__tmp_4) << " " << ::tpyapp::main::fill_dict__dict_str_float(__tmp_5) << " " << ::tpyapp::main::fill_set__set_float(__tmp_6) << "\n" << ::tpy::check_signals;
     Acc acc = Acc();
     std::vector<double> __tmp_7 = std::vector<double>{};
     ::tpy::ordered_map<std::string, double> __tmp_8 = ::tpy::ordered_map<std::string, double>();
@@ -1000,114 +1000,114 @@ void main() {
     ::tpy::ordered_map<std::string, double> __tmp_11 = ::tpy::ordered_map<std::string, double>({{"k", 1}});
     ::tpy::ordered_map<std::string, int64_t> __tmp_12 = ::tpy::ordered_map<std::string, int64_t>({{"a", 1}});
     ::tpy::ordered_map<std::string, double> __tmp_13 = ::tpy::ordered_map<std::string, double>({{"k", 1.5}});
-    std::cout << "dict literal:" << " " << ::tpyapp::main::f_dict(__tmp_10) << " " << ::tpyapp::main::fill_dict(__tmp_11) << " " << ::tpyapp::main::f_dict(__tmp_12) << " " << acc.fill_map(__tmp_13) << "\n" << ::tpy::check_signals;
+    std::cout << "dict literal:" << " " << ::tpyapp::main::f_dict__dict_str_int64(__tmp_10) << " " << ::tpyapp::main::fill_dict__dict_str_float(__tmp_11) << " " << ::tpyapp::main::f_dict__dict_str_int64(__tmp_12) << " " << acc.fill_map(__tmp_13) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<int64_t> __tmp_14 = ::tpy::ordered_set<int64_t>({1, 2});
-    std::cout << "set literal:" << " " << ::tpyapp::main::f_set(__tmp_14) << "\n" << ::tpy::check_signals;
+    std::cout << "set literal:" << " " << ::tpyapp::main::f_set__set_int64(__tmp_14) << "\n" << ::tpy::check_signals;
     int64_t wide = ::tpyapp::main::a64();
     ::tpy::ordered_map<std::string, int32_t> __tmp_15 = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});
     ::tpy::ordered_set<int64_t> __tmp_16 = ::tpy::ordered_set<int64_t>({1, static_cast<int64_t>(5000000000)});
     ::tpy::ordered_set<int64_t> __tmp_17 = ::tpy::ordered_set<int64_t>({wide});
-    std::cout << "literal rank:" << " " << ::tpyapp::main::dict_rank(__tmp_15) << " " << ::tpyapp::main::set_rank(__tmp_16) << " " << ::tpyapp::main::set_rank(__tmp_17) << "\n" << ::tpy::check_signals;
+    std::cout << "literal rank:" << " " << ::tpyapp::main::dict_rank__dict_str_int32(__tmp_15) << " " << ::tpyapp::main::set_rank__set_int64(__tmp_16) << " " << ::tpyapp::main::set_rank__set_int64(__tmp_17) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, std::vector<int64_t>> __tmp_18 = ::tpy::ordered_map<std::string, std::vector<int64_t>>({{"a", {1, 2}}});
     ::tpy::ordered_map<std::tuple<int64_t, int64_t>, int64_t> __tmp_19 = ::tpy::ordered_map<std::tuple<int64_t, int64_t>, int64_t>({{std::tuple<int64_t, int64_t>{1, 2}, 3}});
-    std::cout << "literal parts:" << " " << ::tpyapp::main::lit_rows(__tmp_18) << " " << ::tpyapp::main::lit_keys(__tmp_19) << "\n" << ::tpy::check_signals;
+    std::cout << "literal parts:" << " " << ::tpyapp::main::lit_rows__dict_str_list_int64(__tmp_18) << " " << ::tpyapp::main::lit_keys__dict_tuple_int64_int64_int64(__tmp_19) << "\n" << ::tpy::check_signals;
     std::cout << "literal view:" << " " << ::tpy::print_float(::tpy::builtin_max<double>(::tpy::ordered_set<double>({2.5, 1.5}))) << " " << ::tpy::TuplePrinter(::tpy::builtin_max<std::tuple<int32_t, std::string>>(::tpy::ordered_set<std::tuple<int32_t, std::string>>({std::tuple<int32_t, std::string>{1, "a"}, std::tuple<int32_t, std::string>{2, "b"}}))) << " " << ::tpy::print_float(::tpy::builtin_min_key<double>(::tpy::ordered_set<double>({2.5, 1.5}), [](double v) -> double { return -(v); })) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<int32_t, std::vector<int32_t>> sd = ::tpy::ordered_map<int32_t, std::vector<int32_t>>();
     std::cout << "own setdefault:" << " " << ::tpy::__len__(::tpy::dict_setdefault(sd, 1, std::vector<int32_t>{5, 6})) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> ks = {1, 2};
-    std::cout << "keyword:" << " " << ::tpyapp::main::f_list(ks) << " " << ::tpy::__getitem__(ks, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "keyword:" << " " << ::tpyapp::main::f_list__list_int64(ks) << " " << ::tpy::__getitem__(ks, 2) << "\n" << ::tpy::check_signals;
     ks.push_back(::tpyapp::main::a64());
     std::cout << "keyword:" << " " << ::tpy::__getitem__(ks, 3) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> op = {1, 2};
-    std::cout << "optional:" << " " << ::tpyapp::main::f_opt(&(op)) << " " << ::tpy::__getitem__(op, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "optional:" << " " << ::tpyapp::main::f_opt__list_int64_None(&(op)) << " " << ::tpy::__getitem__(op, 2) << "\n" << ::tpy::check_signals;
     op.push_back(::tpyapp::main::a64());
     std::cout << "optional:" << " " << ::tpy::__getitem__(op, 3) << "\n" << ::tpy::check_signals;
-    std::cout << "own:" << " " << ::tpy::ListPrinter(::tpyapp::main::f_own(std::vector<int64_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "own:" << " " << ::tpy::ListPrinter(::tpyapp::main::f_own__Own_list_int64(std::vector<int64_t>{1, 2})) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> ol = {1, 2};
-    std::cout << "own local:" << " " << ::tpy::ListPrinter(::tpyapp::main::f_own(std::move(ol))) << "\n" << ::tpy::check_signals;
-    std::cout << "own pick:" << " " << ::tpy::ListPrinter(::tpyapp::main::own_pick(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
-    std::cout << "own zero:" << " " << ::tpy::ListPrinter(::tpyapp::main::f_own(std::vector<int64_t>{0})) << "\n" << ::tpy::check_signals;
+    std::cout << "own local:" << " " << ::tpy::ListPrinter(::tpyapp::main::f_own__Own_list_int64(std::move(ol))) << "\n" << ::tpy::check_signals;
+    std::cout << "own pick:" << " " << ::tpy::ListPrinter(::tpyapp::main::own_pick__Own_list_int32(std::vector<int32_t>{1, 2})) << "\n" << ::tpy::check_signals;
+    std::cout << "own zero:" << " " << ::tpy::ListPrinter(::tpyapp::main::f_own__Own_list_int64(std::vector<int64_t>{0})) << "\n" << ::tpy::check_signals;
     std::vector<std::string> ws = {"a", "b"};
-    std::cout << "words:" << " " << ::tpyapp::main::f_words(ws) << " " << ::tpy::__getitem__(ws, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "words:" << " " << ::tpyapp::main::f_words__list_str(ws) << " " << ::tpy::__getitem__(ws, 2) << "\n" << ::tpy::check_signals;
     std::array<int64_t, 2> sa = {1, 2};
-    std::cout << "span:" << " " << ::tpyapp::main::f_span(::tpy::as_mut_span(sa)) << " " << ::tpy::ListPrinter(sa) << "\n" << ::tpy::check_signals;
+    std::cout << "span:" << " " << ::tpyapp::main::f_span__Span_int64(::tpy::as_mut_span(sa)) << " " << ::tpy::ListPrinter(sa) << "\n" << ::tpy::check_signals;
     std::array<int64_t, 2> aa = {1, 2};
-    std::cout << "array:" << " " << ::tpyapp::main::f_array(aa) << " " << ::tpy::ListPrinter(aa) << "\n" << ::tpy::check_signals;
+    std::cout << "array:" << " " << ::tpyapp::main::f_array__Array_int64_2(aa) << " " << ::tpy::ListPrinter(aa) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> r1 = {1, 2};
-    std::cout << "rank default:" << " " << ::tpyapp::main::rank32(r1) << " " << ::tpy::ListPrinter(r1) << "\n" << ::tpy::check_signals;
+    std::cout << "rank default:" << " " << ::tpyapp::main::rank32__list_int32(r1) << " " << ::tpy::ListPrinter(r1) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> r2 = {1, 2};
     r2.push_back(::tpyapp::main::a64());
-    std::cout << "rank wide:" << " " << ::tpyapp::main::rank_wide(r2) << " " << ::tpy::__getitem__(r2, 3) << "\n" << ::tpy::check_signals;
+    std::cout << "rank wide:" << " " << ::tpyapp::main::rank_wide__list_int64(r2) << " " << ::tpy::__getitem__(r2, 3) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> r3 = {1};
     r3.push_back(static_cast<int64_t>(2));
-    std::cout << "floor a:" << " " << ::tpyapp::main::floor_a(r3) << " " << ::tpy::__getitem__(r3, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "floor a:" << " " << ::tpyapp::main::floor_a__list_int64(r3) << " " << ::tpy::__getitem__(r3, 2) << "\n" << ::tpy::check_signals;
     r3.push_back(::tpyapp::main::a64());
     std::vector<int64_t> r5 = {1};
-    std::cout << "typed scalar:" << " " << ::tpyapp::main::pair(r5, ::tpyapp::main::a64()) << " " << ::tpy::__getitem__(r5, 1) << "\n" << ::tpy::check_signals;
+    std::cout << "typed scalar:" << " " << ::tpyapp::main::pair__list_int64__int64(r5, ::tpyapp::main::a64()) << " " << ::tpy::__getitem__(r5, 1) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> r6 = {1};
     std::vector<int64_t> r7 = {2};
     r7.push_back(::tpyapp::main::a64());
-    std::cout << "two locals:" << " " << ::tpyapp::main::two(r6, r7) << " " << ::tpy::__getitem__(r6, 1) << " " << ::tpy::__getitem__(r7, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "two locals:" << " " << ::tpyapp::main::two__list_int64__list_int64(r6, r7) << " " << ::tpy::__getitem__(r6, 1) << " " << ::tpy::__getitem__(r7, 2) << "\n" << ::tpy::check_signals;
     r6.push_back(::tpyapp::main::a64());
     std::vector<int64_t> r8 = {1, 2};
-    std::cout << "generic:" << " " << ::tpyapp::main::gen_or_str<int64_t>(r8, ::tpyapp::main::a64()) << " " << ::tpy::__getitem__(r8, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "generic:" << " " << ::tpyapp::main::gen_or_str__list_T__T<int64_t>(r8, ::tpyapp::main::a64()) << " " << ::tpy::__getitem__(r8, 2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> v1 = {1, 2};
-    std::cout << "view vs concrete:" << " " << ::tpyapp::main::view_first(1, v1) << " " << ::tpy::ListPrinter(v1) << "\n" << ::tpy::check_signals;
+    std::cout << "view vs concrete:" << " " << ::tpyapp::main::view_first__int32__Iterable_int64(1, v1) << " " << ::tpy::ListPrinter(v1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> v2 = {1, 2};
-    std::cout << "view vs concrete, int:" << " " << ::tpyapp::main::view_first_big(::tpy::BigInt(1), v2) << " " << ::tpy::ListPrinter(v2) << "\n" << ::tpy::check_signals;
+    std::cout << "view vs concrete, int:" << " " << ::tpyapp::main::view_first_big__int__Iterable_int64(::tpy::BigInt(1), v2) << " " << ::tpy::ListPrinter(v2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> j1 = {1, 2};
-    std::cout << "joint views:" << " " << ::tpyapp::main::joint_views(j1, j1) << "\n" << ::tpy::check_signals;
+    std::cout << "joint views:" << " " << ::tpyapp::main::joint_views__Iterable_int32__Iterable_int32(j1, j1) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> j2 = {1, 2};
-    std::cout << "joint wide:" << " " << ::tpyapp::main::joint_wide(j2, j2) << " " << ::tpy::ListPrinter(j2) << "\n" << ::tpy::check_signals;
+    std::cout << "joint wide:" << " " << ::tpyapp::main::joint_wide__list_int64__list_int64(j2, j2) << " " << ::tpy::ListPrinter(j2) << "\n" << ::tpy::check_signals;
     std::array<std::vector<int64_t>, 2> jr = {{{1}, {2}}};
-    std::cout << "joint rows:" << " " << ::tpyapp::main::joint_wide(::tpy::__getitem__(jr, 0), ::tpy::__getitem__(jr, 1)) << " " << ::tpy::ListPrinter(jr) << "\n" << ::tpy::check_signals;
+    std::cout << "joint rows:" << " " << ::tpyapp::main::joint_wide__list_int64__list_int64(::tpy::__getitem__(jr, 0), ::tpy::__getitem__(jr, 1)) << " " << ::tpy::ListPrinter(jr) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> la = {1, 2};
     std::vector<int64_t> __slot_1 = {3};
     std::vector<int64_t>* lb = &__slot_1;
     lb = &(la);
-    std::cout << "linked:" << " " << ::tpyapp::main::linked(la, (*lb)) << " " << ::tpy::ListPrinter(la) << " " << ::tpy::__len__((*lb)) << "\n" << ::tpy::check_signals;
+    std::cout << "linked:" << " " << ::tpyapp::main::linked__list_int64__list_int64(la, (*lb)) << " " << ::tpy::ListPrinter(la) << " " << ::tpy::__len__((*lb)) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> na = {1};
     std::vector<int64_t> __slot_2 = {7};
     std::vector<int64_t>* nb = &__slot_2;
     nb = &(na);
-    std::cout << "two names:" << " " << ::tpyapp::main::two_names(na, (*nb)) << " " << ::tpy::ListPrinter(na) << "\n" << ::tpy::check_signals;
-    std::cout << "one name twice:" << " " << ::tpyapp::main::two_names(na, na) << " " << ::tpy::ListPrinter(na) << "\n" << ::tpy::check_signals;
+    std::cout << "two names:" << " " << ::tpyapp::main::two_names__list_int64__list_int64(na, (*nb)) << " " << ::tpy::ListPrinter(na) << "\n" << ::tpy::check_signals;
+    std::cout << "one name twice:" << " " << ::tpyapp::main::two_names__list_int64__list_int64(na, na) << " " << ::tpy::ListPrinter(na) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> ox = {1};
     std::vector<int64_t> oy = {2};
     ox.push_back(::tpy::__getitem__(oy, 0));
-    std::cout << "one way:" << " " << ::tpyapp::main::one_way(oy, ox) << " " << ::tpy::ListPrinter(ox) << " " << ::tpy::ListPrinter(oy) << "\n" << ::tpy::check_signals;
+    std::cout << "one way:" << " " << ::tpyapp::main::one_way__list_int64__list_int64(oy, ox) << " " << ::tpy::ListPrinter(ox) << " " << ::tpy::ListPrinter(oy) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> fv = {1, 2};
-    std::cout << "from view big:" << " " << ::tpyapp::main::from_view_big(fv) << " " << ::tpy::ListPrinter(fv) << "\n" << ::tpy::check_signals;
+    std::cout << "from view big:" << " " << ::tpyapp::main::from_view_big__Iterable_int(fv) << " " << ::tpy::ListPrinter(fv) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> w1 = {1, 2};
-    std::cout << "view first32:" << " " << ::tpyapp::main::view_first32(w1) << " " << ::tpy::ListPrinter(w1) << "\n" << ::tpy::check_signals;
+    std::cout << "view first32:" << " " << ::tpyapp::main::view_first32__Iterable_int32(w1) << " " << ::tpy::ListPrinter(w1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> w2 = {1, 2};
-    std::cout << "view first64:" << " " << ::tpyapp::main::view_first64(w2) << " " << ::tpy::ListPrinter(w2) << "\n" << ::tpy::check_signals;
+    std::cout << "view first64:" << " " << ::tpyapp::main::view_first64__Iterable_int64(w2) << " " << ::tpy::ListPrinter(w2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> t1 = {1, 2};
-    std::cout << "twin generic first:" << " " << ::tpyapp::main::twin_generic_first(t1, ::tpyapp::main::a64()) << " " << ::tpy::ListPrinter(t1) << "\n" << ::tpy::check_signals;
+    std::cout << "twin generic first:" << " " << ::tpyapp::main::twin_generic_first__Iterable_int64__int64(t1, ::tpyapp::main::a64()) << " " << ::tpy::ListPrinter(t1) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> t2 = {1, 2};
-    std::cout << "twin declared first:" << " " << ::tpyapp::main::twin_declared_first(t2, ::tpyapp::main::a64()) << " " << ::tpy::ListPrinter(t2) << "\n" << ::tpy::check_signals;
+    std::cout << "twin declared first:" << " " << ::tpyapp::main::twin_declared_first__Iterable_int64__int64(t2, ::tpyapp::main::a64()) << " " << ::tpy::ListPrinter(t2) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> gm1 = {1, 2};
-    std::cout << "generic declared view:" << " " << ::tpyapp::main::gv(gm1, 3) << " " << ::tpy::ListPrinter(gm1) << "\n" << ::tpy::check_signals;
+    std::cout << "generic declared view:" << " " << ::tpyapp::main::gv__list_int64__int32(gm1, 3) << " " << ::tpy::ListPrinter(gm1) << "\n" << ::tpy::check_signals;
     gm1.push_back(::tpyapp::main::a64());
     std::array<int32_t, 2> hm1 = {1, 2};
-    std::cout << "plain declared view:" << " " << ::tpyapp::main::hv(hm1, 3) << " " << ::tpy::ListPrinter(hm1) << " " << ::tpy::__getitem__(gm1, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "plain declared view:" << " " << ::tpyapp::main::hv__Iterable_int64__int32(hm1, 3) << " " << ::tpy::ListPrinter(hm1) << " " << ::tpy::__getitem__(gm1, 2) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> rr = {1, 2};
-    std::cout << "regime c rank:" << " " << ::tpyapp::main::rc_rank(rr, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }) << " " << ::tpy::ListPrinter(rr) << "\n" << ::tpy::check_signals;
+    std::cout << "regime c rank:" << " " << ::tpyapp::main::rc_rank__Iterable_int32__Callable_int32_int32(rr, [](int32_t x) -> int32_t { return (::tpy::add_check<int32_t>(x, 1)); }) << " " << ::tpy::ListPrinter(rr) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> gk = {1, 2};
-    std::cout << "generic keyword:" << " " << ::tpyapp::main::gen_kw<int64_t>(gk, ::tpyapp::main::a64()) << " " << ::tpy::__getitem__(gk, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "generic keyword:" << " " << ::tpyapp::main::gen_kw__list_T__T<int64_t>(gk, ::tpyapp::main::a64()) << " " << ::tpy::__getitem__(gk, 2) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> nc = {1, 2};
-    std::cout << "nested call:" << " " << ::tpyapp::main::outer(::tpyapp::main::one(1), nc) << " " << ::tpy::ListPrinter(nc) << "\n" << ::tpy::check_signals;
-    int32_t t = ::tpyapp::main::one(1);
+    std::cout << "nested call:" << " " << ::tpyapp::main::outer__int32__list_int64(::tpyapp::main::one__int32(1), nc) << " " << ::tpy::ListPrinter(nc) << "\n" << ::tpy::check_signals;
+    int32_t t = ::tpyapp::main::one__int32(1);
     std::vector<int64_t> hc = {1, 2};
-    std::cout << "nested call hoisted:" << " " << ::tpyapp::main::outer(t, hc) << " " << ::tpy::ListPrinter(hc) << "\n" << ::tpy::check_signals;
+    std::cout << "nested call hoisted:" << " " << ::tpyapp::main::outer__int32__list_int64(t, hc) << " " << ::tpy::ListPrinter(hc) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> bc = {1, 2};
-    std::cout << "nested builtin:" << " " << ::tpyapp::main::outer(::tpy::__len__("ab"), bc) << " " << ::tpy::ListPrinter(bc) << "\n" << ::tpy::check_signals;
+    std::cout << "nested builtin:" << " " << ::tpyapp::main::outer__int32__list_int64(::tpy::__len__("ab"), bc) << " " << ::tpy::ListPrinter(bc) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> __tmp_20 = {1, 2};
-    std::cout << "lose array:" << " " << ::tpyapp::main::lose_array(__tmp_20, 0) << "\n" << ::tpy::check_signals;
+    std::cout << "lose array:" << " " << ::tpyapp::main::lose_array__list_int32__int32(__tmp_20, 0) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ls = {1, 2};
-    std::cout << "lose span:" << " " << ::tpyapp::main::lose_span(ls, 0) << " " << ::tpy::ListPrinter(ls) << "\n" << ::tpy::check_signals;
+    std::cout << "lose span:" << " " << ::tpyapp::main::lose_span__list_int32__int32(ls, 0) << " " << ::tpy::ListPrinter(ls) << "\n" << ::tpy::check_signals;
     std::vector<int64_t> rc = {1, 2};
-    std::cout << "regime c:" << " " << ::tpyapp::main::apply(rc, [](int64_t x) -> int64_t { return (::tpy::add_check<int64_t>(x, 1)); }) << " " << ::tpy::__getitem__(rc, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "regime c:" << " " << ::tpyapp::main::apply__list_int64__Callable_int64_int64(rc, [](int64_t x) -> int64_t { return (::tpy::add_check<int64_t>(x, 1)); }) << " " << ::tpy::__getitem__(rc, 2) << "\n" << ::tpy::check_signals;
     rc.push_back(::tpyapp::main::a64());
     std::cout << "regime c:" << " " << ::tpy::__getitem__(rc, 3) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 3> bs = {1, 2, 3};
@@ -1145,7 +1145,7 @@ void main() {
     std::vector<int64_t> tm = {1, 2};
     {
         try {
-            std::cout << "try:" << " " << ::tpyapp::main::f_list(tm) << "\n" << ::tpy::check_signals;
+            std::cout << "try:" << " " << ::tpyapp::main::f_list__list_int64(tm) << "\n" << ::tpy::check_signals;
         } catch (...) {
             tm.push_back(::tpyapp::main::a64());
             throw;
@@ -1153,7 +1153,7 @@ void main() {
         tm.push_back(::tpyapp::main::a64());
     }
     std::cout << "try:" << " " << ::tpy::__getitem__(tm, 3) << "\n" << ::tpy::check_signals;
-    std::cout << "module level:" << " " << ::tpyapp::main::f_list32((*MS)) << " " << ::tpy::ListPrinter((*MS)) << "\n" << ::tpy::check_signals;
+    std::cout << "module level:" << " " << ::tpyapp::main::f_list32__list_int32((*MS)) << " " << ::tpy::ListPrinter((*MS)) << "\n" << ::tpy::check_signals;
 }
 
 // # An undecided container argument (an unannotated container local, or a

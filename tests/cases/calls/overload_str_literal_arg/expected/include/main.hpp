@@ -13,23 +13,23 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @dispatch
 // def kind(x: bool) -> str:
-std::string kind(bool x);
+std::string kind__bool(bool x);
 // @dispatch
 // def kind(x: str) -> str:
-std::string kind(std::string_view x);
+std::string kind__str(std::string_view x);
 // @dispatch
 // def sv(x: bool) -> str:
-std::string sv(bool x);
+std::string sv__bool(bool x);
 // @dispatch
 // def sv(x: StrView) -> str:
-std::string sv(std::string_view x);
+std::string sv__StrView(std::string_view x);
 // @dispatch
 // def gen_ov[T](x: T) -> str:
 template<typename T>
-std::string gen_ov(::tpy::param_val_or_ref_t<T> x);
+std::string gen_ov__T(::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def gen_ov(x: bool) -> str:
-std::string gen_ov(bool x);
+std::string gen_ov__bool(bool x);
 // def echo(x: str) -> str:
 std::string echo(std::string_view x);
 // def main() -> None:
@@ -74,7 +74,7 @@ inline std::string C::kind(std::string_view x) const {
 // def gen_ov[T](x: T) -> str:
 //     return "generic"
 template<typename T>
-std::string gen_ov(::tpy::param_val_or_ref_t<T> x) {
+std::string gen_ov__T(::tpy::param_val_or_ref_t<T> x) {
     return "generic";
 }
 

@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_describe;
 
 // def describe(a: Dog | Cat) -> Iterator[str]:
-__gen_describe describe(::tpy::Union<Cat*, Dog*> a);
+__gen_describe describe(::tpy::Union<const Cat*, const Dog*> a);
 // def main() -> None:
 void main();
 
@@ -60,7 +60,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // def describe(a: Dog | Cat) -> Iterator[str]:
 struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::string> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -71,7 +71,7 @@ struct __gen_describe : public ::tpy::next_iter_mixin<__gen_describe, std::strin
         S_DONE = 5,
     };
 
-    __gen_describe(::tpy::Union<Cat*, Dog*> a_)
+    __gen_describe(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 

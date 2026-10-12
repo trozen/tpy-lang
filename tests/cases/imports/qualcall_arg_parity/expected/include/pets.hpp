@@ -33,10 +33,10 @@ void bump(::tpy::Union<Cat*, Dog*> pet);
 ::tpy::BigInt request(std::string_view url, std::optional<std::tuple<std::string, std::string>> auth = std::nullopt);
 // @dispatch
 // def ov(x: str) -> int:
-::tpy::BigInt ov(std::string_view x);
+::tpy::BigInt ov__str(std::string_view x);
 // @dispatch
 // def ov(x: bool) -> int:
-::tpy::BigInt ov(bool x);
+::tpy::BigInt ov__bool(bool x);
 // def gen_tags(prefix: str) -> Iterator[str]:
 __gen_gen_tags gen_tags(std::string_view prefix);
 // def gen_sizes(data: bytes) -> Iterator[int]:

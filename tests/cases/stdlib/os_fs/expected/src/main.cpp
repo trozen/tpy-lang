@@ -63,9 +63,9 @@ void main() {
         std::move(__result);
     }));
     std::cout << ::tpy::str_join(",", names) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((!::tpystd::os::getenv(std::string_view("TPY_DEFINITELY_UNSET_VAR")).has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::os::getenv(std::string_view("TPY_DEFINITELY_UNSET_VAR"), std::string_view("dflt")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpystd::os::getenv(std::string_view("PATH")).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpystd::os::getenv__str(std::string_view("TPY_DEFINITELY_UNSET_VAR")).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::getenv__str__str(std::string_view("TPY_DEFINITELY_UNSET_VAR"), std::string_view("dflt")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::os::getenv__str(std::string_view("PATH")).has_value())) << "\n" << ::tpy::check_signals;
 }
 
 // # os filesystem layer (getcwd/chdir/listdir/getenv). Output is kept

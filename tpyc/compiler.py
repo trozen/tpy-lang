@@ -22,6 +22,7 @@ from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, rout
 from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
+from .sema.analyzer import analyze_component_bodies
 from .diagnostics import insert_in_source_order
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.own_copy import OwnCopyVerdicts
@@ -688,6 +689,9 @@ class Compiler:
         self._emits_inl_cache: dict[str, bool] = {}
         self._implicit_stdlib_cache: set[str] | None = None
         self._reach_cache: dict[str, frozenset[str]] = {}
+        # The import components (Tarjan SCCs) in compile order, each
+        # member list in compile order; `compile_order` is their flattening.
+        self.compile_components: list[list[str]] = []
         self.compile_order: list[str] = []
         # Generated CPython extension glue .cpp paths (one per ext_module),
         # collected here during codegen for the build driver to add to the
@@ -940,6 +944,7 @@ class Compiler:
                 self._compute_compile_order()
                 self._propagate_package_directives()
             else:
+                self.compile_components = [[entry_name]]
                 self.compile_order = [entry_name]
 
             self._apply_native_namespace_prefix()
@@ -971,8 +976,7 @@ class Compiler:
                 self._check_module_all_completeness(self.modules[name])
             self._check_workspace_completeness_cycles()
             self._reindex_builtins_post_finalize()
-            for name in self.compile_order:
-                self._analyze_bodies(self.modules[name])
+            self._analyze_workspace_bodies()
             self._finalize_workspace()
             return [self.modules[name] for name in self.compile_order]
 
@@ -1037,8 +1041,7 @@ class Compiler:
         # fail at the C++ build with a complete-type compiler error.
         self._check_workspace_completeness_cycles()
         self._reindex_builtins_post_finalize()
-        for module_name in self.compile_order:
-            self._analyze_bodies(self.modules[module_name])
+        self._analyze_workspace_bodies()
         self._finalize_workspace()
 
         # Return in dependency order
@@ -1849,20 +1852,22 @@ class Compiler:
                 for member in component:
                     self._cycle_peers[member] = peers
 
-        result: list[str] = []
-        for component in sccs:
-            result.extend(component)
-
         # Move implicit stdlib modules (and their submodules) to the front
         # so they're analyzed before any user code. The topological sort
         # already respects inter-module dependencies (e.g. typing depending
         # on tpy._typing), so we preserve that order -- just partition
-        # implicit modules to the front.
+        # implicit modules to the front. The partition moves whole
+        # components, since body sema analyzes a component as one unit; one
+        # mixing implicit and other modules moves to the front with its
+        # implicit members, which cannot be analyzed without their peers.
+        components = sccs
         implicit_set = self._implicit_stdlib_set()
         if implicit_set:
-            implicit = [m for m in result if m in implicit_set]
-            result = implicit + [m for m in result if m not in implicit_set]
-        self.compile_order = result
+            front = [c for c in components if any(m in implicit_set for m in c)]
+            components = front + [c for c in components
+                                  if not any(m in implicit_set for m in c)]
+        self.compile_components = components
+        self.compile_order = [m for c in components for m in c]
 
     def _check_workspace_completeness_cycles(self) -> None:
         """Reject by-value cross-module cycles with a structured diagnostic.
@@ -2474,7 +2479,7 @@ class Compiler:
     def _canonicalize_import_sources(self, compiled: CompiledModule) -> None:
         """Rewrite the module's parser import table to defining modules.
 
-        Runs once per module right before `_analyze_module`.  By this
+        Runs once per module right before `_finalize_declarations`.  By this
         point all dependencies (in topological order) have been sema-
         analyzed, so `self.modules[dep].exports.{records,enums,
         protocols}` are populated.  Re-export facades share the defining
@@ -2672,7 +2677,7 @@ class Compiler:
         """Run the parser-output ref walker on `compiled.ast`.
 
         Thin wrapper around `parse.resolve_refs.resolve_refs` so the
-        compilation phase order is legible inline in `_analyze_module`.
+        compilation phase order is legible inline in `_resolve_types_for_module`.
         """
         from tpyc.parse.resolve_refs import resolve_refs
         try:
@@ -2708,7 +2713,7 @@ class Compiler:
         body-sema pass can consume it.
 
         Compile loop runs all `_finalize_declarations` first, then
-        all `_analyze_bodies` -- so by the time any module's body
+        all `_analyze_workspace_bodies` -- so by the time any module's body
         sema starts, every peer module's declarations are finalized
         and visible through `_shared_modules`.
         """
@@ -2790,7 +2795,7 @@ class Compiler:
         module_name = "__main__" if compiled.is_entry_point else compiled.name
 
         # Run the three declaration-time sub-phases. Body sema (sub-phases 4
-        # and 5) is deferred to `_analyze_bodies`.
+        # and 5) is deferred to `_analyze_workspace_bodies`.
         try:
             analyzer.bind_imports(compiled.ast, module_name=module_name,
                                   cpp_module_name=compiled.name)
@@ -2902,28 +2907,41 @@ class Compiler:
         # outlive the sema-phase window.
         compiled._skeleton_ids = None
 
-    def _analyze_bodies(self, compiled: CompiledModule) -> None:
-        """Run sub-phase 4 (analyze_bodies) and sub-phase 5
-        (run_phase2_fixpoint) on the analyzer prepared by
-        `_finalize_declarations`, then extract exports + compute
-        reached symbols.
+    def _analyze_workspace_bodies(self) -> None:
+        """Body sema (sub-phases 4 and 5) on the analyzers prepared by
+        `_finalize_declarations`, one import component at a time in
+        dependency order: every member of a cycle has its bodies analyzed
+        before any of the component's facts settle. Then per module: the
+        shadowed-builtin warnings, the reached symbols and the refreshed
+        ModuleInfo.
         """
-        analyzer = compiled.analyzer
-        assert analyzer is not None, (
-            "_analyze_bodies called before _finalize_declarations populated "
-            f"compiled.analyzer for module '{compiled.name}'"
-        )
-        module_name = "__main__" if compiled.is_entry_point else compiled.name
+        for component in self.compile_components:
+            members = [self.modules[name] for name in component]
+            for compiled in members:
+                assert compiled.analyzer is not None, (
+                    "_analyze_workspace_bodies called before "
+                    "_finalize_declarations populated compiled.analyzer for "
+                    f"module '{compiled.name}'"
+                )
+            analyze_component_bodies(
+                [(compiled.analyzer, compiled.ast) for compiled in members],
+                lambda i: self._errors_attributed_to(members[i]))
+            for compiled in members:
+                self._publish_body_exports(compiled)
+
+    @contextlib.contextmanager
+    def _errors_attributed_to(self, compiled: CompiledModule) -> Iterator[None]:
         try:
-            analyzer.analyze_bodies(compiled.ast)
-            analyzer.run_phase2_fixpoint(compiled.ast)
-            analyzer._warn_export_class_return_alias(compiled.ast)
-            analyzer._validate_export_class_dunders(compiled.ast)
-            analyzer._warn_export_class_unexposed_dunders(compiled.ast)
+            yield
         except SemanticError as e:
             if e.filename is None and not compiled.is_entry_point:
                 e.filename = os.path.relpath(compiled.path)
             raise
+
+    def _publish_body_exports(self, compiled: CompiledModule) -> None:
+        analyzer = compiled.analyzer
+        assert analyzer is not None
+        module_name = "__main__" if compiled.is_entry_point else compiled.name
 
         # Emit warnings for shadowed builtins imported by this module.
         # Skip hybrid modules (builtin supplements a .py module).
@@ -2953,23 +2971,14 @@ class Compiler:
         # Refresh this module's entry in `_shared_modules` with the now-
         # complete ModuleInfo (including body-level variables / final
         # markers / reached set). Peer analyzers in the same compilation
-        # share the dict (see SemanticAnalyzer.__init__), so any module
-        # whose `_analyze_bodies` runs after this one will see the
-        # fully-populated entry. The declarations-pass setup loops only
+        # share the dict (see SemanticAnalyzer.__init__), so every later
+        # component's body sema sees the fully-populated entry. The
+        # declarations-pass setup loops only
         # ever construct ModuleInfo from a peer's *declaration* exports;
         # without this refresh, body sema would read a stale partial entry.
         analyzer.registry.register_module(
             self._exports_to_module_info(compiled.name, compiled.exports, compiled)
         )
-
-    def _analyze_module(self, compiled: CompiledModule) -> None:
-        """Analyze a single module: run declaration finalization then body
-        sema. Thin wrapper preserving the legacy per-module analyze cycle;
-        callers preferring the explicit two-stage form (Phase 6) call
-        `_finalize_declarations` and `_analyze_bodies` directly.
-        """
-        self._finalize_declarations(compiled)
-        self._analyze_bodies(compiled)
 
     def _extract_exports(self, compiled: CompiledModule, analyzer: SemanticAnalyzer) -> None:
         """Extract exports from a fully-analyzed module.
@@ -2995,7 +3004,7 @@ class Compiler:
         registry indexes -- both populated by sub-phase 1+2).
 
         Idempotent: callers may invoke this between
-        `_finalize_declarations` and `_analyze_bodies` so peer modules
+        `_finalize_declarations` and `_analyze_workspace_bodies` so peer modules
         canonicalizing through `compiled.exports.{records,protocols,enums}`
         see authoritative entries even before bodies have been analyzed.
         Body-level export state lives in `_extract_body_exports`.

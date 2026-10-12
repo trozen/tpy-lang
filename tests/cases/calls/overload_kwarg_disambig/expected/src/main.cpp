@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // @dispatch
 // def pick(x: int32, *, tag: str = "") -> str:
 //     return tag + ":" + str(x)
-std::string pick(int32_t x, std::string_view tag) {
+std::string pick__int32__str(int32_t x, std::string_view tag) {
     return (::tpy::str_concat((::tpy::str_concat(tag, ":")), ::tpy::fixed_to_str<int32_t>(x)));
 }
 
 // @dispatch
 // def pick(x: int32, *, tag: int32 = 0) -> int32:
 //     return x + tag
-int32_t pick(int32_t x, int32_t tag) {
+int32_t pick__int32__int32(int32_t x, int32_t tag) {
     return (::tpy::add_check<int32_t>(x, tag));
 }
 
@@ -28,9 +28,9 @@ int32_t pick(int32_t x, int32_t tag) {
 //     b: int32 = pick(int32(10), tag=int32(5))
 //     print(b)                                # 15
 void main() {
-    std::string a = ::tpyapp::main::pick(10, std::string_view("label"));
+    std::string a = ::tpyapp::main::pick__int32__str(10, std::string_view("label"));
     std::cout << a << "\n" << ::tpy::check_signals;
-    int32_t b = ::tpyapp::main::pick(10, 5);
+    int32_t b = ::tpyapp::main::pick__int32__int32(10, 5);
     std::cout << b << "\n" << ::tpy::check_signals;
 }
 

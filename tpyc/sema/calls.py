@@ -71,8 +71,8 @@ from .overloads import (
     _scalar_widening_cost, call_resolves_param, call_resolves_params,
 )
 from .context import (
-    CallOperands, LendSource, _is_self_call_deferred, _root_name_of_expr,
-    receiver_leaves, receiver_root, value_root,
+    CallOperands, LendSource, _root_name_of_expr,
+    receiver_leaves, value_root,
     call_lend_sources,
     call_borrow_operands, expr_lends_storage, proven_lend_roots,
 )
@@ -3863,23 +3863,22 @@ class CallAnalyzer:
         name_to_idx = self.ctx.func.current_param_name_to_idx
         rebound = self.ctx.func.current_rebound_params
 
-        # Receivers effectively rooted at self: self.method(), self.field.method(),
-        # loop_var.method() over self.field, and super().method() (the synthetic
-        # super() proxy resolves to self). Phase 2 propagates self-mutation through
-        # these.
-        receiver_idx: int | None = None
+        # Receivers whose mutation Phase 2 decides (`deferred_receiver_index`):
+        # rooted at self (self.method(), self.field.method(), loop_var.method()
+        # over self.field, super().method() -- the synthetic super() proxy
+        # resolves to self) or at a caller parameter through fields.
+        receiver_idxs: list[int] = []
         if isinstance(expr, TpyMethodCall):
+            if expr.super_parent_type is not None:
+                idx = self.ctx.self_receiver_index()
+                if idx is not None:
+                    receiver_idxs.append(idx)
             # A select receiver is each operand it may pick.
-            self_rooted = False
             for leaf in receiver_leaves(expr.obj):
-                obj_root = receiver_root(leaf, self.ctx.get_expr_type)
-                if (obj_root is not None
-                        and _is_self_call_deferred(
-                            leaf, obj_root, self.ctx.func.loop_var_iterable,
-                            self.ctx.func.borrow_tracker, self.ctx.get_expr_type)):
-                    self_rooted = True
-            if expr.super_parent_type is not None or self_rooted:
-                receiver_idx = self.ctx.self_receiver_index()
+                idx = self.ctx.deferred_receiver_index(leaf)
+                if idx is not None and idx not in receiver_idxs:
+                    receiver_idxs.append(idx)
+        receiver_idx = receiver_idxs[0] if receiver_idxs else None
 
         # Nothing to record if no params flow through and no self-call
         if not name_to_idx and receiver_idx is None:
@@ -4012,6 +4011,12 @@ class CallAnalyzer:
                                  param_map={callee_idx: caller_idx},
                                  lent=frozenset(lent & {callee_idx}))
             )
+        # One edge carries one receiver: every other operand a select
+        # receiver may pick gets an edge of its own.
+        for extra_idx in receiver_idxs[1:]:
+            self.ctx.func.current_call_edges.append(
+                MutationCallEdge(callee_fi=fi.root, param_map={},
+                                 receiver_idx=extra_idx))
 
     def _arg_storage_roots(self, arg_root: str, *,
                            cross_handles: bool = True) -> list[str]:

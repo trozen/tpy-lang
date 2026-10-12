@@ -4,6 +4,11 @@ Status: TARGET, not scheduled. Recorded 2026-10-08 after the shallow-readonly br
 second-opinion review. It states where const/readonly inference is meant to end up so the
 interim sema rules (READONLY_DESIGN "A handle's referent") have a destination.
 
+Decided 2026-10-11 (see "Order and authority"): inferred const keeps ONE implementation at
+every step -- today sema's Phase-2 inference -- and it is solved before any
+representation-dependent finalization. There is no per-component switch and no comparison
+run of a second inference.
+
 ## Goal and the claim we can make
 
 Users never write `@readonly` / `readonly[T]` to get correct or efficient C++; the compiler
@@ -85,18 +90,62 @@ target polymorphism), recursion with growing paths (widening), generics instanti
 cross-module scheduling, `@dynamic` dispatch, and compile time (context sensitivity, alias
 sets and specialization dominate cost).
 
+## Order and authority (decided 2026-10-11)
+
+**Order: solve before representation-dependent finalization.** Finalized THIR cannot carry a
+symbolic const: about twenty THIR sites decide what LOWERS from const, not only how it is
+spelled (the binding planner's hoist kind, inline prvalue bind vs hoisted argument temp vs
+refusal in the argument admission tables, mutated-slot temp hoists, union const wrappers, the
+`@auto_readonly` clone and its result access). Lowering twice (once with a guessed const, then
+with the solved one) is not an answer by itself either: the first pass must already represent
+programs whose acceptance depends on the solution, its effects must conservatively cover the
+final program's, and changed temporaries, overload picks or clone choices must not change
+aliasing -- none of which holds without a defined monotone domain. The solver therefore runs
+on facts available BEFORE finalized THIR (sema's body facts today, an access-symbolic IR
+upstream of THIR later); THIR keeps receiving a finished verdict.
+
+**Authority: one implementation at every step.** Sema's Phase-2 inference
+(`mutation_propagation`, `infer_method_const`, `param_const`) is the only implementation of
+inferred const. MIR computes no const meanwhile and keeps reading the finished verdict
+(`effective_params` / `receiver_param`); its write set for a const place is therefore not
+independent evidence. The route to the target extracts that inference into one shared
+effect / access solver whose consumers are signatures, obligations, THIR and MIR, and later
+replaces its body-fact PRODUCER (sema -> MIR or the access-symbolic IR), retiring the replaced
+producer in the same step. A per-component switch (MIR's verdict where a component is fully
+covered, sema's elsewhere) was rejected: it keeps two inference implementations live.
+
+Replacing the producer requires MIR lowering that records writes instead of trusting sema's
+const, effect-only completeness separate from lifetime completeness, an SCC fixpoint for
+recursion (today recursion makes a summary OPAQUE), and effect coverage of every body kind.
+Coverage is a PRECISION requirement, not a soundness one: a solver may treat an unanalyzed
+body as unknown, but switching that way early rejects programs that compile today, which is a
+user decision.
+
+An obligation discharges against required ACCESS and the emitted ABI, not against the absence
+of a write:
+
+    def read(xs: list[int32]) -> int32:      # const List& xs: accepts readonly storage
+        return len(xs)
+    def expose(xs: list[int32]) -> list[int32]:   # List& xs: exports mutable access
+        return xs
+
+Neither writes, yet only `read` discharges an obligation from a readonly context; a rejection
+witness may be "returns mutable access" or "the virtual slot requires a mutable receiver" as
+well as a write. Witnesses need the call edges that propagation clears today.
+
 ## Migration
 
-Incremental, per dependency component, no global flag day:
-1. Separate the three facts (contracts / effects / ABI) in today's data structures.
-2. Introduce symbolic access for a component; run the new analysis alongside the old verdict
-   and compare.
-3. Switch complete components (all bodies covered, trusted boundary contracts) to the solved
-   verdict; each switched component has ONE authoritative verdict across signatures, callers,
-   conversions and diagnostics.
-4. Retire the interim sema rules inside switched components: the call-site handle demotion,
-   the `for`-loop `__iter__` exemption and its climb gaps, `binds_owned_value`'s pointer-form
-   rule, the conservative Rc / Weak / Arc / Task demotion.
+Incremental, one implementation at every step, no global flag day:
+1. Separate the three facts (contracts / effects / ABI) in today's data structures, moving
+   real consumers in the same step (declared readonly vs inferred const first).
+2. Calls from a readonly context into callees without declared readonly become obligations,
+   discharged after workspace finalization by the existing pending readonly-receiver checks
+   (`CallChecks.resolve_pending_readonly_receiver_checks`), with a witness.
+3. Extract the inference into the shared solver; move its consumers onto it.
+4. Replace the body-fact producer once its prerequisites hold (below), retiring the old one.
+5. Retire the interim sema rules: the call-site handle demotion, the `for`-loop `__iter__`
+   exemption and its climb gaps, `binds_owned_value`'s pointer-form rule, the conservative
+   Rc / Weak / Arc / Task demotion.
 
 Prerequisites: MIR effect coverage of every body (closures, generators / async, comprehensions
 are excluded today), projection paths through handle / `Deref` steps and container elements

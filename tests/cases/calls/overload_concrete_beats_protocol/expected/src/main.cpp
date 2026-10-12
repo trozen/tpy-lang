@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // @dispatch
 // def describe(x: Dog) -> str:  # tpyc: ok
 //     return "dog: " + x.name()
-std::string describe(Dog& x) {
+std::string describe__Dog(const Dog& x) {
     return (::tpy::str_concat("dog: ", x.name()));
 }
 
@@ -16,7 +16,7 @@ std::string describe(Dog& x) {
 //     print(describe(d))
 void main() {
     Dog d = Dog();
-    std::cout << ::tpyapp::main::describe(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__Dog(d) << "\n" << ::tpy::check_signals;
 }
 
 // main()

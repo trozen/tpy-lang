@@ -384,8 +384,8 @@ def imported_free_callee_cpp(module_attributes, func_name: str,
     not bound as an imported FUNCTION in the calling module's attribute
     table (local definitions spell bare). The cross-module half of
     `free_callee_cpp`. `mangled` overrides the canonical
-    name for literal-specialized overload stubs (`_free_callee_kind`
-    threads that spelling here)."""
+    name with an overload variant's own name (`FunctionInfo.variant_cpp_name`,
+    threaded here by `_free_callee_kind`)."""
     qual = lookup_imported(module_attributes, func_name, SymbolKind.FUNCTION)
     if qual is None:
         return None
@@ -441,7 +441,7 @@ def module_qualified_callee_cpp(registry, module_attributes, module_name: str,
     rec_qual = (registry.record_qualification(rec, module_name)
                 if rec is not None else None)
     qual = (rec_qual
-            or ((fi.originating_module, fi.name)
+            or ((fi.originating_module, fi.variant_cpp_name or fi.name)
                 if fi and fi.originating_module else None)
             or lookup_qualified(module_attributes, method, module_name))
     if qual is not None:

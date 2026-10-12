@@ -191,9 +191,14 @@ branch elimination. Enables different return types per literal value.
 
 ### What was implemented
 
-**Name mangling** (`functions.py`): `literal_mangled_name(base, stub)`
-produces `{name}__lit_{sanitized_values}`. Values sanitized for C++
-identifiers. Non-literal fallback stubs keep the original name.
+**Name mangling** (`typesys.py`): `overload_variant_cpp_name(base, params)`
+produces `{name}__lit_{sanitized_values}` for a variant with a `Literal`
+parameter. Values sanitized for C++ identifiers. A free function's variant
+names are decided once per set by `name_overload_variants` (which also
+names the non-literal variants by their parameter types and disambiguates
+colliding suffixes, `"a-b"` vs `"a_b"`, by declaration index) and stored as
+`FunctionInfo.variant_cpp_name`; see `docs/OVERLOAD_DESIGN.md` "C++ names of
+variants". A method's non-literal variants keep the original name.
 
 **Codegen -- functions** (`functions.py`): When `_overload_stubs_are_literal_only`
 returns True, `_gen_literal_specialized_function` emits per-stub
@@ -210,11 +215,12 @@ elimination via `literal_overload_facts`.
 **Forward declarations** (`functions.py`): Per-stub forward decls use
 impl's C++ param types with stub's return type and mangled name.
 
-**Call-site dispatch** (`expressions.py`): When `resolved_function_info`
-has `LiteralType` params and the call is to an overloaded function,
-`literal_mangled_name` produces the mangled C++ name. Works for both
-free functions and method calls. Cross-module calls use qualified
-mangled names.
+**Call-site dispatch** (`thir/lower/checks.py`): a free call spells the
+resolved variant's `FunctionInfo.variant_cpp_name`, the same fact the
+definition reads; a method call whose `resolved_function_info` has
+`LiteralType` params and an overloaded name spells
+`overload_variant_cpp_name` (`method_literal_mangled_cpp`). Cross-module
+calls use qualified mangled names.
 
 **Dead branch elimination in specializations**: `_gen_if_overload_specialized`
 extended to resolve literal equality conditions statically via
@@ -247,11 +253,13 @@ Generated C++:
 ```cpp
 int32_t get_field__lit_age(std::string_view name) { return 42; }
 std::string get_field__lit_name(std::string_view name) { return "hello"; }
-std::variant<int32_t, std::string> get_field(std::string_view name) { ... }
+::tpy::Union<int32_t, std::string> get_field__str(std::string_view name) { ... }
 ```
 
 Call sites: `get_field("age")` -> `get_field__lit_age("age")`,
-`get_field(var)` -> `get_field(var)`.
+`get_field(var)` -> `get_field__str(var)`. Every variant of a free overload
+set gets its own C++ name (`overload_variant_cpp_name`), so a call always
+names the variant sema resolved.
 
 
 ## Phase 3c: Multi-Value Literal Dead Branch Elimination (Done)
@@ -526,9 +534,10 @@ contexts.
    `_enrich_literal_types` passes through already-`LiteralType` args
    without requiring AST-level literal detection.
 
-5. **Name mangling collisions in flattening**: String `"42"` and int `42`
-   would produce the same mangled suffix. The same-tag constraint (all
-   values in a `Literal[...]` have the same type) prevents this within a
-   single function's overload set, but cross-function collisions need care.
-   Consider including the tag in the mangled name: `__lit_str_rb`,
-   `__lit_int_42`.
+5. **Name mangling collisions in flattening**: Resolved for free
+   functions. The suffix is not injective (`"42"` and `42`, `"a-b"` and
+   `"a_b"` give one suffix), so `name_overload_variants` gives a variant
+   whose readable name collides -- inside its set or with a name the
+   module binds -- its declaration index (`pick__lit_a_b__v0`). Method
+   variants still take the readable name only, with no fallback
+   (BUGS.md#method-literal-variant-name-two-sites).

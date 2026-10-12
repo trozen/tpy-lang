@@ -31,7 +31,7 @@ void use(Snap& s) {
 //     for x in s.snapshot_m():  # tpyc: ok
 //         seen += 1
 //     print("method:", seen)
-void use_method(Snap& s) {
+void use_method(const Snap& s) {
     int32_t seen = 0;
     auto __obj_0 = s.snapshot_m();
     auto __beg_0 = __obj_0.begin();

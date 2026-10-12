@@ -25,7 +25,7 @@ int32_t check_error(int32_t n, const Error& e);
 // def check_property(n: int32, e: Error) -> int32:
 int32_t check_property(int32_t n, const Error& e);
 // def check_method(n: int32, e: Error) -> int32:
-int32_t check_method(int32_t n, Error& e);
+int32_t check_method(int32_t n, const Error& e);
 // def gen(n: int32, e: Error) -> Iterator[int32]:
 __gen_gen gen(int32_t n, const Error& e);
 // async def coro(n: int32, e: Error) -> int32:

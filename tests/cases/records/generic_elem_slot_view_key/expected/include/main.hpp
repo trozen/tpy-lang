@@ -31,7 +31,7 @@ void drop_str_slice(::tpystd::tplib::array_list::ArrayList<std::string, 4>& al, 
 // def drop_bytes(al: ArrayList[bytes, 4], k: bytes) -> None:
 void drop_bytes(::tpystd::tplib::array_list::ArrayList<::tpy::Bytes, 4>& al, ::tpy::BytesView k);
 // def has_str(box: Labels[str, 4], k: str) -> bool:
-bool has_str(Labels<std::string, 4>& box, std::string_view k);
+bool has_str(const Labels<std::string, 4>& box, std::string_view k);
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 template<::tpystd::tpy::Equatable T>
 bool has_item(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);

@@ -12,84 +12,84 @@ double G{};
 // @dispatch
 // def tot3(d: dict[str, float]) -> float:
 //     return 1.5 + len(d)
-double tot3(const ::tpy::ordered_map<std::string, double>& d) {
+double tot3__dict_str_float(const ::tpy::ordered_map<std::string, double>& d) {
     return ((1.5) + static_cast<double>(::tpy::__len__(d)));
 }
 
 // @dispatch
 // def tot3(s: str) -> str:
 //     return s
-std::string tot3(std::string_view s) {
+std::string tot3__str(std::string_view s) {
     return std::string(s);
 }
 
 // @dispatch
 // def tots(s: set[float]) -> float:
 //     return 1.5 + len(s)
-double tots(const ::tpy::ordered_set<double>& s) {
+double tots__set_float(const ::tpy::ordered_set<double>& s) {
     return ((1.5) + static_cast<double>(::tpy::__len__(s)));
 }
 
 // @dispatch
 // def tots(s: str) -> str:
 //     return s
-std::string tots(std::string_view s) {
+std::string tots__str(std::string_view s) {
     return std::string(s);
 }
 
 // @dispatch
 // def keep(v: float) -> float:
 //     return v
-double keep(double v) {
+double keep__float(double v) {
     return v;
 }
 
 // @dispatch
 // def keep(s: str) -> str:
 //     return s
-std::string keep(std::string_view s) {
+std::string keep__str(std::string_view s) {
     return std::string(s);
 }
 
 // @dispatch
 // def usebag(b: Bag[float]) -> float:
 //     return 1.5 + len(b.xs)
-double usebag(const Bag<double>& b) {
+double usebag__Bag_float(const Bag<double>& b) {
     return ((1.5) + static_cast<double>(::tpy::__len__(b.xs)));
 }
 
 // @dispatch
 // def usebag(s: str) -> str:
 //     return s
-std::string usebag(std::string_view s) {
+std::string usebag__str(std::string_view s) {
     return std::string(s);
 }
 
 // @dispatch
 // def ub(b: Bag2[float]) -> float:
 //     return 1.5
-double ub(const Bag2<double>& b) {
+double ub__Bag2_float(const Bag2<double>& b) {
     return 1.5;
 }
 
 // @dispatch
 // def ub(s: str) -> str:
 //     return s
-std::string ub(std::string_view s) {
+std::string ub__str(std::string_view s) {
     return std::string(s);
 }
 
 // @dispatch
 // def f32d(d: dict[str, float32]) -> float32:
 //     return d["k"]
-float f32d(const ::tpy::ordered_map<std::string, float>& d) {
+float f32d__dict_str_float32(const ::tpy::ordered_map<std::string, float>& d) {
     return ::tpy::__getitem__(d, "k");
 }
 
 // @dispatch
 // def f32d(s: str) -> str:
 //     return s
-std::string f32d(std::string_view s) {
+std::string f32d__str(std::string_view s) {
     return std::string(s);
 }
 
@@ -102,56 +102,56 @@ double take_float(double x) {
 // @dispatch
 // def twice(v: float) -> float:
 //     return v * 2.0
-double twice(double v) {
+double twice__float(double v) {
     return ((v) * (2.0));
 }
 
 // @dispatch
 // def twice(v: str) -> str:
 //     return v
-std::string twice(std::string_view v) {
+std::string twice__str(std::string_view v) {
     return std::string(v);
 }
 
 // @dispatch
 // def tot2(xs: list[float]) -> float:
 //     return 1.5 if len(xs) == 0 else xs[0]
-double tot2(const std::vector<double>& xs) {
+double tot2__list_float(const std::vector<double>& xs) {
     return (((::tpy::__len__(xs) == 0)) ? (1.5) : (::tpy::__getitem__(xs, 0)));
 }
 
 // @dispatch
 // def tot2(s: str) -> str:
 //     return s
-std::string tot2(std::string_view s) {
+std::string tot2__str(std::string_view s) {
     return std::string(s);
 }
 
 // @dispatch
 // def width_h(v: float32) -> float32:
 //     return v
-float width_h(float v) {
+float width_h__float32(float v) {
     return v;
 }
 
 // @dispatch
 // def width_h(v: float) -> float:
 //     return v
-double width_h(double v) {
+double width_h__float(double v) {
     return v;
 }
 
 // @dispatch
 // def width_g(v: int64) -> int64:
 //     return v
-int64_t width_g(int64_t v) {
+int64_t width_g__int64(int64_t v) {
     return v;
 }
 
 // @dispatch
 // def width_g(v: int32) -> int32:
 //     return v
-int32_t width_g(int32_t v) {
+int32_t width_g__int32(int32_t v) {
     return v;
 }
 
@@ -403,7 +403,7 @@ void structural(int32_t a, bool c, const std::function<std::vector<double>()>& h
     z = ::tpyapp::main::apply_t<double>([](double w) -> double { return static_cast<double>(1); }, 2.5);
     std::cout << "callable_t_float" << " " << ::tpy::print_float(z) << "\n" << ::tpy::check_signals;
     double x = 0.5;
-    x = ::tpyapp::main::twice(static_cast<double>(a));
+    x = ::tpyapp::main::twice__float(static_cast<double>(a));
     std::cout << "overload_param" << " " << ::tpy::print_float((::tpy::truediv(x, 2))) << "\n" << ::tpy::check_signals;
     double q = 0.5;
     std::vector<double> __tmp_1 = {2.5};
@@ -454,7 +454,7 @@ void int_width(bool c, double v, int32_t n) {
     std::cout << "sum" << " " << s << "\n" << ::tpy::check_signals;
     int64_t r = 0;
     auto __tmp_1 = std::array<int32_t, 2>{n, 2};
-    r = static_cast<int64_t>(::tpystd::math::prod(__tmp_1, 1));
+    r = static_cast<int64_t>(::tpystd::math::prod__Iterable_int32__int32(__tmp_1, 1));
     std::cout << "prod" << " " << r << "\n" << ::tpy::check_signals;
     int64_t t = 0;
     t = (::tpy::round_to<int64_t>(v));
@@ -624,16 +624,16 @@ __genexpr_overload_args_pick_2_frame<std::invoke_result_t<F_make>> __genexpr_ove
 void overload_args_pick(int32_t n) {
     double y = 0.5;
     std::vector<double> __tmp_1 = ::tpyapp::main::empty_list<double>(3);
-    y = ::tpyapp::main::tot2(__tmp_1);
+    y = ::tpyapp::main::tot2__list_float(__tmp_1);
     std::cout << "args_pick_nested" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     float x = 0.5f;
-    x = ::tpyapp::main::width_h(0.25f);
+    x = ::tpyapp::main::width_h__float32(0.25f);
     std::cout << "args_pick_float32" << " " << ::tpy::print_float(static_cast<double>(x)) << "\n" << ::tpy::check_signals;
     int64_t w = 0;
-    w = ::tpyapp::main::width_g(static_cast<int64_t>(3000000000));
+    w = ::tpyapp::main::width_g__int64(static_cast<int64_t>(3000000000));
     std::cout << "args_pick_int64" << " " << w << "\n" << ::tpy::check_signals;
     double g = 0.5;
-    g = ::tpyapp::main::twice(::tpy::builtin_sum_float(::tpyapp::main::__genexpr_overload_args_pick_2(std::in_place, [&]() { return std::array<int32_t, 2>{n, 2}; })));
+    g = ::tpyapp::main::twice__float(::tpy::builtin_sum_float(::tpyapp::main::__genexpr_overload_args_pick_2(std::in_place, [&]() { return std::array<int32_t, 2>{n, 2}; })));
     std::cout << "args_pick_genexpr" << " " << ::tpy::print_float(g) << "\n" << ::tpy::check_signals;
 }
 
@@ -679,34 +679,34 @@ void overload_args_pick(int32_t n) {
 void overload_fills() {
     double y = 0.5;
     ::tpy::ordered_map<std::string, double> __tmp_1 = ::tpy::ordered_map<std::string, double>();
-    y = ::tpyapp::main::tot3(__tmp_1);
+    y = ::tpyapp::main::tot3__dict_str_float(__tmp_1);
     std::cout << "fill_empty_dict" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_set<double> __tmp_2 = ::tpy::ordered_set<double>();
-    y = ::tpyapp::main::tots(__tmp_2);
+    y = ::tpyapp::main::tots__set_float(__tmp_2);
     std::cout << "fill_empty_set" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
-    y = ::tpyapp::main::keep(::tpyapp::main::call0<double>([]() -> double { return 2.5; }));
+    y = ::tpyapp::main::keep__float(::tpyapp::main::call0<double>([]() -> double { return 2.5; }));
     std::cout << "fill_lambda_generic" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
-    y = ::tpyapp::main::keep(static_cast<double>(::tpyapp::main::call0<int32_t>([]() -> int32_t { return 2; })));
+    y = ::tpyapp::main::keep__float(static_cast<double>(::tpyapp::main::call0<int32_t>([]() -> int32_t { return 2; })));
     std::cout << "fill_lambda_int_return" << " " << ::tpy::print_float((::tpy::truediv(y, 2))) << "\n" << ::tpy::check_signals;
     Bag<double> __tmp_3 = Bag<double>();
-    y = ::tpyapp::main::usebag(__tmp_3);
+    y = ::tpyapp::main::usebag__Bag_float(__tmp_3);
     std::cout << "fill_record_ctor" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     Bag2<double> __tmp_4 = Bag2<double>();
-    y = ::tpyapp::main::ub(__tmp_4);
+    y = ::tpyapp::main::ub__Bag2_float(__tmp_4);
     std::cout << "fill_record_no_init" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     Rec r = Rec(1);
     std::vector<double> __tmp_5 = ::tpyapp::main::peek<double>(r, ::tpyapp::main::empty_list<double>(3));
-    y = ::tpyapp::main::tot2(__tmp_5);
+    y = ::tpyapp::main::tot2__list_float(__tmp_5);
     std::cout << "fill_nested_generic" << " " << ::tpy::print_float(y) << " " << r.v << "\n" << ::tpy::check_signals;
     std::vector<double> __tmp_6 = Maker().make_list<double>(3);
-    y = ::tpyapp::main::tot2(__tmp_6);
+    y = ::tpyapp::main::tot2__list_float(__tmp_6);
     std::cout << "fill_generic_method" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, double> __tmp_7 = ::tpy::ordered_map<std::string, double>();
-    y = ::tpyapp::main::keep(::tpyapp::main::tot3(__tmp_7));
+    y = ::tpyapp::main::keep__float(::tpyapp::main::tot3__dict_str_float(__tmp_7));
     std::cout << "fill_nested_overload" << " " << ::tpy::print_float(y) << "\n" << ::tpy::check_signals;
     float z = 0.5f;
     ::tpy::ordered_map<std::string, float> __tmp_8 = ::tpy::ordered_map<std::string, float>({{"k", 0.25f}});
-    z = ::tpyapp::main::f32d(__tmp_8);
+    z = ::tpyapp::main::f32d__dict_str_float32(__tmp_8);
     std::cout << "fill_float32_width" << " " << ::tpy::print_float(static_cast<double>(z)) << "\n" << ::tpy::check_signals;
 }
 

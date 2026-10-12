@@ -16,8 +16,8 @@ int32_t add(int32_t x, int32_t y) {
 //     print(f(add, xs))             # 2-arg form: was the BUGS.md failure
 void main() {
     std::vector<int32_t> xs = {1, 2, 3, 4};
-    std::cout << ::tpyapp::main::f<int32_t, int32_t>(add, xs, 0) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::f<int32_t>(add, xs) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f__Fn_U_T_U__list_T__U<int32_t, int32_t>(add, xs, 0) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::f__Fn_T_T_T__list_T<int32_t>(add, xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

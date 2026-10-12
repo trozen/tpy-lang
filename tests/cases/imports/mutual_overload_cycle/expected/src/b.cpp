@@ -13,13 +13,13 @@ namespace tpyapp::b {
 //     return int32(len(x))
 // @overload
 // def g(x: int32) -> int32: ...
-int32_t g(int32_t x) {
+int32_t g__int32(int32_t x) {
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
 // @overload
 // def g(x: str) -> int32: ...
-int32_t g(std::string_view x) {
+int32_t g__str(std::string_view x) {
     return ::tpy::__len__(x);
 }
 

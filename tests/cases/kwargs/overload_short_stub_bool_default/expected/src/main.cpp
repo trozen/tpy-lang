@@ -15,7 +15,7 @@ namespace tpyapp::main {
 //     return str(a.lives) + suffix
 // @overload
 // def greet(a: Dog) -> str: ...
-std::string greet(const Dog& a) {
+std::string greet__Dog(const Dog& a) {
     bool loud = false;
     std::string_view suffix = ((loud) ? ("!") : ("."));
     return (::tpy::str_concat(a.name, suffix));
@@ -23,7 +23,7 @@ std::string greet(const Dog& a) {
 
 // @overload
 // def greet(a: Cat, loud: bool) -> str: ...
-std::string greet(const Cat& a, bool loud) {
+std::string greet__Cat__bool(const Cat& a, bool loud) {
     std::string_view suffix = ((loud) ? ("!") : ("."));
     return (::tpy::str_concat((a.lives).to_string(), suffix));
 }
@@ -35,11 +35,11 @@ std::string greet(const Cat& a, bool loud) {
 //     print(greet(Cat(3), False))
 void main() {
     Dog __tmp_1 = Dog("rex");
-    std::cout << ::tpyapp::main::greet(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet__Dog(__tmp_1) << "\n" << ::tpy::check_signals;
     Cat __tmp_2 = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::greet(__tmp_2, true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet__Cat__bool(__tmp_2, true) << "\n" << ::tpy::check_signals;
     Cat __tmp_3 = Cat(::tpy::BigInt(3));
-    std::cout << ::tpyapp::main::greet(__tmp_3, false) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::greet__Cat__bool(__tmp_3, false) << "\n" << ::tpy::check_signals;
 }
 
 // main()

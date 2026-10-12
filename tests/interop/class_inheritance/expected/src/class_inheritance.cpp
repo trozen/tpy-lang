@@ -8,7 +8,7 @@ void rename(Shape& s, std::string_view name) {
     s.name = name;
 }
 
-std::string describe_via_base(Shape& s) {
+std::string describe_via_base(const Shape& s) {
     return s.describe();
 }
 

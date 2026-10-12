@@ -12,6 +12,7 @@ import struct as _struct
 import inspect as _inspect
 import collections.abc as _collections_abc
 import typing as _typing
+import re as _re
 
 # Version/implementation identification lives in `tpy.version` submodule
 # for API parity with the compiled side (see lib/tpy/tpy/version.py):
@@ -701,8 +702,11 @@ def _param_hints(func) -> dict:
     import annotations` leaves strings, and one unresolvable annotation
     (a PEP 695 type param, `auto_readonly[T]`) must not discard the plain
     class annotations next to it, or dispatch degrades to arity alone."""
+    # A PEP 695 type param is not a module global; resolve it by name.
+    type_params = {tp.__name__: tp
+                   for tp in getattr(func, "__type_params__", ())}
     try:
-        return _typing.get_type_hints(func)
+        return _typing.get_type_hints(func, localns=type_params)
     except Exception:
         pass
     hints = {}
@@ -710,7 +714,7 @@ def _param_hints(func) -> dict:
     for name, ann in getattr(func, "__annotations__", {}).items():
         if isinstance(ann, str):
             try:
-                ann = eval(ann, globalns)
+                ann = eval(ann, globalns, type_params)
             except Exception:
                 continue
         hints[name] = ann
@@ -730,6 +734,13 @@ def _type_matches(func, args: tuple) -> bool:
         if pname not in hints:
             continue
         ann = hints[pname]
+        if _typing.get_origin(ann) is _typing.Literal:
+            # Matched by value, as the compiler resolves a Literal variant;
+            # the type check keeps `True` from matching `Literal[1]`.
+            if not any(type(arg) is type(v) and arg == v
+                       for v in _typing.get_args(ann)):
+                return False
+            continue
         if isinstance(ann, type):
             # A plain int is not an instance of the fixed-int stubs (they
             # subclass int), but the compiler lets a literal bind to any
@@ -747,7 +758,21 @@ def _type_matches(func, args: tuple) -> bool:
             if (arg_base is not None and hasattr(ann, "_TPY_BASE")
                     and _fixed_widens(arg_base, ann)):
                 continue
+            if (getattr(ann, "_is_protocol", False)
+                    and not getattr(ann, "_is_runtime_protocol", False)):
+                # The compiler checks protocol conformance structurally;
+                # isinstance raises on a protocol not @runtime_checkable.
+                if not all(hasattr(arg, m)
+                           for m in getattr(ann, "__protocol_attrs__", ())):
+                    return False
+                continue
             if not isinstance(arg, ann):
+                return False
+            continue
+        # A builtin container shape (`list[T]`, `dict[K, V]`) accepts only
+        # that container; its element types are not checked.
+        if _typing.get_origin(ann) in (list, dict, set, frozenset, tuple):
+            if not isinstance(arg, _typing.get_origin(ann)):
                 return False
             continue
         # Fn[[T1, ...], R] / Callable[[T1, ...], R]: disambiguate by
@@ -763,20 +788,56 @@ def _type_matches(func, args: tuple) -> bool:
     return True
 
 
+_WRAPPED_PARAM = _re.compile(r"^(?:readonly|Own|auto_readonly)\[(\w+)\]$")
+
+
+def _takes_bare_type_param(func) -> bool:
+    """Whether a parameter is annotated with a bare type param (`x: T`,
+    possibly wrapped in `readonly` / `Own`), the variant that accepts any
+    argument."""
+    params = getattr(func, "__type_params__", ())
+    names = {tp.__name__ for tp in params}
+    for pname, ann in getattr(func, "__annotations__", {}).items():
+        if pname == "return":
+            continue
+        if isinstance(ann, str):
+            m = _WRAPPED_PARAM.match(ann.strip())
+            if ann.strip() in names or (m and m.group(1) in names):
+                return True
+        elif any(ann is tp for tp in params):
+            return True
+    return False
+
+
+def _variant_rank(func) -> int:
+    """The order variants are tried in, mirroring the language's
+    specificity rule: concrete, then generic over a concrete shape
+    (`list[T]`), then protocol-typed, then a bare `T` -- the fallback
+    (BUGS.md#overload-rank-protocol-vs-generic: the compiler still ranks
+    an exactly-instantiable bare `T` first)."""
+    if _takes_bare_type_param(func):
+        return 3
+    if any(getattr(ann, "_is_protocol", False)
+           for ann in _param_hints(func).values()):
+        return 2
+    return 1 if getattr(func, "__type_params__", ()) else 0
+
+
 def dispatch(func):
     """CPython implementation of tpy.dispatch.
 
     The compiler resolves a @dispatch set statically; here the variants are
     accumulated by qualified name and each call tries them in declaration
-    order, arity match first, then isinstance on the annotated parameter
-    types. A concrete variant that matches is taken before a generic one,
-    wherever each is declared -- the compiler's tie rule between equally
-    good candidates; it ranks a generic that converts nothing above a
-    concrete variant that widens a container argument, which this cannot
-    follow. A
-    generic variant's value is not joined: `T` bound by an `int32` and an
-    `int64` argument keeps each argument's own class here, where the
-    compiler converts both to `int64`.
+    order within each `_variant_rank` tier (concrete, generic over a
+    shape, protocol-typed, bare `T`), arity match first, then isinstance
+    on the annotated parameter types. A concrete variant that matches is
+    taken before a generic one -- the compiler's tie rule between equally
+    good candidates -- and a bare `T` comes last. The compiler ranks a
+    generic that converts nothing above a concrete variant that widens a
+    container argument, which this cannot follow. A generic variant's
+    value is not joined: `T` bound by an `int32` and an `int64` argument
+    keeps each argument's own class here, where the compiler converts
+    both to `int64`.
     `typing.overload` is left untouched: its stubs-plus-implementation
     form already runs under stock CPython.
     """
@@ -790,8 +851,7 @@ def dispatch(func):
     def dispatcher(*args, **kwargs):
         n = len(args) + len(kwargs)
         # Pass 1: arity + type match, concrete variants first
-        ordered = sorted(variants,
-                         key=lambda v: bool(getattr(v, "__type_params__", ())))
+        ordered = sorted(variants, key=_variant_rank)
         for variant in ordered:
             lo, hi = _arity_of(variant)
             if lo <= n <= hi and _type_matches(variant, args):

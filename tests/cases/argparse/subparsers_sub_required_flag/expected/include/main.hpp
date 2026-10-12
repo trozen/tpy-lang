@@ -8,7 +8,11 @@
 
 namespace tpyapp::main {
 
-using ::tpystd::sys::exit;
+using ::tpystd::sys::exit__noargs;
+using ::tpystd::sys::exit__int32;
+using ::tpystd::sys::exit__str;
+using ::tpystd::sys::exit__None;
+using ::tpystd::sys::exit__None_int32_str;
 
 struct __tpy_builder_argparse_show_args_1;
 struct __tpy_builder_argparse_args_1;

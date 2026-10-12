@@ -17,7 +17,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_in_generator::__ne
         __state = S_DONE;  // until a yield sets where to resume
         ms.emplace(std::vector<int64_t>{1, 2});
         __state = S_RESUME_0;
-        return ::tpyapp::main::f_list((*ms));
+        return ::tpyapp::main::f_list__list_int64((*ms));
     }
     case S_RESUME_0: {  // after: yield f_list(ms)  # the call decides ms
         (*ms).push_back(::tpyapp::main::a64());

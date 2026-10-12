@@ -4159,8 +4159,12 @@ class AsyncCoroCodegen:
                         # Pointer-repr Optional locals get their bare `T*`
                         # frame field on their own emission branch (not via
                         # `aliases`); only the const fact is recorded here,
-                        # where the initializing decl is in hand.
-                        borrows_from(s.name, s.init)
+                        # where the initializing decl is in hand. A value
+                        # that fills the frame's own slot borrows nothing
+                        # from its receiver.
+                        if not emit_prims.ptr_write_fills_slot(
+                                self.ctx, s.init):
+                            borrows_from(s.name, s.init)
                         if init_is_const():
                             rcfg.mark_frame_const(state, s.name)
                 elif isinstance(s, TpyMatch):

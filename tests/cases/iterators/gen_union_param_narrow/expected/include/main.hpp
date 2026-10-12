@@ -51,9 +51,9 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 struct Owner {
 
 
-    __gen_Owner_voices voices(::tpy::Union<Cat*, Dog*> a) const;
+    __gen_Owner_voices voices(::tpy::Union<const Cat*, const Dog*> a) const;
 
-    __gen_Owner_first first(::tpy::Union<Cat*, Dog*> a) const;
+    __gen_Owner_first first(::tpy::Union<const Cat*, const Dog*> a) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owner";
 };
 
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const Owner& obj) {
 struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, std::string> {
     ::tpy::frame_state __state;
     const Owner& __self;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -77,7 +77,7 @@ struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, st
         S_DONE = 5,
     };
 
-    __gen_Owner_voices(const Owner& __self, ::tpy::Union<Cat*, Dog*> a_)
+    __gen_Owner_voices(const Owner& __self, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           __self(__self),
           a(a_) {}
@@ -90,7 +90,7 @@ struct __gen_Owner_voices : public ::tpy::next_iter_mixin<__gen_Owner_voices, st
     }
 };
 
-inline __gen_Owner_voices Owner::voices(::tpy::Union<Cat*, Dog*> a) const {
+inline __gen_Owner_voices Owner::voices(::tpy::Union<const Cat*, const Dog*> a) const {
     return __gen_Owner_voices(*this, a);
 }
 
@@ -98,7 +98,7 @@ inline __gen_Owner_voices Owner::voices(::tpy::Union<Cat*, Dog*> a) const {
 struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std::string> {
     ::tpy::frame_state __state;
     const Owner& __self;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -108,7 +108,7 @@ struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std:
         S_DONE = 4,
     };
 
-    __gen_Owner_first(const Owner& __self, ::tpy::Union<Cat*, Dog*> a_)
+    __gen_Owner_first(const Owner& __self, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           __self(__self),
           a(a_) {}
@@ -121,7 +121,7 @@ struct __gen_Owner_first : public ::tpy::next_iter_mixin<__gen_Owner_first, std:
     }
 };
 
-inline __gen_Owner_first Owner::first(::tpy::Union<Cat*, Dog*> a) const {
+inline __gen_Owner_first Owner::first(::tpy::Union<const Cat*, const Dog*> a) const {
     return __gen_Owner_first(*this, a);
 }
 

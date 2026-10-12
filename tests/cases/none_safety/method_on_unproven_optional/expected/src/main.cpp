@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def generic_on_optional(b: Bag | None) -> int32:
 //     # targs ride the checked deref
 //     return b.conv(3)           # tpyc: warning(/Potential None access/)
-int32_t generic_on_optional(Bag* b) {
+int32_t generic_on_optional(const Bag* b) {
     return ::tpy::deref_check(b).conv<int32_t>(3);
 }
 

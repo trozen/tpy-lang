@@ -13,13 +13,13 @@ namespace tpyapp::animals {
 //         return "Cat: " + str(animal.lives)
 // @overload
 // def describe(animal: Dog) -> str: ...
-std::string describe(const Dog& animal) {
+std::string describe__Dog(const Dog& animal) {
     return (::tpy::str_concat("Dog: ", animal.name));
 }
 
 // @overload
 // def describe(animal: Cat) -> str: ...
-std::string describe(const Cat& animal) {
+std::string describe__Cat(const Cat& animal) {
     return (::tpy::str_concat("Cat: ", (animal.lives).to_string()));
 }
 

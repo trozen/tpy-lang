@@ -97,7 +97,7 @@ std::vector<int64_t> pick(bool f) {
 //     for x in v:
 //         t += x
 //     return t
-int64_t total(std::span<int32_t> v) {
+int64_t total__Span_int32(std::span<int32_t> v) {
     int64_t t = 0;
     auto& __obj_0 = v;
     auto __beg_0 = __obj_0.begin();
@@ -112,7 +112,7 @@ int64_t total(std::span<int32_t> v) {
 // @dispatch
 // def total(v: str) -> int64:
 //     return len(v)
-int64_t total(std::string_view v) {
+int64_t total__str(std::string_view v) {
     return static_cast<int64_t>(::tpy::__len__(v));
 }
 
@@ -330,7 +330,7 @@ void generic_call() {
     int64_t k = ::tpy::__getitem__(a, 0);
     std::cout << "fn.sorted_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int64_t>(a, neg)) << " " << (::tpy::add_check<int64_t>(k, ::tpyapp::main::w64())) << " " << (::tpy::add_check<int64_t>(::tpy::__getitem__(a, 1), ::tpyapp::main::w64())) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ys = {1, 2};
-    std::cout << "fn.overloaded" << " " << ::tpyapp::main::total(::tpy::as_mut_span(ys)) << " " << ::tpyapp::main::total(std::string_view("ab")) << "\n" << ::tpy::check_signals;
+    std::cout << "fn.overloaded" << " " << ::tpyapp::main::total__Span_int32(::tpy::as_mut_span(ys)) << " " << ::tpyapp::main::total__str(std::string_view("ab")) << "\n" << ::tpy::check_signals;
 }
 
 // def typed_slots() -> None:

@@ -1112,7 +1112,7 @@ void run_method_count(Rows& r) {
 // def run_method_plain(r: Rows) -> None:
 //     w = r.walk_plain()
 //     drive("method_plain", w)
-void run_method_plain(Rows& r) {
+void run_method_plain(const Rows& r) {
     __gen_Rows_walk_plain w = r.walk_plain();
     ::tpyapp::main::drive("method_plain", w);
 }

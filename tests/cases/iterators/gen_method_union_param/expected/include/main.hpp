@@ -59,7 +59,7 @@ struct Zoo {
     // def __init__(self) -> None:
     Zoo();
 
-    __gen_Zoo_voices voices(::tpy::Union<Cat*, Dog*> a);
+    __gen_Zoo_voices voices(::tpy::Union<const Cat*, const Dog*> a);
 
     __gen_Zoo_names names(::tpy::Union<const Cat*, const Dog*> a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Zoo";
@@ -74,7 +74,7 @@ inline std::ostream& operator<<(std::ostream& os, const Zoo& obj) {
 struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::string> {
     ::tpy::frame_state __state;
     Zoo& __self;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -85,7 +85,7 @@ struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::s
         S_DONE = 5,
     };
 
-    __gen_Zoo_voices(Zoo& __self, ::tpy::Union<Cat*, Dog*> a_)
+    __gen_Zoo_voices(Zoo& __self, ::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           __self(__self),
           a(a_) {}
@@ -98,7 +98,7 @@ struct __gen_Zoo_voices : public ::tpy::next_iter_mixin<__gen_Zoo_voices, std::s
     }
 };
 
-inline __gen_Zoo_voices Zoo::voices(::tpy::Union<Cat*, Dog*> a) {
+inline __gen_Zoo_voices Zoo::voices(::tpy::Union<const Cat*, const Dog*> a) {
     return __gen_Zoo_voices(*this, a);
 }
 

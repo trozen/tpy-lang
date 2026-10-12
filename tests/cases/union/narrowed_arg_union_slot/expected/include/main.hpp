@@ -91,7 +91,7 @@ __gen_gen_total gen_total(::tpy::Union<const A*, const B*> v);
 // async def async_total(v: A | B) -> int32:
 __coro_async_total async_total(::tpy::Union<const A*, const B*> v);
 // def loop_method(xs: list[A | B], r: Reader) -> int32:
-int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, Reader& r);
+int32_t loop_method(const std::vector<::tpy::Union<A, B>>& xs, const Reader& r);
 // def closure_narrow(u: A | B) -> int32:
 int32_t closure_narrow(::tpy::Union<const A*, const B*> u);
 // def closure_forward(u: A | B) -> int32:
@@ -113,7 +113,7 @@ int32_t vu_total(const ::tpy::Union<double, int32_t>& u);
 // def vu_peek(u: readonly[int32 | float64]) -> int32:
 int32_t vu_peek(const ::tpy::Union<double, int32_t>& u);
 // def value_union_method(v: int32 | float64, box: VuBox) -> int32:
-int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, VuBox& box);
+int32_t value_union_method(const ::tpy::Union<double, int32_t>& v, const VuBox& box);
 // def value_union_ctor(v: int32 | float64) -> int32:
 int32_t value_union_ctor(const ::tpy::Union<double, int32_t>& v);
 // def value_union_comp(v: int32 | float64) -> int32:

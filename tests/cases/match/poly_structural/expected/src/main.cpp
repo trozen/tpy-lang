@@ -12,14 +12,14 @@ namespace tpyapp::main {
 //             return "rect -> " + str(s.area())
 //         case _:
 //             return "?"
-std::string classify(Shape& s) {
+std::string classify(const Shape& s) {
     auto& __match_subject_1 = s;
-    if (Square* __mpoly_0 = ::tpy::dyn_adapter_cast<Shape, Square>(&__match_subject_1)) {
-        Square& __case_0 = *__mpoly_0;
+    if (const Square* __mpoly_0 = ::tpy::dyn_adapter_cast<Shape, Square>(&__match_subject_1)) {
+        const Square& __case_0 = *__mpoly_0;
         auto& k = __case_0.side;
         return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("square ", (k).to_string())), " -> ")), (__case_0.area()).to_string()));
-    } else if (Rect* __mpoly_1 = ::tpy::dyn_adapter_cast<Shape, Rect>(&__match_subject_1)) {
-        Rect& __case_1 = *__mpoly_1;
+    } else if (const Rect* __mpoly_1 = ::tpy::dyn_adapter_cast<Shape, Rect>(&__match_subject_1)) {
+        const Rect& __case_1 = *__mpoly_1;
         return (::tpy::str_concat("rect -> ", (__case_1.area()).to_string()));
     } else {
         return "?";

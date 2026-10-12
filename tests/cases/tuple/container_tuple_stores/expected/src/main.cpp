@@ -93,7 +93,7 @@ void append_nested_scalar(std::vector<std::tuple<int32_t, std::tuple<int32_t, in
 
 // def user_slot_mixed_call(s: Taker, b: Box) -> int32:
 //     return s.take(make_mixed(b))  # tpyc: warning(/tuple element 1\)/)
-int32_t user_slot_mixed_call(Taker& s, Box& b) {
+int32_t user_slot_mixed_call(const Taker& s, Box& b) {
     return s.take(::tpy::tuple_to_storage<std::tuple<Box, Box>>(::tpyapp::main::make_mixed(b)));
 }
 

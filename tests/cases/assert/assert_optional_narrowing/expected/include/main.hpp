@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def get_x(p: Point | None) -> int32:
 int32_t get_x(const Point* p);
 // def get_mag(p: Point | None) -> int32:
-int32_t get_mag(Point* p);
+int32_t get_mag(const Point* p);
 
 // class Point:
 struct Point {

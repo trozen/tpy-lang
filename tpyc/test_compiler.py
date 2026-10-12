@@ -305,6 +305,40 @@ class TestCompilerFromSource:
 
 
 
+class TestImportComponentBodies:
+    @pytest.mark.parametrize(("gen_mod", "callee_mod"), [("a", "b"), ("z", "y")])
+    def test_generic_yield_verdict_reads_cycle_peer_borrow(
+            self, tmp_path, gen_mod, callee_mod):
+        """A generic generator yielding a lending callee's result lends,
+        whichever cycle member is analyzed first: the verdict settles after
+        every member's bodies. Pinned here rather than in a case because
+        the peer's function template is not visible to the generator's
+        header (BUGS.md#cycle-peer-template-call-undeclared)."""
+        (tmp_path / f"{gen_mod}.py").write_text(
+            "from typing import Iterator\n"
+            f"import {callee_mod}\n"
+            "\n"
+            "\n"
+            "def each_first[T](rows: list[list[T]]) -> Iterator[T]:\n"
+            "    for r in rows:\n"
+            f"        yield {callee_mod}.first(r)\n"
+        )
+        (tmp_path / f"{callee_mod}.py").write_text(
+            f"import {gen_mod}\n"
+            "\n"
+            "\n"
+            "def first[T](xs: list[T]) -> T:\n"
+            "    return xs[0]\n"
+        )
+        entry = tmp_path / "main.py"
+        entry.write_text(f"import {gen_mod}\nimport {callee_mod}\n")
+        compiler = Compiler(entry, lib_dirs=_STDLIB_DIRS)
+        modules = {m.name: m for m in compiler.compile()}
+        gen, = (f for f in modules[gen_mod].ast.functions
+                if f.name == "each_first")
+        assert gen.generic_yield_borrows
+
+
 class _CoroImportPlugin(FrontendPlugin):
     name = "coro_import"
     extensions = (".coro_import",)

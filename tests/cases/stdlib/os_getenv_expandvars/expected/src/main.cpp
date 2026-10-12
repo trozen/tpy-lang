@@ -25,13 +25,13 @@ namespace tpyapp::main {
 //     print(expandvars("no vars"))
 //     print(expandvars("${unclosed"))
 void main() {
-    std::cout << ::tpy::print_bool((!::tpystd::os::getenv(std::string_view("TPY_UNSET_VAR")).has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::os::getenv(std::string_view("TPY_UNSET_VAR"), std::string_view("dflt")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpy::__len__(::tpystd::os::getenv(std::string_view("TPY_UNSET_VAR"), std::string_view(""))) == 0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpystd::os::getenv(std::string_view("PATH")).has_value())) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("$PATH") == ::tpystd::os::getenv(std::string_view("PATH")))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("${PATH}") == ::tpystd::os::getenv(std::string_view("PATH")))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("p=$PATH;") == (::tpy::str_concat((::tpy::str_concat("p=", ::tpystd::os::getenv(std::string_view("PATH"), std::string_view("")))), ";")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpystd::os::getenv__str(std::string_view("TPY_UNSET_VAR")).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::getenv__str__str(std::string_view("TPY_UNSET_VAR"), std::string_view("dflt")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpy::__len__(::tpystd::os::getenv__str__str(std::string_view("TPY_UNSET_VAR"), std::string_view(""))) == 0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::os::getenv__str(std::string_view("PATH")).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("$PATH") == ::tpystd::os::getenv__str(std::string_view("PATH")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("${PATH}") == ::tpystd::os::getenv__str(std::string_view("PATH")))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((::tpystd::os::path::expandvars("p=$PATH;") == (::tpy::str_concat((::tpy::str_concat("p=", ::tpystd::os::getenv__str__str(std::string_view("PATH"), std::string_view("")))), ";")))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::os::path::expandvars("$TPY_UNSET_VAR/x") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::os::path::expandvars("${TPY_UNSET_VAR}") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::os::path::expandvars("cost: $ 5") << "\n" << ::tpy::check_signals;

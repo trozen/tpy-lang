@@ -76,14 +76,14 @@ std::vector<::tpy::BigInt> fresh(const std::function<std::vector<::tpy::BigInt>(
 // @dispatch
 // def conv(f: Callable[[str], int], s: str) -> int:
 //     return f(s)
-::tpy::BigInt conv(const std::function<::tpy::BigInt(std::string_view)>& f, std::string_view s) {
+::tpy::BigInt conv__Callable_str_int__str(const std::function<::tpy::BigInt(std::string_view)>& f, std::string_view s) {
     return f(s);
 }
 
 // @dispatch
 // def conv(f: Callable[[int], str], s: int) -> str:
 //     return f(s)
-std::string conv(const std::function<std::string(const ::tpy::BigInt&)>& f, const ::tpy::BigInt& s) {
+std::string conv__Callable_int_str__int(const std::function<std::string(const ::tpy::BigInt&)>& f, const ::tpy::BigInt& s) {
     return f(s);
 }
 
@@ -240,7 +240,7 @@ void builtins_() {
     std::string_view a = "3";
     std::string_view b = "12";
     std::cout << "max key" << " " << ::tpy::max_key(a, b, [](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }) << "\n" << ::tpy::check_signals;
-    std::cout << "overload" << " " << ((::tpyapp::main::conv([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::string_view("41"))) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
+    std::cout << "overload" << " " << ((::tpyapp::main::conv__Callable_str_int__str([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::string_view("41"))) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv__Callable_int_str__int([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
 }
 
 // def method_field_ctor() -> None:

@@ -17,7 +17,7 @@ struct LeafBox;
 inline constexpr std::string_view __name__ = "__main__";
 
 void rename(Shape& s, std::string_view name);
-std::string describe_via_base(Shape& s);
+std::string describe_via_base(const Shape& s);
 Shape& as_shape(Circle& c);
 
 struct Shape {

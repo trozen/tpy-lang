@@ -94,14 +94,14 @@ template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
       { __fn(__a0) } -> std::convertible_to<B>;
   }
-::tpy::val_or_ref_t<B> app(__F0&& f, ::tpy::param_val_or_ref_t<A> x);
+::tpy::val_or_ref_t<B> app__Fn_A_B__A(__F0&& f, ::tpy::param_val_or_ref_t<A> x);
 // @dispatch
 // def app[A, B](f: Fn[[A], B], x: list[A]) -> B:
 template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
       { __fn(__a0) } -> std::convertible_to<B>;
   }
-::tpy::val_or_ref_t<B> app(__F0&& f, std::vector<A>& x);
+::tpy::val_or_ref_t<B> app__Fn_A_B__list_A(__F0&& f, std::vector<A>& x);
 // def trial_then_local[T](items: list[T], n: int32) -> Iterator[T]:
 template <typename T>
 __gen_trial_then_local<T> trial_then_local(std::vector<T>& items, int32_t n);
@@ -1048,7 +1048,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_trial_then_loc
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        r = ::tpyapp::main::app<int32_t, int32_t>([](int32_t v) -> int32_t { return (::tpy::add_check<int32_t>(v, 1)); }, n);
+        r = ::tpyapp::main::app__Fn_A_B__A<int32_t, int32_t>([](int32_t v) -> int32_t { return (::tpy::add_check<int32_t>(v, 1)); }, n);
         head = &(::tpy::__getitem__(items, 0));
         __state = S_RESUME_0;
         return (*head);
@@ -1670,7 +1670,7 @@ template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
       { __fn(__a0) } -> std::convertible_to<B>;
   }
-::tpy::val_or_ref_t<B> app(__F0&& f, ::tpy::param_val_or_ref_t<A> x) {
+::tpy::val_or_ref_t<B> app__Fn_A_B__A(__F0&& f, ::tpy::param_val_or_ref_t<A> x) {
     return f(x);
 }
 // @dispatch
@@ -1680,7 +1680,7 @@ template<typename A, typename B, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<A> __a0) {
       { __fn(__a0) } -> std::convertible_to<B>;
   }
-::tpy::val_or_ref_t<B> app(__F0&& f, std::vector<A>& x) {
+::tpy::val_or_ref_t<B> app__Fn_A_B__list_A(__F0&& f, std::vector<A>& x) {
     return f(::tpy::__getitem__(x, 0));
 }
 

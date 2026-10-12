@@ -13,11 +13,11 @@ struct Child;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def use(a: A, k: int32, f: float64) -> int32:
-int32_t use(A& a, int32_t k, double f);
+int32_t use(const A& a, int32_t k, double f);
 // def use_inherited(c: Child, k: int32) -> int32:
-int32_t use_inherited(Child& c, int32_t k);
+int32_t use_inherited(const Child& c, int32_t k);
 // def use_lit(a: A) -> int32:
-int32_t use_lit(A& a);
+int32_t use_lit(const A& a);
 // def main() -> None:
 void main();
 

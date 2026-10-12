@@ -15,10 +15,10 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t stub(__F0&& fn);
+int32_t stub__Fn_T_U(__F0&& fn);
 // @dispatch
 // def stub(val: str) -> str:
-std::string stub(std::string_view val);
+std::string stub__str(std::string_view val);
 // def main() -> None:
 void main();
 
@@ -29,7 +29,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t stub(__F0&& fn) {
+int32_t stub__Fn_T_U(__F0&& fn) {
     return 0;
 }
 

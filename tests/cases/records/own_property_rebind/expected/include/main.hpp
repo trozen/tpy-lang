@@ -14,11 +14,11 @@ inline constexpr std::string_view __name__ = "__main__";
 // def prop_moved(s: Src) -> None:
 void prop_moved(const Src& s);
 // def meth_moved(s: Src) -> None:
-void meth_moved(Src& s);
+void meth_moved(const Src& s);
 // def prop_aliased(s: Src) -> None:
 void prop_aliased(const Src& s);
 // def meth_aliased(s: Src) -> None:
-void meth_aliased(Src& s);
+void meth_aliased(const Src& s);
 // def main() -> None:
 void main();
 

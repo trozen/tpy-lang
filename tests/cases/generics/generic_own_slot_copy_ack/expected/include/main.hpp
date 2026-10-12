@@ -22,9 +22,9 @@ template<typename T>
 void relay_owned(::tpy::own_param_t<T> v, std::vector<T>& xs);
 // def dup_bounded[T: ValueType](h: VHolder[T]) -> Own[T]:
 template<::tpy::ValueType T>
-::tpy::own_return_t<T> dup_bounded(VHolder<T>& h);
+::tpy::own_return_t<T> dup_bounded(const VHolder<T>& h);
 // def dup_bounded_twin(h: IntHolder) -> Own[int32]:
-int32_t dup_bounded_twin(IntHolder& h);
+int32_t dup_bounded_twin(const IntHolder& h);
 // def sec_value_bound() -> None:
 void sec_value_bound();
 // def apply_generic[T, K](xs: list[T], f: Fn[[T], K], out: list[K]) -> None:
@@ -182,7 +182,7 @@ void relay_owned(::tpy::own_param_t<T> v, std::vector<T>& xs) {
 // def dup_bounded[T: ValueType](h: VHolder[T]) -> Own[T]:
 //     return h.borrow()  # tpyc: ok
 template<::tpy::ValueType T>
-::tpy::own_return_t<T> dup_bounded(VHolder<T>& h) {
+::tpy::own_return_t<T> dup_bounded(const VHolder<T>& h) {
     return h.borrow();
 }
 // # inverse: a call through a callable VALUE is an rvalue whatever K resolves

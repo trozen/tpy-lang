@@ -35,7 +35,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_voices::__next__()
         continue;
     }
     case S_RESUME_0: {  // after: yield "is-dog"
-        auto& __a = *std::get<Dog*>(a);
+        auto& __a = *std::get<const Dog*>(a);
         __state = S_RESUME_1;
         return __a.sound();
     }

@@ -20,7 +20,7 @@ __gen_free_delegator free_delegator() {
 
 
 // def method_delegator(s: Src) -> Iterator[int32]:
-__gen_method_delegator method_delegator(Src& s) {
+__gen_method_delegator method_delegator(const Src& s) {
     return __gen_method_delegator(s);
 }
 

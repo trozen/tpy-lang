@@ -19,7 +19,7 @@ void main() {
     ::tpy::Union<Cat, Dog> __slot_1 = Dog();
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     {
-        auto __src_0 = z.voices(pet);
+        auto __src_0 = z.voices(pet.as_const());
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();

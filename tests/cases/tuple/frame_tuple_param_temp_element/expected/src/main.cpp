@@ -501,7 +501,7 @@ __coro_abump abump(std::tuple<A*, ::tpy::BigInt> p) {
 //     # a mutating METHOD callee
 //     k.bump((a, 1))  # tpyc: ok
 //     return a.v
-::tpy::BigInt meth_callee(K& k, A& a) {
+::tpy::BigInt meth_callee(const K& k, A& a) {
     k.bump(std::tuple<A*, ::tpy::BigInt>{&(a), ::tpy::BigInt(1)});
     return a.v;
 }

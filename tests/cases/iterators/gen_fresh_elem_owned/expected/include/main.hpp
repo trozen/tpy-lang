@@ -16,7 +16,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_collect;
 
 // def collect(src: Fresh) -> Iterator[int32]:
-__gen_collect collect(Fresh& src);
+__gen_collect collect(const Fresh& src);
 // def main() -> None:
 void main();
 
@@ -73,7 +73,7 @@ inline std::ostream& operator<<(std::ostream& os, const Fresh& obj) {
 // def collect(src: Fresh) -> Iterator[int32]:
 struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
     ::tpy::frame_state __state;
-    Fresh& src;
+    const Fresh& src;
     int32_t last;
     using __for_src_0_t = decltype((src));
     ::tpy::frame_slot<::tpy::for_elem_next_t<__for_src_0_t>> node;
@@ -88,7 +88,7 @@ struct __gen_collect : public ::tpy::next_iter_mixin<__gen_collect, int32_t> {
         S_DONE = 4,
     };
 
-    __gen_collect(Fresh& src)
+    __gen_collect(const Fresh& src)
         : __state(S_INITIAL),
           src(src) {}
 

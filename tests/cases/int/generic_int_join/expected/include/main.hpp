@@ -25,30 +25,30 @@ template<typename T>
 ::tpy::val_or_ref_t<T> last3(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y, ::tpy::param_val_or_ref_t<T> z);
 // @dispatch
 // def which(x: int64, y: int64) -> str:
-std::string which(int64_t x, int64_t y);
+std::string which__int64__int64(int64_t x, int64_t y);
 // @dispatch
 // def which[T](x: T, y: T) -> str:
 template<typename T>
-std::string which(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
+std::string which__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
 // @dispatch
 // def which_g[T](x: T, y: T) -> str:
 template<typename T>
-std::string which_g(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
+std::string which_g__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
 // @dispatch
 // def which_g(x: int64, y: int64) -> str:
-std::string which_g(int64_t x, int64_t y);
+std::string which_g__int64__int64(int64_t x, int64_t y);
 // @dispatch
 // def width(x: int8) -> str:
-std::string width(int8_t x);
+std::string width__int8(int8_t x);
 // @dispatch
 // def width(x: uint8) -> str:
-std::string width(uint8_t x);
+std::string width__uint8(uint8_t x);
 // @dispatch
 // def width(x: int32) -> str:
-std::string width(int32_t x);
+std::string width__int32(int32_t x);
 // @dispatch
 // def width(x: int64) -> str:
-std::string width(int64_t x);
+std::string width__int64(int64_t x);
 // def free_function() -> None:
 void free_function();
 // def literals() -> None:
@@ -171,7 +171,7 @@ template<typename T>
 // def which[T](x: T, y: T) -> str:
 //     return "generic"
 template<typename T>
-std::string which(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
+std::string which__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
     return "generic";
 }
 // # the same pair declared generic-first: the concrete one still wins
@@ -179,7 +179,7 @@ std::string which(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y
 // def which_g[T](x: T, y: T) -> str:
 //     return "generic"
 template<typename T>
-std::string which_g(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
+std::string which_g__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
     return "generic";
 }
 

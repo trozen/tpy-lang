@@ -142,9 +142,10 @@ class _Facts:
                     self.mutated.add(caller_idx)
                 if callee_emp is not None and callee_idx in callee_emp:
                     self.elem.add(caller_idx)
-            # Propagate self-mutation: if callee mutates its self and is called
-            # as self.method(), the caller also mutates self.
-            if edge.receiver_idx is not None and callee.self_mutated:
+            # A receiver edge (`self.m()`, `p.m()`, `p.f.m()`): the caller's
+            # receiver root is mutated when the call needs a mutable receiver.
+            if (edge.receiver_idx is not None
+                    and _receiver_must_be_mutable(callee)):
                 self.mutated.add(edge.receiver_idx)
                 if callee_emp is not None and -1 in callee_emp:
                     self.elem.add(edge.receiver_idx)
@@ -255,27 +256,51 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
     readonly-receiver enforcement passes, protocol conformance passes unchanged.
     """
     for fi in all_fis:
-        if not fi.is_method or fi.is_staticmethod:
-            continue
-        if fi.is_readonly:
-            continue
-        if fi.is_consuming:
-            continue
-        if fi.is_auto_readonly_mutable_clone:
-            # The const sibling is already skipped by the is_readonly check
-            # above. Flipping the mutable clone too would give the pair two
-            # identical signatures and break overload resolution.
-            continue
-        if fi.name in _NEVER_INFER_CONST:
-            continue
-        if fi.direct_self_mutated is None:
-            # Phase 1 facts not collected (should not happen for local methods)
-            continue
-        if fi.root.return_lends_self_storage:
-            # Return value is self's storage -- auto-const would change
-            # the return from T& to const T&, overriding the user's declared type.
-            # Inherently-const views carry no mutable alias, so auto-const is safe.
-            if not view_is_inherently_const(fi.return_type):
-                continue
-        if not fi.self_mutated:
+        if not fi.is_readonly and const_inferable(fi) and not fi.self_mutated:
             fi.is_readonly = True
+
+
+def const_inferable(fi: FunctionInfo) -> bool:
+    """Whether `infer_method_const` makes `fi` const once Phase 2 finds it
+    does not mutate its self -- every condition but that one."""
+    if not fi.is_method or fi.is_staticmethod:
+        return False
+    if fi.is_consuming:
+        return False
+    if fi.is_auto_readonly_mutable_clone:
+        # The const sibling is already readonly. Flipping the mutable clone
+        # too would give the pair two identical signatures and break
+        # overload resolution.
+        return False
+    # An accessor's receiver keeps its declared const-ness: an inferred enum
+    # getter returning a module list would const-project the list
+    # (BUGS.md#enum-property-getter-non-const).
+    if fi.is_property_getter or fi.is_property_setter:
+        return False
+    if fi.name in _NEVER_INFER_CONST:
+        return False
+    if fi.direct_self_mutated is None:
+        # Phase 1 facts not collected (should not happen for local methods)
+        return False
+    if fi.root.return_lends_self_storage:
+        # Return value is self's storage -- auto-const would change
+        # the return from T& to const T&, overriding the user's declared type.
+        # Inherently-const views carry no mutable alias, so auto-const is safe.
+        return view_is_inherently_const(fi.return_type)
+    return True
+
+
+def _receiver_must_be_mutable(callee: FunctionInfo) -> bool:
+    """Whether a call needs a mutable receiver: the callee writes its self,
+    or its C++ member stays non-const for another reason (a declared
+    mutable return into self, a consuming or never-const method, a withheld
+    const). A
+    receiver edge reads this, not `self_mutated` alone, or a caller whose
+    receiver is const by inference would call a non-const member."""
+    if callee.is_staticmethod:
+        # A static or class method (`is_staticmethod` covers both) has no
+        # receiver for the call to need.
+        return False
+    return callee.self_mutated or not (
+        callee.emitted_const
+        or (const_inferable(callee) and not callee.root.const_withheld))

@@ -16,7 +16,7 @@ int32_t get_field__lit_age(std::string_view name);
 // def get_field(name: str) -> int32 | str:
 std::string get_field__lit_name(std::string_view name);
 // def get_field(name: str) -> int32 | str:
-::tpy::Union<int32_t, std::string> get_field(std::string_view name);
+::tpy::Union<int32_t, std::string> get_field__str(std::string_view name);
 // def main() -> None:
 void main();
 

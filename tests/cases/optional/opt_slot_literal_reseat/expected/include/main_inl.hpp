@@ -43,14 +43,15 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_literal::__next__(
 }
 
 // # generator: a call result first, so the pointer is provably non-null and the
-// # literal is written THROUGH it -- no frame field of its own
-// def gen_call_then_literal(f: F) -> Iterator[int32]:
-//     a: list[int32] | None = f.make()
-//     yield 0 if a is None else len(a)                 # -> S_RESUME_0
+// # literal is written THROUGH it -- no frame field of its own. The result is
+// # owned, so the readonly receiver's const must not reach the frame pointer.
+// def gen_call_then_literal(f: readonly[F]) -> Iterator[int32]:
+//     a: list[int32] | None = f.make()  # tpyc: ok
+//     yield 0 if a is None else len(a)                           # -> S_RESUME_0
 //     a = [1, 2, 3]  # tpyc: ok
 //     if a is not None:
 //         a.append(4)
-//     yield 0 if a is None else len(a)                 # -> S_RESUME_1
+//     yield 0 if a is None else len(a)                           # -> S_RESUME_1
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_call_then_literal::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -68,6 +69,69 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_call_then_literal:
         return (((a == nullptr)) ? (0) : (::tpy::__len__((*a))));
     }
     case S_RESUME_1: {  // after: yield 0 if a is None else len(a)
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # generator, loop variable over a read-only list param: `find` returns a
+// # borrow into the const receiver, so the frame field stays `const Node* o`
+// def gen_find_loop(ts: list[Tree]) -> Iterator[int32]:
+//     for t in ts:
+//         o = t.find()  # tpyc: ok
+//         yield 0                                        # -> S_RESUME_0
+//         yield 0 if o is None else o.v                  # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_find_loop::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        auto& __for_obj_0 = ts;
+        __for_it_0.emplace((__for_obj_0).begin());
+        __for_end_0.emplace((__for_obj_0).end());
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        __state = S_RESUME_1;
+        return (((o == nullptr)) ? (0) : (o->v));
+    }
+    case S_RESUME_1:  // after: yield 0 if o is None else o.v
+    case S_JOIN_0: {
+        if ((*__for_it_0) == (*__for_end_0)) {
+            __state = S_DONE;
+            return ::tpy::make_unexpected(::tpy::StopIteration{});
+        }
+        t = &(*((*__for_it_0))++);
+        o = t->find();
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # generator, the receiver a read-only param: same borrow, same `const Node* o`
+// def gen_find_param(t: Tree) -> Iterator[int32]:
+//     o = t.find()  # tpyc: ok
+//     yield 0                                      # -> S_RESUME_0
+//     yield 0 if o is None else o.v                # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_find_param::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        o = t.find();
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        __state = S_RESUME_1;
+        return (((o == nullptr)) ? (0) : (o->v));
+    }
+    case S_RESUME_1: {  // after: yield 0 if o is None else o.v
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

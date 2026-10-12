@@ -11,11 +11,11 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @dispatch
 // def pick(x: int32, y: int32) -> int32:
-int32_t pick(int32_t x, int32_t y);
+int32_t pick__int32__int32(int32_t x, int32_t y);
 // @dispatch
 // def pick[U](x: U, y: U) -> U:
 template<typename U>
-::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y);
+::tpy::val_or_ref_t<U> pick__U__U(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y);
 // def use[T](a: T, b: T) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
@@ -26,7 +26,7 @@ void main();
 // def pick[U](x: U, y: U) -> U:
 //     return x
 template<typename U>
-::tpy::val_or_ref_t<U> pick(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y) {
+::tpy::val_or_ref_t<U> pick__U__U(::tpy::param_val_or_ref_t<U> x, ::tpy::param_val_or_ref_t<U> y) {
     return ::tpy::param_to_return<U>(x);
 }
 // def use[T](a: T, b: T) -> T:
@@ -40,7 +40,7 @@ template<typename U>
 //     return r
 template<typename T>
 ::tpy::val_or_ref_t<T> use(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-    ::tpy::val_or_ref_t<T> r = ::tpyapp::main::pick<T>(a, b);
+    ::tpy::val_or_ref_t<T> r = ::tpyapp::main::pick__U__U<T>(a, b);
     return r;
 }
 

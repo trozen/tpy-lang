@@ -13,7 +13,7 @@ struct Dog;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def show(x: Cat | Dog) -> int:
-::tpy::BigInt show(::tpy::Union<Cat*, Dog*> x);
+::tpy::BigInt show(::tpy::Union<const Cat*, const Dog*> x);
 // def main() -> None:
 void main();
 

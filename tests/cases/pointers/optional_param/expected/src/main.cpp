@@ -10,7 +10,7 @@ Point* result{};
 //     if p is not None:
 //         return p.mag()
 //     return -1
-int32_t describe(Point* p) {
+int32_t describe(const Point* p) {
     if ((p != nullptr)) {
         return p->mag();
     }

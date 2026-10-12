@@ -34,10 +34,10 @@ inline constexpr std::string_view __name__ = "random";
 double random();
 // @dispatch
 // def seed() -> None:
-void seed();
+void seed__noargs();
 // @dispatch
 // def seed(n: int32) -> None:
-void seed(int32_t n);
+void seed__int32(int32_t n);
 // def getrandbits(k: int32) -> int:
 ::tpy::BigInt getrandbits(int32_t k);
 // def randint(a: int32, b: int32) -> int32:
@@ -50,13 +50,13 @@ template<typename T>
 void shuffle(std::vector<T>& seq);
 // @dispatch
 // def randrange(stop: int32) -> int32:
-int32_t randrange(int32_t stop);
+int32_t randrange__int32(int32_t stop);
 // @dispatch
 // def randrange(start: int32, stop: int32) -> int32:
-int32_t randrange(int32_t start, int32_t stop);
+int32_t randrange__int32__int32(int32_t start, int32_t stop);
 // @dispatch
 // def randrange(start: int32, stop: int32, step: int32) -> int32:
-int32_t randrange(int32_t start, int32_t stop, int32_t step);
+int32_t randrange__int32__int32__int32(int32_t start, int32_t stop, int32_t step);
 // def randbytes(n: int32) -> bytes:
 ::tpy::Bytes randbytes(int32_t n);
 // def uniform(a: float, b: float) -> float:

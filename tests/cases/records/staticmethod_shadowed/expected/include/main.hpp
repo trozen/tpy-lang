@@ -13,7 +13,7 @@ extern Helper* h;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def use_helper(Helper: Helper) -> int32:
-int32_t use_helper(Helper& Helper);
+int32_t use_helper(const Helper& Helper);
 
 // class Helper:
 struct Helper {

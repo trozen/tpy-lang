@@ -15,28 +15,28 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def get_val(obj: A) -> int: ...  # tpyc: ok
-::tpy::BigInt get_val(const A& obj);
+::tpy::BigInt get_val__A(const A& obj);
 // @overload
 // def get_val(obj: B) -> float: ...  # tpyc: ok
-double get_val(const B& obj);
+double get_val__B(const B& obj);
 // @overload
 // def get_big(obj: C) -> int: ...  # tpyc: ok
-::tpy::BigInt get_big(const C& obj);
+::tpy::BigInt get_big__C(const C& obj);
 // @overload
 // def get_big(obj: B) -> float: ...  # tpyc: ok
-double get_big(const B& obj);
+double get_big__B(const B& obj);
 // @overload
 // def get_wide(obj: A) -> int64: ...  # tpyc: ok
-int64_t get_wide(const A& obj);
+int64_t get_wide__A(const A& obj);
 // @overload
 // def get_wide(obj: B) -> float: ...  # tpyc: ok
-double get_wide(const B& obj);
+double get_wide__B(const B& obj);
 // @overload
 // def get_cast(obj: A) -> float: ...  # tpyc: ok
-double get_cast(const A& obj);
+double get_cast__A(const A& obj);
 // @overload
 // def get_cast(obj: C) -> int: ...  # tpyc: ok
-::tpy::BigInt get_cast(const C& obj);
+::tpy::BigInt get_cast__C(const C& obj);
 // def main() -> None:
 void main();
 

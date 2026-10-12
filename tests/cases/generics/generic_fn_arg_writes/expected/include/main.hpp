@@ -8,7 +8,8 @@
 
 namespace tpyapp::main {
 
-using ::tpystd::functools::reduce;
+using ::tpystd::functools::reduce__Fn_U_T_U__Iterable_T__U;
+using ::tpystd::functools::reduce__Fn_T_T_T__list_T;
 
 struct R;
 struct P;

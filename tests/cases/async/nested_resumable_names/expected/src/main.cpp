@@ -31,7 +31,7 @@ __coro_Outer_Inner_echo Outer_Inner_echo() {
 
 
 // def delegated(inner: Outer.Inner) -> Iterator[int]:
-__gen_delegated delegated(Outer::Inner& inner) {
+__gen_delegated delegated(const Outer::Inner& inner) {
     return __gen_delegated(inner);
 }
 

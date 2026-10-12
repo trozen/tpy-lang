@@ -29,13 +29,13 @@ namespace tpyapp::main {
 //     elif isinstance(pet, Cat):
 //         return pet.sound()
 //     return -1
-::tpy::BigInt by_method(::tpy::Union<Cat*, Dog*> pet) {
-    if (std::holds_alternative<Dog*>(pet)) {
-        auto& __pet = *std::get<Dog*>(pet);
+::tpy::BigInt by_method(::tpy::Union<const Cat*, const Dog*> pet) {
+    if (std::holds_alternative<const Dog*>(pet)) {
+        auto& __pet = *std::get<const Dog*>(pet);
         return __pet.sound();
     } else {
         if (true) {
-            auto& __pet = *std::get<Cat*>(pet);
+            auto& __pet = *std::get<const Cat*>(pet);
             return __pet.sound();
         }
     }
@@ -53,9 +53,9 @@ void main() {
     Cat __tmp_2 = Cat(::tpy::BigInt(2));
     std::cout << ::tpyapp::main::by_field(::tpy::Union<const Cat*, const Dog*>{&__tmp_2}) << "\n" << ::tpy::check_signals;
     Dog __tmp_3 = Dog(::tpy::BigInt(1));
-    std::cout << ::tpyapp::main::by_method(::tpy::Union<Cat*, Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::by_method(::tpy::Union<const Cat*, const Dog*>{&__tmp_3}) << "\n" << ::tpy::check_signals;
     Cat __tmp_4 = Cat(::tpy::BigInt(2));
-    std::cout << ::tpyapp::main::by_method(::tpy::Union<Cat*, Dog*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::by_method(::tpy::Union<const Cat*, const Dog*>{&__tmp_4}) << "\n" << ::tpy::check_signals;
 }
 
 // main()

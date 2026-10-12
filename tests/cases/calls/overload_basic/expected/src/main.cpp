@@ -13,13 +13,13 @@ namespace tpyapp::main {
 //         return "Cat with " + str(animal.lives) + " lives"
 // @overload
 // def describe(animal: Dog) -> str: ...  # tpyc: ok
-std::string describe(const Dog& animal) {
+std::string describe__Dog(const Dog& animal) {
     return (::tpy::str_concat("Dog: ", animal.name));
 }
 
 // @overload
 // def describe(animal: Cat) -> str: ...  # tpyc: ok
-std::string describe(const Cat& animal) {
+std::string describe__Cat(const Cat& animal) {
     return (::tpy::str_concat((::tpy::str_concat("Cat with ", (animal.lives).to_string())), " lives"));
 }
 
@@ -32,8 +32,8 @@ std::string describe(const Cat& animal) {
 void main() {
     Dog d = Dog("Rex");
     Cat c = Cat(::tpy::BigInt(9));
-    std::cout << ::tpyapp::main::describe(d) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::describe(c) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__Dog(d) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__Cat(c) << "\n" << ::tpy::check_signals;
 }
 
 // main()

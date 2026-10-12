@@ -7,7 +7,7 @@ namespace tpyapp::main {
 
 
 // def collect(src: Fresh) -> Iterator[int32]:
-__gen_collect collect(Fresh& src) {
+__gen_collect collect(const Fresh& src) {
     return __gen_collect(src);
 }
 

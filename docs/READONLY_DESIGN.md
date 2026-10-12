@@ -367,7 +367,8 @@ Allowed:
    through call edges) are emitted as `const` C++ member functions even without
    an explicit `@readonly`. Two-phase: Phase 1 records direct mutations and
    call edges per body; Phase 2 propagates `self_mutated` through the
-   intra-module call graph to a fixpoint. See `LANGUAGE_FEATURES.md` for the
+   call graph of the import component (one module, or every member of an
+   import cycle) to a fixpoint. See `LANGUAGE_FEATURES.md` for the
    full rule set, including which methods are exempted (constructors,
    `__del__`, in-place operators, consuming methods, `@auto_readonly` mutable
    clones, methods overriding non-const `@dynamic` virtuals, and methods

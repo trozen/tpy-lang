@@ -15,7 +15,7 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_doubled_range;
 
 // def doubled_range(r: NumberRange) -> Iterator[int32]:
-__gen_doubled_range doubled_range(NumberRange& r);
+__gen_doubled_range doubled_range(const NumberRange& r);
 // def main():
 void main();
 
@@ -66,7 +66,7 @@ inline std::ostream& operator<<(std::ostream& os, const NumberRange& obj) {
 // def doubled_range(r: NumberRange) -> Iterator[int32]:
 struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, int32_t> {
     ::tpy::frame_state __state;
-    NumberRange& r;
+    const NumberRange& r;
     int32_t x;
     using __for_src_0_t = decltype((r));
     ::tpy::frame_loop_slot<::tpy::iter_type_t<__for_src_0_t>> __for_itr_0;
@@ -80,7 +80,7 @@ struct __gen_doubled_range : public ::tpy::next_iter_mixin<__gen_doubled_range, 
         S_DONE = 4,
     };
 
-    __gen_doubled_range(NumberRange& r)
+    __gen_doubled_range(const NumberRange& r)
         : __state(S_INITIAL),
           r(r) {}
 

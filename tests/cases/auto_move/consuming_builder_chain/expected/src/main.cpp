@@ -18,7 +18,7 @@ Point owned(int32_t n) {
 
 // def owned_method(f: Factory) -> Own[Point]:
 //     return f.make().updated()  # tpyc: ok
-Point owned_method(Factory& f) {
+Point owned_method(const Factory& f) {
     return f.make().updated();
 }
 

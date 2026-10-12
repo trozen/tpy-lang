@@ -1726,7 +1726,7 @@ def test_scan_by_short_name_honors_import_alias():
 
     # A second registration without a local-name override exposes the
     # canonical short name too -- mimicking the typical stdlib-import
-    # path in `compiler.py::_analyze_module`.
+    # path in `compiler.py::_finalize_declarations`.
     registry.register_protocol(info)
     assert registry.scan_by_short_name("Sized") is info
     assert registry.scan_by_short_name("MySized") is info  # alias still works

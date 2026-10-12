@@ -10,6 +10,12 @@ void on_init(Module& mod) {
     mod.log("initialized");
 }
 
+// def on_announce(mod: Module):
+//     print(mod.describe())
+void on_announce(const Module& mod) {
+    std::cout << mod.describe() << "\n" << ::tpy::check_signals;
+}
+
 // @readonly
 // def get_description(mod: Module) -> str:
 //     return "Module(" + mod._name + ")"
@@ -35,6 +41,7 @@ void append_item(Module& mod, int32_t val) {
 //     print(m.describe())
 //     print(m.name_upper())
 //     m.reinit()
+//     m.announce()
 //     m.add_item(42)
 //     print(m._items)
 void main() {
@@ -43,6 +50,7 @@ void main() {
     std::cout << m.describe() << "\n" << ::tpy::check_signals;
     std::cout << m.name_upper() << "\n" << ::tpy::check_signals;
     m.reinit();
+    m.announce();
     m.add_item(42);
     std::cout << ::tpy::ListPrinter(m._items) << "\n" << ::tpy::check_signals;
 }

@@ -7,35 +7,35 @@ namespace tpyapp::main {
 // @dispatch
 // def kind(x: bool) -> str:
 //     return "bool"
-std::string kind(bool x) {
+std::string kind__bool(bool x) {
     return "bool";
 }
 
 // @dispatch
 // def kind(x: str) -> str:
 //     return "str"
-std::string kind(std::string_view x) {
+std::string kind__str(std::string_view x) {
     return "str";
 }
 
 // @dispatch
 // def sv(x: bool) -> str:
 //     return "sv-bool"
-std::string sv(bool x) {
+std::string sv__bool(bool x) {
     return "sv-bool";
 }
 
 // @dispatch
 // def sv(x: StrView) -> str:
 //     return "sv-str"
-std::string sv(std::string_view x) {
+std::string sv__StrView(std::string_view x) {
     return "sv-str";
 }
 
 // @dispatch
 // def gen_ov(x: bool) -> str:
 //     return "gen-bool"
-std::string gen_ov(bool x) {
+std::string gen_ov__bool(bool x) {
     return "gen-bool";
 }
 
@@ -57,12 +57,12 @@ std::string echo(std::string_view x) {
 //     print(c.kind("ok"))
 //     print(c.kind(True))
 void main() {
-    std::cout << ::tpyapp::main::kind(std::string_view("ok")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::kind(true) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind__str(std::string_view("ok")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind__bool(true) << "\n" << ::tpy::check_signals;
     std::string_view s = "ok";
-    std::cout << ::tpyapp::main::kind(s) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::sv(std::string_view("v")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::gen_ov<std::string>("hi") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind__str(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sv__StrView(std::string_view("v")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::gen_ov__T<std::string>("hi") << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::echo("hi") << "\n" << ::tpy::check_signals;
     C c = C();
     std::cout << c.kind(std::string_view("ok")) << "\n" << ::tpy::check_signals;

@@ -156,7 +156,7 @@ void receiver_mutate(bool c, C* p, C* q) {
 //     if p is not None and q is not None:
 //         # A reading method on the same select.
 //         print("receiver_read:", (p if c else q).area())  # tpyc: ok
-void receiver_read(bool c, C* p, C* q) {
+void receiver_read(bool c, const C* p, const C* q) {
     if (((p != nullptr) && (q != nullptr))) {
         std::cout << "receiver_read:" << " " << ((c) ? ((*p)) : ((*q))).area() << "\n" << ::tpy::check_signals;
     }

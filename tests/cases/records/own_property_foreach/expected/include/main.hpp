@@ -14,7 +14,7 @@ inline constexpr std::string_view __name__ = "__main__";
 // def use(s: Snap) -> None:
 void use(Snap& s);
 // def use_method(s: Snap) -> None:
-void use_method(Snap& s);
+void use_method(const Snap& s);
 // def main() -> None:
 void main();
 

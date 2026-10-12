@@ -1,0 +1,6 @@
+const: 2 2 4 4 3
+borrow: 103 105
+genexpr: 3 3 3 3 2
+receiver: 5 6 15 16
+method: 2 2 3 3
+writer: [0, 1, 1, 9]

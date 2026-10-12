@@ -97,7 +97,7 @@ __coro_async_read async_read(const App& app) {
 //         # Ordinary methods use the shared argument invalidation as well.
 //         print("method-after", values[i])  # tpyc: bounds_checked(values)
 //         break
-void mutate_then_read(App& app, std::vector<int32_t>& values) {
+void mutate_then_read(const App& app, std::vector<int32_t>& values) {
     int32_t __stop_0 = ::tpy::__len__(values);
     for (int32_t i = 0; i < __stop_0; ++i) {
         std::cout << "bounds-before" << " " << values[static_cast<std::size_t>(i)] << "\n" << ::tpy::check_signals;

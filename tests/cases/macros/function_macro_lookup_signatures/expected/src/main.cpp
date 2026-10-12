@@ -13,14 +13,14 @@ bool local_sink(bool flag, std::string_view label) {
 // @dispatch
 // def amb(x: bool) -> bool:
 //     return x
-bool amb(bool x) {
+bool amb__bool(bool x) {
     return x;
 }
 
 // @dispatch
 // def amb(x: str) -> str:
 //     return x
-std::string amb(std::string_view x) {
+std::string amb__str(std::string_view x) {
     return std::string(x);
 }
 
@@ -30,7 +30,7 @@ std::string amb(std::string_view x) {
 //     return local_sink(amb(armed), "go")
 bool run() {
     bool armed = true;
-    return ::tpyapp::main::local_sink(::tpyapp::main::amb(armed), "go");
+    return ::tpyapp::main::local_sink(::tpyapp::main::amb__bool(armed), "go");
 }
 
 // def main() -> None:
@@ -42,9 +42,9 @@ bool run() {
 void main() {
     std::cout << ((::tpyapp::main::run()) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     std::cout << ((::tpyapp::helpermod::paint(::tpyapp::helpermod::Color::RED)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
-    std::cout << ((::tpyapp::main::amb(true)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
+    std::cout << ((::tpyapp::main::amb__bool(true)) ? (1) : (0)) << "\n" << ::tpy::check_signals;
     std::string_view s = "ok";
-    std::cout << ::tpyapp::main::amb(s) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::amb__str(s) << "\n" << ::tpy::check_signals;
 }
 
 // from helpermod import paint, Color, paint as painter

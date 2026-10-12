@@ -194,24 +194,24 @@ void _p(double x) {
 //     g2: float = random.gauss(0.0, 1.0)
 //     print("gauss_state_reset:", g1 == g2)
 void main() {
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "engine_u32:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 10; ++_) {
         std::cout << (*::tpystd::random::_inst).getrandbits(32) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(1);
+    ::tpystd::random::seed__int32(1);
     std::cout << "seed1_u32:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 5; ++_) {
         std::cout << (*::tpystd::random::_inst).getrandbits(32) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     double a0 = ::tpystd::random::random();
     double a1 = ::tpystd::random::random();
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     double b0 = ::tpystd::random::random();
     double b1 = ::tpystd::random::random();
     std::cout << "reproducible:" << " " << ::tpy::print_bool((a0 == b0)) << " " << ::tpy::print_bool((a1 == b1)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(7);
+    ::tpystd::random::seed__int32(7);
     int32_t i = 0;
     bool in_range = true;
     while ((i < 1000)) {
@@ -222,9 +222,9 @@ void main() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << "in_range:" << " " << ::tpy::print_bool(in_range) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(1);
+    ::tpystd::random::seed__int32(1);
     double s1 = ::tpystd::random::random();
-    ::tpystd::random::seed(2);
+    ::tpystd::random::seed__int32(2);
     double s2 = ::tpystd::random::random();
     std::cout << "distinct_seeds:" << " " << ::tpy::print_bool((s1 != s2)) << "\n" << ::tpy::check_signals;
     ::tpystd::random::Random r1 = ::tpystd::random::Random(42);
@@ -233,121 +233,121 @@ void main() {
     ::tpystd::random::Random r3 = ::tpystd::random::Random(42);
     ::tpystd::random::Random r4 = ::tpystd::random::Random(43);
     std::cout << "instance_diff_seed:" << " " << ::tpy::print_bool((r3.random() != r4.random())) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(99);
+    ::tpystd::random::seed__int32(99);
     double before = ::tpystd::random::random();
     ::tpystd::random::Random side = ::tpystd::random::Random(12345);
     side.random();
     side.random();
-    ::tpystd::random::seed(99);
+    ::tpystd::random::seed__int32(99);
     double after = ::tpystd::random::random();
     std::cout << "singleton_isolated:" << " " << ::tpy::print_bool((before == after)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randint:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 5; ++_) {
         std::cout << ::tpystd::random::randint(1, 100) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randrange_stop:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
-        std::cout << ::tpystd::random::randrange(10) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpystd::random::randrange__int32(10) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randrange_start_stop:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
-        std::cout << ::tpystd::random::randrange(100, 200) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpystd::random::randrange__int32__int32(100, 200) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randrange_step:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
-        std::cout << ::tpystd::random::randrange(0, 100, 7) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpystd::random::randrange__int32__int32__int32(0, 100, 7) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randrange_pow2:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 5; ++_) {
-        std::cout << ::tpystd::random::randrange(4) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpystd::random::randrange__int32(4) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randrange_pow2_32:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
-        std::cout << ::tpystd::random::randrange(0, 32) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpystd::random::randrange__int32__int32(0, 32) << "\n" << ::tpy::check_signals;
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randbytes_multiples_of_4:" << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::bytes_hex(::tpystd::random::randbytes(16)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randbytes_1:" << " " << ::tpy::bytes_hex(::tpystd::random::randbytes(1)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randbytes_5:" << " " << ::tpy::bytes_hex(::tpystd::random::randbytes(5)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "randbytes_7:" << " " << ::tpy::bytes_hex(::tpystd::random::randbytes(7)) << "\n" << ::tpy::check_signals;
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "uniform:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::uniform(1.0, 10.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "triangular_default:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::triangular());
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "triangular_args:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::triangular(0.0, 10.0, 3.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "gauss:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 4; ++_) {
         ::tpyapp::main::_p(::tpystd::random::gauss(0.0, 1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "normalvariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::normalvariate(0.0, 1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "lognormvariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::lognormvariate(0.0, 1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "expovariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::expovariate(1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "paretovariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::paretovariate(2.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "weibullvariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::weibullvariate(1.0, 1.5));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "gammavariate_big:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::gammavariate(2.0, 1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "gammavariate_small:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::gammavariate(0.5, 1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "betavariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::betavariate(2.0, 5.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     std::cout << "vonmisesvariate:" << "\n" << ::tpy::check_signals;
     for (int32_t _ = 0; _ < 3; ++_) {
         ::tpyapp::main::_p(::tpystd::random::vonmisesvariate(0.0, 1.0));
     }
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     double g1 = ::tpystd::random::gauss(0.0, 1.0);
-    ::tpystd::random::seed(42);
+    ::tpystd::random::seed__int32(42);
     double g2 = ::tpystd::random::gauss(0.0, 1.0);
     std::cout << "gauss_state_reset:" << " " << ::tpy::print_bool((g1 == g2)) << "\n" << ::tpy::check_signals;
 }

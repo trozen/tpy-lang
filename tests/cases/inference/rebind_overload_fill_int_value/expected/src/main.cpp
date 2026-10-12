@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // @dispatch
 // def f32d(d: dict[str, float32]) -> float32:
 //     return d["k"]
-float f32d(const ::tpy::ordered_map<std::string, float>& d) {
+float f32d__dict_str_float32(const ::tpy::ordered_map<std::string, float>& d) {
     return ::tpy::__getitem__(d, "k");
 }
 
 // @dispatch
 // def f32d(s: str) -> str:
 //     return s
-std::string f32d(std::string_view s) {
+std::string f32d__str(std::string_view s) {
     return std::string(s);
 }
 
@@ -27,7 +27,7 @@ std::string f32d(std::string_view s) {
 void rebind() {
     float z = 0.5f;
     ::tpy::ordered_map<std::string, float> __tmp_1 = ::tpy::ordered_map<std::string, float>({{"k", 1}});
-    z = ::tpyapp::main::f32d(__tmp_1);
+    z = ::tpyapp::main::f32d__dict_str_float32(__tmp_1);
     std::cout << ::tpy::print_bool((z == 1.0)) << "\n" << ::tpy::check_signals;
 }
 

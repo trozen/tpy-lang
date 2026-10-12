@@ -2,4 +2,5 @@ test: initialized
 Module(test)
 test
 test: initialized
+Module(test)
 [42]

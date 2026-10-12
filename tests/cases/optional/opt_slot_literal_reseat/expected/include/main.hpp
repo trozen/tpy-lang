@@ -11,6 +11,8 @@
 namespace tpyapp::main {
 
 struct F;
+struct Node;
+struct Tree;
 struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
@@ -18,23 +20,35 @@ inline constexpr std::string_view __name__ = "__main__";
 struct __gen_gen_literal;
 struct __gen_gen_call_then_literal;
 struct __coro_coro_literal;
+struct __coro_coro_call_then_literal;
+struct __gen_gen_find_loop;
+struct __gen_gen_find_param;
+struct __coro_coro_find_loop;
 
 // def none_then_literal(c: bool) -> int32:
 int32_t none_then_literal(bool c);
 // def call_then_literal(f: F) -> int32:
-int32_t call_then_literal(F& f);
+int32_t call_then_literal(const F& f);
 // def literal_then_literal(c: bool) -> int32:
 int32_t literal_then_literal(bool c);
 // def literal_none_literal(c: bool) -> int32:
 int32_t literal_none_literal(bool c);
 // def branch_hoisted(f: F, c: bool, d: bool) -> int32:
-int32_t branch_hoisted(F& f, bool c, bool d);
+int32_t branch_hoisted(const F& f, bool c, bool d);
 // def gen_literal(c: bool) -> Iterator[int32]:
 __gen_gen_literal gen_literal(bool c);
-// def gen_call_then_literal(f: F) -> Iterator[int32]:
-__gen_gen_call_then_literal gen_call_then_literal(F& f);
+// def gen_call_then_literal(f: readonly[F]) -> Iterator[int32]:
+__gen_gen_call_then_literal gen_call_then_literal(const F& f);
 // async def coro_literal(c: bool) -> int32:
 __coro_coro_literal coro_literal(bool c);
+// async def coro_call_then_literal(f: readonly[F]) -> int32:
+__coro_coro_call_then_literal coro_call_then_literal(const F& f);
+// def gen_find_loop(ts: list[Tree]) -> Iterator[int32]:
+__gen_gen_find_loop gen_find_loop(const std::vector<Tree>& ts);
+// def gen_find_param(t: Tree) -> Iterator[int32]:
+__gen_gen_find_param gen_find_param(const Tree& t);
+// async def coro_find_loop(ts: list[Tree]) -> int32:
+__coro_coro_find_loop coro_find_loop(const std::vector<Tree>& ts);
 // def main() -> None:
 void main();
 
@@ -47,6 +61,7 @@ struct F {
     F() = default;
     explicit F(int32_t n);
 
+    // @readonly
     // def make(self) -> Own[list[int32]]:
     std::vector<int32_t> make() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.F";
@@ -54,6 +69,46 @@ struct F {
 
 inline std::ostream& operator<<(std::ostream& os, const F& obj) {
     ::tpy::print_object_default(os, "F", obj);
+    return os;
+}
+
+// class Node:
+struct Node {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Node() = default;
+    explicit Node(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
+    ::tpy::print_object_default(os, "Node", obj);
+    return os;
+}
+
+// class Tree:
+struct Tree {
+    // nodes: list[Node]
+    std::vector<Node> nodes;
+
+    // def __init__(self, v: int32) -> None:
+    Tree() = default;
+    explicit Tree(int32_t v);
+
+    // @auto_readonly
+    // def find(self) -> Node | None:
+    Node* find();
+
+    // @auto_readonly
+    // def find(self) -> Node | None:
+    const Node* find() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tree";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
+    ::tpy::print_object_default(os, "Tree", obj);
     return os;
 }
 
@@ -104,6 +159,67 @@ struct __coro_coro_literal {
     }
 };
 
+// async def coro_call_then_literal(f: readonly[F]) -> int32:
+struct __coro_coro_call_then_literal {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    const F& f;
+    std::vector<int32_t>* a = nullptr;
+    std::optional<std::vector<int32_t>> __ptr_slot_f0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_coro_call_then_literal(const F& f)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          f(f) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_coro_call_then_literal&) {
+        return os << "<coroutine coro_call_then_literal>";
+    }
+};
+
+// async def coro_find_loop(ts: list[Tree]) -> int32:
+struct __coro_coro_find_loop {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    const std::vector<Tree>& ts;
+    int32_t total;
+    using __for_src_0_t = decltype((ts));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    const Node* o = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_DONE = 3,
+    };
+
+    __coro_coro_find_loop(const std::vector<Tree>& ts)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          ts(ts) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_coro_find_loop&) {
+        return os << "<coroutine coro_find_loop>";
+    }
+};
+
 // def gen_literal(c: bool) -> Iterator[int32]:
 struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, int32_t> {
     ::tpy::frame_state __state;
@@ -130,10 +246,10 @@ struct __gen_gen_literal : public ::tpy::next_iter_mixin<__gen_gen_literal, int3
     }
 };
 
-// def gen_call_then_literal(f: F) -> Iterator[int32]:
+// def gen_call_then_literal(f: readonly[F]) -> Iterator[int32]:
 struct __gen_gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_gen_call_then_literal, int32_t> {
     ::tpy::frame_state __state;
-    F& f;
+    const F& f;
     std::vector<int32_t>* a = nullptr;
     std::optional<std::vector<int32_t>> __ptr_slot_f0;
 
@@ -144,7 +260,7 @@ struct __gen_gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_gen_cal
         S_DONE = 3,
     };
 
-    __gen_gen_call_then_literal(F& f)
+    __gen_gen_call_then_literal(const F& f)
         : __state(S_INITIAL),
           f(f) {}
 
@@ -156,15 +272,103 @@ struct __gen_gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_gen_cal
     }
 };
 
+// def gen_find_loop(ts: list[Tree]) -> Iterator[int32]:
+struct __gen_gen_find_loop : public ::tpy::next_iter_mixin<__gen_gen_find_loop, int32_t> {
+    ::tpy::frame_state __state;
+    const std::vector<Tree>& ts;
+    using __for_src_0_t = decltype((ts));
+    ::tpy::begin_elem_t<__for_src_0_t>* t = nullptr;
+    const Node* o = nullptr;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_find_loop(const std::vector<Tree>& ts)
+        : __state(S_INITIAL),
+          ts(ts) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_find_loop& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_find_loop&) {
+        return os << "<generator gen_find_loop>";
+    }
+};
+
+// def gen_find_param(t: Tree) -> Iterator[int32]:
+struct __gen_gen_find_param : public ::tpy::next_iter_mixin<__gen_gen_find_param, int32_t> {
+    ::tpy::frame_state __state;
+    const Tree& t;
+    const Node* o = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_find_param(const Tree& t)
+        : __state(S_INITIAL),
+          t(t) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_find_param& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_find_param&) {
+        return os << "<generator gen_find_param>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline F::F(int32_t n) : n(n) {}
 
+// @readonly
 // def make(self) -> Own[list[int32]]:
 //     return [self.n, self.n]
 inline std::vector<int32_t> F::make() const {
     return {this->n, this->n};
+}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Node::Node(int32_t v) : v(v) {}
+
+// def __init__(self, v: int32) -> None:
+//     self.nodes = [Node(v)]
+inline Tree::Tree(int32_t v) : nodes(std::vector<Node>{Node(v)}) {}
+
+// @auto_readonly
+// def find(self) -> Node | None:
+//     if self.nodes:
+//         return self.nodes[0]
+//     return None
+inline Node* Tree::find() {
+    if ((::tpy::__len__(this->nodes) != 0)) {
+        return &(::tpy::__getitem__(this->nodes, 0));
+    }
+    return nullptr;
+}
+
+// @auto_readonly
+// def find(self) -> Node | None:
+//     if self.nodes:
+//         return self.nodes[0]
+//     return None
+inline const Node* Tree::find() const {
+    if ((::tpy::__len__(this->nodes) != 0)) {
+        return &(::tpy::__getitem__(this->nodes, 0));
+    }
+    return nullptr;
 }
 
 // def __init__(self, n: int32) -> None:

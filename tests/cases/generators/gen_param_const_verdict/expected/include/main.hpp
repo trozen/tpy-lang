@@ -71,7 +71,7 @@ __coro_aro aro(const std::vector<int32_t>& xs);
 // async def drive_aro(xs: list[int32]) -> int32:
 __coro_drive_aro drive_aro(const std::vector<int32_t>& xs);
 // def drive_scan(g: Bag, ys: list[int32]) -> int32:
-int32_t drive_scan(Bag& g, const std::vector<int32_t>& ys);
+int32_t drive_scan(const Bag& g, const std::vector<int32_t>& ys);
 // def main() -> None:
 void main();
 

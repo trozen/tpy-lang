@@ -15,11 +15,11 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t apply(__F0&& f, const std::vector<T>& xs);
+int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs);
 // @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 template<typename T>
-::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
+::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 // def main() -> None:
 void main();
 
@@ -36,14 +36,14 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t apply(__F0&& f, const std::vector<T>& xs) {
+int32_t apply__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
     return 0;
 }
 // @dispatch
 // def apply[T](xs: list[T], a: T, b: T) -> T:  # tpyc: ok
 //     return a
 template<typename T>
-::tpy::val_or_ref_t<T> apply(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
+::tpy::val_or_ref_t<T> apply__list_T__T__T(const std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
     return ::tpy::param_to_return<T>(a);
 }
 

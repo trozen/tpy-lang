@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     r = a.tag(k)
 //     r = a.tag(f)
 //     return r
-int32_t use(A& a, int32_t k, double f) {
+int32_t use(const A& a, int32_t k, double f) {
     ::tpy::Union<double, int32_t> __tmp_1 = k;
     int32_t r = a.tag(__tmp_1);
     ::tpy::Union<double, int32_t> __tmp_2 = f;
@@ -19,7 +19,7 @@ int32_t use(A& a, int32_t k, double f) {
 
 // def use_inherited(c: Child, k: int32) -> int32:
 //     return c.tag(k)
-int32_t use_inherited(Child& c, int32_t k) {
+int32_t use_inherited(const Child& c, int32_t k) {
     ::tpy::Union<double, int32_t> __tmp_1 = k;
     return c.tag(__tmp_1);
 }
@@ -27,7 +27,7 @@ int32_t use_inherited(Child& c, int32_t k) {
 // def use_lit(a: A) -> int32:
 //     # A coerced literal needs no temp.
 //     return a.tag(5)
-int32_t use_lit(A& a) {
+int32_t use_lit(const A& a) {
     return a.tag(5);
 }
 

@@ -26,19 +26,19 @@ extern const ::tpy::BigInt maxunicode;
 
 // @dispatch
 // def exit() -> None:
-void exit();
+void exit__noargs();
 // @dispatch
 // def exit(code: int32) -> None:
-void exit(int32_t code);
+void exit__int32(int32_t code);
 // @dispatch
 // def exit(code: str) -> None:
-void exit(std::string_view code);
+void exit__str(std::string_view code);
 // @dispatch
 // def exit(code: None) -> None:
-void exit(std::monostate code);
+void exit__None(std::monostate code);
 // @dispatch
 // def exit(code: int32 | str | None) -> None:
-void exit(const ::tpy::Union<std::monostate, int32_t, std::string>& code);
+void exit__None_int32_str(const ::tpy::Union<std::monostate, int32_t, std::string>& code);
 
 void __tpy_init();
 } // namespace tpystd::sys

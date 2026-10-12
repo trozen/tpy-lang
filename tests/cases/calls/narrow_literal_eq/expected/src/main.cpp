@@ -75,7 +75,7 @@ std::string bucket__lit_3__4(int32_t x) {
 
 // @overload
 // def bucket(x: int32) -> str: ...
-std::string bucket(int32_t x) {
+std::string bucket__int32(int32_t x) {
     if ((x <= 2)) {
         return "low";
     }
@@ -99,7 +99,7 @@ void dispatch_int(int32_t x) {
     } else if ((x == 3)) {
         std::cout << ::tpyapp::main::bucket__lit_3__4(x) << "\n" << ::tpy::check_signals;
     } else {
-        std::cout << ::tpyapp::main::bucket(x) << "\n" << ::tpy::check_signals;
+        std::cout << ::tpyapp::main::bucket__int32(x) << "\n" << ::tpy::check_signals;
     }
 }
 

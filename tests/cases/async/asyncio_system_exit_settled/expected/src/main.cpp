@@ -24,7 +24,7 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        ::tpystd::sys::exit(7);
+        ::tpystd::sys::exit__int32(7);
         __state = S_DONE;
         int32_t __tpy_async_ret = 0;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));

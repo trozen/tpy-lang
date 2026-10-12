@@ -360,7 +360,7 @@ void bump_list(const std::vector<A*>& ps) {
 //         return x.n
 //     except Err:
 //         return 0
-int32_t bump_or_zero(M& m) {
+int32_t bump_or_zero(const M& m) {
     A* x;
     {
         {

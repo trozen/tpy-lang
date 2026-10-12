@@ -29,24 +29,24 @@ int32_t grow(std::vector<int32_t>& xs);
 void poke(Box& b);
 // @dispatch
 // def late(r: R) -> int32:
-int32_t late(const R& r);
+int32_t late__R(const R& r);
 // @dispatch
 // def late(xs: list[int32]) -> int32:
-int32_t late(std::vector<int32_t>& xs);
+int32_t late__list_int32(std::vector<int32_t>& xs);
 // @dispatch
 // def early(b: Bag) -> int32:
-int32_t early(Bag& b);
+int32_t early__Bag(Bag& b);
 // @dispatch
 // def early(xs: list[float]) -> int32:
-int32_t early(const std::vector<double>& xs);
+int32_t early__list_float(const std::vector<double>& xs);
 // @dispatch
 // def pick[T](xs: list[T], i: int32) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> pick(std::vector<T>& xs, int32_t i);
+::tpy::val_or_ref_t<T> pick__list_T__int32(std::vector<T>& xs, int32_t i);
 // @dispatch
 // def pick[T](xs: list[T]) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> pick(std::vector<T>& xs);
+::tpy::val_or_ref_t<T> pick__list_T(std::vector<T>& xs);
 // def first_of[T](xs: list[T]) -> Iterator[T]:
 template <typename T>
 __gen_first_of<T> first_of(std::vector<T>& xs);
@@ -188,7 +188,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_first_of<T>::_
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpyapp::main::pick<T>(xs);
+        return ::tpyapp::main::pick__list_T<T>(xs);
     }
     case S_RESUME_0: {  // after: yield pick(xs)
         __state = S_DONE;
@@ -237,7 +237,7 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_at_of<T>::__ne
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __state = S_RESUME_0;
-        return ::tpyapp::main::pick<T>(xs, 0);
+        return ::tpyapp::main::pick__list_T__int32<T>(xs, 0);
     }
     case S_RESUME_0: {  // after: yield pick(xs, 0)
         __state = S_DONE;
@@ -349,14 +349,14 @@ inline void Box::set_size(int32_t n) {
 // def pick[T](xs: list[T], i: int32) -> T:
 //     return xs[i]
 template<typename T>
-::tpy::val_or_ref_t<T> pick(std::vector<T>& xs, int32_t i) {
+::tpy::val_or_ref_t<T> pick__list_T__int32(std::vector<T>& xs, int32_t i) {
     return ::tpy::__getitem__(xs, i);
 }
 // @dispatch
 // def pick[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
-::tpy::val_or_ref_t<T> pick(std::vector<T>& xs) {
+::tpy::val_or_ref_t<T> pick__list_T(std::vector<T>& xs) {
     return ::tpy::__getitem__(xs, 0);
 }
 

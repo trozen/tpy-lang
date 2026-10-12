@@ -25,13 +25,13 @@ namespace tpyapp::main {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        if (std::holds_alternative<Dog*>(a)) {
-            auto& __a = *std::get<Dog*>(a);
+        if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
             __state = S_RESUME_1;
             continue;
         } else {
-            auto& __a = *std::get<Cat*>(a);
+            auto& __a = *std::get<const Cat*>(a);
             __state = S_DONE;
             std::string __tpy_async_ret = __a.sound();
             return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -42,7 +42,7 @@ namespace tpyapp::main {
         if (__r1.is_pending()) return ::tpystd::tpy::Poll<std::string>::pending();
         (void)std::move(__r1).value();
         __sub_1.reset();
-        auto& __a = *std::get<Dog*>(a);
+        auto& __a = *std::get<const Dog*>(a);
         __state = S_DONE;
         std::string __tpy_async_ret = __a.sound();
         return ::tpystd::tpy::Poll<std::string>::ready(std::move(__tpy_async_ret));
@@ -54,7 +54,7 @@ namespace tpyapp::main {
 
 
 // async def voice(a: Dog | Cat) -> str:
-__coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
+__coro_voice voice(::tpy::Union<const Cat*, const Dog*> a) {
     return __coro_voice(a);
 }
 
@@ -66,7 +66,7 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         __coro_arg_0.emplace(Dog());
-        __sub_0.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_0))});
+        __sub_0.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_0))});
         __state = S_RESUME_0;
         continue;
     }
@@ -77,7 +77,7 @@ __coro_voice voice(::tpy::Union<Cat*, Dog*> a) {
         __sub_0.reset();
         std::cout << __await_lift_0 << "\n" << ::tpy::check_signals;
         __coro_arg_1.emplace(Cat());
-        __sub_1.emplace(::tpy::Union<Cat*, Dog*>{&((*__coro_arg_1))});
+        __sub_1.emplace(::tpy::Union<const Cat*, const Dog*>{&((*__coro_arg_1))});
         __state = S_RESUME_1;
         continue;
     }

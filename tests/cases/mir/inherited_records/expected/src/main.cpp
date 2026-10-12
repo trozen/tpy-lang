@@ -93,7 +93,7 @@ int32_t use_dog(Dog& d) {
 // # free function: a two-base record
 // def use_ab(ab: AB) -> int32:  # tpyc: mir(covered)
 //     return ab.total()
-int32_t use_ab(AB& ab) {
+int32_t use_ab(const AB& ab) {
     return ab.total();
 }
 

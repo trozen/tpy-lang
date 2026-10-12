@@ -19,12 +19,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Owner_voices::__ne
         return "start";
     }
     case S_RESUME_0: {  // after: yield "start"
-        if (std::holds_alternative<Dog*>(a)) {
-            auto& __a = *std::get<Dog*>(a);
+        if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             __state = S_RESUME_1;
             return __a.sound();
         } else {
-            auto& __a = *std::get<Cat*>(a);
+            auto& __a = *std::get<const Cat*>(a);
             __state = S_RESUME_2;
             return "not-a-dog";
         }
@@ -49,12 +49,12 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_Owner_first::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if (std::holds_alternative<Dog*>(a)) {
-            auto& __a = *std::get<Dog*>(a);
+        if (std::holds_alternative<const Dog*>(a)) {
+            auto& __a = *std::get<const Dog*>(a);
             __state = S_RESUME_0;
             return __a.sound();
         } else {
-            auto& __a = *std::get<Cat*>(a);
+            auto& __a = *std::get<const Cat*>(a);
             __state = S_RESUME_1;
             return __a.sound();
         }

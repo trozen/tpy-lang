@@ -34,7 +34,7 @@ void poke(Box& b) {
 // @dispatch
 // def late(r: R) -> int32:
 //     return r.n
-int32_t late(const R& r) {
+int32_t late__R(const R& r) {
     return r.n;
 }
 
@@ -42,7 +42,7 @@ int32_t late(const R& r) {
 // def late(xs: list[int32]) -> int32:
 //     xs.append(9)
 //     return len(xs)
-int32_t late(std::vector<int32_t>& xs) {
+int32_t late__list_int32(std::vector<int32_t>& xs) {
     xs.push_back(9);
     return ::tpy::__len__(xs);
 }
@@ -52,7 +52,7 @@ int32_t late(std::vector<int32_t>& xs) {
 // def early(b: Bag) -> int32:
 //     b.items.append(5)
 //     return len(b.items)
-int32_t early(Bag& b) {
+int32_t early__Bag(Bag& b) {
     b.items.push_back(5);
     return ::tpy::__len__(b.items);
 }
@@ -60,7 +60,7 @@ int32_t early(Bag& b) {
 // @dispatch
 // def early(xs: list[float]) -> int32:
 //     return len(xs)
-int32_t early(const std::vector<double>& xs) {
+int32_t early__list_float(const std::vector<double>& xs) {
     return ::tpy::__len__(xs);
 }
 
@@ -106,10 +106,10 @@ void main() {
     std::cout << "method-mutate:" << " " << k.n << " " << ::tpy::ListPrinter(ys) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> zs = {1, 2};
     R __tmp_1 = ::tpyapp::main::mkr();
-    std::cout << "free-late:" << " " << ::tpyapp::main::late(__tmp_1) << " " << ::tpyapp::main::late(zs) << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
+    std::cout << "free-late:" << " " << ::tpyapp::main::late__R(__tmp_1) << " " << ::tpyapp::main::late__list_int32(zs) << " " << ::tpy::ListPrinter(zs) << "\n" << ::tpy::check_signals;
     Bag bag = Bag();
     std::vector<double> __tmp_2 = ::tpyapp::main::mk();
-    std::cout << "free-early:" << " " << ::tpyapp::main::early(bag) << " " << ::tpyapp::main::early(__tmp_2) << " " << ::tpy::ListPrinter(bag.items) << "\n" << ::tpy::check_signals;
+    std::cout << "free-early:" << " " << ::tpyapp::main::early__Bag(bag) << " " << ::tpyapp::main::early__list_float(__tmp_2) << " " << ::tpy::ListPrinter(bag.items) << "\n" << ::tpy::check_signals;
     std::vector<R> rs = {R(1)};
     {
         auto __src_0 = ::tpyapp::main::first_of<R>(rs);

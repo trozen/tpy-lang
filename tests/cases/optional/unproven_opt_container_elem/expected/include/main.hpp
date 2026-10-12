@@ -84,14 +84,14 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t trial(__F0&& f, const std::vector<T>& xs);
+int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs);
 // @dispatch
 // def trial[T, U](f: Fn[[Optional[T]], U], xs: list[T]) -> int32:
 template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::opt_param_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t trial(__F0&& f, const std::vector<T>& xs);
+int32_t trial__Fn_T_None_U__list_T(__F0&& f, const std::vector<T>& xs);
 // def overload_trial() -> int32:
 int32_t overload_trial();
 // def global_slot() -> int32:
@@ -350,7 +350,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t trial(__F0&& f, const std::vector<T>& xs) {
+int32_t trial__Fn_T_U__list_T(__F0&& f, const std::vector<T>& xs) {
     return 2;
 }
 // @dispatch
@@ -360,7 +360,7 @@ template<typename T, typename U, typename __F0>
   requires requires(__F0& __fn, ::tpy::opt_param_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<U>;
   }
-int32_t trial(__F0&& f, const std::vector<T>& xs) {
+int32_t trial__Fn_T_None_U__list_T(__F0&& f, const std::vector<T>& xs) {
     return 1;
 }
 

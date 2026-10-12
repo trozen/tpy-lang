@@ -12,11 +12,11 @@ inline constexpr std::string_view __name__ = "__main__";
 // @dispatch
 // def pick(xs: Iterable[int], y: int) -> str:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
-std::string pick(const T_xs& xs, const ::tpy::BigInt& y);
+std::string pick__Iterable_int__int(const T_xs& xs, const ::tpy::BigInt& y);
 // @dispatch
 // def pick(xs: Iterable[float], y: float) -> str:
 template<::tpystd::typing::Iterable<double> T_xs>
-std::string pick(const T_xs& xs, double y);
+std::string pick__Iterable_float__float(const T_xs& xs, double y);
 // def main() -> None:
 void main();
 
@@ -24,14 +24,14 @@ void main();
 // def pick(xs: Iterable[int], y: int) -> str:
 //     return "int"
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
-std::string pick(const T_xs& xs, const ::tpy::BigInt& y) {
+std::string pick__Iterable_int__int(const T_xs& xs, const ::tpy::BigInt& y) {
     return "int";
 }
 // @dispatch
 // def pick(xs: Iterable[float], y: float) -> str:
 //     return "float"
 template<::tpystd::typing::Iterable<double> T_xs>
-std::string pick(const T_xs& xs, double y) {
+std::string pick__Iterable_float__float(const T_xs& xs, double y) {
     return "float";
 }
 

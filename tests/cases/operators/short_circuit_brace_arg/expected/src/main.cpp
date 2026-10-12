@@ -149,7 +149,7 @@ int64_t free_generator(bool flag) {
 //     for v in (bx.gen([1, 2, 3]) if flag else bx.gen([9])):  # tpyc: ok
 //         total += v
 //     return total
-int64_t method_generator(Bx& bx, bool flag) {
+int64_t method_generator(const Bx& bx, bool flag) {
     int64_t total = 0;
     {
         std::optional<std::vector<int64_t>> __tmp_1;

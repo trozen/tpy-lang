@@ -29,46 +29,46 @@ template<typename T>
 std::vector<T> empty_list(int32_t n);
 // @dispatch
 // def tot3(d: dict[str, float]) -> float:
-double tot3(const ::tpy::ordered_map<std::string, double>& d);
+double tot3__dict_str_float(const ::tpy::ordered_map<std::string, double>& d);
 // @dispatch
 // def tot3(s: str) -> str:
-std::string tot3(std::string_view s);
+std::string tot3__str(std::string_view s);
 // @dispatch
 // def tots(s: set[float]) -> float:
-double tots(const ::tpy::ordered_set<double>& s);
+double tots__set_float(const ::tpy::ordered_set<double>& s);
 // @dispatch
 // def tots(s: str) -> str:
-std::string tots(std::string_view s);
+std::string tots__str(std::string_view s);
 // @dispatch
 // def keep(v: float) -> float:
-double keep(double v);
+double keep__float(double v);
 // @dispatch
 // def keep(s: str) -> str:
-std::string keep(std::string_view s);
+std::string keep__str(std::string_view s);
 // def call0[T](f: Callable[[], T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> call0(const std::function<T()>& f);
 // @dispatch
 // def usebag(b: Bag[float]) -> float:
-double usebag(const Bag<double>& b);
+double usebag__Bag_float(const Bag<double>& b);
 // @dispatch
 // def usebag(s: str) -> str:
-std::string usebag(std::string_view s);
+std::string usebag__str(std::string_view s);
 // @dispatch
 // def ub(b: Bag2[float]) -> float:
-double ub(const Bag2<double>& b);
+double ub__Bag2_float(const Bag2<double>& b);
 // @dispatch
 // def ub(s: str) -> str:
-std::string ub(std::string_view s);
+std::string ub__str(std::string_view s);
 // def peek[T](r: Rec, xs: Own[list[T]]) -> Own[list[T]]:
 template<typename T>
 std::vector<T> peek(Rec& r, std::vector<T>&& xs);
 // @dispatch
 // def f32d(d: dict[str, float32]) -> float32:
-float f32d(const ::tpy::ordered_map<std::string, float>& d);
+float f32d__dict_str_float32(const ::tpy::ordered_map<std::string, float>& d);
 // @dispatch
 // def f32d(s: str) -> str:
-std::string f32d(std::string_view s);
+std::string f32d__str(std::string_view s);
 // def take_float(x: float) -> float:
 double take_float(double x);
 // def tuple_t_float[T](p: tuple[T, float]) -> T:
@@ -79,28 +79,28 @@ template<typename T>
 ::tpy::val_or_ref_t<T> apply_t(const std::function<double(::tpy::param_val_or_ref_t<T>)>& fn, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def twice(v: float) -> float:
-double twice(double v);
+double twice__float(double v);
 // @dispatch
 // def twice(v: str) -> str:
-std::string twice(std::string_view v);
+std::string twice__str(std::string_view v);
 // @dispatch
 // def tot2(xs: list[float]) -> float:
-double tot2(const std::vector<double>& xs);
+double tot2__list_float(const std::vector<double>& xs);
 // @dispatch
 // def tot2(s: str) -> str:
-std::string tot2(std::string_view s);
+std::string tot2__str(std::string_view s);
 // @dispatch
 // def width_h(v: float32) -> float32:
-float width_h(float v);
+float width_h__float32(float v);
 // @dispatch
 // def width_h(v: float) -> float:
-double width_h(double v);
+double width_h__float(double v);
 // @dispatch
 // def width_g(v: int64) -> int64:
-int64_t width_g(int64_t v);
+int64_t width_g__int64(int64_t v);
 // @dispatch
 // def width_g(v: int32) -> int32:
-int32_t width_g(int32_t v);
+int32_t width_g__int32(int32_t v);
 // def pick2[T](v: list[T], f: float) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> pick2(std::vector<T>& v, double f);

@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def greet(a: Dog) -> str: ...
-std::string greet(const Dog& a);
+std::string greet__Dog(const Dog& a);
 // @overload
 // def greet(a: Cat, loud: bool) -> str: ...
-std::string greet(const Cat& a, bool loud);
+std::string greet__Cat__bool(const Cat& a, bool loud);
 // def main() -> None:
 void main();
 

@@ -39,7 +39,7 @@ int32_t zero() {
 //     if c:  # char local
 //         seen += 512
 //     return seen
-int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c) {
+int32_t scalar_shapes(const Holder& h, const std::vector<int32_t>& xs, char c) {
     int32_t seen = 0;
     if (::tpy::__getitem__(xs, 0)) {
         seen = ::tpy::add_check<int32_t>(seen, 1);
@@ -154,7 +154,7 @@ int32_t operand_positions(const std::vector<int32_t>& xs, int32_t n) {
 //         case _:
 //             return 0
 //     return 0
-int32_t guard_shapes(Holder& h, const std::vector<int32_t>& xs, const std::vector<std::string>& names) {
+int32_t guard_shapes(const Holder& h, const std::vector<int32_t>& xs, const std::vector<std::string>& names) {
     auto& __match_subject_1 = h.n;
     switch (__match_subject_1) {
     case 1: {

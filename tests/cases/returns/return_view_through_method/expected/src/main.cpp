@@ -6,7 +6,7 @@ namespace tpyapp::main {
 
 // def borrow_through_method(w: Wrapper) -> StrView:
 //     return w.get_view()  # tpyc: ok
-std::string_view borrow_through_method(Wrapper& w) {
+std::string_view borrow_through_method(const Wrapper& w) {
     return w.get_view();
 }
 

@@ -24,16 +24,16 @@ void cfmakeraw(::tpystd::termios::TermAttributes& mode);
 void cfmakecbreak(::tpystd::termios::TermAttributes& mode);
 // @dispatch
 // def setraw(fd: int64, when: int32) -> Own[TermAttributes]:
-::tpystd::termios::TermAttributes setraw(int64_t fd, int32_t when);
+::tpystd::termios::TermAttributes setraw__int64__int32(int64_t fd, int32_t when);
 // @dispatch
 // def setraw(fd: int64) -> Own[TermAttributes]:
-::tpystd::termios::TermAttributes setraw(int64_t fd);
+::tpystd::termios::TermAttributes setraw__int64(int64_t fd);
 // @dispatch
 // def setcbreak(fd: int64, when: int32) -> Own[TermAttributes]:
-::tpystd::termios::TermAttributes setcbreak(int64_t fd, int32_t when);
+::tpystd::termios::TermAttributes setcbreak__int64__int32(int64_t fd, int32_t when);
 // @dispatch
 // def setcbreak(fd: int64) -> Own[TermAttributes]:
-::tpystd::termios::TermAttributes setcbreak(int64_t fd);
+::tpystd::termios::TermAttributes setcbreak__int64(int64_t fd);
 
 void __tpy_init();
 } // namespace tpystd::tty

@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // @dispatch
 // def report(a: int32, b: int32 = 0, *, mode: str = "x") -> str:
 //     return mode + ":" + str(a + b)
-std::string report(int32_t a, int32_t b, std::string_view mode) {
+std::string report__int32__int32__str(int32_t a, int32_t b, std::string_view mode) {
     return (::tpy::str_concat((::tpy::str_concat(mode, ":")), ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(a, b)))));
 }
 
 // @dispatch
 // def report(a: int32, b: int32 = 0, *, count: int32 = 1) -> int32:
 //     return (a + b) * count
-int32_t report(int32_t a, int32_t b, int32_t count) {
+int32_t report__int32__int32__int32(int32_t a, int32_t b, int32_t count) {
     return (::tpy::mul_check<int32_t>((::tpy::add_check<int32_t>(a, b)), count));
 }
 
@@ -32,13 +32,13 @@ int32_t report(int32_t a, int32_t b, int32_t count) {
 //     n2: int32 = report(int32(2), int32(5), count=int32(3))  # 21
 //     print(n2)
 void main() {
-    std::string s = ::tpyapp::main::report(3, 0, std::string_view("tag"));
+    std::string s = ::tpyapp::main::report__int32__int32__str(3, 0, std::string_view("tag"));
     std::cout << s << "\n" << ::tpy::check_signals;
-    int32_t n = ::tpyapp::main::report(3, 0, 4);
+    int32_t n = ::tpyapp::main::report__int32__int32__int32(3, 0, 4);
     std::cout << n << "\n" << ::tpy::check_signals;
-    std::string s2 = ::tpyapp::main::report(2, 5, std::string_view("sum"));
+    std::string s2 = ::tpyapp::main::report__int32__int32__str(2, 5, std::string_view("sum"));
     std::cout << s2 << "\n" << ::tpy::check_signals;
-    int32_t n2 = ::tpyapp::main::report(2, 5, 3);
+    int32_t n2 = ::tpyapp::main::report__int32__int32__int32(2, 5, 3);
     std::cout << n2 << "\n" << ::tpy::check_signals;
 }
 

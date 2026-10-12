@@ -56,12 +56,12 @@ std::vector<int32_t> param_comp(RBag& rb);
 // def ro_comp(b: readonly[Bag]) -> Own[list[str]]:
 std::vector<std::string> ro_comp(const Bag& b);
 // def gen_body(b: Bag) -> Iterator[int32]:
-__gen_gen_body gen_body(Bag& b);
+__gen_gen_body gen_body(const Bag& b);
 // def gen_protocol(xs: Iterable[str]) -> Iterator[int32]:
 template <::tpystd::typing::Iterable<std::string> T_xs>
 __gen_gen_protocol<T_xs> gen_protocol(T_xs&& xs);
 // async def async_body(b: Bag) -> int32:
-__coro_async_body async_body(Bag& b);
+__coro_async_body async_body(const Bag& b);
 // def main() -> None:
 void main();
 
@@ -345,7 +345,7 @@ inline std::ostream& operator<<(std::ostream& os, const Letters& obj) {
 struct __coro_async_body {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    Bag& b;
+    const Bag& b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -354,7 +354,7 @@ struct __coro_async_body {
         S_DONE = 2,
     };
 
-    __coro_async_body(Bag& b)
+    __coro_async_body(const Bag& b)
         : __state(S_INITIAL),
           __cancel_pending(false),
           b(b) {}
@@ -391,7 +391,7 @@ struct __gen_words : public ::tpy::next_iter_mixin<__gen_words, std::string> {
 // def gen_body(b: Bag) -> Iterator[int32]:
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
     ::tpy::frame_state __state;
-    Bag& b;
+    const Bag& b;
     ::tpy::frame_slot<std::vector<int32_t>> vs;
 
     enum : int32_t {
@@ -401,7 +401,7 @@ struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, int32_t> {
         S_DONE = 3,
     };
 
-    __gen_gen_body(Bag& b)
+    __gen_gen_body(const Bag& b)
         : __state(S_INITIAL),
           b(b) {}
 

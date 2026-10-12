@@ -26,8 +26,8 @@ std::string greet(Pet* p) {
 //     if isinstance(p, Dog):        # tpyc: ok
 //         return p.bark()
 //     return "not-dog"
-std::string describe(Pet* p) {
-    if (Dog* __p_ptr = dynamic_cast<Dog*>(p); (__p_ptr != nullptr)) {
+std::string describe(const Pet* p) {
+    if (const Dog* __p_ptr = dynamic_cast<const Dog*>(p); (__p_ptr != nullptr)) {
         return (*__p_ptr).bark();
     }
     return "not-dog";

@@ -17,7 +17,7 @@ void bump(A& x);
 // def ret_field(m: M) -> A:
 A& ret_field(const M& m);
 // def ret_call(m: M) -> A:
-A& ret_call(M& m);
+A& ret_call(const M& m);
 // def ret_elem(ps: list[Ptr[A]]) -> A:
 A& ret_elem(const std::vector<A*>& ps);
 // def arg_sources(m: M, ps: list[Ptr[A]]) -> None:

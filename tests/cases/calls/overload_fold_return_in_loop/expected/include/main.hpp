@@ -36,80 +36,80 @@ struct __gen_nums;
 
 // @overload
 // def in_loop(v: A, k: int) -> int: ...
-::tpy::BigInt in_loop(const A& v, const ::tpy::BigInt& k);
+::tpy::BigInt in_loop__A__int(const A& v, const ::tpy::BigInt& k);
 // @overload
 // def in_loop(v: B, k: int) -> int: ...
-::tpy::BigInt in_loop(const B& v, const ::tpy::BigInt& k);
+::tpy::BigInt in_loop__B__int(const B& v, const ::tpy::BigInt& k);
 // @overload
 // def in_branch(v: A, gate: bool) -> int: ...
-::tpy::BigInt in_branch(const A& v, bool gate);
+::tpy::BigInt in_branch__A__bool(const A& v, bool gate);
 // @overload
 // def in_branch(v: B, gate: bool) -> int: ...
-::tpy::BigInt in_branch(const B& v, bool gate);
+::tpy::BigInt in_branch__B__bool(const B& v, bool gate);
 // @overload
 // def toplevel(v: A) -> int: ...
-::tpy::BigInt toplevel(const A& v);
+::tpy::BigInt toplevel__A(const A& v);
 // @overload
 // def toplevel(v: B) -> int: ...
-::tpy::BigInt toplevel(const B& v);
+::tpy::BigInt toplevel__B(const B& v);
 // def nums() -> Iterator[int]:
 __gen_nums nums();
 // @overload
 // def dyn_local(x: int) -> int: ...
-::tpy::BigInt dyn_local(const ::tpy::BigInt& x);
+::tpy::BigInt dyn_local__int(const ::tpy::BigInt& x);
 // @overload
 // def dyn_local(x: str) -> int: ...
-::tpy::BigInt dyn_local(std::string_view x);
+::tpy::BigInt dyn_local__str(std::string_view x);
 // def bump(a: A) -> None:
 void bump(A& a);
 // @overload
 // def both_arms(x: int) -> int: ...
-::tpy::BigInt both_arms(const ::tpy::BigInt& x);
+::tpy::BigInt both_arms__int(const ::tpy::BigInt& x);
 // @overload
 // def both_arms(x: str) -> int: ...
-::tpy::BigInt both_arms(std::string_view x);
+::tpy::BigInt both_arms__str(std::string_view x);
 // @overload
 // def match_fold(v: A) -> int: ...
-::tpy::BigInt match_fold(A& v);
+::tpy::BigInt match_fold__A(A& v);
 // @overload
 // def match_fold(v: B) -> int: ...
-::tpy::BigInt match_fold(B& v);
+::tpy::BigInt match_fold__B(B& v);
 // @overload
 // def partly(x: int, k: int) -> int: ...
-::tpy::BigInt partly(const ::tpy::BigInt& x, const ::tpy::BigInt& k);
+::tpy::BigInt partly__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k);
 // @overload
 // def partly(x: str, k: int) -> int: ...
-::tpy::BigInt partly(std::string_view x, const ::tpy::BigInt& k);
+::tpy::BigInt partly__str__int(std::string_view x, const ::tpy::BigInt& k);
 // @overload
 // def walrus_elif(x: int, k: int) -> int: ...
-::tpy::BigInt walrus_elif(const ::tpy::BigInt& x, const ::tpy::BigInt& k);
+::tpy::BigInt walrus_elif__int__int(const ::tpy::BigInt& x, const ::tpy::BigInt& k);
 // @overload
 // def walrus_elif(x: str, k: int) -> int: ...
-::tpy::BigInt walrus_elif(std::string_view x, const ::tpy::BigInt& k);
+::tpy::BigInt walrus_elif__str__int(std::string_view x, const ::tpy::BigInt& k);
 // @overload
 // def match_decl(v: A) -> int: ...
-::tpy::BigInt match_decl(const A& v);
+::tpy::BigInt match_decl__A(const A& v);
 // @overload
 // def match_decl(v: B) -> int: ...
-::tpy::BigInt match_decl(const B& v);
+::tpy::BigInt match_decl__B(const B& v);
 // @overload
 // def raises(x: int) -> int: ...
-::tpy::BigInt raises(const ::tpy::BigInt& x);
+::tpy::BigInt raises__int(const ::tpy::BigInt& x);
 // @overload
 // def raises(x: str) -> int: ...
-::tpy::BigInt raises(std::string_view x);
+::tpy::BigInt raises__str(std::string_view x);
 // @overload
 // def redecl(x: int) -> int: ...
-::tpy::BigInt redecl(const ::tpy::BigInt& x);
+::tpy::BigInt redecl__int(const ::tpy::BigInt& x);
 // @overload
 // def redecl(x: str) -> int: ...
-::tpy::BigInt redecl(std::string_view x);
+::tpy::BigInt redecl__str(std::string_view x);
 // @overload
 // def nested_def(x: int) -> int: ...
-::tpy::BigInt nested_def(const ::tpy::BigInt& x);
+::tpy::BigInt nested_def__int(const ::tpy::BigInt& x);
 // @overload
 // def nested_def(x: str) -> int: ...
-::tpy::BigInt nested_def(std::string_view x);
+::tpy::BigInt nested_def__str(std::string_view x);
 // def main() -> None:
 void main();
 

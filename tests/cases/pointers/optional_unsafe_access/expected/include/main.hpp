@@ -13,7 +13,7 @@ extern std::vector<Point>* points;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def use_without_check(p: Point | None) -> int32:
-int32_t use_without_check(Point* p);
+int32_t use_without_check(const Point* p);
 // def find(pts: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& pts, int32_t target);
 

@@ -25,7 +25,7 @@ std::string classify__lit_1__2(int64_t x) {
 
 // @overload
 // def classify(x: int64) -> str: ...
-std::string classify(int64_t x) {
+std::string classify__int64(int64_t x) {
     if ((x == 1)) {
         return "one";
     } else if ((x == 2)) {
@@ -45,7 +45,7 @@ void main() {
     std::cout << ::tpyapp::main::classify__lit_1__2(1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::classify__lit_1__2(2) << "\n" << ::tpy::check_signals;
     int64_t x = 99;
-    std::cout << ::tpyapp::main::classify(x) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::classify__int64(x) << "\n" << ::tpy::check_signals;
 }
 
 // main()

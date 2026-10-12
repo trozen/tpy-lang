@@ -74,14 +74,14 @@ void bump(::tpy::Union<Cat*, Dog*> pet) {
 // @dispatch
 // def ov(x: str) -> int:
 //     return len(x)
-::tpy::BigInt ov(std::string_view x) {
+::tpy::BigInt ov__str(std::string_view x) {
     return ::tpy::BigInt(::tpy::__len__(x));
 }
 
 // @dispatch
 // def ov(x: bool) -> int:
 //     return 7
-::tpy::BigInt ov(bool x) {
+::tpy::BigInt ov__bool(bool x) {
     return ::tpy::BigInt(7);
 }
 

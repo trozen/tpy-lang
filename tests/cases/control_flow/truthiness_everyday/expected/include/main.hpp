@@ -16,14 +16,14 @@ int32_t width();
 // def zero() -> int32:
 int32_t zero();
 // def scalar_shapes(h: Holder, xs: list[int32], c: char) -> int32:
-int32_t scalar_shapes(Holder& h, const std::vector<int32_t>& xs, char c);
+int32_t scalar_shapes(const Holder& h, const std::vector<int32_t>& xs, char c);
 // def moded_shapes(h: Holder, names: list[str],
 //                  rows: list[list[int32]]) -> int32:
 int32_t moded_shapes(const Holder& h, const std::vector<std::string>& names, const std::vector<std::vector<int32_t>>& rows);
 // def operand_positions(xs: list[int32], n: int32) -> int32:
 int32_t operand_positions(const std::vector<int32_t>& xs, int32_t n);
 // def guard_shapes(h: Holder, xs: list[int32], names: list[str]) -> int32:
-int32_t guard_shapes(Holder& h, const std::vector<int32_t>& xs, const std::vector<std::string>& names);
+int32_t guard_shapes(const Holder& h, const std::vector<int32_t>& xs, const std::vector<std::string>& names);
 // def drain(xs: list[int32]) -> int32:
 int32_t drain(std::vector<int32_t>& xs);
 // def mutate_through_field(h: Holder) -> None:

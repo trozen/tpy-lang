@@ -13,13 +13,13 @@ namespace tpyapp::main {
 //         return animal.lives
 // @overload
 // def get_value(animal: Dog) -> str: ...  # tpyc: ok
-std::string get_value(const Dog& animal) {
+std::string get_value__Dog(const Dog& animal) {
     return animal.name;
 }
 
 // @overload
 // def get_value(animal: Cat) -> int: ...  # tpyc: ok
-::tpy::BigInt get_value(const Cat& animal) {
+::tpy::BigInt get_value__Cat(const Cat& animal) {
     return animal.lives;
 }
 
@@ -48,8 +48,8 @@ void use_cat_result(const ::tpy::BigInt& lives) {
 void main() {
     Dog d = Dog("Rex");
     Cat c = Cat(::tpy::BigInt(9));
-    std::string dog_val = ::tpyapp::main::get_value(d);
-    ::tpy::BigInt cat_val = ::tpyapp::main::get_value(c);
+    std::string dog_val = ::tpyapp::main::get_value__Dog(d);
+    ::tpy::BigInt cat_val = ::tpyapp::main::get_value__Cat(c);
     ::tpyapp::main::use_dog_result(dog_val);
     ::tpyapp::main::use_cat_result(cat_val);
 }

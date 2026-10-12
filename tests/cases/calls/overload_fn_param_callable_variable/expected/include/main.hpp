@@ -15,14 +15,14 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
+::tpy::val_or_ref_t<T> apply__Fn_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // @dispatch
 // def apply[T](f: Fn[[T, T], T], x: T) -> T:  # tpyc: ok
 template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
+::tpy::val_or_ref_t<T> apply__Fn_T_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x);
 // def main() -> None:
 void main();
 
@@ -33,7 +33,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
       { __fn(__a0) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
+::tpy::val_or_ref_t<T> apply__Fn_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return f(x);
 }
 // @dispatch
@@ -43,7 +43,7 @@ template<typename T, typename __F0>
   requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0, ::tpy::param_val_or_ref_t<T> __a1) {
       { __fn(__a0, __a1) } -> std::convertible_to<T>;
   }
-::tpy::val_or_ref_t<T> apply(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
+::tpy::val_or_ref_t<T> apply__Fn_T_T_T__T(__F0&& f, ::tpy::param_val_or_ref_t<T> x) {
     return f(x, x);
 }
 

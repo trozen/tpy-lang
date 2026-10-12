@@ -7,14 +7,14 @@ namespace tpyapp::main {
 // @dispatch
 // def describe(x: int) -> str:  # tpyc: ok
 //     return "int: " + str(x)
-std::string describe(const ::tpy::BigInt& x) {
+std::string describe__int(const ::tpy::BigInt& x) {
     return (::tpy::str_concat("int: ", (x).to_string()));
 }
 
 // @dispatch
 // def describe(x: str) -> str:  # tpyc: ok
 //     return "str: " + x
-std::string describe(std::string_view x) {
+std::string describe__str(std::string_view x) {
     return (::tpy::str_concat("str: ", x));
 }
 
@@ -22,8 +22,8 @@ std::string describe(std::string_view x) {
 //     print(describe(42))
 //     print(describe("hello"))
 void main() {
-    std::cout << ::tpyapp::main::describe(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::describe(std::string_view("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__int(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__str(std::string_view("hello")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -39,7 +39,7 @@ void store_element_read(::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>>& d
 //                          t: tuple[int32, tuple[int32, int32]]) -> None:
 void append_nested_scalar(std::vector<std::tuple<int32_t, std::tuple<int32_t, int32_t>>>& xs, const std::tuple<int32_t, std::tuple<int32_t, int32_t>>& t);
 // def user_slot_mixed_call(s: Taker, b: Box) -> int32:
-int32_t user_slot_mixed_call(Taker& s, Box& b);
+int32_t user_slot_mixed_call(const Taker& s, Box& b);
 // def own_param_member(d: dict[int32, tuple[Box, int32]], q: Own[Box]) -> None:
 void own_param_member(::tpy::ordered_map<int32_t, std::tuple<Box, int32_t>>& d, Box&& q);
 // def own_param_member_field(s: Slot, q: Own[Box]) -> None:

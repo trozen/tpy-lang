@@ -32,13 +32,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         } else if ((__tpy_argparse_tok == "--count")) {
             if (((::tpy::add_check<int32_t>(__tpy_argparse_i, 1)) >= ::tpy::__len__(argv))) {
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-                ::tpystd::sys::exit(2);
+                ::tpystd::sys::exit__int32(2);
             }
             count = ::tpy::BigInt::from_str(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else {
             ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "unknown argument: ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
-            ::tpystd::sys::exit(2);
+            ::tpystd::sys::exit__int32(2);
         }
     }
     return __tpy_builder_argparse_args_1(h, count);

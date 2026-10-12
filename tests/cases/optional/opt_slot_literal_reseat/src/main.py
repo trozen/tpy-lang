@@ -10,10 +10,13 @@
 # In a resumable body the slot is a PRESCANNED frame field instead (an inline
 # slot would die at the next suspension), so the same rebind renders
 # `xs = &*(__ptr_slot_fN = ...)`.
+# The inverse of the owned-result rule: a BORROWED result (an @auto_readonly
+# method returning a pointer into its receiver) on a const receiver keeps the
+# frame field `const Node*`.
 import asyncio
 from typing import Iterator
 
-from tpy import int32, Own
+from tpy import auto_readonly, int32, Own, readonly
 
 
 class F:
@@ -22,8 +25,29 @@ class F:
     def __init__(self, n: int32) -> None:
         self.n = n
 
+    @readonly
     def make(self) -> Own[list[int32]]:
         return [self.n, self.n]
+
+
+class Node:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+class Tree:
+    nodes: list[Node]
+
+    def __init__(self, v: int32) -> None:
+        self.nodes = [Node(v)]
+
+    @auto_readonly
+    def find(self) -> Node | None:
+        if self.nodes:
+            return self.nodes[0]
+        return None
 
 
 # free function: a None-initialized local (no slot filled at the decl) rebound
@@ -116,9 +140,10 @@ def gen_literal(c: bool) -> Iterator[int32]:
 
 
 # generator: a call result first, so the pointer is provably non-null and the
-# literal is written THROUGH it -- no frame field of its own
-def gen_call_then_literal(f: F) -> Iterator[int32]:
-    a: list[int32] | None = f.make()
+# literal is written THROUGH it -- no frame field of its own. The result is
+# owned, so the readonly receiver's const must not reach the frame pointer.
+def gen_call_then_literal(f: readonly[F]) -> Iterator[int32]:
+    a: list[int32] | None = f.make()  # tpyc: ok
     yield 0 if a is None else len(a)
     a = [1, 2, 3]  # tpyc: ok
     if a is not None:
@@ -136,6 +161,45 @@ async def coro_literal(c: bool) -> int32:
         return 0
     d[3] = 30
     return len(d)
+
+
+# async: the coroutine sibling of the call-result section; the owned result is
+# written through after the suspension
+async def coro_call_then_literal(f: readonly[F]) -> int32:
+    a: list[int32] | None = f.make()  # tpyc: ok
+    await asyncio.sleep(0)
+    a = [1, 2, 3]  # tpyc: ok
+    if a is None:
+        return 0
+    a.append(4)
+    return len(a)
+
+
+# generator, loop variable over a read-only list param: `find` returns a
+# borrow into the const receiver, so the frame field stays `const Node* o`
+def gen_find_loop(ts: list[Tree]) -> Iterator[int32]:
+    for t in ts:
+        o = t.find()  # tpyc: ok
+        yield 0
+        yield 0 if o is None else o.v
+
+
+# generator, the receiver a read-only param: same borrow, same `const Node* o`
+def gen_find_param(t: Tree) -> Iterator[int32]:
+    o = t.find()  # tpyc: ok
+    yield 0
+    yield 0 if o is None else o.v
+
+
+# async: the coroutine sibling of the loop-variable borrow, same
+# `const Node* o` across the suspension
+async def coro_find_loop(ts: list[Tree]) -> int32:
+    total = 0
+    for t in ts:
+        o = t.find()  # tpyc: ok
+        await asyncio.sleep(0)
+        total += 0 if o is None else o.v
+    return total
 
 
 def main() -> None:
@@ -158,6 +222,17 @@ def main() -> None:
         print("gen call then literal:", n)
     print("coro literal:", asyncio.run(coro_literal(True)),
           asyncio.run(coro_literal(False)))
+    print("coro call then literal:", asyncio.run(coro_call_then_literal(F(3))))
+    # the node is mutated between the yields and `o` observes it
+    ts = [Tree(5)]
+    for n in gen_find_loop(ts):
+        print("gen find loop:", n)
+        ts[0].nodes[0].v = 7
+    t = Tree(5)
+    for n in gen_find_param(t):
+        print("gen find param:", n)
+        t.nodes[0].v = 8
+    print("coro find loop:", asyncio.run(coro_find_loop([Tree(2), Tree(3)])))
 
 
 main()

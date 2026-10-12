@@ -37,13 +37,13 @@ const R* relay_free(H& h) {
 //     return h._opt
 // @overload
 // def pick(h: H, k: int32) -> readonly[Optional[R]]: ...
-const R* pick(H& h, int32_t k) {
+const R* pick__H__int32(H& h, int32_t k) {
     return ::tpy::optional_to_ptr(h._opt);
 }
 
 // @overload
 // def pick(h: H, k: str) -> readonly[Optional[R]]: ...
-const R* pick(H& h, std::string_view k) {
+const R* pick__H__str(H& h, std::string_view k) {
     return ::tpy::optional_to_ptr(h._alt);
 }
 
@@ -57,13 +57,13 @@ const R* pick(H& h, std::string_view k) {
 //     return h._opt
 // @overload
 // def pick_ro(h: readonly[H], k: int32) -> readonly[Optional[R]]: ...
-const R* pick_ro(const H& h, int32_t k) {
+const R* pick_ro__readonly_H__int32(const H& h, int32_t k) {
     return ::tpy::optional_to_ptr(h._opt);
 }
 
 // @overload
 // def pick_ro(h: readonly[H], k: str) -> readonly[Optional[R]]: ...
-const R* pick_ro(const H& h, std::string_view k) {
+const R* pick_ro__readonly_H__str(const H& h, std::string_view k) {
     return ::tpy::optional_to_ptr(h._alt);
 }
 
@@ -259,10 +259,10 @@ void main() {
     const R* p = h.get_member();
     h.bump(10);
     std::cout << "member" << " " << (((p != nullptr)) ? (p->x) : (-1)) << "\n" << ::tpy::check_signals;
-    const R* o = ::tpyapp::main::pick(h, std::string_view("alt"));
+    const R* o = ::tpyapp::main::pick__H__str(h, std::string_view("alt"));
     h.bump(10);
     std::cout << "overload" << " " << (((o != nullptr)) ? (o->x) : (-1)) << "\n" << ::tpy::check_signals;
-    const R* q = ::tpyapp::main::pick_ro(h, 0);
+    const R* q = ::tpyapp::main::pick_ro__readonly_H__int32(h, 0);
     h.bump(10);
     std::cout << "overload_ro" << " " << (((q != nullptr)) ? (q->x) : (-1)) << "\n" << ::tpy::check_signals;
     int32_t t = ::tpyapp::main::in_try(h);

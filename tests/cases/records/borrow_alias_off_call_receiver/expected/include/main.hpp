@@ -19,7 +19,7 @@ int32_t free_record(H& h);
 // def free_container(h: H) -> int32:
 int32_t free_container(H& h);
 // def free_own_receiver(h: H) -> int32:
-int32_t free_own_receiver(H& h);
+int32_t free_own_receiver(const H& h);
 // def main() -> None:
 void main();
 

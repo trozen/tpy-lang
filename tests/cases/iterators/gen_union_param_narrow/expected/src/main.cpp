@@ -17,7 +17,7 @@ void main() {
     Owner o = Owner();
     {
         Dog __tmp_1 = Dog();
-        auto __src_0 = o.voices(::tpy::Union<Cat*, Dog*>{&__tmp_1});
+        auto __src_0 = o.voices(::tpy::Union<const Cat*, const Dog*>{&__tmp_1});
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
         for (;;) {
             auto __r_1 = __itr_0.__next__();
@@ -28,7 +28,7 @@ void main() {
     }
     {
         Cat __tmp_2 = Cat();
-        auto __src_2 = o.voices(::tpy::Union<Cat*, Dog*>{&__tmp_2});
+        auto __src_2 = o.voices(::tpy::Union<const Cat*, const Dog*>{&__tmp_2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);
         for (;;) {
             auto __r_3 = __itr_2.__next__();
@@ -39,7 +39,7 @@ void main() {
     }
     {
         Cat __tmp_3 = Cat();
-        auto __src_4 = o.first(::tpy::Union<Cat*, Dog*>{&__tmp_3});
+        auto __src_4 = o.first(::tpy::Union<const Cat*, const Dog*>{&__tmp_3});
         auto&& __itr_4 = ::tpy::__iter__(__src_4);
         for (;;) {
             auto __r_5 = __itr_4.__next__();

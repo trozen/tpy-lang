@@ -363,7 +363,7 @@ int32_t bytearray_read(const ::tpy::ByteArray* b) {
 //     return trial(lambda d: d[0].x + len(d), rows)  # tpyc: ok
 int32_t overload_trial() {
     std::vector<std::vector<P>> rows = {{P(1)}};
-    return ::tpyapp::main::trial<std::vector<P>, int32_t>([](std::vector<P>& d) -> int32_t { return (::tpy::add_check<int32_t>(::tpy::__getitem__(d, 0).x, ::tpy::__len__(d))); }, rows);
+    return ::tpyapp::main::trial__Fn_T_U__list_T<std::vector<P>, int32_t>([](std::vector<P>& d) -> int32_t { return (::tpy::add_check<int32_t>(::tpy::__getitem__(d, 0).x, ::tpy::__len__(d))); }, rows);
 }
 
 // def global_slot() -> int32:

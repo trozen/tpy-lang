@@ -14,10 +14,10 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @overload
 // def area(shape: Circle) -> float: ...
-double area(const Circle& shape);
+double area__Circle(const Circle& shape);
 // @overload
 // def area(shape: Square) -> float: ...
-double area(const Square& shape);
+double area__Square(const Square& shape);
 // def main() -> None:
 void main();
 

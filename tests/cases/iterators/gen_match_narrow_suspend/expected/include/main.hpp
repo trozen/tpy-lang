@@ -18,7 +18,7 @@ struct __gen_guarded;
 struct __gen_kill;
 
 // def voices(a: Dog | Cat) -> Iterator[str]:
-__gen_voices voices(::tpy::Union<Cat*, Dog*> a);
+__gen_voices voices(::tpy::Union<const Cat*, const Dog*> a);
 // def capture(a: Dog | Cat) -> Iterator[str]:
 __gen_capture capture(::tpy::Union<Cat*, Dog*> a);
 // def guarded(a: int | str, allow: bool) -> Iterator[str]:
@@ -61,7 +61,7 @@ inline std::ostream& operator<<(std::ostream& os, const Cat& obj) {
 // def voices(a: Dog | Cat) -> Iterator[str]:
 struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
     ::tpy::frame_state __state;
-    ::tpy::Union<Cat*, Dog*> a;
+    ::tpy::Union<const Cat*, const Dog*> a;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -72,7 +72,7 @@ struct __gen_voices : public ::tpy::next_iter_mixin<__gen_voices, std::string> {
         S_DONE = 5,
     };
 
-    __gen_voices(::tpy::Union<Cat*, Dog*> a_)
+    __gen_voices(::tpy::Union<const Cat*, const Dog*> a_)
         : __state(S_INITIAL),
           a(a_) {}
 

@@ -12,13 +12,13 @@ namespace tpyapp::main {
 //     return x / base
 // @overload
 // def log(x: float) -> float: ...  # tpyc: ok
-double log(double x) {
+double log__float(double x) {
     return x;
 }
 
 // @overload
 // def log(x: float, base: float) -> float: ...  # tpyc: ok
-double log(double x, double base) {
+double log__float__float(double x, double base) {
     return (::tpy::truediv(x, base));
 }
 
@@ -27,8 +27,8 @@ double log(double x, double base) {
 //     print(log(16.0))
 //     print(log(16.0, 2.0))
 void main() {
-    std::cout << ::tpy::print_float(::tpyapp::main::log(16.0)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_float(::tpyapp::main::log(16.0, 2.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::log__float(16.0)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_float(::tpyapp::main::log__float__float(16.0, 2.0)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

@@ -188,7 +188,8 @@ These should be confirmed before Phase 0 starts:
 
 2. **Workspace-wide vs intra-module Phase 2 fixpoint.**
    Recommendation: **keep intra-module** for v1; Phase 9 is optional
-   cleanup.
+   cleanup. **Superseded:** Phase 9 shipped -- Phase 2 runs once per
+   import component.
 
 ## Spike validation
 
@@ -488,6 +489,9 @@ conformance.
 regression on existing test corpus.
 
 ### Phase 9 -- workspace-wide Phase 2 fixpoint (optional, ~1 day)
+
+**Status: shipped** per import component, see "Mutation-propagation
+across cycle borrow checks" under Future work.
 
 Optional cleanup. Extend mutation propagation from intra-module to
 workspace-wide.
@@ -1528,11 +1532,14 @@ return-by-ref codegen lands.
 
 ### Mutation-propagation across cycle borrow checks
 
-Phase 9 in the original plan -- workspace-wide Phase 2 fixpoint
-for `direct_mutated_params` / `transitive_mutated_params`. The
-current per-module fixpoint with workspace `registry.modules`
-collection works for present test shapes; an explicit cycle-aware
-fixpoint would tighten cross-module borrow reasoning.
+**Status: shipped.** Phase 9 in the original plan. An import cycle
+is analyzed as one unit: `analyze_component_bodies`
+(`tpyc/sema/analyzer.py`) analyzes every member's bodies, then runs
+the settles, the frame-close fixpoint and Phase 2 (mutation
+propagation, `infer_method_const`, const borrow params) once over the
+whole component, so a call into a cycle peer reads its propagated
+facts. A module outside a cycle is a one-module component. Pinned by
+`tests/cases/imports/mutual_cycle_phase2`.
 
 ### Better cycle diagnostics
 

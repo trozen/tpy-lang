@@ -22,306 +22,306 @@ struct __coro_in_async;
 int64_t a64();
 // @dispatch
 // def f_list(xs: list[int64]) -> str:
-std::string f_list(std::vector<int64_t>& xs);
+std::string f_list__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def f_list(xs: str) -> str:
-std::string f_list(std::string_view xs);
+std::string f_list__str(std::string_view xs);
 // @dispatch
 // def f_dict(d: dict[str, int64]) -> str:
-std::string f_dict(::tpy::ordered_map<std::string, int64_t>& d);
+std::string f_dict__dict_str_int64(::tpy::ordered_map<std::string, int64_t>& d);
 // @dispatch
 // def f_dict(d: str) -> str:
-std::string f_dict(std::string_view d);
+std::string f_dict__str(std::string_view d);
 // @dispatch
 // def f_set(s: set[int64]) -> str:
-std::string f_set(::tpy::ordered_set<int64_t>& s);
+std::string f_set__set_int64(::tpy::ordered_set<int64_t>& s);
 // @dispatch
 // def f_set(s: str) -> str:
-std::string f_set(std::string_view s);
+std::string f_set__str(std::string_view s);
 // @dispatch
 // def f_rows(g: list[list[int64]]) -> str:
-std::string f_rows(std::vector<std::vector<int64_t>>& g);
+std::string f_rows__list_list_int64(std::vector<std::vector<int64_t>>& g);
 // @dispatch
 // def f_rows(g: str) -> str:
-std::string f_rows(std::string_view g);
+std::string f_rows__str(std::string_view g);
 // @dispatch
 // def f_pairs(ps: list[tuple[int64, float]]) -> str:
-std::string f_pairs(std::vector<std::tuple<int64_t, double>>& ps);
+std::string f_pairs__list_tuple_int64_float(std::vector<std::tuple<int64_t, double>>& ps);
 // @dispatch
 // def f_pairs(ps: str) -> str:
-std::string f_pairs(std::string_view ps);
+std::string f_pairs__str(std::string_view ps);
 // @dispatch
 // def f_floats(xs: list[float]) -> str:
-std::string f_floats(std::vector<double>& xs);
+std::string f_floats__list_float(std::vector<double>& xs);
 // @dispatch
 // def f_floats(xs: str) -> str:
-std::string f_floats(std::string_view xs);
+std::string f_floats__str(std::string_view xs);
 // @dispatch
 // def f_opt(xs: list[int64] | None) -> str:
-std::string f_opt(std::vector<int64_t>* xs);
+std::string f_opt__list_int64_None(std::vector<int64_t>* xs);
 // @dispatch
 // def f_opt(xs: str) -> str:
-std::string f_opt(std::string_view xs);
+std::string f_opt__str(std::string_view xs);
 // @dispatch
 // def f_own(xs: Own[list[int64]]) -> Own[list[int64]]:
-std::vector<int64_t> f_own(std::vector<int64_t>&& xs);
+std::vector<int64_t> f_own__Own_list_int64(std::vector<int64_t>&& xs);
 // @dispatch
 // def f_own(xs: str) -> Own[list[int64]]:
-std::vector<int64_t> f_own(std::string_view xs);
+std::vector<int64_t> f_own__str(std::string_view xs);
 // @dispatch
 // def f_words(ws: list[str]) -> str:
-std::string f_words(std::vector<std::string>& ws);
+std::string f_words__list_str(std::vector<std::string>& ws);
 // @dispatch
 // def f_words(ws: str) -> str:
-std::string f_words(std::string_view ws);
+std::string f_words__str(std::string_view ws);
 // @dispatch
 // def fill_list(xs: list[float]) -> int32:
-int32_t fill_list(std::vector<double>& xs);
+int32_t fill_list__list_float(std::vector<double>& xs);
 // @dispatch
 // def fill_list(xs: str) -> int32:
-int32_t fill_list(std::string_view xs);
+int32_t fill_list__str(std::string_view xs);
 // @dispatch
 // def fill_dict(d: dict[str, float]) -> int32:
-int32_t fill_dict(::tpy::ordered_map<std::string, double>& d);
+int32_t fill_dict__dict_str_float(::tpy::ordered_map<std::string, double>& d);
 // @dispatch
 // def fill_dict(d: str) -> int32:
-int32_t fill_dict(std::string_view d);
+int32_t fill_dict__str(std::string_view d);
 // @dispatch
 // def fill_set(s: set[float]) -> int32:
-int32_t fill_set(::tpy::ordered_set<double>& s);
+int32_t fill_set__set_float(::tpy::ordered_set<double>& s);
 // @dispatch
 // def fill_set(s: str) -> int32:
-int32_t fill_set(std::string_view s);
+int32_t fill_set__str(std::string_view s);
 // @dispatch
 // def dict_rank(d: dict[str, int32]) -> str:
-std::string dict_rank(const ::tpy::ordered_map<std::string, int32_t>& d);
+std::string dict_rank__dict_str_int32(const ::tpy::ordered_map<std::string, int32_t>& d);
 // @dispatch
 // def dict_rank(d: dict[str, int64]) -> str:
-std::string dict_rank(const ::tpy::ordered_map<std::string, int64_t>& d);
+std::string dict_rank__dict_str_int64(const ::tpy::ordered_map<std::string, int64_t>& d);
 // @dispatch
 // def set_rank(s: set[int64]) -> str:
-std::string set_rank(const ::tpy::ordered_set<int64_t>& s);
+std::string set_rank__set_int64(const ::tpy::ordered_set<int64_t>& s);
 // @dispatch
 // def set_rank(s: set[int32]) -> str:
-std::string set_rank(const ::tpy::ordered_set<int32_t>& s);
+std::string set_rank__set_int32(const ::tpy::ordered_set<int32_t>& s);
 // @dispatch
 // def lit_rows(d: dict[str, list[int64]]) -> int64:
-int64_t lit_rows(const ::tpy::ordered_map<std::string, std::vector<int64_t>>& d);
+int64_t lit_rows__dict_str_list_int64(const ::tpy::ordered_map<std::string, std::vector<int64_t>>& d);
 // @dispatch
 // def lit_rows(d: str) -> int64:
-int64_t lit_rows(std::string_view d);
+int64_t lit_rows__str(std::string_view d);
 // @dispatch
 // def lit_keys(d: dict[tuple[int64, int64], int64]) -> int32:
-int32_t lit_keys(const ::tpy::ordered_map<std::tuple<int64_t, int64_t>, int64_t>& d);
+int32_t lit_keys__dict_tuple_int64_int64_int64(const ::tpy::ordered_map<std::tuple<int64_t, int64_t>, int64_t>& d);
 // @dispatch
 // def lit_keys(d: str) -> int32:
-int32_t lit_keys(std::string_view d);
+int32_t lit_keys__str(std::string_view d);
 // @dispatch
 // def f_span(xs: Span[int64]) -> str:
-std::string f_span(std::span<int64_t> xs);
+std::string f_span__Span_int64(std::span<int64_t> xs);
 // @dispatch
 // def f_span(xs: str) -> str:
-std::string f_span(std::string_view xs);
+std::string f_span__str(std::string_view xs);
 // @dispatch
 // def f_array(xs: Array[int64, 2]) -> str:
-std::string f_array(std::array<int64_t, 2>& xs);
+std::string f_array__Array_int64_2(std::array<int64_t, 2>& xs);
 // @dispatch
 // def f_array(xs: str) -> str:
-std::string f_array(std::string_view xs);
+std::string f_array__str(std::string_view xs);
 // @dispatch
 // def own_pick(xs: Own[list[int32]]) -> Own[list[int32]]:
-std::vector<int32_t> own_pick(std::vector<int32_t>&& xs);
+std::vector<int32_t> own_pick__Own_list_int32(std::vector<int32_t>&& xs);
 // @dispatch
 // def own_pick(xs: Own[list[int64]]) -> Own[list[int64]]:
-std::vector<int64_t> own_pick(std::vector<int64_t>&& xs);
+std::vector<int64_t> own_pick__Own_list_int64(std::vector<int64_t>&& xs);
 // @dispatch
 // def rank32(xs: list[int32]) -> str:
-std::string rank32(std::vector<int32_t>& xs);
+std::string rank32__list_int32(std::vector<int32_t>& xs);
 // @dispatch
 // def rank32(xs: list[int64]) -> str:
-std::string rank32(std::vector<int64_t>& xs);
+std::string rank32__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def rank_wide(xs: list[int64]) -> str:
-std::string rank_wide(std::vector<int64_t>& xs);
+std::string rank_wide__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def rank_wide(xs: list[int32]) -> str:
-std::string rank_wide(std::vector<int32_t>& xs);
+std::string rank_wide__list_int32(std::vector<int32_t>& xs);
 // @dispatch
 // def floor_a(xs: list[int64]) -> str:
-std::string floor_a(std::vector<int64_t>& xs);
+std::string floor_a__list_int64(std::vector<int64_t>& xs);
 // @dispatch
 // def floor_a(xs: list[int]) -> str:
-std::string floor_a(std::vector<::tpy::BigInt>& xs);
+std::string floor_a__list_int(std::vector<::tpy::BigInt>& xs);
 // @dispatch
 // def pair(xs: list[int32], n: int32) -> str:
-std::string pair(std::vector<int32_t>& xs, int32_t n);
+std::string pair__list_int32__int32(std::vector<int32_t>& xs, int32_t n);
 // @dispatch
 // def pair(xs: list[int64], n: int64) -> str:
-std::string pair(std::vector<int64_t>& xs, int64_t n);
+std::string pair__list_int64__int64(std::vector<int64_t>& xs, int64_t n);
 // @dispatch
 // def two(xs: list[int64], ys: list[int64]) -> str:
-std::string two(std::vector<int64_t>& xs, std::vector<int64_t>& ys);
+std::string two__list_int64__list_int64(std::vector<int64_t>& xs, std::vector<int64_t>& ys);
 // @dispatch
 // def two(xs: list[int32], ys: list[int32]) -> str:
-std::string two(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys);
+std::string two__list_int32__list_int32(const std::vector<int32_t>& xs, const std::vector<int32_t>& ys);
 // @dispatch
 // def gen_or_str[T](xs: list[T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> gen_or_str(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> gen_or_str__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def gen_or_str(xs: str, v: str) -> str:
-std::string gen_or_str(std::string_view xs, std::string_view v);
+std::string gen_or_str__str__str(std::string_view xs, std::string_view v);
 // @dispatch
 // def view_first(n: int32, xs: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string view_first(int32_t n, const T_xs& xs);
+std::string view_first__int32__Iterable_int64(int32_t n, const T_xs& xs);
 // @dispatch
 // def view_first(n: int32, xs: list[int64]) -> str:
-std::string view_first(int32_t n, const std::vector<int64_t>& xs);
+std::string view_first__int32__list_int64(int32_t n, const std::vector<int64_t>& xs);
 // @dispatch
 // def view_first_big(n: int, xs: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string view_first_big(const ::tpy::BigInt& n, const T_xs& xs);
+std::string view_first_big__int__Iterable_int64(const ::tpy::BigInt& n, const T_xs& xs);
 // @dispatch
 // def view_first_big(n: int, xs: list[int64]) -> str:
-std::string view_first_big(const ::tpy::BigInt& n, const std::vector<int64_t>& xs);
+std::string view_first_big__int__list_int64(const ::tpy::BigInt& n, const std::vector<int64_t>& xs);
 // @dispatch
 // def joint_views(a: Iterable[int32], b: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_a, ::tpystd::typing::Iterable<int32_t> T_b>
-std::string joint_views(const T_a& a, const T_b& b);
+std::string joint_views__Iterable_int32__Iterable_int32(const T_a& a, const T_b& b);
 // @dispatch
 // def joint_views(a: list[int32], b: list[int64]) -> str:
-std::string joint_views(const std::vector<int32_t>& a, const std::vector<int64_t>& b);
+std::string joint_views__list_int32__list_int64(const std::vector<int32_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def joint_wide(a: list[int64], b: list[int64]) -> str:
-std::string joint_wide(const std::vector<int64_t>& a, std::vector<int64_t>& b);
+std::string joint_wide__list_int64__list_int64(const std::vector<int64_t>& a, std::vector<int64_t>& b);
 // @dispatch
 // def joint_wide(a: list[int32], b: list[int64]) -> str:
-std::string joint_wide(const std::vector<int32_t>& a, const std::vector<int64_t>& b);
+std::string joint_wide__list_int32__list_int64(const std::vector<int32_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def gen_kw[T](xs: list[T], v: T) -> T:
 template<typename T>
-::tpy::val_or_ref_t<T> gen_kw(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
+::tpy::val_or_ref_t<T> gen_kw__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def gen_kw(xs: str) -> str:
-std::string gen_kw(std::string_view xs);
+std::string gen_kw__str(std::string_view xs);
 // @dispatch
 // def linked(a: list[int64], b: list[int64]) -> str:
-std::string linked(std::vector<int64_t>& a, std::vector<int64_t>& b);
+std::string linked__list_int64__list_int64(std::vector<int64_t>& a, std::vector<int64_t>& b);
 // @dispatch
 // def linked(a: list[int32], b: list[int64]) -> str:
-std::string linked(std::vector<int32_t>& a, const std::vector<int64_t>& b);
+std::string linked__list_int32__list_int64(std::vector<int32_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def two_names(a: list[int64], b: list[int64]) -> str:
-std::string two_names(std::vector<int64_t>& a, const std::vector<int64_t>& b);
+std::string two_names__list_int64__list_int64(std::vector<int64_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def two_names(a: list[int64], b: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_b>
-std::string two_names(std::vector<int64_t>& a, const T_b& b);
+std::string two_names__list_int64__Iterable_int64(std::vector<int64_t>& a, const T_b& b);
 // @dispatch
 // def one_way(a: list[int64], b: list[int64]) -> str:
-std::string one_way(std::vector<int64_t>& a, const std::vector<int64_t>& b);
+std::string one_way__list_int64__list_int64(std::vector<int64_t>& a, const std::vector<int64_t>& b);
 // @dispatch
 // def one_way(a: list[int64], b: list[int32]) -> str:
-std::string one_way(std::vector<int64_t>& a, const std::vector<int32_t>& b);
+std::string one_way__list_int64__list_int32(std::vector<int64_t>& a, const std::vector<int32_t>& b);
 // @dispatch
 // def from_view_big(xs: Iterable[int]) -> str:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
-std::string from_view_big(const T_xs& xs);
+std::string from_view_big__Iterable_int(const T_xs& xs);
 // @dispatch
 // def from_view_big(xs: list[int64]) -> str:
-std::string from_view_big(const std::vector<int64_t>& xs);
+std::string from_view_big__list_int64(const std::vector<int64_t>& xs);
 // @dispatch
 // def view_first32(xs: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string view_first32(const T_xs& xs);
+std::string view_first32__Iterable_int32(const T_xs& xs);
 // @dispatch
 // def view_first32(xs: list[int64]) -> str:
-std::string view_first32(const std::vector<int64_t>& xs);
+std::string view_first32__list_int64(const std::vector<int64_t>& xs);
 // @dispatch
 // def view_first64(xs: Iterable[int64]) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string view_first64(const T_xs& xs);
+std::string view_first64__Iterable_int64(const T_xs& xs);
 // @dispatch
 // def view_first64(xs: list[int]) -> str:
-std::string view_first64(const std::vector<::tpy::BigInt>& xs);
+std::string view_first64__list_int(const std::vector<::tpy::BigInt>& xs);
 // @dispatch
 // def twin_generic_first[T](xs: Iterable[T], v: T) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-std::string twin_generic_first(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v);
+std::string twin_generic_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string twin_generic_first(const T_xs& xs, int64_t v);
+std::string twin_generic_first__Iterable_int64__int64(const T_xs& xs, int64_t v);
 // @dispatch
 // def twin_declared_first(xs: Iterable[int64], v: int64) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string twin_declared_first(const T_xs& xs, int64_t v);
+std::string twin_declared_first__Iterable_int64__int64(const T_xs& xs, int64_t v);
 // @dispatch
 // def twin_declared_first[T](xs: Iterable[T], v: T) -> str:
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-std::string twin_declared_first(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v);
+std::string twin_declared_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v);
 // @dispatch
 // def gv[T](xs: Iterable[int64], t: T) -> str:
 template<typename T, ::tpystd::typing::Iterable<int64_t> T_xs>
-std::string gv(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t);
+std::string gv__Iterable_int64__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t);
 // @dispatch
 // def gv(xs: list[int64], t: int32) -> str:
-std::string gv(const std::vector<int64_t>& xs, int32_t t);
+std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t);
 // @dispatch
 // def hv(xs: Iterable[int64], t: int32) -> str:
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string hv(const T_xs& xs, int32_t t);
+std::string hv__Iterable_int64__int32(const T_xs& xs, int32_t t);
 // @dispatch
 // def hv(xs: list[int64], t: int32) -> str:
-std::string hv(const std::vector<int64_t>& xs, int32_t t);
+std::string hv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t);
 // @dispatch
 // def rc_rank(xs: Iterable[int32], f: Callable[[int32], int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string rc_rank(const T_xs& xs, const std::function<int32_t(int32_t)>& f);
+std::string rc_rank__Iterable_int32__Callable_int32_int32(const T_xs& xs, const std::function<int32_t(int32_t)>& f);
 // @dispatch
 // def rc_rank(xs: list[int64], f: Callable[[int64], int64]) -> str:
-std::string rc_rank(const std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f);
+std::string rc_rank__list_int64__Callable_int64_int64(const std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f);
 // @dispatch
 // def one(a: int32) -> int32:
-int32_t one(int32_t a);
+int32_t one__int32(int32_t a);
 // @dispatch
 // def one(a: int32, b: int32) -> int32:
-int32_t one(int32_t a, int32_t b);
+int32_t one__int32__int32(int32_t a, int32_t b);
 // @dispatch
 // def outer(n: int32, xs: list[int64]) -> str:
-std::string outer(int32_t n, std::vector<int64_t>& xs);
+std::string outer__int32__list_int64(int32_t n, std::vector<int64_t>& xs);
 // @dispatch
 // def outer(n: int32, xs: str) -> str:
-std::string outer(int32_t n, std::string_view xs);
+std::string outer__int32__str(int32_t n, std::string_view xs);
 // @dispatch
 // def lose_array(xs: list[int32], n: int32) -> str:
-std::string lose_array(std::vector<int32_t>& xs, int32_t n);
+std::string lose_array__list_int32__int32(std::vector<int32_t>& xs, int32_t n);
 // @dispatch
 // def lose_array(xs: Array[int64, 2], n: str) -> str:
-std::string lose_array(const std::array<int64_t, 2>& xs, std::string_view n);
+std::string lose_array__Array_int64_2__str(const std::array<int64_t, 2>& xs, std::string_view n);
 // @dispatch
 // def lose_span(xs: list[int32], n: int32) -> str:
-std::string lose_span(std::vector<int32_t>& xs, int32_t n);
+std::string lose_span__list_int32__int32(std::vector<int32_t>& xs, int32_t n);
 // @dispatch
 // def lose_span(xs: Span[int64], n: str) -> str:
-std::string lose_span(std::span<int64_t> xs, std::string_view n);
+std::string lose_span__Span_int64__str(std::span<int64_t> xs, std::string_view n);
 // @dispatch
 // def apply(xs: list[int64], f: Callable[[int64], int64]) -> int64:
-int64_t apply(std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f);
+int64_t apply__list_int64__Callable_int64_int64(std::vector<int64_t>& xs, const std::function<int64_t(int64_t)>& f);
 // @dispatch
 // def apply(xs: str, f: Callable[[str], int32]) -> int32:
-int32_t apply(std::string_view xs, const std::function<int32_t(std::string_view)>& f);
+int32_t apply__str__Callable_str_int32(std::string_view xs, const std::function<int32_t(std::string_view)>& f);
 // def in_generator() -> Iterator[str]:
 __gen_in_generator in_generator();
 // async def in_async() -> str:
 __coro_in_async in_async();
 // @dispatch
 // def f_list32(xs: list[int32]) -> str:
-std::string f_list32(std::vector<int32_t>& xs);
+std::string f_list32__list_int32(std::vector<int32_t>& xs);
 // @dispatch
 // def f_list32(xs: str) -> str:
-std::string f_list32(std::string_view xs);
+std::string f_list32__str(std::string_view xs);
 // def main() -> None:
 void main();
 
@@ -538,7 +538,7 @@ inline int32_t Acc::__add__(int32_t o) const {
 //     print("method:", f_list(ms), ms[2])  # the call decides ms
 inline void Acc::in_method() const {
     std::vector<int64_t> ms = {1, 2};
-    std::cout << "method:" << " " << ::tpyapp::main::f_list(ms) << " " << ::tpy::__getitem__(ms, 2) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpyapp::main::f_list__list_int64(ms) << " " << ::tpy::__getitem__(ms, 2) << "\n" << ::tpy::check_signals;
 }
 // @dispatch
 // def gen_or_str[T](xs: list[T], v: T) -> T:
@@ -546,7 +546,7 @@ inline void Acc::in_method() const {
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     return v
 template<typename T>
-::tpy::val_or_ref_t<T> gen_or_str(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+::tpy::val_or_ref_t<T> gen_or_str__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
     xs.push_back(::tpy::param_to_storage<T>(v));
     return ::tpy::param_to_return<T>(v);
 }
@@ -556,14 +556,14 @@ template<typename T>
 // def view_first(n: int32, xs: Iterable[int64]) -> str:
 //     return "Iterable"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string view_first(int32_t n, const T_xs& xs) {
+std::string view_first__int32__Iterable_int64(int32_t n, const T_xs& xs) {
     return "Iterable";
 }
 // @dispatch
 // def view_first_big(n: int, xs: Iterable[int64]) -> str:
 //     return "Iterable"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string view_first_big(const ::tpy::BigInt& n, const T_xs& xs) {
+std::string view_first_big__int__Iterable_int64(const ::tpy::BigInt& n, const T_xs& xs) {
     return "Iterable";
 }
 // # --- one container at two positions ---
@@ -571,7 +571,7 @@ std::string view_first_big(const ::tpy::BigInt& n, const T_xs& xs) {
 // def joint_views(a: Iterable[int32], b: Iterable[int32]) -> str:
 //     return f"views {sum(a)} {sum(b)}"
 template<::tpystd::typing::Iterable<int32_t> T_a, ::tpystd::typing::Iterable<int32_t> T_b>
-std::string joint_views(const T_a& a, const T_b& b) {
+std::string joint_views__Iterable_int32__Iterable_int32(const T_a& a, const T_b& b) {
     return std::format("views {} {}", ::tpy::builtin_sum<int32_t>(a), ::tpy::builtin_sum<int32_t>(b));
 }
 // @dispatch
@@ -580,7 +580,7 @@ std::string joint_views(const T_a& a, const T_b& b) {
 //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
 //     return v
 template<typename T>
-::tpy::val_or_ref_t<T> gen_kw(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
+::tpy::val_or_ref_t<T> gen_kw__list_T__T(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) {
     xs.push_back(::tpy::param_to_storage<T>(v));
     return ::tpy::param_to_return<T>(v);
 }
@@ -589,7 +589,7 @@ template<typename T>
 //     a.append(1)
 //     return "view"
 template<::tpystd::typing::Iterable<int64_t> T_b>
-std::string two_names(std::vector<int64_t>& a, const T_b& b) {
+std::string two_names__list_int64__Iterable_int64(std::vector<int64_t>& a, const T_b& b) {
     a.push_back(1);
     return "view";
 }
@@ -598,7 +598,7 @@ std::string two_names(std::vector<int64_t>& a, const T_b& b) {
 // def from_view_big(xs: Iterable[int]) -> str:
 //     return "iterbig"
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_xs>
-std::string from_view_big(const T_xs& xs) {
+std::string from_view_big__Iterable_int(const T_xs& xs) {
     return "iterbig";
 }
 // # The declared view takes the list as it is; the concrete candidate would
@@ -607,7 +607,7 @@ std::string from_view_big(const T_xs& xs) {
 // def view_first32(xs: Iterable[int32]) -> str:
 //     return "iter32"
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string view_first32(const T_xs& xs) {
+std::string view_first32__Iterable_int32(const T_xs& xs) {
     return "iter32";
 }
 // # A view of int64 converts each element; a list of int would widen it.
@@ -615,7 +615,7 @@ std::string view_first32(const T_xs& xs) {
 // def view_first64(xs: Iterable[int64]) -> str:
 //     return "iter64"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string view_first64(const T_xs& xs) {
+std::string view_first64__Iterable_int64(const T_xs& xs) {
     return "iter64";
 }
 // # A generic and its declared twin: the generic's resolved view would widen
@@ -624,28 +624,28 @@ std::string view_first64(const T_xs& xs) {
 // def twin_generic_first[T](xs: Iterable[T], v: T) -> str:
 //     return "generic"
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-std::string twin_generic_first(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) {
+std::string twin_generic_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) {
     return "generic";
 }
 // @dispatch
 // def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
 //     return "declared"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string twin_generic_first(const T_xs& xs, int64_t v) {
+std::string twin_generic_first__Iterable_int64__int64(const T_xs& xs, int64_t v) {
     return "declared";
 }
 // @dispatch
 // def twin_declared_first(xs: Iterable[int64], v: int64) -> str:
 //     return "declared"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string twin_declared_first(const T_xs& xs, int64_t v) {
+std::string twin_declared_first__Iterable_int64__int64(const T_xs& xs, int64_t v) {
     return "declared";
 }
 // @dispatch
 // def twin_declared_first[T](xs: Iterable[T], v: T) -> str:
 //     return "generic"
 template<typename T, ::tpystd::typing::Iterable<T> T_xs>
-std::string twin_declared_first(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) {
+std::string twin_declared_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) {
     return "generic";
 }
 // # A declared view is a declared slot in a generic candidate as in a plain
@@ -656,14 +656,14 @@ std::string twin_declared_first(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) 
 // def gv[T](xs: Iterable[int64], t: T) -> str:
 //     return "gen-view"
 template<typename T, ::tpystd::typing::Iterable<int64_t> T_xs>
-std::string gv(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t) {
+std::string gv__Iterable_int64__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t) {
     return "gen-view";
 }
 // @dispatch
 // def hv(xs: Iterable[int64], t: int32) -> str:
 //     return "plain-view"
 template<::tpystd::typing::Iterable<int64_t> T_xs>
-std::string hv(const T_xs& xs, int32_t t) {
+std::string hv__Iterable_int64__int32(const T_xs& xs, int32_t t) {
     return "plain-view";
 }
 // # Regime C: the same rank with a lambda beside the container.
@@ -671,7 +671,7 @@ std::string hv(const T_xs& xs, int32_t t) {
 // def rc_rank(xs: Iterable[int32], f: Callable[[int32], int32]) -> str:
 //     return "iter32"
 template<::tpystd::typing::Iterable<int32_t> T_xs>
-std::string rc_rank(const T_xs& xs, const std::function<int32_t(int32_t)>& f) {
+std::string rc_rank__Iterable_int32__Callable_int32_int32(const T_xs& xs, const std::function<int32_t(int32_t)>& f) {
     return "iter32";
 }
 

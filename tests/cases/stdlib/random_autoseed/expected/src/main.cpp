@@ -25,9 +25,9 @@ namespace tpyapp::main {
 //     v: float = c.random()
 //     print("default_in_unit:", 0.0 <= v < 1.0)
 void main() {
-    ::tpystd::random::seed();
+    ::tpystd::random::seed__noargs();
     double r1 = ::tpystd::random::random();
-    ::tpystd::random::seed();
+    ::tpystd::random::seed__noargs();
     double r2 = ::tpystd::random::random();
     std::cout << "auto_seed_distinct:" << " " << ::tpy::print_bool((r1 != r2)) << "\n" << ::tpy::check_signals;
     std::cout << "in_unit:" << " " << ::tpy::print_bool((((0.0 <= r1) && (r1 < 1.0)) && ((0.0 <= r2) && (r2 < 1.0)))) << "\n" << ::tpy::check_signals;

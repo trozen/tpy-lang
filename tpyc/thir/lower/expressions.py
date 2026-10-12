@@ -835,7 +835,6 @@ from .checks import (
     _subscript_recv_reject,
     _str_aug_append_ok,
     _str_list_method_iterable_ok,
-    free_literal_mangled_name,
     method_literal_mangled_cpp,
     _record_method_call_supported,
     _recv_own_dyn,
@@ -6086,8 +6085,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # appends the template-args suffix (`identity<int32_t>`).
             qual = lookup_imported(analyzer.ctx.module_attributes, e.name,
                                    SymbolKind.FUNCTION)
-            cpp = (qualified_cpp_name(*qual) if qual is not None
-                   else escape_cpp_name(e.name))
+            # A reference into an overload set names the variant sema
+            # matched to the slot; the set's shared name names no function.
+            ref_fi = e.function_ref_info
+            variant = ref_fi.variant_cpp_name if ref_fi is not None else None
+            if qual is not None:
+                cpp = qualified_cpp_name(qual[0], variant or qual[1])
+            else:
+                cpp = escape_cpp_name(variant or e.name)
             if e.function_ref_type_args:
                 cpp += "<" + ", ".join(
                     lc.render_type(unwrap_ref_type(t))
@@ -9703,17 +9708,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     form=form, loc=loc))
         if native_name is None and k is not None and k[0] == "plain":
             # A same-module callee: the absolute-qualified spelling
-            # (`::tpyapp::main::f`, or the literal-specialized mangling
+            # (`::tpyapp::main::f`, or an overload variant's own name
             # `::tpyapp::main::pick__lit_r__w`). Qualified, not bare, so ADL
             # cannot pull a same-named `std::`/`::tpy::` template into the
             # overload set (see `free_callee_cpp`).
             callee_cpp = k[1]
             _witness("call.same_module")
-            if free_literal_mangled_name(e, fi, analyzer) is not None:
-                # The mangling is a distinct rename inside the qualified
+            if fi.variant_cpp_name is not None:
+                # The variant name is a distinct rename inside the qualified
                 # spelling; keep its own census face so requalification did
                 # not swallow the discriminator.
-                _witness("call.literal_mangled")
+                _witness("call.variant_name")
         if (callee_cpp is None and cpp_template is None
                 and native_name is None
                 and _value_opt_callable(declared.get(e.func_name),

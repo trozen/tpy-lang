@@ -84,7 +84,7 @@ void forwarded_write(Rec& r, std::string_view s);
 // def local_record(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt local_record(std::string_view s);
 // def method_view(r: Rec) -> int:  # tpyc: mir(covered)
-::tpy::BigInt method_view(Rec& r);
+::tpy::BigInt method_view(const Rec& r);
 // def ctor_from_view(s: str) -> int:  # tpyc: mir(covered)
 ::tpy::BigInt ctor_from_view(std::string_view s);
 // def ctor_from_string(x: String) -> int:  # tpyc: mir(covered)

@@ -22,7 +22,7 @@ __gen_local_walk local_walk();
 // def free_delegator() -> Iterator[int32]:
 __gen_free_delegator free_delegator();
 // def method_delegator(s: Src) -> Iterator[int32]:
-__gen_method_delegator method_delegator(Src& s);
+__gen_method_delegator method_delegator(const Src& s);
 // def ping(n: int32) -> int32:
 int32_t ping(int32_t n);
 
@@ -122,7 +122,7 @@ inline __gen_Src_steps Src::steps() const {
 // def method_delegator(s: Src) -> Iterator[int32]:
 struct __gen_method_delegator : public ::tpy::next_iter_mixin<__gen_method_delegator, int32_t> {
     ::tpy::frame_state __state;
-    Src& s;
+    const Src& s;
     int32_t x;
     using __for_src_0_t = ::tpy::for_source_t<decltype((s.steps()))>;
     ::tpy::frame_loop_slot<__for_src_0_t> __for_src_0;
@@ -136,7 +136,7 @@ struct __gen_method_delegator : public ::tpy::next_iter_mixin<__gen_method_deleg
         S_DONE = 4,
     };
 
-    __gen_method_delegator(Src& s)
+    __gen_method_delegator(const Src& s)
         : __state(S_INITIAL),
           s(s) {}
 

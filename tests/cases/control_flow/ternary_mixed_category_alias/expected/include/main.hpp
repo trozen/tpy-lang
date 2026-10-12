@@ -143,7 +143,7 @@ struct Holder {
     int32_t total() const;
 
     // def peek(self, other: "Holder", c: bool) -> int32:
-    int32_t peek(Holder& other, bool c) const;
+    int32_t peek(const Holder& other, bool c) const;
 
     // def meth(self, c: bool, log: list[str]) -> int32:
     int32_t meth(bool c, std::vector<std::string>& log);
@@ -343,7 +343,7 @@ inline int32_t Holder::total() const {
 //     # A `self` operand of a non-mutating call keeps readonly inference
 //     # (the method stays const).
 //     return (self if c else other).total()  # tpyc: ok
-inline int32_t Holder::peek(Holder& other, bool c) const {
+inline int32_t Holder::peek(const Holder& other, bool c) const {
     return ((c) ? ((*this)) : (other)).total();
 }
 

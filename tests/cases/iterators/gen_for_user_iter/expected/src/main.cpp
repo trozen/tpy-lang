@@ -7,7 +7,7 @@ namespace tpyapp::main {
 
 
 // def doubled_range(r: NumberRange) -> Iterator[int32]:
-__gen_doubled_range doubled_range(NumberRange& r) {
+__gen_doubled_range doubled_range(const NumberRange& r) {
     return __gen_doubled_range(r);
 }
 

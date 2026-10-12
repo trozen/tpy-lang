@@ -14,7 +14,7 @@ extern Point* result;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def describe(p: Point | None) -> int32:
-int32_t describe(Point* p);
+int32_t describe(const Point* p);
 // def find(points: list[Point], target: int32) -> Point | None:
 Point* find(std::vector<Point>& points, int32_t target);
 

@@ -1,0 +1,9 @@
+concrete: dog Rex
+concrete: dog Max
+protocol only: animal Tom
+protocol only: animal Kit
+two protocols: walks on 4
+two protocols: swims with 2
+two protocols: walks on 3 swims with 5
+protocol: iterable 2
+protocol: iterable 3 [1, 2, 3]

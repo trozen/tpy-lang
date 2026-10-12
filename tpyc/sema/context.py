@@ -378,36 +378,40 @@ def _local_traces_to_self(borrow_tracker: 'BorrowTracker', name: str) -> bool:
     return any(root == "self" or root.startswith("self.") for root in roots)
 
 
-def _is_self_call_deferred(
-    expr_obj: TpyExpr, obj_root: str | None,
+def _deferred_receiver_root(
+    expr_obj: TpyExpr, obj_root: str | None, params: 'Container[str]',
     loop_var_iterable: dict[str, list[str]],
     borrow_tracker: 'BorrowTracker', type_of: 'ExprTypeOf',
-) -> bool:
-    """Check if a method call receiver traces to self through field accesses or loop vars.
+) -> str | None:
+    """The name a method call receiver's mutation is deferred to Phase 2
+    under (a call edge's `receiver_idx`), or None to mark it at once.
 
-    When True, self-mutation is deferred to Phase 2 via call edges
-    (a receiver_idx) instead of being marked directly in Phase 1.
-    This enables readonly inference for methods that call non-mutating
-    methods on fields or loop elements. A handle receiver runs the call on
-    its referent, never on the storage the handle was read out of.
+    `self` or a caller parameter in `params`, reached through field accesses
+    only (`p.m()`, `p.f.m()`), so a callee that turns out not to mutate its
+    self leaves the caller's receiver unmarked. For `self` also a loop
+    variable over a self field and a local alias of self-owned storage; a
+    parameter's loop variable or alias stays eager, because the eager mark
+    also records the ELEMENT fact (the storage the parameter lends was
+    written), which a receiver edge does not carry. A handle receiver runs
+    the call on its referent, never on the storage the handle was read out
+    of.
     """
     if is_indirection_type(type_of(expr_obj)):
-        return False
-    if obj_root == "self":
-        # Verify the chain is purely field accesses (no subscripts like
-        # self.items[0].method()). _root_name_of_expr strips both FieldAccess
-        # and Subscript, so obj_root=="self" doesn't rule out subscripts.
-        # Subscript-rooted calls are not deferred because the call edge in
+        return None
+    if obj_root == "self" or (obj_root is not None and obj_root in params):
+        # _root_name_of_expr strips both FieldAccess and Subscript; a
+        # subscript-rooted call is not deferred because the call edge in
         # calls.py also only walks TpyFieldAccess.
         chain = expr_obj
         while isinstance(chain, TpyFieldAccess):
             chain = chain.obj
-        return isinstance(chain, TpyName) and chain.name == "self"
-    if obj_root is not None:
+        if isinstance(chain, TpyName) and chain.name == obj_root:
+            return obj_root
+    if obj_root is not None and obj_root != "self":
         # loop_var.method() where loop_var iterates over self.field
         if any(_storage_root(it) == "self"
                for it in loop_var_iterable.get(obj_root, ())):
-            return True
+            return "self"
         # local.method() where `local = self.<field>` registered a FIELD borrow.
         # Without this, the call is treated as a regular non-self call and the
         # callee's self-mutation never propagates back to the enclosing method,
@@ -415,8 +419,8 @@ def _is_self_call_deferred(
         # leave self_mutated unset and auto-readonly wrongly marks the method
         # const. Deferring lets Phase 2 propagate precisely.
         if _local_traces_to_self(borrow_tracker, obj_root):
-            return True
-    return False
+            return "self"
+    return None
 
 
 def _root_name_of_expr(expr: TpyExpr,
@@ -2434,6 +2438,11 @@ class FunctionTrackingState:
     current_param_names: set[str] = field(default_factory=set)
     current_param_name_to_idx: dict[str, int] = field(default_factory=dict)
     current_mutated_param_names: set[str] = field(default_factory=set)
+    # Params a receiver call may mutate, left to Phase 2 (the receiver call
+    # edge): kept out of the direct facts Phase 2 starts from, but in the
+    # initial estimate, which a reader before Phase 2 takes as the callee's
+    # facts and which must therefore not under-approximate.
+    current_receiver_deferred_param_names: set[str] = field(default_factory=set)
     # Method type params whose `U: T` bound was used representationally in the
     # body (e.g. `Ptr[U] -> Ptr[T]` coercion). Drained to FunctionInfo at body
     # end; codegen reads it at call sites to decide adapter-wrap for structural
@@ -2991,7 +3000,7 @@ class SemanticContext:
     # capture, a copy, which a non-copyable type cannot take.
     finally_rebound_returns: IdentitySet = field(default_factory=IdentitySet)
 
-    # This module's bodied functions/methods whose body
+    # The import component's bodied functions/methods whose body
     # analysis has not run yet -- their return_borrows_from is still None
     # for ordering reasons, not because they cannot borrow. A call-result
     # bind from one of these registers a conservative OPAQUE borrow; once
@@ -4070,6 +4079,29 @@ class SemanticContext:
         if self.self_names_receiver():
             return -1
         return self.func.current_param_name_to_idx.get("self")
+
+    def deferred_receiver_index(self, recv: TpyExpr) -> int | None:
+        """The caller param index under which a mutating call on `recv` is
+        deferred to Phase 2 (`MutationCallEdge.receiver_idx`, the mark taken
+        only when the callee turns out to mutate its self), or None when the
+        receiver is marked at once. One answer for the call-edge recorder and
+        the receiver credit, so a deferred receiver always has its edge."""
+        fn = self.func
+        root = receiver_root(recv, self.get_expr_type)
+        # A nested def's marks are replayed onto its enclosing function
+        # (`nested_mutation_marks`), which an edge on the nested body would
+        # bypass.
+        params = (() if fn.in_nested_def
+                  else [p for p in fn.current_param_name_to_idx
+                        if p != "self" and p not in fn.current_rebound_params])
+        deferred = _deferred_receiver_root(
+            recv, root, params, fn.loop_var_iterable, fn.borrow_tracker,
+            self.get_expr_type)
+        if deferred is None:
+            return None
+        if deferred == "self":
+            return self.self_receiver_index()
+        return fn.current_param_name_to_idx[deferred]
 
     def mark_param_mutated(self, name: str, *, through_field: bool = False,
                            via_element: bool = False) -> None:

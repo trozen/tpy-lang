@@ -14,42 +14,42 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // @dispatch
 // def area(w: int32) -> int32:  # tpyc: ok
-int32_t area(int32_t w);
+int32_t area__int32(int32_t w);
 // @dispatch
 // def area(w: int32, h: int32) -> int32:
-int32_t area(int32_t w, int32_t h);
+int32_t area__int32__int32(int32_t w, int32_t h);
 // @dispatch
 // def tag(x: int32) -> str:  # tpyc: ok
-std::string tag(int32_t x);
+std::string tag__int32(int32_t x);
 // @dispatch
 // def tag(x: str) -> int32:
-int32_t tag(std::string_view x);
+int32_t tag__str(std::string_view x);
 // @dispatch
 // def kind(x: str) -> str:  # tpyc: ok
-std::string kind(std::string_view x);
+std::string kind__str(std::string_view x);
 // @dispatch
 // def kind(x: int32) -> str:
-std::string kind(int32_t x);
+std::string kind__int32(int32_t x);
 // @dispatch
 // def push(xs: list[int32]) -> None:  # tpyc: ok
-void push(std::vector<int32_t>& xs);
+void push__list_int32(std::vector<int32_t>& xs);
 // @dispatch
 // def push(xs: list[int32], v: int32) -> None:
-void push(std::vector<int32_t>& xs, int32_t v);
+void push__list_int32__int32(std::vector<int32_t>& xs, int32_t v);
 // @overload
 // def show(x: int) -> str: ...
-std::string show(const ::tpy::BigInt& x);
+std::string show__int(const ::tpy::BigInt& x);
 // @overload
 // def show(x: str) -> str: ...
-std::string show(std::string_view x);
+std::string show__str(std::string_view x);
 // @dispatch
 // @error_return(Empty)
 // def parse(s: str) -> int:  # tpyc: ok
-std::expected<::tpy::BigInt, Empty> parse(std::string_view s);
+std::expected<::tpy::BigInt, Empty> parse__str(std::string_view s);
 // @dispatch
 // @error_return(Empty)
 // def parse(n: int, scale: int) -> int:
-std::expected<::tpy::BigInt, Empty> parse(const ::tpy::BigInt& n, const ::tpy::BigInt& scale);
+std::expected<::tpy::BigInt, Empty> parse__int__int(const ::tpy::BigInt& n, const ::tpy::BigInt& scale);
 // @error_return(Empty)
 // def parse_both() -> int:
 std::expected<::tpy::BigInt, Empty> parse_both();

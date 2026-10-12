@@ -2028,6 +2028,15 @@ class CodeGenerator:
                 # that one doesn't reach into the sub-namespace.
                 if self._is_descendant_submodule(source_module):
                     continue
+                # Variants of an overload set have their own names, and an
+                # alias of one would be a second name no call spells.
+                variant_names = [fi.variant_cpp_name for fi in func_infos or ()
+                                 if fi.variant_cpp_name is not None]
+                if variant_names:
+                    for vname in variant_names:
+                        hpp.write(f"using {qualified_cpp_name(source_module, vname)};\n")
+                    any_written = True
+                    continue
                 qualified = qualified_cpp_name(source_module, original_name)
                 if local_name == original_name:
                     hpp.write(f"using {qualified};\n")
