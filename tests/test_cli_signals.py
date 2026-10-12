@@ -75,6 +75,18 @@ sys.argv = [entrypoint, *sys.argv[3:]]
 sys.exit(main_tpy() if entrypoint == "tpy" else main_tpyc())
 """
 
+# The CLI's cold route after its build: wait on the program through the same
+# wrapper, under the same inherited disposition.
+WRAPPER_LAUNCHER = """\
+import signal
+import sys
+from tpyc.cli import _run_program
+
+signal.signal(signal.SIGINT, signal.SIG_IGN if sys.argv[1] == "ignore"
+              else signal.default_int_handler)
+sys.exit(_run_program(sys.argv[2:]))
+"""
+
 
 def _run_cli(
     tmp_path: Path, entrypoint: str, options: list[str], mode: str,
@@ -91,6 +103,17 @@ def _run_cli(
     if entrypoint == "tpyc" or code is not None:
         argv.append("--")
     argv.extend([mode, "two words --unchanged"])
+    return _launch(tmp_path, argv, mode)
+
+
+def _run_wrapped(tmp_path: Path, binary: str, mode: str, *,
+                 ignored: bool) -> subprocess.CompletedProcess:
+    argv = [sys.executable, str(tmp_path / "wrapper.py"),
+            "ignore" if ignored else "default", binary, mode, "two words --unchanged"]
+    return _launch(tmp_path, argv, mode)
+
+
+def _launch(tmp_path: Path, argv: list[str], mode: str) -> subprocess.CompletedProcess:
     # Build progress can fill a pipe while we wait for the child's handshake.
     # Each temp dir is a fresh build tree; relativizing its paths lets
     # ccache serve the same TUs to every parametrization and every run.
@@ -140,15 +163,30 @@ def test_cli_signal_lifecycle(
 
     (tmp_path / "prog.py").write_text(PROGRAM)
     (tmp_path / "launcher.py").write_text(LAUNCHER)
+    (tmp_path / "wrapper.py").write_text(WRAPPER_LAUNCHER)
     # A per-directory PCH is baked into every TU's ccache key, which made
     # each temp dir a full cold build; without it the objects are shared.
     options = ["--cxx", request.config.getoption("--cxx"), "--no-pch"]
     if request.config.getoption("--no-ccache"):
         options.append("--no-ccache")
 
+    # The program is the same in every mode (the mode is its argument), so
+    # one rebuild pins the cold route end to end; the cold route of each mode
+    # is then its wrapper, `_run_program`, run on the binary that build made.
+    result = _run_cli(tmp_path, entrypoint, options, "group", rebuild=True)
+    context = f"{entrypoint} group cold: {result.stderr}"
+    assert result.returncode == 128 + signal.SIGINT, context
+    assert result.stdout == "ready\n", context
+    assert "analyzed" in result.stderr, context
+    assert "cached:" not in result.stderr, context
+    assert "KeyboardInterrupt" in result.stderr.splitlines(), context
+    assert "panic" not in result.stderr, context
+    assert "Traceback" not in result.stderr, context
+
     # `interrupted`: the program itself reports an uncaught KeyboardInterrupt
     # (its SIGINT became one) before dying by SIGINT. `message`: a stderr line
     # the program must print (an uncaught str exit code).
+    binary = None
     for mode, ignored, output, exitcode, interrupted, message in [
         ("int", False, "", -signal.SIGINT, True, None),
         ("term", False, "", -signal.SIGTERM, False, None),
@@ -160,32 +198,36 @@ def test_cli_signal_lifecycle(
         # The OS keeps the low 8 bits of the status, as under CPython.
         ("exit256", False, "", 0, False, None),
     ]:
-        for cold in (True, False):
-            # Rebuild exercises the subprocess route with the same binary;
-            # the next invocation must actually take the cached exec route.
-            result = _run_cli(tmp_path, entrypoint, options, mode,
-                              rebuild=cold, ignored=ignored)
+        result = _run_cli(tmp_path, entrypoint, options, mode,
+                          rebuild=False, ignored=ignored)
+        cached = next((line.split()[1] for line in result.stderr.splitlines()
+                       if line.lstrip().startswith("cached:")), None)
+        assert cached is not None and binary in (None, cached), result.stderr
+        binary = cached
+        wrapped = _run_wrapped(tmp_path, binary, mode, ignored=ignored)
+        for cold, result in ((False, result), (True, wrapped)):
             context = f"{entrypoint} {mode} cold={cold}: {result.stderr}"
             expected = 128 - exitcode if cold and exitcode < 0 else exitcode
             assert result.returncode == expected, context
             assert result.stdout == output, context
-            assert ("analyzed" in result.stderr) == cold, context
-            assert ("cached:" in result.stderr) != cold, context
+            assert "analyzed" not in result.stderr, context
             assert ("KeyboardInterrupt" in result.stderr.splitlines()) == interrupted, context
             if message is not None:
                 assert message in result.stderr.splitlines(), context
             assert "panic" not in result.stderr, context
             assert "Traceback" not in result.stderr, context
 
-    # Command strings have no file cache and reach the same waiting launcher.
+    # Command strings have no file cache and reach the same waiting launcher;
+    # this cold build also carries an inherited ignored SIGINT through the
+    # whole route, build included, to the program.
     result = _run_cli(
-        tmp_path, entrypoint, options, "int", rebuild=False,
+        tmp_path, entrypoint, options, "int", rebuild=False, ignored=True,
         code="import signal\nsignal.raise_signal(signal.SIGINT)\nprint('survived')\n",
     )
-    assert result.returncode == 128 + signal.SIGINT, result.stderr
-    assert result.stdout == "", result.stderr
+    assert result.returncode == 0, result.stderr
+    assert result.stdout == "survived\n", result.stderr
     assert "analyzed" in result.stderr, result.stderr
-    assert "KeyboardInterrupt" in result.stderr.splitlines(), result.stderr
+    assert "KeyboardInterrupt" not in result.stderr.splitlines(), result.stderr
     assert "Traceback" not in result.stderr, result.stderr
 
 
