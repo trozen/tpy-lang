@@ -1,0 +1,16 @@
+main.py:81: warning: copies R into owned storage; use copy() to make this explicit
+main.py:83: warning: copies R into owned storage; use copy() to make this explicit
+main.py:84: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:86: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:102: warning: copies R into owned storage; use copy() to make this explicit
+main.py:104: warning: copies R into owned storage; use copy() to make this explicit
+main.py:105: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:107: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:123: warning: copies R into owned storage; use copy() to make this explicit
+main.py:125: warning: copies R into owned storage; use copy() to make this explicit
+main.py:126: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:128: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:144: warning: copies R into owned storage; use copy() to make this explicit
+main.py:146: warning: copies R into owned storage; use copy() to make this explicit
+main.py:147: warning: copies list[int32] into owned storage; use copy() to make this explicit
+main.py:149: warning: copies list[int32] into owned storage; use copy() to make this explicit

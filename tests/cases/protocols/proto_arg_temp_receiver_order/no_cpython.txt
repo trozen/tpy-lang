@@ -1,0 +1,3 @@
+Pins a known parity divergence: the hoisted argument temporary runs before a
+side-effecting receiver, so TPy prints ['orig'] where CPython prints
+['changed'] (BUGS.md#temp-arg-before-receiver-order).

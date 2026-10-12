@@ -1,0 +1,49 @@
+proto rec_own local 101 1
+proto rec_own loop 102 2
+proto rec_own loop 103 3
+proto list_own param 12 2
+proto list_own narrowed 11 1
+proto str_own field 5 field
+proto str_own owned 2 2x
+proto union local 1
+proto union subscript 2
+proto union ctor 6
+dyn rec_own local 101 1
+dyn rec_own loop 102 2
+dyn rec_own loop 103 3
+dyn list_own param 12 2
+dyn list_own narrowed 11 1
+dyn str_own field 5 field
+dyn str_own owned 2 2x
+dyn union local 1
+dyn union subscript 2
+dyn union ctor 6
+bound rec_own local 101 1
+bound rec_own loop 102 2
+bound rec_own loop 103 3
+bound list_own param 12 2
+bound list_own narrowed 11 1
+bound str_own field 5 field
+bound str_own owned 2 2x
+bound union local 1
+bound union subscript 2
+bound union ctor 6
+own rec_own local 101 1
+own rec_own loop 102 2
+own rec_own loop 103 3
+own list_own param 12 2
+own list_own narrowed 11 1
+own str_own field 5 field
+own str_own owned 2 2x
+own union local 1
+own union subscript 2
+own union ctor 6
+optptr list literal 3
+opt scalar 5
+generic own_str ax
+generic items ['ax']
+dyn param ctor 2
+optdyn union local 1
+optdyn str_own owned 2 bx
+elem record 3 3
+elem free 3 3

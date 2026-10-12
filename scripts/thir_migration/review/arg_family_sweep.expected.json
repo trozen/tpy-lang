@@ -16270,9 +16270,9 @@
   ""
  ],
  "list_i_own__mut__global_name__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){*%G}])"
  ],
  "list_i_own__mut__global_name__static": [
   "ok",
@@ -16350,9 +16350,9 @@
   ""
  ],
  "list_i_own__mut__local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__mut__local__static": [
   "ok",
@@ -16430,9 +16430,9 @@
   ""
  ],
  "list_i_own__mut__loop_var__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__loop_var__static": [
   "ok",
@@ -16510,9 +16510,9 @@
   ""
  ],
  "list_i_own__mut__narrowed_opt_param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
  ],
  "list_i_own__mut__narrowed_opt_param__static": [
   "ok",
@@ -16550,7 +16550,7 @@
   ""
  ],
  "list_i_own__mut__nested_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16590,7 +16590,7 @@
   ""
  ],
  "list_i_own__mut__obj_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16670,9 +16670,9 @@
   ""
  ],
  "list_i_own__mut__param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%pv}])"
  ],
  "list_i_own__mut__param__static": [
   "ok",
@@ -16870,7 +16870,7 @@
   ""
  ],
  "list_i_own__mut__temp_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -16950,9 +16950,9 @@
   ""
  ],
  "list_i_own__mut__ternary_names__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){ifexpr(call(cond, []) ? %s0 : %s1) [borrow]}])"
  ],
  "list_i_own__mut__ternary_names__static": [
   "ok",
@@ -17270,9 +17270,9 @@
   ""
  ],
  "list_i_own__ro__global_name__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){*%G}])"
  ],
  "list_i_own__ro__global_name__static": [
   "ok",
@@ -17350,9 +17350,9 @@
   ""
  ],
  "list_i_own__ro__local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "list_i_own__ro__local__static": [
   "ok",
@@ -17430,9 +17430,9 @@
   ""
  ],
  "list_i_own__ro__loop_var__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__loop_var__static": [
   "ok",
@@ -17510,9 +17510,9 @@
   ""
  ],
  "list_i_own__ro__narrowed_opt_param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){*%pv}])"
  ],
  "list_i_own__ro__narrowed_opt_param__static": [
   "ok",
@@ -17550,7 +17550,7 @@
   ""
  ],
  "list_i_own__ro__nested_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17590,7 +17590,7 @@
   ""
  ],
  "list_i_own__ro__obj_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17670,9 +17670,9 @@
   ""
  ],
  "list_i_own__ro__param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%pv}])"
  ],
  "list_i_own__ro__param__static": [
   "ok",
@@ -17870,7 +17870,7 @@
   ""
  ],
  "list_i_own__ro__temp_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -17950,9 +17950,9 @@
   ""
  ],
  "list_i_own__ro__ternary_names__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){ifexpr(call(cond, []) ? %s0 : %s1) [borrow]}])"
  ],
  "list_i_own__ro__ternary_names__static": [
   "ok",
@@ -21160,9 +21160,9 @@
   ""
  ],
  "proto_p__ro__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(auto){copy[Impl2](%s0)}]) print(method_call(%s0, ping, []) [raw])"
  ],
  "proto_p__ro__copy_call__static": [
   "ok",
@@ -21200,9 +21200,9 @@
   ""
  ],
  "proto_p__ro__ctor_rvalue__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(auto){ctor(Impl2, [])}])"
  ],
  "proto_p__ro__ctor_rvalue__static": [
   "ok",
@@ -21280,9 +21280,9 @@
   ""
  ],
  "proto_p__ro__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(auto){%d[str('k')] [borrow]}])"
  ],
  "proto_p__ro__dict_subscript__static": [
   "ok",
@@ -21640,9 +21640,9 @@
   ""
  ],
  "proto_p__ro__own_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(auto){call(mk, [])}])"
  ],
  "proto_p__ro__own_call__static": [
   "ok",
@@ -21720,7 +21720,7 @@
   ""
  ],
  "proto_p__ro__prop_own__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.method_call:method.ret_type",
   "",
   ""
  ],
@@ -21840,7 +21840,7 @@
   ""
  ],
  "proto_p__ro__temp_accessor__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.call:arg.lends_from_temporary",
   "",
   ""
  ],
@@ -24640,7 +24640,7 @@
   ""
  ],
  "rec_own__mut__borrow_method__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -24680,9 +24680,9 @@
   ""
  ],
  "rec_own__mut__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__mut__closure_capture__static": [
   "ok",
@@ -24800,9 +24800,9 @@
   ""
  ],
  "rec_own__mut__dict_items_value__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}])"
  ],
  "rec_own__mut__dict_items_value__static": [
   "ok",
@@ -24880,9 +24880,9 @@
   ""
  ],
  "rec_own__mut__global_name__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){*%G}])"
  ],
  "rec_own__mut__global_name__static": [
   "ok",
@@ -24920,9 +24920,9 @@
   ""
  ],
  "rec_own__mut__local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x [raw])"
  ],
  "rec_own__mut__local__static": [
   "ok",
@@ -25000,9 +25000,9 @@
   ""
  ],
  "rec_own__mut__loop_var__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}])"
  ],
  "rec_own__mut__loop_var__static": [
   "ok",
@@ -25080,9 +25080,9 @@
   ""
  ],
  "rec_own__mut__narrowed_opt_param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){*%pv}])"
  ],
  "rec_own__mut__narrowed_opt_param__static": [
   "ok",
@@ -25120,7 +25120,7 @@
   ""
  ],
  "rec_own__mut__nested_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25160,7 +25160,7 @@
   ""
  ],
  "rec_own__mut__obj_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25240,9 +25240,9 @@
   ""
  ],
  "rec_own__mut__param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%pv}])"
  ],
  "rec_own__mut__param__static": [
   "ok",
@@ -25320,7 +25320,7 @@
   ""
  ],
  "rec_own__mut__prop_ref__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25480,7 +25480,7 @@
   ""
  ],
  "rec_own__mut__temp_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25560,9 +25560,9 @@
   ""
  ],
  "rec_own__mut__ternary_names__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? %s0 : %s1) [borrow]}])"
  ],
  "rec_own__mut__ternary_names__static": [
   "ok",
@@ -25600,7 +25600,7 @@
   ""
  ],
  "rec_own__ro__borrow_method__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -25640,9 +25640,9 @@
   ""
  ],
  "rec_own__ro__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}]) call(inner, [])"
  ],
  "rec_own__ro__closure_capture__static": [
   "ok",
@@ -25760,9 +25760,9 @@
   ""
  ],
  "rec_own__ro__dict_items_value__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}])"
  ],
  "rec_own__ro__dict_items_value__static": [
   "ok",
@@ -25840,9 +25840,9 @@
   ""
  ],
  "rec_own__ro__global_name__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){*%G}])"
  ],
  "rec_own__ro__global_name__static": [
   "ok",
@@ -25880,9 +25880,9 @@
   ""
  ],
  "rec_own__ro__local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}]) print(%s0.x [raw])"
  ],
  "rec_own__ro__local__static": [
   "ok",
@@ -25960,9 +25960,9 @@
   ""
  ],
  "rec_own__ro__loop_var__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%s0}])"
  ],
  "rec_own__ro__loop_var__static": [
   "ok",
@@ -26040,9 +26040,9 @@
   ""
  ],
  "rec_own__ro__narrowed_opt_param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){*%pv}])"
  ],
  "rec_own__ro__narrowed_opt_param__static": [
   "ok",
@@ -26080,7 +26080,7 @@
   ""
  ],
  "rec_own__ro__nested_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26120,7 +26120,7 @@
   ""
  ],
  "rec_own__ro__obj_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26200,9 +26200,9 @@
   ""
  ],
  "rec_own__ro__param__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){%pv}])"
  ],
  "rec_own__ro__param__static": [
   "ok",
@@ -26280,7 +26280,7 @@
   ""
  ],
  "rec_own__ro__prop_ref__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:expr.method_call:method.ret_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26440,7 +26440,7 @@
   ""
  ],
  "rec_own__ro__temp_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "reject:stmt.expr_stmt:field.result_type",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
@@ -26520,9 +26520,9 @@
   ""
  ],
  "rec_own__ro__ternary_names__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(R move){ifexpr(call(cond, []) ? %s0 : %s1) [borrow]}])"
  ],
  "rec_own__ro__ternary_names__static": [
   "ok",
@@ -33080,9 +33080,9 @@
   ""
  ],
  "str_own__ro__global_name__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::string move){%G}])"
  ],
  "str_own__ro__global_name__static": [
   "ok",
@@ -33360,9 +33360,9 @@
   ""
  ],
  "str_own__ro__nested_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::string move){%w.inner [storage]._v [storage]}])"
  ],
  "str_own__ro__nested_field__static": [
   "ok",
@@ -33400,9 +33400,9 @@
   ""
  ],
  "str_own__ro__obj_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::string move){%b._v [storage]}])"
  ],
  "str_own__ro__obj_field__static": [
   "ok",
@@ -33760,9 +33760,9 @@
   ""
  ],
  "str_own__ro__temp_field__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::string move){call(mk_b, [])._v [storage]}])"
  ],
  "str_own__ro__temp_field__static": [
   "ok",
@@ -36920,9 +36920,9 @@
   ""
  ],
  "uni_rec__ro__ctor_rvalue__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [union_lift[::tpy::Union<Other*, R*>]{&(ctor(R, [coerce(lit(6) -> int32)]))}])"
  ],
  "uni_rec__ro__ctor_rvalue__static": [
   "ok",
@@ -37760,9 +37760,9 @@
   ""
  ],
  "uni_vals__ro__closure_capture__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}]) call(inner, [])"
  ],
  "uni_vals__ro__closure_capture__static": [
   "ok",
@@ -37800,9 +37800,9 @@
   ""
  ],
  "uni_vals__ro__copy_call__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){call(copy [template 'int32_t({0})'], [%s0])}]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__copy_call__static": [
   "ok",
@@ -37840,9 +37840,9 @@
   ""
  ],
  "uni_vals__ro__dict_items_value__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__dict_items_value__static": [
   "ok",
@@ -37880,9 +37880,9 @@
   ""
  ],
  "uni_vals__ro__dict_subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%d[str('k')]}])"
  ],
  "uni_vals__ro__dict_subscript__static": [
   "ok",
@@ -38000,9 +38000,9 @@
   ""
  ],
  "uni_vals__ro__local__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}]) print(lit(1) [raw])"
  ],
  "uni_vals__ro__local__static": [
   "ok",
@@ -38040,9 +38040,9 @@
   ""
  ],
  "uni_vals__ro__local_last__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__local_last__static": [
   "ok",
@@ -38080,9 +38080,9 @@
   ""
  ],
  "uni_vals__ro__loop_var__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%s0}])"
  ],
  "uni_vals__ro__loop_var__static": [
   "ok",
@@ -38440,9 +38440,9 @@
   ""
  ],
  "uni_vals__ro__subscript__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){%xs[0]}])"
  ],
  "uni_vals__ro__subscript__static": [
   "ok",
@@ -38600,9 +38600,9 @@
   ""
  ],
  "uni_vals__ro__ternary_names__proto": [
-  "reject:expr.method_call:method.protocol.arg_shape",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(::tpy::Union<int32_t, std::string>){ifexpr(call(cond, []) ? %s0 : %s1)}])"
  ],
  "uni_vals__ro__ternary_names__static": [
   "ok",

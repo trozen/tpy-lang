@@ -121,6 +121,12 @@ class _ArgReq(NamedTuple):
     # set: deriving it walks every local of the body, and only the one row
     # that reads it should pay for that, not every argument of every call.
     bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None
+    # The slot belongs to a builtin STUB method, whose C++ is a runtime
+    # template (an insert's const-ref overload binds an lvalue, a lookup slot
+    # is a const borrow) rather than a user signature. Set by the stub entry
+    # only, so a cell keyed on the stub's C++ never reads a missing
+    # `overload` as that premise.
+    stub_slot: bool = False
     # The body's pointer-tuple locals (their records' `ptr_tuple`).
     ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
 
@@ -248,6 +254,7 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            frame_local_names: 'frozenset[str] | set[str] | dict'
            = frozenset(),
            bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None,
+           stub_slot: bool = False,
            ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
            ) -> bool:
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
@@ -257,7 +264,8 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
                   overload, frame_capturing, mutation_unknown,
                   inline_narrowed, movable_locals, pointers, func_name,
                   readonly_target, own_borrow_tuple_locals, own_param_names,
-                  frame_local_names, bare_tuple_names, ptr_tuple_locals)
+                  frame_local_names, bare_tuple_names, stub_slot,
+                  ptr_tuple_locals)
     return _walk(sink, req)
 
 

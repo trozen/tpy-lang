@@ -10953,16 +10953,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # (the zip truncates; the arity gate admits omitted trailing
         # defaults). A user-record F2 pointer-local receiver renders `->`, as does
         # the method receiver itself (`self.helper()` -> `this->helper()`).
-        # `temp_args` admits only the VALUE-union temp row here (the other
-        # temp rows are free-call shapes -- a method ctor rvalue INLINES).
+        # `temp_args` is the position's flush grant; `_method_arg` decides
+        # per arm which temporary it hoists.
         params = (fi.params if fi is not None
                   and len(fi.params) >= len(e.args) else None)
-        # A protocol receiver misses the user-record arg loop
-        # (guarded by `is_user_record`) and takes the lazy `_args()`
-        # path, which renders args like a FREE call's -- literals take
-        # their slot's coercion instead of the method path's target-less
-        # spelling. Same source of truth as the gate's `_protocol_binding`
-        # check: a narrowed subject reads as its member on both sides.
+        # A protocol receiver runs the same `_method_arg` loop with
+        # `method_arg=False`, so literals take their slot's coercion as at a
+        # FREE call instead of the method path's target-less spelling, and
+        # without the vararg-pack, container-literal and frame-factory arms.
+        # Same source of truth as the gate's `_protocol_binding` check: a
+        # narrowed subject reads as its member on both sides.
         recv_sema_t = analyzer.get_expr_type(e.obj)
         proto_recv = (_protocol_binding(recv_sema_t) is not None
                       or _bounded_tparam_protocol(
@@ -10977,8 +10977,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             if isinstance(a, TpyVarargPack) and not proto_recv:
                 # A `*args` pack on a user-record method: the same
                 # pack render as a free call (the method arg loop forwards
-                # the pack unchanged). Protocol receivers take the
-                # free-call `_args()` path and reject here.
+                # the pack unchanged). A pack at a protocol receiver goes
+                # on to the arg gate, which has no row for it.
                 # The slot's const-ness reads off the RAW method fi
                 # -- on a GENERIC method the resolved
                 # fi's substituted slot lacks the phase-2 vararg-readonly
@@ -11112,15 +11112,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # uniform frame-temp row below, which hoists it.
             # The Own-slot copy half needs the flush threaded into
             # `_lower_call_arg`'s copy+move arm -- scoped to the own-lvalue
-            # slot on a USER-record method (a stub receiver's cpp_template
-            # binds lvalues natively, so its copy renders bare; a protocol
-            # receiver admits no Own slots). A blanket temp_args would
-            # re-shape the record-rvalue / union temp rows, whose method
-            # renders are BARE.
+            # slot (a stub receiver's cpp_template binds lvalues natively,
+            # so its copy renders bare). A blanket temp_args would re-shape
+            # the record-rvalue / union temp rows, whose method renders are
+            # BARE.
             own_slot_w = _own_lvalue_temp_slot(a, ptype, lc.analyzer,
                                                declared,
                                                lc.prescan.param_names)
-            own_flush = (temp_args and not proto_recv
+            own_flush = (temp_args
                          and ((own_slot_w is not None
                                # A cpp_template stub binds lvalues natively
                                # (no temp, the bare pass-through renders) --
@@ -11169,24 +11168,22 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 return _container_literal_argtemp(
                     a, ptype, lc, declared,
                     "container-literal method arg on the make path")
-            # A protocol slot on a USER-record method takes the same
-            # protocol / @dynamic pre-arms as the free-call loop
+            # A protocol slot on a user-record or protocol method takes the
+            # same protocol / @dynamic pre-arms as the free-call loop
             # (`canvas().draw(square(4))` -> the `Adapter<shape, square>
             # __tmp_N{..}` hoist), so the flush rides in for exactly that
             # slot -- `_protocol_arg_slot` is None everywhere else, keeping
             # the record-rvalue / union rows' bare method renders intact.
-            proto_slot_flush = (temp_args and not proto_recv and not stub_recv
+            proto_slot_flush = (temp_args and not stub_recv
                                 and _protocol_arg_slot(ptype) is not None)
             # The optional-ptr 'scalar_temp' face hoists its own typed
             # `__tmp_N` ahead of the `&(__tmp_N)` lift, exactly like the ctor
             # loop's flush_slot, so the statement flush rides in for that slot
-            # too. Guarded to user-record receivers like its siblings: the
-            # protocol ladder consults the face at temps_ok=False and a stub
-            # receiver's own family owns the arg gate, so neither admits the
-            # temp -- without the guard the render would hoist where no gate
-            # verified the shape.
+            # too. Not for a stub receiver: its family consults the face at
+            # temps_ok=False and never admits the temp -- without the guard
+            # the render would hoist where no gate verified the shape.
             optptr_scalar_flush = (
-                temp_args and not proto_recv and not stub_recv
+                temp_args and not stub_recv
                 and _optional_ptr_arg_face(a, ptype, declared,
                                            lc.analyzer) == 'scalar_temp')
             # Every other TEMPORARY argument of the same factory: the frame

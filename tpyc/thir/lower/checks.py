@@ -10378,6 +10378,9 @@ def _stub_method_arg_ok(
         a: TpyExpr, ptype: 'TpyType | None', locals_: dict[str, TpyType],
         analyzer, *, param_names: 'set[str] | frozenset[str]',
         narrowed: 'set[str] | frozenset[str]',
+        temps_ok: bool = False,
+        index: int = -1,
+        overload=None,
         movable_locals: 'set[str] | frozenset[str]' = frozenset(),
         func_name: 'str | None' = None) -> bool:
     """The builtin-stub receivers' call into the one method-arg sink --
@@ -10385,17 +10388,18 @@ def _stub_method_arg_ok(
     which all render their args through the builtin-stub loop. No resolved
     overload and no flush slot to thread, which is the whole difference from
     the record entry (`_record_method_arg_ok`); prologue + rows:
-    `_METHOD_ARG_SINK`.
+    `_METHOD_ARG_SINK`. The position's `temps_ok`, `index` and `overload`
+    are accepted for the uniform family call and dropped
+    (BUGS.md#stub-value-union-insert-rejects).
 
-    This wrapper is the ONLY entry that threads `overload=None`, which is why
-    `req.overload is None` reads as "a builtin-stub slot" in the cells that
-    key on the stub's C++ (`_x_insert_own_slot`, `_x_own_lvalue_flush`,
-    `_x_comp_slot_const`, `_method_ctor_rvalue_arg`) and in the prologue's
-    view fence. The premise is structural, not a runtime fact: an assert here
-    could only restate the argument this call spells."""
+    This is the one entry that sets `stub_slot`, which the cells keyed on
+    the stub's C++ read (`_x_insert_own_slot`, `_x_own_lvalue_flush`,
+    `_x_comp_slot_const`, `_x_arg_not_lent`, `_method_ctor_rvalue_arg`)
+    and the prologue's view fence."""
     return arg_ok(_METHOD_ARG_SINK, a, ptype, locals_, analyzer,
                   param_names=param_names, narrowed=narrowed, temps_ok=False,
-                  movable_locals=movable_locals, func_name=func_name)
+                  movable_locals=movable_locals, func_name=func_name,
+                  stub_slot=True)
 
 
 def _opt_view_own_elem_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -10792,6 +10796,8 @@ def _method_call_arg_ok(
     if fam is not None:
         return fam.arg_ok(a, ptype, locals_, analyzer,
                           param_names=param_names, narrowed=narrowed,
+                          temps_ok=temps_ok, index=index,
+                          overload=e.resolved_function_info,
                           movable_locals=movable_locals, func_name=func_name)
 
     if recv_type is not None and recv_type.is_pointer():
@@ -11053,7 +11059,7 @@ def _x_own_lvalue_flush(req: _ArgReq) -> bool:
     overload takes the lvalue copy with no temp at all (`xs.push_back(b)`), so
     it needs no flush position -- and it has none to ask for: the stub entry
     threads `temps_ok=False` at every position."""
-    return req.temps_ok or req.overload is None
+    return req.temps_ok or req.stub_slot
 
 
 def _x_insert_own_slot(req: _ArgReq) -> bool:
@@ -11070,7 +11076,7 @@ def _x_insert_own_slot(req: _ArgReq) -> bool:
     for a by-value param. Probed: without this, an element read at an open
     `Own[T]` method slot emitted `push(::tpy::__getitem__(src, i))` into an
     `own_param_t<T>` slot, which does not compile."""
-    return req.overload is None
+    return req.stub_slot
 
 
 def _x_comp_slot_const(req: _ArgReq) -> bool:
@@ -11081,8 +11087,9 @@ def _x_comp_slot_const(req: _ArgReq) -> bool:
     builtin stub carries no signature-const facts and every container slot it
     spells is a `const T&` (the cell's own premise, unstated until the two
     method halves shared it); a resolved record overload states the verdict
-    per position in `const_borrow_params`."""
-    if req.overload is None:
+    per position in `const_borrow_params`; a callee with no such facts
+    declines."""
+    if req.stub_slot:
         return True
     cbp = getattr(req.overload, "const_borrow_params", None)
     return bool(cbp is not None and req.index in cbp)
@@ -11099,10 +11106,10 @@ def _x_arg_not_lent(req: _ArgReq) -> bool:
     Reads the callee's recorded return-borrow sources for THIS position, off
     the root fi like every other provenance reader. Facts that were never
     computed DECLINE: a None there means the body has not been analyzed, and
-    "not measured" is not evidence of an owning result. A builtin stub (no
-    resolved overload) admits, the same None leg the slot-const guard beside
-    it takes -- the stub container slots are const borrows and their results
-    are minted, not borrows of what they were handed.
+    "not measured" is not evidence of an owning result. A builtin stub slot
+    admits, as the slot-const guard beside it does -- the stub container
+    slots are const borrows and their results are minted, not borrows of what
+    they were handed.
 
     There is no hoisting alternative here on purpose: a named temporary would
     only move the question to how long THAT lives, which is a lifetime
@@ -11112,8 +11119,13 @@ def _x_arg_not_lent(req: _ArgReq) -> bool:
         # A generator / coroutine factory's argument never binds inline: the
         # render hoists it to a named temporary the frame can borrow.
         return True
+    if req.stub_slot:
+        return True
     fi = req.overload
     if fi is None:
+        # A body-less member-shaped callee (`measured_arg_callee` names
+        # none) has no retention fact to read; `arg_lend_ok` refuses the
+        # lend at render instead (BUGS.md#native-stub-declares-no-param-retention).
         return True
     if fi.root.return_borrows_from is None:
         return False
@@ -12086,7 +12098,8 @@ def _r_record_pass_through(req: _ArgReq) -> bool:
 
 def _r_method_ctor_rvalue(req: _ArgReq) -> bool:
     return _method_ctor_rvalue_arg(req.a, req.ptype, req.index, req.overload,
-                                   req.locals_, req.analyzer)
+                                   req.locals_, req.analyzer,
+                                   stub_slot=req.stub_slot)
 
 
 def _r_record_rvalue_temp_factory(req: _ArgReq) -> bool:
@@ -12209,7 +12222,7 @@ def _pre_container_slot_family(req: _ArgReq) -> 'bool | None':
                  or is_bytes_view_type(unwrap_readonly(_ovv)))
             and not isinstance(_peel_coerce(a),
                                (TpyStrLiteral, TpyBytesLiteral))):
-        if req.overload is None:
+        if req.stub_slot:
             return note_detail("method.arg_shape")
         return None
     # A wrapper element slot may carry the unresolved alias placeholder
@@ -12502,9 +12515,9 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
         # The pointer-repr Optional slot faces (`s.get().total(d)` at a
         # `dict[str, int32] | None` protocol-method param -> `&(d)`):
         # a protocol method call runs the same optional-ptr
-        # dispatch as the record ladder, whose row this mirrors. Temp-free
-        # faces only -- the family gate has no flush position to thread.
-        _ArgRow("optional_ptr", _r_optional_ptr,
+        # dispatch as the record ladder, whose temp-free row this is; the
+        # two temp-bearing faces take the ladder's flush-gated rows below.
+        _ArgRow("optional_ptr_no_temp", _r_optional_ptr_no_temp,
                 face="method.protocol_optional_ptr"),
         # A record RVALUE at a BY-VALUE record slot of the protocol method
         # (`aw.__poll__(Waker())`): a ValueType record param is no ref slot,
@@ -12521,14 +12534,11 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
         # ladder's row -- the deref renders in place, so it is temp-free
         # (see `_PLAIN_ARG_SINK`'s cell for the whole reason).
         _ArgRow("wide_opt_deref_name", _r_wide_opt_deref_name),
-        # The sibling families' TEMP-FREE cells. Temp-free is the whole
-        # admission rule here -- the family gate threads `temps_ok=False`,
-        # so a cell that needs a flush position cannot fire even if it is
-        # listed -- and each of these renders its source in place through
-        # the same slot-keyed lowering arm a record method's argument takes.
-        # The temp-hoisting cells (the container comprehension, the record
-        # rvalue, the value-union and wrapper temps, the covariant upcast)
-        # stay out: there is no flush position to thread them to.
+        # The sibling families' cells, each rendering through the same
+        # slot-keyed lowering arm a record method's argument takes. The
+        # temp-hoisting ones carry the record ladder's `_x_temps_ok` guard:
+        # the method arg loop threads the position's flush to every receiver
+        # family.
         _ArgRow("func_ref", _r_func_ref),
         _ArgRow("lambda", _r_lambda),
         _ArgRow("callable_value_pass", _r_callable_value_pass),
@@ -12537,6 +12547,7 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
         # cascade, so a VIEW-form str name must be absorbed here.
         _ArgRow("str_owned_slot", _r_str_owned_slot),
         _ArgRow("str_pass_through", _r_str_pass_through),
+        _ArgRow("own_lvalue", _r_own_lvalue, extra=_x_own_lvalue_flush),
         _ArgRow("container_field_pass", _r_container_field_pass),
         _ArgRow("container_module_var", _r_container_module_var),
         _ArgRow("record_field_marker", _r_record_field_marker),
@@ -12548,6 +12559,12 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("union_pass_through", _r_union_pass_through),
         _ArgRow("union_member_lift", _r_union_member_lift),
         _ArgRow("union_coerced_literal", _r_union_coerced_literal),
+        _ArgRow("union_ctor_temp", _r_union_ctor_temp, extra=_x_temps_ok),
+        _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
+        _ArgRow("optional_ptr_container_temp",
+                _r_optional_ptr_container_temp, extra=_x_temps_ok),
+        _ArgRow("optional_ptr_scalar_temp", _r_optional_ptr_scalar_temp,
+                extra=_x_temps_ok),
         _ArgRow("protocol_slot", _r_protocol_slot),
     )))
 
@@ -13590,12 +13607,19 @@ def _protocol_method_arg_ok(a: TpyExpr, ptype: 'TpyType | None',
                             locals_: dict[str, TpyType], analyzer, *,
                             param_names: 'set[str] | frozenset[str]',
                             narrowed: 'set[str] | frozenset[str]',
+                            temps_ok: bool = False,
+                            index: int = -1,
+                            overload=None,
                             movable_locals: 'set[str] | frozenset[str]' = frozenset(),
                             func_name: 'str | None' = None) -> bool:
     """The bare-protocol / Own[@dynamic P] receiver family's arg rows.
-    Rows: `_PROTOCOL_ARG_SINK`."""
+    Rows: `_PROTOCOL_ARG_SINK`. `overload` is the protocol method's resolved
+    fi, passed as the record entry passes its own; no protocol row reads it
+    while a protocol method carries no const facts
+    (BUGS.md#protocol-mutated-slot-container-literal)."""
     return arg_ok(_PROTOCOL_ARG_SINK, a, ptype, locals_, analyzer,
-                  param_names=param_names, narrowed=narrowed, temps_ok=False,
+                  param_names=param_names, narrowed=narrowed, temps_ok=temps_ok,
+                  index=index, overload=overload,
                   movable_locals=movable_locals, func_name=func_name)
 
 
@@ -15021,7 +15045,7 @@ def _tparam_slot_temp_arg(a: TpyExpr, ptype: 'TpyType | None', idx: int,
 
 def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
                             method_fi, locals_: dict[str, TpyType],
-                            analyzer) -> bool:
+                            analyzer, *, stub_slot: bool = False) -> bool:
     """A record RVALUE arg into a CONST same-record method slot
     (`a.combine(A(9))` where `other` is emitted `const A&`): the method-call
     arg loop has no ref-param rvalue-temp arm (unlike the free-fn loop), so
@@ -15050,7 +15074,7 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
         return False
     if pt != analyzer.get_expr_type(a):
         return False
-    if method_fi is None:
+    if stub_slot:
         # A builtin-stub receiver: no signature-const facts exist, and every
         # bare-T slot the stubs spell is a LOOKUP argument the runtime takes
         # as `const T&` (list.remove/index/count, set.remove/discard, the
@@ -15059,6 +15083,8 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
         # reasoning as the un-analyzed-callee arm below, and narrowed the
         # same way -- the ctor shape only.
         return isinstance(a, TpyCall) and _ctor_shape_ok(a, analyzer)
+    if method_fi is None:
+        return False
     cbp = method_fi.const_borrow_params
     if cbp is None:
         # An UN-ANALYZED callee (a @native record's body-less stub method):

@@ -78,7 +78,7 @@ class TestProtocolSinkShape:
         assert [r.row for r in _PROTOCOL_ARG_SINK.rows] == [
             "shared_pass_through",
             "ru_wrapper_name",
-            "optional_ptr",
+            "optional_ptr_no_temp",
             "value_record_rvalue",
             "tuple_literal",
             "wide_opt_deref_name",
@@ -87,6 +87,7 @@ class TestProtocolSinkShape:
             "callable_value_pass",
             "str_owned_slot",
             "str_pass_through",
+            "own_lvalue",
             "container_field_pass",
             "container_module_var",
             "record_field_marker",
@@ -98,6 +99,10 @@ class TestProtocolSinkShape:
             "union_pass_through",
             "union_member_lift",
             "union_coerced_literal",
+            "union_ctor_temp",
+            "value_union_temp",
+            "optional_ptr_container_temp",
+            "optional_ptr_scalar_temp",
             "protocol_slot",
         ]
 
@@ -109,15 +114,33 @@ class TestProtocolSinkShape:
         # ladder's `<pred> and _witness(...)` position.
         assert [(r.row, r.face) for r in _PROTOCOL_ARG_SINK.rows
                 if r.face is not None] == [
-            ("optional_ptr", "method.protocol_optional_ptr")]
+            ("optional_ptr_no_temp", "method.protocol_optional_ptr")]
 
-    def test_the_only_own_slot_cell_is_the_str_convert(self):
-        # An `Own[str]` protocol slot takes the view->owned convert, which
-        # renders in place -- the one Own-slot shape that is temp-free, and
-        # so the one this family can hold. The rest of the Own cascade
-        # hoists and stays out.
+    def test_the_temp_rows_are_gated_on_temps_ok(self):
+        # The method arg loop threads the position's flush to this family as
+        # to the record one, so every hoisting cell carries the record
+        # ladder's guard -- `own_lvalue` the same `_x_own_lvalue_flush`,
+        # whose stub leg reads the explicit `stub_slot` this entry never
+        # sets, so a protocol `Own[T]` slot needs the flush.
+        assert [(r.row, r.extra.__name__) for r in _PROTOCOL_ARG_SINK.rows
+                if r.extra is not None] == [
+            ("own_lvalue", "_x_own_lvalue_flush"),
+            ("union_ctor_temp", "_x_temps_ok"),
+            ("value_union_temp", "_x_temps_ok"),
+            ("optional_ptr_container_temp", "_x_temps_ok"),
+            ("optional_ptr_scalar_temp", "_x_temps_ok"),
+        ]
+        cell = next(r for r in _PROTOCOL_ARG_SINK.rows
+                    if r.row == "own_lvalue")
+
+        def _req(temps_ok):
+            return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
+                           False, temps_ok, index=0, overload=None)
+
+        assert cell.extra(_req(True)) is True
+        assert cell.extra(_req(False)) is False
         assert ({r.row for r in _PROTOCOL_ARG_SINK.rows} & _OWN_SLOT_ROWS
-                == {"str_owned_slot"})
+                == {"str_owned_slot", "own_lvalue"})
         assert _PROTOCOL_ARG_SINK.mutated_slots is False
 
 
@@ -437,13 +460,17 @@ class TestMethodArgSinkShape:
         cell = next(r for r in _METHOD_ARG_SINK.rows
                     if r.row == "own_lvalue")
 
-        def _req(temps_ok, overload):
+        def _req(temps_ok, overload, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, temps_ok, index=0, overload=overload)
+                           False, temps_ok, index=0, overload=overload,
+                           stub_slot=stub)
 
-        assert cell.extra(_req(False, None)) is True     # stub slot
+        assert cell.extra(_req(False, None, stub=True)) is True  # stub slot
         assert cell.extra(_req(True, "FI")) is True      # record + flush
         assert cell.extra(_req(False, "FI")) is False    # record, no flush
+        # A missing overload is not the stub premise: the protocol entry
+        # can thread one with no flush position.
+        assert cell.extra(_req(False, None)) is False
 
     def test_container_comp_gates_on_the_const_slot(self):
         # The comprehension's stmt-expr is a PRVALUE, so the slot must be a
@@ -454,12 +481,14 @@ class TestMethodArgSinkShape:
         cell = next(r for r in _METHOD_ARG_SINK.rows
                     if r.row == "container_comp")
 
-        def _req(overload, index=0):
+        def _req(overload, index=0, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=index, overload=overload)
+                           False, False, index=index, overload=overload,
+                           stub_slot=stub)
 
         fi = types.SimpleNamespace(const_borrow_params=frozenset({0}))
-        assert cell.extra(_req(None)) is True
+        assert cell.extra(_req(None, stub=True)) is True
+        assert cell.extra(_req(None)) is False
         assert cell.extra(_req(fi)) is True
         assert cell.extra(_req(fi, index=1)) is False
         assert cell.extra(
@@ -480,11 +509,12 @@ class TestMethodArgSinkShape:
             root.root = root
             return root
 
-        def _req(overload, index=0):
+        def _req(overload, index=0, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=index, overload=overload)
+                           False, False, index=index, overload=overload,
+                           stub_slot=stub)
 
-        assert cell.extra(_req(None)) is True                    # stub slot
+        assert cell.extra(_req(None, stub=True)) is True         # stub slot
         assert cell.extra(_req(_fi(frozenset()))) is True         # owns it
         assert cell.extra(_req(_fi(frozenset({1})))) is True      # other arg
         assert cell.extra(_req(_fi(frozenset({0})))) is False     # lends it
@@ -532,11 +562,13 @@ class TestMethodArgSinkShape:
         cell = next(r for r in _METHOD_ARG_SINK.rows
                     if r.row == "tparam_slot")
 
-        def _req(overload):
+        def _req(overload, stub=False):
             return _ArgReq(None, None, {}, None, frozenset(), frozenset(),
-                           False, False, index=0, overload=overload)
+                           False, False, index=0, overload=overload,
+                           stub_slot=stub)
 
-        assert cell.extra(_req(None)) is True
+        assert cell.extra(_req(None, stub=True)) is True
+        assert cell.extra(_req(None)) is False
         assert cell.extra(_req("FI")) is False
 
     def test_the_factory_cell_gates_on_both_facts(self):
@@ -565,7 +597,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 54
+        assert len([r for r in rows if r in others]) == 57
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -608,7 +640,6 @@ class TestMethodArgSinkShape:
             "value_opt_record_rvalue",
             "value_record_name",
             "union_member_lift_none",
-            "optional_ptr_no_temp",
             "record_pass_through",
             "method_ctor_rvalue",
             "record_rvalue_temp_factory",
@@ -619,8 +650,6 @@ class TestMethodArgSinkShape:
             "value_opt_scalar_value",
             "str_literal_value_opt",
             "bytes_literal_value_opt",
-            "optional_ptr_container_temp",
-            "optional_ptr_scalar_temp",
         ]
 
     def test_the_lookalike_cells_are_not_the_shared_ones(self):
@@ -876,7 +905,7 @@ class TestPlainSinkShape:
                      _METHOD_ARG_SINK):
             others |= {r.row for r in sink.rows}
         shared = [r.row for r in _PLAIN_ARG_SINK.rows if r.row in others]
-        assert len(shared) == 59
+        assert len(shared) == 58
         assert "lambda" in shared and "own_lvalue" in shared
 
     def test_the_coerce_peel_keeps_its_own_row_name(self):
@@ -1190,7 +1219,7 @@ class TestContainerPrologueLegs:
     def _pre(self, a, ptype, analyzer=None):
         return _pre_container_slot_family(
             _ArgReq(a, ptype, {}, analyzer, frozenset(), frozenset(),
-                    False, False))
+                    False, False, stub_slot=True))
 
     def test_own_view_slot_rejects_a_non_literal_source(self):
         # `set[StrView].add(name)`: the AST hoists a copy+move view temp,
