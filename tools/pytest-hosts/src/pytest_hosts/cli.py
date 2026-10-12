@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import config as cfg
 from .plan import RemoteHost, plan_remote
-from .session import (PROBE_TIMEOUT, HostError, HostSession, Session, control_dir, ssh_argv,
+from .session import (EXCLUSIVE_LOCK, PROBE_TIMEOUT, HostError, HostSession, Session, control_dir, ssh_argv,
                       ssh_config_path, write_ssh_config)
 
 
@@ -42,13 +42,16 @@ def make_session(project: cfg.Project, remotes: tuple[RemoteHost, ...], **kw) ->
 
 
 def status_command(remote: RemoteHost) -> str:
-    """One remote round trip: which slots are free and whether the tree and
-    venv exist. Each flock -n either succeeds and exits at once or fails."""
+    """One remote round trip: which slots are free, whether an exclusive
+    session holds the gate, and whether the tree and venv exist. Each
+    flock -n either succeeds and exits at once or fails."""
     host = remote.host
     lock_dir = shlex.quote(host.lock_dir)
     probes = " ".join(
         f'if flock -n {lock_dir}/{n} true 2>/dev/null; then echo "slot {n} free"; '
         f'else echo "slot {n} busy"; fi;' for n in range(host.slots))
+    probes += (f" flock -s -n {lock_dir}/{EXCLUSIVE_LOCK} true 2>/dev/null"
+               f" || echo exclusive-held;")
     return (f"mkdir -p {lock_dir} 2>/dev/null; {probes} "
             f"[ -d {shlex.quote(remote.tree)} ] && echo tree || echo no-tree; "
             f"[ -e {shlex.quote(remote.venv)} ] && echo venv || echo no-venv")
@@ -76,9 +79,12 @@ def status(project: cfg.Project, remotes: tuple[RemoteHost, ...]) -> int:
         facts = proc.stdout.split()
         slots = [f for f in proc.stdout.splitlines() if f.startswith("slot")]
         free = sum(1 for line in slots if line.endswith("free"))
+        gated = ""
+        if "exclusive-held" in facts:  # a plain session would queue on any slot
+            free, gated = 0, " (an exclusive session holds the host or waits for it)"
         tree = "tree present" if "tree" in facts else "no tree"
         venv = "venv present" if "venv" in facts else "no venv"
-        print(f"  {hs.name}: reachable, {free}/{remote.host.slots} slot(s) free, "
+        print(f"  {hs.name}: reachable, {free}/{remote.host.slots} slot(s) free{gated}, "
               f"{remote.workers} workers, {tree}, {venv}")
         print(f"    {hs.remote.tree}")
     return 1 if failed else 0

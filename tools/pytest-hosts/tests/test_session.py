@@ -46,6 +46,9 @@ def test_lock_command_is_non_blocking_and_shared():
     assert "chmod 1777 /tmp/ph" in cmd
     assert "flock -n /tmp/ph/1" in cmd
     assert "echo LOCKED; exec cat" in cmd
+    # a plain session does not take a slot while an exclusive one holds the gate
+    assert "flock -s -n /tmp/ph/exclusive true && exec flock -n /tmp/ph/1" in cmd
+    assert "/exclusive" not in session.lock_command(HOST, 1, gated=False)
 
 
 def test_rsync_argv():
@@ -156,9 +159,25 @@ def test_host_files_and_pull_argv():
 def test_drop_ignored_uses_git_rules(tmp_path):
     subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
     (tmp_path / ".gitignore").write_text("*.log\n!keep.log\nbuild/\n")
-    paths = ["a.txt", "run.log", "keep.log", "build/x.o", "sub/b.txt"]
-    assert session.drop_ignored(tmp_path, paths) == ["a.txt", "keep.log", "sub/b.txt"]
+    (tmp_path / "forced.log").write_text("")
+    subprocess.run(["git", "-C", str(tmp_path), "add", "-f", "forced.log"], check=True)
+    paths = ["a.txt", "run.log", "keep.log", "build/x.o", "sub/b.txt", "forced.log"]
+    # a tracked file is not ignored, whatever the rules say
+    assert session.drop_ignored(tmp_path, paths) == ["a.txt", "keep.log", "sub/b.txt", "forced.log"]
     assert session.drop_ignored(tmp_path, []) == []
+    assert session.drop_ignored(tmp_path, ["a.txt", "sub/b.txt"]) == ["a.txt", "sub/b.txt"]
+
+
+def test_drop_ignored_from_a_subdirectory_checkout(tmp_path):
+    # both git commands answer relative to the checkout, not the repository
+    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    sub = tmp_path / "sub"
+    sub.mkdir()
+    (sub / ".gitignore").write_text("*.o\n")
+    (sub / "kept.o").write_text("")
+    subprocess.run(["git", "-C", str(sub), "add", "-f", "kept.o"], check=True)
+    paths = ["a.c", "x.o", "kept.o", "d/y.o"]
+    assert session.drop_ignored(sub, paths) == ["a.c", "kept.o"]
 
 
 def test_drop_ignored_outside_git_keeps_everything(tmp_path):
@@ -197,8 +216,8 @@ class FakePopen:
     """Stands in for the ssh holder. `answers` maps a slot to what the
     holder prints: lines joined by "\\n", "LOCKED" somewhere in them for a
     taken slot, "" for busy (exit 1), "hang" for no answer at all; an
-    `(text, exit)` tuple sets the exit code. `busy_polls` makes slot 0
-    answer busy that many times first. `keep_open` leaves the write end
+    `(text, exit)` tuple sets the exit code. `busy_polls` makes slot
+    `busy_slot` answer busy that many times first. `keep_open` leaves the write end
     open after the text, the way the remote `cat` holds the pipe once
     the lock is taken; "later:" prefixed text arrives in two writes with
     a pause, the second starting mid-line. A raw pipe backs stdout so
@@ -206,15 +225,19 @@ class FakePopen:
 
     answers: dict[int, object] = {}
     started: list[int] = []
+    on: list[str] = []  # the ssh target of each start
     instances: list["FakePopen"] = []
     busy_polls: int = 0
+    busy_slot: int = 0
     keep_open: bool = False
 
     def __init__(self, argv, **kw):
-        slot = int(argv[-1].split("flock -n ")[1].split()[0].rsplit("/", 1)[1])
+        name = argv[-1].split("flock -n ")[-1].split()[0].rsplit("/", 1)[1]
+        slot = name if name == session.EXCLUSIVE_LOCK else int(name)
         FakePopen.started.append(slot)
+        FakePopen.on.append(argv[-2])
         answer = FakePopen.answers.get(slot, "")
-        if slot == 0 and FakePopen.busy_polls > 0:
+        if slot == FakePopen.busy_slot and FakePopen.busy_polls > 0:
             FakePopen.busy_polls -= 1
             answer = ""
         text, code = answer if isinstance(answer, tuple) else (answer, None)
@@ -259,6 +282,8 @@ def fake_holder(monkeypatch):
     monkeypatch.setattr(session, "QUEUE_POLL_SECONDS", 0.05)
     monkeypatch.setattr(session, "LOCK_TIMEOUT", 1.0)  # generous: the partial-line test sleeps
     FakePopen.answers, FakePopen.started, FakePopen.busy_polls = {}, [], 0
+    FakePopen.on = []
+    FakePopen.busy_slot = 0
     FakePopen.instances, FakePopen.keep_open = [], False
     return FakePopen
 
@@ -274,7 +299,7 @@ def test_take_slot_picks_the_first_free_slot(fake_holder):
     fake_holder.answers = {0: "", 1: "LOCKED"}
     hs = session.HostSession(remote=make_session(slots=2).remotes[0])
     make_session(slots=2).take_slot(hs)
-    assert hs.slot == 1 and hs.lock is not None
+    assert hs.slot == 1 and len(hs.holders) == 1
     assert hs.remote.slot == 1  # the worker specs name their sockets by it
     assert fake_holder.started == [0, 1]
 
@@ -300,7 +325,7 @@ def test_take_slot_reads_past_ssh_notices(fake_holder):
     fake_holder.answers = {0: "Warning: Permanently added 'h' to the list of known hosts.\nLOCKED"}
     hs = session.HostSession(remote=make_session().remotes[0])
     make_session().take_slot(hs)
-    assert hs.slot == 0 and hs.lock is not None
+    assert hs.slot == 0 and len(hs.holders) == 1
 
 
 def test_take_slot_busy_after_a_notice_is_still_busy(fake_holder):
@@ -336,10 +361,112 @@ def test_close_releases_the_holder_and_its_pipe(fake_holder):
     s.take_slot(hs)
     s.hosts = [hs]
     s.close()
-    assert hs.lock is None
-    assert hs.drain is not None and not hs.drain.is_alive()
+    assert hs.holders == []
     assert fake_holder.instances[0].stdout.closed
     s.close()  # idempotent
+
+
+def test_exclusive_takes_the_gate_then_every_slot_in_order(fake_holder):
+    fake_holder.answers = {"exclusive": "LOCKED", 0: "LOCKED", 1: "LOCKED", 2: "LOCKED"}
+    s = make_session(slots=3, exclusive=True)
+    hs = session.HostSession(remote=s.remotes[0])
+    s.take_slot(hs)
+    assert fake_holder.started == ["exclusive", 0, 1, 2]
+    assert hs.slot == 0 and hs.remote.slot == 0 and len(hs.holders) == 4
+    s.hosts = [hs]
+    s.close()
+    assert hs.holders == [] and all(i.stdout.closed for i in fake_holder.instances)
+
+
+def test_exclusive_keeps_what_it_holds_while_it_queues(fake_holder):
+    # slot 1 is busy for two polls: the gate and slot 0 are taken once and kept
+    fake_holder.answers = {"exclusive": "LOCKED", 0: "LOCKED", 1: "LOCKED"}
+    fake_holder.busy_slot, fake_holder.busy_polls = 1, 2
+    lines = []
+    s = make_session(slots=2, exclusive=True)
+    s.report = lines.append
+    hs = session.HostSession(remote=s.remotes[0])
+    s.take_slot(hs)
+    assert fake_holder.started == ["exclusive", 0, 1, 1, 1]
+    assert len(hs.holders) == 3 and lines.count("hosts| h busy, queued...") == 2
+
+
+def test_exclusive_no_wait_names_what_is_busy(fake_holder):
+    fake_holder.answers = {"exclusive": "LOCKED", 0: "LOCKED", 1: ""}
+    s = make_session(slots=2, exclusive=True, no_wait=True)
+    hs = session.HostSession(remote=s.remotes[0])
+    with pytest.raises(session.HostError, match=r"slot 1 of 2 busy \(--hosts-no-wait\)"):
+        s.take_slot(hs)
+    s.hosts = [hs]
+    s.close()
+    assert hs.holders == []
+    fake_holder.answers = {"exclusive": ""}  # another exclusive session waits or runs
+    with pytest.raises(session.HostError, match="another exclusive session holds it"):
+        s.take_slot(session.HostSession(remote=s.remotes[0]))
+
+
+def test_exclusive_cancelled_partway_releases_what_it_held(fake_holder, monkeypatch):
+    """Another host fails while the exclusive session holds the gate and
+    slot 0 and queues for slot 1: prepare raises and nothing stays held."""
+    fake_holder.answers = {"exclusive": "LOCKED", 0: "LOCKED", 1: ""}
+    good = cfg.HostConfig(name="queued", ssh="q", workers=1, slots=2)
+    bad = cfg.HostConfig(name="broken", ssh="z", workers=1)  # its gate comes second
+    remotes = tuple(plan.plan_remote(h, Path("/x"), "l", ssh_config="/c", control_dir="/d")
+                    for h in (good, bad))
+    s = session.Session(checkout=Path("/x"), settings=cfg.ProjectSettings(), remotes=remotes,
+                        report=lambda line: None, source_host="l", exclusive=True)
+
+    def probe(hs):
+        if hs.name == "broken":
+            time.sleep(0.1)  # the queued host is holding by now
+            raise session.HostError("broken: unreachable")
+    monkeypatch.setattr(s, "probe", probe)
+    monkeypatch.setattr(session, "write_ssh_config", lambda: "/c")
+    monkeypatch.setattr(session, "sync_excludes", lambda checkout: [])
+    monkeypatch.setattr(session, "synced_listing", lambda *a: set())
+    outcome: list[object] = []
+
+    def run():
+        try:
+            s.prepare()
+        except session.HostError as exc:
+            outcome.append(exc)
+    t = threading.Thread(target=run, daemon=True)
+    t.start()
+    t.join(timeout=3)
+    assert not t.is_alive()
+    assert outcome and "broken: unreachable" in str(outcome[0])
+    queued = next(hs for hs in s.hosts if hs.name == "queued")
+    assert "exclusive" in fake_holder.started and 0 in fake_holder.started
+    assert queued.holders == []
+
+
+def test_exclusive_takes_the_hosts_gates_in_one_order(fake_holder, monkeypatch):
+    """The host whose gate comes first answers its probe last and is
+    listed last; its gate is still taken first, so another exclusive
+    session cannot hold one host's gate while waiting for the other's."""
+    fake_holder.answers = {"exclusive": "LOCKED", 0: "LOCKED"}
+    hosts = (cfg.HostConfig(name="second", ssh="b", workers=1),
+             cfg.HostConfig(name="first", ssh="a", workers=1))
+    remotes = tuple(plan.plan_remote(h, Path("/x"), "l", ssh_config="/c", control_dir="/d")
+                    for h in hosts)
+    s = session.Session(checkout=Path("/x"), settings=cfg.ProjectSettings(), remotes=remotes,
+                        report=lambda line: None, source_host="l", exclusive=True)
+
+    def probe(hs):
+        if hs.name == "first":
+            time.sleep(0.1)
+    monkeypatch.setattr(s, "probe", probe)
+    monkeypatch.setattr(s, "sweep", lambda hs: None)
+    monkeypatch.setattr(s, "sync", lambda hs: None)
+    monkeypatch.setattr(s, "after_sync", lambda hs: None)
+    monkeypatch.setattr(session, "write_ssh_config", lambda: "/c")
+    monkeypatch.setattr(session, "sync_excludes", lambda checkout: [])
+    monkeypatch.setattr(session, "synced_listing", lambda *a: set())
+    s.prepare()
+    gates = [on for on, slot in zip(fake_holder.on, fake_holder.started) if slot == "exclusive"]
+    assert gates == ["a", "b"]
+    s.close()
 
 
 def test_take_slot_reports_an_ssh_failure(fake_holder):
@@ -413,7 +540,7 @@ def test_prepare_releases_when_one_host_fails_while_another_queues(fake_holder, 
     t.join(timeout=3)
     assert not t.is_alive(), "prepare() did not return after one host failed"
     assert outcome and "broken: unreachable" in str(outcome[0])
-    assert all(hs.lock is None for hs in s.hosts)
+    assert all(hs.holders == [] for hs in s.hosts)
 
 
 def test_pull_all_skips_hosts_that_never_prepared(monkeypatch):

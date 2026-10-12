@@ -21,6 +21,7 @@ project, the session is distributed. Otherwise nothing changes.
     PYTEST_HOSTS=0 pytest       # same, for a whole shell or a wrapper
     pytest --hosts-no-pull      # do not mirror what the run wrote/deleted
     pytest --hosts-no-wait      # fail instead of queueing on a busy host
+    pytest --hosts-exclusive    # this run: every slot of each host
     pytest --hosts-setup        # force the setup command this run
     pytest --hosts-only=NAME    # this run: only that host, no local workers
 
@@ -128,14 +129,23 @@ ordinary pytest config warning.
    Unreachable: error, or, when the host says `unreachable = "local"`,
    a loud line and the run goes on without that host (the other hosts
    and the local workers stay).
-2. Take one slot: `flock` on `<lock_dir>/<n>` (default `/tmp/pytest-hosts`,
-   so it gates across users of one box), held by an ssh session for the
+2. Take one slot (every slot under `--hosts-exclusive`): `flock` on
+   `<lock_dir>/<n>` (default `/tmp/pytest-hosts`, so it gates across
+   users of one box), held by an ssh session for the
    whole run. All slots busy: print `bigbox busy, queued...` every 30s
    and wait. The whole run waits; xdist cannot add workers mid-session.
    A slot command that gives no answer within a minute fails the host
    instead: that is a broken connection, not a busy box. Every later
    ssh or rsync round trip (sync, setup, the pull-back) is capped at
    thirty minutes for the same reason.
+   With `--hosts-exclusive` the session first takes `<lock_dir>/exclusive`,
+   then every slot in order, keeping what it holds while it waits for the
+   rest. A plain session takes no slot while that lock is held, so from
+   the moment an exclusive session starts waiting the running sessions
+   finish and new ones queue behind it; a second exclusive session waits
+   for the lock. With several hosts every session takes their locks in
+   one order (by ssh target), so two exclusive sessions cannot each hold
+   one host and wait for the other.
 3. Sync the checkout with `rsync -a --delete` over an ssh ControlMaster,
    using the repo's gitignore rules as filters, plus what git leaves out
    that those filters cannot see: paths ignored through `info/exclude`
@@ -201,7 +211,7 @@ ordinary pytest config warning.
    way) that the tree no longer has is what the run deleted: it is
    deleted locally too and printed, unless it changed locally after the
    session started, which keeps it with a warning. Files the run did
-   not touch are never touched. Release the slot.
+   not touch are never touched. Release the slot(s).
 7. Terminal summary, each line prefixed `hosts|`: the local worker
    count of tests, then one line per host with the tests it ran, the
    files pulled back and deleted, or `pull-back FAILED`; a dropped host

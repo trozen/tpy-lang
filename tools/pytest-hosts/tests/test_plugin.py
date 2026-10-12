@@ -2,6 +2,7 @@
 real distributed sessions over a fake `ssh` that runs commands locally."""
 
 import contextlib
+import fcntl
 import io
 import os
 import re
@@ -47,6 +48,15 @@ def hosts_file(pytester, text):
 def workers_line(result, n):
     """The `N workers [M items]` line of the run, so 1 is not matched by 11."""
     return re.search(rf"(?<!\d){n} workers? \[", result.stdout.str()) is not None
+
+
+@contextlib.contextmanager
+def held(path, shared=False):
+    """Hold the lock in this process: a killed `flock` command leaves its
+    child holding the lock until the child exits."""
+    with open(path, "a") as f:
+        fcntl.flock(f, fcntl.LOCK_SH if shared else fcntl.LOCK_EX)
+        yield
 
 
 def run(pytester, *args):
@@ -384,6 +394,37 @@ def test_busy_slot_fails_fast_with_no_wait(remote_project):
 
 
 @needs_tools
+def test_exclusive_takes_every_slot(remote_project):
+    pytester, checkout, root = remote_project
+    hosts_file_path = pytester.path / ".config" / "pytest-hosts" / "hosts.toml"
+    hosts_file_path.write_text(hosts_file_path.read_text().replace(
+        "workers = 2\n", "workers = 2\nslots = 2\n"))
+    locks = pytester.path / "locks"
+    locks.mkdir()
+    # a session on slot 1: one slot is free, which is enough for a plain run only
+    with held(str(locks / "1")):
+        result = run(pytester, "--hosts-exclusive", "--hosts-no-wait")
+        assert result.ret == pytest.ExitCode.USAGE_ERROR
+        result.stderr.fnmatch_lines(["*box: slot 1 of 2 busy (--hosts-no-wait)*"])
+    result = run(pytester, "--hosts-exclusive")
+    result.assert_outcomes(passed=4)
+    result.stdout.fnmatch_lines(["hosts| box: all 2 slots taken (--hosts-exclusive), syncing*"])
+    # released at the end: the gate and both slots are free again
+    for name in ("exclusive", "0", "1"):
+        assert subprocess.run(["flock", "-n", str(locks / name), "true"]).returncode == 0
+    # while an exclusive session holds the gate, a plain one does not start
+    with held(str(locks / "exclusive")):
+        result = run(pytester, "--hosts-no-wait")
+        assert result.ret == pytest.ExitCode.USAGE_ERROR
+        result.stderr.fnmatch_lines(["*box: all 2 slot(s) busy*"])
+    # another plain session checking the gate at the same moment holds it
+    # shared, which does not keep a plain session out
+    with held(str(locks / "exclusive"), shared=True):
+        result = run(pytester, "--hosts-no-wait")
+        result.assert_outcomes(passed=4)
+
+
+@needs_tools
 def test_unreachable_host_errors_or_degrades(remote_project):
     pytester, checkout, root = remote_project
     hosts_file_path = pytester.path / ".config" / "pytest-hosts" / "hosts.toml"
@@ -424,6 +465,13 @@ def test_cli_status_setup_clean(remote_project):
     text = out.getvalue()
     assert "box: reachable, 1/1 slot(s) free, 2 workers, tree present, venv present" in text
     assert str(parent / "demo") in text
+
+    with held(str(pytester.path / "locks" / "exclusive")):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            assert cli.main(["status"]) == 0
+        assert ("box: reachable, 0/1 slot(s) free (an exclusive session holds the host "
+                "or waits for it)") in out.getvalue()
 
     assert cli.main(["clean"]) == 0
     assert not parent.exists()

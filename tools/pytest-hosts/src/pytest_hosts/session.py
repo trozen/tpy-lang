@@ -32,6 +32,7 @@ LOCK_TIMEOUT = 60  # for the slot command to answer once the session is open
 COMMAND_TIMEOUT = 1800  # any other ssh or rsync round trip: a sync or a setup can be long
 QUEUE_POLL_SECONDS = 30
 LOCKED_TOKEN = "LOCKED"
+EXCLUSIVE_LOCK = "exclusive"  # held by a --hosts-exclusive session from its first wait to its end
 PENDING_LIMIT = 65536  # bytes of an unterminated holder line kept for the error message
 SEEN_LIMIT = 50  # holder lines kept for the error message
 
@@ -115,14 +116,18 @@ def probe_command() -> str:
     return 'printf "%s\\n%s\\n%s\\n%s" "$HOME" "$PATH" "${TMPDIR:-/tmp}" "${XDG_CACHE_HOME:-}"'
 
 
-def lock_command(host: HostConfig, slot: int) -> str:
+def lock_command(host: HostConfig, slot: int | str, *, gated: bool = True) -> str:
     """Hold slot `slot` for as long as stdin stays open. flock's `-n` fails
     at once when the slot is taken, so the caller sees exit 1 instead of
     the token. The dir is world-writable so users of one box share the
-    gate."""
+    gate. `gated`: a slot is not taken while an exclusive session holds
+    EXCLUSIVE_LOCK, which reads as busy (exit 1) the same way. The check
+    takes the lock shared, so plain sessions checking at once do not read
+    each other as an exclusive one."""
     lock_dir = shlex.quote(host.lock_dir)
+    gate = f"flock -s -n {lock_dir}/{EXCLUSIVE_LOCK} true && " if gated else ""
     return (f"mkdir -p {lock_dir} 2>/dev/null; chmod 1777 {lock_dir} 2>/dev/null; "
-            f"exec flock -n {lock_dir}/{slot} -c 'echo {LOCKED_TOKEN}; exec cat'")
+            f"{gate}exec flock -n {lock_dir}/{slot} -c 'echo {LOCKED_TOKEN}; exec cat'")
 
 
 def _untracked(checkout: Path, *flags: str) -> set[str] | None:
@@ -324,18 +329,27 @@ def _rsync_unescape(name: bytes) -> bytes:
 
 def drop_ignored(checkout: Path, paths: list[str]) -> list[str]:
     """Filter out paths the checkout's gitignore rules cover. git answers
-    with the real rules (nested files, negations, tracked-beats-ignored);
-    outside a git checkout nothing is dropped."""
+    with the real rules (nested files, negations); a tracked path is kept,
+    as git never counts one ignored. Outside a git checkout nothing is
+    dropped."""
     if not paths:
         return []
+    # The names are the host listing's, decoded the same way.
+    text = {"capture_output": True, "encoding": "utf-8", "errors": "surrogateescape"}
     try:
-        proc = subprocess.run(["git", "-C", str(checkout), "check-ignore", "--stdin", "-z"],
-                              input="\0".join(paths), capture_output=True, text=True)
-    except OSError:
+        # Consulting the index makes check-ignore take ~2ms a path, minutes
+        # over a run's generated files; tracked paths are put back below.
+        proc = subprocess.run(["git", "-C", str(checkout), "check-ignore", "--no-index",
+                               "--stdin", "-z"], input="\0".join(paths), **text)
+        ignored = set(proc.stdout.split("\0")) - {""}
+        if proc.returncode == 0 and ignored:
+            tracked = subprocess.run(["git", "-C", str(checkout), "ls-files", "-z"],
+                                     check=True, **text)
+            ignored -= set(tracked.stdout.split("\0"))
+    except (OSError, subprocess.CalledProcessError):
         return paths
     if proc.returncode not in (0, 1):  # 128: not a git repository
         return paths
-    ignored = set(proc.stdout.split("\0"))
     return [p for p in paths if p not in ignored]
 
 
@@ -355,11 +369,15 @@ def pull_argv(remote: RemoteHost, checkout: Path) -> list[str]:
 @dataclass
 class HostSession:
     remote: RemoteHost
-    slot: int | None = None
-    lock: subprocess.Popen | None = None
+    slot: int | None = None  # the first slot held, which names the session's sockets
+    # (ssh holder, thread reading what it says after LOCKED), one per held slot
+    holders: list[tuple[subprocess.Popen, threading.Thread]] = field(default_factory=list)
+    # --hosts-exclusive: the host whose EXCLUSIVE_LOCK is taken before this
+    # one's, and set once this host holds its own or never will
+    gate_after: "HostSession | None" = None
+    gate_settled: threading.Event = field(default_factory=threading.Event)
     setup_ran: bool = False
     prepared: bool = False  # synced and set up: the only hosts pulled back from
-    drain: threading.Thread | None = None  # reads what ssh says after LOCKED
     path: str = ""  # the host's non-interactive PATH, from the probe
     tmp: str = "/tmp"  # the host's temp dir, from the probe
     pytest_version: str | None = None  # the tree's; None until after_sync
@@ -398,6 +416,7 @@ class Session:
     report: Report
     source_host: str
     no_wait: bool = False
+    exclusive: bool = False  # take every slot of each host, not one
     force_setup: bool = False
     local_pytest: str | None = None  # the controller's pytest version
     only: str | None = None  # --hosts-only: this host was asked for by name
@@ -452,18 +471,40 @@ class Session:
         hs.tmp = tmp if tmp.startswith("/") else "/tmp"
 
     def take_slot(self, hs: HostSession) -> None:
+        """One free slot, or under `exclusive` EXCLUSIVE_LOCK and then every
+        slot in order. Plain sessions do not take a slot while that lock is
+        held, so from the moment an exclusive session starts waiting the
+        running sessions finish and new ones queue behind it."""
         host = hs.remote.host
+        # Every session takes the hosts' exclusive locks in one order, or
+        # two of them could each hold one host's and wait for the other's.
+        while self.exclusive and hs.gate_after is not None and not hs.gate_after.gate_settled.wait(0.2):
+            if self._cancel.is_set():
+                raise Cancelled(f"{hs.name}: gave up waiting for a slot (session cancelled)")
         while True:
-            for slot in range(host.slots):
-                if self._try_slot(hs, slot):
+            if self.exclusive:
+                # holders: the exclusive lock, then slots 0..n-1 in order
+                if not hs.holders and self._try_slot(hs, EXCLUSIVE_LOCK):
+                    hs.gate_settled.set()
+                if hs.holders:
+                    while (len(hs.holders) <= host.slots
+                           and self._try_slot(hs, len(hs.holders) - 1)):
+                        pass
+                if len(hs.holders) == host.slots + 1:
                     return
+                busy = (f"slot {len(hs.holders) - 1} of {host.slots} busy" if hs.holders
+                        else "another exclusive session holds it")
+            else:
+                if any(self._try_slot(hs, slot) for slot in range(host.slots)):
+                    return
+                busy = f"all {host.slots} slot(s) busy"
             if self.no_wait:
-                raise HostError(f"{hs.name}: all {host.slots} slot(s) busy (--hosts-no-wait)")
+                raise HostError(f"{hs.name}: {busy} (--hosts-no-wait)")
             self.say(f"{hs.name} busy, queued...")  # every poll: the run is alive
             if self._cancel.wait(QUEUE_POLL_SECONDS):
                 raise Cancelled(f"{hs.name}: gave up waiting for a slot (session cancelled)")
 
-    def _try_slot(self, hs: HostSession, slot: int) -> bool:
+    def _try_slot(self, hs: HostSession, slot: int | str) -> bool:
         """Start the holder for `slot`; True when it reports the lock. stderr
         rides on stdout so nothing is left unread on a pipe for the whole
         run, which means ssh notices (a known_hosts addition, a banner)
@@ -472,7 +513,8 @@ class Session:
         its newline yet cannot hide from the deadline, and lines are
         split by hand until the token or EOF. A daemon thread drains
         whatever comes later."""
-        proc = subprocess.Popen(ssh_argv(hs.remote, lock_command(hs.remote.host, slot)),
+        proc = subprocess.Popen(ssh_argv(hs.remote, lock_command(hs.remote.host, slot,
+                                                                 gated=not self.exclusive)),
                                 stdin=subprocess.PIPE, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, bufsize=0)
         fd = proc.stdout.fileno()
@@ -494,10 +536,12 @@ class Session:
                 line, pending = pending.split(b"\n", 1)
                 text = line.decode(errors="replace").strip()
                 if text == LOCKED_TOKEN:
-                    hs.slot, hs.lock = slot, proc
-                    hs.remote = replace(hs.remote, slot=slot)
-                    hs.drain = threading.Thread(target=proc.stdout.read, daemon=True)
-                    hs.drain.start()
+                    if hs.slot is None and isinstance(slot, int):
+                        hs.slot = slot
+                        hs.remote = replace(hs.remote, slot=slot)
+                    drain = threading.Thread(target=proc.stdout.read, daemon=True)
+                    drain.start()
+                    hs.holders.append((proc, drain))
                     return True
                 seen.append(text)
                 del seen[:-SEEN_LIMIT]
@@ -540,11 +584,14 @@ class Session:
                 raise HostError(f'{exc}; --hosts-only names it, so its unreachable = '
                                 f'"local" policy does not apply') from None
             hs.dropped = str(exc)
+            hs.gate_settled.set()
             self.say(f"{exc}; running without {hs.name}")
             return
         if take_slot:
             self.take_slot(hs)
-            self.say(f"{hs.name}: slot {hs.slot} taken, syncing the tree...")
+            taken = (f"all {hs.remote.host.slots} slots taken (--hosts-exclusive)" if self.exclusive
+                     else f"slot {hs.slot} taken")
+            self.say(f"{hs.name}: {taken}, syncing the tree...")
         else:
             self.say(f"{hs.name}: syncing the tree...")
         self.sync(hs)
@@ -589,6 +636,9 @@ class Session:
             self.say("could not list what the sync sends; files the run deletes on a host "
                      "will not be deleted here")
         self.hosts = [HostSession(remote=r) for r in self.remotes]
+        order = sorted(self.hosts, key=lambda hs: (hs.remote.host.ssh, hs.name))
+        for before, after in zip(order, order[1:]):
+            after.gate_after = before
 
         def one(hs: HostSession) -> None:
             try:
@@ -684,17 +734,16 @@ class Session:
 
     def close(self) -> None:
         for hs in self.hosts:
-            if hs.lock is not None:
-                proc, hs.lock = hs.lock, None
+            holders, hs.holders = hs.holders, []
+            for proc, drain in holders:
                 try:
                     proc.stdin.close()  # the remote holder is `cat`: EOF ends it
                     proc.wait(timeout=10)
                 except (OSError, subprocess.TimeoutExpired):
                     proc.kill()
                     proc.wait()
-                if hs.drain is not None:
-                    hs.drain.join(timeout=5)  # at EOF once the holder is gone
-                if proc.stdout is not None and (hs.drain is None or not hs.drain.is_alive()):
+                drain.join(timeout=5)  # at EOF once the holder is gone
+                if proc.stdout is not None and not drain.is_alive():
                     # never under a thread still reading it: a holder that
                     # outlived the kill keeps its fd until the process ends
                     proc.stdout.close()

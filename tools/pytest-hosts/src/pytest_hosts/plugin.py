@@ -30,6 +30,9 @@ def pytest_addoption(parser: pytest.Parser) -> None:
                     help="do not mirror what the remote run wrote or deleted back here")
     group.addoption("--hosts-no-wait", action="store_true", default=False,
                     help="fail instead of queueing when every slot of a host is busy")
+    group.addoption("--hosts-exclusive", action="store_true", default=False,
+                    help="take every slot of each host: wait for running sessions to end, "
+                         "and keep new ones queued until this one does")
     group.addoption("--hosts-setup", action="store_true", default=False,
                     help="run the project's setup command on every host this run")
 
@@ -175,6 +178,7 @@ def pytest_sessionstart(session: pytest.Session) -> None:
         report=_report(config),
         source_host=socket.gethostname(),
         no_wait=bool(config.option.hosts_no_wait),
+        exclusive=bool(config.option.hosts_exclusive),
         force_setup=bool(config.option.hosts_setup),
         local_pytest=pytest.__version__,
         only=config.option.hosts_only,
