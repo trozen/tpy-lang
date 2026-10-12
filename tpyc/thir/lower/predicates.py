@@ -232,10 +232,10 @@ _BITWISE_OPS = frozenset({"&", "|", "^", "<<", ">>"})
 # ternary instead, and take their own arm.
 _LOGICAL_OPS = frozenset({"&&", "||"})
 
-# Identity tests. Admitted only as the None test on a pointer-repr Optional
-# borrow name (`p is None` / `p is not None` -> `(p ==|!= nullptr)`, the
-# THIRIsNone render); every other identity shape (record-vs-record, storage /
-# protocol / union operands) rejects.
+# Identity tests: the None test (`p is None` -> `(p == nullptr)` and its
+# value / union / Any flavors, the THIRIsNone render) and the object pair
+# sema stamped (`TpyBinOp.identity_pointees`, the THIRIdentity
+# `same_object` render).
 _IS_OPS = frozenset({"is", "is not"})
 
 # Membership. The container-member form is `needle in c` / `needle not in c`
@@ -9218,34 +9218,58 @@ def _ptr_value_none_field(e: TpyExpr, locals_: dict[str, TpyType],
         return False
     return _eligible_ptr_value(_field_decl_type(e, locals_, analyzer), analyzer)
 
-def _narrowed_opt_field_read(e: TpyFieldAccess, rtype: 'TpyType | None',
-                             locals_: dict[str, TpyType], analyzer) -> bool:
-    """A sema-NARROWED Optional field read: the declared field type is
-    Optional but the analyzed read type is not (the flow proof), so a value
-    position unwraps `(*recv.field)` -- the is_narrowed_optional_field
-    deref. Stateless: keyed on the declared-vs-analyzed type mismatch, no
-    narrowing scope involved. A one-link CHAIN receiver (`o.inner.value`)
-    carries the same verdict -- the rule is receiver-shape-blind AND
-    link-type-blind, so this READ predicate must NOT carry the subject
-    gates' _plain_record_field_link rule: a macro-generated chain read
-    (dataclass_asdict_mixed's Optional-field expansion, whose link receiver
-    is a macro temp outside `locals_`) is legitimately narrowed by sema and
-    derefs on the leaf mismatch alone -- adding the link rule here rejects
-    that case. The link rule belongs to the SUBJECT gates (which render
-    has_value over the link read) only."""
-    if isinstance(e.obj, TpyFieldAccess):
-        if not isinstance(e.obj.obj, TpyName):
-            return False
-    elif not isinstance(e.obj, TpyName):
-        return False
+def _narrowed_opt_field_decl(e: TpyExpr, rtype: 'TpyType | None',
+                             locals_: dict[str, TpyType],
+                             analyzer) -> 'OptionalType | None':
+    """The declared Optional type of a sema-NARROWED Optional field read --
+    the declared field type is Optional but the analyzed read type is not
+    (the flow proof) -- or None. Stateless: keyed on the declared-vs-analyzed
+    mismatch alone, so it answers for every receiver sema narrows a field
+    path through (a name, a `Ptr`, a chain of fields at any depth, a
+    capture or frame member, whose name the body's declared map does not
+    hold and whose fields read through its own analyzed type)."""
+    if not isinstance(e, TpyFieldAccess):
+        return None
     if rtype is None or isinstance(
             unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype))),
             OptionalType):
-        return False
+        return None
     fdt = _field_decl_type(e, locals_, analyzer)
-    return fdt is not None and isinstance(
-        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt))),
-        OptionalType)
+    if fdt is None and isinstance(e.obj, TpyName):
+        fdt = _field_decl_type(
+            e, {e.obj.name: analyzer.get_expr_type(e.obj)}, analyzer)
+    if fdt is None:
+        return None
+    whole = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(fdt)))
+    return whole if isinstance(whole, OptionalType) else None
+
+
+def _narrowed_opt_field_read(e: TpyFieldAccess, rtype: 'TpyType | None',
+                             locals_: dict[str, TpyType], analyzer) -> bool:
+    """A sema-NARROWED Optional field read (`_narrowed_opt_field_decl`): a
+    value position unwraps `(*recv.field)` -- the is_narrowed_optional_field
+    deref. The rule is receiver-shape-blind AND link-type-blind: a
+    macro-generated chain read (dataclass_asdict_mixed's Optional-field
+    expansion, whose link receiver is a macro temp outside `locals_`) is
+    legitimately narrowed by sema and derefs on the leaf mismatch alone. The
+    subject gates' _plain_record_field_link rule belongs to the SUBJECT
+    gates (which render has_value over the link read) only."""
+    return _narrowed_opt_field_decl(e, rtype, locals_, analyzer) is not None
+
+
+def narrowed_ptr_opt_field(e: TpyExpr, declared: dict[str, TpyType],
+                           analyzer) -> 'OptionalType | None':
+    """The whole declared type of a None-NARROWED pointer-repr Optional field
+    read (`_narrowed_opt_field_decl`), for a pointer slot: the member still
+    stores `std::optional<T>`, so the slot reads it whole and lifts it
+    (`optional_to_ptr`) as it does the un-narrowed field. None for any other
+    read."""
+    whole = _narrowed_opt_field_decl(
+        e, analyzer.get_expr_type(e), declared, analyzer)
+    if whole is None or _optional_ptr_borrow_wide(whole, analyzer) is None:
+        return None
+    return whole
+
 
 def _narrowed_opt_container_field(e: TpyExpr, rtype: 'TpyType | None',
                                   locals_: dict[str, TpyType],

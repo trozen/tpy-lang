@@ -58,7 +58,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union
+from ...typesys import pointer_repr_optional, pointer_variant_union, repr_shape
 from ...typesys import (
     ConcreteFrameType,
     AliasRef,
@@ -211,6 +211,7 @@ from ..nodes import (
     THIRIsinstance,
     THIRFString,
     THIRFStringArg,
+    THIRIdentity,
     THIRIsNone,
     THIRLambda,
     THIRMembership,
@@ -407,6 +408,7 @@ from .predicates import (
     _is_none_compare_operand,
     _value_opt_rvalue,
     _narrowed_opt_field_read,
+    narrowed_ptr_opt_field,
     _narrowed_opt_container_field,
     _ADDR_PTR_COERCIONS,
     _INDIRECT_DEREF_COERCIONS,
@@ -594,9 +596,11 @@ from .context import (FrameLocalClass, _call_arg_forms, _ExprResultUse,
                       _ONLY_PTR_OPT_PASSTHROUGH, _ONLY_SELECT_PRVALUE,
                       _ONLY_SELECT_FRESH_PRVALUE, _ONLY_SELECT_SLOT,
                       _ONLY_TUPLE_SOURCE, _RecordCtorUse, CallArgKind,
-                      SinkForm, SinkPos, SlotPlacement, ValueOptKind,
+                      SinkForm, SinkPos, Slot, SlotHolds, SlotPlacement,
+                      ValueOptKind,
                       _POS_FORMS, storage_type)
 from .generics import expand_fi_template
+from .convert import Effect, Refuse, convert
 
 
 _NESTED_ARG_USE = _ExprUse(record_ctor=_RecordCtorUse.NESTED_ARG)
@@ -3480,6 +3484,61 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
                     forms=_ONLY_INDIRECT_READ | _LEND_OK)
 
 
+def _lower_identity(e: TpyBinOp, lc: '_LowerCtx',
+                    declared: dict[str, TpyType], rtype: 'TpyType | None',
+                    loc) -> THIRIdentity:
+    """`a is b` over two objects: each operand reaches a pointer to its own
+    object type (sema's `identity_pointees`) through the one conversion
+    boundary, as a `T | None` result would take it, and the runtime's
+    `same_object` compares them."""
+
+    def pointer_slot(t: TpyType) -> Slot:
+        return Slot(OptionalType(resolve_pending_container(t, lc.analyzer)
+                                 or t),
+                    SlotConstruct.PASS, holds=SlotHolds.POINTER)
+
+    def read(operand: TpyExpr, slot: Slot) -> THIRExpr:
+        whole = narrowed_opt_field_whole(operand, lc, declared)
+        if whole is not None:
+            return whole
+        # The operand is bound by address, so it is read as a borrow, and an
+        # Optional one whole: a None operand is the null pointer.
+        return _lower_expr(
+            operand, lc, declared,
+            use=_ExprUse(result=_ExprResultUse.BORROW_BIND, dest=slot),
+            allow_whole_optional=True)
+
+    def side(operand: TpyExpr, pointee: TpyType) -> THIRExpr:
+        # The property and temporary guards below decide what the POINTER
+        # row of `convert` should decide for every pointer slot (TODO.md
+        # "pointer row owns its outlives checks").
+        if is_property_getter_read(operand) and isinstance(
+                repr_shape(lc.analyzer.get_expr_type(operand)), OptionalType):
+            # The getter hands back the field's storage optional by
+            # reference, which the pointer conversion passes through
+            # unconverted (BUGS.md#property-getter-pointer-optional-return).
+            raise ThirUnsupported("binop.identity.property")
+        slot = pointer_slot(pointee)
+        node = stamped(read(operand, slot), lc)
+        plan = convert(node, slot, lc.analyzer)
+        if isinstance(plan, Refuse):
+            raise ThirUnsupported("binop.identity." + plan.key)
+        s = node.source
+        if plan.effect is not Effect.PASS and (
+                s.held is Held.FRESH
+                or (s.temporary is not False and not s.pointer_held)):
+            # Sema rejects a fresh operand; the address of an object that
+            # dies with the statement must never be taken here either.
+            raise ThirUnsupported("binop.identity.temporary")
+        return plan.expr
+
+    left_t, right_t = e.identity_pointees
+    _witness("binop.identity")
+    return THIRIdentity(result_type=rtype, left=side(e.left, left_t),
+                        right=side(e.right, right_t), negate=e.op == "is not",
+                        form=Form.VALUE, loc=loc)
+
+
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
                  fold_ok: bool = False, slot_threaded: bool = False,
@@ -3505,6 +3564,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             f"binop.shape.{e.op}"
             f"{_binop_operand_suffix(e, declared, analyzer)}",
             detail=True)
+
+    if e.identity_pointees is not None:
+        # Sema admitted an object pair for `is` / `is not`.
+        return _lower_identity(e, lc, declared, rtype, loc)
 
     def _literal_fold_name(s: TpyExpr) -> bool:
         # A name the dead-branch fold may hold a literal fact for: a
@@ -5842,8 +5905,8 @@ _HELD_BY_KIND: dict[type, Held] = {
     # enum member, a constant, a callable, a value-initialized slot.
     **dict.fromkeys((
         THIRLiteral, THIRStrLiteral, THIRCharLiteral, THIRUnaryArith,
-        THIRUnaryNot, THIRIsNone, THIRIsinstance, THIRAnyIsinstance,
-        THIRDynIsinstance, THIRDynIsinstanceMulti, THIRConceptTest,
+        THIRUnaryNot, THIRIsNone, THIRIdentity, THIRIsinstance,
+        THIRAnyIsinstance, THIRDynIsinstance, THIRDynIsinstanceMulti, THIRConceptTest,
         THIRMembership, THIRStrMembership, THIRTupleMembership,
         THIRChainedCompareStmtExpr, THIRTruthy, THIREnumMember,
         THIREnumWrap, THIRClassConstant, THIRLambda, THIRDefaultConstruct,
@@ -16987,12 +17050,11 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                 addr_of=True, form=Form.BORROW, loc=loc), lc)
         if opt_face == 'lift':
             _witness("optptr.lift")
-            _lift_src = _lower_field_source(a, lc, declared)
-            if _lift_src.narrowed_deref:
-                # A sema-NARROWED storage-Optional field lifts the RAW
-                # member (`optional_to_ptr(t.o)` -- the read over the
-                # declared storage), never the `(*t.o)` unwrap.
-                _lift_src = replace(_lift_src, narrowed_deref=False)
+            # A sema-NARROWED storage-Optional field lifts the RAW member
+            # (`optional_to_ptr(t.o)`), never the `(*t.o)` unwrap.
+            _lift_src = narrowed_opt_field_whole(a, lc, declared)
+            if _lift_src is None:
+                _lift_src = _lower_field_source(a, lc, declared)
             return THIROptionalPtrArg(result_type=ot, form=Form.BORROW,
                                       value=_lift_src,
                                       lift=True, loc=loc)
@@ -19511,6 +19573,20 @@ def _lower_field_source(e: TpyFieldAccess, lc: '_LowerCtx',
         form=Form.STORAGE,
         loc=getattr(e, "loc", None),
     ))
+
+
+def narrowed_opt_field_whole(e: TpyExpr, lc: '_LowerCtx',
+                             declared: dict[str, TpyType]
+                             ) -> 'THIRFieldAccess | None':
+    """A None-narrowed pointer-repr Optional field read at a pointer slot
+    (`narrowed_ptr_opt_field`): the raw member, typed at its whole declared
+    Optional so the slot's conversion lifts it, never the narrowed
+    `(*recv.field)` unwrap. None for any other read."""
+    whole = narrowed_ptr_opt_field(e, declared, lc.analyzer)
+    if whole is None:
+        return None
+    src = _lower_field_source(e, lc, declared)
+    return replace(src, narrowed_deref=False, result_type=whole)
 
 
 def _lower_subscript_source(e: TpySubscript, lc: '_LowerCtx',

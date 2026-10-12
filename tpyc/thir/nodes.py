@@ -715,6 +715,21 @@ class THIRIsNone(THIRExpr):
 
 
 @dataclass(frozen=True)
+class THIRIdentity(THIRExpr):
+    """`a is b` / `a is not b` between two objects: the runtime's
+    `::tpy::same_object(left, right)` (negated: `!...`), which compares the
+    addresses at a common type and answers False for two objects of
+    unrelated C++ types unless both are None. Each operand is already a
+    pointer to its own object type (`TpyBinOp.identity_pointees`), converted
+    through the one conversion boundary as a `T | None` pointer slot, so a
+    None operand is the null pointer. Not equality: no `__eq__` runs.
+    `result_type` is always bool; VALUE form."""
+    left: THIRExpr
+    right: THIRExpr
+    negate: bool = False
+
+
+@dataclass(frozen=True)
 class THIRTruthy(THIRExpr):
     """A non-identity `_truthy_for_rendered` arm.
 

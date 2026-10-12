@@ -1,0 +1,1 @@
+main.py:12: error: 'is' / 'is not' can only compare existing objects: a new object is never identical to another

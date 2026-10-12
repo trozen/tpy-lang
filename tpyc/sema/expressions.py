@@ -328,6 +328,41 @@ def _find_dict_member(ut: TpyType) -> NominalType | None:
 _COMP_ARRAY_MAX_SIZE = 1024
 
 
+def _identity_object(t: TpyType) -> 'TpyType | str':
+    """The object type an `is` operand of type `t` denotes -- a record or
+    reference container, held directly, through a `Ptr` or in an Optional
+    -- or why it has none: "value", "generic", "union", "protocol",
+    "other"."""
+    shape = repr_shape(t)
+    if isinstance(shape, OptionalType):
+        shape = repr_shape(shape.inner)
+    elif isinstance(shape, PtrType):
+        shape = repr_shape(shape.pointee)
+    if isinstance(shape, TypeParamRef):
+        return "generic"
+    if is_protocol_type(shape):
+        return "protocol"
+    if isinstance(shape, (UnionType, RecursiveAliasInstanceType)):
+        members = [m for m in _union_like_members(shape)
+                   if not isinstance(m, NoneType)]
+        if members and all(repr_shape(m).is_value_type() for m in members):
+            return "value"
+        return "union"
+    if isinstance(shape, (AnyType, NoneType)):
+        return "other"
+    if shape.is_value_type():
+        return "value"
+    if isinstance(shape, (NominalType, *PENDING_CONTAINER_TYPES)):
+        return shape
+    return "other"
+
+
+def _without_readonly(t: TpyType) -> TpyType:
+    """`t` with `readonly` dropped at every depth: identity does not
+    depend on access."""
+    return unwrap_readonly(t).map_inner_types(_without_readonly)
+
+
 def _readonly_result(ret: TpyType) -> TpyType:
     """A result read off a readonly receiver (`make_readonly`), under the
     caller's `Ref` -- a `__getitem__` declared to return a reference carries
@@ -1999,6 +2034,98 @@ class ExpressionAnalyzer:
         return stack.enter_context(self.calls.open_call_args(
             expr, [expr.right], overloads[0].name, scored=True)), overloads
 
+    def _identity_pointees(self, expr: TpyBinOp, left_type: TpyType,
+                           right_type: TpyType) -> tuple[TpyType, TpyType]:
+        """The object types `a is b` compares the addresses of: both
+        operands are objects (a record or reference container, a `Ptr` to
+        one, or an Optional of one) of one class (`readonly` aside) or a
+        subclass pair, or two containers of one kind whatever their element
+        types -- `is` decides no types, and the runtime's `same_object`
+        answers for two different C++ types. Every other operand pair is
+        rejected here, so the lowering never re-derives admission."""
+        prefix = "'is' / 'is not' can only compare"
+        shown = (self.compat.call_type_text(left_type),
+                 self.compat.call_type_text(right_type))
+        pointees: list[TpyType] = []
+        for t, spelled in ((left_type, shown[0]), (right_type, shown[1])):
+            verdict = _identity_object(t)
+            if verdict == "value":
+                raise self.ctx.error(
+                    f"{prefix} objects: '{spelled}' is a value type and has "
+                    f"no identity; use '=='", expr)
+            self._reject_identity_gap(verdict, spelled, expr)
+            if not isinstance(verdict, TpyType):
+                raise self.ctx.error(
+                    f"{prefix} objects or None, got {shown[0]} and "
+                    f"{shown[1]}", expr)
+            pointees.append(verdict)
+        for operand, t in ((expr.left, left_type), (expr.right, right_type)):
+            # A `Ptr` a call hands back points at an object that exists.
+            if isinstance(repr_shape(t), PtrType):
+                continue
+            if binds_owned_value(self.ctx, peel_value_wrappers(operand)):
+                raise self.ctx.error(
+                    f"{prefix} existing objects: a new object is never "
+                    f"identical to another", expr)
+        lp, rp = pointees
+        if _without_readonly(lp) == _without_readonly(rp):
+            return lp, rp
+        ld, rd = self.compat.diag_type(lp), self.compat.diag_type(rp)
+        if (isinstance(ld, NominalType) and isinstance(rd, NominalType)
+                and not ld.is_user_record and not rd.is_user_record
+                and ld.name == rd.name):
+            # Two containers of one kind, element types aside (or a literal
+            # whose elements are not decided yet).
+            return lp, rp
+        if (self.ctx.registry.is_subclass_of(lp, rp)
+                or self.ctx.registry.is_subclass_of(rp, lp)):
+            return lp, rp
+        unrelated = (f"{prefix} objects of related types: "
+                     f"'{self.compat.call_type_text(lp)}' and "
+                     f"'{self.compat.call_type_text(rp)}' are unrelated "
+                     f"(neither is a subclass of the other)")
+        if not all(isinstance(repr_shape(t), (OptionalType, PtrType))
+                   for t in (left_type, right_type)):
+            raise self.ctx.error(unrelated, expr)
+        names = (operand_spelling(expr.left) or "a",
+                 operand_spelling(expr.right) or "b")
+        raise self.ctx.error(
+            f"{unrelated}; to test that both are None, write "
+            f"'{names[0]} is None and {names[1]} is None'", expr)
+
+    def _reject_identity_gap(self, verdict: 'TpyType | str', spelled: str,
+                             expr: TpyBinOp) -> None:
+        """The operand kinds `is` does not support yet, whatever the other
+        operand is (`_identity_object`'s verdict)."""
+        prefix = "'is' / 'is not' can only compare"
+        if verdict == "generic":
+            # BUGS.md#identity-generic-param-rejects
+            raise self.ctx.error(
+                f"{prefix} objects of a known type: an operand of a "
+                f"generic type parameter is not supported yet", expr)
+        if verdict == "union":
+            # BUGS.md#identity-ref-union-rejects
+            raise self.ctx.error(
+                f"{prefix} objects of one class: a union operand "
+                f"('{spelled}') is not supported yet", expr)
+        if verdict == "protocol":
+            # BUGS.md#identity-protocol-rejects
+            raise self.ctx.error(
+                f"{prefix} objects of one class: a protocol operand "
+                f"('{spelled}') is not supported yet", expr)
+
+    def _reject_never_none(self, operand: TpyExpr, t: TpyType,
+                           expr: TpyBinOp) -> None:
+        """`x is None` over an operand no None test admits: the gaps first,
+        then an operand that is never None."""
+        spelled = self.compat.call_type_text(t)
+        self._reject_identity_gap(_identity_object(t), spelled, expr)
+        name = operand_spelling(operand)
+        subject = f"'{name}'" if name is not None else "the operand"
+        raise self.ctx.error(
+            f"{subject} is a '{spelled}', which is never None; "
+            f"'is None' needs an Optional or Ptr operand", expr)
+
     def _analyze_binop_in(self, expr: TpyBinOp,
                           declared_slot: SlotHint | None,
                           coercion_ctx: CoercionContext | None,
@@ -2014,6 +2141,11 @@ class ExpressionAnalyzer:
                     return self.analyze_expr(e)
             if expr.op in _PENDING_NUM_BINOPS:
                 with self.pend.sink(e):
+                    return self.analyze_expr(e)
+            if expr.op in ("is", "is not"):
+                # Identity reads no elements, so an undecided container
+                # operand keeps its element type open for its other uses.
+                with self.pend.list_sink(e):
                     return self.analyze_expr(e)
             if expr.op in ("in", "not in") and e is expr.right:
                 # A membership test compares the operand with a dict's keys,
@@ -2141,7 +2273,8 @@ class ExpressionAnalyzer:
         def is_numeric_type(t: TpyType) -> bool:
             return is_any_int_type(t) or is_any_float_type(t)
 
-        # Identity operators (is / is not) -- only valid with None or enums
+        # Identity operators (is / is not): None tests, enum and bool literal
+        # identity (lowered to ==), and object identity (`_identity_pointees`)
         if expr.op in ("is", "is not"):
             left_check = repr_shape(left_type)
             right_check = repr_shape(right_type)
@@ -2180,11 +2313,13 @@ class ExpressionAnalyzer:
                 return BOOL
             if isinstance(left_check, NoneType) and isinstance(right_check, AnyType):
                 return BOOL
-            raise self.ctx.error(
-                f"'is' / 'is not' can only compare Optional/Ptr/union types with None, "
-                f"got {left_type} and {right_type}",
-                expr,
-            )
+            if isinstance(right_check, NoneType):
+                self._reject_never_none(expr.left, left_type, expr)
+            if isinstance(left_check, NoneType):
+                self._reject_never_none(expr.right, right_type, expr)
+            expr.identity_pointees = self._identity_pointees(
+                expr, left_type, right_type)
+            return BOOL
 
         # Enum operators: base Enum supports == and != only;
         # IntEnum also supports ordering, comparison with integers, and arithmetic

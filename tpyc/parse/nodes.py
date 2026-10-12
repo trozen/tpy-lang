@@ -259,6 +259,9 @@ class TpyBinOp(TpyExpr):
     typed_dict_in_field: str | None = None  # Set by sema: "key" in TypedDict -> field presence check
     typed_dict_in_always_true: bool = False  # Set by sema: total=True field, fold to True
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
+    # Set by sema: `is` / `is not` between two objects, which compares their
+    # addresses: each operand's object type (left, right).
+    identity_pointees: 'tuple[TpyType, TpyType] | None' = None
     int_enum_coercion: 'NominalType | None' = None  # Set by sema: IntEnum arithmetic coerced to underlying type
     divisor_non_zero: bool = False  # Set by sema: divisor provably non-zero, skip div-zero check
     # Set by sema on a chained comparison's synthetic pairs past the first:

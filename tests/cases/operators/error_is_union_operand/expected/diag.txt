@@ -1,0 +1,1 @@
+main.py:18: error: 'is' / 'is not' can only compare objects of one class: a union operand ('A | B') is not supported yet

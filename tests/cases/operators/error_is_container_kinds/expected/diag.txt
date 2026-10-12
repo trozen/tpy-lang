@@ -1,0 +1,1 @@
+main.py:5: error: 'is' / 'is not' can only compare objects of related types: 'list[int]' and 'dict[str, int]' are unrelated (neither is a subclass of the other)

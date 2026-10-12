@@ -1,0 +1,1 @@
+main.py:11: error: 'a' is a 'A', which is never None; 'is None' needs an Optional or Ptr operand

@@ -336,9 +336,9 @@ cpy-checked case, while the record-identity half stays (`Any` is
 `typing.Any` under CPython, and assignment has no hook to preserve
 identity through).
 
-**`x is None` only**: `is` for any other RHS is a compile error in v1.
-Worded diagnostic: `is is only supported with None on Any -- did you mean
-== or isinstance?`. (See Future Extensions for the general case.)
+**`x is None` only**: `is` for any other RHS is a compile error in v1:
+`'is' / 'is not' can only compare objects or None, got Any and {other}`.
+(See Future Extensions for the general case.)
 
 ### Auto-coerce (deduced target type)
 
@@ -697,7 +697,7 @@ phrasing is a future cosmetic refinement and is not blocking.
 | `any_var[k]` | `Cannot index type Any` |
 | `len(any_var)` | `No matching overload for len(Any)` |
 | `any_var + x` (any binop) | `Invalid operand types for '+': Any and {other}` |
-| `any_var is x` for `x != None` | `'is' / 'is not' can only compare Optional/Ptr/union types with None, got Any and {other}` |
+| `any_var is x` for `x != None` | `'is' / 'is not' can only compare objects or None, got Any and {other}` |
 | `cast(T, x)` runtime mismatch | `TypeError: Any holds {actual}, cannot cast to {T}` (catchable) |
 | Storing a non-copyable contents type in Any (`@nocopy`, `__del__`, also through `Own[T]`) | `cannot store move-only type 'T' in Any (v1 supports copyable contents only)` |
 | `Any \| None`, `Optional[Any]` | `Any \| None is redundant -- Any already accepts None` |

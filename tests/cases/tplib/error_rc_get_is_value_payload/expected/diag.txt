@@ -1,0 +1,1 @@
+main.py:12: error: 'is' / 'is not' can only compare objects: 'int32' is a value type and has no identity; use '=='

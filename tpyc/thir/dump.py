@@ -41,6 +41,7 @@ from .nodes import (
     THIRFormConvert,
     THIRFString,
     THIRIf,
+    THIRIdentity,
     THIRIfExpr,
     THIRIsNone,
     THIRIsinstance,
@@ -207,6 +208,9 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRIsNone):
         return (f"is_none({_expr(e.operand)}{', negate' if e.negate else ''}"
                 f"{', value_repr' if e.value_repr else ''})")
+    if isinstance(e, THIRIdentity):
+        return (f"identity({_expr(e.left)}, {_expr(e.right)}"
+                f"{', negate' if e.negate else ''})")
     if isinstance(e, THIRTruthy):
         deref = "*" if e.deref else ""
         return f"truthy[{e.mode.name.lower()}]({deref}{_expr(e.operand)})"

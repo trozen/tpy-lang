@@ -1,0 +1,1 @@
+main.py:19: error: 'is' / 'is not' can only compare objects of related types: 'A' and 'B' are unrelated (neither is a subclass of the other); to test that both are None, write 'a is None and b is None'

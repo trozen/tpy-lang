@@ -2418,6 +2418,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "return.open_tparam_param",     # `return v` of a `T` PARAM at a
                                     # `val_or_ref_t<T>` return ->
                                     # `::tpy::param_to_return<T>(v)`
+    "binop.identity",               # `a is b` between two objects ->
+                                    # `::tpy::same_object(l, r)` over each
+                                    # operand's pointer form
     "binop.open_tparam_eq",         # `x == v` between two open `T` values ->
                                     # `::tpy::eq`, form-neutral across the
                                     # instantiation's param/storage spellings

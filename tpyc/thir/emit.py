@@ -87,6 +87,7 @@ from .nodes import (
     THIRFString,
     THIRFunction,
     THIRIf,
+    THIRIdentity,
     THIRIfExpr,
     THIRIsNone,
     THIRSlotEmplace,
@@ -1729,6 +1730,10 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             return f"(!{check})" if e.negate else f"({check})"
         op = "!=" if e.negate else "=="
         return f"({inner} {op} nullptr)"
+    if isinstance(e, THIRIdentity):
+        check = (f"::tpy::same_object({_emit_expr(e.left, state)}, "
+                 f"{_emit_expr(e.right, state)})")
+        return f"(!{check})" if e.negate else check
     if isinstance(e, THIRTruthy):
         if e.mode is TruthinessMode.ALWAYS_TRUE:
             return f"(static_cast<void>({_emit_expr(e.operand, state)}), true)"

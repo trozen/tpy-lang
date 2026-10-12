@@ -1,0 +1,56 @@
+module True False True
+free True False True True
+method True False
+ctor True False
+list True False
+dict True False
+set True False
+loop 2
+literal False 1
+literal mixed False False
+literal dict False
+literal comp False False
+literal empty False True
+literal empty after [100, 200]
+literal set False
+literal open False True
+literal open after [1, 2, 3000000000]
+nested False False True
+nested field False False
+none pair True True False
+none pair True False True
+readonly alias True
+two bases True False
+empty records False
+closure narrowed False True 5
+ptr True False
+ptr pair True False True
+ptr call True False
+opt none True True
+opt set True False False
+narrowed True False
+narrowed ptr True False True
+unnarrowed ptr True True
+unnarrowed ptr none True True
+narrowed chain True False
+narrowed chain method True False 3
+opt local True False
+borrow return True False
+call True False False
+derived True False
+rc True False
+rc get True False
+rc int False
+gen [True, False]
+yield [True]
+async True False
+comp [2]
+unpack True False
+closure True
+with True
+finally True
+error_return True
+error_return missing
+match False
+capture True
+global True False

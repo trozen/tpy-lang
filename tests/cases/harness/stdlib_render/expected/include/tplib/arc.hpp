@@ -300,8 +300,8 @@ struct Arc {
     }
 
     // # Equality and ordering delegate to T (content, matching Rust's
-    // # `Arc<T>::eq`). Cell-pointer identity is not yet expressible at the
-    // # TPy surface; tracked in BUGS.md (shared with Rc).
+    // # `Arc<T>::eq`). Two handles of a reference payload share a cell when
+    // # `a.get() is b.get()` (`a is b` compares the handles themselves).
     // def __str__(self) -> str:
     //     return f"Arc({self.get()})"
     std::string __str__() const {

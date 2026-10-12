@@ -679,6 +679,25 @@ decltype(auto) deref_check(T& obj) {
     return obj.__deref__();
 }
 
+// `a is b` over two objects: same object iff same address, once both are viewed
+// at a common type; objects of unrelated C++ types are never one object, so only
+// two Nones (null pointers) are identical there.
+template <class A, class B>
+constexpr bool same_object(const A* a, const B* b) noexcept {
+    if constexpr (std::is_same_v<std::remove_cv_t<A>, std::remove_cv_t<B>>
+                  || std::is_convertible_v<const A*, const B*>
+                  || std::is_convertible_v<const B*, const A*>) {
+        return a == b;
+    } else {
+        // A base the pointer does not convert to (ambiguous, or the class
+        // not complete here) would otherwise read as unrelated: refuse it.
+        static_assert(!std::is_base_of_v<std::remove_cv_t<A>, std::remove_cv_t<B>>
+                          && !std::is_base_of_v<std::remove_cv_t<B>, std::remove_cv_t<A>>,
+                      "identity between a class and an ambiguous or incomplete base");
+        return a == nullptr && b == nullptr;
+    }
+}
+
 /**
  * Checked optional dereference - panics if optional is empty.
  */

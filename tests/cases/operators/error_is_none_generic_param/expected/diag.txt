@@ -1,0 +1,1 @@
+main.py:11: error: 'is' / 'is not' can only compare objects of a known type: an operand of a generic type parameter is not supported yet

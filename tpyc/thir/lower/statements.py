@@ -291,6 +291,7 @@ from ..nodes import (
     WithTargetArm,
 )
 from .predicates import (
+    narrowed_ptr_opt_field,
     _alias_call_source_ok,
     overload_if_fold,
     _call_storage_optional_return,
@@ -633,6 +634,7 @@ from .expressions import (
     _to_opt_ptr,
     lower_print_sink,
     _lower_field_source,
+    narrowed_opt_field_whole,
     _lower_lambda,
     _strip_slot_leaf_deref,
     _strview_coerce_name,
@@ -13287,41 +13289,29 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     value=THIRLiteral(result_type=ret_popt, value=None,
                                       form=Form.BORROW, loc=loc), loc=loc)
             elif (isinstance(v, TpyFieldAccess)
-                    and _field_receiver_ok(v, declared, analyzer)
+                    and (_field_receiver_ok(v, declared, analyzer)
+                         or _ptr_value_field_recv_ok(v, declared, analyzer))
                     and _optional_ptr_borrow_wide(
                         analyzer.get_expr_type(v), analyzer)
                     is not None):
-                # `return self.f` over a storage Optional[F1-record] field.
+                # `return self.f` over a storage Optional[F1-record] field,
+                # off a record or an explicit `Ptr[record]` receiver.
                 _witness("ret.opt_field_ref"
                          if ret_slot.holds is SlotHolds.BORROWS
                          else "ret.ptr_opt_field")
 
                 def ptr_read() -> THIRExpr:
                     return _lower_field_source(v, lc, declared)
-            elif (isinstance(v, TpyFieldAccess)
-                    and ret_slot.holds is SlotHolds.POINTER
-                    and _field_receiver_ok(v, declared, analyzer)
-                    and (_fdn := _field_decl_type(v, declared,
-                                                  analyzer)) is not None
-                    and _optional_ptr_borrow_wide(
-                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                            _fdn))), analyzer) is not None
-                    and not isinstance(
-                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                            analyzer.get_expr_type(v)))),
-                        OptionalType)):
+            elif (ret_slot.holds is SlotHolds.POINTER
+                    and narrowed_ptr_opt_field(v, declared, analyzer)
+                    is not None):
                 # The sema-NARROWED flavor (`return t.o` after the None
                 # guard): the member's C++ storage stays `std::optional<T>`,
-                # so it is read WHOLE -- the raw member, never the narrowed
-                # `(*t.o)` unwrap -- and lifts like the un-narrowed one.
+                # so it is read WHOLE and lifts like the un-narrowed one.
                 _witness("ret.ptr_opt_field_narrowed")
-                whole_t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                    _fdn)))
 
                 def ptr_read() -> THIRExpr:
-                    src = _lower_field_source(v, lc, declared)
-                    return replace(src, narrowed_deref=False,
-                                   result_type=whole_t)
+                    return narrowed_opt_field_whole(v, lc, declared)
             elif (isinstance(v, TpyFieldAccess)
                     and _field_receiver_ok(v, declared, analyzer)
                     and (_fp_t := analyzer.get_expr_type(v))
