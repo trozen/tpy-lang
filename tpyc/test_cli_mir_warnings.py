@@ -2,6 +2,7 @@
 that emits C++ only, and by a cold build, then replayed from the build
 cache by a warm one."""
 
+import shutil
 import sys
 from pathlib import Path
 
@@ -29,10 +30,11 @@ _WARNING = ("prog.py:7: warning: argument 'xs[0]' points into 'xs', which 'bound
 
 def _toolchain() -> bool:
     try:
-        CppCompilerConfig.from_env(cxx="auto")
+        config = CppCompilerConfig.from_env(cxx="auto")
     except (CompilerNotFoundError, ToolchainUnsupportedError):
         return False
-    return True
+    # Auto-detection falls back to a bare "g++" when it finds no compiler.
+    return shutil.which(config.compiler[0]) is not None
 
 
 def _build(monkeypatch, capsys, prog: Path, out: Path) -> tuple[int, str]:
@@ -42,7 +44,10 @@ def _build(monkeypatch, capsys, prog: Path, out: Path) -> tuple[int, str]:
 
 
 @pytest.mark.skipif(not _toolchain(), reason="no C++ toolchain")
-def test_the_warning_is_printed_and_replayed_by_a_warm_build(tmp_path, monkeypatch, capsys) -> None:
+def test_the_warning_is_printed_and_replayed_by_a_warm_build(tmp_path, monkeypatch, capsys, request) -> None:
+    # The option is registered by tests/conftest.py, absent from a `pytest tpyc/` run.
+    if request.config.getoption("--no-exec", default=False):
+        pytest.skip("a --no-exec run builds nothing")
     prog = tmp_path / "prog.py"
     prog.write_text(_PROG)
     monkeypatch.chdir(tmp_path)
