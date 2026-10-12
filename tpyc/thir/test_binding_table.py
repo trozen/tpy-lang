@@ -13,9 +13,12 @@ from dataclasses import replace
 
 import pytest
 
+from ..codegen_cpp.forms import LoopBinding
 from ..compilation_context import activate_compiler
-from ..parse.nodes import (TpyExprStmt, TpyForEach, TpyFunction, TpyIf,
-                           TpyLambda, TpyMatch, TpyName, TpyNestedDef,
+from ..parse.nodes import (TpyAssign, TpyExprStmt, TpyForEach,
+                           TpyFunction, TpyIf,
+                           TpyLambda, TpyListComprehension, TpyMatch,
+                           TpyName, TpyNestedDef,
                            TpyReturn, TpyVarDecl, TpyWith, walk_expr_tree)
 from . import nodes as th
 from .lower import bindings as _bindings
@@ -24,8 +27,8 @@ from .lower import match as _match
 from .lower.bindings import (BindingTable, PlanInputs, ScopeNode,
                              plan_bindings, project_held)
 from .lower.comprehensions import _clause_bindings, _clause_route
-from .lower.context import (BindingTableError, _LowerCtx, _LowerScope,
-                            _Prescan)
+from .lower.context import (BindingTableError, FrameLocalClass, _LowerCtx,
+                            _LowerScope, _Prescan)
 from .lower.statements import _admit_hoist, _Hoist, _lower_first_decl
 from .reject import ThirUnsupported, begin_stmt
 from .source import BindingKind, BindingRepr, Held
@@ -577,7 +580,7 @@ def test_a_frame_emplace_into_a_non_frame_record_is_rejected(
     write = next(w for w in contracts["frame_slot"].leaves.values()
                  if isinstance(w, th.THIRFrameSlotWrite) and w.name == "p")
     validate_stmts("frame_slot", [write], lowered=True)
-    wrong = replace(write, binding=replace(write.binding, frame_slot=False,
+    wrong = replace(write, binding=replace(write.binding, frame_class=None,
                                            coro_frame=False))
     with pytest.raises(THIRValidationError, match="no frame slot"):
         validate_stmts("frame_slot", [wrong], lowered=True)
@@ -1173,6 +1176,22 @@ def pick(n: int) -> int:
     assert table.declared_by(func.body[0], "d").kind is BindingKind.DECL_DYN
 
 
+def test_an_assign_to_a_name_nothing_binds_is_an_assign_site() -> None:
+    # The Python parser spells a first `z = n` as a declaration; a plugin
+    # front end (`frontend_ir`) hands over a plain assign to the name.
+    compiler, func, inp = _plan_inputs('''
+def pick(n: int) -> int:
+    z = n
+    return z
+''', "pick")
+    body = [TpyAssign(target=TpyName("z"), value=func.body[0].init),
+            *func.body[1:]]
+    with activate_compiler(compiler):
+        table = plan_bindings(inp, body)
+    rec = table.declared_by(body[0], "z")
+    assert (rec.site_kind, rec.kind) == ("assign", BindingKind.ASSIGN_PLAIN)
+
+
 def test_an_unresolved_pending_list_is_the_container_slot_kind() -> None:
     # Planning sees every list literal resolved, so the row is asked with an
     # unresolved literal type directly.
@@ -1202,7 +1221,8 @@ def test_a_frame_slot_reaching_the_first_declaration_is_an_error(
 
     def frame_row(site, name, typ, inp, visible):
         rec = decl_row(site, name, typ, inp, visible)
-        return replace(rec, frame_slot=True) if name == "x" else rec
+        return (replace(rec, frame_class=FrameLocalClass.FRAME_SLOT)
+                if name == "x" else rec)
     monkeypatch.setitem(_bindings._ROWS, "decl", (frame_row,))
     func, _table, lc = _installed('''
 def one() -> int:
@@ -1355,7 +1375,7 @@ def pick(c: bool, a: P, b: P) -> int:
     assert t.kind is BindingKind.HOIST_BTUPLE_BRANCH and t.rebind_slot
     # The statement keys the loop variable too.
     u, = (r for r in table.sites[for_stmt]
-          if r.name == "u" and r.kind.family == "hoist")
+          if r.name == "u" and r.site_kind == "hoist")
     assert u.kind is BindingKind.HOIST_BTUPLE_LOOP and not u.rebind_slot
     w = table.declared_by(try_stmt, "w")
     assert w.kind is BindingKind.HOIST_BTUPLE_BRANCH and not w.rebind_slot
@@ -1731,7 +1751,7 @@ def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
         assert rec.kind is kind, name
         assert _admit_tag(compiler_g, stmt, ladder, rec) == tag, name
     u, = (r for r in table_g.sites[for_u]
-          if r.name == "u" and r.kind.family == "hoist")
+          if r.name == "u" and r.site_kind == "hoist")
     assert u.kind is BindingKind.HOIST_PLAIN
     assert _admit_tag(compiler_g, for_u, "foreach", u) == "foreach.hoist_type"
 
@@ -1885,7 +1905,7 @@ def test_the_one_hoist_ladder_answers_per_statement(func_name, facts,
         table = plan_bindings(inp, func.body)
     got = {r.name: (r.kind, r.const, r.rebind_slot, r.borrowed_capture)
            for r in table.records()
-           if r.kind.family == "hoist" and r.name in expected}
+           if r.site_kind == "hoist" and r.name in expected}
     assert got == expected
 
 
@@ -2147,3 +2167,444 @@ def gen(n: int) -> Iterator[int]:
 ''')
     rec = tables["gen"].root.bindings["helper"]
     assert rec.kind is BindingKind.DEF_CLOSURE_LOCAL and rec.nested_def
+
+
+def _module_tables(source: str, extra_lib_dirs=None
+                   ) -> dict[str, BindingTable]:
+    """Every body's table as the whole module's C++ generation plans it,
+    the module-init body (`__tpy_init`) included, keyed by the body's
+    function name (the first planning of each)."""
+    compiler, modules = _compile(source, extra_lib_dirs=extra_lib_dirs)
+    entry = _entry(modules)
+    tables: dict[str, BindingTable] = {}
+    install = _bindings.install
+
+    def capture(lc: _LowerCtx, table: BindingTable) -> None:
+        tables.setdefault(lc.func.name, table)
+        install(lc, table)
+    _bindings.install = capture
+    try:
+        with activate_compiler(compiler):
+            compiler.generate_inl_and_code_to_strings(entry)
+    finally:
+        _bindings.install = install
+    return tables
+
+
+_SITE_KINDS = _PRELUDE + '''
+from typing import Callable, Iterator
+
+from tpy import int32
+
+G = P(1)
+
+
+class C:
+    n: int32
+
+    def __init__(self) -> None:
+        self.n = 0
+
+    def get(self, k: int32) -> int32:
+        return self.n + k
+
+
+class Num:
+    def __enter__(self) -> int32:
+        return 3
+
+    def __exit__(self, et, ev, tb) -> None:
+        pass
+
+
+def reads(p: P, xs: list[int32], pairs: list[tuple[int32, int32]], c: bool,
+          o: Outer | P) -> int32:
+    d: int32 = 1
+    if c:
+        h = d
+    else:
+        h = d + 1
+    for x in xs:
+        d += x
+    for a, b in pairs:
+        d += a + b
+    with Num() as w:
+        d += w
+    if (k := d + 1) > 0:
+        d += k
+    ys = [y + 1 for y in xs]
+    match o:
+        case Outer(p=q):
+            d += 1
+        case _:
+            pass
+    try:
+        d += 1
+    except ValueError as e:
+        d += 2
+
+    return d + h + len(ys) + int32(p.v + G.v)
+
+
+def closures(d: int32) -> int32:
+    def inner(m: int32) -> int32:
+        return m + d
+    f: Callable[[int32], int32] = lambda z: z + d
+    return inner(1) + f(2)
+
+
+def gen(n: int32) -> Iterator[int32]:
+    t = n + 1
+    yield t
+'''
+
+
+def test_every_record_names_the_kind_of_site_that_declared_it() -> None:
+    tables = _module_tables(_SITE_KINDS)
+
+    def kinds(table: BindingTable, *names: str) -> dict:
+        got: dict = {}
+        for rec in [*table.root.bindings.values(), *table.records()]:
+            if rec.name in names:
+                got.setdefault(rec.name, set()).add(rec.site_kind)
+        for node in table.scope_at.values():
+            for rec in node.bindings.values():
+                if rec.name in names:
+                    got.setdefault(rec.name, set()).add(rec.site_kind)
+        return got
+
+    assert kinds(tables["reads"], "p", "G", "d", "h", "x", "a", "w", "k",
+                 "y", "q", "e") == {
+        "p": {"param"}, "G": {"global"}, "d": {"decl"}, "h": {"hoist"},
+        "x": {"loop"}, "a": {"unpack"}, "w": {"with"}, "k": {"walrus"},
+        "y": {"comp"}, "q": {"match"}, "e": {"except"}}
+    assert kinds(tables["closures"], "inner", "m", "z") == {
+        "inner": {"def"}, "m": {"nested_param"}, "z": {"lambda"}}
+    assert kinds(tables["get"], "self") == {"self": {"receiver"}}
+    assert kinds(tables["gen"], "n", "t") == {"n": {"param"},
+                                               "t": {"frame"}}
+    assert kinds(tables["__tpy_init"], "G") == {"G": {"module_global"}}
+
+
+_LOOP_BINDS = _PRELUDE + '''
+from enum import Enum
+
+from tpy import int32, readonly
+
+
+class Color(Enum):
+    RED = 1
+    GREEN = 2
+
+
+def loops(ps: list[P], xs: list[int32], ro: readonly[list[int32]],
+          pairs: list[tuple[int32, int32]]) -> int32:
+    n: int32 = 0
+    for p in ps:
+        p.v += 1
+    for q in ps:
+        n += int32(q.v)
+    for x in xs:
+        n += x
+    for r in ro:
+        n += r
+    for c in Color:
+        n += 1
+    h: int32 = 0
+    for h in xs:
+        pass
+    zs = [z + 1 for z in xs]
+    ws = [a + b for a, b in pairs]
+    return n + h + len(zs) + len(ws)
+'''
+
+
+def test_a_loop_record_carries_the_binding_its_loop_emits() -> None:
+    func, table = _plan(_LOOP_BINDS, "loops")
+    LB = LoopBinding
+
+    def loop_rec(name: str) -> BindingRepr:
+        recs = [r for r in _sites(table, name) if r.loop_binding is not None]
+        assert len(recs) == 1, (name, recs)
+        return recs[0]
+    got = {n: (loop_rec(n).loop_binding, loop_rec(n).const_loop_var)
+           for n in ("p", "q", "x", "r", "c", "h", "z")}
+    assert got == {
+        # A record element a body writes through is the mutable reference,
+        # one it only reads the const one.
+        "p": (LB.REFERENCE, False), "q": (LB.CONST_REFERENCE, True),
+        # A value element is the loop's own copy, never const, whatever
+        # its source (a readonly container included).
+        "x": (LB.VALUE, False), "r": (LB.VALUE, False),
+        # An enum loop binds the member by value.
+        "c": (LB.VALUE, False),
+        # A loop variable read after the loop assigns the hoisted slot.
+        "h": (LB.ASSIGN, False),
+        # A comprehension clause binds its variable as the for statement
+        # binds an element of its type.
+        "z": (LB.VALUE, False)}
+    # An unpack clause's holder carries the clause's binding; its targets
+    # are no loop variables.
+    holder = [r for r in table.records()
+              if r.kind is BindingKind.COMP_UNPACK_HOLDER]
+    assert [r.loop_binding for r in holder] == [LB.REFERENCE]
+    assert all(r.loop_binding is None for n in ("a", "b")
+               for r in _sites(table, n))
+
+
+_ARRAY_COMP = _PRELUDE + '''
+from tpy import Array
+
+
+def over(a: Array[int, 3], xs: list[int]) -> int:
+    m: Array[int, 3] = [y * 2 for y in a]
+    ws = [w * 2 for w in xs]
+    return m[0] + ws[0]
+'''
+
+
+def test_an_array_comprehension_variable_is_its_own_copy() -> None:
+    # BUGS.md#const-ref-loop-var-sees-source-write: a list comprehension's
+    # read-only BigInt variable is a const reference into the source; an
+    # Array comprehension's stays a copy until that fix.
+    _func, table = _plan(_ARRAY_COMP, "over")
+    y = next(r for r in _sites(table, "y") if r.loop_binding is not None)
+    w = next(r for r in _sites(table, "w") if r.loop_binding is not None)
+    assert y.loop_binding is LoopBinding.VALUE
+    assert w.loop_binding is LoopBinding.CONST_TYPED_REFERENCE
+
+
+_PARAM_CONST = _PRELUDE + '''
+from typing import Callable
+
+from tpy import Ptr, readonly
+
+
+class Q:
+    w: int
+
+    def __init__(self, w: int) -> None:
+        self.w = w
+
+
+class R:
+    n: int
+
+    def __init__(self) -> None:
+        self.n = 0
+
+    def get(self) -> int:
+        return self.n
+
+    def bump(self) -> None:
+        self.n += 1
+
+    def total(self) -> int:
+        def inner() -> int:
+            return self.n
+        return inner()
+
+
+def params(p: P, m: P, u: P | Q, rp: Ptr[readonly[P]],
+           *rest: P) -> int:
+    m.v += 1
+
+    def inner() -> int:
+        return p.v
+    f: Callable[[], int] = lambda: p.v
+    vs = [p.v + q.v for q in rest]
+    return (inner() + rp.v + (1 if isinstance(u, P) else 0) + len(rest)
+            + f() + len(vs))
+'''
+
+
+def test_a_parameter_record_carries_its_function_const_verdicts() -> None:
+    _bodies, tables = lower_bodies(_PARAM_CONST)
+    table = tables["params"]
+    root = table.root.bindings
+    got = {n: (root[n].const, root[n].deep_const)
+           for n in ("p", "m", "u", "rp", "rest")}
+    assert got == {
+        # Read only: const; written through: mutable.
+        "p": (True, True), "m": (False, False),
+        # A union read only for its discriminant deep-consts its pointees.
+        "u": (True, True),
+        # A `Ptr[readonly[T]]` carries its const on the pointee, an
+        # unmutated pack on its elements.
+        "rp": (False, True), "rest": (False, True)}
+    # A nested def reads the enclosing parameter's own record, so the
+    # verdict of the function that declares it.
+    nested = next(s for s in table.scope_at
+                  if isinstance(s, TpyFunction) and s.name == "inner")
+    assert table.scope_at[nested].lookup("p") is root["p"]
+    # So do a lambda and a comprehension.
+    lam = next(s for s in table.scope_at if isinstance(s, TpyLambda))
+    assert table.scope_at[lam].lookup("p") is root["p"]
+    comp = next(s for s in table.scope_at
+                if isinstance(s, TpyListComprehension))
+    assert table.scope_at[comp].lookup("p") is root["p"]
+    # The receiver of a read-only method is const, a mutating one's not.
+    assert tables["R.get"].root.bindings["self"].const is True
+    assert tables["R.bump"].root.bindings["self"].const is False
+    # A nested def inside a read-only method reads the method's receiver
+    # record, const.
+    total = tables["R.total"]
+    nested_self = next(
+        total.scope_at[s] for s in total.scope_at
+        if isinstance(s, TpyFunction) and s.name == "inner").lookup("self")
+    assert nested_self is total.root.bindings["self"]
+    assert nested_self.const is True
+
+
+_GLOBAL_SLOTS = _PRELUDE + '''
+G = P(1)
+K = 3
+
+
+def reads() -> int:
+    def inner() -> int:
+        return G.v
+    return G.v + K + inner()
+'''
+
+
+def test_a_pointer_slot_global_record_is_the_global_slot() -> None:
+    tables = _module_tables(_GLOBAL_SLOTS)
+    # Module init and a function body both read a non-value global through
+    # its pointer slot; a value global is no slot.
+    init = tables["__tpy_init"].root.bindings
+    assert (init["G"].site_kind, init["G"].global_slot,
+            init["G"].pointer) == ("module_global", True, True)
+    body = tables["reads"]
+    g = body.root.bindings["G"]
+    assert (g.site_kind, g.global_slot, g.pointer) == ("global", True, True)
+    assert not body.root.bindings["K"].global_slot
+    # A nested def reads the enclosing body's slot as the pointer it is.
+    nested = next(s for s in body.scope_at
+                  if isinstance(s, TpyFunction) and s.name == "inner")
+    inner_g = body.scope_at[nested].lookup("G")
+    assert inner_g.pointer and not inner_g.global_slot
+    # Only module init's own slot global is its module slot.
+    assert init["G"].module_slot
+    assert not g.module_slot and not inner_g.module_slot
+
+
+_IMPORTED_SLOT = '''
+from gslots import H
+
+print(H.w)
+'''
+
+
+def test_an_imported_slot_global_is_no_module_slot(tmp_path) -> None:
+    (tmp_path / "gslots.py").write_text(
+        "class Q:\n"
+        "    w: int\n\n"
+        "    def __init__(self, w: int) -> None:\n"
+        "        self.w = w\n\n\n"
+        "H = Q(1)\n")
+    init = _module_tables(_IMPORTED_SLOT, extra_lib_dirs=[tmp_path])[
+        "__tpy_init"].root.bindings
+    # The importing module's init reads the slot as a pointer through its
+    # qualified spelling and never allocates it.
+    h = init["H"]
+    assert (h.site_kind, h.global_slot, h.pointer, h.module_slot) == (
+        "module_global", True, True, False)
+
+
+_FRAME_FACTS = _PRELUDE + '''
+from typing import Iterator
+
+
+class Bag:
+    items: list[P]
+
+    def __init__(self) -> None:
+        self.items = [P(1)]
+
+    def walk(self, k: int) -> Iterator[int]:
+        for it in self.items:
+            yield it.v + k
+
+
+def gen(items: list[P], n: int) -> Iterator[int]:
+    for it in items:
+        it.v += 1
+        yield it.v
+    t = n + 1
+    yield t
+
+
+def steps(ps: list[P], os: list[P | None]) -> Iterator[int]:
+    for st in iter(ps):
+        yield st.v + 0
+    for o in os:
+        if o is not None:
+            yield o.v + 0
+
+
+def shadow(rowss: list[list[int]]) -> Iterator[int]:
+    ys = rowss[0]
+    yield len(ys)
+    t = [len(ys) for ys in rowss]
+    yield sum(t)
+
+
+def plain(n: int) -> int:
+    return n + 1
+'''
+
+
+def test_a_frame_member_record_carries_its_frame_class() -> None:
+    _bodies, tables = lower_bodies(_FRAME_FACTS)
+    C = FrameLocalClass
+    root = tables["gen"].root.bindings
+    # A frame's parameters are its plain members; a pointer-form loop
+    # variable is the loop's `T*` member, bound by its loop's strategy;
+    # a value local is a plain member.
+    assert root["items"].frame_class is C.PLAIN
+    assert root["n"].frame_class is C.PLAIN
+    assert root["it"].frame_class is C.LOOP_PTR
+    assert root["t"].frame_class is C.PLAIN
+    # A pointer-form loop variable over an ITERATOR source points into the
+    # step result; over a container, into its storage. A pointer-repr
+    # Optional loop variable is the loop's.
+    steps = tables["steps"].root.bindings
+    assert steps["st"].frame_class is C.LOOP_PTR
+    assert steps["st"].source_typed_holder
+    assert not root["it"].source_typed_holder
+    assert steps["o"].frame_class is C.OPT_PTR and steps["o"].opt_ptr_loop_var
+    assert not any(r.opt_ptr_loop_var
+                   for r in (root["it"], root["t"], steps["st"]))
+    # A read-only method's frame holds its receiver and the loop variable
+    # over its field const.
+    walk = tables["Bag.walk"].root.bindings
+    assert walk["self"].frame_const
+    assert walk["it"].frame_const and walk["it"].frame_class is C.LOOP_PTR
+    assert not root["it"].frame_const
+    # A sync body has no frame members.
+    assert all(r.frame_class is None
+               for r in tables["plain"].root.bindings.values())
+
+
+def test_a_nested_scope_rebinding_a_frame_member_hides_it(
+        monkeypatch) -> None:
+    lcs: list = []
+    install = _bindings.install
+
+    def capture(lc: _LowerCtx, table: BindingTable) -> None:
+        lcs.append(lc)
+        install(lc, table)
+    monkeypatch.setattr(_bindings, "install", capture)
+    lower_bodies(_FRAME_FACTS)
+    lc = next(lc for lc in lcs
+              if lc.func.name == "shadow" and lc.table.frame_members)
+    table = lc.table
+    lc.cursor = (None, table.root)
+    assert {"ys", "t"} <= lc.frame_field_names()
+    # Inside the comprehension `ys` is the clause's variable, no member.
+    comp = next(s for s in table.scope_at
+                if isinstance(s, TpyListComprehension))
+    lc.cursor = (None, table.scope_at[comp])
+    names = lc.frame_field_names()
+    assert "ys" not in names and "t" in names

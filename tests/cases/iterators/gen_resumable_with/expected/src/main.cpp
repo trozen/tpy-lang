@@ -298,6 +298,81 @@ __gen_gen_hoist_ref gen_hoist_ref(const std::vector<::tpy::BigInt>& rows) {
     return __gen_gen_hoist_ref(rows);
 }
 
+// def call(fn: Callable[[], int]) -> int:
+//     return fn()
+::tpy::BigInt call(const std::function<::tpy::BigInt()>& fn) {
+    return fn();
+}
+
+// def gen_comp_lambda(rowss: list[list[int]]) -> Iterator[int]:
+//     # A frame pointer alias `ys` live across yields, and a comprehension
+//     # variable of the same name read by a lambda inside the comprehension;
+//     # the alias is mutated after it and seen through the with target.
+//     with Items(1) as xs:
+//         ys = xs
+//     yield len(ys)                                                           # -> S_RESUME_0
+//     w = [call(lambda: len(ys)) for ys in rowss]  # tpyc: ok
+//     yield sum(w)                                                            # -> S_RESUME_1
+//     ys.append(42)
+//     yield ys[1] + xs[1] + len(ys)                                           # -> S_RESUME_2
+std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_comp_lambda::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Items(::tpy::BigInt(1)));
+        auto& __ctx_3 = (*__with_ctx_0);
+        xs.emplace(__ctx_3.__enter__());
+        try {
+            ys = &((*xs));
+            goto __with_exit_3;
+        } catch (::tpy::BaseException& __exc_3) {
+            __ctx_3.__exit__({}, &__exc_3, {});
+            throw;
+        } catch (...) {
+            __ctx_3.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_3:
+        __ctx_3.__exit__({}, nullptr, {});
+        __state = S_RESUME_0;
+        return ::tpy::BigInt(::tpy::__len__((*ys)));
+    }
+    case S_RESUME_0: {  // after: yield len(ys)
+        w.emplace(({
+            std::vector<::tpy::BigInt> __result;
+            auto& __obj_0 = rowss;
+            __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+            auto __beg_0 = __obj_0.begin();
+            auto __end_0 = __obj_0.end();
+            for (; __beg_0 != __end_0; ++__beg_0) {
+                const auto& ys = *__beg_0;
+                __result.push_back(::tpyapp::main::call([ys]() -> ::tpy::BigInt { return ::tpy::BigInt(::tpy::__len__(ys)); }));
+            }
+            std::move(__result);
+        }));
+        __state = S_RESUME_1;
+        return ::tpy::builtin_sum_bigint((*w));
+    }
+    case S_RESUME_1: {  // after: yield sum(w)
+        ys->push_back(42);
+        __state = S_RESUME_2;
+        return ((((::tpy::__getitem__((*ys), 1)) + (::tpy::__getitem__((*xs), 1)))) + (::tpy::BigInt(::tpy::__len__((*ys)))));
+    }
+    case S_RESUME_2: {  // after: yield ys[1] + xs[1] + len(ys)
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+
+// def gen_comp_lambda(rowss: list[list[int]]) -> Iterator[int]:
+__gen_gen_comp_lambda gen_comp_lambda(const std::vector<std::vector<::tpy::BigInt>>& rowss) {
+    return __gen_gen_comp_lambda(rowss);
+}
+
 // def main():
 //     for v in gen_with_yield([10, 20, 30]):
 //         print(v)
@@ -305,6 +380,7 @@ __gen_gen_hoist_ref gen_hoist_ref(const std::vector<::tpy::BigInt>& rows) {
 //     print("gen_comp_target:", list(gen_comp_target([1, 2])))
 //     print("gen_with_then_yield:", list(gen_with_then_yield([1, 2])))
 //     print("gen_hoist_ref:", list(gen_hoist_ref([5, 6])))
+//     print("gen_comp_lambda:", list(gen_comp_lambda([[1, 2], [3]])))
 void main() {
     {
         std::vector<::tpy::BigInt> __tmp_1 = {10, 20, 30};
@@ -324,6 +400,8 @@ void main() {
     std::cout << "gen_with_then_yield:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_with_then_yield(__tmp_3))) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> __tmp_4 = {5, 6};
     std::cout << "gen_hoist_ref:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_hoist_ref(__tmp_4))) << "\n" << ::tpy::check_signals;
+    std::vector<std::vector<::tpy::BigInt>> __tmp_5 = {{1, 2}, {3}};
+    std::cout << "gen_comp_lambda:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<::tpy::BigInt>>(::tpyapp::main::gen_comp_lambda(__tmp_5))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

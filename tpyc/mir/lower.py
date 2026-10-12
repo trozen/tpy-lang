@@ -6,7 +6,7 @@ from collections.abc import Callable, Iterator, Mapping
 from types import MappingProxyType
 
 from ..identity_map import IdentityMap, IdentitySet
-from ..codegen_cpp.forms import LoopBinding, loop_binding_kind
+from ..codegen_cpp.forms import LoopBinding
 from ..type_def_registry import is_array
 from ..parse import ResultForm, RebindStorage, SourceLocation
 from ..thir import nodes as th
@@ -3007,11 +3007,11 @@ class _Coverage:
         typ = stmt.elem_type if view else element.type
         _require(stmt, (view_compatible(stmt.elem_type, element.type) if view
                         else unwrap_readonly(stmt.elem_type) == typ)
-                 and fact.binding is loop_binding_kind(stmt.elem_type, stmt.const_loop_var, hoisted=stmt.hoist_loop_var)
-                 and fact.binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE, LoopBinding.CONST_REFERENCE)
+                 and stmt.binding.loop_binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE,
+                                                   LoopBinding.CONST_REFERENCE)
                  and (reference is None or not stmt.hoist_loop_var and stmt.const_loop_var == reference.readonly)
                  and (element.kind is not MIRValueKind.OWNED or not stmt.hoist_loop_var and (
-                     view or fact.binding is LoopBinding.CONST_REFERENCE)),
+                     view or stmt.binding.loop_binding is LoopBinding.CONST_REFERENCE)),
                  "unsupported native target binding")
         self.hoists(stmt)
         _require(stmt, stmt.var not in self.range_counters and stmt.var not in self.iteration_references,

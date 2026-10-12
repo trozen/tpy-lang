@@ -59,13 +59,103 @@ void main() {
     ::tpyapp::main::doubled(xs);
 }
 
+// def mutating_elem() -> None:
+//     # Annotated: an inferred Array local takes the list comprehension route
+//     # (BUGS.md#unannotated-array-local-comprehension-list-route).
+//     cs: Array[Counter, 2] = [Counter(i) for i in range(2)]
+//     rs = [Counter(c.bump()) for c in cs]  # tpyc: type(/Array\[Counter, 2\]/)
+//     print("mutating_elem:", rs[0].n, rs[1].n)
+//     print("mutating_elem:", cs[0].n, cs[1].n)
+void mutating_elem() {
+    std::array<Counter, 2> cs = ::tpy::array_from_index<Counter, 2>([&](std::size_t __i_0) -> Counter {
+        int32_t i = int32_t(__i_0);
+        return Counter(i);
+    });
+    std::array<Counter, 2> rs = ({
+        auto& __obj_1 = cs;
+        ::tpy::array_from_index<Counter, 2>([&](std::size_t __i_1) -> Counter {
+            auto&& c = __obj_1[__i_1];
+            return Counter(c.bump());
+        });
+    });
+    std::cout << "mutating_elem:" << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__getitem__(rs, 1).n << "\n" << ::tpy::check_signals;
+    std::cout << "mutating_elem:" << " " << ::tpy::__getitem__(cs, 0).n << " " << ::tpy::__getitem__(cs, 1).n << "\n" << ::tpy::check_signals;
+}
+
+// # unannotated_source: the same comprehension over an INFERRED Array local.
+// def unannotated_source() -> None:
+//     cs = [Counter(i) for i in range(2)]  # tpyc: type(/Array\[Counter, 2\]/)
+//     # Builds a list where an Array is right
+//     # (BUGS.md#unannotated-array-local-comprehension-list-route).
+//     rs = [Counter(c.n + 5) for c in cs]  # tpyc: type(/list\[Counter\]/)
+//     print("unannotated_source:", rs[0].n, rs[1].n, len(rs))
+void unannotated_source() {
+    std::array<Counter, 2> cs = ::tpy::array_from_index<Counter, 2>([&](std::size_t __i_0) -> Counter {
+        int32_t i = int32_t(__i_0);
+        return Counter(i);
+    });
+    std::vector<Counter> rs = ({
+        std::vector<Counter> __result;
+        auto& __obj_1 = cs;
+        __result.reserve(static_cast<std::size_t>(__obj_1.size()));
+        auto __beg_1 = __obj_1.begin();
+        auto __end_1 = __obj_1.end();
+        for (; __beg_1 != __end_1; ++__beg_1) {
+            const auto& c = *__beg_1;
+            __result.push_back(Counter((::tpy::add_check<int32_t>(c.n, 5))));
+        }
+        std::move(__result);
+    });
+    std::cout << "unannotated_source:" << " " << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__getitem__(rs, 1).n << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
+}
+
+// # source_written: the element expression writes the source before it reads
+// # the loop variable; the variable keeps the element it was bound to, as in
+// # CPython.
+// def set_all(a: Array[int, 3], v: int) -> bool:
+//     for i in range(3):
+//         a[i] = v
+//     return True
+bool set_all(std::array<::tpy::BigInt, 3>& a, const ::tpy::BigInt& v) {
+    for (int32_t i = 0; i < 3; ++i) {
+        ::tpy::__setitem__(a, i, v);
+    }
+    return true;
+}
+
+// def source_written() -> None:
+//     a: Array[int, 3] = [1, 2, 3]
+//     # The subject: `y` reads 1, not the 100 `set_all` wrote over it.
+//     m = [y if set_all(a, 100) else y for y in a]
+//     print("source_written:", m[0], m[1], m[2])
+void source_written() {
+    std::array<::tpy::BigInt, 3> a = {::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(3)};
+    std::array<::tpy::BigInt, 3> m = ({
+        auto& __obj_0 = a;
+        ::tpy::array_from_index<::tpy::BigInt, 3>([&](std::size_t __i_0) -> ::tpy::BigInt {
+            ::tpy::BigInt y = __obj_0[__i_0];
+            return ((::tpyapp::main::set_all(a, ::tpy::BigInt(100))) ? (y) : (y));
+        });
+    });
+    std::cout << "source_written:" << " " << ::tpy::__getitem__(m, 0) << " " << ::tpy::__getitem__(m, 1) << " " << ::tpy::__getitem__(m, 2) << "\n" << ::tpy::check_signals;
+}
+
 // main()
+//
+// mutating_elem()
+//
+// unannotated_source()
+//
+// source_written()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::main::main();
+    ::tpyapp::main::mutating_elem();
+    ::tpyapp::main::unannotated_source();
+    ::tpyapp::main::source_written();
 }
 
 } // namespace tpyapp::main

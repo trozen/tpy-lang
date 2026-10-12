@@ -8186,24 +8186,6 @@ def _param_const_verdict(name: str, func: TpyFunction, analyzer,
     `_get_method_mutated_params` uses (`_owning_fi`)."""
     return param_in_verdict(_owning_fi(func, analyzer, record_name), func, name, attr)
 
-def _const_verdict_func(name: str, lc) -> TpyFunction:
-    """The function whose param const verdict decides how `name` is BOUND.
-
-    Normally `lc.func`, but a nested def captures the enclosing param by
-    reference and keeps its outer render, so inside a lambda the verdict
-    belongs to the defining function -- the same fact
-    `_nested_def_lowering_scope` carries when it unions the outer param
-    names into the nested prescan. Asking `lc.func` there answered
-    not-const for every capture, which spelled a mutable `std::get<A*>`
-    against a deep-const parameter. `lc.func` is asked FIRST so an inner
-    param of the same name shadows."""
-    if any(n == name for n, _ in lc.func.params):
-        return lc.func
-    for outer in reversed(lc.capture_funcs):
-        if any(n == name for n, _ in outer.params):
-            return outer
-    return lc.func
-
 def _param_is_deep_const(name: str, func: TpyFunction, analyzer,
                          record_name: str | None = None) -> bool:
     """Whether param `name` carries the const verdict read for its INNER
@@ -8211,46 +8193,41 @@ def _param_is_deep_const(name: str, func: TpyFunction, analyzer,
     address escape), which deep-consts a pointer-variant param's pointees
     (`::tpy::Union<const A*, const B*>`) in the signature and every
     narrowed-member spelling. The separate name is the QUESTION, not a
-    second set: `_param_is_const` asks the same verdict for the signature
+    second set: `_param_is_const_at` asks the same verdict for the signature
     spelling and adds the inplace-dunder force."""
     return _param_const_verdict(name, func, analyzer, record_name,
                                 "const_borrow_params")
 
-def _opt_ptr_param_deep_const(name: str, func: TpyFunction, analyzer,
-                              record_name: str | None) -> bool:
+def _opt_ptr_param_deep_const(name: str, lc) -> bool:
     """An Optional-ptr PARAM receiver spelled `const H*`: seed_param_locals
     seeds const_indirect_locals for a pointer-repr Optional param from the
     readonly annotation (raw-sema ReadonlyType, caught by the upstream
     checks) or the DEEP-const verdict -- this is the inferred half, gated
-    to the pointer-repr-Optional param shape that seeding arm covers."""
-    pt = next((t for n, t in func.params if n == name), None)
-    if pt is None:
-        return False
-    return (pointer_repr_optional(pt) is not None
-            and _param_is_deep_const(name, func, analyzer, record_name))
+    to the pointer-repr-Optional param shape that seeding arm covers. A
+    nested scope reads the enclosing parameter's record, so its verdict."""
+    rec = lc.binding(name)
+    return (rec.site_kind == "param" and rec.deep_const
+            and pointer_repr_optional(rec.param_type) is not None)
 
-def _param_is_const(name: str, func: TpyFunction, analyzer,
-                    record_name: str | None = None) -> bool:
-    """Whether param `name` is emitted `const` -- read from the sema fact
-    `FunctionInfo.const_borrow_params` (param indices), which equals codegen's
-    `const_ref_params` for a function's plain F1-record (ref) params. This holds
-    for a readonly callable (method or free function) too: a `@readonly` callable's
-    non-value param is stored as `Ref(ReadonlyType(T))`, so `decide_param_const`
-    takes the `ReadonlyType` early-exit -- the forced-const (codegen body) and
-    inferred (`const_borrow_params`) verdicts traverse the same branch, making the
+def _param_is_const_at(name: str, func: TpyFunction, fi: 'FunctionInfo | None') -> bool:
+    """Whether param `name` is emitted `const`, read off `fi`, the
+    FunctionInfo holding `func`'s param verdicts (`_owning_fi`): the sema
+    fact `FunctionInfo.const_borrow_params` (param indices), which equals
+    codegen's `const_ref_params` for a function's plain F1-record (ref)
+    params. This holds for a readonly callable (method or free function)
+    too: a `@readonly` callable's non-value param is stored as
+    `Ref(ReadonlyType(T))`, so `decide_param_const` takes the `ReadonlyType`
+    early-exit -- the forced-const (codegen body) and inferred
+    (`const_borrow_params`) verdicts traverse the same branch, making the
     inferred set exact. The verdict set is None when Phase-2 has not run --
     unreachable for an admitted function (Phase-1 always sets
     `mutated_params`), so the resulting not-const is a safe default, not a
     divergence. Inplace dunders (`__iadd__` ...) take the FORCED
-    const-params verdict (`use_const_params` via CONST_PARAMS_METHODS --
-    a codegen-side force sema's `const_borrow_params` does not record),
-    minus the slices `decide_param_const` short-circuits out from under
-    the force -- see `_forced_const_dropped`."""
-    return _param_is_const_at(name, func, _owning_fi(func, analyzer, record_name))
-
-def _param_is_const_at(name: str, func: TpyFunction, fi: 'FunctionInfo | None') -> bool:
-    """`_param_is_const` read off `fi`, the FunctionInfo holding `func`'s
-    param verdicts (`_owning_fi`)."""
+    const-params verdict (`use_const_params` via CONST_PARAMS_METHODS -- a
+    codegen-side force sema's `const_borrow_params` does not record), minus
+    the slices `decide_param_const` short-circuits out from under the force
+    -- see `_forced_const_dropped`. The binding table's parameter record
+    carries the answer (`BindingRepr.const`)."""
     if (func.is_method and func.name in CONST_PARAMS_METHODS
             and name != "self"):
         return not _forced_const_dropped(name, func, fi)
@@ -8267,7 +8244,7 @@ def _vararg_pack_is_const(name: str, func: TpyFunction) -> bool:
     const-ness is not in `const_borrow_params`: sema flips an unmutated pack's
     slot to `varargs[readonly[T]]`, and the pack's own spelling
     (`varargs_elem_cpp` -> `varargs<const T>`) reads that flip. A consumer
-    asking `_param_is_const` alone reads False here and spells a mutable
+    asking `_param_is_const_at` alone reads False here and spells a mutable
     borrow out of a const element."""
     if func.vararg_name != name:
         return False
@@ -8341,33 +8318,19 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     disagree with an unpack target's use -- a body that writes through an
     unpacked element marks the param mutated, which drops the const
     verdict."""
-    if lc.binding(name).const_loop_var:
+    rec = lc.binding(name)
+    if rec.const_loop_var:
         return True
     # The `auto&&` storage alias of a const source keeps its const-ness in
     # the tuple set (`const_borrow_tuple_locals` is NOT read here: that
     # body-wide memo is inherited by a nested def whose own names may
     # shadow the outer tuple).
-    if const_locals and (lc.binding(name).const
-                         or lc.binding(name).const_storage_tuple):
+    if const_locals and (rec.const or rec.const_storage_tuple):
         return True
-    f = _const_verdict_func(name, lc)
-    if (_param_is_deep_const(name, f, lc.analyzer, lc.record_name)
-            or _param_is_const(name, f, lc.analyzer, lc.record_name)
-            or _vararg_pack_is_const(name, f)
-            or _ptr_pointee_is_readonly(name, f)):
-        return True
-    return name == lc.self_receiver and _readonly_self(lc)
-
-def _readonly_self(lc) -> bool:
-    """Whether the enclosing method's receiver is emitted const: the body's
-    own `is_readonly`, which sema syncs from the declared-or-inferred verdict
-    (`_sync_inferred_const`). The method NAME's overload set is the wrong
-    place to ask: an `@auto_readonly` pair registers both clones under it,
-    and a `@readonly(False)` opt-out or a `@dynamic` non-const override keeps
-    its body mutable while inference marks the FunctionInfo readonly."""
-    if not lc.record_name or lc.func.is_nested_def:
-        return False
-    return bool(lc.func.is_readonly)
+    # A parameter's or the receiver's verdicts, on the record of the
+    # function that declares it (a nested scope reads the enclosing one's).
+    return (rec.site_kind in ("param", "receiver")
+            and (rec.const or rec.deep_const))
 
 def _already_pointer_source(expr: TpyExpr, lc) -> bool:
     """`ctx.is_already_pointer_source` mirror: True when `expr` renders as a
@@ -8419,17 +8382,17 @@ def _f1_const_rooted_source(expr: TpyExpr, lc) -> bool:
     return const_place(expr, lc.analyzer.get_expr_type, lambda e, stepped: (
         isinstance(e, TpyName)
         and (_const_borrow_name(e.name, lc, const_locals=True)
-             or stepped and _opt_ptr_param_deep_const(e.name, lc.func, lc.analyzer,
-                                                       lc.record_name))),
+             or stepped and _opt_ptr_param_deep_const(e.name, lc))),
         lambda h: _const_pack(h, lc))
 
 
 def _const_pack(handle: TpyExpr, lc) -> bool:
-    """Whether `handle` names a `*args` pack emitted over const elements
-    (`_vararg_pack_is_const`): the referent access its declared type does
-    not carry."""
+    """Whether `handle` names a binding whose referents are emitted const
+    beyond what its declared type carries: the record's `deep_const` (an
+    unmutated `*args` pack's elements, a deep-const parameter's pointees,
+    a `Ptr[readonly[T]]` pointee)."""
     return (isinstance(handle, TpyName)
-            and _vararg_pack_is_const(handle.name, _const_verdict_func(handle.name, lc)))
+            and lc.binding(handle.name).deep_const)
 
 def _expr_is_const_source(src: TpyExpr, lc) -> bool:
     """The const-ness a borrow binding's SOURCE EXPRESSION carries on its own,
@@ -8564,8 +8527,7 @@ def _ptr_union_borrow_const(name: str, declared: dict[str, TpyType],
         or (dt is not None
             and isinstance(unwrap_ref_type(unwrap_send_sync(dt)),
                            ReadonlyType))
-        or _param_is_deep_const(name, _const_verdict_func(name, lc),
-                                lc.analyzer, lc.record_name))
+        or lc.binding(name).deep_const)
 
 def _ptr_union_const_wrap(name: str, decl: UnionType, slot: UnionType,
                           declared: dict[str, TpyType], lc) -> 'str | None':

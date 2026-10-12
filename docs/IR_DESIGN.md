@@ -809,10 +809,9 @@ table (`tpyc/thir/lower/bindings.py`, `plan_bindings`): one `BindingRepr`
 record per C++ binding the body emits, in a scope chain that mirrors the
 lowering's block scoping. The lowering reads every per-name representation
 fact the table models from the record visible where it is
-(`_LowerCtx.binding`); the facts still kept outside it -- a pointer-slot
-module global, the resumable frame's write / bind families, the emitter's
-rebind-slot numbering -- are listed in TODO.md ("STILL OUTSIDE THE
-TABLE"). A NAME read's `Source.binding` is that record, and every node that
+(`_LowerCtx.binding`); the facts still kept outside it -- the
+borrow-tuple const bits, keyed by name rather than per slot -- are listed
+in TODO.md ("STILL OUTSIDE THE TABLE"). A NAME read's `Source.binding` is that record, and every node that
 emits a binding (`THIRVarDecl`, `THIRPtrLocalDecl`, the loop, unpack, with,
 match and error-return binds, the frame writes) carries it as `binding`,
 stamped by `stamp_bindings`. A binding site builds the form its record's
@@ -821,9 +820,13 @@ kind names: a first declaration (`_lower_first_decl` dispatches on
 unpack, `with`, match capture or walrus target; a site that declares no
 fresh record of its own (`fresh_record`) writes the binding in scope. A
 declaring node takes its shape and const from the record, so the validator
-has nothing to check on it; `THIRPtrLocalDecl` and its reseat, the
-error-return, frame-write and loop binds are still checked against the
-record's fields.
+has nothing to check on it, nor on a loop, whose binding is its record's
+`loop_binding`; `THIRPtrLocalDecl` and its reseat, the error-return bind,
+the frame emplace and coroutine-handle move, a consuming loop's variable
+(movable), a tuple unpack's pointer binds and frame emplace, the with
+target's pointer (`PTR_DECL` / `ASSIGN_PTR`), optional-storage
+(`ASSIGN_OPT`) and frame arms, and the match-capture frame arm are still
+checked against the record's fields.
 
 #### THIRFormConvert -- the explicit conversion node
 

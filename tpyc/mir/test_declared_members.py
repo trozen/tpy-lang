@@ -8,7 +8,6 @@ from dataclasses import replace
 
 import pytest
 
-from ..codegen_cpp.forms import loop_binding_kind
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
@@ -424,8 +423,7 @@ def test_thir_validator_rejects_a_cursor_over_an_owner_that_binds_none(active) -
     assert loop.iteration is None
     typ = _bare(loop.iterable.result_type)
     readonly = _param(active, "pair_walk").native_container.readonly
-    iteration = th.THIRNativeIteration(th.THIRNativeContainer(typ, STR, readonly), loop_binding_kind(
-        loop.elem_type, loop.const_loop_var, hoisted=loop.hoist_loop_var))
+    iteration = th.THIRNativeIteration(th.THIRNativeContainer(typ, STR, readonly))
     _thir_rejects(_with_loop(fn, replace(loop, iteration=iteration)), "native iteration source binds no element")
 
 

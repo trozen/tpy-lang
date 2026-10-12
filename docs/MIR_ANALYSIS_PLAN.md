@@ -257,7 +257,7 @@ not completion of the broader M2 work package.
 | `MIRBodyId`, `MIRSlotId`; lowering's local binding map | Keep deterministic body-scoped holder IDs and the one-binding-per-name restriction; no new symbol resolver |
 | `NominalType` qualified identity and structured type arguments (`typesys.py`) | Reuse canonical type identity, never short record names or rendered C++ types |
 | `_lower_borrow_local` and name-reseat arms in `thir/lower/statements.py` | These already choose reference alias / pointer bind / pointer reseat; attach the semantic operation at these construction sites |
-| `THIRParam` construction in `thir/lower/functions.py`; `_param_is_const` and finalized `FunctionInfo.const_borrow_params` | Project the admitted parameter's borrowed-reference category and access capability; do not parse its emitted signature |
+| `THIRParam` construction in `thir/lower/functions.py` (the param record's `const`, from `_param_is_const_at`) and finalized `FunctionInfo.const_borrow_params` | Project the admitted parameter's borrowed-reference category and access capability; do not parse its emitted signature |
 | Direct field lowering and `_field_cpp` in `thir/lower/expressions.py` | Carry declaring nominal owner, source field name and field type before the source name becomes presentation spelling |
 | `BindKind` / `ctx.func.bind_kinds` in `sema/alias_rebind.py` | Not an input to MIR: the per-function table is reset before lowering; do not resurrect a stale analyzer lookup |
 | `RebindStorage`, `THIRCopy`, `THIRMove`, `THIRFormConvert` | Existing facts for later owning/storage slices, not permission to admit their semantics in M2.1 |

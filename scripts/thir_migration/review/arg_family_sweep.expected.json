@@ -9682,17 +9682,17 @@
  "dict_si__mut__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; c"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]"
  ],
  "dict_si__mut__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):;"
  ],
  "dict_si__mut__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Ar"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in cont"
  ],
  "dict_si__mut__comprehension__genrec": [
   "reject:expr.method_call:method.arg_shape",
@@ -9717,7 +9717,7 @@
  "dict_si__mut__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):;"
  ],
  "dict_si__mut__copy_call__ctor": [
   "ok",
@@ -10602,27 +10602,27 @@
  "dict_si__ro__comprehension__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; c"
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]"
  ],
  "dict_si__ro__comprehension__fn": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):;"
  ],
  "dict_si__ro__comprehension__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Ar"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in cont"
  ],
  "dict_si__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
+  "method_call(%g, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
  ],
  "dict_si__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
+  "method_call(%t, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
  ],
  "dict_si__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",
@@ -10637,7 +10637,7 @@
  "dict_si__ro__comprehension__static": [
   "ok",
   "",
-  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k:"
+  "call(CALLEE, [%argtmp(::tpy::ordered_map<std::string, int32_t>){comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):;"
  ],
  "dict_si__ro__copy_call__ctor": [
   "ok",

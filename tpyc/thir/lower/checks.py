@@ -1756,7 +1756,8 @@ def _opt_ptr_addr_of_record_source(init, declared: dict[str, TpyType],
     already had that proved for it."""
     if not isinstance(init, TpyName):
         return False
-    if init.name in pointers or init.name in prescan.global_slots:
+    # A pointer-slot global is a pointer record.
+    if init.name in pointers:
         return False
     if not (init.name in declared or init.name in prescan.param_names):
         return False
@@ -15083,7 +15084,7 @@ def _method_ctor_rvalue_arg(a: TpyExpr, ptype: TpyType | None, idx: int,
     method call (`a.add(b.muls(x))`), which the const ref binds for the
     full expression. Admission requires the callee param be signature-const
     (`const_borrow_params`, the materialized `decide_param_const` verdict,
-    the same fact `_param_is_const` reads for body locals): the MUTATED-ref
+    the same fact `_param_is_const_at` reads for body locals): the MUTATED-ref
     shape (`a.absorb(A(4))`) inlines the same way but that
     render cannot compile (an rvalue never binds `A&`) -- the miscompile
     tracked in BUGS.md ("method-call record rvalue into a mutated ref param

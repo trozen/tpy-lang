@@ -139,7 +139,6 @@ from ...sema.alias_rebind import ESCAPED_HOLDER
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_truth)
 from ...codegen_cpp.forms import (
-    loop_binding_kind,
     LocalBinding,
     is_plain_nonvalue,
     is_ptr_variant_union,
@@ -412,7 +411,6 @@ from .predicates import (
     _owned_viewfam_elem,
     _plain_member_call_markers_ok,
     _plain_method_fi_ok,
-    _param_is_const,
     _value_opt_scalar,
     _value_opt_callable,
     _value_opt_tuple,
@@ -424,7 +422,6 @@ from .predicates import (
     _value_opt_str,
     _opt_owned_view_elem_tuple,
     _value_opt_owned_view,
-    _param_is_deep_const,
     _peel_stale_view_owned_coerce,
     _reassert_bump_info,
     _record_borrow_return,
@@ -473,6 +470,7 @@ from .predicates import (
     _var_decl_type,
 )
 from .context import (
+    FrameLocalClass,
     return_slot,
     SlotHolds,
     storage_type,
@@ -580,7 +578,8 @@ from .checks import (
     _str_list_method_iterable_ok,
     _user_iterator_iterable,
 )
-from ..source import BindingKind, BindingRepr, Held, SelectResult
+from ..source import (BindingKind, BindingRepr, Held, NameFacts,
+                      SelectResult)
 from .convert import Effect, Plan, Refuse, convert, spelled
 from .expressions import (
     _COPY_SRC_USE,
@@ -1051,10 +1050,13 @@ def build_loop_node(shape: str, var: str, et: TpyType,
                     iterable_lvalue: bool = True,
                     consuming: bool = False,
                     hoist_loop_var: bool = False,
+                    binding: 'BindingRepr | None' = None,
                     **position_facts: object) -> THIRStmt:
     """The one loop assembly the for statement and a comprehension clause
     share, so a source renders the same loop wherever it is written;
-    `position_facts` are node fields only one of the two positions sets."""
+    `position_facts` are node fields only one of the two positions sets.
+    `binding` is the loop variable's record (an unpack's holder), whose
+    `loop_binding` is how the loop binds each element."""
     if shape == "range":
         assert range_call is not None
         args = range_call.args
@@ -1078,30 +1080,30 @@ def build_loop_node(shape: str, var: str, et: TpyType,
             body=body, step=step, step_kind=step_kind,
             hoist_loop_var=hoist_loop_var, **position_facts)
     assert iterable is not None
+    if binding is None or binding.loop_binding is None:
+        raise BindingTableError(
+            f"loop variable {var!r} has no planned loop binding")
     if shape == "iter_proto":
         return THIRForIterProto(
             var=var, elem_type=et, iterable=iterable, body=body,
             const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
-            **position_facts)
+            binding=binding, **position_facts)
     assert shape == "each", shape
     iteration = (None if source is None else _native_iteration(
         iterable, source, et, lc, iterable_lvalue=iterable_lvalue,
-        consuming=consuming, const_loop_var=const_loop_var,
-        hoisted=hoist_loop_var))
+        consuming=consuming))
     return THIRForEach(
         var=var, elem_type=et, iterable=iterable, body=body,
         const_loop_var=const_loop_var, iterable_lvalue=iterable_lvalue,
         consuming=consuming, hoist_loop_var=hoist_loop_var,
-        iteration=iteration, **position_facts)
+        iteration=iteration, binding=binding, **position_facts)
 
 
 def _native_iteration(iterable: THIRExpr, source: TpyExpr, et: TpyType,
                       lc: _LowerCtx, *, iterable_lvalue: bool,
-                      consuming: bool, const_loop_var: bool,
-                      hoisted: bool) -> 'THIRNativeIteration | None':
-    """The native container a begin/end loop walks in place, and how its
-    loop var binds an element of it -- None for a fresh value or a consuming
-    wrapper, which have no place."""
+                      consuming: bool) -> 'THIRNativeIteration | None':
+    """The native container a begin/end loop walks in place -- None for a
+    fresh value or a consuming wrapper, which have no place."""
     analyzer = lc.analyzer
     source_fact = None
     if iterable_lvalue and not consuming:
@@ -1140,8 +1142,23 @@ def _native_iteration(iterable: THIRExpr, source: TpyExpr, et: TpyType,
         source_fact = None
     if source_fact is None:
         return None
-    return THIRNativeIteration(source_fact, loop_binding_kind(
-        et, const_loop_var, hoisted=hoisted))
+    return THIRNativeIteration(source_fact)
+
+
+def _module_slot_global(name: str, lc: '_LowerCtx') -> bool:
+    """A non-value global the module itself declares (`T* g{}` at
+    namespace scope), read in its own init: a write allocates or reuses a
+    `static __global_slot_N`. An imported global is never written there."""
+    return lc.binding(name).module_slot
+
+
+def _bare_pointer_name(name: str, lc: '_LowerCtx') -> bool:
+    """A name already holding the `T*` it renders bare: the module's own
+    pointer-slot global, or a pointer local the module spells bare (an
+    imported global carries its qualified spelling, which a bare-name copy
+    cannot produce)."""
+    rec = lc.binding(name)
+    return rec.module_slot or (rec.pointer and rec.global_cpp is None)
 
 
 def _shadowable_globals(lc: '_LowerCtx',
@@ -1158,7 +1175,7 @@ def _shadowable_globals(lc: '_LowerCtx',
         n for n in declared
         if n not in lc.prescan.global_cpp
         and n not in lc.prescan.global_write_cpp
-        and n not in lc.prescan.global_slots)
+        and not lc.binding(n).global_slot)
 
 
 def _loop_var_shadows_global_ok(stmt: TpyForEach, analyzer,
@@ -3051,7 +3068,7 @@ def _hoist_record(stmt: TpyStmt, name: str, lc: '_LowerCtx') -> BindingRepr:
     for the rest of the state block (only a frame member holds a frame
     slot). Any other binding is a planner defect."""
     rec = lc.binding(name)
-    if rec.kind is BindingKind.FRAME_LAYOUT:
+    if rec.site_kind == "frame":
         return rec
     if rec.site is not stmt:
         raise BindingTableError(
@@ -3700,8 +3717,7 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx',
     borrow_decls = analyzer.function_stmt_borrow_decls.get(lc.func, {})
 
     def name_const(n: str) -> bool:
-        return (lc.binding(n).const or borrow_decls.get(n, False)
-                or _param_is_const(n, lc.func, analyzer, lc.record_name))
+        return lc.binding(n).const or borrow_decls.get(n, False)
 
     if isinstance(src, TpyTupleLiteral):
         if not (src.elem_capture
@@ -3793,7 +3809,7 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
 def _borrow_tuple_hoist_entry(rec: BindingRepr, var_type: 'TupleType',
                               declared: dict[str, TpyType],
                               lc: '_LowerCtx', mixed_witness: str,
-                              hoist_slots: 'list[tuple[str, str]] | None',
+                              hoist_slots: 'list[tuple[BindingRepr, str]] | None',
                               bindings: list[THIRHoistedBinding] | None = None,
                               ) -> HoistDecl:
     """One branch-BOUND borrow-form tuple hoist predecl (`std::tuple<...,
@@ -3807,7 +3823,7 @@ def _borrow_tuple_hoist_entry(rec: BindingRepr, var_type: 'TupleType',
     through the local), the verdict the reseat renders target."""
     name = rec.name
     if rec.rebind_slot:
-        hoist_slots.append((name, lc.render_type(var_type)))
+        hoist_slots.append((rec, lc.render_type(var_type)))
     if rec.borrow_tuple_mixed:
         # A MIXED-call-bound hoist keeps the per-element arrow: the local
         # holds the hybrid render, so `std::get<1>(p)->val`.
@@ -4383,7 +4399,7 @@ def _lower_borrow_local(stmt: TpyVarDecl, vtype: TpyType, rec: BindingRepr,
             if (isinstance(src, THIRSelf) or (
                     isinstance(src, THIRName) and src.cpp is None
                     and not lc.binding(stmt.init.name).pointer
-                    and stmt.init.name not in lc.prescan.global_slots)):
+                    and not lc.binding(stmt.init.name).global_slot)):
                 # The pointer slot addresses the live local, param or receiver.
                 # Other spelled pointer/global sources keep their own admission.
                 _witness("decl.ptr_name_addr")
@@ -4707,9 +4723,7 @@ def _ptr_union_slot_kind(init: TpyExpr, ptr_u: 'UnionType',
         # The name must render bare (a plain storage local) and mutable:
         # pointer-form and const-rooted sources are later rungs.
         if (lc.binding(init.name).pointer or lc.binding(init.name).rebind_slot
-                or lc.binding(init.name).const
-                or _param_is_const(init.name, lc.func, analyzer,
-                                   lc.record_name)):
+                or lc.binding(init.name).const):
             return None
         return PtrSlotKind.UNION_ADDR
     return None
@@ -5156,9 +5170,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         if not isinstance(stmt.init, TpyName):
             note_detail("top_level.global_slot_shape")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        if (stmt.init.name in lc.global_ptr_slots
-                or (lc.binding(stmt.init.name).pointer
-                    and stmt.init.name not in lc.prescan.global_cpp)):
+        if _bare_pointer_name(stmt.init.name, lc):
             # Pointer-slot globals AND locally-declared pointer LOCALS
             # (`saved = p;` in a top-level loop) are already `T*`: the
             # both render as the bare copy. An IMPORTED pointer global
@@ -5174,7 +5186,7 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
                        declared[stmt.init.name])))
                    if (stmt.init.name in declared
                        # An IMPORTED pointer-slot global has a pointer record
-                       # (not global_ptr_slots) and needs its bare pointer
+                       # (not a module slot) and needs its bare pointer
                        # copied -- not the address-of; keep it out until a
                        # witness lands the copy render.
                        and not lc.binding(stmt.init.name).pointer) else None)
@@ -5584,7 +5596,7 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
     `self_captured` keeps the receiver alive for a lambda whose capture list
     spells `this`."""
     saved = (lc.func, lc.prescan, lc.self_receiver, dict(lc.inline_narrowed),
-             lc.capture_funcs)
+             lc.in_nested_def)
     # The hoist-residue bookkeeping is per-function: seed the NESTED
     # function's own hoist facts (its try lowering drains them;
     # `_lower_nested_def` residue-checks after the body, mirroring
@@ -5595,10 +5607,7 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
     lc.unhandled_hoists = set(own_hoisted)
     prescan = nested_def_prescan(func, lc.prescan, lc.analyzer,
                                  nonlocal_names)
-    # A captured name keeps its outer render (`nested_def_prescan` unions
-    # the outer param names), so the predicates keyed on the enclosing
-    # signature's const verdict must be able to reach that function.
-    lc.capture_funcs = lc.capture_funcs + (lc.func,)
+    lc.in_nested_def = True
     lc.func = func
     lc.prescan = prescan
     # The receiver survives ONLY when the capture list carries it: a captured
@@ -5624,7 +5633,7 @@ def _nested_def_state_scope(lc: _LowerCtx, func: TpyFunction, *,
             yield
     finally:
         (lc.func, lc.prescan, lc.self_receiver, lc.inline_narrowed,
-         lc.capture_funcs) = saved
+         lc.in_nested_def) = saved
         lc.unhandled_hoists = saved_hoists
 
 
@@ -5873,6 +5882,10 @@ def stamp_bindings(node: object, key: object, lc: _LowerCtx) -> None:
         if node.binding is None:
             _set_binding(node, "binding",
                          _declared_record(node.target, key, lc))
+    elif isinstance(node, THIRAssign) and isinstance(node.target, THIRName):
+        if node.binding is None:
+            _set_binding(node, "binding",
+                         _declared_record(node.target.name, key, lc))
     elif isinstance(node, THIRTupleUnpack):
         if not node.bindings:
             _set_binding(node, "bindings", tuple(
@@ -5915,7 +5928,7 @@ def _finish_stmt(result: THIRStmt, lc: _LowerCtx,
             result = replace(result, union_layout=union, union_literal=union_literal(value, union))
         pointer = rec.pointer
         layout = optional_layout(typ, lc.analyzer, borrow=pointer,
-                                 readonly=rec.const or getattr(result, "is_const", False))
+                                 readonly=rec.const)
         if layout is not None and (pointer or _value_opt_binding_kind(name, lc, rec) is ValueOptKind.SCALAR):
             result = replace(result, optional_layout=layout)
             # A bare name at an Optional destination copies the whole payload.
@@ -7509,7 +7522,8 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         st = declared.get(nm)
         st = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
               if isinstance(st, TpyType) else None)
-        if nm in lc.oneshot_lift_locals and lc.binding(nm).frame_slot:
+        if (lc.frame_local(nm, FrameLocalClass.ONESHOT_SLOT)
+                and lc.binding(nm).frame_slot):
             source_type = st if isinstance(st, TupleType) else None
             if any(stmt.is_owned):
                 # A one-shot `__await_lift_*` holder with OWNED elements:
@@ -7544,7 +7558,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             src_name = nm
             src_ref = True
             source_type = st
-        elif nm in lc.opt_tuple_holders:
+        elif lc.frame_local(nm, FrameLocalClass.OPT_TUPLE_HOLDER):
             # A VALUE holder with STORAGE-optional elements (`for a, b in
             # pairs:` over `list[tuple[P | None, ...]]`): the head unpack
             # MUTABLE-ref-binds the holder (`auto& __tup_N = <name>;`) and
@@ -7567,7 +7581,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             src_name = nm
             src_ref = True
             source_type = st
-        elif nm not in lc.value_tuple_frame_locals:
+        elif not lc.frame_local(nm, FrameLocalClass.VALUE_TUPLE):
             # The remaining name-source ladder (const-ref / loop-shadow)
             # keeps the reject.
             note_detail("unpack.name_source")
@@ -7621,7 +7635,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             continue
         elem_ptr = TupleType._element_is_pointer_repr(
             source_type.element_types[i])
-        if name in lc.unpack_ptr_targets:
+        if lc.frame_local(name, FrameLocalClass.UNPACK_PTR):
             # A loop-head alias target: off the deref'd POINTER holder the
             # element is a live value lvalue inside the container's storage
             # tuple (`name = &(std::get<i>(__tup_N));`); off a BORROW-form
@@ -7631,14 +7645,15 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             if not (elem_ptr and stmt.is_ref[i]):
                 note_detail("unpack.alias_elem")
                 raise ThirUnsupported("res.unpack")
-            src_is_borrow_tuple = (src_name is not None and src_ref
-                                   and (not lc.binding(src_name).pointer
-                                        or src_name in lc.source_typed_holders))
+            src_is_borrow_tuple = (
+                src_name is not None and src_ref
+                and (not lc.binding(src_name).pointer
+                     or lc.binding(src_name).source_typed_holder))
             binds.append("frame_ptr_elem" if src_is_borrow_tuple
                          else "frame_ptr_addr")
             wraps.append("")
             continue
-        if name in lc.alias_ptr_locals:
+        if lc.frame_local(name, FrameLocalClass.ALIAS_PTR):
             # A pointer-alias target aliases the LIVE element (`name =
             # &(unwrap_ref(tuple_elem_ref(get)));`) -- only off a
             # pointer-repr source element (a value element's get is a
@@ -7649,9 +7664,9 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             binds.append("frame_ptr_elem")
             wraps.append("")
             continue
-        if (name in lc.opt_ptr_frame_locals
+        if (lc.frame_local(name, FrameLocalClass.OPT_PTR)
                 and src_name is not None
-                and src_name in lc.opt_tuple_holders
+                and lc.frame_local(src_name, FrameLocalClass.OPT_TUPLE_HOLDER)
                 and _optional_ptr_borrow(
                     unwrap_ref_type(source_type.element_types[i]),
                     analyzer) is not None):
@@ -7672,7 +7687,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         if (name not in declared
                 or lc.binding(name).pointer
                 or not (lc.binding(name).frame_slot
-                        or name in lc.plain_frame_fields)):
+                        or lc.plain_frame_field(name))):
             note_detail("unpack.target_family")
             raise ThirUnsupported("res.unpack")
         binds.append("frame_emplace" if lc.binding(name).frame_slot
@@ -7693,8 +7708,9 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         # frame-resident local.
         lvalue_root = _storage_tuple_lvalue_root(
             stmt.value, declared, analyzer, lc.names_with("pointer"),
-            resident=(lc.frame_field_names
-                      | ({lc.self_receiver} if lc.self_receiver else set())))
+            resident=NameFacts(
+                lambda n: (lc.binding(n).frame_class is not None
+                           or n == lc.self_receiver)))
         if lvalue_root is not None:
             # The element pointers come off the chain's ROOT, so the lift
             # spells them const exactly when the frame binds that root to
@@ -7702,8 +7718,9 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             # verdict the alias FIELDS were classified under, so the two
             # cannot disagree. A mismatch is still refused rather than
             # rendered: it would be a field the lift cannot bind.
-            const_recv = lvalue_root in lc.const_frame_bindings
-            if any(const_recv != (t in lc.const_alias_ptr_locals)
+            const_recv = lc.binding(lvalue_root).frame_const
+            if any(const_recv != (lc.frame_local(t, FrameLocalClass.ALIAS_PTR)
+                                  and lc.binding(t).frame_const)
                    for t, b in zip(stmt.targets, binds)
                    if b in ("frame_ptr_elem", "frame_ptr_addr")):
                 note_detail("unpack.alias_const_verdict")
@@ -7958,7 +7975,8 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
             # re-address its pointee (`&((*std::get<0>(p)))`), not the
             # element slot, which would make a `T**`.
             src = replace(src, deref=True)
-    elif (isinstance(init, TpyName) and init.name in lc.alias_ptr_locals):
+    elif (isinstance(init, TpyName)
+          and lc.frame_local(init.name, FrameLocalClass.ALIAS_PTR)):
         # An alias-of-an-alias bind (`a = __unpack_0_0;` -- the desugared
         # tuple-literal unpack's user-name assign): both fields are `T*`,
         # so the bind is a bare pointer copy of the live alias, no
@@ -8110,7 +8128,7 @@ def _lower_frame_slot_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     Shared by the top-level leaf decl arm and the branch-nested decl arm."""
     init = _peel_stale_view_owned_coerce(stmt.init, declared[stmt.name],
                                          lc.analyzer)
-    _fsw_eff = lc.frame_own_tuple_types.get(stmt.name)
+    _fsw_eff = lc.frame_own_tuple_type(stmt.name)
     if isinstance(init, TpyTupleLiteral) and isinstance(_fsw_eff, TupleType):
         # A tuple LITERAL into an owning frame slot whose per-element
         # ownership was inferred from the literal's own captures. MIXED (some
@@ -8557,7 +8575,7 @@ def _deferred_name_renamed(name: str, lc: _LowerCtx, declared: dict) -> bool:
     if name == lc.self_receiver:
         return name not in declared
     return (name in lc.narrow.narrowed or name in lc.narrow.spelled
-            or lc.binding(name).kind.family == "walrus"
+            or lc.binding(name).site_kind == "walrus"
             or name in lc.forwarded_map
             or name not in declared)
 
@@ -9591,7 +9609,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
     if rebound is not None:
         _reject_tuple_site_own(stmt, rebound, analyzer)
     if (isinstance(stmt, TpyVarDecl) and stmt.init is not None
-            and stmt.name in lc.rebind_ptr_frame_locals
+            and lc.frame_local(stmt.name, FrameLocalClass.REBIND_PTR)
             and is_rvalue_source(analyzer, stmt.init)):
         # A REBIND_PTR frame local's rvalue write, wherever it sits (the
         # leaf entry and every compound body reach this dispatch).
@@ -9642,14 +9660,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # locals keep the named reject.
             if (stmt.init is not None and stmt.name in declared
                     and stmt.name not in lc.narrow.narrowed):
-                if stmt.name in lc.plain_frame_fields:
+                if lc.plain_frame_field(stmt.name):
                     _witness("res.branch_frame_write")
                     return _lower_frame_field_assign(stmt, lc, declared)
-                if stmt.name in lc.borrow_tuple_frame_locals:
+                if lc.frame_local(stmt.name, FrameLocalClass.BORROW_TUPLE):
                     _witness("res.branch_btuple_write")
                     return _lower_borrow_tuple_frame_write(stmt, lc, declared)
                 if (lc.declaring(stmt.name).frame_slot
-                        and stmt.name not in lc.coro_handle_slots):
+                        and not lc.frame_local(stmt.name,
+                                               FrameLocalClass.CORO_HANDLE)):
                     _witness("res.branch_frame_slot_write")
                     return _lower_frame_slot_write(stmt, lc, declared)
                 # The slot-free pointer reseats on a frame member render
@@ -9821,7 +9840,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             lc.narrow.subject_union.pop(stmt.name, None)
             lc.narrow.any_narrowed.discard(stmt.name)
             declared[stmt.name] = _nr_u
-        if stmt.name in lc.global_ptr_slots:
+        if _module_slot_global(stmt.name, lc):
             # A non-value global's write is never a plain assign: it either
             # allocates the static slot or rejects (see the helper). A
             # branch write rejects EXCEPT for a @dynamic-protocol target,
@@ -9847,10 +9866,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             and stmt.init is not None
                             and is_rvalue_source(lc.analyzer, stmt.init))
                         or (isinstance(stmt.init, TpyName)
-                            and (stmt.init.name in lc.global_ptr_slots
-                                 or (lc.binding(stmt.init.name).pointer
-                                     and stmt.init.name
-                                     not in lc.prescan.global_cpp)))):
+                            and _bare_pointer_name(stmt.init.name, lc))):
                     note_detail("top_level.global_slot_branch")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
             return _lower_global_slot_write(
@@ -10618,8 +10634,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _witness("reseat.opt_ptr_copy")
                     source_type = declared[stmt.init.name]
                     source_layout = optional_layout(source_type, analyzer, borrow=True,
-                        readonly=lc.binding(stmt.init.name).const or _param_is_const(
-                            stmt.init.name, lc.func, analyzer, lc.record_name))
+                        readonly=lc.binding(stmt.init.name).const)
                     return THIRAssign(
                         target=THIRName(result_type=vtype, name=stmt.name,
                                         loc=loc),
@@ -10830,7 +10845,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                   # field's own const).
                   and (not lc.declaring(stmt.name).const_source
                        or lc.declaring(stmt.name).const
-                       or stmt.name in lc.const_alias_ptr_locals)
+                       or (lc.frame_local(stmt.name, FrameLocalClass.ALIAS_PTR)
+                           and lc.binding(stmt.name).frame_const))
                   and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(declared[stmt.init.name]))))
                   and analyzer.registry.is_subclass_of_or_equal(
@@ -11678,7 +11694,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     or isinstance(stmt.value, TpyBytesLiteral)
                     or stmt.target.name not in declared):
                 raise ThirUnsupported(stmt_reject_reason(stmt))
-            if stmt.target.name in lc.global_ptr_slots:
+            if _module_slot_global(stmt.target.name, lc):
                 # A non-value global's write is never a plain assign -- it
                 # allocates or reuses the module-init `static
                 # __global_slot_N`. Delegate to the same driver the var-decl
@@ -12932,9 +12948,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         is not None):
                     raise ThirUnsupported(stmt_reject_reason(stmt))
                 recv = stmt.value.obj  # TpyName (validated by _field_receiver_ok)
-                is_const = (lc.binding(recv.name).const
-                            or _param_is_const(recv.name, lc.func, analyzer,
-                                               lc.record_name))
+                is_const = lc.binding(recv.name).const
                 inner = _lower_field_source(stmt.value, lc, declared)
             value: THIRExpr = THIRFormConvert(
                 result_type=ret_tuple, value=inner,
@@ -13572,7 +13586,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 record_ok = bool(_witness("ret.container_ptr_local"))
             elif (lc.prescan.ret_record_borrow is not None
                   and isinstance(stmt.value, TpyName)
-                  and stmt.value.name in lc.prescan.global_slots
+                  and lc.binding(stmt.value.name).global_slot
                   and stmt.value.name not in narrowed):
                 # A pointer-slot GLOBAL derefs into the borrow return
                 # (`return (*arr_global);` -- the indirect-name arm, same as
@@ -14933,7 +14947,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # move of a started frame. (A coroutine handle only
                     # starts once awaited or handed on, so it keeps the
                     # move-sink below.)
-                    if (name in lc.rebind_ptr_frame_locals
+                    if (lc.frame_local(name, FrameLocalClass.REBIND_PTR)
                             or not (lc.func.is_generator or lc.func.is_async
                                     or lc.binding(name).optional_storage)):
                         raise ThirUnsupported("stmt.del_var:frame_storage")
@@ -15269,10 +15283,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # if/while body's first slot is a branch-scoped render -- neither is
         # what this arm emits. A HOISTED name's slot is an `std::optional`
         # pre-decl, also not this plain one.
-        _gs_fresh = ((lc.global_ptr_slots - lc.global_slot_assigned
-                      - set(lc.prescan.hoisted))
-                     if lc.top_level_scope and not scope.in_branch
-                     else frozenset())
+        _gs_fresh: AbstractSet[str] = frozenset()
+        if lc.top_level_scope and not scope.in_branch:
+            # The slots assigned before this statement (its own targets
+            # register as the binds lower).
+            _assigned = frozenset(lc.global_slot_assigned)
+            _gs_fresh = NameFacts(
+                lambda n: (_module_slot_global(n, lc) and n not in _assigned
+                           and n not in lc.prescan.hoisted))
         target_binds = _standalone_unpack_target_binds(
             stmt, lc, declared, lc.narrow.narrowed.keys(),
             blocked=(lc.names_with("pointer", prior=True)
@@ -15885,6 +15903,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 "iter_proto", stmt.var, et, body, lc, declared,
                 iterable=proto_iterable,
                 const_loop_var=stmt.const_loop_var,
+                binding=_loop_var_record(stmt.var, stmt, lc),
                 iterable_lvalue=route.iterable_lvalue,
                 frame_src_field=proto_src_field,
                 orelse=_lower_loop_orelse(stmt.orelse, lc, declared, scope,
@@ -15902,6 +15921,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 "each", stmt.var, et, body, lc, declared,
                 iterable=THIRModuleVar(cpp=members_cpp, result_type=et),
                 const_loop_var=stmt.const_loop_var,
+                binding=_loop_var_record(stmt.var, stmt, lc),
                 iterable_lvalue=True,
                 hoist_decls=foreach_hoist_decls,
                 hoisted_bindings=tuple(foreach_bindings),
@@ -15966,6 +15986,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             iterable=iterable,
             source=stmt.iterable,
             const_loop_var=stmt.const_loop_var,
+            binding=_loop_var_record(stmt.var, stmt, lc),
             iterable_lvalue=route.iterable_lvalue,
             consuming=(route.consuming_native_name is not None
                        or route.consuming_name),
@@ -16179,7 +16200,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                               and (lc.binding(arg.name).optional_storage
                                    or lc.binding(arg.name).lazy_rebind_slot
                                    or lc.binding(arg.name).rebind_slot
-                                   or arg.name in lc.prescan.global_slots)
+                                   or lc.binding(arg.name).global_slot)
                               and not isinstance(
                                   unwrap_readonly(unwrap_ref_type(
                                       unwrap_send_sync(
@@ -16681,7 +16702,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
             resolved = unwrap_readonly(unwrap_send_sync(et))
             if lc.binding(item.target).frame_slot:
                 arm_et = (WithTargetArm.FRAME_SLOT, resolved)
-            elif (item.target in lc.plain_frame_fields
+            elif (lc.plain_frame_field(item.target)
                     and (_eligible_scalar(resolved)
                          or _eligible_char(resolved)
                          or _eligible_enum(resolved, lc.analyzer) is not None
@@ -16696,7 +16717,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # does not make (probe-caught: the narrowed read rendered
                 # bare).
                 arm_et = (WithTargetArm.FRAME_FIELD, resolved)
-            elif (item.target in lc.opt_ptr_frame_locals
+            elif (lc.frame_local(item.target, FrameLocalClass.OPT_PTR)
                     and _optional_ptr_borrow(
                         lc.frame_local_types.get(
                             item.target, declared.get(item.target)),
@@ -16708,9 +16729,9 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # tests + deref) -- the classification already seeded
                 # a pointer record.
                 arm_et = (WithTargetArm.FRAME_FIELD, resolved)
-            elif item.target in lc.borrow_tuple_frame_locals:
+            elif lc.frame_local(item.target, FrameLocalClass.BORROW_TUPLE):
                 # A borrow-form tuple frame field (`std::tuple<Item*,
-                # int32>`): it subtracts itself from plain_frame_fields
+                # int32>`): it is no plain frame field
                 # because its DECL/reassign render differs, but the
                 # with-bind is the plain member assign
                 # (`p = __ctx_N.__enter__();`) like any other frame
@@ -16841,7 +16862,7 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                   WithTargetArm.FRAME_SLOT: "with.frame_slot_target",
                   WithTargetArm.FRAME_FIELD: "with.frame_field_target"}[arm])
         if (arm is WithTargetArm.FRAME_FIELD
-                and item.target in lc.borrow_tuple_frame_locals):
+                and lc.frame_local(item.target, FrameLocalClass.BORROW_TUPLE)):
             _witness("with.frame_btuple_target")
         if (arm is WithTargetArm.VALUE
                 and _resolved_str_value(et, lc.analyzer) is not None):

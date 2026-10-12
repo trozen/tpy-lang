@@ -8,6 +8,7 @@
 namespace tpyapp::main {
 
 struct Handle;
+struct Counter;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -17,6 +18,14 @@ void bump_all(std::array<Handle, 4>& hs);
 void doubled(const std::array<Handle, 4>& hs);
 // def main() -> None:
 void main();
+// def mutating_elem() -> None:
+void mutating_elem();
+// def unannotated_source() -> None:
+void unannotated_source();
+// def set_all(a: Array[int, 3], v: int) -> bool:
+bool set_all(std::array<::tpy::BigInt, 3>& a, const ::tpy::BigInt& v);
+// def source_written() -> None:
+void source_written();
 
 // @nocopy
 // class Handle:
@@ -40,9 +49,46 @@ inline std::ostream& operator<<(std::ostream& os, const Handle& obj) {
     return os;
 }
 
+// @nocopy
+// class Counter:
+struct Counter {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Counter() = default;
+    explicit Counter(int32_t n);
+    // non-copyable (@nocopy)
+    Counter(const Counter&) = delete;
+    Counter& operator=(const Counter&) = delete;
+    Counter(Counter&&) = default;
+    Counter& operator=(Counter&&) = default;
+
+    // def bump(self) -> int32:
+    int32_t bump();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
+    ::tpy::print_object_default(os, "Counter", obj);
+    return os;
+}
+
 
 // def __init__(self, v: int32) -> None:
 //     self.v = v
 inline Handle::Handle(int32_t v) : v(v) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Counter::Counter(int32_t n) : n(n) {}
+
+// def bump(self) -> int32:
+//     self.n += 1
+//     return self.n
+inline int32_t Counter::bump() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
+    return this->n;
+}
 void __tpy_init();
 } // namespace tpyapp::main

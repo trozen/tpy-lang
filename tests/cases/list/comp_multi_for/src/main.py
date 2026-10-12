@@ -509,7 +509,6 @@ def own_gen(n: int) -> Iterator[int]:
 async def own_async(n: int) -> int:
     await asyncio.sleep(0)
     # async def, after a suspension: the comprehension and the for statement twin
-    # (distinct names: BUGS.md#async-comp-target-named-like-frame-loop-var)
     total = sum([c.n for cs in batches(n) for c in cs])  # tpyc: ok
     for ds in batches(n):
         for d in ds:  # tpyc: ok

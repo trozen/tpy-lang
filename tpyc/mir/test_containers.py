@@ -9,7 +9,6 @@ from dataclasses import dataclass, fields, is_dataclass, replace
 
 import pytest
 
-from ..codegen_cpp.forms import loop_binding_kind
 from ..compilation_context import activate_compiler
 from ..mir_workspace import analyze_call_workspace
 from ..thir import nodes as th
@@ -311,8 +310,7 @@ def _published(fn: th.THIRFunction, *, readonly_iteration: bool = False, preserv
             case th.THIRForEach(iteration=None):
                 typ = _bare(node.iterable.result_type)
                 source = th.THIRNativeContainer(typ, _element_fact(typ, readonly_iteration), readonly_iteration)
-                binding = loop_binding_kind(node.elem_type, node.const_loop_var, hoisted=node.hoist_loop_var)
-                return replace(node, iteration=th.THIRNativeIteration(source, binding))
+                return replace(node, iteration=th.THIRNativeIteration(source))
             case th.THIRSetItem():
                 if not setitem:
                     return replace(node, stub_callee=None)

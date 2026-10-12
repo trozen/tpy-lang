@@ -37,7 +37,7 @@ if TYPE_CHECKING:
     from .temp_plan import THIRTempPlan
     from .storage_facts import THIRStorageFacts
     # The shared binding tags carry no runtime dependency on codegen here.
-    from ..codegen_cpp.forms import LocalBinding, LoopBinding
+    from ..codegen_cpp.forms import LocalBinding
 
 
 class Form(Enum):
@@ -108,8 +108,9 @@ class THIRNativeContainer:
 
 @dataclass(frozen=True)
 class THIRNativeIteration:
+    """The container a begin/end loop walks in place; how its variable
+    binds an element is the loop record's `loop_binding`."""
     source: THIRNativeContainer
-    binding: 'LoopBinding'
 
 
 @dataclass(frozen=True)
@@ -384,6 +385,9 @@ class THIRWalrus(THIRExpr):
     source). `tail="deref"` appends the `, *n` result deref. Remaining
     non-value targets (tuples, non-value slots, hoisted names) are not
     lowered yet."""
+    # The target's record: a slot it allocates or reuses is the record's.
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     name: str
     cpp_name: str
     value: 'THIRExpr'
@@ -1655,6 +1659,11 @@ class THIRArrayComprehension(THIRExpr):
     range_step: 'THIRExpr | None' = None   # None for 1/2-arg range
     # source arm
     elem_type: 'TpyType | None' = None    # loop-var binding type
+    # The variable's clause record; its `loop_binding` is how the per-slot
+    # lambda binds it (an owned element is always a copy of the indexed
+    # one). None for an unpack head.
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     iterable: 'THIRExpr | None' = None
     iterable_lvalue: bool = True
     unpack_targets: tuple = ()            # ('a', None, 'b') -- None = discard
@@ -2547,6 +2556,10 @@ class THIRAssign(THIRStmt):
     statement so the qualified name stays a real
     lvalue (a statement-expression wrap would be an rvalue)."""
     target: THIRExpr
+    # A name target's record (`stamp_bindings`): a rebind slot the assign
+    # re-fills is the record's.
+    binding: 'BindingRepr | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     optional_record_assignment: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     optional_layout: THIROptionalLayout | None = field(default=None, kw_only=True)
     union_layout: THIRUnionLayout | None = field(default=None, kw_only=True)
@@ -3032,7 +3045,7 @@ class THIRIf(THIRStmt):
     else_body: tuple[THIRStmt, ...] = ()
     else_is_nested: bool = False
     hoist_decls: tuple[HoistDecl, ...] = ()
-    hoist_slots: tuple[tuple[str, str], ...] = ()
+    hoist_slots: tuple[tuple['BindingRepr', str], ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     # A protocol-isinstance condition compiles to a CONCEPT test: the
     # keyword renders `if constexpr`. Per-node -- an
@@ -3323,9 +3336,11 @@ class THIRForEach(THIRStmt):
     (`char c = *__beg_N;`); for a bytes-family iterable (bytes/BytesView,
     NativeIterable[uint8]) it is uint8 (`uint8_t x = *__beg_N;`, the same
     value-scalar typed copy). `N` is the
-    per-function loop index (off `ctx.iter_counter`). `const_loop_var` carries
-    sema's flag; it is inert for a cheap value scalar (the typed copy drops const either
-    way) but load-bearing for a record (`const auto&` vs `auto&&`). Slice: a name
+    per-function loop index (off `ctx.iter_counter`). The binding line is
+    the loop variable's record's `loop_binding` (`binding`), which the
+    planner decides from the element type, sema's `const_loop_var` (inert
+    for a cheap value scalar, `const auto&` vs `auto&&` for a record), the
+    hoist and the consuming route. Slice: a name
     container, a str/bytes-family field off an F1-record receiver (both C++
     lvalues: `iterable_lvalue`, the `auto& __obj_N =` capture), or an eligible
     str- or container-returning call (str and `Own[...]` container returns are

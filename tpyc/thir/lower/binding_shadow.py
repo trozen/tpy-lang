@@ -12,15 +12,13 @@ from ...typesys import (OptionalType, TpyType, UnionType, unwrap_readonly,
                         unwrap_send_sync)
 from . import bindings
 from .bindings import loc_of, project_held, read_type, shadow_emit
-from .predicates import (_param_is_const, _resolved_bytes_value,
-                         _resolved_str_value)
+from .predicates import _resolved_bytes_value, _resolved_str_value
 
 
-def check_read(e, node, lc, declared, source) -> None:
+def check_read(e, node, lc, declared) -> None:
     """A named THIRName read: the record's scope against `declared` and the
-    closure locals, the stamped const against the reading function's
-    parameter verdict, and the record's held under its declared type
-    against the read's."""
+    closure locals, and the record's held under its declared type against
+    the read's."""
     sink = bindings.SHADOW_SINK
     if sink is None:
         return
@@ -37,11 +35,6 @@ def check_read(e, node, lc, declared, source) -> None:
         shadow_emit(lc, "wrong_scope:record_not_declared", name, loc,
                     rec.kind.value)
     pn = lc.prescan.param_names
-    const = rec.const or (
-        name in pn and _param_is_const(name, lc.func, lc.analyzer,
-                                       lc.record_name))
-    if const != source.const:
-        shadow_emit(lc, f"read:const:expected={const}", name, loc, rec.kind.value)
     if node.cpp is not None:
         return
     an = lc.analyzer
@@ -81,7 +74,7 @@ def check_binding(e, rec, lc, declared) -> None:
             "is_param": name in lc.prescan.param_names}
     # The prescan names the pointer-slot GLOBALS; a local record that
     # shadows one (a comprehension variable in module init) is none.
-    if rec.kind.family == "global":
+    if rec.site_kind in ("global", "module_global"):
         want["global_slot"] = name in lc.prescan.global_slots
     for fld, v in want.items():
         have = getattr(rec, fld)

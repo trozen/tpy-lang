@@ -14,7 +14,6 @@ from ..nodes import (
     THIRCapture, THIRCaptureRelation, THIRCaptureSlot, THIRCaptureSourceKind,
     THIRClosureIdentity, THIRClosureKind,
 )
-from .predicates import _param_is_const
 from .storage import borrowed_record
 
 if TYPE_CHECKING:
@@ -87,14 +86,15 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
     if site is None:
         return None, None
     identity, eligible = site
-    if not eligible or lc.capture_funcs:
+    if not eligible or lc.in_nested_def:
         return identity, None
     params = dict(lc.params)
     captures: list[THIRCapture] = []
     for name in node.captured_names:
         typ = declared.get(name)
         if (typ is None or name in lc.narrow.narrowed or name in lc.narrow.spelled
-                or name in lc.frame_field_names or lc.binding(name).pointer
+                or lc.binding(name).frame_class is not None
+                or lc.binding(name).pointer
                 or lc.binding(name).rebind_slot
                 or lc.binding(name).lazy_rebind_slot
                 or lc.binding(name).nested_def):
@@ -112,7 +112,8 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
         if name == lc.self_receiver:
             if lc.self_cpp != "this" or not lc.self_is_pointer:
                 return identity, None
-            reference = borrowed_record(typ, lc.func.is_readonly, lc.analyzer)
+            reference = borrowed_record(typ, lc.binding(name).const,
+                                        lc.analyzer)
             if reference is None:
                 return identity, None
             source_kind = THIRCaptureSourceKind.RECEIVER
@@ -124,7 +125,7 @@ def capture_facts(node: Closure, lc: '_LowerCtx', declared: dict[str, TpyType]
             relation = THIRCaptureRelation.SCALAR_BINDING if by_ref else THIRCaptureRelation.SCALAR_SNAPSHOT
             readonly = not by_ref or lc.binding(name).const
         elif name in params and by_ref:
-            reference = borrowed_record(typ, _param_is_const(name, lc.func, lc.analyzer, lc.record_name),
+            reference = borrowed_record(typ, lc.binding(name).const,
                                         lc.analyzer)
             if reference is None:
                 return identity, None

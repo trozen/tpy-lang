@@ -21,10 +21,11 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping, Set as AbstractSet
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
 
-from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_async import collect_frame_nested_defs
-from ...codegen_cpp.forms import (LocalBinding, is_plain_nonvalue,
+from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
+                                  is_plain_nonvalue, loop_binding_kind,
                                   is_ptr_variant_union,
                                   is_storage_tuple_alias_decl,
                                   reads_storage_form_optional)
@@ -67,12 +68,13 @@ from ...value_category import (call_hands_back_value, call_returns_cpp_ref,
                                is_rvalue_source)
 from ..nodes import Form
 from ..reject import ThirUnsupported, stmt_reject_reason
-from ..source import UNBOUND, BindingRepr, Held
+from ..source import UNBOUND, BindingRepr, Held, SlotKey, slot_key
 from ..source import BindingKind as K
 from ..source import BindingRefinement as R
 from . import checks as _checks
 from . import predicates as _p
-from .context import (BindingTableError, ValueOptKind, _LowerCtx,
+from .context import (BindingTableError,
+                      FrameLocalClass, ValueOptKind, _LowerCtx,
                       _without_names,
                       binding_source_sites, names_with, nested_def_prescan,
                       prescan_without)
@@ -87,6 +89,9 @@ from .predicates import (_bytes_name_form, _is_borrow_form_name,
                          _value_opt_tuple, _value_opt_view, _value_record_slot,
                          _var_decl_type)
 from .storage import tuple_layout
+
+if TYPE_CHECKING:
+    from .resumable import FrameLoopFacts
 # statements, expressions, comprehensions, match and resumable import this
 # module (they lower under the table it plans), so the planner imports what
 # it reads of them inside the reading function.
@@ -104,8 +109,8 @@ REPR_FIELDS: tuple[str, ...] = (
     "storage_opt", "const_storage_opt", "storage_tuple",
     "const_storage_tuple", "borrow_tuple_mixed", "optional_borrow_tuple",
     "tuple_layout", "inline_elems", "const", "const_loop_var",
-    "const_borrow_tuple", "const_opt_borrow_tuple", "movable", "frame_slot",
-    "owned", "optional_storage", "coro_frame", "opt_storage_call",
+    "const_borrow_tuple", "const_opt_borrow_tuple", "movable", "owned",
+    "optional_storage", "coro_frame", "opt_storage_call",
     "iterator_object",
 )
 
@@ -165,10 +170,14 @@ class ScopeNode:
 class BindingTable:
     """The records of one body, keyed by declaration site, and the scope
     node in effect at every statement and scoping expression."""
-    __slots__ = ("root", "scope_at", "sites", "stmt_expr_scope", "entered")
+    __slots__ = ("root", "scope_at", "sites", "stmt_expr_scope", "entered",
+                 "frame_members")
 
     def __init__(self, root: ScopeNode) -> None:
         self.root = root
+        # The root's resumable-frame records, by name: the root also holds
+        # every seeded module global, too many to scan per question.
+        self.frame_members: tuple[str, ...] = ()
         self.scope_at: IdentityMap = IdentityMap()
         self.sites: IdentityMap = IdentityMap()
         # A statement's own expressions (a condition, an iterable, a return
@@ -188,7 +197,8 @@ class BindingTable:
             node = ScopeNode(parent, {
                 n: BindingRepr(name=n, site=lam,
                                type=types[i] if i < len(types) else None,
-                               kind=K.LAMBDA_PLAIN, is_param=True,
+                               kind=K.LAMBDA_PLAIN, site_kind="lambda",
+                               is_param=True,
                                param_type=types[i] if i < len(types)
                                else None)
                 for i, n in enumerate(lam.param_names)},
@@ -243,6 +253,12 @@ class FrameSeed:
     # frame's slot types (`lc.frame_local_types`).
     entry_declared: frozenset[str] = frozenset()
     local_types: Mapping[str, TpyType] = field(default_factory=dict)
+    # Each hoisted local's class (`frame_local_class`, which the resumable
+    # admission read first), the skeleton's loop families, and the names
+    # the frame binds to const storage.
+    classes: Mapping[str, FrameLocalClass] = field(default_factory=dict)
+    loops: 'FrameLoopFacts | None' = None
+    const_bindings: frozenset[str] = frozenset()
 
 
 @dataclass
@@ -287,23 +303,15 @@ class _FrameFacts:
     hoisted local's class off its layout kind (`frame_local_class`), the
     loop families of the skeleton's for-prescan, and the fields a sink may
     move from."""
-    classes: Mapping[str, object]
-    loops: object
+    classes: Mapping[str, FrameLocalClass]
+    loops: 'FrameLoopFacts'
     movable: frozenset[str]
 
 
 def _frame_facts(inp: PlanInputs) -> _FrameFacts:
     from . import resumable as _res
-    func, an = inp.func, inp.analyzer
-    rstate = rcfg.resumable_state(func)
-    loops = _res.frame_loop_facts(func, rstate)
-    classes = {}
-    for lname, ltype in (func.generator_locals or []):
-        lay = inp.frame.layout.get(lname)
-        if lay is not None:
-            classes[lname] = _res.frame_local_class(
-                lname, ltype, lay.kind, an, loops,
-                rstate.one_shot_lift_names)
+    func = inp.func
+    classes, loops = inp.frame.classes, inp.frame.loops
     # A frame-promoted STORAGE slot is movable with no value-type filter: a
     # last-use read moves out of the slot rather than copying it, which is
     # how a BigInt frame local moves at an async return. A pointer-form
@@ -315,7 +323,7 @@ def _frame_facts(inp: PlanInputs) -> _FrameFacts:
     # record copies wherever it lives.
     borrowed = (loops.ptr_loop_vars | loops.unpack_ptr_targets
                 | {n for n, c in classes.items()
-                   if c is _res.FrameLocalClass.ALIAS_PTR})
+                   if c is FrameLocalClass.ALIAS_PTR})
     decl_names = _res._var_decl_names(list(func.body))
     movable = frozenset(
         n for n, t in (func.generator_locals or [])
@@ -454,6 +462,8 @@ class _Site:
     # Facts the walk computed for the site: a comprehension clause's route
     # (`_clause_route`), a match arm's capture facts (`_match_captures`).
     route: object | None = None
+    # A comprehension clause's comprehension.
+    comp: TpyExpr | None = None
     # A for head's unpack: its for statement, and the records visible at
     # it (the iteration source's scope).
     loop: TpyForEach | None = None
@@ -468,14 +478,20 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
     if site.prescan is not None:
         inp = replace(inp, prescan=site.prescan,
                       sema_movable=site.sema_movable or frozenset())
+    rec = None
     for row in _ROWS.get(site.kind, ()):
         rec = row(site, name, typ, inp, visible)
         if rec is not None:
-            return rec
-    return BindingRepr(name=name, site=site.node, type=typ,
-                       kind=K.plain(site.kind),
-                       is_param=site.kind in ("param", "lambda",
-                                              "nested_param"))
+            break
+    else:
+        rec = BindingRepr(name=name, site=site.node, type=typ,
+                          kind=K.plain(site.kind), site_kind=site.kind,
+                          is_param=site.kind in ("param", "lambda",
+                                                 "nested_param"))
+    if (inp.frame is not None and name in inp.frame.const_bindings
+            and (site.func is None or site.func is inp.func)):
+        rec = replace(rec, frame_const=True)
+    return rec
 
 
 def _param_row(site, name, typ, inp: PlanInputs, visible):
@@ -524,8 +540,18 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
             and u.inner.is_expensive_copy()):
         f["movable"] = True
     ptype = next((t for n, t in inp.params if n == name), None)
+    if inp.frame is not None and name in inp.frame.fields:
+        f["frame_class"] = inp.frame.classes.get(name, FrameLocalClass.PLAIN)
+    # The const verdicts of the function whose parameter it is; `THIRParam`
+    # and every reader in the body read them off this record.
+    fi = _p._owning_fi(func, analyzer, inp.record_name)
+    f["const"] = _p._param_is_const_at(name, func, fi)
+    f["deep_const"] = (
+        _p._param_is_deep_const(name, func, analyzer, inp.record_name)
+        or _p._vararg_pack_is_const(name, func)
+        or _p._ptr_pointee_is_readonly(name, func))
     return BindingRepr(name=name, site=None, type=typ, kind=K.PARAM_SEED,
-                       is_param=True,
+                       site_kind=site.kind, is_param=True,
                        param_type=ptype if isinstance(ptype, TpyType)
                        else None, **f)
 
@@ -537,6 +563,7 @@ def _receiver_row(site, name, typ, inp: PlanInputs, visible):
         return None
     return BindingRepr(
         name=name, site=None, type=typ, kind=K.PARAM_RECEIVER,
+        site_kind=site.kind,
         const=inp.readonly_self,
         movable=bool(name == inp.self_receiver and inp.func.is_consuming))
 
@@ -551,40 +578,41 @@ def _global_row(site, name, typ, inp: PlanInputs, visible):
     if ((name in pre.global_seeded or name in pre.global_readonly)
             and _value_opt_scalar(typ, analyzer) is not None):
         f["value_opt"] = ValueOptKind.SCALAR
-    return BindingRepr(name=name, site=None, type=typ, kind=K.GLOBAL_SEED, **f)
+    return BindingRepr(name=name, site=None, type=typ, kind=K.GLOBAL_SEED,
+                       site_kind=site.kind, **f)
 
 
 def _module_global_row(site, name, typ, inp: PlanInputs, visible):
     """The module-init carrier's globals (`lower_top_level`)."""
     pre, analyzer = inp.prescan, inp.analyzer
+    own = name in inp.module_globals
     f: dict = {"global_cpp": pre.global_cpp.get(name),
-               "global_slot": name in pre.global_slots}
-    if name in inp.module_globals and typ is not None:
+               "global_slot": name in pre.global_slots,
+               "own_global": own}
+    if name in pre.global_slots:
+        f["pointer"] = True
+    if own and typ is not None:
         if _value_opt_scalar(typ, analyzer) is not None:
             f["value_opt"] = ValueOptKind.SCALAR
-        if not typ.is_value_type() and not typ.needs_wrapper():
-            f["pointer"] = True
         bare = _uw(unwrap_ref_type(typ))
         if isinstance(bare, TupleType) and bare.has_pointer_repr_element():
             # A tuple global is a tuple of scalar globals: each reference
             # element is the pointer slot a reference global is, whatever
             # backing a write parks (`std::tuple<int32_t, Cell*> M`).
             f["tuple_layout"] = tuple_layout(bare, analyzer, borrow=True)
-    elif name in pre.global_slots:
-        f["pointer"] = True
     return BindingRepr(name=name, site=None, type=typ, kind=K.GLOBAL_MODULE,
-                       **f)
+                       site_kind=site.kind, **f)
 
 
 def _frame_row(site, name, typ, inp: PlanInputs, visible):
     """A resumable frame field, from its class (`_frame_facts`) and the
     value-opt kind of the frame's first decl of it."""
-    from .resumable import _FRAME_SLOT_CLASSES, FrameLocalClass as C
+    C = FrameLocalClass
     fr, ff = inp.frame, inp.frame_facts
-    f: dict = {}
-    cls = ff.classes.get(name)
-    if cls in _FRAME_SLOT_CLASSES:
-        f["frame_slot"] = True
+    f: dict = {"frame_class": ff.classes.get(name),
+               "source_typed_holder": name in ff.loops.source_typed_holders,
+               "opt_ptr_loop_var": name in ff.loops.opt_ptr_loop_vars}
+    cls = f["frame_class"]
     if (name in ff.loops.ptr_loop_vars or name in ff.loops.unpack_ptr_targets
             or cls in (C.OPT_PTR, C.REBIND_PTR, C.ALIAS_PTR)):
         f["pointer"] = True
@@ -604,7 +632,7 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
         f["effective_type"] = getattr(lay, "effective_type", None)
         f["payload"] = getattr(lay, "payload", None)
     return BindingRepr(name=name, site=None, type=typ, kind=K.FRAME_LAYOUT,
-                       **f)
+                       site_kind=site.kind, **f)
 
 
 def _declared_value_opt_kind(vtype: TpyType, analyzer
@@ -686,7 +714,6 @@ class _PlanCtx:
         self.prescan = inp.prescan
         self.record_name = inp.record_name
         self.self_receiver = inp.self_receiver
-        self.capture_funcs = () if func is inp.func else (inp.func,)
         self.frame_local_types = (
             {n: inp.seeds.get(n) for n in inp.frame.fields}
             if inp.frame is not None else {})
@@ -776,7 +803,8 @@ _BORROW_LOCAL_KIND: dict[LocalBinding, K] = {
 
 
 def _mk(site: '_Site', name: str, typ, kind: K, **f) -> BindingRepr:
-    return BindingRepr(name=name, site=site.node, type=typ, kind=kind, **f)
+    return BindingRepr(name=name, site=site.node, type=typ, kind=kind,
+                       site_kind=site.kind, **f)
 
 
 def _decl_row(site, name, typ, inp: 'PlanInputs', visible):
@@ -1636,7 +1664,7 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
                        func, set()))
     # Const when every source bound into this slot is a const borrow
     # (`_plan_const`, a capture's subject included).
-    const_borrow = _SlotKey.of(stmt, name) in inp.const_slots
+    const_borrow = SlotKey.of(stmt, name) in inp.const_slots
     rebound = name in pre.rvalue_reassigned
     # A readonly-TYPED hoist (`v = r.view()` at a `readonly[T]` return) is
     # the same const borrow sema's stmt-borrow bit names.
@@ -1690,14 +1718,16 @@ def capture_const(subject, ctx) -> bool:
 
 # The facts a loop head decides for its variable whatever the same-named
 # outer binding says; the variable inherits every other fact from that
-# binding (`_inherit_outer`).
-_LOOP_SCRUBBED = frozenset({"pointer", "rebind_slot", "frame_slot",
-                            "const_loop_var"})
+# binding (`_inherit_outer`). The outer declaration's tuple layout and
+# inline elements are facts of its own write, never the loop's.
+_LOOP_SCRUBBED = frozenset({"pointer", "rebind_slot",
+                            "const_loop_var", "tuple_layout",
+                            "inline_elems"})
 
 
 # A loop-head unpack target decides the same facts, except const, which it
 # inherits.
-_HEAD_TARGET_SCRUBBED = frozenset({"pointer", "rebind_slot", "frame_slot"})
+_HEAD_TARGET_SCRUBBED = frozenset({"pointer", "rebind_slot"})
 
 
 def _inherit_outer(f: dict, outer: 'BindingRepr | None',
@@ -1731,7 +1761,21 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     ctx = _PlanCtx(inp, visible, site.func or inp.func, (stmt.iterable,))
     f: dict = {}
     yields_const = _st._iteration_yields_const(stmt.iterable, ctx, an)
-    f["const_loop_var"] = bool(stmt.const_loop_var or yields_const)
+    consuming = (_st._for_consuming_route(stmt, an, ctx.declared_view)
+                 is not None)
+    elem = (stmt.enum_iterable if stmt.enum_iterable is not None
+            else _st._resolved_loop_elem_type(stmt, an))
+    if elem is not None:
+        kind = loop_binding_kind(elem, stmt.const_loop_var,
+                                 hoisted=stmt.hoist_loop_var,
+                                 consuming=consuming)
+        f["loop_binding"] = kind
+        # A reference over a const iteration deduces const (`auto&&`); a
+        # copy or the hoisted slot is the loop's own mutable value.
+        f["const_loop_var"] = (
+            kind in (LoopBinding.CONST_REFERENCE,
+                     LoopBinding.CONST_TYPED_REFERENCE)
+            or (kind is LoopBinding.REFERENCE and yields_const))
     outer = visible(name)
     et = stmt.elem_type
     etu = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
@@ -1766,9 +1810,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         f["const_storage_opt"] = _st._iteration_yields_const(src, ctx, an)
     # A consuming loop's variable owns its element: movable whatever
     # sema's verdict says.
-    if (isinstance(et, OwnType) and not stmt.hoist_loop_var) or (
-            _st._for_consuming_route(stmt, an, ctx.declared_view)
-            is not None):
+    if (isinstance(et, OwnType) and not stmt.hoist_loop_var) or consuming:
         f["movable"] = True
     return _mk(site, name, typ, K.LOOP_VAR, **_inherit_outer(f, outer))
 
@@ -1895,7 +1937,7 @@ def head_target_writes_outer(stmt: TpyTupleUnpack, i: int, typ,
     declared it already (`walk_declared`, the for-each arm's flow state,
     which the planner cannot see: it keys the fresh record, and the arm
     asks again)."""
-    if outer is None or (outer.kind is K.FRAME_LAYOUT and not walk_declared):
+    if outer is None or (outer.site_kind == "frame" and not walk_declared):
         return False
     tt = unwrap_ref_type(typ) if isinstance(typ, TpyType) else None
     if _p._optional_ptr_borrow(tt, analyzer) is not None:
@@ -2045,9 +2087,9 @@ def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
 
 # A comprehension variable is never the pointer its same-named outer binding
 # may be. The route refuses a variable hiding a rebind slot, a storage tuple
-# or a narrowed name; every other fact is inherited, which is wrong for a
-# value Optional and a frame slot (BUGS.md#comp-loop-var-shadows-optional-ptr-param,
-# BUGS.md#async-comp-target-named-like-frame-loop-var).
+# or a narrowed name; every other fact in REPR_FIELDS is inherited, which is
+# wrong for a value Optional (BUGS.md#comp-loop-var-shadows-optional-ptr-param).
+# A frame member's `frame_class`, and the frame slot it decides, is not.
 _COMP_SCRUBBED = frozenset({"pointer"})
 
 
@@ -2072,6 +2114,19 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
     gen, route = site.node, site.route
     if route is None:
         return None
+    # The clause's loop binds its variable (an unpack clause, its holder)
+    # as the for statement's loop binds an element of the same type.
+    loop_const = bool(gen.const_loop_var)
+    rt = an.get_expr_type(site.comp) if site.comp is not None else None
+    if rt is not None and is_array(rt):
+        # A const ref would see the element expression's write to the
+        # source; CPython keeps the bound object:
+        # BUGS.md#const-ref-loop-var-sees-source-write.
+        loop_const = False
+    loop = (loop_binding_kind(route.et, loop_const)
+            if route.et is not None else None)
+    if route.unpack_types is not None and name == gen.var:
+        return _mk(site, name, typ, K.COMP_UNPACK_HOLDER, loop_binding=loop)
     if route.unpack_types is not None:
         # A record element and a pointer-repr Optional element (its
         # storage optional) bind a reference into the element, const as
@@ -2086,15 +2141,17 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
         return _mk(site, name, typ, K.COMP_UNPACK_VALUE)
     etp = unwrap_readonly(route.et) if route.et is not None else None
     if isinstance(etp, TupleType) and etp.has_pointer_repr_element():
-        return _mk(site, name, typ, K.COMP_STORAGE_TUPLE, storage_tuple=True)
+        return _mk(site, name, typ, K.COMP_STORAGE_TUPLE, storage_tuple=True,
+                   loop_binding=loop)
     if _p._foreach_storage_opt_elem(route.et, an):
         ctx = _PlanCtx(inp, visible, site.func or inp.func)
         src = (gen.iterable.obj if isinstance(gen.iterable, TpyMethodCall)
                else gen.iterable)
         return _mk(site, name, typ, K.COMP_STORAGE_OPT, storage_opt=True,
                    const_storage_opt=_st._iteration_yields_const(src, ctx,
-                                                                 an))
-    return None
+                                                                 an),
+                   loop_binding=loop)
+    return _mk(site, name, typ, K.COMP_PLAIN, loop_binding=loop)
 
 
 @dataclass(frozen=True)
@@ -2105,12 +2162,6 @@ class _CaseFacts:
     captures: Mapping[str, tuple]
     by_value: frozenset[str]
     subject_const: bool
-
-
-# The kinds `_match_row` gives a capture the case declares: its C++
-# binding is local to the arm.
-_ARM_LOCAL_CAPTURES = frozenset({K.MATCH_REF, K.MATCH_COPY,
-                                 K.MATCH_SUBJECT_PTR})
 
 
 def _match_row(site, name, typ, inp: 'PlanInputs', visible):
@@ -2416,7 +2467,8 @@ class _Planner:
                     self.expr(case.guard, cnode)
                 self.block(case.body, cnode)
                 for n, r in caps.items():
-                    if r.kind not in _ARM_LOCAL_CAPTURES:
+                    # A capture the case declares is local to its arm.
+                    if r.site_kind != "match":
                         after.setdefault(n, r)
             # A capture into a binding in scope (a refinement of it)
             # outlives the statement; a capture the case declares is local
@@ -2543,7 +2595,7 @@ class _Planner:
             return out
         for n, raw in hoists.items():
             prev = node.lookup(n)
-            if (prev is None or prev.kind is not K.FRAME_LAYOUT or prev.refinements
+            if (prev is None or prev.site_kind != "frame" or prev.refinements
                     or n in fr.entry_declared or prev.value_opt is not None):
                 continue
             vt = fr.local_types.get(n, raw)
@@ -2580,7 +2632,8 @@ class _Planner:
         params = [n for n, _t in func.params]
         own = frozenset(scope_bound_names(func.body, params))
         recs = {n: BindingRepr(name=n, site=None, type=t,
-                               kind=K.NESTED_PARAM_PLAIN, is_param=True)
+                               kind=K.NESTED_PARAM_PLAIN,
+                               site_kind="nested_param", is_param=True)
                 for n, t in func.params}
         # The nested body's prescan carries no pointer-slot globals
         # (`nested_def_prescan`): an enclosing one reads there as the
@@ -2617,7 +2670,8 @@ class _Planner:
             recs = {n: BindingRepr(
                         name=n, site=e,
                         type=types[i] if i < len(types) else None,
-                        kind=K.LAMBDA_PLAIN, is_param=True,
+                        kind=K.LAMBDA_PLAIN, site_kind="lambda",
+                        is_param=True,
                         param_type=types[i] if i < len(types) else None)
                     for i, n in enumerate(e.param_names)}
             lnode = ScopeNode(node, recs, frozenset(e.param_names))
@@ -2639,9 +2693,12 @@ class _Planner:
             for gen in e.generators:
                 self.expr(gen.iterable, cur)
                 route = self._clause_route(e, gen, cur)
-                site = replace(self._site("comp", gen), route=route)
+                site = replace(self._site("comp", gen), route=route,
+                               comp=e)
                 recs = {n: self._record(site, n, t, cur)
                         for n, t in _clause_types(e, gen, route, self.analyzer)}
+                if route is not None and route.unpack_types is not None:
+                    recs[gen.var] = self._record(site, gen.var, route.et, cur)
                 cur = cur.child(recs)
                 self.table.scope_at[gen] = cur
                 for c in gen.conditions:
@@ -2790,24 +2847,6 @@ def _borrow_tuple_const_sources(func: TpyFunction, analyzer, reassigned,
     return plain, nullable
 
 
-@dataclass(frozen=True)
-class _SlotKey:
-    """One record's pointer slot: the site declaring it and the name (a
-    hoist site declares several). Compared by the site's identity; the key
-    holds the site so the identity cannot be recycled."""
-    site_id: int
-    name: str
-    site: object = field(compare=False, repr=False)
-
-    @staticmethod
-    def of(site: object, name: str) -> '_SlotKey':
-        return _SlotKey(id(site), name, site)
-
-
-def _slot_key(rec: BindingRepr) -> _SlotKey:
-    return _SlotKey.of(rec.site, rec.name)
-
-
 # The families whose pointer record is the name's one C++ slot: a
 # declaration's, a hoist's, a walrus's and a with target's (a loop, unpack
 # or capture binding is a fresh C++ variable of its own).
@@ -2815,9 +2854,10 @@ _SLOT_FAMILIES = frozenset({"decl", "hoist", "walrus", "with"})
 
 
 def _slot_family(rec: BindingRepr) -> bool:
-    # Judged whatever kind the record's row picks: the kind (a pointer or
-    # not) itself reads the verdict, so keying on it would not settle.
-    return rec.kind.family in _SLOT_FAMILIES
+    # Judged by the declaring site, whatever kind the record's row picks:
+    # the kind (a pointer or not) itself reads the verdict, so keying on it
+    # would not settle.
+    return rec.site_kind in _SLOT_FAMILIES
 
 
 def _is_slot(rec: BindingRepr) -> bool:
@@ -2829,7 +2869,7 @@ def _is_slot(rec: BindingRepr) -> bool:
 def _slot_const(rec: BindingRepr, const_slots: AbstractSet, an) -> bool:
     """A slot's const: every source bound into it is const (the
     fixpoint's `const_slots`), or its declared type is read-only."""
-    return _slot_key(rec) in const_slots or _declared_const(rec, an)
+    return slot_key(rec) in const_slots or _declared_const(rec, an)
 
 
 @dataclass(frozen=True)
@@ -2839,7 +2879,7 @@ class _ConstFix:
     and per record the statements binding a const source into it."""
     btuple: tuple
     const_slots: frozenset
-    const_sources: Mapping[_SlotKey, tuple]
+    const_sources: Mapping[SlotKey, tuple]
     # The matches capturing a const loop variable into a pointer slot:
     # sema does not credit a write through the capture to the loop
     # variable, so its const is unproven
@@ -2875,13 +2915,13 @@ def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
         at = src if isinstance(src, TpyWithItem) else stmt
         rec = table.declared_by(at, tgt) or table.visible(at, tgt)
         if rec is not None and not isinstance(src, TpyNoneLiteral):
-            binds.append((_slot_key(rec), _slot_family(rec), src, stmt))
+            binds.append((slot_key(rec), _slot_family(rec), src, stmt))
             if (isinstance(stmt, TpyMatch) and src is stmt.subject
                     and _is_slot(rec)):
                 loop_var_captures.append(stmt)
     const_set: set[str] = set()
     opt_set: set[str] = set()
-    slots: set[_SlotKey] = set()
+    slots: set[SlotKey] = set()
 
     def ctx_at(stmt) -> _PlanCtx:
         node = table.scope_at.get(stmt) or table.root
@@ -2917,7 +2957,7 @@ def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
             if key in slots and not is_const(src, stmt):
                 slots.discard(key)
                 changed = True
-    const_sources: dict[_SlotKey, list] = {}
+    const_sources: dict[SlotKey, list] = {}
     for key, _slot, src, stmt in binds:
         if is_const(src, stmt):
             const_sources.setdefault(key, []).append(stmt)
@@ -2943,9 +2983,9 @@ def _reject_mixed_slot(table: BindingTable, fix: _ConstFix) -> None:
     variable (`_ConstFix.unproven`); the first such statement."""
     found = [(stmt, "match.capture_const_loop_var") for stmt in fix.unproven]
     for rec in table.records():
-        if _is_slot(rec) and _slot_key(rec) not in fix.const_slots:
+        if _is_slot(rec) and slot_key(rec) not in fix.const_slots:
             found.extend((stmt, "decl.reseat_source")
-                         for stmt in fix.const_sources.get(_slot_key(rec), ()))
+                         for stmt in fix.const_sources.get(slot_key(rec), ()))
     if found:
         stmt, detail = min(found, key=lambda f: _line(f[0]))
         raise ThirUnsupported(stmt_reject_reason(stmt, detail),
@@ -2966,7 +3006,7 @@ def _mark_const(table: BindingTable, plain: frozenset,
     new: dict[int, BindingRepr] = {}
 
     def swap(rec: BindingRepr) -> BindingRepr:
-        key = _slot_key(rec)
+        key = slot_key(rec)
         sourced = key in fix.const_sources
         slot = _is_slot(rec)
         if (rec.name not in plain and rec.name not in nullable
@@ -3038,6 +3078,8 @@ def _plan_once(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
                 root_recs[nd.func.name] = classify_binding(
                     _Site("def", nd), nd.func.name, None, inp, root.lookup)
     table = BindingTable(root)
+    table.frame_members = tuple(n for n, rec in root_recs.items()
+                                if rec.frame_class is not None)
     _Planner(inp, table).block(body, root, branch=False, top_level=True)
     return table
 

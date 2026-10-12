@@ -19,6 +19,7 @@ struct __gen_gen_with;
 struct __gen_gen_comp_target;
 struct __gen_gen_with_then_yield;
 struct __gen_gen_hoist_ref;
+struct __gen_gen_comp_lambda;
 
 // def gen_with_yield(xs: list[int]) -> Iterator[int]:
 __gen_gen_with_yield gen_with_yield(const std::vector<::tpy::BigInt>& xs);
@@ -30,6 +31,10 @@ __gen_gen_comp_target gen_comp_target(const std::vector<::tpy::BigInt>& xs);
 __gen_gen_with_then_yield gen_with_then_yield(const std::vector<::tpy::BigInt>& xs);
 // def gen_hoist_ref(rows: list[int]) -> Iterator[int]:
 __gen_gen_hoist_ref gen_hoist_ref(const std::vector<::tpy::BigInt>& rows);
+// def call(fn: Callable[[], int]) -> int:
+::tpy::BigInt call(const std::function<::tpy::BigInt()>& fn);
+// def gen_comp_lambda(rowss: list[list[int]]) -> Iterator[int]:
+__gen_gen_comp_lambda gen_comp_lambda(const std::vector<std::vector<::tpy::BigInt>>& rowss);
 // def main():
 void main();
 
@@ -304,6 +309,35 @@ struct __gen_gen_hoist_ref : public ::tpy::next_iter_mixin<__gen_gen_hoist_ref, 
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_hoist_ref&) {
         return os << "<generator gen_hoist_ref>";
+    }
+};
+
+// def gen_comp_lambda(rowss: list[list[int]]) -> Iterator[int]:
+struct __gen_gen_comp_lambda : public ::tpy::next_iter_mixin<__gen_gen_comp_lambda, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    const std::vector<std::vector<::tpy::BigInt>>& rowss;
+    ::tpy::frame_slot<::tpy::with_enter_t<Items>> xs;
+    std::vector<::tpy::BigInt>* ys = nullptr;
+    ::tpy::frame_slot<std::vector<::tpy::BigInt>> w;
+    ::tpy::frame_slot<Items> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_comp_lambda(const std::vector<std::vector<::tpy::BigInt>>& rowss)
+        : __state(S_INITIAL),
+          rowss(rowss) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_comp_lambda& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_comp_lambda&) {
+        return os << "<generator gen_comp_lambda>";
     }
 };
 

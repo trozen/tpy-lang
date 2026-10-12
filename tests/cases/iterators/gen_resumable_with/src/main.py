@@ -1,5 +1,6 @@
 # with-statement generators on the resumable frame: __enter__/__exit__ around a
-# yield, and item targets / comprehensions in a manager expression binding right.
+# yield, and item targets / comprehensions in a manager expression binding right;
+# a comprehension variable named like a frame alias is its own binding.
 from typing import Callable, Iterator
 
 class Tracer:
@@ -75,6 +76,21 @@ def gen_hoist_ref(rows: list[int]) -> Iterator[int]:
     ys.append(42)
     yield ys[1] + xs[1]
 
+def call(fn: Callable[[], int]) -> int:
+    return fn()
+
+def gen_comp_lambda(rowss: list[list[int]]) -> Iterator[int]:
+    # A frame pointer alias `ys` live across yields, and a comprehension
+    # variable of the same name read by a lambda inside the comprehension;
+    # the alias is mutated after it and seen through the with target.
+    with Items(1) as xs:
+        ys = xs
+    yield len(ys)
+    w = [call(lambda: len(ys)) for ys in rowss]  # tpyc: ok
+    yield sum(w)
+    ys.append(42)
+    yield ys[1] + xs[1] + len(ys)
+
 def main():
     for v in gen_with_yield([10, 20, 30]):
         print(v)
@@ -82,5 +98,6 @@ def main():
     print("gen_comp_target:", list(gen_comp_target([1, 2])))
     print("gen_with_then_yield:", list(gen_with_then_yield([1, 2])))
     print("gen_hoist_ref:", list(gen_hoist_ref([5, 6])))
+    print("gen_comp_lambda:", list(gen_comp_lambda([[1, 2], [3]])))
 
 main()

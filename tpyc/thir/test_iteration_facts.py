@@ -56,7 +56,7 @@ def test_native_source_and_binding_capabilities(functions) -> None:
         loop = next(st for st in fn.body if isinstance(st, THIRForEach))
         assert loop.iteration.source == fn.params[0].native_container
         assert loop.iteration.source.readonly is readonly
-        assert loop.iteration.binding is binding
+        assert loop.binding.loop_binding is binding
         element = loop.iteration.source.element
         if name == "scalar":
             assert element == INT32
@@ -67,15 +67,13 @@ def test_native_source_and_binding_capabilities(functions) -> None:
     assert "result" in {b.name for b in loop.hoisted_bindings}
 
 
-@pytest.mark.parametrize("damage", ["binding", "source_type", "element", "consuming", "rvalue", "param_access"])
+@pytest.mark.parametrize("damage", ["source_type", "element", "consuming", "rvalue", "param_access"])
 def test_conflicting_native_facts_rejected(functions, damage: str) -> None:
     fn = functions["const"]
     loop = next(st for st in fn.body if isinstance(st, THIRForEach))
     fact = loop.iteration
     params = fn.params
     match damage:
-        case "binding":
-            loop = replace(loop, iteration=replace(fact, binding=LoopBinding.VALUE))
         case "source_type":
             loop = replace(loop, iteration=replace(fact, source=replace(fact.source, type=INT32)))
         case "element":

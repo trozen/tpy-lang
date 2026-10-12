@@ -70,13 +70,6 @@ def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
     return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
 
 
-def owns_loop_var(elem_type: TpyType) -> bool:
-    """Whether a loop variable over `elem_type` holds its own value (an
-    `Own[T]` element of a reference type T: OWNED / OWNED_STORAGE)."""
-    return loop_binding_kind(elem_type, False) in (LoopBinding.OWNED,
-                                                   LoopBinding.OWNED_STORAGE)
-
-
 def _expr_type(analyzer, expr: TpyExpr) -> TpyType | None:
     """The codegen view of an expr's type: sema type with `ReadonlyType`
     stripped (C++ handles const via signatures). Mirrors

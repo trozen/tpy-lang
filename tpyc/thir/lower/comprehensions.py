@@ -955,8 +955,14 @@ def _lower_array_source_comprehension(
                 body_declared[name] = tt
         unpack_targets = tuple(gen.unpack_vars)
         unpack_cpps = _unpack_target_cpps(gen, route.unpack_types, lc)
+        binding = None
     else:
         body_declared[gen.var] = route.et
+        binding = _statements._loop_var_record(gen.var, gen, lc)
+        if binding is None or binding.loop_binding is None:
+            raise BindingTableError(
+                f"comprehension variable {gen.var!r} has no planned "
+                "loop binding")
     if isinstance(it, TpyFieldAccess):
         iterable = _lower_field_source(it, lc, declared)
     else:
@@ -971,6 +977,7 @@ def _lower_array_source_comprehension(
         arm="source",
         var=gen.var,
         elem_type=route.et,
+        binding=binding,
         array_elem_cpp=lc.render_type(elem_t),
         array_size_cpp=str(result_type.type_args[1]),
         iterable=iterable,
@@ -1387,11 +1394,13 @@ def _comprehension_loop(route: _CompRoute, gen, lc: '_LowerCtx',
         return _statements.build_loop_node(
             "iter_proto", gen.var, route.et, body, lc, declared,
             iterable=iterable, const_loop_var=gen.const_loop_var,
+            binding=_statements._loop_var_record(gen.var, gen, lc),
             iterable_lvalue=route.iterable_lvalue,
             source_in_enclosing=outermost, loc=loc)
     return _statements.build_loop_node(
         "each", gen.var, route.et, body, lc, declared, iterable=iterable,
         source=it, const_loop_var=gen.const_loop_var,
+        binding=_statements._loop_var_record(gen.var, gen, lc),
         iterable_lvalue=route.iterable_lvalue,
         presize=presize if route.sized_reserve else None,
         source_in_enclosing=outermost, loc=loc)

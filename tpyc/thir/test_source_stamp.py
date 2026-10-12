@@ -122,10 +122,15 @@ def test_reference_slot_refuses_a_dying_source(held: Held,
     assert not isinstance(convert(lvalue, slot, None), Refuse)
 
 
-def _lc(*, readonly: bool, nested: bool = False):
+def _lc(*, readonly: bool):
+    # The receiver's record: const for a read-only method (a nested def
+    # reads the enclosing method's record through its scope chain).
+    receiver = BindingRepr(name="self", site=None, type=_REC,
+                           kind=BindingKind.PARAM_RECEIVER,
+                           site_kind="receiver", const=readonly)
     return SimpleNamespace(
-        record_name="P", analyzer=None,
-        func=SimpleNamespace(is_readonly=readonly, is_nested_def=nested))
+        record_name="P", analyzer=None, self_receiver="self",
+        binding=lambda name: receiver)
 
 
 def test_readonly_receiver_is_const() -> None:
@@ -137,8 +142,6 @@ def test_readonly_receiver_is_const() -> None:
     assert stamped(recv, _lc(readonly=True)).source.const
     assert stamped(field, _lc(readonly=True)).source.const
     assert not stamped(recv, _lc(readonly=False)).source.const
-    # A nested def's `self` is a capture, not the const method's receiver.
-    assert not stamped(recv, _lc(readonly=True, nested=True)).source.const
 
 
 def test_rebuilt_name_repicks_its_held() -> None:
@@ -566,8 +569,8 @@ def _expected_record(table: BindingTable, node: object, name: str,
     def own_at(want: Callable[[int | None], bool]) -> list[BindingRepr]:
         found = {id(rec): rec for site in table.sites if want(_line_of(site))
                  for rec in table.sites[site] if rec.name == name
-                 and ((rec.kind.family in fams) if fams is not None
-                      else rec.kind.family not in _SCOPED_FAMILIES)}
+                 and ((rec.site_kind in fams) if fams is not None
+                      else rec.site_kind not in _SCOPED_FAMILIES)}
         return list(found.values())
     own = own_at(lambda ln: ln == line)
     if not own and fams == {"match"} and line is not None:
@@ -575,7 +578,7 @@ def _expected_record(table: BindingTable, node: object, name: str,
         # match statement's: the first case after it that binds the name.
         after = [ln for site in table.sites
                  if (ln := _line_of(site)) is not None and ln > line
-                 and any(r.name == name and r.kind.family == "match"
+                 and any(r.name == name and r.site_kind == "match"
                          for r in table.sites[site])]
         if after:
             own = own_at(lambda ln: ln == min(after))

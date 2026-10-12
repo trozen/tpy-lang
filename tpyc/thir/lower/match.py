@@ -39,7 +39,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
-from ..source import BindingKind, BindingRepr
+from ..source import BindingKind, BindingRepr, NameFacts
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.emit_prims import (
@@ -95,6 +95,7 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
+    FrameLocalClass,
     _ExprResultUse,
     _ExprUse,
     _LowerCtx,
@@ -1115,7 +1116,7 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         if name in declared:
             continue
         rec = _statements._hoist_record(stmt, name, lc)
-        if rec.kind in (BindingKind.FRAME_LAYOUT, BindingKind.HOIST_VALUE):
+        if rec.site_kind == "frame" or rec.kind is BindingKind.HOIST_VALUE:
             hoist_declared.append((name, raw, rec))
             continue
         if not nonvalue_ok and name in captures:
@@ -1330,18 +1331,16 @@ def _select_match_route(
     # first resumption. No lowering is correct here, so the verdict is
     # lowering's own -- rejecting instead would only defer the body and leave
     # the user-facing message to whichever layer emits it next.
-    # `opt_ptr_frame_locals` is empty outside a resumable body, and a
-    # non-empty set says nothing on its own -- only a capture NAMING one of
-    # those locals builds the aliasing field.
+    # Only a capture NAMING an Optional-pointer frame local builds the
+    # aliasing field.
     # Stability is the shared predicate, so it covers the narrowed-name subject
     # too: that renders to the enclosing arm's extraction alias rather than to
     # the frame field, which is just as dispatch-local as a copy.
-    if (lc.opt_ptr_frame_locals
-            and not resumable_match_subject_is_stable(stmt.subject, narrowed)):
-        for _case in stmt.cases:
-            for _bind in iter_capture_bindings(_case.pattern):
-                if _bind.name in lc.opt_ptr_frame_locals:
-                    reject_nonlvalue_resumable_match_ptr_bind(stmt.loc)
+    if any(lc.frame_local(_bind.name, FrameLocalClass.OPT_PTR)
+           for _case in stmt.cases
+           for _bind in iter_capture_bindings(_case.pattern)):
+        if not resumable_match_subject_is_stable(stmt.subject, narrowed):
+            reject_nonlvalue_resumable_match_ptr_bind(stmt.loc)
     route = _match_route(
         stmt, analyzer, declared, pointers, narrowed,
         storage_tuple_locals, prescan, lc)
@@ -1458,8 +1457,8 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             "if_elif_optional_guarded", "switch_str")
             # `frame` IS a frame-field binding (no decl mechanics); every
             # other non-value hoist kind stays out of hook mode.
-            or any(rec.kind not in (BindingKind.HOIST_VALUE,
-                                    BindingKind.FRAME_LAYOUT)
+            or any(rec.kind is not BindingKind.HOIST_VALUE
+                   and rec.site_kind != "frame"
                    for _n, _t, rec in route.hoist_types)
             or (kind == "switch_union"
                 and route.union_route == "guarded_union"
@@ -1805,7 +1804,7 @@ def _lower_field_subpatterns(pattern: TpyClassPattern,
                     "ineligible as-literal sub-pattern reached lowering"
                 arm_declared[as_node.name] = as_ft
         elif isinstance(inner, TpyCapturePattern):
-            if (inner.name in lc.opt_ptr_frame_locals
+            if (lc.frame_local(inner.name, FrameLocalClass.OPT_PTR)
                     and lc.binding(inner.name).pointer
                     and not subject_is_rvalue):
                 # A ptr-repr Optional FIELD captured into the registered
@@ -1989,7 +1988,7 @@ def _hook_mode_binding(b: 'THIRMatchBinding | None', lc: _LowerCtx
         raise ThirUnsupported("res.match_binding")
     if b.mode == "assign":
         return b
-    if b.mode in ("copy", "ref") and b.name in lc.plain_frame_fields:
+    if b.mode in ("copy", "ref") and lc.plain_frame_field(b.name):
         return replace(b, mode="assign")
     raise ThirUnsupported("res.match_binding")
 
@@ -2062,7 +2061,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 # materialized rvalue subject would dangle across a
                 # suspension -- a genuine UAF, so withhold it and let the
                 # arm reject.
-                opt_frame=(lc.opt_ptr_frame_locals
+                opt_frame=(NameFacts(lambda n: lc.frame_local(
+                               n, FrameLocalClass.OPT_PTR))
                            if arm_body_hooks and not subject_rvalue
                            else frozenset())):
             raise ThirUnsupported("stmt.match")
@@ -2886,10 +2886,10 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
                 raise ThirUnsupported("match.optional_bind_name", detail=True)
             hrec = (lc.binding(bnode.name) if bnode.name in hoisted
                     else None)
-            hkind = hrec.kind if hrec is not None else None
             nullable_hoist = hrec is not None and _nullable_match_hoist(hrec)
-            if hkind not in (None, BindingKind.HOIST_VALUE,
-                             BindingKind.FRAME_LAYOUT) and not (
+            if hrec is not None and not (
+                    hrec.kind is BindingKind.HOIST_VALUE
+                    or hrec.site_kind == "frame") and not (
                     nullable_hoist and binds_full):
                 # A non-value hoisted capture on this tier is routed only as
                 # the full-Optional pointer bind; inner-binding hoisted

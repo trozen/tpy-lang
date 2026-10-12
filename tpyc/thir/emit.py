@@ -28,7 +28,7 @@ from ..codegen_cpp.context import (
     qualify_native_name,
 )
 from ..codegen_cpp import emit_prims
-from ..codegen_cpp.forms import LocalBinding, is_plain_nonvalue, owns_loop_var
+from ..codegen_cpp.forms import LocalBinding, LoopBinding, is_plain_nonvalue
 from ..type_def_registry import (
     is_array, is_big_int_type, is_bytearray_type, is_bytes_type,
     is_bytes_view_type, is_dict,
@@ -166,6 +166,7 @@ from .nodes import (
     WithTargetArm,
 )
 from .faces import witness as _witness
+from .source import SlotKey, slot_key
 from .temp_plan import THIRTempPlan, THIRTempPlacement, if_chain, validate_plan
 
 
@@ -458,9 +459,10 @@ class _EmitState:
     those bump it (the other `__slot_N` consumers -- unions, @dynamic -- are
     gated out), and it pre-increments per allocation just like
     `SlotState.next_slot`, which fixes the `__slot_N` numbering.
-    `rebind_slots` maps a borrow-tuple local's name to the owning slot N its
-    decl / branch head pre-declared (read at each owning-call reseat); the
-    pointer-local reseats carry their storage verdict on the node instead.
+    `rebind_slots` maps a borrow-tuple binding (its record's `slot_key`)
+    to the owning slot N its decl / branch head pre-declared (read at each
+    owning-call reseat); the pointer-local reseats carry their storage
+    verdict on the node instead.
 
     `temps` is the `__tmp_N` sink THIRArgTemp renders through, flushed before
     the enclosing statement line (one flush point per statement). It is
@@ -536,7 +538,7 @@ class _EmitState:
     # are contiguous functions and flip it back on for their own top
     # (`_emit_body_draining_hoists`).
     hoist_drainable: bool = True
-    rebind_slots: dict[str, int] = field(default_factory=dict)
+    rebind_slots: dict[SlotKey, int] = field(default_factory=dict)
     # Plain block slots allocated by a slotless local's first INLINE_RVALUE
     # reseat (function-top only), reused by its later INLINE_RVALUE reseats.
     inline_rvalue_slots: dict[str, int] = field(default_factory=dict)
@@ -937,13 +939,15 @@ def _emit_array_comprehension(e: 'THIRArrayComprehension',
                       f"{escape_cpp_name(name)} = std::get<{i}>({tmp});\n")
     else:
         elem = f"{obj}[__i_{n}]"
-        if owns_loop_var(e.elem_type):
+        loop_binding = e.binding.loop_binding
+        if loop_binding in (LoopBinding.OWNED, LoopBinding.OWNED_STORAGE):
             # The array is built by index from a container the prelude
             # borrows, so an owned element is always a copy of the indexed
             # one, declared in storage of its own.
             binding = owned_storage_binding(e.elem_type, cpp_var, elem)
         else:
-            binding = loop_var_binding(e.elem_type, cpp_var, elem, False)
+            binding = loop_var_binding(loop_binding, e.elem_type, cpp_var,
+                                       elem)
         buf.write(f"{ind2}{binding}\n")
     buf.write(f"{ind2}return {_emit_expr(e.element, state)};\n")
     buf.write(f"{ind1}}});\n")
@@ -1355,21 +1359,23 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
 
-def _declare_rebind_slot(state: '_EmitState', name: str, slot: int,
+def _declare_rebind_slot(state: '_EmitState', key: SlotKey, slot: int,
                          slot_cpp: str) -> None:
-    """Reserve `name`'s rebind slot, holding its hoist line back.
+    """Reserve the binding `key`'s rebind slot, holding its hoist line
+    back.
 
     The single registration point for a PRE-declared slot -- mirrors
     `ctx.declare_rebind_slot`. Emitting the line here instead would leave dead
     `std::optional<T>` locals behind.
     """
-    state.rebind_slots[name] = slot
+    state.rebind_slots[key] = slot
     state.deferred_rebind_hoists[slot] = f"std::optional<{slot_cpp}> __slot_{slot};"
 
 
-def _use_rebind_slot(state: '_EmitState', name: str) -> int | None:
-    """The rebind slot for `name`, emitting its held-back hoist line."""
-    slot = state.rebind_slots.get(name)
+def _use_rebind_slot(state: '_EmitState', key: SlotKey) -> int | None:
+    """The rebind slot of the binding `key`, emitting its held-back hoist
+    line."""
+    slot = state.rebind_slots.get(key)
     if slot is not None:
         line = state.deferred_rebind_hoists.pop(slot, None)
         if line is not None:
@@ -1473,10 +1479,11 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
             # Reassigned borrow-tuple: the owning slot is allocated once per
             # target (sibling occurrences reuse it, keyed on `rebind_slots`)
             # and declared on the named row next to the target.
-            slot_n = _use_rebind_slot(state, e.name)
+            key = slot_key(e.binding)
+            slot_n = _use_rebind_slot(state, key)
             if slot_n is None:
                 slot_n = (state.assert_local_slot() or state.next_slot())
-                state.rebind_slots[e.name] = slot_n
+                state.rebind_slots[key] = slot_n
                 state.temps.declare_named(
                     f"__slot_{slot_n}", f"std::optional<{e.slot_cpp}>")
             v = (f"::tpy::tuple_to_pointer<{e.borrow_cpp}>"
@@ -1873,11 +1880,12 @@ def _emit_if(out: TextIO, stmt: THIRIf, indent_level: int, state: _EmitState) ->
     # hoist_slots entry allocates that name's rebind slot immediately before
     # its predecl
     # line (the rvalue-reassigned arm's `std::optional<T> __slot_N;`).
-    slot_types = dict(stmt.hoist_slots)
+    slot_types = {rec.name: (rec, cpp) for rec, cpp in stmt.hoist_slots}
     for name, cpp_type, init in stmt.hoist_decls:
         if name in slot_types:
             slot = (state.assert_local_slot() or state.next_slot())
-            _declare_rebind_slot(state, name, slot, slot_types[name])
+            rec, slot_cpp = slot_types[name]
+            _declare_rebind_slot(state, slot_key(rec), slot, slot_cpp)
         out.write(f"{indent}{cpp_type} {name}{init};\n")
     chain = if_chain(stmt)
     # An elif condition that registers temps abandons the flat `} else if`
@@ -2258,10 +2266,8 @@ def _emit_for_each(out: TextIO, stmt: THIRForEach, indent_level: int,
     out.write(f"{indent}auto {end} = {obj}.end();\n")
     out.write(f"{indent}for (; {beg} != {end}; ++{beg}) {{\n")
     inner = INDENT * (indent_level + 1)
-    binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
-                              f"*{beg}", stmt.const_loop_var,
-                              hoisted=stmt.hoist_loop_var,
-                              consuming=stmt.consuming,
+    binding = loop_var_binding(stmt.binding.loop_binding, stmt.elem_type,
+                              escape_cpp_name(stmt.var), f"*{beg}",
                               hoisted_tuple_lift_cpp=stmt.hoisted_tuple_lift_cpp,
                               owned_step_expr=f"::tpy::take_elem({beg})")
     out.write(f"{inner}{binding}\n")
@@ -2308,8 +2314,9 @@ def _emit_for_iter_proto(out: TextIO, stmt: THIRForIterProto,
     inner = INDENT * (lvl + 1)
     out.write(f"{inner}auto {r} = {itr}.__next__();\n")
     out.write(f"{inner}if (!{r}.has_value()) break;\n")
-    binding = loop_var_binding(stmt.elem_type, escape_cpp_name(stmt.var),
-                               f"::tpy::unwrap_ref(*{r})", stmt.const_loop_var,
+    binding = loop_var_binding(stmt.binding.loop_binding, stmt.elem_type,
+                               escape_cpp_name(stmt.var),
+                               f"::tpy::unwrap_ref(*{r})",
                                owned_step_expr=f"::tpy::own_bind(*{r})")
     out.write(f"{inner}{binding}\n")
     state.loop_depth += 1
@@ -3743,7 +3750,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             slot = (state.assert_local_slot() or state.next_slot())
-            state.rebind_slots[stmt.name] = slot
+            state.rebind_slots[slot_key(stmt.binding)] = slot
             out.write(f"{indent}std::optional<{stmt.btuple_slot_cpp}> "
                       f"__slot_{slot};\n")
             if stmt.btuple_opt_borrow_cpp is not None:
@@ -4074,7 +4081,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # into the pre-declared slot, alias via tuple_to_pointer.
             v = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            slot = _use_rebind_slot(state, stmt.target.name)
+            slot = _use_rebind_slot(state, slot_key(stmt.binding))
             assert slot is not None, "btuple emplace reseat without a slot"
             if stmt.btuple_opt_cpp is not None:
                 out.write(

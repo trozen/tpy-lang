@@ -124,6 +124,48 @@ class _RecordCtorUse(Enum):
     RECORD_TEMP = auto()
 
 
+class FrameLocalClass(Enum):
+    """What a hoisted frame local is, from its layout kind and type
+    (`frame_local_class`): the frame setup builds its write / bind families
+    from it and the binding table its records."""
+    PLAIN = auto()              # a bare field the sync rows read and write
+    VALUE_OPT_RECORD = auto()   # `std::optional<Record>` value field
+    VALUE_TUPLE = auto()        # bare `std::tuple<...>` value field
+    OPT_TUPLE_HOLDER = auto()   # `__for_tup_*` storage-optional holder
+    CORO_HANDLE = auto()        # concrete coroutine handle, a frame slot
+    ERASED_HANDLE = auto()      # `unique_ptr<P>` erased handle
+    LOOP_PTR = auto()           # pointer-form loop variable
+    UNPACK_PTR = auto()         # pointer-form unpack target
+    ALIAS_PTR = auto()          # statement-level `T*` alias
+    MIXED_TUPLE_SLOT = auto()   # owning slot of a mixed tuple
+    SOURCE_FORM_SLOT = auto()   # slot whose payload the source picks
+    OPT_PTR = auto()            # pointer-repr Optional local
+    REBIND_PTR = auto()         # `T*` over per-site rebind storage
+    ONESHOT_SLOT = auto()       # one-shot `__await_lift_*` tuple holder
+    OWNING_TUPLE_SLOT = auto()  # owning tuple frame slot
+    BORROW_TUPLE = auto()       # borrow-form tuple field
+    FRAME_SLOT = auto()         # `frame_slot<T>` owning slot
+
+    @property
+    def is_frame_slot(self) -> bool:
+        return self in _FRAME_SLOT_CLASSES
+
+
+# The classes whose field is a `tpy::frame_slot<T>`: reads deref the slot,
+# writes emplace.
+_FRAME_SLOT_CLASSES = frozenset({
+    FrameLocalClass.CORO_HANDLE, FrameLocalClass.MIXED_TUPLE_SLOT,
+    FrameLocalClass.SOURCE_FORM_SLOT, FrameLocalClass.ONESHOT_SLOT,
+    FrameLocalClass.OWNING_TUPLE_SLOT, FrameLocalClass.FRAME_SLOT})
+
+
+# The classes whose field is assigned plainly (`name = expr;`): every
+# family whose WRITE render differs is out. A frame's parameters are PLAIN.
+_PLAIN_FRAME_CLASSES = frozenset({
+    FrameLocalClass.PLAIN, FrameLocalClass.VALUE_OPT_RECORD,
+    FrameLocalClass.VALUE_TUPLE, FrameLocalClass.OPT_TUPLE_HOLDER})
+
+
 class ValueOptKind(Enum):
     """The value-repr `std::optional<T>` LOCAL binding families -- one
     kind-tagged registration where three parallel sets used to live. The
@@ -1439,13 +1481,10 @@ _BRANCH_SCOPED_SETS = (
 #   frame_local_types -- the frame's resolved slot types, seeded once by
 #       lower_resumable (the frame ctx's var_types); a frame field's
 #       slot is one type for the whole body, position-blind.
-#   frame_field_names -- the frame's member set, seeded once by
-#       lower_resumable; membership is a layout fact, not a scope one.
 _FUNCTION_SCOPED_STATE = (
     "unhandled_hoists", "nested_returns",
     "inline_narrowed", "tparam_bounds",
     "frame_local_types",
-    "frame_field_names",
     # Forwarded proto-param aliases (`xs = it` in a resumable): a
     # compile-time name->param map seeded once at entry, never mutated.
     "forwarded_map",
@@ -1455,7 +1494,7 @@ _FUNCTION_SCOPED_STATE = (
     # Module-init facts: seeded once from the module's globals / import list
     # and never branch-scoped -- a global's slot identity and an import's
     # chain do not change inside a branch.
-    "global_ptr_slots", "import_calls",
+    "import_calls",
     "pre_decl_import_cpp",
     # The memoized body-wide half of `alias_taken`: keyed on the state it
     # reads, so a branch cannot make it stale.
@@ -1472,13 +1511,8 @@ _FUNCTION_SCOPED_STATE = (
 _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
     "inline_narrowed", "sema_movable_locals",
     "deref_view_spelled",
-    "forwarded_map", "literal_facts", "global_ptr_slots",
-    "frame_local_types", "frame_field_names", "frame_own_tuple_types",
-    "plain_frame_fields", "borrow_tuple_frame_locals", "coro_handle_slots",
-    "value_tuple_frame_locals", "opt_tuple_holders", "opt_ptr_frame_locals",
-    "rebind_ptr_frame_locals", "oneshot_lift_locals", "alias_ptr_locals",
-    "const_alias_ptr_locals", "const_frame_bindings", "unpack_ptr_targets",
-    "source_typed_holders",
+    "forwarded_map", "literal_facts",
+    "frame_local_types",
     # An enclosing `@overload` stub's facts about ITS params: an inner param
     # of the same spelling must not fold against them.
     "overload_narrowing", "overload_literal_facts",
@@ -1517,8 +1551,9 @@ _LC_NOT_NAME_KEYED = (
     "overload_terminated", "resumable_leaf_mode", "placement",
     "slot_hoist_ok", "in_container_elem", "in_finally_helper", "in_for_body",
     "top_level_scope", "global_binding_scope", "top_level_line",
-    # Keyed by statement id / a list of return nodes / enclosing functions.
-    "import_calls", "nested_returns", "capture_funcs",
+    "in_nested_def",
+    # Keyed by statement id / a list of return nodes.
+    "import_calls", "nested_returns",
     # The binding table's shadow check: the table models inner scopes itself.
     "table", "cursor", "shadow_report", "move_region",
 )
@@ -1590,11 +1625,17 @@ class BindingTableError(RuntimeError):
         super().__init__(f"binding table: {msg}")
 
 
+def _is_record_fact(fact: str) -> bool:
+    """A stored `BindingRepr` field or one it derives from them."""
+    return (fact in BindingRepr.__dataclass_fields__
+            or isinstance(getattr(BindingRepr, fact, None), property))
+
+
 def names_with(binding: Callable[[str], BindingRepr], fact: str
                ) -> NameFacts:
     """The `NameFacts` of one `BindingRepr` field, over `binding`'s
     records."""
-    assert fact in BindingRepr.__dataclass_fields__, fact
+    assert _is_record_fact(fact), fact
     return NameFacts(lambda n: bool(getattr(binding(n), fact)))
 
 
@@ -1617,29 +1658,20 @@ class _LowerCtx:
                  "render_type_stored", "render_resolve", "tparam_bounds",
                  "deref_view_spelled", "forwarded_map",
                  "sema_movable_locals",
-                 "params", "capture_funcs", "capture_sites",
+                 "params", "in_nested_def", "capture_sites",
                  "self_receiver", "self_cpp", "self_is_pointer",
                  "record_name",
-                 "frame_own_tuple_types",
                  "resumable_leaf_mode", "placement", "slot_hoist_ok",
                  "in_container_elem",
                  "nested_returns", "in_finally_helper",
-                 "plain_frame_fields", "borrow_tuple_frame_locals",
-                 "coro_handle_slots", "frame_local_types",
-                 "frame_field_names",
-                 "value_tuple_frame_locals",
-                 "opt_tuple_holders", "opt_ptr_frame_locals",
-                 "rebind_ptr_frame_locals",
-                 "oneshot_lift_locals", "alias_ptr_locals",
-                 "const_alias_ptr_locals", "const_frame_bindings",
-                 "unpack_ptr_targets", "source_typed_holders",
+                 "frame_local_types",
                  "unhandled_hoists", "narrow", "literal_facts",
                  "inline_narrowed", "forbidden_reads", "forbidden_writes",
                  "error_return_cpp",
                  "overload_narrowing", "overload_stub_return",
                  "overload_literal_facts",
                  "overload_terminated", "render_concept",
-                 "top_level_scope", "global_binding_scope", "global_ptr_slots", "global_slot_assigned",
+                 "top_level_scope", "global_binding_scope", "global_slot_assigned",
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "member_self", "_alias_taken_memo",
@@ -1693,10 +1725,6 @@ class _LowerCtx:
         # namespace-push site, which is what drops `static` on in-branch
         # global-slot decls (if/while/with/try bodies keep global_ns).
         self.in_for_body = False
-        # Non-value module globals (`std::vector<T>* g{}` at namespace scope):
-        # their initializing write emits the static-slot pair, their reads ride
-        # the pointer-local arms. Empty outside the module-init walk.
-        self.global_ptr_slots: set[str] = set()
         # Pointer-slot globals whose static slot has already been emitted -- a
         # SECOND rvalue write would have to reuse that slot (the
         # `rebind_slots` lookup), a render this slice does not emit.
@@ -1747,7 +1775,7 @@ class _LowerCtx:
         # MEMBER, read as a plain name and copied into a closure (the
         # companion is a temporary wrapper).
         self.member_self = False
-        # The owning record's name when `func` is a method: `_param_is_const`
+        # The owning record's name when `func` is a method: `_param_is_const_at`
         # resolves a record param's const verdict from the method's FunctionInfo
         # on this record, not the free-function registry.
         self.record_name = record_name
@@ -1777,12 +1805,9 @@ class _LowerCtx:
         # exactly like overload_narrowing does for the isinstance families.
         self.overload_literal_facts: dict[str, TpyType] = {}
         self.overload_terminated: bool = False
-        # The enclosing functions a nested def captures names FROM,
-        # outermost first. A capture's borrow is decided where the name is
-        # DEFINED, so a predicate keyed on the enclosing signature (the
-        # param const verdicts) has to ask that function and not `func`,
-        # which inside a lambda is the nested one.
-        self.capture_funcs: tuple = ()
+        # Lowering a nested def's body (a C++ lambda): its captures and
+        # global bindings are the enclosing body's, never declared here.
+        self.in_nested_def: bool = False
         # Deref-view narrowed subjects (the if-init cast local): branch-body
         # member calls carrying deref_narrowed_to read the wrapper var via
         # this spelling (`(*__b_ptr)`), never the deref chain. Registered
@@ -1820,19 +1845,6 @@ class _LowerCtx:
         # rung -- reject instead of routing through the leaf-return hook
         # (generator bare returns route; see the dispatch return arm).
         self.in_finally_helper = False
-        # Frame fields whose decl/reassign renders as the plain position-
-        # blind `name = expr;` member assign (frame_fields minus the
-        # frame_slot / borrow-tuple / coro-handle families, whose renders
-        # differ). The branch-nested decl arm keys on it; populated only by
-        # `lower_resumable`, empty for every sync body.
-        self.plain_frame_fields: frozenset = frozenset()
-        # Borrow-form tuple frame fields (`std::tuple<..., T*>` bare members)
-        # and concrete-coro handle slots -- the two frame_slot-adjacent
-        # families whose write render differs from both the plain assign and
-        # the bare emplace. The branch-nested decl arm keys on them;
-        # populated only by `lower_resumable`, empty for every sync body.
-        self.borrow_tuple_frame_locals: frozenset = frozenset()
-        self.coro_handle_slots: frozenset = frozenset()
         # Resolved frame-local types (the frame ctx's `var_types`): the
         # slot's declared C++ shape, which is NOT the first decl's expression
         # type -- a branch-declared container literal can resolve to a sized
@@ -1840,54 +1852,6 @@ class _LowerCtx:
         # Renders that spell the SLOT (the frame_slot brace-init prefix) must
         # read this, not `declared`. Populated only by `lower_resumable`.
         self.frame_local_types: dict = {}
-        # Every name the resumable frame stores as a MEMBER -- the layout's
-        # own field set (params + generator locals), unlike
-        # `frame_local_types`, which holds locals only. A capture list has to
-        # see the whole set: a member is not a variable, so a lambda reads it
-        # into an init-capture instead of naming it. Populated only by
-        # `lower_resumable`, empty for every sync body.
-        self.frame_field_names: frozenset = frozenset()
-        # Value/storage tuple frame fields (`std::tuple<...>` bare members):
-        # the unpack arm ref-binds one as a name source
-        # (`const auto& __tup_N = <name>;`). Populated only by
-        # `lower_resumable`, empty for every sync body.
-        self.value_tuple_frame_locals: frozenset = frozenset()
-        self.opt_tuple_holders: frozenset = frozenset()
-        self.opt_ptr_frame_locals: frozenset = frozenset()
-        self.rebind_ptr_frame_locals: frozenset = frozenset()
-        # One-shot `__await_lift_*` frame temps (the skeleton's
-        # `one_shot_lift_names`): the unpack arm rvalue-ref-binds one as a
-        # consumable source (`auto&& __tup_N = (*<name>);`) and moves its
-        # owned elements out. Populated only by `lower_resumable`, empty
-        # for every sync body.
-        self.oneshot_lift_locals: frozenset = frozenset()
-        # Pointer-alias frame locals (the skeleton's pointer_alias_locals,
-        # minus the synthetic decomposition temps): `T*` fields aliasing
-        # live storage. Reads ride a pointer record; the unpack arm binds one
-        # via `= &(unwrap_ref(tuple_elem_ref(...)));` (frame_ptr_elem).
-        # Populated only by `lower_resumable`, empty for every sync body.
-        self.alias_ptr_locals: frozenset = frozenset()
-        # The subset of `alias_ptr_locals` whose frame field is `const T*`
-        # (the frame layout's own const verdict). A lift that spells the
-        # element pointers must agree with the field, so the unpack arm
-        # reads this rather than the SYNC receiver const-verdict, which the
-        # frame does not follow. Populated only by `lower_resumable`.
-        self.const_alias_ptr_locals: frozenset = frozenset()
-        # Every name this frame binds to const storage (the frame's own
-        # `const_frame_bindings`): the const-borrow captures and `@readonly`
-        # receiver as well as the locals above. A lift off one of them spells
-        # `const T*` element pointers, because that is what the capture is.
-        # Populated only by `lower_resumable`.
-        self.const_frame_bindings: frozenset = frozenset()
-        # Pointer-form tuple-unpack LOOP targets (the skeleton's
-        # pointer_form_unpack_targets): `T*` fields the head unpack
-        # re-points via `= &(std::get<i>(__tup_N));` off the deref'd
-        # pointer holder. Populated only by `lower_resumable`.
-        self.unpack_ptr_targets: frozenset = frozenset()
-        # Unpack holders that point into a step result whose C++ type only the
-        # iteration source knows: a member may be a value, a reference or a
-        # borrow pointer, so an alias target takes the normalizing read.
-        self.source_typed_holders: frozenset = frozenset()
         # The residue ledger must read the SAME facts `prescan.hoisted` does:
         # the module-init walk's carrier is synthetic, so its `id(func)` has no
         # analyzer entry and only the override carries its hoisted set. Left
@@ -1897,13 +1861,6 @@ class _LowerCtx:
         self.unhandled_hoists = set(
             analyzer.function_hoisted_vars.get(func, ())
             if hoisted_override is None else hoisted_override)
-        # Resumable-frame tuple locals whose per-element OWNERSHIP is not in
-        # their declared type: a literal-bound owning/mixed frame slot, mapped
-        # to the effective `Own[...]`-marked tuple (codegen's
-        # `FrameLocalLayout.effective_type`). The element-read arrow chooser
-        # and the slot's write both read the ownership off this, since a
-        # literal's inferred type has no place to record it.
-        self.frame_own_tuple_types: dict[str, 'TpyType'] = {}
         self._alias_taken_memo: 'tuple | None' = None
         # F2e: sema's RAW owned-locals fact, the mirror of codegen's
         # `ctx.sema_movable_locals`. It means "sema proved this local owned",
@@ -1972,12 +1929,12 @@ class _LowerCtx:
         prescan object, which a nested-def scope SWAPS, the frame's field
         set and the receiver spelling) rather than recomputed per mint: it
         unions every module global, and a narrowing-heavy body mints many."""
-        key = (self.prescan, self.frame_field_names,
+        key = (self.prescan, self.frame_field_names(),
                self.self_receiver is not None and self.self_cpp != "this")
         memo = self._alias_taken_memo
         if memo is None or memo[0] != key:
             memo = (key, narrow_alias_taken(
-                self.prescan.bound_names, self.frame_field_names,
+                self.prescan.bound_names, key[1],
                 frame_self=key[2],
                 module_globals=self.prescan.module_global_names))
             self._alias_taken_memo = memo
@@ -2042,7 +1999,7 @@ class _LowerCtx:
         NOW (or, with `prior`, before the statement's own declarations),
         for a helper that takes a name set -- a later move of the cursor
         does not change the answer."""
-        assert fact in BindingRepr.__dataclass_fields__, fact
+        assert _is_record_fact(fact), fact
         key, node = self.cursor
         if fact == "movable" and self.move_region is not None:
             region = self.move_region
@@ -2094,7 +2051,34 @@ class _LowerCtx:
         """Whether some frame field visible here is a `frame_slot<T>`: a
         body nested in a resumable one (a frame member def) keeps the
         frame's protocol-iterable fence while it can see one."""
-        return any(self.binding(n).frame_slot for n in self.frame_field_names)
+        return any(self.binding(n).frame_slot
+                   for n in self.frame_field_names())
+
+    def frame_field_names(self) -> frozenset[str]:
+        """The resumable frame's members visible here: the frame records at
+        the body's root that a name in scope still resolves to (an inner
+        scope that rebinds one shadows it). Empty for every sync body."""
+        table = getattr(self, "table", None)
+        if table is None:
+            return frozenset()
+        return frozenset(n for n in table.frame_members
+                         if self.binding(n).frame_class is not None)
+
+    def frame_local(self, name: str, *classes: FrameLocalClass) -> bool:
+        """Whether `name` is a frame member of one of `classes`."""
+        return self.binding(name).frame_class in classes
+
+    def plain_frame_field(self, name: str) -> bool:
+        """A frame member whose decl / reassign renders as the plain
+        position-blind `name = expr;` member assign."""
+        return self.binding(name).frame_class in _PLAIN_FRAME_CLASSES
+
+    def frame_own_tuple_type(self, name: str) -> 'TpyType | None':
+        """A frame member's tuple type with the per-element ownership its
+        declared type cannot spell (a literal-bound owning / mixed slot):
+        the frame layout's effective type."""
+        rec = self.binding(name)
+        return rec.effective_type if rec.frame_class is not None else None
 
     @property
     def may_hoist(self) -> bool:

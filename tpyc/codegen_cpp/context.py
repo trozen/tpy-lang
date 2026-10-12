@@ -50,7 +50,7 @@ from ..value_category import (
     const_place, call_result_const,
 )
 from .forms import (
-    LoopBinding, loop_binding_kind,
+    LoopBinding,
     is_plain_nonvalue as _forms_is_plain_nonvalue,
     is_ptr_variant_union as _forms_is_ptr_variant_union,
     reads_storage_form_optional as _forms_reads_storage_form_optional,
@@ -720,20 +720,17 @@ def owned_storage_binding(elem_type: OwnType, cpp_var: str,
 
 
 def loop_var_binding(
-    elem_type: TpyType, cpp_var: str, deref_expr: str,
-    const_loop_var: bool, hoisted: bool = False,
-    consuming: bool = False,
+    kind: LoopBinding, elem_type: TpyType, cpp_var: str, deref_expr: str,
     hoisted_tuple_lift_cpp: str | None = None,
     owned_step_expr: str | None = None,
 ) -> str:
-    """Return the C++ loop variable binding line (no trailing newline).
+    """Return the C++ loop variable binding line (no trailing newline) of
+    the binding `kind` the loop variable's record decided
+    (`loop_binding_kind`, asked once by the binding table's planner).
 
-    Shared by for-loop and comprehension codegen to avoid duplicating the
-    const_loop_var / value_type / auto&& decision tree.
-
-    consuming=True uses auto&& to bind into OwnIter's move-iterator
-    storage. Zero cost (no per-element move), but move-ready: codegen
-    can later emit std::move(var) for per-element ownership transfer.
+    Shared by for-loop and comprehension codegen. A consuming loop's
+    REFERENCE binds auto&& into OwnIter's move-iterator storage: zero cost
+    (no per-element move), but move-ready.
 
     hoisted_tuple_lift_cpp: a hoisted pointer-repr tuple var is forward-
     declared in BORROW form (std::tuple<..., T*>, see the branch-hoist
@@ -744,8 +741,6 @@ def loop_var_binding(
     variable (OWNED / OWNED_STORAGE) -- the step's own value as an rvalue
     reference when the iterator owns it, else a copy.
     """
-    kind = loop_binding_kind(elem_type, const_loop_var, hoisted=hoisted,
-                             consuming=consuming)
     if kind in (LoopBinding.OWNED, LoopBinding.OWNED_STORAGE):
         assert owned_step_expr is not None, "an Own loop variable needs the owned step"
         if kind is LoopBinding.OWNED:

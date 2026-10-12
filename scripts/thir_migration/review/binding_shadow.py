@@ -26,8 +26,7 @@ Classes: `held_type:...` where the record's held under its declared type
 differs from its held under the read's type (a narrowed read is held as its
 occurrence and is not counted, nor is a str / bytes read whose view / owned
 resolution differs from its declaration's, which the `view_axis_split`
-statistic counts); `read:const:...` the stamped const against the record's
-or the reading function's parameter verdict; `binding:<field>` the record
+statistic counts); `binding:<field>` the record
 `binding_of` hands a conversion against the parameter list and the
 prescan; `unplanned` a read of a name the walk has in `declared` with no
 record; `wrong_scope:*` a record outside `declared` or a nested def's name

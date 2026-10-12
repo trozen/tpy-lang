@@ -50,8 +50,7 @@ import dataclasses
 from collections.abc import Sequence
 from contextvars import ContextVar
 
-from ..codegen_cpp.forms import (LoopBinding, is_plain_nonvalue,
-                                 is_ptr_variant_union, loop_binding_kind)
+from ..codegen_cpp.forms import is_plain_nonvalue, is_ptr_variant_union
 from ..type_def_registry import (
     ParamPassing,
     is_basic_slice_type, is_bytearray_type, is_bytes_type, is_bytes_view_type,
@@ -663,9 +662,7 @@ def _check_node(owner: str, node: THIRNode) -> None:
             and unwrap_readonly(source.field_identity.type) == fact.source.type
             and (not isinstance(source.field_identity.type, ReadonlyType) or fact.source.readonly))
         if (not isinstance(fact, THIRNativeIteration) or not ((place or call) and node.iterable_lvalue or view)
-                or node.consuming or node.str_literal_iterable
-                or fact.binding is not loop_binding_kind(node.elem_type, node.const_loop_var,
-                                                         hoisted=node.hoist_loop_var)):
+                or node.consuming or node.str_literal_iterable):
             _fail(owner, node, "native iteration fact disagrees with emitted binding")
         _check_native_container(owner, node, fact.source, node.iterable.result_type)
         # A stub's result is a place only as a view of its receiver's elements.

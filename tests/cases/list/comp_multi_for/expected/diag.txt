@@ -5,4 +5,4 @@ main.py:152: warning: Mutation of 'bs[...]' may hit the element being iterated (
 main.py:438: warning: Passing borrowed container 'row' to non-readonly parameter 'row' (function may invalidate references)
 main.py:440: warning: Mutation of 'row' while iterating over it ('pop' invalidates the iterator)
 main.py:474: warning: copies list[C] into owned storage; use copy() to make this explicit
-main.py:558: warning: copies list[int] into owned storage; use copy() to make this explicit
+main.py:557: warning: copies list[int] into owned storage; use copy() to make this explicit

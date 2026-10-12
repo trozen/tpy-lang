@@ -450,7 +450,7 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     # A predeclaration is part of where a name lives, so the dump shows it at
     # the statement that owns it.
     pad = "  " * depth
-    slots = dict(getattr(stmt, "hoist_slots", ()))
+    slots = {rec.name: cpp for rec, cpp in getattr(stmt, "hoist_slots", ())}
     lines = [f"{pad}hoist %{h.name}: {h.cpp_type}"
              + (f" [slot {slots[h.name]}]" if h.name in slots else "")
              for h in getattr(stmt, "hoist_decls", ())]
@@ -523,10 +523,10 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         _extend_orelse(lines, stmt.orelse, depth)
         return lines
     if isinstance(stmt, THIRForEach):
-        # `[const]` marks a `const auto&` record loop var (vs `auto&&`); load-bearing
-        # for record elements, so surface it like the other emit-relevant tags.
+        # `[<binding>]` is the loop variable record's binding kind, which
+        # spells its C++ binding line (`const auto&`, `auto&&`, a copy, ...).
         # `[rvalue]` marks an owning `auto __obj_N` capture (vs the `auto&` alias).
-        const = " [const]" if stmt.const_loop_var else ""
+        const = _loop_binding_tag(stmt.binding)
         rval = "" if stmt.iterable_lvalue else " [rvalue]"
         # `[frame_src=N]`: the resumable frame owns the source in that field.
         fsrc = ("" if stmt.frame_src_field is None
@@ -707,7 +707,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
             lines.extend(_stmt_lines(s, depth + 1))
         return lines
     if isinstance(stmt, THIRForIterProto):
-        const = " const" if stmt.const_loop_var else ""
+        const = _loop_binding_tag(stmt.binding)
         fsrc = ("" if stmt.frame_src_field is None
                 else f" [frame_src={stmt.frame_src_field}]")
         lines = [f"{pad}for %{stmt.var}{const}{fsrc}: {_ty(stmt.elem_type)} "
@@ -732,6 +732,11 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
     raise AssertionError(
         f"--dump-thir has no arm for {type(stmt).__name__}; add one in "
         f"dump.py (or list it in _UNDUMPED with a reason)")
+
+
+def _loop_binding_tag(rec) -> str:
+    kind = rec.loop_binding if rec is not None else None
+    return f" [{kind.name.lower()}]" if kind is not None else ""
 
 
 def _extend_orelse(lines: list[str], orelse, depth: int) -> None:

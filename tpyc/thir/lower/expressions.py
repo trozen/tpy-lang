@@ -293,10 +293,6 @@ from .predicates import (
     _eligible_ptr_union_wide,
     _eligible_wrapper_union,
     _module_var_recv,
-    _param_is_const,
-    _readonly_self,
-    _const_verdict_func,
-    _param_is_deep_const,
     _ARITH_OPS,
     _BITWISE_OPS,
     _FLOAT32_LIT_COERCION,
@@ -584,7 +580,8 @@ from .predicates import (
     _unwrap_lit_coerce,
     _value_opt_view_name,
 )
-from .context import (_call_arg_forms, _ExprResultUse, _ExprUse, _LowerCtx,
+from .context import (FrameLocalClass, _call_arg_forms, _ExprResultUse,
+                      _ExprUse, _LowerCtx,
                       SlotConstruct,
                       _recv_forms, _NO_FORMS, _LEND_OK, _TRANSIENT_OK,
                       _ONLY_BTUPLE_SLOT,
@@ -2576,7 +2573,7 @@ def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
     if isinstance(sub.obj, TpyName):
         # A literal-bound frame slot's ownership is not in the declared type,
         # so the per-element verdict below reads the effective one.
-        _eff = lc.frame_own_tuple_types.get(sub.obj.name)
+        _eff = lc.frame_own_tuple_type(sub.obj.name)
         if isinstance(_eff, TupleType):
             recv_t = _eff
         if (lc.binding(sub.obj.name).storage_tuple
@@ -4146,7 +4143,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     and isinstance(e.right, TpyName)
                     and e.right.name in declared
                     and not lc.binding(e.right.name).pointer
-                    and e.right.name not in lc.prescan.global_slots
+                    and not lc.binding(e.right.name).global_slot
                     and _resolved_str_value(rt, analyzer) is None
                     and _resolved_bytes_value(rt, analyzer) is None
                     and _resolved_scalar(lt, analyzer)):
@@ -4651,7 +4648,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             field_prechecked=is_field,
             subscript_prechecked=sub_storage)
         if (isinstance(operand, TpyName)
-                and operand.name in lc.prescan.global_slots
+                and lc.binding(operand.name).global_slot
                 and isinstance(lowered_operand, THIRName)):
             # A pointer-slot global's None test compares the SLOT POINTER
             # (`g == nullptr`), so this position opts out of the
@@ -5035,10 +5032,8 @@ def _narrow_subject_const(var: str, lc: '_LowerCtx',
     spelling) applies to. Shared by the isinstance condition and every
     narrowed-member `std::get` template arg, so the renders cannot drift.
     `rec` is the record a declaring arm hands over."""
-    if (rec if rec is not None else lc.binding(var)).const:
-        return True
-    return _param_is_deep_const(var, _const_verdict_func(var, lc),
-                                lc.analyzer, lc.record_name)
+    rec = rec if rec is not None else lc.binding(var)
+    return rec.const or rec.deep_const
 
 
 def _poly_cast_context(var: str, lc: '_LowerCtx',
@@ -5152,7 +5147,7 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
     if (lc.binding(name).pointer and binding_type is not None
             and use.result not in (_ExprResultUse.RECEIVER,
                                    _ExprResultUse.BORROW_BIND)):
-        if name in lc.prescan.global_slots:
+        if lc.binding(name).global_slot:
             return True
         bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(binding_type)))
         if _record_class_binding(bt):
@@ -5576,7 +5571,7 @@ def _lower_optional_container_recv(e: TpySubscript, lc: '_LowerCtx',
                               allow_whole_optional=True,
                               allow_unrouted_name=True)
         elif (lc.binding(name).pointer or lc.binding(name).frame_slot
-              or name in lc.prescan.global_slots):
+              or lc.binding(name).global_slot):
             spelling = OptionalCheckSpelling.PTR
             raw = _lower_expr(recv, lc, declared, use=receiver_use)
             if isinstance(raw, THIRName) and raw.deref:
@@ -5584,7 +5579,7 @@ def _lower_optional_container_recv(e: TpySubscript, lc: '_LowerCtx',
                 # everywhere; the slot itself is the nullable `T*`. Any
                 # other deref is an indirection this spelling cannot see.
                 if (lc.binding(name).frame_slot
-                        or name in lc.prescan.global_slots):
+                        or lc.binding(name).global_slot):
                     raw = replace(raw, deref=False)
                 else:
                     raw = None
@@ -5648,8 +5643,7 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
         scalar = _value_opt_scalar_binding(e.name, lc)
         pointer = (lc.binding(e.name).pointer or e.name in lc.prescan.param_names)
         layout = optional_layout(binding, lc.analyzer, borrow=pointer,
-                                 readonly=lc.binding(e.name).const or _param_is_const(
-                                     e.name, lc.func, lc.analyzer, lc.record_name)) if binding is not None else None
+                                 readonly=lc.binding(e.name).const) if binding is not None else None
         if layout is not None and (scalar or pointer):
             extract = (lowered.deref if scalar else
                        not kwargs.get("allow_whole_optional", False)
@@ -5702,16 +5696,9 @@ def _read_binding(name: str, lc: '_LowerCtx',
                 or name in lc.inline_narrowed), (
             f"binding table: no record for {name!r} in {lc.func.name}")
         rec = BindingRepr(name=name, site=None, type=declared.get(name),
-                          kind=BindingKind.NARROWED_GLOBAL)
+                          kind=BindingKind.NARROWED_GLOBAL,
+                          site_kind="narrowed")
     return rec
-
-
-def _reads_const_param(rec: BindingRepr, lc: '_LowerCtx') -> bool:
-    """A parameter read under the const verdict of the function being
-    lowered: a nested def or genexpr body reads an enclosing parameter
-    through its capture, which that function's verdict does not mark."""
-    return rec.is_param and _param_is_const(rec.name, lc.func, lc.analyzer,
-                                            lc.record_name)
 
 
 def _name_held(e: 'TpyExpr | None', node: THIRName, lc: '_LowerCtx'
@@ -5951,12 +5938,13 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
     if named:
         # A function or closure name read as a value has no record.
         rec = lc.lookup_binding(e.name)
-        const = rec is not None and (rec.const or _reads_const_param(rec, lc))
+        const = rec is not None and rec.const
         if rec is not None and rec.tuple_layout is not None:
             elems = _tuple_layout_elems(rec.tuple_layout)
     elif isinstance(lowered, THIRSelf):
         # Every `self` node is the enclosing method's receiver.
-        const = _readonly_self(lc)
+        const = (lc.self_receiver is not None
+                 and lc.binding(lc.self_receiver).const)
     elif isinstance(lowered, (THIRFieldAccess, THIRSubscript)):
         # A member or element of a const object is const.
         const = const or stamped(lowered.receiver, lc).source.const
@@ -5994,7 +5982,7 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
                                    if e is not None else None),
                     copy_type=copy_type)
     if named:
-        binding_shadow.check_read(e, lowered, lc, declared, source)
+        binding_shadow.check_read(e, lowered, lc, declared)
     return source
 
 
@@ -6139,7 +6127,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # frame at construction and every body read is a bare member read.
         _frame_own_read = (unrouted == "name.own_read"
                            and lc.resumable_leaf_mode
-                           and (e.name in lc.plain_frame_fields
+                           and (lc.plain_frame_field(e.name)
                                 # ... and the frame SLOT sibling (a loop var
                                 # over an Own[container] source): the payload
                                 # lives in the frame's optional slot, so every
@@ -7326,8 +7314,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         # (`(*al)[0]` -- the name arm's pointer render);
                         # plain pointer LOCALS keep the exclusion.
                         ptr_recv_ok=(isinstance(e.obj, TpyName)
-                                     and e.obj.name
-                                     in lc.prescan.global_slots),
+                                     and lc.binding(e.obj.name).global_slot),
                         opt_ptr_recv_ok=rec_optrecv)):
                     note_detail("subscript.record_getitem")
                     raise ThirUnsupported("subscript.record_getitem", detail=True)
@@ -8073,7 +8060,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 result_type=vtu, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
                 value=wv, slot_cpp=lc.render_type(vtu), borrow_cpp=bc,
-                tail="name", loc=loc)
+                tail="name", loc=loc, binding=lc.binding(e.target))
         if e.target in lc.prescan.hoisted:
             raise ThirUnsupported("expr.walrus")
         # The walrus that declares its target's record pre-declares it; any
@@ -8235,7 +8222,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 value=lowered_value,
                 cpp_type=cvt.to_cpp_return(),
                 slot_cpp=lc.render_type(cvt), borrow_cpp=cvt.to_cpp_return(),
-                tail="name", loc=loc)
+                tail="name", loc=loc, binding=lc.binding(e.target))
         # An owned-tuple return off a CALL (`(t := make_pair(5))` at a
         # declared `Own[tuple[..]]` / owned-movable return) takes the
         # deferred-init OPTIONAL slot, not the borrow predecl.
@@ -11471,7 +11458,7 @@ def _walrus_opt_ptr_source(value: TpyExpr, vtu: TpyType, inner: TpyType,
                            loc=loc)
     if (isinstance(value, TpyName)
             and lc.binding(value.name).pointer
-            and value.name not in lc.prescan.global_slots):
+            and not lc.binding(value.name).global_slot):
         return _lower_expr(value, lc, declared)
     return None
 
@@ -11493,7 +11480,7 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         # no witness for that transform, it rejects.
         note_detail("walrus.frame_tuple_reassign")
         raise ThirUnsupported("expr.walrus")
-    if e.target in lc.coro_handle_slots:
+    if lc.frame_local(e.target, FrameLocalClass.CORO_HANDLE):
         # A concrete coro handle is a frame_slot too, but its writes carry a
         # factory-call-only admission (and no brace-init spelling: the handle
         # type has no self-contained C++ name) that only the statement arm
@@ -11517,7 +11504,7 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         return THIRWalrus(
             result_type=vtu, name=e.target, cpp_name=cpp_name,
             value=value, emplace_cpp=lc.render_type(vtu), loc=loc)
-    if e.target in lc.opt_ptr_frame_locals:
+    if lc.frame_local(e.target, FrameLocalClass.OPT_PTR):
         # Pointer-repr Optional field (`P* m;` -- nullptr doubles as None):
         # the borrow-form assign, over the source rungs shared with the sync
         # walrus_opt_ptr arm. An `Own[T | None]` CALL source stays out: the
@@ -11540,7 +11527,7 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         _witness("expr.walrus_frame_opt_ptr")
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
                           value=value, loc=loc)
-    if e.target in lc.alias_ptr_locals:
+    if lc.frame_local(e.target, FrameLocalClass.ALIAS_PTR):
         # Bare `T*` alias field: point it at the LIVE source lvalue and read
         # back through the deref tail (`(row = &(rows[i]), *row)`). Only
         # proven-lvalue sources living past the suspension are admitted --
@@ -11580,7 +11567,7 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         _witness("expr.walrus_frame_alias")
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
                           value=value, tail="deref", addr_of=True, loc=loc)
-    if e.target in lc.borrow_tuple_frame_locals:
+    if lc.frame_local(e.target, FrameLocalClass.BORROW_TUPLE):
         # Borrow-form tuple field (`std::tuple<..., T*> bt;`): the bare assign
         # with the name tail. Only a BORROWING call source is admitted -- its
         # C++ return IS the borrow tuple, so nothing needs lifting. A tuple
@@ -11602,11 +11589,11 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         _witness("expr.walrus_frame_btuple")
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
                           value=value, tail="name", loc=loc)
-    if e.target not in lc.plain_frame_fields:
+    if not lc.plain_frame_field(e.target):
         # Every family whose write render is NOT the plain member assign
-        # subtracts itself from plain_frame_fields (erased @dynamic handles,
-        # pointer-form loop vars, unpack alias targets); their renders are
-        # not spelled here, so they must not fall through to it.
+        # (erased @dynamic handles, pointer-form loop vars, unpack alias
+        # targets) is no plain frame field; their renders are not spelled
+        # here, so they must not fall through to it.
         note_detail("walrus.frame_field_kind")
         raise ThirUnsupported("expr.walrus")
     # Plain frame field: the position-blind member assign. The value renders
@@ -11762,7 +11749,7 @@ def _borrow_tuple_bare_names(lc: '_LowerCtx',
     names = set(_borrow_tuple_param_names(lc))
     names |= {n for n in lc.prescan.reassigned
               if not lc.binding(n).frame_slot
-              and n not in lc.borrow_tuple_frame_locals
+              and not lc.frame_local(n, FrameLocalClass.BORROW_TUPLE)
               and _borrow_tuple_local_type(
                   n, declared, lc.names_with("storage_tuple")) is not None}
     if not (lc.func.is_generator or lc.func.is_async):
@@ -11876,9 +11863,9 @@ def _capture_entry_cpp(name: str, lc: '_LowerCtx',
                 and is_plain_nonvalue(narrowed_type)):
             raise ThirUnsupported("lambda.capture_narrowed_reference")
         return f"{'' if by_value else '&'}{alias}"
-    if name not in lc.frame_field_names:
+    if lc.binding(name).frame_class is None:
         return f"{'' if by_value else '&'}{cpp}"
-    if name not in lc.plain_frame_fields:
+    if not lc.plain_frame_field(name):
         raise ThirUnsupported("lambda.capture_frame_slot")
     if not by_value:
         return f"&{cpp} = {cpp}"
@@ -17990,7 +17977,7 @@ def _lower_truthy(e: TpyExpr, lc: '_LowerCtx',
             operand = replace(operand, deref=False)
         if mode is None:
             if (isinstance(e, TpyName) and isinstance(operand, THIRName)
-                    and e.name in lc.prescan.global_slots
+                    and lc.binding(e.name).global_slot
                     and isinstance(unwrap_readonly(unwrap_ref_type(
                         unwrap_send_sync(et))) if et is not None else None,
                         OptionalType)):
@@ -18364,9 +18351,7 @@ def _lower_ptr_union_ternary_arm(arm: TpyExpr, u: 'UnionType',
               if bt is not None else None)
         if (bt == u and lc.binding(arm.name).ptr_variant
                 and not lc.binding(arm.name).const
-                and arm.name not in lc.narrow.narrowed
-                and not _param_is_const(arm.name, lc.func, analyzer,
-                                        lc.record_name)):
+                and arm.name not in lc.narrow.narrowed):
             return _lower_expr(arm, lc, declared)
     if (isinstance(arm, TpyFieldAccess)
             and _field_receiver_ok(arm, declared, analyzer)):
@@ -18374,9 +18359,7 @@ def _lower_ptr_union_ternary_arm(arm: TpyExpr, u: 'UnionType',
             analyzer.get_expr_type(arm))))
         recv = arm.obj
         if (at == u and isinstance(recv, TpyName)
-                and not lc.binding(recv.name).const
-                and not _param_is_const(recv.name, lc.func, analyzer,
-                                        lc.record_name)):
+                and not lc.binding(recv.name).const):
             return THIRFormConvert(
                 result_type=u,
                 value=_lower_field_source(arm, lc, declared),

@@ -116,10 +116,6 @@ from ..nodes import (
 )
 from .predicates import (
     _value_record_slot,
-    _owning_fi,
-    _param_is_const_at,
-    param_passing,
-    _param_is_deep_const,
     _peel_coerce,
     _IDENTITY_STR_COERCIONS,
     _eligible_char,
@@ -398,7 +394,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
     # and the getter's ref-return arm are all signature-only; the getter's
     # body-side return arm determines whether a return shape routes. A record
     # param's const verdict comes from the method's FunctionInfo on the owning
-    # record -- see `_param_is_const`.
+    # record -- see `_param_is_const_at`.
     #
     # A macro-authored staticmethod reaches here with `is_method` FALSE:
     # `FragmentParser.parse_fragment` sets method-ness by "first param named
@@ -412,7 +408,7 @@ def _check_callable_structure(func: TpyFunction, analyzer,
         if self_type is None or not _f1_record(self_type, analyzer):
             raise ThirUnsupported("sig.receiver_record")
         # Inplace dunders (__iadd__ ...) admit: the forced-const param
-        # verdict (CONST_PARAMS_METHODS) is applied by `_param_is_const`'s
+        # verdict (CONST_PARAMS_METHODS) is applied by `_param_is_const_at`'s
         # forced arm -- including the slices decide_param_const drops the
         # force for (`_forced_const_dropped`) -- and the mandatory `return
         # self` renders `return *this;` through the record-self return arm
@@ -798,9 +794,11 @@ def _seed_global_scope(func: TpyFunction, analyzer, lc: '_LowerCtx',
     lc.prescan.global_write_cpp = global_write_cpp
     lc.prescan.native_globals = native_globals
     (lc.prescan.global_readonly, lc.prescan.global_cpp,
-     lc.prescan.global_slots) = _seed_readonly_globals(
+     seeded_slots) = _seed_readonly_globals(
         func, analyzer, params_set, native_globals)
-    lc.prescan.global_slots = lc.prescan.global_slots | frozenset(decl_slots)
+    # Read by the planner alone: the lowering asks each global's record
+    # (`global_slot`).
+    lc.prescan.global_slots = seeded_slots | frozenset(decl_slots)
     for n, cname in global_write_cpp.items():
         # Reads of a write-seeded native global keep the ordinary
         # `::`-qualified native-read spelling (the read arm is
@@ -847,7 +845,7 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         note(ex.reason, ex.loc, ex.message)
         return None
     # A static method has no receiver -- it lowers like a free function, but
-    # keeps `record_name` so `_param_is_const` resolves its param verdicts from
+    # keeps `record_name` so `_param_is_const_at` resolves its param verdicts from
     # the method's FunctionInfo on the owning record (the same lookup codegen's
     # `_get_method_mutated_params` uses). That holds for either spelling of a
     # static: the parser's (`is_method` set) and the macro API's (`is_method`
@@ -944,17 +942,17 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
     src_params = (func.params if stub is None or literal_group
                   else stub.params)
     src_rt = func.return_type if stub is None else stub.return_type
-    verdict_fi = _owning_fi(func, analyzer, record_name)
-    param_const = {n: _param_is_const_at(n, func, verdict_fi) for n, _ in src_params}
+    param_recs = lc.table.root.bindings
     params = tuple(THIRParam(
         name=n, type=t,
-        passing=param_passing(n, t, func, verdict_fi),
-        native_container=native_container(t, param_const[n], analyzer),
+        passing=t.param_passing(param_recs[n].const),
+        native_container=native_container(t, param_recs[n].const, analyzer),
         union_layout=_union_source_layout(n, t, lc),
-        borrowed_record=borrowed_record(t, param_const[n], analyzer),
-        optional_layout=optional_layout(t, analyzer, borrow=True, readonly=param_const[n]),
-        tuple_layout=tuple_parameter_layout(t, analyzer,
-                                            readonly=_param_is_deep_const(n, func, analyzer, record_name)),
+        borrowed_record=borrowed_record(t, param_recs[n].const, analyzer),
+        optional_layout=optional_layout(t, analyzer, borrow=True,
+                                        readonly=param_recs[n].const),
+        tuple_layout=tuple_parameter_layout(
+            t, analyzer, readonly=param_recs[n].deep_const),
     ) for n, t in src_params)
     rt = src_rt if isinstance(src_rt, TpyType) else VoidType()
     try:
@@ -1241,19 +1239,21 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
                 message_init,
                 field_identity=identities.get(qnames.EXCEPTION_MESSAGE_FIELD)))
         body_declared = dict(declared)
-        ctor_fi = _owning_fi(init_method, analyzer, record.name)
-        ctor_const = {n: _param_is_const_at(n, init_method, ctor_fi) for n, _ in init_method.params}
+        param_recs = lc.table.root.bindings
         ctor = THIRConstructor(
             record_name=record.name,
             record_layout=layout,
             params=tuple(THIRParam(
                 name=n, type=t, union_layout=_union_source_layout(n, t, lc),
-                passing=param_passing(n, t, init_method, ctor_fi),
-                native_container=native_container(t, ctor_const[n], analyzer),
-                borrowed_record=borrowed_record(t, ctor_const[n], analyzer),
-                optional_layout=optional_layout(t, analyzer, borrow=True, readonly=ctor_const[n]),
+                passing=t.param_passing(param_recs[n].const),
+                native_container=native_container(
+                    t, param_recs[n].const, analyzer),
+                borrowed_record=borrowed_record(
+                    t, param_recs[n].const, analyzer),
+                optional_layout=optional_layout(
+                    t, analyzer, borrow=True, readonly=param_recs[n].const),
                 tuple_layout=tuple_parameter_layout(
-                    t, analyzer, readonly=_param_is_deep_const(n, init_method, analyzer, record.name)),
+                    t, analyzer, readonly=param_recs[n].deep_const),
             ) for n, t in init_method.params),
             mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),
@@ -2001,6 +2001,7 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                    top_level_scope=True)
     lc.prescan.native_globals = module_native_globals(module)
     declared: dict[str, TpyType] = {}
+    own_slots: set[str] = set()
     for name, gt in global_types.items():
         if gt is None:
             continue
@@ -2008,12 +2009,10 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         if not gt.is_value_type() and not gt.needs_wrapper():
             # `std::vector<T>* g{}` at namespace scope: reads deref through
             # the pointer-local arms, writes take the static-slot render.
-            # In `global_slots` besides its pointer record: a pointer-slot
-            # GLOBAL derefs at EVERY value position whatever its family (the
-            # indirect-name render), where a pointer LOCAL of
-            # record type stays bare and reaches its members via `->`.
-            lc.global_ptr_slots.add(name)
-            lc.prescan.global_slots = lc.prescan.global_slots | {name}
+            # A pointer-slot GLOBAL derefs at EVERY value position whatever
+            # its family (the indirect-name render), where a pointer LOCAL
+            # of record type stays bare and reaches its members via `->`.
+            own_slots.add(name)
     for name, ft in (final_types or {}).items():
         # A `Final` global lives at namespace scope as a `const T` and is
         # never assignable, so it only needs to READ bare -- seeded like the
@@ -2040,7 +2039,9 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
     # writes `spelled[n]` on every branch), so none of them join the
     # bare-reading `global_readonly` set.
     lc.prescan.global_cpp = {**lc.prescan.global_cpp, **imported_cpp}
-    lc.prescan.global_slots = lc.prescan.global_slots | frozenset(imported_slots)
+    # Read by the planner alone: the lowering asks each global's record
+    # (`global_slot`; `module_slot` for the module's own).
+    lc.prescan.global_slots = frozenset(own_slots | imported_slots)
     # A native-linkage global splits its spelling exactly as it does inside a
     # function body: writes take the BARE C name, reads the `::`-qualified
     # one (the `native_global_names` write target vs the qualified read).

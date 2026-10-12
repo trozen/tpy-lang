@@ -32,7 +32,7 @@ if TYPE_CHECKING:
 
 def global_name_binding(name: str, typ: TpyType, lc: '_LowerCtx') -> THIRGlobalBinding | None:
     analyzer = lc.analyzer
-    if (not lc.global_binding_scope or lc.top_level_scope or lc.capture_funcs or name in lc.prescan.param_names
+    if (not lc.global_binding_scope or lc.top_level_scope or lc.in_nested_def or name in lc.prescan.param_names
             or not leaf_global(typ) or not lc.prescan.binds_global(name)
             or name not in analyzer.ctx.top_level_decls or name in lc.prescan.native_globals):
         return None

@@ -14,14 +14,15 @@ can name the type and every consumer can read it without a cycle.
 from __future__ import annotations
 
 from collections.abc import Callable, Set as AbstractSet
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from ..typesys import TpyType
 
 if TYPE_CHECKING:
-    from .lower.context import ValueOptKind
+    from ..codegen_cpp.forms import LoopBinding
+    from .lower.context import FrameLocalClass, ValueOptKind
     from .nodes import THIRTupleLayout
 
 
@@ -172,6 +173,9 @@ class BindingKind(Enum):
     COMP_UNPACK_REF = "comp.unpack_ref"
     COMP_UNPACK_STORAGE_OPT = "comp.unpack_storage_opt"
     COMP_UNPACK_VALUE = "comp.unpack_value"
+    # An unpack clause's whole element (the targets read it through
+    # `__tup_N`), as a for statement's `loop.unpack_holder`.
+    COMP_UNPACK_HOLDER = "comp.unpack_holder"
     COMP_STORAGE_TUPLE = "comp.storage_tuple"
     COMP_STORAGE_OPT = "comp.storage_opt"
     COMP_PLAIN = "comp.plain"
@@ -202,11 +206,6 @@ class BindingKind(Enum):
     UNBOUND = "unbound"
     # A name narrowing renamed whole (an `Any` global read as its alias).
     NARROWED_GLOBAL = "narrowed_global"
-
-    @property
-    def family(self) -> str:
-        """The site family (`decl`, `hoist`, `loop`, ...)."""
-        return self.value.split(".")[0]
 
     @classmethod
     def plain(cls, site_kind: str) -> 'BindingKind':
@@ -242,6 +241,10 @@ class BindingRepr:
     type: TpyType | None
     # The classifier row that decided the record.
     kind: BindingKind
+    # The kind of site that declared it (`_Site.kind` in lower/bindings.py:
+    # 'decl', 'hoist', 'loop', 'param', 'receiver', 'frame', ...); None for
+    # `UNBOUND`. A refinement keeps it.
+    site_kind: str | None = None
     # The later sites that re-derived it, in order (the kind stays).
     refinements: tuple[BindingRefinement, ...] = ()
     is_param: bool = False
@@ -282,16 +285,28 @@ class BindingRepr:
     tuple_layout: 'THIRTupleLayout | None' = None
     # Per element of a borrow tuple: held inline rather than by pointer.
     inline_elems: tuple[bool, ...] | None = None
-    # A const declaration (the decl families; a parameter's const is its
-    # reading function's verdict).
+    # A const binding: a const declaration (the decl families), a
+    # parameter under its function's const verdict (the one its signature
+    # spells), a read-only method's receiver. A nested scope reads an
+    # enclosing parameter's or receiver's record, so its verdict.
     const: bool = False
+    # A parameter whose INNER surface is const beyond `const`: the deep
+    # const verdict (a pointer-variant's pointees), an unmutated `*args`
+    # pack's elements, a `Ptr[readonly[T]]` pointee.
+    deep_const: bool = False
     # Some value bound into this record is a const borrow (the planner's
     # const fixpoint). A declaration, hoist or walrus pointer slot holding
     # one is `const T*` (`const`): a slot holding a mutable source too
     # rejects at planning.
     const_source: bool = False
-    # A loop variable bound const.
+    # A loop variable bound const: a const reference, or a reference over
+    # an iteration that yields const elements (`auto&&` deduces const).
     const_loop_var: bool = False
+    # How a loop or comprehension clause binds its variable (a for
+    # statement's variable or tuple-unpack holder, a clause's variable or
+    # holder): the C++ the loop emits per element. None on every other
+    # record.
+    loop_binding: 'LoopBinding | None' = None
     # The whole-body borrow-tuple const fixpoint, per NAME as the lowering
     # keeps it: every record of a marked name carries the bit.
     const_borrow_tuple: bool = False
@@ -299,8 +314,22 @@ class BindingRepr:
     # A sink may move from it at its last use (outside a `moves_only`
     # region, which decides there).
     movable: bool = False
-    # A resumable frame's `tpy::frame_slot<T>` field.
-    frame_slot: bool = False
+    # What a resumable frame member is (`frame_local_class`; a frame's
+    # parameter is PLAIN): None for a binding the frame does not hold.
+    frame_class: 'FrameLocalClass | None' = None
+    # A binding the frame holds to const storage (the frame layout's own
+    # `const_frame_bindings`: const-borrow captures, a `@readonly` receiver,
+    # const alias fields, loop holders).
+    frame_const: bool = False
+    # A frame loop's pointer-form variable over an ITERATOR source: it
+    # points into the step result, whose members may themselves be
+    # references or pointers (a proxy tuple), so targets unpacked off it
+    # re-point through the normalizing deref.
+    source_typed_holder: bool = False
+    # A frame loop's pointer-repr Optional variable: the nullable `T*`
+    # points into the iterated container, so the frame outlives what it
+    # lends.
+    opt_ptr_loop_var: bool = False
     # A `std::optional<T>` holding a pointer-repr Optional's value (an
     # OPTIONAL_STORAGE hoist, an `Own[P | None]` param's
     # `std::optional<P>&&`): read through as the `T*` it holds, assigned
@@ -323,9 +352,45 @@ class BindingRepr:
     global_cpp: str | None = None
     # A pointer-slot module global, read as the pointer it is.
     global_slot: bool = False
+    # A module-init global the module itself declares and writes (not an
+    # imported one, not a `Final`); False outside module init.
+    own_global: bool = False
     # A nested def's name: the lowering binds it as a closure local, never
     # in `declared`.
     nested_def: bool = False
+
+    @property
+    def frame_slot(self) -> bool:
+        """A resumable frame's `tpy::frame_slot<T>` field."""
+        return self.frame_class is not None and self.frame_class.is_frame_slot
+
+    @property
+    def module_slot(self) -> bool:
+        """A pointer-slot global of the module-init carrier's own module: a
+        write there allocates its `static __global_slot_N`, and it reads as
+        the bare pointer whatever its spelling. An imported one is never
+        written in this module's init."""
+        return self.global_slot and self.own_global
+
+
+@dataclass(frozen=True)
+class SlotKey:
+    """One record's C++ slot -- a pointer slot the const fixpoint judges, a
+    rebind slot the emitter numbers: the site declaring it and the name (a
+    hoist site declares several). Compared by the site's identity; the key
+    holds the site so the identity cannot be recycled. A refinement keeps
+    its record's site, so its key."""
+    site_id: int
+    name: str
+    site: object = field(compare=False, repr=False)
+
+    @staticmethod
+    def of(site: object, name: str) -> 'SlotKey':
+        return SlotKey(id(site), name, site)
+
+
+def slot_key(rec: 'BindingRepr') -> SlotKey:
+    return SlotKey.of(rec.site, rec.name)
 
 
 # The record a name with no binding answers with (a function, a class, a
