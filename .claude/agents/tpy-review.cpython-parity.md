@@ -1,6 +1,6 @@
 ---
 name: cpython-parity
-description: Reviews changes for behavioral divergences between TPy and CPython -- reference-vs-value / mutation visibility and other semantic deviations. Silent divergences are top-priority; warned or declared ones are acceptable. One of several specialist reviewers dispatched by /tpy-review.
+description: Reviews changes for behavioral divergences between TPy and CPython -- reference-vs-value / mutation visibility and other semantic deviations. Silent divergences are top-priority; warned or declared ones are acceptable. One of several specialist reviewers dispatched by /tpy-review, and a design critic (DESIGN MODE) in /tpy-fix-bug and /tpy-add-feature.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -55,6 +55,13 @@ The orchestrator passes you a base ref and the changed-file list.
 6. **Interrogate every modification to an *existing* test -- not just new files and `no_cpython.txt`.** A feature that behaves correctly rarely needs existing tests *rewritten*; when one is, ask **why was this test changed?** out loud and answer it. Red flags that a change is papering over a divergence or a silent behavior shift: a parameter/return annotation gained `readonly[...]` or `Own[...]` (often to make a now-`const`/now-by-value value pass type-check), a signature flipped, an assertion was weakened, or -- the subtle one -- **a mutation was removed or the result is only read**. Example pattern: an accessor is changed to return a reference, but the test then binds the result to a local and only reads it. Then read the generated C++ for the changed case and ask the second question: **is there a value copy here that CPython would make a reference?** Don't accept "it compiles / the suite is green" -- read-only coverage and a passing byte-compare are exactly what hide a silent-copy divergence.
 
 You may NOT run any test suite or `tests/update_snapshots.py`. Probing individual snippets with `uv run tpy` / `uv run python` is fine and encouraged.
+
+## Design mode
+
+When the prompt says `DESIGN MODE` (the prompt carries the protocol), ask these of what the design promises:
+- State CPython's observable behavior, probed with `PYTHONPATH=lib/cpy uv run python`, and the verdict per divergence class of the checklist below: match, acknowledged divergence, or silent divergence (Critical). A design must carry all three of diagnostic, escape hatch and `LANGUAGE_FEATURES.md` note for an acknowledged divergence -- stricter than the dial, which grades shipped code: a missing one is a Warning that names it.
+- Flag any shape the design leaves REJECTED that CPython runs, and any diagnostic text that names C++ or compiler internals (`docs/PITFALLS.md`).
+- Check the test plan forces value-vs-reference where a boundary could copy (Process step 5): a planned read-only test is a finding now, not after the code exists.
 
 ## Divergence checklist
 

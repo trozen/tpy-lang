@@ -1,6 +1,6 @@
 ---
 name: architecture-fit
-description: Reviews tpyc/ Python compiler source for pipeline fit, duplication, generalize-vs-parallelize, module placement, sema/codegen mirroring, and perf cliffs. One of several specialist reviewers dispatched by /tpy-review.
+description: Reviews tpyc/ Python compiler source for pipeline fit, duplication, generalize-vs-parallelize, module placement, sema/codegen mirroring, and perf cliffs. One of several specialist reviewers dispatched by /tpy-review, and a design critic (DESIGN MODE) in /tpy-fix-bug and /tpy-add-feature.
 tools: Read, Grep, Glob, Bash
 model: opus
 ---
@@ -29,6 +29,14 @@ The orchestrator passes you a base ref and the changed-file list in your scope.
 4. Trace cross-phase consistency: if sema emits a new fact, where does codegen consume it? If codegen reads an attribute, is sema responsible for setting it?
 
 You may NOT run any test suite or `tests/update_snapshots.py`.
+
+## Design mode
+
+When the prompt says `DESIGN MODE` (the prompt carries the protocol), ask these of what the design promises:
+- Does it go through an existing generic path, or add a special case? Name the existing helper / predicate / `TypeDef` field it should extend (Process steps 2-3) -- a design that mints a parallel implementation of an existing decision is Critical.
+- Is the new fact decided once, where it is decided, and read from there (a THIR node or the lowering context), or re-derived at the consumer?
+- Is it keyed on a method name or a callee kind (the THIR RULE in CLAUDE.md), order-dependent, or size-proportional in overload resolution, protocol conformance or mutation propagation?
+- Does the scope matrix list every sibling position, and is every excluded cell named and filed (`TODO.md` for a deferred slice, `BUGS.md` for an unfixed sibling defect)?
 
 ## Checks
 

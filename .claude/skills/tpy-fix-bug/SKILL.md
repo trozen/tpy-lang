@@ -59,15 +59,15 @@ Before anything else, classify the bug and state the classification:
 - **Localized:** real defect, but narrowly scoped (single function, single
   phase) and you can plausibly enumerate every site where the same code
   path runs.
-  -> Do Phases 1-3, skip the cross-feature survey, present the analysis,
-  wait for sign-off.
+  -> Do Phases 1-3, skip the cross-feature survey, present the analysis
+  (Phase 7, its design critics included), wait for sign-off.
 
 - **Architectural:** the bug touches a shared invariant, a duplicated
   representation, a phase-ordering issue, or a feature whose design has
   tension with others. Anything in `sema/`, `thir/`, or `typesys.py`
   that crosses multiple concepts is usually here.
-  -> Full procedure (Phases 1-7); consider spawning an `Explore` sub-agent
-  for the cross-feature survey.
+  -> Full procedure (Phases 1-7); the cross-feature survey and the
+  probes go to agents (CLAUDE.md "Orchestration").
 
 If unsure, default to architectural. The user may up- or downgrade the
 classification before you proceed.
@@ -225,10 +225,10 @@ is cheap. If many snapshots will regenerate, mention it factually
 ### CPython-parity assessment
 
 When the fix changes what *accepted* code does (not merely what is
-accepted or rejected), dispatch ONE `cpython-parity` agent with the
-Phase 1 reproducer and the proposed post-fix semantics. Ask it to state
-CPython's observable behavior for the same source and a verdict per
-divergence class:
+accepted or rejected), the `cpython-parity` critic of the Phase 7
+"Design critics" step answers it: given the Phase 1 reproducer and the
+proposed post-fix semantics, it states CPython's observable behavior for
+the same source and a verdict per divergence class:
 
 - **reference-vs-copy / aliasing and mutation visibility** (fields,
   container elements, tuples, unions, captures, match bindings, walrus,
@@ -268,7 +268,7 @@ existing acknowledgment spellings (`copy()`, `.clone()`, an explicit
 annotation, a directive) before minting a new one -- the
 acknowledgment surface should stay as coherent as the type surface.
 
-Skip the agent only when the fix is purely rejects-valid (changes
+Skip this verdict only when the fix is purely rejects-valid (changes
 diagnostics, not behavior) or internal (refactor, perf) -- and say so
 in the report.
 
@@ -313,6 +313,13 @@ parallel code path the proper fix has to remove) is not.
 
 ## Phase 7: Present and wait
 
+**Design critics first (localized and architectural).** Run the
+"Design critics" step of `/tpy-add-feature` Phase 6 on this analysis:
+the draft (reproducer, post-fix shapes, C++ before/after, root cause,
+fix sketch, scope matrix, test plan) goes to `design.md`, and the
+critics and the cross-check attack it before the user sees it. The
+parity critic carries the Phase 5 "CPython-parity assessment" verdict.
+
 Write the analysis (compressed for localized bugs) and present it.
 **Lead with code, not with the compiler.** Before any compiler detail
 the report shows, in this order:
@@ -347,6 +354,7 @@ readable in under a minute. Cover (each in one line or two):
 - Confidence (see the scale below)
 - CPython parity (one line: match / acknowledged divergence with its
   warning + escape hatch / skipped-because-rejects-valid)
+- Critics (one line: who ran, what changed, what was rejected and why)
 - Patch alternative (only if Phase 6 produced one)
 - Adjacent issues surfaced during analysis (brief)
 - Proposed branch (see below)
@@ -373,7 +381,7 @@ Phase 2 trace, function names, file dumps) are not -- the user will ask
 if they want that depth. An open decision is never buried in the
 bullets: present each on its own, one at a time -- the Python shape,
 the C++ each option yields, labelled options with consequences,
-recommendation first.
+recommendation first, and the cross-check's verdict last.
 
 **Proposed branch line.** Check `git branch --show-current` and pick:
 

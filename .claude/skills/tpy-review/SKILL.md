@@ -1,6 +1,6 @@
 ---
 name: tpy-review
-description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) in parallel and aggregates findings into a unified report.
+description: Run a parallel multi-agent review of TurboPython compiler changes. Dispatches specialist reviewers (codegen, architecture, tests, safety, runtime, docs, conventions) and the other harness's cross-check in parallel and aggregates findings into a unified report.
 ---
 
 # /tpy-review
@@ -69,17 +69,22 @@ Skip a specialist when its scope is empty:
 | `runtime-cpp-correctness` | `runtime-cpp` non-empty |
 | `convention-compliance` | always (cheap; checks the diff against CLAUDE.md's written rules across all changed files) |
 | `docs-sync` | always (cheap) |
+| cross-check (the other harness, CLAUDE.md "Orchestration") | always |
 
 **Re-derive the buckets from the CURRENT diff on every round.** A review's fix commit routinely moves code into a bucket that was empty at the previous classification (a runtime helper added to `runtime/cpp/`, a harness change to `tests/conftest.py`); the specialist for that bucket must run. Never drop a specialist because it came back clean last round.
 
 ### 4. Fan out specialists IN PARALLEL
 
-Send **one message with multiple Agent tool calls** -- one per dispatched specialist. Do NOT serialize.
+Send **one message with multiple Agent tool calls** -- one per dispatched specialist -- and, in the same message, the cross-check in a background shell. Do NOT serialize.
 
 Each prompt should include:
 - The base SHA resolved in step 1
 - The pre-classified file list relevant to that specialist (so the agent doesn't waste tokens re-discovering)
 - A reminder to output in the specialist's documented format
+
+Never pass the implementer's report, the branch summary or this conversation: reviewers judge the code at the sha, not claims about it. The approved design (its `design.md`) may go along.
+
+The cross-check's prompt file names the base sha, `HEAD` and the approved design, asks for defects only (wrong C++, silent divergence from CPython, a missed sibling position, a parallel implementation of an existing decision, a missing test), each with `file:line`, in the same Critical / Warning / Suggestion sections. If it fails to start, rerun it once; if it is still unavailable, the report header says so.
 
 Example prompt skeleton:
 
@@ -97,6 +102,7 @@ Follow your documented process and output format. Do NOT run pytest or update_sn
 Once all specialists return, synthesize a unified report. Be terse -- one bullet per finding, a single short sentence. NO code excerpts, NO "Fix:" sub-bullets. The user will ask for details on any finding they want to drill into; surfacing every detail up front is noise.
 
 - **Dedupe**: when multiple specialists flag the same `file:line` with related issues, merge into one entry crediting all contributing specialists.
+- **Mark cross-family agreement**: a finding the cross-check and a specialist both raised is tagged `[both]` -- the strongest signal in the report. A cross-check-only finding gets no extra weight: it goes through the same severity and confidence handling as a specialist's.
 - **Group by severity**: Critical first, then Warning, then Suggestion.
 - **Silent CPython divergence outranks**: a `cpython-parity` finding that TPy behaves differently from CPython with no warning, no source-level escape hatch, and no `no_cpython.txt` is a Critical -- keep it Critical even if it would otherwise read as a minor cost. A divergence that is warned, escape-hatched, or justifiably declared is fine as a Suggestion. This reflects the project's "standard Python works out of the box" goal; do not downgrade a silent divergence to a perf nit.
 - **Filter noise**: if Suggestions total > 10 across all specialists, drop the lowest-signal ones (vague, duplicative of a Warning at the same location).
@@ -116,7 +122,7 @@ Severity carries the action. Make it explicit in the section headers so the user
 # /tpy-review report
 
 Base: <SHA> | <diff --stat one-liner>
-Dispatched: <list> | Clean: <list>
+Dispatched: <list> | Clean: <list> | Cross-check: ran / unavailable
 
 ## Must fix (Critical, <N>)
 - short description [<specialist>] (file:line if specific)

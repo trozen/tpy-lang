@@ -54,7 +54,7 @@ In all cases: never `--amend`, rebase, force-push, or commit changes you didn't 
 The user reviews three things: whether the generated C++ is right, whether the language behavior makes sense, and the compiler's general architecture -- its core data structures, generic implementation over special cases, apparent code smells. Shape everything presented for that.
 
 - **Lead with code.** Analyses, designs, branch summaries and decisions show what works (Python snippets with their behavior) and the generated C++ (before/after) before any compiler internals; the mechanism comes last, in a few bullets that name the core data structures touched and say whether the change goes through an existing generic path or adds a special case (and why).
-- **Decisions stand alone.** A decision the user must make goes in its own message, one at a time: the Python shape, the C++ each option yields, labelled options with consequences, recommendation first -- never buried in a status report.
+- **Decisions stand alone.** A decision the user must make goes in its own message, one at a time: the Python shape, the C++ each option yields, labelled options with consequences, recommendation first -- never buried in a status report. It passes the other harness's cross-check first (see "Orchestration") and ends with that verdict.
 - **Verdict first.** "Is it ready / reviewed / merged?" is answered in the first word; notes go underneath.
 - **Instructions start work; questions get answers.** A question or remark gets an answer and a recommendation; code changes only on a go, and answering never pauses approved work. An instruction is carried out as given -- every step, on the named branch -- or you say first why not. New tooling (scripts, wrappers, guard tests) and system changes are proposals, never side effects of other work.
 - **Decide what the user would decide.** Inside approved work, act on your recommendation and name the choice. Set aside -- finish the rest, then present each on its own -- anything that changes which programs compile or what they do, adds, removes or moves a diagnostic, adds a copy or allocation to the generated C++, adds a special case, or changes the approach. Neutral or improving C++ churn is not a decision (see the snapshot policy).
@@ -62,14 +62,30 @@ The user reviews three things: whether the generated C++ is right, whether the l
 
 ### Orchestration (default for non-trivial units)
 
-This governs how an agreed unit is executed, not when to start one. A unit starts only after the user has approved its analysis or design (`/tpy-fix-bug`, `/tpy-add-feature`) and said go; a question, a "what's next?" or a discussion is not a go -- answer it and wait. Once started, unless the user says otherwise:
+This governs how a unit is worked, not when to start one. A unit's implementation starts only after the user has approved its analysis or design (`/tpy-fix-bug`, `/tpy-add-feature`) and said go; a question, a "what's next?" or a discussion is not a go -- answer it and wait. Unless the user says otherwise:
 
-- You orchestrate; implementation, exploration and review go to your own harness's subagents (in Claude Code: on the Opus model).
+- You orchestrate; survey, implementation and review go to your own harness's subagents (in Claude Code: on the Opus model). The orchestrator keeps what has to survive the whole unit -- the user's decisions, the integration branch, the session state -- and stays small enough to keep them:
+
+  | Step | Who |
+  |---|---|
+  | Reproduce, probe, survey siblings and precedent | agents, in parallel where independent |
+  | Write the analysis / design | orchestrator, from the agents' reports -- it owns what the user approves |
+  | Design critics | the cross-check below + the critic agents (`/tpy-add-feature` "Design critics") |
+  | Implement | a fresh agent; its brief is the approved design, the user's decisions quoted verbatim with their date, and the existing helpers to reuse by name; it stops rather than deviates |
+  | Review | `/tpy-review` (its specialists + the cross-check) |
+  | Decisions, user dialogue, integration | orchestrator only |
+
 - Subagent worktrees: create them yourself (`git worktree add <path> -b <branch> <sha>`, then `uv sync`) and put "verify `git rev-parse HEAD` is <sha>, else stop" in the brief -- in Claude Code, `isolation: worktree` roots at the main checkout's HEAD, not at your branch. Integrate their work into ONE working branch.
 - Every brief says: full or broad runs through plain `uv run pytest`, quick checks with a small local `-n` (see "Agent testing workflow").
+- **Agent reports carry evidence, and a claim is checked, not believed.** A report that says green ran on a committed tree (clean `git status`) and names its `HEAD` sha, the exact command and the verbatim pytest summary line; a run that collected zero tests is a failure. The orchestrator does not repeat the agent's run: it checks the sha against what it integrates and reruns only the unit's new or targeted cases with a small `-n`. Full runs stay where the workflow already puts them (each `/tpy-review` round's fixes, the final verification), plus one when integration changed the tree (several agent branches combined, master merged). Reviewers and critics get the sha and the approved design -- never the implementer's report or summary.
 - Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
 - Set decisions aside per "Decide what the user would decide"; everything else runs to the end.
-- **Second opinion from the other harness**, read-only: from Claude Code `codex exec -c approval_policy=never --sandbox read-only "<prompt>"`, from Codex `claude -p --permission-mode plan "<prompt>"`. Suggest it in one line, and run it on the user's yes, before presenting an architectural plan with competing designs or Medium/Low confidence, when review rounds stop converging, or before a language-rule change.
+- **Cross-check by the other harness -- by default, no yes needed.** A second model family catches what one family's reviewers share as a blind spot. Read-only: from Claude Code `codex exec -c approval_policy=never --sandbox read-only "Read /tmp/agents/<unit>/<prompt>.md and follow it" < /dev/null` (a backgrounded `codex exec` without `< /dev/null` stalls on stdin), from Codex `claude -p --permission-mode plan "<prompt>"`. The prompt goes in a file and points at the document, the sha and the probes -- never at this conversation or an agent's report. It runs at three points:
+  - the design critics of `/tpy-fix-bug` and `/tpy-add-feature` (localized and architectural scope);
+  - every `/tpy-review` round, as one more reviewer;
+  - every decision before it reaches the user -- its prompt file holds the decision as it will be presented and the user's earlier decisions on the unit, quoted: is it really open (or do the approved design and the user's earlier decisions already answer it), are the options complete (a cheaper or more generic one missing, an existing helper that already does it), is each option's stated C++ and behavior right, does it agree with the recommendation. A decision it shows answered or mis-stated is fixed or dropped first; the message to the user ends with one line, "Cross-check: agrees" or "Cross-check: disagrees -- <why>".
+
+  Its findings are hypotheses like any reviewer's: verify each against the code or a probe before acting. When it is unavailable, say so where its verdict would stand; never present its absence as agreement. The user may skip it for a unit.
 
 ### Common commands
 
