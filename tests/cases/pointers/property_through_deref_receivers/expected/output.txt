@@ -1,0 +1,9 @@
+method 20
+method-after 24
+param 24
+optional 12
+generator 12
+async 12
+box 6
+rc 8
+closure 12

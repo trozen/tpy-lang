@@ -1040,11 +1040,6 @@ THIR_FACES: frozenset[str] = frozenset({
     # captures the receiver by reference, so the temporary must outlive the
     # call (the is_temporary lift at a method receiver).
     "method.gen_recv_temp",
-    # A plain @native member (renamed method / property getter) on a
-    # Ptr[record] receiver, deref-check face only
-    # (`::tpy::deref_check(s).outer()` -- the first hop of a native field
-    # chain).
-    "method.ptr_native_member",
     # `Color[name]` enum name lookup -> `::tpy::EnumUtil<E>::from_name(name)`
     # (lowering; a static lookup panicking KeyError on miss).
     "subscript.enum_from_name",

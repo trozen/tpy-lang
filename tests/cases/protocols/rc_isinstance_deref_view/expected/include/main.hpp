@@ -49,6 +49,10 @@ struct Dog : Pet {
 
     // def bark(self) -> str:
     std::string bark() const;
+
+    // @property
+    // def loud(self) -> str:
+    std::string loud() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Dog";
 };
 
@@ -106,6 +110,13 @@ inline std::string Dog::name() {
 //     return "woof"
 inline std::string Dog::bark() const {
     return "woof";
+}
+
+// @property
+// def loud(self) -> str:
+//     return "WOOF"
+inline std::string Dog::loud() const {
+    return "WOOF";
 }
 
 // def __init__(self, label: str) -> None:

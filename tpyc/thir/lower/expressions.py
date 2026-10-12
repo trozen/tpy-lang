@@ -241,6 +241,7 @@ from ..nodes import (
     THIRStrLiteral,
     THIRStrSlice,
     THIRSubscript,
+    THIRBoundCall,
     THIRBorrowTupleLiteral,
     THIRTupleValueToBorrow,
     THIRTupleLiteral,
@@ -354,6 +355,7 @@ from .predicates import (
     _f1_const_rooted_source,
     _plain_container_read,
     _container_field_bare_read,
+    _bound_call_of,
     _method_member_cpp,
     _bytes_family_ref,
     _const_default_param_form,
@@ -810,7 +812,6 @@ from .checks import (
     _native_record_recv,
     _ptr_deref_method_call,
     _ptr_deref_recv_ok,
-    _ptr_native_member_core,
     _ptr_template_call_recv_ok,
     _ptr_template_method_supported,
     _record_rvalue_call_shape,
@@ -2627,6 +2628,19 @@ def _field_over_walrus_subscript_ok(e: TpyExpr, lc: '_LowerCtx') -> bool:
         lc.analyzer.get_expr_type(e))))
     return bool((_eligible_scalar(ft) or _eligible_char(ft))
                 and _witness("field.walrus_subscript_recv"))
+
+
+def _bound_getitem(e: TpySubscript, recv_t: 'TpyType | None',
+                   analyzer) -> 'THIRBoundCall | None':
+    """How a read off a non-builtin @native record renders: its resolved
+    `__getitem__` stub's binding, by the member-name rule the explicit
+    `recv.__getitem__(k)` call renders by. sema stamps the callee on user
+    records only, so a builtin container's checked dunder never reaches
+    here."""
+    fi = e.getitem_callee
+    if fi is None or not _native_record_recv(recv_t, analyzer):
+        return None
+    return _bound_call_of(fi, "__getitem__")
 
 
 def _subscript_result_form(sub: TpySubscript, rtype: TpyType, lc: '_LowerCtx') -> Form:
@@ -7874,6 +7888,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                  is not None and is_bytes_view_type(_ivk) else None)),
             bounds_safe=e.bounds_safe,
             record_getitem=False,
+            # A write target renders its receiver and index only.
+            bound_getitem=(None if use.result is _ExprResultUse.SETITEM_TARGET
+                           else _bound_getitem(e, idx_obj_type, analyzer)),
             form=form,
             loc=loc,
         )
@@ -9985,12 +10002,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # reads the if-init cast pointer (`(*__b_ptr).bark()`), never
             # the deref chain. First dispatch of the arm -- every later
             # classifier fences deref_narrowed_to. Zero-arg plain methods
-            # only (the witnessed slice); other flavors reject.
+            # and property getters only; other flavors reject.
             dn_fi = e.resolved_function_info
             if not (isinstance(e.obj, TpyName)
                     and e.obj.name in lc.deref_view_spelled
                     and dn_fi is not None
-                    and _plain_method_fi_ok(dn_fi)
+                    and _plain_method_fi_ok(dn_fi, property_getter_ok=True)
                     and not e.args and not e.kwargs
                     and not dn_fi.params):
                 note_detail("method.deref_narrowed_shape")
@@ -9999,6 +10016,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             if dn_str is None:
                 dn_str = _resolved_bytes_value(rtype, analyzer)
             _witness("method.deref_view_narrowed")
+            dn_bc = _bound_call_of(dn_fi, e.method)
             return THIRMethodCall(
                 result_type=rtype if rtype is not None else VoidType(),
                 receiver=THIRName(
@@ -10006,7 +10024,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     name=e.obj.name,
                     cpp=lc.deref_view_spelled[e.obj.name],
                     form=Form.VALUE, loc=loc),
-                method_cpp=_method_member_cpp(dn_fi, e.method),
+                method_cpp=dn_bc.method_cpp,
+                native_function_name=dn_bc.native_function_name,
+                cpp_template=dn_bc.cpp_template,
                 args=(),
                 form=_viewfam_result_form(dn_str),
                 loc=loc)
@@ -10245,6 +10265,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if p_str is None:
                     p_str = _resolved_bytes_value(rtype, analyzer)
                 mc_arrow, mc_deref = _ptr_recv_access(e.ptr_non_null)
+                p_bc = _bound_call_of(pfi, e.method)
                 return THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
                     receiver=_lower_expr(
@@ -10252,7 +10273,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
                         field_prechecked=isinstance(e.obj, TpyFieldAccess),
                         subscript_prechecked=isinstance(e.obj, TpySubscript)),
-                    method_cpp=escape_cpp_name(e.method),
+                    method_cpp=p_bc.method_cpp,
+                    native_function_name=p_bc.native_function_name,
+                    cpp_template=p_bc.cpp_template,
                     args=tuple(
                         _lower_marker_method_arg(
                             e, a, pfi.params[i].type, i, lc, declared,
@@ -10288,12 +10311,15 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if d_str is None:
                     d_str = _resolved_bytes_value(rtype, analyzer)
                 _witness("method.user_deref_chain")
+                d_bc = _bound_call_of(dfi, e.method)
                 return _self_recv_positioned(THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
                     receiver=_lower_expr(
                         e.obj, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.RECEIVER)),
-                    method_cpp=escape_cpp_name(e.method),
+                    method_cpp=d_bc.method_cpp,
+                    native_function_name=d_bc.native_function_name,
+                    cpp_template=d_bc.cpp_template,
                     args=tuple(
                         _lower_marker_method_arg(
                             e, a, dfi.params[i].type, i, lc, declared,
@@ -10343,13 +10369,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 if s_str is None:
                     s_str = _resolved_bytes_value(rtype, analyzer)
                 _witness("method.user_deref_stub")
+                s_bc = _bound_call_of(sfi, e.method)
                 return _self_recv_positioned(THIRMethodCall(
                     result_type=rtype if rtype is not None else VoidType(),
                     receiver=_lower_expr(
                         e.obj, lc, declared,
                         use=_ExprUse(result=_ExprResultUse.RECEIVER)),
                     is_arrow=_name_recv_is_arrow(e.obj, lc),
-                    method_cpp=sfi.native_name,
+                    method_cpp=s_bc.method_cpp,
+                    native_function_name=s_bc.native_function_name,
+                    cpp_template=s_bc.cpp_template,
                     args=tuple(
                         _lower_call_arg(
                             a,
@@ -10716,15 +10745,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and _native_record_recv(recv_type, analyzer))
                     or record_template):
                 shape_ok = _ptr_template_method_supported(
-                    e, fi, recv_type, analyzer, declared, lc.names_with("pointer"),
+                    e, fi, recv_type, analyzer, declared,
                     stmt_position=stmt_position,
                     record_ret_ok=result_use in (_ExprResultUse.BORROW_BIND,
                                                   _ExprResultUse.RECEIVER),
                     record_template=record_template)
                 if shape_ok:
                     _witness("method.record_template" if record_template
-                             else ("method.ptr_template" if fi.cpp_template
-                                   else "method.ptr_native_member"))
+                             else "method.ptr_template")
             else:
                 shape_ok = _record_method_call_supported(
                     e, fi, declared, analyzer,
@@ -10744,9 +10772,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         if lit_member is not None:
             # The mangled name is assigned raw (no escape_cpp_name).
             _witness("method.literal_mangled")
-            member = lit_member
-        else:
-            member = _method_member_cpp(fi, e.method)
+        binding = _bound_call_of(fi, e.method, member_cpp=lit_member)
         # A str-slice result carries its C++ shape like a THIRCall's (S5): an
         # owned-str method result (`xs.pop()`, std::string by value) is STORAGE
         # and lands bare in owned sinks. A bytes-family result rides the same
@@ -11025,16 +11051,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         # local admission permits it only on such a receiver. Mutually exclusive
         # with the indirect (`->`) arm -- the checked deref yields a reference.
         deref_check = e.needs_optional_runtime_check
-        if not deref_check and isinstance(e.obj, TpyName):
-            # The unproven raw-`Ptr[T]` NAME receiver of a plain @native
-            # member takes the same checked spelling
-            # (`::tpy::deref_check(s).outer()` -- the is_pointer arm; the
-            # ptr-arm gate admitted exactly this face).
-            _rb = declared.get(e.obj.name)
-            recv_ptr = (_rb is not None and unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(_rb))).is_pointer())
-            if _ptr_native_member_core(e, fi, recv_ptr):
-                deref_check = True
         # A generic method's explicit template args (`b.transform<T>(42)`):
         # the method_targs suffix, spelled type_to_cpp over each
         # inferred arg. The static/module marker faces spell their own.
@@ -11121,12 +11137,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
         method_node = with_method_callee(with_method_stub(_self_recv_positioned(THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
-            method_cpp=member,
+            method_cpp=binding.method_cpp,
             args=tuple(
                 _method_arg(a, params[i].type if params else None, i)
                 for i, a in enumerate(e.args)),
-            native_function_name=fi.native_name if fi.native_function else None,
-            cpp_template=fi.cpp_template,
+            native_function_name=binding.native_function_name,
+            cpp_template=binding.cpp_template,
             method_targs_cpp=method_targs,
             is_arrow=not deref_check and enum_wrap is None and (
                 (isinstance(e.obj, TpyName)

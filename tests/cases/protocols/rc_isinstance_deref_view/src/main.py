@@ -20,6 +20,10 @@ class Dog(Pet):                  # inheritance conformer
     def bark(self) -> str:
         return "woof"
 
+    @property
+    def loud(self) -> str:
+        return "WOOF"
+
 
 class Cat:                       # structural conformer, no inheritance
     label: str
@@ -34,7 +38,8 @@ class Cat:                       # structural conformer, no inheritance
 def describe(rc: Rc[Pet]) -> str:
     if isinstance(rc, Dog):      # tpyc: ok
         shared = rc.clone()      # clone() stays an Rc method (not narrowed)
-        return "dog:" + rc.bark() + ":" + shared.name()
+        # A Dog property reads through the same cast as the method.
+        return "dog:" + rc.bark() + ":" + rc.loud + ":" + shared.name()  # tpyc: ok
     if isinstance(rc, Cat):      # structural conformer through the deref view
         return "cat:" + rc.name()
     return "other:" + rc.name()

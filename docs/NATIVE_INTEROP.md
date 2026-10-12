@@ -567,16 +567,17 @@ class is not obliged to declare members: one whose declarations disagree
 in any of these ways is accepted and simply declares none, so the analysis
 does not model it.
 
-**Current limit.** On a user `@native` type, an element read into a local or
-a return value (`p = r[0]`, `return r[0]`) and a subscript write
+**Current limit.** On a user `@native` type, an element read into a local
+(`p = r[0]`), a scalar element's `return r[0]` and a subscript write
 (`r[0] = v`) are rejected by C++ code generation before any analysis reads
 the facts (THIR reject sites `decl.slot_type`, `subscript.recv_type`,
-`setitem.family`). Today the declarations serve loops over the type, field
-reads through a subscript (`r[0].x`) and method calls. A subscript renders
-through the runtime's `tpy::__getitem__`, which calls a `__getitem__`
-member of the C++ type whatever name the stub declares
-(`BUGS.md#native-getitem-ignores-declared-name`), so the C++ class must
-define one.
+`setitem.family`; `BUGS.md#native-getitem-ptr-result-rejects`). Today the
+declarations serve loops over the type, field reads through a subscript
+(`r[0].x`), a record element's `return r[0]` and method calls. A subscript renders
+through the C++ its `__getitem__` stub binds, as the explicit
+`r.__getitem__(0)` call does: `@native("at")` gives `r.at(0)`, a
+`@cpp_template` expands, and `@native("ns::fn", function=True)` gives
+`ns::fn(r, 0)`.
 
 ### Declaring a transient binding: `transient=True`
 

@@ -1,2 +1,2 @@
-dog:woof:dog
+dog:woof:WOOF:dog
 cat:felix

@@ -146,6 +146,7 @@ from .nodes import (
     THIRStrLiteral,
     THIRStrSlice,
     THIRSubscript,
+    THIRBoundCall,
     THIRTry,
     THIRRecordCopy,
     THIRBorrowTupleLiteral,
@@ -849,17 +850,16 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         else:
             recv = f"std::move({recv})"
     args = [_emit_expr(a, state) for a in e.args]
-    if e.cpp_template is not None:
-        return expand_cpp_template(e.cpp_template, recv, *args)
-    if e.native_function_name is not None:
-        return f"{qualify_native_name(e.native_function_name)}({', '.join([recv, *args])})"
+    bound = e.binding
     mtargs = (f"<{', '.join(e.method_targs_cpp)}>"
               if e.method_targs_cpp else "")
+    if e.cpp_template is not None or e.native_function_name is not None:
+        return _emit_bound_call(bound, recv, args)
     if e.deref_check:
         # Unproven pointer-repr Optional receiver: null-check the (already
         # `T*`) receiver before the `.` member call.
-        return (f"::tpy::deref_check({recv}).{e.method_cpp}{mtargs}"
-                f"({', '.join(args)})")
+        return _emit_bound_call(bound, f"::tpy::deref_check({recv})", args,
+                                mtargs=mtargs)
     if e.deref_chain:
         # User Deref-wrapper method call: N `.__deref__()` calls between the
         # bare receiver and the member call (`r.__deref__().sum()`); a
@@ -868,13 +868,22 @@ def _emit_method_call(e: THIRMethodCall, state: _EmitState) -> str:
         first = "->" if e.is_arrow else "."
         chain = (f"{first}__deref__()"
                  + ".__deref__()" * (e.deref_chain - 1))
-        return f"{recv}{chain}.{e.method_cpp}({', '.join(args)})"
+        return _emit_bound_call(bound, f"{recv}{chain}", args)
     if e.callable_value_unwrap:
         # Optional[Callable] field invoke: the `.value()` unwrap between
         # the member and the call.
         return f"{recv}.{e.method_cpp}.value()({', '.join(args)})"
+    return _emit_bound_call(bound, recv, args, arrow=arrow, mtargs=mtargs)
+
+
+def _emit_bound_call(b: THIRBoundCall, recv: str, args: list[str], *,
+                     arrow: bool = False, mtargs: str = "") -> str:
+    if b.cpp_template is not None:
+        return expand_cpp_template(b.cpp_template, recv, *args)
+    if b.native_function_name is not None:
+        return f"{qualify_native_name(b.native_function_name)}({', '.join([recv, *args])})"
     return (f"{recv}{'->' if arrow else '.'}"
-            f"{e.method_cpp}{mtargs}({', '.join(args)})")
+            f"{b.method_cpp}{mtargs}({', '.join(args)})")
 
 
 def _emit_array_comprehension(e: 'THIRArrayComprehension',
@@ -1177,6 +1186,8 @@ def _emit_subscript(e: THIRSubscript, state: _EmitState) -> str:
     # pre-wrapped in its `.to_fixed_check<int32_t>()` THIRCoerce (lowering's
     # `_narrow_bigint_index`), so the emit stays index-type-neutral.
     idx = _emit_expr(e.index, state)
+    if e.bound_getitem is not None:
+        return _emit_bound_call(e.bound_getitem, recv, [idx])
     if e.record_getitem:
         # User-record operator[]: bare, no size_t cast (the operator takes the
         # user's declared key type).

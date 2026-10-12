@@ -362,7 +362,7 @@ from .predicates import (
     _facts_emit_alias,
     _field_decl_type,
     _narrowed_opt_container_field,
-    _method_member_cpp,
+    _bound_call_of,
     _field_markers_clean,
     _field_receiver_ok,
     _chained_field_receiver_ok,
@@ -12423,15 +12423,14 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                 use=_ExprUse(
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True)))
+                _inp_bc = _bound_call_of(_inp_fi, _inp_fi.name)
                 return THIRExprStmt(
                     expr=with_method_callee(with_method_stub(THIRMethodCall(
                         result_type=VoidType(),
                         receiver=recv,
-                        method_cpp=_method_member_cpp(_inp_fi, _inp_fi.name),
-                        native_function_name=(
-                            _inp_fi.native_name
-                            if _inp_fi.native_function else None),
-                        cpp_template=_inp_fi.cpp_template,
+                        method_cpp=_inp_bc.method_cpp,
+                        native_function_name=_inp_bc.native_function_name,
+                        cpp_template=_inp_bc.cpp_template,
                         args=(val,),
                         loc=loc), _inp_fi), _inp_fi, analyzer,
                         lambda: receiver_is_const(stmt.target, lc)),

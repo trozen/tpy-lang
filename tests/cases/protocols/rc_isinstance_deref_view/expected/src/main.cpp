@@ -7,14 +7,15 @@ namespace tpyapp::main {
 // def describe(rc: Rc[Pet]) -> str:
 //     if isinstance(rc, Dog):      # tpyc: ok
 //         shared = rc.clone()      # clone() stays an Rc method (not narrowed)
-//         return "dog:" + rc.bark() + ":" + shared.name()
+//         # A Dog property reads through the same cast as the method.
+//         return "dog:" + rc.bark() + ":" + rc.loud + ":" + shared.name()  # tpyc: ok
 //     if isinstance(rc, Cat):      # structural conformer through the deref view
 //         return "cat:" + rc.name()
 //     return "other:" + rc.name()
 std::string describe(::tpystd::tplib::rc::Rc<Pet>& rc) {
     if (Dog* __rc_ptr = dynamic_cast<Dog*>(&(rc.__deref__())); (__rc_ptr != nullptr)) {
         ::tpystd::tplib::rc::Rc<Pet> shared = rc.clone();
-        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog:", (*__rc_ptr).bark())), ":")), shared.__deref__().name()));
+        return (::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat((::tpy::str_concat("dog:", (*__rc_ptr).bark())), ":")), (*__rc_ptr).loud())), ":")), shared.__deref__().name()));
     }
     if (Cat* __rc_ptr = ::tpy::dyn_adapter_cast<Pet, Cat>(&(rc.__deref__())); (__rc_ptr != nullptr)) {
         return (::tpy::str_concat("cat:", (*__rc_ptr).name()));

@@ -638,15 +638,17 @@ def become_method_call(node: TpyFieldAccess, *, method: str,
     `__slots__`, so the swap is the ordinary Python one, and no parent slot
     is written -- nothing walks the body.
 
-    The receiver-shape markers do NOT transfer. They were stamped for a
-    FIELD lookup on the receiver, and the accessor dispatch reaches the
-    getter through its own resolution -- a `Ptr` receiver's deref, a
-    narrowed deref view, an unproven Optional. Carrying the field's answers
-    onto the call would make the dispatch spell hops the getter render does
-    not take.
+    The receiver-shape markers transfer: the getter is reached through the
+    same hops as the field lookup was (a `Ptr` receiver's deref, a narrowed
+    deref view, an unproven Optional), so the call carries exactly the
+    markers `obj.getter()` would, and the method-call arms spell them.
     """
     call = TpyMethodCall(obj=node.obj, method=method, args=args, loc=node.loc)
     call.resolved_function_info = fi
+    call.deref_depth = node.deref_depth
+    call.deref_narrowed_to = node.deref_narrowed_to
+    call.ptr_non_null = node.ptr_non_null
+    call.needs_optional_runtime_check = node.needs_optional_runtime_check
     node.__dict__.clear()
     node.__dict__.update(call.__dict__)
     node.__class__ = TpyMethodCall
@@ -852,6 +854,10 @@ class TpySubscript(TpyExpr):
     # container ELEMENT read (a storage lvalue); the borrow/storage and
     # value-category classifiers key on it.
     getitem_function_info: 'FunctionInfo | None' = None
+    # Set by sema on a READ of a user @native record: the __getitem__ stub
+    # the subscript's type comes from, whose @native / @cpp_template binding
+    # is how the read renders.
+    getitem_callee: 'FunctionInfo | None' = None
     # Set by sema BEFORE the target of a plain assignment is analysed as a
     # read: `g[k] = v` calls `__setitem__` only, so the read-side analysis
     # must not credit a `__getitem__` call on the receiver.

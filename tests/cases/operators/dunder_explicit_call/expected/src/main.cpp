@@ -4,6 +4,24 @@
 namespace tpyapp::main {
 
 
+// # A record argument that is a pointer-bound local (rebound in a branch) reads
+// # through its deref inside the operator; it aliases the list element, so the
+// # write through the list after the binding is what the operator sees.
+// def record_arg(a: V, vs: list[V], c: bool) -> bool:
+//     q = vs[0]
+//     if c:
+//         q = vs[1]
+//     vs[0].n += 1
+//     return a.__eq__(q)  # tpyc: ok
+bool record_arg(const V& a, std::vector<V>& vs, bool c) {
+    V* q = &(::tpy::__getitem__(vs, 0));
+    if (c) {
+        q = &(::tpy::__getitem__(vs, 1));
+    }
+    ::tpy::__getitem__(vs, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(vs, 0).n, 1);
+    return (a) == ((*q));
+}
+
 // def probe(t: Tag, s: str) -> bool:
 //     return t.__ne__(s)  # tpyc: ok -- ... and on a record PARAM receiver
 bool probe(const Tag& t, std::string_view s) {
@@ -17,12 +35,18 @@ bool probe(const Tag& t, std::string_view s) {
 //     # `__ne__` must be the run-time negation of `__eq__` on the same input.
 //     print(t.__eq__(three), t.__eq__(two))
 //     print(t.__ne__(three), probe(t, two))
+//     vs = [V(1), V(2)]
+//     print(record_arg(V(2), vs, True), record_arg(V(3), vs, False))
 void main() {
     Tag t = Tag(3);
     std::string_view three = "abc";
     std::string_view two = "xy";
     std::cout << ::tpy::print_bool((t) == (three)) << " " << ::tpy::print_bool((t) == (two)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((t) != (three)) << " " << ::tpy::print_bool(::tpyapp::main::probe(t, two)) << "\n" << ::tpy::check_signals;
+    std::vector<V> vs = {V(1), V(2)};
+    V __tmp_1 = V(2);
+    V __tmp_2 = V(3);
+    std::cout << ::tpy::print_bool(::tpyapp::main::record_arg(__tmp_1, vs, true)) << " " << ::tpy::print_bool(::tpyapp::main::record_arg(__tmp_2, vs, false)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

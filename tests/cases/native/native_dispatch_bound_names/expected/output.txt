@@ -1,0 +1,12 @@
+free: 10 20 30
+free elements: 7
+method: 110 120 130
+gen: [10, 20, 30] [10, 20, 30] [10, 20, 30]
+async: 10 20 30
+comp: [10, 20, 30] [10, 20, 30] [10, 20, 30]
+ret: 11 21 31
+ptr: 40 42 81
+ptr after: 41 43
+template arg: 20
+ptr proven: 44
+merged: 20

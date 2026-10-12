@@ -961,6 +961,18 @@ class THIRStubIdentity:
 
 
 @dataclass(frozen=True)
+class THIRBoundCall:
+    """How a call bound to a resolved stub renders over its receiver and
+    args, read off the FunctionInfo: `cpp_template` expanded, else the
+    `native_function_name` free function with the receiver prepended, else
+    the member call `receiver.method_cpp(args)`. The subscript twin of
+    THIRMethodCall's three dispatch fields."""
+    method_cpp: str
+    native_function_name: str | None = None
+    cpp_template: str | None = None
+
+
+@dataclass(frozen=True)
 class THIRStubCallee:
     """The declared facts of a `@native` / `@cpp_template` callee -- a free
     function, a builtin type's `__init__`, or a method of a native builtin
@@ -1416,6 +1428,11 @@ class THIRMethodCall(THIRExpr):
     def __post_init__(self) -> None:
         assert not (self.deref_check and self.is_arrow)
         assert not (self.deref_chain and self.deref_check)
+        # The template and free-function renders interpolate the receiver
+        # as a value, so neither spells a deref hop or check.
+        assert not ((self.cpp_template is not None
+                     or self.native_function_name is not None)
+                    and (self.deref_check or self.deref_chain))
         # move_receiver composes with is_arrow (a pointer-local receiver
         # moves its deref: `std::move(*w).take()`), never with the checked
         # or user-Deref chains.
@@ -1431,6 +1448,12 @@ class THIRMethodCall(THIRExpr):
         must arrive already dereferenced there."""
         return (self.is_arrow and self.cpp_template is None
                 and self.native_function_name is None)
+
+    @property
+    def binding(self) -> THIRBoundCall:
+        return THIRBoundCall(method_cpp=self.method_cpp,
+                             native_function_name=self.native_function_name,
+                             cpp_template=self.cpp_template)
 
     @property
     def renders_plain_member_call(self) -> bool:
@@ -2005,6 +2028,10 @@ class THIRSubscript(THIRExpr):
     # index (no size_t cast -- the operator takes the user's declared key type,
     # like the concrete-user-record / fi-fallback arms).
     record_getitem: bool = False
+    # A read off a non-builtin `@native` record: its resolved `__getitem__`
+    # stub's binding (`l[k]` -> `l.at(k)`), which the checked builtin dunder
+    # and the bare operator[] are not.
+    bound_getitem: THIRBoundCall | None = None
     # An UNPROVEN value-repr Optional[scalar] ELEMENT read consumed as its
     # inner scalar: wraps `::tpy::deref_optional_check(<read>)` (the
     # runtime-checked unwrap), the subscript twin of THIRName's flag.
@@ -2033,7 +2060,8 @@ class THIRSubscript(THIRExpr):
         """Whether the read is a certified primitive element read of an owned
         leaf (`typesys.certified_primitive_subscript`): no tuple projection,
         record dunder, Optional unwrap or generic element reference."""
-        return (self.tuple_index is None and not self.record_getitem and not self.elem_ref
+        return (self.tuple_index is None and not self.record_getitem
+                and self.bound_getitem is None and not self.elem_ref
                 and not self.opt_deref_check and not self.deref
                 and certified_primitive_subscript(self.receiver.result_type, self.index.result_type,
                                                   self.result_type))

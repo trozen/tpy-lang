@@ -1820,8 +1820,10 @@ class _Coverage:
 
     def element_access(self, expr: th.THIRSubscript) -> MIRTupleElement:
         """Check a container subscript as a whole: its place, its index, and
-        that the operands cannot reorder a write. Returns the member it reaches."""
-        _plain(expr, {"receiver", "index", "bounds_safe"})
+        that the operands cannot reorder a write. Returns the member it reaches.
+        The stub binding a native receiver's read renders through is
+        spelling only: the type's element contract is what is modeled."""
+        _plain(expr, {"receiver", "index", "bounds_safe", "bound_getitem"})
         _require(expr, expr.tuple_index is None, "tuple projection of a container")
         place = self.container_place(expr.receiver)
         self.element_index(expr, place)

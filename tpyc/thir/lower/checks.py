@@ -177,6 +177,7 @@ from ..nodes import (
     THIRTupleLayout,
 )
 from .predicates import (
+    _deref_member_call_ok,
     _expr_is_const_source,
     _call_storage_optional_return,
     _value_record_slot,
@@ -10117,30 +10118,17 @@ def _ptr_deref_method_call(e: TpyMethodCall, analyzer) -> bool:
     receiver never spells the `.__deref__()` chain. The ONE discriminator
     consumed by lowering; the caller adds receiver-shape and arg/result
     admission on top (the qualified-marker rows: the same
-    first-pass arg loop, Own cascade included). Rejected here: any other marker,
+    first-pass arg loop, Own cascade included). A `@native` member rename and
+    a property getter (`p.Top` -> `deref_check(p).top()`) spell like any
+    member. Rejected here: any other marker,
     a deeper chain (the pointer arm emits ONE `->` regardless of depth, so a
-    `Ptr[Ptr[T]]` render is not reproduced), template/native/renamed fi
-    (the builtins arm / `_is_native_stub` arg loop), generics, and non-Ptr
+    `Ptr[Ptr[T]]` render is not reproduced), template and `function=True`
+    fi (the builtins arm), generics, and non-Ptr
     wrapper receivers (Box/Rc -- the `.__deref__()` spelling)."""
-    if e.deref_depth != 1 or e.deref_narrowed_to is not None:
+    if e.deref_depth != 1 or not _deref_member_call_ok(e):
         return False
-    if e.kwargs or e.double_star_unpack is not None:
-        return False
-    if (e.is_static_call or e.super_parent_type is not None
-            or e.unbound_self_parent_type is not None
-            or e.user_module_call is not None
-            or e.builtin_module_call is not None
-            or e.typed_dict_get_field is not None
-            or e.is_nested_constructor or e.is_nested_enum_constructor
-            or e.is_callable_field or e.macro_expansion is not None
-            or e.fstr_expansion is not None or e.type_args
-            or e.inferred_type_args or e.needs_optional_runtime_check):
-        return False
-    fi = e.resolved_function_info
-    if fi is None or not _plain_method_fi_ok(fi):
-        return False
-    if (fi.cpp_template is not None or fi.native_function or fi.native_name
-            or fi.type_params or fi.linkage != FunctionLinkage.DEFAULT):
+    if e.resolved_function_info.linkage not in (FunctionLinkage.DEFAULT,
+                                                FunctionLinkage.NATIVE):
         return False
     rt = analyzer.get_expr_type(e.obj)
     return rt is not None and rt.is_pointer()
@@ -10191,22 +10179,9 @@ def _native_record_recv(t: 'TpyType | None', analyzer) -> bool:
     return ri is not None and ri.is_native
 
 
-def _ptr_native_member_core(e: TpyMethodCall, fi, recv_ptr: bool) -> bool:
-    """The shared discriminator of the unproven `Ptr[record]` @native-member
-    face -- a cpp_template-less native-renamed member (method / property
-    getter) on a NAME receiver of pointer binding, not proven non-null
-    (sema's `ptr_non_null`, the test the is_pointer arm
-    reads). Consumed by the admission gate below (which adds its own
-    type_params / args rejects) and by the method tail's deref_check render
-    flag, so the two sides cannot drift on the core."""
-    return (recv_ptr and fi is not None and fi.cpp_template is None
-            and bool(fi.native_name) and not fi.native_function
-            and isinstance(e.obj, TpyName) and not e.ptr_non_null)
-
-
 def _ptr_template_method_supported(
         e: TpyMethodCall, fi, recv_type: 'TpyType | None', analyzer,
-        locals_: dict[str, TpyType], pointers: 'AbstractSet[str]', *,
+        locals_: dict[str, TpyType], *,
         stmt_position: bool, record_ret_ok: bool,
         record_template: bool = False) -> bool:
     """The EXPLICIT `@cpp_template` method call on a `Ptr[T]` value receiver
@@ -10246,20 +10221,13 @@ def _ptr_template_method_supported(
         if fi.type_params or e.inferred_type_args or e.kwargs:
             return note_detail("method.ptr_template.native_generic")
     else:
-        # A plain @native MEMBER on a `Ptr[record]` NAME receiver -- the
-        # deref-check face only (`::tpy::deref_check(s).outer()`,
-        # `s.outer.inner.flag`'s first hop); the proven `s->outer()`
-        # spelling is unwitnessed and rejects. The shared core lives in
-        # `_ptr_native_member_core`; the generic/args rejects are this
-        # gate's own.
-        if not (_ptr_native_member_core(e, fi, recv_type.is_pointer())
-                and not fi.type_params
-                and not e.args and not e.inferred_type_args):
-            return note_detail("method.ptr_template.native_member")
-    if e.args and not all(_ptr_template_arg_ok(a2, analyzer, locals_,
-                                               pointers,
+        # A plain member through a `Ptr` (a `@native` rename, a property
+        # getter) is the Ptr deref arm's (`_ptr_deref_method_call`).
+        return note_detail("method.ptr_template.member")
+    if e.args and not all(_ptr_template_arg_ok(a2, fi.params[i].type,
+                                               analyzer, locals_,
                                                record_template=record_template)
-                          for a2 in e.args):
+                          for i, a2 in enumerate(e.args)):
         return note_detail("method.ptr_template.arg_shape")
     ret = analyzer.get_expr_type(e)
     return (_resolved_scalar(ret, analyzer)
@@ -10285,9 +10253,8 @@ def _ptr_template_method_supported(
             or note_detail("method.ptr_template.ret_type"))
 
 
-def _ptr_template_arg_ok(a: TpyExpr, analyzer,
-                         locals_: dict[str, TpyType],
-                         pointers: 'AbstractSet[str]', *,
+def _ptr_template_arg_ok(a: TpyExpr, ptype: 'TpyType | None', analyzer,
+                         locals_: dict[str, TpyType], *,
                          record_template: bool = False) -> bool:
     """One positional arg of the ptr / @native-record template family.
 
@@ -10297,7 +10264,9 @@ def _ptr_template_arg_ok(a: TpyExpr, analyzer,
     `std::span(p, static_cast<size_t>(3))`, the cast living in the template),
     an ENUM value (the single `enum_cpp_name` spelling), or an OPEN
     type-param value (a bare `T` slot takes no borrow/storage lift, so its
-    render is the name). Everything else rejects."""
+    render is the name), or a record NAME into a same-record slot (the
+    shared pass-through row: the bare name, `(*p)` for a pointer-local --
+    the arg lowering builds the deref). Everything else rejects."""
     at = analyzer.get_expr_type(a)
     return bool(_resolved_scalar(at, analyzer)
                 or (_eligible_enum(at, analyzer) is not None
@@ -10315,15 +10284,9 @@ def _ptr_template_arg_ok(a: TpyExpr, analyzer,
                 or (record_template and isinstance(a, TpyName)
                     and _resolved_str_value(at, analyzer) is not None
                     and _witness("method.ptr_template_str_name_arg"))
-                # ... and a RECORD NAME at that same user-record dunder
-                # template (`a.__add__(b)` -> `(a) + (b)`): the binding is a
-                # `const T&` param or an owned local, so the interpolated
-                # render is the bare name. In-scope, non-pointer names only
-                # -- a pointer-bound record reads `(*p)`, which this bare
-                # interpolation does not spell.
-                or (record_template and isinstance(a, TpyName)
-                    and a.name in locals_ and a.name not in pointers
-                    and record_like(at, analyzer)
+                # A RECORD NAME (`a.__add__(b)` -> `(a) + (b)`, a @native
+                # value type `k` into `{self}.at(static_cast<int>({0}))`).
+                or (_record_pass_through_arg(a, ptype, locals_, analyzer)
                     and _witness("method.ptr_template_record_arg")))
 
 

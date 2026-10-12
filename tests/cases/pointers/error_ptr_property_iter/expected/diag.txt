@@ -1,1 +1,1 @@
-main.py:19: error: in function 'total': this construct is not yet supported by C++ code generation (expr.method_call:method.ptr_template.native_member)
+main.py:21: error: in function 'total': this construct is not yet supported by C++ code generation (expr.method_call:method.qualcall.ret.container)

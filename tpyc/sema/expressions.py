@@ -5788,6 +5788,12 @@ class ExpressionAnalyzer:
         # Use get_element_type() trait for containers and strings
         elem_type = actual_type.get_element_type()
         if elem_type is not None:
+            # An element-typed user record (`@native(..., elements=True)`)
+            # still reads through its own stub, which may bind a C++ name of
+            # its own; its element read credits nothing (the element rules
+            # answer it, as for a builtin container).
+            if isinstance(actual_type, NominalType):
+                self._stamp_getitem_callee(expr, actual_type, is_readonly_obj)
             # Subscript on a repeat-sourced pending list needs indexing support
             # (repeat_range doesn't have operator[], but Array does).
             if isinstance(actual_type, PendingListType):
@@ -5821,11 +5827,25 @@ class ExpressionAnalyzer:
             if ret is None:
                 raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
             self._tag_record_getitem(expr, actual_type, ret, index_type)
+            self._stamp_getitem_callee(expr, actual_type, is_readonly_obj)
             if is_readonly_obj:
                 ret = _readonly_result(ret)
             return make_ref(ret)
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
+
+    def _stamp_getitem_callee(self, expr: TpySubscript, record_type: NominalType,
+                              readonly_receiver: bool) -> None:
+        """The stub a read off a user `@native` record renders through: the
+        one the subscript's type comes from, so render and type cannot name
+        two overloads (BUGS.md#record-getitem-overload-first-wins)."""
+        if expr.is_write_target or not record_type.is_user_record:
+            return
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None or not record.is_native:
+            return
+        expr.getitem_callee = self.protocols.lookup_record_method(
+            record, "__getitem__", readonly_receiver=readonly_receiver)
 
     def _tag_record_getitem(self, expr: TpySubscript, record_type: NominalType,
                             ret_type: TpyType, index_type: TpyType) -> None:
@@ -5886,15 +5906,7 @@ class ExpressionAnalyzer:
         """
         if expr.is_write_target:
             return
-        record = self.ctx.registry.get_record_for_type(record_type)
-        if record is None:
-            return
-        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
-            record, "__getitem__")
-        keyed = [fi for fi in overloads
-                 if not _is_slice_getitem(fi) and len(fi.params) == 1]
-        callee = self._resolve_getitem_overload(
-            keyed, record_type, inherited_subst, unwrap_readonly(index_type))
+        keyed, callee = self._resolve_record_getitem(record_type, index_type)
         if callee is None:
             # Any overload may be the one that runs.
             for fi in keyed:
@@ -5903,6 +5915,21 @@ class ExpressionAnalyzer:
         if callee is not None:
             credit_implicit_receiver_call(
                 self.ctx, expr.obj, record_type, callee, "__getitem__", expr)
+
+    def _resolve_record_getitem(
+            self, record_type: NominalType, index_type: TpyType
+    ) -> tuple[list['FunctionInfo'], 'FunctionInfo | None']:
+        """The record's single-key `__getitem__` overloads and the one
+        `index_type` selects (None when that is ambiguous)."""
+        record = self.ctx.registry.get_record_for_type(record_type)
+        if record is None:
+            return [], None
+        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
+            record, "__getitem__")
+        keyed = [fi for fi in overloads
+                 if not _is_slice_getitem(fi) and len(fi.params) == 1]
+        return keyed, self._resolve_getitem_overload(
+            keyed, record_type, inherited_subst, unwrap_readonly(index_type))
 
     def _resolve_getitem_overload(
             self, keyed: list['FunctionInfo'], record_type: NominalType,

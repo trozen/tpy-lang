@@ -8,9 +8,12 @@
 namespace tpyapp::main {
 
 struct Tag;
+struct V;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def record_arg(a: V, vs: list[V], c: bool) -> bool:
+bool record_arg(const V& a, std::vector<V>& vs, bool c);
 // def probe(t: Tag, s: str) -> bool:
 bool probe(const Tag& t, std::string_view s);
 // def main() -> None:
@@ -46,6 +49,29 @@ inline std::ostream& operator<<(std::ostream& os, const Tag& obj) {
     return os;
 }
 
+// class V:
+struct V {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    V() = default;
+    explicit V(int32_t n);
+
+    // def __eq__(self, o: V) -> bool:
+    bool __eq__(const V& o) const;
+
+    friend bool operator==(const V& lhs, const V& o) {
+        return lhs.__eq__(o);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.V";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const V& obj) {
+    ::tpy::print_object_default(os, "V", obj);
+    return os;
+}
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -61,6 +87,16 @@ inline bool Tag::__eq__(std::string_view other) const {
 //     return not self.__eq__(other)  # tpyc: ok -- dunder call on `self`
 inline bool Tag::__ne__(std::string_view other) const {
     return (!(((*this)) == (other)));
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline V::V(int32_t n) : n(n) {}
+
+// def __eq__(self, o: V) -> bool:
+//     return self.n == o.n
+inline bool V::__eq__(const V& o) const {
+    return (this->n == o.n);
 }
 void __tpy_init();
 } // namespace tpyapp::main

@@ -198,6 +198,7 @@ from ..source import NameFacts
 from ..faces import witness as _witness
 from ..nodes import (
     COMPARISON_OPS,
+    THIRBoundCall,
     Form,
     TruthinessMode,
     THIRArgTemp,
@@ -4118,6 +4119,31 @@ def _user_deref_stub_method_ok(e: TpyExpr, declared: dict[str, TpyType],
     ri = analyzer.registry.get_record_for_type(u)
     return ri is not None and bool(ri.get_method_overloads("__deref__"))
 
+def _deref_member_call_ok(e: TpyMethodCall) -> bool:
+    """The marker and callee half shared by the auto-deref member-call arms
+    (through a `Ptr`, through a user Deref wrapper): a plain positional
+    member call, or a property getter, which reaches the getter through the
+    same hops; the receiver half is each arm's own."""
+    if e.deref_narrowed_to is not None:
+        return False
+    if e.kwargs or e.double_star_unpack is not None:
+        return False
+    if (e.is_static_call or e.super_parent_type is not None
+            or e.unbound_self_parent_type is not None
+            or e.user_module_call is not None
+            or e.builtin_module_call is not None
+            or e.typed_dict_get_field is not None
+            or e.is_nested_constructor or e.is_nested_enum_constructor
+            or e.is_callable_field or e.macro_expansion is not None
+            or e.fstr_expansion is not None or e.type_args
+            or e.inferred_type_args or e.needs_optional_runtime_check):
+        return False
+    fi = e.resolved_function_info
+    if fi is None or not _plain_method_fi_ok(fi, property_getter_ok=True):
+        return False
+    return not (fi.cpp_template is not None or fi.native_function
+                or fi.type_params)
+
 def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
                                narrowed: 'AbstractSet[str]', analyzer,
                                pointers: 'AbstractSet[str]') -> bool:
@@ -4134,25 +4160,11 @@ def _user_deref_method_call_ok(e: TpyExpr, declared: dict[str, TpyType],
     optional-check) rejects."""
     if not isinstance(e, TpyMethodCall):
         return False
-    if not e.deref_depth or e.deref_narrowed_to is not None:
-        return False
-    if e.kwargs or e.double_star_unpack is not None:
-        return False
-    if (e.is_static_call or e.super_parent_type is not None
-            or e.unbound_self_parent_type is not None
-            or e.user_module_call is not None
-            or e.builtin_module_call is not None
-            or e.typed_dict_get_field is not None
-            or e.is_nested_constructor or e.is_nested_enum_constructor
-            or e.is_callable_field or e.macro_expansion is not None
-            or e.fstr_expansion is not None or e.type_args
-            or e.inferred_type_args or e.needs_optional_runtime_check):
+    if not e.deref_depth or not _deref_member_call_ok(e):
         return False
     fi = e.resolved_function_info
-    if fi is None or not _plain_method_fi_ok(fi):
-        return False
-    if (fi.cpp_template is not None or fi.native_function or fi.native_name
-            or fi.type_params or fi.linkage != FunctionLinkage.DEFAULT):
+    # A @native stub through the wrapper is `_user_deref_stub_method_ok`'s.
+    if fi.native_name or fi.linkage != FunctionLinkage.DEFAULT:
         return False
     recv = e.obj
     u = _deref_wrapper_receiver_record(recv, declared, narrowed, pointers,
@@ -7514,6 +7526,17 @@ def _method_member_cpp(fi, name: str) -> str:
     native_function_name instead, so it never lands here)."""
     return (fi.native_name if fi.native_name and not fi.native_function
             else escape_cpp_name(name))
+
+
+def _bound_call_of(fi, name: str,
+                   member_cpp: str | None = None) -> THIRBoundCall:
+    """How a call to the resolved stub `fi` renders. `member_cpp` overrides
+    the member-name rule (a literal-mangled overload spelling)."""
+    return THIRBoundCall(
+        method_cpp=(member_cpp if member_cpp is not None
+                    else _method_member_cpp(fi, name)),
+        native_function_name=fi.native_name if fi.native_function else None,
+        cpp_template=fi.cpp_template)
 
 def _subscript_container_recv_type(recv: TpyExpr, locals_: dict[str, TpyType],
                                    analyzer,
