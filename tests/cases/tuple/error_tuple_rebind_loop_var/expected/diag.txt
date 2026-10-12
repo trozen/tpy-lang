@@ -1,0 +1,1 @@
+main.py:21: error: in function 'loop_var': 'a' still refers to the object an element of 't' was bound to, so the object the rebind of 't' creates needs storage of its own, which is not yet supported here; bind the new value to a name of its own

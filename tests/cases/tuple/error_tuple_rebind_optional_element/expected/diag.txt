@@ -1,0 +1,1 @@
+main.py:17: error: in function 'main': rebinding 'p' while it owns element 0, an Optional, is not yet supported here; bind the new value to a name of its own

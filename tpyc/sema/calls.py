@@ -5224,6 +5224,7 @@ class CallAnalyzer:
         saved_inferred_param_types = list(lambda_expr.inferred_param_types)
         saved_inferred_return_type = lambda_expr.inferred_return_type
         saved_captured_names = list(lambda_expr.captured_names)
+        saved_body_captures = lambda_expr.body_captures
         saved_captures_by_value = lambda_expr.captures_by_value
         try:
             with self.ctx.trial_scope():
@@ -5233,6 +5234,7 @@ class CallAnalyzer:
             lambda_expr.inferred_param_types = saved_inferred_param_types
             lambda_expr.inferred_return_type = saved_inferred_return_type
             lambda_expr.captured_names = saved_captured_names
+            lambda_expr.body_captures = saved_body_captures
             lambda_expr.captures_by_value = saved_captures_by_value
 
     def _viable_candidates(self, expr: TpyCall,

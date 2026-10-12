@@ -25,7 +25,7 @@ int32_t reassign(std::optional<int32_t> p) {
 std::string reassign_view(std::optional<std::string_view> p) {
     std::string_view t = "d";
     if ((p.has_value())) {
-        t = (*p);
+        t = std::move((*p));
     }
     return std::string(t);
 }

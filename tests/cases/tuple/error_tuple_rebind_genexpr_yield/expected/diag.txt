@@ -1,0 +1,2 @@
+main.py:20: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:20: error: in function 'f': this construct is not yet supported by C++ code generation (res.btuple_yield_source)

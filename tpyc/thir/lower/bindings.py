@@ -50,6 +50,8 @@ from ...parse.nodes import (ResultForm, TpyArrayLiteral, TpyAsPattern,
                             iter_capture_bindings,
                             walk_body_stmts, walk_expr_tree, walrus_bindings)
 from ...prescan import scope_bound_names
+from ...sema.alias_rebind import (final_pointer_tuple_names,
+                                  pointer_tuple_owned, tuple_name_bindings)
 from ...sema.context import receiver_root
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import (is_array, is_bytes_view_type,
@@ -62,12 +64,12 @@ from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         contains_pending_leaf, is_dyn_protocol,
                         is_own_pointer_repr_optional,
                         pointer_repr_optional, resolve_int_literals,
-                        unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
-                        unwrap_send_sync)
+                        unwrap_optional_own, unwrap_own, unwrap_readonly,
+                        unwrap_ref_type, unwrap_send_sync, ValueForm)
 from ...value_category import (call_hands_back_value, call_returns_cpp_ref,
                                is_rvalue_source)
 from ..nodes import Form
-from ..reject import ThirUnsupported, stmt_reject_reason
+from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..source import UNBOUND, BindingRepr, Held, SlotKey, slot_key
 from ..source import BindingKind as K
 from ..source import BindingRefinement as R
@@ -295,6 +297,9 @@ class PlanInputs:
     overload_narrowing: 'Mapping[str, TpyType] | None' = None
     overload_literal_facts: Mapping[str, TpyType] = field(
         default_factory=dict)
+    # `ptr_tuple_form`'s answer per function and name: sema's facts alone
+    # decide it, so every planning round and every row reads the same one.
+    ptr_tuple_memo: IdentityMap = field(default_factory=IdentityMap)
 
 
 @dataclass(frozen=True)
@@ -382,6 +387,9 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
         return Held.BORROWED if deref else Held.STORAGE
     if rec is not None and rec.storage_opt:
         return Held.STORAGE
+    if rec is not None and rec.ptr_tuple is not None:
+        # Every element a pointer, whatever `Own` the declared type carries.
+        return Held.BORROWED
     if kind is ValueOptKind.SCALAR:
         return Held.VALUE
     if kind is ValueOptKind.VIEW:
@@ -439,6 +447,118 @@ def _held_of(form, Form) -> Held:
     if form is Form.STORAGE:
         return Held.STORAGE
     return Held.VALUE
+
+
+# --- the rebound pointer tuple ---------------------------------------------
+
+def bare_ptr_element(et: TpyType) -> bool:
+    """An element whose borrow form is a bare non-null `T*`: the scalar
+    reference local's shape, which an owned element of the pointer tuple
+    takes. A pointer-repr Optional, a union and a wrapper are not it."""
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(et))))
+    return (bare.value_form() is ValueForm.BORROW_REF
+            and not bare.is_value_type()
+            and TupleType._element_is_pointer_repr(bare))
+
+
+def ptr_tuple_element_message(name: str, index: int, et: TpyType) -> str:
+    """The sentence for a rebound tuple whose owned element is no plain
+    reference: such an element has no reference local of its own yet."""
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(et))))
+    kind = ("an Optional" if isinstance(bare, OptionalType)
+            else "a union" if isinstance(bare, UnionType)
+            else "a generic type parameter" if isinstance(bare, TypeParamRef)
+            else "a nested tuple" if isinstance(bare, TupleType)
+            else f"a {bare}")
+    return (f"rebinding '{name}' while it owns element {index}, {kind}, is "
+            f"not yet supported here; bind the new value to a name of its "
+            f"own")
+
+
+def pointer_tuple_of(t: TpyType) -> 'TupleType | None':
+    """The pointer tuple a tuple type is held as when its elements' ownership
+    is per binding: each reference element a pointer whatever `Own` the
+    declared type carries; None for a type that is no such tuple."""
+    bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if not isinstance(bt, TupleType):
+        return None
+    bt = TupleType(tuple(et.wrapped if isinstance(et, OwnType) else et
+                         for et in bt.element_types))
+    if contains_pending_leaf(bt) or any(
+            isinstance(x, (PendingViewType, IntLiteralType, FloatLiteralType))
+            for x in bt.inner_types()):
+        return None
+    return bt
+
+
+def ptr_tuple_form(name: str, inp: 'PlanInputs',
+                   fn: TpyFunction) -> 'TupleType | None':
+    """The pointer tuple a local of `fn` is at every binding when sema names
+    it one (`pointer_tuple_names`), else None; refuses what C++ cannot
+    spell (`_decide_ptr_tuple_form`)."""
+    memo = inp.ptr_tuple_memo.get(fn)
+    if memo is None:
+        memo = inp.ptr_tuple_memo[fn] = {}
+    if name not in memo:
+        memo[name] = _decide_ptr_tuple_form(name, inp, fn)
+    return memo[name]
+
+
+def ptr_tuple_route_message(name: str, what: str) -> str:
+    """The sentence for a binding route of a pointer tuple that has no
+    per-element placement yet."""
+    return (f"binding '{name}' to {what} is not yet supported here: "
+            f"'{name}' keeps objects of its own element by element, and "
+            f"this binding does not place them one by one")
+
+
+def _decide_ptr_tuple_form(name: str, inp: 'PlanInputs',
+                           fn: TpyFunction) -> 'TupleType | None':
+    """Sema's decision read as is; what is left here is whether C++ can
+    spell it, refused at the first owning binding when it cannot: a
+    declared type with no pointer-tuple render, an owned element whose
+    borrow form is no bare pointer, a binding route that places no
+    element (a direct `@error_return` call's unwrap)."""
+    from . import statements as _st
+    an = inp.analyzer
+    if name not in final_pointer_tuple_names(
+            an.ctx, None if inp.top_level else fn):
+        return None
+    bindings = tuple_name_bindings(an.ctx, fn, name) or []
+    if not bindings:
+        # An enclosing body's pointer tuple a nested def reads: the
+        # enclosing record carries it.
+        return None
+    for b in bindings:
+        value = b.init if isinstance(b, TpyVarDecl) else b.value
+        if value is not None and _st._error_return_stmt_fi(value, an):
+            note_detail("ptr_tuple.error_return_bind")
+            raise ThirUnsupported(
+                stmt_reject_reason(b),
+                message=ptr_tuple_route_message(
+                    name, "the result of an @error_return call"),
+                loc=getattr(b, "loc", None))
+    owned = pointer_tuple_owned(an.ctx, fn, name)
+    first_owner = next((b for b in bindings
+                        if any(an.ctx.tuple_elem_owned.get(b) or ())),
+                       bindings[0])
+    loc = getattr(first_owner, "loc", None)
+    vtype = (_var_decl_type(bindings[0], an)
+             if isinstance(bindings[0], TpyVarDecl) else None)
+    bt = pointer_tuple_of(vtype) if vtype is not None else None
+    if bt is None:
+        note_detail("ptr_tuple.declared_type")
+        raise ThirUnsupported(stmt_reject_reason(first_owner), loc=loc)
+    for i in sorted(owned):
+        if i >= len(bt.element_types) or not bare_ptr_element(
+                bt.element_types[i]):
+            note_detail("ptr_tuple.owned_element_form")
+            raise ThirUnsupported(
+                stmt_reject_reason(first_owner),
+                message=ptr_tuple_element_message(
+                    name, i, bt.element_types[i]),
+                loc=loc)
+    return bt
 
 
 # --- the classifier --------------------------------------------------------
@@ -499,6 +619,27 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
     func, analyzer = inp.func, inp.analyzer
     f: dict = {}
     u = _uw(typ)
+    ptype = next((t for n, t in inp.params if n == name), None)
+    if inp.frame is not None and name in inp.frame.fields:
+        f["frame_class"] = inp.frame.classes.get(name, FrameLocalClass.PLAIN)
+    # The const verdicts of the function whose parameter it is; `THIRParam`
+    # and every reader in the body read them off this record.
+    fi = _p._owning_fi(func, analyzer, inp.record_name)
+    f["const"] = _p._param_is_const_at(name, func, fi)
+    f["deep_const"] = (
+        _p._param_is_deep_const(name, func, analyzer, inp.record_name)
+        or _p._vararg_pack_is_const(name, func)
+        or _p._ptr_pointee_is_readonly(name, func))
+    # A generator expression's capture of its creator's pointer tuple
+    # (sema's final set of the frame) is that pointer tuple.
+    ptt = (pointer_tuple_of(typ) if typ is not None and name
+           in final_pointer_tuple_names(analyzer.ctx, func) else None)
+    if ptt is not None:
+        return BindingRepr(name=name, site=None, type=typ,
+                           kind=K.PARAM_SEED, site_kind=site.kind,
+                           is_param=True,
+                           param_type=ptype if isinstance(ptype, TpyType)
+                           else None, ptr_tuple=ptt, **f)
     if _optional_ptr_borrow_wide(typ, analyzer) is not None:
         f["pointer"] = True
     elif _nullable_static_protocol_param(typ) is not None:
@@ -539,17 +680,6 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
             and not isinstance(typ, ReadonlyType)
             and u.inner.is_expensive_copy()):
         f["movable"] = True
-    ptype = next((t for n, t in inp.params if n == name), None)
-    if inp.frame is not None and name in inp.frame.fields:
-        f["frame_class"] = inp.frame.classes.get(name, FrameLocalClass.PLAIN)
-    # The const verdicts of the function whose parameter it is; `THIRParam`
-    # and every reader in the body read them off this record.
-    fi = _p._owning_fi(func, analyzer, inp.record_name)
-    f["const"] = _p._param_is_const_at(name, func, fi)
-    f["deep_const"] = (
-        _p._param_is_deep_const(name, func, analyzer, inp.record_name)
-        or _p._vararg_pack_is_const(name, func)
-        or _p._ptr_pointee_is_readonly(name, func))
     return BindingRepr(name=name, site=None, type=typ, kind=K.PARAM_SEED,
                        site_kind=site.kind, is_param=True,
                        param_type=ptype if isinstance(ptype, TpyType)
@@ -1013,7 +1143,8 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
         # (`_slot_const`); a reference has its initializer alone.
         return _mk(site, name, typ, kind, ref_alias=ref, pointer=not ref,
                    movable=movable and not ref,
-                   const=ref and _p._walrus_src_is_const(init, ctx),
+                   const=ref and (_p._walrus_src_is_const(init, ctx)
+                                  or _const_btuple_element(init, ctx)),
                    rebind_slot=slot or (
                        bind is LocalBinding.POINTER
                        and name in pre.rvalue_reassigned
@@ -1108,7 +1239,8 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
     # tuple, which is the record this site gets when the row does not
     # apply: the rows below decide it first.
     rest = _decl_tail_rows(site, name, typ, inp, visible, ctx, movable, fixed)
-    rec = _btuple_rebound_decl(site, name, typ, inp, ctx, fn, rest)
+    rec = _btuple_rebound_decl(site, name, typ, inp, ctx, fn, movable,
+                               rest)
     return rec if rec is not None else rest
 
 
@@ -1127,17 +1259,6 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
         rec = _btuple_alias_decl(site, name, typ, inp, visible, ctx, movable)
         if rec is not None:
             return rec
-    # A reassigned mixed own-borrow tuple's first decl off a mixed call
-    # binds the call's render directly.
-    if (not site.in_branch and name in pre.reassigned
-            and name not in pre.hoisted and name not in pre.move_through):
-        vbt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype)))
-        if (isinstance(vbt, TupleType) and vbt.has_pointer_repr_element()
-                and not contains_pending_leaf(vbt)
-                and _p._mixed_own_btuple_call(init, an)):
-            return _mk(site, name, typ, K.DECL_BTUPLE_REASSIGNED,
-                       borrow_tuple_mixed=True, movable=movable,
-                       effective_type=vbt)
     # `decl.optview_shim`: the Optional-view param shim.
     if (name not in pre.reassigned and isinstance(init, TpyName)
             and _value_opt_owned_view(vtype, an) is not None):
@@ -1173,22 +1294,42 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
 
 
 def _btuple_rebound_decl(site, name, typ, inp: 'PlanInputs', ctx, fn,
-                         rest: 'BindingRepr | None'
+                         movable, rest: 'BindingRepr | None'
                          ) -> 'BindingRepr | None':
     """A reassigned pointer-repr tuple local declares the one borrow shape
     every binding of it holds (`std::tuple<.., T*>`, its owned elements
     collapsed to pointers) when every binding source can produce that shape:
-    a borrow-tuple storage lvalue, a REF-capture literal of plain names, a
-    borrow-tuple local, or this declaration's own owning call. A branch-first
-    declaration is one only off a name. A source naming the declared name
-    (`t = t`) reads `rest`, the record the site gets otherwise."""
+    a borrow-tuple storage lvalue, a REF-capture literal of plain names or a
+    borrow-tuple local. A branch-first declaration is one only off a name. A
+    source naming the declared name (`t = t`) reads `rest`, the record the
+    site gets otherwise.
+
+    The pointer tuple (`ptr_tuple_form`) is this shape whatever its
+    bindings' sources: a binding owning an element backs it with a slot at
+    its own site. So is a local bound off a pointer-tuple name, which owns
+    nothing of it."""
     from . import statements as _st
     an, pre, init = inp.analyzer, inp.prescan, site.init
-    if not ((not site.in_branch or isinstance(init, TpyName))
-            and name in pre.reassigned and name not in pre.hoisted
+    if not (name in pre.reassigned and name not in pre.hoisted
             and name not in pre.move_through
             and name not in pre.param_names
             and not (fn.is_generator or fn.is_async)):
+        return None
+    ptt = ptr_tuple_form(name, inp, fn)
+    owned = pointer_tuple_owned(an.ctx, fn, name) if ptt is not None else ()
+    if site.in_branch and owned:
+        # An unhoisted block-first binding of the pointer tuple: its
+        # element slots would die with the block while an alias of an
+        # element may outlive it (TODO.md "Storage placement from loans
+        # (scalar and tuple)"), whatever the right-hand side.
+        raise ThirUnsupported(
+            stmt_reject_reason(site.node, "decl.branch_slot_type"),
+            loc=getattr(site.node, "loc", None))
+    if ptt is not None:
+        return _mk(site, name, typ, K.DECL_BTUPLE_REBOUND, effective_type=ptt,
+                   ptr_tuple=ptt, movable=movable,
+                   ptr_tuple_owned=frozenset(owned))
+    if site.in_branch and not isinstance(init, TpyName):
         return None
     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         collapse_tuple_own_elements(typ))))
@@ -1199,12 +1340,11 @@ def _btuple_rebound_decl(site, name, typ, inp: 'PlanInputs', ctx, fn,
                                        FloatLiteralType))
                         for t in bt.inner_types())):
         return None
-    owning = _p._btuple_owning_call_init(init, an)
     srcs = _st._borrow_tuple_binding_sources(name, ctx)
     own = (name, ctx.with_fixpoint(rest if rest is not None
                                    else UNBOUND, name))
     if srcs is None or not all(_st._borrow_tuple_source_ok(s, ctx, own)
-                               or (s is init and owning) for s in srcs):
+                               for s in srcs):
         return None
     return _mk(site, name, typ, K.DECL_BTUPLE_REBOUND, effective_type=bt)
 
@@ -1362,9 +1502,20 @@ def _btuple_alias_decl(site, name, typ, inp: 'PlanInputs', visible, ctx,
         kind = K.DECL_BTUPLE_INLINE_ARMS
     else:
         kind = K.DECL_BTUPLE_REF_ALIAS if ref else K.DECL_BTUPLE_ALIAS
+    # A copy of a pointer-tuple name is that pointer tuple, an alias of
+    # every element as `Box& u = *t` is.
+    ptt = ptr_tuple_form(name, inp, ctx.func)
     return _mk(site, name, typ, kind,
                borrow_tuple_mixed=mixed, movable=promoted and movable,
-               inline_elems=inline_elems, const=const, effective_type=src_bt)
+               inline_elems=inline_elems, const=const, effective_type=src_bt,
+               ptr_tuple=ptt)
+
+
+def _const_btuple_element(init, ctx) -> bool:
+    """An element of a borrow tuple whose element pointers are const (the
+    whole-body fixpoint's bit): a reference to it is a const referent."""
+    return (isinstance(init, TpySubscript) and isinstance(init.obj, TpyName)
+            and ctx.binding(init.obj.name).const_borrow_tuple)
 
 
 def _opt_ptr_slot_decl(site, name, typ, inp: 'PlanInputs', ctx, movable
@@ -1551,14 +1702,6 @@ def _value_hoist(site, name, typ, an) -> BindingRepr:
             or _mk(site, name, typ, K.HOIST_VALUE))
 
 
-def _btuple_hoist_mixed(name: str, ctx) -> bool:
-    """A borrow-tuple hoist bound off a MIXED own / borrow tuple call holds
-    that hybrid render (`std::tuple<A, B*>`)."""
-    from . import statements as _st
-    srcs = _st._borrow_tuple_binding_sources(name, ctx) or ()
-    return any(_p._mixed_own_btuple_call(s, ctx.analyzer) for s in srcs)
-
-
 def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
                     ) -> 'BindingRepr | None':
     """The record of a non-value hoist, by `_nonvalue_hoist_kind`. A
@@ -1569,19 +1712,28 @@ def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
     if kind is None:
         return None
     stmt = site.node
-    if kind is K.HOIST_BTUPLE_BRANCH:
-        # An owning tuple-call source fills a rebind slot the chain head
-        # declares.
+    if kind in (K.HOIST_BTUPLE_BRANCH, K.HOIST_BTUPLE_LOOP):
+        # A pointer tuple (`ptr_tuple_form`): each binding owning an element
+        # backs it at its own site; an alias of one owns none.
         from . import statements as _st
-        srcs = (_st._borrow_tuple_binding_sources(name, ctx) or ()
-                if isinstance(stmt, TpyIf) else ())
+        srcs = _st._borrow_tuple_binding_sources(name, ctx) or ()
+        ptt = ptr_tuple_form(name, inp, ctx.func)
+        if ptt is not None:
+            return _mk(site, name, typ, kind, ptr_tuple=ptt,
+                       effective_type=ptt,
+                       ptr_tuple_owned=pointer_tuple_owned(
+                           ctx.analyzer.ctx, ctx.func, name))
+        # Otherwise an owning tuple-call source (a walrus's) fills a rebind
+        # slot the if chain's head declares, and a mixed call's binding
+        # holds its hybrid render.
         return _mk(site, name, typ, kind,
-                   borrow_tuple_mixed=_btuple_hoist_mixed(name, ctx),
-                   rebind_slot=any(_p._btuple_owning_call_init(s, ctx.analyzer)
-                                   for s in srcs))
-    if kind is K.HOIST_BTUPLE_LOOP:
-        return _mk(site, name, typ, kind,
-                   borrow_tuple_mixed=_btuple_hoist_mixed(name, ctx))
+                   borrow_tuple_mixed=any(
+                       _p._mixed_own_btuple_call(s, ctx.analyzer)
+                       for s in srcs),
+                   rebind_slot=(kind is K.HOIST_BTUPLE_BRANCH
+                                and isinstance(stmt, TpyIf)
+                                and any(_p._btuple_owning_call_init(
+                                    s, ctx.analyzer) for s in srcs)))
     if kind is K.HOIST_OPT_BTUPLE:
         return _mk(site, name, typ, kind,
                    optional_borrow_tuple=not site.in_branch)
@@ -2554,6 +2706,15 @@ class _Planner:
         for cap in iter_capture_bindings(case.pattern):
             prev = node.lookup(cap.name)
             fact = facts.get(cap.name)
+            if prev is not None and prev.ptr_tuple is not None:
+                # The capture writes the pointer tuple's own binding, whose
+                # elements no capture places one by one.
+                note_detail("ptr_tuple.match_capture_bind")
+                raise ThirUnsupported(
+                    stmt_reject_reason(s),
+                    message=ptr_tuple_route_message(
+                        cap.name, "a match capture"),
+                    loc=getattr(case, "loc", None) or s.loc)
             if (prev is not None and cap.name not in caps
                     and fact is not None and fact[1] is not None
                     and prev.value_opt is None):
@@ -2804,8 +2965,33 @@ def plan_bindings(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
             f"const fixpoint of {inp.func.name} did not settle in "
             f"{_CONST_ROUNDS} planning rounds")
     _reject_mixed_slot(table, fix)
+    _reject_const_ptr_tuple(table, inp, fix)
     _mark_const(table, *inp.btuple_const, fix, inp.analyzer)
     return table
+
+
+def _reject_const_ptr_tuple(table: BindingTable, inp: PlanInputs,
+                            fix: _ConstFix) -> None:
+    """A pointer tuple bound from a read-only source -- a `readonly[...]`
+    parameter, a read-only receiver's field: its owning binding is a
+    mutable source, so the slot is mixed and rejected at its first
+    read-only source, as the scalar's mixed pointer slot is
+    (`_reject_mixed_slot`, the same detail). A source the body could write
+    is no such source: sema marks every pointer-tuple binding's roots
+    mutated (`finalize_pointer_tuples`), as the scalar's rebind does. The
+    borrow-tuple const bit is per name and any-source (TODO.md "One home
+    per binding fact -- slices 4 and 5" unifies it with the slots')."""
+    for rec in table.records():
+        if (rec.ptr_tuple is None or rec.name not in fix.btuple[0]
+                or ptr_tuple_form(rec.name, inp, inp.func) is None):
+            continue
+        stmts = fix.btuple_sources.get(rec.name, ())
+        if not stmts:
+            continue
+        stmt = min(stmts, key=_line)
+        raise ThirUnsupported(
+            stmt_reject_reason(stmt, "decl.reseat_source"),
+            loc=getattr(stmt, "loc", None))
 
 
 # Each planning round starts from the closure of the last, so a body
@@ -2885,6 +3071,9 @@ class _ConstFix:
     # variable, so its const is unproven
     # (BUGS.md#match-capture-loop-var-write-not-credited).
     unproven: tuple = ()
+    # Per const borrow-tuple name, the statements binding a const source
+    # into it.
+    btuple_sources: Mapping[str, tuple] = field(default_factory=dict)
 
 
 def _answers(pred, src: TpyExpr, ctx: '_PlanCtx') -> bool:
@@ -2964,10 +3153,13 @@ def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
     unproven = tuple(
         stmt for stmt in loop_var_captures
         if _rooted_in_const_loop_var(stmt.subject, ctx_at(stmt)))
+    btuple_sources = {
+        name: tuple(stmt for src, stmt in plain[name] if is_const(src, stmt))
+        for name in const_set}
     return _ConstFix((frozenset(const_set), frozenset(opt_set)),
                      frozenset(slots),
                      {k: tuple(v) for k, v in const_sources.items()},
-                     unproven)
+                     unproven, btuple_sources)
 
 
 def _rooted_in_const_loop_var(expr: TpyExpr, ctx: _PlanCtx) -> bool:

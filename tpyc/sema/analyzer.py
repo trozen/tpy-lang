@@ -32,14 +32,14 @@ from ..identity_map import IdentityMap, IdentitySet
 from ..compilation_context import get_current_compiler
 from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, is_init_trivia, init_leading_run_end, ParseError
-from ..parse.nodes import RecordLinkage, OverloadForm
+from ..parse.nodes import RecordLinkage, OverloadForm, value_capture_lambdas
 from .registration import (
     receiver_self_type, _vararg_span_type, skipped_base_ctor_error,
     skipped_base_init_warning, skipped_base_inits,
 )
 from ..parse.nodes import (
     TpyStrLiteral, TpyAssign, TpyIf, TpyWhile, TpyForEach,
-    TpyFieldAccess, TpyName, TpyCall, TpyLambda,
+    TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
     TpyDelVar, SourceLocation, expr_contains_self_method_call,
 )
@@ -92,7 +92,7 @@ def _assert_no_pending_locals(locals_dict: dict, func_name: str) -> None:
 from ..diagnostics import Scope, Diagnostic, SemanticError
 from .. import qnames
 from .context import (
-    SemanticContext, RecordContext, DeferredGenericYieldSettle, LoanInfo, OwnSlot,
+    SemanticContext, RecordContext, ParkedFunctionState, LoanInfo, OwnSlot,
     MODULE_INIT_CONTEXT, contains_pending_leaf)
 from . import own_copy
 from .type_ops import TypeOperations
@@ -113,7 +113,8 @@ from ..prescan import (ScanResult, scan_reassigned_vars, liveness_alias_sources,
                        collect_fact_kills, collect_in_place_writes)
 from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_finally_return_candidates)
-from .alias_rebind import decide_rebind_storage, global_write_facts
+from .alias_rebind import (decide_rebind_storage,
+                           finalize_pointer_tuples, global_write_facts)
 from .frame_close import decide_frame_close, stamp_close_materials
 from .may_interrupt import stamp_may_interrupt
 from .loop_frames import resolve_loop_frame_calls
@@ -168,27 +169,6 @@ def _bare_name_source(expr: TpyExpr) -> 'TpyName | None':
     while isinstance(expr, TpyCoerce):
         expr = expr.expr
     return expr if isinstance(expr, TpyName) else None
-
-
-def _find_value_capture_lambdas(stmt: TpyStmt) -> list[TpyLambda]:
-    """Escaping by-value-capturing lambdas created at this scope in `stmt`.
-
-    Stops at lambda boundaries (a lambda's body is a separate scope), so
-    only closures whose captures snapshot *this* function's locals appear.
-    """
-    found: list[TpyLambda] = []
-
-    def visit(e: TpyExpr) -> None:
-        if isinstance(e, TpyLambda):
-            if e.captures_by_value:
-                found.append(e)
-            return  # separate scope
-        # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
-        for child in e.children():
-            visit(child)
-
-    walk_body_stmts([stmt], visit, lambda s: None)
-    return found
 
 
 def _extract_proto_param_forwarding(
@@ -396,6 +376,7 @@ class SemanticAnalyzer:
             self.protocols, self.narrowing, self.expr,
         )
         self.stmts.pend = self.pend
+        self.compat.init = self.stmts.init
         self.expr.set_scopes(self.stmts.scopes)
 
         # Per-function/method pre-scan results (shared with codegen)
@@ -1679,7 +1660,7 @@ class SemanticAnalyzer:
         settle; runs after the post-body drain, once frame locals exist."""
         if self.ctx.func.pending_generic_yield_sources:
             self.ctx.deferred_generic_yield_settles.append(
-                DeferredGenericYieldSettle(
+                ParkedFunctionState(
                     self.ctx.func.current_function, self.ctx.func,
                     self.ctx.func.current_scope, self.ctx.func.current_ns))
 
@@ -1701,27 +1682,16 @@ class SemanticAnalyzer:
         function node, scope and namespace parked at enqueue -- the rooting
         half asks that function's params, scope and frame locals.
         """
-        live = self.ctx.func
-        try:
-            for fn, state, scope, ns in self.ctx.deferred_generic_yield_settles:
-                if not isinstance(fn, TpyFunction):
-                    continue
-                self.ctx.restore_function_state(state)
-                # The body-exit path nulls the function node, the scope and the
-                # namespace; the walk asks the state for all three (params,
-                # frame locals, and the shadow lookup that keeps a local
-                # shadowing a global from reading as the durable global), so
-                # put back what was parked at enqueue.
-                state.current_function = fn
-                state.current_scope = scope
-                state.current_ns = ns
+        for parked in self.ctx.deferred_generic_yield_settles:
+            fn = parked.func
+            if not isinstance(fn, TpyFunction):
+                continue
+            with self.ctx.reenter(parked) as state:
                 fn.generic_yield_borrows = all(
                     not ephemeral and not self.compat.is_dangling_return(
                         value, gen_yield=True, assume_unknown_calls_safe=False)
                     for value, ephemeral in state.pending_generic_yield_sources)
                 state.pending_generic_yield_sources.clear()
-        finally:
-            self.ctx.restore_function_state(live)
         self.ctx.deferred_generic_yield_settles.clear()
 
     def _analyze_function(self, func: TpyFunction, *,
@@ -1829,6 +1799,8 @@ class SemanticAnalyzer:
         # Finalize nested def escape analysis
         self._finalize_nested_def_escapes()
         self._warn_stale_value_captures()
+        finalize_pointer_tuples(self.ctx, func, nested=False,
+                                compat=self.compat)
 
         # Store Phase 1 local mutation facts (resolved by Phase 2 propagation).
         # Phase 6 (mutual-imports) ownership gate: only mutate body-sema
@@ -2271,7 +2243,7 @@ class SemanticAnalyzer:
             if isinstance(stmt, TpyNestedDef):
                 nd_index.setdefault(stmt.func.name, idx)
                 continue  # separate scope; no this-scope lambdas inside
-            for lam in _find_value_capture_lambdas(stmt):
+            for lam, _ in value_capture_lambdas([stmt]):
                 if lam.captured_names:
                     closures.append((idx, lam, list(lam.captured_names)))
         for name in self.ctx.func.nested_def_escapes:
@@ -3302,6 +3274,8 @@ class SemanticAnalyzer:
             # Finalize nested def escape analysis (same as _analyze_function)
             self._finalize_nested_def_escapes()
             self._warn_stale_value_captures()
+            finalize_pointer_tuples(self.ctx, method, nested=False,
+                                    compat=self.compat)
 
             self.ctx.in_consuming_method = prev_consuming
 

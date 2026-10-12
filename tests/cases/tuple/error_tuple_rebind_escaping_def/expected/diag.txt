@@ -1,0 +1,1 @@
+main.py:23: error: a closure that outlives 'escaping' captures 'p', which keeps objects of its own in storage of 'escaping' itself; capturing it is not yet supported here; bind copies of its elements (`p0 = copy(p[0])`, with `copy` from `tpy`) and capture those

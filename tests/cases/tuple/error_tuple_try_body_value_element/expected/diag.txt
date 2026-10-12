@@ -1,0 +1,1 @@
+main.py:19: error: in function 'f': tuple variable 't' refers to its 'P' elements instead of holding them, and element 0 here would have to be held by the tuple; this is not supported yet -- use a separate tuple variable for this assignment

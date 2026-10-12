@@ -1,10 +1,10 @@
 """Constructor tuples expose inline storage facts without changing emission."""
 
+from collections.abc import Iterator
 from dataclasses import replace
 
 import pytest
 
-from ..codegen_cpp.context import CodeGenError
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
@@ -207,10 +207,26 @@ def test_scalar_projection_does_not_admit_temporary_owned_backing(artifacts: Art
     return pair[0].value
 ''',
 ])
-def test_owned_tuple_source_hoists_and_rebinds_refuse_before_mir(source: str) -> None:
-    # A rebound tuple local refers to its elements, so a fresh element has
-    # nothing to refer to: lowering refuses it and no THIR body reaches MIR
-    # (BUGS.md#pointer-repr-tuple-local-value-capture-literal).
+def test_owned_tuple_source_hoists_and_rebinds_refuse_in_mir(source: str) -> None:
+    # A rebound tuple local holding a fresh element is the pointer tuple,
+    # bound by a tuple-target unpack per binding: the body lowers, and MIR,
+    # which has no lowering for the unpack, refuses it on that node.
     compiler, modules = _compile(SOURCE.split("def singleton", 1)[0] + source)
-    with pytest.raises(CodeGenError, match="assigned more than once"):
-        compiler.generate_code_and_thir(_entry(modules))
+    _, ctx = compiler.generate_code_and_thir(_entry(modules))
+    fn = next(fn for node, fn in ctx.thir_functions.items()
+              if node.name == "boundary")
+    assert any(isinstance(s, th.THIRTupleUnpack) and s.tuple_target is not None
+               for s in _walk_stmts(fn.body))
+    result = lower_function(fn, MIRBodyId("owned_tuple", "boundary"),
+                            definitions=MIRDefinitions(
+                                tuple(ctx.thir_constructors.values())))
+    assert isinstance(result, MIRNotCovered)
+    assert result.node_kind == "THIRTupleUnpack"
+
+
+def _walk_stmts(stmts: 'tuple[th.THIRStmt, ...]') -> 'Iterator[th.THIRStmt]':
+    for s in stmts:
+        yield s
+        if isinstance(s, th.THIRIf):
+            yield from _walk_stmts(s.then_body)
+            yield from _walk_stmts(s.else_body)

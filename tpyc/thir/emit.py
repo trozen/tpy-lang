@@ -153,6 +153,7 @@ from .nodes import (
     THIRTupleValueToBorrow,
     THIRTupleLiteral,
     THIRTupleUnpack,
+    TupleElemBind,
     TupleSourceBind,
     THIRTruthy,
     THIROptViewArg,
@@ -1326,8 +1327,10 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         # owned source at last use moves; a borrow copies. Mirrors context.convert's
         # tuple STORAGE arm.
         if isinstance(t, TupleType):
-            helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
             dest = t.to_cpp_return() if e.param_form else t.to_cpp()
+            if e.elem_modes:
+                return f"{dest}{{{_tuple_elementwise(inner, e.elem_modes)}}}"
+            helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
             return f"::tpy::{helper}<{dest}>({inner})"
         # S1/S6 str+bytes slices: a view-form source (string_view / span) into
         # an owned storage sink (decl init / return) copies via the family's
@@ -1368,6 +1371,18 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
             return f"std::move({inner})" if e.move else inner
     raise THIRCodeGenError(
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
+
+
+def _tuple_elementwise(name: str, modes: tuple[str, ...]) -> str:
+    """The brace-init elements of an element-wise tuple conversion
+    (`THIRFormConvert.elem_modes`) off the tuple name `name`."""
+    spell = {"move_pointee": "std::move(*std::get<{i}>({n}))",
+             "copy_pointee": "(*std::get<{i}>({n}))",
+             "pointer": "std::get<{i}>({n})",
+             "move": "std::move(std::get<{i}>({n}))",
+             "copy": "std::get<{i}>({n})"}
+    return ", ".join(spell[m].format(i=i, n=name)
+                     for i, m in enumerate(modes))
 
 
 def _declare_rebind_slot(state: '_EmitState', key: SlotKey, slot: int,
@@ -1428,6 +1443,40 @@ def _rvalue_reseat(out: TextIO, indent: str, name: str, val_cpp: str,
         out.write(f"{indent}{name} = &{slot}.emplace({val_cpp});\n")
     else:
         out.write(f"{indent}{name} = &*({slot} = {val_cpp});\n")
+
+
+def _emit_tuple_target(out: TextIO, indent: str, stmt: THIRTupleUnpack,
+                       tmp: str, state: '_EmitState') -> None:
+    """The element writes of a tuple-target unpack, after its holder line:
+    each owned element is the scalar reference local at this site, so the
+    first binding gives it the site's slot and a later one reseats the
+    element pointer as `_rvalue_reseat` does a scalar's."""
+    assert stmt.tuple_target is not None
+    name = _emit_expr(stmt.tuple_target, state)
+    inits: list[str] = []
+    for t in stmt.elem_targets:
+        get = f"std::get<{t.index}>({tmp})"
+        lhs = f"std::get<{t.index}>({name})"
+        if t.bind is TupleElemBind.OWNED and t.storage is None:
+            assert t.slot_cpp is not None
+            slot = state.global_slot()
+            out.write(f"{indent}{state.slot_static}{t.slot_cpp} {slot} = "
+                      f"std::move({get});\n")
+            value = f"&{slot}"
+        elif t.bind is TupleElemBind.OWNED:
+            _rvalue_reseat(out, indent, lhs, f"std::move({get})", t.storage,
+                           t.slot_cpp, state, rebuild=False)
+            continue
+        elif t.bind is TupleElemBind.BORROW:
+            value = get
+        else:
+            value = f"std::move({get})"
+        if stmt.tuple_decl_cpp is not None:
+            inits.append(value)
+        else:
+            out.write(f"{indent}{lhs} = {value};\n")
+    if stmt.tuple_decl_cpp is not None:
+        out.write(f"{indent}{stmt.tuple_decl_cpp} {name}{{{', '.join(inits)}}};\n")
 
 
 def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
@@ -3752,30 +3801,24 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             init = emit_prims.placeholder_init(stmt.resolved_type, cpp)
             out.write(f"{indent}{cpp} {name}{init};\n")
         elif stmt.btuple_slot_cpp is not None:
-            # Reassigned borrow-tuple decl off an owning call: the rvalue
+            # Nullable borrow-tuple decl off an owning call: the rvalue
             # emplaces into a per-target `std::optional<...>` slot the local
-            # aliases. Init renders before the slot draws its number (the
-            # init's own counter draws come first); the
-            # slot registers for sibling reuse (their plain reseats are bare
-            # tuple_to_pointer assigns).
+            # aliases through the optional spelling (cpp_type IS that
+            # spelling). Init renders before the slot draws its number (the
+            # init's own counter draws come first); the slot registers for
+            # the owning-call reseats' reuse.
+            assert stmt.btuple_opt_borrow_cpp is not None
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
             slot = (state.assert_local_slot() or state.next_slot())
             state.rebind_slots[slot_key(stmt.binding)] = slot
             out.write(f"{indent}std::optional<{stmt.btuple_slot_cpp}> "
                       f"__slot_{slot};\n")
-            if stmt.btuple_opt_borrow_cpp is not None:
-                # The OPTIONAL-borrow-tuple decl: the alias wraps through
-                # the optional spelling (cpp_type IS that spelling).
-                out.write(
-                    f"{indent}{stmt.cpp_type} {name} = {stmt.cpp_type}"
-                    f"{{::tpy::tuple_to_pointer<"
-                    f"{stmt.btuple_opt_borrow_cpp}>"
-                    f"(__slot_{slot}.emplace({init_cpp}))}};\n")
-            else:
-                out.write(f"{indent}{stmt.cpp_type} {name} = "
-                          f"::tpy::tuple_to_pointer<{stmt.cpp_type}>"
-                          f"(__slot_{slot}.emplace({init_cpp}));\n")
+            out.write(
+                f"{indent}{stmt.cpp_type} {name} = {stmt.cpp_type}"
+                f"{{::tpy::tuple_to_pointer<"
+                f"{stmt.btuple_opt_borrow_cpp}>"
+                f"(__slot_{slot}.emplace({init_cpp}))}};\n")
         else:
             # Render before flushing: the init may register arg temps, whose
             # decls flush between the source comment and the statement line.
@@ -3833,12 +3876,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             _gs_static = "" if stmt.branch_scope else state.slot_static
             out.write(f"{indent}{_gs_static}{stmt.cpp_type} {slot} = "
                       f"{init_cpp};\n")
-            if stmt.val_cpp is not None:
-                # A tuple global points at the parked value element-wise.
-                out.write(f"{indent}{name} = ::tpy::tuple_to_pointer<"
-                          f"{stmt.val_cpp}>({slot});\n")
-            else:
-                out.write(f"{indent}{name} = &{slot};\n")
+            out.write(f"{indent}{name} = &{slot};\n")
             _witness("top_level.global_slot")
         elif stmt.kind is PtrSlotKind.RECORD_HOISTED:
             # Hoisted record pointer-local: the `std::optional<T>` slot
@@ -3902,8 +3940,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # (the decl twin of the PTR_ADDR reseat).
             init_cpp = _emit_expr(stmt.init, state)
             state.temps.flush(out, indent)
-            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = "
-                      f"&({init_cpp});\n")
+            # An element a tuple holds as a pointer is already the address.
+            addr = (init_cpp if stmt.init.reads_raw_pointer
+                    else f"&({init_cpp})")
+            out.write(f"{indent}{cpfx}{stmt.cpp_type}* {name} = {addr};\n")
         else:  # PtrSlotKind.UNION_ADDR
             init_cpp = _emit_expr(stmt.init, state)
             out.write(f"{indent}{stmt.cpp_type} {name}{{&({init_cpp})}};\n")
@@ -3986,7 +4026,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # The returned lvalue can borrow backing declared before this write.
             value_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            out.write(f"{indent}{name} = &({value_cpp});\n")
+            # An element a tuple holds as a pointer is already the address.
+            addr = (value_cpp if stmt.value.reads_raw_pointer
+                    else f"&({value_cpp})")
+            out.write(f"{indent}{name} = {addr};\n")
         elif stmt.kind is PtrSlotKind.GLOBAL_HOIST_RVALUE:
             # Write of a HOISTED pointer-slot global: the slot is
             # re-assignable, so it rides the hoist lines as a
@@ -3997,16 +4040,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # IN_PLACE reseat writes through the pointer.
             val_cpp = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
-            if stmt.tuple_cpp is not None:
-                # A tuple global's write inside a loop: the site's slot is
-                # declared once and assigned on every pass.
-                slot = _own_slot(state, stmt.val_cpp)
-                out.write(f"{indent}{name} = ::tpy::tuple_to_pointer<"
-                          f"{stmt.tuple_cpp}>(*({slot} = {val_cpp}));\n")
-            else:
-                _rvalue_reseat(out, indent, name, val_cpp,
-                               stmt.rebind_storage, stmt.val_cpp, state,
-                               rebuild=stmt.rebuild)
+            _rvalue_reseat(out, indent, name, val_cpp,
+                           stmt.rebind_storage, stmt.val_cpp, state,
+                           rebuild=stmt.rebuild)
             _witness("top_level.global_hoist_slot")
         elif stmt.kind is PtrSlotKind.GLOBAL_NULL:
             out.write(f"{indent}{name} = nullptr;\n")
@@ -4088,8 +4124,10 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f".emplace({v});\n")
         elif (stmt.btuple_borrow_cpp is not None
                 and isinstance(stmt.target, THIRName)):
-            # Owning-call reseat of a hoisted borrow-tuple local: emplace
-            # into the pre-declared slot, alias via tuple_to_pointer.
+            # Owning-call reseat of a hoisted borrow-tuple local (a nullable
+            # one, or a whole-slot one off an owning call): emplace into the
+            # pre-declared slot, alias via tuple_to_pointer -- under the
+            # optional spelling for the nullable one.
             v = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             slot = _use_rebind_slot(state, slot_key(stmt.binding))
@@ -4366,6 +4404,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 # the name arm's deref read (`(*r)`) -- no copy.
                 src = expr_src()
             out.write(f"{indent}const auto& {tmp} = {src};\n")
+        if stmt.tuple_target is not None:
+            _emit_tuple_target(out, indent, stmt, tmp, state)
         for i, (name, cpp) in enumerate(zip(stmt.targets, stmt.target_cpps)):
             if name is None:
                 continue
@@ -4435,6 +4475,9 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             elif bind == "move":
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"std::move({get});\n")
+            elif bind == "move_pointee":
+                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
+                          f"std::move(*{get});\n")
             elif bind == "cref":
                 out.write(f"{indent}const {cpp}& {escape_cpp_name(name)} = "
                           f"{get};\n")

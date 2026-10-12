@@ -19,6 +19,7 @@ Copy warnings are sema's; the conversion emits none. A refusal is a
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import Iterable
 from enum import Enum, auto
 
 from ...type_def_registry import owned_from_view_explicit
@@ -31,6 +32,7 @@ from ...typesys import (
     LiteralType,
     NoneType,
     OptionalType,
+    OwnType,
     pointer_repr_optional,
     PtrType,
     TpyType,
@@ -47,9 +49,11 @@ from ..nodes import (
     THIRExpr,
     THIRFormConvert,
     THIRMove,
+    THIRName,
     THIROptionalPtrArg,
     THIROptViewArg,
 )
+from ..reject import ThirUnsupported, note_detail
 from ..source import BindingRepr, Held, Source
 from .context import Slot, SlotConstruct, SlotHolds, storage_type
 from .checks import _covariant_record_upcast_ok, _record_slice_upcast_ok
@@ -305,6 +309,92 @@ def landing(binding: BindingRepr | None, analyzed_t: 'TpyType | None',
 
 # --- the conversion -----------------------------------------------------------
 
+def borrowed_path_element_message(name: str, index: int, *,
+                                  arity: 'int | None' = None,
+                                  copies: 'Iterable[int]' = ()) -> str:
+    """The sentence for an owning sink that would take an element of a
+    pointer tuple some path reaching it binds from storage it does not own
+    (`arity`: the sink takes the whole tuple of that many elements, whose
+    remedy is a tuple copying the `copies` positions and handing the rest
+    on -- `copy()` takes no tuple): the move would take the caller's
+    object, the copy is unwarned (TODO.md "A tuple element is a name")."""
+    copies = set(copies)
+    what = (f"copy({name}[{index}])" if arity is None
+            else "(" + ", ".join(f"copy({name}[{i}])" if i in copies
+                                 else f"{name}[{i}]"
+                                 for i in range(arity)) + ")")
+    return (f"element {index} of '{name}' is an object of its own on some "
+            f"paths reaching here and borrowed from other storage on others, "
+            f"so handing it to a sink that takes ownership is not yet "
+            f"supported here; use {what} there instead")
+
+
+def reject_borrowed_path_elements(expr: THIRExpr,
+                                  owning: 'Iterable[int] | None' = None
+                                  ) -> None:
+    """Refuse a pointer-tuple NAME at its last use (`movable`) whose element
+    some binding owns but some path reaching the read borrows (sema's
+    `tuple_owned_at_use`, projected on the read's `elems`) where the sink
+    takes ownership of it (`owning`: those element positions, None: every
+    one): a move would take the caller's object, and copying it there
+    would be silent. An element no binding owns is always borrowed: its
+    sink copies it, warned. The remedy copies every element the sink
+    takes ownership of -- a literal's element read is copied there even
+    where the name would have moved it -- and hands the rest on."""
+    src = expr.source
+    rec = src.binding if src is not None else None
+    if (rec is None or rec.ptr_tuple is None or not src.movable
+            or src.elems is None or not isinstance(expr, THIRName)):
+        return
+    owning = (set(range(len(src.elems))) if owning is None
+              else set(owning))
+    copies = [i for i, el in enumerate(src.elems)
+              if i in owning and el.pointer_held]
+    for i in sorted(rec.ptr_tuple_owned):
+        if i < len(src.elems) and not src.elems[i].movable and i in owning:
+            note_detail("ptr_tuple.borrowed_path_sink")
+            raise ThirUnsupported(
+                "expr.name",
+                message=borrowed_path_element_message(
+                    expr.name, i, arity=len(src.elems), copies=copies),
+                loc=expr.loc)
+
+
+def elementwise_tuple_storage(expr: THIRExpr, dest: TupleType, *,
+                              param_form: bool = False
+                              ) -> 'THIRFormConvert | None':
+    """A pointer-tuple NAME at an owning tuple slot, converted element by
+    element as the scalar at each position converts: an element the name
+    owns on every path reaching its last use moves out of its object, one
+    no binding owns is copied in (or kept as a pointer where a `param_form`
+    destination borrows it), a value element moves with the name; one owned
+    on some paths only is refused (`reject_borrowed_path_elements`). None
+    for any other source -- and for a name owning nothing it can move,
+    where the whole-tuple copy is the same render."""
+    elems = expr.source.elems if expr.source is not None else None
+    if (not isinstance(expr, THIRName) or elems is None
+            or len(elems) != len(dest.element_types)):
+        return None
+    keeps = [param_form and not isinstance(unwrap_readonly(dt), OwnType)
+             and TupleType._element_is_pointer_repr(dt)
+             for dt in dest.element_types]
+    reject_borrowed_path_elements(
+        expr, [i for i, k in enumerate(keeps) if not k])
+    if not any(el.pointer_held and el.movable for el in elems):
+        return None
+    modes: list[str] = []
+    for el, keeps_pointer in zip(elems, keeps):
+        if el.pointer_held:
+            modes.append("pointer" if keeps_pointer
+                         else "move_pointee" if el.movable
+                         else "copy_pointee")
+        else:
+            modes.append("move" if el.movable else "copy")
+    return THIRFormConvert(result_type=dest, value=expr, form=Form.STORAGE,
+                           move=True, param_form=param_form,
+                           elem_modes=tuple(modes), loc=expr.loc)
+
+
 def convert(expr: THIRExpr, slot: Slot, types, *,
             explicit_copy: bool = False) -> Plan | Refuse:
     """The render of `expr` at `slot`. `explicit_copy`: the source is
@@ -500,6 +590,10 @@ def convert(expr: THIRExpr, slot: Slot, types, *,
     moves = mv and not ptr_union
     obj = record_like(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         expr.result_type))), types) if expr.result_type is not None else False
+    if mv and isinstance(member, TupleType):
+        per_elem = elementwise_tuple_storage(expr, member)
+        if per_elem is not None:
+            return Plan(per_elem, Effect.MOVE)
     value = expr
     if mv and isinstance(rt_lowered, TupleType):
         # A tuple owns only its INLINE elements; a pointer element borrows

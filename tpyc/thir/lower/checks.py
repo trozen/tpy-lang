@@ -7022,16 +7022,23 @@ def _own_tuple_move_arg_facts(
         narrowed: 'AbstractSet[str]', inline_narrowed,
         movable_locals: 'AbstractSet[str]', analyzer,
         func_name: 'str | None',
-        own_borrow_tuple_locals: 'AbstractSet[str]') -> bool:
+        own_borrow_tuple_locals: 'AbstractSet[str]',
+        ptr_tuple_locals: 'AbstractSet[str]' = frozenset()) -> bool:
     """A mixed tuple NAME at the matching mixed slot (`consume(std::move(t))`)
     is consumed whole at its last use. `_is_move_source_facts` carries the
     movable/last-use verdict; a name whose element copy sema declared holds
     borrows, which no move can hand over (a resumable frame's slot is movable
     all the same). The fully owned spelling takes the storage conversion
     (`own_tuple_storage`) instead."""
-    if not _mixed_own_slot(ptype) or _own_tuple_shape_match_facts(
-            a, ptype, locals_, narrowed, inline_narrowed,
-            own_borrow_tuple_locals) is None:
+    if not _mixed_own_slot(ptype) or (
+            _own_tuple_shape_match_facts(
+                a, ptype, locals_, narrowed, inline_narrowed,
+                own_borrow_tuple_locals) is None
+            # A pointer tuple (its binding record) hands what it owns over
+            # through the consuming storage lift.
+            and not (isinstance(a, TpyName) and a.name in ptr_tuple_locals
+                     and mixed_slot_btuple_name(a, ptype, locals_,
+                                                narrowed))):
         return False
     if a in analyzer.ctx.own_element_copies:
         return False
@@ -12605,7 +12612,7 @@ def _r_own_tuple_move(req: _ArgReq) -> bool:
     return _own_tuple_move_arg_facts(
         req.a, req.ptype, req.locals_, req.narrowed, req.inline_narrowed,
         req.movable_locals, req.analyzer, req.func_name,
-        req.own_borrow_tuple_locals)
+        req.own_borrow_tuple_locals, req.ptr_tuple_locals)
 
 
 def _r_own_tuple_decay_copy(req: _ArgReq) -> bool:

@@ -15,7 +15,7 @@ inline std::expected<std::tuple<int32_t, int32_t>, ::tpy::StopIteration> __gen_g
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         t = std::tuple<int32_t, int32_t>{1, 2};
-        u = t;
+        u = std::move(t);
         v = u;
         __state = S_RESUME_0;
         return v;

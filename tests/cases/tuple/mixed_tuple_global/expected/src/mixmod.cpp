@@ -22,8 +22,10 @@ void __tpy_init() {
 
     static Box __global_slot_1 = Box(30);
     ilender = &__global_slot_1;
-    static std::tuple<Box, Box*> __global_slot_2 = ::tpyapp::mixmod::make_mixed((*ilender));
-    imixed = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_2);
+    auto __tup_1 = ::tpyapp::mixmod::make_mixed((*ilender));
+    static Box __global_slot_2 = std::move(std::get<0>(__tup_1));
+    std::get<0>(imixed) = &__global_slot_2;
+    std::get<1>(imixed) = std::get<1>(__tup_1);
 }
 
 } // namespace tpyapp::mixmod

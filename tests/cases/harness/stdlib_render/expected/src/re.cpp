@@ -197,7 +197,7 @@ std::expected<Match, ::tpy::StopIteration> __gen_Pattern_finditer::__next__() {
         if ((mend == mstart)) {
             offset = ::tpystd::re::_utf8_advance(s_data, mend, sub_len);
         } else {
-            offset = mend;
+            offset = std::move(mend);
         }
         __state = S_JOIN_0;
         continue;

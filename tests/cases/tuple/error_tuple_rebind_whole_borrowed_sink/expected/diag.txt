@@ -1,0 +1,3 @@
+main.py:22: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:22: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit
+main.py:22: error: in function 'ret_whole': element 0 of 'p' is an object of its own on some paths reaching here and borrowed from other storage on others, so handing it to a sink that takes ownership is not yet supported here; use (copy(p[0]), copy(p[1])) there instead

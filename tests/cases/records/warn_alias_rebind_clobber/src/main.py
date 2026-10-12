@@ -4,6 +4,8 @@
 # The rebind warns; `copy(p)` or a fresh name for the new value is the fix.
 # The printed values are the WRONG ones the warning announces (CPython keeps
 # the object the loan was given) -- hence no_cpython.txt.
+from typing import Iterator
+
 from tpy import int32, take_ptr
 
 
@@ -96,6 +98,79 @@ def alias_kind_section() -> None:
     print("alias_kind:", held.x, p.x)
 
 
+# `p` is bound at two sites in the loop body: the second writes in place into
+# the first site's slot, so the first site rebuilds the slot `held` took on the
+# previous pass. The same warning as the one-site rebind, at the first site
+# (BUGS.md#loop-two-site-rebind-clobbers-alias).
+def loop_two_site_section() -> None:
+    p = Point(0)
+    p = Point(1)
+    for i in range(2):
+        held = p
+        p = Point(3 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
+        p = Point(5 + i)
+        if i == 1:
+            held.x += 100
+            print("loop_two_site:", held.x, p.x)
+
+
+# The same two sites with no alias read after them: no warning.
+def loop_two_site_silent_section() -> None:
+    p = Point(0)
+    p = Point(1)
+    for i in range(2):
+        p = Point(3 + i)  # tpyc: ok
+        p = Point(5 + i)  # tpyc: ok
+        print("loop_two_site_silent:", p.x)
+
+
+# Three sites, the alias taken after the second: the second writes in place
+# into the first site's slot, so the first site rebuilds the slot `held` keeps
+# though its loan is on the second site's object
+# (BUGS.md#loop-two-site-rebind-clobbers-alias).
+def loop_three_site_section() -> None:
+    held = Point(-1)
+    later = Point(-2)
+    p = Point(0)
+    for i in range(2):
+        p = Point(10 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
+        if i == 1:
+            print("loop_three_site:", held.x, later.x)
+        p = Point(20 + i)
+        held = p
+        p = Point(30 + i)
+        later = p
+    print("loop_three_site:", held.x, later.x, p.x)
+
+
+# The two sites in a generator body: the same warning at the first site
+# (BUGS.md#loop-two-site-rebind-clobbers-alias).
+def loop_two_site_gen() -> Iterator[int32]:
+    p = Point(0)
+    p = Point(1)
+    held = p
+    for i in range(2):
+        held = p
+        p = Point(3 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
+        yield p.x
+        p = Point(5 + i)
+    held.x += 100
+    yield held.x
+
+
+# The alias is read only before the two sites run: nothing it still reads is
+# rebuilt, so no warning.
+def loop_two_site_read_before_section() -> None:
+    p = Point(0)
+    p = Point(1)
+    for i in range(2):
+        held = p
+        print("loop_two_site_read_before:", held.x)
+        p = Point(3 + i)  # tpyc: ok
+        p = Point(5 + i)  # tpyc: ok
+    print("loop_two_site_read_before:", p.x)
+
+
 def main() -> None:
     loop_carried_section()
     for_carried_section()
@@ -103,6 +178,11 @@ def main() -> None:
     hoisted_body_bind_section()
     two_alias_section()
     alias_kind_section()
+    loop_two_site_section()
+    loop_two_site_silent_section()
+    loop_three_site_section()
+    print("loop_two_site_gen:", list(loop_two_site_gen()))
+    loop_two_site_read_before_section()
 
 
 main()

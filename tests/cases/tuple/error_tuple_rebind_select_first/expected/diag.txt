@@ -1,0 +1,1 @@
+main.py:23: error: in function 'f': binding 'q', which holds the elements of the tuples it is bound to, to a conditional expression is not yet supported here; bind 'q' in an if statement instead, one branch per value

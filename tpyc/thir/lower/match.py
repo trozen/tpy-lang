@@ -72,6 +72,7 @@ from ..nodes import (
     THIRMatchArm,
     THIRMatchArmEntry,
     THIRMatchBinding,
+    THIRSubscript,
 )
 from .predicates import (
     overload_match_fold,
@@ -2359,7 +2360,15 @@ def _lower_subject_expr(subj: TpyExpr, lc: _LowerCtx,
     if isinstance(subj, TpyFieldAccess):
         return _lower_expr(subj, lc, declared, field_prechecked=True)
     if isinstance(subj, TpySubscript):
-        return _lower_expr(subj, lc, declared, subscript_prechecked=True)
+        node = _lower_expr(subj, lc, declared, subscript_prechecked=True)
+        et = node.result_type
+        if (isinstance(node, THIRSubscript) and node.reads_raw_pointer
+                and et is not None and pointer_repr_optional(et) is None
+                and record_like(et, lc.analyzer)):
+            # A record element the tuple holds as a pointer: the subject is
+            # its object, which the arms' captures and field tests read.
+            node = replace(node, deref=True)
+        return node
     if isinstance(subj, (TpyCall, TpyMethodCall)):
         # The borrow-returning wrapper-call subject: BORROW_BIND so the
         # callee's result gate admits the `Tree<T>&` return the `auto&`

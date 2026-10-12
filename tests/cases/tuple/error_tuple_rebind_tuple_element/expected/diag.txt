@@ -1,0 +1,1 @@
+main.py:19: error: in function 'keep': element 1 of the tuple bound to 'p' here is an element of the tuple 'q'; storing it in 'p', which holds an element of its own, is not yet supported here; bind it to a name of its own first and use that name

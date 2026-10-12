@@ -112,7 +112,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_unpack_body::__nex
         for (int32_t a = 1; a < 3; ++a) {
             __unpack_0_0 = (::tpy::mul_check<int32_t>(a, 10));
             __unpack_0_1 = a;
-            n = __unpack_0_0;
+            n = std::move(__unpack_0_0);
             m = __unpack_0_1;
         }
         auto& __obj_1 = xs;

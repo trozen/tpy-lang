@@ -1,0 +1,3 @@
+main.py:17: warning: Own[Box] element 0 of tuple param 't' is never consumed (unpacked into 'a', which is not stored in a field, forwarded to another Own[T], or returned)
+main.py:28: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:28: error: in function 'f': element 0 of 'p' is an object of its own on some paths reaching here and borrowed from other storage on others, so handing it to a sink that takes ownership is not yet supported here; use (copy(p[0]), p[1]) there instead

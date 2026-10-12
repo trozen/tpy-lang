@@ -236,11 +236,15 @@ int32_t local_unpack_forward(Box& b) {
 //         u = mk_tok(b)
 //     return mixed_take(u)  # tpyc: ok
 int32_t local_rebound(Box& b, bool again) {
-    std::tuple<Tok, Box*> u = ::tpyapp::main::mk_tok(b);
+    auto __tup_1 = ::tpyapp::main::mk_tok(b);
+    Tok __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Tok*, Box*> u{&__slot_1, std::get<1>(__tup_1)};
     if (again) {
-        u = ::tpyapp::main::mk_tok(b);
+        auto __tup_2 = ::tpyapp::main::mk_tok(b);
+        (*std::get<0>(u)) = std::move(std::get<0>(__tup_2));
+        std::get<1>(u) = std::get<1>(__tup_2);
     }
-    return ::tpyapp::main::mixed_take(std::move(u));
+    return ::tpyapp::main::mixed_take(std::tuple<Tok, Box*>{std::move(*std::get<0>(u)), std::get<1>(u)});
 }
 
 // def mk_box(b: Box) -> tuple[Own[Box], Box]:
@@ -735,8 +739,10 @@ void __tpy_init() {
     ::tpyapp::main::main();
     static Box __global_slot_1 = Box(71);
     GB = &__global_slot_1;
-    static std::tuple<Box, Box*> __global_slot_2 = ::tpyapp::main::mk_box((*GB));
-    G = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_2);
+    auto __tup_1 = ::tpyapp::main::mk_box((*GB));
+    static Box __global_slot_2 = std::move(std::get<0>(__tup_1));
+    std::get<0>(G) = &__global_slot_2;
+    std::get<1>(G) = std::get<1>(__tup_1);
     std::cout << "global-genexpr" << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_module_1(2, G)) << "\n" << ::tpy::check_signals;
     std::cout << "global" << " " << ::tpyapp::main::reader(::tpy::tuple_to_storage<std::tuple<Box, Box*>>(G)) << "\n" << ::tpy::check_signals;
 }

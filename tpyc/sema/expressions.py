@@ -69,7 +69,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import GenexprCreation, PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -5080,6 +5080,14 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(read, captured)
             func.params.append((read.name, captured))
         func.capture_params = tuple(captures)
+        root = self.ctx.func.body_root
+        if root is not None and outer is not None:
+            # A capture bound by a comprehension or lambda around the
+            # expression reads that binding, not the creator's.
+            scope = self.ctx.func.current_scope
+            self.ctx.genexpr_creators.setdefault(root, []).append(
+                GenexprCreation(func, outer, scope.body_reads(captures)
+                                if scope is not None else tuple(captures)))
         # The frame iterates the source through its own param while the body
         # may name the same container itself -- a capture, or a module global
         # it reads directly; the loop's loan on the param alone would not see
@@ -6217,6 +6225,7 @@ class ExpressionAnalyzer:
 
         # Save outer scope locals for capture filtering
         outer_locals = set(self.ctx.func.definitely_assigned)
+        outer_scope = self.ctx.func.current_scope
 
         with self.scopes.lambda_scope() as scope:
             for pname, ptype in zip(expr.param_names, fn_type.param_types):
@@ -6242,6 +6251,8 @@ class ExpressionAnalyzer:
         free_names = collect_name_refs(expr.body)
         captured = sorted((free_names - param_set) & outer_locals)
         expr.captured_names = captured
+        expr.body_captures = (outer_scope.body_reads(captured)
+                              if outer_scope is not None else tuple(captured))
         # Callable context: captures must be by value (std::function can escape).
         # Fn (template) stays inline; captures by reference are safe.
         if isinstance(fn_type, CallableType) and not fn_type.is_template:

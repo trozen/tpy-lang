@@ -219,7 +219,7 @@ class ScopeTracker:
         so the loans held on entry are put back rather than dropped.
         """
         enclosing_iter_loans = self.ctx.func.borrow_tracker.loans_held_by(ITER_BORROWER)
-        inner_scope = Scope(self.ctx.func.current_scope)
+        inner_scope = Scope(self.ctx.func.current_scope, expression=True)
         old_scope = self.ctx.func.current_scope
         old_ns = self.ctx.func.current_ns
         if old_ns:
@@ -246,7 +246,7 @@ class ScopeTracker:
     @contextmanager
     def lambda_scope(self) -> Iterator[Scope]:
         """Create an inner scope for a lambda body."""
-        inner_scope = Scope(self.ctx.func.current_scope)
+        inner_scope = Scope(self.ctx.func.current_scope, expression=True)
         old_scope = self.ctx.func.current_scope
         old_ns = self.ctx.func.current_ns
         old_assigned = self.ctx.func.definitely_assigned.copy()
@@ -372,7 +372,9 @@ class ScopeTracker:
         escaping = self._escaping_roots(target_name, source_expr)
         for root in escaping:
             if not root.through_call and not self._can_hoist(root.name):
-                raise self._escape_error(root.name, self._escape_remedy(root), node)
+                raise self._escape_error(root.name,
+                                         self._escape_remedy(root, source_expr),
+                                         node)
         for root in escaping:
             if not self._can_hoist(root.name):
                 # An alias or a for-each var behind a CALL. Its own depth says
@@ -382,7 +384,7 @@ class ScopeTracker:
                 # undiagnosed rather than rejected:
                 # BUGS.md#call-source-escape-through-alias-unchecked.
                 continue
-            remedy = self._escape_remedy(root)
+            remedy = self._escape_remedy(root, source_expr)
             self._hoist(target_name, root.name, warned=not root.assumed)
             if root.assumed:
                 # The storage decision cannot wait -- it shapes the rest of
@@ -418,16 +420,21 @@ class ScopeTracker:
             f"reference to '{source_name}' may outlive its storage; {remedy}",
             node)
 
-    def _escape_remedy(self, root: LendRoot) -> str:
+    def _escape_remedy(self, root: LendRoot, source_expr: TpyExpr) -> str:
         # copy() is not available for a @nocopy source -- naming it there
         # sends the author into a second, unrelated rejection.
         source_type = (self.ctx.func.current_scope.lookup(root.name)
                        if self.ctx.func.current_scope else None)
         if source_type is not None and self.ctx.is_type_nocopy(source_type):
             return f"'{root.name}' cannot be copied"
-        if root.through_call:
-            # copy() of the ROOT is the wrong remedy behind a call: the call
-            # would then hand back a reference into the dying copy.
+        bare = source_expr
+        while isinstance(bare, TpyCoerce):
+            bare = bare.expr
+        if root.through_call or not (isinstance(bare, TpyName)
+                                     and bare.name == root.name):
+            # copy() of the ROOT is the wrong remedy behind a call, which
+            # would hand back a reference into the dying copy, and for a
+            # part of it (`keep = p[0]`), whose copy is of another type.
             return "use copy() on the assigned value for an independent value"
         return f"use copy({root.name}) for an independent value"
 

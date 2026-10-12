@@ -1,2 +1,2 @@
 main.py:11: warning: copies Inner into field; use copy() to make this explicit
-main.py:19: warning: 'saved' will not keep the object it was given -- 'o' is rebound on each iteration and both names share its storage; use copy(o) for an independent value
+main.py:19: warning: 'saved' will not keep the object it was given -- 'o' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value

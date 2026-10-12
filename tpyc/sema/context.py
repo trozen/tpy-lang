@@ -20,6 +20,7 @@ from .value_range import ValueRange
 
 if TYPE_CHECKING:
     from ..parse import TpyGeneratorExpression
+    from .flow_facts import FlowFacts
     from .pending_num import DeferredIntOp, PendingNumCell
     from ..parse.type_resolver import TypeResolver
     from .loop_frames import PendingLoopFrameCall, WithExitCheck
@@ -37,7 +38,7 @@ from ..typesys import (
     UnknownElementType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
-    unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
+    unwrap_readonly, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync,
     FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, is_bufferless_scalar,
     is_protocol_type, TypeParamRef, substitute_type_params_structural,
@@ -828,6 +829,34 @@ def call_borrow_operands(expr: TpyExpr) -> CallOperands | None:
     if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
         return None
     return call_operands(expr)
+
+
+def call_contract_lend_exprs(expr: TpyExpr) -> list[TpyExpr]:
+    """The operands a call's result MAY point into under its declared
+    contract alone: every operand, the receiver included, less an `Own`
+    slot (it moves its argument rather than lending it). Read from the
+    signature, never from what the callee's body is proven to return, so
+    the answer does not depend on which body was analyzed first. Nothing
+    for a fresh result or one declared owned whole; every operand for a
+    call no callee resolves (a callable value)."""
+    if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
+        return []
+    ops = call_operands(expr)
+    if ops is None:
+        if isinstance(expr, TpyMethodCall):
+            return [expr.obj, *expr.args, *(expr.kwargs or {}).values()]
+        if isinstance(expr, TpyCall):
+            return [*expr.args, *(expr.kwargs or {}).values()]
+        return []
+    rt = ops.fi.root.return_type
+    if rt is not None and isinstance(
+            unwrap_readonly(unwrap_send_sync(rt)), OwnType):
+        return []
+    declared = ops.fi.root.params
+    return [src.expr for src in call_lend_sources(ops, None, expr_type=None)
+            if not (0 <= src.idx < len(declared) and isinstance(
+                unwrap_readonly(unwrap_send_sync(declared[src.idx].type)),
+                OwnType))]
 
 
 def frame_borrowed_operands(call: TpyExpr) -> list[TpyExpr] | None:
@@ -1891,19 +1920,52 @@ class OwnSlot(NamedTuple):
     index: int | None = None
 
 
-class DeferredGenericYieldSettle(NamedTuple):
-    """One generator parked for the module-end generic-yield-slot verdict.
+class ParkedFunctionState(NamedTuple):
+    """A body's function state kept for a check that runs after the body
+    (`SemanticContext.reenter`): the module-end generic-yield-slot verdict,
+    a pointer-tuple rebind's declared-slot check.
 
     `scope` and `ns` are parked beside the state because the body-exit path
-    nulls them ON that state: the verdict walk asks whether a yield source is
-    rooted in durable storage, and with no scope a local that shadows a module
-    global reads as the global and is wrongly certified as durable.
+    nulls them ON that state, and a site inside a block has a scope of its
+    own: the verdict walk asks whether a yield source is rooted in durable
+    storage, and with no scope a local that shadows a module global reads as
+    the global and is wrongly certified as durable.
     """
 
     func: Any
     state: 'FunctionTrackingState'
     scope: Scope | None
     ns: Namespace | None
+
+
+class GenexprCreation(NamedTuple):
+    """A generator expression's function, the function whose body creates
+    it directly (a nested def or an enclosing generator expression
+    included), and the captures that read that creator's own binding --
+    not one a comprehension or lambda around the expression makes."""
+
+    func: TpyFunction
+    creator: TpyFunction
+    reads_creator: tuple[str, ...]
+
+
+class ParkedRebind(NamedTuple):
+    """A rebind's declared-slot check parked until its body's final
+    pointer-tuple set exists (`TypeCompatibility.park_repointed_tuple_check`).
+
+    `flow` is the site's flow state, which the re-run applies: the body's
+    end state holds the loan this very rebind registered after its site
+    check, and ownership, consumes and narrowing of a later point, any of
+    which would answer the value's move question as the site did not."""
+
+    parked: ParkedFunctionState
+    name: str
+    stmt: TpyVarDecl
+    value_expr: TpyExpr
+    value_type: TpyType
+    var_type: TpyType
+    context: str
+    flow: FlowFacts
 
 
 @dataclass(frozen=True, slots=True)
@@ -2758,8 +2820,29 @@ class SemanticContext:
     tuple_elem_owned: IdentityMap = field(default_factory=IdentityMap)
     # Each tuple rebind site inside a body whose verdict is OWN, with the
     # name still holding what it would overwrite (None: storage the name
-    # does not own). The lowering has no OWN storage for such a site yet.
+    # does not own). A frame, an `Own` parameter and a loop variable have no
+    # OWN storage for such a site yet; their lowering reports it.
     tuple_own_sites: IdentityMap = field(default_factory=IdentityMap)
+    # Each decided tuple rebind site's per-element verdict: one entry per
+    # element, None where the binding does not own it, else the storage the
+    # element's new object takes (the scalar's verdict asked per element).
+    tuple_elem_storage: IdentityMap = field(default_factory=IdentityMap)
+    # Each last-use read of a tuple local holding a reference element, with
+    # the elements every storage reaching it owns: what a consuming sink may
+    # move out of the read (an element some path borrows is copied).
+    tuple_owned_at_use: IdentityMap = field(default_factory=IdentityMap)
+    # Per function, every name's plain bindings (`tuple_name_bindings`).
+    tuple_bindings_by_func: IdentityMap = field(default_factory=IdentityMap)
+    # Per function, its pointer tuples once final (`pointer_tuple_names`),
+    # the owners and excluded names its own post-body pass found, and the
+    # declared-slot checks of its rebinds made before its final set was
+    # computed (`ParkedRebind`). The checks sit here, each with its parked
+    # state, rather than on the function state, which a nested def's scope
+    # exit discards before the outermost body ends.
+    pointer_tuples_by_func: IdentityMap = field(default_factory=IdentityMap)
+    pointer_tuple_seeds: IdentityMap = field(default_factory=IdentityMap)
+    pending_pointer_tuple_rebinds: IdentityMap = field(
+        default_factory=IdentityMap)
     # The and/or and ternary nodes whose value is only tested for truth (a
     # condition, a `not` operand, the argument of `bool(...)`), so each
     # operand is tested on its own instead of the node needing one value type.
@@ -3018,7 +3101,7 @@ class SemanticContext:
     # frame locals; nothing mutates it once the body is done. The scope and
     # namespace ride in the record rather than on the state, which the
     # body-exit path nulls.
-    deferred_generic_yield_settles: list['DeferredGenericYieldSettle'] = field(default_factory=list)
+    deferred_generic_yield_settles: list['ParkedFunctionState'] = field(default_factory=list)
     # Scope escapes whose diagnostic waits for a callee's borrow fact
     # (`ScopeTracker.settle_deferred_escapes`).
     deferred_escapes: list['DeferredEscape'] = field(default_factory=list)
@@ -3061,6 +3144,11 @@ class SemanticContext:
     # module level. A table, not a node field: a pointer from the function
     # back up to its creator would make the parse tree cyclic.
     genexpr_roots: 'IdentityMap[TpyFunction, TpyFunction | None]' = field(
+        default_factory=IdentityMap)
+    # Per outermost body, the generator expressions created in it, in
+    # creation order (`GenexprCreation`); `finalize_pointer_tuples` takes
+    # them with the body's final sets.
+    genexpr_creators: 'IdentityMap[TpyFunction, list[GenexprCreation]]' = field(
         default_factory=IdentityMap)
     # Bodies of the `for` statements whose iterable is being analyzed: a
     # genexpr created there is pulled once per iteration, so those bodies run
@@ -3770,6 +3858,25 @@ class SemanticContext:
         """Restore per-function state from a snapshot."""
         self.func = saved
 
+    @contextmanager
+    def reenter(self, parked: ParkedFunctionState
+                ) -> Iterator[FunctionTrackingState]:
+        """Run a post-body check under the function state, node, scope and
+        namespace `parked` kept; the live state, and what the parked state
+        itself held, come back after."""
+        live, state = self.func, parked.state
+        kept = (state.current_function, state.current_scope, state.current_ns)
+        self.restore_function_state(state)
+        state.current_function = parked.func
+        state.current_scope = parked.scope
+        state.current_ns = parked.ns
+        try:
+            yield state
+        finally:
+            (state.current_function, state.current_scope,
+             state.current_ns) = kept
+            self.restore_function_state(live)
+
     @property
     def expr_slot_hint(self) -> 'SlotHint | None':
         """The hint in force for the expressions analyzed now. A fill-only
@@ -4104,7 +4211,9 @@ class SemanticContext:
         return fn.current_param_name_to_idx[deferred]
 
     def mark_param_mutated(self, name: str, *, through_field: bool = False,
-                           via_element: bool = False) -> None:
+                           via_element: bool = False,
+                           _seen: 'set[tuple[str, bool, bool]] | None' = None
+                           ) -> None:
         """Mark a function parameter as directly mutated (Phase 1 of mutation inference).
 
         For 'self': sets current_self_mutated (method self-mutation tracking).
@@ -4128,6 +4237,13 @@ class SemanticContext:
         combinator) needs: the callee's own advance of the combinator is not
         a write into the caller's containers.
         """
+        # Two holders can borrow from each other (`q = p` then `p = (b,
+        # q[1])`), so the climb below can come back to a name it left.
+        seen = set() if _seen is None else _seen
+        key = (name, through_field, via_element)
+        if key in seen:
+            return
+        seen.add(key)
         receiver = name == "self" and self.self_names_receiver()
         if self.func.in_nested_def:
             self.func.nested_mutation_marks.append(NestedMutationMark(
@@ -4154,19 +4270,19 @@ class SemanticContext:
             if self._key_member_is_indirection(iterable):
                 continue
             self.mark_param_mutated(_storage_root(iterable), through_field=through_field,
-                                    via_element=True)
+                                    via_element=True, _seen=seen)
         for src in self.func.bp_borrow_source_roots(name):
-            self.mark_param_mutated(src, through_field=through_field, via_element=True)
+            self.mark_param_mutated(src, through_field=through_field,
+                                    via_element=True, _seen=seen)
         # 8a.5: trace through element/field/ptr borrows to source param.
         # When v = items[i] (deferred) and v is later written through,
         # mark the ultimate storage root (e.g. items) as mutated.
         # EVERY reachable root, not just the first: a re-seated binding holds
         # one loan per source and the write reaches whichever is live.
-        # The recursive call terminates because a root has no upstream borrow
-        # pointing to it, so it yields no further sources.
         for ultimate in self.func.borrow_tracker.all_storage_through_borrows(
                 name, cross_handles=via_element):
-            self.mark_param_mutated(ultimate, through_field=through_field, via_element=True)
+            self.mark_param_mutated(ultimate, through_field=through_field,
+                                    via_element=True, _seen=seen)
         # A borrow rooted at a field path (`o.items`, registered for `e = o.items[0]`
         # or for an @auto_readonly accessor result `x = o.b.get()`) reaches the
         # owning param through that field; a genuine write through the borrower
@@ -4176,7 +4292,7 @@ class SemanticContext:
             field_root = _storage_root(name)
             if field_root != name and not self._key_member_is_indirection(name):
                 self.mark_param_mutated(field_root, through_field=through_field,
-                                        via_element=True)
+                                        via_element=True, _seen=seen)
 
     def mark_param_structurally_mutated(self, name: str) -> None:
         """Mark a parameter as structurally mutated (append/insert/clear/del/etc.).

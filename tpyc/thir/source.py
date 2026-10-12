@@ -22,6 +22,7 @@ from ..typesys import TpyType
 
 if TYPE_CHECKING:
     from ..codegen_cpp.forms import LoopBinding
+    from ..typesys import TupleType
     from .lower.context import FrameLocalClass, ValueOptKind
     from .nodes import THIRTupleLayout
 
@@ -99,7 +100,6 @@ class BindingKind(Enum):
     DECL_BTUPLE_ALIAS = "decl.btuple_alias"
     DECL_BTUPLE_REF_ALIAS = "decl.btuple_ref_alias"
     DECL_BTUPLE_INLINE_ARMS = "decl.btuple_inline_arms"
-    DECL_BTUPLE_REASSIGNED = "decl.btuple_reassigned"
     DECL_OPTVIEW_SHIM = "decl.optview_shim"
     DECL_BTUPLE_LITERAL = "decl.btuple_literal"
     DECL_TUPLE_LITERAL_WIDE = "decl.tuple_literal_wide"
@@ -285,6 +285,16 @@ class BindingRepr:
     tuple_layout: 'THIRTupleLayout | None' = None
     # Per element of a borrow tuple: held inline rather than by pointer.
     inline_elems: tuple[bool, ...] | None = None
+    # The pointer tuple (`std::tuple<.., T*>`) a rebound tuple local is at
+    # every binding when some binding owns a reference element: the
+    # declared type's elements, `Own` collapsed, each owned element backed
+    # by a reference local's slot at its own site. The read ownership of
+    # an element is per use (sema's `tuple_owned_at_use`), never this.
+    ptr_tuple: 'TupleType | None' = None
+    # The elements some binding of the pointer tuple owns: one a read at
+    # its last use does not own on every path reaching it is someone
+    # else's object there, which an owning sink must not take.
+    ptr_tuple_owned: frozenset[int] = frozenset()
     # A const binding: a const declaration (the decl families), a
     # parameter under its function's const verdict (the one its signature
     # spells), a read-only method's receiver. A nested scope reads an

@@ -582,6 +582,9 @@ from .predicates import (
     _unwrap_lit_coerce,
     _value_opt_view_name,
 )
+from .convert import (borrowed_path_element_message,
+                      elementwise_tuple_storage,
+                      reject_borrowed_path_elements)
 from .context import (FrameLocalClass, _call_arg_forms, _ExprResultUse,
                       _ExprUse, _LowerCtx,
                       SlotConstruct,
@@ -1488,7 +1491,7 @@ def _own_tuple_move_arg(a: TpyExpr, ptype: 'TpyType | None',
     return _own_tuple_move_arg_facts(
         a, ptype, declared, lc.narrow.narrowed, lc.inline_narrowed,
         lc.names_with("movable"), lc.analyzer, getattr(lc.func, "name", None),
-        lc.names_with("borrow_tuple_mixed"))
+        lc.names_with("borrow_tuple_mixed"), lc.names_with("ptr_tuple"))
 
 
 def _own_tuple_borrow_lift_arg(a: TpyExpr, ptype: 'TpyType | None',
@@ -2180,6 +2183,7 @@ def _record_ctor_arg_supported(
     same statement. The restricted family serves only flush-less nested
     slots.
     """
+    reject_owning_arg_element(arg, param_type, lc, declared)
     # fi is None for a TypedDict ctor (no synthetic constructor fi; params
     # come from the registry's init_params, which carry no mutation facts).
     mutation_unknown = fi is not None and fi.mutated_params is None
@@ -2218,6 +2222,7 @@ def _require_method_call_arg(
     # bytearray->bytes) the per-family ladders' bare-name rows cannot.
     if _own_move_source_slice(a, ptype, lc, declared):
         return
+    reject_owning_arg_element(a, ptype, lc, declared)
     if not _method_call_arg_ok(
             e, a, ptype, index, declared, lc.analyzer,
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
@@ -2590,6 +2595,11 @@ def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
         _inline = lc.binding(sub.obj.name).inline_elems
         if _inline is not None and idx < len(_inline) and _inline[idx]:
             return False
+        # A rebound tuple holding an element of its own is the pointer
+        # tuple whatever `Own` its declared type carries.
+        _ptf = lc.binding(sub.obj.name).ptr_tuple
+        if _ptf is not None:
+            recv_t = _ptf
     elif isinstance(sub.obj, (TpyCall, TpyMethodCall)):
         # A MIXED-own-tuple CALL receiver holds its ref elements as bare
         # pointers (`std::get<1>(make_mixed(b))->val`) -- the mixed render
@@ -5892,6 +5902,81 @@ def _tuple_layout_elems(layout: THIRTupleLayout) -> tuple[Source, ...]:
     return tuple(out)
 
 
+def reject_borrowed_path_element(e: TpyExpr, lc: '_LowerCtx') -> None:
+    """Refuse `p[i]` of a pointer tuple at a sink that takes ownership (an
+    `Own` return or argument) where the read is the tuple's last use and
+    some path reaching it binds element `i` from storage `p` does not own
+    while another owns it (sema's `tuple_owned_at_use`): the move would
+    take the caller's object, the copy is the owned path's silent copy. An
+    element owned on every path moves; one no binding owns is borrowed on
+    every path and keeps its warned copy; a read the tuple outlives copies
+    a live element, warned, as the scalar does."""
+    if not isinstance(e, TpySubscript):
+        return
+    obj = e.obj
+    while isinstance(obj, TpyCoerce):
+        obj = obj.expr
+    if not isinstance(obj, TpyName):
+        return
+    rec = lc.binding(obj.name)
+    owned = lc.analyzer.ctx.tuple_owned_at_use.get(obj)
+    if rec.ptr_tuple is None or owned is None:
+        return
+    idx = const_tuple_index(_unwrap_lit_coerce(e.index))
+    if idx is not None and 0 <= idx < len(owned) and owned[idx]:
+        return
+    if (idx is not None and idx not in rec.ptr_tuple_owned
+            and e not in lc.analyzer.ctx.element_moves):
+        return
+    note_detail("ptr_tuple.borrowed_path_sink")
+    raise ThirUnsupported(
+        "expr.subscript",
+        message=borrowed_path_element_message(
+            obj.name, idx if idx is not None else 0),
+        loc=getattr(e, "loc", None))
+
+
+def reject_owning_arg_element(a: TpyExpr, ptype: 'TpyType | None',
+                              lc: '_LowerCtx',
+                              declared: dict[str, TpyType]) -> None:
+    """The borrowed-on-some-path refusal at an argument whose slot owns
+    what it is handed -- an element read at an `Own` slot
+    (`reject_borrowed_path_element`), a pointer tuple at a tuple slot's
+    `Own` positions (`reject_borrowed_path_elements`) -- asked at every
+    entry of the argument sink ahead of its admission table, which has no
+    row for the element it refuses."""
+    if not isinstance(ptype, TpyType):
+        return
+    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
+    if isinstance(bare, OwnType):
+        reject_borrowed_path_element(a, lc)
+    elif (isinstance(bare, TupleType) and isinstance(a, TpyName)
+            and lc.binding(a.name).ptr_tuple is not None):
+        owning = [i for i, et in enumerate(bare.element_types)
+                  if isinstance(unwrap_readonly(et), OwnType)]
+        if owning:
+            reject_borrowed_path_elements(
+                _lower_expr(a, lc, declared, allow_unrouted_name=True),
+                owning)
+
+
+def _ptr_tuple_elems(ptt: 'TupleType', owned: 'tuple[bool, ...]',
+                     movable: bool) -> 'tuple[Source, ...]':
+    """The elements of a pointer-tuple local's read: each reference element
+    a pointer, movable at the read's last use only where every storage
+    reaching the read owns it (sema's `tuple_owned_at_use`); a borrowed
+    element is someone else's object."""
+    out: list[Source] = []
+    for i, et in enumerate(ptt.element_types):
+        if TupleType._element_is_pointer_repr(et):
+            out.append(Source(held=Held.BORROWED, pointer_held=True,
+                              movable=movable and i < len(owned)
+                              and owned[i]))
+        else:
+            out.append(Source(held=Held.STORAGE, movable=movable))
+    return tuple(out)
+
+
 def _dies(e: TpyExpr, analyzer) -> bool:
     """`Source.temporary`: an rvalue, or a member or element read off one
     (a container's `operator[]` hands back an lvalue whose owner still dies
@@ -5954,6 +6039,10 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
         const = rec is not None and rec.const
         if rec is not None and rec.tuple_layout is not None:
             elems = _tuple_layout_elems(rec.tuple_layout)
+        if rec is not None and rec.ptr_tuple is not None:
+            elems = _ptr_tuple_elems(rec.ptr_tuple,
+                                     lc.analyzer.ctx.tuple_owned_at_use
+                                     .get(e) or (), movable)
     elif isinstance(lowered, THIRSelf):
         # Every `self` node is the enclosing method's receiver.
         const = (lc.self_receiver is not None
@@ -7186,9 +7275,17 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # (`t2[1]` on `std::tuple<int32_t, Point>`): the by-value
             # member reads bare `std::get<1>(t2)` -- position-neutral
             # like the value-scalar row.
+            # A record element a tuple holds as a pointer, read as its
+            # object (`f(t[0])`): the pointer local's `(*p)` per element.
+            # A receiver keeps the pointer for its `->`.
+            _ptr_elem_deref = (
+                use.result is not _ExprResultUse.RECEIVER
+                and record_like(_sub_elem_t, analyzer)
+                and _subscript_yields_borrow_ptr(e, lc))
             if (not subscript_prechecked
                     and not _gen_elem_ref
                     and not _own_elem_bare
+                    and not _ptr_elem_deref
                     and _tuple_subscript_value_read(
                         e, declared, analyzer) is None
                     # A CONTAINER-element chain (`pairs[1][1]`): the
@@ -7257,6 +7354,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 tuple_index=idx,
                 form=form,
                 elem_ref=_gen_elem_ref,
+                # A prechecked consumer spells the element's pointer-ness
+                # itself (`elem_pointer`), as the address-of coerce does.
+                deref=_ptr_elem_deref and not subscript_prechecked,
                 elem_pointer=(elems[idx].pointer_held
                               if elems is not None and idx < len(elems)
                               else _subscript_yields_borrow_ptr(e, lc)),
@@ -11253,6 +11353,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             inner = _lower_expr(
                 e.expr, lc, declared,
                 use=_ExprUse(result=_ExprResultUse.RECEIVER))
+            if isinstance(inner, THIRSubscript) and inner.reads_raw_pointer:
+                # An element a tuple holds as a pointer: the address is of
+                # its object (`&(*std::get<0>(p))`), not of the pointer.
+                inner = replace(inner, deref=True)
         else:
             # A str-family FIELD inner is admitted under a view-TARGET coerce
             # too (`return self.s` at a StrView slot): the coerce renders its
@@ -12472,6 +12576,16 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         # expression, and it answers for every sink, not this one.
         note_detail("container_elem.accessor_lends_storage")
         raise ThirUnsupported(call_reject_reason("expr.container_literal"))
+    if (isinstance(e, TpyName)
+            and lc.binding(e.name).ptr_tuple is not None):
+        # A rebound pointer tuple as an element: the element moves or copies
+        # per element as at an owning slot, but a container literal's element
+        # move is not yet sound inside a loop
+        # (BUGS.md#comp-element-move-inside-loop), and the whole-tuple copy
+        # copies what the tuple owns
+        # (BUGS.md#tuple-local-last-use-copies-owned-elements).
+        note_detail("container_elem.ptr_tuple_name")
+        raise ThirUnsupported("expr.container_literal")
     su0 = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot))) \
         if slot is not None else None
     if isinstance(su0, AnyType):
@@ -14124,7 +14238,8 @@ def _free_arg_body_facts(lc: '_LowerCtx',
         own_borrow_tuple_locals=lc.names_with("borrow_tuple_mixed"),
         own_param_names=_own_param_names(lc),
         frame_local_names=lc.frame_local_types,
-        bare_tuple_names=lambda: _borrow_tuple_bare_names(lc, declared))
+        bare_tuple_names=lambda: _borrow_tuple_bare_names(lc, declared),
+        ptr_tuple_locals=lc.names_with("ptr_tuple"))
 
 
 def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
@@ -14176,6 +14291,7 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
     len_call = _is_len_call(e, declared, analyzer, lc.names_with("pointer"))
     if not len_call:
+        reject_owning_arg_element(a, ptype, lc, declared)
         body_facts = _free_arg_body_facts(lc, declared)
         if kind is not None and kind[0] in ("native", "native_c", "template"):
             if _template_arg_unreferenced(kind, arg_index):
@@ -15107,6 +15223,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                        if isinstance(unwrap_readonly(unwrap_ref_type(
                            unwrap_send_sync(ptype))), OwnType)
                        else _NO_FORMS)
+    reject_owning_arg_element(a, ptype, lc, declared)
     if lends_from_dying_source(lc.analyzer, a) and not _lend_ok:
         # THE argument sink, asserted at its ENTRY. Every argument -- free
         # call, method, builtin stub, ctor -- reaches this function, but it
@@ -15321,9 +15438,22 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                                               coro_factory=False,
                                               ptr_opt_pass=False)),
                               allow_unrouted_name=True)
+        moved = THIRMove(result_type=lowered.result_type, value=lowered,
+                         form=Form.STORAGE, loc=getattr(a, "loc", None))
+        if lc.binding(a.name).ptr_tuple is not None:
+            # A pointer tuple: each object it owns at this last use moves
+            # into the slot, a borrowed element the slot owns is copied in
+            # and one it borrows keeps its pointer.
+            slot_t = _resolve_tuple_pending(unwrap_readonly(
+                unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer)
+            _witness("move.own_tuple_ptr_lift")
+            return (elementwise_tuple_storage(lowered, slot_t,
+                                              param_form=True)
+                    or THIRFormConvert(result_type=slot_t, value=moved,
+                                       form=Form.STORAGE, param_form=True,
+                                       loc=getattr(a, "loc", None)))
         _witness("move.own_tuple")
-        return THIRMove(result_type=lowered.result_type, value=lowered,
-                        form=Form.STORAGE, loc=getattr(a, "loc", None))
+        return moved
     if _own_tuple_decay_copy_arg(a, ptype, lc, declared):
         # A still-live tuple name at the mixed `&&` slot copies into a
         # prvalue (the warned copy): a mixed binding decay-copies

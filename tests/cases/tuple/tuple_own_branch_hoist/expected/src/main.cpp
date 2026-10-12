@@ -17,12 +17,17 @@ std::tuple<int32_t, Box> make_pair(int32_t n) {
 //         t = make_pair(5)
 //     return t[1].val
 int32_t use(bool c) {
-    std::optional<std::tuple<int32_t, Box>> __slot_1;
+    std::optional<Box> __slot_1;
+    std::optional<Box> __slot_2;
     std::tuple<int32_t, Box*> t;
     if (c) {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9)));
+        auto __tup_1 = ::tpyapp::main::make_pair(9);
+        std::get<0>(t) = std::move(std::get<0>(__tup_1));
+        std::get<1>(t) = &*(__slot_1 = std::move(std::get<1>(__tup_1)));
     } else {
-        t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(5)));
+        auto __tup_2 = ::tpyapp::main::make_pair(5);
+        std::get<0>(t) = std::move(std::get<0>(__tup_2));
+        std::get<1>(t) = &*(__slot_2 = std::move(std::get<1>(__tup_2)));
     }
     return std::get<1>(t)->val;
 }

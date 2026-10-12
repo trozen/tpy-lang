@@ -12,13 +12,15 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 
 // def realias(h: Holder, b: Box) -> None:
 //     p = make_mixed(b)
-//     p = h.pair  # tpyc: warning(/copies tuple\[Box, Box\] into owned storage/)
+//     p = h.pair  # tpyc: ok
 //     p[0].val = 55
 //     p[1].val = 66
 void realias(Holder& h, Box& b) {
-    std::tuple<Box, Box*> p = ::tpyapp::main::make_mixed(b);
-    p = ::tpy::tuple_to_pointer<std::tuple<Box, Box*>>(h.pair);
-    std::get<0>(p).val = 55;
+    auto __tup_1 = ::tpyapp::main::make_mixed(b);
+    Box __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.pair);
+    std::get<0>(p)->val = 55;
     std::get<1>(p)->val = 66;
 }
 
@@ -26,7 +28,6 @@ void realias(Holder& h, Box& b) {
 //     b = Box(7)
 //     h = Holder(b)
 //     realias(h, b)
-//     # CPython prints 55 66; element 0 was copied into the local's owned slot.
 //     print("elem0:", h.pair[0].val)
 //     print("elem1:", h.pair[1].val)
 void main() {

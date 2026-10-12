@@ -38,6 +38,7 @@ from ..value_category import (
     peel_value_wrappers, const_place,
     property_access_returns_cpp_ref, returns_borrow)
 from . import own_copy
+from .alias_rebind import pointer_tuple_names, tuple_elem_owned
 from .type_join import user_type_name
 from .frame_traits import frame_traits_of_function, frame_type_of_function
 from .send_chain import why_not_send, why_not_sync, why_not_frame, render_chain
@@ -50,16 +51,16 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
     lambda_of,
-    TpyAwait, TpyGeneratorExpression, SourceLocation
+    TpyAwait, TpyGeneratorExpression, TpyVarDecl, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error
 from ..modules import get_span_return_type
-from .context import OwnSlot, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
+from .context import OwnSlot, ParkedFunctionState, ParkedRebind, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
-    SemanticError, NOCOPY_REMEDIATION_HINT, CONSUMING_FIELD_MOVE_NOTE,
-    CONSUMING_FIELD_COPY_CLAUSE)
+    SemanticError, NOCOPY_REMEDIATION_HINT,
+    CONSUMING_FIELD_MOVE_NOTE, CONSUMING_FIELD_COPY_CLAUSE)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
@@ -364,6 +365,7 @@ if TYPE_CHECKING:
     from .methods import MethodAnalyzer
     from .local_deduction import LocalTypeDeduction
     from .pending_num import PendingNums
+    from .init_tracker import InitTracker
     from ..typesys import FunctionInfo
 
 
@@ -413,6 +415,8 @@ class TypeCompatibility:
         self.deduction: 'LocalTypeDeduction'
         self.pend: 'PendingNums'
         self.pending_iter_copy_checks: list[PendingIterCopyCheck] = []
+        # Set after construction, from the statement analyzer.
+        self.init: 'InitTracker'
 
     def resolve_pending_iter_copy_checks(self) -> None:
         """Decide the element-copy checks deferred on a pending callee, now
@@ -2353,6 +2357,69 @@ class TypeCompatibility:
         self.ctx.set_expr_type(coerced, expected)
         return coerced
 
+    def _repointed_tuple_slot(self, name: str, var_type: TpyType,
+                              value_expr: TpyExpr
+                              ) -> 'tuple[TpyType, bool]':
+        """The slot a reassignment's value is checked against, and whether
+        its check against the declared slot waits for the final answer. A
+        pointer tuple (`pointer_tuple_names`) bound to a value owning no
+        element only re-points its element pointers, so nothing is copied
+        into the declared `Own` positions: the value is checked against the
+        borrow tuple, the declared type with the `Own` markers dropped. The
+        answer only grows during the walk, so a name it leaves out before
+        the body's final set exists takes the borrow tuple too, and the
+        declared slot's check runs after the body if the name stays out."""
+        bare = unwrap_readonly(var_type)
+        if (self.ctx.is_top_level or not isinstance(bare, TupleType)
+                or not any(isinstance(et, OwnType)
+                           for et in bare.element_types)
+                or any(tuple_elem_owned(self.ctx, value_expr, var_type)
+                       or ())):
+            return var_type, False
+        f = self.ctx.func
+        fn = f.current_function
+        borrow = TupleType(tuple(unwrap_own(et) for et in bare.element_types))
+        if name in pointer_tuple_names(
+                self.ctx, fn, f.current_reassigned_vars,
+                f.current_param_names | f.current_nonlocal_names):
+            return borrow, False
+        if (fn is not None and not (fn.is_generator or fn.is_async)
+                and fn not in self.ctx.pointer_tuples_by_func):
+            return borrow, True
+        return var_type, False
+
+    def park_repointed_tuple_check(
+            self, name: str, stmt: TpyVarDecl, value_expr: TpyExpr,
+            value_type: TpyType, var_type: TpyType, context: str) -> None:
+        """Park the declared slot's check of a rebind the final set may
+        still leave out (`_repointed_tuple_slot`) with the state, scope,
+        namespace and flow state of its site, which the check reads as the
+        walk would have there; `finalize_pointer_tuples` runs it
+        (`run_repointed_tuple_check`)."""
+        assert isinstance(stmt, TpyVarDecl), stmt
+        f = self.ctx.func
+        self.ctx.pending_pointer_tuple_rebinds.setdefault(
+            f.current_function, []).append(ParkedRebind(
+                ParkedFunctionState(f.current_function, f, f.current_scope,
+                                    f.current_ns),
+                name, stmt, value_expr, value_type, var_type, context,
+                self.init.save()))
+
+    def run_repointed_tuple_check(self, rebind: ParkedRebind) -> None:
+        """The declared slot's check of a parked rebind, as the walk would
+        have made it at the site; what it defers is drained here, under the
+        body's end state, since the body's own drain has run."""
+        with self.ctx.reenter(rebind.parked):
+            end = self.init.save()
+            self.init.restore(rebind.flow)
+            try:
+                rebind.stmt.init = self.coerce_expr(
+                    rebind.value_expr, rebind.value_type, rebind.var_type,
+                    rebind.context, coercion_ctx=CoercionContext.ASSIGN)
+            finally:
+                self.init.restore(end)
+            self.drain_deferred_escape_checks()
+
     def coerce_reassignment(
         self, name: str, existing_type: TpyType, value_type: TpyType,
         value_expr: TpyExpr, err_node,
@@ -2447,9 +2514,14 @@ class TypeCompatibility:
                 rebind_of=name if typed_local else None)
         coerced = value_expr
         if not (isinstance(inner_existing, IntLiteralType) and is_integer_type(var_type)):
+            slot, undecided = self._repointed_tuple_slot(
+                name, var_type, value_expr)
             coerced = self.coerce_expr(
-                value_expr, inner_value, var_type, ctx,
+                value_expr, inner_value, slot, ctx,
                 coercion_ctx=CoercionContext.ASSIGN)
+            if undecided:
+                self.park_repointed_tuple_check(
+                    name, err_node, value_expr, inner_value, var_type, ctx)
         # Readonly status flows from the value expression.
         if isinstance(value_type, ReadonlyType):
             if isinstance(var_type, OptionalType):

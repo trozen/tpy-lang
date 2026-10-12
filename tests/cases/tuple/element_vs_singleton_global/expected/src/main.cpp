@@ -81,12 +81,16 @@ void __tpy_init() {
     W = &__global_slot_2;
     singleton = V;
     pair = std::tuple<Box*, Box*>{V, V};
-    static std::tuple<int32_t, Box> __global_slot_3 = std::tuple<int32_t, Box>{1, Box(5)};
-    owned = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__global_slot_3);
+    auto __tup_1 = std::tuple<int32_t, Box>{1, Box(5)};
+    std::get<0>(owned) = std::move(std::get<0>(__tup_1));
+    static Box __global_slot_3 = std::move(std::get<1>(__tup_1));
+    std::get<1>(owned) = &__global_slot_3;
     pair2 = std::tuple<Box*, int32_t>{V, 1};
     pair2 = std::tuple<Box*, int32_t>{W, 2};
-    static std::tuple<Box, Box*> __global_slot_4 = ::tpyapp::main::make_mixed((*V));
-    mixed = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(__global_slot_4);
+    auto __tup_2 = ::tpyapp::main::make_mixed((*V));
+    static Box __global_slot_4 = std::move(std::get<0>(__tup_2));
+    std::get<0>(mixed) = &__global_slot_4;
+    std::get<1>(mixed) = std::get<1>(__tup_2);
     ::tpyapp::main::main();
 }
 

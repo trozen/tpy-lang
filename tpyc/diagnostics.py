@@ -168,6 +168,9 @@ class Scope:
     depth: int = field(init=False)
     namespace: Optional['Namespace'] = field(default=None, repr=False,
                                              compare=False)
+    # A comprehension's or lambda's scope: what it binds is the
+    # expression's own, never a binding of the enclosing function's body.
+    expression: bool = False
 
     def __post_init__(self) -> None:
         self.depth = (self.parent.depth + 1) if self.parent else 0
@@ -178,6 +181,19 @@ class Scope:
         if self.parent:
             return self.parent.lookup(name)
         return None
+
+    def body_reads(self, names: Iterable[str]) -> tuple[str, ...]:
+        """Those of `names` a closure created in this scope reads from the
+        enclosing function body's own binding, not from one a comprehension
+        or lambda around the closure makes."""
+        reads: list[str] = []
+        for name in names:
+            scope: Optional[Scope] = self
+            while scope is not None and name not in scope.bindings:
+                scope = scope.parent
+            if scope is None or not scope.expression:
+                reads.append(name)
+        return tuple(reads)
 
     def define(self, name: str, typ: TpyType) -> None:
         self.bindings[name] = typ

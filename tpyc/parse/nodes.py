@@ -807,6 +807,9 @@ class TpyLambda(TpyExpr):
     inferred_param_types: list['TpyType'] = field(default_factory=list)
     inferred_return_type: 'TpyType | None' = None
     captured_names: list[str] = field(default_factory=list)
+    # Set by sema: the captures that read the creating body's own binding,
+    # not one a comprehension or lambda around the lambda makes.
+    body_captures: tuple[str, ...] = ()
     captures_by_value: bool = False  # True for Callable context (captures escape)
     readonly_params: bool = False  # True when params should be const (key functions)
     # Set by sema: capture-list FrameType for Send/Sync conversion checks
@@ -2658,6 +2661,31 @@ def walk_body_stmts(
             on_expr(expr)
         for body in stmt.sub_bodies():
             walk_body_stmts(body, on_expr, on_stmt)
+
+
+def value_capture_lambdas(stmts: list[TpyStmt], *, nested: bool = False
+                          ) -> 'list[tuple[TpyLambda, tuple[TpyLambda, ...]]]':
+    """The lambdas that copy their captures (`captures_by_value`) which
+    `stmts` create at their own scope, in source order, each with the
+    lambdas enclosing it there. A lambda's body is a scope of its own;
+    `nested` walks into it too, since a lambda inside one that captures by
+    reference copies the outer body's names all the same."""
+    found: list[tuple[TpyLambda, tuple[TpyLambda, ...]]] = []
+
+    def visit_in(chain: tuple[TpyLambda, ...]) -> Callable[[TpyExpr], bool]:
+        def visit(e: TpyExpr) -> bool:
+            if not isinstance(e, TpyLambda):
+                return True
+            if e.captures_by_value:
+                found.append((e, chain))
+            if nested:
+                walk_expr_tree(e.body, visit_in(chain + (e,)))
+            return False
+        return visit
+
+    walk_body_stmts(stmts, lambda e: walk_expr_tree(e, visit_in(())),
+                    lambda s: None)
+    return found
 
 
 def walk_expr_tree(expr: TpyExpr, visit: Callable[[TpyExpr], bool]) -> None:

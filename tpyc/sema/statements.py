@@ -126,7 +126,8 @@ if TYPE_CHECKING:
     from .protocols import ProtocolChecker
     from ..diagnostics import Scope
 
-from .alias_rebind import decide_rebind_storage, stamp_bind_kind
+from .alias_rebind import (decide_rebind_storage, finalize_pointer_tuples,
+                           stamp_bind_kind)
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
 from .compatibility import TupleSink
@@ -4501,6 +4502,8 @@ class StatementAnalyzer:
             # reads the storage the resolution settles.
             self.deduction.resolve_all()
             self.compat.drain_deferred_escape_checks()
+            finalize_pointer_tuples(self.ctx, func, nested=True,
+                                    compat=self.compat)
             # Only the scope-escape hoists: `hoisted_vars` also holds the
             # branch pre-declarations, which the closure lowering already
             # places and which need no slot.

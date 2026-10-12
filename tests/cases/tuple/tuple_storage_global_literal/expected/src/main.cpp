@@ -27,8 +27,10 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::tuple<int32_t, Cell> __global_slot_1 = std::tuple<int32_t, Cell>{1, Cell(2)};
-    g = ::tpy::tuple_to_pointer<std::tuple<int32_t, Cell*>>(__global_slot_1);
+    auto __tup_1 = std::tuple<int32_t, Cell>{1, Cell(2)};
+    std::get<0>(g) = std::move(std::get<0>(__tup_1));
+    static Cell __global_slot_1 = std::move(std::get<1>(__tup_1));
+    std::get<1>(g) = &__global_slot_1;
     ::tpyapp::main::main();
 }
 

@@ -252,11 +252,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::tuple<Box, int32_t> __global_slot_1 = ::tpyapp::main::mk();
-    tg = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(__global_slot_1);
-    auto& __tup_1 = tg;
-    gx = std::get<0>(__tup_1);
-    gk = std::get<1>(__tup_1);
+    auto __tup_1 = ::tpyapp::main::mk();
+    static Box __global_slot_1 = std::move(std::get<0>(__tup_1));
+    std::get<0>(tg) = &__global_slot_1;
+    std::get<1>(tg) = std::move(std::get<1>(__tup_1));
+    auto& __tup_2 = tg;
+    gx = std::get<0>(__tup_2);
+    gk = std::get<1>(__tup_2);
     gx->n = 9;
     static Box __global_slot_2 = Box(5);
     V = &__global_slot_2;

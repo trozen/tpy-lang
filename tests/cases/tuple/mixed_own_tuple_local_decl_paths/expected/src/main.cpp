@@ -17,11 +17,15 @@ std::tuple<Box, Box*> make_mixed(Box& b) {
 //     p[1].val = 22
 //     return p[0].val
 int32_t rebind(Box& b, Box& c) {
-    std::tuple<Box, Box*> p = ::tpyapp::main::make_mixed(b);
+    auto __tup_1 = ::tpyapp::main::make_mixed(b);
+    Box __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     std::get<1>(p)->val = 11;
-    p = ::tpyapp::main::make_mixed(c);
+    auto __tup_2 = ::tpyapp::main::make_mixed(c);
+    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->val = 22;
-    return std::get<0>(p).val;
+    return std::get<0>(p)->val;
 }
 
 // def branch_hoisted(b: Box, c: Box, pick: bool) -> int32:
@@ -32,14 +36,20 @@ int32_t rebind(Box& b, Box& c) {
 //     p[1].val = 33
 //     return p[0].val
 int32_t branch_hoisted(Box& b, Box& c, bool pick) {
-    std::tuple<Box, Box*> p;
+    std::optional<Box> __slot_1;
+    std::optional<Box> __slot_2;
+    std::tuple<Box*, Box*> p;
     if (pick) {
-        p = ::tpyapp::main::make_mixed(b);
+        auto __tup_1 = ::tpyapp::main::make_mixed(b);
+        std::get<0>(p) = &*(__slot_1 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(p) = std::get<1>(__tup_1);
     } else {
-        p = ::tpyapp::main::make_mixed(c);
+        auto __tup_2 = ::tpyapp::main::make_mixed(c);
+        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(p) = std::get<1>(__tup_2);
     }
     std::get<1>(p)->val = 33;
-    return std::get<0>(p).val;
+    return std::get<0>(p)->val;
 }
 
 // def loop_carried(b: Box, c: Box) -> int32:
@@ -53,16 +63,22 @@ int32_t branch_hoisted(Box& b, Box& c, bool pick) {
 //         total = total + p[0].val
 //     return total
 int32_t loop_carried(Box& b, Box& c) {
+    std::optional<Box> __slot_1;
+    std::optional<Box> __slot_2;
     int32_t total = 0;
     for (int32_t i = 0; i < 2; ++i) {
-        std::tuple<Box, Box*> p;
+        std::tuple<Box*, Box*> p;
         if ((i == 0)) {
-            p = ::tpyapp::main::make_mixed(b);
+            auto __tup_1 = ::tpyapp::main::make_mixed(b);
+            std::get<0>(p) = &*(__slot_1 = std::move(std::get<0>(__tup_1)));
+            std::get<1>(p) = std::get<1>(__tup_1);
         } else {
-            p = ::tpyapp::main::make_mixed(c);
+            auto __tup_2 = ::tpyapp::main::make_mixed(c);
+            std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(p) = std::get<1>(__tup_2);
         }
         std::get<1>(p)->val = (::tpy::add_check<int32_t>(44, i));
-        total = (::tpy::add_check<int32_t>(total, std::get<0>(p).val));
+        total = (::tpy::add_check<int32_t>(total, std::get<0>(p)->val));
     }
     return total;
 }
@@ -75,16 +91,22 @@ int32_t loop_carried(Box& b, Box& c) {
 //     p[1].val = 66
 //     return p[0].val
 int32_t try_hoisted(Box& b) {
-    std::tuple<Box, Box*> p;
+    std::optional<Box> __slot_1;
+    std::optional<Box> __slot_2;
+    std::tuple<Box*, Box*> p;
     {
         try {
-            p = ::tpyapp::main::make_mixed(b);
+            auto __tup_1 = ::tpyapp::main::make_mixed(b);
+            std::get<0>(p) = &*(__slot_1 = std::move(std::get<0>(__tup_1)));
+            std::get<1>(p) = std::get<1>(__tup_1);
         } catch (const ::tpy::ValueError&) {
-            p = ::tpyapp::main::make_mixed(b);
+            auto __tup_2 = ::tpyapp::main::make_mixed(b);
+            std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(p) = std::get<1>(__tup_2);
         }
     }
     std::get<1>(p)->val = 66;
-    return std::get<0>(p).val;
+    return std::get<0>(p)->val;
 }
 
 // def walrus(b: Box) -> int32:

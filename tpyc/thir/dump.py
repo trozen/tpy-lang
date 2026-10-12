@@ -594,6 +594,11 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return lines
     if isinstance(stmt, THIRTupleUnpack):
         tgts = ", ".join(n if n is not None else "_" for n in stmt.targets)
+        if stmt.tuple_target is not None:
+            tgts = ", ".join(
+                f"{stmt.tuple_target.name}[{t.index}]:{t.bind.name.lower()}"
+                + (f":{t.storage.value}" if t.storage is not None else "")
+                for t in stmt.elem_targets)
         src = _expr(stmt.source_expr) if stmt.source_expr is not None \
             else f"%{stmt.source}"
         return [f"{pad}{tgts} = {src}"]

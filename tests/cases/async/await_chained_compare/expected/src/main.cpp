@@ -113,14 +113,14 @@ __coro_val val(std::string_view tag, ::tpy::BigInt n) {
         continue;
     }
     case S_JOIN_0: {
-        r = __sc_0;
+        r = std::move(__sc_0);
         std::cout << "r" << " " << ::tpy::print_bool(r) << "\n" << ::tpy::check_signals;
         __sub_3.emplace("a2", ::tpy::BigInt(9));
         __state = S_RESUME_3;
         continue;
     }
     case S_JOIN_1: {
-        r2 = __sc_4;
+        r2 = std::move(__sc_4);
         std::cout << "r2" << " " << ::tpy::print_bool(r2) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});

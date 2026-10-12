@@ -1,9 +1,7 @@
-# Rebinding a MIXED tuple local to an all-borrow STORAGE source (a field) has
-# no aliasing form to take: the local's owned element is by value, so the
-# field's element 0 is copied into it while element 1 still aliases. That is an
-# acknowledged divergence -- CPython aliases both -- so it warns at the rebind
-# and offers copy() as the acknowledgement. no_cpython for that reason: the
-# divergence is the thing under test.
+# Rebinding a MIXED tuple local to an all-borrow STORAGE source (a field):
+# the rebound local is the pointer tuple, so the rebind re-points both
+# elements at the field's objects -- no copy, nothing warned -- and a write
+# through the local reaches the field, as CPython aliases.
 from tpy import int32, Own, copy
 
 
@@ -27,7 +25,7 @@ def make_mixed(b: Box) -> tuple[Own[Box], Box]:
 
 def realias(h: Holder, b: Box) -> None:
     p = make_mixed(b)
-    p = h.pair  # tpyc: warning(/copies tuple\[Box, Box\] into owned storage/)
+    p = h.pair  # tpyc: ok
     p[0].val = 55
     p[1].val = 66
 
@@ -36,7 +34,6 @@ def main() -> None:
     b = Box(7)
     h = Holder(b)
     realias(h, b)
-    # CPython prints 55 66; element 0 was copied into the local's owned slot.
     print("elem0:", h.pair[0].val)
     print("elem1:", h.pair[1].val)
 

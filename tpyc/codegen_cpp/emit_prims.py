@@ -1445,25 +1445,6 @@ def reject_polymorphic_rvalue_into_optional_local(
     )
 
 
-def reject_value_element_in_rebound_tuple(
-        name: str, index: int, elem_type: TpyType,
-        loc: SourceLocation | None) -> NoReturn:
-    """A tuple local assigned more than once refers to its reference-type
-    elements, and this literal's element is a value of its own -- a fresh
-    object, a copy of a call result, or a variable moved at its last use --
-    with no variable left to refer to
-    (BUGS.md#pointer-repr-tuple-local-value-capture-literal). The advice
-    names the one rewrite that works for every such element."""
-    raise CodeGenError(
-        f"tuple variable '{name}' is assigned more than once, so it refers "
-        f"to its '{elem_type}' elements instead of holding them, and "
-        f"element {index} here would have to be held by the tuple; this is "
-        f"not supported yet -- use a separate tuple variable for this "
-        f"assignment.",
-        loc=loc
-    )
-
-
 def reject_rebind_slot_crosses_scope(
         name: str, loc: SourceLocation | None) -> NoReturn:
     """A rebind consumes a slot reserved by an enclosing hoist scope.

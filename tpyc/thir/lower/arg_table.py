@@ -121,6 +121,8 @@ class _ArgReq(NamedTuple):
     # set: deriving it walks every local of the body, and only the one row
     # that reads it should pay for that, not every argument of every call.
     bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None
+    # The body's pointer-tuple locals (their records' `ptr_tuple`).
+    ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
 
 
 class _ArgRow(NamedTuple):
@@ -245,7 +247,8 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
            own_param_names: 'frozenset[str] | set[str]' = frozenset(),
            frame_local_names: 'frozenset[str] | set[str] | dict'
            = frozenset(),
-           bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None
+           bare_tuple_names: 'Callable[[], AbstractSet[str]] | None' = None,
+           ptr_tuple_locals: 'frozenset[str] | set[str]' = frozenset()
            ) -> bool:
     """Walk `sink`'s rows in order; `note_detail(sink.note)` on no match."""
     req = _ArgReq(a, ptype, locals_, analyzer, param_names, narrowed,
@@ -254,7 +257,7 @@ def arg_ok(sink: _ArgSink, a: 'TpyExpr', ptype: 'TpyType | None',
                   overload, frame_capturing, mutation_unknown,
                   inline_narrowed, movable_locals, pointers, func_name,
                   readonly_target, own_borrow_tuple_locals, own_param_names,
-                  frame_local_names, bare_tuple_names)
+                  frame_local_names, bare_tuple_names, ptr_tuple_locals)
     return _walk(sink, req)
 
 

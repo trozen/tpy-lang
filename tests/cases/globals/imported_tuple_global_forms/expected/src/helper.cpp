@@ -20,8 +20,10 @@ void __tpy_init() {
     static Cell __global_slot_1 = Cell(2);
     V = &__global_slot_1;
     pair = std::tuple<Cell*, int32_t>{V, 1};
-    static std::tuple<int32_t, Cell> __global_slot_2 = std::tuple<int32_t, Cell>{1, Cell(5)};
-    owned = ::tpy::tuple_to_pointer<std::tuple<int32_t, Cell*>>(__global_slot_2);
+    auto __tup_1 = std::tuple<int32_t, Cell>{1, Cell(5)};
+    std::get<0>(owned) = std::move(std::get<0>(__tup_1));
+    static Cell __global_slot_2 = std::move(std::get<1>(__tup_1));
+    std::get<1>(owned) = &__global_slot_2;
 }
 
 } // namespace tpyapp::helper

@@ -1,0 +1,1 @@
+main.py:31: error: a closure that outlives 'depth' captures 'q', which may hold the objects 'p' keeps in storage of 'depth' itself; capturing it is not yet supported here; bind copies of its elements (`q0 = copy(q[0])`, with `copy` from `tpy`) and capture those

@@ -1,0 +1,2 @@
+main.py:20: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:20: error: in function 'f': element 0 of the tuple bound to 'p' here is a reference into storage held elsewhere; storing it in 'p', which holds an element of its own, is not yet supported here; bind it to a name of its own first and use that name

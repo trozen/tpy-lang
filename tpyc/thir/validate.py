@@ -83,7 +83,7 @@ from .nodes import (
     THIRSubscript, THIRTupleUnpack, THIRCoroHandleMove, THIRMatch,
     THIRMatchBinding, THIRMatchFoldBind, THIRWith, THIRWithItem,
     WithTargetArm,
-    THIRFrameSlotWrite,
+    THIRFrameSlotWrite, TupleElemBind,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
@@ -476,25 +476,6 @@ _POINTER_UNPACK_BINDS = frozenset({"ptr", "opt_ptr", "frame_ptr_elem",
                                    "frame_opt_ptr"})
 
 
-def _parked_tuple_global(node: 'THIRPtrLocalDecl | THIRPtrLocalRebind',
-                         rec) -> bool:
-    """A module global held as a tuple of pointer slots whose write parks
-    its value in a static slot of its own: the global's record holds every
-    reference element through a pointer (`THIRBorrowedRecord`), none
-    inline, and the node is one of the two parking writes."""
-    layout = rec.tuple_layout
-    if (rec.kind is not BindingKind.GLOBAL_MODULE or rec.refinements
-            or layout is None or layout.owns_records
-            or not any(isinstance(m, THIRBorrowedRecord)
-                       for m in layout.elements)):
-        return False
-    if isinstance(node, THIRPtrLocalRebind):
-        return (node.kind is PtrSlotKind.GLOBAL_HOIST_RVALUE
-                and node.tuple_cpp is not None)
-    return (node.kind is PtrSlotKind.GLOBAL_RVALUE
-            and isinstance(node.resolved_type, TupleType))
-
-
 def _contract_problem(node: object, rec) -> 'str | None':
     """The first representation fact of a binding-emitting node its record
     contradicts. The checks read the record's fields, never its read form
@@ -507,13 +488,13 @@ def _contract_problem(node: object, rec) -> 'str | None':
         if node.kind in _UNION_SLOT_KINDS:
             if not rec.ptr_variant:
                 return f"a {node.kind} declaration of a non-pointer-variant binding"
-        elif not (rec.pointer or _parked_tuple_global(node, rec)):
+        elif not rec.pointer:
             return f"a {node.kind} declaration of a non-pointer binding"
     elif isinstance(node, THIRPtrLocalRebind):
         if node.kind in _UNION_SLOT_KINDS:
             if not rec.ptr_variant:
                 return f"a {node.kind} reseat of a non-pointer-variant binding"
-        elif not (rec.pointer or _parked_tuple_global(node, rec)):
+        elif not rec.pointer:
             return f"a {node.kind} reseat of a non-pointer binding"
     elif isinstance(node, THIRErrorReturnBind):
         if node.ptr_rebind and not rec.pointer:
@@ -559,6 +540,45 @@ def _check_contract(owner: str, node: object, name: 'str | None', rec) -> None:
         _contract_fail(owner, node, f"{type(node).__name__} {name!r} ({rec.kind.value}): {why}")
 
 
+def _pointer_tuple_global(rec) -> bool:
+    """A module global held as a tuple of pointer slots: its record holds
+    every reference element through a pointer (`THIRBorrowedRecord`), none
+    inline."""
+    layout = rec.tuple_layout
+    return (rec.kind is BindingKind.GLOBAL_MODULE and not rec.refinements
+            and layout is not None and not layout.owns_records
+            and any(isinstance(m, THIRBorrowedRecord)
+                    for m in layout.elements))
+
+
+def _check_tuple_target_contract(owner: str, node: THIRTupleUnpack) -> None:
+    """A tuple-target write binds the pointer tuple its record describes --
+    a local's `ptr_tuple`, a module global's pointer-slot layout -- and
+    lands each element by that form: a pointer element owned or
+    re-pointed, any other element as a value."""
+    name = node.tuple_target.name
+    rec = node.tuple_binding
+    if rec is None:
+        if _LOWERED.get():
+            _contract_fail(owner, node, f"tuple target {name!r} carries no record")
+        return
+    if rec.kind is BindingKind.UNBOUND:
+        return
+    target_t = node.tuple_target.result_type
+    if rec.ptr_tuple is not None:
+        if target_t != rec.ptr_tuple:
+            _contract_fail(owner, node, f"tuple target {name!r} ({rec.kind.value}) is not its record's pointer tuple")
+    elif not _pointer_tuple_global(rec) or node.tuple_decl_cpp is not None:
+        _contract_fail(owner, node, f"tuple target {name!r} ({rec.kind.value}) is no pointer tuple")
+    elems = target_t.element_types if isinstance(target_t, TupleType) else ()
+    for t in node.elem_targets:
+        if t.index >= len(elems):
+            _contract_fail(owner, node, f"tuple target {name!r} element {t.index} out of range")
+        pointer = TupleType._element_is_pointer_repr(elems[t.index])
+        if pointer != (t.bind is not TupleElemBind.VALUE):
+            _contract_fail(owner, node, f"tuple target {name!r} element {t.index} bound {t.bind.name} against its form")
+
+
 def _check_binding_contracts(owner: str, node: object) -> None:
     """A binding-emitting node against the binding table's record it carries
     (`THIRVarDecl.binding` and its siblings)."""
@@ -572,6 +592,8 @@ def _check_binding_contracts(owner: str, node: object) -> None:
     elif isinstance(node, (THIRForEach, THIRForIterProto, THIRForRange)):
         _check_contract(owner, node, node.var, node.binding)
     elif isinstance(node, THIRTupleUnpack):
+        if node.tuple_target is not None:
+            _check_tuple_target_contract(owner, node)
         recs = node.bindings or (None,) * len(node.targets)
         if len(recs) != len(node.targets):
             _contract_fail(owner, node, "one record per unpack target")

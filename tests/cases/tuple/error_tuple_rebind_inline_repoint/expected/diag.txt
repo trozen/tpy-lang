@@ -1,0 +1,1 @@
+main.py:22: error: 'p' keeps objects of its own in storage of 'repoint', so a binding of it that owns nothing may point only into a parameter's or self's storage for now; here it points into 'q', a local of 'repoint'; bind this value to a name of its own

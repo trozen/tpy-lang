@@ -11,6 +11,8 @@ struct Point;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_loop_two_site_gen;
+
 // def loop_carried_section() -> None:
 void loop_carried_section();
 // def for_carried_section() -> None:
@@ -23,6 +25,16 @@ void hoisted_body_bind_section();
 void two_alias_section();
 // def alias_kind_section() -> None:
 void alias_kind_section();
+// def loop_two_site_section() -> None:
+void loop_two_site_section();
+// def loop_two_site_silent_section() -> None:
+void loop_two_site_silent_section();
+// def loop_three_site_section() -> None:
+void loop_three_site_section();
+// def loop_two_site_gen() -> Iterator[int32]:
+__gen_loop_two_site_gen loop_two_site_gen();
+// def loop_two_site_read_before_section() -> None:
+void loop_two_site_read_before_section();
 // def main() -> None:
 void main();
 
@@ -41,6 +53,35 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
+
+// def loop_two_site_gen() -> Iterator[int32]:
+struct __gen_loop_two_site_gen : public ::tpy::next_iter_mixin<__gen_loop_two_site_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Point* p = nullptr;
+    Point* held = nullptr;
+    int32_t i;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    std::optional<Point> __ptr_slot_f0;
+    std::optional<Point> __ptr_slot_f1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_loop_two_site_gen() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_loop_two_site_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_loop_two_site_gen&) {
+        return os << "<generator loop_two_site_gen>";
+    }
+};
 
 
 // def __init__(self, x: int32) -> None:

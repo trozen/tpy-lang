@@ -1,7 +1,10 @@
-main.py:25: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:37: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:50: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:62: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:78: warning: 'saved' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
-main.py:80: warning: 'other' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
-main.py:94: warning: 'held' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'held' with copy(p), or bind the new value to a name of its own
+main.py:27: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:39: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:52: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:64: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:80: warning: 'saved' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
+main.py:82: warning: 'other' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
+main.py:96: warning: 'held' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'held' with copy(p), or bind the new value to a name of its own
+main.py:110: warning: 'held' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'held' with copy(p), or bind the new value to a name of its own
+main.py:136: warning: 'held' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'held' with copy(p), or bind the new value to a name of its own
+main.py:154: warning: 'held' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind 'held' with copy(p), or bind the new value to a name of its own

@@ -54,10 +54,13 @@ namespace tpyapp::main {
 void self_rebind_owned() {
     Box a = Box(1);
     Box b = Box(2);
-    auto t = std::tuple<Box, Box>{std::move(a), std::move(b)};
+    auto __tup_1 = std::tuple<Box, Box>{std::move(a), std::move(b)};
+    Box __slot_1 = std::move(std::get<0>(__tup_1));
+    Box __slot_2 = std::move(std::get<1>(__tup_1));
+    std::tuple<Box*, Box*> t{&__slot_1, &__slot_2};
     t = t;
-    std::get<0>(t).v = 5;
-    std::cout << "self_rebind_owned" << " " << std::get<0>(t).v << " " << std::get<1>(t).v << "\n" << ::tpy::check_signals;
+    std::get<0>(t)->v = 5;
+    std::cout << "self_rebind_owned" << " " << std::get<0>(t)->v << " " << std::get<1>(t)->v << "\n" << ::tpy::check_signals;
 }
 
 // def self_rebind_borrowed() -> None:

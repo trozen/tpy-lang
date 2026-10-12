@@ -1,0 +1,1 @@
+Pins a warned divergence: the carried element reads the slot the next pass overwrites (BUGS.md#loop-rebind-site-slot-reuse-warned).

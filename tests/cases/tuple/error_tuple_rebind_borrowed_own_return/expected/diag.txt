@@ -1,0 +1,2 @@
+main.py:31: warning: copies Bag into owned storage; use copy() to make this explicit
+main.py:31: error: in function 'first': element 0 of 'p' is an object of its own on some paths reaching here and borrowed from other storage on others, so handing it to a sink that takes ownership is not yet supported here; use copy(p[0]) there instead

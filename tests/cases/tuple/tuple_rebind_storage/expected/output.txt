@@ -1,0 +1,115 @@
+module-loop 101 12
+module-literal 8 4 4
+module-call 120 21 30 31
+module-call-alias 101 9
+retain-early 6 7 109
+retain-late 6 7 109
+function 101 9 7
+in-place-then-own 102 3
+rhs-retains 9 101
+eval-order 9 1
+eval-order-raise 10 1
+hoisted 101 2 9 11
+del 2 9
+literal 2 5 5
+owned-call 102 5 6
+alias-after 7 7
+subscript-source 55 101
+inline-then-borrow 101 91 2 91
+arg-last-use 1028 11
+return-last-use 5 7
+return-borrowed 1 1 1
+own-arg 212 12
+consuming 109 12 12
+method 101 9
+try-finally 101 9
+with 101 9
+mutable-sources 2 7 50
+name-element 102
+elem-arg 107 107
+take-ptr 101 9
+elem-reseat 102 3
+for-hoist 111
+name-bound 7 7 109
+own-elem-return 4 4
+constructor 10109
+match 101 9
+error-return 10109
+unpack-alias 101 8 9
+branch-once 1 6 6
+closure 12 101
+comprehension 3 101 4
+nonlocal 12 1
+async 1202 2
+field-repoint 1
+field-repoint 51 51
+written-then-field 2
+written-then-field 51 51
+match-capture 102 9
+hoist-alias 102 4 102
+hoist-alias 2 104 104
+mixed-arg 22 2
+mixed-arg 3
+except-binder 2 2
+except-binder caught
+except-binder 13 3
+except-binder caught
+borrowed-place 9 105 105
+borrowed-place 9 2
+field-place 9 170 170
+field-place 9 71
+gen-loop 1 10
+gen-loop 1 10
+swap-names 5 102 102 5
+alias-order-early 104 104 2
+alias-order-late 104 104 2
+alias-flat 102 102
+alias-nested 102 102
+genexpr [102015, 102016] 102 15
+genexpr-nested [20431, 20432] 102 15
+genexpr-in-def 20431 102 15
+capture-copy 205
+lambda-comprehension 4 102
+walk-rebind 2 2 52
+copy-carry 10 100 100
+loop-two-site 101 5
+loop-two-site-two-hop 112 1005 1005 112
+loop-two-site-two-hop 1112 1112 5 1112
+loop-two-site-silent 105
+loop-two-site-silent 106
+loop-two-site-while 101 5
+loop-three-site 120 30 30
+loop-two-site-read-before 101 101
+loop-two-site-read-before 105 105
+loop-two-site-read-before 6
+last-use-rebind 107 7
+branch-last-use-rebind 107 8
+try-last-use-rebind finally
+try-last-use-rebind 107 7
+read-after-rebind 107 True
+nocopy-last-use-rebind 107 7
+gen-last-use-rebind [107, 7]
+scalar-last-use-rebind 107
+scalar-nocopy-last-use-rebind 107
+scalar-gen-last-use-rebind [107]
+async-last-use-rebind 107 7
+loop-rebind 7 7
+scalar-loop-rebind 7 7
+lambda-param 4 102
+mixed-bindings 60 1060 102 1060
+mixed-bindings-reverse 102 102 1060
+mixed-bindings-read 102
+mixed-bindings-read 50 102
+field-repoint-loop 160 1060 102 1060
+field-repoint-branch 102 102 60
+field-repoint-branch 160 2 160
+field-repoint-method 60 1060 102 1060
+literal-after-alias 102 6 6
+alias-after-literal 102 102 6
+ternary-alias 102 102 6
+ternary-alias 106 2 106
+ternary-param-roots 150 150 50 2
+ternary-param-roots 150 50 150 2
+owning-rebind-alias 102 1003
+ctor-self-root 150 150
+nested-own-param 150 150

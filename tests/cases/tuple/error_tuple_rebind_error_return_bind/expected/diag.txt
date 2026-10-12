@@ -1,0 +1,1 @@
+main.py:33: error: in function 'f': binding 'p' to the result of an @error_return call is not yet supported here: 'p' keeps objects of its own element by element, and this binding does not place them one by one

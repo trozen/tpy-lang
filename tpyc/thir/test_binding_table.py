@@ -33,7 +33,8 @@ from .lower.statements import _admit_hoist, _Hoist, _lower_first_decl
 from .reject import ThirUnsupported, begin_stmt
 from .source import BindingKind, BindingRepr, Held
 from .testutil import _compile, _entry, lower_bodies
-from ..typesys import PendingListType, unwrap_readonly, unwrap_ref_type
+from ..typesys import (OwnType, PendingListType, TupleType, unwrap_readonly,
+                       unwrap_ref_type)
 from .lower.storage import tuple_layout
 from .validate import (THIRValidationError, _contract_problem,
                        validate_function, validate_stmts)
@@ -1015,11 +1016,12 @@ def fold(o: P | Q, flag: bool) -> int:
     assert head.else_body[0] not in table.scope_at
 
 
-def test_only_a_module_global_park_may_declare_a_pointer_slot_tuple() -> None:
-    # A tuple global whose reference elements are pointer slots is written
-    # by parking the value in a static slot; that node may declare it, but
-    # neither a local record with the same layout nor another pointer-slot
-    # kind may borrow the exemption.
+def test_a_tuple_target_write_binds_its_records_pointer_tuple() -> None:
+    # A tuple-target write (`t = <rvalue>` of the pointer tuple) carries the
+    # record of the tuple it binds: a local's `ptr_tuple`, or a module
+    # global held as pointer slots. A record of any other form, a target
+    # type that is not the record's pointer tuple, an element landed
+    # against its form and a missing record each fail the contract.
     func, table = _plan('''
 def pair(t: tuple[bool, P]) -> int:
     return t[1].v
@@ -1029,25 +1031,42 @@ def pair(t: tuple[bool, P]) -> int:
     with activate_compiler(compiler):
         layout = tuple_layout(tt, an, borrow=True)
     assert layout is not None
-    glob = BindingRepr(name="M", site=None, type=tt, kind=BindingKind.GLOBAL_MODULE,
-                       tuple_layout=layout)
-    local = replace(glob, kind=BindingKind.DECL_BTUPLE_LITERAL)
-    decl = th.THIRPtrLocalDecl(name="M", resolved_type=tt,
-                               kind=th.PtrSlotKind.GLOBAL_RVALUE,
-                               cpp_type="std::tuple<bool, P>",
-                               val_cpp="std::tuple<bool, P*>")
-    rebind = th.THIRPtrLocalRebind(name="M",
-                                   kind=th.PtrSlotKind.GLOBAL_HOIST_RVALUE,
-                                   val_cpp="std::tuple<bool, P>",
-                                   tuple_cpp="std::tuple<bool, P*>")
-    assert _contract_problem(decl, glob) is None
-    assert _contract_problem(rebind, glob) is None
-    assert "non-pointer" in _contract_problem(decl, local)
-    assert "non-pointer" in _contract_problem(rebind, local)
-    other = replace(decl, kind=th.PtrSlotKind.BRANCH_RVALUE)
-    assert "non-pointer" in _contract_problem(other, glob)
-    assert "non-pointer" in _contract_problem(
-        replace(rebind, tuple_cpp=None), glob)
+    glob = BindingRepr(name="M", site=None, type=tt,
+                       kind=BindingKind.GLOBAL_MODULE, tuple_layout=layout)
+    local = BindingRepr(name="t", site=None, type=tt,
+                        kind=BindingKind.DECL_BTUPLE_REBOUND, ptr_tuple=tt)
+    plain = replace(local, ptr_tuple=None)
+    elems = (th.THIRTupleElemTarget(index=0, elem_type=tt.element_types[0],
+                                    bind=th.TupleElemBind.VALUE),
+             th.THIRTupleElemTarget(index=1, elem_type=tt.element_types[1],
+                                    bind=th.TupleElemBind.OWNED,
+                                    slot_cpp="P"))
+
+    def write(name: str, rec, *, decl: bool, elem_targets=elems):
+        return th.THIRTupleUnpack(
+            source="", targets=(), target_cpps=(),
+            source_bind=th.TupleSourceBind.RVALUE,
+            source_expr=th.THIRName(result_type=tt, name="src"),
+            tuple_target=th.THIRName(result_type=tt, name=name),
+            elem_targets=elem_targets,
+            tuple_decl_cpp="std::tuple<bool, P*>" if decl else None,
+            tuple_binding=rec)
+
+    def fails(node, match: str) -> None:
+        with pytest.raises(THIRValidationError, match=match):
+            validate_stmts("pair", [node], lowered=True)
+
+    validate_stmts("pair", [write("t", local, decl=True)], lowered=True)
+    validate_stmts("pair", [write("M", glob, decl=False)], lowered=True)
+    fails(write("t", plain, decl=True), "no pointer tuple")
+    fails(write("M", glob, decl=True), "no pointer tuple")
+    fails(write("t", replace(local, ptr_tuple=TupleType((tt.element_types[1],
+                                                       tt.element_types[1]))),
+                decl=True), "not its record's pointer tuple")
+    fails(write("t", local, decl=True, elem_targets=(replace(
+        elems[0], bind=th.TupleElemBind.BORROW), elems[1])),
+        "against its form")
+    fails(write("t", None, decl=True), "carries no record")
 
 
 def test_a_reassigned_borrow_tuple_declares_the_rebound_kind() -> None:
@@ -1347,9 +1366,9 @@ def alias(p: tuple[Own[P], Own[P]]) -> int:
 
 def test_a_borrow_tuple_hoist_is_the_branch_or_the_loop_kind() -> None:
     # The branch-bound borrow tuple (if / try) spells its const from the
-    # fixpoint and, off an owning call, has the chain head's rebind slot (the
-    # if's only); the loop variable's is the plain borrow spelling; a with
-    # body's has no predecl.
+    # fixpoint and, off an owning call, is the pointer tuple whose owning
+    # binding backs its elements at its own site; the loop variable's is the
+    # plain borrow spelling; a with body's has no predecl.
     func, table = _plan('''
 def make(v: int) -> tuple[Own[P], Own[P]]:
     return (P(v), P(v))
@@ -1372,13 +1391,17 @@ def pick(c: bool, a: P, b: P) -> int:
 ''', "pick")
     if_stmt, for_stmt, try_stmt, with_stmt, _ret = func.body
     t = table.declared_by(if_stmt, "t")
-    assert t.kind is BindingKind.HOIST_BTUPLE_BRANCH and t.rebind_slot
+    assert t.kind is BindingKind.HOIST_BTUPLE_BRANCH and not t.rebind_slot
+    assert t.ptr_tuple is not None
+    assert all(not isinstance(et, OwnType) for et in t.ptr_tuple.element_types)
     # The statement keys the loop variable too.
     u, = (r for r in table.sites[for_stmt]
           if r.name == "u" and r.site_kind == "hoist")
     assert u.kind is BindingKind.HOIST_BTUPLE_LOOP and not u.rebind_slot
+    assert u.ptr_tuple is None
     w = table.declared_by(try_stmt, "w")
     assert w.kind is BindingKind.HOIST_BTUPLE_BRANCH and not w.rebind_slot
+    assert w.ptr_tuple is None
     assert table.declared_by(with_stmt, "z").kind is BindingKind.HOIST_PLAIN
 
 

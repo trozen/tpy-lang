@@ -15,3 +15,12 @@ alias_kind_iter: 70
 alias_kind_iter: 0
 alias_kind_iter: 1
 alias_kind: 102 102
+loop_two_site: 106 106
+loop_two_site_silent: 5
+loop_two_site_silent: 6
+loop_three_site: 11 30
+loop_three_site: 21 31 31
+loop_two_site_gen: [3, 4, 106]
+loop_two_site_read_before: 1
+loop_two_site_read_before: 5
+loop_two_site_read_before: 6

@@ -391,9 +391,10 @@ y))))`), warned where the copy is observable (`copies Node into owned
 storage`, `... (tuple element 0)` for a tuple local). Not admitted yet: a
 union element slot holding the result as one member, an `Optional`
 comprehension element, an owned element in a generic body over an open
-`T`, and a tuple local assigned more than once (it holds pointers to its
-class elements, so the copied element is refused in words). Holding the
-alias needs a name, `n = pick(x, y)` then `(n, 1)`.
+`T`, and a tuple local assigned more than once that holds an element of
+its own (the copied element is refused in words,
+`BUGS.md#ptr-tuple-literal-element-rejects`). Holding the alias needs a
+name, `n = pick(x, y)` then `(n, 1)`.
 
 Two refusals key on the declaration, so they hold for EVERY binding that
 declares `borrows=` / `element_of=`, not only the builtin `min` / `max` / `next`: an augmented

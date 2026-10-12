@@ -57,7 +57,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __sc_0 = std::move(__r0).value();
         __sub_0.reset();
         if (__sc_0) {
-            __sc_1 = __sc_0;
+            __sc_1 = std::move(__sc_0);
             __state = S_JOIN_0;
             continue;
         } else {
@@ -80,7 +80,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
         __sc_2 = std::move(__r2).value();
         __sub_2.reset();
         if (__sc_2) {
-            __sc_3 = __sc_2;
+            __sc_3 = std::move(__sc_2);
             __state = S_JOIN_1;
             continue;
         } else {
@@ -107,7 +107,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             __state = S_RESUME_5;
             continue;
         } else {
-            __sc_5 = __sc_4;
+            __sc_5 = std::move(__sc_4);
             __state = S_JOIN_2;
             continue;
         }
@@ -130,7 +130,7 @@ __coro_num num(std::string_view tag, ::tpy::BigInt n) {
             __state = S_RESUME_7;
             continue;
         } else {
-            __sc_7 = __sc_6;
+            __sc_7 = std::move(__sc_6);
             __state = S_JOIN_3;
             continue;
         }

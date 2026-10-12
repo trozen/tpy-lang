@@ -1,0 +1,1 @@
+main.py:21: warning: 'p' will not keep the object it carries over from its previous value -- this rebind writes the new object into that object's storage each time the loop runs it again; keeping it is not yet supported here

@@ -1,0 +1,2 @@
+main.py:33: error: 'q' is rebound here through 'nonlocal', and it keeps objects of its own in storage of 'f' itself; rebinding it from a nested function is not yet supported here; rebind it in 'f' itself
+main.py:47: error: 'q' is rebound here through 'nonlocal', and it may hold the objects 'p' keeps in storage of 'f2' itself; rebinding it from a nested function is not yet supported here; rebind it in 'f2' itself

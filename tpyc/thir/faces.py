@@ -1686,10 +1686,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the storage-tuple alias off a FIELD
                                     # receiver, const derived from the chain
     "decl.btuple_elem_alias",       # T& alias of a borrow-tuple param's ptr element
-    "decl.btuple_reassigned",       # reassigned MIXED own-borrow tuple first decl:
-                                    # the call render binds directly (no slot/lift)
-    "decl.btuple_rebind_slot",      # reassigned btuple decl off an owning call:
-                                    # optional slot + emplace + tuple_to_pointer
     "decl.btuple_lift",             # reassigned btuple decl off a storage lvalue
     "decl.btuple_name_copy",        # reassigned btuple decl off a borrow-form
                                     # NAME: the plain pointer-tuple copy
@@ -2352,6 +2348,19 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.opt_btuple_slot",
     "btuple.reseat_emplace_emit",   # the emit half of the same reseat
     "btuple.reseat_name_copy",      # sibling btuple local: bare `u = t;`
+    # A binding of a rebound tuple local that owns an element: the pointer
+    # tuple's tuple-target unpack, each owned element the scalar reference
+    # local at the site.
+    "ptr_tuple.first_binding",      # `T __slot_N = ...; std::tuple<T*..> t{..}`
+    "ptr_tuple.rebind",             # per element: in place / own slot / re-point
+    "ptr_tuple.literal_holder",     # the holder of a literal right-hand side
+    "ptr_tuple.mixed_call_holder",  # ... of a mixed own+borrow call
+    "ptr_tuple.owning_call_holder", # ... of an owning tuple call
+    "move.own_tuple_ptr_lift",      # its last use at an owning slot, element
+                                    # by element: S{std::move(*std::get<0>(t)), ..}
+    "ret.own_tuple_ptr_lift",       # ... at the Own[tuple] return
+    "stmt.tuple_unpack.ptr_tuple_pointee_move",  # ... consumed by an unpack:
+                                    # `T a = std::move(*std::get<i>(..))`
     "if.hoist_ptr_local",           # reassigned/borrow non-value -> T* name;
     "if.hoist_const_ptr",           # const borrow-decl -> const T* name;
                                     # (the with/try const_pointer rung)
@@ -3256,11 +3265,12 @@ THIR_FACES: frozenset[str] = frozenset({
     # A HOISTED global's initializing write: the slot is an optional on
     # the hoist lines (`g = &*(__global_slot_N = init);`).
     "top_level.global_hoist_slot",
-    # A tuple global's write whose value holds an object: the value parks
-    # in a static of its own layout, the global points at it element-wise.
+    # A tuple global's write whose value holds an object: each owned
+    # element takes a static of its own, the global's element pointer
+    # aims at it (the tuple-target unpack, module mode).
     "top_level.tuple_global_park",
-    # ... inside a `for` body: the site's hoisted optional slot, assigned
-    # on every pass.
+    # ... inside a `for` body: the element's hoisted optional slot,
+    # assigned on every pass.
     "top_level.tuple_global_park_loop",
     "top_level.global_null",        # `g = nullptr;`
     # A BORROW-returning method call at a global slot: the slot points AT

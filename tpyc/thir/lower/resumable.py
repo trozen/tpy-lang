@@ -570,11 +570,14 @@ def _bare_yield_tuple_name_ok(name: str, lc: '_LowerCtx',
     BORROW-form tuple PARAM (not Own-wrapped, not owned-movable -- the
     shapes seed_param_locals registers storage-form stay out). Locals with
     pointer-repr elements keep the `res.btuple_yield_source` reject, as do
-    pointer-form names."""
-    if name not in declared or lc.binding(name).pointer:
+    pointer-form names -- a generator expression's capture of a pointer
+    tuple included: its declared type is the storage tuple the slot
+    renders, which the captured `std::tuple<Box*, Box*>` does not convert
+    to."""
+    rec = lc.binding(name)
+    if name not in declared or rec.pointer or rec.ptr_tuple is not None:
         return False
-    if (lc.binding(name).storage_tuple
-            or lc.binding(name).const_storage_tuple):
+    if rec.storage_tuple or rec.const_storage_tuple:
         return False
     tu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(declared[name])))
     if not isinstance(tu, TupleType):
