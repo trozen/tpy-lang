@@ -62,8 +62,8 @@ from tpyc.compiler import (
 )
 from tpyc.toolchain import (
     compiler_target_os, host_os, mark_cache_entry_used, pch_is_path_sensitive,
-    shared_cache_root, sweep_shared_cache, CACHE_DIRS, EXEC_RESULTS_DIR, PCH_DIR,
-    STDLIB_OBJS_DIR,
+    shared_cache_root, sweep_shared_cache, third_party_source_driver, CACHE_DIRS,
+    EXEC_RESULTS_DIR, PCH_DIR, STDLIB_OBJS_DIR,
 )
 from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
@@ -294,8 +294,6 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     if not stdlib_cpps:
         return _StdlibCache(objects=[], cpp_relpaths=set())
 
-    output_hash = _hash_files(sorted(stdlib_gen_files))
-
     # Compile each stdlib .cpp -> .o.
     # Parallelized across CPU cores; uses PCH (when available) so each
     # compile skips re-parsing the runtime headers.
@@ -315,27 +313,50 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
         runtime_cpp_dir=RUNTIME_DIR.parent,
         modes=DEP_MODES,
     )
+    # Driver and flags of each bundled third-party compile (no -c/-o).
+    third_party_compiles = [
+        (c_src, [*third_party_source_driver(c_src, CPP_CONFIG.compiler, CPP_CONFIG.std),
+                 *CPP_CONFIG.extra_flags, *c_flags])
+        for c_src, c_flags in third_party_plan.c_sources
+    ]
     third_party_includes: list[str] = []
     for d in third_party_plan.extra_include_dirs:
         third_party_includes += ["-I", str(d)]
 
-    common = [
+    common_flags = [
         *CPP_CONFIG.compiler, f"-std={CPP_CONFIG.std}",
         *CPP_CONFIG.extra_flags,
         *CPP_CONFIG.warn_flags,
         "-I", str(RUNTIME_DIR),
         "-I", str(layout.include_dir),
         *third_party_includes,
-        *pch_include,
     ]
 
-    def _compile_one(cpp: Path) -> tuple[str, str]:
+    from tpyc.compiler import discover_runtime_cpp_sources
+    runtime_cpp_sources = discover_runtime_cpp_sources(RUNTIME_DIR.parent)
+
+    # Every compile that builds the linked .o set, as (source, flags); the
+    # command run adds only ccache, the PCH and -c/-o. The PCH stays out of
+    # the hash: the exec fingerprint covers what it is built from.
+    stdlib_compiles = [(cpp, common_flags) for cpp in stdlib_cpps]
+    runtime_compiles = [(rt, common_flags) for rt in runtime_cpp_sources]
+    output_hash = _stdlib_output_hash(
+        stdlib_gen_files, build_dir,
+        [[*flags, str(src)]
+         for src, flags in (*stdlib_compiles, *third_party_compiles, *runtime_compiles)])
+
+    def _compile_cmd(src: Path, flags: list[str], obj_path: Path,
+                     pch: list[str]) -> list[str]:
+        prefix = ["ccache"] if CPP_CONFIG.ccache else []
+        return [*prefix, *flags, *pch, "-c", "-o", str(obj_path), str(src)]
+
+    def _compile_one(compile: tuple[Path, list[str]]) -> tuple[str, str]:
         """Compile a single stdlib .cpp to .o; raise on failure."""
+        cpp, flags = compile
         rel = str(cpp.relative_to(layout.src_dir))
         obj_name = rel.replace(os.sep, "_").removesuffix(".cpp") + ".o"
         obj_path = obj_dir / obj_name
-        prefix = ["ccache"] if CPP_CONFIG.ccache else []
-        cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(cpp)]
+        cmd = _compile_cmd(cpp, flags, obj_path, pch_include)
         result = _run_cxx(cmd)
         if result.returncode != 0:
             raise RuntimeError(
@@ -351,7 +372,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     try:
         with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as ex:
             # list() forces evaluation and propagates the first exception
-            results = list(ex.map(_compile_one, stdlib_cpps))
+            results = list(ex.map(_compile_one, stdlib_compiles))
     except RuntimeError as exc:
         _log(f"WARNING: {exc}", err=True)
         return _StdlibCache(objects=[], cpp_relpaths=set())
@@ -370,15 +391,10 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     # tests always run a single shared cache regardless of build variant.
     # End-user `tpyc -xO` builds go through `BuildLayout.build_cpp_commands`
     # (not this cache) and DO get -O3 on the same sources.
-    if third_party_plan.c_sources:
-        from tpyc.compiler import third_party_source_driver
-        for c_src, c_flags in third_party_plan.c_sources:
+    if third_party_compiles:
+        for c_src, argv in third_party_compiles:
             obj_path = obj_dir / (c_src.stem + ".o")
-            prefix = ["ccache"] if CPP_CONFIG.ccache else []
-            driver = third_party_source_driver(
-                c_src, CPP_CONFIG.compiler, CPP_CONFIG.std)
-            cmd = [*prefix, *driver, *CPP_CONFIG.extra_flags,
-                   *c_flags, "-c", "-o", str(obj_path), str(c_src)]
+            cmd = _compile_cmd(c_src, argv, obj_path, [])
             result = _run_cxx(cmd)
             if result.returncode != 0:
                 raise RuntimeError(
@@ -395,21 +411,19 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     # -- one bad runtime source degrades the whole cache to empty with a
     # warning, matching the stdlib-failure path, rather than propagating an
     # uncaught RuntimeError to pytest.
-    from tpyc.compiler import discover_runtime_cpp_sources
-    runtime_cpp_sources = discover_runtime_cpp_sources(RUNTIME_DIR.parent)
-    if runtime_cpp_sources:
+    if runtime_compiles:
         rt_src_root = RUNTIME_DIR.parent / "src"
 
-        def _compile_runtime_one(rt_cpp: Path) -> str:
+        def _compile_runtime_one(compile: tuple[Path, list[str]]) -> str:
             """Compile a single runtime .cpp to .o; raise on failure."""
+            rt_cpp, flags = compile
             try:
                 rel = rt_cpp.relative_to(rt_src_root)
                 obj_name = "rt_" + str(rel).replace(os.sep, "_").removesuffix(".cpp") + ".o"
             except ValueError:
                 obj_name = "rt_" + rt_cpp.stem + ".o"
             obj_path = obj_dir / obj_name
-            prefix = ["ccache"] if CPP_CONFIG.ccache else []
-            cmd = [*prefix, *common, "-c", "-o", str(obj_path), str(rt_cpp)]
+            cmd = _compile_cmd(rt_cpp, flags, obj_path, pch_include)
             result = _run_cxx(cmd)
             if result.returncode != 0:
                 raise RuntimeError(
@@ -418,10 +432,10 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
                 )
             return str(obj_path)
 
-        rt_max = max(1, min(max_workers, len(runtime_cpp_sources)))
+        rt_max = max(1, min(max_workers, len(runtime_compiles)))
         try:
             with concurrent.futures.ThreadPoolExecutor(max_workers=rt_max) as ex:
-                rt_objs = list(ex.map(_compile_runtime_one, runtime_cpp_sources))
+                rt_objs = list(ex.map(_compile_runtime_one, runtime_compiles))
         except RuntimeError as exc:
             _log(f"WARNING: {exc}", err=True)
             return _StdlibCache(objects=[], cpp_relpaths=set())
@@ -456,6 +470,29 @@ def _tpyc_hash() -> str:
     """
     files = sorted(TPYC_DIR.rglob("*.py"))
     return _hash_files(files)
+
+
+def _stdlib_output_hash(gen_files: list[Path], build_dir: Path,
+                        recipe: list[list[str]]) -> str:
+    """The stdlib cache's `output_hash`, which every exec fingerprint folds
+    in: the generated C++ and every compile command that builds the linked
+    .o set, over build-dir- and checkout-relative paths, so the same set
+    hashes the same in any cache dir or worktree."""
+    h = hashlib.sha256()
+    h.update(_hash_files(sorted(gen_files), root=build_dir).encode())
+    # The commands carry what no generated C++ does: flags and source lists
+    # from tpyc/build/ and this harness, and the runtime .cpp selection.
+    # Source contents outside the build dir are in _runtime_hash.
+    roots = sorted([(str(build_dir), "<build>"), (str(PROJECT_ROOT), "<root>")],
+                   key=lambda r: len(r[0]), reverse=True)
+
+    def relative(arg: str) -> str:
+        for path, name in roots:
+            arg = arg.replace(path, name)
+        return arg
+
+    h.update(repr([[relative(a) for a in args] for args in recipe]).encode())
+    return h.hexdigest()
 
 
 @functools.cache
@@ -1705,17 +1742,17 @@ _FINGERPRINT_FILE = ".fingerprints"
 SESSION_FINGERPRINT_FILE = TESTS_DIR / ".session_fingerprints.json"
 
 
-def _hash_files(paths: list[Path]) -> str:
-    """Hash a sequence of files by (project-relative path, content).
+def _hash_files(paths: list[Path], root: Path = PROJECT_ROOT) -> str:
+    """Hash a sequence of files by (root-relative path, content).
 
-    Paths are made relative to PROJECT_ROOT so the hash is stable across
-    worktrees / clone locations. Files outside PROJECT_ROOT (rare) fall
+    Paths are made relative to *root* (default PROJECT_ROOT) so the hash is
+    stable across worktrees / clone locations. Files outside it (rare) fall
     back to their absolute path.
     """
     h = hashlib.sha256()
     for p in paths:
         try:
-            key = str(p.relative_to(PROJECT_ROOT))
+            key = str(p.relative_to(root))
         except ValueError:
             key = str(p)
         h.update(key.encode())
@@ -1918,8 +1955,9 @@ def compute_exec_fingerprint(
     `_runtime_hash`, which also covers `third_party/`; and the toolchain),
     plus per-case companions/link-flags/`src/input.txt`. `_tpyc_hash`/
     `_libtpy_hash` are deliberately NOT folded in -- compiler/stdlib source
-    reaches the binary only through the generated C++ hashed here, so an edit
-    that leaves the emitted C++ identical reuses the cache.
+    reaches the binary only through the generated C++ hashed here and the
+    stdlib compile commands in `stdlib_output_hash`, so an edit that leaves
+    both identical reuses the cache.
 
     `stdlib_output_hash` pins the WHOLE precompiled stdlib set: every binary
     links that full `.o` set with no dead-stripping, so an unimported module's

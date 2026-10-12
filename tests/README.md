@@ -13,11 +13,12 @@ across worktrees.
 
 The key covers everything that determines the binary and its output: the
 toolchain, the runtime headers, every module's generated C++ (the stdlib
-included), hand-written C++ companions, link flags and stdin fixtures. So a
-compiler edit that leaves the emitted C++ identical reuses the cache, while
-switching `--cxx` or touching the runtime re-keys every case. `--force-exec`
-ignores the cache; `--clean` wipes it together with the shared PCH and stdlib
-object caches. The key derivation (`compute_exec_fingerprint`) is unit-tested
+included), the commands that compile the stdlib object set every case
+links, hand-written C++ companions, link flags and stdin fixtures. So a
+compiler edit that leaves the emitted C++ and those commands identical
+reuses the cache, while switching `--cxx` or touching the runtime re-keys
+every case. `--force-exec` ignores the cache; `--clean` wipes it together
+with the shared PCH and stdlib object caches. The key derivation (`compute_exec_fingerprint`) is unit-tested
 in `tests/test_exec_fingerprint.py`.
 
 One exception: system-mode third-party libraries (`--dep-mode`) enter the
