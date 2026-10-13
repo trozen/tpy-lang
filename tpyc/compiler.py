@@ -26,7 +26,7 @@ from .sema.analyzer import analyze_component_bodies
 from .diagnostics import insert_in_source_order
 from .sema.reach_analysis import compute_reached_symbols
 from .sema.own_copy import OwnCopyVerdicts
-from .modules.resolver import ModuleResolver, ResolvedModule
+from .modules.resolver import ModuleResolver, ResolvedModule, resolution_drift
 from .modules import get_builtin_module_names
 from .frontend_plugin import (
     FrontendPlugin, FrontendPluginError, FrontendRegistry, WorkspaceContext,
@@ -629,6 +629,12 @@ class CompileError(Exception):
         return f"error: {self.message}"
 
 
+class LayerReuseRefused(Exception):
+    """A prepared compiler's layers do not hold for the program `finish`
+    was asked to compile; the program must be compiled from scratch. Not a
+    CompileError: nothing is wrong with the program."""
+
+
 class Compiler:
     """Multi-module compiler for TurboPython.
 
@@ -741,6 +747,7 @@ class Compiler:
         self._thir_arg_reached: dict[tuple[str, str], int] = {}
         self.shadowed_builtins: dict[str, set[tuple[str, int | None]]] = {}
         self.diagnostics: list[Diagnostic] = []
+        self._map_warnings: set[tuple[str, str]] = set()
         self._source_input: tuple[str, str] | None = None
         # Build-cache manifest entries for every consumed source file,
         # captured at read time (keyed by absolute path). One table shared
@@ -892,160 +899,184 @@ class Compiler:
             ParseError: If parsing fails.
             SemanticError: If semantic analysis fails.
         """
+        self.prepare()
+        return self.finish()
+
+    def prepare(self, root_groups: Iterable[Iterable[str]] = ()) -> None:
+        """Analyze the implicit stdlib as the first layer, then the closure
+        of each group of root modules as one more layer, in order: a later
+        layer holds only the modules no earlier one reached. The program
+        itself is left to `finish`.
+
+        A program's diagnostics and C++ do not depend on how its modules are
+        split into import-ordered layers, so a prepared compiler can be
+        copied and each copy finished with a different entry point."""
         with activate_compiler(self):
-            return self._compile_impl()
+            # Per-compilation maps and the module-level globals start empty:
+            # a template's analysis must not see a previous compilation's.
+            self.namespace_map = {}
+            self.include_path_map = {}
+            self.native_cpp_names = {}
+            self.default_ctor_facts = IdentityMap()
+            self.local_qualified_cpp_names = {}
+            self.recursive_alias_cpp_names = {}
+            self.union_alias_names = {}
+            self.union_display_names = {}
+            self.union_wrapper_index = {}
+            self.protocol_modules = {}
+            self.return_exception_names = set(BUILTIN_RETURN_EXCEPTIONS)
+            clear_all_compilation_state()
+            # @builtin_decorator schemas come from the implicit stdlib, so its
+            # layer is parsed ahead of anything that may use them.
+            for roots in [self._IMPLICIT_STDLIB, *root_groups]:
+                done = set(self.compile_order)
+                self._discover_roots(roots)
+                self._discover_coroutine_runtime()
+                self._plan_layer(done)
+                self._analyze_layer([n for n in self.compile_order if n not in done])
 
-    def _compile_impl(self) -> list[CompiledModule]:
-        # Reset per-compilation maps in case `compile()` is called twice on
-        # the same instance. `clear_all_compilation_state` resets the
-        # remaining module-level globals plus the dynamic TypeDef slice.
-        # Note: a full second `compile()` is not supported today --
-        # `_init_shared` state (`modules`, `compile_order`, `diagnostics`,
-        # `_cycle_peers`, ...) also accumulates -- but the per-compilation
-        # maps below are the part this branch's migration introduced.
-        self.namespace_map = {}
-        self.include_path_map = {}
-        self.native_cpp_names = {}
-        self.default_ctor_facts = IdentityMap()
-        self.local_qualified_cpp_names = {}
-        self.recursive_alias_cpp_names = {}
-        self.union_alias_names = {}
-        self.union_display_names = {}
-        self.union_wrapper_index = {}
-        self.protocol_modules = {}
-        self.return_exception_names = set(BUILTIN_RETURN_EXCEPTIONS)
-        clear_all_compilation_state()
+    def finish(self, entry: Path | None = None, *, reuse: bool = False,
+               on_discovered: Callable[[list[str]], None] | None = None,
+               ) -> list[CompiledModule]:
+        """Discover the program from its entry point, analyze every module
+        `prepare` did not as the last layer, and run the program-level
+        passes.
 
-        if self._source_input is not None:
-            source, entry_name = self._source_input
-
-            if self.resolver:
-                # Discover implicit stdlib first so @builtin_decorator schemas
-                # are available when parsing the entry module.
-                self._discover_implicit_stdlib()
-
-            parser = Parser(decorator_schemas=self._decorator_schemas)
-            ast = parser.parse(source, module_name=entry_name, is_entry_point=True)
-            self._decorator_schemas.update(parser._decorator_schemas)
-            self.modules[entry_name] = CompiledModule(
-                name=entry_name,
-                path=Path("<stdin>"),
-                ast=ast,
-                exports=ModuleExports(),
-                is_entry_point=True,
-            )
-
-            if self.resolver:
-                # Discover imported library modules
-                self._discover_imports(entry_name, ast, [entry_name])
-                self._discover_implicit_stdlib()
+        `entry` re-points a prepared compiler at another program. `reuse`
+        says the prepared layers were analyzed for a different entry
+        directory: `LayerReuseRefused` is raised, before anything of the
+        program is analyzed, when a module name or macro probe the prepared
+        layers resolved would resolve differently from this program's
+        directory, or when the program changes one of their C++ namespaces.
+        `on_discovered` sees the program's new modules before they are
+        analyzed.
+        """
+        with activate_compiler(self):
+            done = set(self.compile_order)
+            assert self.resolver is not None or not reuse
+            prepared_base = self.resolver.base_dir if self.resolver else None
+            if entry is not None:
+                self._retarget(entry)
+            if reuse:
+                self._check_layer_reuse(done, prepared_base)
+            prepared_ns = {n: self.namespace_map.get(n) for n in done}
+            self._discover_program()
+            self._discover_implicit_stdlib()
             self._discover_coroutine_runtime()
-            if self.resolver:
-                self._compute_compile_order()
-                self._propagate_package_directives()
-            else:
-                self.compile_components = [[entry_name]]
-                self.compile_order = [entry_name]
-
-            self._apply_native_namespace_prefix()
-            ns_map = self._build_namespace_map()
-            self.namespace_map = ns_map
-            self.include_path_map = self._build_include_path_map(ns_map)
-            # Workspace-wide two-pass sema. Pre-populate compiled.exports
-            # with skeletons for cross-module bind_imports to find;
-            # then resolve types per module; then finalize decls per
-            # module; then bodies per module.
-            for name in self.compile_order:
-                self._pre_populate_decl_exports(self.modules[name])
-            # Second pre-pop pass: install re-export bindings (PLACEHOLDER
-            # cells refined to RESOLVED via chain walk against peers'
-            # already-pre-populated locals). Required for cycle members
-            # whose bind_imports runs before a peer's bind_imports has
-            # had a chance to materialize re-exported names. Iterate
-            # to a fixpoint so SCC-internal chains converge.
-            self._pre_populate_reexport_bindings()
-            for name in self.compile_order:
-                compiled = self.modules[name]
-                self._expand_star_imports_for_module(compiled)
-                self._resolve_types_for_module(compiled)
-                self._finalize_declarations(compiled)
-            # Phantom-name check runs as a separate post-loop pass so SCC
-            # cycle peers' module_attributes is fully populated before any
-            # peer's __all__ is diffed against its surface.
-            for name in self.compile_order:
-                self._check_module_all_completeness(self.modules[name])
-            self._check_workspace_completeness_cycles()
-            self._reindex_builtins_post_finalize()
-            self._analyze_workspace_bodies()
+            if on_discovered is not None:
+                on_discovered([n for n in self.modules if n not in done])
+            self._plan_layer(done)
+            if reuse:
+                changed = sorted(n for n in done
+                                 if self.namespace_map.get(n) != prepared_ns[n])
+                if changed:
+                    raise LayerReuseRefused(
+                        f"the program changes the C++ namespace of {', '.join(changed)}")
+            self._analyze_layer([n for n in self.compile_order if n not in done])
             self._finalize_workspace()
             return [self.modules[name] for name in self.compile_order]
 
-        # 1. Discover implicit stdlib first so @builtin_decorator schemas
-        # are available when parsing user modules.
-        self._discover_implicit_stdlib()
+    def _retarget(self, entry: Path) -> None:
+        """Point module and macro resolution at `entry`'s directory."""
+        self.entry_point = entry.resolve()
+        assert self.resolver is not None and self._source_input is None
+        self.resolver.base_dir = self.entry_point.parent
+        self._macro_registry.set_search_dirs(
+            [self.resolver.base_dir] + self.resolver.extra_dirs)
 
-        # 1b. Discover all modules (starting from entry point)
-        # Entry point uses simple name (not dotted) since it's the root
+    def _check_layer_reuse(self, done: set[str], prepared_base: Path) -> None:
+        """Raise `LayerReuseRefused` when the entry point is named like a
+        prepared module, or when a resolution the prepared layers made from
+        `prepared_base` -- a module name, hit or miss, or a macro probe miss
+        -- comes out differently from the entry point's directory."""
+        assert self.resolver is not None
         entry_name = self._module_name_for(self.entry_point)
-        self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
+        if entry_name in done:
+            raise LayerReuseRefused(f"the entry point is named like the prepared '{entry_name}'")
+        resolutions = dict(self.resolver.resolution_log)
+        for name in done:
+            resolutions.setdefault(name, str(self.modules[name].path))
+        drift = resolution_drift(self.resolver, resolutions,
+                                 list(self._macro_registry.probe_missing),
+                                 recorded_base=prepared_base)
+        if drift is not None:
+            raise LayerReuseRefused(drift)
 
-        # Rediscover in case user modules added new stdlib deps
-        self._discover_implicit_stdlib()
-        self._discover_coroutine_runtime()
+    def _discover_program(self) -> None:
+        """Discover the entry module and every module it imports."""
+        if self._source_input is None:
+            # The entry point uses a simple name (not dotted): it is the root.
+            entry_name = self._module_name_for(self.entry_point)
+            self._discover_modules(entry_name, self.entry_point, [], is_entry_point=True)
+            return
+        source, entry_name = self._source_input
+        parser = Parser(decorator_schemas=self._decorator_schemas)
+        ast = parser.parse(source, module_name=entry_name, is_entry_point=True)
+        self._decorator_schemas.update(parser._decorator_schemas)
+        self.modules[entry_name] = CompiledModule(
+            name=entry_name,
+            path=Path("<stdin>"),
+            ast=ast,
+            exports=ModuleExports(),
+            is_entry_point=True,
+        )
+        if self.resolver:
+            self._discover_imports(entry_name, ast, [entry_name])
 
-        # 2. Compute compilation order (topological sort)
-        self._compute_compile_order()
-
-        # 3. Propagate native_module from package inits to child modules
+    def _plan_layer(self, done: set[str]) -> None:
+        """Order the modules discovered so far after the `done` layers, and
+        rebuild the namespace and include maps over all of them."""
+        self._compute_compile_order(done)
         self._propagate_package_directives()
-
-        # 3b. Apply native_namespace auto-prefix to bare @native entities
         self._apply_native_namespace_prefix()
-
-        # 4. Build namespace and include path maps from # tpy: directives
         ns_map = self._build_namespace_map()
         self.namespace_map = ns_map
         self.include_path_map = self._build_include_path_map(ns_map)
 
-        # 5. Workspace-wide two-pass sema (cyclic-import support).
-        # First pre-populate every module's `compiled.exports` with
-        # skeleton RecordInfo / FunctionInfo / ProtocolInfo / enum
-        # NominalType so peers' `bind_imports` can find a stable Python
-        # object for each cross-module imported name -- including
-        # between cycle members. Then resolve types + finalize decls per
-        # module; then bodies per module. Canonicalization itself is
-        # parser-level so it does not depend on order.
-        for module_name in self.compile_order:
-            self._pre_populate_decl_exports(self.modules[module_name])
+    def _analyze_layer(self, names: list[str]) -> None:
+        """Workspace two-pass sema over one layer, `names` in compile order:
+        every earlier layer is fully analyzed. Pre-populate each module's
+        `compiled.exports` with skeleton RecordInfo / FunctionInfo /
+        ProtocolInfo / enum NominalType so peers' `bind_imports` find a
+        stable Python object for each cross-module imported name -- cycle
+        members included; then resolve types and finalize declarations per
+        module; then bodies, one import component at a time."""
+        if not names:
+            return
+        layer = set(names)
+        for name in names:
+            self._pre_populate_decl_exports(self.modules[name])
         # Second pre-pop pass: install re-export bindings so cycle peers'
         # bind_imports finds names re-exported from other peers (whose
         # own bind_imports may not have run yet).
         self._pre_populate_reexport_bindings()
-        for module_name in self.compile_order:
-            compiled = self.modules[module_name]
+        for name in names:
+            compiled = self.modules[name]
             self._expand_star_imports_for_module(compiled)
             self._resolve_types_for_module(compiled)
             self._finalize_declarations(compiled)
         # Phantom-name check runs as a separate post-loop pass so SCC
         # cycle peers' module_attributes is fully populated before any
         # peer's __all__ is diffed against its surface.
-        for module_name in self.compile_order:
-            self._check_module_all_completeness(self.modules[module_name])
-        # Completeness-graph reject gate.
-        # Run after all decls are finalized so RecordInfo.fields / .parents
-        # are populated. Scans cycle members for by-value cross-cycle
-        # record references (concrete inheritance, by-value fields, value-
-        # variant fields, by-value containers / tuples) and produces a
-        # structured TPy diagnostic naming the offending positions and
-        # modules. Without this, the cycle would compile through sema and
-        # fail at the C++ build with a complete-type compiler error.
+        for name in names:
+            self._check_module_all_completeness(self.modules[name])
+        # Completeness-graph reject gate, after all decls are finalized so
+        # RecordInfo.fields / .parents are populated: by-value cross-cycle
+        # record references would otherwise compile through sema and fail
+        # at the C++ build with a complete-type error.
         self._check_workspace_completeness_cycles()
         self._reindex_builtins_post_finalize()
-        self._analyze_workspace_bodies()
-        self._finalize_workspace()
-
-        # Return in dependency order
-        return [self.modules[name] for name in self.compile_order]
+        # Body sema (sub-phases 4 and 5): every member of a cycle has its
+        # bodies analyzed before any of the component's facts settle.
+        for component in self.compile_components:
+            if component[0] not in layer:
+                continue
+            members = [self.modules[name] for name in component]
+            analyze_component_bodies(
+                [(compiled.analyzer, compiled.ast) for compiled in members],
+                lambda i: self._errors_attributed_to(members[i]))
+            for compiled in members:
+                self._publish_body_exports(compiled)
 
     def single_method_body(self, owning_type_qname: str | None, name: str):
         """The one source body registered under (owning type, name), or None
@@ -1087,8 +1118,9 @@ class Compiler:
                     const.return_type, declares_whole_result_following(const))) else None)
 
     def _finalize_workspace(self) -> None:
-        """The post-body workspace passes, shared by both compile paths
-        (the file path and `from_source`: `tpyc -c`, piped stdin, the REPL).
+        """The post-body workspace passes, run once by `finish` after the
+        last analysis layer, for every program (a file, or `from_source`:
+        `tpyc -c`, piped stdin, the REPL).
 
         The order is the content. The owning-slot discharge runs for every
         module before any module collapses its diagnostics, because a
@@ -1243,14 +1275,19 @@ class Compiler:
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
+        self._discover_roots(self._IMPLICIT_STDLIB)
+
+    def _discover_roots(self, names: Iterable[str]) -> None:
+        """Discover each of `names` that resolves, with its imports."""
         if not self.resolver:
             return
-        for mod_name in self._IMPLICIT_STDLIB:
+        for mod_name in names:
             if mod_name in self.modules:
                 continue
             resolved = self.resolver.resolve(mod_name)
             if resolved is None:
                 continue  # not available (e.g. --no-stdlib)
+            self._discover_package_inits(resolved.canonical_name, [], None)
             self._discover_modules(resolved.canonical_name, resolved.path, [],
                                    is_package_init=resolved.is_package_init)
 
@@ -1758,8 +1795,11 @@ class Compiler:
                     self._discover_modules(package, resolved.path, import_chain, import_lineno,
                                            is_package_init=True)
 
-    def _compute_compile_order(self) -> None:
+    def _compute_compile_order(self, done: set[str] | frozenset[str] = frozenset()) -> None:
         """Compute compilation order via Tarjan SCC + condensation topo sort.
+
+        The `done` modules are an earlier, already-analyzed layer: they keep
+        their place at the front and the rest are ordered after them.
 
         Cyclic imports are accepted at the discovery layer. Tarjan
         collapses the import graph into SCCs; the condensation is
@@ -1830,11 +1870,18 @@ class Compiler:
             if name not in index:
                 _strongconnect(name)
 
+        # A layer is analyzed one component at a time, so no component may
+        # straddle an analyzed layer and the modules after it.
+        for component in sccs:
+            assert all((m in done) == (component[0] in done) for m in component), (
+                f"import cycle {component} spans analysis layers")
         # Tarjan emits SCCs in reverse topo order (callees before callers
         # in successor-edge sense, i.e. deps before dependents).
         # Reject unsupported cycle shapes before the condensation topo
-        # sort uses them.
+        # sort uses them; an earlier layer's were checked with that layer.
         for component in sccs:
+            if component[0] in done:
+                continue
             if len(component) > 1 or component[0] in succ.get(component[0], []):
                 self._reject_unsupported_cycle(component)
 
@@ -1860,12 +1907,15 @@ class Compiler:
         # components, since body sema analyzes a component as one unit; one
         # mixing implicit and other modules moves to the front with its
         # implicit members, which cannot be analyzed without their peers.
-        components = sccs
+        components = [c for c in sccs if c[0] not in done]
         implicit_set = self._implicit_stdlib_set()
         if implicit_set:
             front = [c for c in components if any(m in implicit_set for m in c)]
             components = front + [c for c in components
                                   if not any(m in implicit_set for m in c)]
+        earlier = [c for c in self.compile_components if c[0] in done]
+        assert sum(map(len, earlier)) == len(done)
+        components = earlier + components
         self.compile_components = components
         self.compile_order = [m for c in components for m in c]
 
@@ -2712,10 +2762,10 @@ class Compiler:
         `register_signatures`). Returns the analyzer so a subsequent
         body-sema pass can consume it.
 
-        Compile loop runs all `_finalize_declarations` first, then
-        all `_analyze_workspace_bodies` -- so by the time any module's body
-        sema starts, every peer module's declarations are finalized
-        and visible through `_shared_modules`.
+        `_analyze_layer` runs all of a layer's `_finalize_declarations`
+        first, then its bodies -- so by the time any module's body sema
+        starts, every peer module's declarations are finalized and visible
+        through `_shared_modules`.
         """
         # Create analyzer
         analyzer = SemanticAnalyzer(default_int_type=self.default_int_type,
@@ -2795,7 +2845,7 @@ class Compiler:
         module_name = "__main__" if compiled.is_entry_point else compiled.name
 
         # Run the three declaration-time sub-phases. Body sema (sub-phases 4
-        # and 5) is deferred to `_analyze_workspace_bodies`.
+        # and 5) is deferred to `_analyze_layer`'s component loop.
         try:
             analyzer.bind_imports(compiled.ast, module_name=module_name,
                                   cpp_module_name=compiled.name)
@@ -2819,6 +2869,11 @@ class Compiler:
         self._extract_declaration_exports(compiled, analyzer)
         self._extract_body_exports(compiled, analyzer)
         self._verify_skeleton_adoption(compiled)
+        # The importers register this module too, but one no layer-mate
+        # imports would otherwise be missing from the shared table when its
+        # own bodies compute what they reach.
+        analyzer.registry.register_module(
+            self._exports_to_module_info(compiled.name, compiled.exports, compiled))
         return analyzer
 
     @staticmethod
@@ -2907,28 +2962,6 @@ class Compiler:
         # outlive the sema-phase window.
         compiled._skeleton_ids = None
 
-    def _analyze_workspace_bodies(self) -> None:
-        """Body sema (sub-phases 4 and 5) on the analyzers prepared by
-        `_finalize_declarations`, one import component at a time in
-        dependency order: every member of a cycle has its bodies analyzed
-        before any of the component's facts settle. Then per module: the
-        shadowed-builtin warnings, the reached symbols and the refreshed
-        ModuleInfo.
-        """
-        for component in self.compile_components:
-            members = [self.modules[name] for name in component]
-            for compiled in members:
-                assert compiled.analyzer is not None, (
-                    "_analyze_workspace_bodies called before "
-                    "_finalize_declarations populated compiled.analyzer for "
-                    f"module '{compiled.name}'"
-                )
-            analyze_component_bodies(
-                [(compiled.analyzer, compiled.ast) for compiled in members],
-                lambda i: self._errors_attributed_to(members[i]))
-            for compiled in members:
-                self._publish_body_exports(compiled)
-
     @contextlib.contextmanager
     def _errors_attributed_to(self, compiled: CompiledModule) -> Iterator[None]:
         try:
@@ -3004,7 +3037,7 @@ class Compiler:
         registry indexes -- both populated by sub-phase 1+2).
 
         Idempotent: callers may invoke this between
-        `_finalize_declarations` and `_analyze_workspace_bodies` so peer modules
+        `_finalize_declarations` and body sema so peer modules
         canonicalizing through `compiled.exports.{records,protocols,enums}`
         see authoritative entries even before bodies have been analyzed.
         Body-level export state lives in `_extract_body_exports`.
@@ -3590,16 +3623,22 @@ class Compiler:
         defining a builtin it uses (`Ptr` in `tpy._core._containers`), because
         `from tpy import Ptr` routes as an implicit-stdlib builtin and records
         no module edge to force the order -- so that builtin never lands in the
-        consumer's registry. Bodies are analyzed only after every module is
-        finalized, so re-running the indexing here is order-independent: every
-        builtin's exports are complete, and `_index_builtin_type_records`
-        (register_builtin_record + type_factory) is idempotent.
+        consumer's registry. A layer's bodies are analyzed only after every
+        module of the layer is finalized, and it runs once per layer, so
+        re-running the indexing here is order-independent: every builtin the
+        layer or an earlier one defines has complete exports, and
+        `_index_builtin_type_records` (register_builtin_record + type_factory)
+        is idempotent.
 
         "stdlib consumer" is the exact reachable surface, not an arbitrary
-        scope: `_compute_compile_order` partitions all implicit-stdlib modules
-        strictly ahead of user/`tplib` code, so by the time any non-implicit
-        module finalizes every builtin is already indexed -- only an
-        implicit-stdlib module can be finalized before a builtin it uses. And
+        scope: `_compute_compile_order` partitions each layer's implicit-stdlib
+        modules ahead of that layer's other modules, and a layer imports only
+        itself and earlier layers, so by the time any non-implicit module
+        finalizes every builtin it can reach is already indexed -- only an
+        implicit-stdlib module can be finalized before a builtin it uses. (An
+        implicit-stdlib module a later layer brings in -- `tpy.sync` reached by
+        the program while `asyncio` was prepared -- is ordered after the
+        earlier layers' non-implicit modules, none of which can import it.) And
         only `from tpy import X` is edge-less; every named user import records a
         module edge the topo sort already honors. So this loops over ALL
         analyzers (the consumer side is generic and the extra passes are
@@ -4140,12 +4179,19 @@ class Compiler:
                 # Warn if a library module has no namespace override
                 compiled = self.modules[name]
                 if self._is_lib_module(compiled):
-                    self.diagnostics.append(Diagnostic(
-                        DiagnosticLevel.WARNING,
+                    self._map_warning(
+                        name, "namespace",
                         f"library module '{name}' has no # tpy: cpp_namespace "
-                        f"directive (will use default '{ns_map[name]}')"))
+                        f"directive (will use default '{ns_map[name]}')")
 
         return ns_map
+
+    def _map_warning(self, module: str, kind: str, message: str) -> None:
+        # The maps are rebuilt for every analysis layer over every module
+        # discovered so far; a module's warning is reported once.
+        if (module, kind) not in self._map_warnings:
+            self._map_warnings.add((module, kind))
+            self.diagnostics.append(Diagnostic(DiagnosticLevel.WARNING, message))
 
     def _is_lib_module(self, compiled: 'CompiledModule') -> bool:
         """Check if a module comes from a library search path (not user code)."""
@@ -4208,11 +4254,11 @@ class Compiler:
                     base = collision_path.removesuffix('.hpp')
                     new_path = base + '/' + leaf + '.hpp'
                     if new_path in seen and seen[new_path] != name:
-                        self.diagnostics.append(Diagnostic(
-                            DiagnosticLevel.WARNING,
+                        self._map_warning(
+                            name, "include",
                             f"include path collision: '{name}' maps to "
                             f"'{new_path}' which is already used by "
-                            f"'{seen[new_path]}'"))
+                            f"'{seen[new_path]}'")
                     ip_map[name] = new_path
 
         return ip_map

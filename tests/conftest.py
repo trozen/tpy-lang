@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 import time
+from collections.abc import Callable
 from pathlib import Path
 from dataclasses import dataclass, field
 
@@ -57,7 +58,7 @@ from tpyc.parse import Parser, ParseError
 from tpyc.sema import (SemanticAnalyzer, SemanticError, Diagnostic,
                        DiagnosticLevel, format_diagnostics)
 from tpyc.compiler import (
-    Compiler, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
+    Compiler, CompiledModule, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
     get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
 from tpyc.toolchain import (
@@ -71,6 +72,7 @@ from tpyc.build.third_party import (
 from tpyc.thir.faces import THIR_FACES
 from tpyc.mir.collect import MIRBodyVerdict, MIRLineFacts, MIRVerdictStatus, enumerate_bodies, line_facts
 from tpyc.mir.nodes import MIRBodyId, MIRValueKind
+import fork_compile
 
 # Default options for tests: emit source comments for easier debugging
 TEST_CODEGEN_OPTIONS = CodeGenOptions(emit_source_comments=True, comment_line_numbers=False)
@@ -845,8 +847,6 @@ class CompileResult:
     # `snapshot_lib_modules`), resolved against what actually compiled. Kept
     # apart from is_local on purpose.
     snapshot_lib_modules: frozenset[str] = frozenset()
-    # Resolved types for variable declarations (from sema), for # tpyc: type(...) validation
-    declared_var_types: dict[tuple[int, str], object] | None = None
     # Ptr dereference facts (from sema), for # tpyc: non_null/nullable validation
     ptr_deref_facts: dict[tuple[int, str], bool] | None = None
     # Subscript bounds facts (from sema), for # tpyc: bounds_safe/bounds_checked validation
@@ -859,12 +859,12 @@ class CompileResult:
     send_sync_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
     # (frame is_send, is_sync) per async/generator def, for # tpyc: frame_send/frame_sync
     frame_facts: dict[tuple[int, str], tuple[bool, bool]] | None = None
-    # The entry module's MIR verdicts per (def line, bare name), for # tpyc: mir/mir_summary.
-    # A tuple: one def can emit several bodies (the clone pair of an @auto_readonly method).
-    mir_verdicts: dict[tuple[int, str], tuple[MIRBodyVerdict, ...]] | None = None
-    # The entry module's per-line MIR facts per body (None for a body that did not
-    # lower), for the # tpyc: mir_owned/mir_borrowed/mir_borrows/mir_copy/mir_write family.
-    mir_line_facts: dict[MIRBodyId, MIRLineFacts | None] | None = None
+    # Failures of the annotations checked against compiler objects -- # tpyc:
+    # type(...), mir(...) / mir_summary(...), and the per-line MIR facts --
+    # which stay with the compile (a forked one returns plain data only).
+    type_annotation_errors: list[str] = field(default_factory=list)
+    mir_annotation_errors: list[str] = field(default_factory=list)
+    mir_fact_annotation_errors: list[str] = field(default_factory=list)
     # Linker flags from # tpy: link() directives
     link_flags: list[str] = field(default_factory=list)
     # Third-party (link_third_party) build inputs: include dirs for the C
@@ -1122,10 +1122,35 @@ def key_mir_verdicts(bodies) -> dict[tuple[int, str], tuple[MIRBodyVerdict, ...]
     return keyed
 
 
+@dataclass(frozen=True)
+class CaseRequest:
+    """One case's compile as plain data: everything `compile_case` reads
+    besides the compiler, so a forked compile server (which runs no pytest
+    configuration) gets the switches this process resolved."""
+    src_file: Path
+    output_dir: Path
+    default_int: str = "int32"
+    snapshot_lib_modules: frozenset[str] = frozenset()
+    update: bool = False
+    dep_modes: dict[str, ThirdPartyMode] = field(default_factory=dict)
+    codegen_options: CodeGenOptions = field(default_factory=lambda: TEST_CODEGEN_OPTIONS)
+    cwd: str = ""
+
+
+def case_request(src_file: Path, output_dir: Path, default_int: str | None = None,
+                 snapshot_lib_modules: frozenset[str] = frozenset()) -> CaseRequest:
+    return CaseRequest(
+        src_file=src_file, output_dir=output_dir,
+        default_int=_validate_default_int_name(default_int or "int32"),
+        snapshot_lib_modules=frozenset(snapshot_lib_modules),
+        update=UPDATE_EXPECTED, dep_modes=dict(DEP_MODES),
+        codegen_options=TEST_CODEGEN_OPTIONS, cwd=os.getcwd())
+
+
 def compile_with_diagnostics(
         src_file: Path, output_dir: Path, default_int: str | None = None,
         snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
-    """Compile a TurboPython file and capture diagnostics.
+    """Compile a TurboPython file in this process and capture diagnostics.
 
     Returns CompileResult with success status, diagnostics, and output paths.
     Warnings are collected but don't cause failure. Errors cause failure.
@@ -1136,11 +1161,12 @@ def compile_with_diagnostics(
     stays usable from harness tests that have no case directory to resolve
     options against.
     """
-    frontend_registry, extra_lib_dirs = _frontend_registry_for(src_file)
-    plugin_extensions = (frontend_registry.all_extensions()
-                         if frontend_registry is not None else frozenset())
-    module_name = get_module_name(src_file, plugin_extensions)
-    default_int = _validate_default_int_name(default_int or "int32")
+    return _compile_in_process(
+        case_request(src_file, output_dir, default_int, snapshot_lib_modules))
+
+
+def _compile_in_process(req: CaseRequest) -> CompileResult:
+    frontend_registry, extra_lib_dirs = _frontend_registry_for(req.src_file)
     # Plugin libraries come ahead of the implicit TPy stdlib so the
     # search order matches what the CLI uses (`cli._run_cli` slots
     # plugin lib dirs in front of the stdlib for the same reason).
@@ -1148,13 +1174,43 @@ def compile_with_diagnostics(
     # name with a stdlib module would resolve differently under
     # `tpyc foo.pas` vs. `pytest`.
     lib_dirs = list(extra_lib_dirs) + list(DEFAULT_LIB_DIRS)
+    compiler = Compiler(req.src_file, default_int=req.default_int, lib_dirs=lib_dirs,
+                        frontend_registry=frontend_registry)
+    return compile_case(compiler, compiler.compile, req)
 
-    compiler = None
+
+def compile_for_case(src_file: Path, output_dir: Path, config,
+                     default_int: str | None = None,
+                     snapshot_lib_modules: frozenset[str] = frozenset()) -> CompileResult:
+    """`compile_with_diagnostics` for a test case, forked from a compile
+    server holding the analyzed stdlib when that applies (see
+    tests/fork_compile.py), in this process otherwise."""
+    options = load_case_options(src_file.parent.parent)
+    req = case_request(src_file, output_dir, default_int, snapshot_lib_modules)
+    if (fork_compile.enabled(config) and req.default_int == "int32"
+            and "plugin" not in options and "dsl_opts" not in options):
+        reply = fork_compile.compile_forked(
+            {f.name: getattr(req, f.name) for f in dataclasses.fields(req)})
+        if reply is not None:
+            # A compile that raised still lowered bodies before it did.
+            record_thir_routed(reply["thir_tally"]["bodies"])
+            record_thir_faces(reply["thir_faces"])
+            if "raise" in reply:
+                fork_compile.reraise(reply["raise"])
+            return CompileResult(**reply["result"])
+    return _compile_in_process(req)
+
+
+def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
+                 req: CaseRequest) -> CompileResult:
+    """The body of one case's compile, in this process or in a forked child:
+    `run()` analyzes the program and returns its modules; then diagnostics,
+    codegen into `req.output_dir`, MIR, and the annotation checks that read
+    live compiler objects (their errors are returned for the caller to raise
+    where it raises the others)."""
+    src_file, output_dir = req.src_file, req.output_dir
     try:
-        # Use Compiler for multi-module support
-        compiler = Compiler(src_file, default_int=default_int, lib_dirs=lib_dirs,
-                            frontend_registry=frontend_registry)
-        compiled_modules = compiler.compile()
+        compiled_modules = run()
 
         # Collect diagnostics from compiler and all analyzers
         reported = format_diagnostics(compiler, compiled_modules)
@@ -1191,7 +1247,7 @@ def compile_with_diagnostics(
             with _codegen_error_from(mod):
                 hpp_path, cpp_path, mod_ctx = compiler.generate_code_and_context(
                     mod, output_dir, entry_module_name=entry_module.name,
-                    options=TEST_CODEGEN_OPTIONS
+                    options=req.codegen_options
                 )
             local_contexts.append((mod, mod_ctx))
             # cpp_path is None for native_module (binding-only) modules
@@ -1205,11 +1261,11 @@ def compile_with_diagnostics(
             with _codegen_error_from(mod):
                 hpp_path, cpp_path = compiler.generate_code(
                     mod, output_dir, entry_module_name=entry_module.name,
-                    options=TEST_CODEGEN_OPTIONS
+                    options=req.codegen_options
                 )
             all_modules.append((mod.name, hpp_path, cpp_path, False))
             lib_paths[mod.name] = (hpp_path, cpp_path)
-            hits = snapshot_lib_pattern_hits(mod.name, snapshot_lib_modules)
+            hits = snapshot_lib_pattern_hits(mod.name, req.snapshot_lib_modules)
             if hits:
                 snapshot_lib.add(mod.name)
                 matched_patterns |= hits
@@ -1217,7 +1273,7 @@ def compile_with_diagnostics(
         # A pattern that matched nothing would silently stop snapshotting the
         # modules it meant -- a rename must break the case, not quietly narrow
         # its coverage.
-        unresolved = sorted(set(snapshot_lib_modules) - matched_patterns)
+        unresolved = sorted(set(req.snapshot_lib_modules) - matched_patterns)
         if unresolved:
             local_names = [n for n, _h, _c, loc in all_modules if loc]
             hit_local = any(snapshot_lib_pattern_hits(n, frozenset(unresolved))
@@ -1260,6 +1316,16 @@ def compile_with_diagnostics(
                     key: frame_traits_of_function(fi)
                     for key, fi in ctx.frame_fact_fns.items()
                 }
+        # The checks over facts held by compiler objects run here, where the
+        # objects are; they feed no snapshot, so update mode skips them.
+        type_errors: list[str] = []
+        mir_errors: list[str] = []
+        mir_fact_errors: list[str] = []
+        if not req.update:
+            if declared_var_types is not None:
+                type_errors = validate_type_annotations(src_file, declared_var_types)
+            mir_errors = validate_mir_annotations(src_file, mir_verdicts)
+            mir_fact_errors = validate_mir_fact_annotations(src_file, mir_verdicts, mir_line_facts)
         ptr_deref_facts = ctx.ptr_deref_facts if ctx else None
         subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
         div_zero_facts = ctx.div_zero_facts if ctx else None
@@ -1270,19 +1336,20 @@ def compile_with_diagnostics(
         tp_plan = resolve_build_plan(
             dep_names=compiler.collect_third_party_deps(),
             runtime_cpp_dir=RUNTIME_DIR.parent,
-            modes=DEP_MODES,
+            modes=req.dep_modes,
         )
         return CompileResult(success=True, diagnostics=diagnostics, hpp_path=hpp_path, cpp_path=cpp_path,
                              snapshot_lib_modules=frozenset(snapshot_lib),
-                             all_modules=all_modules, declared_var_types=declared_var_types,
+                             all_modules=all_modules,
                              ptr_deref_facts=ptr_deref_facts,
                              subscript_bounds_facts=subscript_bounds_facts,
                              div_zero_facts=div_zero_facts,
                              cast_safe_facts=cast_safe_facts,
                              send_sync_facts=send_sync_facts,
                              frame_facts=frame_facts,
-                             mir_verdicts=mir_verdicts,
-                             mir_line_facts=mir_line_facts,
+                             type_annotation_errors=type_errors,
+                             mir_annotation_errors=mir_errors,
+                             mir_fact_annotation_errors=mir_fact_errors,
                              link_flags=link_flags,
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
@@ -1382,6 +1449,16 @@ def pytest_addoption(parser):
             "list, gcc, gcc-14, clang, clang-19, zig, ... (default: auto). "
             "Switching toolchain re-keys the stdlib/PCH/exec caches, so the "
             "next run re-verifies under the new compiler."
+        ),
+    )
+    parser.addoption(
+        "--no-fork-compile",
+        action="store_true",
+        default=False,
+        help=(
+            "Compile every case in the worker process instead of forking it "
+            "from a compile server that holds the analyzed stdlib "
+            "(tests/fork_compile.py). Forking is Linux-only."
         ),
     )
     parser.addoption(
@@ -2238,6 +2315,12 @@ def record_thir_faces(witnesses: dict[str, int]) -> None:
         _thir_faces[face] = _thir_faces.get(face, 0) + n
 
 
+# Compile-server failures, one reason per worker that stopped forking.
+_fork_fallbacks_agg: list[str] = []
+# Cases whose forked child refused the prepared stdlib, with the reason.
+_fork_refusals_agg: list[str] = []
+
+
 def pytest_sessionfinish(session):
     """xdist worker: ship this process's tallies to the controller."""
     workeroutput = getattr(session.config, "workeroutput", None)
@@ -2246,6 +2329,8 @@ def pytest_sessionfinish(session):
         workeroutput["thir_tally"] = dict(_thir_tally)
         workeroutput["thir_faces"] = dict(_thir_faces)
         workeroutput["stale_fp"] = list(_stale_fp)
+        workeroutput["fork_fallback"] = fork_compile.fallback_reason()
+        workeroutput["fork_refusals"] = fork_compile.refusals()
 
 
 def pytest_testnodedown(node, error):
@@ -2262,6 +2347,9 @@ def pytest_testnodedown(node, error):
     for face, n in wo.get("thir_faces", {}).items():
         _thir_faces_agg[face] = _thir_faces_agg.get(face, 0) + n
     _stale_fp_agg.extend(wo.get("stale_fp", []))
+    if wo.get("fork_fallback"):
+        _fork_fallbacks_agg.append(wo["fork_fallback"])
+    _fork_refusals_agg.extend(wo.get("fork_refusals", []))
 
 
 def _emit_stale_fingerprint_banner(terminalreporter):
@@ -2303,6 +2391,21 @@ def _emit_stale_fingerprint_banner(terminalreporter):
 
 def pytest_terminal_summary(terminalreporter, exitstatus, config):
     _emit_stale_fingerprint_banner(terminalreporter)
+
+    fallbacks = _fork_fallbacks_agg + ([fork_compile.fallback_reason()]
+                                       if fork_compile.fallback_reason() else [])
+    if fallbacks:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} WARNING: forked compiles stopped on {len(fallbacks)} "
+            f"worker(s), which compiled the rest of their cases in-process: "
+            f"{fallbacks[0]}", yellow=True)
+    # A refusal is legitimate for a program that shadows a prepared module, but
+    # a reuse check refusing everything would keep the suite green and slow.
+    refusals = _fork_refusals_agg + fork_compile.refusals()
+    if refusals:
+        terminalreporter.write_line(
+            f"{_LOG_PREFIX} forked compiles: {len(refusals)} case(s) compiled in-process "
+            f"because the prepared stdlib could not be reused, e.g. {refusals[0]}")
 
     total = {k: _exec_tally[k] + _exec_tally_agg[k] for k in _exec_tally}
     considered = total["ran"] + total["skipped"]

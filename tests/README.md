@@ -66,3 +66,39 @@ from pytest's own output.
   buried in the warnings summary), the summary includes a bold-yellow
   `STALE FINGERPRINTS` banner naming the refresh command(s). The session stays
   green, but the stale fingerprint cannot be missed.
+
+## Forked compiles
+
+A case's compile spends most of its front-end time analyzing the stdlib
+modules every program imports. On Linux each xdist worker therefore starts,
+on first use, one compile server per template key (`tests/fork_compile.py`):
+a fresh interpreter that analyzes the template's layers once
+(`Compiler.prepare`, see `docs/ARCHITECTURE.md`) and then forks once per
+case. The child finishes the program (`Compiler.finish`) and runs
+`conftest.compile_case` -- the same body the in-process path runs:
+diagnostics, codegen into the case's `__tpyc__`, MIR and the annotation
+checks that read compiler objects (`type()`, `mir()`, `mir_summary()`, the
+MIR line facts) -- and returns the result as plain data over a pipe.
+
+- Template keys: `base` prepares the implicit stdlib; `asyncio` adds a layer
+  rooted at `asyncio`. A `base` child whose program reaches asyncio answers
+  "reroute" before analyzing anything and the case goes to `asyncio`.
+- What the compile raised (`pytest.fail` included) is raised again in the
+  worker, with the child's traceback as a note. A child killed by a signal
+  fails its case with the signal and the child's stderr.
+- The case compiles in the worker process instead (the plain path) with
+  `--no-fork-compile`, off Linux, for a non-default `default_int` /
+  `plugin` / `dsl_opts`, when the child refuses the prepared layers
+  (`LayerReuseRefused`: a module name the prepared layers resolved, hit or
+  miss, or a macro probe miss resolves differently from the case directory, e.g.
+  a program-local `typing.py`, or the program changes a prepared module's
+  C++ namespace), and for the rest of
+  the worker's session once a server fails to start or dies -- the summary
+  then carries one `tpy| WARNING: forked compiles stopped` line. Refused
+  cases are counted in a `tpy| forked compiles: N case(s) compiled
+  in-process` line.
+- Everything outside `test_case` (direct `compile_with_diagnostics` callers,
+  the sweeps, subprocess-based tests) compiles in-process.
+- Debug a compile with `--no-fork-compile`: a forked child's stdin is
+  `/dev/null` and its output is shown only when it dies, so `breakpoint()`,
+  `--pdb` or a debug print inside the compiler goes nowhere.

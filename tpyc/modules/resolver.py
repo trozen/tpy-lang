@@ -199,3 +199,36 @@ class ModuleResolver:
             if name.endswith(ext):
                 return name[: -len(ext)]
         return name
+
+
+def resolution_drift(resolver: ModuleResolver, resolutions: dict[str, str | None],
+                     must_not_exist: list[str],
+                     recorded_base: Path | None = None) -> str | None:
+    """The first recorded resolution outcome `resolver` no longer
+    reproduces, as a sentence; None when every one holds.
+
+    `resolutions` maps a module name to the path it resolved to (None for a
+    miss: a file created since may now satisfy it); `must_not_exist` holds
+    the paths the macro loader probed and found absent. When the outcomes
+    were recorded with `recorded_base` as the base directory, a probed path
+    under it is read as the same path under `resolver.base_dir`; a module
+    that resolved must still resolve to the very file it did, since that is
+    the file whose analysis is being reused.
+    """
+    def moved(path: str) -> str:
+        if recorded_base is not None:
+            try:
+                return str(resolver.base_dir / Path(path).relative_to(recorded_base))
+            except ValueError:
+                pass
+        return path
+
+    for path in must_not_exist:
+        if os.path.exists(moved(path)):
+            return f"{moved(path)} exists"
+    for name, recorded in resolutions.items():
+        now = resolver.resolve(name)
+        if (str(now.path) if now else None) != recorded:
+            return (f"'{name}' resolves to {now.path if now else 'nothing'}, "
+                    f"not {recorded or 'nothing'}")
+    return None

@@ -460,6 +460,9 @@ class MacroRegistry:
                 self.probe_missing.append(str(path))
         return None
 
+    def set_search_dirs(self, search_dirs: list[Path]) -> None:
+        self._search_dirs = list(search_dirs)
+
     def is_loaded(self, module_name: str) -> bool:
         return module_name in self._loaded_modules
 

@@ -24,7 +24,7 @@ import os
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .modules.resolver import ModuleResolver
+from .modules.resolver import ModuleResolver, resolution_drift
 from .toolchain import compiler_binary_identity
 
 SCHEMA_VERSION = 1
@@ -190,24 +190,18 @@ def check_up_to_date(build_dir: Path, options_key: dict) -> WarmHit | None:
         if not _entry_fresh(data["binary"]):
             return None
 
-        # Macro probe misses must still miss.
-        for path in data["must_not_exist"]:
-            if os.path.exists(path):
-                return None
-
-        # Replay module resolution through the real resolver: catches a
-        # newly created file shadowing a recorded module (search order is
-        # entry dir > -L dirs > lib/tpy) and any other resolution drift.
+        # Replay module resolution through the real resolver, macro probe
+        # misses included: catches a newly created file shadowing a recorded
+        # module (search order is entry dir > -L dirs > lib/tpy) and any
+        # other resolution drift.
         res = data["resolver"]
         resolver = ModuleResolver(
             Path(res["base_dir"]),
             extra_dirs=[Path(d) for d in res["extra_dirs"]],
             extra_extensions=tuple(res["extra_extensions"]),
         )
-        for name, recorded in data["resolutions"].items():
-            now = resolver.resolve(name)
-            if (str(now.path) if now else None) != recorded:
-                return None
+        if resolution_drift(resolver, data["resolutions"], data["must_not_exist"]):
+            return None
 
         # Enumerated input sets gained/lost no files.
         for listing in data["dir_listings"]:

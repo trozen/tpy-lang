@@ -36,19 +36,16 @@ from conftest import (
     case_binary_path,
     get_module_name,
     plugin_extensions_for,
-    compile_with_diagnostics,
+    compile_for_case,
     get_case_default_int,
     get_case_snapshot_lib_modules,
     validate_annotations,
-    validate_type_annotations,
     validate_non_null_annotations,
     validate_bounds_annotations,
     validate_div_annotations,
     validate_cast_annotations,
     validate_send_sync_annotations,
     validate_frame_annotations,
-    validate_mir_annotations,
-    validate_mir_fact_annotations,
     error_case_annotation_problems,
     fail_annotations,
     check_or_update,
@@ -139,8 +136,8 @@ def test_case(case_dir, main_src, request):
                 f.unlink()
 
     # ----- COMP PHASE ---------------------------------------------------------
-    result = compile_with_diagnostics(
-        main_src, build_dir, default_int=get_case_default_int(case_dir),
+    result = compile_for_case(
+        main_src, build_dir, request.config, default_int=get_case_default_int(case_dir),
         snapshot_lib_modules=get_case_snapshot_lib_modules(case_dir),
     )
 
@@ -239,10 +236,8 @@ def test_case(case_dir, main_src, request):
     # snapshot, so a wrong one cannot corrupt a regeneration; they keep the
     # update-mode exemption CLAUDE.md documents.
     if not UPDATE_EXPECTED:
-        if result.declared_var_types is not None:
-            errs = validate_type_annotations(main_src, result.declared_var_types)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
+        if result.type_annotation_errors:
+            pytest.fail("\n".join(result.type_annotation_errors), pytrace=False)
         if result.ptr_deref_facts is not None:
             errs = validate_non_null_annotations(main_src, result.ptr_deref_facts)
             if errs:
@@ -267,14 +262,11 @@ def test_case(case_dir, main_src, request):
             errs = validate_frame_annotations(main_src, result.frame_facts)
             if errs:
                 pytest.fail("\n".join(errs), pytrace=False)
-        if result.mir_verdicts is not None:
-            errs = validate_mir_annotations(main_src, result.mir_verdicts)
-            if errs:
-                pytest.fail("\n".join(errs), pytrace=False)
-            if result.mir_line_facts is not None:
-                errs = validate_mir_fact_annotations(main_src, result.mir_verdicts, result.mir_line_facts)
-                if errs:
-                    pytest.fail("\n".join(errs), pytrace=False)
+        # Checked by the compile, against the compiler's MIR verdicts.
+        if result.mir_annotation_errors:
+            pytest.fail("\n".join(result.mir_annotation_errors), pytrace=False)
+        if result.mir_fact_annotation_errors:
+            pytest.fail("\n".join(result.mir_fact_annotation_errors), pytrace=False)
 
     # ----- EXEC PHASE ---------------------------------------------------------
 

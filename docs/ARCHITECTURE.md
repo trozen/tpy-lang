@@ -338,6 +338,31 @@ ordering per analyzer. The ModuleInfo
 compilation; per-module short-name bindings (records / functions /
 protocols / enums / type aliases) stay per-analyzer.
 
+That loop runs once per import-ordered **layer** (`Compiler._analyze_layer`).
+`Compiler.compile()` is `prepare()` + `finish()`: `prepare(root_groups)`
+analyzes the implicit stdlib as the first layer, then the closure of each root
+group as one more layer, each holding the modules no earlier layer reached;
+`finish(entry)` discovers the program, analyzes the remaining modules as the
+last layer and runs `_finalize_workspace` once. The compile order is the
+concatenation of the per-layer orders (each layer puts its own implicit-stdlib
+modules first, so the order can differ between splits), a layer is closed under
+imports (an import cycle spanning layers asserts), and each module registers its
+own `ModuleInfo` at the end of its declaration pass. The invariant: a program's
+diagnostics and C++ do not depend on how its modules are split into
+import-ordered layers; `_finalize_workspace` runs once, after the last layer
+(`tpyc/test_layered_analysis.py`). The test harness relies on it to analyze the
+stdlib once per worker and fork a prepared compiler per case (`tests/README.md`
+"Forked compiles"): `finish(entry, reuse=True)` re-points a prepared compiler at
+another program and raises `LayerReuseRefused` when the entry point is named
+like a prepared module, when a resolution the prepared layers made -- a module
+name, hit or miss, or a macro probe miss -- comes out differently from the
+program's directory (`modules.resolver.resolution_drift`, the replay the build
+cache also runs), or when the program changes a prepared module's C++
+namespace. A layer
+still writes into earlier layers' state (the builtin reindex, the
+workspace-wide passes, importers re-registering their dependencies); a per-file
+analysis cache needs those writes gone first (TODO.md).
+
 Cyclic imports between user modules are detected via Tarjan SCC over
 the import graph. Cycle members must be import + declaration only at
 top level (no executable statements); package `__init__.py` and
