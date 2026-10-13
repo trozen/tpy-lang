@@ -182,8 +182,7 @@ before upgrading.
 
 1. **Efficient native code** -- no interpreter, garbage collector or
    automatic reference counting, and opt-in constraints such as `@noalloc`
-   for hot paths. Where efficiency and CPython compatibility conflict,
-   efficiency wins.
+   for hot paths.
 2. **Explicit divergence** -- a construct that behaves differently from
    CPython is rejected or warned about, with a diagnostic that names the fix.
 3. **Valid Python source** -- existing editors, linters and coding agents
@@ -194,6 +193,9 @@ before upgrading.
    functions.
 5. **Checked concurrency** -- no GIL; what crosses a thread boundary is
    checked at compile time.
+
+The full design principles, and which wins when two conflict, are in
+[docs/PRINCIPLES.md](docs/PRINCIPLES.md).
 
 ## Using the generated C++
 

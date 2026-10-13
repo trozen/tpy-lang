@@ -64,6 +64,10 @@ You may NOT run any test suite or `tests/update_snapshots.py`.
 - `std::span` / `std::string_view` used where applicable (no `std::string` materialization from views)
 - RAII pivot points clean (no leaks if a constructor mid-body throws)
 
+**Placement and embedding** (`docs/PRINCIPLES.md` #8, #11)
+- A new helper that only composes Python-level logic (loops, retries, string building over existing primitives) belongs in `lib/tpy/` as TPy -- a Warning.
+- Runtime code does not exit or abort the process, log, or pick an I/O policy on its own; process-level policy belongs to the host (a panic goes through the existing panic path, not a direct `std::exit` / `abort` / `std::cerr`).
+
 ## Pitfalls you own
 
 `docs/PITFALLS.md` holds the generated-code rules that keep passing review; the runtime is where two of them are decided. Run the check, do not skim:

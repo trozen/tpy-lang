@@ -30,5 +30,5 @@ The bootstrap is one sentence the user pastes into a new session: which memory t
 ## Rules
 
 - "What's next?" asks for this ranked list; it is not a signal to start item 1.
-- Unfinished structural items (unifications, collapsing parallel paths) rank above row-by-row fixes.
+- Silent miscompiles and safety holes rank first (`docs/PRINCIPLES.md` #2, #5); then unfinished structural items (unifications, collapsing parallel paths) above row-by-row fixes.
 - No history in the followup text: say what should be done, not how the session got there.

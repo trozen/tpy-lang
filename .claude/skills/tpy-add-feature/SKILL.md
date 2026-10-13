@@ -143,7 +143,8 @@ Where each piece of the feature lives:
   `tpyc/codegen_cpp/` only for the skeleton: headers, signatures,
   record/protocol/enum drivers.
 - **Runtime** (`runtime/cpp/include/tpy/`) -- new header support? New
-  template, new helper, new concept?
+  template, new helper, new concept? Could it be TPy in `lib/tpy/`
+  instead (principle #11)? C++ only for what the system boundary forces.
 - **Stdlib** (`lib/tpy/`) -- new module or stub? Parallel
   `lib/cpy/tpy/` stub for CPython compat?
 

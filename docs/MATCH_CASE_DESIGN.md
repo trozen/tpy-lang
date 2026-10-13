@@ -448,8 +448,8 @@ keeps the matched value. Every other binding -- heap-backed value types
 (`str`, `BigInt`), borrowing views (`StrView`/`Span`/`BytesView`), and
 reference types (record/`list`/`dict`/wrapper) -- is bound `auto&` (a
 zero-cost borrow). The copy is restricted to scalars on purpose: copying
-`str`/`BigInt` would pessimize the common path (performance is design
-goal #1) and copying a view or reference type would still dangle / diverge
+`str`/`BigInt` would pessimize the common path (performance,
+principle #6) and copying a view or reference type would still dangle / diverge
 from CPython aliasing. Mutating the subject root while a non-scalar binding
 is live dangles it and is warned on the visible shapes; the durable fix is a
 compile-time loan check (never a runtime copy) -- see BUGS.md. The examples

@@ -404,7 +404,7 @@ bound**, which two independent reviews found shaky as previously specced:
   **dependent callable bound that recovers `R` from `F`**, with `R`
   referenced before declaration. This is **not ordinary Python generic
   machinery** -- a real type checker will not recover `R` from `F` this way,
-  which undercuts the "valid Python / tooling-friendly" (goal #3)
+  which undercuts the "valid Python / tooling-friendly" (principle #1)
   justification the spelling was chosen on. Treat it as a *new type-system
   feature*, not a small bound extension.
 - The bound uses `Callable` (the erased `std::function` type) where the
@@ -423,7 +423,7 @@ Rejected during design (kept so they are not retried): `Send[Fn[...]]`
 (parser-rejected: "constrain it with a generic bound instead");
 `fn: Fn[[], R]` + a spawn-specific `Send` check (bespoke, per-use special
 case); bare `[F: Send](fn: F)` (cannot recover `R`); intersection bound
-`Callable[[], R] + Send` (no such syntax in Python; breaks goal #3); a
+`Callable[[], R] + Send` (no such syntax in Python; breaks principle #1); a
 `spawn` **compiler intrinsic** (explicitly rejected by the project owner --
 "add another intrinsic every time?"). The proper path is a well-designed
 callable generic bound, revisited with a de-risk spike (wire

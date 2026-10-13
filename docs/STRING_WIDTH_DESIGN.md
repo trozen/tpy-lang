@@ -210,7 +210,7 @@ pass:
   losslessly, and matches CPython, so the default never silently rejects valid
   text; apps opt *down* to a narrower width for a known-subset hot path. This is
   a real call, not neutral: 4 bytes/char is 4x the memory of width 1 on
-  ASCII/Latin-1 data -- in tension with performance (goal #1) -- and it is
+  ASCII/Latin-1 data -- in tension with performance (principle #6) -- and it is
   ABI-locked, so it is the choice most likely to be revisited once real workloads
   exist. It is chosen deliberately (safe-by-default over compact-by-default) with
   opt-out as the pressure valve. Most apps use the default, so the precompiled

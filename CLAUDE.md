@@ -10,11 +10,9 @@ It ships two CLIs that share the same argument grammar, differing only in their 
 - **`tpy`** -- user-facing runner. Bare `tpy` drops into a REPL; `tpy foo.py` runs the program.
 - **`tpyc`** -- compiler front-end. `tpyc foo.py` emits `.hpp`/`.cpp` in `__tpyc__/` without running.
 
-**Goals:**
+**Principles.** The language's design principles are the north star for every analysis, design, fix and review here; no rule below overrides them:
 
-1. **Performance** -- Low-latency compiled output with opt-in constraints for hot paths (e.g. `@noalloc`).
-2. **Idiomatic Python** -- Standard Python should work out of the box, with minimal restrictions (e.g. type annotations on functions).
-3. **Tooling-friendly** -- Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins.
+@docs/PRINCIPLES.md
 
 ## Working in this repo
 
@@ -81,7 +79,7 @@ This governs how a unit is worked, not when to start one. A unit's implementatio
 - **Agent reports carry evidence, and a claim is checked, not believed.** A report that says green ran on a committed tree (clean `git status`) and names its `HEAD` sha, the exact command and the verbatim pytest summary line; a run that collected zero tests is a failure. The orchestrator does not repeat the agent's run: it checks the sha against what it integrates and reruns only the unit's new or targeted cases with a small `-n`. Full runs stay where the workflow already puts them (each `/tpy-review` round's fixes, the final verification), plus one when integration changed the tree (several agent branches combined, master merged). Reviewers and critics get the sha and the approved design -- never the implementer's report or summary.
 - Every batch goes through `/tpy-review` with its recommendations applied. At the end: `/tpy-merge-master` if master moved, then `/tpy-ready`. `/prep-merge` only when the user asks.
 - Set decisions aside per "Decide what the user would decide"; everything else runs to the end.
-- **Cross-check by the other harness -- by default, no yes needed.** A second model family catches what one family's reviewers share as a blind spot. The repo stays read-only; probes run: from Claude Code `codex exec --skip-git-repo-check -c approval_policy=never --sandbox workspace-write -C /tmp/agents/<unit>/codex --add-dir ~/.cache/uv --add-dir ~/.cache/tpyc --add-dir ~/.cache/ccache "Read /tmp/agents/<unit>/<prompt>.md and follow it" < /dev/null` (writable: its probe directory and the build caches; a backgrounded `codex exec` without `< /dev/null` stalls on stdin), and the prompt says to run probes from that directory as `uv run --project <repo> tpy <probe>.py`; from Codex `claude -p --permission-mode plan "<prompt>"`. The prompt goes in a file and points at the document, the sha and the probes -- never at this conversation or an agent's report. It runs at three points:
+- **Cross-check by the other harness -- by default, no yes needed.** A second model family catches what one family's reviewers share as a blind spot. The repo stays read-only; probes run: from Claude Code `codex exec --skip-git-repo-check -c approval_policy=never --sandbox workspace-write -C /tmp/agents/<unit>/codex --add-dir ~/.cache/uv --add-dir ~/.cache/tpyc --add-dir ~/.cache/ccache "Read /tmp/agents/<unit>/<prompt>.md and follow it" < /dev/null` (writable: its probe directory and the build caches; a backgrounded `codex exec` without `< /dev/null` stalls on stdin), and the prompt says to run probes from that directory as `uv run --project <repo> tpy <probe>.py`; from Codex `claude -p --permission-mode plan "<prompt>"`. The prompt goes in a file, tells it to read `docs/PRINCIPLES.md` first (Codex does not follow this file's import), and points at the document, the sha and the probes -- never at this conversation or an agent's report. It runs at three points:
   - the design critics of `/tpy-fix-bug` and `/tpy-add-feature` (localized and architectural scope);
   - every `/tpy-review` round, as one more reviewer;
   - every decision before it reaches the user -- its prompt file holds the decision as it will be presented and the user's earlier decisions on the unit, quoted: is it really open (or do the approved design and the user's earlier decisions already answer it), are the options complete (a cheaper or more generic one missing, an existing helper that already does it), is each option's stated C++ and behavior right, does it agree with the recommendation. A decision it shows answered or mis-stated is fixed or dropped first; the message to the user ends with one line, "Cross-check: agrees" or "Cross-check: disagrees -- <why>".
@@ -412,6 +410,7 @@ Features this doc references or assumes, with one-line explanations and deeper-d
 
 | File | Purpose | Policy |
 |------|---------|--------|
+| `docs/PRINCIPLES.md` | The language's design principles (imported above) | Changed only by the user |
 | `docs/LANGUAGE_FEATURES.md` | Comprehensive language feature documentation + type mapping | **Keep up-to-date** with any development |
 | `docs/STDLIB_ROADMAP.md` | Python stdlib coverage tracker (per-module items, status, blockers) | **Keep up-to-date** when adding/changing stdlib modules |
 | `docs/ARCHITECTURE.md` | Compiler architecture: nominal/structural types, TypeDef registry, sema layout, perf tradeoffs | Update when type-system or sema structure changes |

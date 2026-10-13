@@ -76,6 +76,9 @@ Out of scope:
 - Checked arithmetic emitted for fixed-width integers
 - Cross-check BUGS.md "Safety / borrow checker" section -- do not reintroduce known gaps
 
+**Thread soundness** (`docs/PRINCIPLES.md` #5)
+- A new type, frame, capture or wrapper gets the right Send/Sync verdict (raw pointers make it non-Send; an `@unsafe_send` / `@unsafe_sync` override names why it is sound), and nothing new shares mutable state across a thread boundary unsynchronized. Check: the diff's new types and frames carry an `is_send` / `is_sync` / `frame_send` annotation in a test.
+
 ## Pitfalls you own
 
 `docs/PITFALLS.md` holds the language rules that keep passing review. You own these entries; run their **Check** line for the constructs the change touches. A finding about a copy, a move or an alias must be backed by a probe you wrote under `/tmp/agents/<name>/` (`printf '...' > file`; no Write tool, no heredocs) and ran (`uv run tpy --dump-code`, then `uv run tpy` and `PYTHONPATH=lib/cpy uv run python` for the alias observation); quote the emitted line or the two outputs. Reading is how you form the suspicion, not how you confirm it. You may NOT run any test suite or `tests/update_snapshots.py`.

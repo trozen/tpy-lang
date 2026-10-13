@@ -17,24 +17,7 @@ Status legend:
 
 ## Design Philosophy
 
-**Performance**: Low-latency compiled output. Most code uses standard Python constructs freely, while hot paths can opt into stricter constraints (e.g. `@noalloc`). No garbage collection, no interpreter overhead.
-
-**Regular Python compatibility**: TurboPython aims to compile and run regular Python code wherever practical. When a feature is unsupported, or semantics differ from CPython (for example, inline field storage vs Python object references), diagnostics should explain the gap clearly. A program CPython runs that TPy rejects with `this construct is not yet supported by C++ code generation` is a shape the lowering does not handle yet, not a rule of the language -- those shapes are tracked as a queue (`scripts/thir_migration/review/`) and close one arm at a time.
-
-**Constrained C++ interop**: Easy integration with existing C/C++ code, but only through explicit interop rules. TurboPython does not aim to accept arbitrary native C++ types or signatures without declared compatibility.
-
-**Familiar syntax**: Keep the language approachable for non-programmers and close to regular Python. The everyday constructs (`int`, `str`, `list`, `dict`, functions, classes) should feel familiar, with minimal required annotations.
-
-**Semantic transparency**: When TurboPython behavior intentionally differs from CPython, the compiler should warn so differences are visible during development and testing.
-
-**Tooling-friendly**: Source files are valid Python, so existing IDEs, linters, type checkers, and LLMs work without special plugins or language server protocols. Development uses the same tools as regular Python.
-
-**Thread safety**: Unlike CPython (which relies on the GIL), TurboPython targets multi-threaded, high-performance environments. The compiler should produce thread-safe code by default where possible without sacrificing performance, and give the user explicit control where trade-offs exist. Compiler analyses (e.g. narrowing, aliasing) must be sound in the presence of concurrent access.
-
-**Pluggable backends**: The mapping from TurboPython to C++ should be configurable. Different projects have different needs:
-- `Span[T]` → `std::span<T>`, `Span[readonly[T]]` → `std::span<const T>`, or custom span types
-- `print()` → `std::cout` (default) or a logging framework
-- `str` → `std::string` or a custom string class
+The language's design principles live in [`docs/PRINCIPLES.md`](PRINCIPLES.md). One consequence worth stating here: a program CPython runs that TPy rejects with `this construct is not yet supported by C++ code generation` is a shape the lowering does not handle yet, not a rule of the language -- those shapes are tracked as a queue (`scripts/thir_migration/review/`) and close one arm at a time.
 
 ---
 
@@ -9450,31 +9433,7 @@ Key difference from Python Pydantic:
 
 ## Design Principles
 
-1. **Allocation is controllable, not forbidden**
-   - Use `@noalloc` where needed, allow allocation elsewhere
-   - Different applications have different needs
-
-2. **Value vs Object semantics**
-   - Small immutable types: pass by value
-   - Larger/mutable types: pass by reference (implicitly)
-
-3. **Progressive complexity**
-   - Simple code should be simple to write
-   - Advanced features available when needed
-   - Explicit > implicit for complex cases
-
-4. **C++ interop**
-   - Generated code should be readable and idiomatic
-   - Easy to call C++ from TurboPython and vice versa
-   - Interop is intentionally constrained to declared, supported native shapes
-
-5. **CPython semantic clarity**
-   - Keep CPython behavior when practical
-   - Emit warnings when TurboPython semantics diverge
-
-6. **Regular Python compatibility**
-   - Prefer behavior that keeps normal Python code runnable
-   - If unsupported, or if semantics differ from CPython, emit clear diagnostics
+See [`docs/PRINCIPLES.md`](PRINCIPLES.md).
 
 ## Implementation Notes
 
