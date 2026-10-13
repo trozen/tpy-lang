@@ -23,7 +23,8 @@ if TYPE_CHECKING:
     from .flow_facts import FlowFacts
     from .pending_num import DeferredIntOp, PendingNumCell
     from ..parse.type_resolver import TypeResolver
-    from .loop_frames import PendingLoopFrameCall, WithExitCheck
+    from .loop_frames import (PendingLoopFrameCall, PendingSourceWrite,
+                              WithExitCheck)
     from .scope_tracker import DeferredEscape
     from .slot_hint import SlotHint
 
@@ -38,7 +39,8 @@ from ..typesys import (
     UnknownElementType,
     PendingGenericInstanceType, PendingGenericInstanceInfo,
     ViewTypeFamily, PendingViewType, PendingStrType, VIEW_TYPE_FAMILIES,
-    unwrap_readonly, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync,
+    unwrap_own, unwrap_readonly, unwrap_ref_type, unwrap_qualifiers,
+    unwrap_send_sync,
     FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, is_bufferless_scalar,
     is_protocol_type, TypeParamRef, substitute_type_params_structural,
@@ -639,8 +641,24 @@ def value_may_point(t: TpyType) -> bool:
         return any(value_may_point(m) for m in t.inner_types())
     if holds_no_pointer(t):
         return False
-    return (t.is_value_type() or isinstance(t, TypeParamRef)
+    # A generator or coroutine frame keeps what it borrows.
+    return (t.is_value_type() or isinstance(t, (TypeParamRef,
+                                                ConcreteFrameType))
             or is_protocol_type(t) or is_dyn_protocol(t))
+
+
+def may_hold_pointer(t: TpyType, seen: frozenset[str] = frozenset()) -> bool:
+    """A value of type `t` may be or hold a pointer into storage it does
+    not own: `value_may_point` for a value type or a frame,
+    `reference_may_hold_pointer` for what a reference type holds."""
+    m = unwrap_qualifiers(t)
+    if isinstance(m, (OptionalType, UnionType, TupleType)):
+        return any(may_hold_pointer(x, seen) for x in m.inner_types())
+    if (isinstance(m, NominalType) and not m.is_value_type()
+            and not isinstance(m, ConcreteFrameType)
+            and not (is_protocol_type(m) or is_dyn_protocol(m))):
+        return reference_may_hold_pointer(m, seen)
+    return value_may_point(m)
 
 
 def reference_may_hold_pointer(t: NominalType,
@@ -654,13 +672,7 @@ def reference_may_hold_pointer(t: NominalType,
     seen = seen | {key}
 
     def may(m: TpyType) -> bool:
-        m = unwrap_qualifiers(m)
-        if isinstance(m, (OptionalType, UnionType, TupleType)):
-            return any(may(x) for x in m.inner_types())
-        if (isinstance(m, NominalType) and not m.is_value_type()
-                and not (is_protocol_type(m) or is_dyn_protocol(m))):
-            return reference_may_hold_pointer(m, seen)
-        return value_may_point(m)
+        return may_hold_pointer(m, seen)
 
     args = [a for a in t.type_args if isinstance(a, TpyType)]
     if any(may(a) for a in args):
@@ -3050,6 +3062,9 @@ class SemanticContext:
     # order): a by-VALUE owning slot moves the name while binding, which C++
     # may sequence before the alias read, so such a slot copies instead.
     same_stmt_alias_reads: IdentitySet = field(default_factory=IdentitySet)
+    # Name reads that run more than once per evaluation of their statement
+    # (a comprehension's per-item part, a lambda body): never a last use.
+    repeated_reads: IdentitySet = field(default_factory=IdentitySet)
     # Sources that COPY into an `Own` tuple-element slot, as declared by the
     # warning: a tuple-literal member, or a tuple name some element of which
     # arrives borrowed. The lowering builds exactly these copies -- never a
@@ -3124,6 +3139,10 @@ class SemanticContext:
     # The calls a loop makes while a frame it binds is held across its back
     # edge, decided once mutation facts are final (sema/loop_frames.py).
     pending_loop_frame_calls: list['PendingLoopFrameCall'] = field(
+        default_factory=list)
+    # Loops whose source a write may reach only through function locals,
+    # decided at the end of their body (sema/loop_frames.py).
+    pending_source_writes: list['PendingSourceWrite'] = field(
         default_factory=list)
     # Generators bound in a `with` block that live past it, checked against
     # what the managers' exits may write once those facts are final.
@@ -4591,6 +4610,16 @@ class SemanticContext:
     # ------------------------------------------------------------------
     # View-type mutation tracking
     # ------------------------------------------------------------------
+
+    def mark_view_source_written(self, typ: TpyType) -> None:
+        """A loop variable (or loop-head unpack target) whose source the
+        loop may write while it is live: it owns its element, as a view of
+        a reseated source does."""
+        inner = unwrap_own(unwrap_ref_type(unwrap_readonly(typ)))
+        if isinstance(inner, PendingViewType):
+            info = self.view_vars(inner.family).get(inner.var_id)
+            if info is not None:
+                info.source_mutated = True
 
     def mark_view_borrowers_mutated(self, storage: str, family: ViewTypeFamily) -> None:
         """Mark pending view-type borrowers of storage as source-mutated.

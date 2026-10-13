@@ -138,7 +138,7 @@ double degrees(double x) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const ::tpy::BigInt& x = *__beg_0;
+        ::tpy::BigInt x = *__beg_0;
         if ((result == 1)) {
             return ::tpy::BigInt(1);
         }
@@ -174,7 +174,7 @@ double degrees(double x) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const ::tpy::BigInt& x = *__beg_0;
+        ::tpy::BigInt x = *__beg_0;
         if (((result == 0) || (x == 0))) {
             return ::tpy::BigInt(0);
         }

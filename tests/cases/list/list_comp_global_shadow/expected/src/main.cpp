@@ -295,7 +295,7 @@ void array_source(const std::array<::tpy::BigInt, 3>& a) {
     std::array<::tpy::BigInt, 3> m = ({
         auto& __obj_0 = a;
         ::tpy::array_from_index<::tpy::BigInt, 3>([&](std::size_t __i_0) -> ::tpy::BigInt {
-            ::tpy::BigInt ys = __obj_0[__i_0];
+            const ::tpy::BigInt& ys = __obj_0[__i_0];
             return ((ys) * (::tpy::BigInt(2)));
         });
     });

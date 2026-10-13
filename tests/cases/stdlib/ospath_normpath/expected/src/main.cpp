@@ -31,7 +31,7 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view c = *__beg_0;
+        std::string c = *__beg_0;
         std::cout << ::tpystd::os::path::normpath(c) << "\n" << ::tpy::check_signals;
     }
 }

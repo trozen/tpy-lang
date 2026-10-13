@@ -48,7 +48,7 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::string_view k = *__beg_1;
+        std::string k = *__beg_1;
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, Point> d2 = ::tpy::dict_construct<std::string, Point>(::tpy::copy_iter<std::tuple<std::string, Point>>(::tpy::builtin_map<std::tuple<std::string, ::tpy::val_or_ref<Point>>>(to_pair, pts)));
@@ -56,7 +56,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        std::string_view k = *__beg_2;
+        std::string k = *__beg_2;
         std::cout << k << " " << ::tpy::__getitem__(d2, k) << "\n" << ::tpy::check_signals;
     }
 }

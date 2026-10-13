@@ -1,7 +1,6 @@
-# A rebound pointer tuple as a container literal's element: its per-element
-# move is not yet sound inside a loop (BUGS.md#comp-element-move-inside-loop)
-# and its whole copy copies what it owns
-# (BUGS.md#tuple-local-last-use-copies-owned-elements), so it is refused.
+# A rebound pointer tuple as a container literal's element: its whole copy
+# copies what it owns (BUGS.md#tuple-local-last-use-copies-owned-elements),
+# so it is refused.
 from tpy import Own, int32
 
 

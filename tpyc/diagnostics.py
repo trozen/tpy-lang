@@ -54,6 +54,12 @@ NOCOPY_REMEDIATION_HINT = (
     " (use Own[...] to transfer ownership, copy() if a copy is truly intended, "
     "or let auto-move apply at last use)"
 )
+# The same remedies for a read that runs once per item (a comprehension's
+# element, filter or later source): it is never a last use, so no auto-move.
+NOCOPY_REPEATED_READ_HINT = (
+    " (use Own[...] to transfer ownership, or copy() if a copy is truly "
+    "intended)"
+)
 
 # A consuming method's field read outside a `return` is a borrow, so the
 # generic remedies above (auto-move at last use) do not apply to it.

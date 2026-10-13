@@ -63,6 +63,23 @@ class TypeCategory(Enum):
     STRUCTURAL_WRAPPER = auto()
 
 
+# The families whose every builtin operation (a copy, a comparison, a hash,
+# formatting, an element read, destruction) is runtime code.
+RUNTIME_VALUE_CATEGORIES = frozenset({
+    TypeCategory.FIXED_INT, TypeCategory.BIG_INT, TypeCategory.FLOAT,
+    TypeCategory.BOOL, TypeCategory.CHAR, TypeCategory.STR,
+    TypeCategory.BYTES, TypeCategory.SLICE, TypeCategory.VOID,
+    TypeCategory.ENUM,
+})
+# The builtin containers: their operations are runtime code apart from what
+# their elements run.
+RUNTIME_CONTAINER_CATEGORIES = frozenset({
+    TypeCategory.LIST, TypeCategory.DICT, TypeCategory.DICT_VIEW,
+    TypeCategory.SET, TypeCategory.ARRAY, TypeCategory.SPAN,
+    TypeCategory.VARARGS, TypeCategory.RANGE,
+})
+
+
 class CppDefaultInit(Enum):
     """What C++ default construction of a type's storage form does -- the
     one fact behind a record's `X() = default;` and a base or field built

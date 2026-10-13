@@ -1,0 +1,7 @@
+main.py:44: warning: Mutation of 'a' while iterating over it ('reverse' invalidates the iterator)
+main.py:154: warning: Mutation of 'xs' while iterating over it ('append' invalidates the iterator)
+main.py:331: warning: Mutation of 'a' while iterating over it ('del' invalidates the iterator)
+main.py:353: warning: Mutation of 'a[...]' may hit the element being iterated (element assignment may invalidate the iterator)
+main.py:427: warning: copies W into owned storage; use copy() to make this explicit
+main.py:556: warning: Own[Drop] param 'e' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:805: warning: copies Taken into owned storage; use copy() to make this explicit

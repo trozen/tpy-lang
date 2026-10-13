@@ -107,7 +107,7 @@ std::string join(std::string_view a, ::tpy::varargs<const std::string> paths) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view b = *__beg_0;
+        std::string b = *__beg_0;
         path = ::tpystd::os::path::_join2(path, b);
     }
     return path;

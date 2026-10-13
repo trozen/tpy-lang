@@ -167,7 +167,7 @@ std::string _escape_header_param(std::string_view value) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& kv = *__beg_0;
+            std::tuple<std::string, std::string> kv = *__beg_0;
             body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
             body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(std::get<0>(kv))))), ::tpy::bytes_literal("\"\r\n\r\n", 5))));
             body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat(::tpy::bytes_from_str(std::get<1>(kv)), ::tpy::bytes_literal("\r\n", 2))));
@@ -177,7 +177,7 @@ std::string _escape_header_param(std::string_view value) {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::string_view k = *__beg_1;
+        std::string k = *__beg_1;
         const FileField& f = ::tpy::__getitem__(files, k);
         body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("--", 2), bnd)), ::tpy::bytes_literal("\r\n", 2))));
         body = ::tpy::bytearray_concat(body, (::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("Content-Disposition: form-data; name=\"", 38), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(k)))), ::tpy::bytes_literal("\"; filename=\"", 13))), ::tpy::bytes_from_str(::tpystd::tplib::requests::_escape_header_param(f.filename)))), ::tpy::bytes_literal("\"\r\n", 3))));
@@ -401,7 +401,7 @@ void _drop_body_headers(::tpy::ordered_map<std::string, std::string>& headers) {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::string_view k = *__beg_1;
+        std::string k = *__beg_1;
         ::tpy::__delitem__(headers, k);
     }
 }
@@ -598,7 +598,7 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const auto& kv = *__beg_0;
+        std::tuple<std::string, std::string> kv = *__beg_0;
         if ((::tpy::str_lower(std::get<0>(kv)) == "set-cookie")) {
             resp_cookies._ingest(std::get<1>(kv), (*host), req_path, now);
         }
@@ -1601,7 +1601,7 @@ Response Session::request(std::string_view method, std::string_view url, const :
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& kv = *__beg_0;
+            std::tuple<std::string, std::string> kv = *__beg_0;
             send_cookies.set(std::get<0>(kv), std::get<1>(kv));
         }
     }
@@ -1634,7 +1634,7 @@ void Session::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::string_view k = *__beg_1;
+        std::string k = *__beg_1;
         ::tpy::__getitem__(this->_pool, k).__deref__().close();
     }
     this->_pool.clear();

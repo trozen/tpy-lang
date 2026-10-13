@@ -25,8 +25,11 @@ from .parse import (
     TpyMatch, TpyNestedDef, TpyDelVar, TpyTry, TpyWith, TpyNonlocal,
     TpyName, TpyFieldAccess, TpySubscript, TpyNamedExpr, TpyFunction,
     TpyBoolLiteral, TpyAssert, TpyTupleLiteral, TpyLambda,
+    TpyListComprehension, TpySetComprehension, TpyDictComprehension,
+    TpyGeneratorExpression,
 )
-from .parse.nodes import stmts_have_any_suspension, written_names
+from .parse.nodes import (comp_clause_children, stmts_have_any_suspension,
+                          written_names)
 
 # source_name -> set[alias_name] reverse map
 _Aliases = dict[str, set[str]]
@@ -66,6 +69,9 @@ class _Walk:
     # order: a consumer that moves the name while binding (a by-value slot)
     # may run before the alias read, whatever the source order says.
     same_stmt_alias_reads: IdentitySet = field(default_factory=IdentitySet)
+    # Name reads that may run more than once per evaluation of their
+    # statement (`_collect_reads_expr`'s `repeat_reads`): never a last use.
+    repeated_reads: IdentitySet = field(default_factory=IdentitySet)
     ex: _Exits = _Exits()
     # Per try with a finally, the names a `return` leaving through it
     # returns: a deferred one materializes them only after the finally ran.
@@ -94,6 +100,7 @@ def analyze_last_uses(
     pinned: frozenset[str] | None = None,
     captured: frozenset[str] = frozenset(),
     same_stmt_alias_reads: IdentitySet | None = None,
+    repeated_reads: IdentitySet | None = None,
 ) -> IdentitySet:
     """Analyze a function body to find last-use sites for auto-move.
 
@@ -144,6 +151,8 @@ def analyze_last_uses(
     _analyze_stmts_backward(stmts, live, w, first_reassign_pos)
     if same_stmt_alias_reads is not None:
         same_stmt_alias_reads |= w.same_stmt_alias_reads
+    if repeated_reads is not None:
+        repeated_reads |= w.repeated_reads
     return w.last_uses
 
 
@@ -1178,9 +1187,10 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
         return
     walrus_defs: set[str] = set()
     reads: list[TpyName] = []
-    in_lambda = IdentitySet()
+    repeated = IdentitySet()
     for expr in exprs:
-        reads.extend(_collect_reads_expr(expr, walrus_defs, in_lambda))
+        reads.extend(_collect_reads_expr(expr, walrus_defs, repeated))
+    w.repeated_reads |= repeated
     if not reads and not walrus_defs:
         return
 
@@ -1196,7 +1206,7 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
     # name is live even where a `return` / `raise` / jump reset the set.
     for node in reads:
         if (name_counts[node.name] == 1
-                and node not in in_lambda
+                and node not in repeated
                 and node.name not in w.captured
                 and node.name not in live
                 and node.name not in w.pinned
@@ -1217,33 +1227,57 @@ def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
 
 def _collect_reads_expr(expr: TpyExpr,
                         walrus_defs: set[str] | None = None,
-                        lambda_reads: IdentitySet | None = None
+                        repeat_reads: IdentitySet | None = None
                         ) -> list[TpyName]:
     """Collect TpyName nodes read (not defined) in an expression.
 
     Uses TpyExpr.children() for iterative traversal.
     If walrus_defs is provided, also records walrus (:=) target names into it
     (those are definitions, not reads, and are excluded from the returned list).
-    A lambda's free-name reads are reads here too (`_lambda_free_reads`);
-    `lambda_reads`, when given, records those nodes.
+    A lambda's free-name reads are reads here too (`_lambda_free_reads`).
+    `repeat_reads`, when given, records the reads that may run more than
+    once per evaluation of `expr`, so none of them is a last use: a lambda's
+    free-name reads, and a comprehension's reads outside its first
+    iterable (the element, the filters and the later iterables run once per
+    item) of any name but the clause variables bound once per that item.
     """
     result: list[TpyName] = []
-    stack: list[TpyExpr] = [expr]
+    # Each entry carries, inside a comprehension's per-item part, the clause
+    # variables bound there; None outside one.
+    stack: list[tuple[TpyExpr, frozenset[str] | None]] = [(expr, None)]
     while stack:
-        node = stack.pop()
+        node, bound = stack.pop()
         if isinstance(node, TpyName):
             result.append(node)
+            if (bound is not None and node.name not in bound
+                    and repeat_reads is not None):
+                repeat_reads.add(node)
             continue
         if isinstance(node, TpyNamedExpr) and walrus_defs is not None:
             walrus_defs.add(node.target)
         if isinstance(node, TpyLambda):
             inner = _lambda_free_reads(node)
             result.extend(inner)
-            if lambda_reads is not None:
+            if repeat_reads is not None:
                 for n in inner:
-                    lambda_reads.add(n)
+                    repeat_reads.add(n)
             continue
-        stack.extend(node.children())
+        if isinstance(node, (TpyListComprehension, TpySetComprehension,
+                             TpyDictComprehension, TpyGeneratorExpression)):
+            # What runs once per item of clause i (its filters, the next
+            # clause's source, and after the last clause the element) may
+            # take a last use only of what clause i binds.
+            gens = node.generators
+            stack.append((gens[0].iterable, bound))
+            for i, gen in enumerate(gens):
+                per_item = frozenset(gen.targets)
+                stack.extend((c, per_item) for c in gen.conditions)
+                if i + 1 < len(gens):
+                    stack.append((gens[i + 1].iterable, per_item))
+            elements = node.children()[len(comp_clause_children(gens)):]
+            stack.extend((c, frozenset(gens[-1].targets)) for c in elements)
+            continue
+        stack.extend((c, bound) for c in node.children())
     return result
 
 

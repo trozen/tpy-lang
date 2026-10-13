@@ -1369,7 +1369,9 @@ class NominalType(TpyType):
             _evaluating_movable.discard(self)
 
     def value_ops_run_user_code(self) -> bool:
-        from tpyc.type_def_registry import TypeCategory, type_def_of
+        from tpyc.type_def_registry import (
+            RUNTIME_CONTAINER_CATEGORIES, RUNTIME_VALUE_CATEGORIES,
+            type_def_of)
         td = type_def_of(self)
         # A class's own dunders, a protocol's implementer, a frame's cleanup,
         # an unknown builtin: user code, or not shown otherwise. The scalar
@@ -1377,16 +1379,9 @@ class NominalType(TpyType):
         # record for their methods, not a user class.
         if td is None or isinstance(self, ConcreteFrameType):
             return True
-        if td.category in (TypeCategory.FIXED_INT, TypeCategory.BIG_INT,
-                           TypeCategory.FLOAT, TypeCategory.BOOL,
-                           TypeCategory.CHAR, TypeCategory.STR,
-                           TypeCategory.BYTES, TypeCategory.SLICE,
-                           TypeCategory.VOID, TypeCategory.ENUM):
+        if td.category in RUNTIME_VALUE_CATEGORIES:
             return False
-        if td.category in (TypeCategory.LIST, TypeCategory.DICT,
-                           TypeCategory.DICT_VIEW, TypeCategory.SET,
-                           TypeCategory.ARRAY, TypeCategory.SPAN,
-                           TypeCategory.VARARGS, TypeCategory.RANGE):
+        if td.category in RUNTIME_CONTAINER_CATEGORIES:
             # A builtin container runs user code only through its elements.
             return any(a.value_ops_run_user_code()
                        for a in self.type_args if isinstance(a, TpyType))
@@ -4081,9 +4076,12 @@ def owned_element_type(typ: 'TpyType') -> 'TpyType':
     `Ref[P]` would spell a container of references), and neither does its
     `readonly`: the element is the container's own copy, so writing it
     cannot reach the readonly source. The borrow facts stay on the source
-    expression; only the slot is owned."""
-    return owned_tuple_storage_type(
-        unwrap_readonly(unwrap_ref_type(unwrap_readonly(unwrap_own(typ)))))
+    expression; only the slot is owned. A not-yet-decided `str` / `bytes`
+    local is held as its family's owned type for the same reason."""
+    inner = unwrap_readonly(unwrap_ref_type(unwrap_readonly(unwrap_own(typ))))
+    if isinstance(inner, PendingViewType):
+        return inner.family.owned_type
+    return owned_tuple_storage_type(inner)
 
 
 @dataclass(frozen=True)
@@ -4119,6 +4117,10 @@ class AnyType(TpyType):
 
     def drop_runs_user_code(self) -> bool:
         # The cell may hold any class, one with `__del__` included.
+        return True
+
+    def value_ops_run_user_code(self) -> bool:
+        # The held value may be a class: its dunders and `__del__` run.
         return True
 
     def to_cpp(self) -> str:
@@ -5757,6 +5759,11 @@ class PendingContainerType(TpyType):
 
     def with_inner_types(self, types: tuple[TpyType, ...]) -> 'TpyType':
         return self.with_parts(tuple(types))
+
+    def value_ops_run_user_code(self) -> bool:
+        # The builtin container it settles to runs user code only through
+        # its parts.
+        return any(p.value_ops_run_user_code() for p in self.parts())
 
     def to_cpp(self) -> str:
         raise RuntimeError(f"{type(self).__name__} should be resolved before "
@@ -8135,6 +8142,110 @@ def param_may_be_written(fi: 'FunctionInfo', idx: int) -> bool:
     return not (is_bodyless_binding(fi)
                 and (fi.is_readonly or root.is_readonly or fi.is_pure
                      or root.is_pure))
+
+
+def type_parts_any(t: TpyType, pred: Callable[[TpyType], bool],
+                   registry) -> bool:
+    """Whether `pred` holds for `t` or any part a value of `t` holds: a
+    type argument (a container's element, a `Box` / `Optional` payload), a
+    union member, a tuple element or a record field (inherited and
+    substituted), at any depth, qualifiers peeled."""
+    seen: set[str] = set()
+
+    def walk(x: TpyType) -> bool:
+        x = repr_shape(x)
+        if pred(x):
+            return True
+        if isinstance(x, PendingContainerType):
+            x = x.spelled(x.parts())
+        if any(walk(i) for i in x.inner_types()):
+            return True
+        if not (isinstance(x, NominalType) and x.is_user_record):
+            return False
+        key = str(x)
+        record = registry.get_record_for_type(x)
+        if key in seen or record is None:
+            return False
+        seen.add(key)
+        subst = {p: a for p, a in zip(record.type_params, x.type_args)
+                 if isinstance(a, TpyType)}
+        return any(walk(substitute_type_params_simple(f.type, subst)
+                        if subst else f.type)
+                   for f in registry.get_all_fields(record))
+
+    return walk(t)
+
+
+def _open_type(x: TpyType) -> bool:
+    return isinstance(x, (TypeParamRef, AnyType, UnknownElementType)
+                      ) or is_protocol_type(x)
+
+
+def _pending_like(a: TpyType, b: TpyType) -> bool:
+    """A part not decided yet that may settle to `b`: a pending number to a
+    number, a pending view to its family."""
+    if isinstance(a, (IntLiteralType, PendingNumType, FloatLiteralType)):
+        return (is_any_int_type(b) or is_any_float_type(b)
+                or is_numeric_type(b))
+    if isinstance(a, PendingViewType):
+        return isinstance(b, PendingViewType) or a.family.is_any_member(b)
+    return False
+
+
+def _may_be_same(a: TpyType, b: TpyType) -> bool:
+    a, b = repr_shape(a), repr_shape(b)
+    if (a == b or _open_type(a) or _open_type(b) or _pending_like(a, b)
+            or _pending_like(b, a)):
+        return True
+    if isinstance(a, PendingContainerType):
+        a = a.spelled(a.parts())
+    if isinstance(b, PendingContainerType):
+        b = b.spelled(b.parts())
+    if type(a) is not type(b) or a.qualified_name() != b.qualified_name():
+        return False
+    ai, bi = a.inner_types(), b.inner_types()
+    return len(ai) == len(bi) and all(_may_be_same(x, y)
+                                      for x, y in zip(ai, bi))
+
+
+def holds_no_storage(t: TpyType) -> bool:
+    """A value that holds no object another one could live in: a number,
+    `bool`, `char`, an enum or None, any member of the str / bytes
+    families (an owned string, a `String`, a read-only view -- a byte
+    buffer, never an object), or an Optional / union / tuple of those."""
+    t = repr_shape(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return all(holds_no_storage(m) for m in t.inner_types())
+    return (is_bufferless_scalar(t)
+            or isinstance(t, (PendingNumType, PendingViewType))
+            or any(f.is_any_member(t) for f in VIEW_TYPE_FAMILIES))
+
+
+def type_may_hold(t: TpyType, part: TpyType, registry) -> bool:
+    """Whether a value of type `t` may be, or hold, an object of type
+    `part` (`type_parts_any`). A type not decided yet (an open type
+    parameter, a protocol) may be anything; a pending number or view may be
+    anything of its kind; a value holding no storage holds nothing."""
+    if holds_no_storage(t):
+        return False
+    return type_parts_any(t, lambda x: _may_be_same(x, part), registry)
+
+
+def is_declaration_only(fi: 'FunctionInfo', registry) -> bool:
+    """A callee the compiler sees no body for, so nothing user-written runs
+    when it is called: a stub, a native or template binding
+    (`is_bodyless_binding`), or a method of a `native_module` (its `...`
+    methods -- the builtin exception initializers -- bind C++ without a
+    `@native` each). A callable value is not one."""
+    root = fi.root
+    decl = root.declaration
+    if (decl is not None and decl.body) or root.is_callable_value:
+        return False
+    if is_bodyless_binding(root):
+        return True
+    mod = (registry.get_module(root.originating_module)
+           if root.originating_module else None)
+    return mod is not None and mod.is_native_module
 
 
 def is_bodyless_binding(fn) -> bool:

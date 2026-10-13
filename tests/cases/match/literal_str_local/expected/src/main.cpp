@@ -19,7 +19,7 @@ void classify_items(const std::vector<std::string>& items) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view item = *__beg_0;
+        std::string item = *__beg_0;
         auto& __match_subject_1 = item;
         if (__match_subject_1 == "apple") {
             std::cout << "fruit" << "\n" << ::tpy::check_signals;
@@ -52,7 +52,7 @@ void classify_many(const std::vector<std::string>& items) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view item = *__beg_0;
+        std::string item = *__beg_0;
         auto& __match_subject_1 = item;
         if (__match_subject_1.size() >= 1) {
             switch (static_cast<unsigned char>(__match_subject_1[0])) {

@@ -14,7 +14,7 @@ void test_pop() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         ::tpy::dict_pop(d, k);
     }
 }
@@ -29,7 +29,7 @@ void test_clear() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         d.clear();
     }
 }
@@ -46,7 +46,7 @@ void test_update() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         ::tpy::dict_update(d, other);
     }
 }
@@ -61,7 +61,7 @@ void test_setdefault() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         ::tpy::dict_setdefault(d, k, 0);
     }
 }
@@ -76,7 +76,7 @@ void test_del() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         ::tpy::__delitem__(d, k);
     }
 }
@@ -92,7 +92,7 @@ void test_conditional_mutation() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         if ((k == "a")) {
             ::tpy::dict_pop(d, k);
         }

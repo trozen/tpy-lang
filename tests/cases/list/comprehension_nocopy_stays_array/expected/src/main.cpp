@@ -24,7 +24,7 @@ void doubled(const std::array<Handle, 4>& hs) {
     std::array<Handle, 4> ys = ({
         auto& __obj_0 = hs;
         ::tpy::array_from_index<Handle, 4>([&](std::size_t __i_0) -> Handle {
-            auto&& h = __obj_0[__i_0];
+            const auto& h = __obj_0[__i_0];
             return Handle((::tpy::mul_check<int32_t>(h.v, 2)));
         });
     });

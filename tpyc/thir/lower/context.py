@@ -2105,8 +2105,9 @@ class _LowerCtx:
     def moves_only(self, names: AbstractSet[str]):
         """Lower a region whose sinks may move only `names`: a constructor
         member-init (its `handed_over_params` -- the list runs before the
-        body, so no local exists yet) or a comprehension element (its loop
-        variable -- an outer name would be moved once per iteration)."""
+        body, so no local exists yet) or an owned comprehension sink (its
+        loop variable, rebound each item; sema never takes a read of an
+        outer name there as its last use)."""
         saved = self.move_region
         self.move_region = frozenset(names)
         try:

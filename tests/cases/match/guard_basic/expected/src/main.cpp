@@ -203,7 +203,7 @@ void chain_break(const std::vector<::tpy::BigInt>& xs, bool flag) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        const ::tpy::BigInt& x = *__beg_0;
+        ::tpy::BigInt x = *__beg_0;
         auto& __match_subject_1 = x;
         if (__match_subject_1 == 2) {
             if (flag) {

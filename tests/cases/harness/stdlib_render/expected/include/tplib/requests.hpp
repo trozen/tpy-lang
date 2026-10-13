@@ -964,7 +964,7 @@ inline void CaseInsensitiveDict::update(const CaseInsensitiveDict& other) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view lk = *__beg_0;
+        std::string lk = *__beg_0;
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(other._store, lk);
         ::tpy::__setitem__((*this), std::get<0>(pair), std::get<1>(pair));
     }
@@ -982,7 +982,7 @@ inline CaseInsensitiveDict CaseInsensitiveDict::copy() const {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view lk = *__beg_0;
+        std::string lk = *__beg_0;
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(this->_store, lk);
         ::tpy::__setitem__(out, std::get<0>(pair), std::get<1>(pair));
     }
@@ -1186,7 +1186,7 @@ inline void CookieJar::update(CookieJar& other) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view name = *__beg_0;
+        std::string name = *__beg_0;
         if (::tpy::__getitem__(other._store, name).deleted) {
             if ((this->_store.contains(name))) {
                 ::tpy::__delitem__(this->_store, name);
@@ -1220,7 +1220,7 @@ inline std::string CookieJar::header_for(std::string_view host, std::string_view
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view name = *__beg_0;
+        std::string name = *__beg_0;
         if (::tpy::__getitem__(this->_store, name).matches(host, path, is_https, now)) {
             parts.push_back(::tpy::__getitem__(this->_store, name).pair());
         }

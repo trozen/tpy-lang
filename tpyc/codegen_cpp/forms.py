@@ -50,7 +50,13 @@ class LoopBinding(Enum):
 
 
 def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
-                      hoisted: bool = False, consuming: bool = False) -> LoopBinding:
+                      hoisted: bool = False, consuming: bool = False,
+                      copies: bool = False) -> LoopBinding:
+    """How a loop binds its variable to the element. `copies` is sema's
+    copy verdict (`TpyForEach.copies_var`): the loop may write its source
+    while the variable is live, so the variable keeps the object it was
+    bound to, as CPython's does. An `Own` element is the loop's own
+    already."""
     owned = isinstance(elem_type, OwnType)
     if owned:
         elem_type = elem_type.wrapped
@@ -60,6 +66,8 @@ def loop_binding_kind(elem_type: TpyType, const_loop_var: bool, *,
         return LoopBinding.REFERENCE
     if owned and borrow_form_differs(elem_type):
         return LoopBinding.OWNED_STORAGE
+    if copies and not owned:
+        return LoopBinding.VALUE
     if isinstance(unwrap_readonly(elem_type), (UnionType, TupleType)):
         return LoopBinding.CONST_REFERENCE if const_loop_var else LoopBinding.REFERENCE
     if elem_type.is_value_type():

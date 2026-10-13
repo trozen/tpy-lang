@@ -2379,22 +2379,30 @@ _ARRAY_COMP = _PRELUDE + '''
 from tpy import Array
 
 
+def bump(a: Array[int, 3]) -> int:
+    a[0] = 100
+    return 0
+
+
 def over(a: Array[int, 3], xs: list[int]) -> int:
     m: Array[int, 3] = [y * 2 for y in a]
     ws = [w * 2 for w in xs]
-    return m[0] + ws[0]
+    vs: Array[int, 3] = [bump(a) + v for v in a]
+    return m[0] + ws[0] + vs[0]
 '''
 
 
-def test_an_array_comprehension_variable_is_its_own_copy() -> None:
-    # BUGS.md#const-ref-loop-var-sees-source-write: a list comprehension's
-    # read-only BigInt variable is a const reference into the source; an
-    # Array comprehension's stays a copy until that fix.
+def test_a_comprehension_variable_copies_only_under_a_source_write() -> None:
+    # A read-only clause's BigInt variable is a const reference into the
+    # source, whatever the result; one whose element may write the source
+    # (`copies_var`) is its own copy.
     _func, table = _plan(_ARRAY_COMP, "over")
-    y = next(r for r in _sites(table, "y") if r.loop_binding is not None)
-    w = next(r for r in _sites(table, "w") if r.loop_binding is not None)
-    assert y.loop_binding is LoopBinding.VALUE
-    assert w.loop_binding is LoopBinding.CONST_TYPED_REFERENCE
+    kind = {n: next(r for r in _sites(table, n)
+                    if r.loop_binding is not None).loop_binding
+            for n in ("y", "w", "v")}
+    assert kind == {"y": LoopBinding.CONST_TYPED_REFERENCE,
+                    "w": LoopBinding.CONST_TYPED_REFERENCE,
+                    "v": LoopBinding.VALUE}
 
 
 _PARAM_CONST = _PRELUDE + '''

@@ -639,7 +639,7 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view __item = *__beg_0;
+        std::string __item = *__beg_0;
         __writer.write_str(__item);
     }
     __writer.array_end();
@@ -681,7 +681,7 @@ void Profile::__json_encode__(::tpystd::tplib::json::writer::JsonWriter& __write
     for (; __beg_4 != __end_4; ++__beg_4) {
         const auto& __kv_37 = *__beg_4;
         const auto& __tup_1 = __kv_37;
-        std::string_view __dk = std::get<0>(__tup_1);
+        std::string __dk = std::get<0>(__tup_1);
         int32_t __dv = std::get<1>(__tup_1);
         __writer.key(__dk);
         __writer.write_int32(__dv);

@@ -117,7 +117,7 @@ from .alias_rebind import (decide_rebind_storage,
                            finalize_pointer_tuples, global_write_facts)
 from .frame_close import decide_frame_close, stamp_close_materials
 from .may_interrupt import stamp_may_interrupt
-from .loop_frames import resolve_loop_frame_calls
+from .loop_frames import resolve_leftover_source_writes, resolve_loop_frame_calls
 from ..value_category import is_rvalue_source, wants_move
 from .mutation_propagation import propagate_mutation_facts, infer_method_const
 from tpyc import modules as builtin_modules
@@ -1067,6 +1067,7 @@ class SemanticAnalyzer:
         self.compat.resolve_pending_iter_copy_checks()
         self.calls.resolve_pending_match_subject_checks()
         resolve_loop_frame_calls(self.ctx)
+        resolve_leftover_source_writes(self.ctx)
         self.calls.resolve_pending_readonly_receiver_checks()
         self.expr.resolve_pending_lambda_borrow_checks()
         # Last diagnostic-emitting step for this analyzer, so it is where a
@@ -3732,7 +3733,8 @@ class SemanticAnalyzer:
         self.ctx.all_last_uses |= analyze_last_uses(
             stmts, liveness_alias_sources(self.top_level_scan_result),
             pinned=self.ctx.func.closure_pinned,
-            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads)
+            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads,
+            repeated_reads=self.ctx.repeated_reads)
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(stmts)
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()

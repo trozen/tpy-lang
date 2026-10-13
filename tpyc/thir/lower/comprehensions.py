@@ -660,20 +660,13 @@ def _comp_container_name_elem(e, vt: 'TpyType | None', lc: '_LowerCtx',
     out -- both need an unwrap the bare read does not spell.
 
     The copy is a CPython divergence (CPython aliases one container into every
-    slot), so the name is admitted only where sema's "copies ... into owned
-    storage" warning reaches the user. That warning is suppressed at a move
-    source -- a last-use read of an owned local, which sema believes moves --
-    but the element renders once per iteration, so this arm reads it bare and
-    copies N times instead. Unwarned, that is silent; reject it."""
+    slot); sema's "copies ... into owned storage" warning reaches the user,
+    since an element read of an enclosing name is never a last use (it runs
+    once per item), so never a warning-free move."""
     if not isinstance(e, TpyName):
         return False
     if (e.name not in body_declared or lc.binding(e.name).pointer
             or e.name in lc.narrow.narrowed):
-        return False
-    # Sema's move verdict for this read: its last use (as sema left it) of
-    # a name the frame owns -- the element body itself moves nothing.
-    if (lc.analyzer.ctx.is_last_use(e)
-            and (e.name in lc.sema_movable_locals or lc.binding(e.name).owned)):
         return False
     peel = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         body_declared[e.name])))
@@ -1248,14 +1241,11 @@ def _build_comprehension_body(init, result_type, lc, declared,
                                                    is_last_sink=True)
                     value_moved = isinstance(value, THIRMove)
                 else:
-                    # The body runs once per iteration: a name bound outside
-                    # it is never moved there, whatever its last use says.
-                    with lc.moves_only(()):
-                        key = _lower_container_elem(init.key_expr, kt, lc,
-                                                    body_declared)
-                        value = _lower_comp_container_elem(
-                            init.value_expr, vt, lc, body_declared,
-                            typed_brace=True)
+                    key = _lower_container_elem(init.key_expr, kt, lc,
+                                                body_declared)
+                    value = _lower_comp_container_elem(
+                        init.value_expr, vt, lc, body_declared,
+                        typed_brace=True)
         elif innermost.owns_elements:
             element = _lower_owned_comp_sink(
                 init.element_expr, elem_t, lc, body_declared, innermost,
@@ -1265,10 +1255,9 @@ def _build_comprehension_body(init, result_type, lc, declared,
             # the list/set element is a flushable position:
             # `take(Probe(c, i))`-style arg temps hoist right above
             # push_back.
-            with lc.moves_only(()):
-                element = _lower_comp_container_elem(
-                    init.element_expr, elem_t, lc, body_declared,
-                    allow_temps=True)
+            element = _lower_comp_container_elem(
+                init.element_expr, elem_t, lc, body_declared,
+                allow_temps=True)
         return THIRCompInsert(kind=kind, element=element, key=key,
                               value=value, key_first=value_moved, loc=loc)
 
@@ -1292,7 +1281,7 @@ def _build_comprehension_body(init, result_type, lc, declared,
             # Conditions lower before what they guard, in the order
             # Python evaluates them, so a filter walrus is declared for
             # the inner sources and the element that read it.
-            with lc.placement_scope(cond_placement), lc.moves_only(()):
+            with lc.placement_scope(cond_placement):
                 conditions = tuple(
                     _lower_truthy(c, lc, body_declared, temps_ok=True)
                     for c in gen.conditions)
@@ -1329,11 +1318,7 @@ def _build_comprehension_body(init, result_type, lc, declared,
                     "__result" if kind == "list" and len(gens) == 1
                     else None, loc, outermost=True)
             else:
-                # An inner source runs once per outer iteration, inside the
-                # outer loop body: nothing in it may move, whatever liveness
-                # says.
-                with lc.placement_scope(SlotPlacement.STATEMENT), \
-                        lc.moves_only(()):
+                with lc.placement_scope(SlotPlacement.STATEMENT):
                     loop = _comprehension_loop(route, gen, lc,
                                                clause_declared, body, None,
                                                loc, outermost=False)

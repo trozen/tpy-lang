@@ -31,9 +31,9 @@ from ..parse.nodes import walk_expr_tree
 from ..type_def_registry import (get_type_def, is_borrowing_view_type,
                                  iter_yields_owned_elements)
 from ..typesys import (
-    FunctionInfo, NominalType, PendingDictType, PendingListType, ReadonlyType,
-    PendingSetType, TpyType, TupleType, TypeParamRef, make_dict, make_list,
-    make_set,
+    FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
+    ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
+    make_list, make_set, yield_always_borrows,
     held_whole_borrow_sources,
     is_protocol_type, result_borrow_sources, type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
@@ -370,6 +370,34 @@ class IteratedStorage(NamedTuple):
     callee: FunctionInfo | None = None
     operands: list[_BorrowedOperand] = []
     unplaceable: bool = False
+
+
+def iteration_yields_copies(ctx: SemanticContext, iterable_type: TpyType,
+                            depth: int = 0) -> bool:
+    """Whether iterating this source hands the element out by value, into
+    the per-step result the loop variable then reads, rather than lending
+    an element the source holds: the iteration loan names what the
+    iterator WALKS, not what the loop variable views. A generator /
+    genexpr, a user type's `__iter__` returning one, and a user
+    iterator's `__next__` answer by their element; a user type this cannot
+    resolve counts as copying."""
+    inner = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
+    if isinstance(inner, GenExprType):
+        return not yield_always_borrows(inner.element_type)
+    if (is_protocol_type(inner) and isinstance(inner, NominalType)
+            and inner.qualified_name() == "typing.Iterator" and inner.type_args
+            and isinstance(inner.type_args[0], TpyType)):
+        return not yield_always_borrows(inner.type_args[0])
+    if not (isinstance(inner, NominalType) and inner.is_user_record):
+        return False
+    record = ctx.registry.get_record_for_type(inner)
+    if record is None or depth > 4:
+        return True
+    iters = record.get_method_overloads("__iter__")
+    if iters and unwrap_readonly(iters[0].return_type) != inner:
+        return iteration_yields_copies(ctx, iters[0].return_type, depth + 1)
+    nexts = record.get_method_overloads("__next__")
+    return not (nexts and yield_always_borrows(nexts[0].return_type))
 
 
 def iterated_storage(ctx: SemanticContext, iterable: TpyExpr) -> IteratedStorage:

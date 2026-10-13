@@ -2712,7 +2712,7 @@ void lc_grow() {
             auto __beg_1 = __obj_1.begin();
             auto __end_1 = __obj_1.end();
             for (; __beg_1 != __end_1; ++__beg_1) {
-                const ::tpy::BigInt& x = *__beg_1;
+                ::tpy::BigInt x = *__beg_1;
                 __result.push_back(::tpyapp::main::grow(row, x));
             }
         }
@@ -2729,7 +2729,7 @@ void lc_grow() {
             auto __beg_3 = __obj_3.begin();
             auto __end_3 = __obj_3.end();
             for (; __beg_3 != __end_3; ++__beg_3) {
-                const ::tpy::BigInt& x = *__beg_3;
+                ::tpy::BigInt x = *__beg_3;
                 if (((x < 100) || (::tpy::pop_back(row) > 0))) {
                     __result.push_back(x);
                 }

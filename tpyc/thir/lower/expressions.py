@@ -12638,11 +12638,8 @@ def _lower_container_elem_impl(e: TpyExpr, slot: TpyType | None,
         raise ThirUnsupported(call_reject_reason("expr.container_literal"))
     if (isinstance(e, TpyName)
             and lc.binding(e.name).ptr_tuple is not None):
-        # A rebound pointer tuple as an element: the element moves or copies
-        # per element as at an owning slot, but a container literal's element
-        # move is not yet sound inside a loop
-        # (BUGS.md#comp-element-move-inside-loop), and the whole-tuple copy
-        # copies what the tuple owns
+        # A rebound pointer tuple as an element: the whole-tuple copy copies
+        # what the tuple owns
         # (BUGS.md#tuple-local-last-use-copies-owned-elements).
         note_detail("container_elem.ptr_tuple_name")
         raise ThirUnsupported("expr.container_literal")

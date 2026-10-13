@@ -103,8 +103,9 @@ from .receiver_calls import (
     implicit_readonly_result_hint,
     record_implicit_call,
 )
+from .loop_frames import for_live_region, note_source_writes
 from .iter_loans import (
-    IterElementSource, iter_element_source,
+    IterElementSource, iter_element_source, iteration_yields_copies,
     _record_iter_receiver_mutation, check_iter_receiver_loans,
     frame_capture_loans, hold_whole,
     is_dangling_temporary_arg,
@@ -2788,7 +2789,8 @@ class StatementAnalyzer:
                         # loop variable's own depth when it notes the binding.
                         self._note_loop_var_iteration(
                             stmt.var, elem_type, prior_iter,
-                            placeable=not self._iteration_yields_copies(iterable_type))
+                            placeable=not iteration_yields_copies(
+                                self.ctx, iterable_type))
                         for s in stmt.body:
                             self.analyze_stmt(s)
                     # The head's variables leave scope with the loop: a later
@@ -2860,6 +2862,7 @@ class StatementAnalyzer:
                     consumed_before=consumed_before_loop,
                     ns_types_before=ns_types_before_foreach,
                     runs_once=runs_once, elem_type=elem_type)
+                self._decide_loop_copies_var(stmt, iterable_type, elem_type)
         elif isinstance(stmt, TpyBreak):
             if self.ctx.func.loop_depth == 0:
                 raise self.ctx.error("'break' outside loop", stmt)
@@ -4257,7 +4260,8 @@ class StatementAnalyzer:
             pinned=self.ctx.func.closure_pinned,
             captured=(nested_def_free_names(func) if func.is_nested_def
                       else frozenset()),
-            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads)
+            same_stmt_alias_reads=self.ctx.same_stmt_alias_reads,
+            repeated_reads=self.ctx.repeated_reads)
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(func.body)
         self.ctx.finally_rebound_returns |= collect_finally_rebound_returns(func.body)
         self.ctx.func.current_reassigned_vars = scan.reassigned.copy()
@@ -5255,32 +5259,20 @@ class StatementAnalyzer:
                 inner.family, inner.var_id, None,
                 roots=resolved if roots is not None else None, replace=True)
 
-    def _iteration_yields_copies(self, iterable_type: TpyType,
-                                 depth: int = 0) -> bool:
-        """Whether iterating this source hands the element out by value, into
-        the per-step result the loop variable then reads, rather than lending
-        an element the source holds: the iteration loan names what the
-        iterator WALKS, not what the loop variable views. A generator /
-        genexpr, a user type's `__iter__` returning one, and a user
-        iterator's `__next__` answer by their element; a user type this cannot
-        resolve counts as copying."""
-        inner = unwrap_readonly(unwrap_own(unwrap_ref_type(iterable_type)))
-        if isinstance(inner, GenExprType):
-            return not yield_always_borrows(inner.element_type)
-        if (is_protocol_type(inner) and isinstance(inner, NominalType)
-                and inner.qualified_name() == "typing.Iterator" and inner.type_args
-                and isinstance(inner.type_args[0], TpyType)):
-            return not yield_always_borrows(inner.type_args[0])
-        if not (isinstance(inner, NominalType) and inner.is_user_record):
-            return False
-        record = self.ctx.registry.get_record_for_type(inner)
-        if record is None or depth > 4:
-            return True
-        iters = record.get_method_overloads("__iter__")
-        if iters and unwrap_readonly(iters[0].return_type) != inner:
-            return self._iteration_yields_copies(iters[0].return_type, depth + 1)
-        nexts = record.get_method_overloads("__next__")
-        return not (nexts and yield_always_borrows(nexts[0].return_type))
+    def _decide_loop_copies_var(self, stmt: TpyForEach,
+                                iterable_type: TpyType,
+                                elem_type: TpyType) -> None:
+        """Whether, while the loop variable is live, the loop may write
+        the storage it lends its element from -- decided over the body and
+        `else` clause once they are analyzed, for an iteration that lends
+        (not a step copy, not a consuming loop). The variable then holds
+        its own copy: the planner binds a value element by value, and a
+        str / bytes view owns."""
+        if (stmt.consuming_iter_fi is not None
+                or iteration_yields_copies(self.ctx, iterable_type)):
+            return
+        note_source_writes(self.ctx, stmt, stmt.iterable,
+                           for_live_region(stmt), elem_type)
 
     def _is_ephemeral_borrow_loop_source(self, iterable_type: TpyType, *,
                                          open_param_borrows: bool = False) -> bool:

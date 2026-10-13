@@ -87,7 +87,7 @@ from .context import (
 )
 from .loop_frames import (
     LoopFrameHold, WithExitCheck, binding_value, check_loop_hold,
-    storage_closure,
+    StorageEdges, resolve_source_writes, storage_closure, storage_edges,
 )
 
 if TYPE_CHECKING:
@@ -1024,17 +1024,27 @@ class _Replay:
                            and (fn.is_generator or fn.is_async))
         self.loop_holds: IdentityMap = IdentityMap()
         self.bound_any: set[str] = set()
+        # Every name some binding of the body points at storage it does not
+        # own (FOREIGN); the rest of `bound_any` only ever owns its object.
+        self.foreign_any: set[str] = set()
         # Frame-holding locals bound in a `with` body and still open when
         # its managers exit.
         self.with_holds: list[tuple[TpyWith, set[str]]] = []
         # Each for-each's variables with the root of what it iterates: a
         # write through the variable is a write into that storage.
         self.for_edges: list[tuple[set[str], str | None]] = []
+        self._edges: StorageEdges | None = None
         # A plain function's frame-holding local kept in its loop body's C++
         # block is gone at the next pass.
         self.pass_scoped: IdentityMap = IdentityMap()
         for name, loop in ctx.func.pass_scoped_frames.items():
             self.pass_scoped.setdefault(loop, set()).add(name)
+
+    def edges(self) -> StorageEdges:
+        """The body's loan graph, once the walk has filed every loan."""
+        if self._edges is None:
+            self._edges = storage_edges(self.stmt_loans, self.for_edges)
+        return self._edges
 
     def id_of(self, node: object) -> int:
         n = self.ids.get(node)
@@ -1226,6 +1236,7 @@ class _Replay:
                 cs.loans[holder] = self.loans_of(holder, groups, None, cs)
                 cs.origins[holder] = frozenset((FOREIGN,))
                 self.bound_any.add(holder)
+                self.foreign_any.add(holder)
             if case.guard is not None:
                 self.expr_effects(case.guard, cs, s)
             outs.append(self.walk_stmts(case.body, cs))
@@ -1247,6 +1258,7 @@ class _Replay:
                 hs.origins[h.binding] = frozenset((FOREIGN,))
                 hs.loans.pop(h.binding, None)
                 self.bound_any.add(h.binding)
+                self.foreign_any.add(h.binding)
             handler_outs.append(self.walk_stmts(h.body, hs))
         normal = (self.walk_stmts(s.else_body, try_out)
                   if try_out is not None else None)
@@ -1297,6 +1309,7 @@ class _Replay:
             st.origins[name] = frozenset((self.id_of(node),))
         else:
             st.origins[name] = frozenset((FOREIGN,))
+            self.foreign_any.add(name)
         self.bound_here.add(name)
         self.bound_any.add(name)
 
@@ -1307,6 +1320,7 @@ class _Replay:
         st.origins[name] = frozenset((FOREIGN,))
         self.bound_here.add(name)
         self.bound_any.add(name)
+        self.foreign_any.add(name)
 
     def bind_other_holders(self, stmt: TpyStmt, st: _State) -> None:
         """Loans registered on a statement for a holder the statement's own
@@ -1512,7 +1526,7 @@ class _Replay:
                         nodes[0] if nodes else loop)
                 roots = {r for r in fact[0] if r is not None}
                 upstream, reach = storage_closure(
-                    self.stmt_loans, self.frames, roots, self.for_edges)
+                    self.edges(), self.frames, roots)
                 nodes = self.ctx.func.frame_binding_nodes.get(holder) or [loop]
                 calls = [frame_binding_calls(binding_value(n)) for n in nodes]
                 own_calls = tuple(c for cs in calls for c in cs or ())
@@ -1531,8 +1545,7 @@ class _Replay:
         roots = ({r for r in fact[0] if r is not None}
                  if fact is not None else
                  {r.split(".", 1)[0] for r, *_ in self.hold_loans(holder)})
-        upstream, reach = storage_closure(
-            self.stmt_loans, self.frames, roots, self.for_edges)
+        upstream, reach = storage_closure(self.edges(), self.frames, roots)
         return (frozenset(reach),
                 frozenset(n for n in upstream if self.is_module_global(n)))
 
@@ -1930,6 +1943,9 @@ def decide_rebind_storage(ctx: 'SemanticContext', stmts: list[TpyStmt], *,
     for name in initial_foreign:
         st.origins[name] = frozenset((FOREIGN,))
     replay.walk_stmts(stmts, st)
+    resolve_source_writes(
+        ctx, replay.bound_any - replay.foreign_any - set(always_foreign)
+        - set(initial_foreign), replay.edges(), replay.frames)
     replay.decide()
     replay.check_loop_holds()
     replay.check_with_holds()

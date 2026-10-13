@@ -703,6 +703,10 @@ class TpyComprehensionGenerator:
     conditions: list[TpyExpr]
     unpack_vars: list[str | None] | None = None  # Phase 3: tuple unpacking
     const_loop_var: bool = False
+    # Set by sema: the variable takes its own copy of the element -- the
+    # clause may write its source while it is live
+    # (`loop_frames.stamp_copy_verdicts`, read by the binding planner).
+    copies_var: bool = False
     # Set by sema when the iterable yields Own[T]: codegen moves a bare last-use
     # element into the result instead of copying (the consuming for-append move).
     owns_elements: bool = False
@@ -864,6 +868,10 @@ class TpySubscript(TpyExpr):
     # the subscript's type comes from, whose @native / @cpp_template binding
     # is how the read renders.
     getitem_callee: 'FunctionInfo | None' = None
+    # Set by sema on a READ of a record (a class or `@native` record, any
+    # return shape): its class `__getitem__`, so the read is known to be
+    # that call rather than a builtin element read.
+    record_getitem: 'FunctionInfo | None' = None
     # Set by sema BEFORE the target of a plain assignment is analysed as a
     # read: `g[k] = v` calls `__setitem__` only, so the read-side analysis
     # must not credit a `__getitem__` call on the receiver.
@@ -1062,6 +1070,10 @@ class TpyTupleUnpack(TpyStmt):
     is_owned: list[bool] = field(default_factory=list)
     is_ref: list[bool] = field(default_factory=list)
     is_const_ref: list[bool] = field(default_factory=list)
+    # Set by sema on a for head: per target, it takes its own copy of the
+    # element because the loop may write its source
+    # (`loop_frames.stamp_copy_verdicts`).
+    target_copies: list[bool] = field(default_factory=list)
     # A borrowed target the name is later rebound in: it binds a pointer
     # local, since a reference alias would write the rebind through.
     is_rebound: list[bool] = field(default_factory=list)
@@ -1232,6 +1244,11 @@ class TpyForEach(TpyStmt):
     elem_type: 'TpyType | None' = None  # set by sema: resolved element type for codegen
     is_tuple_unpack: bool = False  # set by parser: synthetic loop var for tuple destructuring
     const_loop_var: bool = False  # set by sema: loop var is never mutated, safe for const auto&
+    # Set by sema: the variable takes its own copy of the element -- the
+    # loop may write its source while it is live
+    # (`loop_frames.stamp_copy_verdicts`, read by the view rule and the
+    # binding planner).
+    copies_var: bool = False
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
     # Stamped by liveness: the loop variable is live on some exit from the
     # loop (a read after it, in its `else` clause, or on a later pass of an

@@ -126,6 +126,7 @@ class TpyComprehensionGenerator:
     conditions: list[TpyExpr]          # filters (may be empty)
     unpack_vars: list[str | None] | None = None   # `for k, v in`; `_` -> None
     const_loop_var: bool = False       # set by sema
+    copies_var: bool = False           # set by sema: the variable copies (the clause may write its source)
     owns_elements: bool = False        # set by sema: the source yields Own[T]
 
     @property
@@ -298,6 +299,14 @@ A write through a loop variable reaches another comprehension's target (step
 4 above) but not a parameter or an enclosing `for` variable, so `[c.bump(1) for
 c in cs]` over a parameter keeps `cs` const and fails the build
 (`BUGS.md#comprehension-loop-var-mutation-not-propagated`).
+
+A write to the SOURCE while the clause variable is live -- in its filters,
+the later clauses or the element, `[poke(a) + y for y in a]` -- sets the
+clause's copy verdict `copies_var` (`sema/loop_frames.note_source_writes`, the
+for statement's closed proof: anything it cannot prove harmless copies), and
+the binding planner then copies a value element (`::tpy::BigInt y =
+*__beg_0;`) instead of a const reference into the source. An element naming a
+type parameter keeps its reference (`BUGS.md#generic-loop-var-sees-source-write`).
 
 ---
 

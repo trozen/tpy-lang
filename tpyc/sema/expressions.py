@@ -108,7 +108,8 @@ from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_rece
                              credit_implicit_receiver_call, record_implicit_call,
                              record_protocol_arg_calls, record_truth_calls)
 from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage,
-                         register_iteration_loans)
+                         iteration_yields_copies, register_iteration_loans)
+from .loop_frames import comp_live_region, note_source_writes
 
 if TYPE_CHECKING:
     from ..parse.nodes import SourceLocation
@@ -5621,7 +5622,31 @@ class ExpressionAnalyzer:
         if (worth_const_ref and not gen.owns_elements
                 and not any(n in self.ctx.func.mutated_loop_vars for n in names)):
             gen.const_loop_var = True
+        self._decide_comp_copies_var(expr, k, elem_type)
         return result
+
+    def _decide_comp_copies_var(
+        self,
+        expr: TpyListComprehension | TpySetComprehension | TpyDictComprehension,
+        k: int,
+        elem_type: TpyType,
+    ) -> None:
+        """The for statement's copy verdict (`copies_var`) for clause `k`: its
+        variable is live over its conditions, every later clause and the
+        element(s)."""
+        gen = expr.generators[k]
+        iterable_type = self.ctx.get_expr_type(gen.iterable)
+        if (gen.owns_elements or iterable_type is None
+                or iteration_yields_copies(self.ctx, iterable_type)):
+            return
+        live: list[TpyExpr] = list(gen.conditions)
+        for later in expr.generators[k + 1:]:
+            live += [later.iterable, *later.conditions]
+        live += ([expr.key_expr, expr.value_expr]
+                 if isinstance(expr, TpyDictComprehension)
+                 else [expr.element_expr])
+        note_source_writes(self.ctx, gen, gen.iterable, comp_live_region(live),
+                           elem_type)
 
     def _register_comp_iter_loans(self, gen: TpyComprehensionGenerator,
                                   names: list[str],
@@ -6007,13 +6032,17 @@ class ExpressionAnalyzer:
         cannot answer the question anyway).
 
         Every record subscript is also an `obj.__getitem__(k)` call on its
-        receiver, credited here whatever the return shape."""
+        receiver, credited here and stamped as `record_getitem` whatever the
+        return shape."""
         self._credit_record_getitem_call(expr, record_type, index_type)
-        actual_ret = unwrap_readonly(ret_type)
-        if return_type_is_cpp_ref(actual_ret):
-            return
         record = self.ctx.registry.get_record_for_type(record_type)
         if record is None:
+            return
+        if not expr.is_write_target:
+            expr.record_getitem = self.protocols.lookup_record_method(
+                record, "__getitem__")
+        actual_ret = unwrap_readonly(ret_type)
+        if return_type_is_cpp_ref(actual_ret):
             return
         # The accessor hands back a borrow (`T*`) into the receiver, valid only
         # while the receiver lives. An rvalue receiver (a temporary) dies at the

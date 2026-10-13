@@ -7,6 +7,7 @@
 #include "tpystd/coro.hpp"
 #include "tpystd/asyncio.hpp"
 #include "tpystd/asyncio/_executor/_executor.hpp"
+#include "tpystd/socket.hpp"
 
 namespace tpyapp::main {
 

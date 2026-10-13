@@ -283,7 +283,7 @@ void _write_value(const JsonValue& v, ::tpystd::tplib::json::writer::JsonWriter&
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            std::string_view k = *__beg_1;
+            std::string k = *__beg_1;
             w.key(k);
             ::tpystd::json::_write_value(::tpy::__getitem__(d, k), w, sort_keys);
         }

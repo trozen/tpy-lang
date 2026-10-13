@@ -92,8 +92,8 @@ void loop_var_into_join(const std::vector<std::string>& names) {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view d = *__beg_0;
-        std::array<const std::string, 1> __tmp_1{std::string(d)};
+        std::string d = *__beg_0;
+        std::array<const std::string, 1> __tmp_1{d};
         out.push_back(::tpyapp::main::joins("/", ::tpy::varargs<const std::string>(__tmp_1)));
     }
     auto& __obj_1 = out;

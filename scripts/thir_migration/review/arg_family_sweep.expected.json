@@ -32892,42 +32892,42 @@
  "str_own__ro__dict_items_value__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [form_convert[storage](%s0)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw])"
  ],
  "str_own__ro__dict_items_value__fn": [
   "ok",
   "",
-  "call(CALLEE, [form_convert[storage](%s0)])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "str_own__ro__dict_items_value__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), form_convert[storage](%s0)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)])"
  ],
  "str_own__ro__dict_items_value__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [form_convert[storage](%s0)])"
+  "method_call(%g, CALLEE, [move(%s0)])"
  ],
  "str_own__ro__dict_items_value__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [form_convert[storage](%s0)])"
+  "method_call(%t, CALLEE, [move(%s0)])"
  ],
  "str_own__ro__dict_items_value__nested": [
-  "reject:expr.call:call.ctor_arg.own_str",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
  ],
  "str_own__ro__dict_items_value__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [form_convert[storage](%s0)])"
+  "method_call(%pp, CALLEE, [move(%s0)])"
  ],
  "str_own__ro__dict_items_value__static": [
   "ok",
   "",
-  "call(CALLEE, [form_convert[storage](%s0)])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "str_own__ro__dict_subscript__ctor": [
   "ok",
@@ -33212,42 +33212,42 @@
  "str_own__ro__loop_var__ctor": [
   "ok",
   "",
-  "%k0: CALLEE = ctor(CALLEE, [form_convert[storage](%s0)]) print(%k0.tag [raw])"
+  "%k0: CALLEE = ctor(CALLEE, [move(%s0)]) print(%k0.tag [raw])"
  ],
  "str_own__ro__loop_var__fn": [
   "ok",
   "",
-  "call(CALLEE, [form_convert[storage](%s0)])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "str_own__ro__loop_var__gen": [
   "ok",
   "",
-  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), form_convert[storage](%s0)])"
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), move(%s0)])"
  ],
  "str_own__ro__loop_var__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [form_convert[storage](%s0)])"
+  "method_call(%g, CALLEE, [move(%s0)])"
  ],
  "str_own__ro__loop_var__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [form_convert[storage](%s0)])"
+  "method_call(%t, CALLEE, [move(%s0)])"
  ],
  "str_own__ro__loop_var__nested": [
-  "reject:expr.call:call.ctor_arg.own_str",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [move(%s0)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []),"
  ],
  "str_own__ro__loop_var__proto": [
   "ok",
   "",
-  "method_call(%pp, CALLEE, [form_convert[storage](%s0)])"
+  "method_call(%pp, CALLEE, [move(%s0)])"
  ],
  "str_own__ro__loop_var__static": [
   "ok",
   "",
-  "call(CALLEE, [form_convert[storage](%s0)])"
+  "call(CALLEE, [move(%s0)])"
  ],
  "str_own__ro__narrowed_opt__ctor": [
   "reject:expr.call:call.ctor_arg.own_str",

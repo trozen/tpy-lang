@@ -1,0 +1,143 @@
+module_level: 1
+module_level: 2
+for_big: 1
+for_big: 2
+for_str: one-and-longer-than-the-small-string-buffer
+for_str: two
+for_bytes: b'one-and-longer-than-the-small-buffer'
+for_bytes: b'two'
+for_tuple: 1 one-and-longer-than-the-small-string-buffer
+for_tuple: 2 b
+for_union: 1
+for_unpack: 1 one-and-longer-than-the-small-string-buffer
+for_unpack: 2 b
+dict_items: a 1
+dict_items: b 2
+dict_values: one-and-longer-than-the-small-string-buffer
+dict_values: two
+array_source: 1
+array_source: 2
+comp_list: [1, 2, 3]
+comp_set: [1, 2, 3]
+comp_nested: [[1, 1], [2, 2]]
+comp_array: 1 2 3
+gen_body: 1
+gen_body: 2
+gen_body: [0, 1]
+via_callee: 1
+via_callee: 2
+via_nested_def: 1
+via_nested_def: 2
+via_method: 1
+via_method: 2
+via_global: 1
+via_global: 2
+via_alias: 1
+via_alias: 2
+alias_target: one-and-longer-than-the-small-string-buffer
+nested_grid: 1
+nested_grid: 2
+keep_owned_target: ['one-and-longer-than-the-small-string-buffer', 'b']
+keep_read_only: 1
+keep_read_only: 2
+keep_read_only: 3 44
+keep_unrelated: 1
+keep_unrelated: 2
+keep_enumerate: 0 1
+keep_enumerate: 1 2
+in_ctor: 1
+in_ctor: 2
+in_closure: 1
+in_closure: 2
+in_try: 1
+in_try: 2
+in_match: 1
+in_match: 2
+in_async: 1
+in_async: 2
+comp_in_frame: [0, 1]
+dunder_in: 1 False
+dunder_in: 2 False
+dunder_eq: 1 False
+dunder_eq: 2 False
+dunder_fstr: 1 K
+dunder_fstr: 2 K
+dunder_sorted: 1 2
+dunder_sorted: 2 2
+eq_array_comp: 1 2
+via_setter: 1
+via_setter: 2
+del_item: 1
+aug_item: 1
+aug_item: 2
+span_local: 1
+span_local: 2
+slice_source: 1
+slice_source: 2
+generic_touch: [[1, 9], [2, 9]]
+keep_isinstance: 1
+keep_pure: 1 2
+keep_pure: 2 2
+keep_generic_prod: 6
+hash_display: 1 1
+hash_display: 2 1
+dict_key: 1 5
+dict_key: 2 5
+list_count: 1 1
+list_count: 2 1
+truth_test: 1
+truth_test: 2
+binary_dunder: 1 2
+binary_dunder: 2 2
+unary_dunder: 1 -1
+unary_dunder: 2 -1
+print_record: w W
+print_record: 1
+print_record: w W
+print_record: 2
+match_guard: 1
+match_guard: 2
+user_iterable: 1 1
+user_iterable: 2 1
+with_manager: 1
+with_manager: 2
+call_param: 1
+call_param: 2
+del_record: 1
+field_replace: 1
+span_param: 1
+span_param: 2
+span_call: 1
+span_call: 2
+span_write: 1
+span_write: 2
+loop_in_with: 1
+loop_in_with: 2
+loop_in_error_return: 1
+loop_in_error_return: 2
+comp_condition: [1, 2]
+dict_comp: {1: 1, 2: 2}
+keep_cast: 1 1
+keep_cast: 2 2
+via_getter: 1 2
+via_getter: 2 2
+keep_inert_ops: 1 1 9
+keep_inert_ops: 2 2 12
+keep_inert_ops: one-and-longer-than-the-small-string-buffer
+keep_inert_ops: b
+post_loop_str: one-and-longer-than-the-small-string-buffer
+post_loop_bytes: b'one-and-longer-than-the-small-bytes-buffer'
+post_loop_rebind: one-and-longer-than-the-small-string-buffer 1
+post_loop_unpack: 1 one-and-longer-than-the-small-string-buffer
+Shown
+any_record: one-and-longer-than-the-small-string-buffer
+keep_comp_in_body: 3
+comp_in_body_writes: one-and-longer-than-the-small-string-buffer 1
+comp_reads_copy: ['one-and-longer-than-the-small-string-buffer', 'one-and-longer-than-the-small-string-buffer'] {0: 'one-and-longer-than-the-small-string-buffer', 1: 'one-and-longer-than-the-small-string-buffer'} {'one-and-longer-than-the-small-string-buffer'} ['one-and-longer-than-the-small-string-buffer', 'one-and-longer-than-the-small-string-buffer']
+comp_reads_copy: ['b', 'b'] {0: 'b', 1: 'b'} {'b'} ['b', 'b']
+comp_str_local: ['one-and-longer-than-the-small-string-buffer', 'one-and-longer-than-the-small-string-buffer']
+comp_walrus_str: changed-and-longer-than-the-small-string-buffer 2
+comp_own_arg: [2, 2]
+head_move: ['one-and-longer-than-the-small-string-buffer', 'y'] True
+getitem_ref_writes: one-and-longer-than-the-small-string-buffer 1
+getitem_ref_writes: two 1

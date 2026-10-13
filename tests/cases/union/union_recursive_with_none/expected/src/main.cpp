@@ -285,7 +285,7 @@ void main() {
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
-        auto&& w = *__beg_3;
+        W w = *__beg_3;
         std::cout << ::tpyapp::main::flat_kind(w) << "\n" << ::tpy::check_signals;
     }
 }

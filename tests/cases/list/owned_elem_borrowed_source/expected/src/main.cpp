@@ -26,7 +26,7 @@ void comp_method() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const std::string& _ = *__beg_1;
+            std::string _ = *__beg_1;
             __result.push_back(b.rec_m());
         }
         std::move(__result);

@@ -30,7 +30,7 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         std::cout << k << " " << ::tpy::__getitem__(d, k) << "\n" << ::tpy::check_signals;
     }
     ::tpy::ordered_map<std::string, int32_t> d2 = ::tpy::dict_construct<std::string, int32_t>(::tpy::builtin_map<std::tuple<std::string, int32_t>>([](int32_t v) -> std::tuple<std::string, int32_t> { return ::tpyapp::main::label<int32_t>(::tpy::fixed_to_str<int32_t>(v), v); }, vals));
@@ -46,7 +46,7 @@ void main() {
     auto __beg_2 = __obj_2.begin();
     auto __end_2 = __obj_2.end();
     for (; __beg_2 != __end_2; ++__beg_2) {
-        std::string_view k = *__beg_2;
+        std::string k = *__beg_2;
         std::cout << k << " " << ::tpy::__getitem__(d3, k) << "\n" << ::tpy::check_signals;
     }
 }

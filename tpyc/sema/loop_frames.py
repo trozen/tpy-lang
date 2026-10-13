@@ -51,33 +51,61 @@ it borrows storage the exit may write (`WithExitCheck`). (A plain function
 keeps such a generator in the block's C++ scope unless a read after the
 block declares it in front of the block, and then it may borrow only
 storage that outlives the body.)
+
+The same walk decides a second fact, whether
+the loop may write the storage its variable's element lives in while the
+variable is live (`note_source_writes`). It is a CLOSED proof
+(`_SourceProof`): the region keeps the variable's reference only when
+every statement and expression is of a small closed set of kinds, every
+value it touches runs no user code (`TpyType.value_ops_run_user_code`) and
+no write reaches a holding type; anything else copies. It runs at body
+time, so a callee with a body may write anything; a write rooted at a
+function local that owns its object is decided at the end of the body over
+the same storage closure (`resolve_source_writes`). Both questions
+decompose a call the same way (`call_parts`, `call_write`). A loop whose
+element names a type parameter keeps its reference
+(BUGS.md#generic-loop-var-sees-source-write).
 """
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-from typing import TYPE_CHECKING, AbstractSet, Iterable
+from enum import Enum, auto
+from typing import TYPE_CHECKING, AbstractSet, Callable, Iterable
 
 from ..parse import (
     TpyAugAssign, TpyAwait, TpyBinOp, TpyCall, TpyCoerce, TpyFieldAccess,
     TpyForEach, TpyMethodCall, TpyName, TpyStmt, TpySubscript,
-    TpyUnaryOp, TpyVarargPack, TpyVarDecl, TpyStarUnpack, TpyWith,
+    TpyTupleUnpack, TpyUnaryOp, TpyVarargPack, TpyVarDecl, TpyStarUnpack,
+    TpyWith,
+)
+from ..parse.nodes import (
+    TpyArrayLiteral, TpyBytesLiteral, TpyDictComprehension, TpyDictLiteral,
+    TpyFunction, TpyGeneratorExpression, TpyListComprehension, TpyListRepeat,
+    TpySetComprehension, TpySetLiteral, TpySlice, TpyStrLiteral,
+    TpyTupleLiteral, is_property_getter_read, walk_body_stmts,
 )
 from ..compilation_context import get_current_compiler
 from ..prescan import block_writes, loop_bindings_of
 from ..type_def_registry import is_free_copy_scalar
 from ..typesys import (
-    ReadonlyType, is_bodyless_binding, unwrap_own, unwrap_readonly,
-    unwrap_ref_type,
+    ReadonlyType, TpyType, is_bodyless_binding, is_declaration_only,
+    is_indirection_type, type_may_hold, unwrap_own, unwrap_qualifiers,
+    unwrap_readonly, unwrap_ref_type,
 )
+from ..value_category import call_returns_cpp_ref
+from .iter_loans import iterated_storage
+from .own_copy import holds_only_values
 from .receiver_calls import ImplicitCall, implicit_calls
 from .context import (
-    ITER_BORROWER, _root_name_of_expr, _stable_loop_source,
+    ITER_BORROWER, _root_name_of_expr, _stable_loop_source, _storage_root,
     call_param_args, field_chain_storage_key, frame_binding_calls,
+    may_hold_pointer,
 )
+from .may_interrupt import InertWalk, NotInert, is_inert_type
 
 if TYPE_CHECKING:
-    from ..parse import TpyExpr, TpyWithItem
+    from ..parse import TpyComprehensionGenerator, TpyExpr, TpyWithItem
     from ..typesys import FunctionInfo
     from .context import SemanticContext
 
@@ -107,16 +135,24 @@ class PendingLoopFrameCall:
     call: 'TpyExpr | ImplicitCall'
 
 
-def storage_closure(stmt_loans, frames: 'frozenset[str]', roots: 'set[str]',
-                    for_edges: 'Iterable[tuple[set[str], str | None]]' = ()
-                    ) -> 'tuple[set[str], set[str]]':
-    """`roots` with every storage they borrow from (upstream), and that
-    with every name borrowing from it (reach), over every loan the borrow
-    tracker registered in the function -- flow-insensitive on purpose: an
-    alias taken anywhere may be the one a write goes through. A for-each
-    variable reaches into what it iterates (`for_edges`) but is not
-    upstream of it: the tracker files no loan for it; one over something
-    untraceable reaches in whatever the frame borrows."""
+@dataclass(frozen=True)
+class StorageEdges:
+    """A body's loan graph: which names each name lends to and borrows
+    from, and the for-each variables over something untraceable."""
+    lends: 'dict[str, set[str]]'
+    borrows: 'dict[str, set[str]]'
+    untraced: frozenset[str]
+
+
+def storage_edges(stmt_loans,
+                  for_edges: 'Iterable[tuple[set[str], str | None]]' = ()
+                  ) -> StorageEdges:
+    """Every loan the borrow tracker registered in the body --
+    flow-insensitive on purpose: an alias taken anywhere may be the one a
+    write goes through. A for-each variable reaches into what it iterates
+    (`for_edges`) but is not upstream of it: the tracker files no loan for
+    it; one over something untraceable may refer into anything. Built once
+    per body (`storage_closure` reads it per question)."""
     lends: dict[str, set[str]] = {}
     borrows: dict[str, set[str]] = {}
     for entries in stmt_loans.values():
@@ -128,30 +164,36 @@ def storage_closure(stmt_loans, frames: 'frozenset[str]', roots: 'set[str]',
                 continue
             borrows.setdefault(holder, set()).add(src)
             lends.setdefault(src, set()).add(holder)
-    # A variable over something whose root cannot be traced (`reversed(xs)`)
-    # may refer into anything.
     untraced: set[str] = set()
     for names, src in for_edges:
         if src is not None:
             lends.setdefault(src, set()).update(names - {src})
         else:
             untraced |= names
+    return StorageEdges(lends, borrows, frozenset(untraced))
 
-    def reach_from(start: 'set[str]', edges: dict[str, set[str]],
+
+def storage_closure(edges: StorageEdges, frames: 'frozenset[str]',
+                    roots: 'set[str]') -> 'tuple[set[str], set[str]]':
+    """`roots` with every storage they borrow from (upstream), and that
+    with every name borrowing from it (reach), over the body's loan graph;
+    a for-each variable over something untraceable is in every reach."""
+
+    def reach_from(start: 'set[str]', step: 'dict[str, set[str]]',
                    skip: 'frozenset[str]') -> set[str]:
         out = set(start)
         todo = list(start)
         while todo:
             n = todo.pop()
-            for m in edges.get(n, ()):
+            for m in step.get(n, ()):
                 if m not in out and m not in skip:
                     out.add(m)
                     todo.append(m)
         return out
 
-    upstream = reach_from(roots, borrows, frozenset())
-    reach = reach_from(upstream | (untraced if roots else set()), lends,
-                       frames)
+    upstream = reach_from(roots, edges.borrows, frozenset())
+    reach = reach_from(upstream | (edges.untraced if roots else set()),
+                       edges.lends, frames)
     return upstream, reach
 
 
@@ -558,73 +600,135 @@ def _call_write(ctx: 'SemanticContext', hold: LoopFrameHold,
     """The callee's name and the root in `hold`'s reach `call` may write
     (None: its writes are not known), with whether only the module-global
     rule says so; None when it writes nothing `hold` borrows."""
+    parts = call_parts(ctx, call)
+    if parts is None:
+        return None
+
+    def in_reach(e: 'TpyExpr') -> 'str | None':
+        root = _root_name_of_expr(_peel(e))
+        return root if root is not None and root in hold.reach else None
+
+    hit = call_write(ctx, parts, in_reach, facts_final=True,
+                     globals_written=bool(hold.globals_))
+    if hit is None:
+        return None
+    kind, label = hit
+    if kind is CallWrite.GLOBAL:
+        return parts.name, sorted(hold.globals_)[0], True
+    if kind is CallWrite.OPERAND:
+        return parts.name, label, False
+    return parts.name, None, False
+
+
+@dataclass(frozen=True)
+class CallParts:
+    """One call a site makes, explicit or not: how it is named in a
+    diagnostic, the callee (None when no FunctionInfo names it), its
+    receiver and its (parameter index, argument) pairs."""
+    name: str
     fi: 'FunctionInfo | None'
     receiver: 'TpyExpr | None' = None
-    args: list[tuple[int, 'TpyExpr']] = []
+    args: 'tuple[tuple[int, TpyExpr], ...]' = ()
+
+
+def call_parts(ctx: 'SemanticContext', call: 'TpyExpr | ImplicitCall'
+               ) -> 'CallParts | None':
+    """The call `call` makes -- an explicit call, an implicit dunder
+    (`implicit_calls`), an augmented assignment's in-place operator, a
+    binary or unary operator dunder, a `__contains__` -- or None when it
+    makes none (an operator on scalars, a scalar augmented store)."""
     if isinstance(call, ImplicitCall):
         if call.fi is None:
-            return call.method, None, False
-        fi = call.fi
-        name = fi.name
-        receiver = call.receiver
-    elif isinstance(call, TpyAugAssign):
+            return CallParts(call.method, None)
+        return CallParts(call.fi.name, call.fi, call.receiver)
+    if isinstance(call, TpyAugAssign):
         # On a scalar the in-place operator is the store itself, which the
         # stores decide.
         if call.resolved_inplace is None or _is_free_copy_scalar_expr(
                 ctx, call.target):
             return None
         fi = call.resolved_inplace.method.root
-        name = fi.name
-        receiver = call.target
-        args = [(0, call.value)]
-    elif isinstance(call, (TpyCall, TpyMethodCall)):
+        return CallParts(fi.name, fi, call.target, ((0, call.value),))
+    if isinstance(call, (TpyCall, TpyMethodCall)):
         fi = call.resolved_function_info
         name = (call.method if isinstance(call, TpyMethodCall)
                 else call.maybe_func_name or "a callable")
         if fi is None or fi.is_callable_value:
-            return name, None, False
-        if (isinstance(call, TpyMethodCall) and not call.is_static_call
-                and not call.user_module_call):
-            receiver = call.obj
+            return CallParts(name, None)
+        receiver = (call.obj if isinstance(call, TpyMethodCall)
+                    and not call.is_static_call
+                    and not call.user_module_call else None)
         index = {id(p): i for i, p in enumerate(fi.params)}
-        args = [(index[id(p)], a) for p, a in call_param_args(call)]
-    elif isinstance(call, TpyBinOp) and call.resolved_binop is not None:
+        return CallParts(name, fi, receiver, tuple(
+            (index[id(p)], a) for p, a in call_param_args(call)))
+    if isinstance(call, TpyBinOp) and call.resolved_binop is not None:
         rb = call.resolved_binop
         fi = rb.method.root
-        name = fi.name
-        receiver = call.right if rb.is_reverse else call.left
-        args = [(0, call.left if rb.is_reverse else call.right)]
-    elif isinstance(call, TpyUnaryOp) and call.resolved_unaryop is not None:
+        return CallParts(fi.name, fi,
+                         call.right if rb.is_reverse else call.left,
+                         ((0, call.left if rb.is_reverse else call.right),))
+    if isinstance(call, TpyBinOp) and call.resolved_contains is not None:
+        fi = call.resolved_contains
+        return CallParts(fi.name, fi, call.right, ((0, call.left),))
+    if isinstance(call, TpyUnaryOp) and call.resolved_unaryop is not None:
         fi = call.resolved_unaryop.method.root
-        name = fi.name
-        receiver = call.operand
-    else:
+        return CallParts(fi.name, fi, call.operand)
+    return None
+
+
+class CallWrite(Enum):
+    """Why a call may write (`call_write`)."""
+    UNKNOWN = auto()   # no FunctionInfo names the callee
+    BODY = auto()      # a body whose writes are not known yet
+    GLOBAL = auto()    # a body, while the question involves module globals
+    OPERAND = auto()   # a write through the receiver or a writable argument
+
+
+def call_write(ctx: 'SemanticContext', parts: CallParts,
+               written: 'Callable[[TpyExpr], object]', *,
+               facts_final: bool, globals_written: bool = False
+               ) -> 'tuple[CallWrite, object] | None':
+    """Whether the call `parts` may write an operand `written` answers for
+    (its truthy answer is the label returned with OPERAND), or anything
+    at all. A `@pure` callee writes nothing. Before mutation facts are
+    final (`facts_final` False) a callee with a body may write anything;
+    once they are, an unanalyzed one declared `@readonly` writes nothing,
+    and a body writes its receiver unless it is known not to and an
+    argument only at a parameter it may mutate. A builtin binding (or one
+    sema handles itself, `special_handling`) writes its receiver unless
+    `@readonly` (an `@auto_readonly` accessor's mutable clone does not),
+    and an argument at any parameter not declared readonly -- whatever its
+    type: a `Span` is a value that writes the list it views."""
+    fi = parts.fi
+    if fi is None or fi.is_callable_value:
+        return CallWrite.UNKNOWN, None
+    root = fi.root
+    bodyless = root.special_handling or is_bodyless_binding(root)
+    if not bodyless and not facts_final:
+        return None if root.is_pure else (CallWrite.BODY, None)
+    if root.is_pure or (root.is_readonly
+                        and root.direct_mutated_params is None):
         return None
-    root_fi = fi.root
-    # A pure callee writes nothing; so does an unanalyzed one declared
-    # `@readonly` (`_record_mutation_call_edges` reads it the same way).
-    if root_fi.is_pure or (root_fi.is_readonly
-                           and root_fi.direct_mutated_params is None):
-        return None
-    if hold.globals_ and not is_bodyless_binding(root_fi):
-        return name, sorted(hold.globals_)[0], True
-    if receiver is not None and not (root_fi.is_readonly or root_fi.is_pure):
-        root = _root_name_of_expr(_peel(receiver))
-        if (root is not None and root in hold.reach
-                and root_fi.self_mutated is not False):
-            return name, root, False
-    mutated = root_fi.mutated_params
-    for i, arg in args:
-        if i < len(fi.params) and (
-                _readonly_param(fi.params[i].type)
-                or unwrap_readonly(fi.params[i].type).is_value_type()):
+    if not bodyless and globals_written:
+        return CallWrite.GLOBAL, None
+    if (parts.receiver is not None and not root.is_readonly
+            and not fi.is_auto_readonly_mutable_clone
+            and not (facts_final and root.self_mutated is False)):
+        label = written(parts.receiver)
+        if label:
+            return CallWrite.OPERAND, label
+    mutated = root.mutated_params if facts_final else None
+    for i, arg in parts.args:
+        param = fi.params[i] if i < len(fi.params) else None
+        if (param is not None and param.type is not None
+                and _readonly_param(param.type)):
             continue
         if mutated is not None and i not in mutated:
             continue
         for sub in _arg_exprs(arg):
-            root = _root_name_of_expr(_peel(sub))
-            if root is not None and root in hold.reach:
-                return name, root, False
+            label = written(sub)
+            if label:
+                return CallWrite.OPERAND, label
     return None
 
 
@@ -664,3 +768,359 @@ def _error(ctx: 'SemanticContext', hold: LoopFrameHold, why: str):
         f"'del {g}' before the pass ends, or iterate it inside a helper "
         f"function",
         hold.node)
+
+
+# -- a loop variable's source written while the variable is live --
+
+# Iterables that build their own storage: nothing else reaches it.
+_FRESH_SOURCES = (TpyArrayLiteral, TpyBytesLiteral, TpyDictComprehension,
+                  TpyDictLiteral, TpyGeneratorExpression,
+                  TpyListComprehension, TpyListRepeat, TpySetComprehension,
+                  TpySetLiteral, TpyStrLiteral, TpyTupleLiteral)
+
+
+@dataclass(frozen=True)
+class LoopSource:
+    """The storage a loop lends its elements from: the `types` an object
+    holding it has to be able to hold, the `roots` of the names it is read
+    through (None when one cannot be named), and for a view local the
+    `view` whose loans name that storage at the end of the body. An
+    `unknown` source copies."""
+    types: tuple = ()
+    roots: 'frozenset[str] | None' = None
+    view: 'str | None' = None
+    unknown: bool = False
+
+
+def loop_source(ctx: 'SemanticContext', iterable: 'TpyExpr',
+                elem_type: 'TpyType | None' = None) -> 'LoopSource | None':
+    """The storage iterating `iterable` lends its elements from: the
+    iterable named by a place, or a call's result and the operands it
+    borrows from (`d.items()` lends from `d`). A view lends from the
+    storage it borrows (`a[0:2]` from `a`, a view local from what its loans
+    name), matched by what can hold its element. None for a source nothing
+    else can reach -- a display or a call handing back a fresh value."""
+    e = _peel(iterable)
+    t = ctx.get_expr_type(e)
+    if t is None:
+        return LoopSource(unknown=True)
+    if isinstance(e, TpySubscript) and isinstance(_peel(e.index), TpySlice):
+        return loop_source(ctx, e.obj, elem_type)
+    view = is_indirection_type(t)
+    if view and elem_type is None:
+        return LoopSource(unknown=True)
+    if not isinstance(e, (TpyCall, TpyMethodCall)):
+        if view:
+            local = (isinstance(e, TpyName) and not ctx.is_top_level
+                     and e.name not in ctx.func.current_param_names)
+            return LoopSource((elem_type,), view=e.name if local else None)
+        if isinstance(e, (TpyName, TpySubscript, TpyFieldAccess)):
+            root = _root_name_of_expr(e)
+            return LoopSource((t,), None if root is None
+                              else frozenset((root,)))
+        return (None if isinstance(e, _FRESH_SOURCES)
+                else LoopSource((t,), None))
+    storage = iterated_storage(ctx, e)
+    operands = [_peel(op.arg) for op in storage.operands]
+    if is_property_getter_read(e):
+        operands.append(_peel(e.obj))
+    if not (storage.loans or storage.unplaceable or operands):
+        if view:
+            return LoopSource((elem_type,), None)
+        if not call_returns_cpp_ref(None, e.resolved_function_info):
+            return None
+    roots = [_root_name_of_expr(o) for o in operands] + [
+        _storage_root(k) for k, _loan in storage.loans]
+    types = [ctx.get_expr_type(o) for o in operands]
+    if None in types:
+        return LoopSource(unknown=True)
+    return LoopSource(
+        (t, *types),
+        None if (storage.unplaceable or not roots or None in roots)
+        else frozenset(r for r in roots if r is not None))
+
+
+@dataclass(frozen=True)
+class LiveRegion:
+    """What runs while a loop variable is live: the statements (a for
+    statement's body and `else` clause) and expressions (a comprehension
+    clause's conditions, element(s) and later clauses)."""
+    stmts: tuple = ()
+    exprs: tuple = ()
+
+
+def for_live_region(loop: TpyForEach) -> LiveRegion:
+    """A for statement's body and `else` clause; its head runs once before
+    the first binding."""
+    return LiveRegion(stmts=(*loop.body, *loop.orelse))
+
+
+def comp_live_region(exprs: 'Iterable[TpyExpr | None]') -> LiveRegion:
+    """A comprehension clause's conditions, element(s) and later clauses."""
+    return LiveRegion(exprs=tuple(e for e in exprs if e is not None))
+
+
+@dataclass
+class PendingSourceWrite:
+    """A loop whose region writes a holding type only through function
+    locals (`through`), decided once the body's loans are known
+    (`resolve_source_writes`)."""
+    func: object
+    node: 'TpyForEach | TpyComprehensionGenerator'
+    elem_type: 'TpyType | None'
+    source: LoopSource
+    through: frozenset[str]
+    # A variable read after its loop is live for the rest of the body: its
+    # proof runs over the whole body once that body is analyzed.
+    whole_body: bool = False
+
+
+def note_source_writes(ctx: 'SemanticContext',
+                       node: 'TpyForEach | TpyComprehensionGenerator',
+                       iterable: 'TpyExpr', region: LiveRegion,
+                       elem_type: 'TpyType | None' = None) -> None:
+    """Whether the loop may write its source while its variable is live
+    (`_SourceProof`): decided now when the proof fails, at the end of the
+    body when a write lands only in function locals whose ownership and
+    loans decide it. A variable read after its loop
+    (`TpyForEach.var_live_after`) is live for the rest of the function,
+    order-free: its proof runs over the whole body at its end."""
+    src = loop_source(ctx, iterable, elem_type)
+    if src is None:
+        return
+    if src.unknown:
+        stamp_copy_verdicts(ctx, node, elem_type)
+        return
+    # None: liveness never reached the loop, so the variable may be live.
+    if isinstance(node, TpyForEach) and node.var_live_after is not False:
+        if ctx.is_top_level or not isinstance(ctx.func.current_function,
+                                              TpyFunction):
+            stamp_copy_verdicts(ctx, node, elem_type, outliving_only=True)
+        else:
+            ctx.pending_source_writes.append(PendingSourceWrite(
+                ctx.func.current_function, node, elem_type, src,
+                frozenset(), whole_body=True))
+    proof = _SourceProof(ctx, src.types)
+    try:
+        proof.run(region)
+    except NotInert:
+        stamp_copy_verdicts(ctx, node, elem_type)
+        return
+    if not proof.through:
+        return
+    if ctx.is_top_level:
+        stamp_copy_verdicts(ctx, node, elem_type)
+    else:
+        ctx.pending_source_writes.append(PendingSourceWrite(
+            ctx.func.current_function, node, elem_type, src,
+            frozenset(proof.through)))
+
+
+def resolve_source_writes(ctx: 'SemanticContext', owned: 'set[str]',
+                          edges: StorageEdges,
+                          frames: 'frozenset[str]') -> None:
+    """The pending loops of the body just analyzed. A write rooted at a
+    local that owns its storage (every binding a fresh object, `owned`)
+    reaches the source only when the source is read through that local or
+    through something that borrows from it -- over the body's loan graph
+    (`storage_closure`). A view source's storage is what its loans name in
+    that graph; a view with none is not traced."""
+    fn = ctx.func.current_function
+    keep: list[PendingSourceWrite] = []
+    # The whole-body proof per source type: the same answer for every loop
+    # over a source of those types.
+    whole: dict[tuple, 'frozenset[str] | None'] = {}
+    for entry in ctx.pending_source_writes:
+        if entry.func is not fn:
+            keep.append(entry)
+            continue
+        through = entry.through
+        if entry.whole_body:
+            key = entry.source.types
+            if key not in whole:
+                proof = _SourceProof(ctx, key)
+                try:
+                    proof.run(LiveRegion(stmts=tuple(fn.body)))
+                    whole[key] = frozenset(proof.through)
+                except NotInert:
+                    whole[key] = None
+            if whole[key] is None:
+                stamp_copy_verdicts(ctx, entry.node, entry.elem_type,
+                                    outliving_only=True)
+                continue
+            through = whole[key]
+        roots = entry.source.roots
+        if entry.source.view is not None:
+            up, _reach = storage_closure(edges, frames, {entry.source.view})
+            roots = frozenset(up - {entry.source.view}) or None
+        for root in sorted(through):
+            if root not in owned or roots is None:
+                hit = True
+            else:
+                _up, reach = storage_closure(edges, frames, {root})
+                hit = bool(reach & roots)
+            if hit:
+                stamp_copy_verdicts(ctx, entry.node, entry.elem_type,
+                                    outliving_only=entry.whole_body)
+                break
+    ctx.pending_source_writes = keep
+
+
+def resolve_leftover_source_writes(ctx: 'SemanticContext') -> None:
+    """A pending loop whose body never reached `resolve_source_writes`
+    copies."""
+    for entry in ctx.pending_source_writes:
+        stamp_copy_verdicts(ctx, entry.node, entry.elem_type,
+                            outliving_only=entry.whole_body)
+    ctx.pending_source_writes = []
+
+
+def stamp_copy_verdicts(ctx: 'SemanticContext',
+                        node: 'TpyForEach | TpyComprehensionGenerator',
+                        elem_type: 'TpyType | None', *,
+                        outliving_only: bool = False) -> None:
+    """The one copy verdict of each binding the loop makes, read by the
+    view rule and the binding planner: the loop variable copies a value
+    element (`holds_only_values`; an element naming a type parameter keeps
+    its reference: BUGS.md#generic-loop-var-sees-source-write), and a for
+    head's value targets copy out of a holder of values (a tuple holding a
+    reference type is lifted into a detached `tuple_to_pointer` copy its
+    value targets read). `outliving_only`: the rest of the body may write
+    the source of a variable read after its loop, so only the bindings that
+    outlive the loop copy -- a variable declared before the loop
+    (`hoist_loop_var`, the loop's `if_branch_decls`), a head target bound
+    to such a name or to an outer one. A verdict once set stays set."""
+    if isinstance(node, TpyForEach) and node.is_tuple_unpack:
+        head = node.body[0] if node.body else None
+        if not isinstance(head, TpyTupleUnpack):
+            return
+        holder = elem_type is not None and holds_only_values(elem_type)
+        copies = list(head.target_copies) or [False] * len(head.targets)
+        for i, (name, t) in enumerate(zip(head.targets, head.target_types)):
+            if not (holder and isinstance(t, TpyType)
+                    and holds_only_values(t)):
+                continue
+            if outliving_only and not (
+                    name in ctx.if_branch_decls.get(node, {})
+                    or (i < len(head.is_new) and not head.is_new[i])):
+                continue
+            copies[i] = True
+            ctx.mark_view_source_written(t)
+        head.target_copies = copies
+        return
+    if not isinstance(node, TpyForEach) and node.unpack_vars is not None:
+        # An unpack clause copies its value elements out of the holder.
+        return
+    if outliving_only and not (isinstance(node, TpyForEach) and (
+            node.hoist_loop_var
+            or node.var in ctx.if_branch_decls.get(node, {}))):
+        return
+    if elem_type is not None and holds_only_values(elem_type):
+        node.copies_var = True
+        if isinstance(node, TpyForEach):
+            ctx.mark_view_source_written(elem_type)
+
+
+class _SourceProof(InertWalk):
+    """The closed proof that a loop's live region cannot write its source:
+    `may_interrupt`'s allowlist walk (every statement and expression of a
+    known kind, every value it touches inert), with callees widened to any
+    without a body (or `@pure`), stores into any place, comprehensions
+    walked and nested `def`s defined, and no `try`, `raise` or suspension;
+    and separately no store, `del`, rebind or
+    writing call reaching an object whose type can hold the source
+    (`type_may_hold`), except through a function local whose type points
+    at no other storage (`through`): its identity is the function's to
+    see, decided over the body's loans."""
+
+    admits_unwinding = False
+    admits_nested = True
+
+    def __init__(self, ctx: 'SemanticContext',
+                 sources: 'tuple[TpyType, ...]') -> None:
+        fn = ctx.func.current_function
+        super().__init__(ctx, fn if isinstance(fn, TpyFunction) else None)
+        self.sources = sources
+        self.through: set[str] = set()
+
+    def run(self, region: LiveRegion) -> None:
+        walk_body_stmts(list(region.stmts), self.walk, self.stmt)
+        for e in region.exprs:
+            self.walk(e)
+
+    # -- what a write may reach --
+
+    def may_hold(self, t: 'TpyType | None') -> bool:
+        if t is None:
+            return True
+        reg = self.ctx.registry
+        if is_indirection_type(t):
+            # A write through a view or pointer lands in what it refers to.
+            refs = unwrap_qualifiers(t).inner_types()
+            return any(type_may_hold(r, s, reg) or type_may_hold(s, r, reg)
+                       for r in refs for s in self.sources)
+        return any(type_may_hold(t, s, reg) for s in self.sources)
+
+    def written(self, e: 'TpyExpr') -> bool:
+        """A write of the object `e`: proven apart from the source, or
+        reaching it only through a function local (`through`)."""
+        e = _peel(e)
+        if not self.may_hold(self.ctx.get_expr_type(e)):
+            return False
+        node = e
+        while isinstance(node, (TpyFieldAccess, TpySubscript)):
+            node = _peel(node.obj)
+        root = _root_name_of_expr(e)
+        t = (self.ctx.get_expr_type(node) if isinstance(node, TpyName)
+             and node.name == root else None)
+        self.require(root is not None and t is not None
+                     and not root.startswith("__")
+                     and not may_hold_pointer(t))
+        self.through.add(root)  # type: ignore[arg-type]
+        return False
+
+    # -- hooks --
+
+    def admitted(self, fi: 'FunctionInfo') -> bool:
+        root = fi.root
+        return (root.is_pure or root.special_handling
+                or is_declaration_only(fi, self.ctx.registry))
+
+    def on_node(self, node: 'TpyExpr | TpyStmt') -> None:
+        for call in implicit_calls(node):
+            self.on_call(call)
+
+    def on_call(self, call: 'TpyExpr | TpyStmt | ImplicitCall') -> None:
+        """One call: into a callee with no body (or `@pure`), writing
+        nothing that may hold the source."""
+        parts = call_parts(self.ctx, call)
+        if parts is None:
+            return
+        self.require(parts.fi is not None and self.admitted(parts.fi))
+        self.require(call_write(self.ctx, parts, self.written,
+                                facts_final=False) is None)
+
+    def rebind(self, name: str, t: 'TpyType | None') -> None:
+        """A whole-name binding (or `del`) replaces the name's object. A
+        name with no known type here was first bound inside the walked
+        statements: it holds nothing the source could have been read
+        through."""
+        if t is None:
+            return
+        self.require(is_inert_type(t))
+        if self.may_hold(t):
+            self.require(not may_hold_pointer(t))
+            self.through.add(name)
+
+    def target(self, t: 'TpyExpr') -> None:
+        """A store into any place: the old object goes (its value is
+        checked where the target is walked), and the store writes the
+        object it lands in."""
+        t = _peel(t)
+        if isinstance(t, TpyName):
+            super().target(t)
+            return
+        self.require(isinstance(t, (TpyFieldAccess, TpySubscript))
+                     and getattr(t, "property_setter_call", None) is None
+                     and not getattr(t, "property_setter", False))
+        self.written(t.obj)

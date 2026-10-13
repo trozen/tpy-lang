@@ -95,7 +95,7 @@ void comprehension(const std::vector<std::string>& ks) {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const std::string& k = *__beg_0;
+            std::string k = *__beg_0;
             __result.push_back(::tpyapp::main::has_item<std::string>((*NAMES), k));
         }
         std::move(__result);
@@ -107,7 +107,7 @@ void comprehension(const std::vector<std::string>& ks) {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const std::string& k = *__beg_1;
+            std::string k = *__beg_1;
             __result.push_back(::tpyapp::main::has_item_str((*NAMES), k));
         }
         std::move(__result);

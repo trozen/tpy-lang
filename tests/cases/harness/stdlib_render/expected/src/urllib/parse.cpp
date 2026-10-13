@@ -238,7 +238,7 @@ std::string urlencode(const ::tpy::ordered_map<std::string, std::string>& query)
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        std::string_view k = *__beg_0;
+        std::string k = *__beg_0;
         parts.push_back((::tpy::str_concat((::tpy::str_concat(::tpystd::urllib::parse::quote_plus(k), "=")), ::tpystd::urllib::parse::quote_plus(::tpy::__getitem__(query, k)))));
     }
     return ::tpy::str_join("&", parts);

@@ -68,7 +68,7 @@ void main() {
     auto __beg_1 = __obj_1.begin();
     auto __end_1 = __obj_1.end();
     for (; __beg_1 != __end_1; ++__beg_1) {
-        std::string_view k = *__beg_1;
+        std::string k = *__beg_1;
         ::tpystd::datetime::ZoneInfo z = ::tpystd::datetime::ZoneInfo(k);
         if ((z.key() != k)) {
             all_ok = false;

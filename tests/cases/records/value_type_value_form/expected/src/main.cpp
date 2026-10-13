@@ -642,7 +642,7 @@ void dict_items() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         const auto& __for_tup_0 = *__beg_0;
         const auto& __tup_1 = __for_tup_0;
-        std::string_view k = std::get<0>(__tup_1);
+        std::string k = std::get<0>(__tup_1);
         Coord v = std::get<1>(__tup_1);
         total = ::tpy::add_check<int32_t>(total, ::tpyapp::main::use(v));
     }

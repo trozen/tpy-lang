@@ -47,6 +47,7 @@ from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess
                      TpyLambda, TpySubscript, is_property_getter_read)
 from ..parse.nodes import walk_expr_tree
 from ..typesys import (INT32, NominalType, ReadonlyType, TpyType, TypeParamRef,
+                       unwrap_qualifiers,
                        substitute_type_params_simple, unwrap_readonly,
                        unwrap_ref_type)
 
@@ -156,6 +157,13 @@ def contains_reference_type(typ: TpyType, *,
     if not typ.is_value_type():
         return True
     return any(contains_reference_type(inner) for inner in typ.inner_types())
+
+
+def holds_only_values(typ: TpyType) -> bool:
+    """Whether a copy of `typ` copies values only -- the test a loop
+    variable whose source may change reads before taking its own copy (a
+    tuple holding a reference type would copy the reference element)."""
+    return not contains_reference_type(unwrap_qualifiers(typ))
 
 
 def type_param_names(typ: TpyType | None) -> set[str]:

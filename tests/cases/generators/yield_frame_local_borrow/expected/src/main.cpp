@@ -64,9 +64,9 @@ void walk_prune() {
             auto __beg_2 = __obj_2.begin();
             auto __end_2 = __obj_2.end();
             for (; __beg_2 != __end_2; ++__beg_2) {
-                std::string_view d = *__beg_2;
+                std::string d = *__beg_2;
                 if ((d != "skip")) {
-                    kept.push_back(std::string(d));
+                    kept.push_back(std::move(d));
                 }
             }
             ::tpy::list_set_slice(dirs, ::tpy::BasicSlice{std::nullopt, std::nullopt}, std::move(kept));

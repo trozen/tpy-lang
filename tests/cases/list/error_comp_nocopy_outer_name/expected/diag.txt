@@ -1,0 +1,1 @@
+main.py:8: error: cannot copy non-copyable type 'Box[list[int32]]' into owned storage (use Own[...] to transfer ownership, or copy() if a copy is truly intended)

@@ -112,7 +112,7 @@ std::vector<::tpy::BigInt> flatten(const ::tpy::ordered_map<std::string, std::ve
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
             ::tpy::BigInt x = *__beg_1;
-            out.push_back(x);
+            out.push_back(std::move(x));
         }
     }
     return out;

@@ -1920,7 +1920,8 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     if elem is not None:
         kind = loop_binding_kind(elem, stmt.const_loop_var,
                                  hoisted=stmt.hoist_loop_var,
-                                 consuming=consuming)
+                                 consuming=consuming,
+                                 copies=stmt.copies_var)
         f["loop_binding"] = kind
         # A reference over a const iteration deduces const (`auto&&`); a
         # copy or the hoisted slot is the loop's own mutable value.
@@ -1961,8 +1962,13 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
                else stmt.iterable)
         f["const_storage_opt"] = _st._iteration_yields_const(src, ctx, an)
     # A consuming loop's variable owns its element: movable whatever
-    # sema's verdict says.
-    if (isinstance(et, OwnType) and not stmt.hoist_loop_var) or consuming:
+    # sema's verdict says; so does one that takes its own copy of an
+    # element a copy allocates for (`copies_var`): the pass's last use
+    # moves it.
+    owns_copy = (stmt.copies_var and elem is not None
+                 and elem.is_expensive_copy())
+    if ((isinstance(et, OwnType) or owns_copy)
+            and not stmt.hoist_loop_var) or consuming:
         f["movable"] = True
     return _mk(site, name, typ, K.LOOP_VAR, **_inherit_outer(f, outer))
 
@@ -2129,6 +2135,12 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     f: dict = {}
     if not stmt.is_loop_head:
         f["movable"] = name in inp.sema_movable
+    elif (kind is K.UNPACK_VALUE and flag(stmt.target_copies)
+          and isinstance(tt, TpyType)
+          and (_p._resolve_pending_view(tt, an) or tt).is_expensive_copy()):
+        # A head target that takes its own copy each pass: its last use in
+        # the pass moves it.
+        f["movable"] = True
     if kind is K.UNPACK_OPT_PTR:
         f["pointer"] = True
     elif kind is K.UNPACK_PTR_VARIANT:
@@ -2202,7 +2214,9 @@ def _standalone_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an) -> K:
 def _head_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an) -> K:
     """The bind a for head's fresh unpack target `i` takes (the for-each
     arm's head; a target writing the outer binding keys no record,
-    `head_target_writes_outer`)."""
+    `head_target_writes_outer`). A target sema stamps as taking its own
+    copy (`target_copies`) copies instead of a const reference into the
+    holder."""
     flag = (lambda xs: bool(xs[i]) if i < len(xs) else False)
     if _p._optional_ptr_borrow(tt, an) is not None:
         return K.UNPACK_OPT_PTR
@@ -2210,7 +2224,9 @@ def _head_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an) -> K:
         return K.UNPACK_MOVE
     if flag(stmt.is_ref):
         return K.UNPACK_PTR if flag(stmt.is_rebound) else K.UNPACK_REF
-    return K.UNPACK_CREF if flag(stmt.is_const_ref) else K.UNPACK_VALUE
+    if flag(stmt.is_const_ref) and not flag(stmt.target_copies):
+        return K.UNPACK_CREF
+    return K.UNPACK_VALUE
 
 
 def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
@@ -2268,14 +2284,8 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
         return None
     # The clause's loop binds its variable (an unpack clause, its holder)
     # as the for statement's loop binds an element of the same type.
-    loop_const = bool(gen.const_loop_var)
-    rt = an.get_expr_type(site.comp) if site.comp is not None else None
-    if rt is not None and is_array(rt):
-        # A const ref would see the element expression's write to the
-        # source; CPython keeps the bound object:
-        # BUGS.md#const-ref-loop-var-sees-source-write.
-        loop_const = False
-    loop = (loop_binding_kind(route.et, loop_const)
+    loop = (loop_binding_kind(route.et, bool(gen.const_loop_var),
+                              copies=gen.copies_var)
             if route.et is not None else None)
     if route.unpack_types is not None and name == gen.var:
         return _mk(site, name, typ, K.COMP_UNPACK_HOLDER, loop_binding=loop)

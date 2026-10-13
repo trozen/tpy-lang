@@ -387,7 +387,7 @@ void comprehension() {
         auto __beg_0 = __obj_0.begin();
         auto __end_0 = __obj_0.end();
         for (; __beg_0 != __end_0; ++__beg_0) {
-            const ::tpy::Bytes& w = *__beg_0;
+            ::tpy::Bytes w = *__beg_0;
             __result.push_back(::tpystd::zlib::crc32(w));
         }
         std::move(__result);
@@ -398,7 +398,7 @@ void comprehension() {
         auto __beg_1 = __obj_1.begin();
         auto __end_1 = __obj_1.end();
         for (; __beg_1 != __end_1; ++__beg_1) {
-            const ::tpy::Bytes& w = *__beg_1;
+            ::tpy::Bytes w = *__beg_1;
             __result.push_back(::tpystd::zlib::adler32(w));
         }
         std::move(__result);

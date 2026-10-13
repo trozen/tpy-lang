@@ -59,7 +59,7 @@ from ..modules import get_span_return_type
 from .context import OwnSlot, ParkedFunctionState, ParkedRebind, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
-    SemanticError, NOCOPY_REMEDIATION_HINT,
+    SemanticError, NOCOPY_REMEDIATION_HINT, NOCOPY_REPEATED_READ_HINT,
     CONSUMING_FIELD_MOVE_NOTE, CONSUMING_FIELD_COPY_CLAUSE)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
@@ -4927,6 +4927,9 @@ class TypeCompatibility:
         """The parenthesized remedy of a non-copyable copy error for `expr`."""
         if self.is_consuming_field_borrow(expr):
             return f" ({CONSUMING_FIELD_MOVE_NOTE})"
+        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        if inner is not None and inner in self.ctx.repeated_reads:
+            return NOCOPY_REPEATED_READ_HINT
         return NOCOPY_REMEDIATION_HINT
 
     def source_copies_into_storage(self, expr: 'TpyExpr | None',
@@ -5150,7 +5153,7 @@ class TypeCompatibility:
         if self.ctx.is_type_non_copyable(payload):
             raise self.ctx.error(
                 f"cannot copy non-copyable type '{payload}' into owned "
-                f"storage (tuple element {i}){NOCOPY_REMEDIATION_HINT}", expr)
+                f"storage (tuple element {i}){self.nocopy_hint(expr)}", expr)
         where = f"owned storage (tuple element {i})"
         if not self.ctx.defer_own_copy_verdict(payload, payload, where, expr):
             self.ctx.warning(

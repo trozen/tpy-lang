@@ -276,11 +276,11 @@ struct Many {
     // d: dict[int32, P]
     ::tpy::ordered_map<int32_t, P> d;
 
-    // def __init__(self, p: Own[P]) -> None:
+    // def __init__(self, p: Own[P]) -> None:  # tpyc: warning(/'p' is never consumed/)
     Many() = default;
     explicit Many(P&& p);
 
-    // def reset(self, p: Own[P], r: P) -> None:
+    // def reset(self, p: Own[P], r: P) -> None:  # tpyc: warning(/'p' is never consumed/)
     void reset(P&& p, const P& r);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Many";
 };
@@ -624,10 +624,11 @@ inline void Opt::elem(std::vector<P>& ps) {
     }
 }
 
-// def __init__(self, p: Own[P]) -> None:
+// def __init__(self, p: Own[P]) -> None:  # tpyc: warning(/'p' is never consumed/)
 //     # ctor: a comprehension element reading an Own param copies it once
-//     # per element, UNWARNED (BUGS.md#comp-element-move-inside-loop).
-//     self.xs = [p for _ in range(3)]
+//     # per element with the warning: the element runs once per item, so
+//     # it is never the param's last use, and nothing consumes `p`.
+//     self.xs = [p for _ in range(3)]  # tpyc: warning(/copies P into owned storage/)
 //     self.d = {}
 inline Many::Many(P&& p)
     : xs(({
@@ -640,10 +641,10 @@ inline Many::Many(P&& p)
 })),
       d(::tpy::ordered_map<int32_t, P>()) {}
 
-// def reset(self, p: Own[P], r: P) -> None:
-//     # method: the same element copies unwarned; a dict-comp value from an
-//     # outer record name copies with the warning.
-//     self.xs = [p for _ in range(2)]
+// def reset(self, p: Own[P], r: P) -> None:  # tpyc: warning(/'p' is never consumed/)
+//     # method: the same element copies with the warning, and so does a
+//     # dict-comp value from an outer record name.
+//     self.xs = [p for _ in range(2)]  # tpyc: warning(/copies P into owned storage/)
 //     self.d = {i: r for i in range(2)}  # tpyc: warning(/copies P into owned storage/)
 inline void Many::reset(P&& p, const P& r) {
     this->xs = ({
