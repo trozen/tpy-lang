@@ -1432,3 +1432,88 @@ def test_string_codegen_matches_written_sources_for_cycle_peers(tmp_path):
         assert cpp == cpp_path.read_text(), m.name
         inl_path = hpp_path.with_name(hpp_path.stem + "_inl.hpp")
         assert (inl or None) == (inl_path.read_text() if inl_path.exists() else None), m.name
+
+
+_CLOSURE_PROGRAMS = {
+    "box_and_sync": {"main.py": (
+        "from tplib.box import Box\n"
+        "from tpy.sync import Mutex\n\n\n"
+        "def main() -> None:\n"
+        "    b = Box(1)\n"
+        "    m = Mutex.new(2)\n"
+        "    with m.lock() as g:\n"
+        "        print(b.get() + g.get())\n\n\n"
+        "main()\n")},
+    "box": {"main.py": (
+        "from tplib.box import Box\n\n\n"
+        "def main() -> None:\n"
+        "    b = Box(1)\n"
+        "    print(b.get())\n\n\n"
+        "main()\n")},
+    # A program alias sharing json's alias name.
+    "json_alias_in_main": {"main.py": (
+        "import json\n\n"
+        "type JsonValue = int | list[JsonValue]\n\n\n"
+        "def main() -> None:\n"
+        "    v: JsonValue = 4\n"
+        "    print(isinstance(v, int))\n"
+        "    print(json.dumps([1, 2]))\n\n\n"
+        "main()\n")},
+    # The same alias name in a non-entry module beside json.
+    "json_alias_in_module": {
+        "shapes.py": (
+            "type JsonValue = int | list[JsonValue]\n\n\n"
+            "def depth(v: JsonValue) -> int:\n"
+            "    if isinstance(v, int):\n"
+            "        return 0\n"
+            "    return 1\n"),
+        "main.py": (
+            "import json\n"
+            "import shapes\n\n\n"
+            "def main() -> None:\n"
+            "    print(shapes.depth(4))\n"
+            "    print(json.dumps([1, 2]))\n\n\n"
+            "main()\n")},
+}
+
+
+def test_library_module_cpp_does_not_depend_on_the_program(tmp_path):
+    # A module's C++ is a function of the module and its own import closure:
+    # every library module two programs share is emitted byte-identically.
+    emitted: dict[str, dict[str, tuple[str, str, str | None]]] = {}
+    for program, files in _CLOSURE_PROGRAMS.items():
+        src = tmp_path / program
+        src.mkdir()
+        for name, text in files.items():
+            (src / name).write_text(text)
+        compiler = Compiler(src / "main.py", default_int="int32", lib_dirs=_STDLIB_DIRS)
+        modules = compiler.compile()
+        assert not [d for m in modules for d in m.analyzer.diagnostics
+                    if d.level == DiagnosticLevel.ERROR], program
+        emitted[program] = {
+            m.name: compiler.generate_inl_and_code_to_strings(m)
+            for m in modules if m.path.parent != src}
+    shared = 0
+    programs = list(emitted)
+    for i, first in enumerate(programs):
+        for second in programs[i + 1:]:
+            for name in emitted[first].keys() & emitted[second].keys():
+                shared += 1
+                assert emitted[first][name] == emitted[second][name], (
+                    f"{name} differs between {first} and {second}")
+    assert {"tplib.box", "json"} <= emitted["box"].keys() | emitted["json_alias_in_main"].keys()
+    assert shared > 50
+
+
+def test_module_import_closure_leaves_out_the_program_around_it(tmp_path):
+    # The gates on the native-record, registry and protocol readers emit the
+    # same C++ either way today; their input, the closure, is pinned here.
+    for name, text in _CLOSURE_PROGRAMS["box_and_sync"].items():
+        (tmp_path / name).write_text(text)
+    compiler = Compiler(tmp_path / "main.py", default_int="int32", lib_dirs=_STDLIB_DIRS)
+    compiler.compile()
+    assert "tpy.sync" in compiler.modules
+    assert "tpy.sync" in compiler.module_import_closure("main")
+    box = compiler.module_import_closure("tplib.box")
+    assert {"tplib.box", "tplib", "tpy", "typing", "builtins"} <= box
+    assert "tpy.sync" not in box and "main" not in box

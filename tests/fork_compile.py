@@ -15,6 +15,12 @@ Templates: `base` prepares the implicit stdlib; `asyncio` adds a layer
 rooted at `asyncio`. A `base` child whose program reaches asyncio answers
 "reroute" before analyzing anything, and the request goes to `asyncio`.
 
+After `prepare`, a server generates its template's library modules once, in
+a child finishing an empty program (`conftest.emit_library`); its children
+see the result through `library_emission()`, and `compile_case` writes those
+files instead of generating the modules again when the program left what
+their C++ depends on as the server had it.
+
 The program compiles in-process instead when its compiler configuration is
 not the templates', when the child finds the prepared layers do not hold for
 it (`LayerReuseRefused`: a program-local module shadows a prepared one, ...),
@@ -36,6 +42,7 @@ import importlib.util
 import inspect
 import os
 import pickle
+import shutil
 import signal
 import struct
 import subprocess
@@ -114,6 +121,9 @@ class _Server:
         if ready.get("kind") != "ready":
             self.close()
             raise _ServerFailed(f"compile server '{key}' failed to start:\n{ready.get('error', '')}")
+        # The library modules its children write instead of generating, or
+        # why there are none.
+        self.library: list[str] | str = ready["library"]
 
     def _read(self) -> dict:
         reply = _recv(self.proc.stdout)
@@ -328,16 +338,52 @@ def serve(key: str) -> None:
     except BaseException:
         _send(replies, {"kind": "failed", "error": traceback.format_exc()})
         return
+    libc = ctypes.CDLL(None, use_errno=True)
+    library = _emit_library(compiler, key, replies.fileno(), libc)
     # Children only read the template; keeping it out of the collector's
     # generations keeps a collection from touching (and copying) its pages.
     gc.freeze()
-    libc = ctypes.CDLL(None, use_errno=True)
-    _send(replies, {"kind": "ready"})
+    _send(replies, {"kind": "ready", "library": library})
     while True:
         req = _recv(requests)
         if req is None:
             return
         _send(replies, _fork_one(compiler, key, req, replies.fileno(), libc))
+
+
+_library = None
+
+
+def library_emission():
+    """The template's library modules as this compile server generated them
+    (`conftest.LibraryEmission`), in its children; None anywhere else."""
+    return _library
+
+
+def _emit_library(compiler: Compiler, key: str, replies_fd: int,
+                  libc: ctypes.CDLL) -> list[str] | str:
+    """Generate the template's library modules once, in a child finishing an
+    empty program, so the template the cases fork from stays as `prepare`
+    left it. Returns the modules generated, or why there are none."""
+    global _library
+    import conftest
+    program_dir = Path(tempfile.mkdtemp(prefix="tpy-fork-library-"))
+    try:
+        entry = program_dir / "main.py"
+        entry.write_text("")
+        reply = _fork_one(compiler, key,
+                          request(conftest.emit_library, entry, (), cwd=str(program_dir),
+                                  default_int=TEMPLATE_DEFAULT_INT,
+                                  lib_dirs=_template_lib_dirs()),
+                          replies_fd, libc)
+    finally:
+        shutil.rmtree(program_dir, ignore_errors=True)
+    if reply["kind"] != "result":
+        return f"{reply['kind']}: {reply.get('raise') or reply.get('stderr') or reply}"
+    _library = reply["result"]
+    if _library.diagnostic is not None:
+        return f"a diagnostic while generating: {_library.diagnostic}"
+    return sorted(_library.modules)
 
 
 _PR_SET_PDEATHSIG = 1

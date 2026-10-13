@@ -14,7 +14,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace as dc_replace
 from enum import Enum
-from typing import Any, Callable, Iterable, Iterator, NamedTuple, Optional, Sequence, TYPE_CHECKING
+from typing import Any, Callable, Collection, Iterable, Iterator, NamedTuple, Optional, Sequence, TYPE_CHECKING
 
 from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
@@ -9097,8 +9097,9 @@ class TypeRegistry:
         """Get a builtin record by qualified name."""
         return self._qname_index.get(qname)
 
-    def get_native_builtin_records(self) -> list[RecordInfo]:
-        """Return native records that need C++ name registration.
+    def get_native_builtin_records(self, modules: Collection[str]) -> list[RecordInfo]:
+        """Return the native records of `modules` that need C++ name
+        registration.
 
         Used by codegen to register C++ name mappings for types that don't
         have dedicated type classes (e.g. TextIO -> tpy::TextFile,
@@ -9106,13 +9107,20 @@ class TypeRegistry:
         """
         seen: set[str] = set()
         result: list[RecordInfo] = []
+
+        def wanted(r: RecordInfo) -> bool:
+            # Filtered before the short-name de-dup, so a record outside
+            # `modules` cannot hide a same-named one inside.
+            return (r.is_native and bool(r.native_name) and not r.type_factory
+                    and r.module in modules)
+
         for r in self._qname_index.values():
-            if r.is_native and r.native_name and not r.type_factory:
+            if wanted(r):
                 result.append(r)
                 seen.add(r.name)
         for mod in self.modules.values():
             for r in mod.records.values():
-                if r.name not in seen and r.is_native and r.native_name and not r.type_factory:
+                if r.name not in seen and wanted(r):
                     result.append(r)
                     seen.add(r.name)
         return result

@@ -106,6 +106,28 @@ Two clients use it:
 - Template keys: `base` prepares the implicit stdlib; `asyncio` adds a layer
   rooted at `asyncio`. A `base` child whose program reaches asyncio answers
   "reroute" before analyzing anything and the case goes to `asyncio`.
+- Library C++ is generated once per server: after `prepare`, a throwaway
+  child finishes an empty program and generates every template module
+  (`conftest.emit_library`, with `TEST_CODEGEN_OPTIONS`); the server keeps
+  each module's sources (`Compiler.generate_module_sources`) and the THIR
+  face witnesses its generation added. A case's `compile_case` writes those
+  sources through the compiler's own write step
+  (`Compiler.write_module_sources`, at the case's layout paths) and adds
+  those witnesses instead of generating the template modules, so
+  its result equals the in-process one. This rests on a module's C++ not
+  depending on the rest of the program (`docs/ARCHITECTURE.md`). It
+  generates every module as before when the case's codegen options differ,
+  when a program module renamed a template module's header path (a
+  workspace-wide include-path collision), or when the program registered a
+  return-exception name the template did not (that set is keyed by bare
+  name and library bodies read it); a module the case's
+  `snapshot_lib_modules` names is always generated, so its snapshot pins
+  the case's own generation. A server whose library generation reported a
+  diagnostic stores nothing (a case writing the stored files would not
+  report it), so its cases generate every module. The servers' ready reply
+  lists the modules, or why there are none -- a failed generation or that
+  diagnostic (`_Server.library`). Library modules outside the templates are
+  still generated per case.
 - What the function raised (`pytest.fail` included) is raised again in the
   worker, with the child's traceback as a note. A child killed by a signal
   fails its test with the signal and the child's stderr. A reroute or a

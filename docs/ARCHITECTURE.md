@@ -363,6 +363,31 @@ still writes into earlier layers' state (the builtin reindex, the
 workspace-wide passes, importers re-registering their dependencies); a per-file
 analysis cache needs those writes gone first (TODO.md).
 
+A second invariant holds for codegen: a module's generated C++ is a function of
+the module, its own import closure and the codegen options, never of the other
+modules the program compiles. The closure is `Compiler.module_import_closure`:
+the module, the implicit roots (`typing`, `tpy`, `builtins`) and, transitively,
+each one's imports, reached modules, macro deps and parent packages.
+`_run_codegen` hands codegen that set as the modules it may consult
+(`ctx.all_user_modules`, `ctx.implicit_stdlib_modules`), so the implicit
+`tpy.*` includes, the cross-module short-name registrations and the imported
+recursive-union aliases come from it, and `_inl_modules_for` filters it.
+`tpyc/test_compiler.py` pins it (programs sharing library modules emit them
+byte-identically), and the forked test compiles rely on it to write a
+template's library C++ generated once (`tests/README.md` "Forked compiles").
+One workspace-wide input remains: the include-path collision rename
+(`Compiler._build_include_path_map`) looks at every module the program
+compiles, so a module's include path, and with it the C++ that includes it,
+can depend on another module of the program (a module declaring
+`cpp_namespace("tpystd::typing::_typing")` moves `tpy._typing`'s header); the
+forked reuse guards it by comparing the template modules' include paths.
+What still leaks across modules by short name is filed: an imported
+module's recursive alias, or a native record of the closure, sharing its
+short name with the importer's own alias takes it over (BUGS.md), and the
+compiler-wide maps keyed by bare name (`union_display_names`,
+`protocol_modules`, `return_exception_names`; TODO.md "Per-file analysis
+cache").
+
 Cyclic imports between user modules are detected via Tarjan SCC over
 the import graph. Cycle members must be import + declaration only at
 top level (no executable statements); package `__init__.py` and

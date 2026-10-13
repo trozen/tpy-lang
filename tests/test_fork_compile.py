@@ -17,6 +17,7 @@ import conftest
 import fork_compile
 from conftest import CASES_DIR, CompileResult, case_fork_request, case_request, compile_case
 from tpyc.compiler import Compiler
+from tpyc.sema import Diagnostic, DiagnosticLevel
 
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="forked compiles are Linux-only")
 
@@ -66,6 +67,9 @@ def _copy_case(case: Path, tmp_path: Path) -> Path:
     "macros/builder_smoke",  # stdlib builder macro
     "tplib/arc_weak_after_drop",
     "stdlib/http_client",
+    # The stored template modules' C++ must not see the program's `tpy.*`
+    # modules outside the template.
+    "threading/mutex_shared",
 ])
 def test_forked_compile_matches_in_process(case, tmp_path, servers):
     src = _copy_case(CASES_DIR / case, tmp_path)
@@ -82,6 +86,126 @@ def test_forked_compile_matches_in_process(case, tmp_path, servers):
         # Equal could be both empty: the session's THIR tally reads these
         # (an async-only case lowers frames, not plain bodies).
         assert forked.thir_faces
+
+
+def _prepared(key: str, tmp_path: Path) -> Compiler:
+    """A compiler holding template `key`'s layers, as its compile server's."""
+    template_dir = tmp_path / f"template-{key}"
+    template_dir.mkdir()
+    compiler = Compiler(template_dir / "__template__.py",
+                        default_int=fork_compile.TEMPLATE_DEFAULT_INT,
+                        lib_dirs=fork_compile._template_lib_dirs())
+    compiler.prepare(fork_compile.TEMPLATES[key])
+    return compiler
+
+
+@pytest.fixture(scope="module")
+def base_library(tmp_path_factory) -> conftest.LibraryEmission:
+    """The base template's library modules, generated as its server does."""
+    tmp_path = tmp_path_factory.mktemp("base-library")
+    compiler = _prepared("base", tmp_path)
+    entry = tmp_path / "main.py"
+    entry.write_text("")
+    return conftest.emit_library(compiler, lambda: compiler.finish(entry, reuse=True))
+
+
+def _compile_reusing(library: conftest.LibraryEmission, req, tmp_path: Path,
+                     monkeypatch) -> tuple[CompileResult, set[str]]:
+    """`compile_case` as a base server's child runs it, with `library` as the
+    server's emission; also returns the modules it generated."""
+    monkeypatch.setattr(fork_compile, "_library", library)
+    compiler = _prepared("base", tmp_path)
+    generated: set[str] = set()
+    generate_code = compiler.generate_code
+
+    def recording(mod, *args, **kwargs):
+        generated.add(mod.name)
+        return generate_code(mod, *args, **kwargs)
+
+    compiler.generate_code = recording
+    result = compile_case(compiler, lambda: compiler.finish(req.src_file, reuse=True), req)
+    return result, generated
+
+
+def _reuse_matches_in_process(library, req, tmp_path, monkeypatch) -> set[str]:
+    """The modules the reusing compile generated; its result and C++ are
+    the in-process compile's."""
+    out = req.output_dir
+    reused, generated = _compile_reusing(library, req, tmp_path, monkeypatch)
+    reused_tree = _tree(out)
+    shutil.rmtree(out)
+    # Otherwise the baseline would write the same stored files.
+    monkeypatch.setattr(fork_compile, "_library", None)
+    assert dataclasses.asdict(reused) == dataclasses.asdict(_plain(req))
+    assert reused_tree == _tree(out)
+    return generated
+
+
+def test_child_writes_the_template_library_modules(tmp_path, base_library, monkeypatch, servers):
+    assert len(base_library.modules) > 20
+    # The real server generated the same set at startup.
+    assert fork_compile._server("base").library == sorted(base_library.modules)
+    # A list of modules, not the reason the asyncio server stored none.
+    asyncio_library = fork_compile._server("asyncio").library
+    assert isinstance(asyncio_library, list) and asyncio_library
+    src = _copy_case(CASES_DIR / "tplib/arc_weak_after_drop", tmp_path)
+    req = case_request(src, src.parent.parent / "__tpyc__")
+    generated = _reuse_matches_in_process(base_library, req, tmp_path, monkeypatch)
+    assert generated and not generated & set(base_library.modules)
+    # Equal witness tallies above include the written modules' own.
+    assert any(m.faces for m in base_library.modules.values())
+
+
+@pytest.mark.parametrize("reported_on", ["compiler", "module"])
+def test_library_with_a_generation_diagnostic_stores_nothing(reported_on, tmp_path):
+    compiler = _prepared("base", tmp_path)
+    generate = compiler.generate_module_sources
+
+    def warning_while_generating(mod, *args, **kwargs):
+        sink = compiler.diagnostics if reported_on == "compiler" else mod.analyzer.diagnostics
+        sink.append(Diagnostic(DiagnosticLevel.WARNING, "while generating"))
+        return generate(mod, *args, **kwargs)
+
+    compiler.generate_module_sources = warning_while_generating
+    entry = tmp_path / "main.py"
+    entry.write_text("")
+    library = conftest.emit_library(compiler, lambda: compiler.finish(entry, reuse=True))
+    # A case writing the stored files would not report the warning.
+    assert library.modules == {}
+    assert library.diagnostic == "while generating"
+
+
+_RETURN_EXCEPTION_PROGRAM = """\
+from tpy import ReturnException
+
+
+class Oops(Exception, ReturnException):
+    pass
+
+
+print(1)
+"""
+
+
+@pytest.mark.parametrize("guard", ["options", "include_path", "return_exception", "snapshot"])
+def test_reuse_guard_generates_the_modules(guard, tmp_path, base_library, monkeypatch):
+    src = _copy_case(CASES_DIR / "tplib/arc_weak_after_drop", tmp_path)
+    req = case_request(src, src.parent.parent / "__tpyc__")
+    library = base_library
+    if guard == "options":
+        req = dataclasses.replace(req, codegen_options=conftest.CodeGenOptions())
+    elif guard == "include_path":
+        library = dataclasses.replace(
+            library, include_paths={**library.include_paths, "typing": "moved/typing.hpp"})
+    elif guard == "return_exception":
+        src.write_text(_RETURN_EXCEPTION_PROGRAM)
+    else:
+        req = dataclasses.replace(req, snapshot_lib_modules=frozenset({"typing"}))
+    generated = _reuse_matches_in_process(library, req, tmp_path, monkeypatch)
+    if guard == "snapshot":
+        assert generated & set(library.modules) == {"typing"}
+    else:
+        assert set(library.modules) <= generated
 
 
 def test_asyncio_program_is_rerouted(tmp_path, servers):

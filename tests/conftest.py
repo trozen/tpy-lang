@@ -59,8 +59,8 @@ from tpyc.parse import Parser, ParseError
 from tpyc.sema import (SemanticAnalyzer, SemanticError, Diagnostic,
                        DiagnosticLevel, format_diagnostics)
 from tpyc.compiler import (
-    Compiler, CompiledModule, CompileError, BuildLayout, CppCompilerConfig, strict_warn_flags,
-    get_or_build_pch, list_compilers, CompilerNotFoundError,
+    Compiler, CompiledModule, CompileError, BuildLayout, CppCompilerConfig, ModuleSources,
+    strict_warn_flags, get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
 from tpyc.toolchain import (
     compiler_target_os, host_os, mark_cache_entry_used, pch_is_path_sensitive,
@@ -1268,6 +1268,92 @@ def sweep_compiles(request):
     program_compile.use(None)
 
 
+@dataclass(frozen=True)
+class ModuleEmission:
+    """One library module's generated sources and the THIR face witnesses
+    their generation added."""
+    sources: ModuleSources
+    faces: dict[str, int]
+
+
+@dataclass(frozen=True)
+class LibraryEmission:
+    """A compile server's template library modules, generated once (see
+    tests/fork_compile.py), with the program state their C++ depends on
+    beyond the modules themselves; `compile_case` writes them instead of
+    generating them again when the case's compile has that same state."""
+    options: CodeGenOptions
+    # Set when a diagnostic reported while generating left `modules` empty.
+    diagnostic: str | None
+    include_paths: dict[str, str | None]
+    return_exception_names: frozenset[str]
+    modules: dict[str, ModuleEmission]
+
+
+def emit_library(compiler: Compiler, run: Callable[[], list[CompiledModule]]) -> LibraryEmission:
+    """Generate every library module of the program `run()` analyzes (a
+    compile server's empty program: its template's modules) as
+    `compile_case` would, and keep the C++ in memory."""
+    modules = run()
+
+    def all_diagnostics() -> list[Diagnostic]:
+        return [*compiler.diagnostics, *(d for m in modules if m.analyzer is not None
+                                         for d in m.analyzer.diagnostics)]
+
+    emitted: dict[str, ModuleEmission] = {}
+    before_generating = {id(d) for d in all_diagnostics()}
+    for mod in modules:
+        if mod.is_entry_point:
+            continue
+        before = dict(compiler._thir_face_witnesses)
+        sources = compiler.generate_module_sources(mod, options=TEST_CODEGEN_OPTIONS)
+        faces = {face: n - before.get(face, 0)
+                 for face, n in compiler._thir_face_witnesses.items()
+                 if n != before.get(face, 0)}
+        emitted[mod.name] = ModuleEmission(sources=sources, faces=faces)
+    # A diagnostic reported while generating would be missing from a case that
+    # writes the stored files instead, so such a template reuses nothing.
+    new = [d for d in all_diagnostics() if id(d) not in before_generating]
+    if new:
+        emitted = {}
+    return LibraryEmission(
+        options=TEST_CODEGEN_OPTIONS,
+        diagnostic=new[0].message if new else None,
+        include_paths={name: compiler.include_path_map.get(name) for name in emitted},
+        return_exception_names=frozenset(compiler.return_exception_names),
+        modules=emitted)
+
+
+def _reusable_emission(compiler: Compiler, req: CaseRequest) -> dict[str, ModuleEmission]:
+    """The stored library modules this case's compile may write instead of
+    generating, when it runs in a compile server's child: none unless the
+    program left everything their C++ depends on as the server had it."""
+    emission = fork_compile.library_emission()
+    if emission is None or req.codegen_options != emission.options:
+        return {}
+    # A program module whose header path collided with a template module's
+    # renames it (`Compiler._build_include_path_map`).
+    if any(compiler.include_path_map.get(name) != path
+           for name, path in emission.include_paths.items()):
+        return {}
+    # Keyed by bare name, and the lowering of library bodies reads it
+    # (BUGS.md#return-exception-bare-name).
+    if not compiler.return_exception_names <= emission.return_exception_names:
+        return {}
+    return emission.modules
+
+
+def _write_emission(stored: ModuleEmission, layout: BuildLayout, mod_name: str,
+                    compiler: Compiler) -> tuple[Path | None, Path | None]:
+    """`generate_code`'s effect for a stored library module."""
+    paths = compiler.write_module_sources(stored.sources, layout, mod_name)
+    # Only the face witnesses are replayed: `compile_case` reads the routed
+    # body count before the library modules, so it never counted theirs.
+    for face, n in stored.faces.items():
+        compiler._thir_face_witnesses[face] = compiler._thir_face_witnesses.get(face, 0) + n
+    return paths
+
+
 def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                  req: CaseRequest) -> CompileResult:
     """The body of one case's compile, in this process or in a forked child:
@@ -1326,15 +1412,23 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         snapshot_lib: set[str] = set()
         matched_patterns: set[str] = set()
         lib_paths: dict[str, tuple[Path | None, Path | None]] = {}
+        reusable = _reusable_emission(compiler, req)
+        layout = BuildLayout(output_dir, entry_module.name)
         for mod in lib_mods:
-            with _codegen_error_from(mod):
-                hpp_path, cpp_path = compiler.generate_code(
-                    mod, output_dir, entry_module_name=entry_module.name,
-                    options=req.codegen_options
-                )
+            hits = snapshot_lib_pattern_hits(mod.name, req.snapshot_lib_modules)
+            stored = reusable.get(mod.name)
+            # A snapshotted module is generated, so its snapshot pins this
+            # program's own generation.
+            if stored is not None and not hits:
+                hpp_path, cpp_path = _write_emission(stored, layout, mod.name, compiler)
+            else:
+                with _codegen_error_from(mod):
+                    hpp_path, cpp_path = compiler.generate_code(
+                        mod, output_dir, entry_module_name=entry_module.name,
+                        options=req.codegen_options
+                    )
             all_modules.append((mod.name, hpp_path, cpp_path, False))
             lib_paths[mod.name] = (hpp_path, cpp_path)
-            hits = snapshot_lib_pattern_hits(mod.name, req.snapshot_lib_modules)
             if hits:
                 snapshot_lib.add(mod.name)
                 matched_patterns |= hits
@@ -1364,7 +1458,6 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         diagnostics = "".join(f"{line}\n" for _, line in format_diagnostics(compiler, compiled_modules))
 
         # Return paths for the entry point module
-        layout = BuildLayout(output_dir, entry_module.name)
         hpp_path = layout.hpp_path(entry_module.name)
         cpp_path = layout.cpp_path(entry_module.name)
         ctx = entry_module.analyzer.ctx if entry_module.analyzer else None

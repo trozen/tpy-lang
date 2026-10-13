@@ -31,7 +31,7 @@ def validate_ext_module_exports(compiler: 'Compiler') -> None:
       - ext_module + native_module is contradictory: native is
         declaration-only (no generated code, hence no module body to attach
         PyInit_ to), so the combination would emit a PyInit_-less .so. The
-        empty-hpp early-return in _generate_code_impl is reachable only via
+        empty-hpp early-return in _produce_module_sources is reachable only via
         this combo, so rejecting it here removes the silent drop.
       - Every @export-ed function's param/return types must have a CPython
         boundary marshaller. Runs post-sema so the types are resolved.

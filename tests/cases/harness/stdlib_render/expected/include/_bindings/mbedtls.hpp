@@ -6,12 +6,6 @@
 
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
-#include "tpystd/tpy/atomic.hpp"
-#include "tpystd/tpy/channel.hpp"
-#include "tpystd/coro.hpp"
-#include "tpystd/tpy/sync.hpp"
-#include "tpystd/tpy/thread.hpp"
-#include "tpystd/tpy/version.hpp"
 
 namespace tpystd::_bindings::mbedtls {
 

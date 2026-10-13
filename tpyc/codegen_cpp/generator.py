@@ -136,9 +136,9 @@ class CodeGenerator:
         self.gen_async.gen_generators = self.gen_generators
 
     def generate(self, module: TpyModule, module_name: str = "generated",
-                 is_entry_point: bool = True,
-                 actual_user_modules: set[str] | None = None,
-                 implicit_stdlib_modules: set[str] | None = None,
+                 is_entry_point: bool = True, *,
+                 actual_user_modules: set[str],
+                 implicit_stdlib_modules: set[str],
                  cycle_peers: 'frozenset[str] | None' = None,
                  inl_modules: 'list[str] | None' = None,
                  emits_inl: bool = False) -> tuple[str, str]:
@@ -148,8 +148,9 @@ class CodeGenerator:
             module: The parsed TurboPython module AST.
             module_name: Name for the generated files (used in #include).
             is_entry_point: True if this is the entry point module (generates main()).
-            actual_user_modules: Set of module names that are actually user modules (have source files).
-                                 If None, uses module.user_module_imports (legacy behavior).
+            actual_user_modules: The compiled modules this module may consult
+                                 (its import closure).
+            implicit_stdlib_modules: The implicit stdlib modules among them.
             inl_modules: Modules whose `<mod>_inl.hpp` the .cpp includes after
                 its other headers (every dependency that emits one, plus this
                 module).
@@ -168,6 +169,10 @@ class CodeGenerator:
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
         self.ctx.cycle_peers = cycle_peers or frozenset()
+        # Filter user_module_imports to only include actual user modules (not builtins without user files)
+        self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
+        self.ctx.all_user_modules = actual_user_modules
+        self.ctx.implicit_stdlib_modules = implicit_stdlib_modules
         # Filter out keyword stubs (@builtin_type classes / @builtin_decorator functions
         # that exist only for import resolution -- no C++ code needed).
         module.records = [
@@ -318,7 +323,8 @@ class CodeGenerator:
         # through.
         local_short_record_names = {r.name for r in module.records}
         for dep_module in self.analyzer.registry.modules.values():
-            if dep_module.name == current_module:
+            if (dep_module.name == current_module
+                    or dep_module.name not in self.ctx.all_user_modules):
                 continue
             for short, record_info in dep_module.records.items():
                 if short in native_cpp_names:
@@ -388,7 +394,10 @@ class CodeGenerator:
         # NominalType.to_cpp() resolves even when the type isn't explicitly imported.
         # Skip names that shadow local record definitions in the current module.
         local_record_names = {r.name for r in module.records}
-        for record_info in self.analyzer.registry.get_native_builtin_records():
+        # Sema registers every implicit module the program compiles, not only
+        # this module's closure.
+        for record_info in self.analyzer.registry.get_native_builtin_records(
+                self.ctx.all_user_modules):
             if record_info.name not in local_record_names:
                 register_native_cpp_name(record_info.name, record_info.native_name)
         # Register imported union type aliases so UnionType.to_cpp() can use
@@ -436,14 +445,6 @@ class CodeGenerator:
                     register_recursive_alias_cpp_name(
                         f"{imported_module}.{alias_name}",
                         qualified_cpp_name(imported_module, alias_name))
-        # Filter user_module_imports to only include actual user modules (not builtins without user files)
-        if actual_user_modules is not None:
-            self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
-            self.ctx.all_user_modules = actual_user_modules
-        else:
-            self.ctx.user_module_imports = module.user_module_imports
-            self.ctx.all_user_modules = set(module.user_module_imports.keys())
-        self.ctx.implicit_stdlib_modules = implicit_stdlib_modules or set()
         self.ctx.top_level_decls = dict(self.analyzer.ctx.top_level_decls)
         self.ctx.macro_dep_modules = set(self.analyzer.ctx.macro_dep_modules)
         # Recursive-union wrapper metadata is populated during sema

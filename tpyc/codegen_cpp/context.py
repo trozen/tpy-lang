@@ -1940,7 +1940,8 @@ class CodeGenContext:
     def iter_imported_recursive_unions(self) -> 'Iterator[RecursiveUnionInfo]':
         """Yield each cross-module recursive alias once.
 
-        Skips aliases whose origin is the current module. The compiler-wide
+        Skips aliases whose origin is the current module or outside the
+        modules it may consult (`all_user_modules`). The compiler-wide
         index contains each alias under both its full member tuple and the
         non-None subset, so id-based de-dup is needed -- both keys point
         at the same RecursiveUnionInfo instance produced by `_register`.
@@ -1950,7 +1951,8 @@ class CodeGenContext:
             return
         seen: set[int] = set()
         for info in compiler.union_wrapper_index.values():
-            if info.origin == self.module_name:
+            if (info.origin == self.module_name
+                    or info.origin not in self.all_user_modules):
                 continue
             if id(info) in seen:
                 continue

@@ -608,6 +608,17 @@ class CompiledModule:
     _skeleton_ids: _SkeletonSnapshot | None = None
 
 
+@dataclass(frozen=True)
+class ModuleSources:
+    """One module's generated C++, before it is written to a `BuildLayout`.
+    An empty `hpp` means the module emits no files."""
+    hpp: str
+    cpp: str
+    fwd: str | None = None
+    inl: str | None = None
+    ext_glue: str | None = None
+
+
 class CompileError(Exception):
     """Error during multi-module compilation."""
     def __init__(self, message: str, module_name: str | None = None, path: Path | None = None,
@@ -690,10 +701,9 @@ class Compiler:
         self._cycle_peers: dict[str, frozenset[str]] = {}
         # Direct user-module import edges, recorded by the SCC pass.
         self._import_succ: dict[str, list[str]] = {}
-        # Per-module `<mod>_inl.hpp` verdicts and the implicit-stdlib set,
-        # both asked once per generated module -- each answer is a scan.
+        # Per-module `<mod>_inl.hpp` verdicts and import closures, both asked
+        # once per generated module -- each answer is a scan.
         self._emits_inl_cache: dict[str, bool] = {}
-        self._implicit_stdlib_cache: set[str] | None = None
         self._reach_cache: dict[str, frozenset[str]] = {}
         # The import components (Tarjan SCCs) in compile order, each
         # member list in compile order; `compile_order` is their flattening.
@@ -1198,10 +1208,16 @@ class Compiler:
         an imported library would otherwise be reported against whatever
         file the caller formats diagnostics with (the entry point). The entry
         point is left unstamped for exactly that reason -- the caller already
-        names it, and the spelling is the caller's to choose."""
+        names it, and the spelling is the caller's to choose.
+
+        The module sees only its import closure: every other module the
+        program compiles stays out of what codegen consults."""
+        visible = self.module_import_closure(mod_name)
         try:
             return codegen.generate(compiled.ast, mod_name,
                                     is_entry_point=compiled.is_entry_point,
+                                    actual_user_modules=set(visible),
+                                    implicit_stdlib_modules=self._expand_implicit_prefixes(visible),
                                     inl_modules=self._inl_modules_for(mod_name),
                                     emits_inl=self._module_emits_inl(mod_name),
                                     **kwargs)
@@ -1248,13 +1264,20 @@ class Compiler:
 
     def _inl_modules_for(self, mod_name: str) -> list[str]:
         """The `_inl.hpp` headers `mod_name`'s .cpp includes: its own and
-        every module its headers can reach -- transitive imports, their
-        parent packages, and the implicit stdlib."""
+        every one of its import closure's."""
+        return sorted(n for n in self.module_import_closure(mod_name)
+                      if self._module_emits_inl(n))
+
+    def module_import_closure(self, mod_name: str) -> frozenset[str]:
+        """Every module `mod_name`'s generated C++ may consult: itself, the
+        implicit roots every module sees without importing them, and,
+        transitively, each one's imports, reached modules, macro deps and
+        parent packages. A function of the module alone, never of what else
+        the program compiles, so a module's C++ is the same in every program
+        that compiles it."""
         succ = self._import_succ
-        if self._implicit_stdlib_cache is None:
-            self._implicit_stdlib_cache = self._implicit_stdlib_set()
         seen: set[str] = set()
-        stack = [mod_name, *self._implicit_stdlib_cache]
+        stack = [mod_name, *self._IMPLICIT_STDLIB]
         while stack:
             name = stack.pop()
             if name in seen or name not in self.modules:
@@ -1267,11 +1290,16 @@ class Compiler:
                 seen |= known
                 continue
             seen.add(name)
+            compiled = self.modules[name]
             stack.extend(succ.get(name, ()))
+            stack.extend(compiled.exports.reached)
+            if compiled.analyzer is not None:
+                stack.extend(compiled.analyzer.ctx.macro_dep_modules)
             parts = name.split(".")
             stack.extend(".".join(parts[:i]) for i in range(1, len(parts)))
-        self._reach_cache[mod_name] = frozenset(seen)
-        return sorted(n for n in seen if self._module_emits_inl(n))
+        closure = frozenset(seen)
+        self._reach_cache[mod_name] = closure
+        return closure
 
     def _discover_implicit_stdlib(self) -> None:
         """Discover implicit stdlib modules that builtins depend on."""
@@ -1891,7 +1919,6 @@ class Compiler:
         self._cycle_peers = {}
         # A recompile (the REPL adds a module per line) can change both.
         self._emits_inl_cache = {}
-        self._implicit_stdlib_cache = None
         self._reach_cache = {}
         for component in sccs:
             if len(component) > 1 or component[0] in succ.get(component[0], []):
@@ -3773,8 +3800,8 @@ class Compiler:
                             entry_module_name: str | None,
                             options: CodeGenOptions | None,
                             flat: bool) -> 'tuple[Path | None, Path | None, CodeGenerator]':
-        self._check_no_errors(compiled)
         mod_name = compiled.name
+        sources, codegen = self._produce_module_sources(compiled, options)
 
         # Determine root directory name from entry module
         if entry_module_name is None:
@@ -3786,70 +3813,82 @@ class Compiler:
                 entry_module_name = mod_name
 
         layout = BuildLayout(output_dir, entry_module_name, flat=flat)
-        hpp_path = layout.hpp_path(mod_name)
-        cpp_path = layout.cpp_path(mod_name)
-
-        assert compiled.analyzer is not None
-        codegen = self._make_codegen(compiled, options)
-        # Pass actual user modules (those in self.modules, not builtins without user files)
-        actual_user_modules = set(self.modules.keys())
-        implicit_stdlib = self._implicit_stdlib_set()
-        # Peer modules in the same SCC. Codegen uses this to swap
-        # full <peer>.hpp includes for <peer>_fwd.hpp in the .hpp
-        # (cycle-breaking forward declarations) and to emit our own
-        # <mod>_fwd.hpp. Empty for non-cycle modules.
-        cycle_peers = self._cycle_peers.get(mod_name, frozenset())
-        hpp_code, cpp_code = self._run_codegen(
-            codegen, compiled, mod_name,
-            actual_user_modules=actual_user_modules,
-            implicit_stdlib_modules=implicit_stdlib,
-            cycle_peers=cycle_peers,
-        )
-        # Per-@overload-stub specializations live in their own map but are
-        # routed bodies like any other, so both halves are counted.
-        overload_bodies = [fn for per_stub in
-                           codegen.ctx.thir_overload_functions.values()
-                           for fn in per_stub.values()]
-        self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
-                                     + len(overload_bodies)
-                                     + len(codegen.ctx.thir_constructors))
-        if (codegen.ctx.thir_functions or overload_bodies
-                or codegen.ctx.thir_constructors):
-            self._thir_routed_names[mod_name] = frozenset(
-                [tf.name for tf in codegen.ctx.thir_functions.values()]
-                + [tf.name for tf in overload_bodies]
-                + [f"{tc.record_name}.__init__"
-                   for tc in codegen.ctx.thir_constructors.values()]
-            )
-
-        if not hpp_code:
-            return None, None, codegen
-        hpp_path.parent.mkdir(parents=True, exist_ok=True)
-        hpp_path.write_text(hpp_code)
-        # Cycle members get a `<mod>_fwd.hpp` so peers can include
-        # forward declarations without pulling in full layout.
-        if cycle_peers:
-            fwd_code = codegen.generate_fwd_header(compiled.ast, mod_name)
-            fwd_path = layout.fwd_hpp_path(mod_name)
-            fwd_path.parent.mkdir(parents=True, exist_ok=True)
-            fwd_path.write_text(fwd_code)
-        inl_path = layout.inl_hpp_path(mod_name)
-        if codegen.inl_header_code is not None:
-            inl_path.write_text(codegen.inl_header_code)
-        else:
-            # A stale one would shadow nothing but still be hashed and read.
-            inl_path.unlink(missing_ok=True)
-        cpp_path.parent.mkdir(parents=True, exist_ok=True)
-        cpp_path.write_text(cpp_code)
-
-        # The glue TU joins the link set via collect_ext_glue_paths().
-        if compiled.ast.directives.ext_module:
-            glue_code = codegen.generate_extension_glue(compiled.ast, mod_name)
-            glue_path = cpp_path.with_name(f"{cpp_path.stem}_ext.cpp")
-            glue_path.write_text(glue_code)
-            self._ext_glue_cpp_paths.append(glue_path)
-
+        hpp_path, cpp_path = self.write_module_sources(sources, layout, mod_name)
         return hpp_path, cpp_path, codegen
+
+    def generate_module_sources(self, compiled: CompiledModule,
+                                options: CodeGenOptions | None = None) -> ModuleSources:
+        """The produce half of `generate_code`: the module's files as data,
+        for a caller that writes them later with `write_module_sources`."""
+        sources, _codegen = self._produce_module_sources(compiled, options)
+        return sources
+
+    def _produce_module_sources(self, compiled: CompiledModule,
+                                options: CodeGenOptions | None
+                                ) -> 'tuple[ModuleSources, CodeGenerator]':
+        with activate_compiler(self):
+            mod_name = compiled.name
+            (hpp_code, cpp_code), codegen = self._generate_to_strings(compiled, options)
+            # Per-@overload-stub specializations live in their own map but are
+            # routed bodies like any other, so both halves are counted.
+            overload_bodies = [fn for per_stub in
+                               codegen.ctx.thir_overload_functions.values()
+                               for fn in per_stub.values()]
+            self._thir_routed_bodies += (len(codegen.ctx.thir_functions)
+                                         + len(overload_bodies)
+                                         + len(codegen.ctx.thir_constructors))
+            if (codegen.ctx.thir_functions or overload_bodies
+                    or codegen.ctx.thir_constructors):
+                self._thir_routed_names[mod_name] = frozenset(
+                    [tf.name for tf in codegen.ctx.thir_functions.values()]
+                    + [tf.name for tf in overload_bodies]
+                    + [f"{tc.record_name}.__init__"
+                       for tc in codegen.ctx.thir_constructors.values()]
+                )
+            if not hpp_code:
+                return ModuleSources(hpp="", cpp=cpp_code), codegen
+            # Cycle members get a `<mod>_fwd.hpp` so peers can include
+            # forward declarations without pulling in full layout.
+            fwd_code = (codegen.generate_fwd_header(compiled.ast, mod_name)
+                        if self._cycle_peers.get(mod_name) else None)
+            glue_code = (codegen.generate_extension_glue(compiled.ast, mod_name)
+                         if compiled.ast.directives.ext_module else None)
+            return ModuleSources(hpp=hpp_code, cpp=cpp_code, fwd=fwd_code,
+                                 inl=codegen.inl_header_code,
+                                 ext_glue=glue_code), codegen
+
+    def write_module_sources(self, sources: ModuleSources, layout: BuildLayout,
+                             mod_name: str) -> tuple[Path, Path] | tuple[None, None]:
+        """The write half of `generate_code`: `sources` into `layout`, at the
+        paths this compile gives `mod_name` (its include-path overrides and
+        collision renames). Returns (hpp_path, cpp_path), or (None, None)
+        when the module emits no files."""
+        if not sources.hpp:
+            return None, None
+        with activate_compiler(self):
+            hpp_path = layout.hpp_path(mod_name)
+            cpp_path = layout.cpp_path(mod_name)
+            hpp_path.parent.mkdir(parents=True, exist_ok=True)
+            hpp_path.write_text(sources.hpp)
+            if sources.fwd is not None:
+                fwd_path = layout.fwd_hpp_path(mod_name)
+                fwd_path.parent.mkdir(parents=True, exist_ok=True)
+                fwd_path.write_text(sources.fwd)
+            inl_path = layout.inl_hpp_path(mod_name)
+            if sources.inl is not None:
+                inl_path.write_text(sources.inl)
+            else:
+                # A stale one would shadow nothing but still be hashed and read.
+                inl_path.unlink(missing_ok=True)
+            cpp_path.parent.mkdir(parents=True, exist_ok=True)
+            cpp_path.write_text(sources.cpp)
+
+            # The glue TU joins the link set via collect_ext_glue_paths().
+            if sources.ext_glue is not None:
+                glue_path = cpp_path.with_name(f"{cpp_path.stem}_ext.cpp")
+                glue_path.write_text(sources.ext_glue)
+                self._ext_glue_cpp_paths.append(glue_path)
+            return hpp_path, cpp_path
 
     def _generate_to_strings(self, compiled: CompiledModule,
                              options: CodeGenOptions | None
@@ -3864,15 +3903,10 @@ class Compiler:
             self._check_no_errors(compiled)
             assert compiled.analyzer is not None
             codegen = self._make_codegen(compiled, options)
-            actual_user_modules = set(self.modules.keys())
-            implicit_stdlib = self._implicit_stdlib_set()
             sources = self._run_codegen(
                 codegen, compiled, compiled.name,
-                actual_user_modules=actual_user_modules,
-                implicit_stdlib_modules=implicit_stdlib,
-                # Same peers as the file-writing path: without them a cycle
-                # member's dumped/REPL-written sources lack the peer includes
-                # its bodies need, so they differ from what a build emits.
+                # Without them a cycle member's sources lack the peer
+                # includes its bodies need.
                 cycle_peers=self._cycle_peers.get(compiled.name, frozenset()),
             )
             return sources, codegen
@@ -3935,11 +3969,7 @@ class Compiler:
             codegen = self._make_codegen(compiled, options)
             self._thir_survey = tolerate_reject
             try:
-                self._run_codegen(
-                    codegen, compiled, compiled.name,
-                    actual_user_modules=set(self.modules.keys()),
-                    implicit_stdlib_modules=self._implicit_stdlib_set(),
-                )
+                self._run_codegen(codegen, compiled, compiled.name)
             except ThirRejectError:
                 if not tolerate_reject:
                     raise
@@ -4265,7 +4295,7 @@ class Compiler:
 
     def collect_ext_glue_paths(self) -> list[Path]:
         """Generated CPython extension glue .cpp paths, to add to the link set
-        after the per-module codegen loop (populated in _generate_code_impl)."""
+        after the per-module codegen loop (populated in write_module_sources)."""
         return list(self._ext_glue_cpp_paths)
 
     def is_ext_module_build(self) -> bool:
