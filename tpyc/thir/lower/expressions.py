@@ -2397,13 +2397,15 @@ def _lower_slice_bound(b: 'TpyExpr | None', lc: '_LowerCtx',
                       wrap="{0}.to_fixed_check<int32_t>()", loc=loc)
 
 
-def _str_slice_receiver_supported(
+def _str_index_receiver_supported(
         recv: TpyExpr, lc: '_LowerCtx',
         declared: dict[str, TpyType]) -> bool:
+    """The receiver of a str-family CHAR read (`s[i]`), which the str
+    `__getitem__` @cpp_template interpolates."""
     analyzer = lc.analyzer
     if isinstance(recv, TpyBytesLiteral):
         # A bytes-literal receiver renders OWNED (`::tpy::bytes_literal_owned`),
-        # the `{self}` substitution the slice @cpp_template threads -- matching
+        # the `{self}` substitution the @cpp_template threads -- matching
         # the target-less default for the literal.
         return True
     if isinstance(recv, TpyStrLiteral):
@@ -2414,16 +2416,9 @@ def _str_slice_receiver_supported(
         return (recv.name in declared
                 and (_resolved_viewfam_value(
                          declared[recv.name], analyzer) is not None
-                     # A bytearray local: bytes_slice takes the container
-                     # by reference and yields the view result the slice
-                     # arm's viewfam check keys on.
-                     or (not lc.binding(recv.name).pointer
-                         and is_bytearray_type(unwrap_readonly(
-                             unwrap_ref_type(unwrap_send_sync(
-                                 declared[recv.name])))))
                      # A None-NARROWED Optional[view] binding reads its
-                     # `(*s)` deref (a borrow view); the slice/getitem
-                     # templates interpolate the deref'd read. No narrow-set
+                     # `(*s)` deref (a borrow view); the getitem
+                     # template interpolates the deref'd read. No narrow-set
                      # test: subscripting an un-narrowed Optional is a sema
                      # error, so reaching here implies the proof (the
                      # wide-opt arg row's rule).
@@ -2436,10 +2431,9 @@ def _str_slice_receiver_supported(
         return (_resolved_viewfam_value(
             analyzer.get_expr_type(recv), analyzer) is not None)
     if isinstance(recv, TpySubscript) and not isinstance(recv.index, TpySlice):
-        # A container ELEMENT read (`self.chunks[0][a:b]`): the checked
-        # element read is what the slice template interpolates, and the
-        # element's own lowering owns its shape -- one it has no arm for
-        # raises there and falls the body back whole. A SLICE index is
+        # A container ELEMENT read (`self.names[0][i]`): the checked
+        # element read is what the template interpolates, and the
+        # element's own lowering owns its shape. A SLICE index is
         # excluded: a slice-of-a-slice receiver is a view rvalue, whose
         # render is unwitnessed here.
         return (_resolved_viewfam_value(
@@ -2531,39 +2525,108 @@ def _str_membership_ok(e, declared: dict[str, TpyType], analyzer) -> bool:
             or _resolved_str_value(lt, analyzer) is not None)
 
 
-def _container_slice_recv_ok(recv: TpyExpr, lc: '_LowerCtx',
-                             declared: dict[str, TpyType]) -> bool:
-    """The receiver of a list/Array/Span slice read (`items[a:b:c]` ->
-    `list_slice`/`list_stepped_slice`): a bare-name / F1-field container the
-    `__getitem__` @cpp_template threads unchanged. The owned-list result
-    renders STORAGE at every sink."""
+def _slice_index_ok(index: TpyExpr, declared: dict[str, TpyType],
+                    analyzer) -> bool:
+    """A slice read's or slice assignment's index: a slice literal whose
+    bounds render, or a declared basic_slice / slice binding passed to the
+    dunder bare."""
+    if isinstance(index, TpySlice):
+        return (_slice_bound_supported(index.lower, analyzer)
+                and _slice_bound_supported(index.upper, analyzer)
+                and _slice_bound_supported(index.step, analyzer))
+    return (isinstance(index, TpyName) and index.name in declared
+            and _slice_object_type(declared[index.name]))
+
+
+def _tracked_slice_recv_ok(recv: TpyExpr, lc: '_LowerCtx',
+                           declared: dict[str, TpyType], *,
+                           write: bool) -> bool:
+    """A slice receiver whose storage sema's borrow tracking follows: a
+    declared name, an F1 field, a module var, or (reads) a str / bytes
+    literal. Only the SHAPE is asked -- which type it slices was settled by
+    sema's slice-dunder resolution, and the dunder renders `{self}` the same
+    for every type."""
     analyzer = lc.analyzer
+    if isinstance(recv, (TpyBytesLiteral, TpyStrLiteral)):
+        # A bytes literal renders OWNED (`::tpy::bytes_literal_owned`), a str
+        # literal position-neutral (const char[N]); both static storage.
+        return not write
     if isinstance(recv, TpyName):
-        t = declared.get(recv.name)
-    elif isinstance(recv, TpyFieldAccess):
-        if _module_var_access_pair(recv, declared, analyzer) is not None:
-            # A pointer-slot module-var container (`sys.argv[1:]`): the
-            # slice template is a PINNED consumer of the `(*slot)` read,
-            # like the native-slot arg the module-var arm documents.
-            t = analyzer.get_expr_type(recv)
-        elif _field_receiver_ok(recv, declared, analyzer):
-            t = analyzer.get_expr_type(recv)
-        else:
-            return False
-    elif isinstance(recv, (TpyCall, TpyMethodCall)):
-        # A container/span-returning CALL rvalue (`self.__span__()[index]`):
-        # the template interpolates the bare call, and the call's own
-        # lowering owns its shape -- the str-slice arm's call leg.
-        t = analyzer.get_expr_type(recv)
-    else:
+        # `self` renders `this`, a pointer the `{self}` substitution would
+        # take as the container.
+        return recv.name in declared and recv.name != lc.self_receiver
+    if isinstance(recv, TpyFieldAccess):
+        return (_module_var_access_pair(recv, declared, analyzer) is not None
+                or _field_receiver_ok(recv, declared, analyzer))
+    return False
+
+
+def _untracked_slice_recv_ok(sub: TpySubscript, rtype: 'TpyType | None',
+                             analyzer, *, write: bool) -> bool:
+    """A call-result or container-element receiver, whose storage sema's
+    borrow tracking does not follow (BUGS.md#span-slice-of-temporary-dangles,
+    BUGS.md#element-place-slice-no-loan). Only these kinds are admitted
+    until those are fixed: list / Array / Span / varargs calls, and str /
+    bytes-family reads off a free call or an element. A fresh list call
+    result still fails as an assignment target
+    (BUGS.md#slice-assign-into-call-rvalue)."""
+    recv = sub.obj
+    if not isinstance(recv, (TpyCall, TpyMethodCall, TpySubscript)):
         return False
-    if t is None:
+    rt = analyzer.get_expr_type(recv)
+    if rt is None:
         return False
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    # varargs included: `items[1:3]` on a `*items` param takes the same
-    # list_slice template (mode-preserving, yields another varargs).
-    return (is_list(bare) or is_array(bare) or is_span(bare)
-            or is_varargs(bare))
+    rbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rt)))
+    container_call = (isinstance(recv, (TpyCall, TpyMethodCall))
+                      and (is_list(rbare) or is_array(rbare)
+                           or is_span(rbare) or is_varargs(rbare)))
+    if write:
+        return container_call
+    res = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
+           if rtype is not None else None)
+    if container_call and (is_list(res) or is_span(res) or is_varargs(res)):
+        return True
+    if not (isinstance(recv, TpyCall)
+            or (isinstance(recv, TpySubscript)
+                and not isinstance(recv.index, TpySlice))):
+        return False
+    res_view = _resolved_viewfam_value(rtype, analyzer)
+    if (res_view is None
+            or _resolved_viewfam_value(rt, analyzer) is None):
+        return False
+    if not isinstance(sub.index, TpySlice):
+        return True
+    if sub.is_stepped_slice:
+        return is_str_type(res_view) or is_bytes_type(res_view)
+    return is_str_view_type(res_view) or is_bytes_view_type(res_view)
+
+
+def _slice_recv_ok(sub: TpySubscript, rtype: 'TpyType | None',
+                   lc: '_LowerCtx', declared: dict[str, TpyType], *,
+                   write: bool) -> bool:
+    """The receiver gate of a slice read (`rtype` its result) or slice
+    assignment (`write`) whose dunder sema resolved."""
+    return (_tracked_slice_recv_ok(sub.obj, lc, declared, write=write)
+            or _untracked_slice_recv_ok(sub, rtype, lc.analyzer, write=write))
+
+
+def _lower_slice_recv(recv: TpyExpr, lc: '_LowerCtx',
+                      declared: dict[str, TpyType], loc) -> THIRExpr:
+    """The receiver `_slice_recv_ok` admitted, as the slice dunder's
+    `{self}`: a module var is a PINNED consumer of its `(*slot)` read (like
+    the native-slot arg), a pointer-rung name reads through its deref --
+    the dunder takes the container, never the pointer."""
+    analyzer = lc.analyzer
+    mv = _module_var_access_pair(recv, declared, analyzer)
+    if mv is not None:
+        return _lower_module_var(recv, analyzer.get_expr_type(recv), lc, *mv,
+                                 loc=loc, allow_ref_pointer=True)
+    if isinstance(recv, TpyName) and lc.binding(recv.name).pointer:
+        return _lower_expr(
+            recv, lc, declared,
+            use=_ExprUse(pos=SinkPos.RECEIVER, forms=_recv_forms(False, True)))
+    return _lower_expr(recv, lc, declared,
+                       field_prechecked=isinstance(recv, TpyFieldAccess))
 
 
 def _subscript_yields_borrow_ptr(sub: TpySubscript, lc: '_LowerCtx') -> bool:
@@ -7158,44 +7221,14 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 raise ThirUnsupported("subscript.optional_check", loc=loc)
             if not subscript_prechecked:
                 fi = e.slice_function_info
-                # A list/Array/Span slice read yields an owned `list[T]`
-                # (list_slice / list_stepped_slice) -- the viewfam gate below
-                # excludes it (not a view result), so it takes its own arm:
-                # same @cpp_template + BasicSlice/Slice initializer machinery,
-                # STORAGE result. Bounds classify like the str-slice arm.
                 rbare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(rtype)))
-                # A SPAN-yielding (non-stepped, view) list slice rides the
-                # same template render: `::tpy::list_slice(xs, BasicSlice{..})`
-                # -- a value-type view, so its borrow/storage forms coincide
-                # and the STORAGE tag below stays correct.
-                container_slice = (
-                    bool(fi.cpp_template)
-                    and "{cpp}" not in fi.cpp_template
-                    and (is_list(rbare) or is_span(rbare)
-                         or is_varargs(rbare))
-                    and _container_slice_recv_ok(e.obj, lc, declared)
-                    and ((isinstance(e.index, TpySlice)
-                          and _slice_bound_supported(e.index.lower, analyzer)
-                          and _slice_bound_supported(e.index.upper, analyzer)
-                          and (e.index.step is None
-                               or _slice_bound_supported(e.index.step,
-                                                         analyzer)))
-                         # A slice OBJECT index (`items[s]` on a declared
-                         # basic_slice/slice binding): the same template
-                         # over the bare index name -- the str-slice arm's
-                         # slice-object leg.
-                         or (isinstance(e.index, TpyName)
-                             and e.index.name in declared
-                             and _slice_object_type(
-                                 declared[e.index.name]))))
                 # A user record's own slice `__getitem__` overload (ArrayList
                 # `a[1:4]` -> `a.__getitem__(::tpy::BasicSlice{1, 4})`):
                 # the plain-method tail over the same BasicSlice
                 # initializer, synthesized as the node's template.
                 # Witnessed for a NAME receiver
                 # of an F1 record with a Span result, non-stepped bounds.
-                if (not container_slice
-                        and fi.cpp_template is None
+                if (fi.cpp_template is None
                         and not fi.native_function
                         and fi.is_method
                         and isinstance(e.index, TpySlice)
@@ -7221,67 +7254,31 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     record_slice_tpl = ("{self}."
                                         + (fi.native_name or fi.name)
                                         + "({0})")
-                if container_slice or record_slice_tpl is not None:
-                    if record_slice_tpl is not None:
-                        _witness("subscript.record_slice_method")
-                    else:
-                        _witness("subscript.container_slice")
-                    slice_ok = True
-                    fi = None  # skip the str-slice viewfam gate below
-                else:
-                    slice_ok = (
-                        bool(fi.cpp_template)
+                    _witness("subscript.record_slice_method")
+                # Any other slice read renders the resolved dunder's
+                # @cpp_template over `{self}` and the slice argument; which
+                # TYPE it slices was settled by sema's resolution.
+                elif (bool(fi.cpp_template)
                         and "{cpp}" not in fi.cpp_template
-                        and _str_slice_receiver_supported(e.obj, lc, declared)
-                        and _resolved_viewfam_value(rtype, analyzer) is not None)
-                if fi is not None and slice_ok and isinstance(e.index, TpySlice):
-                    sl = e.index
-                    rt = _resolved_viewfam_value(rtype, analyzer)
-                    if e.is_stepped_slice:
-                        slice_ok = (
-                            (is_str_type(rt) or is_bytes_type(rt))
-                            and _slice_bound_supported(sl.step, analyzer))
-                    else:
-                        slice_ok = (
-                            sl.step is None
-                            and (is_str_view_type(rt)
-                                 or is_bytes_view_type(rt)))
-                    slice_ok = (
-                        slice_ok
-                        and _slice_bound_supported(sl.lower, analyzer)
-                        and _slice_bound_supported(sl.upper, analyzer))
-                elif fi is not None and slice_ok:
-                    slice_ok = (
-                        isinstance(e.index, TpyName)
-                        and e.index.name in declared
-                        and _slice_object_type(declared[e.index.name]))
-                if not slice_ok:
+                        and _slice_recv_ok(e, rtype, lc, declared, write=False)
+                        and _slice_index_ok(e.index, declared, analyzer)):
+                    _witness("subscript.slice")
+                else:
                     raise ThirUnsupported("subscript.slice_shape", detail=True)
-            # Str/bytes slice -> the resolved slice __getitem__'s @cpp_template
-            # over a BasicSlice/Slice initializer (or a slice-typed variable
-            # index rendered bare). The view result (string_view / span) is
-            # BORROW -- an owned decl sink materializes it via the view->owned
+            # The resolved dunder's declared result decides the form: a
+            # str / bytes VIEW (string_view / BytesView) is BORROW -- an
+            # owned decl sink materializes it via the view->owned
             # THIRFormConvert (str: the strview_to_str coerce ->
             # `std::string(...)`; bytes: no coerce at a pending decl, the S6
-            # decl-init BORROW wrap -> `::tpy::Bytes(...)`); the stepped /
-            # slice-var owned result (std::string / std::vector<uint8_t>) is
-            # STORAGE, landing bare in every sink. Absent bounds emit
-            # std::nullopt.
+            # decl-init BORROW wrap -> `::tpy::Bytes(...)`); an owned str /
+            # bytes / list, or a Span (a value-type view whose borrow and
+            # storage forms coincide), is STORAGE, landing bare in every
+            # sink. Absent bounds emit std::nullopt.
             rt_view = _resolved_viewfam_value(rtype, analyzer)
             form = (Form.BORROW if rt_view is not None
                     and (is_str_view_type(rt_view) or is_bytes_view_type(rt_view))
                     else Form.STORAGE)
-            mv = _module_var_access_pair(e.obj, declared, analyzer)
-            if mv is not None:
-                # The slice template is a pinned consumer of the module
-                # var's `(*slot)` read (a native-slot substitution).
-                recv = _lower_module_var(
-                    e.obj, analyzer.get_expr_type(e.obj), lc, *mv,
-                    loc=loc, allow_ref_pointer=True)
-            else:
-                recv = _lower_expr(
-                    e.obj, lc, declared,
-                    field_prechecked=isinstance(e.obj, TpyFieldAccess))
+            recv = _lower_slice_recv(e.obj, lc, declared, loc)
             tpl = record_slice_tpl or e.slice_function_info.cpp_template
             if not isinstance(e.index, TpySlice):
                 return THIRStrSlice(
@@ -7682,7 +7679,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 and ret_ok and index_ok
                 and bool(_witness("subscript.ternary_recv")))
             str_ok = (
-                _str_slice_receiver_supported(e.obj, lc, declared)
+                _str_index_receiver_supported(e.obj, lc, declared)
                 and _eligible_char(rtype) and index_ok)
             recv = e.obj
             bytes_recv_ok = False

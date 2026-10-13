@@ -12,6 +12,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <format>
+#include <functional>
 #include <initializer_list>
 #include <ranges>
 #include <span>
@@ -141,14 +142,62 @@ void list_set_slice(std::vector<T>& vec, int32_t start, int32_t stop, const Rang
     j = std::clamp(j, std::ptrdiff_t{0}, len);
     // Clamp reversed range to empty insertion (matches Python: a[5:2] = [...] inserts at 5)
     if (j < i) j = i;
-    // Guard against self-aliasing (e.g. a[1:3] = a): erase invalidates iterators into vec
-    if constexpr (std::is_same_v<std::decay_t<Range>, std::vector<T>>) {
-        if (&values == &vec) {
+    // `a[1:3] = a`: the erase and insert below move the elements `values`
+    // reads. This guard is the only one vector<bool> gets -- it has no
+    // data() for the view check below.
+    if constexpr (std::is_convertible_v<const std::remove_cvref_t<Range>*,
+                                        const std::vector<T>*>) {
+        if (static_cast<const std::vector<T>*>(&values) == &vec) {
             std::vector<T> copy = values;
             vec.erase(vec.begin() + i, vec.begin() + j);
             vec.insert(vec.begin() + i, copy.begin(), copy.end());
             return;
         }
+    }
+    // A view into vec itself (`a[0:2] = a[0:5]`) is the same hazard; only a
+    // contiguous range of T can be one.
+    constexpr bool may_alias =
+        !std::is_same_v<T, bool>
+        && std::ranges::contiguous_range<const Range>
+        && std::is_same_v<std::ranges::range_value_t<const Range>, T>;
+    bool aliases = false;
+    if constexpr (may_alias) {
+        const T* p = std::ranges::data(values);
+        aliases = !std::less<const T*>{}(p, vec.data())
+                  && std::less<const T*>{}(p, vec.data() + vec.size());
+    }
+    if constexpr (std::ranges::sized_range<const Range>) {
+        auto n = static_cast<std::ptrdiff_t>(std::ranges::size(values));
+        if (n == j - i) {
+            // Same length: overwrite in place instead of shifting the tail
+            // out and back.
+            if (n == 0) return;
+            if constexpr (may_alias) {
+                if (aliases) {
+                    const T* src = std::ranges::data(values);
+                    T* dst = vec.data() + i;
+                    if (src == dst) return;
+                    // A source starting before the target overlaps its tail;
+                    // copy from the back so each element is read before it
+                    // is overwritten.
+                    if (src < dst) {
+                        std::copy_backward(src, src + n, dst + n);
+                    } else {
+                        std::copy(src, src + n, dst);
+                    }
+                    return;
+                }
+            }
+            std::copy(std::ranges::begin(values), std::ranges::end(values),
+                      vec.begin() + i);
+            return;
+        }
+    }
+    if (aliases) {
+        std::vector<T> copy(std::ranges::begin(values), std::ranges::end(values));
+        vec.erase(vec.begin() + i, vec.begin() + j);
+        vec.insert(vec.begin() + i, copy.begin(), copy.end());
+        return;
     }
     vec.erase(vec.begin() + i, vec.begin() + j);
     vec.insert(vec.begin() + i, values.begin(), values.end());
@@ -257,6 +306,49 @@ auto list_stepped_slice(const Container& c, Slice sl) {
                               sl.step.value_or(1));
 }
 
+namespace detail {
+
+/// `vec[start:stop:step] = values` for a step other than 1: `values` must
+/// match the selection's size, except that an empty `values` deletes the
+/// selection when `empty_deletes` (bytearray; a list raises). `what` names
+/// the right-hand side in the size-mismatch message.
+template<typename T, typename Range>
+void set_extended_slice(std::vector<T>& vec, int32_t start, int32_t stop, int32_t step,
+                        const Range& values, bool empty_deletes, const char* what) {
+    auto len = static_cast<std::ptrdiff_t>(vec.size());
+    auto [i, j, st] = resolve_stepped_bounds(start, stop, step, len);
+    std::ptrdiff_t n = 0;
+    if (st > 0 && i < j) n = (j - i - 1) / st + 1;
+    else if (st < 0 && i > j) n = (i - j - 1) / (-st) + 1;
+    // Collected before any write: `values` may be a view of vec.
+    std::vector<T> vals(std::ranges::begin(values), std::ranges::end(values));
+    if (vals.empty() && empty_deletes) {
+        if (n == 0) return;
+        std::ptrdiff_t lo = st > 0 ? i : i + (n - 1) * st;
+        std::ptrdiff_t stride = st > 0 ? st : -st;
+        std::ptrdiff_t w = lo, d = 0;
+        for (std::ptrdiff_t r = lo; r < len; ++r) {
+            if (d < n && r == lo + d * stride) {
+                ++d;
+                continue;
+            }
+            vec[static_cast<std::size_t>(w++)] = std::move(vec[static_cast<std::size_t>(r)]);
+        }
+        // erase, not resize: resize would need a default-constructible T.
+        vec.erase(vec.begin() + w, vec.end());
+        return;
+    }
+    if (static_cast<std::ptrdiff_t>(vals.size()) != n) {
+        raise_value_error("attempt to assign {} of size {} to extended slice of size {}",
+                          what, vals.size(), n);
+    }
+    for (std::size_t idx = 0; idx < vals.size(); ++idx) {
+        vec[static_cast<std::size_t>(i + static_cast<std::ptrdiff_t>(idx) * st)] = std::move(vals[idx]);
+    }
+}
+
+}  // namespace detail
+
 /**
  * list_set_stepped_slice - Python-style stepped slice assignment: a[start:stop:step] = values.
  * Replaces elements at stepped positions. Unlike basic slice assignment, the RHS
@@ -273,25 +365,7 @@ void list_set_stepped_slice(std::vector<T>& vec, int32_t start, int32_t stop, in
         list_set_slice(vec, resolved_start, resolved_stop, values);
         return;
     }
-    auto len = static_cast<std::ptrdiff_t>(vec.size());
-    auto [i, j, st] = detail::resolve_stepped_bounds(start, stop, step, len);
-    // Collect target indices
-    std::vector<std::ptrdiff_t> indices;
-    if (st > 0) {
-        for (auto k = i; k < j; k += st) indices.push_back(k);
-    } else {
-        for (auto k = i; k > j; k += st) indices.push_back(k);
-    }
-    // Collect values first to validate length before mutating vec
-    std::vector<T> vals(std::ranges::begin(values), std::ranges::end(values));
-    if (vals.size() != indices.size()) {
-        raise_value_error("attempt to assign sequence of size {} to extended slice of size {}",
-                          vals.size(), indices.size());
-    }
-    // Self-aliasing guard: vals is already a copy, so safe to assign
-    for (std::size_t idx = 0; idx < indices.size(); ++idx) {
-        vec[static_cast<std::size_t>(indices[idx])] = std::move(vals[idx]);
-    }
+    detail::set_extended_slice(vec, start, stop, step, values, false, "sequence");
 }
 
 /// Slice overload: unpacks start/stop/step from the slice object.

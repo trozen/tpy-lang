@@ -601,7 +601,9 @@ from .expressions import (
     _lower_module_var,
     _module_var_access_pair,
     _async_factory_wrap_cpp,
-    _container_slice_recv_ok,
+    _slice_recv_ok,
+    _slice_index_ok,
+    _lower_slice_recv,
     _constructs_value,
     _flush_witness,
     _hoists_arg_temp,
@@ -649,7 +651,6 @@ from .expressions import (
     _rb_operand_slots,
     _retag_bytes_literal_view,
     _lower_slice_bound,
-    _slice_bound_supported,
     _slot_literal_retype,
     _value_opt_scalar_binding,
     _value_opt_binding_kind,
@@ -7335,25 +7336,26 @@ def _lower_container_elem_value(stmt: TpyAssign, eu: TpyType,
 
 def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
                         declared: dict[str, TpyType], loc) -> THIRStmt:
-    """`c[a:b] = v` / `c[a:b:s] = v` -> the slice `__setitem__`'s @cpp_template
-    (list_set_slice / list_set_stepped_slice) over the receiver, the slice
-    initializer, and the RHS. The receiver is a
-    bare list/Array/Span name or F1-field (the read-path slice receiver gate);
-    bounds are eligible fixed-int exprs. A non-empty array-literal RHS wears the
+    """`c[a:b] = v` / `c[a:b:s] = v` -> the resolved slice `__setitem__`'s
+    @native free function (list_set_slice / bytearray_set_stepped_slice /
+    ...) over the receiver, the slice initializer, and the RHS. The receiver
+    passes the read arm's gate (`_slice_recv_ok`); bounds are eligible
+    fixed-int exprs. A non-empty array-literal RHS wears the
     std::vector<E>{...} type prefix the checked helper needs to deduce Range."""
     analyzer = lc.analyzer
     sub = stmt.target
     sl = sub.index
-    if not (_container_slice_recv_ok(sub.obj, lc, declared)
-            and _slice_bound_supported(sl.lower, analyzer)
-            and _slice_bound_supported(sl.upper, analyzer)
-            and (sl.step is None or _slice_bound_supported(sl.step, analyzer))):
+    fi = sub.slice_function_info
+    # A user record's own slice `__setitem__` is a method, not the free
+    # function this node renders.
+    if not (fi.native_function and fi.native_name
+            and _slice_recv_ok(sub, None, lc, declared, write=True)
+            and _slice_index_ok(sl, declared, analyzer)):
         note_detail("setitem.slice")
         raise ThirUnsupported(stmt_reject_reason(stmt))
+    # The element-typed list sema hints the RHS with (`list[E]`).
     target_type = analyzer.get_expr_type(sub)
-    recv = _lower_expr(
-        sub.obj, lc, declared,
-        field_prechecked=isinstance(sub.obj, TpyFieldAccess))
+    recv = _lower_slice_recv(sub.obj, lc, declared, loc)
     # A generator-FACTORY call RHS (`d[1:3] = gen_values()`) is consumed by
     # the helper as an iterable, not stored: it takes the iterable-position
     # admission (the same bare factory render a for-each source gets), which
@@ -7380,7 +7382,7 @@ def _lower_slice_assign(stmt: TpyAssign, lc: _LowerCtx,
     _witness("setitem.slice")
     return THIRSliceAssign(
         receiver=recv,
-        native_name=sub.slice_function_info.native_name,
+        native_name=fi.native_name,
         value=value,
         lower=_lower_slice_bound(sl.lower, lc, declared, loc),
         upper=_lower_slice_bound(sl.upper, lc, declared, loc),

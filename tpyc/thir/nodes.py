@@ -2674,12 +2674,13 @@ class THIRSetItem(THIRStmt):
 
 @dataclass(frozen=True)
 class THIRSliceAssign(THIRStmt):
-    """A list/Array/Span slice assignment `c[a:b] = v` / `c[a:b:s] = v` ->
-    the sema-resolved slice `__setitem__`'s @native free-function
-    (`::tpy::list_set_slice` / `::tpy::list_set_stepped_slice`) over the
-    receiver, the slice initializer, and the RHS. `receiver` is a bare
-    list/Array/Span
-    name or F1-field. The slice initializer is built like `THIRStrSlice`'s
+    """A slice assignment `c[a:b] = v` / `c[a:b:s] = v` -> the sema-resolved
+    slice `__setitem__`'s @native free function (`::tpy::list_set_slice`,
+    `::tpy::bytearray_set_stepped_slice`, ...) over the receiver, the slice
+    initializer, and the RHS. `receiver` is what the slice gate admits (a
+    declared name -- a pointer-rung one read through its deref -- a field, a
+    module var, or a call handing back a list), lowered as the dunder's
+    `{self}`. The slice initializer is built like `THIRStrSlice`'s
     bound arm (`::tpy::BasicSlice{lo, hi}` / `::tpy::Slice{lo, hi, step}`,
     `stepped` per the source syntax; an absent bound -> `std::nullopt`).
     `value` is the lowered RHS (a move at last use rides on it); a non-empty

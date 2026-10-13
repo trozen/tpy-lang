@@ -423,6 +423,11 @@ inline Bytes bytes_concat(BytesView a, BytesView b) {
 inline Bytes bytes_repeat(BytesView b, int32_t n) {
     if (n <= 0) return {};
     Bytes result;
+    if (b.size() == 1) {
+        // `bytes([c]) * n`, the fill idiom: one fill, not n inserts.
+        result.assign(static_cast<size_t>(n), b[0]);
+        return result;
+    }
     result.reserve(b.size() * static_cast<size_t>(n));
     for (int32_t i = 0; i < n; ++i) {
         result.insert(result.end(), b.begin(), b.end());
@@ -506,6 +511,22 @@ inline void bytearray_setitem(ByteArray& b, int32_t index, uint8_t value) {
 
 inline void bytearray_setitem(ByteArray& b, int32_t index, int32_t value) {
     bytearray_setitem(b, index, int_to_byte(value));
+}
+
+/// `b[a:b:c] = values` with CPython's bytearray rules: step 1 resizes like a
+/// basic slice, an empty `values` deletes the selected bytes (a list raises
+/// there instead), any other size must match the selection.
+template<typename Range>
+    requires std::ranges::input_range<const Range>
+void bytearray_set_stepped_slice(ByteArray& b, Slice sl, const Range& values) {
+    int32_t start = sl.start.value_or(SLICE_NONE);
+    int32_t stop = sl.stop.value_or(SLICE_NONE);
+    int32_t step = sl.step.value_or(1);
+    if (step == 1) {
+        list_set_stepped_slice(b, start, stop, step, values);
+        return;
+    }
+    detail::set_extended_slice(b, start, stop, step, values, true, "bytes");
 }
 
 inline uint8_t bytearray_pop(ByteArray& b) {

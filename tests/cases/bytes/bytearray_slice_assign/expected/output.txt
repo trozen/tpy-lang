@@ -1,0 +1,43 @@
+module: bytearray(b'GLobal') b'Lo'
+local: bytearray(b'aXYdef')
+grow: bytearray(b'123XYdef')
+shrink: bytearray(b'zdef')
+whole: bytearray(b'whole')
+clamped: bytearray(b'pqoxy')
+reversed: bytearray(b'pqoxy')
+insert: bytearray(b'pqxyoxy')
+delete: bytearray(b'pyoxy')
+stepped: bytearray(b'1h2l3')
+stepped_neg: bytearray(b'zyxwv')
+stepped_mismatch: attempt to assign bytes of size 3 to extended slice of size 2
+stepped_delete: bytearray(b'bdf')
+stepped_delete_neg: bytearray(b'ace')
+stepped_delete_bounded: bytearray(b'abcefh')
+rhs: bytearray(b'BYbaL!!AB-')
+rhs_gen: bytearray(b'AYBaC!!AB-')
+overlap_grow: bytearray(b'abcdecdefgh')
+overlap_right: bytearray(b'ababcdgh')
+overlap_left: bytearray(b'abcdcdgh')
+overlap_self: bytearray(b'abcdcdgh')
+overlap_whole: bytearray(b'aabcdcdghdcdgh')
+field: b'efgdefgh'
+param: bytearray(b'**ram') b'**'
+reassigned_first: 5
+reassigned: bytearray(b'ndcond') b'dc'
+frame_len: 3
+frame_len: 6
+frame: bytearray(b'enenen')
+cross_module_str: bc
+cross_module_bytes: b'bd'
+cross_module_list: [1, 80, 90, 100, 4, 5, 6]
+list_grow: [0, 1, 2, 3, 4, 2, 3, 4, 5, 6, 7, 8]
+list_right: [0, 0, 1, 2, 4, 2, 3, 4, 5, 6, 7, 8]
+list_left: [0, 1, 2, 2, 4, 2, 3, 4, 5, 6, 7, 8]
+list_bool: [True, True, False, True, False, True, False, True]
+list_stepped_empty: attempt to assign sequence of size 0 to extended slice of size 3 [1, 2, 3, 4, 5, 6]
+list_mixed: [8, 9, 10, 4] [True, False, True, False]
+stepped_one: bytearray(b'xyzcdef')
+stepped_self: bytearray(b'bbcddf')
+zero_step: slice step cannot be zero bytearray(b'abcd')
+closure: bytearray(b'OUter')
+async: bytearray(b'ncync')

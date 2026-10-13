@@ -10,9 +10,8 @@
 # Storage strategies:
 #   - StringIO: list[str] chunks. Fast append-at-end; mid-buffer writes
 #     and reads collapse to a single chunk first.
-#   - BytesIO: list[bytes] chunks (mirrors StringIO). bytearray would
-#     allow in-place splice but slice-assignment is not on the Python
-#     surface today, so the chunked approach is simpler.
+#   - BytesIO: list[bytes] chunks (mirrors StringIO): appends never
+#     move earlier bytes, and a read of the whole buffer is one join.
 #
 # v1 divergences from CPython, all documented:
 #   - seek past end is clamped to total (CPython back-fills with NUL/0).

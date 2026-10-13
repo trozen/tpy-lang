@@ -1028,9 +1028,9 @@ THIR_FACES: frozenset[str] = frozenset({
     # A user-record subscript `recv[index]` -> the record's bare operator[]
     # (generated from __getitem__); value-scalar/char/str/etc results.
     "subscript.record_getitem",
-    # A list/Array/Span slice read (`items[a:b:c]`) -> owned list via the
-    # `list_slice`/`list_stepped_slice` @cpp_template (STORAGE result).
-    "subscript.container_slice",
+    # A slice read (`items[a:b:c]`, `s[a:b]`) -> the resolved slice
+    # `__getitem__`'s @cpp_template over the BasicSlice / Slice initializer.
+    "subscript.slice",
     # A user record's own slice `__getitem__` overload rendered as the plain
     # member call over the BasicSlice initializer
     # (`a.__getitem__(::tpy::BasicSlice{1, 4})`).

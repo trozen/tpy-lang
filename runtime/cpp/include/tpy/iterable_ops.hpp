@@ -19,6 +19,7 @@
 #include <type_traits>
 #include <vector>
 
+#include "bytes_ops.hpp"
 #include "container_ops.hpp"
 #include "dunder.hpp"
 
@@ -60,12 +61,28 @@ void list_set_slice(std::vector<T>& vec, BasicSlice sl, Container&& other) {
 template<typename T, typename Container>
     requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
 void list_set_stepped_slice(std::vector<T>& vec, Slice sl, Container&& other) {
+    // CPython rejects a zero step before it runs the right-hand iterator.
+    if (sl.step.value_or(1) == 0) raise_value_error("slice step cannot be zero");
     std::vector<T> tmp;
     auto&& r = ::tpy::iter_range(other);
     auto end = r.end();
     for (auto it = r.begin(); it != end; ++it) tmp.push_back(take_elem(it));
     list_set_stepped_slice(vec, sl, std::ranges::subrange(std::make_move_iterator(tmp.begin()),
                                                           std::make_move_iterator(tmp.end())));
+}
+
+// -- bytearray_set_stepped_slice for non-range iterables --------------------
+
+template<typename Container>
+    requires (!std::ranges::input_range<std::remove_reference_t<Container>>)
+void bytearray_set_stepped_slice(ByteArray& b, Slice sl, Container&& other) {
+    // CPython rejects a zero step before it runs the right-hand iterator.
+    if (sl.step.value_or(1) == 0) raise_value_error("slice step cannot be zero");
+    std::vector<uint8_t> tmp;
+    auto&& r = ::tpy::iter_range(other);
+    auto end = r.end();
+    for (auto it = r.begin(); it != end; ++it) tmp.push_back(take_elem(it));
+    bytearray_set_stepped_slice(b, sl, tmp);
 }
 
 // -- str_join for non-range iterables ---------------------------------------

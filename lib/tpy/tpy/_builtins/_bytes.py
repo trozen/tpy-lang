@@ -281,8 +281,17 @@ class bytearray(NativeIterable[uint8], Iterable[uint8], Comparable, Equatable):
     @pure
     def __contains__(self, value: bytes) -> bool: ...
 
+    @dispatch
     @native("tpy::bytearray_setitem", function=True)
     def __setitem__(self, index: int32, value: uint8) -> None: ...
+
+    @dispatch
+    @native("tpy::list_set_slice", function=True)
+    def __setitem__(self, index: basic_slice, value: Iterable[uint8]) -> None: ...
+
+    @dispatch
+    @native("tpy::bytearray_set_stepped_slice", function=True)
+    def __setitem__(self, index: slice, value: Iterable[uint8]) -> None: ...
 
     @dispatch
     @native("tpy::bytearray_concat", function=True)
