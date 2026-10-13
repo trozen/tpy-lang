@@ -117,6 +117,7 @@ A crisp readiness call -- no manufactured issues. The first word is the verdict,
 Distinct from "File as followup" above (which is the bookkeeping list of items to *write into* `BUGS.md`/`TODO.md`): this section is the prioritized *narrative* of where the work goes next. Omit it only if there genuinely is no followup.
 
 - **READY:** end with "Ready -- run `/prep-merge` when you want to squash." Do NOT auto-run `/prep-merge` -- it's a separate explicit step with its own suspicious-file gate.
+- After the verdict, record the unit's state in this worktree's `SESSION.md` (`SESSION_RULES.md`): READY keeps it at `reviewed` until `/prep-merge` squashes it (then `ready`); NOT READY notes the blockers beside the state.
 - **NOT READY:** list blockers. Offer to fix the "fix now" ones and file the followups (on approval). Any commits follow the branch-aware policy in CLAUDE.md (auto-commit on a temporary working branch; ask on master/main).
 - If the branch is clean, the report is the verdict line plus the what-now-works bullets: `# /tpy-ready: READY -- nothing outstanding.`
 

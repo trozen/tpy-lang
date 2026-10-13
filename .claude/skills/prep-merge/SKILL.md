@@ -38,7 +38,8 @@ Full diff vs master: !`git diff master --stat 2>/dev/null || echo "(none)"`
    ```
    Write the message to a file under `/tmp/agents/` first -- a long `-m` string does not wrap the body.
    IMPORTANT: Always use `git merge --squash`. Never use `git checkout <branch> -- .` (it does not handle file deletions).
-7. Show the final state: branch name, commit hash, diff stat.
+7. Record the unit as `ready` in this worktree's `SESSION.md` (`SESSION_RULES.md`): the squash branch @ its sha.
+8. Show the final state: branch name, commit hash, diff stat.
 
 ## Important
 

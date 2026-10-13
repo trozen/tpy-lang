@@ -28,3 +28,6 @@ scripts/alias_kill_matrix/build/
 
 # Local banned-word list for scripts/git-hooks/commit-msg (private)
 /.commit-banned-words
+
+# Per-worktree session queue of the orchestrating session (SESSION_RULES.md)
+/SESSION.md
