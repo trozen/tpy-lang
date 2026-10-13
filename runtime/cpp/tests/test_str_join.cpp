@@ -1,4 +1,5 @@
-// Join pre-sizing must save allocations without revisiting user iterables.
+// Join suffix sizing must save allocations without pre-scanning small outputs
+// or revisiting user iterables.
 // Checks remain active in release builds, where assert() would disappear.
 #include <array>
 #include <cstdio>
@@ -28,13 +29,25 @@ void check(bool ok, const char* what) {
 }
 
 template<typename Source>
-void one_allocation(const Source& source, std::string_view expected) {
+void one_allocation(const Source& source, std::string_view expected,
+                    std::string_view separator = "::") {
     allocations = 0;
     measuring = true;
-    auto joined = tpy::str_join("::", source);
+    auto joined = tpy::str_join(separator, source);
     measuring = false;
     check(allocations == 1, "one output allocation for builtin storage");
     check(joined == expected, "long output contents");
+}
+
+template<typename Source>
+void no_allocation(const Source& source, std::string_view expected,
+                   std::string_view separator = "|") {
+    allocations = 0;
+    measuring = true;
+    auto joined = tpy::str_join(separator, source);
+    measuring = false;
+    check(allocations == 0, "small output needs no allocation");
+    check(joined == expected, "small output contents");
 }
 
 struct Converted {
@@ -62,6 +75,20 @@ struct DerivedVector : std::vector<std::string_view> {
 struct DerivedString : std::string {
     using std::string::string;
 };
+
+template<typename T>
+struct CustomAllocator {
+    using value_type = T;
+    CustomAllocator() = default;
+    template<typename U>
+    CustomAllocator(const CustomAllocator<U>&) {}
+    T* allocate(std::size_t n) { return std::allocator<T>{}.allocate(n); }
+    void deallocate(T* data, std::size_t n) { std::allocator<T>{}.deallocate(data, n); }
+    template<typename U>
+    bool operator==(const CustomAllocator<U>&) const { return true; }
+};
+
+using CustomVector = std::vector<std::string_view, CustomAllocator<std::string_view>>;
 
 // Copying the iterator does not rewind its source.
 struct InputRange {
@@ -109,6 +136,7 @@ static_assert(!tpy::detail::join_sized_source<ForwardRange>);
 static_assert(!tpy::detail::join_sized_source<std::vector<Converted>>);
 static_assert(!tpy::detail::join_sized_source<std::vector<DerivedString>>);
 static_assert(!tpy::detail::join_sized_source<std::vector<const char*>>);
+static_assert(!tpy::detail::join_sized_source<CustomVector>);
 
 void checked_lengths() {
     const auto limit = std::numeric_limits<std::size_t>::max();
@@ -161,6 +189,52 @@ int main() {
     check(tpy::str_join("|", std::vector<std::string>{"\xc3\xa9", "\xed\x95\x9c"}) ==
           "\xc3\xa9|\xed\x95\x9c", "UTF-8 bytes");
 
+    no_allocation(std::vector<std::string>{"a", "", "c"}, "a||c");
+    no_allocation(std::array<std::string_view, 3>{"a", "", "c"}, "a||c");
+    no_allocation(std::initializer_list<std::string_view>{"a", "", "c"}, "a||c");
+    const std::array<std::string_view, 3> short_views{"a", "", "c"};
+    no_allocation(std::span<const std::string_view>(short_views), "a||c");
+    no_allocation(std::array<std::string_view, 0>{}, "");
+    const std::string_view null_view;
+    no_allocation(std::array<std::string_view, 3>{null_view, null_view, "c"},
+                  "c", null_view);
+    no_allocation(std::array<std::string_view, 3>{null_view, null_view, "c"},
+                  "||c");
+    no_allocation(std::array<std::string_view, 2>{null_view, null_view}, "", null_view);
+    no_allocation(std::array<std::string_view, 1>{null_view}, "", null_view);
+    // Exercise the same internal loop with observable conversions, without
+    // admitting these elements to the public optimized path. Zero allocations
+    // alone would not distinguish a prepass from a single traversal.
+    int short_conversions = 0;
+    const std::array<Converted, 3> short_counted{{{"a", &short_conversions},
+                                               {"", &short_conversions},
+                                               {"c", &short_conversions}}};
+    check(tpy::detail::str_join_sized_range("|", short_counted.begin(),
+                                          short_counted.end()) == "a||c",
+          "small internal path contents");
+    check(short_conversions == 3, "small outputs have no sizing prepass");
+
+    // Capacity-derived boundaries work with different standard-library SSO
+    // sizes: trigger on the first item, separator, or later item respectively.
+    const auto initial_capacity = std::string{}.capacity();
+    const std::string boundary(initial_capacity, 'x');
+    no_allocation(std::array<std::string_view, 1>{boundary}, boundary);
+    const std::string first_long(initial_capacity + 1, 'y');
+    one_allocation(std::array<std::string_view, 1>{first_long}, first_long);
+    one_allocation(std::array<std::string_view, 3>{boundary, "", "z"},
+                   boundary + "::" + "::z");
+    one_allocation(std::array<std::string_view, 3>{"x", first_long, "z"},
+                   "x" + first_long + "z", "");
+    const std::vector<std::string_view> empty_prefix(initial_capacity + 4, "");
+    one_allocation(empty_prefix, std::string((empty_prefix.size() - 1) * 2, ':'));
+    one_allocation(std::array<std::string_view, 3>{boundary, nul, nul},
+                   boundary + sep + nul + sep + nul, sep);
+    if (initial_capacity >= nul.size() + sep.size()) {
+        const std::string near_boundary(initial_capacity - nul.size() - sep.size(), 'x');
+        no_allocation(std::array<std::string_view, 2>{near_boundary, nul},
+                      near_boundary + sep + nul, sep);
+    }
+
     const std::string a(64, 'a'), b(64, 'b'), c(64, 'c');
     const auto expected = a + "::" + b + "::" + c;
     const std::vector<std::string> strings{a, b, c};
@@ -185,6 +259,8 @@ int main() {
     one_allocation(std::initializer_list<tpy::String>{tpy::String(a), tpy::String(b),
                                                     tpy::String(c)}, expected);
     check(strings[0] == a && owned[0] == a, "operands retain their storage");
+    check(tpy::str_join("::", CustomVector{a, b, c}) == expected,
+          "custom allocator vector uses the generic fallback");
     const std::vector<const char*> pointers{a.c_str(), b.c_str(), c.c_str()};
     check(tpy::str_join("::", pointers) == expected, "long C string pointers");
     check(tpy::str_join("::", {a.c_str(), b.c_str(), c.c_str()}) == expected,

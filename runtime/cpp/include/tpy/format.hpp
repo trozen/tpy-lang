@@ -12,10 +12,12 @@
 #include <charconv>
 #include <cmath>
 #include <cstdint>
+#include <cstring>
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
 #include <initializer_list>
+#include <memory>
 #include <optional>
 #include <ranges>
 #include <sstream>
@@ -301,7 +303,8 @@ template<typename T>
 inline constexpr bool join_sized_source = false;
 
 template<typename T, typename Allocator>
-inline constexpr bool join_sized_source<std::vector<T, Allocator>> = join_sized_element<T>;
+inline constexpr bool join_sized_source<std::vector<T, Allocator>> =
+    join_sized_element<T> && std::is_same_v<Allocator, std::allocator<T>>;
 
 template<typename T, std::size_t N>
 inline constexpr bool join_sized_source<std::array<T, N>> = join_sized_element<T>;
@@ -320,27 +323,105 @@ inline std::size_t join_checked_add(std::size_t total, std::size_t increment,
     return total + increment;
 }
 
+template<typename Iterator>
+inline void join_append_sized_suffix(std::string& result, std::string_view sep,
+                                     Iterator current, Iterator end, bool first) {
+    std::size_t total = result.size();
+    bool suffix_first = first;
+    for (auto suffix = current; suffix != end; ++suffix) {
+        if (!suffix_first) total = join_checked_add(total, sep.size(), result.max_size());
+        total = join_checked_add(total, std::string_view(*suffix).size(), result.max_size());
+        suffix_first = false;
+    }
+    result.reserve(total);
+    for (; current != end; ++current) {
+        if (!first) result.append(sep);
+        result.append(std::string_view(*current));
+        first = false;
+    }
+}
+
+// Called only for exact builtin sources below: conversions and iterator copies
+// are pure. Leave outputs fitting the initial capacity on a single-pass path.
+template<typename Iterator>
+inline std::string str_join_sized_range(std::string_view sep, Iterator current,
+                                        Iterator end) {
+    std::string result;
+    bool first = true;
+    // Copy the proven-fit prefix with one size/terminator update rather than
+    // duplicating std::string::append bookkeeping for every small piece.
+    // Clang can outline resize_and_overwrite even with an inline callback;
+    // that call overhead dominates small joins. Keep the storage update local.
+    if (sep.empty()) {
+#if defined(__clang__)
+        [[clang::always_inline]]
+#endif
+        result.resize_and_overwrite(result.capacity(), [&](char* data, std::size_t bound) noexcept {
+            std::size_t written = 0;
+            for (; current != end; ++current) {
+                const auto item = std::string_view(*current);
+                if (item.empty()) continue;
+                if (item.size() > bound - written) break;
+                std::memcpy(data + written, item.data(), item.size());
+                written += item.size();
+            }
+            return written;
+        });
+    } else {
+#if defined(__clang__)
+        [[clang::always_inline]]
+#endif
+        result.resize_and_overwrite(result.capacity(), [&](char* data, std::size_t bound) noexcept {
+            std::size_t written = 0;
+            if (current == end) return written;
+            const auto initial_item = std::string_view(*current);
+            if (initial_item.size() > bound) return written;
+            if (!initial_item.empty()) {
+                std::memcpy(data, initial_item.data(), initial_item.size());
+                written = initial_item.size();
+            }
+            ++current;
+            first = false;
+            for (; current != end; ++current) {
+                const auto item = std::string_view(*current);
+                const auto available = bound - written;
+                if (sep.size() > available || item.size() > available - sep.size()) break;
+                std::memcpy(data + written, sep.data(), sep.size());
+                written += sep.size();
+                if (!item.empty()) {
+                    std::memcpy(data + written, item.data(), item.size());
+                    written += item.size();
+                }
+            }
+            return written;
+        });
+    }
+    if (current != end) {
+        join_append_sized_suffix(result, sep, current, end, first);
+    }
+    return result;
+}
+
 template<typename Container>
     requires std::ranges::input_range<const Container>
 inline std::string str_join_range(std::string_view sep, const Container& items) {
-    std::string result;
     if constexpr (join_sized_source<std::remove_cvref_t<Container>>) {
-        std::size_t total = 0;
+        if (items.size() <= 1) {
+            std::string result;
+            if (items.size() == 1) result.append(std::string_view(*items.begin()));
+            return result;
+        }
+        return str_join_sized_range(sep, items.begin(), items.end());
+    } else {
+        std::string result;
         bool first = true;
         for (const auto& item : items) {
-            if (!first) total = join_checked_add(total, sep.size(), result.max_size());
-            total = join_checked_add(total, std::string_view(item).size(), result.max_size());
+            if (!first) result.append(sep);
+            result.append(std::string_view(item));
             first = false;
         }
-        result.reserve(total);
+        return result;
     }
-    bool first = true;
-    for (const auto& item : items) {
-        if (!first) result.append(sep);
-        result.append(std::string_view(item));
-        first = false;
-    }
-    return result;
 }
 
 }  // namespace detail
