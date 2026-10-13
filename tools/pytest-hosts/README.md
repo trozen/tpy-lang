@@ -26,7 +26,7 @@ project, the session is distributed. Otherwise nothing changes.
     pytest --hosts-only=NAME    # this run: only that host, no local workers
 
     pytest-hosts                # resolved config and the sub-commands
-    pytest-hosts status         # reachability, slots, this checkout's trees
+    pytest-hosts status         # reachability, slots and who holds them, this checkout's trees
     pytest-hosts setup          # seed the trees without running tests
     pytest-hosts clean          # remove this checkout's trees, venvs, temp roots
     pytest-hosts config         # annotated reference for both config files
@@ -132,7 +132,12 @@ ordinary pytest config warning.
 2. Take one slot (every slot under `--hosts-exclusive`): `flock` on
    `<lock_dir>/<n>` (default `/tmp/pytest-hosts`, so it gates across
    users of one box), held by an ssh session for the
-   whole run. All slots busy: print `bigbox busy, queued...` every 30s
+   whole run. The session sends that holder a line every 30s, and the
+   holder releases the slot after 150s without one, so a session that
+   died cannot keep a slot even when something else still holds the
+   holder's stdin open. The holder records the session (client host,
+   checkout, start time) in `<lock_dir>/<n>.owner` and touches it on
+   every heartbeat; `pytest-hosts status` shows both. All slots busy: print `bigbox busy, queued...` every 30s
    and wait. The whole run waits; xdist cannot add workers mid-session.
    A slot command that gives no answer within a minute fails the host
    instead: that is a broken connection, not a busy box. Every later

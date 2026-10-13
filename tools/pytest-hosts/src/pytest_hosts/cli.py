@@ -11,7 +11,7 @@ from pathlib import Path
 
 from . import config as cfg
 from .plan import RemoteHost, plan_remote
-from .session import (EXCLUSIVE_LOCK, PROBE_TIMEOUT, HostError, HostSession, Session, control_dir, ssh_argv,
+from .session import (EXCLUSIVE_LOCK, HOLD_SECONDS, PROBE_TIMEOUT, HostError, HostSession, Session, control_dir, ssh_argv,
                       ssh_config_path, write_ssh_config)
 
 
@@ -42,19 +42,74 @@ def make_session(project: cfg.Project, remotes: tuple[RemoteHost, ...], **kw) ->
 
 
 def status_command(remote: RemoteHost) -> str:
-    """One remote round trip: which slots are free, whether an exclusive
-    session holds the gate, and whether the tree and venv exist. Each
-    flock -n either succeeds and exits at once or fails."""
+    """One remote round trip: which slots are free and who holds the others
+    (its owner file's mtime and contents: start time, client host,
+    checkout), whether an exclusive session holds the gate, the host's
+    clock, and whether the tree and venv exist. Each flock -n either
+    succeeds and exits at once or fails."""
     host = remote.host
     lock_dir = shlex.quote(host.lock_dir)
+
+    def owner(name: str) -> str:
+        path = f"{lock_dir}/{name}.owner"
+        # a regular file only: anything can sit at that path in the shared dir
+        return (f"$([ -f {path} ] && [ ! -L {path} ] && printf '%s %s' "
+                f'"$(stat -c %Y {path} 2>/dev/null)" "$(head -n 1 {path} 2>/dev/null)")')
+
     probes = " ".join(
         f'if flock -n {lock_dir}/{n} true 2>/dev/null; then echo "slot {n} free"; '
-        f'else echo "slot {n} busy"; fi;' for n in range(host.slots))
+        f"else printf '%s\\n' \"slot {n} busy {owner(str(n))}\"; fi;" for n in range(host.slots))
     probes += (f" flock -s -n {lock_dir}/{EXCLUSIVE_LOCK} true 2>/dev/null"
-               f" || echo exclusive-held;")
-    return (f"mkdir -p {lock_dir} 2>/dev/null; {probes} "
+               f" || printf '%s\\n' \"exclusive-held {owner(EXCLUSIVE_LOCK)}\";")
+    return (f"mkdir -p {lock_dir} 2>/dev/null; {probes} echo \"now $(date +%s)\"; "
             f"[ -d {shlex.quote(remote.tree)} ] && echo tree || echo no-tree; "
             f"[ -e {shlex.quote(remote.venv)} ] && echo venv || echo no-venv")
+
+
+def _holder(fields: list[str], now: int) -> str:
+    """`<mtime> <start> <client> <checkout>` from the status command, as
+    shown: an older client's holder records nothing."""
+    if len(fields) < 3 or not (fields[0].isdigit() and fields[1].isdigit()):
+        return "busy (no owner recorded)"
+    beat, start = int(fields[0]), int(fields[1])
+    if now - beat > HOLD_SECONDS:
+        # a record no live holder keeps fresh: left by one that was killed
+        return f"busy (stale owner record, last heartbeat {format_duration(now - beat)} ago)"
+    who = " ".join(fields[2:])
+    return f"{who}, {format_duration(now - start)}, last heartbeat {format_duration(now - beat)} ago"
+
+
+def format_duration(seconds: int) -> str:
+    seconds = max(0, seconds)
+    if seconds < 120:
+        return f"{seconds}s"
+    if seconds < 7200:
+        return f"{seconds // 60} min"
+    return f"{seconds // 3600}h{seconds % 3600 // 60:02d}"
+
+
+def describe_locks(output: str) -> tuple[int, bool, list[str]]:
+    """Free slots, whether an exclusive session holds the gate, and one line
+    per slot (and for the gate when held) naming its holder."""
+    lines = output.splitlines()
+    now = next((int(l.split()[1]) for l in lines
+                if l.startswith("now ") and l.split()[1:2] and l.split()[1].isdigit()), 0)
+    free, described = 0, []
+    for line in lines:
+        fields = line.split()
+        if line.startswith("slot ") and len(fields) >= 3:
+            if fields[2] == "free":
+                free += 1
+                described.append(f"slot {fields[1]}: free")
+            else:
+                described.append(f"slot {fields[1]}: {_holder(fields[3:], now)}")
+    gated = False
+    for line in lines:
+        if line.startswith("exclusive-held"):
+            gated = True
+            described.append(f"exclusive (holds the host or waits for it): "
+                             f"{_holder(line.split()[1:], now)}")
+    return (0 if gated else free), gated, described
 
 
 def status(project: cfg.Project, remotes: tuple[RemoteHost, ...]) -> int:
@@ -76,17 +131,16 @@ def status(project: cfg.Project, remotes: tuple[RemoteHost, ...]) -> int:
             print(f"  {hs.name}: reachable, but {str(exc).partition(': ')[2]}")
             failed += 1
             continue
-        facts = proc.stdout.split()
-        slots = [f for f in proc.stdout.splitlines() if f.startswith("slot")]
-        free = sum(1 for line in slots if line.endswith("free"))
-        gated = ""
-        if "exclusive-held" in facts:  # a plain session would queue on any slot
-            free, gated = 0, " (an exclusive session holds the host or waits for it)"
+        facts = proc.stdout.splitlines()
+        free, gated, holders = describe_locks(proc.stdout)
+        gated_note = " (an exclusive session holds the host or waits for it)" if gated else ""
         tree = "tree present" if "tree" in facts else "no tree"
         venv = "venv present" if "venv" in facts else "no venv"
-        print(f"  {hs.name}: reachable, {free}/{remote.host.slots} slot(s) free{gated}, "
+        print(f"  {hs.name}: reachable, {free}/{remote.host.slots} slot(s) free{gated_note}, "
               f"{remote.workers} workers, {tree}, {venv}")
         print(f"    {hs.remote.tree}")
+        for line in holders:
+            print(f"    {line}")
     return 1 if failed else 0
 
 

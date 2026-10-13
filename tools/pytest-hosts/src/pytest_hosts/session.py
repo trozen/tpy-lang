@@ -8,6 +8,7 @@ the lock holder and execnet's workers all multiplex over it.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import os
 import re
@@ -33,6 +34,11 @@ COMMAND_TIMEOUT = 1800  # any other ssh or rsync round trip: a sync or a setup c
 QUEUE_POLL_SECONDS = 30
 LOCKED_TOKEN = "LOCKED"
 EXCLUSIVE_LOCK = "exclusive"  # held by a --hosts-exclusive session from its first wait to its end
+HEARTBEAT_SECONDS = 30  # how often the session tells each slot holder it is alive
+# A holder that hears nothing for this long releases its slot. EOF is not
+# enough: a process that outlives the session while holding the write end
+# of the holder's stdin (a fork of the controller) keeps the slot forever.
+HOLD_SECONDS = 150
 PENDING_LIMIT = 65536  # bytes of an unterminated holder line kept for the error message
 SEEN_LIMIT = 50  # holder lines kept for the error message
 
@@ -117,17 +123,41 @@ def probe_command() -> str:
 
 
 def lock_command(host: HostConfig, slot: int | str, *, gated: bool = True) -> str:
-    """Hold slot `slot` for as long as stdin stays open. flock's `-n` fails
+    """Hold slot `slot` while stdin stays open and a heartbeat line arrives
+    at least every HOLD_SECONDS. flock's `-n` fails
     at once when the slot is taken, so the caller sees exit 1 instead of
     the token. The dir is world-writable so users of one box share the
     gate. `gated`: a slot is not taken while an exclusive session holds
     EXCLUSIVE_LOCK, which reads as busy (exit 1) the same way. The check
     takes the lock shared, so plain sessions checking at once do not read
-    each other as an exclusive one."""
+    each other as an exclusive one.
+
+    The first line the holder reads names the session; it goes into
+    `<slot>.owner` with the start time, the file's mtime is the last
+    heartbeat, and `pytest-hosts status` shows both."""
     lock_dir = shlex.quote(host.lock_dir)
     gate = f"flock -s -n {lock_dir}/{EXCLUSIVE_LOCK} true && " if gated else ""
+    # bash for `read -t`. The token comes from bash, so a host without it
+    # fails the slot check. Anyone can precreate a path in the shared dir (a
+    # symlink, a FIFO, another user's file), so the record is written to a
+    # fresh mktemp file and renamed over the path (-T: never into a
+    # directory), and only a record this holder installed is refreshed or
+    # removed.
+    hold = (f"echo {LOCKED_TOKEN}; ok=; "
+            f"""trap '[ -n "$ok" ] && rm -f "$1"; exit' HUP INT TERM; """
+            f"if read -r -t {HOLD_SECONDS} owner; then "
+            f'tmp=$(mktemp "$1.XXXXXX") && {{ printf "%s %s\\n" "$(date +%s)" "$owner" > "$tmp"; '
+            f'chmod 644 "$tmp"; mv -fT "$tmp" "$1" && ok=1 || rm -f "$tmp"; }}; '
+            f'while read -r -t {HOLD_SECONDS} _; do [ -n "$ok" ] && touch -c "$1"; done; fi; '
+            f'[ -n "$ok" ] && rm -f "$1"; exit 0')
     return (f"mkdir -p {lock_dir} 2>/dev/null; chmod 1777 {lock_dir} 2>/dev/null; "
-            f"{gate}exec flock -n {lock_dir}/{slot} -c 'echo {LOCKED_TOKEN}; exec cat'")
+            f"{gate}exec flock -n {lock_dir}/{slot} bash -c {shlex.quote(hold)} holder "
+            f"{lock_dir}/{slot}.owner")
+
+
+def owner_line(source_host: str, checkout: Path) -> bytes:
+    """The holder's first line: who holds the slot, for `status`."""
+    return f"{source_host} {checkout}".replace("\n", " ").encode() + b"\n"
 
 
 def _untracked(checkout: Path, *flags: str) -> set[str] | None:
@@ -429,6 +459,8 @@ class Session:
     # for a slot must stop waiting, or the pool never joins and the other
     # hosts' slots stay held.
     _cancel: threading.Event = field(default_factory=threading.Event)
+    _heartbeat: threading.Thread | None = None
+    _heartbeat_stop: threading.Event = field(default_factory=threading.Event)
 
     def say(self, line: str) -> None:
         with self._lock:
@@ -541,7 +573,12 @@ class Session:
                         hs.remote = replace(hs.remote, slot=slot)
                     drain = threading.Thread(target=proc.stdout.read, daemon=True)
                     drain.start()
+                    # One holder that stops reading must not stall the others' heartbeats.
+                    os.set_blocking(proc.stdin.fileno(), False)
+                    with contextlib.suppress(OSError):
+                        proc.stdin.write(owner_line(self.source_host, self.checkout))
                     hs.holders.append((proc, drain))
+                    self._start_heartbeat()
                     return True
                 seen.append(text)
                 del seen[:-SEEN_LIMIT]
@@ -554,6 +591,31 @@ class Session:
             raise HostError(f"{hs.name}: slot check failed (exit {proc.returncode}): "
                             + (" / ".join(seen) or "no output"))
         return False
+
+    def _start_heartbeat(self) -> None:
+        with self._lock:
+            if self._heartbeat is not None and self._heartbeat.is_alive():
+                return
+            self._heartbeat_stop = threading.Event()
+            self._heartbeat = threading.Thread(target=self._beat, args=(self._heartbeat_stop,),
+                                               daemon=True)
+            self._heartbeat.start()
+
+    def _beat(self, stop: threading.Event) -> None:
+        lost: set[int] = set()
+        while not stop.wait(HEARTBEAT_SECONDS):
+            for hs in list(self.hosts):
+                for proc, _ in list(hs.holders):
+                    try:
+                        proc.stdin.write(b"\n")
+                    except (ValueError, BlockingIOError):
+                        pass  # closed by close() since the snapshot, or not reading
+                    except OSError:
+                        if id(proc) not in lost and not stop.is_set():
+                            lost.add(id(proc))
+                            with contextlib.suppress(Exception):
+                                self.say(f"{hs.name}: a slot holder ended before the session; "
+                                         f"another session can take that slot now")
 
     def sync(self, hs: HostSession) -> None:
         self.run(rsync_argv(hs.remote, self.checkout, self.settings.ignore, self.git_only),
@@ -733,11 +795,12 @@ class Session:
         return [hs for hs in self.hosts if hs.dropped is None]
 
     def close(self) -> None:
+        self._heartbeat_stop.set()
         for hs in self.hosts:
             holders, hs.holders = hs.holders, []
             for proc, drain in holders:
                 try:
-                    proc.stdin.close()  # the remote holder is `cat`: EOF ends it
+                    proc.stdin.close()  # EOF ends the remote holder's read loop
                     proc.wait(timeout=10)
                 except (OSError, subprocess.TimeoutExpired):
                     proc.kill()

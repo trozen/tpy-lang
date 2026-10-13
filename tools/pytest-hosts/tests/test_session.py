@@ -1,7 +1,9 @@
 """The command lines the session runs, without running them."""
 
+import contextlib
 import os
 import shlex
+import shutil
 import subprocess
 import threading
 import time
@@ -45,10 +47,75 @@ def test_lock_command_is_non_blocking_and_shared():
     cmd = session.lock_command(HOST, 1)
     assert "chmod 1777 /tmp/ph" in cmd
     assert "flock -n /tmp/ph/1" in cmd
-    assert "echo LOCKED; exec cat" in cmd
+    assert "exec flock -n /tmp/ph/1 bash -c " in cmd
+    assert "while read -r -t 150 _" in cmd
+    assert cmd.endswith(" holder /tmp/ph/1.owner")
     # a plain session does not take a slot while an exclusive one holds the gate
     assert "flock -s -n /tmp/ph/exclusive true && exec flock -n /tmp/ph/1" in cmd
     assert "/exclusive" not in session.lock_command(HOST, 1, gated=False)
+
+
+def _lock_free(path: Path) -> bool:
+    return subprocess.run(["flock", "-n", str(path), "true"]).returncode == 0
+
+
+@pytest.mark.skipif(not shutil.which("flock"), reason="needs util-linux flock")
+def test_lock_holder_lives_on_heartbeats_and_ends_without_them(tmp_path, monkeypatch):
+    monkeypatch.setattr(session, "HOLD_SECONDS", 1)
+    host = cfg.HostConfig(name="h", ssh="h", workers=1, lock_dir=str(tmp_path))
+    proc = subprocess.Popen(["bash", "-c", session.lock_command(host, 0)],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
+    try:
+        assert proc.stdout.readline() == b"LOCKED\n"
+        proc.stdin.write(session.owner_line("laptop", Path("/src/my demo")))
+        owner = tmp_path / "0.owner"
+        for _ in range(6):  # 1.8s of heartbeats: longer than HOLD_SECONDS
+            proc.stdin.write(b"\n")
+            time.sleep(0.3)
+            assert proc.poll() is None
+        assert not _lock_free(tmp_path / "0")
+        start, who = owner.read_text().rstrip("\n").split(" ", 1)
+        assert who == "laptop /src/my demo" and int(start) <= time.time()
+        assert time.time() - owner.stat().st_mtime < 1  # touched by the heartbeats
+        # Silence while stdin stays open: a session that died with its pipe
+        # still held elsewhere. The holder gives the slot up by itself.
+        proc.wait(timeout=5)
+        assert _lock_free(tmp_path / "0")
+        assert not owner.exists()
+    finally:
+        proc.kill()
+        proc.wait()
+
+
+@pytest.mark.skipif(not shutil.which("flock"), reason="needs util-linux flock")
+def test_host_without_bash_fails_the_slot_check(tmp_path):
+    # The token comes from bash: without it the session must not believe it
+    # holds a slot that flock has already given back.
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    for tool in ("flock", "mkdir", "chmod", "sh", "true"):
+        (bin_dir / tool).symlink_to(shutil.which(tool))
+    host = cfg.HostConfig(name="h", ssh="h", workers=1, lock_dir=str(tmp_path / "locks"))
+    proc = subprocess.run([str(bin_dir / "sh"), "-c", session.lock_command(host, 0)],
+                          stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=10,
+                          env={"PATH": str(bin_dir), "SHELL": str(bin_dir / "sh")})
+    assert "LOCKED" not in proc.stdout
+    assert proc.returncode not in (0, 1)  # 1 would read as a busy slot
+
+
+@pytest.mark.skipif(not shutil.which("flock"), reason="needs util-linux flock")
+def test_lock_holder_ends_at_eof(tmp_path):
+    host = cfg.HostConfig(name="h", ssh="h", workers=1, lock_dir=str(tmp_path))
+    proc = subprocess.Popen(["bash", "-c", session.lock_command(host, 0)],
+                            stdin=subprocess.PIPE, stdout=subprocess.PIPE, bufsize=0)
+    try:
+        assert proc.stdout.readline() == b"LOCKED\n"
+        proc.stdin.close()
+        proc.wait(timeout=5)
+        assert _lock_free(tmp_path / "0")
+    finally:
+        proc.kill()
+        proc.wait()
 
 
 def test_rsync_argv():
@@ -230,6 +297,7 @@ class FakePopen:
     busy_polls: int = 0
     busy_slot: int = 0
     keep_open: bool = False
+    stdins: list = []  # handed to the next holders started, in order
 
     def __init__(self, argv, **kw):
         name = argv[-1].split("flock -n ")[-1].split()[0].rsplit("/", 1)[1]
@@ -263,7 +331,7 @@ class FakePopen:
             else:
                 writer.close()
         self.stdout = os.fdopen(read_fd, "rb", buffering=0)
-        self.stdin = open(os.devnull, "wb")
+        self.stdin = FakePopen.stdins.pop(0) if FakePopen.stdins else open(os.devnull, "wb")
         locked = "LOCKED" in str(text).replace("|", "\n").split("\n")
         self.returncode = code if code is not None else (0 if locked else 1)
         self.killed = False
@@ -285,6 +353,7 @@ def fake_holder(monkeypatch):
     FakePopen.on = []
     FakePopen.busy_slot = 0
     FakePopen.instances, FakePopen.keep_open = [], False
+    FakePopen.stdins = []
     return FakePopen
 
 
@@ -364,6 +433,62 @@ def test_close_releases_the_holder_and_its_pipe(fake_holder):
     assert hs.holders == []
     assert fake_holder.instances[0].stdout.closed
     s.close()  # idempotent
+
+
+def test_session_sends_heartbeats_to_its_holders_until_close(fake_holder, monkeypatch):
+    monkeypatch.setattr(session, "HEARTBEAT_SECONDS", 0.02)
+    fake_holder.answers = {0: "LOCKED"}
+    s = make_session()
+    hs = session.HostSession(remote=s.remotes[0])
+    s.hosts = [hs]
+    read_fd, write_fd = os.pipe()
+    s.take_slot(hs)
+    fake_holder.instances[0].stdin = os.fdopen(write_fd, "wb", buffering=0)
+    os.set_blocking(read_fd, False)
+    deadline = time.monotonic() + 2
+    beats = b""
+    while len(beats) < 3 and time.monotonic() < deadline:
+        time.sleep(0.02)
+        try:
+            beats += os.read(read_fd, 64)
+        except BlockingIOError:
+            pass
+    assert beats.startswith(b"\n\n\n")
+    s.close()
+    s._heartbeat.join(timeout=1)
+    assert not s._heartbeat.is_alive()
+    os.close(read_fd)
+
+
+def test_a_holder_that_stops_reading_does_not_stall_the_others(fake_holder, monkeypatch):
+    monkeypatch.setattr(session, "HEARTBEAT_SECONDS", 0.02)
+    fake_holder.answers = {0: "LOCKED", 1: "LOCKED"}
+    s = make_session(slots=2, exclusive=False)
+    stuck, healthy = (session.HostSession(remote=s.remotes[0]) for _ in range(2))
+    s.hosts = [stuck, healthy]
+    full_r, full_w = os.pipe()
+    os.set_blocking(full_w, False)
+    with contextlib.suppress(BlockingIOError):
+        while True:
+            os.write(full_w, b"x" * 65536)
+    os.set_blocking(full_w, True)  # as a holder's stdin starts out
+    read_fd, write_fd = os.pipe()
+    fake_holder.stdins = [os.fdopen(full_w, "wb", buffering=0),
+                          os.fdopen(write_fd, "wb", buffering=0)]
+    s.take_slot(stuck)
+    s.take_slot(healthy)
+    os.set_blocking(read_fd, False)
+    deadline = time.monotonic() + 2
+    beats = b""
+    owner = session.owner_line(s.source_host, s.checkout)
+    while len(beats) < len(owner) + 3 and time.monotonic() < deadline:
+        time.sleep(0.02)
+        with contextlib.suppress(BlockingIOError):
+            beats += os.read(read_fd, 64)
+    assert beats.startswith(owner + b"\n\n\n")
+    s.close()
+    os.close(read_fd)
+    os.close(full_r)
 
 
 def test_exclusive_takes_the_gate_then_every_slot_in_order(fake_holder):
