@@ -167,7 +167,9 @@ unchanged cases is exactly what a breakage-catching nightly must not do, and
 a marker's key may not capture every environmental input (a libstdc++ point
 update, a system-lib bump on the system-deps config). The CPython-version
 rows instead pass `--no-exec` (comp + cpy, no C++ build), so the exec cache
-never applies to them.
+never applies to them. Every row also passes `--no-fork-compile`: the
+forked compiles that speed up local runs (`tests/README.md` "Forked
+compiles") are a harness path, and the nightly tests the one users run.
 
 ## One-time box setup
 

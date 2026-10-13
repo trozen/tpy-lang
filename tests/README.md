@@ -97,6 +97,8 @@ MIR line facts) -- and returns the result as plain data over a pipe.
   then carries one `tpy| WARNING: forked compiles stopped` line. Refused
   cases are counted in a `tpy| forked compiles: N case(s) compiled
   in-process` line.
+- The nightly runs every row with `--no-fork-compile`, so the path users
+  run (`Compiler.compile()` in one process) is what it tests.
 - Everything outside `test_case` (direct `compile_with_diagnostics` callers,
   the sweeps, subprocess-based tests) compiles in-process.
 - Debug a compile with `--no-fork-compile`: a forked child's stdin is

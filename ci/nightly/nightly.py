@@ -146,10 +146,15 @@ def container_script(cfg: dict, smoke: bool) -> str:
     return "\n".join(setup + [f"uv run pytest {shlex.join(pytest_args)}"])
 
 
+# Every row compiles each case in-process, the way users compile: the
+# forked compiles that make local runs fast are a test-harness path.
+PLAIN_COMPILE_ARGS = ["--no-fork-compile"]
+
+
 def suite_pytest_args(cfg: dict, smoke: bool, junit: str) -> list[str]:
     """A pytest row's arguments -- shared by the docker backend and the GitHub
     Actions matrix (ci/nightly/gha.py), so both run the same phases."""
-    pytest_args = [f"--junitxml={junit}"]
+    pytest_args = [f"--junitxml={junit}", *PLAIN_COMPILE_ARGS]
     # --no-exec rows need no C++ toolchain, so `cxx` is optional for them.
     if cfg.get("cxx"):
         pytest_args.insert(0, f"--cxx={cfg['cxx']}")
@@ -255,7 +260,7 @@ def _run_docker(cfg: dict, src_dir: Path, out_dir: Path, smoke: bool,
 def native_pytest_args(smoke: bool, junit: str, cxx: str | None = None) -> list[str]:
     """A native-host row's arguments: the full comp+exec+cpy run, the
     toolchain auto-detected unless the host needs `cxx` pinned."""
-    pytest_args = ["--force-exec", f"--junitxml={junit}"]
+    pytest_args = ["--force-exec", f"--junitxml={junit}", *PLAIN_COMPILE_ARGS]
     if cxx:
         pytest_args.insert(0, f"--cxx={cxx}")
     if smoke:

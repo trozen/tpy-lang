@@ -101,7 +101,7 @@ def test_remote_script_native_full_run() -> None:
         {"name": "macos-native",
          "ssh": {"host": "tpy-nightly-mac", "workdir": "tpy-nightly-work"}},
         smoke=False)
-    assert "--force-exec" in s
+    assert "--force-exec" in s and "--no-fork-compile" in s
     assert "--junitxml=../junit-macos-native.xml" in s
     assert "--cxx" not in s and "--no-cpy" not in s
     assert ".local/bin" in s and "uv run pytest" in s
@@ -205,6 +205,7 @@ def test_configs_json_rows_keep_their_phase_selection() -> None:
             expect = {"--force-exec", "--no-cpy"}
         got = {f for f in ("--no-exec", "--no-cpy", "--force-exec") if f in s}
         assert got == expect, f"{cfg['name']}: {got} != {expect}"
+        assert "--no-fork-compile" in s, cfg["name"]
 
 
 def test_script_row_runs_its_command_instead_of_the_suite() -> None:
