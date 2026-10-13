@@ -15,6 +15,7 @@ import atexit
 import re
 import contextlib
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -790,6 +791,43 @@ def _scratch_cwd():
         shutil.rmtree(d, ignore_errors=True)
 
 
+# A hung program would hold its worker, and the rest of the session with it,
+# indefinitely; no case runs for more than a few seconds on an idle machine.
+RUN_TIMEOUT_S = 300
+
+
+def _run_program(cmd: list[str], stdin_input: str | None,
+                 env: dict[str, str] | None = None) -> subprocess.CompletedProcess:
+    """Run one case program in a scratch cwd; fail the test if it hangs."""
+    with _scratch_cwd() as cwd:
+        # Its own process group, so a kill also reaches what it spawned.
+        with subprocess.Popen(
+                cmd, stdin=subprocess.PIPE if stdin_input is not None else None,
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True,
+                env=env, cwd=str(cwd), start_new_session=True) as proc:
+            try:
+                stdout, stderr = proc.communicate(stdin_input, timeout=RUN_TIMEOUT_S)
+            except BaseException as exc:
+                with contextlib.suppress(ProcessLookupError):
+                    os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
+                if not isinstance(exc, subprocess.TimeoutExpired):
+                    raise
+                pytest.fail(
+                    f"{cmd[-1]} did not finish within {RUN_TIMEOUT_S}s and was killed.\n"
+                    f"--- stdout (tail) ---\n{_output_tail(exc.stdout)}\n"
+                    f"--- stderr (tail) ---\n{_output_tail(exc.stderr)}",
+                    pytrace=False)
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout, stderr)
+
+
+def _output_tail(data: bytes | str | None) -> str:
+    # A timeout's partial output is undecoded bytes, possibly cut mid-character.
+    if isinstance(data, bytes):
+        data = data.decode(errors="replace")
+    return (data or "")[-2000:]
+
+
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
@@ -810,15 +848,7 @@ def run_cpython(src_file: Path) -> str:
     if case_input.exists():
         stdin_input = case_input.read_text()
 
-    with _scratch_cwd() as cwd:
-        result = subprocess.run(
-            [sys.executable, str(src_file)],
-            input=stdin_input,
-            capture_output=True,
-            text=True,
-            env=env,
-            cwd=str(cwd),
-        )
+    result = _run_program([sys.executable, str(src_file)], stdin_input, env)
 
     if result.returncode != 0:
         stderr_text = _filter_lib_traceback(result.stderr)
@@ -2596,13 +2626,7 @@ def build_and_run(build_dir: Path, module_name: str,
     case_input = build_dir.parent / "src" / "input.txt"
     if case_input.exists():
         stdin_input = case_input.read_text()
-    with _scratch_cwd() as cwd:
-        result = subprocess.run(
-            [str(exe_file)],
-            input=stdin_input,
-            cwd=str(cwd),
-            capture_output=True, text=True,
-        )
+    result = _run_program([str(exe_file)], stdin_input)
     return RunResult(
         success=(result.returncode == 0),
         stdout=result.stdout,

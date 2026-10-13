@@ -20,6 +20,20 @@ int64_t feed(::tpy::BytesView data) {
     return r;
 }
 
+// # For payloads over one page: a host past its pipe quota hands out one-page
+// # pipes, and feed() writes before anything reads.
+// def feed_file(name: str, data: bytes) -> int64:
+//     fd = os.open(name, os.O_RDWR | os.O_CREAT | os.O_TRUNC)
+//     os.write(fd, data)
+//     os.lseek(fd, 0, os.SEEK_SET)
+//     return fd
+int64_t feed_file(std::string_view name, ::tpy::BytesView data) {
+    int64_t fd = ::tpystd::os::open(name, (static_cast<int64_t>((static_cast<int64_t>(::tpy::stdlib::os::kc_o_rdwr | ::tpy::stdlib::os::kc_o_creat)) | ::tpy::stdlib::os::kc_o_trunc)));
+    ::tpystd::os::write(fd, data);
+    ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_set);
+    return fd;
+}
+
 // def basics() -> None:
 //     f = FileIO(feed(b"hello world"))
 //     print(f.fileno() >= 0)
@@ -55,10 +69,11 @@ int64_t feed(::tpy::BytesView data) {
 //
 //     # read(-1) over more than one 8192-byte raw read.
 //     payload = bytes(range(256)) * 80
-//     big = FileIO(feed(payload))
+//     big = FileIO(feed_file("fileio_readall.bin", payload))
 //     got = big.read()
 //     print("read-all", len(got), got == payload)
 //     big.close()
+//     os.unlink("fileio_readall.bin")
 void basics() {
     ::tpystd::io::FileIO f = ::tpystd::io::FileIO(::tpyapp::main::feed(::tpy::bytes_literal("hello world", 11)));
     std::cout << ::tpy::print_bool((f.fileno() >= 0)) << "\n" << ::tpy::check_signals;
@@ -100,10 +115,11 @@ void basics() {
     ::tpystd::os::close(fd);
     std::cout << "closefd-ok" << "\n" << ::tpy::check_signals;
     ::tpy::Bytes payload = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 80));
-    ::tpystd::io::FileIO big = ::tpystd::io::FileIO(::tpyapp::main::feed(payload));
+    ::tpystd::io::FileIO big = ::tpystd::io::FileIO(::tpyapp::main::feed_file("fileio_readall.bin", payload));
     ::tpy::Bytes got = big.read();
     std::cout << "read-all" << " " << ::tpy::__len__(got) << " " << ::tpy::print_bool((got == payload)) << "\n" << ::tpy::check_signals;
     big.close();
+    ::tpystd::os::unlink("fileio_readall.bin");
 }
 
 // def modes() -> None:
@@ -458,8 +474,14 @@ void failing_close() {
 //         print("bufw: empty before flush")
 //     bw.flush()
 //     print("bufw:", os.read(r, 16))
-//     # A write larger than the buffer goes to the raw sink at once.
-//     print("bufw:", bw.write(b"z" * 9000), len(os.read(r, 10000)))
+//     # A write larger than the buffer goes to the raw sink at once: the file
+//     # holds it before any flush.
+//     fd = feed_file("fileio_bufw.bin", b"")
+//     big = BufferedWriter(FileIO(fd, "wb", False))
+//     print("bufw:", big.write(b"z" * 9000), os.lseek(fd, 0, os.SEEK_END))
+//     big.close()
+//     os.close(fd)
+//     os.unlink("fileio_bufw.bin")
 //     bw.close()
 //     print("bufw:", bw.closed)
 //     try:
@@ -490,7 +512,12 @@ void buffered_writer() {
     }
     bw.flush();
     std::cout << "bufw:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << "\n" << ::tpy::check_signals;
-    std::cout << "bufw:" << " " << bw.write((::tpy::bytes_repeat(::tpy::bytes_literal("z", 1), 9000))) << " " << ::tpy::__len__(::tpystd::os::read(r, 10000)) << "\n" << ::tpy::check_signals;
+    int64_t fd = ::tpyapp::main::feed_file("fileio_bufw.bin", ::tpy::BytesView{});
+    ::tpystd::io::BufferedWriter big = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(fd, "wb", false)));
+    std::cout << "bufw:" << " " << big.write((::tpy::bytes_repeat(::tpy::bytes_literal("z", 1), 9000))) << " " << ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_end) << "\n" << ::tpy::check_signals;
+    big.close();
+    ::tpystd::os::close(fd);
+    ::tpystd::os::unlink("fileio_bufw.bin");
     bw.close();
     std::cout << "bufw:" << " " << ::tpy::print_bool(bw.closed()) << "\n" << ::tpy::check_signals;
     {

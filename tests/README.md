@@ -28,6 +28,17 @@ re-key and can skip stale-green; run `--force-exec` after such an upgrade
 
 The ext-exec phase of `tests/test_interop_exec.py` is gated by the same cache.
 
+## Program runs
+
+The exec and cpy phases run the program in a fresh empty cwd
+(`_run_program`) and kill it after `RUN_TIMEOUT_S` (300s), which fails the
+case with the tail of its output; a hung program would otherwise hold its
+worker, and the session, indefinitely. A case must not depend on a pipe's
+capacity: a user past `fs.pipe-user-pages-soft` gets one-page pipes (a
+build host running a few sessions' workers and compile servers is), so a
+case that writes more than 4 KB into a pipe before reading it uses a file
+instead.
+
 ## Cache eviction
 
 The stdlib object and PCH caches are keyed on the compiler source and the

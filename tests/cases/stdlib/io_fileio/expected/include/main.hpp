@@ -19,6 +19,8 @@ inline constexpr std::string_view __name__ = "__main__";
 
 // def feed(data: bytes) -> int64:
 int64_t feed(::tpy::BytesView data);
+// def feed_file(name: str, data: bytes) -> int64:
+int64_t feed_file(std::string_view name, ::tpy::BytesView data);
 // def basics() -> None:
 void basics();
 // def modes() -> None:

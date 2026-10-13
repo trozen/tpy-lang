@@ -13,6 +13,15 @@ def feed(data: bytes) -> int64:
     return r
 
 
+# For payloads over one page: a host past its pipe quota hands out one-page
+# pipes, and feed() writes before anything reads.
+def feed_file(name: str, data: bytes) -> int64:
+    fd = os.open(name, os.O_RDWR | os.O_CREAT | os.O_TRUNC)
+    os.write(fd, data)
+    os.lseek(fd, 0, os.SEEK_SET)
+    return fd
+
+
 def basics() -> None:
     f = FileIO(feed(b"hello world"))
     print(f.fileno() >= 0)
@@ -48,10 +57,11 @@ def basics() -> None:
 
     # read(-1) over more than one 8192-byte raw read.
     payload = bytes(range(256)) * 80
-    big = FileIO(feed(payload))
+    big = FileIO(feed_file("fileio_readall.bin", payload))
     got = big.read()
     print("read-all", len(got), got == payload)
     big.close()
+    os.unlink("fileio_readall.bin")
 
 
 def modes() -> None:
@@ -218,8 +228,14 @@ def buffered_writer() -> None:
         print("bufw: empty before flush")
     bw.flush()
     print("bufw:", os.read(r, 16))
-    # A write larger than the buffer goes to the raw sink at once.
-    print("bufw:", bw.write(b"z" * 9000), len(os.read(r, 10000)))
+    # A write larger than the buffer goes to the raw sink at once: the file
+    # holds it before any flush.
+    fd = feed_file("fileio_bufw.bin", b"")
+    big = BufferedWriter(FileIO(fd, "wb", False))
+    print("bufw:", big.write(b"z" * 9000), os.lseek(fd, 0, os.SEEK_END))
+    big.close()
+    os.close(fd)
+    os.unlink("fileio_bufw.bin")
     bw.close()
     print("bufw:", bw.closed)
     try:

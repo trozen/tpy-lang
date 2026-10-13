@@ -1,5 +1,7 @@
 """Regression tests for test failure reporting helpers."""
 
+import os
+import time
 from pathlib import Path
 
 import pytest
@@ -26,6 +28,53 @@ def test_check_or_update_reports_unified_diff(tmp_path: Path, monkeypatch: pytes
     assert "+CHANGED" in msg
     # Without name_function the divergence site is not reported.
     assert "diverges " not in msg
+
+
+def test_hung_program_fails_the_case_with_its_output(tmp_path: Path,
+                                                      monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(conftest, "RUN_TIMEOUT_S", 1)
+    pid_file = tmp_path / "spawned.pid"
+    src = tmp_path / "main.py"
+    src.write_text(
+        "import subprocess, sys, time\n"
+        "p = subprocess.Popen([sys.executable, '-c', 'import time; time.sleep(60)'])\n"
+        f"open({str(pid_file)!r}, 'w').write(str(p.pid))\n"
+        "print('started', flush=True)\n"
+        "print('to stderr', file=sys.stderr, flush=True)\n"
+        "time.sleep(60)\n")
+
+    with pytest.raises(pytest.fail.Exception) as exc:
+        conftest.run_cpython(src)
+
+    msg = str(exc.value)
+    assert "did not finish within 1s" in msg
+    assert "started" in msg
+    assert "to stderr" in msg
+    # What the program spawned dies with it.
+    spawned = int(pid_file.read_text())
+    deadline = time.monotonic() + 5
+    while _alive(spawned) and time.monotonic() < deadline:
+        time.sleep(0.05)
+    assert not _alive(spawned)
+
+
+def _alive(pid: int) -> bool:
+    try:
+        os.kill(pid, 0)
+    except ProcessLookupError:
+        return False
+    # A killed process not yet reaped by its (also killed) parent is a zombie.
+    try:
+        with open(f"/proc/{pid}/stat") as f:
+            return f.read().rsplit(")", 1)[1].split()[0] != "Z"
+    except FileNotFoundError:
+        return False
+
+
+def test_output_tail_decodes_and_keeps_the_end() -> None:
+    assert conftest._output_tail(None) == ""
+    assert conftest._output_tail(b"ab\xe2\x82") == "ab�"
+    assert conftest._output_tail("x" * 1000 + "y" * 2000) == "y" * 2000
 
 
 GEN_CPP = """\
