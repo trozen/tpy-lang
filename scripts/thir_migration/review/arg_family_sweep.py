@@ -78,6 +78,11 @@ import time
 from pathlib import Path
 from typing import NamedTuple
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+from program_compile import (  # noqa: E402
+    compile_program, failure, first_error, program_facts, warnings_of)
+
 # The tree the sweep compiles against. `--repo` retargets it, so the script
 # runs on a checkout other than the one it lives in.
 REPO = Path(__file__).resolve().parents[3]
@@ -809,12 +814,9 @@ def survey(program: str, work_dir: Path,
     sema refuses anyway the retry loop still runs, so the failure names the
     cell that was not expected to refuse.
     """
-    (Compiler, CodeGenOptions, DiagnosticLevel, SemanticError,
-     _function_lines, iter_module_callables) = _tpyc()
     name, slot, mut, group = next(p for p in programs() if p[0] == program)
     work_dir.mkdir(parents=True, exist_ok=True)
     path = work_dir / ((stem or program) + ".py")
-    lib = REPO / "lib" / "tpy"
 
     active = (list(cells) if cells is not None
               else program_cells(slot, mut, group))
@@ -825,22 +827,12 @@ def survey(program: str, work_dir: Path,
     while True:
         built = build_program(slot, mut, group, active)
         path.write_text(built.text)
-        try:
-            compiler = Compiler(path, default_int="int32", lib_dirs=[lib])
-            modules = compiler.compile()
-            diags = list(compiler.diagnostics)
-            for mod in modules:
-                an = getattr(mod, "analyzer", None)
-                if an is not None:
-                    diags += list(getattr(an, "diagnostics", []))
-            errors = [d for d in diags if d.level == DiagnosticLevel.ERROR]
-            if errors:
-                raise SemanticError(str(errors[0].message),
-                                    getattr(errors[0], "loc", None))
-        except SemanticError as exc:
-            line = getattr(getattr(exc, "loc", None), "line", 0) or 0
+        facts = compile_program(path, program_facts, repo=REPO)
+        error = first_error(facts)
+        if error is not None:
+            line, message = error
             cell = _owner(line, built.cell_lines)
-            msg = "sema:" + str(exc).strip().split("\n")[0][:80]
+            msg = "sema:" + message.strip().split("\n")[0][:80]
             if cell is None:
                 # Not inside any cell -- the shared fixture or a callee
                 # signature refused, so nothing in this program can be
@@ -860,26 +852,23 @@ def survey(program: str, work_dir: Path,
                 # sema check.
                 return out
             continue
+        if facts["raised"] is not None or facts["codegen_error"] is not None:
+            raise failure(facts, "compiling %s" % path)
 
-        entry = next(m for m in modules if m.is_entry_point)
-        ctx = compiler.collect_thir(entry, CodeGenOptions(),
-                                    tolerate_reject=True)
-        nodes = {f.name: f for f, _st in
-                 iter_module_callables(entry.ast, entry.analyzer)
-                 if f.name.startswith("cell_")}
-        warnings = [d for d in diags if d.level == DiagnosticLevel.WARNING]
+        nodes = {b["name"]: b for b in facts["bodies"]
+                 if b["kind"] == "callable" and b["name"].startswith("cell_")}
+        warned = warnings_of(facts)
         for source, family in active:
             fn = nodes.get("cell_%s__%s" % (source, family))
             key = cell_name(slot, mut, source, family)
             if fn is None:
                 out[key] = ["crash:no such body", "", ""]
                 continue
-            why = compiler.thir_reject_by_node.get(fn)
-            if fn in ctx.thir_functions:
+            if fn["function"] is not None:
                 verdict = "ok"
-                render = _render(_function_lines(ctx.thir_functions[fn]))
-            elif why is not None:
-                verdict, render = "reject:" + str(why), ""
+                render = _render(fn["function"])
+            elif fn["reject"] is not None:
+                verdict, render = "reject:" + fn["reject"], ""
             else:
                 verdict, render = "crash:not attempted", ""
             # The cell's OWN diagnostics: its caller function, plus the callee
@@ -889,12 +878,10 @@ def survey(program: str, work_dir: Path,
             spans = [built.cell_lines[(source, family)]]
             if family in built.family_lines:
                 spans.append(built.family_lines[family])
-            mine = [w for w in warnings
-                    if any(lo <= (getattr(getattr(w, "loc", None), "line", 0)
-                                  or 0) <= hi for lo, hi in spans)]
-            mine.sort(key=lambda w: getattr(getattr(w, "loc", None),
-                                            "line", 0) or 0)
-            out[key] = [verdict, _tag(mine[0].message) if mine else "", render]
+            mine = [w for w in warned
+                    if any(lo <= w[0] <= hi for lo, hi in spans)]
+            mine.sort(key=lambda w: w[0])
+            out[key] = [verdict, _tag(mine[0][1]) if mine else "", render]
         return out
 
 

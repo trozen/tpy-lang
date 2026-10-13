@@ -15,7 +15,7 @@ import pytest
 
 import conftest
 import fork_compile
-from conftest import CASES_DIR, CompileResult, case_request, compile_case
+from conftest import CASES_DIR, CompileResult, case_fork_request, case_request, compile_case
 from tpyc.compiler import Compiler
 
 pytestmark = pytest.mark.skipif(sys.platform != "linux", reason="forked compiles are Linux-only")
@@ -32,10 +32,6 @@ def servers(monkeypatch):
     fork_compile.shutdown()
 
 
-def _fields(req) -> dict:
-    return {f.name: getattr(req, f.name) for f in dataclasses.fields(req)}
-
-
 def _tree(out: Path) -> dict[str, str]:
     return {str(p.relative_to(out)): p.read_text()
             for p in sorted(out.rglob("*")) if p.is_file()}
@@ -48,11 +44,9 @@ def _plain(req) -> CompileResult:
 
 
 def _forked(req) -> CompileResult:
-    reply = fork_compile.compile_forked(_fields(req))
+    reply = fork_compile.compile_forked(case_fork_request(req))
     assert reply is not None, fork_compile.fallback_reason()
-    if "raise" in reply:
-        fork_compile.reraise(reply["raise"])
-    return CompileResult(**reply["result"])
+    return fork_compile.result(reply)
 
 
 def _copy_case(case: Path, tmp_path: Path) -> Path:
@@ -84,11 +78,15 @@ def test_forked_compile_matches_in_process(case, tmp_path, servers):
     assert dataclasses.asdict(forked) == dataclasses.asdict(plain)
     assert forked_tree == _tree(out)
     assert forked.success == (not Path(case).name.startswith("error_"))
+    if forked.success:
+        # Equal could be both empty: the session's THIR tally reads these
+        # (an async-only case lowers frames, not plain bodies).
+        assert forked.thir_faces
 
 
 def test_asyncio_program_is_rerouted(tmp_path, servers):
     src = _copy_case(CASES_DIR / "async/async_assert_message_await", tmp_path)
-    req = _fields(case_request(src, src.parent.parent / "__tpyc__"))
+    req = case_fork_request(case_request(src, src.parent.parent / "__tpyc__"))
     assert fork_compile._server("base").request(req) == {"kind": "reroute", "key": "asyncio"}
     assert fork_compile.compile_forked(req)["kind"] == "result"
     assert set(fork_compile._servers) == {"base", "asyncio"}
@@ -102,7 +100,7 @@ def test_program_shadowing_a_prepared_module_compiles_in_process(local, tmp_path
     (src_dir / f"{local}.py").write_text("def helper() -> int:\n    return 1\n")
     src = src_dir / "main.py"
     src.write_text(f"import {local}\n\nprint({local}.helper())\n")
-    req = _fields(case_request(src, tmp_path / "case" / "__tpyc__"))
+    req = case_fork_request(case_request(src, tmp_path / "case" / "__tpyc__"))
     assert fork_compile._server("base").request(req)["kind"] == (
         "plain" if local == "typing" else "reroute")
     assert fork_compile.compile_forked(req) is None
@@ -133,7 +131,7 @@ def _blocked_compile(tmp_path: Path) -> tuple[dict, threading.Thread, list, list
     src_dir.mkdir(parents=True)
     src = src_dir / "main.py"
     os.mkfifo(src)
-    req = _fields(case_request(src, tmp_path / "blocked" / "__tpyc__"))
+    req = case_fork_request(case_request(src, tmp_path / "blocked" / "__tpyc__"))
     results: list = []
     raised: list[BaseException] = []
 
@@ -191,11 +189,27 @@ def test_server_that_cannot_start_falls_back(tmp_path, servers, monkeypatch):
 
     monkeypatch.setattr(fork_compile.subprocess, "Popen", no_process)
     src = _copy_case(CASES_DIR / "tplib/arc_weak_after_drop", tmp_path)
-    req = _fields(case_request(src, src.parent.parent / "__tpyc__"))
+    req = case_fork_request(case_request(src, src.parent.parent / "__tpyc__"))
     assert fork_compile.compile_forked(req) is None
     assert fork_compile.fallback_reason() == (
         "compile server 'base' failed to start: [Errno 24] Too many open files")
     assert fork_compile._servers == {}
+
+
+def test_request_naming_a_missing_function_raises_in_the_worker(tmp_path, servers):
+    src = tmp_path / "main.py"
+    src.write_text("print(1)\n")
+    req = fork_compile.request(compile_case, src, (), default_int="int32",
+                               lib_dirs=conftest.DEFAULT_LIB_DIRS)
+    req["fn"] = ("conftest", conftest.__file__, "no_such_function")
+    reply = fork_compile.compile_forked(req)
+    assert reply["kind"] == "raise"
+    with pytest.raises(AttributeError, match="no_such_function"):
+        fork_compile.result(reply)
+    # The root conftest shares the name; the server must not take one for the other.
+    req["fn"] = ("conftest", str(conftest.PROJECT_ROOT / "conftest.py"), "compile_case")
+    with pytest.raises(ImportError, match="not .*/conftest.py"):
+        fork_compile.result(fork_compile.compile_forked(req))
 
 
 def test_server_reporting_failure_does_not_start(servers):
@@ -215,7 +229,7 @@ def test_interrupted_request_never_answers_the_next(tmp_path, servers, monkeypat
     with monkeypatch.context() as patch:
         patch.setattr(fork_compile, "_recv", interrupted)
         with pytest.raises(KeyboardInterrupt):
-            fork_compile.compile_forked(_fields(case_request(first, first.parent.parent / "__tpyc__")))
+            fork_compile.compile_forked(case_fork_request(case_request(first, first.parent.parent / "__tpyc__")))
     assert stale.proc.poll() is not None and "base" not in fork_compile._servers
     # The first case's reply was never read; the next request starts over.
     result = _forked(case_request(second, second.parent.parent / "__tpyc__"))
@@ -225,8 +239,8 @@ def test_interrupted_request_never_answers_the_next(tmp_path, servers, monkeypat
 
 
 def _raise_reply(req) -> dict:
-    reply = fork_compile.compile_forked(_fields(req))
-    assert reply is not None and "raise" in reply, reply
+    reply = fork_compile.compile_forked(case_fork_request(req))
+    assert reply is not None and reply["kind"] == "raise", reply
     return reply
 
 
@@ -238,13 +252,10 @@ def test_forked_compile_raises_what_in_process_raises(tmp_path, servers):
     reply = _raise_reply(req)
     with pytest.raises(pytest.fail.Exception) as forked:
         fork_compile.reraise(reply["raise"])
-    before = dict(conftest._thir_tally)
     with pytest.raises(pytest.fail.Exception) as plain:
         _plain(req)
     assert (forked.value.msg, forked.value.pytrace) == (plain.value.msg, plain.value.pytrace)
     assert "nomatch.*" in forked.value.msg
-    # The bodies lowered before the raise are tallied as in-process.
-    assert reply["thir_tally"]["bodies"] == conftest._thir_tally["bodies"] - before["bodies"] > 0
     # An internal error: the output directory is a file.
     blocker = tmp_path / "blocker"
     blocker.write_text("")
@@ -279,7 +290,7 @@ def test_unpicklable_exception_is_raised_as_text():
 
 def test_dead_server_falls_back_once(tmp_path, servers, capsys):
     src = _copy_case(CASES_DIR / "tplib/arc_weak_after_drop", tmp_path)
-    req = _fields(case_request(src, src.parent.parent / "__tpyc__"))
+    req = case_fork_request(case_request(src, src.parent.parent / "__tpyc__"))
     server = fork_compile._server("base")
     server.proc.kill()
     server.proc.wait()
@@ -324,12 +335,145 @@ def test_live_annotation_checks_follow_update_mode(update, tmp_path, servers):
 
 
 def test_request_and_result_records_cross_the_pipe():
-    """The server protocol pickles these records' fields; a field that does
-    not round-trip would fail every forked case at run time."""
-    req = conftest.case_request(Path("/x/src/main.py"), Path("/x/__tpyc__"))
-    fields = _fields(req)
-    assert fork_compile.pickle.loads(fork_compile.pickle.dumps(fields)) == fields
+    """The server protocol pickles the request and the result; a field that
+    does not round-trip would fail every forked case at run time."""
+    req = case_fork_request(conftest.case_request(Path("/x/src/main.py"), Path("/x/__tpyc__")))
+    assert fork_compile.pickle.loads(fork_compile.pickle.dumps(req)) == req
     result = CompileResult(**{f.name: f.default if f.default is not dataclasses.MISSING
                               else None for f in dataclasses.fields(CompileResult)})
-    out = {f.name: getattr(result, f.name) for f in dataclasses.fields(result)}
-    assert fork_compile.pickle.loads(fork_compile.pickle.dumps(out)) == out
+    assert fork_compile.pickle.loads(fork_compile.pickle.dumps(result)) == result
+
+
+# ----- the sweeps' client: program_compile.program_facts ---------------------
+
+_FORKING = type("Config", (), {"getoption": staticmethod(lambda name: False)})()
+
+# A warning, a lowered function, a frame and a constructor: every kind of
+# fact the sweeps read.
+_SWEEP_PROGRAM = """\
+from typing import Iterator
+
+
+class P:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+
+def read(o: P | None) -> int:
+    return o.x
+
+
+def count(n: int) -> Iterator[int]:
+    yield n
+
+
+def main() -> None:
+    print(read(P(1)))
+    for v in count(2):
+        print(v)
+
+
+main()
+"""
+
+
+@pytest.fixture
+def program_compile(servers, monkeypatch):
+    if not conftest.REVIEW_SCRIPTS_DIR.exists():
+        pytest.skip("scripts/thir_migration/review is not part of this checkout")
+    module = conftest.import_program_compile()
+    monkeypatch.setattr(module, "_runner", fork_compile.program_runner(_FORKING))
+    return module
+
+
+def _in_process(program_compile, src: Path, *args):
+    compiler = Compiler(src, default_int="int32", lib_dirs=list(conftest.DEFAULT_LIB_DIRS))
+    return program_compile.program_facts(compiler, compiler.compile, *args)
+
+
+def _facts_request(program_compile, src: Path, *args) -> dict:
+    return fork_compile.request(program_compile.program_facts, src, args,
+                                default_int="int32", lib_dirs=conftest.DEFAULT_LIB_DIRS)
+
+
+def test_sweep_client_matches_in_process(tmp_path, program_compile):
+    src = tmp_path / "prog.py"
+    src.write_text(_SWEEP_PROGRAM)
+    forked = program_compile.compile_program(src, program_compile.program_facts)
+    assert set(fork_compile._servers) == {"base"} and fork_compile.refusals() == []
+    assert forked == _in_process(program_compile, src)
+    bodies = {b["name"]: b for b in forked["bodies"]}
+    assert bodies["read"]["function"] and bodies["count"]["resumable"]
+    assert bodies["P"]["kind"] == "constructor" and bodies["P"]["constructor"]
+    assert [w for w in program_compile.warnings_of(forked) if "None access" in w[1]]
+    # With a codegen directory the child writes the C++, as in-process.
+    out_forked, out_plain = tmp_path / "forked", tmp_path / "plain"
+    forked = program_compile.compile_program(src, program_compile.program_facts, out_forked)
+    assert forked == _in_process(program_compile, src, out_plain)
+    assert forked["codegen_error"] is None
+    assert _tree(out_forked) == _tree(out_plain) != {}
+
+
+def test_sweep_client_asyncio_program_is_rerouted(tmp_path, program_compile):
+    src = _copy_case(CASES_DIR / "async/async_assert_message_await", tmp_path)
+    # program_facts catches what `run()` raises; the reroute still wins.
+    reply = fork_compile._server("base").request(_facts_request(program_compile, src))
+    assert reply == {"kind": "reroute", "key": "asyncio"}
+    forked = program_compile.compile_program(src, program_compile.program_facts)
+    assert set(fork_compile._servers) == {"base", "asyncio"}
+    assert forked == _in_process(program_compile, src)
+    assert forked["raised"] is None and forked["bodies"]
+
+
+def test_sweep_client_refused_program_compiles_in_process(tmp_path, program_compile):
+    (tmp_path / "typing.py").write_text("def helper() -> int:\n    return 1\n")
+    src = tmp_path / "main.py"
+    src.write_text("import typing\n\nprint(typing.helper())\n")
+    # program_facts catches what `run()` raises; the refusal still wins.
+    reply = fork_compile._server("base").request(_facts_request(program_compile, src))
+    assert reply["kind"] == "plain"
+    assert program_compile.compile_program(src, program_compile.program_facts) == \
+        _in_process(program_compile, src)
+    [refusal] = fork_compile.refusals()
+    assert refusal.startswith(f"{src}: ")
+    assert fork_compile.fallback_reason() is None
+
+
+def test_request_off_the_template_config_compiles_in_process(tmp_path, servers):
+    src = tmp_path / "main.py"
+    src.write_text("print(1)\n")
+    for config in ({"default_int": "int64", "lib_dirs": conftest.DEFAULT_LIB_DIRS},
+                   {"default_int": "int32", "lib_dirs": [tmp_path]}):
+        req = fork_compile.request(compile_case, src, (), **config)
+        assert fork_compile.compile_forked(req) is None
+    assert fork_compile._servers == {}
+
+
+def test_sweep_runner_stops_forking_once_a_server_failed(tmp_path, program_compile,
+                                                         monkeypatch):
+    starts = []
+
+    def no_process(*args, **kwargs):
+        starts.append(args)
+        raise OSError(24, "Too many open files")
+
+    monkeypatch.setattr(fork_compile.subprocess, "Popen", no_process)
+    src = tmp_path / "prog.py"
+    src.write_text(_SWEEP_PROGRAM)
+    expected = _in_process(program_compile, src)
+    for _ in range(2):
+        assert program_compile.compile_program(src, program_compile.program_facts) == expected
+    # The runner re-checks per request, so the failed start is not retried.
+    assert len(starts) == 1 and fork_compile.fallback_reason() is not None
+
+
+def test_sweep_runner_honours_no_fork_compile(tmp_path, program_compile, monkeypatch):
+    plain = type("Config", (), {"getoption": staticmethod(lambda name: True)})()
+    monkeypatch.setattr(program_compile, "_runner", fork_compile.program_runner(plain))
+    src = tmp_path / "prog.py"
+    src.write_text(_SWEEP_PROGRAM)
+    assert program_compile.compile_program(src, program_compile.program_facts) == \
+        _in_process(program_compile, src)
+    assert fork_compile._servers == {}

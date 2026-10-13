@@ -12,9 +12,10 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[3]
 sys.path.insert(0, str(REPO))
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from tpyc.compiler import Compiler  # noqa: E402 -- needs REPO on sys.path
-from tpyc.diagnostics import DiagnosticLevel  # noqa: E402
+from program_compile import (  # noqa: E402
+    compile_program, first_error, program_facts, warnings_of)
 
 # The last line of every cell's shared head. `cell_verdict` finds it to tell
 # the PRELUDE's own diagnostics from the cell's: a prelude that warns would
@@ -40,34 +41,23 @@ def cell_verdict(src: Path, build_dir: Path,
     which the first-warning form has to drop because it cannot place it on
     either side of the mark.
     """
-    lib = REPO / "lib" / "tpy"
-    warned = ""
     cell_line = cell_start(src)
-    try:
-        compiler = Compiler(src, default_int="int32", lib_dirs=[lib])
-        modules = compiler.compile()
-        diags = list(compiler.diagnostics)
-        for mod in modules:
-            an = getattr(mod, "analyzer", None)
-            if an is not None:
-                diags += list(getattr(an, "diagnostics", []))
-        warnings = [d for d in diags
-                    if d.level == DiagnosticLevel.WARNING
-                    and (_diag_line(d) > cell_line
-                         or (all_warnings and _diag_line(d) == 0))]
-        if warnings and all_warnings:
-            warned = " | ".join(diag_tag(w.message) for w in warnings)
-        elif warnings:
-            warned = diag_tag(warnings[0].message)
-        errors = [d for d in diags if d.level == DiagnosticLevel.ERROR]
-        if errors:
-            return [diag_tag(errors[0].message), warned]
-        entry = next(m for m in modules if m.is_entry_point)
-        for mod in modules:
-            compiler.generate_code(mod, build_dir,
-                                   entry_module_name=entry.name)
-    except Exception as exc:  # noqa: BLE001 -- every failure IS a verdict
-        return [diag_tag(str(exc)), warned]
+    facts = compile_program(src, program_facts, build_dir, repo=REPO)
+    # Every failure IS a verdict.
+    if facts["raised"] is not None:
+        return [diag_tag(facts["raised"]["message"]), ""]
+    warned = ""
+    warnings = [message for line, message in warnings_of(facts)
+                if line > cell_line or (all_warnings and line == 0)]
+    if warnings and all_warnings:
+        warned = " | ".join(diag_tag(w) for w in warnings)
+    elif warnings:
+        warned = diag_tag(warnings[0])
+    error = first_error(facts)
+    if error is not None:
+        return [diag_tag(error[1]), warned]
+    if facts["codegen_error"] is not None:
+        return [diag_tag(facts["codegen_error"]), warned]
     return ["ok", warned]
 
 
@@ -77,12 +67,6 @@ def cell_start(src: Path) -> int:
         if line == CELL_MARK:
             return i
     return 0
-
-
-def _diag_line(diag) -> int:
-    """A diagnostic's line, or 0 when it carries no location."""
-    loc = getattr(diag, "loc", None)
-    return getattr(loc, "line", 0) or 0
 
 
 def diag_tag(message: str) -> str:

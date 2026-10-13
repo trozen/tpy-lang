@@ -69,26 +69,41 @@ from pytest's own output.
 
 ## Forked compiles
 
-A case's compile spends most of its front-end time analyzing the stdlib
+A program's compile spends most of its front-end time analyzing the stdlib
 modules every program imports. On Linux each xdist worker therefore starts,
 on first use, one compile server per template key (`tests/fork_compile.py`):
 a fresh interpreter that analyzes the template's layers once
 (`Compiler.prepare`, see `docs/ARCHITECTURE.md`) and then forks once per
-case. The child finishes the program (`Compiler.finish`) and runs
-`conftest.compile_case` -- the same body the in-process path runs:
-diagnostics, codegen into the case's `__tpyc__`, MIR and the annotation
-checks that read compiler objects (`type()`, `mir()`, `mir_summary()`, the
-MIR line facts) -- and returns the result as plain data over a pipe.
+request. The child finishes the program (`Compiler.finish`) and runs the
+request's function, `fn(compiler, run, *args)`, the same function the
+in-process path runs, and returns its result as plain data over a pipe.
+Two clients use it:
+
+- `test_case`: `conftest.compile_case` -- diagnostics, codegen into the
+  case's `__tpyc__`, MIR and the annotation checks that read compiler
+  objects (`type()`, `mir()`, `mir_summary()`, the MIR line facts).
+- The sweeps (`test_ref_sink_sweep.py`, `test_arg_family_sweep.py`,
+  `test_property_position_sweep.py`, `test_tuple_element_matrix.py`): their
+  scripts compile through `program_compile.compile_program` in
+  `scripts/thir_migration/review/`, and the session fixture
+  `sweep_compiles` sends it to the servers. The function is
+  `program_compile.program_facts` -- diagnostics, the THIR survey's dumps and
+  rejects per entry-module body, or the emitted C++ -- and each sweep reads
+  its verdicts off those facts in the worker. A standalone script run
+  installs no runner and compiles in-process.
 
 - Template keys: `base` prepares the implicit stdlib; `asyncio` adds a layer
   rooted at `asyncio`. A `base` child whose program reaches asyncio answers
   "reroute" before analyzing anything and the case goes to `asyncio`.
-- What the compile raised (`pytest.fail` included) is raised again in the
+- What the function raised (`pytest.fail` included) is raised again in the
   worker, with the child's traceback as a note. A child killed by a signal
-  fails its case with the signal and the child's stderr.
-- The case compiles in the worker process instead (the plain path) with
-  `--no-fork-compile`, off Linux, for a non-default `default_int` /
-  `plugin` / `dsl_opts`, when the child refuses the prepared layers
+  fails its test with the signal and the child's stderr. A reroute or a
+  refusal raised by `run()` wins over whatever the function made of it.
+- The program compiles in the worker process instead (the plain path) with
+  `--no-fork-compile`, off Linux, for a compiler configuration that is not
+  the templates' (a non-default `default_int`, other library directories),
+  for a case's `plugin` / `dsl_opts`, when the
+  child refuses the prepared layers
   (`LayerReuseRefused`: a module name the prepared layers resolved, hit or
   miss, or a macro probe miss resolves differently from the case directory, e.g.
   a program-local `typing.py`, or the program changes a prepared module's
@@ -99,8 +114,8 @@ MIR line facts) -- and returns the result as plain data over a pipe.
   in-process` line.
 - The nightly runs every row with `--no-fork-compile`, so the path users
   run (`Compiler.compile()` in one process) is what it tests.
-- Everything outside `test_case` (direct `compile_with_diagnostics` callers,
-  the sweeps, subprocess-based tests) compiles in-process.
+- Everything else (direct `compile_with_diagnostics` callers,
+  subprocess-based tests) compiles in-process.
 - Debug a compile with `--no-fork-compile`: a forked child's stdin is
   `/dev/null` and its output is shown only when it dies, so `breakpoint()`,
   `--pdb` or a debug print inside the compiler goes nowhere.

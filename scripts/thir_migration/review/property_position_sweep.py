@@ -70,6 +70,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from cell_verdict import CELL_MARK, REPO  # noqa: E402
 from cell_verdict import diag_tag as _tag  # noqa: E402
+from program_compile import (  # noqa: E402
+    compile_program, first_error, program_facts, warnings_of)
 
 EXPECTED = Path(__file__).with_suffix(".expected.json")
 
@@ -790,11 +792,8 @@ def survey(program: str, work_dir: Path,
     own. If sema refuses anyway the retry loop still runs, so the failure
     names the cell that was not expected to refuse.
     """
-    Compiler, CodeGenOptions, DiagnosticLevel, SemErr, iter_callables, \
-        iter_ctors = _survey_imports()
     work_dir.mkdir(parents=True, exist_ok=True)
     path = work_dir / (re.sub(r"[^A-Za-z0-9_]", "_", stem or program) + ".py")
-    lib = REPO / "lib" / "tpy"
     out: dict[str, list[str]] = {}
     drop: set[str] = set(expect_sema or ())
     while True:
@@ -804,21 +803,11 @@ def survey(program: str, work_dir: Path,
             return out
         built = _build(program, drop, keep)
         path.write_text(built.text)
-        try:
-            compiler = Compiler(path, default_int="int32", lib_dirs=[lib])
-            modules = compiler.compile()
-            diags = list(compiler.diagnostics)
-            for mod in modules:
-                an = getattr(mod, "analyzer", None)
-                if an is not None:
-                    diags += list(getattr(an, "diagnostics", []))
-            errors = [d for d in diags if d.level == DiagnosticLevel.ERROR]
-            if errors:
-                raise SemErr(str(errors[0].message),
-                             getattr(errors[0], "loc", None))
-        except SemErr as exc:
-            msg = _tag(str(exc))
-            line = getattr(getattr(exc, "loc", None), "line", 0) or 0
+        facts = compile_program(path, program_facts, repo=REPO)
+        error = first_error(facts)
+        if error is not None:
+            line, message = error
+            msg = _tag(message)
             owner = next((n for n, rs in built.spans.items()
                           if any(lo <= line <= hi for lo, hi in rs)), None)
             if owner is None or len(built.spans) == 1:
@@ -828,78 +817,47 @@ def survey(program: str, work_dir: Path,
             out[owner] = [msg, ""]
             drop.add(owner)
             continue
-        except Exception as exc:  # noqa: BLE001 -- every failure IS a verdict
-            msg = _tag(str(exc))
+        failed = (facts["raised"]["message"] if facts["raised"] is not None
+                  else facts["codegen_error"])
+        if failed is not None:
+            # Every failure IS a verdict.
+            msg = _tag(failed)
             for name in built.spans:
                 out[name] = [msg, ""]
             return out
         break
-    entry = next(m for m in modules if m.is_entry_point)
-    try:
-        ctx = compiler.collect_thir(entry, CodeGenOptions(),
-                                    tolerate_reject=True)
-    except Exception as exc:  # noqa: BLE001
-        msg = _tag(str(exc))
-        for name in built.spans:
-            out[name] = [msg, ""]
-        return out
-    bodies: list[tuple[int, object]] = []
-    for fn, _st in iter_callables(entry.ast, entry.analyzer):
-        bodies.append((_node_line(fn), fn))
-    for _rec, init, _self in iter_ctors(entry.ast, entry.analyzer):
-        bodies.append((_node_line(init), init))
-    lowered = set()
-    for fn, _st in iter_callables(entry.ast, entry.analyzer):
-        if fn in ctx.thir_functions or ctx.thir_resumables.get(fn) is not None:
-            lowered.add(id(fn))
-    for _rec, init, _self in iter_ctors(entry.ast, entry.analyzer):
-        if init in ctx.thir_constructors:
-            lowered.add(id(init))
-    top_reject = compiler.thir_reject_by_node.get(entry.ast)
-    warnings = [d for d in diags if d.level == DiagnosticLevel.WARNING]
+    bodies = [(b["line"], i, b) for i, b in enumerate(facts["bodies"])]
+    top_reject = facts["top_reject"]
+    warned = warnings_of(facts)
     for name, ranges in built.spans.items():
-        mine = sorted((ln, fn) for ln, fn in bodies
+        mine = sorted((ln, i, b) for ln, i, b in bodies
                       if any(lo <= ln <= hi for lo, hi in ranges))
         verdict = "ok"
         unattempted = False
-        for _ln, fn in mine:
-            why = compiler.thir_reject_by_node.get(fn)
-            if why is not None:
-                verdict = str(why)
+        for _ln, _i, b in mine:
+            if b["reject"] is not None:
+                verdict = b["reject"]
                 break
             # No THIR and no reason of its own: emission ended at some other
             # body before this one's turn. A later body of the SAME cell may
             # still carry the real reason, so keep looking -- but if none
             # does, the cell was never answered and must not read as admitted.
-            if id(fn) not in lowered:
+            lowered = (b["constructor"] is not None
+                       if b["kind"] == "constructor"
+                       else b["function"] is not None
+                       or b["resumable"] is not None)
+            if not lowered:
                 unattempted = True
         else:
             if unattempted:
                 verdict = "crash:not attempted"
         if verdict == "ok" and top_reject is not None:
-            verdict = str(top_reject)
-        warn = [w for w in warnings
-                if any(lo <= (getattr(getattr(w, "loc", None), "line", 0) or 0)
-                       <= hi for lo, hi in ranges)]
-        warn.sort(key=lambda w: getattr(getattr(w, "loc", None), "line", 0)
-                  or 0)
-        out[name] = [verdict, _tag(warn[0].message) if warn else ""]
+            verdict = top_reject
+        warn = [w for w in warned
+                if any(lo <= w[0] <= hi for lo, hi in ranges)]
+        warn.sort(key=lambda w: w[0])
+        out[name] = [verdict, _tag(warn[0][1]) if warn else ""]
     return out
-
-
-def _node_line(node) -> int:
-    loc = getattr(node, "loc", None)
-    return getattr(loc, "line", 0) or 0
-
-
-def _survey_imports():
-    from tpyc.codegen_cpp.context import CodeGenOptions
-    from tpyc.compiler import Compiler
-    from tpyc.diagnostics import DiagnosticLevel, SemanticError
-    from tpyc.thir.lower import (iter_module_callables,
-                                 iter_module_constructors)
-    return (Compiler, CodeGenOptions, DiagnosticLevel, SemanticError,
-            iter_module_callables, iter_module_constructors)
 
 
 def run(out_dir: Path, cells: dict[str, Path]) -> dict[str, list[str]]:

@@ -75,8 +75,10 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from arg_family_sweep import (  # noqa: E402
     BASE_DEFS, BASE_IMPORTS, BEACON, FIXTURE, KINDS, Q, SOURCES, Built,
-    _kind_has, _owner, _render, _subst, _tag, _tpyc)
+    _kind_has, _owner, _render, _subst, _tag)
 import arg_family_sweep  # noqa: E402
+from program_compile import (  # noqa: E402
+    compile_program, failure, first_error, program_facts, warnings_of)
 
 REPO = arg_family_sweep.REPO
 
@@ -470,54 +472,30 @@ def generate(out_dir: Path, only: str = "") -> dict[str, Path]:
 # The survey.
 # ---------------------------------------------------------------------------
 
-def _thir_dump():
-    """The three body renderers, imported through the arg sweep's loader so
-    `--repo` retargeting stays in one place."""
-    _tpyc()
-    from tpyc.thir.dump import (_constructor_lines, _function_lines,
-                                _resumable_lines)
-    from tpyc.thir.lower import iter_module_callables
-    from tpyc.thir.lower.functions import iter_module_constructors
-    return (_function_lines, _resumable_lines, _constructor_lines,
-            iter_module_callables, iter_module_constructors)
+def _cell_bodies(facts: dict, pos: Position) -> dict:
+    """{(source, sink): the `program_facts` body record of that cell}.
 
-
-def _cell_nodes(entry, pos: Position) -> dict:
-    """{(source, sink): the body node of that cell}.
-
-    A constructor is not in `iter_module_callables` -- its body emits through
-    the member-init driver -- so the ctor position reads the sibling feed.
+    A constructor is not among the callables -- its body emits through the
+    member-init driver -- so the ctor position reads the constructor records,
+    named by their record.
     """
-    (_fl, _rl, _cl, iter_module_callables,
-     iter_module_constructors) = _thir_dump()
     if pos.ctor:
-        return {tuple(rec.name[5:].split("__")): init
-                for rec, init, _s in iter_module_constructors(entry.ast,
-                                                              entry.analyzer)
-                if rec.name.startswith("Ctor_")}
-    return {tuple(fn.name[5:].split("__")): fn
-            for fn, _s in iter_module_callables(entry.ast, entry.analyzer)
-            if fn.name.startswith("cell_")}
+        return {tuple(b["name"][5:].split("__")): b for b in facts["bodies"]
+                if b["kind"] == "constructor" and b["name"].startswith("Ctor_")}
+    return {tuple(b["name"][5:].split("__")): b for b in facts["bodies"]
+            if b["kind"] == "callable" and b["name"].startswith("cell_")}
 
 
-def _verdict(ctx, compiler, node) -> tuple[str | None, str]:
+def _verdict(body: dict | None) -> tuple[str | None, str]:
     """The cell's verdict and render, or `(None, "")` for a body an earlier
     reject stopped the pass before reaching."""
-    (_function_lines, _resumable_lines, _constructor_lines,
-     _imc, _imk) = _thir_dump()
-    if node is None:
+    if body is None:
         return "crash:no such body", ""
-    if node in ctx.thir_functions:
-        return "ok", _render(_function_lines(ctx.thir_functions[node]))
-    res = ctx.thir_resumables.get(node)
-    if res is not None:
-        return "ok", _render(_resumable_lines(node.name, res))
-    if node in ctx.thir_constructors:
-        return "ok", _render(_constructor_lines(node.name,
-                                                ctx.thir_constructors[node]))
-    why = compiler.thir_reject_by_node.get(node)
-    if why is not None:
-        return "reject:" + str(why), ""
+    for dump in ("function", "resumable", "constructor"):
+        if body[dump] is not None:
+            return "ok", _render(body[dump])
+    if body["reject"] is not None:
+        return "reject:" + body["reject"], ""
     return None, ""
 
 
@@ -540,13 +518,10 @@ def survey(program: str, work_dir: Path,
     recompilation -- they are left OUT so the rest are answered by a single
     compilation, and `survey_solo` checks them one minimal program each.
     """
-    (Compiler, CodeGenOptions, DiagnosticLevel, SemanticError,
-     _function_lines, _imc) = _tpyc()
     _name, kind_name, pos_name = next(p for p in programs() if p[0] == program)
     pos = POSITION_BY_NAME[pos_name]
     work_dir.mkdir(parents=True, exist_ok=True)
     path = work_dir / ((stem or program) + ".py")
-    lib = REPO / "lib" / "tpy"
 
     active = (list(cells) if cells is not None
               else program_cells(kind_name, pos_name))
@@ -557,22 +532,12 @@ def survey(program: str, work_dir: Path,
     while active:
         built = build_program(kind_name, pos_name, active)
         path.write_text(built.text)
-        try:
-            compiler = Compiler(path, default_int="int32", lib_dirs=[lib])
-            modules = compiler.compile()
-            diags = list(compiler.diagnostics)
-            for mod in modules:
-                an = getattr(mod, "analyzer", None)
-                if an is not None:
-                    diags += list(getattr(an, "diagnostics", []))
-            errors = [d for d in diags if d.level == DiagnosticLevel.ERROR]
-            if errors:
-                raise SemanticError(str(errors[0].message),
-                                    getattr(errors[0], "loc", None))
-        except SemanticError as exc:
-            line = getattr(getattr(exc, "loc", None), "line", 0) or 0
+        facts = compile_program(path, program_facts, repo=REPO)
+        error = first_error(facts)
+        if error is not None:
+            line, message = error
             cell = _owner(line, built.cell_lines)
-            msg = "sema:" + _stable(str(exc).strip().split("\n")[0])[:80]
+            msg = "sema:" + _stable(message.strip().split("\n")[0])[:80]
             if cell is None:
                 # Not inside any cell -- the shared fixture refused, so
                 # nothing in this program can be surveyed. Reported rather
@@ -588,8 +553,10 @@ def survey(program: str, work_dir: Path,
                     if cell[1] == "decl_alias" else {cell})
             active = [c for c in active if c not in drop]
             continue
-        except Exception as exc:   # noqa: BLE001 -- an ICE is a verdict here
-            msg = "crash:" + _stable(str(exc).strip().split("\n")[0])[:80]
+        if facts["raised"] is not None:
+            # An ICE is a verdict here.
+            msg = "crash:" + _stable(
+                facts["raised"]["message"].strip().split("\n")[0])[:80]
             if len(active) == 1:
                 out[cell_name(kind_name, pos_name, *active[0])] = [msg, "", ""]
                 return out
@@ -603,27 +570,23 @@ def survey(program: str, work_dir: Path,
                                   stem="%s_h%d" % (base, i)))
             return out
 
-        entry = next(m for m in modules if m.is_entry_point)
-        ctx = compiler.collect_thir(entry, CodeGenOptions(),
-                                    tolerate_reject=True)
-        nodes = _cell_nodes(entry, pos)
-        warnings = [d for d in diags if d.level == DiagnosticLevel.WARNING]
+        if facts["codegen_error"] is not None:
+            raise failure(facts, "the THIR survey of %s" % path)
+        bodies = _cell_bodies(facts, pos)
+        warned = warnings_of(facts)
         settled: list[tuple[str, str]] = []
         for cell in active:
-            verdict, render = _verdict(ctx, compiler, nodes.get(cell))
+            verdict, render = _verdict(bodies.get(cell))
             if verdict is None:
                 continue
             lo, hi = built.cell_lines[cell]
-            mine = [w for w in warnings
-                    if lo <= (getattr(getattr(w, "loc", None), "line", 0)
-                              or 0) <= hi]
-            mine.sort(key=lambda w: getattr(getattr(w, "loc", None),
-                                            "line", 0) or 0)
+            mine = [w for w in warned if lo <= w[0] <= hi]
+            mine.sort(key=lambda w: w[0])
             out[cell_name(kind_name, pos_name, *cell)] = [
                 # `_stable` before the tag's own truncation, so the shorter
                 # spelling does not move the cut by a character.
                 _stable(verdict),
-                _tag(_stable(mine[0].message)) if mine else "",
+                _tag(_stable(mine[0][1])) if mine else "",
                 _stable(render)]
             settled.append(cell)
         if not settled:

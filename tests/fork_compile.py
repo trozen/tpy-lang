@@ -1,28 +1,30 @@
 """Forked compiles for the test harness.
 
-A case's compile spends most of its front-end time analyzing the stdlib
+A program's compile spends most of its front-end time analyzing the stdlib
 modules every program imports. Each xdist worker therefore starts, on first
 use, a compile server per template key: a fresh interpreter that analyzes
 the template's layers once (`Compiler.prepare`) and then forks once per
-case; the child finishes the program (`Compiler.finish`) and runs the same
-`conftest.compile_case` the in-process path runs, writing the C++ into the
-case's `__tpyc__` and returning the result as plain data.
+request; the child finishes the program (`Compiler.finish`) and runs the
+request's function, `fn(compiler, run, *args)` with `run()` analyzing the
+program, and returns what it returns, which must be plain data. Two clients
+use it: `test_case` (`conftest.compile_case`, writing the C++ into the case's
+`__tpyc__`) and the sweeps (`program_compile.program_facts` in
+scripts/thir_migration/review, through `program_runner`).
 
 Templates: `base` prepares the implicit stdlib; `asyncio` adds a layer
 rooted at `asyncio`. A `base` child whose program reaches asyncio answers
-"reroute" before analyzing anything, and the case goes to `asyncio`.
+"reroute" before analyzing anything, and the request goes to `asyncio`.
 
-The case compiles in-process instead when the child finds the prepared
-layers do not hold for it (`LayerReuseRefused`: a program-local module
-shadows a prepared one, ...), and for the rest of the worker's session once
-a server fails to start or dies. Forking is Linux-only; `--no-fork-compile`
-turns it off.
+The program compiles in-process instead when its compiler configuration is
+not the templates', when the child finds the prepared layers do not hold for
+it (`LayerReuseRefused`: a program-local module shadows a prepared one, ...),
+and for the rest of the worker's session once a server fails to start or
+dies. Forking is Linux-only; `--no-fork-compile` turns it off.
 
 Protocol: length-prefixed pickles over the server's stdin/stdout. A request
-is a `CaseRequest` as a field dict; a reply is a dict whose "kind" is
-"result" (the `CompileResult` fields), "raise" (what the compile raised),
-"reroute", "plain" (refused reuse) or "died" (the child exited without a
-reply).
+is a dict (`request`); a reply is a dict whose "kind" is "result" (what the
+function returned), "raise" (what it raised), "reroute", "plain" (refused
+reuse) or "died" (the child exited without a reply).
 """
 
 from __future__ import annotations
@@ -30,6 +32,8 @@ from __future__ import annotations
 import atexit
 import ctypes
 import gc
+import importlib.util
+import inspect
 import os
 import pickle
 import signal
@@ -39,7 +43,7 @@ import sys
 import tempfile
 import traceback
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Callable
 
 import pytest
 
@@ -192,9 +196,43 @@ def shutdown() -> None:
         _servers.popitem()[1].close()
 
 
+def request(fn: Callable, entry: Path, args: tuple, *, default_int: str,
+            lib_dirs: list[Path], cwd: str | None = None) -> dict:
+    """A request to run `fn(compiler, run, *args)` over the program `entry`
+    compiled with (`default_int`, `lib_dirs`). `fn` is named by its module,
+    that module's file and its qualname, so the server imports it once
+    instead of the request carrying code."""
+    # The file comes from the function itself: two modules here share the
+    # name `conftest` (the root's and tests/'s), and `sys.modules` holds
+    # whichever pytest loaded last.
+    return {"fn": (fn.__module__, inspect.getfile(fn), fn.__qualname__),
+            "entry": Path(entry), "cwd": os.getcwd() if cwd is None else cwd,
+            "args": tuple(args), "default_int": default_int,
+            "lib_dirs": [Path(p) for p in lib_dirs]}
+
+
+# Every template is prepared at this `default_int` over `_template_lib_dirs()`;
+# a request at any other config compiles in-process.
+TEMPLATE_DEFAULT_INT = "int32"
+
+
+def _template_lib_dirs() -> list[Path]:
+    # Imported here: conftest imports this module.
+    import conftest
+    return list(conftest.DEFAULT_LIB_DIRS)
+
+
+def _is_template_config(req: dict) -> bool:
+    return (req["default_int"] == TEMPLATE_DEFAULT_INT
+            and [p.resolve() for p in req["lib_dirs"]]
+            == [Path(p).resolve() for p in _template_lib_dirs()])
+
+
 def compile_forked(req: dict) -> dict | None:
-    """Compile one case in a child of a compile server. None: compile it in
+    """Run one request in a child of a compile server. None: compile it in
     this process instead."""
+    if not _is_template_config(req):
+        return None
     key = "base"
     while True:
         try:
@@ -209,14 +247,35 @@ def compile_forked(req: dict) -> dict | None:
             key = reply["key"]
             continue
         if kind == "plain":
-            _refused.append(f"{req['src_file']}: {reply['reason']}")
+            _refused.append(f"{req['entry']}: {reply['reason']}")
             return None
         if kind == "died":
             pytest.fail(
-                f"the forked compile of {req['src_file']} died "
+                f"the forked compile of {req['entry']} died "
                 f"({_describe_status(reply['status'])})\n--- stderr ---\n{reply['stderr']}",
                 pytrace=False)
         return reply
+
+
+def result(reply: dict) -> object:
+    """What the request's function returned; what it raised is raised here."""
+    if reply["kind"] == "raise":
+        reraise(reply["raise"])
+    return reply["result"]
+
+
+def program_runner(config) -> Callable:
+    """The runner `program_compile.use` takes: a sweep's compile forked from
+    a compile server, or None to compile it in-process."""
+    def run(entry: Path, fn: Callable, args: tuple, default_int: str,
+            lib_dirs: list[Path]) -> object:
+        # Per request: a server that failed turns forking off mid-session.
+        if not enabled(config):
+            return None
+        reply = compile_forked(request(fn, entry, args, default_int=default_int,
+                                       lib_dirs=lib_dirs))
+        return None if reply is None else result(reply)
+    return run
 
 
 def reraise(record: dict) -> None:
@@ -258,12 +317,11 @@ def serve(key: str) -> None:
     # Anything the compiler prints must not land in the reply stream.
     os.dup2(2, 1)
     try:
-        # Imported here: conftest imports this module.
-        import conftest
         template_dir = Path(tempfile.mkdtemp(prefix="tpy-fork-template-"))
         try:
-            compiler = Compiler(template_dir / "__template__.py", default_int="int32",
-                                lib_dirs=list(conftest.DEFAULT_LIB_DIRS))
+            compiler = Compiler(template_dir / "__template__.py",
+                                default_int=TEMPLATE_DEFAULT_INT,
+                                lib_dirs=_template_lib_dirs())
             compiler.prepare(TEMPLATES[key])
         finally:
             template_dir.rmdir()
@@ -285,8 +343,35 @@ def serve(key: str) -> None:
 _PR_SET_PDEATHSIG = 1
 
 
+def _function(ref: tuple[str, str, str]) -> Callable:
+    """The request's function, its module imported into the server on first
+    use so no child imports it again."""
+    module_name, file, qualname = ref
+    module = sys.modules.get(module_name)
+    if module is not None and Path(module.__file__).resolve() != Path(file).resolve():
+        raise ImportError(f"the server's module {module_name!r} is {module.__file__}, "
+                          f"not {file}")
+    if module is None:
+        spec = importlib.util.spec_from_file_location(module_name, file)
+        module = importlib.util.module_from_spec(spec)
+        sys.modules[module_name] = module
+        try:
+            spec.loader.exec_module(module)
+        except BaseException:
+            del sys.modules[module_name]
+            raise
+    fn = module
+    for part in qualname.split("."):
+        fn = getattr(fn, part)
+    return fn
+
+
 def _fork_one(compiler: Compiler, key: str, req: dict, replies_fd: int,
               libc: ctypes.CDLL) -> dict:
+    try:
+        fn = _function(req["fn"])
+    except Exception as exc:  # noqa: BLE001 -- raised again in the worker
+        return {"kind": "raise", "raise": _exception_record(exc)}
     read_fd, write_fd = os.pipe()
     stderr = tempfile.TemporaryFile()
     server_pid = os.getpid()
@@ -306,7 +391,7 @@ def _fork_one(compiler: Compiler, key: str, req: dict, replies_fd: int,
             os.close(read_fd)
             os.dup2(stderr.fileno(), 1)
             os.dup2(stderr.fileno(), 2)
-            reply = _child(compiler, key, req)
+            reply = _child(compiler, key, req, fn)
             with os.fdopen(write_fd, "wb") as out:
                 _send(out, reply)
         except BaseException:
@@ -329,11 +414,10 @@ def _fork_one(compiler: Compiler, key: str, req: dict, replies_fd: int,
     return reply
 
 
-def _child(compiler: Compiler, key: str, req: dict) -> dict:
-    import conftest
-    request = conftest.CaseRequest(**req)
-    os.chdir(request.cwd)
+def _child(compiler: Compiler, key: str, req: dict, fn: Callable) -> dict:
+    os.chdir(req["cwd"])
     routes = REROUTES.get(key, {})
+    signals: list[Exception] = []
 
     def on_discovered(new: list[str]) -> None:
         for name in new:
@@ -341,21 +425,25 @@ def _child(compiler: Compiler, key: str, req: dict) -> dict:
                 raise _Reroute(routes[name])
 
     def run() -> list:
-        return compiler.finish(request.src_file, reuse=True, on_discovered=on_discovered)
+        try:
+            return compiler.finish(req["entry"], reuse=True, on_discovered=on_discovered)
+        except (_Reroute, LayerReuseRefused) as exc:
+            # Recorded before it propagates: a client catching broadly would
+            # otherwise turn it into a verdict of this template's making.
+            signals.append(exc)
+            raise
 
-    reply: dict
+    reply: dict | None = None
     try:
-        result = conftest.compile_case(compiler, run, request)
-        reply = {"kind": "result",
-                 "result": {f: getattr(result, f) for f in result.__dataclass_fields__}}
-    except _Reroute as exc:
-        return {"kind": "reroute", "key": exc.key}
-    except LayerReuseRefused as exc:
-        return {"kind": "plain", "reason": str(exc)}
+        reply = {"kind": "result", "result": fn(compiler, run, *req["args"])}
     except BaseException as exc:
-        reply = {"kind": "raise", "raise": _exception_record(exc)}
-    reply["thir_tally"] = dict(conftest._thir_tally)
-    reply["thir_faces"] = dict(conftest._thir_faces)
+        if not signals:
+            reply = {"kind": "raise", "raise": _exception_record(exc)}
+    if signals:
+        signal_ = signals[0]
+        if isinstance(signal_, _Reroute):
+            return {"kind": "reroute", "key": signal_.key}
+        return {"kind": "plain", "reason": str(signal_)}
     return reply
 
 

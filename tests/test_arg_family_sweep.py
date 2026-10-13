@@ -36,9 +36,12 @@ _REVIEW = (Path(__file__).resolve().parents[1]
            / "scripts" / "thir_migration" / "review")
 _SCRIPT = _REVIEW / "arg_family_sweep.py"
 
-pytestmark = pytest.mark.skipif(
-    not _SCRIPT.exists(),
-    reason="scripts/thir_migration/review is not part of this checkout")
+pytestmark = [
+    pytest.mark.skipif(
+        not _SCRIPT.exists(),
+        reason="scripts/thir_migration/review is not part of this checkout"),
+    pytest.mark.usefixtures("sweep_compiles"),
+]
 
 _sweep = None
 

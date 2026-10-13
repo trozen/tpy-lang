@@ -873,6 +873,12 @@ class CompileResult:
     third_party_include_dirs: list[Path] = field(default_factory=list)
     third_party_link_flags: list[str] = field(default_factory=list)
     third_party_c_sources: list[tuple[Path, list[str]]] = field(default_factory=list)
+    # Bodies lowered through THIR and the per-face witness counts, for the
+    # session's THIR tally (`record_thir_routed` / `record_thir_faces`). A
+    # compile that raises fails its case and is not tallied: the tally reads
+    # coverage off a green run.
+    thir_bodies: int = 0
+    thir_faces: dict[str, int] = field(default_factory=dict)
 
 def _validate_default_int_name(name: str) -> str:
     allowed = {"int32", "int64", "BigInt"}
@@ -1176,7 +1182,19 @@ def _compile_in_process(req: CaseRequest) -> CompileResult:
     lib_dirs = list(extra_lib_dirs) + list(DEFAULT_LIB_DIRS)
     compiler = Compiler(req.src_file, default_int=req.default_int, lib_dirs=lib_dirs,
                         frontend_registry=frontend_registry)
-    return compile_case(compiler, compiler.compile, req)
+    return _tallied(compile_case(compiler, compiler.compile, req))
+
+
+def _tallied(result: CompileResult) -> CompileResult:
+    record_thir_routed(result.thir_bodies)
+    record_thir_faces(result.thir_faces)
+    return result
+
+
+def case_fork_request(req: CaseRequest) -> dict:
+    """`compile_case` over `req` as a fork_compile request."""
+    return fork_compile.request(compile_case, req.src_file, (req,), cwd=req.cwd,
+                                default_int=req.default_int, lib_dirs=DEFAULT_LIB_DIRS)
 
 
 def compile_for_case(src_file: Path, output_dir: Path, config,
@@ -1187,18 +1205,37 @@ def compile_for_case(src_file: Path, output_dir: Path, config,
     tests/fork_compile.py), in this process otherwise."""
     options = load_case_options(src_file.parent.parent)
     req = case_request(src_file, output_dir, default_int, snapshot_lib_modules)
-    if (fork_compile.enabled(config) and req.default_int == "int32"
+    if (fork_compile.enabled(config)
             and "plugin" not in options and "dsl_opts" not in options):
-        reply = fork_compile.compile_forked(
-            {f.name: getattr(req, f.name) for f in dataclasses.fields(req)})
+        reply = fork_compile.compile_forked(case_fork_request(req))
         if reply is not None:
-            # A compile that raised still lowered bodies before it did.
-            record_thir_routed(reply["thir_tally"]["bodies"])
-            record_thir_faces(reply["thir_faces"])
-            if "raise" in reply:
-                fork_compile.reraise(reply["raise"])
-            return CompileResult(**reply["result"])
+            return _tallied(fork_compile.result(reply))
     return _compile_in_process(req)
+
+
+REVIEW_SCRIPTS_DIR = PROJECT_ROOT / "scripts" / "thir_migration" / "review"
+
+
+def import_program_compile():
+    """scripts/thir_migration/review/program_compile.py, the sweeps' compile
+    seam. The scripts import it by this name from their own directory, so
+    this is the module object they call."""
+    if str(REVIEW_SCRIPTS_DIR) not in sys.path:
+        sys.path.insert(0, str(REVIEW_SCRIPTS_DIR))
+    import program_compile
+    return program_compile
+
+
+@pytest.fixture(scope="session")
+def sweep_compiles(request):
+    """The sweeps' program compiles go through the compile servers, as
+    `test_case`'s do; a standalone script run installs no runner and stays
+    in-process. Once a sweep module requests it, the runner stays installed
+    for the rest of the worker's session."""
+    program_compile = import_program_compile()
+    program_compile.use(fork_compile.program_runner(request.config))
+    yield
+    program_compile.use(None)
 
 
 def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
@@ -1209,6 +1246,8 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
     live compiler objects (their errors are returned for the caller to raise
     where it raises the others)."""
     src_file, output_dir = req.src_file, req.output_dir
+    thir_bodies = 0
+    thir_faces: dict[str, int] = {}
     try:
         compiled_modules = run()
 
@@ -1253,7 +1292,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
             # cpp_path is None for native_module (binding-only) modules
             all_modules.append((mod.name, hpp_path, cpp_path, True))
 
-        record_thir_routed(compiler._thir_routed_bodies)
+        thir_bodies = compiler._thir_routed_bodies
         snapshot_lib: set[str] = set()
         matched_patterns: set[str] = set()
         lib_paths: dict[str, tuple[Path | None, Path | None]] = {}
@@ -1288,7 +1327,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                 pytrace=False)
 
         # Read after the library emit so a library module's faces count too.
-        record_thir_faces(compiler._thir_face_witnesses)
+        thir_faces = dict(compiler._thir_face_witnesses)
 
         mir_verdicts, mir_line_facts = _mir_verdicts(compiler, local_contexts, entry_module)
         # MIR's warnings joined sema's: the diagnostics are read again.
@@ -1353,16 +1392,15 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                              link_flags=link_flags,
                              third_party_include_dirs=list(tp_plan.extra_include_dirs),
                              third_party_link_flags=list(tp_plan.extra_link_flags),
-                             third_party_c_sources=list(tp_plan.c_sources))
+                             third_party_c_sources=list(tp_plan.c_sources),
+                             thir_bodies=thir_bodies, thir_faces=thir_faces)
 
-    except CompileError as e:
-        return _failed(compiler, e.format())
-    except SemanticError as e:
-        return _failed(compiler, e.format(src_file.name))
-    except ParseError as e:
-        return _failed(compiler, e.format(src_file.name))
-    except CodeGenError as e:
-        return _failed(compiler, e.format(src_file.name))
+    except (CompileError, SemanticError, ParseError, CodeGenError) as e:
+        line = e.format() if isinstance(e, CompileError) else e.format(src_file.name)
+        # A codegen error in a library module comes after the case's own
+        # bodies were lowered, and those count.
+        return dataclasses.replace(_failed(compiler, line),
+                                   thir_bodies=thir_bodies, thir_faces=thir_faces)
 
 
 @dataclass

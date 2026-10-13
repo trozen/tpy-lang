@@ -131,7 +131,8 @@ Scripts (run from the repo root with `uv run python`):
   position answers for it the way it answers for the twin, except where a
   stated rule says otherwise -- and no case can state it. ONE PROGRAM PER
   POSITION, not per cell: the position's whole cell set is compiled once
-  in-process and read back through the THIR survey
+  (through `program_compile.compile_program`, so forked from a compile
+  server under the test suite) and read back through the THIR survey
   (`collect_thir(tolerate_reject=True)` attempts every function, method and
   constructor body and records each reject). The cells that lower DURING
   emission -- a generator, an `async def`, the module-init body -- keep one
@@ -187,9 +188,8 @@ Scripts (run from the repo root with `uv run python`):
   gate, and the gates disagree about the same source expression. It reuses
   the arg sweep's kind table, source shapes, fixture, render normaliser and
   compiler loader by import, so the two tables span the same reference axis
-  and the same source spellings; it carries its own runner because a
-  constructor body is not in `iter_module_callables` and a rejecting FRAME
-  ends the emission pass. ONE PROGRAM PER (kind, position) for the four
+  and the same source spellings; it carries its own retry loop because a
+  rejecting FRAME ends the emission pass. ONE PROGRAM PER (kind, position) for the four
   non-frame positions; the generator and `async` positions keep the property
   sweep's rule -- a reject there takes the rest of the program with it -- so
   they are surveyed with a retry loop, gated through minimal one-cell
