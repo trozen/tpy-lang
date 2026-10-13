@@ -49,6 +49,8 @@ _SELFCHECKS = [
      "TPY_NO_SIGNALS compiles the Ctrl-C layer out of every check point"),
     ("test_print_join.cpp",
      "print(*xs) separators span every segment and each source is borrowed"),
+    ("test_str_join.cpp",
+     "join pre-sizes builtin string storage and consumes user iterables once"),
     ("test_extreme_element.cpp",
      "element-returning min/max hand back a lending source's own element, a copy otherwise; size and storage checks"),
     ("test_min_max_key_forms.cpp",
@@ -83,7 +85,7 @@ _STRICT_WARNINGS = {"test_no_signals.cpp"}
 # debug-only guards compile out under NDEBUG, so the guarded paths must hold
 # without them.
 _RELEASE_SHAPE = {"test_owning_combinator_move.cpp", "test_frame_state_pin.cpp",
-                  "test_copy_iter_sources.cpp"}
+                  "test_copy_iter_sources.cpp", "test_str_join.cpp"}
 _RELEASE_FLAGS = ("-O2", "-DNDEBUG")
 
 _BUILDS = [(s, w, ()) for s, w in _SELFCHECKS] + [

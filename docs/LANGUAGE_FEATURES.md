@@ -742,6 +742,7 @@ This means `float32` arithmetic stays in single precision without requiring expl
 - **Working**: `Final[str]` generates `constexpr std::string_view` (compile-time constant)
 - **Working**: `str.split()`, `str.split(sep)`, `str.split(sep, maxsplit)` -- returns `list[str]`
 - **Working**: `str.join(items)` -- joins iterable of strings
+  - Builtin list, array, span and initializer-list storage of strings or string views pre-computes a checked byte length and reserves the result once. Generic iterables, user-defined conversions and C string pointers retain single-pass traversal.
 - **Working**: `strip`/`lstrip`/`rstrip`, `replace`, `find`/`rfind`/`index`/`rindex` (no `start`/`end` bounds yet, `BUGS.md#str-search-start-end-args`), `startswith`/`endswith`, `upper`/`lower`, `capitalize`/`title`/`swapcase`, `count`, `isdigit`/`isalpha`/`isalnum`/`isspace`/`isupper`/`islower`, `removeprefix`/`removesuffix`, `splitlines`
 - **Working**: `str.replace("", sep)` inserts separator between every character (Python semantics)
 - **Working**: `str.count("")` returns `len(s) + 1` (Python semantics)

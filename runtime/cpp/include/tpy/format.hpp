@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include <array>
 #include <cassert>
 #include <cctype>
 #include <charconv>
@@ -14,9 +15,12 @@
 #include <cstdlib>
 #include <iostream>
 #include <iomanip>
+#include <initializer_list>
 #include <optional>
 #include <ranges>
 #include <sstream>
+#include <span>
+#include <stdexcept>
 #include <string>
 #include <string_view>
 #include <system_error>
@@ -284,10 +288,52 @@ inline std::vector<std::string> str_split_whitespace(std::string_view s, int32_t
     return result;
 }
 
+namespace detail {
+
+// Only builtin storage and constant-time string views may be traversed twice.
+template<typename T>
+inline constexpr bool join_sized_element =
+    std::is_same_v<std::remove_cvref_t<T>, std::string> ||
+    std::is_same_v<std::remove_cvref_t<T>, String> ||
+    std::is_same_v<std::remove_cvref_t<T>, std::string_view>;
+
+template<typename T>
+inline constexpr bool join_sized_source = false;
+
+template<typename T, typename Allocator>
+inline constexpr bool join_sized_source<std::vector<T, Allocator>> = join_sized_element<T>;
+
+template<typename T, std::size_t N>
+inline constexpr bool join_sized_source<std::array<T, N>> = join_sized_element<T>;
+
+template<typename T, std::size_t N>
+inline constexpr bool join_sized_source<std::span<T, N>> = join_sized_element<T>;
+
+template<typename T>
+inline constexpr bool join_sized_source<std::initializer_list<T>> = join_sized_element<T>;
+
+inline std::size_t join_checked_add(std::size_t total, std::size_t increment,
+                                    std::size_t limit) {
+    if (total > limit || increment > limit - total) {
+        throw std::length_error("str_join result too large");
+    }
+    return total + increment;
+}
+
 template<typename Container>
     requires std::ranges::input_range<const Container>
-inline std::string str_join(std::string_view sep, const Container& items) {
+inline std::string str_join_range(std::string_view sep, const Container& items) {
     std::string result;
+    if constexpr (join_sized_source<std::remove_cvref_t<Container>>) {
+        std::size_t total = 0;
+        bool first = true;
+        for (const auto& item : items) {
+            if (!first) total = join_checked_add(total, sep.size(), result.max_size());
+            total = join_checked_add(total, std::string_view(item).size(), result.max_size());
+            first = false;
+        }
+        result.reserve(total);
+    }
     bool first = true;
     for (const auto& item : items) {
         if (!first) result.append(sep);
@@ -297,26 +343,20 @@ inline std::string str_join(std::string_view sep, const Container& items) {
     return result;
 }
 
+}  // namespace detail
+
+template<typename Container>
+    requires std::ranges::input_range<const Container>
+inline std::string str_join(std::string_view sep, const Container& items) {
+    return detail::str_join_range(sep, items);
+}
+
 inline std::string str_join(std::string_view sep, std::initializer_list<const char*> items) {
-    std::string result;
-    bool first = true;
-    for (auto item : items) {
-        if (!first) result.append(sep);
-        result.append(item);
-        first = false;
-    }
-    return result;
+    return detail::str_join_range(sep, items);
 }
 
 inline std::string str_join(std::string_view sep, std::initializer_list<std::string_view> items) {
-    std::string result;
-    bool first = true;
-    for (auto item : items) {
-        if (!first) result.append(sep);
-        result.append(item);
-        first = false;
-    }
-    return result;
+    return detail::str_join_range(sep, items);
 }
 
 // -- str.strip / lstrip / rstrip -------------------------------------------
