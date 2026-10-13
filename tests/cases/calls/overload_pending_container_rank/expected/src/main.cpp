@@ -4,6 +4,12 @@
 namespace tpyapp::main {
 
 
+// def a64() -> int64:
+//     return 1099511627776
+int64_t a64() {
+    return static_cast<int64_t>(1099511627776);
+}
+
 // # A typed floor: the list holds an int32, int64 widens less than int.
 // @dispatch
 // def floor_b(xs: list[int]) -> str:
@@ -67,6 +73,13 @@ std::string tiers__list_int64(std::vector<int64_t>& xs) {
     return "list[int64]";
 }
 
+// @dispatch
+// def gv(xs: list[int64], t: int32) -> str:
+//     return "list64"
+std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t) {
+    return "list64";
+}
+
 // def main() -> None:
 //     fb = [1]  # tpyc: type(list[int64])
 //     fb.append(int32(2))
@@ -81,6 +94,13 @@ std::string tiers__list_int64(std::vector<int64_t>& xs) {
 //     print("to big:", to_big(b1), b1)
 //     ti = [1, 2]  # tpyc: type(list[int32])
 //     print("tiers:", tiers(ti), ti)
+//     t1 = [1, 2]
+//     print("twin generic first:", twin_generic_first(t1, a64()), t1)
+//     # `gv`'s list candidate decides `gm1`, so a wider value fits after the call.
+//     gm1 = [1, 2]  # tpyc: type(list[int64])
+//     print("generic declared view:", gv(gm1, 3), gm1)
+//     gm1.append(a64())
+//     print("generic declared view:", gm1[2])
 void main() {
     std::vector<int64_t> fb = {1};
     fb.push_back(static_cast<int64_t>(2));
@@ -95,6 +115,12 @@ void main() {
     std::cout << "to big:" << " " << ::tpyapp::main::to_big__Iterable_int64(b1) << " " << ::tpy::ListPrinter(b1) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> ti = {1, 2};
     std::cout << "tiers:" << " " << ::tpyapp::main::tiers__list_T<int32_t>(ti) << " " << ::tpy::ListPrinter(ti) << "\n" << ::tpy::check_signals;
+    std::array<int32_t, 2> t1 = {1, 2};
+    std::cout << "twin generic first:" << " " << ::tpyapp::main::twin_generic_first__Iterable_int64__int64(t1, ::tpyapp::main::a64()) << " " << ::tpy::ListPrinter(t1) << "\n" << ::tpy::check_signals;
+    std::vector<int64_t> gm1 = {1, 2};
+    std::cout << "generic declared view:" << " " << ::tpyapp::main::gv__list_int64__int32(gm1, 3) << " " << ::tpy::ListPrinter(gm1) << "\n" << ::tpy::check_signals;
+    gm1.push_back(::tpyapp::main::a64());
+    std::cout << "generic declared view:" << " " << ::tpy::__getitem__(gm1, 2) << "\n" << ::tpy::check_signals;
 }
 
 // main()

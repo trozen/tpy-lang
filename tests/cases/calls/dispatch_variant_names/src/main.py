@@ -181,8 +181,8 @@ def guard_section() -> None:
 
 
 # --- a generic over a list shape beside a bare T: the shape variant takes
-# only a list. Declared first on purpose: the other order hits
-# BUGS.md#overload-rank-protocol-vs-generic ---
+# only a list (the other order is pinned in
+# calls/dispatch_rank_declared_shape_order, `sh`) ---
 @dispatch
 def wrap[T](xs: list[T]) -> str:
     return "shape " + str(len(xs))
@@ -201,19 +201,21 @@ def shape_section() -> None:
 
 
 # --- a generic over a list shape returning T beside a protocol variant:
-# the shape variant wins for a list ---
+# the shape variant wins for a list (declared first, as CPython's dispatch
+# runs the first applicable variant; the other order is in
+# calls/dispatch_variant_names_order) ---
 class HasLen(Protocol):
     def __len__(self) -> int: ...
 
 
 @dispatch
-def head(x: HasLen) -> int32:
-    return -1
+def head[T](xs: list[T]) -> T:
+    return xs[0]
 
 
 @dispatch
-def head[T](xs: list[T]) -> T:
-    return xs[0]
+def head(x: HasLen) -> int32:
+    return -1
 
 
 def head_section() -> None:

@@ -1,0 +1,5 @@
+Every section declares the compiler's winner after a weaker variant, to pin
+that overload ranking does not depend on declaration order. The CPython
+`tpy.dispatch` stand-in runs the first applicable variant by arity and type,
+so it would run the earlier, weaker one. The same sets with the winner
+declared first run under CPython in `calls/dispatch_rank_declared_shape`.

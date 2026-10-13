@@ -4173,7 +4173,7 @@ class CallAnalyzer:
                 protocol_checker=self.protocols.type_conforms_to_protocol,
                 protocol_classifier=self.protocols.classify_protocol_conformance,
                 default_int_type=self.ctx.default_int_type,
-                subclass_checker=self.ctx.registry.is_subclass_of,
+                subclass_checker=self.ctx.registry.subclass_distance,
                 type_ops=self.type_ops,
             )
         except OverloadAmbiguityError as e:
@@ -4658,7 +4658,7 @@ class CallAnalyzer:
             protocol_checker=self.protocols.type_conforms_to_protocol,
             deref_checker=deref_checker,
             default_int_type=self.ctx.default_int_type,
-            subclass_checker=self.ctx.registry.is_subclass_of,
+            subclass_checker=self.ctx.registry.subclass_distance,
             protocol_classifier=self.protocols.classify_protocol_conformance,
             type_ops=self.type_ops,
             kwarg_types=kwarg_types,
@@ -4903,7 +4903,7 @@ class CallAnalyzer:
         protocol_checker = self.protocols.type_conforms_to_protocol
         classifier = self.protocols.classify_protocol_conformance
         scored: list[tuple[
-            tuple[int, tuple[int, ...], int],
+            tuple[int, int, tuple[int, ...], int],
             FunctionInfo,
             list[TpyType],
             dict[str, TpyType],
@@ -4915,6 +4915,7 @@ class CallAnalyzer:
                 protocol_checker, classifier,
                 self.ctx.default_int_type, self.type_ops,
                 kwarg_types=kwarg_types or None,
+                subclass_checker=self.ctx.registry.subclass_distance,
             )
             if fit is not None:
                 scored.append((fit.rank(), substituted, arg_types, kwarg_types, origin))
@@ -4944,7 +4945,7 @@ class CallAnalyzer:
             # `Ptr[T] -> T`, `BigInt -> int32`, and other registered
             # coercions still apply at non-Fn slots when no candidate
             # passed strict scoring.
-            subclass_checker = self.ctx.registry.is_subclass_of
+            subclass_checker = self.ctx.registry.subclass_distance
             coercion_scored: list[tuple[
                 CoercionFit,
                 FunctionInfo,
@@ -5747,7 +5748,7 @@ class CallAnalyzer:
                             protocol_checker=self.protocols.type_conforms_to_protocol,
                             protocol_classifier=self.protocols.classify_protocol_conformance,
                             default_int_type=self.ctx.default_int_type,
-                            subclass_checker=self.ctx.registry.is_subclass_of,
+                            subclass_checker=self.ctx.registry.subclass_distance,
                             kwarg_types=kwarg_types,
                         )
                     except OverloadAmbiguityError as e:
@@ -6427,7 +6428,7 @@ class CallAnalyzer:
                     protocol_checker=self.protocols.type_conforms_to_protocol,
                     protocol_classifier=self.protocols.classify_protocol_conformance,
                     default_int_type=self.ctx.default_int_type,
-                    subclass_checker=self.ctx.registry.is_subclass_of,
+                    subclass_checker=self.ctx.registry.subclass_distance,
                     type_ops=self.type_ops,
                 )
             except OverloadAmbiguityError as e:

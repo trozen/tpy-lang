@@ -288,7 +288,10 @@ chose not to support that combination.
 
 At call sites the compiler resolves against **stub signatures** (not the
 implementation). Resolution runs in two passes in `sema/overloads.py`;
-declaration order of the stubs does not affect the winner.
+in the first, declaration order of the stubs does not affect the winner (the
+second still breaks a tie by it and ranks by instantiated types:
+BUGS.md#overload-coercion-pass-tie-by-order,
+BUGS.md#overload-coercion-pass-loses-declared-tier).
 
 ```python
 d = Dog("Rex")
@@ -296,13 +299,39 @@ result = describe(d)  # resolves to stub 1: describe(Dog) -> str
 # result type: str (not str | int32)
 ```
 
+The ranking below covers free-function, method and constructor calls and a
+record's `__contains__` / `__getitem__` overload sets. A record's binary
+operator dunder set does not go through it yet: `a + b` takes the first
+`__add__` variant that matches (BUGS.md#operator-overload-first-match). It
+waits on the int-literal ranking (BUGS.md#overload-int-literal-picks-float):
+ranked like a call, `timedelta * 3` would take `timedelta`'s `float`
+variant.
+
+Under CPython, the `@dispatch` stand-in (`dispatch` in
+`lib/cpy/tpy/__init__.py`) does not rank: it runs the first variant in
+declaration order that is applicable by arity and by type (`isinstance`,
+a fixed-int literal by range, a fixed int at a wider fixed-int slot, an
+`int` at `float` (converted), a `Literal` by value, a protocol by
+`hasattr`, a builtin container by its class, a `Callable` by arity), and
+when none matches by type the first by arity (`docs/LANGUAGE_FEATURES.md`,
+"CPython compatible"). A test whose output CPython also produces declares
+the compiler's winner first; that the compiler's pick does not depend on
+declaration order is pinned by compiler-only cases (`no_cpython.txt`).
+Declaring the winner first is not enough when two calls to one set have
+different compiler winners the stub cannot tell apart -- a `Literal`
+value vs a plain variable of that value, `@readonly` receiver twins
+called on a readonly receiver, aliased classes (`StrView` / `String` are
+`str` there), element types, union members, keyword arguments; such a
+case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls).
+`@readonly` twins declare the mutating twin first.
+
 #### First pass: strict tier-ranked matching
 
 Each candidate overload classifies every argument into a `(tier, widening_cost)`
 pair. Candidates with any argument that fails to classify are rejected. The
-survivors are ranked by the score vector `(aggregate tier counts, total
-widening cost)` and the lowest-scoring candidate wins. A unique winner in
-this pass skips pass two entirely.
+survivors are ranked by the four-key `OverloadFit.rank()` (below) and the
+lowest-ranked candidate wins. A unique winner in this pass skips pass two
+entirely.
 
 **Specificity tiers** (`MatchTier` in `sema/overloads.py`, strongest first --
 lower numeric value beats higher):
@@ -310,20 +339,56 @@ lower numeric value beats higher):
 | # | Tier | Matches |
 |---|------|---------|
 | 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also `IntLiteral` -> fixed-int in range, `None` -> `Void`, `Callable` -> `Fn`, pending views -> resolved views. |
-| 2 | `EXACT_GENERIC_SHAPE` | Generic param with concrete outer container and `TypeParamRef` inside: `list[T]` matching `list[int32]`, `Ptr[T]`, `tuple[T, T]`, etc. The outer shape pins the match before `T` is substituted. |
-| 3 | `PROTOCOL_EXPLICIT` | Protocol conformance via declared `extends` / `implemented_protocols` / protocol-to-protocol inheritance, plus compiler-intrinsic short-circuits: `GenExpr` / `CopyIter` / `OwnIter` satisfying `Iterable`; `Enum` satisfying `Hashable` / `Comparable` / `Equatable`; `Tuple` satisfying `Hashable`; `ValueType` / `Default` marker protocols; `Stringable` (satisfied by any type with `__str__` **or** `__repr__`, mirroring Python's `object.__str__ -> __repr__` fallback). |
-| 4 | `PROTOCOL_STRUCTURAL` | Protocol conformance proved only by walking required methods/fields. |
-| 5 | `GENERIC_PROTOCOL_EXPLICIT` | Generic overload whose protocol param contains `TypeParamRef`, matching via an explicit (tier 3) conformance path after inference. |
-| 6 | `GENERIC_PROTOCOL_STRUCTURAL` | Same, but structural conformance. |
-| 7 | `GENERIC_WILDCARD` | Bare `TypeParamRef` param (possibly wrapped in `Ref` / `Readonly`). Accepts any argument. |
+| 2 | `EXACT_GENERIC_SHAPE` | Param declared with a type parameter inside a concrete outer shape: `list[T]` matching `list[int32]`, `Ptr[T]`, `tuple[T, T]`, `T \| None`, `Callable[[Rec], T]`, etc. |
+| 3 | `SUBCLASS` | A subclass argument at a base-class param: a user record (`Dog` at `Animal`), or a `Ptr` pointee (`Ptr[Dog]` at `Ptr[Animal]`, never dropping a `readonly`); an owned base (`Own[Animal]`) ranks the same, and the call then refuses the slicing move. Its cost is the MRO distance (`TypeRegistry.subclass_distance`: 1 for the first ancestor), so the nearer base wins. |
+| 4 | `PROTOCOL_EXPLICIT` | Protocol conformance via declared `extends` / `implemented_protocols` / protocol-to-protocol inheritance, plus compiler-intrinsic short-circuits: `GenExpr` / `CopyIter` / `OwnIter` satisfying `Iterable`; `Enum` satisfying `Hashable` / `Comparable` / `Equatable`; `Tuple` satisfying `Hashable`; `ValueType` / `Default` marker protocols; `Stringable` (satisfied by any type with `__str__` **or** `__repr__`, mirroring Python's `object.__str__ -> __repr__` fallback). |
+| 5 | `PROTOCOL_STRUCTURAL` | Protocol conformance proved only by walking required methods/fields. |
+| 6 | `GENERIC_PROTOCOL_EXPLICIT` | Param declared as a protocol over a type parameter (`Iterable[T]`), matching via an explicit (tier 4) conformance path at its instantiation. |
+| 7 | `GENERIC_PROTOCOL_STRUCTURAL` | Same, but structural conformance. |
+| 8 | `GENERIC_WILDCARD` | Bare type parameter (possibly wrapped in `Ref` / `readonly` / `Own`: `x: T`, `x: readonly[T]`, `x: Own[T]`). Accepts any argument -- the fallback. |
 
-**Ranking rule.** The primary sort key is the negated per-tier count vector
-(more high-tier matches first, lexicographically). The secondary key is the
-sum of per-argument widening costs.
+**Tiers come from the declared parameter.** A parameter declared with the
+callee's own type parameter ranks by its DECLARED shape (`_declared_tier`):
+bare `T` is the wildcard, a protocol over `T` a generic protocol, any other
+shape over `T` a generic shape. The instantiation decides only whether the
+argument is accepted, and the cost. This holds throughout the strict pass,
+including at the call sites that substitute a generic candidate's type
+parameters before ranking (the declared parameter is read through `overload.root`, the
+parameters `call_resolves_param` names), so a substituted generic never
+scores as an exact match. A parameter typed with the receiver class's type
+parameter (`def put(self, x: T)` on `class Box[T]`) is not the callee's own:
+it ranks by the receiver's instantiation, as a concrete parameter.
+
+```python
+@dispatch
+def g[T](x: T) -> str: return "generic"
+@dispatch
+def g(x: Named) -> str: return "proto"     # Named: a Protocol Dog meets
+@dispatch
+def g(x: Animal) -> str: return "animal"   # class Dog(Animal)
+
+g(Dog())   # "animal" in either declaration order: SUBCLASS beats the
+           # structural protocol, which beats the bare T
+g(3)       # "generic": the only applicable variant
+```
+
+**Ranking rule** (`OverloadFit.rank()`, lower is better), compared key by key:
+
+1. **Container widening** -- how far the candidate widens an undecided
+   container argument (below).
+2. **Element widening** -- how far a protocol match widens the argument's
+   elements: the widening cost of every `PROTOCOL_EXPLICIT` /
+   `GENERIC_PROTOCOL_EXPLICIT` argument, read from the conformance
+   (`TypeOperations.protocol_type_args_of`: a `dict[int8, int32]` is an
+   `Iterable[int8]`). A candidate that converts nothing beats one that
+   widens elements, at any tier.
+3. **Tier counts** -- the negated per-tier count vector (more matches at
+   the strongest tier first, lexicographically).
+4. **Cost** -- the sum of the remaining per-argument costs: a literal's
+   distance from its default width, a subclass argument's MRO distance.
 
 **Widening cost** (`_scalar_widening_cost` / `_type_args_widening_cost`) is 0
-for exact matches and positive when an argument is widening to a param type
-at the same tier:
+for exact matches and positive when an argument is widening to a param type:
 
 - Fixed-int -> wider fixed-int: `max(1, (target_bits - source_bits) / 8)` plus
   a sign-flip penalty if the signedness differs.
@@ -335,11 +400,17 @@ at the same tier:
   `default_int_type`. This is how `sum([])` resolves to the `Iterable[int32]`
   overload at cost 0 under the default config, matching CPython's
   `sum([]) == 0` (int).
-- For protocol params, cost is aggregated over matched type-arg positions
-  (e.g. `list[int32]` vs `Iterable[int64]` scores 4 on the single element
-  slot). Non-parameterised containers fall back to their `get_element_type()`,
-  so `bytearray` vs `Iterable[uint8]` scores 0 and vs `Iterable[int32]` scores
-  positive.
+- For protocol params, cost is aggregated over the type args the argument
+  instantiates the protocol with, as its conformance gives them (e.g.
+  `list[int32]` vs `Iterable[int64]` scores 4 on the single element slot;
+  `dict[int8, int32]` vs `Iterable[int32]` scores 3, on its keys). Where the
+  conformance gives none, the type-arg tuples are walked pairwise when they
+  line up, and non-parameterised containers fall back to their
+  `get_element_type()`, so `bytearray` vs `Iterable[uint8]` scores 0 and vs
+  `Iterable[int32]` scores positive. A generic user record's declared
+  protocol comes back unsubstituted (`Iterable[T]` for a `Bag[int8]`) and
+  scores nothing (BUGS.md#extends-protocol-arg-unsubstituted). This cost is
+  the element widening, the second rank key.
 
 **Container literals written in the call.** A list literal is a pending
 container wherever it is written (its storage is decided later). A dict
@@ -395,11 +466,11 @@ pass and Regime C alike, is its CONTAINER WIDENING: the sum of
 `_scalar_widening_cost` over those leaves, each cell counted once and
 cells tied both ways as one. A
 declared view (`Iterable[int64]`) decides nothing, so it widens 0 (its
-per-element conversion cost stays in the tier cost below). Lower
+per-element conversion cost is the element widening, the second key). Lower
 container widening wins outright -- an overload never widens a list that
 another applicable overload takes as it is -- and among equal container
-widening the order above applies unchanged (tiers, then cost, in the
-strict pass; the existing keys in the coercion pass, one named key,
+widening the order above applies unchanged (element widening, tiers, then
+cost, in the strict pass; the existing keys in the coercion pass, one named key,
 `CoercionFit.rank()`, that Regime C's coercion fallback shares, literal
 penalty and generic tie-break included). An applicable container at a
 concrete parameter is an `EXACT_CONCRETE` match at cost 0: its widening
@@ -408,17 +479,22 @@ applied afterwards (`CallAnalyzer.apply_winner`, see `docs/ARCHITECTURE.md`
 "pending_num"). A pending dict is ranked at a one-argument protocol as
 the dict it spells, never by its value type.
 
-**Concrete-over-generic invariant.** Because generic tiers (2, 5, 6, 7) all
-rank weaker than their concrete counterparts (1, 3, 4), concrete overloads
-always beat equally-matching generics. Stub ordering cannot change this.
-The compiler does not honour this yet for a bare `T` (tier 7): the
-candidate is ranked after `T` is substituted, so it scores as tier 1. It
-then beats an applicable protocol or base-class variant, and against a
-shape variant or a concrete one whose substituted signature is the same,
-the identical-signature dedupe below keeps the first declared
-(BUGS.md#overload-rank-protocol-vs-generic).
+**Concrete-over-generic invariant.** Because generic tiers (2, 6, 7, 8) all
+rank weaker than their concrete counterparts (1, 4, 5), and a bare `T`
+(8) weaker than a subclass match (3), concrete overloads beat
+equally-matching generics, and a protocol or base-class variant beats a
+bare `T`. Declaration order cannot change this. The invariant holds AT
+EQUAL CONVERSION QUALITY: the container and element widening keys come
+before the tiers, so a generic that converts nothing beats a concrete or
+protocol variant that widens. `sum(xs)` over a `list[int8]` takes the
+generic `sum[T: AnyFixedInt](iterable: Iterable[T]) -> T` (at `T = int8`,
+no element widened) over `sum(iterable: Iterable[int32])` (each element
+widened), so it returns `int8` (TODO.md "`sum` over narrow fixed ints
+widens only when asked"). Over a `dict[int8, int32]`, its `keys()` or its
+`values()`, `sum` reads the elements the conformance names and resolves
+the same way.
 
-**Ambiguity.** When the top candidates tie on both score components AND have
+**Ambiguity.** When the top candidates tie on every rank key AND have
 distinct signatures, the compiler refuses to pick arbitrarily. Declaration
 order is **not** used as a tiebreaker. The call site reports:
 
@@ -427,18 +503,61 @@ Ambiguous overload for 'describe': multiple candidates match equally:
   describe(Greeter); describe(Farewell)
 ```
 
-Signatures that collapse to identical param-type tuples (e.g. a substituted
-generic and its concrete twin in the unified pool) are deduped before the
-ambiguity check -- picking either produces identical codegen.
+A crossed tie is one too: with `class Dog(Animal)`,
+
+```python
+@dispatch
+def t(x: Dog, y: Animal) -> str: ...
+@dispatch
+def t(x: Animal, y: Dog) -> str: ...
+
+t(Dog(), Dog())   # error: Ambiguous overload for 't'
+```
+
+each variant has one exact and one subclass argument at the same cost; a
+`t(x: Dog, y: Dog)` variant resolves it
+(`tests/cases/calls/error_dispatch_crossed_subclass_ambiguous`).
+
+**A readonly argument does not re-rank.** Ranking reads signatures only, so
+when the best variant takes a mutable parameter and the argument is
+`readonly[A]`, the call is rejected ("Cannot pass readonly[A] as mutable
+Named in argument 'x'") rather than falling back to a variant that accepts
+`readonly` -- CPython would run the best variant, and choosing by the
+callee's mutation facts would depend on analysis order. Declare that
+variant's parameter `readonly[...]`, or drop `readonly` at the caller
+(`tests/cases/calls/error_dispatch_readonly_arg_mutating_variant`).
+
+**An owned base slot does not re-rank either.** `f(x: Own[Animal])` beside
+`f[T](x: T)`, called with a `Dog`, picks the `Own[Animal]` variant (the one
+CPython runs) and rejects the call: "Type mismatch in argument 'x': expected
+Animal, got Dog", as a call to that one function does, since moving a `Dog`
+into an owned `Animal` would slice it. Take `x: Animal` (a borrow), a generic
+`Own[T]`, or pass an `Animal`
+(`tests/cases/calls/error_dispatch_own_base_subclass_arg`).
+
+Signatures that collapse to identical param-type tuples are deduped before
+the ambiguity check -- picking either produces identical codegen; the
+first declared is kept.
 
 #### Second pass: coercion fallback
+
+**Current limitation:** this pass ranks by the instantiated types, not the
+declared shape, so the first pass's order (base above protocol, Literal
+above its base type, no element widening) does not hold once an argument
+converts (BUGS.md#overload-coercion-pass-loses-declared-tier).
 
 Runs only when the first pass produced zero candidates. Accepts implicit
 coercions (narrowing conversions, `Callable` -> `Fn`, `Deref[T]`, subclass
 upcasts) and ranks by count of non-coercion matches first, then by number of
 narrowing conversions, with an `IntLiteralType` penalty derived from
-`default_int_type` to break ties deterministically; a concrete signature
-wins a remaining tie against a generic instantiation.
+`default_int_type` to break ties deterministically, then a concrete
+signature over a generic instantiation (`f(dog, n8)` at `(Animal, int64)` /
+`[T](T, int64)` picks `Animal`, as the strict pass ranks a base above bare
+`T`), then by the summed MRO distance of its subclass arguments, so the
+nearer base still wins when another argument converts (`f(puppy, 1.5)` at
+`(Animal, float)` / `(Dog, float)` picks `Dog`). A remaining tie goes to the first declared -- unlike
+the first pass, which reports it ambiguous
+(BUGS.md#overload-coercion-pass-tie-by-order).
 
 A generic whose type parameter was bound by the JOIN of scalar fixed ints of
 different widths (`f[T](x: T, y: T)` at `(int32, int64)` binds `T = int64`)
@@ -457,12 +576,13 @@ joined generic (a tie).
 3. Each candidate classifies as `PROTOCOL_EXPLICIT` (the empty
    `PendingListType` shortcut in `protocols.py::classify_protocol_conformance`
    returns `EXPLICIT` for any single-type-arg protocol).
-4. `_type_args_widening_cost` extracts the element via `get_element_type()`
-   (returns `UnknownElement`), then `_scalar_widening_cost(UnknownElement, <elem>,
-   default_int=int32)` gives 0 for `int32`, 4 for `int64`, 8 for `int`
-   (`BigInt`), 16 for `float` / `float32`.
-5. Score vectors: all tie on tier counts (one `PROTOCOL_EXPLICIT` each) and
-   differ only on total cost. The `int32` candidate wins at cost 0.
+4. `_type_args_widening_cost` extracts the element (`UnknownElement`), then
+   `_scalar_widening_cost(UnknownElement, <elem>, default_int=int32)` gives 0
+   for `int32`, 4 for `int64`, 8 for `int` (`BigInt`), 16 for `float` /
+   `float32` -- each candidate's element widening.
+5. Rank keys: all tie on container widening (0: a declared view decides
+   nothing) and differ on element widening, the second key. The `int32`
+   candidate wins at 0.
 6. Codegen emits `tpy::builtin_sum<int32_t>(std::vector<int32_t>{})`.
 
 The same mechanism makes `sum([1, 2, 3])` resolve to `int32` via the
@@ -540,20 +660,35 @@ operand types for '+': int32 and str") instead of a generic
 #### Testing
 
 - Unit tests: `tpyc/test_overloads.py` pins `MatchTier` ordering, the cost
-  model, `_score`, the `_classify_strict_match` contract, the
-  undecided-container arm (container widening first, one query per
+  model (the element widening read from the conformance included), `_score`,
+  the `_classify_strict_match` contract (the subclass tier, its MRO-distance
+  cost and the `Ptr` pointee upcast that keeps its `readonly`),
+  `_declared_tier` (a generic parameter ranks by its declared shape),
+  `OverloadFit.rank` (element widening before the tiers, container widening
+  before both), the undecided-container arm (container widening first, one query per
   candidate and argument, joint applicability, a query that writes
   nothing) and the overload paths no case runs end to end (the overloaded
   `raise`, the `typing.overload` form).
 - Undecided container arguments: `tests/cases/calls/overload_pending_container`
-  (every call path, container kind and position, the ranking CPython's
-  dispatch emulation can follow), `tests/cases/calls/overload_pending_container_rank`
-  (the declaration orders it cannot), `tests/cases/calls/error_overload_pending_then_wider`,
+  (every call path, container kind and position, the winner declared first
+  so CPython's first-applicable stand-in agrees), `tests/cases/calls/overload_pending_container_rank`
+  (compiler-only: the winner declared after a weaker variant), `tests/cases/calls/error_overload_pending_then_wider`,
   `tests/cases/calls/error_overload_pending_no_match`,
   `tests/cases/calls/error_overload_pending_ambiguous`.
 - Integration tests for the key invariants: `tests/cases/calls/overload_concrete_beats_protocol`
-  (concrete wins regardless of stub order), `tests/cases/calls/error_overload_ambiguous`
-  (ambiguity -> diagnostic), `tests/cases/calls/overload_iterable_empty_literal`
+  (concrete wins regardless of stub order), `tests/cases/calls/dispatch_rank_declared_shape_order`
+  (compiler-only: each tier against a weaker one declared first: exact,
+  generic shape, nearer base class, protocol, bare `T`; a method set),
+  `tests/cases/calls/dispatch_rank_declared_shape` (the winner declared
+  first, so CPython agrees: the chosen variant writes the caller's object;
+  a `typing.overload` set; the element-widening rule over `sum`),
+  `tests/cases/calls/dispatch_variant_names_order`,
+  `tests/cases/calls/dispatch_variant_names_protocol_order` and
+  `tests/cases/int/generic_int_join_order` (compiler-only twins of the
+  sections that declare the winner later),
+  `tests/cases/calls/error_overload_ambiguous`
+  (ambiguity -> diagnostic), `tests/cases/calls/error_dispatch_crossed_subclass_ambiguous`
+  (a crossed subclass tie is ambiguous), `tests/cases/calls/overload_iterable_empty_literal`
   and `tests/cases/builtins/sum_basic` (empty-list default-int biasing),
   `tests/cases/bytes/from_iterable` (non-parameterised container element-type
   fallback for `bytearray` -> `Iterable[uint8]`),

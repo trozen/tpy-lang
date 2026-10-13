@@ -1202,6 +1202,40 @@ class TypeOperations:
         arg_unwrapped = unwrap_readonly(arg_type)
         return resolve_coercion(arg_unwrapped, param_type, CoercionContext.ARG) is not None
 
+    def protocol_type_args_of(
+        self, arg_type: TpyType, protocol: NominalType,
+    ) -> list[TpyType | None] | None:
+        """The type args `arg_type` instantiates `protocol` (by its name)
+        with, aligned to the protocol's own type params -- `dict[int8,
+        int32]` gives `[int8]` for `Iterable`. An entry is None where the
+        conformer does not pin that param; None when nothing is known."""
+        # Mirror classify_protocol_conformance: conformance is on the
+        # underlying record, not its Ref/readonly/Own wrapper.
+        arg_type = unwrap_qualifiers(arg_type)
+        # GenExprType satisfies Iterable[T] and Iterator[T];
+        # CopyIter/OwnIter satisfy Iterable[T] only.
+        if ((isinstance(arg_type, GenExprType) and protocol.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
+                or ((is_copy_iter(arg_type) or is_own_iter(arg_type)) and protocol.qualified_name() == qnames.ITERABLE)):
+            return [arg_type.element_type if isinstance(arg_type, GenExprType)
+                    else arg_type.type_args[0]]
+        protocol_name = protocol.name
+        # Resolve the protocol's OWN params positionally (aligned to the
+        # protocol's type_params) from one of: the arg protocol's type_args,
+        # an extends declaration (single-valued -- multi-param extends is not
+        # resolved here), or structural inference from the conformer's methods.
+        is_iterator = protocol.qualified_name() == "typing.Iterator"
+        same_protocol = (
+            is_protocol_type(arg_type) and arg_type.type_args
+            and arg_type.qualified_name() == ("typing.Iterator" if is_iterator
+                                              else protocol.qualified_name()))
+        if same_protocol:
+            return list(arg_type.type_args)
+        ext = builtin_modules.get_extends_protocol_type_arg(
+            arg_type, protocol_name, registry=self.ctx.registry)
+        if ext is not None:
+            return [ext]
+        return self._infer_protocol_type_arg_structurally(arg_type, protocol_name)
+
     def _match_protocol_type_args_with_inference(
         self,
         param_type: TpyType,
@@ -1209,35 +1243,7 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a protocol with TypeParamRef type_args against arg_type (e.g., NativeIterable[T], Iterator[T])."""
-        # Mirror classify_protocol_conformance: conformance is on the
-        # underlying record, not its Ref/readonly/Own wrapper.
-        arg_type = unwrap_qualifiers(arg_type)
-        # GenExprType satisfies Iterable[T] and Iterator[T];
-        # CopyIter/OwnIter satisfy Iterable[T] only.
-        if ((isinstance(arg_type, GenExprType) and param_type.qualified_name() in (qnames.ITERABLE, qnames.ITERATOR))
-                or ((is_copy_iter(arg_type) or is_own_iter(arg_type)) and param_type.qualified_name() == qnames.ITERABLE)):
-            if len(param_type.type_args) == 1:
-                elem = arg_type.element_type if isinstance(arg_type, GenExprType) else arg_type.type_args[0]
-                return self.match_type_with_inference(param_type.type_args[0], elem, inferred)
-            return True
-
-        protocol_name = param_type.name
-        # Resolve the protocol's OWN params positionally (aligned to the
-        # protocol's type_params) from one of: the arg protocol's type_args,
-        # an extends declaration (single-valued -- multi-param extends is not
-        # resolved here), or structural inference from the conformer's methods.
-        is_iterator = param_type.qualified_name() == "typing.Iterator"
-        same_protocol = (
-            is_protocol_type(arg_type) and arg_type.type_args
-            and arg_type.qualified_name() == ("typing.Iterator" if is_iterator
-                                              else param_type.qualified_name()))
-        if same_protocol:
-            elem_types: list[TpyType | None] | None = list(arg_type.type_args)
-        else:
-            ext = builtin_modules.get_extends_protocol_type_arg(
-                arg_type, protocol_name, registry=self.ctx.registry)
-            elem_types = [ext] if ext is not None else \
-                self._infer_protocol_type_arg_structurally(arg_type, protocol_name)
+        elem_types = self.protocol_type_args_of(arg_type, param_type)
         if not elem_types:
             return False
         # Single type_arg: recursive matching handles compound types like

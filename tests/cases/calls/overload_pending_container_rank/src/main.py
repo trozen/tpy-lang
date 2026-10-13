@@ -1,13 +1,17 @@
 # The overload rank of an undecided container argument where the pick goes
-# against what CPython's `dispatch` stand-in does (it tries concrete
-# variants before generic ones and otherwise picks by declaration order):
-# the least container widening wins although a widening candidate is
-# declared first, and a generic that widens nothing beats a concrete one
-# that widens. Each variant names itself; a winner that can write the list
-# does, and the caller reads it back.
+# against what CPython's `dispatch` stand-in does (it runs the first
+# applicable variant and cannot see element widths): the least container
+# widening wins although a widening candidate is declared first, a generic
+# that widens nothing beats a concrete one that widens, and a declared view
+# beats its generic twin declared first. Each variant names itself; a
+# winner that can write the list does, and the caller reads it back.
 from typing import Iterable
 
 from tpy import dispatch, int32, int64
+
+
+def a64() -> int64:
+    return 1099511627776
 
 
 # A typed floor: the list holds an int32, int64 widens less than int.
@@ -87,6 +91,33 @@ def tiers(xs: Iterable[int32]) -> str:
     return "Iterable[int32]"
 
 
+# A generic and its declared twin, the generic declared first: the
+# generic's resolved view would widen the list, the declared view decides
+# nothing.
+@dispatch
+def twin_generic_first[T](xs: Iterable[T], v: T) -> str:
+    return "generic"
+
+
+@dispatch
+def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
+    return "declared"
+
+
+# A declared view in a generic candidate, declared first: the generic cannot
+# be instantiated at an int32 list (its view refuses the element,
+# BUGS.md#generic-declared-view-refuses-conversion), so the list candidate
+# is the one applicable.
+@dispatch
+def gv[T](xs: Iterable[int64], t: T) -> str:
+    return "gen-view"
+
+
+@dispatch
+def gv(xs: list[int64], t: int32) -> str:
+    return "list64"
+
+
 def main() -> None:
     fb = [1]  # tpyc: type(list[int64])
     fb.append(int32(2))
@@ -101,6 +132,13 @@ def main() -> None:
     print("to big:", to_big(b1), b1)
     ti = [1, 2]  # tpyc: type(list[int32])
     print("tiers:", tiers(ti), ti)
+    t1 = [1, 2]
+    print("twin generic first:", twin_generic_first(t1, a64()), t1)
+    # `gv`'s list candidate decides `gm1`, so a wider value fits after the call.
+    gm1 = [1, 2]  # tpyc: type(list[int64])
+    print("generic declared view:", gv(gm1, 3), gm1)
+    gm1.append(a64())
+    print("generic declared view:", gm1[2])
 
 
 main()

@@ -1,0 +1,1 @@
+main.py:34: error: Ambiguous overload for 't': multiple candidates match equally: t(Dog, Animal); t(Animal, Dog)

@@ -105,13 +105,13 @@ std::string wrap__T(::tpy::param_val_or_ref_t<T> x);
 // def shape_section() -> None:
 void shape_section();
 // @dispatch
-// def head(x: HasLen) -> int32:
-template<HasLen T_x>
-int32_t head__HasLen(const T_x& x);
-// @dispatch
 // def head[T](xs: list[T]) -> T:
 template<typename T>
 ::tpy::val_or_ref_t<T> head__list_T(std::vector<T>& xs);
+// @dispatch
+// def head(x: HasLen) -> int32:
+template<HasLen T_x>
+int32_t head__HasLen(const T_x& x);
 // def head_section() -> None:
 void head_section();
 // def peek(s: Shelf) -> int:
@@ -222,8 +222,8 @@ inline const ::tpyapp::variant_lib::Box& Shelf::first() const {
     return this->top;
 }
 // # --- a generic over a list shape beside a bare T: the shape variant takes
-// # only a list. Declared first on purpose: the other order hits
-// # BUGS.md#overload-rank-protocol-vs-generic ---
+// # only a list (the other order is pinned in
+// # calls/dispatch_rank_declared_shape_order, `sh`) ---
 // @dispatch
 // def wrap[T](xs: list[T]) -> str:
 //     return "shape " + str(len(xs))
@@ -239,18 +239,18 @@ std::string wrap__T(::tpy::param_val_or_ref_t<T> x) {
     return "bare";
 }
 // @dispatch
-// def head(x: HasLen) -> int32:
-//     return -1
-template<HasLen T_x>
-int32_t head__HasLen(const T_x& x) {
-    return -1;
-}
-// @dispatch
 // def head[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>
 ::tpy::val_or_ref_t<T> head__list_T(std::vector<T>& xs) {
     return ::tpy::__getitem__(xs, 0);
+}
+// @dispatch
+// def head(x: HasLen) -> int32:
+//     return -1
+template<HasLen T_x>
+int32_t head__HasLen(const T_x& x) {
+    return -1;
 }
 
 void __tpy_init();

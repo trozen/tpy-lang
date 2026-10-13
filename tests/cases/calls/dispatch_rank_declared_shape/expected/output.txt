@@ -1,0 +1,26 @@
+proto_vs_t: proto 1
+base_vs_t: base 1
+base_vs_proto: base 10
+nearest_base: dog 10
+nearest_base: dog 10
+subclass_vs_proto: dog 10
+shape_vs_t: shape 0
+concrete_vs_t: concrete
+mixed: concrete 3
+t_only: bare
+readonly_t: proto 1
+method: dog 10
+typing_overload: 1 10
+sum_narrow: 30
+sum_narrow: 30
+sum_narrow: 11
+sum_narrow: 4 4 6
+multi_base: a 1 0
+multi_base: a2 1 0
+coerce_nearest: dog dog dog 30
+optional_base: opt 1
+coerce_base_vs_t: base 1
+receiver_twins: mut mut 11
+own_base: own own True
+plain_int: bare bare
+callable_result: 102 4

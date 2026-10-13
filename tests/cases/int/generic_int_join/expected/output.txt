@@ -1,7 +1,6 @@
 free pick 100000 5 50000000000
 free last3 300 200
 free which concrete
-free which_g concrete
 free max/min 1000000000000000 50000000000 3
 free max3 50000000000
 free same-width uint8 55 int8 120 int64

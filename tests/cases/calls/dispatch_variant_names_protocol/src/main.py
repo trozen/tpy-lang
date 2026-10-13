@@ -21,15 +21,17 @@ class Dog:
         return String(self.nm)
 
 
-# --- concrete vs protocol: the concrete parameter renders `const Dog&` ---
-@dispatch
-def describe(x: Animal) -> str:
-    return "animal " + x.name()
-
-
+# --- concrete vs protocol: the concrete parameter renders `const Dog&`
+# (declared first, as CPython's dispatch runs the first applicable variant;
+# the other order is in calls/dispatch_variant_names_protocol_order) ---
 @dispatch
 def describe(x: Dog) -> str:
     return "dog " + x.name()
+
+
+@dispatch
+def describe(x: Animal) -> str:
+    return "animal " + x.name()
 
 
 def concrete_section() -> None:
@@ -105,14 +107,10 @@ def two_protocols_section() -> None:
 
 
 # --- explicit vs structural protocol: `list` declares `Iterable`, and only
-# structurally has `__len__`; sema ranks the declared conformance first ---
+# structurally has `__len__`; sema ranks the declared conformance first
+# (declared first here; the other order is in the _order twin) ---
 class HasLen(Protocol):
     def __len__(self) -> int: ...
-
-
-@dispatch
-def count(v: HasLen) -> str:
-    return "sized " + str(len(v))
 
 
 @dispatch
@@ -121,6 +119,11 @@ def count(v: Iterable[int]) -> str:
     for _ in v:
         n += 1
     return "iterable " + str(n)
+
+
+@dispatch
+def count(v: HasLen) -> str:
+    return "sized " + str(len(v))
 
 
 def protocol_section() -> None:

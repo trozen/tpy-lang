@@ -1,0 +1,5 @@
+The section declares the generic variant before the concrete one that the
+compiler picks, to pin that overload ranking does not depend on declaration
+order. The CPython `tpy.dispatch` stand-in runs the first applicable variant
+by arity and type, so it runs the generic one. The concrete-first order
+runs under CPython in `int/generic_int_join`.

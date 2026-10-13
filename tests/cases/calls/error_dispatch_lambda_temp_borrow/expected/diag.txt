@@ -1,1 +1,0 @@
-main.py:48: error: Ambiguous overload for 'apply': multiple candidates match equally: apply(list[Rec], Callable[[Rec], Ref[Inner]]); apply(list[Rec], Callable[[Rec], Inner])

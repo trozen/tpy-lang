@@ -3067,7 +3067,7 @@ class StatementAnalyzer:
                             init_overloads, arg_types,
                             protocol_checker=self.protocols.type_conforms_to_protocol,
                             default_int_type=self.ctx.default_int_type,
-                            subclass_checker=self.ctx.registry.is_subclass_of,
+                            subclass_checker=self.ctx.registry.subclass_distance,
                             protocol_classifier=self.protocols.classify_protocol_conformance,
                             type_ops=self.type_ops,
                         )

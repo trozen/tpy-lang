@@ -6,7 +6,9 @@ need a full ``SemanticContext``:
 * ``MatchTier`` ordering (the invariant that drives ranking).
 * ``_scalar_widening_cost`` / ``_type_args_widening_cost`` (cost model).
 * ``_score`` (aggregate ranking key).
-* ``_classify_strict_match`` for non-protocol shapes.
+* ``_classify_strict_match`` for non-protocol shapes and the subclass tier.
+* ``_declared_tier`` (a generic parameter ranks by its declared shape).
+* ``OverloadFit.rank`` (element widening before the tiers).
 * ``_bool_checker_to_classifier`` adapter semantics.
 * ``OverloadAmbiguityError`` payload.
 
@@ -22,7 +24,10 @@ from tpyc.sema.overloads import (
     ContainerMeet,
     MatchTier,
     OverloadAmbiguityError,
+    OverloadFit,
+    _declared_tier,
     _bool_checker_to_classifier,
+    _classify_overload,
     _classify_strict_match,
     _container_fit,
     _scalar_widening_cost,
@@ -50,6 +55,7 @@ from tpyc.typesys import (
     CHAR,
     FLOAT,
     FLOAT32,
+    FloatLiteralType,
     INT8,
     INT16,
     INT32,
@@ -67,6 +73,10 @@ from tpyc.typesys import (
     VOID,
     IntLiteralType,
     OptionalType,
+    OwnType,
+    PtrType,
+    ReadonlyType,
+    RefType,
     TypeParamRef,
     FunctionInfo,
     ParamInfo,
@@ -88,12 +98,14 @@ def test_match_tier_is_total_ordered_lowest_most_specific():
     tiers = [
         MatchTier.EXACT_CONCRETE,
         MatchTier.EXACT_GENERIC_SHAPE,
+        MatchTier.SUBCLASS,
         MatchTier.PROTOCOL_EXPLICIT,
         MatchTier.PROTOCOL_STRUCTURAL,
         MatchTier.GENERIC_PROTOCOL_EXPLICIT,
         MatchTier.GENERIC_PROTOCOL_STRUCTURAL,
         MatchTier.GENERIC_WILDCARD,
     ]
+    assert len(tiers) == len(MatchTier)
     values = [t.value for t in tiers]
     assert values == sorted(values)
     assert all(a < b for a, b in zip(values, values[1:]))
@@ -222,6 +234,32 @@ def test_type_args_cost_empty_pending_list_biases_to_default_int():
     assert _type_args_widening_cost(pl, _iterable(INT32), default_int_type=INT32) == 0
     assert _type_args_widening_cost(pl, _iterable(INT64), default_int_type=INT32) == 4
     assert _type_args_widening_cost(pl, _iterable(FLOAT), default_int_type=INT32) == 16
+
+
+class _ConformanceOps:
+    """A stand-in for TypeOperations answering only which type args a
+    conformer instantiates a protocol with."""
+    def __init__(self, args):
+        self.args = args
+
+    def protocol_type_args_of(self, arg, protocol):
+        return self.args
+
+
+def test_type_args_cost_reads_the_conformance_not_the_nominal_args():
+    # `dict[int8, int32]` is an `Iterable[int8]`: its two type args do not
+    # line up with the protocol's one, the conformance says which it is.
+    d = NominalType("dict", (INT8, INT32), _module_qname="builtins.dict")
+    ops = _ConformanceOps([INT8])
+    assert _type_args_widening_cost(d, _iterable(INT8), type_ops=ops) == 0
+    assert _type_args_widening_cost(d, _iterable(INT32), type_ops=ops) == 3
+    assert _type_args_widening_cost(d, _iterable(INT32)) == 0
+
+
+def test_type_args_cost_unpinned_conformance_arg_costs_nothing():
+    ops = _ConformanceOps([None])
+    assert _type_args_widening_cost(_list(INT32), _iterable(INT64),
+                                    type_ops=ops) == 0
 
 
 def test_type_args_cost_pending_dict_is_not_ranked_by_its_value():
@@ -524,6 +562,150 @@ def test_classify_strict_propagates_widening_cost_from_type_args():
     tier, cost = _classify_strict_match(_list(INT32), proto, cls, default_int_type=INT32)
     assert tier == MatchTier.PROTOCOL_EXPLICIT
     assert cost == 4  # int32 -> int64 widening
+
+
+def _record(name):
+    return NominalType(name, (), _module_qname=f"main.{name}")
+
+
+_ANIMAL, _DOG, _PUPPY = _record("Animal"), _record("Dog"), _record("Puppy")
+_MRO = {(_DOG, _ANIMAL): 1, (_PUPPY, _DOG): 1, (_PUPPY, _ANIMAL): 2}
+
+
+def _distance(child, parent):
+    return _MRO.get((child, parent))
+
+
+def test_classify_strict_subclass_tier_costs_its_mro_distance():
+    assert _classify_strict_match(_DOG, _ANIMAL, subclass_checker=_distance) \
+        == (MatchTier.SUBCLASS, 1)
+    assert _classify_strict_match(_PUPPY, _ANIMAL, subclass_checker=_distance) \
+        == (MatchTier.SUBCLASS, 2)
+    assert _classify_strict_match(_ANIMAL, _DOG, subclass_checker=_distance) is None
+    assert _classify_strict_match(_DOG, _ANIMAL) is None
+
+
+def test_classify_strict_subclass_pointer_keeps_its_const():
+    assert _classify_strict_match(PtrType(_DOG), PtrType(_ANIMAL),
+                                  subclass_checker=_distance) == (MatchTier.SUBCLASS, 1)
+    assert _classify_strict_match(PtrType(_DOG), PtrType(_ANIMAL, is_readonly=True),
+                                  subclass_checker=_distance) == (MatchTier.SUBCLASS, 1)
+    assert _classify_strict_match(PtrType(_DOG, is_readonly=True),
+                                  PtrType(_ANIMAL, is_readonly=True),
+                                  subclass_checker=_distance) == (MatchTier.SUBCLASS, 1)
+    assert _classify_strict_match(PtrType(_DOG, is_readonly=True), PtrType(_ANIMAL),
+                                  subclass_checker=_distance) is None
+
+
+def test_owned_base_ranks_as_subclass():
+    # An owned base slot ranks by its declared shape, as a borrowed one does,
+    # so the call picks it and the argument check then refuses the move.
+    assert _classify_strict_match(_DOG, OwnType(_ANIMAL),
+                                  subclass_checker=_distance) == (MatchTier.SUBCLASS, 1)
+    assert _classify_strict_match(_DOG, OwnType(OptionalType(_ANIMAL)),
+                                  subclass_checker=_distance) == (MatchTier.SUBCLASS, 1)
+    assert _classify_strict_match(OwnType(_DOG), _ANIMAL,
+                                  subclass_checker=_distance) == (MatchTier.SUBCLASS, 1)
+    assert type_matches_with_coercion(_DOG, OwnType(_ANIMAL),
+                                      subclass_checker=_distance)
+
+
+def test_coercion_pass_ranks_the_nearer_base():
+    # `f(puppy, 1.5)` at `(Animal, float)` / `(Dog, float)`: the literal
+    # converts at both, so the nearer base decides, not declaration order.
+    lit = FloatLiteralType(value=1.5)
+    far = coercion_pass_rank([_PUPPY, lit], [_ANIMAL, FLOAT], None, None,
+                             _distance, None, INT32)
+    near = coercion_pass_rank([_PUPPY, lit], [_DOG, FLOAT], None, None,
+                              _distance, None, INT32)
+    assert far is not None and near is not None
+    assert (far.upcast, near.upcast) == (2, 1)
+    assert near.rank() < far.rank()
+    # A value at a pointer to its base upcasts by the same distance.
+    ptr = coercion_pass_rank([_PUPPY], [PtrType(_ANIMAL)], None, None,
+                             _distance, None, INT32)
+    assert ptr is not None and ptr.upcast == 2
+
+
+def test_coercion_pass_ranks_a_base_above_bare_t():
+    # `f(dog, n8)` at `(Animal, int64)` / `[T](T, int64)`: T instantiated at
+    # Dog (a record T is `Ref[Dog]`) upcasts nothing, yet the concrete base
+    # wins, as in the strict pass.
+    base = coercion_pass_rank([_DOG, INT8], [_ANIMAL, INT64], None, None,
+                              _distance, None, INT32)
+    bare = coercion_pass_rank([_DOG, INT8], [RefType(_DOG), INT64], None, None,
+                              _distance, None, INT32, generic=True)
+    assert base is not None and bare is not None
+    assert base.rank() < bare.rank()
+
+
+# --------------------------------------------------------------------------
+# _declared_tier
+# --------------------------------------------------------------------------
+
+
+_T = TypeParamRef("T")
+
+
+@pytest.mark.parametrize("declared", [_T, ReadonlyType(_T), OwnType(_T)],
+                         ids=["bare", "readonly", "own"])
+def test_declared_bare_type_param_is_the_wildcard(declared):
+    # However exactly the instantiation matches, a bare `T` is the fallback.
+    assert _declared_tier(declared, (MatchTier.EXACT_CONCRETE, 0)) \
+        == (MatchTier.GENERIC_WILDCARD, 0)
+
+
+def test_declared_shape_over_type_param_is_a_generic_shape():
+    assert _declared_tier(_list(_T), (MatchTier.EXACT_CONCRETE, 0)) \
+        == (MatchTier.EXACT_GENERIC_SHAPE, 0)
+    assert _declared_tier(OptionalType(_T), (MatchTier.EXACT_CONCRETE, 0)) \
+        == (MatchTier.EXACT_GENERIC_SHAPE, 0)
+
+
+def test_declared_protocol_over_type_param_keeps_the_conformance_kind():
+    proto = _iterable(_T)
+    assert _declared_tier(proto, (MatchTier.PROTOCOL_EXPLICIT, 3)) \
+        == (MatchTier.GENERIC_PROTOCOL_EXPLICIT, 3)
+    assert _declared_tier(proto, (MatchTier.PROTOCOL_STRUCTURAL, 0)) \
+        == (MatchTier.GENERIC_PROTOCOL_STRUCTURAL, 0)
+    # The instantiated protocol itself as the argument conforms explicitly,
+    # as the classifier answers on the raw generic path.
+    assert _declared_tier(proto, (MatchTier.EXACT_CONCRETE, 0)) \
+        == (MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0)
+
+
+# --------------------------------------------------------------------------
+# OverloadFit.rank
+# --------------------------------------------------------------------------
+
+
+def test_fit_rank_element_widening_before_tiers():
+    # A protocol match that converts no element beats a more specific one
+    # that widens elements; the container widening still comes first.
+    widening = OverloadFit(0, 3, ((MatchTier.PROTOCOL_EXPLICIT, 0),))
+    exact = OverloadFit(0, 0, ((MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0),))
+    assert exact.rank() < widening.rank()
+    container = OverloadFit(1, 0, ((MatchTier.EXACT_CONCRETE, 0),))
+    assert widening.rank() < container.rank()
+
+
+def test_presubstituted_view_widens_an_undecided_container_once():
+    # `s[T](xs: Iterable[T])` instantiated at `int64` by the call site before
+    # ranking: the undecided list's widening is its container meet, and
+    # must not be charged again as the protocol's element widening.
+    generic = FunctionInfo(name="s", params=(ParamInfo("xs", _iterable(_T)),),
+                           return_type=VOID, type_params=["T"])
+    inst = FunctionInfo(name="s", params=(ParamInfo("xs", _iterable(INT64)),),
+                        return_type=VOID, type_params=["T"],
+                        canonical_fi=generic)
+    ops = _Ops({_iterable(INT64): [(None, INT32, INT64)]})
+    ops.protocol_type_args_of = lambda arg, proto: None
+    fit = _classify_overload(
+        inst, [_OPEN_LIST], lambda a, p: True,
+        lambda a, p: ProtocolConformanceKind.EXPLICIT, INT32, ops)
+    assert fit is not None
+    assert (fit.widening, fit.element_widening) == (4, 0)
+    assert fit.per_arg == ((MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0),)
 
 
 # --------------------------------------------------------------------------

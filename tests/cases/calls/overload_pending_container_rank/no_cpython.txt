@@ -1,8 +1,9 @@
-The `tpy.dispatch` stand-in under CPython tries concrete variants before
-generic ones and otherwise picks by declaration order (it skips
-generic-alias annotations such as `list[int64]` and `Iterable[int]`). Every
-pick here goes against that: `floor_b`, `concrete_first`, `scalar32`,
-`scalar_big` and `to_big` take a candidate declared after one that would
-widen the list, and `tiers` takes its generic variant over a concrete one
-that widens. The same rules in orders the stand-in follows live in
-`calls/overload_pending_container`.
+The `tpy.dispatch` stand-in under CPython runs the first variant applicable
+by arity and type (it does not check element types such as `list[int64]`
+and `Iterable[int]`). Every pick here goes against that: `floor_b`,
+`concrete_first`, `scalar32`, `scalar_big`, `to_big` and
+`twin_generic_first` take a candidate declared after one that would widen
+the list, `tiers` takes its generic variant over a concrete one that
+widens, and `gv` takes its list variant over a generic declared first that
+cannot be instantiated at the argument. The same rules in orders the
+stand-in follows live in `calls/overload_pending_container`.

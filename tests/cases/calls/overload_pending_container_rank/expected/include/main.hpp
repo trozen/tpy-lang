@@ -9,6 +9,8 @@ namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def a64() -> int64:
+int64_t a64();
 // @dispatch
 // def floor_b(xs: list[int]) -> str:
 std::string floor_b__list_int(std::vector<::tpy::BigInt>& xs);
@@ -54,6 +56,21 @@ std::string tiers__list_T(std::vector<T>& xs);
 // def tiers(xs: Iterable[int32]) -> str:
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 std::string tiers__Iterable_int32(const T_xs& xs);
+// @dispatch
+// def twin_generic_first[T](xs: Iterable[T], v: T) -> str:
+template<typename T, ::tpystd::typing::Iterable<T> T_xs>
+std::string twin_generic_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v);
+// @dispatch
+// def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
+template<::tpystd::typing::Iterable<int64_t> T_xs>
+std::string twin_generic_first__Iterable_int64__int64(const T_xs& xs, int64_t v);
+// @dispatch
+// def gv[T](xs: Iterable[int64], t: T) -> str:
+template<typename T, ::tpystd::typing::Iterable<int64_t> T_xs>
+std::string gv__Iterable_int64__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t);
+// @dispatch
+// def gv(xs: list[int64], t: int32) -> str:
+std::string gv__list_int64__int32(const std::vector<int64_t>& xs, int32_t t);
 // def main() -> None:
 void main();
 
@@ -100,6 +117,34 @@ std::string tiers__list_T(std::vector<T>& xs) {
 template<::tpystd::typing::Iterable<int32_t> T_xs>
 std::string tiers__Iterable_int32(const T_xs& xs) {
     return "Iterable[int32]";
+}
+// # A generic and its declared twin, the generic declared first: the
+// # generic's resolved view would widen the list, the declared view decides
+// # nothing.
+// @dispatch
+// def twin_generic_first[T](xs: Iterable[T], v: T) -> str:
+//     return "generic"
+template<typename T, ::tpystd::typing::Iterable<T> T_xs>
+std::string twin_generic_first__Iterable_T__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> v) {
+    return "generic";
+}
+// @dispatch
+// def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
+//     return "declared"
+template<::tpystd::typing::Iterable<int64_t> T_xs>
+std::string twin_generic_first__Iterable_int64__int64(const T_xs& xs, int64_t v) {
+    return "declared";
+}
+// # A declared view in a generic candidate, declared first: the generic cannot
+// # be instantiated at an int32 list (its view refuses the element,
+// # BUGS.md#generic-declared-view-refuses-conversion), so the list candidate
+// # is the one applicable.
+// @dispatch
+// def gv[T](xs: Iterable[int64], t: T) -> str:
+//     return "gen-view"
+template<typename T, ::tpystd::typing::Iterable<int64_t> T_xs>
+std::string gv__Iterable_int64__T(const T_xs& xs, ::tpy::param_val_or_ref_t<T> t) {
+    return "gen-view";
 }
 
 void __tpy_init();

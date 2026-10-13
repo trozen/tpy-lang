@@ -12,7 +12,6 @@ import struct as _struct
 import inspect as _inspect
 import collections.abc as _collections_abc
 import typing as _typing
-import re as _re
 
 # Version/implementation identification lives in `tpy.version` submodule
 # for API parity with the compiled side (see lib/tpy/tpy/version.py):
@@ -365,11 +364,19 @@ def take_ptr(obj):
     return _Ptr(obj)
 
 
+def _as_annotation(item):
+    # A quoted name becomes a ForwardRef, which `| None` accepts and
+    # get_type_hints resolves; a bare string would fail at `|`.
+    return _typing.ForwardRef(item) if isinstance(item, str) else item
+
+
 class _OwnMeta(type):
     """Metaclass to support Own[T] syntax."""
 
     def __getitem__(cls, item):
-        return cls
+        # As `readonly[T]`: the wrapped type, so @dispatch matches an
+        # `Own[Animal]` parameter as the `Animal` the compiler sees.
+        return _as_annotation(item)
 
 
 class Own(metaclass=_OwnMeta):
@@ -623,7 +630,7 @@ class readonly:
     No-op in CPython.
     """
     def __class_getitem__(cls, item):
-        return item
+        return _as_annotation(item)
 
     def __new__(cls, func_or_flag=None):
         if func_or_flag is None or isinstance(func_or_flag, bool):
@@ -717,13 +724,52 @@ def _param_hints(func) -> dict:
                 ann = eval(ann, globalns, type_params)
             except Exception:
                 continue
+        if isinstance(ann, _typing.ForwardRef):
+            try:
+                ann = eval(ann.__forward_arg__, globalns, type_params)
+            except Exception:
+                pass
         hints[name] = ann
     return hints
 
 
-def _type_matches(func, args: tuple) -> bool:
+def _bind_forward_refs(func, hints: dict, args: tuple) -> dict:
+    """A quoted name the module cannot resolve (a nested class) looked up
+    on the receiver's class, which exists by the time a method is called."""
+    refs = {k: a for k, a in hints.items() if isinstance(a, _typing.ForwardRef)}
+    if not refs or not args:
+        return hints
+    scope = {}
+    for cls in reversed(type(args[0]).__mro__):
+        scope.update(vars(cls))
+    bound = dict(hints)
+    for name, ref in refs.items():
+        try:
+            bound[name] = eval(ref.__forward_arg__,
+                               getattr(func, "__globals__", {}), scope)
+        except Exception:
+            pass
+    return bound
+
+
+def _is_int_at_float(ann, arg) -> bool:
+    """An int at a `float` / `float32` slot, which the compiler converts."""
+    return (isinstance(arg, int) and not isinstance(arg, bool)
+            and isinstance(ann, type) and issubclass(ann, float))
+
+
+def _float_converted(func, args: tuple, hints: dict) -> tuple:
+    """`args` with each int at a `float` slot converted, so the variant
+    prints `3.0` as the compiled one does."""
+    params = list(_inspect.signature(func).parameters.keys())
+    return tuple(hints[params[i]](arg)
+                 if i < len(params) and params[i] in hints
+                 and _is_int_at_float(hints[params[i]], arg) else arg
+                 for i, arg in enumerate(args))
+
+
+def _type_matches(func, args: tuple, hints: dict) -> bool:
     """Check if positional args match the function's type annotations."""
-    hints = _param_hints(func)
     params = list(_inspect.signature(func).parameters.keys())
     for i, arg in enumerate(args):
         if i >= len(params):
@@ -734,6 +780,10 @@ def _type_matches(func, args: tuple) -> bool:
         if pname not in hints:
             continue
         ann = hints[pname]
+        if isinstance(ann, _typing.ForwardRef):
+            # A name the stub cannot resolve (a nested class) matches
+            # nothing, rather than every argument.
+            return False
         if _typing.get_origin(ann) is _typing.Literal:
             # Matched by value, as the compiler resolves a Literal variant;
             # the type check keeps `True` from matching `Literal[1]`.
@@ -744,9 +794,7 @@ def _type_matches(func, args: tuple) -> bool:
         if isinstance(ann, type):
             # A plain int is not an instance of the fixed-int stubs (they
             # subclass int), but the compiler lets a literal bind to any
-            # fixed-int slot it fits; mirror that. Two same-arity fixed-int
-            # siblings that both fit still go to the first declared, where
-            # the compiler picks the narrowest.
+            # fixed-int slot it fits; mirror that.
             if (type(arg) is int and issubclass(ann, int) and ann is not int
                     and hasattr(ann, "MIN")):
                 if not (ann.MIN <= arg <= ann.MAX):
@@ -757,6 +805,8 @@ def _type_matches(func, args: tuple) -> bool:
             arg_base = getattr(type(arg), "_TPY_BASE", None)
             if (arg_base is not None and hasattr(ann, "_TPY_BASE")
                     and _fixed_widens(arg_base, ann)):
+                continue
+            if _is_int_at_float(ann, arg):
                 continue
             if (getattr(ann, "_is_protocol", False)
                     and not getattr(ann, "_is_runtime_protocol", False)):
@@ -788,56 +838,28 @@ def _type_matches(func, args: tuple) -> bool:
     return True
 
 
-_WRAPPED_PARAM = _re.compile(r"^(?:readonly|Own|auto_readonly)\[(\w+)\]$")
-
-
-def _takes_bare_type_param(func) -> bool:
-    """Whether a parameter is annotated with a bare type param (`x: T`,
-    possibly wrapped in `readonly` / `Own`), the variant that accepts any
-    argument."""
-    params = getattr(func, "__type_params__", ())
-    names = {tp.__name__ for tp in params}
-    for pname, ann in getattr(func, "__annotations__", {}).items():
-        if pname == "return":
-            continue
-        if isinstance(ann, str):
-            m = _WRAPPED_PARAM.match(ann.strip())
-            if ann.strip() in names or (m and m.group(1) in names):
-                return True
-        elif any(ann is tp for tp in params):
-            return True
-    return False
-
-
-def _variant_rank(func) -> int:
-    """The order variants are tried in, mirroring the language's
-    specificity rule: concrete, then generic over a concrete shape
-    (`list[T]`), then protocol-typed, then a bare `T` -- the fallback
-    (BUGS.md#overload-rank-protocol-vs-generic: the compiler still ranks
-    an exactly-instantiable bare `T` first)."""
-    if _takes_bare_type_param(func):
-        return 3
-    if any(getattr(ann, "_is_protocol", False)
-           for ann in _param_hints(func).values()):
-        return 2
-    return 1 if getattr(func, "__type_params__", ()) else 0
-
-
 def dispatch(func):
     """CPython implementation of tpy.dispatch.
 
-    The compiler resolves a @dispatch set statically; here the variants are
-    accumulated by qualified name and each call tries them in declaration
-    order within each `_variant_rank` tier (concrete, generic over a
-    shape, protocol-typed, bare `T`), arity match first, then isinstance
-    on the annotated parameter types. A concrete variant that matches is
-    taken before a generic one -- the compiler's tie rule between equally
-    good candidates -- and a bare `T` comes last. The compiler ranks a
-    generic that converts nothing above a concrete variant that widens a
-    container argument, which this cannot follow. A generic variant's
-    value is not joined: `T` bound by an `int32` and an `int64` argument
-    keeps each argument's own class here, where the compiler converts
-    both to `int64`.
+    The compiler resolves a @dispatch set statically by ranking the
+    applicable variants; this stand-in does not rank. The variants are
+    accumulated by qualified name and each call runs the FIRST variant in
+    declaration order that is applicable by arity and by `_type_matches`
+    on the annotated parameter types (a class by isinstance, a fixed-int
+    slot by the literal's range or a widening, an int at a `float` slot,
+    converted to it, a `Literal` by value, a non-runtime protocol by its
+    attributes, a builtin container by its class, a `Callable[[...], R]`
+    by the callable's arity; element types and unions are not checked).
+    When none matches by type, the first by arity runs. A test whose
+    output CPython also produces therefore declares the compiler's winner
+    first; that the compiler's pick does not depend on declaration order
+    is pinned by compiler-only cases. Declaring the winner first is not
+    enough when two calls to one set have different compiler winners
+    this stub cannot tell apart -- a `Literal` value vs a plain variable
+    of that value, `@readonly` receiver twins called on a readonly
+    receiver, aliased classes (`StrView` / `String` are `str` here),
+    element types, union members, keyword arguments; such a case goes
+    compiler-only. `@readonly` twins: declare the mutating twin first.
     `typing.overload` is left untouched: its stubs-plus-implementation
     form already runs under stock CPython.
     """
@@ -850,12 +872,14 @@ def dispatch(func):
 
     def dispatcher(*args, **kwargs):
         n = len(args) + len(kwargs)
-        # Pass 1: arity + type match, concrete variants first
-        ordered = sorted(variants, key=_variant_rank)
-        for variant in ordered:
+        # Pass 1: the first variant that matches by arity and type.
+        for variant in variants:
             lo, hi = _arity_of(variant)
-            if lo <= n <= hi and _type_matches(variant, args):
-                return variant(*args, **kwargs)
+            if lo <= n <= hi:
+                hints = _bind_forward_refs(variant, _param_hints(variant), args)
+                if _type_matches(variant, args, hints):
+                    return variant(*_float_converted(variant, args, hints),
+                                   **kwargs)
         # Pass 2: arity match only (fallback for complex annotations)
         for variant in variants:
             lo, hi = _arity_of(variant)
@@ -887,7 +911,7 @@ class auto_readonly:
     and the subscript returns the type argument unchanged.
     """
     def __class_getitem__(cls, item):
-        return item
+        return _as_annotation(item)
 
     def __new__(cls, func):
         return func
@@ -901,7 +925,7 @@ class auto_own:
     in the consuming clone. In CPython, subscript returns the type unchanged.
     """
     def __class_getitem__(cls, item):
-        return item
+        return _as_annotation(item)
 
 
 class unsafe_interior_mutable:
@@ -910,7 +934,7 @@ class unsafe_interior_mutable:
     the subscript returns the type unchanged.
     """
     def __class_getitem__(cls, item):
-        return item
+        return _as_annotation(item)
 
 
 # ---------------------------------------------------------------------------

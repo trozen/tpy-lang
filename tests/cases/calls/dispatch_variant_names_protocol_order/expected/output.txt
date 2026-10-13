@@ -1,0 +1,4 @@
+concrete: dog Rex
+concrete: dog Max
+protocol: iterable 2
+protocol: iterable 3 [1, 2, 3]

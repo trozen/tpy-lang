@@ -39,12 +39,12 @@ struct Fish;
 inline constexpr std::string_view __name__ = "__main__";
 
 // @dispatch
+// def describe(x: Dog) -> str:
+std::string describe__Dog(const Dog& x);
+// @dispatch
 // def describe(x: Animal) -> str:
 template<Animal T_x>
 std::string describe__Animal(T_x& x);
-// @dispatch
-// def describe(x: Dog) -> str:
-std::string describe__Dog(const Dog& x);
 // def concrete_section() -> None:
 void concrete_section();
 // def protocol_only_section() -> None:
@@ -60,13 +60,13 @@ std::string move__Swimmer(T_x& x);
 // def two_protocols_section() -> None:
 void two_protocols_section();
 // @dispatch
-// def count(v: HasLen) -> str:
-template<HasLen T_v>
-std::string count__HasLen(const T_v& v);
-// @dispatch
 // def count(v: Iterable[int]) -> str:
 template<::tpystd::typing::Iterable<::tpy::BigInt> T_v>
 std::string count__Iterable_int(T_v& v);
+// @dispatch
+// def count(v: HasLen) -> str:
+template<HasLen T_v>
+std::string count__HasLen(const T_v& v);
 // def protocol_section() -> None:
 void protocol_section();
 // def main() -> None:
@@ -196,7 +196,6 @@ inline Fish::Fish(const ::tpy::BigInt& fins) : fins(fins) {}
 inline ::tpy::BigInt Fish::swim() const {
     return this->fins;
 }
-// # --- concrete vs protocol: the concrete parameter renders `const Dog&` ---
 // @dispatch
 // def describe(x: Animal) -> str:
 //     return "animal " + x.name()
@@ -219,13 +218,6 @@ std::string move__Swimmer(T_x& x) {
     return (::tpy::str_concat("swims with ", (x.swim()).to_string()));
 }
 // @dispatch
-// def count(v: HasLen) -> str:
-//     return "sized " + str(len(v))
-template<HasLen T_v>
-std::string count__HasLen(const T_v& v) {
-    return (::tpy::str_concat("sized ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(v))));
-}
-// @dispatch
 // def count(v: Iterable[int]) -> str:
 //     n = 0
 //     for _ in v:
@@ -243,6 +235,13 @@ std::string count__Iterable_int(T_v& v) {
         n = ::tpy::add_check<int32_t>(n, 1);
     }
     return (::tpy::str_concat("iterable ", ::tpy::fixed_to_str<int32_t>(n)));
+}
+// @dispatch
+// def count(v: HasLen) -> str:
+//     return "sized " + str(len(v))
+template<HasLen T_v>
+std::string count__HasLen(const T_v& v) {
+    return (::tpy::str_concat("sized ", ::tpy::fixed_to_str<int32_t>(::tpy::__len__(v))));
 }
 
 void __tpy_init();

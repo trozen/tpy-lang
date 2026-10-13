@@ -9223,20 +9223,25 @@ class TypeRegistry:
         Returns False for child == parent; use `is_subclass_of_or_equal`
         when same-type should count.
         """
+        return self.subclass_distance(child, parent) is not None
+
+    def subclass_distance(self, child: 'TpyType', parent: 'TpyType') -> int | None:
+        """How far `parent` is from `child` in `child`'s MRO (1 for the
+        first ancestor), or None when `child` is no strict subclass of it."""
         if not (isinstance(child, NominalType) and child.is_user_record
                 and isinstance(parent, NominalType) and parent.is_user_record):
-            return False
+            return None
         child_info = self.get_record_for_type(child)
         if child_info is None:
-            return False
-        # MRO-based membership. Parent references recorded pre-qname-mint may
-        # be bare; `parent` argument may be qname-bearing. `loose` matches
-        # strictly when both have qnames (keeps cross-module shadowing honest)
-        # and permissively when either is bare.
-        for ancestor in child_info.mro_ancestors:
+            return None
+        # Parent references recorded pre-qname-mint may be bare; `parent`
+        # may be qname-bearing. `loose` matches strictly when both have
+        # qnames (keeps cross-module shadowing honest) and permissively
+        # when either is bare.
+        for i, ancestor in enumerate(child_info.mro_ancestors):
             if same_nominal_symbol_loose(ancestor, parent):
-                return True
-        return False
+                return i + 1
+        return None
 
     def is_subclass_of_or_equal(self, child: 'TpyType', parent: 'TpyType') -> bool:
         """True if child is parent or a subclass of parent. Mirrors Python's

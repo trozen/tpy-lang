@@ -31,13 +31,6 @@ std::string which__int64__int64(int64_t x, int64_t y);
 template<typename T>
 std::string which__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
 // @dispatch
-// def which_g[T](x: T, y: T) -> str:
-template<typename T>
-std::string which_g__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y);
-// @dispatch
-// def which_g(x: int64, y: int64) -> str:
-std::string which_g__int64__int64(int64_t x, int64_t y);
-// @dispatch
 // def width(x: int8) -> str:
 std::string width__int8(int8_t x);
 // @dispatch
@@ -172,14 +165,6 @@ template<typename T>
 //     return "generic"
 template<typename T>
 std::string which__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
-    return "generic";
-}
-// # the same pair declared generic-first: the concrete one still wins
-// @dispatch
-// def which_g[T](x: T, y: T) -> str:
-//     return "generic"
-template<typename T>
-std::string which_g__T__T(::tpy::param_val_or_ref_t<T> x, ::tpy::param_val_or_ref_t<T> y) {
     return "generic";
 }
 

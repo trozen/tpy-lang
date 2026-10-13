@@ -25,17 +25,6 @@ def which[T](x: T, y: T) -> str:
     return "generic"
 
 
-# the same pair declared generic-first: the concrete one still wins
-@dispatch
-def which_g[T](x: T, y: T) -> str:
-    return "generic"
-
-
-@dispatch
-def which_g(x: int64, y: int64) -> str:
-    return "concrete"
-
-
 # which fixed width a value has, for the same-width max/min pins
 @dispatch
 def width(x: int8) -> str:
@@ -69,9 +58,8 @@ def free_function() -> None:
     s = last3(int16(300), int8(-1), uint8(200))  # tpyc: type(int16)
     print("free last3", r, s)
     # a concrete overload wins the conversion tie against the joined generic
+    # (the generic-first order is in int/generic_int_join_order)
     print("free which", which(int32(1), int64(2)))
-    # declared generic-first: the concrete overload still wins the tie
-    print("free which_g", which_g(int32(1), int64(2)))
     # max/min compute in the wider fixed type, not in int
     m = max(int32(5), int64(100000))  # tpyc: type(int64)
     k = max(b, a)  # tpyc: type(int64)

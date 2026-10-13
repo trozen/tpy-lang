@@ -2692,8 +2692,8 @@ match/case on union subjects, `is None` on Optional params, and equality checks 
 literal-defaulted params. Exhaustiveness checking ensures stubs cover all union variants
 (relaxed for params not present in every stub). Literal[...] dispatch, cross-module
 imports, and methods all work. `@overload` runs under stock CPython; `@dispatch`
-under CPython is a runtime dispatcher (arity + isinstance) in the `tpy` stub
-package.
+under CPython is a runtime dispatcher (the first variant applicable by arity +
+isinstance) in the `tpy` stub package.
 
 **Dependencies**: Union types (done), isinstance narrowing (done). `slice` type needed
 for the `__getitem__` use case (orthogonal).

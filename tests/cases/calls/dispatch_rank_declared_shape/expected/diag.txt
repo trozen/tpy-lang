@@ -1,0 +1,2 @@
+main.py:267: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:474: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

@@ -4,6 +4,9 @@
 namespace tpyapp::main {
 
 
+// # --- concrete vs protocol: the concrete parameter renders `const Dog&`
+// # (declared first, as CPython's dispatch runs the first applicable variant;
+// # the other order is in calls/dispatch_variant_names_protocol_order) ---
 // @dispatch
 // def describe(x: Dog) -> str:
 //     return "dog " + x.name()

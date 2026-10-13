@@ -2509,6 +2509,10 @@ class ExpressionAnalyzer:
                     matched = resolve_overload(
                         subst_overloads,
                         [leaf if leaf is not None else check_left],
+                        protocol_checker=self.protocols.type_conforms_to_protocol,
+                        protocol_classifier=self.protocols.classify_protocol_conformance,
+                        default_int_type=self.ctx.default_int_type,
+                        subclass_checker=self.ctx.registry.subclass_distance,
                         type_ops=self.type_ops)
                     if matched is not None:
                         # Map back to the original (un-substituted) method for codegen
@@ -6138,8 +6142,13 @@ class ExpressionAnalyzer:
             else:
                 arg = self.ctx.default_int_for_literal(arg)
         try:
-            matched = resolve_overload(subst_keyed, [arg],
-                                       type_ops=self.type_ops)
+            matched = resolve_overload(
+                subst_keyed, [arg],
+                protocol_checker=self.protocols.type_conforms_to_protocol,
+                protocol_classifier=self.protocols.classify_protocol_conformance,
+                default_int_type=self.ctx.default_int_type,
+                subclass_checker=self.ctx.registry.subclass_distance,
+                type_ops=self.type_ops)
         except OverloadAmbiguityError:
             return None
         return next((keyed[i] for i, m in enumerate(subst_keyed) if m is matched),

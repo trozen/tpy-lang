@@ -36,7 +36,9 @@ if TYPE_CHECKING:
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
     ProtocolClassifier = Callable[[TpyType, TpyType], 'ProtocolConformanceKind | None']
     DerefChecker = Callable[[TpyType], TpyType | None]
-    SubclassChecker = Callable[['NominalType', 'NominalType'], bool]
+    # The MRO distance from a subclass to its base, None when the first
+    # is no strict subclass of the second.
+    SubclassChecker = Callable[[TpyType, TpyType], int | None]
 
 
 class MatchTier(Enum):
@@ -49,11 +51,12 @@ class MatchTier(Enum):
     """
     EXACT_CONCRETE = 1             # arg_inner == param_inner (or nominal-adjacent: IntLit->FixedInt, NoneType->Void, Callable->Fn, ...)
     EXACT_GENERIC_SHAPE = 2        # generic param with concrete outer shape: list[T] vs list[int32]
-    PROTOCOL_EXPLICIT = 3          # protocol conformance via classify_protocol_conformance -> EXPLICIT
-    PROTOCOL_STRUCTURAL = 4        # protocol conformance via classify_protocol_conformance -> STRUCTURAL
-    GENERIC_PROTOCOL_EXPLICIT = 5  # generic over protocol param, explicit conformance
-    GENERIC_PROTOCOL_STRUCTURAL = 6  # generic over protocol param, structural conformance
-    GENERIC_WILDCARD = 7           # bare T / unconstrained generic
+    SUBCLASS = 3                   # a subclass argument at a base-class param; cost = MRO distance
+    PROTOCOL_EXPLICIT = 4          # protocol conformance via classify_protocol_conformance -> EXPLICIT
+    PROTOCOL_STRUCTURAL = 5        # protocol conformance via classify_protocol_conformance -> STRUCTURAL
+    GENERIC_PROTOCOL_EXPLICIT = 6  # generic over protocol param, explicit conformance
+    GENERIC_PROTOCOL_STRUCTURAL = 7  # generic over protocol param, structural conformance
+    GENERIC_WILDCARD = 8           # bare T / unconstrained generic
 
 
 _NUM_MATCH_TIERS = len(MatchTier)
@@ -110,8 +113,10 @@ def _score(per_arg: tuple[tuple[MatchTier, int], ...]) -> tuple[tuple[int, ...],
     """Score a per-arg tier vector: lower is better.
 
     Primary key is aggregate tier counts (higher tier-count at the strongest
-    tier wins); secondary key is total widening cost so same-tier candidates
-    prefer the narrowest widening.
+    tier wins); secondary key is the summed cost -- an integer literal's
+    distance from the default width, a subclass argument's MRO distance --
+    so same-tier candidates prefer the nearest. Element widening is not
+    here: it is its own earlier key (`OverloadFit.rank`).
     """
     counts = [0] * _TIER_COUNTS_SIZE
     total_cost = 0
@@ -215,15 +220,19 @@ def _type_args_widening_cost(
     actual: TpyType,
     param: NominalType,
     default_int_type: TpyType | None = None,
+    type_ops: 'TypeOperations | None' = None,
 ) -> int:
-    """Aggregate widening cost between ``actual``'s and ``param``'s type args.
+    """Aggregate widening cost between the type args ``actual`` instantiates
+    protocol ``param`` with and ``param``'s own.
 
-    Caller has already confirmed ``actual`` conforms to ``param``. Walks the
-    type-arg tuples pairwise when they line up; for single-element protocols
-    also falls back to ``actual.get_element_type()`` so non-parameterised
-    containers (``bytes``/``bytearray`` -> ``Iterable[uint8]``) can be scored
-    by their baked-in element type. Returns 0 when no type-arg information
-    is available.
+    Caller has already confirmed ``actual`` conforms to ``param``. The
+    conformance gives the instantiation (`TypeOperations.protocol_type_args_of`:
+    ``dict[int8, int32]`` is an ``Iterable[int8]``); where it gives none,
+    the type-arg tuples are walked pairwise when they line up, and for
+    single-element protocols ``actual.get_element_type()`` scores
+    non-parameterised containers (``bytes``/``bytearray`` ->
+    ``Iterable[uint8]``) by their baked-in element type. Returns 0 when no
+    type-arg information is available.
     """
     if not isinstance(param, NominalType) or not param.type_args:
         return 0
@@ -231,8 +240,16 @@ def _type_args_widening_cost(
         # Ranked as the container it spells, so a dict literal is scored
         # as a dict is, never by its value type.
         actual = actual.spelled(actual.parts())
-    actual_args: tuple[TpyType, ...] = ()
-    if isinstance(actual, NominalType):
+    actual_args: tuple[TpyType | None, ...] = ()
+    conformed = (type_ops.protocol_type_args_of(actual, param)
+                 if type_ops is not None else None)
+    # A generic user record's declared protocol comes back unsubstituted
+    # (`Iterable[T]` for a `Bag[int8]`); it says nothing about the elements.
+    if (conformed is not None and len(conformed) == len(param.type_args)
+            and not any(a is not None and contains_type_param(a)
+                        for a in conformed)):
+        actual_args = tuple(conformed)
+    elif isinstance(actual, NominalType):
         actual_args = tuple(a for a in actual.type_args if isinstance(a, TpyType))
     elif isinstance(actual, TupleType):
         # Tuples collapse to a protocol over a single element type only when
@@ -252,7 +269,7 @@ def _type_args_widening_cost(
         return 0
     total = 0
     for a, p in zip(actual_args, param.type_args):
-        if not isinstance(p, TpyType):
+        if a is None or not isinstance(p, TpyType):
             continue
         total += _scalar_widening_cost(a, p, default_int_type)
     return total
@@ -353,12 +370,52 @@ def _container_fit(
     return total + sum(widens[first] for first in set(groups.values()))
 
 
+def _upcast_distance(arg_type: TpyType, param_type: TpyType,
+                     subclass_checker: 'SubclassChecker | None') -> int | None:
+    """How far up its MRO an argument converts to its parameter: a
+    subclass record at a base record, or a `Ptr` whose pointee does unless
+    that would drop a const. None for any other pair. An owned base
+    (`Own[Base]`) ranks like a borrowed one, so the variant Python would
+    run is picked; the argument check then refuses the slicing move
+    (BUGS.md#own-base-subclass-check-bare-record-only for its gaps)."""
+    if subclass_checker is None:
+        return None
+    param_inner = param_type
+    while isinstance(param_inner, (RefType, ReadonlyType, OwnType)):
+        param_inner = param_inner.wrapped
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
+    if isinstance(arg_inner, OwnType):
+        arg_inner = arg_inner.wrapped
+    if isinstance(arg_inner, PtrType) and isinstance(param_inner, PtrType):
+        if arg_inner.is_readonly and not param_inner.is_readonly:
+            return None
+        arg_inner = unwrap_readonly(arg_inner.pointee)
+        param_inner = unwrap_readonly(param_inner.pointee)
+    return subclass_checker(arg_inner, param_inner)
+
+
+def _coercion_upcast_distance(arg_type: TpyType, param_type: TpyType,
+                              subclass_checker: 'SubclassChecker | None'
+                              ) -> int | None:
+    """`_upcast_distance` in the coercion pass, which also passes a
+    subclass record value at a pointer to its base."""
+    distance = _upcast_distance(arg_type, param_type, subclass_checker)
+    if distance is not None:
+        return distance
+    param_inner = unwrap_ref_type(unwrap_readonly(param_type))
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
+    if isinstance(param_inner, PtrType) and not isinstance(arg_inner, PtrType):
+        return _upcast_distance(arg_type, param_inner.pointee, subclass_checker)
+    return None
+
+
 def _classify_strict_match(
     arg_type: TpyType,
     param_type: TpyType,
     protocol_classifier: ProtocolClassifier | None = None,
     default_int_type: TpyType | None = None,
     type_ops: 'TypeOperations | None' = None,
+    subclass_checker: 'SubclassChecker | None' = None,
 ) -> tuple[MatchTier, int] | None:
     """Strict (no-coercion) match with specificity tier + widening cost.
 
@@ -415,7 +472,7 @@ def _classify_strict_match(
         if isinstance(arg_inner, NoneType):
             return (MatchTier.EXACT_CONCRETE, 0)
         return _classify_strict_match(arg_inner, param_inner.inner, protocol_classifier, default_int_type,
-                                      type_ops)
+                                      type_ops, subclass_checker)
     # Callable -> Fn: std::function satisfies template requires clauses
     if (isinstance(arg_inner, CallableType) and is_fn_type(param_inner)
             and arg_inner.param_types == param_inner.param_types
@@ -456,7 +513,8 @@ def _classify_strict_match(
         kind = protocol_classifier(check_arg, check_param)
         if kind is ProtocolConformanceKind.EXPLICIT:
             return (MatchTier.PROTOCOL_EXPLICIT,
-                    _type_args_widening_cost(check_arg, check_param, default_int_type))
+                    _type_args_widening_cost(check_arg, check_param, default_int_type,
+                                             type_ops))
         if kind is ProtocolConformanceKind.STRUCTURAL:
             return (MatchTier.PROTOCOL_STRUCTURAL, 0)
         return None
@@ -467,6 +525,9 @@ def _classify_strict_match(
             and any(isinstance(a, OwnType) for a in param_inner.inner_types())):
         stripped_param = strip_own_type_args(param_inner)
         return (MatchTier.EXACT_CONCRETE, 0) if arg_inner == stripped_param else None
+    distance = _upcast_distance(arg_type, param_type, subclass_checker)
+    if distance is not None:
+        return (MatchTier.SUBCLASS, distance)
     return None
 
 
@@ -502,6 +563,28 @@ def type_matches_strict(
     return result is not None
 
 
+def _declared_tier(declared: TpyType,
+                   instantiated: tuple[MatchTier, int]) -> tuple[MatchTier, int]:
+    """The tier of a parameter declared with the callee's own type
+    parameter, by the declared shape: a bare `T` is the wildcard, a protocol
+    over `T` ranks as a generic protocol, any other shape (`list[T]`) as a
+    generic shape. `instantiated` is the argument's match at the
+    instantiated parameter, which decides applicability and the cost."""
+    inspect = declared
+    while isinstance(inspect, (RefType, ReadonlyType, OwnType)):
+        inspect = inspect.wrapped
+    tier, cost = instantiated
+    if isinstance(inspect, TypeParamRef):
+        return (MatchTier.GENERIC_WILDCARD, 0)
+    if is_protocol_type(inspect):
+        # An argument that is the instantiated protocol itself conforms
+        # explicitly, as the classifier answers for it.
+        if tier in (MatchTier.EXACT_CONCRETE, MatchTier.PROTOCOL_EXPLICIT):
+            return (MatchTier.GENERIC_PROTOCOL_EXPLICIT, cost)
+        return (MatchTier.GENERIC_PROTOCOL_STRUCTURAL, 0)
+    return (MatchTier.EXACT_GENERIC_SHAPE, 0)
+
+
 def _classify_generic_param_match(
     param_type: TpyType,
     arg_type: TpyType,
@@ -510,28 +593,15 @@ def _classify_generic_param_match(
     protocol_classifier: ProtocolClassifier | None,
     default_int_type: TpyType | None = None,
 ) -> tuple[MatchTier, int]:
-    """Tier + widening cost for a generic-overload param with ``TypeParamRef``.
-
-    Must be called only for params where ``contains_type_param(param_type)``
-    is True and ``infer_type_params_for_function`` has already succeeded for the
-    whole overload (guaranteeing this param's own inference consistency).
-
-    Shape taxonomy:
-    - Bare ``TypeParamRef`` (possibly wrapped in Ref/Readonly) -> GENERIC_WILDCARD.
-    - Protocol with ``TypeParamRef`` in type args -> GENERIC_PROTOCOL_EXPLICIT
-      or GENERIC_PROTOCOL_STRUCTURAL (fall back to STRUCTURAL if no classifier).
-    - Anything else (concrete outer shape: ``list[T]``, ``tuple[T, T]``,
-      ``Ptr[T]``, user record with T slot, ...) -> EXACT_GENERIC_SHAPE.
-
-    Cost is 0 except for protocol matches where arg type args widen to the
-    substituted protocol type args.
-    """
+    """Tier + widening cost for a generic-overload param with ``TypeParamRef``,
+    by its declared shape (`_declared_tier`); inference has already
+    accepted the argument."""
+    instantiated: tuple[MatchTier, int] = (MatchTier.EXACT_CONCRETE, 0)
     inspect = param_type
-    while isinstance(inspect, (RefType, ReadonlyType)):
+    while isinstance(inspect, (RefType, ReadonlyType, OwnType)):
         inspect = inspect.wrapped
-    if isinstance(inspect, TypeParamRef):
-        return (MatchTier.GENERIC_WILDCARD, 0)
     if is_protocol_type(inspect) and contains_type_param(inspect):
+        instantiated = (MatchTier.PROTOCOL_STRUCTURAL, 0)
         substituted = type_ops.substitute_types(inspect, inferred)
         check_arg = unwrap_ref_type(unwrap_readonly(arg_type))
         if isinstance(check_arg, OwnType):
@@ -539,12 +609,10 @@ def _classify_generic_param_match(
         if protocol_classifier is not None and is_protocol_type(substituted):
             kind = protocol_classifier(check_arg, substituted)
             if kind is ProtocolConformanceKind.EXPLICIT:
-                return (MatchTier.GENERIC_PROTOCOL_EXPLICIT,
-                        _type_args_widening_cost(check_arg, substituted, default_int_type))
-            if kind is ProtocolConformanceKind.STRUCTURAL:
-                return (MatchTier.GENERIC_PROTOCOL_STRUCTURAL, 0)
-        return (MatchTier.GENERIC_PROTOCOL_STRUCTURAL, 0)
-    return (MatchTier.EXACT_GENERIC_SHAPE, 0)
+                instantiated = (MatchTier.PROTOCOL_EXPLICIT,
+                                _type_args_widening_cost(check_arg, substituted,
+                                                         default_int_type, type_ops))
+    return _declared_tier(param_type, instantiated)
 
 
 def type_matches_numeric(
@@ -666,22 +734,8 @@ def type_matches_with_coercion(
         deref_target = deref_checker(arg_inner)
         if deref_target is not None and deref_target == param_inner:
             return True
-    # Inheritance: Child -> Parent (value upcast and pointer coercions)
-    if subclass_checker:
-        if isinstance(arg_inner, NominalType) and arg_inner.is_user_record:
-            if isinstance(param_inner, NominalType) and param_inner.is_user_record:
-                if subclass_checker(arg_inner, param_inner):
-                    return True
-            pointee = getattr(param_inner, 'pointee', None)
-            if isinstance(pointee, NominalType) and pointee.is_user_record:
-                if subclass_checker(arg_inner, pointee):
-                    return True
-        if isinstance(arg_inner, PtrType) and isinstance(arg_inner.pointee, NominalType):
-            if isinstance(param_inner, PtrType) and isinstance(param_inner.pointee, NominalType):
-                # Ptr[readonly[T]] cannot coerce to mutable Ptr (would drop const)
-                if not (arg_inner.is_readonly and not param_inner.is_readonly):
-                    if subclass_checker(arg_inner.pointee, param_inner.pointee):
-                        return True
+    if _coercion_upcast_distance(arg_type, param_type, subclass_checker) is not None:
+        return True
     # Non-protocol NominalType with Own[T] in type args: strip Own for overload matching.
     # Symmetric with the same block in type_matches_strict.
     if (isinstance(param_inner, NominalType) and not is_protocol_type(param_inner)
@@ -720,18 +774,26 @@ class CoercionFit(NamedTuple):
     """A candidate's coercion-pass match (`coercion_pass_rank`): its
     container widening (`_container_fit`), how many arguments match without
     a conversion, how far the call narrows a scalar (a BigInt into a
-    fixed-width slot, an integer literal away from the default width), and
-    whether it is a generic one's instantiation."""
+    fixed-width slot, an integer literal away from the default width), how
+    far up their MROs its subclass arguments convert (`_upcast_distance`,
+    summed), and whether it is a generic one's instantiation."""
     widening: int
     exact: int
     narrowing: int
     generic: bool
+    upcast: int
 
-    def rank(self) -> tuple[int, int, int, bool]:
+    def rank(self) -> tuple[int, int, int, bool, int]:
         """Lower is better: the least container widening, then the most
-        arguments matching without a conversion, the least narrowing, then
-        a concrete signature over a generic instantiation."""
-        return (self.widening, -self.exact, self.narrowing, self.generic)
+        arguments matching without a conversion, the least narrowing, a
+        concrete signature over a generic instantiation, then the nearest
+        bases. A generic instantiated at the argument's own class upcasts
+        nothing, so the distance only orders concrete bases, as SUBCLASS
+        ranks above bare T in the strict pass; it keeps another argument's
+        conversion from turning the nearer base into a declaration-order
+        tie."""
+        return (self.widening, -self.exact, self.narrowing, self.generic,
+                self.upcast)
 
 
 def coercion_pass_rank(
@@ -768,7 +830,9 @@ def coercion_pass_rank(
                     if is_big_int_type(a) and is_fixed_int_type(unwrap_ref_type(p)))
     narrowing += sum(_int_literal_penalty(a, p, default)
                      for a, p in zip(args, params))
-    return CoercionFit(widening, exact, narrowing, generic)
+    upcast = sum(_coercion_upcast_distance(a, p, subclass_checker) or 0
+                 for a, p in zip(args, params))
+    return CoercionFit(widening, exact, narrowing, generic, upcast)
 
 
 def _expand_arg_types_with_kwargs(
@@ -841,15 +905,19 @@ def _expand_arg_types_with_kwargs(
 
 class OverloadFit(NamedTuple):
     """A candidate's strict-pass match (`_classify_overload`): its
-    container widening (`_container_fit`) and its per-argument tiers."""
+    container widening (`_container_fit`), how far its explicit protocol
+    matches widen their arguments' elements, and its per-argument tiers
+    (each with its cost, `_score`)."""
     widening: int
+    element_widening: int
     per_arg: tuple[tuple[MatchTier, int], ...]
 
-    def rank(self) -> tuple[int, tuple[int, ...], int]:
+    def rank(self) -> tuple[int, int, tuple[int, ...], int]:
         """Lower is better: the container widening first -- an overload
         never widens a container another applicable one takes as it is --
-        then the tiers and the cost (`_score`)."""
-        return (self.widening, *_score(self.per_arg))
+        then the element widening, which converts the argument as well,
+        then the tier counts and the summed cost (`_score`)."""
+        return (self.widening, self.element_widening, *_score(self.per_arg))
 
 
 def _classify_overload(
@@ -861,6 +929,7 @@ def _classify_overload(
     type_ops: 'TypeOperations | None',
     kwarg_types: dict[str, TpyType] | None = None,
     joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
+    subclass_checker: 'SubclassChecker | None' = None,
 ) -> OverloadFit | None:
     """Classify every arg against ``overload``'s params, returning its
     container widening and per-arg tier vector on match or ``None`` if any
@@ -899,6 +968,7 @@ def _classify_overload(
             return None
     per_arg: list[tuple[MatchTier, int]] = []
     meets: list[ContainerMeet | None] = []
+    element_widening = 0
     for i, (arg_t, (_, ptype)) in enumerate(zip(arg_types, overload.params)):
         resolved = ptype
         if (has_tpr and _undecided_container(arg_t)
@@ -908,26 +978,43 @@ def _classify_overload(
                                          call_resolves_param(overload, i))
                 if _undecided_container(arg_t) else None)
         meets.append(meet)
+        # An instantiation a call site substituted before ranking: the
+        # declared parameter, not the instantiated one, gives the tier.
+        declared = (overload.root.params[i].type
+                    if not has_tpr and call_resolves_param(overload, i)
+                    else None)
         if meet is not None and not is_protocol_type(
                 unwrap_ref_type(unwrap_readonly(resolved))):
             if not meet.accepted:
                 return None
             cell = (MatchTier.EXACT_CONCRETE if resolved is ptype
                     else MatchTier.EXACT_GENERIC_SHAPE, 0)
+            if declared is not None:
+                cell = _declared_tier(declared, cell)
         elif has_tpr and contains_type_param(ptype):
             cell = _classify_generic_param_match(
                 ptype, arg_t, inferred, type_ops, classifier, default_int_type,
             )
         else:
             cell = _classify_strict_match(arg_t, ptype, classifier, default_int_type,
-                                          type_ops)
+                                          type_ops, subclass_checker)
+            if cell is not None and declared is not None:
+                cell = _declared_tier(declared, cell)
         if cell is None:
             return None
+        # A protocol match that widens the argument's elements converts
+        # it: ranked with the container widening, before any tier. An
+        # argument with a container meet has its widening counted there.
+        if cell[0] in (MatchTier.PROTOCOL_EXPLICIT,
+                       MatchTier.GENERIC_PROTOCOL_EXPLICIT):
+            if meet is None:
+                element_widening += cell[1]
+            cell = (cell[0], 0)
         per_arg.append(cell)
     widening = _container_fit(meets, default_int_type, type_ops)
     if widening is None:
         return None
-    return OverloadFit(widening, tuple(per_arg))
+    return OverloadFit(widening, element_widening, tuple(per_arg))
 
 
 def resolve_overload(
@@ -987,7 +1074,7 @@ def resolve_overload(
 
     first_generic_match_fallback: FunctionInfo | None = None
     joined_bindings: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
-    scored_candidates: list[tuple[tuple[int, tuple[int, ...], int], FunctionInfo]] = []
+    scored_candidates: list[tuple[tuple[int, int, tuple[int, ...], int], FunctionInfo]] = []
     for overload in overloads:
         if type_ops is None and overload.is_generic() and any(
                 contains_type_param(p.type) for p in overload.params):
@@ -1007,6 +1094,7 @@ def resolve_overload(
         fit = _classify_overload(
             overload, arg_types, protocol_checker, classifier, default_int_type, type_ops,
             kwarg_types=kwarg_types, joined_out=joined_bindings,
+            subclass_checker=subclass_checker,
         )
         if fit is not None:
             scored_candidates.append((fit.rank(), overload))

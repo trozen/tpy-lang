@@ -443,17 +443,8 @@ def view_first64(xs: list[int]) -> str:
 
 
 # A generic and its declared twin: the generic's resolved view would widen
-# the list, the declared view decides nothing, in either order.
-@dispatch
-def twin_generic_first[T](xs: Iterable[T], v: T) -> str:
-    return "generic"
-
-
-@dispatch
-def twin_generic_first(xs: Iterable[int64], v: int64) -> str:
-    return "declared"
-
-
+# the list, the declared view decides nothing (the generic-first order is
+# in calls/overload_pending_container_rank).
 @dispatch
 def twin_declared_first(xs: Iterable[int64], v: int64) -> str:
     return "declared"
@@ -467,15 +458,16 @@ def twin_declared_first[T](xs: Iterable[T], v: T) -> str:
 # A declared view is a declared slot in a generic candidate as in a plain
 # one. `gv`'s generic cannot be instantiated at an int32 list (its view
 # refuses the element, BUGS.md#generic-declared-view-refuses-conversion),
-# so the list candidate is the one applicable.
-@dispatch
-def gv[T](xs: Iterable[int64], t: T) -> str:
-    return "gen-view"
-
-
+# so the list candidate is the one applicable. The winner is declared first
+# for the CPython stub; overload_pending_container_rank pins the other order.
 @dispatch
 def gv(xs: list[int64], t: int32) -> str:
     return "list64"
+
+
+@dispatch
+def gv[T](xs: Iterable[int64], t: T) -> str:
+    return "gen-view"
 
 
 @dispatch
@@ -836,8 +828,6 @@ def main() -> None:
     print("view first32:", view_first32(w1), w1)
     w2 = [1, 2]
     print("view first64:", view_first64(w2), w2)
-    t1 = [1, 2]
-    print("twin generic first:", twin_generic_first(t1, a64()), t1)
     t2 = [1, 2]
     print("twin declared first:", twin_declared_first(t2, a64()), t2)
     # a declared view in a generic candidate and in a plain one: `gv`'s list

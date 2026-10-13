@@ -536,7 +536,7 @@ class MethodAnalyzer:
                         protocol_classifier=self.protocols.classify_protocol_conformance,
                         deref_checker=self.type_ops.get_deref_coercion_target,
                         default_int_type=self.ctx.default_int_type,
-                        subclass_checker=self.ctx.registry.is_subclass_of,
+                        subclass_checker=self.ctx.registry.subclass_distance,
                         is_readonly_receiver=is_readonly_receiver,
                         is_consuming_receiver=is_consuming_receiver,
                         type_ops=self.type_ops,
