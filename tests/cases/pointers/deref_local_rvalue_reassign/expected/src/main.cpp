@@ -13,12 +13,12 @@ namespace tpyapp::main {
 //     alias = Point(3, 4)  # the rvalue reassign takes a fresh slot
 //     print(pt.x, alias.x)
 void main() {
-    std::optional<Point> __slot_1;
     Point pt = Point(1, 2);
     Point* ptr = &pt;
     Point* alias = &(::tpy::deref_check(ptr));
     alias->x = 7;
     std::cout << pt.x << " " << alias->x << "\n" << ::tpy::check_signals;
+    std::optional<Point> __slot_1;
     alias = &*(__slot_1 = Point(3, 4));
     std::cout << pt.x << " " << alias->x << "\n" << ::tpy::check_signals;
 }

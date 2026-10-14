@@ -19,12 +19,12 @@ namespace tpyapp::main {
 //         i += 1
 //     print("loop_carried:", q.x, p.x)
 void loop_carried_section() {
-    std::optional<Point> __slot_2;
     Point other = Point(21);
     Point __slot_1 = Point(22);
     Point* p = &__slot_1;
     Point* q = &other;
     int32_t i = 0;
+    std::optional<Point> __slot_2;
     while ((i < 2)) {
         p = &*(__slot_2 = Point(i));
         std::cout << "loop_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
@@ -44,10 +44,10 @@ void loop_carried_section() {
 //         q = take_ptr(p)
 //     print("for_carried:", q.x, p.x)
 void for_carried_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(30);
     Point* p = &__slot_1;
     Point* q = &(*p);
+    std::optional<Point> __slot_2;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_2 = Point(i));
         std::cout << "for_carried_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
@@ -68,9 +68,9 @@ void for_carried_section() {
 //         q = take_ptr(p)
 //     print("foreign_origin:", q.x, p.x)
 void foreign_origin_section(std::vector<Point>& xs) {
-    std::optional<Point> __slot_1;
     Point* p = &(::tpy::__getitem__(xs, 0));
     Point* q = &(*p);
+    std::optional<Point> __slot_1;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_1 = Point(i));
         std::cout << "foreign_origin_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
@@ -146,9 +146,9 @@ void two_alias_section() {
 //     held.x += 100
 //     print("alias_kind:", held.x, p.x)
 void alias_kind_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(70);
     Point* p = &__slot_1;
+    std::optional<Point> __slot_2;
     Point* held;
     for (int32_t i = 0; i < 3; ++i) {
         held = p;
@@ -159,29 +159,31 @@ void alias_kind_section() {
     std::cout << "alias_kind:" << " " << held->x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
-// # `p` is bound at two sites in the loop body: the second writes in place into
-// # the first site's slot, so the first site rebuilds the slot `held` took on the
-// # previous pass. The same warning as the one-site rebind, at the first site
-// # (BUGS.md#loop-two-site-rebind-clobbers-alias).
+// # `p` is bound at two sites in the loop body, each with a slot of its own:
+// # `held` takes the second site's object, and the second site rebuilds that
+// # slot on the next pass. The one-site rebind's warning, at the second site
+// # (BUGS.md#loop-rebind-site-slot-reuse-warned).
 // def loop_two_site_section() -> None:
 //     p = Point(0)
 //     p = Point(1)
 //     for i in range(2):
 //         held = p
-//         p = Point(3 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
-//         p = Point(5 + i)
+//         p = Point(3 + i)  # tpyc: ok
+//         p = Point(5 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
 //         if i == 1:
 //             held.x += 100
 //             print("loop_two_site:", held.x, p.x)
 void loop_two_site_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(0);
     Point* p = &__slot_1;
-    (*p) = Point(1);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(1));
+    std::optional<Point> __slot_3;
+    std::optional<Point> __slot_4;
     for (int32_t i = 0; i < 2; ++i) {
         Point& held = (*p);
-        p = &*(__slot_2 = Point((::tpy::add_check<int32_t>(3, i))));
-        (*p) = Point((::tpy::add_check<int32_t>(5, i)));
+        p = &*(__slot_3 = Point((::tpy::add_check<int32_t>(3, i))));
+        p = &*(__slot_4 = Point((::tpy::add_check<int32_t>(5, i))));
         if ((i == 1)) {
             held.x = ::tpy::add_check<int32_t>(held.x, 100);
             std::cout << "loop_two_site:" << " " << held.x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -200,24 +202,26 @@ void loop_two_site_section() {
 void loop_two_site_silent_section() {
     Point __slot_1 = Point(0);
     Point* p = &__slot_1;
-    (*p) = Point(1);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(1));
+    std::optional<Point> __slot_3;
+    std::optional<Point> __slot_4;
     for (int32_t i = 0; i < 2; ++i) {
-        (*p) = Point((::tpy::add_check<int32_t>(3, i)));
-        (*p) = Point((::tpy::add_check<int32_t>(5, i)));
+        p = &*(__slot_3 = Point((::tpy::add_check<int32_t>(3, i))));
+        p = &*(__slot_4 = Point((::tpy::add_check<int32_t>(5, i))));
         std::cout << "loop_two_site_silent:" << " " << p->x << "\n" << ::tpy::check_signals;
     }
 }
 
-// # Three sites, the alias taken after the second: the second writes in place
-// # into the first site's slot, so the first site rebuilds the slot `held` keeps
-// # though its loan is on the second site's object
-// # (BUGS.md#loop-two-site-rebind-clobbers-alias).
+// # Three sites, the alias taken after the second: each site has a slot of its
+// # own, and `held` is rebound before the second site runs again, so nothing it
+// # still reads is rebuilt: no warning, CPython's values.
 // def loop_three_site_section() -> None:
 //     held = Point(-1)
 //     later = Point(-2)
 //     p = Point(0)
 //     for i in range(2):
-//         p = Point(10 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
+//         p = Point(10 + i)  # tpyc: ok
 //         if i == 1:
 //             print("loop_three_site:", held.x, later.x)
 //         p = Point(20 + i)
@@ -226,22 +230,23 @@ void loop_two_site_silent_section() {
 //         later = p
 //     print("loop_three_site:", held.x, later.x, p.x)
 void loop_three_site_section() {
-    std::optional<Point> __slot_4;
-    std::optional<Point> __slot_5;
     Point __slot_1 = Point(-1);
     Point* held = &__slot_1;
     Point __slot_2 = Point(-2);
     Point* later = &__slot_2;
     Point __slot_3 = Point(0);
     Point* p = &__slot_3;
+    std::optional<Point> __slot_4;
+    std::optional<Point> __slot_5;
+    std::optional<Point> __slot_6;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_4 = Point((::tpy::add_check<int32_t>(10, i))));
         if ((i == 1)) {
             std::cout << "loop_three_site:" << " " << held->x << " " << later->x << "\n" << ::tpy::check_signals;
         }
-        (*p) = Point((::tpy::add_check<int32_t>(20, i)));
+        p = &*(__slot_5 = Point((::tpy::add_check<int32_t>(20, i))));
         held = p;
-        p = &*(__slot_5 = Point((::tpy::add_check<int32_t>(30, i))));
+        p = &*(__slot_6 = Point((::tpy::add_check<int32_t>(30, i))));
         later = p;
     }
     std::cout << "loop_three_site:" << " " << held->x << " " << later->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -251,6 +256,103 @@ void loop_three_site_section() {
 // def loop_two_site_gen() -> Iterator[int32]:
 __gen_loop_two_site_gen loop_two_site_gen() {
     return __gen_loop_two_site_gen();
+}
+
+// def mk2(i: int32) -> tuple[Own[Point], Own[Point]]:
+//     return (Point(i), Point(i + 1))
+std::tuple<Point, Point> mk2(int32_t i) {
+    return std::tuple<Point, Point>{Point(i), Point((::tpy::add_check<int32_t>(i, 1)))};
+}
+
+// # A loop-body tuple unpack is a site like an assignment: its first bind of
+// # `a` runs again on the next pass while `q` may still read that slot
+// # (BUGS.md#loop-rebind-site-slot-reuse-warned). `q` is read only while it
+// # points at `other`: the object it is given dies with its pass.
+// def loop_unpack_first_bind_section() -> None:
+//     other = Point(80)
+//     q = take_ptr(other)
+//     for i in range(2):
+//         a, b = mk2(10 * i)  # tpyc: warning(/'q' will not keep the object it was given/)
+//         if i == 0:
+//             print("loop_unpack_first_bind_iter:", q.x, b.x)
+//         q = take_ptr(a)
+//         print("loop_unpack_first_bind:", a.x, b.x)
+void loop_unpack_first_bind_section() {
+    Point other = Point(80);
+    Point* q = &other;
+    for (int32_t i = 0; i < 2; ++i) {
+        auto __tup_1 = ::tpyapp::main::mk2((::tpy::mul_check<int32_t>(10, i)));
+        Point a = std::move(std::get<0>(__tup_1));
+        Point b = std::move(std::get<1>(__tup_1));
+        if ((i == 0)) {
+            std::cout << "loop_unpack_first_bind_iter:" << " " << ::tpy::deref_check(q).x << " " << b.x << "\n" << ::tpy::check_signals;
+        }
+        q = &a;
+        std::cout << "loop_unpack_first_bind:" << " " << a.x << " " << b.x << "\n" << ::tpy::check_signals;
+    }
+}
+
+// def mk(i: int32) -> Own[Point]:
+//     return Point(i)
+Point mk(int32_t i) {
+    return Point(i);
+}
+
+// # A loop-body `match` capture of a fresh subject is a site like an
+// # assignment: it binds `p` again on the next pass while `q` may still read
+// # that slot (BUGS.md#loop-rebind-site-slot-reuse-warned). `q` is read only
+// # while it points at `other`: the object it is given dies with its pass.
+// def loop_capture_section() -> None:
+//     other = Point(90)
+//     q = take_ptr(other)
+//     for i in range(2):
+//         match mk(10 * i + 1):  # tpyc: warning(/'q' will not keep the object it was given/)
+//             case Point() as p:
+//                 if i == 0:
+//                     print("loop_capture_iter:", q.x)
+//                 q = take_ptr(p)
+//                 print("loop_capture:", p.x)
+void loop_capture_section() {
+    Point other = Point(90);
+    Point* q = &other;
+    for (int32_t i = 0; i < 2; ++i) {
+        std::optional<Point> p;
+        auto __match_subject_1 = ::tpyapp::main::mk((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(10, i)), 1)));
+        {
+            p = std::move(__match_subject_1);
+            if ((i == 0)) {
+                std::cout << "loop_capture_iter:" << " " << ::tpy::deref_check(q).x << "\n" << ::tpy::check_signals;
+            }
+            q = &(*p);
+            std::cout << "loop_capture:" << " " << p->x << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+// # The same capture with no holder carried to the next pass: no warning.
+// def loop_capture_quiet_section() -> None:
+//     for i in range(2):
+//         match mk(10 * i + 1):  # tpyc: ok
+//             case Point() as p:
+//                 q = take_ptr(p)
+//                 print("loop_capture_quiet:", q.x, p.x)
+void loop_capture_quiet_section() {
+    for (int32_t i = 0; i < 2; ++i) {
+        std::optional<Point> p;
+        Point* q;
+        auto __match_subject_1 = ::tpyapp::main::mk((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(10, i)), 1)));
+        {
+            p = std::move(__match_subject_1);
+            q = &(*p);
+            std::cout << "loop_capture_quiet:" << " " << q->x << " " << p->x << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
+
+// def loop_unpack_site_gen() -> Iterator[int32]:
+__gen_loop_unpack_site_gen loop_unpack_site_gen() {
+    return __gen_loop_unpack_site_gen();
 }
 
 // # The alias is read only before the two sites run: nothing it still reads is
@@ -265,15 +367,17 @@ __gen_loop_two_site_gen loop_two_site_gen() {
 //         p = Point(5 + i)  # tpyc: ok
 //     print("loop_two_site_read_before:", p.x)
 void loop_two_site_read_before_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(0);
     Point* p = &__slot_1;
-    (*p) = Point(1);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(1));
+    std::optional<Point> __slot_3;
+    std::optional<Point> __slot_4;
     for (int32_t i = 0; i < 2; ++i) {
         Point& held = (*p);
         std::cout << "loop_two_site_read_before:" << " " << held.x << "\n" << ::tpy::check_signals;
-        p = &*(__slot_2 = Point((::tpy::add_check<int32_t>(3, i))));
-        (*p) = Point((::tpy::add_check<int32_t>(5, i)));
+        p = &*(__slot_3 = Point((::tpy::add_check<int32_t>(3, i))));
+        p = &*(__slot_4 = Point((::tpy::add_check<int32_t>(5, i))));
     }
     std::cout << "loop_two_site_read_before:" << " " << p->x << "\n" << ::tpy::check_signals;
 }
@@ -290,6 +394,10 @@ void loop_two_site_read_before_section() {
 //     loop_three_site_section()
 //     print("loop_two_site_gen:", list(loop_two_site_gen()))
 //     loop_two_site_read_before_section()
+//     loop_unpack_first_bind_section()
+//     print("loop_unpack_site_gen:", list(loop_unpack_site_gen()))
+//     loop_capture_section()
+//     loop_capture_quiet_section()
 void main() {
     ::tpyapp::main::loop_carried_section();
     ::tpyapp::main::for_carried_section();
@@ -303,6 +411,10 @@ void main() {
     ::tpyapp::main::loop_three_site_section();
     std::cout << "loop_two_site_gen:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_two_site_gen())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_two_site_read_before_section();
+    ::tpyapp::main::loop_unpack_first_bind_section();
+    std::cout << "loop_unpack_site_gen:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_unpack_site_gen())) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::loop_capture_section();
+    ::tpyapp::main::loop_capture_quiet_section();
 }
 
 // main()

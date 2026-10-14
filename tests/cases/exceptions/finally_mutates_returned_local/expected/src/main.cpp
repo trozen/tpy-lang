@@ -62,8 +62,8 @@ std::vector<int32_t> ret_list() {
 //         if b is not None:
 //             b.n += 1
 std::optional<Box> ret_optional(bool flag) {
-    std::optional<Box> __slot_1;
     Box* b = nullptr;
+    std::optional<Box> __slot_1;
     if (flag) {
         b = &*(__slot_1 = Box());
     }
@@ -123,17 +123,18 @@ Box ret_rebound() {
     Box __slot_1 = Box();
     Box* b = &__slot_1;
     b->n = 7;
+    std::optional<Box> __slot_2;
     {
         bool __fin_ran_5 = false;
         try {
             Box __tpy_ret_0 = std::move((*b));
             __fin_ran_5 = true;
-            (*b) = Box();
+            b = &*(__slot_2 = Box());
             b->n = 99;
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_5) {
-                (*b) = Box();
+                b = &*(__slot_2 = Box());
                 b->n = 99;
             }
             throw;

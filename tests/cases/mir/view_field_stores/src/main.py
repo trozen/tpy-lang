@@ -494,9 +494,9 @@ def stamped(s: str) -> int32:  # tpyc: mir(uncovered /^constructor body effects$
     return st.n
 
 
-# free function: an in-place reseat whose new record views the buffer the reseat replaces
-# (BUGS.md#record-view-member-source-replaced)
-def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+# free function: a reseat whose new record views the old record's buffer: the
+# old record keeps a slot of its own, so nothing the view reads is replaced
+def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
     r = R(mk(k), "static")
     if flag:
         r = R(mk(k + 1), r.buf)

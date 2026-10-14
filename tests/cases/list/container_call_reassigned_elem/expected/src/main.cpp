@@ -26,7 +26,8 @@ void main() {
     std::vector<Node>* r = &__slot_1;
     r->push_back(Node(::tpy::BigInt(4)));
     std::cout << ::tpy::__len__((*r)) << " " << ::tpy::__getitem__((*r), 0).n << " " << ::tpy::__getitem__((*r), 1).n << "\n" << ::tpy::check_signals;
-    (*r) = ::tpyapp::main::make(::tpy::BigInt(7));
+    std::optional<std::vector<Node>> __slot_2;
+    r = &*(__slot_2 = ::tpyapp::main::make(::tpy::BigInt(7)));
     ::tpy::__getitem__((*r), 0).n = (::tpy::__getitem__((*r), 0).n) + (::tpy::BigInt(1));
     std::cout << ::tpy::__len__((*r)) << " " << ::tpy::__getitem__((*r), 0).n << "\n" << ::tpy::check_signals;
 }

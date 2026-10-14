@@ -21,8 +21,9 @@ int32_t rebind(Box& b, Box& c) {
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     std::get<1>(p)->val = 11;
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(c);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->val = 22;
     return std::get<0>(p)->val;
@@ -63,9 +64,9 @@ int32_t branch_hoisted(Box& b, Box& c, bool pick) {
 //         total = total + p[0].val
 //     return total
 int32_t loop_carried(Box& b, Box& c) {
+    int32_t total = 0;
     std::optional<Box> __slot_1;
     std::optional<Box> __slot_2;
-    int32_t total = 0;
     for (int32_t i = 0; i < 2; ++i) {
         std::tuple<Box*, Box*> p;
         if ((i == 0)) {

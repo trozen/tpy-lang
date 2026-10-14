@@ -4,3 +4,9 @@
 7
 50
 100
+gen_field_alias 0
+gen_field_alias 4
+gen_owner_del 0
+drop 2
+after
+gen_owner_del 1

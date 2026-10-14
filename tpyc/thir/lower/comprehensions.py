@@ -678,6 +678,12 @@ def _container_family_slot(slot: 'TpyType | None') -> bool:
     su = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
     return is_list(su) or is_array(su) or is_dict(su)
 
+# The comp unpack targets that reference their element in the loop's
+# tuple rather than declare a value of their own.
+_COMP_UNPACK_REF_KINDS = frozenset({BindingKind.COMP_UNPACK_REF,
+                                    BindingKind.COMP_UNPACK_STORAGE_OPT})
+
+
 def _unpack_target_cpps(gen, unpack_types, lc: '_LowerCtx') -> tuple:
     """The per-target decl spellings of a comp unpack head, by each
     target's record: None for `_` discards, the reference (`const auto&` /
@@ -694,8 +700,7 @@ def _unpack_target_cpps(gen, unpack_types, lc: '_LowerCtx') -> tuple:
             raise BindingTableError(
                 f"comprehension target {name!r} has no record in "
                 f"{lc.func.name}")
-        if rec.kind in (BindingKind.COMP_UNPACK_REF,
-                        BindingKind.COMP_UNPACK_STORAGE_OPT):
+        if rec.kind in _COMP_UNPACK_REF_KINDS:
             out.append("const auto&" if rec.const else "auto&")
         else:
             out.append(lc.render_type(tt))

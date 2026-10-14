@@ -984,7 +984,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        pending.emplace(::tpy::ByteArray());
+        pending = &*(__ptr_slot_f0 = ::tpy::ByteArray());
         __for_src_0.emplace(__self.iter_content(_ITER_LINES_CHUNK));
         __state = S_JOIN_0;
         continue;
@@ -1027,7 +1027,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_lines::__n
             __state = S_RESUME_0;
             return ::tpy::Bytes(::tpy::bytes_slice(buf, ::tpy::BasicSlice{std::nullopt, end}));
         } else {
-            pending.emplace(::tpy::ByteArray(buf));
+            pending = &*(__ptr_slot_f1 = ::tpy::ByteArray(buf));
             __state = S_JOIN_0;
             continue;
         }

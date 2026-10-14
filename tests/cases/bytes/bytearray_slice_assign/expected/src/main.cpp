@@ -247,8 +247,6 @@ __gen_frame frame(int32_t n) {
 //     # async: a slice assignment inside a coroutine
 //     asyncio.run(patch_async())
 void main() {
-    std::optional<::tpy::ByteArray> __slot_2;
-    std::optional<::tpy::ByteArray> __slot_3;
     ::tpy::ByteArray a = ::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6));
     ::tpy::list_set_slice(a, ::tpy::BasicSlice{1, 3}, ::tpy::bytes_literal_owned("XY", 2));
     std::cout << "local:" << " " << ::tpy::ByteArrayPrinter(a) << "\n" << ::tpy::check_signals;
@@ -284,9 +282,11 @@ void main() {
     ::tpy::ByteArray* d = &__slot_1;
     ::tpy::bytearray_set_stepped_slice((*d), ::tpy::Slice{std::nullopt, std::nullopt, 2}, ::tpy::Bytes{});
     std::cout << "stepped_delete:" << " " << ::tpy::ByteArrayPrinter((*d)) << "\n" << ::tpy::check_signals;
+    std::optional<::tpy::ByteArray> __slot_2;
     d = &*(__slot_2 = ::tpy::ByteArray(::tpy::bytes_literal("abcdef", 6)));
     ::tpy::bytearray_set_stepped_slice((*d), ::tpy::Slice{std::nullopt, std::nullopt, -2}, ::tpy::Bytes{});
     std::cout << "stepped_delete_neg:" << " " << ::tpy::ByteArrayPrinter((*d)) << "\n" << ::tpy::check_signals;
+    std::optional<::tpy::ByteArray> __slot_3;
     d = &*(__slot_3 = ::tpy::ByteArray(::tpy::bytes_literal("abcdefgh", 8)));
     ::tpy::bytearray_set_stepped_slice((*d), ::tpy::Slice{6, 0, -3}, ::tpy::Bytes{});
     std::cout << "stepped_delete_bounded:" << " " << ::tpy::ByteArrayPrinter((*d)) << "\n" << ::tpy::check_signals;
@@ -323,7 +323,8 @@ void main() {
     ::tpy::ByteArray __slot_4 = ::tpy::ByteArray(::tpy::bytes_literal("first", 5));
     ::tpy::ByteArray* t = &__slot_4;
     std::cout << "reassigned_first:" << " " << ::tpy::__len__((*t)) << "\n" << ::tpy::check_signals;
-    (*t) = ::tpy::ByteArray(::tpy::bytes_literal("second", 6));
+    std::optional<::tpy::ByteArray> __slot_5;
+    t = &*(__slot_5 = ::tpy::ByteArray(::tpy::bytes_literal("second", 6)));
     ::tpy::list_set_slice((*t), ::tpy::BasicSlice{0, 2}, ::tpy::bytes_slice((*t), ::tpy::BasicSlice{4, 6}));
     std::cout << "reassigned:" << " " << ::tpy::ByteArrayPrinter((*t)) << " " << ::tpy::BytesPrinter(::tpy::Bytes(::tpy::bytes_slice((*t), ::tpy::BasicSlice{1, 3}))) << "\n" << ::tpy::check_signals;
     {

@@ -653,7 +653,7 @@ class TestNodeStructuralRules:
     def test_slot_on_an_elif_link_fails(self):
         with pytest.raises(THIRValidationError, match="elif link carries"):
             validate_function(
-                self._chain({}, {"hoist_slots": ((UNBOUND, "int32_t"),)}))
+                self._chain({}, {"hoist_slots": (UNBOUND,)}))
 
     def test_template_args_with_native_callee_fails(self):
         # A native or cpp_template callee spells its own template arguments.

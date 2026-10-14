@@ -328,16 +328,17 @@ std::tuple<Box, int32_t> match_arm(int32_t tag) {
 std::tuple<Box, int32_t> rebind_member() {
     Box __slot_1 = Box(1);
     Box* b = &__slot_1;
+    std::optional<Box> __slot_2;
     {
         bool __fin_ran_14 = false;
         try {
             std::tuple<Box, int32_t> __tpy_ret_0 = std::tuple<Box, int32_t>{std::move((*b)), 5};
             __fin_ran_14 = true;
-            (*b) = Box(99);
+            b = &*(__slot_2 = Box(99));
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_14) {
-                (*b) = Box(99);
+                b = &*(__slot_2 = Box(99));
             }
             throw;
         }
@@ -354,16 +355,17 @@ std::tuple<Box, int32_t> rebind_member() {
 Box rebind_scalar() {
     Box __slot_1 = Box(1);
     Box* b = &__slot_1;
+    std::optional<Box> __slot_2;
     {
         bool __fin_ran_15 = false;
         try {
             Box __tpy_ret_0 = std::move((*b));
             __fin_ran_15 = true;
-            (*b) = Box(99);
+            b = &*(__slot_2 = Box(99));
             return __tpy_ret_0;
         } catch (...) {
             if (!__fin_ran_15) {
-                (*b) = Box(99);
+                b = &*(__slot_2 = Box(99));
             }
             throw;
         }
@@ -699,7 +701,7 @@ __coro_async_body async_body() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        b.emplace(Box(1));
+        b = &*(__ptr_slot_f0 = Box(1));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -714,12 +716,12 @@ __coro_async_body async_body() {
             try {
                 std::tuple<Box, int32_t> __tpy_async_ret_0 = std::tuple<Box, int32_t>{std::move((*b)), 11};
                 __fin_ran_26 = true;
-                b.emplace(Box(97));
+                b = &*(__ptr_slot_f1 = Box(97));
                 __state = S_DONE;
                 return ::tpystd::tpy::Poll<std::tuple<Box, int32_t>>::ready(std::move(__tpy_async_ret_0));
             } catch (...) {
                 if (!__fin_ran_26) {
-                    b.emplace(Box(97));
+                    b = &*(__ptr_slot_f1 = Box(97));
                 }
                 throw;
             }

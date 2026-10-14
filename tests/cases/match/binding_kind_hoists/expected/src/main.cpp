@@ -559,8 +559,8 @@ __coro_async_capture async_capture(Inner* o, Inner* p) {
 //         t += v.n
 //     return t
 ::tpy::BigInt match_in_loop(std::vector<Holder>& hs) {
-    std::optional<Inner> __slot_1;
     ::tpy::BigInt t = ::tpy::BigInt(0);
+    std::optional<Inner> __slot_1;
     auto& __obj_0 = hs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -624,8 +624,8 @@ __coro_async_capture async_capture(Inner* o, Inner* p) {
 //         k += 1
 //     return h.inner.n
 ::tpy::BigInt match_in_while(Holder& h) {
-    std::optional<Inner> __slot_1;
     int32_t k = 0;
+    std::optional<Inner> __slot_1;
     while ((k < 1)) {
         Inner* v;
         auto& __match_subject_1 = h;
@@ -725,8 +725,8 @@ __coro_async_capture async_capture(Inner* o, Inner* p) {
 //                 t += q.n + len(xs)
 //     return t
 ::tpy::BigInt container_existing(const Holder& h, const Holder& g, std::vector<std::vector<::tpy::BigInt>>& keep) {
-    std::optional<std::vector<::tpy::BigInt>> __slot_1;
     ::tpy::BigInt t = ::tpy::BigInt(0);
+    std::optional<std::vector<::tpy::BigInt>> __slot_1;
     for (int32_t i = 0; i < 2; ++i) {
         const Inner* q;
         std::vector<::tpy::BigInt>* xs;
@@ -821,8 +821,6 @@ __coro_async_capture async_capture(Inner* o, Inner* p) {
 //     ob = Inner(3)
 //     print("narrowed_method:", Narrow().bump(ob), ob.n)
 void main() {
-    std::optional<Inner> __slot_5;
-    std::optional<Inner> __slot_6;
     Holder __slot_1 = Holder(::tpy::BigInt(2));
     Holder* g = &__slot_1;
     Holder __tmp_1 = Holder(::tpy::BigInt(1));
@@ -862,10 +860,13 @@ void main() {
     std::cout << "guard_binds:" << " " << ::tpyapp::main::guard_binds(o, &(p), false) << " " << ::tpyapp::main::guard_binds(o, &(p), true) << " " << o->n << " " << p.n << "\n" << ::tpy::check_signals;
     Inner __slot_4 = Inner(::tpy::BigInt(1));
     Inner* a = &__slot_4;
-    (*b) = Inner(::tpy::BigInt(2));
+    std::optional<Inner> __slot_5;
+    b = &*(__slot_5 = Inner(::tpy::BigInt(2)));
     std::cout << "nested_recapture:" << " " << ::tpyapp::main::nested_recapture(a, b) << " " << a->n << " " << b->n << "\n" << ::tpy::check_signals;
-    (*a) = Inner(::tpy::BigInt(1));
-    (*b) = Inner(::tpy::BigInt(2));
+    std::optional<Inner> __slot_6;
+    a = &*(__slot_6 = Inner(::tpy::BigInt(1)));
+    std::optional<Inner> __slot_7;
+    b = &*(__slot_7 = Inner(::tpy::BigInt(2)));
     {
         auto __src_0 = ::tpyapp::main::gen_capture(a, b);
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -876,26 +877,31 @@ void main() {
         }
     }
     std::cout << "gen_capture:" << " " << a->n << " " << b->n << "\n" << ::tpy::check_signals;
-    a = &*(__slot_5 = Inner(::tpy::BigInt(1)));
-    b = &*(__slot_6 = Inner(::tpy::BigInt(2)));
+    std::optional<Inner> __slot_8;
+    a = &*(__slot_8 = Inner(::tpy::BigInt(1)));
+    std::optional<Inner> __slot_9;
+    b = &*(__slot_9 = Inner(::tpy::BigInt(2)));
     ::tpystd::asyncio::run<::tpy::BigInt>(::tpy::make_adapter<::tpystd::coro::Cancellable<::tpy::BigInt>>(::tpyapp::main::async_capture(a, b)));
     std::cout << "async_capture:" << " " << a->n << " " << b->n << "\n" << ::tpy::check_signals;
-    (*o) = Inner(::tpy::BigInt(3));
+    std::optional<Inner> __slot_10;
+    o = &*(__slot_10 = Inner(::tpy::BigInt(3)));
     Ctx __tmp_12 = Ctx(::tpy::BigInt(1));
     std::cout << "capture_then_with:" << " " << ::tpyapp::main::capture_then_with(__tmp_12, o) << " " << o->n << "\n" << ::tpy::check_signals;
     ::tpy::BigInt again = ::tpyapp::main::capture_again(::tpy::BigInt(3), ::tpy::BigInt(4));
     std::cout << "capture_again:" << " " << again << "\n" << ::tpy::check_signals;
-    (*o) = Inner(::tpy::BigInt(1));
+    std::optional<Inner> __slot_11;
+    o = &*(__slot_11 = Inner(::tpy::BigInt(1)));
     Inner q = Inner(::tpy::BigInt(3));
     std::cout << "plain_after:" << " " << ::tpyapp::main::plain_after(o, q) << " " << o->n << " " << q.n << "\n" << ::tpy::check_signals;
-    (*o) = Inner(::tpy::BigInt(1));
+    std::optional<Inner> __slot_12;
+    o = &*(__slot_12 = Inner(::tpy::BigInt(1)));
     std::vector<Inner> xs = {Inner(::tpy::BigInt(10))};
     std::cout << "for_after:" << " " << ::tpyapp::main::for_after(o, xs) << " " << o->n << "\n" << ::tpy::check_signals;
     Holder __tmp_13 = Holder(::tpy::BigInt(1));
     Holder __tmp_14 = Holder(::tpy::BigInt(2));
     std::cout << "nested_container:" << " " << ::tpyapp::main::nested_container(__tmp_13, __tmp_14) << "\n" << ::tpy::check_signals;
-    Holder __slot_7 = Holder(::tpy::BigInt(1));
-    Holder* h = &__slot_7;
+    Holder __slot_13 = Holder(::tpy::BigInt(1));
+    Holder* h = &__slot_13;
     std::cout << "match_in_if:" << " " << ::tpyapp::main::match_in_if((*h), true) << " " << h->inner.n << "\n" << ::tpy::check_signals;
     std::vector<Holder> hs = {Holder(::tpy::BigInt(1)), Holder(::tpy::BigInt(2))};
     std::cout << "match_in_loop:" << " " << ::tpyapp::main::match_in_loop(hs) << " " << ::tpy::__getitem__(hs, 0).inner.n << " " << ::tpy::__getitem__(hs, 1).inner.n << "\n" << ::tpy::check_signals;
@@ -903,16 +909,20 @@ void main() {
     std::cout << "match_in_handler:" << " " << ::tpyapp::main::match_in_handler(__tmp_15) << "\n" << ::tpy::check_signals;
     Holder __tmp_16 = Holder(::tpy::BigInt(1));
     std::cout << "match_in_while:" << " " << ::tpyapp::main::match_in_while(__tmp_16) << "\n" << ::tpy::check_signals;
-    (*g) = Holder(::tpy::BigInt(2));
+    std::optional<Holder> __slot_14;
+    g = &*(__slot_14 = Holder(::tpy::BigInt(2)));
     Holder __tmp_17 = Holder(::tpy::BigInt(1));
     ::tpy::BigInt taken = ::tpyapp::main::reseat_in_if(__tmp_17, (*g), true);
     Holder g2 = Holder(::tpy::BigInt(2));
-    (*h) = Holder(::tpy::BigInt(1));
+    std::optional<Holder> __slot_15;
+    h = &*(__slot_15 = Holder(::tpy::BigInt(1)));
     std::cout << "reseat_in_if:" << " " << taken << " " << g->inner.n << " " << ::tpyapp::main::reseat_in_if((*h), g2, false) << " " << h->inner.n << " " << g2.inner.n << "\n" << ::tpy::check_signals;
-    (*g) = Holder(::tpy::BigInt(2));
+    std::optional<Holder> __slot_16;
+    g = &*(__slot_16 = Holder(::tpy::BigInt(2)));
     Holder __tmp_18 = Holder(::tpy::BigInt(1));
     std::cout << "reseat_in_while:" << " " << ::tpyapp::main::reseat_in_while(__tmp_18, (*g)) << " " << g->inner.n << "\n" << ::tpy::check_signals;
-    (*g) = Holder(::tpy::BigInt(2));
+    std::optional<Holder> __slot_17;
+    g = &*(__slot_17 = Holder(::tpy::BigInt(2)));
     std::cout << "on_self:" << " " << Holder(::tpy::BigInt(1)).on_self((*g)) << " " << g->inner.n << "\n" << ::tpy::check_signals;
     std::vector<std::vector<::tpy::BigInt>> keep = {{7}};
     Holder __tmp_19 = Holder(::tpy::BigInt(1));

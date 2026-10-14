@@ -17,7 +17,6 @@ namespace tpyapp::main {
 int32_t probe(bool flag) {
     std::optional<Reg> __slot_1;
     std::optional<Reg> __slot_2;
-    std::optional<Reg> __slot_3;
     Reg* g;
     if (flag) {
         __slot_1.emplace(Reg(11));
@@ -50,6 +49,7 @@ int32_t probe(bool flag) {
         __with_exit_2:
         __ctx_2.__exit__({}, nullptr, {});
     }
+    std::optional<Reg> __slot_3;
     g = &*(__slot_3 = g->next());
     return g->n;
 }

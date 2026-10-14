@@ -75,34 +75,35 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::optional<Node> __global_slot_3;
-    static std::optional<Node> __global_slot_4;
     flag = true;
     g = nullptr;
+    static std::optional<Node> __global_slot_2;
     if (flag) {
         static Node __global_slot_1 = Node(1);
         g = &__global_slot_1;
-        (*g) = Node(2);
+        g = &*(__global_slot_2 = Node(2));
     } else {
-        static Node __global_slot_2 = Node(3);
-        g = &__global_slot_2;
+        static Node __global_slot_3 = Node(3);
+        g = &__global_slot_3;
     }
     if ((g != nullptr)) {
         std::cout << g->x << "\n" << ::tpy::check_signals;
         g->x = ::tpy::add_check<int32_t>(g->x, 10);
         std::cout << g->x << "\n" << ::tpy::check_signals;
     }
-    V = &*(__global_slot_3 = Node(3));
+    static std::optional<Node> __global_slot_4;
+    V = &*(__global_slot_4 = Node(3));
     S = V;
     std::cout << S->x << "\n" << ::tpy::check_signals;
-    V = &*(__global_slot_4 = Node(4));
+    static std::optional<Node> __global_slot_5;
+    V = &*(__global_slot_5 = Node(4));
     std::cout << V->x << "\n" << ::tpy::check_signals;
-    static std::vector<Node> __global_slot_5 = {Node(5), Node(6)};
-    pool = &__global_slot_5;
+    static std::vector<Node> __global_slot_6 = {Node(5), Node(6)};
+    pool = &__global_slot_6;
     q = nullptr;
     if (flag) {
-        static Node __global_slot_6 = Node(7);
-        q = &__global_slot_6;
+        static Node __global_slot_7 = Node(7);
+        q = &__global_slot_7;
         q = ::tpyapp::main::find((*pool), 5);
     }
     if ((q != nullptr)) {

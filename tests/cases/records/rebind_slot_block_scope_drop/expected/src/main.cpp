@@ -13,10 +13,11 @@ namespace tpyapp::main {
 //     print("after block")
 void in_if(bool flag) {
     std::cout << "enter in_if" << "\n" << ::tpy::check_signals;
+    std::optional<Noisy> __slot_2;
     if (flag) {
         Noisy __slot_1 = Noisy("if-first");
         Noisy* r = &__slot_1;
-        (*r) = Noisy("if-second");
+        r = &*(__slot_2 = Noisy("if-second"));
         std::cout << "inside:" << " " << r->name << "\n" << ::tpy::check_signals;
     }
     std::cout << "after block" << "\n" << ::tpy::check_signals;
@@ -34,10 +35,11 @@ void in_if(bool flag) {
 void in_loop() {
     std::cout << "enter in_loop" << "\n" << ::tpy::check_signals;
     int32_t i = 0;
+    std::optional<Noisy> __slot_2;
     while ((i < 2)) {
         Noisy __slot_1 = Noisy("loop-first");
         Noisy* r = &__slot_1;
-        (*r) = Noisy("loop-second");
+        r = &*(__slot_2 = Noisy("loop-second"));
         std::cout << "inside:" << " " << r->name << "\n" << ::tpy::check_signals;
         i = ::tpy::add_check<int32_t>(i, 1);
     }

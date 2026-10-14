@@ -9,12 +9,15 @@ namespace tpyapp::main {
 
 struct Resource;
 
+extern std::vector<int32_t>* DROPPED;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
 
 // def gen() -> Iterator[int32]:
 __gen_gen gen();
+// def run() -> None:
+void run();
 // def main() -> None:
 void main();
 
@@ -46,12 +49,14 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_state __state;
     Resource* saved = nullptr;
     std::optional<Resource> __ptr_slot_f0;
+    std::optional<Resource> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
         S_RESUME_0 = 1,
         S_RESUME_1 = 2,
-        S_DONE = 3,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
     };
 
     __gen_gen() : __state(S_INITIAL) {}
@@ -81,11 +86,10 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
 }
 
 // def __del__(self):
-//     print("drop", self.n)
+//     DROPPED.append(self.n)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    ::tpy::DeferSignals __tpy_defer_signals;
-    std::cout << "drop" << " " << this->n << "\n" << ::tpy::check_signals;
+    DROPPED->push_back(this->n);
 }
 void __tpy_init();
 } // namespace tpyapp::main

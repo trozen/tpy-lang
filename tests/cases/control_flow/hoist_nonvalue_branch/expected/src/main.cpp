@@ -53,8 +53,8 @@ void test_own_list_both_branches(bool flag) {
 //     items.append(99)
 //     print(items)
 void test_list_reassigned_mixed(bool flag) {
-    std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t> base = {10, 20};
+    std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t>* items;
     if (flag) {
         items = &*(__slot_1 = {1, 2, 3});

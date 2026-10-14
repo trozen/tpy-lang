@@ -3,3 +3,68 @@ first: 1 c: 2
 seed: 8 result: 8
 none: 0
 some: 5
+scalar-deep 3 11
+self-view abcdefghijklmnopqrstuvwxyz01234567891
+with-scalar body 10
+with-scalar exit 1
+constructor-escape 2 10
+setter-escape 3 10
+getitem-escape 4 10
+nested-list-root 102 8
+gen-nested-list-root [2, 102, 8]
+list-root 77 21
+gen-list-root [2, 77, 21]
+dict-root 77 21
+gen-dict-root [2, 77, 21]
+hoisted-loop 4 4
+hoisted-if 6 6
+hoisted-method 8 8
+hoisted-nested-if 12 2
+block-nested-if in 2 5
+block-nested-if 3 3
+block-nested-if in 3 5
+block-nested-if 4 3
+block-try-loop in 1 1
+block-try-loop in 2 2
+block-try-loop 3 3
+block-er in 2 20
+block-er 33
+block-er-nested in 3 13
+block-er-nested 43
+block-finally body 11 20
+block-finally body 12 21
+block-finally False 13 3
+block-finally True 13 3
+block-arm-rebind 2 2 3
+block-arm-rebind 1 3 3
+block-unpack-borrow in 5 7
+block-unpack-borrow 6 1 3
+block-borrow-first in 2
+block-borrow-first 3 1 3
+block-alias-rebind in 2 5
+block-alias-rebind tagged-object-with-a-long-heap-string-5 6 3
+arm-alias-rebind-try 6 3
+arm-alias-rebind-match 6 3
+arm-alias-rebind-else 6 3
+arm-alias-rebind-optional 6 3
+block-unpack-own in 2 1
+block-unpack-own tagged-object-with-a-long-heap-string-2 3 3
+slot-drop-plain abcdefghijklmnopqrstuvwxyz0123456789-1
+slot-drop-plain dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-1', 'abcdefghijklmnopqrstuvwxyz0123456789-1']
+slot-drop-gen 38
+slot-drop-gen dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-2']
+slot-drop-async 38
+slot-drop-async dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-3']
+slot-drop-unpack-gen 42
+slot-drop-unpack-gen dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-4']
+slot-drop-unpack-plain abcdefghijklmnopqrstuvwxyz0123456789-9 38 abcdefghijklmnopqrstuvwxyz0123456789-8
+slot-drop-unpack-plain dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-7', 'abcdefghijklmnopqrstuvwxyz0123456789-9']
+slot-drop-walrus-gen 38
+slot-drop-walrus-gen 38
+slot-drop-walrus-gen dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-6']
+slot-drop-view-before 104
+slot-drop-view-before dropped: ['abcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyzabcdefghijklmnopqrstuvwxyz', 'first-literal']
+slot-drop-view-after 74
+slot-drop-view-after dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-abcdefghijklmnopqrstuvwxyz0123456789-', 'init']
+slot-drop-borrow-unpack 38 7
+slot-drop-borrow-unpack dropped: ['abcdefghijklmnopqrstuvwxyz0123456789-1', 'w0-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz']

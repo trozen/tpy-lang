@@ -102,9 +102,9 @@ inline std::string User::__repr__() const {
 }
 
 inline User User::from_json(std::string_view __s) {
-    std::optional<User> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     User* __result = nullptr;
+    std::optional<User> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
         {

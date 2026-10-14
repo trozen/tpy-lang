@@ -21,8 +21,9 @@ from __future__ import annotations
 from collections.abc import Iterable, Iterator, Mapping, Set as AbstractSet
 from contextlib import contextmanager
 from dataclasses import dataclass, field, replace
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, NamedTuple
 
+from ...codegen_cpp import resumable_cfg as rcfg
 from ...codegen_cpp.gen_async import collect_frame_nested_defs
 from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
                                   is_plain_nonvalue, loop_binding_kind,
@@ -32,7 +33,8 @@ from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
 from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...identity_map import IdentityMap, IdentitySet
 from ...modules.type_resolution import is_native_iterable
-from ...parse.nodes import (ResultForm, TpyArrayLiteral, TpyAsPattern,
+from ...parse.nodes import (RebindStorage, ResultForm, TpyArrayLiteral,
+                            TpyAsPattern,
                             TpyAssign, TpyAwait, TpyCall, TpyCapturePattern,
                             TpyClassPattern, TpyCoerce,
                             TpyComprehensionGenerator, TpyDictComprehension,
@@ -47,7 +49,7 @@ from ...parse.nodes import (ResultForm, TpyArrayLiteral, TpyAsPattern,
                             TpyVarDecl, TpyWhile, TpyWildcardPattern, TpyWith,
                             TpyWithItem,
                             TpyYield, TupleElemCapture,
-                            iter_capture_bindings,
+                            iter_capture_bindings, program_names,
                             walk_body_stmts, walk_expr_tree, walrus_bindings)
 from ...prescan import scope_bound_names
 from ...sema.alias_rebind import (final_pointer_tuple_names,
@@ -297,19 +299,17 @@ class PlanInputs:
     overload_narrowing: 'Mapping[str, TpyType] | None' = None
     overload_literal_facts: Mapping[str, TpyType] = field(
         default_factory=dict)
-    # `ptr_tuple_form`'s answer per function and name: sema's facts alone
-    # decide it, so every planning round and every row reads the same one.
-    ptr_tuple_memo: IdentityMap = field(default_factory=IdentityMap)
 
 
 @dataclass(frozen=True)
 class _FrameFacts:
     """A resumable frame's fields as the planner classifies them: each
     hoisted local's class off its layout kind (`frame_local_class`), the
-    loop families of the skeleton's for-prescan, and the fields a sink may
-    move from."""
+    loop families of the skeleton's for-prescan, the pointer fields that
+    borrow their pointee, and the fields a sink may move from."""
     classes: Mapping[str, FrameLocalClass]
     loops: 'FrameLoopFacts'
+    borrowed: frozenset[str]
     movable: frozenset[str]
 
 
@@ -326,15 +326,15 @@ def _frame_facts(inp: PlanInputs) -> _FrameFacts:
     # Only names a `TpyVarDecl` binds: a frame-promoted loop variable is
     # movable only off a consuming iterable (the loop row), and a value
     # record copies wherever it lives.
-    borrowed = (loops.ptr_loop_vars | loops.unpack_ptr_targets
-                | {n for n, c in classes.items()
-                   if c is FrameLocalClass.ALIAS_PTR})
+    borrowed = frozenset(loops.ptr_loop_vars | loops.unpack_ptr_targets
+                         | {n for n, c in classes.items()
+                            if c is FrameLocalClass.ALIAS_PTR})
     decl_names = _res._var_decl_names(list(func.body))
     movable = frozenset(
         n for n, t in (func.generator_locals or [])
         if n not in borrowed and n in decl_names
         and not _value_record_slot(t) and n in inp.sema_movable)
-    return _FrameFacts(classes, loops, movable)
+    return _FrameFacts(classes, loops, borrowed, movable)
 
 
 def _uw(t):
@@ -491,17 +491,74 @@ def pointer_tuple_of(t: TpyType) -> 'TupleType | None':
     return bt
 
 
+class PtrTupleRefusal(NamedTuple):
+    """Why C++ cannot spell a pointer tuple: the binding refused, the
+    reject detail and its sentence (None: the generic one)."""
+    at: TpyStmt
+    detail: str
+    message: str | None = None
+
+
+class PtrTupleDecision(NamedTuple):
+    """A pointer tuple's form (`ptr_tuple_decision`): the pointer tuple its
+    declared type is held as (None: no render), and the refusal raised for
+    it when C++ cannot spell it."""
+    form: 'TupleType | None'
+    refusal: PtrTupleRefusal | None
+
+
+def ptr_tuple_decision(analyzer, fn: TpyFunction,
+                       name: str) -> 'PtrTupleDecision | None':
+    """The one answer to "is `name` a pointer tuple of `fn`, and in what
+    form": None when sema does not name it one (`pointer_tuple_names`).
+    Sema's facts alone decide it, so it is kept per function: the binding
+    planner of a plain body and of a frame, and the frame's field layout
+    before either, read the same one."""
+    memo = analyzer.ptr_tuple_decisions.get(fn)
+    if memo is None:
+        memo = analyzer.ptr_tuple_decisions[fn] = {}
+    if name not in memo:
+        memo[name] = _decide_ptr_tuple_form(name, analyzer, fn)
+    return memo[name]
+
+
 def ptr_tuple_form(name: str, inp: 'PlanInputs',
                    fn: TpyFunction) -> 'TupleType | None':
     """The pointer tuple a local of `fn` is at every binding when sema names
-    it one (`pointer_tuple_names`), else None; refuses what C++ cannot
-    spell (`_decide_ptr_tuple_form`)."""
-    memo = inp.ptr_tuple_memo.get(fn)
-    if memo is None:
-        memo = inp.ptr_tuple_memo[fn] = {}
-    if name not in memo:
-        memo[name] = _decide_ptr_tuple_form(name, inp, fn)
-    return memo[name]
+    it one (`ptr_tuple_decision`), else None; raises the refusal of one C++
+    cannot spell."""
+    if inp.top_level:
+        return None
+    got = ptr_tuple_decision(inp.analyzer, fn, name)
+    if got is None:
+        return None
+    r = got.refusal
+    if r is not None:
+        # Noted at the raise: the detail rides the statement being gated.
+        note_detail(r.detail)
+        raise ThirUnsupported(stmt_reject_reason(r.at), message=r.message,
+                              loc=getattr(r.at, "loc", None))
+    return got.form
+
+
+def ptr_tuple_elem_storage(verdict: 'tuple | None', i: int, et: TpyType, *,
+                           first: bool, const: bool
+                           ) -> 'RebindStorage | None':
+    """Where an owned element `i` (type `et`) of a pointer tuple's binding
+    puts its object: None at the first binding (the declaration's own
+    slot), else sema's per-element verdict (`tuple_elem_storage`), OWN
+    where it has none. A const element pointer -- a `readonly` element, or
+    a binding whose element pointers are const (`const`) -- has no
+    in-place write: like the scalar's const local, its object takes a slot
+    of its own. The plain body's lowering and the frame's slot prescan
+    read this one answer."""
+    if first:
+        return None
+    if const or isinstance(unwrap_send_sync(unwrap_ref_type(et)),
+                           ReadonlyType):
+        return RebindStorage.OWN
+    v = verdict[i] if verdict is not None and i < len(verdict) else None
+    return v if v is not None else RebindStorage.OWN
 
 
 def ptr_tuple_route_message(name: str, what: str) -> str:
@@ -512,53 +569,57 @@ def ptr_tuple_route_message(name: str, what: str) -> str:
             f"this binding does not place them one by one")
 
 
-def _decide_ptr_tuple_form(name: str, inp: 'PlanInputs',
-                           fn: TpyFunction) -> 'TupleType | None':
+def _decide_ptr_tuple_form(name: str, an,
+                           fn: TpyFunction) -> 'PtrTupleDecision | None':
     """Sema's decision read as is; what is left here is whether C++ can
     spell it, refused at the first owning binding when it cannot: a
     declared type with no pointer-tuple render, an owned element whose
     borrow form is no bare pointer, a binding route that places no
-    element (a direct `@error_return` call's unwrap)."""
+    element (a direct `@error_return` call's unwrap, an await's result,
+    which the resume binds whole)."""
     from . import statements as _st
-    an = inp.analyzer
-    if name not in final_pointer_tuple_names(
-            an.ctx, None if inp.top_level else fn):
+    if name not in final_pointer_tuple_names(an.ctx, fn):
         return None
+
+    def shown() -> str:
+        return program_names(name, fn.body)[0] or name
+
     bindings = tuple_name_bindings(an.ctx, fn, name) or []
     if not bindings:
         # An enclosing body's pointer tuple a nested def reads: the
         # enclosing record carries it.
         return None
+    vtype = (_var_decl_type(bindings[0], an)
+             if isinstance(bindings[0], TpyVarDecl) else None)
+    bt = pointer_tuple_of(vtype) if vtype is not None else None
+
+    def refuse(at, detail: str, message: 'str | None' = None
+               ) -> PtrTupleDecision:
+        return PtrTupleDecision(bt, PtrTupleRefusal(at, detail, message))
+
     for b in bindings:
         value = b.init if isinstance(b, TpyVarDecl) else b.value
         if value is not None and _st._error_return_stmt_fi(value, an):
-            note_detail("ptr_tuple.error_return_bind")
-            raise ThirUnsupported(
-                stmt_reject_reason(b),
-                message=ptr_tuple_route_message(
-                    name, "the result of an @error_return call"),
-                loc=getattr(b, "loc", None))
+            return refuse(b, "ptr_tuple.error_return_bind",
+                          ptr_tuple_route_message(
+                              shown(), "the result of an @error_return call"))
+        if isinstance(_st._peel_tpy_coerce(value), TpyAwait):
+            return refuse(b, "ptr_tuple.await_bind",
+                          ptr_tuple_route_message(
+                              shown(), "the result of an await"))
     owned = pointer_tuple_owned(an.ctx, fn, name)
     first_owner = next((b for b in bindings
                         if any(an.ctx.tuple_elem_owned.get(b) or ())),
                        bindings[0])
-    loc = getattr(first_owner, "loc", None)
-    vtype = (_var_decl_type(bindings[0], an)
-             if isinstance(bindings[0], TpyVarDecl) else None)
-    bt = pointer_tuple_of(vtype) if vtype is not None else None
     if bt is None:
-        note_detail("ptr_tuple.declared_type")
-        raise ThirUnsupported(stmt_reject_reason(first_owner), loc=loc)
+        return refuse(first_owner, "ptr_tuple.declared_type")
     for i in sorted(owned):
         if i >= len(bt.element_types) or not bare_ptr_element(
                 bt.element_types[i]):
-            note_detail("ptr_tuple.owned_element_form")
-            raise ThirUnsupported(
-                stmt_reject_reason(first_owner),
-                message=ptr_tuple_element_message(
-                    name, i, bt.element_types[i]),
-                loc=loc)
-    return bt
+            return refuse(first_owner, "ptr_tuple.owned_element_form",
+                          ptr_tuple_element_message(
+                              shown(), i, bt.element_types[i]))
+    return PtrTupleDecision(bt, None)
 
 
 # --- the classifier --------------------------------------------------------
@@ -755,12 +816,21 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
         kind = _frame_value_opt(name, inp)
         if kind is not None:
             f["value_opt"] = kind
+    if name in ff.borrowed:
+        f["frame_borrowed"] = True
     if name in ff.movable:
         f["movable"] = True
     lay = fr.layout.get(name)
     if lay is not None:
         f["effective_type"] = getattr(lay, "effective_type", None)
         f["payload"] = getattr(lay, "payload", None)
+    # The pointer tuple a frame field is, as a plain body's declaration is
+    # (`_btuple_rebound_decl`).
+    ptt = ptr_tuple_form(name, inp, inp.func)
+    if ptt is not None:
+        f["ptr_tuple"] = ptt
+        f["ptr_tuple_owned"] = pointer_tuple_owned(
+            inp.analyzer.ctx, inp.func, name)
     return BindingRepr(name=name, site=None, type=typ, kind=K.FRAME_LAYOUT,
                        site_kind=site.kind, **f)
 
@@ -3437,3 +3507,33 @@ def plan_and_install(lc, body: list[TpyStmt], seeds: Mapping[str, TpyType],
             f"binding table: planning {_qualname(lc)} failed: "
             f"{type(ex).__name__}: {ex}") from ex
     install(lc, table)
+
+
+def rebind_ptr_frame_value(init: TpyExpr, vtype: TpyType, lc: '_LowerCtx',
+                           declared: dict[str, TpyType], loc,
+                           reason: str) -> 'THIRExpr':
+    """The rvalue an OWN or IN_PLACE write to a REBIND_PTR frame local of
+    type `vtype` stores, at any binding site (assignment, walrus). The
+    source fills the SLOT, so it is admitted and lowered against what the
+    slot holds -- the pointee for a pointer-repr Optional local."""
+    from .statements import (_lower_storage_value, _rebind_rvalue_source_ok,
+                             _rebind_rvalue_use, _rebind_slot_target)
+    slot_t = _rebind_slot_target(vtype, lc.analyzer)
+    if not _rebind_rvalue_source_ok(init, slot_t, lc.analyzer,
+                                    frame_roots_ok=True):
+        note_detail("res.rebind_ptr_source")
+        raise ThirUnsupported(reason)
+    return _lower_storage_value(init, slot_t, lc, declared, loc,
+                                use=_rebind_rvalue_use(init, slot_t))
+
+
+def rebind_ptr_frame_field(lc: '_LowerCtx', site: object,
+                           reason: str) -> str:
+    """The frame field the ptr-slot prescan reserved for an OWN write to a
+    REBIND_PTR frame local at `site`; a site it reserved none for
+    rejects."""
+    fld = rcfg.ptr_slot_field(lc.func, site)
+    if fld is None:
+        note_detail("res.rebind_ptr_slot")
+        raise ThirUnsupported(reason)
+    return fld

@@ -473,7 +473,7 @@ _UNION_SLOT_KINDS = frozenset({PtrSlotKind.UNION_NONE, PtrSlotKind.UNION_RVALUE,
                                PtrSlotKind.UNION_INLINE_SLOT,
                                PtrSlotKind.UNION_ADDR})
 _POINTER_UNPACK_BINDS = frozenset({"ptr", "opt_ptr", "frame_ptr_elem",
-                                   "frame_opt_ptr"})
+                                   "frame_opt_ptr", "frame_rebind_ptr"})
 
 
 def _contract_problem(node: object, rec) -> 'str | None':

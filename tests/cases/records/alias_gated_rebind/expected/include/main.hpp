@@ -13,6 +13,7 @@ namespace tpyapp::main {
 struct Point;
 struct Holder;
 struct Noisy;
+struct Counted;
 struct Fail;
 struct Wrap;
 struct Walker;
@@ -20,6 +21,7 @@ struct Built;
 struct Runner;
 struct Guard;
 
+extern std::vector<std::string>* DROPS;
 extern Point* g;
 extern Point* galias;
 extern Noisy* gr;
@@ -30,6 +32,8 @@ struct __gen_gen_drop;
 struct __coro_async_section;
 struct __gen_Walker_walk;
 
+// def drops() -> Own[list[str]]:
+std::vector<std::string> drops();
 // def free_alias() -> None:
 void free_alias();
 // def free_drop() -> None:
@@ -60,6 +64,8 @@ void generator_holds_receiver();
 __gen_gen_section gen_section();
 // def gen_drop() -> Iterator[int32]:
 __gen_gen_drop gen_drop();
+// def run_gen_drop() -> None:
+void run_gen_drop();
 // async def async_section() -> int32:
 __coro_async_section async_section();
 // def nested_def_section() -> None:
@@ -139,6 +145,29 @@ struct Noisy {
 
 inline std::ostream& operator<<(std::ostream& os, const Noisy& obj) {
     ::tpy::print_object_default(os, "Noisy", obj);
+    return os;
+}
+
+// class Counted:
+struct Counted {
+    // name: str
+    std::string name;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, name: str) -> None:
+    explicit Counted(std::string_view name);
+    Counted(const Counted&) = delete;
+    Counted& operator=(const Counted&) = delete;
+    Counted(Counted&& other) noexcept;
+    Counted& operator=(Counted&& other) noexcept;
+
+    // def __del__(self) -> None:
+    ~Counted();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Counted";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Counted& obj) {
+    ::tpy::print_object_default(os, "Counted", obj);
     return os;
 }
 
@@ -240,9 +269,9 @@ struct __coro_async_section {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     Point* p = nullptr;
-    Point* alias = nullptr;
     std::optional<Point> __ptr_slot_f0;
     std::optional<Point> __ptr_slot_f1;
+    Point* alias = nullptr;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -267,9 +296,9 @@ struct __coro_async_section {
 struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
     ::tpy::frame_state __state;
     Point* p = nullptr;
-    Point* saved = nullptr;
     std::optional<Point> __ptr_slot_f0;
     std::optional<Point> __ptr_slot_f1;
+    Point* saved = nullptr;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -292,7 +321,9 @@ struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int3
 // def gen_drop() -> Iterator[int32]:
 struct __gen_gen_drop : public ::tpy::next_iter_mixin<__gen_gen_drop, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<Noisy> r;
+    Counted* r = nullptr;
+    std::optional<Counted> __ptr_slot_f0;
+    std::optional<Counted> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -391,6 +422,29 @@ inline Noisy::~Noisy() {
     }
 }
 
+// def __init__(self, name: str) -> None:
+//     self.name = name
+inline Counted::Counted(std::string_view name) : name(name) {}
+
+inline Counted::Counted(Counted&& other) noexcept : name(std::move(other.name)) {
+    other.__tpy_owned_ = false;
+}
+inline Counted& Counted::operator=(Counted&& other) noexcept {
+    if (this != &other) {
+        this->~Counted();
+        new (this) Counted(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     DROPS.append(self.name)
+inline Counted::~Counted() {
+    if (!this->__tpy_owned_) return;
+    std::string __tmp_1{this->name};
+    DROPS->push_back(std::move(__tmp_1));
+}
+
 // def __init__(self, p: Ptr[Point]) -> None:
 //     self.p = p
 inline Wrap::Wrap(Point* p) : p(p) {}
@@ -407,10 +461,10 @@ inline Walker::Walker(int32_t x) : x(x) {}
 //     self.a = alias.x
 //     self.b = p.x
 inline Built::Built() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(19);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
     alias.bump();
     this->a = alias.x;
@@ -424,10 +478,10 @@ inline Built::Built() {
 //     alias.bump()
 //     print("method:", alias.x, p.x)
 inline void Runner::run() const {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(11);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
     alias.bump();
     std::cout << "method:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;

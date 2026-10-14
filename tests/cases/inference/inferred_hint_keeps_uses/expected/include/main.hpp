@@ -249,7 +249,9 @@ struct __coro_async_body {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     const std::vector<double>& fs;
-    ::tpy::frame_slot<::tpy::ordered_map<std::string, float>> e;
+    ::tpy::ordered_map<std::string, float>* e = nullptr;
+    std::optional<::tpy::ordered_map<std::string, float>> __ptr_slot_f0;
+    std::optional<::tpy::ordered_map<std::string, float>> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -273,7 +275,9 @@ struct __coro_async_body {
 struct __gen_gen_body : public ::tpy::next_iter_mixin<__gen_gen_body, double> {
     ::tpy::frame_state __state;
     const std::vector<double>& fs;
-    ::tpy::frame_slot<::tpy::ordered_map<std::string, float>> e;
+    ::tpy::ordered_map<std::string, float>* e = nullptr;
+    std::optional<::tpy::ordered_map<std::string, float>> __ptr_slot_f0;
+    std::optional<::tpy::ordered_map<std::string, float>> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -304,8 +308,8 @@ inline Rec::Rec(int32_t v) : v(v) {}
 //     ys = [f + 1.0 for f in fs]  # tpyc: ok
 //     print("method", ys)
 inline void Holder::rebind(std::vector<double>& xs, const std::vector<double>& fs) const {
-    std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
+    std::optional<std::vector<double>> __slot_1;
     ys = &*(__slot_1 = ({
         std::vector<double> __result;
         auto& __obj_0 = fs;

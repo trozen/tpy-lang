@@ -15,7 +15,8 @@ std::vector<int32_t>* gxs{};
 void free_self() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -26,7 +27,7 @@ void free_self() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "free_self:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
@@ -40,7 +41,8 @@ void other_source() {
     std::vector<int32_t> ys = {1, 2, 3};
     std::vector<int32_t> __slot_1 = {9};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = ys;
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -51,7 +53,7 @@ void other_source() {
             __result.push_back((::tpy::mul_check<int32_t>(y, 2)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "other_source:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
@@ -63,7 +65,8 @@ void other_source() {
 void filtered() {
     std::vector<int32_t> __slot_1 = {1, 2, 3, 4, 5};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -76,7 +79,7 @@ void filtered() {
             }
         }
         std::move(__result);
-    });
+    }));
     std::cout << "filtered:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
@@ -89,8 +92,9 @@ void filtered() {
 void loop() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     for (int32_t _ = 0; _ < 3; ++_) {
-        (*xs) = ({
+        xs = &*(__slot_2 = ({
             std::vector<int32_t> __result;
             auto& __obj_1 = (*xs);
             __result.reserve(static_cast<std::size_t>(__obj_1.size()));
@@ -101,7 +105,7 @@ void loop() {
                 __result.push_back((::tpy::add_check<int32_t>(x, 1)));
             }
             std::move(__result);
-        });
+        }));
     }
     std::cout << "loop:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
@@ -117,8 +121,9 @@ void if_body_after_empty() {
     std::vector<int32_t> ys = {1, 2, 3};
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
     std::vector<int32_t>* xs = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     if ((::tpy::__len__(ys) > 1)) {
-        (*xs) = ({
+        xs = &*(__slot_2 = ({
             std::vector<int32_t> __result;
             auto& __obj_0 = ys;
             __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -129,7 +134,7 @@ void if_body_after_empty() {
                 __result.push_back((::tpy::add_check<int32_t>(y, 1)));
             }
             std::move(__result);
-        });
+        }));
     }
     std::cout << "if_body_after_empty:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
@@ -188,7 +193,8 @@ void comp_first() {
         std::move(__result);
     });
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_1 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_1.size()));
@@ -199,7 +205,7 @@ void comp_first() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "comp_first:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
@@ -212,7 +218,8 @@ void comp_first() {
 void dict_comp() {
     ::tpy::ordered_map<int32_t, int32_t> __slot_1 = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}});
     ::tpy::ordered_map<int32_t, int32_t>* d = &__slot_1;
-    (*d) = ({
+    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_2;
+    d = &*(__slot_2 = ({
         ::tpy::ordered_map<int32_t, int32_t> __result;
         auto& __obj_0 = (*d);
         auto __beg_0 = __obj_0.begin();
@@ -222,7 +229,7 @@ void dict_comp() {
             __result.insert_or_assign(k, (::tpy::add_check<int32_t>(::tpy::__getitem__((*d), k), 1)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "dict_comp:" << " " << ::tpy::DictPrinter((*d)) << "\n" << ::tpy::check_signals;
 }
 
@@ -233,7 +240,8 @@ void dict_comp() {
 void set_comp() {
     ::tpy::ordered_set<int32_t> __slot_1 = ::tpy::ordered_set<int32_t>({1, 2});
     ::tpy::ordered_set<int32_t>* s = &__slot_1;
-    (*s) = ({
+    std::optional<::tpy::ordered_set<int32_t>> __slot_2;
+    s = &*(__slot_2 = ({
         ::tpy::ordered_set<int32_t> __result;
         auto& __obj_0 = (*s);
         auto __beg_0 = __obj_0.begin();
@@ -243,7 +251,7 @@ void set_comp() {
             __result.insert((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "set_comp:" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*s))) << "\n" << ::tpy::check_signals;
 }
 
@@ -254,7 +262,8 @@ void set_comp() {
 void str_elems() {
     std::vector<std::string> __slot_1 = {"a", "b"};
     std::vector<std::string>* words = &__slot_1;
-    (*words) = ({
+    std::optional<std::vector<std::string>> __slot_2;
+    words = &*(__slot_2 = ({
         std::vector<std::string> __result;
         auto& __obj_0 = (*words);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -265,7 +274,7 @@ void str_elems() {
             __result.push_back((::tpy::str_concat(w, "!")));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "str_elems:" << " " << ::tpy::ListPrinter((*words)) << "\n" << ::tpy::check_signals;
 }
 
@@ -276,7 +285,8 @@ void str_elems() {
 void tuple_elems() {
     std::vector<std::tuple<int32_t, int32_t>> __slot_1 = {std::tuple<int32_t, int32_t>{1, 2}};
     std::vector<std::tuple<int32_t, int32_t>>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<std::tuple<int32_t, int32_t>>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<std::tuple<int32_t, int32_t>> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -290,7 +300,7 @@ void tuple_elems() {
             __result.push_back(std::tuple<int32_t, int32_t>{(::tpy::add_check<int32_t>(a, 1)), b});
         }
         std::move(__result);
-    });
+    }));
     std::cout << "tuple_elems:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
@@ -302,10 +312,10 @@ void tuple_elems() {
 //     p.v = 9
 //     print("record_elems:", p.v, xs[0].v, xs[1].v)
 void record_elems() {
-    std::optional<std::vector<P>> __slot_2;
     std::vector<P> __slot_1 = {P(1), P(2)};
     std::vector<P>* xs = &__slot_1;
     P& p = ::tpy::__getitem__((*xs), 0);
+    std::optional<std::vector<P>> __slot_2;
     xs = &*(__slot_2 = ({
         std::vector<P> __result;
         auto& __obj_0 = (*xs);
@@ -337,7 +347,8 @@ void closure() {
     auto inner = [&xs]() -> int32_t {
         return ::tpy::__getitem__((*xs), 0);
     };
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -348,7 +359,7 @@ void closure() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "closure:" << " " << inner() << "\n" << ::tpy::check_signals;
 }
 
@@ -360,10 +371,11 @@ void closure() {
 void with_body() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     auto __ctx_1 = Guard();
     __ctx_1.__enter__();
     try {
-        (*xs) = ({
+        xs = &*(__slot_2 = ({
             std::vector<int32_t> __result;
             auto& __obj_0 = (*xs);
             __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -374,7 +386,7 @@ void with_body() {
                 __result.push_back((::tpy::add_check<int32_t>(x, 1)));
             }
             std::move(__result);
-        });
+        }));
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});
@@ -397,9 +409,10 @@ void with_body() {
 void try_finally() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     {
         try {
-            (*xs) = ({
+            xs = &*(__slot_2 = ({
                 std::vector<int32_t> __result;
                 auto& __obj_0 = (*xs);
                 __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -410,7 +423,7 @@ void try_finally() {
                     __result.push_back((::tpy::add_check<int32_t>(x, 1)));
                 }
                 std::move(__result);
-            });
+            }));
         } catch (...) {
             std::cout << "try_finally:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
             throw;
@@ -432,10 +445,11 @@ void match_arm() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
     int32_t k = 1;
+    std::optional<std::vector<int32_t>> __slot_2;
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
-        (*xs) = ({
+        xs = &*(__slot_2 = ({
             std::vector<int32_t> __result;
             auto& __obj_0 = (*xs);
             __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -446,7 +460,7 @@ void match_arm() {
                 __result.push_back((::tpy::add_check<int32_t>(x, 1)));
             }
             std::move(__result);
-        });
+        }));
         break;
     }
     default: {
@@ -465,7 +479,8 @@ void match_arm() {
 std::expected<int32_t, Fail> err_ret() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -476,7 +491,7 @@ std::expected<int32_t, Fail> err_ret() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     return ::tpy::__getitem__((*xs), 0);
 }
 
@@ -490,8 +505,8 @@ std::expected<int32_t, Fail> err_ret() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs.emplace(std::vector<int32_t>{1, 2, 3});
-        xs.emplace(({
+        xs = &*(__ptr_slot_f0 = {1, 2, 3});
+        xs = &*(__ptr_slot_f1 = ({
             std::vector<int32_t> __result;
             auto& __obj_0 = (*xs);
             __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -574,9 +589,11 @@ __genexpr_call_rebinds_1_frame __genexpr_call_rebinds_1(const std::vector<int32_
 void call_rebinds() {
     std::vector<int32_t> __slot_1 = {3, 1, 2};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ::tpy::builtin_sorted<int32_t>((*xs));
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ::tpy::builtin_sorted<int32_t>((*xs)));
     std::cout << "call_rebinds sorted:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
-    (*xs) = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_call_rebinds_1((*xs)));
+    std::optional<std::vector<int32_t>> __slot_3;
+    xs = &*(__slot_3 = ::tpy::construct<std::vector<int32_t>>(::tpyapp::main::__genexpr_call_rebinds_1((*xs))));
     std::cout << "call_rebinds list:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
 
@@ -667,7 +684,8 @@ void __tpy_init() {
     ::tpyapp::main::main();
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     gxs = &__global_slot_1;
-    (*gxs) = ({
+    static std::optional<std::vector<int32_t>> __global_slot_2;
+    gxs = &*(__global_slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*gxs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -678,7 +696,7 @@ void __tpy_init() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     std::cout << "module_level:" << " " << ::tpy::ListPrinter((*gxs)) << "\n" << ::tpy::check_signals;
 }
 

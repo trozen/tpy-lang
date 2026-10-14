@@ -75,18 +75,19 @@ inline void Point::bump() {
 //     self.v = p.x + inner(k)
 inline Holder::Holder(int32_t k) {
     auto inner = [](int32_t n) -> int32_t {
-        std::optional<Point> __slot_2;
         Point __slot_1 = Point(n);
         Point* p = &__slot_1;
         Point& alias = (*p);
+        std::optional<Point> __slot_2;
         p = &*(__slot_2 = Point((::tpy::mul_check<int32_t>(n, 100))));
         alias.bump();
         return (::tpy::add_check<int32_t>(alias.x, p->x));
     };
     Point __slot_3 = Point(1);
     Point* p = &__slot_3;
+    std::optional<Point> __slot_4;
     if ((k > 0)) {
-        (*p) = Point(99);
+        p = &*(__slot_4 = Point(99));
     }
     this->v = (::tpy::add_check<int32_t>(p->x, inner(k)));
 }

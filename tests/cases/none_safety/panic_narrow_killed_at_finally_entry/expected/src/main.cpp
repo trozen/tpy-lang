@@ -21,12 +21,12 @@ void boom() {
 //     finally:
 //         print(p.x)  # tpyc: warning(/Potential None access/)
 void main() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(3);
     Point* p = &__slot_1;
     if ((p == nullptr)) {
         return;
     }
+    std::optional<Point> __slot_2;
     {
         try {
             p = nullptr;

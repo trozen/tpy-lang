@@ -33,20 +33,17 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_4;
-    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_5;
-    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_6;
-    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_7;
-    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_8;
-    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_9;
     static ::tpy::ordered_set<int32_t> __global_slot_1 = ::tpy::ordered_set<int32_t>();
     a = &__global_slot_1;
     static ::tpy::ordered_set<int32_t> __global_slot_2 = ::tpy::ordered_set<int32_t>();
     b = &__global_slot_2;
     static ::tpy::ordered_set<int32_t> __global_slot_3 = ::tpy::ordered_set<int32_t>();
     c = &__global_slot_3;
+    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_4;
     a = &*(__global_slot_4 = ::tpy::ordered_set<int32_t>({1, 2, 3}));
+    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_5;
     b = &*(__global_slot_5 = ::tpy::ordered_set<int32_t>({3, 4, 5}));
+    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_6;
     c = &*(__global_slot_6 = (::tpy::set_union((*a), (*b))));
     int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_0; ++x) {
@@ -55,6 +52,7 @@ void __tpy_init() {
         }
     }
     std::cout << "---" << "\n" << ::tpy::check_signals;
+    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_7;
     c = &*(__global_slot_7 = (::tpy::set_intersection((*a), (*b))));
     int32_t __stop_1 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_1; ++x) {
@@ -63,6 +61,7 @@ void __tpy_init() {
         }
     }
     std::cout << "---" << "\n" << ::tpy::check_signals;
+    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_8;
     c = &*(__global_slot_8 = (::tpy::set_difference((*a), (*b))));
     int32_t __stop_2 = ::tpy::add_check<int32_t>(6, 1);
     for (int32_t x = 1; x < __stop_2; ++x) {
@@ -71,6 +70,7 @@ void __tpy_init() {
         }
     }
     std::cout << "---" << "\n" << ::tpy::check_signals;
+    static std::optional<::tpy::ordered_set<int32_t>> __global_slot_9;
     c = &*(__global_slot_9 = (::tpy::set_union(::tpy::set_construct<int32_t>(::tpy::Range<int32_t>(1, ::tpy::add_check<int32_t>(3, 1))), ::tpy::ordered_set<int32_t>({7}))));
     int32_t __stop_3 = ::tpy::add_check<int32_t>(8, 1);
     for (int32_t x = 1; x < __stop_3; ++x) {

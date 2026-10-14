@@ -26,10 +26,10 @@ void check(::tpy::Union<const Circle*, const Rect*> s) {
 //     if isinstance(s, Rect):
 //         print(s.width)
 void main() {
-    std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(1.0);
     ::tpy::Union<Circle*, Rect*> s = ::tpy::to_ptr_variant(__slot_1);
     std::cout << ::tpy::print_float((*std::get<Circle*>(s)).radius) << "\n" << ::tpy::check_signals;
+    std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     __slot_2.emplace(Rect(3.0, 4.0));
     s = ::tpy::to_ptr_variant(*__slot_2);
     if (std::holds_alternative<Rect*>(s)) {

@@ -61,7 +61,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_call_then_literal:
         return (((a == nullptr)) ? (0) : (::tpy::__len__((*a))));
     }
     case S_RESUME_0: {  // after: yield 0 if a is None else len(a)
-        (*a) = std::vector<int32_t>{1, 2, 3};
+        a = &*(__ptr_slot_f1 = std::vector<int32_t>{1, 2, 3});
         if ((a != nullptr)) {
             a->push_back(4);
         }

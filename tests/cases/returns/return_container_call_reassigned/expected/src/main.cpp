@@ -28,11 +28,12 @@ std::vector<int32_t> gen(int32_t n) {
 std::vector<int32_t> longest(int32_t n) {
     std::vector<int32_t> __slot_1 = ::tpyapp::main::gen(0);
     std::vector<int32_t>* best = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         std::vector<int32_t> cur = ::tpyapp::main::gen(i);
         if ((::tpy::__len__(cur) > ::tpy::__len__((*best)))) {
-            (*best) = std::vector<int32_t>(cur);
+            best = &*(__slot_2 = std::vector<int32_t>(cur));
         }
     }
     return std::move((*best));

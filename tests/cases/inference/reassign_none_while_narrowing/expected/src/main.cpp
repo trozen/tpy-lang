@@ -19,9 +19,9 @@ Box make(int32_t i) {
 //     if result is not None:
 //         print(result.v)
 void test_while() {
-    std::optional<Box> __slot_1;
     Box* result = nullptr;
     int32_t i = 0;
+    std::optional<Box> __slot_1;
     while ((i < 3)) {
         result = &*(__slot_1 = ::tpyapp::main::make(i));
         i = ::tpy::add_check<int32_t>(i, 1);

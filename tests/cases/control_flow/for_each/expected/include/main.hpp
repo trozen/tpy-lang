@@ -7,11 +7,15 @@
 
 namespace tpyapp::main {
 
+struct Node;
+
 extern std::vector<int32_t>* items;
 extern int32_t total;
 extern std::array<int32_t, 3>* arr;
 extern std::string text;
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_rebind_iterated;
 
 // def sum_array() -> int32:
 int32_t sum_array();
@@ -19,6 +23,59 @@ int32_t sum_array();
 void print_span(std::span<int32_t> data);
 // def nested_sum() -> int32:
 int32_t nested_sum();
+// def rebind_iterated() -> None:
+void rebind_iterated();
+// def gen_rebind_iterated() -> Iterator[int32]:
+__gen_gen_rebind_iterated gen_rebind_iterated();
 
+// class Node:
+struct Node {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Node() = default;
+    explicit Node(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Node";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
+    ::tpy::print_object_default(os, "Node", obj);
+    return os;
+}
+
+// def gen_rebind_iterated() -> Iterator[int32]:
+struct __gen_gen_rebind_iterated : public ::tpy::next_iter_mixin<__gen_gen_rebind_iterated, int32_t> {
+    ::tpy::frame_state __state;
+    std::array<int32_t, 3>* xs = nullptr;
+    std::optional<std::array<int32_t, 3>> __ptr_slot_f0;
+    std::optional<std::array<int32_t, 3>> __ptr_slot_f1;
+    int32_t v;
+    using __for_src_0_t = decltype(((*xs)));
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
+    ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_rebind_iterated() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_rebind_iterated& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_rebind_iterated&) {
+        return os << "<generator gen_rebind_iterated>";
+    }
+};
+
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Node::Node(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

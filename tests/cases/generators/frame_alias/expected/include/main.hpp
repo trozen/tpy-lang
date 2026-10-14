@@ -763,9 +763,9 @@ struct __gen_frame_order : public ::tpy::next_iter_mixin<__gen_frame_order, std:
     ::tpy::frame_state __state;
     bool c;
     std::vector<std::string>* xs = nullptr;
-    std::vector<std::string>* ys = nullptr;
     std::optional<std::vector<std::string>> __ptr_slot_f0;
     std::optional<std::vector<std::string>> __ptr_slot_f1;
+    std::vector<std::string>* ys = nullptr;
     ::tpy::frame_slot<__gen_reading_fin> g;
 
     enum : int32_t {

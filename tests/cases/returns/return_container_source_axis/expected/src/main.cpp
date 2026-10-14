@@ -22,8 +22,9 @@ std::array<int32_t, 3> fresh_array() {
 ::tpy::ByteArray grow_bytes(int32_t n) {
     ::tpy::ByteArray __slot_1 = ::tpy::ByteArray(::tpy::bytes_literal("ab", 2));
     ::tpy::ByteArray* buf = &__slot_1;
+    std::optional<::tpy::ByteArray> __slot_2;
     if ((n > 2)) {
-        (*buf) = ::tpy::ByteArray(::tpy::bytes_literal("cde", 3));
+        buf = &*(__slot_2 = ::tpy::ByteArray(::tpy::bytes_literal("cde", 3)));
     }
     return std::move((*buf));
 }
@@ -36,8 +37,9 @@ std::array<int32_t, 3> fresh_array() {
 std::vector<int32_t> grow_list(int32_t n) {
     std::vector<int32_t> __slot_1 = {1, 2};
     std::vector<int32_t>* xs = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     if ((n > 2)) {
-        (*xs) = {3, 4, 5};
+        xs = &*(__slot_2 = {3, 4, 5});
     }
     return std::move((*xs));
 }
@@ -50,8 +52,9 @@ std::vector<int32_t> grow_list(int32_t n) {
 std::vector<::tpystd::tplib::box::Box<int32_t>> grow_boxes(int32_t n) {
     std::vector<::tpystd::tplib::box::Box<int32_t>> __slot_1 = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(1));
     std::vector<::tpystd::tplib::box::Box<int32_t>>* bs = &__slot_1;
+    std::optional<std::vector<::tpystd::tplib::box::Box<int32_t>>> __slot_2;
     if ((n > 2)) {
-        (*bs) = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(2), ::tpystd::tplib::box::Box<int32_t>(3));
+        bs = &*(__slot_2 = ::tpy::make_vector<::tpystd::tplib::box::Box<int32_t>>(::tpystd::tplib::box::Box<int32_t>(2), ::tpystd::tplib::box::Box<int32_t>(3)));
     }
     return std::move((*bs));
 }

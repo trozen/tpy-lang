@@ -14,9 +14,10 @@ namespace tpyapp::main {
 void loop_escape_copy_ok() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         Point p = Point(i, i);
-        (*saved) = Point(p);
+        saved = &*(__slot_2 = Point(p));
     }
     std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
@@ -30,8 +31,9 @@ void loop_escape_copy_ok() {
 void loop_rvalue_ok() {
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
-        (*saved) = Point(i, i);
+        saved = &*(__slot_2 = Point(i, i));
     }
     std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;
 }
@@ -156,9 +158,9 @@ void same_scope_ok() {
 //             best = copy(p)  # tpyc: ok
 //     print(best.x, best.y)
 void lvalue_init_rvalue_rebind() {
-    std::optional<Point> __slot_1;
     std::vector<Point> items = {Point(1, 2), Point(3, 4), Point(5, 6)};
     Point* best = &(::tpy::__getitem__(items, 0));
+    std::optional<Point> __slot_1;
     auto& __obj_0 = items;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -180,10 +182,10 @@ void lvalue_init_rvalue_rebind() {
 //     print(alias.x, alias.y)
 //     print(p.x, p.y)
 void rvalue_alias_preserved() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(2, 2));
     std::cout << alias.x << " " << alias.y << "\n" << ::tpy::check_signals;
     std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
@@ -198,8 +200,9 @@ void rvalue_alias_preserved() {
 void if_branch_rvalue_rebind() {
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
+    std::optional<Point> __slot_2;
     if ((p->x > 0)) {
-        (*p) = Point(2, 2);
+        p = &*(__slot_2 = Point(2, 2));
     }
     std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
@@ -215,10 +218,12 @@ void if_branch_rvalue_rebind() {
 void if_else_rvalue_rebinds() {
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     if ((p->x > 0)) {
-        (*p) = Point(2, 2);
+        p = &*(__slot_2 = Point(2, 2));
     } else {
-        (*p) = Point(3, 3);
+        p = &*(__slot_3 = Point(3, 3));
     }
     std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;
 }
@@ -232,10 +237,10 @@ void if_else_rvalue_rebinds() {
 //     print(alias.x, alias.y)
 //     print(p.x, p.y)
 void if_alias_preserved() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1, 1);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     if ((p->x > 0)) {
         p = &*(__slot_2 = Point(2, 2));
     }
@@ -255,8 +260,9 @@ void while_rvalue_rebind() {
     Point __slot_1 = Point(0, 0);
     Point* p = &__slot_1;
     int32_t i = 0;
+    std::optional<Point> __slot_2;
     while ((i < 3)) {
-        (*p) = Point(i, i);
+        p = &*(__slot_2 = Point(i, i));
         i = (::tpy::add_check<int32_t>(i, 1));
     }
     std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;

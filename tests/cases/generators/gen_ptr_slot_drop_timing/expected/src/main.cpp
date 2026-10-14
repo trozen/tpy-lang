@@ -4,6 +4,7 @@
 
 namespace tpyapp::main {
 
+std::vector<int32_t>* DROPPED{};
 
 
 // def gen() -> Iterator[int32]:
@@ -11,11 +12,10 @@ __gen_gen gen() {
     return __gen_gen();
 }
 
-// def main() -> None:
+// def run() -> None:
 //     for v in gen():
-//         print(v)
-//     print("done")
-void main() {
+//         print(v, 2 in DROPPED)
+void run() {
     {
         auto __src_0 = ::tpyapp::main::gen();
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -23,18 +23,31 @@ void main() {
             auto __r_1 = __itr_0.__next__();
             if (!__r_1.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_1);
-            std::cout << v << "\n" << ::tpy::check_signals;
+            std::cout << v << " " << ::tpy::print_bool(::tpy::seq_contains((*DROPPED), 2)) << "\n" << ::tpy::check_signals;
         }
     }
+}
+
+// def main() -> None:
+//     run()
+//     print("dropped", sorted(DROPPED))
+//     print("done")
+void main() {
+    ::tpyapp::main::run();
+    std::cout << "dropped" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>((*DROPPED))) << "\n" << ::tpy::check_signals;
     std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 
+// DROPPED: list[int32] = []
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
+    static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
+    DROPPED = &__global_slot_1;
     ::tpyapp::main::main();
 }
 

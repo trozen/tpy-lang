@@ -31,7 +31,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, NamedTuple, Union
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse.nodes import (
@@ -133,11 +133,12 @@ class ResumableFuncState:
     # `std::optional<T>` FRAME FIELD (one per write site), never a case-block
     # local -- the pointer field outlives the case block, so an inline slot
     # dangles at the first suspension. ptr_slot_map keys the TpyVarDecl/
-    # TpyAssign -> field name; the pointer-local reseat lowering
-    # consumes it and must find an entry for every slot-needing write (loud
-    # internal error otherwise -- silence would be the dangle coming back).
+    # TpyAssign -> {element index (None: the scalar) -> field name}; the
+    # pointer-local reseat lowering consumes it (`ptr_slot_field`) and must
+    # find an entry for every slot-needing write (loud internal error
+    # otherwise -- silence would be the dangle coming back).
     ptr_slots_prescanned: bool = False
-    ptr_slot_fields: 'list[tuple[str, str]]' = field(default_factory=list)
+    ptr_slot_fields: 'list[PtrSlotField]' = field(default_factory=list)
     ptr_slot_map: 'IdentityMap' = field(default_factory=IdentityMap)
     # with-stmt prescan (_prescan_with_stmts)
     with_prescanned: bool = False
@@ -216,6 +217,32 @@ def resumable_state(func: 'TpyFunction') -> ResumableFuncState:
         state = ResumableFuncState()
         func._resumable_state = state
     return state
+
+
+class PtrSlotField(NamedTuple):
+    """A frame field the ptr-slot prescan reserved: its name and C++ type,
+    and the local its write site re-points at it with the value it
+    stores."""
+    name: str
+    cpp: str
+    local: str
+    value: 'TpyExpr'
+
+
+def ptr_slot_field(func: 'TpyFunction', stmt: object,
+                   elem: 'int | None' = None) -> 'str | None':
+    """The frame field the ptr-slot prescan reserved for a write site's
+    object (`elem`: a pointer tuple's element; None: the scalar), else
+    None."""
+    return resumable_state(func).ptr_slot_map.get(stmt, {}).get(elem)
+
+
+def ptr_tuple_slot_fields(func: 'TpyFunction',
+                          stmt: object) -> 'dict[int | None, str] | None':
+    """The frame fields the ptr-slot prescan reserved for a pointer tuple's
+    binding, per owned element that takes one -- an element it reserved
+    none for is written in place; None for a binding it never visited."""
+    return resumable_state(func).ptr_slot_map.get(stmt)
 
 
 def mark_frame_const(state: ResumableFuncState, *names: 'str | None') -> None:
@@ -376,8 +403,10 @@ class FrameLocalLayout:
 @dataclass
 class FrameLayoutPlan:
     """Frame-local placement for one resumable body: `bindings` maps every
-    `func.generator_locals` name to its verdict."""
+    `func.generator_locals` name to its verdict; `pointer_tuples` names the
+    ones sema made pointer tuples (`_FrameFormInputs.pointer_tuples`)."""
     bindings: 'dict[str, FrameLocalLayout]'
+    pointer_tuples: 'frozenset[str]' = frozenset()
 
 
 # -- Resumable-frame shape: which state machine the emitter produces.

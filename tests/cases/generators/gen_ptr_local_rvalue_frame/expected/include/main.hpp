@@ -52,10 +52,10 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 struct __gen_rvalue_init : public ::tpy::next_iter_mixin<__gen_rvalue_init, int32_t> {
     ::tpy::frame_state __state;
     Point* saved = nullptr;
+    std::optional<Point> __ptr_slot_f0;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
-    std::optional<Point> __ptr_slot_f0;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -159,8 +159,8 @@ struct __gen_loop_rebind : public ::tpy::next_iter_mixin<__gen_loop_rebind, int3
     ::tpy::frame_state __state;
     int32_t n;
     Point* saved = nullptr;
-    int32_t i;
     std::optional<Point> __ptr_slot_f0;
+    int32_t i;
 
     enum : int32_t {
         S_INITIAL = 0,

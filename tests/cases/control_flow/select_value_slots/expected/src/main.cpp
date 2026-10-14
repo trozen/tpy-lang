@@ -101,7 +101,8 @@ void reassigned(bool c, bool d, std::vector<std::string>& log) {
     C* z = &__slot_1;
     z->n = ::tpy::add_check<int32_t>(z->n, 1);
     int32_t first = z->n;
-    (*z) = ((d) ? (C(3)) : (::tpyapp::main::make(log)));
+    std::optional<C> __slot_2;
+    z = &*(__slot_2 = ((d) ? (C(3)) : (::tpyapp::main::make(log))));
     z->n = ::tpy::add_check<int32_t>(z->n, 1);
     std::cout << "reassigned" << " " << ::tpy::print_bool(c) << " " << ::tpy::print_bool(d) << " " << first << " " << z->n << "\n" << ::tpy::check_signals;
 }

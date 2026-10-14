@@ -16,8 +16,8 @@ std::tuple<int32_t, Box> make_pair(int32_t v) {
 //     t[1].val = 99                        # mutate through the alias
 //     return first
 int32_t use(Holder& h) {
-    std::tuple<int32_t, Box*> t;
     std::optional<std::tuple<int32_t, Box>> __slot_1;
+    std::tuple<int32_t, Box*> t;
     int32_t first = std::get<1>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9))), t))->val;
     t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);
     std::get<1>(t)->val = 99;

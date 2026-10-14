@@ -8,6 +8,7 @@
 namespace tpyapp::main {
 
 struct Point;
+struct Cell;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -15,6 +16,8 @@ struct __gen_decl_inside_while;
 struct __gen_decl_inside_for;
 struct __gen_before_while;
 struct __gen_before_while_after_drain;
+struct __gen_yield_rebound;
+struct __gen_yield_kept_across_pull;
 
 // def decl_inside_while(n: int32) -> Iterator[int32]:
 __gen_decl_inside_while decl_inside_while(int32_t n);
@@ -24,6 +27,12 @@ __gen_decl_inside_for decl_inside_for(const std::vector<int32_t>& xs);
 __gen_before_while before_while(int32_t n);
 // def before_while_after_drain(n: int32) -> Iterator[int32]:
 __gen_before_while_after_drain before_while_after_drain(int32_t n);
+// def yield_rebound() -> Iterator[Point]:
+__gen_yield_rebound yield_rebound();
+// def yield_kept_across_pull() -> Iterator[Cell]:
+__gen_yield_kept_across_pull yield_kept_across_pull();
+// def kept_across_pull() -> None:
+void kept_across_pull();
 // def main() -> None:
 void main();
 
@@ -46,12 +55,30 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// class Cell:
+struct Cell {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    Cell() = default;
+    explicit Cell(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cell& obj) {
+    ::tpy::print_object_default(os, "Cell", obj);
+    return os;
+}
+
 // def decl_inside_while(n: int32) -> Iterator[int32]:
 struct __gen_decl_inside_while : public ::tpy::next_iter_mixin<__gen_decl_inside_while, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
     int32_t i;
-    ::tpy::frame_slot<Point> p;
+    Point* p = nullptr;
+    std::optional<Point> __ptr_slot_f0;
+    std::optional<Point> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -77,7 +104,9 @@ struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_f
     ::tpy::frame_state __state;
     const std::vector<int32_t>& xs;
     int32_t v;
-    ::tpy::frame_slot<Point> p;
+    Point* p = nullptr;
+    std::optional<Point> __ptr_slot_f0;
+    std::optional<Point> __ptr_slot_f1;
     using __for_src_0_t = decltype((xs));
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_it_0;
     ::tpy::frame_loop_slot<::tpy::begin_iter_t<__for_src_0_t>> __for_end_0;
@@ -105,7 +134,9 @@ struct __gen_decl_inside_for : public ::tpy::next_iter_mixin<__gen_decl_inside_f
 struct __gen_before_while : public ::tpy::next_iter_mixin<__gen_before_while, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
-    ::tpy::frame_slot<Point> p;
+    Point* p = nullptr;
+    std::optional<Point> __ptr_slot_f0;
+    std::optional<Point> __ptr_slot_f1;
     int32_t i;
 
     enum : int32_t {
@@ -131,7 +162,10 @@ struct __gen_before_while : public ::tpy::next_iter_mixin<__gen_before_while, in
 struct __gen_before_while_after_drain : public ::tpy::next_iter_mixin<__gen_before_while_after_drain, int32_t> {
     ::tpy::frame_state __state;
     int32_t n;
-    ::tpy::frame_slot<Point> p;
+    Point* p = nullptr;
+    std::optional<Point> __ptr_slot_f0;
+    std::optional<Point> __ptr_slot_f1;
+    std::optional<Point> __ptr_slot_f2;
     int32_t i;
 
     enum : int32_t {
@@ -153,6 +187,54 @@ struct __gen_before_while_after_drain : public ::tpy::next_iter_mixin<__gen_befo
     }
 };
 
+// def yield_rebound() -> Iterator[Point]:
+struct __gen_yield_rebound : public ::tpy::next_iter_mixin<__gen_yield_rebound, ::tpy::val_or_ref<Point>> {
+    ::tpy::frame_state __state;
+    Point* p = nullptr;
+    std::optional<Point> __ptr_slot_f0;
+    std::optional<Point> __ptr_slot_f1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_yield_rebound() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __next__();
+    __gen_yield_rebound& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_yield_rebound&) {
+        return os << "<generator yield_rebound>";
+    }
+};
+
+// def yield_kept_across_pull() -> Iterator[Cell]:
+struct __gen_yield_kept_across_pull : public ::tpy::next_iter_mixin<__gen_yield_kept_across_pull, ::tpy::val_or_ref<Cell>> {
+    ::tpy::frame_state __state;
+    Cell* c = nullptr;
+    std::optional<Cell> __ptr_slot_f0;
+    std::optional<Cell> __ptr_slot_f1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_yield_kept_across_pull() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __next__();
+    __gen_yield_kept_across_pull& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_yield_kept_across_pull&) {
+        return os << "<generator yield_kept_across_pull>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.x = x
@@ -163,5 +245,9 @@ inline Point::Point(int32_t x) : x(x) {}
 inline void Point::bump() {
     this->x = ::tpy::add_check<int32_t>(this->x, 1);
 }
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline Cell::Cell(int32_t v) : v(v) {}
 void __tpy_init();
 } // namespace tpyapp::main

@@ -62,11 +62,11 @@ void to_name() {
 //     x.n = 6
 //     print("to_fresh", b.n, x.n, k)
 void to_fresh() {
-    std::optional<Cell> __slot_1;
     Cell b = Cell(1);
     auto __tup_1 = ::tpyapp::main::one(b);
     auto* x = &(::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1))));
     int32_t k = std::get<1>(__tup_1);
+    std::optional<Cell> __slot_1;
     x = &*(__slot_1 = Cell(5));
     x->n = 6;
     std::cout << "to_fresh" << " " << b.n << " " << x->n << " " << k << "\n" << ::tpy::check_signals;
@@ -309,7 +309,6 @@ void try_except(Cell& b, Cell& q) {
 //         c.n = 6
 //     print("two_loops", cs[0].n)
 void two_loops() {
-    std::optional<Cell> __slot_1;
     std::array<Cell, 1> cs = {Cell(1)};
     {
         auto __src_0 = ::tpy::builtin_zip(cs, std::array<int32_t, 1>{1});
@@ -324,6 +323,7 @@ void two_loops() {
             c.n = 5;
         }
     }
+    std::optional<Cell> __slot_1;
     {
         auto __src_2 = ::tpy::builtin_zip(cs, std::array<int32_t, 1>{2});
         auto&& __itr_2 = ::tpy::__iter__(__src_2);

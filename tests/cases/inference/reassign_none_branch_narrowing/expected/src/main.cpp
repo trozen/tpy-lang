@@ -17,8 +17,8 @@ Box make_box() {
 //     if b is not None:
 //         print(b.v)
 void test_if_branch() {
-    std::optional<Box> __slot_1;
     Box* b = nullptr;
+    std::optional<Box> __slot_1;
     if (true) {
         b = &*(__slot_1 = ::tpyapp::main::make_box());
     }
@@ -37,9 +37,9 @@ void test_if_branch() {
 //     if b is not None:
 //         print(b.v)
 void test_elif_branch() {
-    std::optional<Box> __slot_1;
     Box* b = nullptr;
     int32_t x = 1;
+    std::optional<Box> __slot_1;
     if ((x == 0)) {
     } else if ((x == 1)) {
         b = &*(__slot_1 = ::tpyapp::main::make_box());

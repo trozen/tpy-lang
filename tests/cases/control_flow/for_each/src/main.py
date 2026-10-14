@@ -1,3 +1,5 @@
+from typing import Iterator
+
 from tpy import int32, Span, Array
 
 # Test for-each over inferred list (no annotation needed)
@@ -45,3 +47,42 @@ def nested_sum() -> int32:
     return total
 
 print(nested_sum())  # 1*10 + 1*20 + 2*10 + 2*20 = 90
+
+
+# Rebinding the iterated name inside the loop: the loop keeps walking the object
+# its head evaluated, as in CPython
+class Node:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+def rebind_iterated() -> None:
+    xs = [1, 2, 3]
+    total: int32 = 0
+    for v in xs:
+        total += v
+        xs = [100, 200, 300]  # rebinds the name, not the list the loop walks
+    nodes = [Node(1), Node(2)]
+    # the loop keeps walking the list `keep` still names, not a copy of it
+    keep = nodes
+    seen: list[int32] = []
+    for n in nodes:
+        n.v += 10
+        seen.append(n.v)
+        nodes = [Node(9)]
+    print("rebind_iterated", total, xs[0], seen, nodes[0].v, keep[0].v,
+          keep[1].v)
+
+
+def gen_rebind_iterated() -> Iterator[int32]:
+    xs = [1, 2, 3]
+    for v in xs:
+        yield v
+        xs = [100, 200, 300]
+    yield xs[0]
+
+
+rebind_iterated()
+print("gen_rebind_iterated", list(gen_rebind_iterated()))

@@ -873,11 +873,11 @@ inline int32_t H::scalar_locals_only() && {
 //     return take_ro((self.a, self.b))  # tpyc: warning(/tuple element 0\)/) warning(/tuple element 1\)/)
 inline int32_t H::sibling_loop_guard() && {
     std::optional<Guard> __slot_1;
-    std::optional<Guard> __slot_2;
     Guard* gd;
     for (int32_t i = 0; i < 1; ++i) {
         gd = &*(__slot_1 = Guard(&this->a));
     }
+    std::optional<Guard> __slot_2;
     for (int32_t j = 0; j < 1; ++j) {
         gd = &*(__slot_2 = Guard(&this->a));
     }

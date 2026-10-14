@@ -193,8 +193,6 @@ Profile::Profile(std::string_view name, int32_t age, double score, float precisi
       email(email ? std::make_optional(std::string(*email)) : std::nullopt) {}
 
 std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-    std::optional<Address> __slot_1;
-    std::optional<Address> __slot_2;
     {
         auto __try_tmp_11 = __reader.read_object_start();
         if (!__try_tmp_11.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_11.error()));
@@ -217,6 +215,8 @@ std::expected<Profile, ::tpystd::tplib::json::parser::JsonError> Profile::__json
     std::optional<Role> backup_role = std::nullopt;
     Address* alt_address = nullptr;
     std::optional<std::string> email = std::nullopt;
+    std::optional<Address> __slot_1;
+    std::optional<Address> __slot_2;
     while (__reader.has_next()) {
         std::string_view __key;
         {

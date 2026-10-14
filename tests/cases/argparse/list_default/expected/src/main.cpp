@@ -62,6 +62,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
     int32_t __tpy_argparse_i = 0;
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--tag")) {
@@ -72,7 +73,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             tag.push_back(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else if ((__tpy_argparse_tok == "--count")) {
-            (*count) = std::vector<::tpy::BigInt>{};
+            count = &*(__slot_2 = std::vector<::tpy::BigInt>{});
             int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             while (((__tpy_argparse_j < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_j), "-"))))) {
                 count->push_back(::tpy::BigInt::from_str(::tpy::__getitem__(argv, __tpy_argparse_j)));
@@ -111,6 +112,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
     int32_t __tpy_argparse_i = 0;
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--tag")) {
@@ -121,7 +123,7 @@ __tpy_builder_argparse_args_2 __tpy_builder_argparse_parse_2(const std::vector<s
             tag.push_back(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else if ((__tpy_argparse_tok == "--count")) {
-            (*count) = std::vector<::tpy::BigInt>{};
+            count = &*(__slot_2 = std::vector<::tpy::BigInt>{});
             int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             while (((__tpy_argparse_j < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_j), "-"))))) {
                 count->push_back(::tpy::BigInt::from_str(::tpy::__getitem__(argv, __tpy_argparse_j)));

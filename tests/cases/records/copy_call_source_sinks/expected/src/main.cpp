@@ -60,9 +60,9 @@ int32_t qualified_decl(Holder& h) {
 //         return dup.n
 //     return 0
 int32_t variant_copy(bool pick) {
-    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     ::tpy::Union<Cat, Dog> __slot_1 = Dog(1);
     ::tpy::Union<Cat*, Dog*> u = ::tpy::to_ptr_variant(__slot_1);
+    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     if ((!(pick))) {
         __slot_2.emplace(Cat(2));
         u = ::tpy::to_ptr_variant(*__slot_2);

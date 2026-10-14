@@ -1,0 +1,1 @@
+main.py:24: error: in function 'co': binding 'p' to the result of an await is not yet supported here: 'p' keeps objects of its own element by element, and this binding does not place them one by one

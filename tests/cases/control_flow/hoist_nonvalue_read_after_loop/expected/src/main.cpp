@@ -56,7 +56,6 @@ void free_two_arms() {
 //     print("free_rebind_after", p.n, saved.n)
 void free_rebind_after() {
     std::optional<Pic> __slot_1;
-    std::optional<Pic> __slot_2;
     Pic* p;
     Pic* saved;
     for (int32_t i = 0; i < 3; ++i) {
@@ -64,6 +63,7 @@ void free_rebind_after() {
         saved = p;
     }
     std::cout << "free_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
+    std::optional<Pic> __slot_2;
     p = &*(__slot_2 = Pic(9));
     p->n = ::tpy::add_check<int32_t>(p->n, 1);
     saved->n = ::tpy::add_check<int32_t>(saved->n, 1);
@@ -119,7 +119,6 @@ void free_alias_const() {
 //     print("free_list", v)
 void free_list() {
     std::optional<std::vector<int32_t>> __slot_1;
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* v;
     for (int32_t i = 0; i < 2; ++i) {
         v = &*(__slot_1 = {i});
@@ -127,6 +126,7 @@ void free_list() {
     }
     v->push_back(1);
     std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n" << ::tpy::check_signals;
+    std::optional<std::vector<int32_t>> __slot_2;
     v = &*(__slot_2 = {9});
     std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n" << ::tpy::check_signals;
 }
@@ -168,7 +168,6 @@ void free_dict() {
 //         print("free_optional", p.n)
 void free_optional() {
     std::optional<Pic> __slot_1;
-    std::optional<Pic> __slot_2;
     Pic* p;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_1 = Pic(i));
@@ -177,6 +176,7 @@ void free_optional() {
         }
     }
     std::cout << "free_optional" << " " << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
+    std::optional<Pic> __slot_2;
     p = &*(__slot_2 = Pic(9));
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
@@ -245,7 +245,6 @@ void nested_inner_read() {
 //     print("nested_outer_read", f.n, saved.n)
 void nested_outer_read() {
     std::optional<Flat> __slot_1;
-    std::optional<Flat> __slot_2;
     Flat* f;
     Flat* saved;
     for (int32_t i = 0; i < 2; ++i) {
@@ -256,6 +255,7 @@ void nested_outer_read() {
     }
     f->n = ::tpy::add_check<int32_t>(f->n, 100);
     std::cout << "nested_outer_read" << " " << f->n << " " << saved->n << "\n" << ::tpy::check_signals;
+    std::optional<Flat> __slot_2;
     f = &*(__slot_2 = Flat(9));
     std::cout << "nested_outer_read" << " " << f->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }
@@ -296,11 +296,12 @@ void nested_three_deep() {
 //     print("nested_outer_bind_inner_rebind", f.n)
 void nested_outer_bind_inner_rebind() {
     std::optional<Flat> __slot_1;
+    std::optional<Flat> __slot_2;
     Flat* f;
     for (int32_t i = 0; i < 2; ++i) {
         f = &*(__slot_1 = Flat(i));
         for (int32_t j = 0; j < 2; ++j) {
-            (*f) = Flat((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j)));
+            f = &*(__slot_2 = Flat((::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(i, 10)), j))));
         }
         std::cout << "nested_outer_bind_inner_rebind" << " " << f->n << "\n" << ::tpy::check_signals;
     }
@@ -321,9 +322,9 @@ void nested_outer_bind_inner_rebind() {
 //     f.n += 100
 //     print("while_two_arms", f.n)
 void while_two_arms() {
+    int32_t i = 0;
     std::optional<Flat> __slot_1;
     std::optional<Flat> __slot_2;
-    int32_t i = 0;
     Flat* f;
     while ((i < 3)) {
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
@@ -348,9 +349,8 @@ void while_two_arms() {
 //     p.n += 1
 //     print("while_rebind_after", p.n, saved.n)
 void while_rebind_after() {
-    std::optional<Pic> __slot_1;
-    std::optional<Pic> __slot_2;
     int32_t i = 0;
+    std::optional<Pic> __slot_1;
     Pic* p;
     Pic* saved;
     while ((i < 3)) {
@@ -359,6 +359,7 @@ void while_rebind_after() {
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << "while_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
+    std::optional<Pic> __slot_2;
     p = &*(__slot_2 = Pic(9));
     p->n = ::tpy::add_check<int32_t>(p->n, 1);
     std::cout << "while_rebind_after" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
@@ -944,13 +945,13 @@ void sib_container_elem() {
 //     print("two_loop_list_sibling", xs, held)
 void two_loop_list_sibling(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_1;
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     std::vector<int32_t>* held;
     for (int32_t j = 0; j < 2; ++j) {
         xs = &*(__slot_1 = {j});
         held = xs;
     }
+    std::optional<std::vector<int32_t>> __slot_2;
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
         xs = &*(__slot_2 = {i, i});
@@ -1140,7 +1141,6 @@ void two_loop_int_widen(int32_t n) {
 //     print("two_loop_empty_list", xs, held)
 void two_loop_empty_list(int32_t n) {
     std::optional<std::vector<int32_t>> __slot_1;
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     for (int32_t i = 0; i < 2; ++i) {
         xs = &*(__slot_1 = std::vector<int32_t>{});
@@ -1148,6 +1148,7 @@ void two_loop_empty_list(int32_t n) {
     if ((n < 1)) {
         return;
     }
+    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* held;
     int32_t __stop_1 = n;
     for (int32_t j = 0; j < __stop_1; ++j) {
@@ -1167,7 +1168,8 @@ void two_loop_empty_list(int32_t n) {
 void flat_empty_list() {
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = {1, 2};
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = {1, 2});
     xs->push_back(9);
     std::cout << "flat_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }
@@ -1209,7 +1211,6 @@ void arm_empty_list(bool flag) {
 //     else:
 //         print("two_loop_none_then_record none")
 void two_loop_none_then_record(int32_t n) {
-    std::optional<Pic> __slot_1;
     Pic* p;
     for (int32_t i = 0; i < 2; ++i) {
         p = nullptr;
@@ -1218,6 +1219,7 @@ void two_loop_none_then_record(int32_t n) {
         std::cout << "two_loop_none_then_record none" << "\n" << ::tpy::check_signals;
         return;
     }
+    std::optional<Pic> __slot_1;
     Pic* saved;
     int32_t __stop_1 = n;
     for (int32_t j = 0; j < __stop_1; ++j) {
@@ -1244,13 +1246,13 @@ void two_loop_none_then_record(int32_t n) {
 //     print("two_loop_dict_arm", sorted(d.items()), sorted(held.items()))
 void two_loop_dict_arm(bool flag) {
     std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_1;
-    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_2;
     ::tpy::ordered_map<int32_t, int32_t>* d;
     ::tpy::ordered_map<int32_t, int32_t>* held;
     for (int32_t j = 0; j < 2; ++j) {
         d = &*(__slot_1 = ::tpy::ordered_map<int32_t, int32_t>({{j, j}}));
         held = d;
     }
+    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_2;
     if (flag) {
         for (int32_t i = 0; i < 2; ++i) {
             d = &*(__slot_2 = ::tpy::ordered_map<int32_t, int32_t>({{i, (::tpy::mul_check<int32_t>(i, 10))}}));
@@ -1689,11 +1691,11 @@ void blk_if_mixed_rev(bool flag) {
 //     print("blk_pre_loop_arm", f.n)
 void blk_pre_loop_arm(bool flag) {
     std::optional<Flat> __slot_1;
-    std::optional<Flat> __slot_2;
     Flat* f;
     for (int32_t i = 0; i < 2; ++i) {
         f = &*(__slot_1 = Flat(i));
     }
+    std::optional<Flat> __slot_2;
     if (flag) {
         f = &*(__slot_2 = Flat(99));
     }
@@ -2270,7 +2272,6 @@ void main() {
 void Holder::run() const {
     std::optional<Flat> __slot_1;
     std::optional<Flat> __slot_2;
-    std::optional<Flat> __slot_3;
     Flat* p;
     Flat* saved;
     for (int32_t i = 0; i < 2; ++i) {
@@ -2283,6 +2284,7 @@ void Holder::run() const {
     }
     p->n = ::tpy::add_check<int32_t>(p->n, 100);
     std::cout << "method" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
+    std::optional<Flat> __slot_3;
     p = &*(__slot_3 = Flat(9));
     std::cout << "method" << " " << p->n << " " << saved->n << "\n" << ::tpy::check_signals;
 }

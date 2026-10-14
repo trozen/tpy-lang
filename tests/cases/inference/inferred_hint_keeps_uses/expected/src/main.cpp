@@ -219,8 +219,8 @@ void nonlocal_slot(int32_t a) {
 //     ys = [take_float(a)]  # tpyc: ok
 //     print("nested_declared", ys[0] / 2)
 void nested_declared(std::vector<double>& xs, int32_t a) {
-    std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
+    std::optional<std::vector<double>> __slot_1;
     ys = &*(__slot_1 = {::tpyapp::main::take_float(static_cast<double>(a))});
     std::cout << "nested_declared" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__((*ys), 0), 2))) << "\n" << ::tpy::check_signals;
 }
@@ -233,7 +233,8 @@ void nested_declared(std::vector<double>& xs, int32_t a) {
 void float32_width() {
     ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
     ::tpy::ordered_map<std::string, float>* e = &__slot_1;
-    (*e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
+    std::optional<::tpy::ordered_map<std::string, float>> __slot_2;
+    e = &*(__slot_2 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
     std::cout << "float32_width" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*e), "k"))) << "\n" << ::tpy::check_signals;
 }
 
@@ -255,8 +256,8 @@ void lambda_params(const std::function<double(double)>& h) {
 //     ys.append(2.5)
 //     print("generic_t", ys)
 void generic_t(std::vector<double>& xs) {
-    std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
+    std::optional<std::vector<double>> __slot_1;
     ys = &*(__slot_1 = ::tpyapp::main::empty_list<double>(3));
     ys->push_back(2.5);
     std::cout << "generic_t" << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
@@ -269,8 +270,8 @@ void generic_t(std::vector<double>& xs) {
 //     zs[0].append(1.5)
 //     print("nested_empty", zs)
 void nested_empty(std::vector<std::vector<double>>& xss) {
-    std::optional<std::vector<std::vector<double>>> __slot_1;
     std::vector<std::vector<double>>* zs = &(xss);
+    std::optional<std::vector<std::vector<double>>> __slot_1;
     zs = &*(__slot_1 = {{}, {2.5}});
     ::tpy::__getitem__((*zs), 0).push_back(1.5);
     std::cout << "nested_empty" << " " << ::tpy::ListPrinter((*zs)) << "\n" << ::tpy::check_signals;
@@ -286,8 +287,8 @@ void nested_empty(std::vector<std::vector<double>>& xss) {
 //     x = round(2.7, 1)  # tpyc: ok
 //     print("round_ndigits", x)
 void float_values(std::vector<double>& xs, const std::vector<double>& fs) {
-    std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
+    std::optional<std::vector<double>> __slot_1;
     ys = &*(__slot_1 = ({
         std::vector<double> __result;
         auto& __obj_0 = fs;
@@ -324,8 +325,8 @@ void int_hint_round(double v) {
 //     ys.append(2.5)
 //     print("generic_method", ys)
 void generic_method(std::vector<double>& xs) {
-    std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
+    std::optional<std::vector<double>> __slot_1;
     ys = &*(__slot_1 = Maker().make_list<double>(3));
     ys->push_back(2.5);
     std::cout << "generic_method" << " " << ::tpy::ListPrinter((*ys)) << "\n" << ::tpy::check_signals;
@@ -357,8 +358,8 @@ __gen_gen_body gen_body(const std::vector<double>& fs) {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        e.emplace(::tpy::ordered_map<std::string, float>({{"a", 0.25f}}));
-        e.emplace(::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
+        e = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}}));
+        e = &*(__ptr_slot_f1 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
         __state = S_DONE;
         double __tpy_async_ret = (static_cast<double>(::tpy::__getitem__((*e), "k")) + (::tpy::__getitem__(fs, 0)));
         return ::tpystd::tpy::Poll<double>::ready(std::move(__tpy_async_ret));
@@ -811,7 +812,8 @@ void __tpy_init() {
     ::tpyapp::main::main();
     static ::tpy::ordered_map<std::string, float> __global_slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
     mod_e = &__global_slot_1;
-    (*mod_e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
+    static std::optional<::tpy::ordered_map<std::string, float>> __global_slot_2;
+    mod_e = &*(__global_slot_2 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
     std::cout << "module" << " " << ::tpy::print_float(static_cast<double>(::tpy::__getitem__((*mod_e), "k"))) << "\n" << ::tpy::check_signals;
 }
 

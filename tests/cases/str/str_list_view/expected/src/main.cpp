@@ -38,7 +38,8 @@ void test_list_reassign_fallback() {
     std::vector<std::string> __slot_1 = {"alice", "bob"};
     std::vector<std::string>* names = &__slot_1;
     std::string x = ::tpy::__getitem__((*names), 0);
-    (*names) = {"dave"};
+    std::optional<std::vector<std::string>> __slot_2;
+    names = &*(__slot_2 = {"dave"});
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 

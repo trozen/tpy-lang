@@ -17,8 +17,8 @@ int32_t consume(Handle&& h) {
 //     assert h is not None
 //     return consume(h)  # tpyc: ok
 int32_t test() {
-    std::optional<Handle> __slot_1;
     Handle* h = nullptr;
+    std::optional<Handle> __slot_1;
     h = &*(__slot_1 = Handle());
     h->value = 77;
     if (!((h != nullptr))) ::tpy::raise_assertion_error();

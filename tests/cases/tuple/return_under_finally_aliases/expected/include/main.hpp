@@ -234,7 +234,9 @@ struct __coro_async_body {
 struct __coro_async_rebind {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<Box> b;
+    Box* b = nullptr;
+    std::optional<Box> __ptr_slot_f0;
+    std::optional<Box> __ptr_slot_f1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {

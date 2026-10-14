@@ -762,8 +762,6 @@ std::string urlunparse(const std::tuple<std::string, std::string, std::string, s
 //         joined = "/"
 //     return urlunsplit((scheme, netloc, joined, r.query, r.fragment))
 std::string urljoin(std::string_view base, std::string_view url) {
-    std::optional<std::vector<std::string>> __slot_1;
-    std::optional<std::vector<std::string>> __slot_2;
     if ((::tpy::__len__(base) == 0)) {
         return std::string(url);
     }
@@ -791,6 +789,8 @@ std::string urljoin(std::string_view base, std::string_view url) {
         std::string query = (((::tpy::__len__(r.query) > 0)) ? (r.query) : (b.query));
         return ::tpystd::urllib::parse::urlunsplit(std::tuple<std::string, std::string, std::string, std::string, std::string>{scheme, netloc, path, query, r.fragment});
     }
+    std::optional<std::vector<std::string>> __slot_1;
+    std::optional<std::vector<std::string>> __slot_2;
     std::vector<std::string>* segments;
     if (::tpy::str_startswith(r.path, "/")) {
         segments = &*(__slot_1 = ::tpy::str_split(r.path, "/"));

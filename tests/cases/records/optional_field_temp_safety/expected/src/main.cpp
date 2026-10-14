@@ -38,9 +38,9 @@ void test_init_from_temp() {
 //     print(v is not None)
 //     print(v.x)
 void test_rebind_from_temp() {
-    std::optional<Point> __slot_1;
     Point* v = nullptr;
     Point p = Point(3, 4);
+    std::optional<Point> __slot_1;
     v = ::tpy::optional_to_ptr(__slot_1 = ::tpyapp::main::make_holder(p).value);
     std::cout << ::tpy::print_bool((v != nullptr)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::deref_check(v).x << "\n" << ::tpy::check_signals;
@@ -57,9 +57,9 @@ void test_rebind_from_temp() {
 //     print(v.x)
 //     print(v.y)
 void test_rebind_in_block() {
-    std::optional<Point> __slot_1;
     Point* v = nullptr;
     Point p = Point(5, 6);
+    std::optional<Point> __slot_1;
     if (true) {
         v = ::tpy::optional_to_ptr(__slot_1 = ::tpyapp::main::make_holder(p).value);
     }

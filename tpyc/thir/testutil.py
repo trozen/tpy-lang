@@ -9,7 +9,8 @@ from .. import get_lib_dir
 from ..compilation_context import activate_compiler
 from ..compiler import Compiler
 from ..type_def_registry import declared_native_facts, restore_declared_native_facts
-from ..parse.nodes import TpyFunction
+from ..parse.nodes import (RebindStorage, TpyFunction, TpyStmt,
+                           walk_body_stmts)
 from .emit import emit_thir_constructor_tail
 from .lower import bindings, iter_module_callables, lower_function
 from .lower import resumable as _resumable
@@ -46,6 +47,33 @@ def latch_builtin_stub_facts() -> None:
 
 def _entry(modules):
     return [m for m in modules if m.is_entry_point][0]
+
+
+def force_in_place(modules, sites: 'dict[str, tuple[int, ...] | None]') -> None:
+    """Give rebind sites of the entry module the IN_PLACE verdict, which
+    sema never produces (every rebind takes storage of its own until MIR
+    proves reuse safe), so a test of the in-place reseat's lowering or its
+    MIR modelling has one to read. `sites` maps a function -- a method or
+    `__init__` by its bare name -- to the ordinals of its rebind sites in
+    source order (None: all of them). Call it between `_compile` and
+    codegen."""
+    ast = _entry(modules).ast
+    funcs: list[TpyFunction] = []
+    for f in (*ast.functions, *(m for r in ast.all_records() for m in r.methods)):
+        if not any(f is g for g in funcs):
+            funcs.append(f)
+    for name, ordinals in sites.items():
+        found: list[TpyStmt] = []
+        for fn in funcs:
+            if fn.name == name:
+                walk_body_stmts(
+                    fn.body, lambda e: None,
+                    lambda s: found.append(s)
+                    if getattr(s, "rebind_storage", None) is not None else None)
+        assert found, f"no rebind site in '{name}'"
+        for i in (range(len(found)) if ordinals is None else ordinals):
+            assert found[i].rebind_storage is RebindStorage.OWN
+            found[i].rebind_storage = RebindStorage.IN_PLACE
 
 
 def _body_key(record_name: str | None, func: TpyFunction) -> str:

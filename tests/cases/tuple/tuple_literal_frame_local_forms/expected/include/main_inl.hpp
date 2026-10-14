@@ -217,7 +217,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_reassigned::__nex
 }
 
 // # a fresh literal in one branch and an OWNING CALL in the other: both hand the
-// # frame the element storage, so the join agrees and one owning slot serves both
+// # frame the element storage, each its own frame field (the pointer tuple's
+// # element at each binding site)
 // def literal_then_call(c: bool) -> Iterator[int32]:
 //     if c:
 //         t = (A(1), 2)  # tpyc: ok
@@ -231,17 +232,21 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_literal_then_call::__n
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if (c) {
-            t.emplace(std::tuple<A, int32_t>{A(1), 2});
+            auto __tup_1 = std::tuple<A, int32_t>{A(1), 2};
+            std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_1));
         } else {
-            t.emplace(::tpyapp::main::make_pair());
+            auto __tup_2 = ::tpyapp::main::make_pair();
+            std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
-        return std::get<0>((*t)).v;
+        return std::get<0>(t)->v;
     }
     case S_RESUME_0: {  // after: yield t[0].v
-        std::get<0>((*t)).v = 42;
+        std::get<0>(t)->v = 42;
         __state = S_RESUME_1;
-        return (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))));
+        return (::tpy::add_check<int32_t>(std::get<0>(t)->v, std::get<1>(t)));
     }
     case S_RESUME_1: {  // after: yield t[0].v + t[1]
         __state = S_DONE;
@@ -266,17 +271,21 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__n
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if (c) {
-            t.emplace(::tpyapp::main::make_pair());
+            auto __tup_1 = ::tpyapp::main::make_pair();
+            std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_1));
         } else {
-            t.emplace(std::tuple<A, int32_t>{A(1), 2});
+            auto __tup_2 = std::tuple<A, int32_t>{A(1), 2};
+            std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_0;
-        return std::get<0>((*t)).v;
+        return std::get<0>(t)->v;
     }
     case S_RESUME_0: {  // after: yield t[0].v
-        std::get<0>((*t)).v = 42;
+        std::get<0>(t)->v = 42;
         __state = S_RESUME_1;
-        return (::tpy::add_check<int32_t>(std::get<0>((*t)).v, std::get<1>((*t))));
+        return (::tpy::add_check<int32_t>(std::get<0>(t)->v, std::get<1>(t)));
     }
     case S_RESUME_1: {  // after: yield t[0].v + t[1]
         __state = S_DONE;
@@ -287,8 +296,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_then_literal::__n
     __builtin_unreachable();
 }
 
-// # an owning call REASSIGNED across a suspension: every init emplaces fresh
-// # storage into the one slot, so the second binding is not a dangling borrow
+// # an owning call REASSIGNED across a suspension: the first binding's element
+// # takes a frame field, and the rebind (nothing holds the old object) writes
+// # into it in place, so the second binding is not a dangling borrow
 // def call_reassigned() -> Iterator[int32]:
 //     t = make_pair()  # tpyc: ok
 //     yield t[0].v                           # -> S_RESUME_0
@@ -299,15 +309,19 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_call_reassigned::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(::tpyapp::main::make_pair());
+        auto __tup_1 = ::tpyapp::main::make_pair();
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_1));
         __state = S_RESUME_0;
-        return std::get<0>((*t)).v;
+        return std::get<0>(t)->v;
     }
     case S_RESUME_0: {  // after: yield t[0].v
-        t.emplace(::tpyapp::main::make_pair());
-        std::get<0>((*t)).v = ::tpy::add_check<int32_t>(std::get<0>((*t)).v, 1);
+        auto __tup_2 = ::tpyapp::main::make_pair();
+        std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+        std::get<0>(t)->v = ::tpy::add_check<int32_t>(std::get<0>(t)->v, 1);
         __state = S_RESUME_1;
-        return std::get<0>((*t)).v;
+        return std::get<0>(t)->v;
     }
     case S_RESUME_1: {  // after: yield t[0].v
         __state = S_DONE;

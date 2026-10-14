@@ -259,7 +259,8 @@ class BindingRepr:
     # A pointer whose rvalue reseats go through a pre-declared slot.
     rebind_slot: bool = False
     # A hoisted pointer without a rebind slot of its own: an rvalue reseat
-    # fills one it allocates at function top (BRANCH_RVALUE).
+    # fills one of its own, declared beside the predeclaration
+    # (BRANCH_RVALUE).
     lazy_rebind_slot: bool = False
     # A match capture's borrow-only pointer hoist (`T* q;`, `const T*`
     # where a nested match re-seats it off a const subject): a capture
@@ -331,6 +332,9 @@ class BindingRepr:
     # `const_frame_bindings`: const-borrow captures, a `@readonly` receiver,
     # const alias fields, loop holders).
     frame_const: bool = False
+    # A frame pointer field that borrows its pointee (a loop variable, an
+    # unpack target, a statement alias): the frame owns nothing behind it.
+    frame_borrowed: bool = False
     # A frame loop's pointer-form variable over an ITERATOR source: it
     # points into the step result, whose members may themselves be
     # references or pointers (a proxy tuple), so targets unpacked off it

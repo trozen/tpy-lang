@@ -576,9 +576,10 @@ __gen_gen_host gen_host() {
 void copy_section() {
     Rec __slot_1 = Rec(0);
     Rec* holder = &__slot_1;
+    std::optional<Rec> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         B b = B(i);
-        (*holder) = Rec(b.rec_m());
+        holder = &*(__slot_2 = Rec(b.rec_m()));
         holder->x = ::tpy::add_check<int32_t>(holder->x, 10);
         std::cout << "copy in-loop:" << " " << b.m.x << "\n" << ::tpy::check_signals;
     }
@@ -603,11 +604,11 @@ void copy_section() {
 //     holder.x += 100
 //     print("inverse:", holder.x, total)
 void inverse_section(B& p) {
-    std::optional<Rec> __slot_2;
     B outer = B(7);
     Rec __slot_1 = Rec(0);
     Rec* holder = &__slot_1;
     int32_t total = 0;
+    std::optional<Rec> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         B b = B(i);
         holder = &(outer.rec_m());

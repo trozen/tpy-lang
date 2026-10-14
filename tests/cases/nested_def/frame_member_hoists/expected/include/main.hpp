@@ -42,6 +42,7 @@ struct __gen_gen_own_slot;
 struct __gen_gen_escape_hoist;
 struct __coro_coro_dyn;
 struct __gen_gen_per_resume;
+struct __gen_gen_rebind_alias;
 struct __gen_Holder_gen;
 
 // def gen_own_slot() -> Iterator[int32]:
@@ -52,6 +53,8 @@ __gen_gen_escape_hoist gen_escape_hoist();
 __coro_coro_dyn coro_dyn();
 // def gen_per_resume() -> Iterator[int32]:
 __gen_gen_per_resume gen_per_resume();
+// def gen_rebind_alias() -> Iterator[int32]:
+__gen_gen_rebind_alias gen_rebind_alias();
 // def main() -> None:
 void main();
 
@@ -276,6 +279,27 @@ struct __gen_gen_per_resume : public ::tpy::next_iter_mixin<__gen_gen_per_resume
 
     friend std::ostream& operator<<(std::ostream& os, const __gen_gen_per_resume&) {
         return os << "<generator gen_per_resume>";
+    }
+};
+
+// def gen_rebind_alias() -> Iterator[int32]:
+struct __gen_gen_rebind_alias : public ::tpy::next_iter_mixin<__gen_gen_rebind_alias, int32_t> {
+    ::tpy::frame_state __state;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_rebind_alias() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_rebind_alias& __iter__() { return *this; }
+    int32_t inner(int32_t k);
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_rebind_alias&) {
+        return os << "<generator gen_rebind_alias>";
     }
 };
 

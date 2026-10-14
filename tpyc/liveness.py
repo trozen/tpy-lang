@@ -516,6 +516,8 @@ def _analyze_stmt(stmt: TpyStmt, live: set[str], w: _Walk) -> None:
         _kill_unless_read(stmt.name, [stmt.init] if stmt.init else [], live)
 
     elif isinstance(stmt, TpyTupleUnpack):
+        if w.mark:
+            stmt.live_names_after = frozenset(live)
         _process_reads(stmt.value, live, w)
         for name in stmt.targets:
             if name is not None:
@@ -654,6 +656,8 @@ def _analyze_match(stmt: TpyMatch, live: set[str], w: _Walk) -> None:
         arm_live |= fall
         if case.guard is not None:
             _process_reads(case.guard, arm_live, w)
+        if w.mark:
+            case.live_names_after = frozenset(arm_live)
         fall = arm_live | held
 
     live.clear()
@@ -675,15 +679,28 @@ def _loop_zero_trip_live(stmt: TpyWhile | TpyForEach,
     return exit_live
 
 
+def loop_iterator_name(loop: TpyForEach) -> str:
+    """The name the running iterator of `loop` is live under: every header
+    pulls from it, so it is live wherever the loop can come back to its
+    header, and nowhere a `break` or `return` leaves for. It cannot clash
+    with a program name. Keyed by the loop's position, so whatever orders
+    holders by name orders them the same on every run."""
+    loc = loop.loc
+    if loc is None:
+        return f"<iterator of loop {id(loop)}>"
+    return f"<iterator of loop at {loc.line}:{loc.column}>"
+
+
 def _loop_header_seed(stmt: TpyWhile | TpyForEach,
                       exit_live: frozenset[str]) -> frozenset[str]:
     """The header's live set before the body is counted: the normal exit
-    (none of it after `while True:`), and a `while` condition's reads, which
-    every iteration evaluates."""
+    (none of it after `while True:`), a `while` condition's reads, which
+    every iteration evaluates, and a `for` loop's iterator, which every
+    iteration pulls from."""
     exit_live = _loop_zero_trip_live(stmt, exit_live)
     if isinstance(stmt, TpyWhile):
         return exit_live | {n.name for n in _collect_reads_expr(stmt.condition)}
-    return exit_live
+    return exit_live | {loop_iterator_name(stmt)}
 
 
 def _loop_header_pass(stmt: TpyWhile | TpyForEach, header: frozenset[str],
@@ -752,6 +769,8 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
     if not w.mark:
         live.clear()
         live |= header
+        if isinstance(stmt, TpyForEach):
+            live.discard(loop_iterator_name(stmt))
         _process_reads(_loop_head(stmt), live, w)
         return
     saved = w.ex
@@ -762,8 +781,10 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
     w.ex = saved
     # A for loop binds its variable at the header on every iteration, and
     # the head either enters the body or takes the normal exit straight away.
+    # Its iterator is made by the loop statement itself.
     if isinstance(stmt, TpyForEach):
         live.discard(stmt.var)
+        live.discard(loop_iterator_name(stmt))
     live |= _loop_zero_trip_live(stmt, exit_live)
     _process_reads(_loop_head(stmt), live, w)
 

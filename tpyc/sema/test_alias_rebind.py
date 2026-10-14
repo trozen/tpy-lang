@@ -1,11 +1,12 @@
-"""The alias-rebind pass's per-element verdict for a rebound tuple binding."""
+"""The alias-rebind pass's facts for a rebound tuple binding: every site's
+storage, what a rebind keeps of the tuple it replaces, the pointer-tuple
+sets."""
 
 import pytest
 
-from ..parse import RebindStorage, TpyAssign, TpyIf, TpyStmt, TpyVarDecl
+from ..parse import RebindStorage, TpyAssign, TpyStmt, TpyVarDecl
+from ..sema.alias_rebind import kept_elems
 from ..thir.testutil import _compile, _entry
-
-IN, OWN = RebindStorage.IN_PLACE, RebindStorage.OWN
 
 PRELUDE = """\
 from tpy import int32, Own
@@ -25,9 +26,10 @@ def pair(n: int32) -> Own[tuple[Box, Box]]:
 """
 
 
-def _sites(body: str, name: str) -> list[tuple[RebindStorage | None, ...]]:
-    """The per-element verdicts of every decided rebind of `name` in the
-    body of `subject`, in program order."""
+def _sites(body: str, name: str) -> list[RebindStorage | None]:
+    """The storage of every stamped rebind of `name` in the body of
+    `subject`, in program order, after checking sema recorded no
+    per-element verdict for it."""
     source = PRELUDE + ("def subject(c: bool) -> None:\n"
                         "    v = Box(5)\n    w = Box(6)\n    b = Box(7)\n"
                         + "".join("    " + line + "\n"
@@ -36,7 +38,7 @@ def _sites(body: str, name: str) -> list[tuple[RebindStorage | None, ...]]:
     entry = _entry(modules)
     subject = next(f for f in entry.ast.functions if f.name == "subject")
     storage = entry.analyzer.ctx.tuple_elem_storage
-    out: list[tuple[RebindStorage | None, ...]] = []
+    out: list[RebindStorage | None] = []
 
     def walk(stmts: list[TpyStmt]) -> None:
         for s in stmts:
@@ -44,84 +46,57 @@ def _sites(body: str, name: str) -> list[tuple[RebindStorage | None, ...]]:
                      else s.target.name
                      if isinstance(s, TpyAssign)
                      and hasattr(s.target, "name") else None)
-            if bound == name and s in storage:
-                verdict = storage[s]
-                # The site verdict is IN_PLACE exactly when every owned
-                # element is.
-                assert (s.rebind_storage is IN) == all(
-                    v is not OWN for v in verdict)
-                out.append(verdict)
+            if bound == name and s.rebind_storage is not None:
+                assert s not in storage
+                out.append(s.rebind_storage)
             for sub in s.sub_bodies():
                 walk(sub)
     walk(subject.body)
     return out
 
 
-@pytest.mark.parametrize(("body", "name", "expected"), [
+@pytest.mark.parametrize("body", [
     # Nothing reaches the old element at the second binding; `a` does at
     # the third.
-    ("p = make_mixed(1, v)\np = make_mixed(2, v)\na = p[0]\n"
-     "p = make_mixed(3, v)\na.n += 100\nprint(a.n, p[0].n)",
-     "p", [(IN, None), (OWN, None)]),
-    # The origin owns no element: an in-place write would land in `v`.
-    ("p = (v, w)\np = make_mixed(1, v)\nprint(p[0].n)",
-     "p", [(OWN, None)]),
-    # The new value keeps the object the rebind would overwrite.
-    ("p = make_mixed(1, b)\np = make_mixed(9, p[0])\np[1].n += 100\n"
-     "print(p[0].n, p[1].n)",
-     "p", [(OWN, None)]),
-    # The literal twin: an element borrowing the old element.
-    ("p = make_mixed(1, b)\np = (Box(9), p[0])\nprint(p[0].n, p[1].n)",
-     "p", [(OWN, None)]),
-    # ... through a field of the old element.
-    ("q = make_node(1, b)\nq = make_node(9, q[0].child)\nprint(q[1].n)",
-     "q", [(OWN, None)]),
+    "p = make_mixed(1, v)\np = make_mixed(2, v)\na = p[0]\n"
+    "p = make_mixed(3, v)\na.n += 100\nprint(a.n, p[0].n)",
+    # The new value keeps the object the rebind replaces.
+    "p = make_mixed(1, b)\np = make_mixed(9, p[0])\np[1].n += 100\n"
+    "print(p[0].n, p[1].n)",
     # A value read off the old element is a copy taken before the rebind.
-    ("p = (Box(1), 0)\np = (Box(9), p[0].n)\nprint(p[0].n, p[1])",
-     "p", [(IN, None)]),
+    "p = (Box(1), 0)\np = (Box(9), p[0].n)\nprint(p[0].n, p[1])",
     # A deleted tuple's elements may still be read through an alias.
-    ("p = make_mixed(1, b)\na = p[0]\ndel p\np = make_mixed(9, b)\n"
-     "a.n += 1\nprint(a.n, p[0].n)",
-     "p", [(OWN, None)]),
-    # A whole alias of a branch-hoisted tuple keeps both of its elements.
-    ("if c:\n    t = pair(1)\nelse:\n    t = pair(2)\nu = t\nt = pair(9)\n"
-     "u[0].n += 100\nprint(u[0].n, t[0].n)",
-     "t", [(OWN, OWN)]),
+    "p = make_mixed(1, b)\na = p[0]\ndel p\np = make_mixed(9, b)\n"
+    "a.n += 1\nprint(a.n, p[0].n)",
     # A path on which the tuple is unbound leaves null element pointers.
-    ("if c:\n    t = pair(1)\nt = pair(9)\nprint(t[0].n)",
-     "t", [(OWN, OWN)]),
-    # An unpack target of a tuple still read after it aliases the owned
-    # element it was given.
-    ("p = make_mixed(1, b)\na0, a1 = p\nprint(p[0].n)\np = make_mixed(9, b)\n"
-     "a0.n += 100\nprint(a0.n, a1.n, p[0].n)",
-     "p", [(OWN, None)]),
-    # One of a tuple read no more moves the element out: nothing is left to
-    # alias.
-    ("p = make_mixed(1, b)\na0, a1 = p\np = make_mixed(9, b)\n"
-     "a0.n += 100\nprint(a0.n, a1.n, p[0].n)",
-     "p", [(IN, None)]),
-    # A target holding the borrowed element points outside the tuple.
-    ("p = make_mixed(1, b)\n_, a = p\np = make_mixed(9, b)\n"
-     "a.n += 100\nprint(a.n, p[0].n)",
-     "p", [(IN, None)]),
-    # An operand shape the retention projection does not model (a ternary)
-    # keeps every element of a tuple it mentions.
-    ("p = make_mixed(1, v)\np = make_mixed(2, v)\n"
-     "p = make_mixed(9, p[0] if c else v)\nprint(p[0].n, p[1].n)",
-     "p", [(IN, None), (OWN, None)]),
-    # ... and one that does not mention the tuple keeps nothing of it.
-    ("p = make_mixed(1, v)\np = make_mixed(9, v if c else w)\n"
-     "print(p[0].n)",
-     "p", [(IN, None)]),
+    "if c:\n    t = pair(1)\nt = pair(9)\nprint(t[0].n)",
+    # An unpack target of a tuple read no more.
+    "p = make_mixed(1, b)\na0, a1 = p\np = make_mixed(9, b)\n"
+    "a0.n += 100\nprint(a0.n, a1.n, p[0].n)",
 ])
-def test_tuple_rebind_per_element_verdict(
-        body: str, name: str, expected: list) -> None:
-    assert _sites(body, name) == expected
+def test_every_rebind_takes_storage_of_its_own(body: str) -> None:
+    # Reusing the old object's storage is MIR's to prove: sema leaves every
+    # site OWN, whether or not anything still reaches the old object.
+    name = "t" if body.startswith("if c:") else "p"
+    sites = _sites(body, name)
+    assert sites and all(s is RebindStorage.OWN for s in sites), sites
+
+
+def _kept(source: str) -> frozenset[int | None]:
+    """What the last stamped rebind of `p` in `subject` keeps of the tuple
+    it replaces (`kept_elems`)."""
+    _, modules = _compile(source)
+    entry = _entry(modules)
+    fn = next(f for f in entry.ast.functions if f.name == "subject")
+    site = [s for s in fn.body if isinstance(s, (TpyVarDecl, TpyAssign))
+            and s.rebind_storage is not None][-1]
+    value = site.init if isinstance(site, TpyVarDecl) else site.value
+    return kept_elems(entry.analyzer.ctx, "p", value)
 
 
 def test_unknown_callee_keeps_every_owned_element() -> None:
     # A callable value has no return-borrow facts: its result may keep any
-    # element of the tuple it is handed, so nothing is written in place.
+    # element of the tuple it is handed.
     source = PRELUDE.replace("from tpy import int32, Own",
                              "from typing import Callable\n"
                              "from tpy import int32, Own") + (
@@ -130,13 +105,7 @@ def test_unknown_callee_keeps_every_owned_element() -> None:
         "    p = make_mixed(1, b)\n"
         "    p = f(9, p[0])\n"
         "    print(p[0].n, p[1].n)\n")
-    _, modules = _compile(source)
-    entry = _entry(modules)
-    subject = next(f for f in entry.ast.functions if f.name == "subject")
-    site = subject.body[1]
-    assert entry.analyzer.ctx.tuple_elem_storage.get(site) == (OWN, None), (
-        entry.analyzer.ctx.tuple_elem_storage.get(site),
-        site.init.resolved_function_info)
+    assert _kept(source) == {0}
 
 
 CALLEES = """\
@@ -157,38 +126,34 @@ class Cell:
 @pytest.mark.parametrize("before", [True, False])
 @pytest.mark.parametrize(("body", "expected"), [
     # An operand that is not the old tuple's storage keeps nothing of it.
-    ("p = make_mixed(1, v)\np = later(9, v)", (IN, None)),
+    ("p = make_mixed(1, v)\np = later(9, v)", set()),
     # Handing the old element over may keep it.
-    ("p = make_mixed(1, v)\np = later(9, p[0])", (OWN, None)),
-    # ... and handing the whole tuple keeps every element it owns.
-    ("p = make_mixed(1, v)\np = later_whole(9, p)", (OWN, None)),
+    ("p = make_mixed(1, v)\np = later(9, p[0])", {0}),
+    # ... and handing the whole tuple keeps all of it.
+    ("p = make_mixed(1, v)\np = later_whole(9, p)", {None}),
     # A method receiver is an operand like any other.
-    ("c = Cell(4)\np = (Cell(1), c)\np = p[0].f(9)", (OWN, None)),
+    ("c = Cell(4)\np = (Cell(1), c)\np = p[0].f(9)", {0}),
     # An operand moved into an `Own` slot is not retained.
-    ("p = make_mixed(1, v)\np = later_own(9, p[0], v)", (IN, None)),
+    ("p = make_mixed(1, v)\np = later_own(9, p[0], v)", set()),
 ])
-def test_call_retention_follows_the_contract(body: str, expected: tuple,
+def test_call_retention_follows_the_contract(body: str, expected: set,
                                              before: bool) -> None:
-    # The verdict is the call's contract, whichever body is analyzed first.
+    # What a rebind keeps is the call's contract, whichever body is
+    # analyzed first.
     subject = ("def subject(c0: bool) -> None:\n    v = Box(5)\n"
                + "".join("    " + line + "\n" for line in body.splitlines())
                + "    print(p[0].n)\n")
     source = (PRELUDE + CALLEES + subject if before
               else PRELUDE + subject + CALLEES)
-    _, modules = _compile(source)
-    entry = _entry(modules)
-    fn = next(f for f in entry.ast.functions if f.name == "subject")
-    site = [s for s in fn.body if isinstance(s, (TpyVarDecl, TpyAssign))
-            and s in entry.analyzer.ctx.tuple_elem_storage][-1]
-    assert entry.analyzer.ctx.tuple_elem_storage[site] == expected
+    assert _kept(source) == expected
 
 
 @pytest.mark.parametrize(("arg", "expected"), [
-    ("p[0]", (OWN, None)),
-    ("v", (IN, None)),
+    ("p[0]", {0}),
+    ("v", set()),
 ])
 def test_callable_value_retains_its_lent_operands(arg: str,
-                                                  expected: tuple) -> None:
+                                                  expected: set) -> None:
     source = PRELUDE.replace("from tpy import int32, Own",
                              "from typing import Callable\n"
                              "from tpy import int32, Own") + (
@@ -197,12 +162,7 @@ def test_callable_value_retains_its_lent_operands(arg: str,
         "    p = make_mixed(1, v)\n"
         f"    p = f(9, {arg})\n"
         "    print(p[0].n, p[1].n)\n")
-    _, modules = _compile(source)
-    entry = _entry(modules)
-    fn = next(f for f in entry.ast.functions if f.name == "subject")
-    assert entry.analyzer.ctx.tuple_elem_storage.get(fn.body[1]) == expected
-
-
+    assert _kept(source) == expected
 def _pointer_tuples(body: str) -> tuple[dict[str, str], list[str]]:
     """`subject`'s pointer tuples, each with the owner whose storage it
     holds, and the compile's warnings."""

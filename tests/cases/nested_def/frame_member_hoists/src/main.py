@@ -140,6 +140,20 @@ def gen_per_resume() -> Iterator[int32]:
         yield inner(i) + fl.x
 
 
+# generator's nested def: a straight-line rebind under an alias takes a slot
+# of its own, declared right before the rebind's statement in the member body
+def gen_rebind_alias() -> Iterator[int32]:
+    def inner(k: int32) -> int32:
+        p = Rec(k)
+        alias = p
+        p = Rec(k * 100)  # tpyc: ok
+        alias.x += 1
+        print("rebind_alias in:", alias.x, p.x)
+        return alias.x + p.x
+
+    yield inner(2)
+
+
 def main() -> None:
     for v in gen_own_slot():
         print("own_slot:", v)
@@ -151,6 +165,8 @@ def main() -> None:
     print("dyn:", asyncio.run(coro_dyn()))
     for v in gen_per_resume():
         print("per_resume:", v)
+    for v in gen_rebind_alias():
+        print("rebind_alias:", v)
 
 
 main()

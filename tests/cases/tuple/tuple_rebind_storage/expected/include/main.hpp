@@ -21,6 +21,11 @@ struct HB;
 struct Oops;
 struct HM;
 struct HCtor;
+struct TwoHop;
+struct Named;
+struct Lab;
+struct Labelled;
+struct Keeper;
 
 extern Box* V;
 extern Box* W;
@@ -36,6 +41,8 @@ extern Box* c1b;
 extern std::tuple<Box*, Box*> P;
 extern std::tuple<Box*, Box*> S;
 extern std::tuple<Box*, Box*> S2;
+extern Box* B;
+extern Box* SB;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_frame_body;
@@ -178,6 +185,8 @@ void gen_loop(Box& v);
 void swap_names(Box& v);
 // def grab() -> tuple[Box, Box]:
 std::tuple<Box*, Box*> grab();
+// def grab_box() -> Box:
+Box& grab_box();
 // def alias_order_early(v: Box) -> None:
 void alias_order_early(Box& v);
 // def alias_order_late(v: Box) -> None:
@@ -267,6 +276,38 @@ void ternary_param_roots(HB& h, HB& g, Box& v, bool c);
 void owning_rebind_alias(Box& v);
 // def nested_own_param(v: Box) -> None:
 void nested_own_param(Box& v);
+// def pick_box(b: Box) -> tuple[Box, int32]:
+std::tuple<Box*, int32_t> pick_box(Box& b);
+// def untracked_two_hop(c: bool) -> None:
+void untracked_two_hop(bool c);
+// def untracked_strview(c: bool) -> None:
+void untracked_strview(bool c);
+// def untracked_value_view(c: bool, a: str, b: str) -> None:
+void untracked_value_view(bool c, std::string_view a, std::string_view b);
+// def untracked_fresh_view(c: bool) -> None:
+void untracked_fresh_view(bool c);
+// def untracked_match_capture(c: bool) -> None:
+void untracked_match_capture(bool c);
+// def untracked_for_unpack(c: bool) -> None:
+void untracked_for_unpack(bool c);
+// def untracked_literal_unpack(c: bool) -> None:
+void untracked_literal_unpack(bool c);
+// def untracked_chained(c: bool) -> None:
+void untracked_chained(bool c);
+// def untracked_call_unpack(c: bool) -> None:
+void untracked_call_unpack(bool c);
+// def retain_binding(c: bool) -> None:
+void retain_binding(bool c);
+// def retain_statement(c: bool) -> None:
+void retain_statement(bool c);
+// def tuple_view(c: bool) -> None:
+void tuple_view(bool c);
+// def range_field(c: bool) -> None:
+void range_field(bool c);
+// def copied_elem(c: bool) -> None:
+void copied_elem(bool c);
+// def mapped_elem(c: bool) -> None:
+void mapped_elem(bool c);
 // def main() -> None:
 void main();
 
@@ -459,12 +500,107 @@ inline std::ostream& operator<<(std::ostream& os, const HCtor& obj) {
     return os;
 }
 
+// class TwoHop:
+struct TwoHop {
+    // xs: list[Box]
+    std::vector<Box> xs;
+
+    // def __init__(self, i: int32) -> None:
+    TwoHop() = default;
+    explicit TwoHop(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.TwoHop";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const TwoHop& obj) {
+    ::tpy::print_object_default(os, "TwoHop", obj);
+    return os;
+}
+
+// class Named:
+struct Named {
+    // s: str
+    std::string s;
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, i: int32) -> None:
+    Named() = default;
+    explicit Named(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
+    ::tpy::print_object_default(os, "Named", obj);
+    return os;
+}
+
+// class Lab(ValueType):
+struct Lab {
+    // lab: StrView
+    std::string_view lab;
+
+    // def __init__(self, lab: StrView) -> None:
+    Lab() = default;
+    explicit Lab(std::string_view lab);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Lab";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Lab& obj) {
+    ::tpy::print_object_default(os, "Lab", obj);
+    return os;
+}
+} // namespace tpyapp::main
+
+template<> struct tpy::is_value_type<::tpyapp::main::Lab> : std::true_type {};
+
+namespace tpyapp::main {
+
+
+// class Labelled:
+struct Labelled {
+    // s: str
+    std::string s;
+    // w: Lab
+    Lab w;
+
+    // def __init__(self, src: str) -> None:
+    Labelled() = default;
+    explicit Labelled(std::string_view src);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Labelled";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Labelled& obj) {
+    ::tpy::print_object_default(os, "Labelled", obj);
+    return os;
+}
+
+// class Keeper:
+struct Keeper {
+    // p: Ptr[Box]
+    Box* p;
+
+    // def __init__(self, b: Box) -> None:
+    Keeper() = default;
+    explicit Keeper(Box& b);
+
+    // def save(self, b: Box) -> int32:
+    int32_t save(Box& b);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Keeper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
+    ::tpy::print_object_default(os, "Keeper", obj);
+    return os;
+}
+
 // async def frame_body(v: Box) -> int32:
 struct __coro_frame_body {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     Box& v;
-    ::tpy::frame_slot<std::tuple<Box, Box*>> p;
+    std::tuple<Box*, Box*> p;
+    std::optional<Box> __ptr_slot_f0;
+    std::optional<Box> __ptr_slot_f1;
     Box* a = nullptr;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -706,12 +842,12 @@ inline Holder::Holder(const Box& b) : toks(std::tuple<Tok, Tok>{Tok(40), Tok(b.n
 //     a.n += 100
 //     print("method", a2.n, p[0].n)
 inline void Holder::method(Box& v) const {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -729,12 +865,12 @@ inline void Holder::method(Box& v) const {
 //     a.n += 100
 //     self.seen = a2.n * 100 + p[0].n
 inline Built::Built(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -776,12 +912,47 @@ inline HCtor::HCtor(Box& v) : bp(std::tuple<Box, Box>{Box(50), Box(60)}) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(this->bp);
     std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
     std::cout << "ctor-self-root" << " " << std::get<0>(p)->n << " " << std::get<0>(this->bp).n << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, i: int32) -> None:
+//     self.xs = [Box(i), Box(i + 1)]
+inline TwoHop::TwoHop(int32_t i) : xs(std::vector<Box>{Box(i), Box((::tpy::add_check<int32_t>(i, 1)))}) {}
+
+// def __init__(self, i: int32) -> None:
+//     self.s = "abcdefghijklmnopqrstuvwxyz0123456789" + str(i)
+//     self.n = i
+inline Named::Named(int32_t i)
+    : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789", ::tpy::fixed_to_str<int32_t>(i)))),
+      n(i) {}
+
+// def __init__(self, lab: StrView) -> None:
+//     self.lab = lab
+inline Lab::Lab(std::string_view lab) : lab(lab) {}
+
+// def __init__(self, src: str) -> None:
+//     self.s = src + "!"
+//     self.w = Lab(self.s)
+inline Labelled::Labelled(std::string_view src)
+    : s((::tpy::str_concat(src, "!"))),
+      w(Lab(this->s)) {}
+
+// def __init__(self, b: Box) -> None:
+//     self.p = take_ptr(b)
+inline Keeper::Keeper(Box& b) : p(&b) {}
+
+// def save(self, b: Box) -> int32:
+//     self.p = take_ptr(b)
+//     return 1
+inline int32_t Keeper::save(Box& b) {
+    this->p = &b;
+    return 1;
 }
 void __tpy_init();
 } // namespace tpyapp::main

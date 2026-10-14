@@ -4,17 +4,49 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
 
 namespace tpyapp::main {
 
 struct Box;
+struct N;
+struct NB;
+struct Bag;
 
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_loop_alias;
+struct __gen_gen_nested_loop_rebind;
+struct __coro_pause;
+struct __coro_co_nested_loop_rebind;
 
 // def make_mixed(n: int32, b: Box) -> tuple[Own[Box], Box]:
 std::tuple<Box, Box*> make_mixed(int32_t n, Box& b);
 // def loop_retain(v: Box) -> None:
 void loop_retain(Box& v);
+// def gen_loop_alias(v: Box) -> Iterator[int32]:
+__gen_gen_loop_alias gen_loop_alias(Box& v);
+// def holder_loop() -> None:
+void holder_loop();
+// def nested_loop_rebind(c: bool) -> None:
+void nested_loop_rebind(bool c);
+// def gen_nested_loop_rebind(c: bool) -> Iterator[int32]:
+__gen_gen_nested_loop_rebind gen_nested_loop_rebind(bool c);
+// async def pause(n: int32) -> int32:
+__coro_pause pause(int32_t n);
+// async def co_nested_loop_rebind(c: bool) -> None:
+__coro_co_nested_loop_rebind co_nested_loop_rebind(bool c);
+// def scalar_nested_loop_rebind(c: bool) -> None:
+void scalar_nested_loop_rebind(bool c);
+// def holder_two_hop_loop(c: bool) -> None:
+void holder_two_hop_loop(bool c);
+// def fresh_iterable_loop(c: bool) -> None:
+void fresh_iterable_loop(bool c);
+// def range_len_loop(c: bool) -> None:
+void range_len_loop(bool c);
+// def main() -> None:
+void main();
 
 // class Box:
 struct Box {
@@ -32,9 +64,220 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
     return os;
 }
 
+// class N:
+struct N {
+    // ns: list[int32]
+    std::vector<int32_t> ns;
+
+    // def __init__(self, i: int32) -> None:
+    N() = default;
+    explicit N(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.N";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const N& obj) {
+    ::tpy::print_object_default(os, "N", obj);
+    return os;
+}
+
+// class NB:
+struct NB {
+    // xs: list[Box]
+    std::vector<Box> xs;
+
+    // def __init__(self, i: int32) -> None:
+    NB() = default;
+    explicit NB(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.NB";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const NB& obj) {
+    ::tpy::print_object_default(os, "NB", obj);
+    return os;
+}
+
+// class Bag:
+struct Bag {
+    // xs: list[int32]
+    std::vector<int32_t> xs;
+
+    // def __init__(self, n: N) -> None:
+    Bag() = default;
+    explicit Bag(const N& n);
+
+    // def __iter__(self) -> Iterator[int32]:
+    auto __iter__() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
+    ::tpy::print_object_default(os, "Bag", obj);
+    return os;
+}
+
+// async def pause(n: int32) -> int32:
+struct __coro_pause {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t n;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_pause(int32_t n_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          n(std::move(n_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_pause&) {
+        return os << "<coroutine pause>";
+    }
+};
+
+// async def co_nested_loop_rebind(c: bool) -> None:
+struct __coro_co_nested_loop_rebind {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    bool c;
+    std::tuple<N*, int32_t> t;
+    std::optional<N> __ptr_slot_f0;
+    std::optional<N> __ptr_slot_f1;
+    ::tpy::frame_slot<std::vector<int32_t>> out;
+    int32_t i;
+    int32_t x;
+    int32_t k;
+    int32_t __await_lift_0;
+    std::tuple<int32_t, int32_t> __for_tup_2;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(std::get<0>(t)->ns)))>;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_1_t>> __for_r_1;
+    std::optional<__coro_pause> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_co_nested_loop_rebind(bool c_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(std::move(c_)) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_co_nested_loop_rebind&) {
+        return os << "<coroutine co_nested_loop_rebind>";
+    }
+};
+
+// def gen_loop_alias(v: Box) -> Iterator[int32]:
+struct __gen_gen_loop_alias : public ::tpy::next_iter_mixin<__gen_gen_loop_alias, int32_t> {
+    ::tpy::frame_state __state;
+    Box& v;
+    std::tuple<Box*, Box*> p;
+    std::optional<Box> __ptr_slot_f0;
+    std::optional<Box> __ptr_slot_f1;
+    std::tuple<Box*, Box*> r;
+    int32_t i;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_loop_alias(Box& v)
+        : __state(S_INITIAL),
+          v(v) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_loop_alias& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_loop_alias&) {
+        return os << "<generator gen_loop_alias>";
+    }
+};
+
+// def gen_nested_loop_rebind(c: bool) -> Iterator[int32]:
+struct __gen_gen_nested_loop_rebind : public ::tpy::next_iter_mixin<__gen_gen_nested_loop_rebind, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    std::tuple<N*, int32_t> t;
+    std::optional<N> __ptr_slot_f0;
+    std::optional<N> __ptr_slot_f1;
+    std::tuple<int32_t, int32_t> __for_tup_1;
+    int32_t i;
+    int32_t x;
+    int32_t k;
+    using __for_src_1_t = ::tpy::for_source_t<decltype((::tpy::builtin_enumerate(std::get<0>(t)->ns)))>;
+    ::tpy::frame_loop_slot<int32_t> __for_i_0;
+    ::tpy::frame_loop_slot<int32_t> __for_stop_0;
+    ::tpy::frame_loop_slot<__for_src_1_t> __for_src_1;
+    ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_1_t>> __for_r_1;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_nested_loop_rebind(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_nested_loop_rebind& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_nested_loop_rebind&) {
+        return os << "<generator gen_nested_loop_rebind>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Box::Box(int32_t n) : n(n) {}
+
+// def __init__(self, i: int32) -> None:
+//     self.ns = [i, i + 1]
+inline N::N(int32_t i) : ns(std::vector<int32_t>{i, (::tpy::add_check<int32_t>(i, 1))}) {}
+
+// def __init__(self, i: int32) -> None:
+//     self.xs = [Box(i), Box(i + 1)]
+inline NB::NB(int32_t i) : xs(std::vector<Box>{Box(i), Box((::tpy::add_check<int32_t>(i, 1)))}) {}
+
+// def __init__(self, n: N) -> None:
+//     self.xs = []
+//     for x in n.ns:
+//         self.xs.append(x * 2)
+inline Bag::Bag(const N& n) : xs(std::vector<int32_t>{}) {
+    auto& __obj_0 = n.ns;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        int32_t x = *__beg_0;
+        this->xs.push_back((::tpy::mul_check<int32_t>(x, 2)));
+    }
+}
+
+// def __iter__(self) -> Iterator[int32]:
+//     return iter(self.xs)
+inline auto Bag::__iter__() const {
+    return ::tpy::__iter__(this->xs);
+}
 void __tpy_init();
 } // namespace tpyapp::main

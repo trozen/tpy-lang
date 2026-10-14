@@ -18,9 +18,18 @@ alias_kind: 102 102
 loop_two_site: 106 106
 loop_two_site_silent: 5
 loop_two_site_silent: 6
-loop_three_site: 11 30
+loop_three_site: 20 30
 loop_three_site: 21 31 31
 loop_two_site_gen: [3, 4, 106]
 loop_two_site_read_before: 1
 loop_two_site_read_before: 5
 loop_two_site_read_before: 6
+loop_unpack_first_bind_iter: 80 1
+loop_unpack_first_bind: 0 1
+loop_unpack_first_bind: 10 11
+loop_unpack_site_gen: [1, 1, 21, 41, 20]
+loop_capture_iter: 90
+loop_capture: 1
+loop_capture: 11
+loop_capture_quiet: 1 1
+loop_capture_quiet: 11 11

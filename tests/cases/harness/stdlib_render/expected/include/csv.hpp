@@ -303,7 +303,9 @@ struct __gen__parse_rows : public ::tpy::next_iter_mixin<__gen__parse_rows<R>, s
     std::string c;
     bool in_quotes;
     bool at_field_start;
-    ::tpy::frame_slot<std::vector<std::string>> parts;
+    std::vector<std::string>* parts = nullptr;
+    std::optional<std::vector<std::string>> __ptr_slot_f0;
+    std::optional<std::vector<std::string>> __ptr_slot_f1;
     bool blank;
     ::tpy::frame_slot<std::vector<std::string>> row;
 
@@ -423,7 +425,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
             row.emplace(std::vector<std::string>{});
-            parts.emplace(std::vector<std::string>{});
+            parts = &*(__ptr_slot_f0 = std::vector<std::string>{});
             i = 0;
             n = ::tpy::__len__(line);
             in_quotes = false;
@@ -449,7 +451,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                 if (in_quotes) {
                     if ((c == quotechar)) {
                         if (((doublequote && ((::tpy::add_check<int32_t>(i, 1)) < n)) && (::tpy::str_slice(line, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))}) == quotechar))) {
-                            (*parts).push_back(std::string(quotechar));
+                            parts->push_back(std::string(quotechar));
                             i = ::tpy::add_check<int32_t>(i, 2);
                             continue;
                         }
@@ -458,7 +460,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                         continue;
                     }
                     std::string __tmp_1{c};
-                    (*parts).push_back(std::move(__tmp_1));
+                    parts->push_back(std::move(__tmp_1));
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
                 }
@@ -470,7 +472,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                 }
                 if ((c == delimiter)) {
                     (*row).push_back(::tpy::str_join("", (*parts)));
-                    parts.emplace(std::vector<std::string>{});
+                    parts = &*(__ptr_slot_f1 = std::vector<std::string>{});
                     at_field_start = true;
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
@@ -488,7 +490,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen__parse_rows<
                 }
                 at_field_start = false;
                 std::string __tmp_2{c};
-                (*parts).push_back(std::move(__tmp_2));
+                parts->push_back(std::move(__tmp_2));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             if ((!(blank))) {
@@ -542,7 +544,9 @@ struct __gen_reader : public ::tpy::next_iter_mixin<__gen_reader<T_fp>, std::vec
     std::string c;
     bool in_quotes;
     bool at_field_start;
-    ::tpy::frame_slot<std::vector<std::string>> parts;
+    std::vector<std::string>* parts = nullptr;
+    std::optional<std::vector<std::string>> __ptr_slot_f0;
+    std::optional<std::vector<std::string>> __ptr_slot_f1;
     bool blank;
     ::tpy::frame_slot<std::vector<std::string>> row;
 
@@ -658,7 +662,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                 return ::tpy::make_unexpected(::tpy::StopIteration{});
             }
             row.emplace(std::vector<std::string>{});
-            parts.emplace(std::vector<std::string>{});
+            parts = &*(__ptr_slot_f0 = std::vector<std::string>{});
             i = 0;
             n = ::tpy::__len__(line);
             in_quotes = false;
@@ -684,7 +688,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                 if (in_quotes) {
                     if ((c == quotechar)) {
                         if (((doublequote && ((::tpy::add_check<int32_t>(i, 1)) < n)) && (::tpy::str_slice(line, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), (::tpy::add_check<int32_t>(i, 2))}) == quotechar))) {
-                            (*parts).push_back(std::string(quotechar));
+                            parts->push_back(std::string(quotechar));
                             i = ::tpy::add_check<int32_t>(i, 2);
                             continue;
                         }
@@ -693,7 +697,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                         continue;
                     }
                     std::string __tmp_1{c};
-                    (*parts).push_back(std::move(__tmp_1));
+                    parts->push_back(std::move(__tmp_1));
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
                 }
@@ -705,7 +709,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                 }
                 if ((c == delimiter)) {
                     (*row).push_back(::tpy::str_join("", (*parts)));
-                    parts.emplace(std::vector<std::string>{});
+                    parts = &*(__ptr_slot_f1 = std::vector<std::string>{});
                     at_field_start = true;
                     i = ::tpy::add_check<int32_t>(i, 1);
                     continue;
@@ -723,7 +727,7 @@ std::expected<std::vector<std::string>, ::tpy::StopIteration> __gen_reader<T_fp>
                 }
                 at_field_start = false;
                 std::string __tmp_2{c};
-                (*parts).push_back(std::move(__tmp_2));
+                parts->push_back(std::move(__tmp_2));
                 i = ::tpy::add_check<int32_t>(i, 1);
             }
             if ((!(blank))) {

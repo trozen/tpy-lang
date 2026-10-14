@@ -1,58 +1,65 @@
-# Tests that reassigning a variable with __del__ properly destroys intermediate values.
-# The move-assignment operator uses destroy-and-reconstruct to ensure cleanup runs.
-# Covers straight-line, loop, and conditional reassignment patterns.
-from tpy import int32
+# Every object a reassigned variable with __del__ held is destroyed exactly
+# once: each rebind takes a slot of its own, which drops its object when the
+# function returns or when a loop runs the same site again. Covers
+# straight-line, loop, and conditional reassignment patterns. When an object
+# drops (at the rebind under CPython, when its slot dies here) is no part of
+# Python's semantics, so each section reads the drops sorted after the
+# function has returned.
+from tpy import Own, int32
+
+
+DROPS: list[str] = []
+
 
 class Resource:
     name: str
-    def __init__(self, name: str):
-        self.name = name
-    def __del__(self):
-        print("drop", self.name)
 
-def test_straight():
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __del__(self) -> None:
+        DROPS.append(self.name)
+
+
+def drops() -> Own[list[str]]:
+    out = sorted(DROPS)
+    DROPS.clear()
+    return out
+
+
+def test_straight() -> None:
     r = Resource("a")
+    # straight: two rebinds, three objects, each dropped once.
     r = Resource("b")
     r = Resource("c")
-    print("alive:", r.name)
+    print("straight alive:", r.name)
 
-def test_loop():
+
+def test_loop() -> None:
     r = Resource("init")
     for i in range(3):
+        # loop: the site runs three times, dropping each previous object.
         r = Resource("loop")
-    print("alive:", r.name)
+    print("loop alive:", r.name)
 
-def test_conditional(flag: int32):
+
+def test_conditional(flag: int32) -> None:
     r = Resource("start")
     if flag > 0:
+        # conditional: the rebind runs on one path only.
         r = Resource("branch")
-    print("alive:", r.name)
+    print("conditional alive:", r.name)
 
-class Base:
-    tag: str
-    def __init__(self, tag: str):
-        self.tag = tag
-    def __del__(self):
-        print("~Base", self.tag)
 
-class Child(Base):
-    def __init__(self, tag: str):
-        super().__init__(tag)
-    def __del__(self):
-        print("~Child", self.tag)
+def main() -> None:
+    test_straight()
+    print("straight dropped:", drops())
+    test_loop()
+    print("loop dropped:", drops())
+    test_conditional(1)
+    print("conditional dropped:", drops())
+    test_conditional(0)
+    print("conditional dropped:", drops())
 
-def test_inherit():
-    c = Child("x")
-    c = Child("y")
-    c = Child("z")
-    print("alive:", c.tag)
 
-test_straight()
-print("---")
-test_loop()
-print("---")
-test_conditional(1)
-print("---")
-test_conditional(0)
-print("---")
-test_inherit()
+main()

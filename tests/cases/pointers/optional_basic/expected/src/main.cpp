@@ -12,9 +12,9 @@ namespace tpyapp::main {
 //     print(p is not None)
 //     print(p.x)
 void test() {
-    std::optional<Point> __slot_1;
     Point* p = nullptr;
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
+    std::optional<Point> __slot_1;
     p = &*(__slot_1 = Point(1, 2));
     std::cout << ::tpy::print_bool((p == nullptr)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((p != nullptr)) << "\n" << ::tpy::check_signals;

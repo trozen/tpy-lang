@@ -129,7 +129,7 @@ if TYPE_CHECKING:
     from ..diagnostics import Scope
 
 from .alias_rebind import (decide_rebind_storage, finalize_pointer_tuples,
-                           stamp_bind_kind)
+                           stamp_bind_kind, stamp_unpack_rebinds)
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
 from .compatibility import TupleSink
@@ -7115,6 +7115,8 @@ class StatementAnalyzer:
             if stmt.loc:
                 display_type = unwrap_own(elem_type) if elem_type else elem_type
                 self.ctx.declared_var_types[(stmt.loc.line, name)] = display_type
+
+        stamp_unpack_rebinds(self.ctx, stmt)
 
         if value_leaves(rhs_type):
             # The targets bound leaves of a list's element: their recorded

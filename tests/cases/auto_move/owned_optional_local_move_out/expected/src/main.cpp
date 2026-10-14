@@ -28,8 +28,8 @@ namespace tpyapp::main {
 //         tmp = Box(11)
 //     return tmp                   # last use -> move the slot out as Own[Box] | None
 std::optional<Box> move_owned_optional_out_return(bool c) {
-    std::optional<Box> __slot_1;
     Box* tmp = nullptr;
+    std::optional<Box> __slot_1;
     if (c) {
         tmp = &*(__slot_1 = Box(::tpy::BigInt(11)));
     }
@@ -66,7 +66,6 @@ std::optional<Box> move_owned_optional_out_return(bool c) {
 //         after = y.v              # still 99
 //     return seen + after          # 198
 ::tpy::BigInt alias_then_rebind() {
-    std::optional<Pt> __slot_2;
     Pt __slot_1 = Pt(::tpy::BigInt(1));
     Pt* x = &__slot_1;
     Pt* y = x;
@@ -77,6 +76,7 @@ std::optional<Box> move_owned_optional_out_return(bool c) {
     if ((y != nullptr)) {
         seen = y->v;
     }
+    std::optional<Pt> __slot_2;
     x = &*(__slot_2 = Pt(::tpy::BigInt(2)));
     ::tpy::BigInt after = ::tpy::BigInt(-1);
     if ((y != nullptr)) {

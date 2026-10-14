@@ -16,10 +16,11 @@ namespace tpyapp::main {
 void rc_is_shared() {
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
+    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         ::tpystd::tplib::rc::Rc<Point> p = Rc<Point>::new_<Point>(Point(i));
         if ((i == 0)) {
-            (*saved) = p.clone();
+            saved = &*(__slot_2 = p.clone());
             p.get().x = 99;
         }
     }
@@ -37,10 +38,11 @@ void rc_is_shared() {
 void rc_outlives_the_loop() {
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(-1));
     ::tpystd::tplib::rc::Rc<Point>* saved = &__slot_1;
+    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
     for (int32_t i = 0; i < 4; ++i) {
         ::tpystd::tplib::rc::Rc<Point> p = Rc<Point>::new_<Point>(Point(i));
         if ((i == 1)) {
-            (*saved) = p.clone();
+            saved = &*(__slot_2 = p.clone());
         }
     }
     saved->get().x = 77;

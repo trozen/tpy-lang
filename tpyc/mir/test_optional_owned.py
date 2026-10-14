@@ -7,7 +7,7 @@ import pytest
 
 from ..parse import RebindStorage
 from ..thir import nodes as th
-from ..thir.testutil import _compile, _entry
+from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL
 from .definitions import MIRDefinitions
@@ -135,6 +135,9 @@ Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...]]
 @pytest.fixture(scope="module")
 def artifacts() -> Artifacts:
     compiler, modules = _compile(SOURCE)
+    # The in-place reseats MIR models; sema leaves every rebind OWN.
+    force_in_place(modules, {"in_place": None, "loop": None,
+                             "optional_method": None, "annotation_only": (1,)})
     sources, ctx = compiler.generate_code_and_thir(_entry(modules))
     assert sources
     return ({fn.name: fn for fn in ctx.thir_functions.values()}, tuple(ctx.thir_constructors.values()))

@@ -48,7 +48,7 @@ from .nodes import (
     TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
     TpyMatchCase, TpyMatch,
     RelativeImportKey, TpyImport, TpyFunction, TpyRecord, TpyProtocol, TpyEnum, TpyModule,
-    ModuleDirectives,
+    ModuleDirectives, stamp_stands_for,
 )
 from .imports import (
     ImportProcessor, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
@@ -3724,9 +3724,13 @@ class Parser:
                 temp = f"__unpack_{n}_{i}"
                 # The temp is live only between eval and bind; keep it a local
                 # of the enclosing body (incl. module __tpy_init), never a global.
-                evals.append(TpyVarDecl(temp, None, elt_expr, loc=loc, module_init_local=True))
+                evals.append(TpyVarDecl(temp, None, elt_expr, loc=loc,
+                                        module_init_local=True))
                 binds.append(TpyVarDecl(target, None, TpyName(temp, loc=loc),
                                         loc=loc, unpack_target=True))
+            for bind in binds:
+                assert isinstance(bind, TpyVarDecl)
+                stamp_stands_for(evals, bind.name, bind.init)
             result = evals + binds
         # Every statement keeps the unpack's loc so sema records each target's
         # declared type and diagnostics point at the source line.
@@ -3855,13 +3859,15 @@ class Parser:
                     value=TpyName(synth_var, loc=loc),
                     loc=loc,
                 )
-                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc, is_tuple_unpack=True, is_async=is_async)
+                return TpyForEach(synth_var, iterable, [unpack] + body, orelse=orelse, loc=loc, is_tuple_unpack=True, is_async=is_async,
+                                  iter_text=self._source_excerpt(node.iter))
             if not isinstance(node.target, ast.Name):
                 raise ParseError("For loop target must be a simple variable", node)
             var = node.target.id
             body = self._parse_body(node.body)
             iterable = self._parse_expr(node.iter)
-            return TpyForEach(var, iterable, body, orelse=orelse, loc=loc, is_async=is_async)
+            return TpyForEach(var, iterable, body, orelse=orelse, loc=loc, is_async=is_async,
+                              iter_text=self._source_excerpt(node.iter))
 
         elif isinstance(node, ast.Pass):
             return TpyPassStmt(loc=loc)
@@ -4079,8 +4085,14 @@ class Parser:
             ref = TpyName(anchor_name, loc=loc)
             if isinstance(target, TpyName):
                 stmts.append(TpyVarDecl(target.name, None, ref, loc=None))
+                if anchor is None:
+                    stamp_stands_for(stmts[:1], target.name, ref)
             else:
                 stmts.append(TpyAssign(target, ref, loc=None))
+        if anchor is None:
+            # With no variable among the targets, the first target as written.
+            stamp_stands_for(stmts[:1], self._source_excerpt(node.targets[0]),
+                             TpyName(anchor_name, loc=loc))
         return stmts
 
     def _parse_delete(self, node: ast.Delete, loc: SourceLocation | None) -> TpyStmt:

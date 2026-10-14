@@ -4229,7 +4229,6 @@ __genexpr_main_81_frame __genexpr_main_81(int32_t __r0) {
 //     rb = by_match(2, xs)
 //     print("match", ra, rb)
 void main() {
-    std::optional<Node> __slot_2;
     std::vector<int32_t> xs = {1, 2, 3};
     std::array<int32_t, 3> ys = {10, 20, 30};
     bool flag = (::tpy::__len__(xs) > 2);
@@ -4478,6 +4477,7 @@ void main() {
     Node* cur = &__slot_1;
     Node& kept = (*cur);
     int32_t before = ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_79(xs, (*cur)));
+    std::optional<Node> __slot_2;
     cur = &*(__slot_2 = Node(100));
     std::cout << "capture_reseated" << " " << before << " " << ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_main_80(xs, (*cur))) << " " << kept.v << "\n" << ::tpy::check_signals;
     int32_t top = 3;

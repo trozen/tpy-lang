@@ -1,8 +1,12 @@
 # A pointer-form frame local rebound while nothing else holds its payload
-# writes in place: the superseded payload drops at the rebind, as under
-# CPython, instead of living in a second per-site field until the frame dies.
+# takes a per-site frame field of its own: each payload drops exactly once,
+# the superseded one when the frame dies (CPython drops it at the rebind, a
+# timing Python does not promise), the current one at an explicit `del`.
 from typing import Iterator, Optional
 from tpy import int32
+
+
+DROPPED: list[int32] = []
 
 
 class Resource:
@@ -12,21 +16,28 @@ class Resource:
         self.n = n
 
     def __del__(self):
-        print("drop", self.n)
+        DROPPED.append(self.n)
 
 
 def gen() -> Iterator[int32]:
-    # Two write sites, nothing aliases the first payload: the second write
-    # assigns through the pointer and drops Resource(1) right there.
     saved: Optional[Resource] = Resource(1)
     yield 1
+    # The rebind's new payload lands in a field of its own.
     saved = Resource(2)
     yield 2
+    # The defined drop point of the current payload, in both runs.
+    del saved
+    yield 3
+
+
+def run() -> None:
+    for v in gen():
+        print(v, 2 in DROPPED)
 
 
 def main() -> None:
-    for v in gen():
-        print(v)
+    run()
+    print("dropped", sorted(DROPPED))
     print("done")
 
 

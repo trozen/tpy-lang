@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //     alias.bump()
 //     print("sync_first:", alias.x, p.x)
 void sync_first_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
     alias.bump();
     std::cout << "sync_first:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -34,11 +34,11 @@ void sync_first_section() {
 //     alias.bump()
 //     print("rebind_in_loop:", alias.x, p.x)
 void rebind_in_loop_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(2);
     Point* p = &__slot_1;
     Point& alias = (*p);
     int32_t i = 0;
+    std::optional<Point> __slot_2;
     while ((i < 3)) {
         p = &*(__slot_2 = Point(i));
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -61,15 +61,16 @@ void rebind_in_loop_section() {
 //         alias.bump()
 //         print("branch_arms_else:", alias.x, p.x)
 void branch_arms_section(bool c) {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(15);
     Point* p = &__slot_1;
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     if (c) {
-        (*p) = Point(16);
+        p = &*(__slot_2 = Point(16));
         std::cout << "branch_arms_then:" << " " << p->x << "\n" << ::tpy::check_signals;
     } else {
         Point& alias = (*p);
-        p = &*(__slot_2 = Point(50));
+        p = &*(__slot_3 = Point(50));
         alias.bump();
         std::cout << "branch_arms_else:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
     }
@@ -84,13 +85,14 @@ void branch_arms_section(bool c) {
 //     p = Point(50)  # tpyc: ok
 //     print("dead_alias:", p.x)
 void dead_alias_section() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(3);
     Point* p = &__slot_1;
-    (*p) = Point(4);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(4));
     Point& alias = (*p);
     std::cout << "dead_alias_pre:" << " " << alias.x << "\n" << ::tpy::check_signals;
-    p = &*(__slot_2 = Point(50));
+    std::optional<Point> __slot_3;
+    p = &*(__slot_3 = Point(50));
     std::cout << "dead_alias:" << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
@@ -105,7 +107,8 @@ void dead_alias_section() {
 void none_rebind_section() {
     Point __slot_1 = Point(5);
     Point* p = &__slot_1;
-    (*p) = Point(6);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(6));
     Point& alias = (*p);
     p = nullptr;
     alias.bump();
@@ -127,7 +130,8 @@ void container_insert_section() {
     std::vector<Point> xs = std::vector<Point>{};
     xs.push_back(Point((*p)));
     p->bump();
-    (*p) = Point(50);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(50));
     std::cout << "container_insert:" << " " << ::tpy::__getitem__(xs, 0).x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
@@ -159,9 +163,11 @@ void rebound_ptr_section() {
 void hatch_copy_section() {
     Point __slot_1 = Point(10);
     Point* p = &__slot_1;
-    (*p) = Point(11);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(11));
     Point held = Point((*p));
-    (*p) = Point(50);
+    std::optional<Point> __slot_3;
+    p = &*(__slot_3 = Point(50));
     held.bump();
     std::cout << "hatch_copy:" << " " << held.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
@@ -177,7 +183,8 @@ void hatch_rc_section() {
     ::tpystd::tplib::rc::Rc<Point> __slot_1 = Rc<Point>::new_<Point>(Point(12));
     ::tpystd::tplib::rc::Rc<Point>* r = &__slot_1;
     ::tpystd::tplib::rc::Rc<Point> shared = r->clone();
-    (*r) = Rc<Point>::new_<Point>(Point(50));
+    std::optional<::tpystd::tplib::rc::Rc<Point>> __slot_2;
+    r = &*(__slot_2 = Rc<Point>::new_<Point>(Point(50)));
     shared.__deref__().bump();
     std::cout << "hatch_rc:" << " " << shared.__deref__().x << " " << r->__deref__().x << "\n" << ::tpy::check_signals;
 }
@@ -193,7 +200,8 @@ void hatch_rc_section() {
 void hatch_fresh_name_section() {
     Point __slot_1 = Point(13);
     Point* p = &__slot_1;
-    (*p) = Point(14);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(14));
     Point& alias = (*p);
     Point q = Point(50);
     alias.bump();

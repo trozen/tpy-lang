@@ -1059,6 +1059,11 @@ class TpyVarDecl(TpyStmt):
     # A target bind of a tuple unpack, `x = __unpack_N_i` (the init names
     # the parser's temp holding the element).
     unpack_target: bool = field(default=False, kw_only=True)
+    # A temporary the parser or a desugar binds: the program's variable it
+    # holds a value for (`b` for `__unpack_0_1` in `a, b = (x, y)`), or with
+    # no variable to name, the target as written; what a diagnostic about the
+    # temporary shows (`program_names`), stamped by `stamp_stands_for`.
+    stands_for: str | None = field(default=None, kw_only=True)
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
     # Stamped by liveness: names still live AFTER this statement (see
@@ -1102,6 +1107,8 @@ class TpyTupleUnpack(TpyStmt):
     # A borrowed target the name is later rebound in: it binds a pointer
     # local, since a reference alias would write the rebind through.
     is_rebound: list[bool] = field(default_factory=list)
+    # Stamped by liveness -- see TpyVarDecl.live_names_after.
+    live_names_after: frozenset[str] | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value]
@@ -1288,6 +1295,9 @@ class TpyForEach(TpyStmt):
     consuming_iter_fi: 'FunctionInfo | None' = None  # set by sema: consuming __iter__ overload at last use
     is_async: bool = False  # Set by parser: `async for` (lowers to __aiter__/await __anext__ inside async def)
     async_aiter_type: 'NominalType | None' = None  # set by sema for async-for: the DEFINING record of __anext__ (an ancestor of the iterator when inherited), used by codegen to name the __anext__ coro struct
+    # Set by parser: the iterable as the program spells it, the loop's name
+    # in a diagnostic about its iterator.
+    iter_text: str | None = None
 
     def exprs(self) -> list[TpyExpr]:
         return [self.iterable]
@@ -1591,6 +1601,9 @@ class TpyMatchCase:
     loc: SourceLocation | None = None
     # Set by sema: narrowing facts for the subject variable in this arm
     type_facts: dict[str, TpyType] = field(default_factory=dict)
+    # Set by liveness: the names live right after the arm's captures bind
+    # (its guard and body, and the arms a failed guard falls through to).
+    live_names_after: frozenset[str] | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -2710,6 +2723,53 @@ def body_writes_name(body: list[TpyStmt], var: str,
             if body_writes_name(inner, var, match_binds=match_binds):
                 return True
     return False
+
+
+def program_names(name: str, body: list[TpyStmt]) -> tuple[str | None, ...]:
+    """The program's variables a local of `body` stands for, the names a
+    diagnostic about it shows: the local itself, or for a temporary the
+    parser or a desugar made, the variable it holds a value for
+    (`TpyVarDecl.stands_for`) -- for the element holder of a
+    tuple-unpacking `for` (`TpyForEach.is_tuple_unpack`), every target of
+    its head unpack (None: `_`)."""
+    found: list[tuple[str | None, ...]] = []
+
+    def visit(s: TpyStmt) -> None:
+        if found:
+            return
+        if (isinstance(s, TpyVarDecl) and s.name == name
+                and s.stands_for is not None):
+            found.append((s.stands_for,))
+        elif (isinstance(s, TpyForEach) and s.is_tuple_unpack
+              and s.var == name and s.body
+              and isinstance(s.body[0], TpyTupleUnpack)):
+            found.append(tuple(s.body[0].targets))
+
+    walk_body_stmts(body, lambda e: None, visit)
+    return found[0] if found else (name,)
+
+
+def stamp_stands_for(temps: list[TpyStmt], target: str,
+                     value: 'TpyExpr | None') -> None:
+    """Stamp the temporaries among `temps` that `value` carries to the
+    program's variable `target` -- the one `value` names, and through each
+    copy one temporary makes of another, the one it names -- with
+    `TpyVarDecl.stands_for`. Every temporary the parser or a desugar mints
+    is stamped here; the first variable to claim one keeps it."""
+    decls: dict[str, list[TpyVarDecl]] = {}
+
+    def note(s: TpyStmt) -> None:
+        if isinstance(s, TpyVarDecl):
+            decls.setdefault(s.name, []).append(s)
+
+    walk_body_stmts(temps, lambda e: None, note)
+    work = [value.name] if isinstance(value, TpyName) else []
+    while work:
+        for d in decls.get(work.pop(), ()):
+            if d.stands_for is None:
+                d.stands_for = target
+                if isinstance(d.init, TpyName):
+                    work.append(d.init.name)
 
 
 def walk_body_stmts(

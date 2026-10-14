@@ -98,7 +98,8 @@ void test_binop_assign() {
     Vec __slot_1 = Vec(1.0, 2.0);
     Vec* v = &__slot_1;
     Vec inc = Vec(10.0, 20.0);
-    (*v) = (((*v)) + (inc));
+    std::optional<Vec> __slot_2;
+    v = &*(__slot_2 = (((*v)) + (inc)));
     std::cout << ::tpy::print_float(v->x) << " " << ::tpy::print_float(v->y) << "\n" << ::tpy::check_signals;
 }
 

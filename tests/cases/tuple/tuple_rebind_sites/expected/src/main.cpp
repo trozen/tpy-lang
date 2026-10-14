@@ -50,15 +50,17 @@ void mixed_in_place(bool c) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, (*V));
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     if (c) {
         auto __tup_2 = ::tpyapp::main::make_mixed(2, (*W));
-        (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
     }
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
+    std::optional<Box> __slot_3;
     for (int32_t k = 0; k < 2; ++k) {
         auto __tup_3 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(3, k)), (*V));
-        (*std::get<0>(p)) = std::move(std::get<0>(__tup_3));
+        std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(p) = std::get<1>(__tup_3);
         std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 10);
     }
@@ -111,8 +113,9 @@ void unpack_borrowed(Box& b) {
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     auto& __tup_2 = p;
     auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+    std::optional<Box> __slot_2;
     auto __tup_3 = ::tpyapp::main::make_mixed(9, b);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_3));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
     std::get<1>(p) = std::get<1>(__tup_3);
     a.n = ::tpy::add_check<int32_t>(a.n, 1);
     std::cout << "unpack-borrowed" << " " << a.n << " " << std::get<0>(p)->n << " " << b.n << "\n" << ::tpy::check_signals;
@@ -217,10 +220,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::optional<Box> __global_slot_4;
-    static std::optional<Box> __global_slot_6;
-    static std::optional<Box> __global_slot_8;
-    static std::optional<Box> __global_slot_13;
     static Box __global_slot_1 = Box(2);
     V = &__global_slot_1;
     static Box __global_slot_2 = Box(3);
@@ -230,6 +229,7 @@ void __tpy_init() {
     std::get<0>(M) = &__global_slot_3;
     std::get<1>(M) = std::get<1>(__tup_1);
     saved = M;
+    static std::optional<Box> __global_slot_4;
     for (int32_t i = 0; i < 3; ++i) {
         auto __tup_2 = ::tpyapp::main::make_mixed((::tpy::mul_check<int32_t>(10, i)), (*V));
         std::get<0>(M) = &*(__global_slot_4 = std::move(std::get<0>(__tup_2)));
@@ -246,6 +246,7 @@ void __tpy_init() {
     std::get<0>(C) = &__global_slot_5;
     std::get<1>(C) = std::get<1>(__tup_3);
     held = ::tpyapp::main::identity(C);
+    static std::optional<Box> __global_slot_6;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(30, i)), (*V));
         std::get<0>(C) = &*(__global_slot_6 = std::move(std::get<0>(__tup_4)));
@@ -258,6 +259,7 @@ void __tpy_init() {
     static Box __global_slot_7 = Box(40);
     S = &__global_slot_7;
     R = ::tpyapp::main::identity(std::tuple<Box*, Box*>{S, S});
+    static std::optional<Box> __global_slot_8;
     S = &*(__global_slot_8 = Box(50));
     std::get<0>(R)->n = ::tpy::add_check<int32_t>(std::get<0>(R)->n, 1);
     std::cout << "module-lender" << " " << std::get<0>(R)->n << " " << S->n << "\n" << ::tpy::check_signals;
@@ -286,6 +288,7 @@ void __tpy_init() {
         std::get<0>(L) = &__global_slot_12;
         std::get<1>(L) = std::get<1>(__tup_9);
     }
+    static std::optional<Box> __global_slot_13;
     for (int32_t j = 0; j < 2; ++j) {
         auto __tup_10 = std::tuple<Box, Box*>{Box((::tpy::add_check<int32_t>(20, j))), V};
         std::get<0>(L) = &*(__global_slot_13 = std::move(std::get<0>(__tup_10)));

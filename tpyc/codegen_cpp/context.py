@@ -1839,10 +1839,6 @@ class CodeGenContext:
     # --- Generator function codegen ---
     in_generator_body: bool = False
     generator_field_names: set[str] = field(default_factory=set)
-    # write stmt -> frame-field slot name for rvalue writes into
-    # pointer-form frame locals (seeded per body from the resumable
-    # state's ptr_slot_map).
-    resumable_ptr_slot_map: IdentityMap = field(default_factory=IdentityMap)
     # Hoisted locals that are compile-time aliases of a captured static-protocol
     # param (`xs = it`): they occupy no frame field of their own; every storage
     # access resolves to the backing param via `generator_storage_name`.
@@ -3095,6 +3091,19 @@ class CodeGenContext:
             return f"(*{escape_cpp_name(storage)})"
         return None
 
+    def frame_pointer_tuples(
+            self, func: 'TpyFunction') -> dict[str, 'TpyType | None']:
+        """The frame locals sema names pointer tuples, each with the form
+        the lowering decided (`ptr_tuple_decision`; None: one C++ cannot
+        spell, which the binding planner refuses)."""
+        from ..thir.lower.bindings import ptr_tuple_decision
+        out: dict[str, 'TpyType | None'] = {}
+        for lname, _ in (func.generator_locals or []):
+            got = ptr_tuple_decision(self.analyzer, func, lname)
+            if got is not None:
+                out[lname] = got.form
+        return out
+
     def owning_generator_tuple_locals(
             self, func: 'TpyFunction') -> dict[str, 'TpyType | None']:
         """Generator/async frame locals that OWN tuple element storage, mapped
@@ -3134,7 +3143,10 @@ class CodeGenContext:
         one_shot = _rcfg.resumable_state(func).one_shot_lift_names
         scan = self.analyzer.function_scan_results.get(func)
         reassigned = scan.reassigned if scan is not None else set()
-        gen_types = dict(func.generator_locals or [])
+        # A pointer tuple's elements own per site, never in the field.
+        pointer_tuples = self.frame_pointer_tuples(func)
+        gen_types = {n: t for n, t in (func.generator_locals or [])
+                     if n not in pointer_tuples}
         owning: dict[str, 'TpyType | None'] = {}
 
         # Type/provenance-driven owning tuple locals:
@@ -3145,7 +3157,7 @@ class CodeGenContext:
         #    `frame_slot<std::tuple<...>>` rather than the borrow-form
         #    `std::tuple<T*, ...>` field a non-await borrow tuple would get --
         #    the owned result can't be assigned into a pointer-element field.
-        for lname, ltype in (func.generator_locals or []):
+        for lname, ltype in gen_types.items():
             inner = unwrap_ref_type(ltype)
             if not (isinstance(inner, TupleType) and lname not in reassigned):
                 continue
@@ -3247,10 +3259,6 @@ class CodeGenContext:
         from . import resumable_cfg as _rcfg
         self.one_shot_lift_locals = set(
             _rcfg.resumable_state(func).one_shot_lift_names)
-        # Per-write-site frame homes for rvalue writes into pointer-form
-        # frame locals (see _prescan_resumable_ptr_slots).
-        self.resumable_ptr_slot_map = (
-            _rcfg.resumable_state(func).ptr_slot_map.copy())
 
         if not func.generator_locals:
             return

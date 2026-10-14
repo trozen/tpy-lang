@@ -13,8 +13,9 @@ namespace tpyapp::main {
 std::string f() {
     ::tpystd::tplib::box::Box<Pet> __slot_1 = ::tpystd::tplib::box::Box<Dog>(Dog());
     ::tpystd::tplib::box::Box<Pet>* b = &__slot_1;
+    std::optional<::tpystd::tplib::box::Box<Pet>> __slot_2;
     if (Dog* __b_ptr = dynamic_cast<Dog*>(&((*b).__deref__())); (__b_ptr != nullptr)) {
-        (*b) = ::tpystd::tplib::box::Box<Cat>(Cat());
+        b = &*(__slot_2 = ::tpystd::tplib::box::Box<Cat>(Cat()));
         return b->__deref__().name();
     }
     return "unreachable";

@@ -70,8 +70,8 @@ int32_t take_opt_own(std::optional<Pic> p) {
 //     bump_all(patches)
 //     show("append_try_reassigned", patches)
 void append_try_reassigned(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
-    std::optional<Pic> __slot_1;
     std::vector<std::optional<Pic>> patches = std::vector<std::optional<Pic>>{};
+    std::optional<Pic> __slot_1;
     auto __obj_0 = {::tpy::bytes_literal_owned("a", 1), ::tpy::bytes_literal_owned("b", 1)};
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
@@ -101,9 +101,9 @@ void append_try_reassigned(const ::tpy::ordered_map<::tpy::Bytes, int32_t>& d) {
 //     bump_all(patches)
 //     show("append_branch_reassigned", patches)
 void append_branch_reassigned(bool c) {
-    std::optional<Pic> __slot_1;
     std::vector<std::optional<Pic>> patches = std::vector<std::optional<Pic>>{};
     Pic* patch = nullptr;
+    std::optional<Pic> __slot_1;
     if (c) {
         patch = &*(__slot_1 = Pic(1));
     }
@@ -152,12 +152,9 @@ void append_none_declared() {
 //     bump_all(sink)
 //     show("static_method", sink)
 void other_slots(bool c) {
-    std::optional<Pic> __slot_1;
-    std::optional<Pic> __slot_2;
-    std::optional<Pic> __slot_3;
-    std::optional<Pic> __slot_4;
     std::vector<std::optional<Pic>> sink = std::vector<std::optional<Pic>>{};
     Pic* patch = nullptr;
+    std::optional<Pic> __slot_1;
     if (c) {
         patch = &*(__slot_1 = Pic(5));
     }
@@ -165,12 +162,14 @@ void other_slots(bool c) {
     ::tpyapp::main::bump_all(sink);
     ::tpyapp::main::show("free_own_optional", sink);
     Pic* other = nullptr;
+    std::optional<Pic> __slot_2;
     if (c) {
         other = &*(__slot_2 = Pic(6));
     }
     std::cout << "opt_own_spelling" << " " << ::tpyapp::main::take_opt_own(::tpy::ptr_to_optional_move(other)) << "\n" << ::tpy::check_signals;
     Bag b = Bag();
     Pic* third = nullptr;
+    std::optional<Pic> __slot_3;
     if (c) {
         third = &*(__slot_3 = Pic(7));
     }
@@ -178,6 +177,7 @@ void other_slots(bool c) {
     ::tpyapp::main::bump_all(b.items);
     ::tpyapp::main::show("method_own_optional", b.items);
     Pic* fourth = nullptr;
+    std::optional<Pic> __slot_4;
     if (c) {
         fourth = &*(__slot_4 = Pic(8));
     }
@@ -200,9 +200,9 @@ void other_slots(bool c) {
 //     again = d["a"]
 //     print("setdefault_slot", len(d), 0 if again is None else again.n)
 void setdefault_slot(bool c) {
-    std::optional<Pic> __slot_1;
     ::tpy::ordered_map<std::string, std::optional<Pic>> d = ::tpy::ordered_map<std::string, std::optional<Pic>>();
     Pic* patch = nullptr;
+    std::optional<Pic> __slot_1;
     if (c) {
         patch = &*(__slot_1 = Pic(3));
     }

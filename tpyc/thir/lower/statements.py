@@ -506,6 +506,7 @@ from .context import (
     nested_def_prescan,
 )
 from .checks import (
+    _storage_form_tuple_return,
     owned_literal_layout,
     own_btuple_borrow_name_arg,
     _declared_call_at_owning_elem,
@@ -584,6 +585,7 @@ from .checks import (
 )
 from ..source import (BindingKind, BindingRepr, Held, NameFacts,
                       SelectResult)
+from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
 from .convert import (Effect, Plan, Refuse, borrowed_path_element_message,
                       convert, elementwise_tuple_storage,
                       reject_borrowed_path_elements, spelled)
@@ -3067,7 +3069,7 @@ class _Hoist:
     ladder: str
     in_branch: bool = False
     bindings: 'list[THIRHoistedBinding] | None' = None
-    slots: 'list[tuple[str, str]] | None' = None
+    slots: 'list[BindingRepr] | None' = None
 
 
 def _hoist_record(stmt: TpyStmt, name: str, lc: '_LowerCtx') -> BindingRepr:
@@ -3473,15 +3475,9 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     through the pointer."""
     loc = getattr(stmt, "loc", None)
     vtype = declared[stmt.name]
-    # The source fills the SLOT, so it is admitted and lowered against what
-    # the slot holds -- the pointee for a pointer-repr Optional local.
-    slot_t = _rebind_slot_target(vtype, lc.analyzer)
-    if not _rebind_rvalue_source_ok(stmt.init, slot_t, lc.analyzer,
-                                    frame_roots_ok=True):
-        note_detail("res.rebind_ptr_source")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
-    value = _lower_storage_value(stmt.init, slot_t, lc, declared, loc,
-                                 use=_rebind_rvalue_use(stmt.init, slot_t))
+    reason = stmt_reject_reason(stmt)
+    value = rebind_ptr_frame_value(stmt.init, vtype, lc, declared, loc,
+                                   reason)
     target = THIRName(result_type=vtype, name=stmt.name, loc=loc)
     if _rebind_storage(stmt, stmt.name, lc) is RebindStorage.IN_PLACE:
         _witness("res.rebind_ptr_in_place")
@@ -3489,10 +3485,7 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
                           rebind_storage=RebindStorage.IN_PLACE,
                           slot_cpp=_rebind_slot_cpp(vtype, lc),
                           rebuild=frame_object_slot(vtype), loc=loc)
-    fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(stmt)
-    if fld is None:
-        note_detail("res.rebind_ptr_slot")
-        raise ThirUnsupported(stmt_reject_reason(stmt))
+    fld = rebind_ptr_frame_field(lc, stmt, reason)
     _witness("res.rebind_ptr_own")
     return THIRPtrLocalRebind(
         name=stmt.name, kind=PtrSlotKind.FRAME_RVALUE, value=value,
@@ -3843,7 +3836,8 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
                              is_reassign: bool, lc: '_LowerCtx',
                              declared: dict[str, TpyType],
                              loc, *, binding: 'TpyStmt | None' = None,
-                             module: bool = False) -> 'THIRStmt | None':
+                             module: bool = False,
+                             frame: bool = False) -> 'THIRStmt | None':
     """A binding of a rebound pointer-tuple local (`ptr_tuple_form`) that
     owns an element: the whole right-hand side is evaluated into the unpack
     holder, then each owned element lands in the scalar reference local's
@@ -3856,7 +3850,12 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
     namespace scope; its owned elements take `static` slots, and a write in
     a `for` body takes a slot hoisted to the module init, as the scalar
     global's does. `binding` is the statement sema stamped, when `stmt`
-    stands in for it."""
+    stands in for it.
+
+    `frame`: a write of a resumable frame's field, which the frame declares;
+    each owned element's object lands in the frame field the slot prescan
+    reserved for this site and element (`rcfg.ptr_slot_field`), or in place
+    where it reserved none."""
     analyzer = lc.analyzer
     init = stmt.init
     facts = stmt if binding is None else binding
@@ -3913,9 +3912,18 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
     else:
         note_detail("ptr_tuple.holder_source")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    elem_const = lc.declaring(stmt.name).const_borrow_tuple
+    elem_const = (not frame
+                  and lc.declaring(stmt.name).const_borrow_tuple)
     verdict = analyzer.ctx.tuple_elem_storage.get(facts)
-    if module:
+    frame_fields = None
+    if frame:
+        first = False
+        # The slot prescan decided each owned element's storage once.
+        frame_fields = rcfg.ptr_tuple_slot_fields(lc.func, facts)
+        if frame_fields is None:
+            note_detail("res.rebind_ptr_slot")
+            raise ThirUnsupported(stmt_reject_reason(stmt))
+    elif module:
         # Every owned element of a module write takes storage of its own
         # (sema's verdict there): a fresh static that holds its object for
         # good -- except in a loop body, which runs the site again, so the
@@ -3923,24 +3931,23 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
         first = not lc.in_for_body
     else:
         first = not is_reassign
-    verdict = verdict or ()
     targets: list[THIRTupleElemTarget] = []
     for i, et in enumerate(ptt.element_types):
         if i < len(mask) and mask[i]:
-            storage: 'RebindStorage | None' = None
-            if not first:
-                storage = (verdict[i] if i < len(verdict)
-                           and verdict[i] is not None else RebindStorage.OWN)
-                # A const element pointer has no in-place write: like the
-                # scalar's const local, the new object takes a slot.
-                if elem_const or isinstance(unwrap_send_sync(
-                        unwrap_ref_type(et)), ReadonlyType):
-                    storage = RebindStorage.OWN
+            fld = None
+            if frame_fields is not None:
+                fld = frame_fields.get(i)
+                storage = (RebindStorage.OWN if fld is not None
+                           else RebindStorage.IN_PLACE)
+            else:
+                storage = _bindings.ptr_tuple_elem_storage(
+                    verdict, i, et, first=first, const=elem_const)
             targets.append(THIRTupleElemTarget(
                 index=i, elem_type=et, bind=TupleElemBind.OWNED,
                 storage=storage,
                 slot_cpp=lc.render_type(unwrap_readonly(unwrap_ref_type(
-                    unwrap_send_sync(unwrap_own(et)))))))
+                    unwrap_send_sync(unwrap_own(et))))),
+                field=fld, rebuild=frame and frame_object_slot(et)))
         elif TupleType._element_is_pointer_repr(et):
             targets.append(THIRTupleElemTarget(
                 index=i, elem_type=et, bind=TupleElemBind.BORROW))
@@ -3956,7 +3963,7 @@ def _lower_ptr_tuple_binding(stmt: TpyVarDecl, ptt: 'TupleType',
         elem_targets=tuple(targets),
         tuple_decl_cpp=((ptt.to_cpp_return_const() if elem_const
                          else ptt.to_cpp_return())
-                        if first and not module else None),
+                        if first and not module and not frame else None),
         loc=loc)
 
 
@@ -4073,7 +4080,7 @@ def _borrow_tuple_hoist_ok(name: str, bare: 'TupleType',
 def _borrow_tuple_hoist_entry(rec: BindingRepr, var_type: 'TupleType',
                               declared: dict[str, TpyType],
                               lc: '_LowerCtx', mixed_witness: str,
-                              hoist_slots: 'list[tuple[BindingRepr, str]] | None',
+                              hoist_slots: 'list[BindingRepr] | None',
                               bindings: list[THIRHoistedBinding] | None = None,
                               ) -> HoistDecl:
     """One branch-BOUND borrow-form tuple hoist predecl (`std::tuple<...,
@@ -4091,7 +4098,7 @@ def _borrow_tuple_hoist_entry(rec: BindingRepr, var_type: 'TupleType',
     if rec.ptr_tuple is not None:
         var_type = rec.ptr_tuple
     if rec.rebind_slot:
-        hoist_slots.append((rec, lc.render_type(var_type)))
+        hoist_slots.append(rec)
     if rec.borrow_tuple_mixed:
         # A MIXED-call-bound hoist keeps the per-element arrow: the local
         # holds the hybrid render, so `std::get<1>(p)->val`.
@@ -4130,19 +4137,17 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
                              declared: dict[str, TpyType], lc: '_LowerCtx',
                              in_branch: bool, bindings: list[THIRHoistedBinding],
                              ) -> tuple[list[HoistDecl],
-                                        list[tuple[str, str]]]:
+                                        list[BindingRepr]]:
     """The if chain's branch-first predecls, each admitted and built by its
     record in cascade (dict) order. Returns `(hoist_decls, hoist_slots)`
     for THIRIf: every predecl renders `{cpp_type} {name};` at the chain
-    head; a slot entry additionally predecls that name's
-    `std::optional<T> __slot_N;` rebind slot (allocated at emit out of
-    `ctx.slots`).
+    head; a slot entry names a borrow tuple whose owning-call writes fill
+    the binding's one slot (`StorageSlots.claim_shared`).
 
     An INNER-scope if (a loop / branch / with / try body) hoists at its own
     head like the with and try families: the predecl's C++ scope IS the
     enclosing block, and the name enters the caller's branch-local
-    `declared`. Rebind slots still drain to function top through the
-    deferred hoist lines."""
+    `declared`."""
     hoist = _Hoist(stmt, "if", in_branch, bindings, [])
     hoist_decls: list[HoistDecl] = []
     for name, raw in hoists.items():
@@ -6006,7 +6011,8 @@ def _lower_nested_def(stmt: TpyNestedDef, scope: '_LowerScope') -> THIRStmt:
             lc, func, scope.declared,
             self_captured="self" in stmt.captured_names,
             nonlocal_names=stmt.nonlocal_names) as body_declared:
-        body = _lower_stmts(func.body, lc, body_declared)
+        body = _lower_stmts(func.body, lc, body_declared,
+                            function_body=True)
         # lower_function's hoist-residue check: a nested-body hoisted name
         # no try predecl accounted for is not lowered here.
         if lc.unhandled_hoists:
@@ -6073,6 +6079,7 @@ def _lower_stmt(stmt: TpyStmt, lc: _LowerCtx, declared: dict[str, TpyType],
         # so they run at the statement's own scope node.
         result = _finish_stmt(result, lc, declared)
         stamp_bindings(result, stmt, lc)
+        lc.storage_slots.stamp(result, stmt)
         return result
     finally:
         lc.cursor = cursor
@@ -6119,19 +6126,12 @@ def stamp_bindings(node: object, key: object, lc: _LowerCtx) -> None:
     if isinstance(node, THIRStmtSeq):
         for sub in node.stmts:
             stamp_bindings(sub, key, lc)
-    elif isinstance(node, (THIRVarDecl, THIRPtrLocalDecl, THIRPtrLocalRebind,
-                           THIRErrorReturnBind, THIRFrameSlotWrite)):
+    elif not isinstance(node, THIRStmt):
+        return
+    elif node.bound_name is not None:
         if node.binding is None:
             _set_binding(node, "binding",
-                         _declared_record(node.name, key, lc))
-    elif isinstance(node, THIRCoroHandleMove):
-        if node.binding is None:
-            _set_binding(node, "binding",
-                         _declared_record(node.target, key, lc))
-    elif isinstance(node, THIRAssign) and isinstance(node.target, THIRName):
-        if node.binding is None:
-            _set_binding(node, "binding",
-                         _declared_record(node.target.name, key, lc))
+                         _declared_record(node.bound_name, key, lc))
     elif isinstance(node, THIRTupleUnpack):
         if not node.bindings:
             _set_binding(node, "bindings", tuple(
@@ -6318,12 +6318,15 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
                  *, in_branch: bool = False,
                  branch_decls_ok: bool = False,
                  loop_depth: int = 0,
-                 top_level: bool = False) -> tuple[THIRStmt, ...]:
+                 top_level: bool = False,
+                 function_body: bool = False) -> tuple[THIRStmt, ...]:
     """Lower a statement list, appending the U3 post-if extraction after an
     early-return narrowing `if` (the post-narrowing arm: a persistent,
     comment-less, statement-level alias) and extending the narrowing scope /
     retyping the subject for the REST of the list -- the enclosing branch/loop
-    save-restore pops both, C++ scope semantics."""
+    save-restore pops both, C++ scope semantics. A `function_body` list is
+    a whole body, each statement of which anchors the rebind slots filled
+    inside it (`StorageSlots`)."""
     out: list[THIRStmt] = []
     # A folded-True terminating @overload branch truncates the list it DIRECTLY
     # lives in. A nested list (loop/branch/try body) never breaks on the flag
@@ -6335,13 +6338,16 @@ def _lower_stmts(body, lc: _LowerCtx, declared: dict[str, TpyType],
     for s in body:
         if top_level and lc.overload_terminated:
             break
-        out.append(_lower_stmt(s, lc, declared, in_branch=in_branch,
-                               branch_decls_ok=branch_decls_ok,
-                               loop_depth=loop_depth))
+        node = _lower_stmt(s, lc, declared, in_branch=in_branch,
+                           branch_decls_ok=branch_decls_ok,
+                           loop_depth=loop_depth)
+        out.append(node)
         # The narrowing a statement leaves behind reads the bindings
         # visible at it.
         with _bindings.at(lc, s):
             _append_post_narrow(s, out, lc, declared)
+    if function_body:
+        lc.storage_slots.anchor(out)
     if not top_level:
         lc.overload_terminated = saved_overload_terminated
     return tuple(out)
@@ -7876,8 +7882,29 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             or len(source_type.element_types) != len(stmt.targets)):
         note_detail("unpack.source_elems")
         raise ThirUnsupported("res.unpack")
+    # The source shapes this arm binds through something other than the
+    # rvalue holder `auto __tup_N = <expr>;`: a frame alias field may point
+    # into an lvalue's live storage (the `tuple_to_pointer` lift off its
+    # root), and a select of lvalues binds const.
+    lvalue_root = lvalue_select = None
+    if src_name is None and value is None:
+        lvalue_root = _storage_tuple_lvalue_root(
+            stmt.value, declared, analyzer, lc.names_with("pointer"),
+            resident=NameFacts(
+                lambda n: (lc.binding(n).frame_class is not None
+                           or n == lc.self_receiver)))
+        # Same lvalue-select rule as the sync arm: the frame's own fields
+        # outlive the case block the holder lives in, so the const-ref bind
+        # is the strictly safer one -- a by-value holder would copy the
+        # tuple per resume. Every target here is a frame field, an OWNING
+        # slot the element copies into, so the view carve-out has nothing
+        # to protect.
+        lvalue_select = _lvalue_tuple_ternary(
+            stmt.value, declared, scope.admission_pointers(),
+            lc.narrow.narrowed.keys(), lc.analyzer, owning_targets=True)
     binds: list[str | None] = []
     wraps: list[str] = []
+    slot_fields: list[str | None] = [None] * len(stmt.targets)
     for i, name in enumerate(stmt.targets):
         if name is None:
             binds.append(None)
@@ -7885,6 +7912,22 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             continue
         elem_ptr = TupleType._element_is_pointer_repr(
             source_type.element_types[i])
+        fld = rcfg.ptr_slot_field(lc.func, stmt, i)
+        if fld is not None:
+            # A rebound reference local taking an element over: the object
+            # moves into the field the frame's ptr-slot prescan reserved for
+            # this site, as the local's rvalue assignments do -- out of the
+            # holder only an rvalue source's is, the statement's to move
+            # from.
+            if (src_name is not None or value is not None
+                    or lvalue_root is not None or lvalue_select):
+                note_detail("unpack.rebind_ptr_source")
+                raise ThirUnsupported("res.unpack")
+            slot_fields[i] = fld
+            _witness("res.unpack_rebind_ptr")
+            binds.append("frame_rebind_ptr")
+            wraps.append("")
+            continue
         if lc.frame_local(name, FrameLocalClass.UNPACK_PTR):
             # A loop-head alias target: off the deref'd POINTER holder the
             # element is a live value lvalue inside the container's storage
@@ -7956,11 +7999,6 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         # A frame alias field outlives the case block, so the lift may only
         # root in storage the FRAME holds -- a captured param, `self`, or a
         # frame-resident local.
-        lvalue_root = _storage_tuple_lvalue_root(
-            stmt.value, declared, analyzer, lc.names_with("pointer"),
-            resident=NameFacts(
-                lambda n: (lc.binding(n).frame_class is not None
-                           or n == lc.self_receiver)))
         if lvalue_root is not None:
             # The element pointers come off the chain's ROOT, so the lift
             # spells them const exactly when the frame binds that root to
@@ -7994,11 +8032,14 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
                                  pos=SinkPos.UNPACK_SOURCE),
                     field_prechecked=isinstance(stmt.value, TpyFieldAccess)),
                 loc=loc)
-        if not isinstance(stmt.value, (TpyCall, TpyMethodCall)):
-            # A call result is already borrow form -- its slots are pointers
-            # into the callee's storage, so the by-value holder is only a
-            # pointer copy. Every other expression source materializes the
-            # TUPLE by value, which the alias fields cannot outlive.
+        if (not isinstance(stmt.value, (TpyCall, TpyMethodCall))
+                or _storage_form_tuple_return(
+                    stmt.value.resolved_function_info)):
+            # A borrow-form call result's slots are pointers into the
+            # callee's storage, so the by-value holder is only a pointer
+            # copy. A storage-form call result and every other expression
+            # source materialize the TUPLE by value, which the alias fields
+            # cannot outlive (BUGS.md#frame-own-tuple-unpack-dangles).
             note_detail("unpack.alias_source_form")
             raise ThirUnsupported("res.unpack")
     if src_name is not None:
@@ -8029,14 +8070,6 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
             note_detail("unpack.alias_temp_arg")
             raise ThirUnsupported("res.unpack")
     _witness("res.frame_unpack")
-    # Same lvalue-select rule as the sync arm: the frame's own fields outlive
-    # the case block the holder lives in, so the const-ref bind is the strictly
-    # safer one -- a by-value holder would copy the tuple per resume. Every
-    # target here is a frame field, an OWNING slot the element copies into, so
-    # the view carve-out has nothing to protect.
-    lvalue_select = _lvalue_tuple_ternary(
-        stmt.value, declared, scope.admission_pointers(),
-        lc.narrow.narrowed.keys(), lc.analyzer, owning_targets=True)
     rv_sb = (TupleSourceBind.NAME_CREF if lvalue_select
              else TupleSourceBind.RVALUE)
     rv_binds, rv_wraps = _move_owned_buffer_targets(
@@ -8045,6 +8078,7 @@ def _lower_frame_tuple_unpack(stmt: TpyTupleUnpack,
         source="", targets=tuple(stmt.targets),
         target_cpps=(None,) * len(stmt.targets),
         binds=rv_binds, wraps=rv_wraps,
+        slot_fields=(tuple(slot_fields) if any(slot_fields) else ()),
         source_expr=value,
         source_bind=rv_sb, loc=loc)
 
@@ -8110,8 +8144,8 @@ def _rebound_tuple_alias_message(stmt: TpyVarDecl, root: str,
 
 def _reject_tuple_site_own(stmt: TpyStmt, name: str, analyzer) -> None:
     """Refuse a tuple rebind whose sema verdict is OWN where the tuple is not
-    the pointer tuple whose elements take storage of their own: a frame
-    body, an `Own[tuple]` parameter, a loop variable."""
+    the pointer tuple whose elements take storage of their own: an
+    `Own[tuple]` parameter, a loop variable."""
     sites = analyzer.ctx.tuple_own_sites
     if stmt not in sites:
         return
@@ -8208,12 +8242,12 @@ def _lower_alias_bind(stmt: TpyVarDecl, lc: '_LowerCtx',
         elem_is_ptr = _subscript_yields_borrow_ptr(init, lc)
         rebound_msg = _rebound_tuple_alias_reject(stmt, init, lc, declared)
         if rebound_msg is not None:
-            # An element held BY VALUE in a tuple frame slot the body can
-            # rebind after this alias: the rebind writes the new tuple into
-            # the same slot, so the alias would observe the new element
-            # where CPython's keeps the old object. Taking storage of its
-            # own per rebind needs the per-element ownership verdict at each
-            # site (BUGS.md#resumable-alias-identity).
+            # An element held BY VALUE in a tuple inside a frame slot the
+            # body can rebind after this alias: the rebind writes the new
+            # value into the same slot, so the alias would observe the new
+            # element where CPython's keeps the old object. A pointer
+            # tuple's root is no frame slot; a container root has no
+            # per-site storage (BUGS.md#resumable-alias-identity).
             note_detail("alias.rebound_tuple_slot_elem")
             raise ThirUnsupported(
                 "res.alias_bind",
@@ -8289,15 +8323,29 @@ def _lower_borrow_tuple_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     STORAGE-form source needs the F3 `tuple_to_pointer` lift, and an
     `Own[tuple[...]]`-declared callee is the skeleton's third OWNING signal
     (a frame_slot with emplace renders) -- both named rungs. Shared by the
-    top-level leaf decl arm and the branch-nested decl arm."""
+    top-level leaf decl arm and the branch-nested decl arm.
+
+    A pointer tuple's binding that owns an element is the pointer tuple's
+    own arm (`_lower_ptr_tuple_binding`), as in a plain body
+    (`_decl_btuple_rebound`)."""
     analyzer = lc.analyzer
-    if (isinstance(stmt.init, TpySubscript)
+    ptt = lc.binding(stmt.name).ptr_tuple
+    if ptt is not None:
+        node = _lower_ptr_tuple_binding(stmt, ptt, True, lc, declared,
+                                        stmt.loc, frame=True)
+        if node is not None:
+            return node
+    if ((isinstance(stmt.init, TpySubscript)
             and isinstance(stmt.init.obj, TpyName)
             and not isinstance(analyzer.get_expr_type(stmt.init.obj),
-                               ReadonlyType)):
+                               ReadonlyType))
+            or (ptt is not None and isinstance(stmt.init, TpyFieldAccess)
+                and _borrow_tuple_source_ok(stmt.init, lc))):
         # A container-element storage-tuple lvalue: the F3 lift wraps the
         # bare element read (`t = tuple_to_pointer<..>(__getitem__((*items),
-        # 0));`) -- the non-resumable reseat_lift's frame twin.
+        # 0));`) -- the non-resumable reseat_lift's frame twin; for a
+        # pointer tuple a field too (`p = tuple_to_pointer<..>(h.bp);`), as
+        # the plain body's `_decl_btuple_rebound` lifts it.
         _sub_src = _lower_expr(stmt.init, lc, declared,
                                use=_ExprUse(result=_ExprResultUse.BORROW_BIND),
                                subscript_prechecked=True)
@@ -10273,7 +10321,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     target=THIRName(result_type=declared[stmt.name],
                                     name=stmt.name, loc=loc),
                     value=v, btuple_borrow_cpp=ob_cpp,
-                    btuple_opt_cpp=oopt_cpp, loc=loc)
+                    btuple_opt_cpp=oopt_cpp,
+                    slot_cpp=lc.render_type(obt_t), loc=loc)
             note_detail("reseat.opt_btuple_source")
             raise ThirUnsupported(stmt_reject_reason(stmt))
         bt_t = (_borrow_tuple_local_type(stmt.name, declared,
@@ -10306,7 +10355,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 return THIRAssign(
                     target=THIRName(result_type=bt_t, name=stmt.name,
                                     loc=loc),
-                    value=value, btuple_borrow_cpp=bc, loc=loc)
+                    value=value, btuple_borrow_cpp=bc,
+                    slot_cpp=lc.render_type(bt_t), loc=loc)
             _mixed_call = (isinstance(stmt.init, (TpyCall, TpyMethodCall))
                            and _renders_own_borrow_tuple(
                                stmt.init, lc.names_with("borrow_tuple_mixed"),
@@ -10718,7 +10768,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             value=lit,
                             rebind_storage=RebindStorage.IN_PLACE,
                             slot_cpp=lc.render_type(lit_pointee), loc=loc)
-                    fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(stmt)
+                    fld = rcfg.ptr_slot_field(lc.func, stmt)
                     if fld is None:
                         note_detail("decl.opt_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10734,7 +10784,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # optional lands in the prescanned frame field and the
                     # pointer lifts off it. The sync arm's decl-site slot is an
                     # inline one, which a suspension would outlive.
-                    fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(stmt)
+                    fld = rcfg.ptr_slot_field(lc.func, stmt)
                     if fld is None:
                         note_detail("decl.opt_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10757,8 +10807,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # (`__ptr_slot_f0 = make_opt(3); got =
                     # ::tpy::optional_to_ptr(__ptr_slot_f0);` -- the
                     # OPT_STORAGE_CALL decl's resumable twin).
-                    fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(
-                        stmt)
+                    fld = rcfg.ptr_slot_field(lc.func, stmt)
                     if fld is None:
                         note_detail("decl.opt_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -10812,8 +10861,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                             value=value,
                             rebind_storage=RebindStorage.IN_PLACE,
                             slot_cpp=lc.render_type(pointee), loc=loc)
-                    fld = rcfg.resumable_state(lc.func).ptr_slot_map.get(
-                        stmt)
+                    fld = rcfg.ptr_slot_field(lc.func, stmt)
                     if fld is None:
                         note_detail("decl.opt_reseat_source")
                         raise ThirUnsupported(stmt_reject_reason(stmt))
@@ -15209,9 +15257,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     closes.append(escape_cpp_name(name))
                     continue
                 if lc.binding(name).pointer:
-                    # An alias-born pointer-local may point at another local's
-                    # storage, so it is skipped.
-                    if name in lc.prescan.alias_born:
+                    # A pointer-local that borrows -- alias-born, or a frame
+                    # field the planner classes as borrowing -- points at
+                    # storage another binding owns, so it is skipped.
+                    if (name in lc.prescan.alias_born
+                            or lc.binding(name).frame_borrowed):
                         continue
                     sinks.append((escape_cpp_name(name), True))
                     continue
@@ -16480,6 +16530,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                               and (lc.binding(arg.name).optional_storage
                                    or lc.binding(arg.name).lazy_rebind_slot
                                    or lc.binding(arg.name).rebind_slot
+                                   or lc.frame_storage_name(arg.name)
                                    or lc.binding(arg.name).global_slot)
                               and not isinstance(
                                   unwrap_readonly(unwrap_ref_type(

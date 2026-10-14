@@ -1,9 +1,10 @@
-# The alias-gated slot model: an rvalue rebind of a reference local writes IN
-# PLACE when nothing aliases its current object (the superseded object drops
-# at the rebind, as under CPython) and takes storage of its OWN when a live
-# loan still points at it (the loan keeps the old object). One section per
-# position and loan shape; every section mutates through the loan AFTER the
-# rebind and reads both handles, and the Noisy sections print the drop order.
+# The rebind slot model: an rvalue rebind of a reference local takes storage
+# of its OWN, so a live loan keeps the old object. One section per position
+# and loan shape; every section mutates through the loan AFTER the rebind and
+# reads both handles. The Counted sections check that every superseded object
+# drops exactly once; when (at the rebind under CPython, when its slot dies
+# here) is no part of Python's semantics, so they read the drops only after
+# the function has returned.
 import asyncio
 from tpy import int32, Own, Ptr, take_ptr, error_return, ReturnException
 from typing import Iterator
@@ -45,6 +46,25 @@ class Noisy:
             print("drop", self.name)
 
 
+DROPS: list[str] = []
+
+
+class Counted:
+    name: str
+
+    def __init__(self, name: str) -> None:
+        self.name = name
+
+    def __del__(self) -> None:
+        DROPS.append(self.name)
+
+
+def drops() -> Own[list[str]]:
+    out = sorted(DROPS)
+    DROPS.clear()
+    return out
+
+
 class Fail(Exception, ReturnException):
     pass
 
@@ -76,12 +96,12 @@ def free_alias() -> None:
     print("free_alias:", alias.x, p.x)
 
 
-# free function, no alias: in place, each superseded object drops at the rebind
+# free function, no alias: every superseded object drops, once
 def free_drop() -> None:
-    r = Noisy("a")
-    r = Noisy("b")  # tpyc: ok
+    r = Counted("a")
+    r = Counted("b")  # tpyc: ok
     print("free_drop alive:", r.name)
-    r = Noisy("c")
+    r = Counted("c")
     print("free_drop alive:", r.name)
 
 
@@ -238,12 +258,17 @@ def gen_section() -> Iterator[int32]:
     yield p.x
 
 
-# generator frame, no alias: the object drops at the rebind, not with the frame
+# generator frame, no alias: both objects drop, once
 def gen_drop() -> Iterator[int32]:
-    r = Noisy("g1")
+    r = Counted("g1")
     yield 1
-    r = Noisy("g2")  # tpyc: ok
+    r = Counted("g2")  # tpyc: ok
     yield 2
+
+
+def run_gen_drop() -> None:
+    for got in gen_drop():
+        print("gen_drop:", got)
 
 
 # async frame
@@ -330,6 +355,7 @@ def error_return_body() -> int32:
 def main() -> None:
     free_alias()
     free_drop()
+    print("free_drop dropped:", drops())
     second_rebind()
     field_chain()
     element_loan()
@@ -347,8 +373,8 @@ def main() -> None:
     Runner().run()
     for got in gen_section():
         print("gen:", got)
-    for got in gen_drop():
-        print("gen_drop:", got)
+    run_gen_drop()
+    print("gen_drop dropped:", drops())
     print("async:", asyncio.run(async_section()))
     nested_def_section()
     with_body()
@@ -363,14 +389,16 @@ def main() -> None:
 
 main()
 
-# module level: a pointer-slot global rebound under a live alias owns; an
-# unaliased rebind of another writes in place
+# module level: a pointer-slot global rebound under a live alias keeps the
+# old object; an unaliased one is rebound the same way (its objects are
+# disarmed: a global's drop comes at exit, CPython's at the rebind)
 g = Point(12)
 galias = g
 g = Point(50)  # tpyc: ok
 galias.bump()
 print("module:", galias.x, g.x)
 gr = Noisy("m1")
+gr.armed = False
 gr = Noisy("m2")  # tpyc: ok
 print("module alive:", gr.name)
 gr.armed = False

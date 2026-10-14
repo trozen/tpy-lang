@@ -17,9 +17,9 @@ namespace tpyapp::main {
 //     print(saved.x, saved.y)
 void rvalue_restored() {
     std::optional<Point> __slot_2;
-    std::optional<Point> __slot_3;
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_3;
     for (int32_t i = 0; i < 3; ++i) {
         std::vector<Point> items = {Point(99, 99)};
         Point* p = &*(__slot_2 = Point(0, 0));

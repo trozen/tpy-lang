@@ -198,37 +198,47 @@ When a pointer-local is reassigned to an rvalue (constructor call, `copy()` resu
 p = Point(0, 0)                 # function scope, __slot_1
 saved = Point(0, 0)
 for i in range(1000):
-    p = Point(i, i)             # in place: __slot_1 is p's own storage, nothing else holds it
-    saved = p                   # safe -- points at function-scoped storage
+    p = Point(i, i)             # a slot of its own for this site, beside p
+    saved = p                   # safe -- points at storage that lives as long as p
 print(saved.x)                  # valid
 ```
 
-Where an rvalue rebind writes is sema's alias-rebind verdict
-(`tpyc/sema/alias_rebind.py`, stamped on the statement as `rebind_storage`).
-IN_PLACE renders `(*p) = <rvalue>;` -- the new object is constructed into the
-storage the pointer already aims at and the superseded one is destroyed there,
-which is CPython's drop point for an object no other name holds. OWN draws a
-slot private to that site, `std::optional<T> __slot_N;` on the body's hoist
-lines (the function prologue; the lambda prologue for a nested def;
-`static __global_slot_N` at module scope), and renders
-`p = &*(__slot_N = <rvalue>);`, so a name that still holds the old object
-keeps it. The declaration reserves nothing: `T __slot_1 = init; T* p =
-&__slot_1;` is the whole of it. A reassignment that needs no storage -- a
-borrow-returning call or operator (which takes an address), or `None` (a null
-pointer) -- reseats the pointer bare.
+Every rvalue rebind of a reference local -- a record, a `list`, a `dict`,
+each owned element of a tuple -- takes a slot private to its site:
+`std::optional<T> __slot_N;` declared immediately before the
+function-body-level statement that contains the rebind -- before the `if`,
+loop, `try`, `with` or `match` holding it, or right before a straight-line
+rebind -- and `static __global_slot_N` at module scope. A loop's rebind takes
+one slot that each pass refills. The lowering records each slot claim's anchor
+statement (`StorageSlots`; a slot several sites fill, a borrow tuple's
+owning-call slot, takes the earliest), and the emitter declares the slot
+before that statement. Frames keep their field order, each per-site field
+right after its local. The rebind renders `p = &*(__slot_N = <rvalue>);`, so a name that
+still holds the old object keeps it. A reassignment that needs no storage --
+a borrow-returning call or operator (which takes an address), or `None` (a
+null pointer) -- reseats the pointer bare.
 
-Because an OWN slot lands in the prologue, it is declared before every inline
-local -- so it is destroyed *after* all of them, including the local's own
-init slot. A `__del__` that observes another object's teardown sees
-prologue-declared slots drop last. A slot drawn inside a block is hoisted the
-same way, so the value one holds lives to function exit rather than block
-exit -- CPython's timing for a value some other name still holds.
+Because the slot is declared at body level, outside every block holding the
+rebind, the new object outlives any holder outside that block, and it is
+destroyed before every body-level local declared ahead of the rebind's
+statement, so a view of one of those stays valid. An object the rebind stores
+that views a local declared INSIDE the block holding the rebind outlives that
+local (`BUGS.md#rebind-slot-outlives-later-local`). The superseded object
+lives until its slot dies -- at function exit, or when a loop runs the site
+again -- where CPython drops it at the rebind; Python promises no destruction
+timing.
 
-On a resumable frame the same verdict picks between `p.emplace(<rvalue>)` on
-an owning `frame_slot<T>` field (IN_PLACE) and, for a local with any OWN
-site, a `T* p` field over per-site `std::optional<T> __ptr_slot_fN` fields
-(`_prescan_resumable_ptr_slots`), where OWN renders
-`p = &*(__ptr_slot_fN = <rvalue>);` and IN_PLACE `(*p) = <rvalue>;`.
+Writing the new object into the old one's storage (`(*p) = <rvalue>;`,
+CPython's drop point for an object no other name holds) needs a proof that
+nothing reaches the old object. That proof is MIR's to give: sema's
+alias-rebind pass (`tpyc/sema/alias_rebind.py`) stamps every site OWN
+(`rebind_storage`), and the in-place form the lowering and the frame layout
+still read has no writer until MIR proves the reuse.
+
+On a resumable frame the local is a `T* p` field over per-site
+`std::optional<T> __ptr_slot_fN` fields (`_prescan_resumable_ptr_slots`), each
+declared right after `p`, and a rebind renders
+`p = &*(__ptr_slot_fN = <rvalue>);`.
 
 ### Stack slot reuse in loops
 

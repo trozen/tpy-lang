@@ -4,12 +4,38 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
 
 struct Counter;
+struct Inner;
+struct Deep;
+struct Viewing;
+struct Managed;
+struct Keeper;
+struct Escaping;
+struct A;
+struct HA;
+struct Looper;
+struct Fail;
+struct Tagged;
+struct Src;
+struct Viewer;
 
+extern std::vector<std::string>* VIEW_DROPS;
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_gen_nested_list_root;
+struct __gen_gen_list_root;
+struct __gen_gen_dict_root;
+struct __gen_slot_drop_gen;
+struct __coro_slot_drop_async;
+struct __coro_slot_drop_async_main;
+struct __gen_slot_drop_unpack_gen;
+struct __gen_slot_drop_walrus_gen;
 
 // def pick(c: Counter) -> Counter:
 Counter& pick(Counter& c);
@@ -21,6 +47,103 @@ void rebind_in_loop();
 void borrow_call_rebind(Counter& seed);
 // def none_reassign(flag: bool) -> None:
 void none_reassign(bool flag);
+// def scalar_deep(c: bool) -> None:
+void scalar_deep(bool c);
+// def self_view(c: bool) -> None:
+void self_view(bool c);
+// def with_scalar(c: bool) -> None:
+void with_scalar(bool c);
+// def constructor_escape(c: bool) -> None:
+void constructor_escape(bool c);
+// def setter_escape(c: bool) -> None:
+void setter_escape(bool c);
+// def getitem_escape(c: bool) -> None:
+void getitem_escape(bool c);
+// def nested_list_root(c: bool) -> None:
+void nested_list_root(bool c);
+// def gen_nested_list_root(c: bool) -> Iterator[int32]:
+__gen_gen_nested_list_root gen_nested_list_root(bool c);
+// def list_root(c: bool) -> None:
+void list_root(bool c);
+// def gen_list_root(c: bool) -> Iterator[int32]:
+__gen_gen_list_root gen_list_root(bool c);
+// def dict_root(c: bool) -> None:
+void dict_root(bool c);
+// def gen_dict_root(c: bool) -> Iterator[int32]:
+__gen_gen_dict_root gen_dict_root(bool c);
+// def hoisted_loop() -> None:
+void hoisted_loop();
+// def hoisted_if() -> None:
+void hoisted_if();
+// def hoisted_nested_if() -> None:
+void hoisted_nested_if();
+// @error_return(Fail)
+// def make_counter(i: int32) -> Own[Counter]:
+std::expected<Counter, Fail> make_counter(int32_t i);
+// def block_nested_if(d: bool) -> None:
+void block_nested_if(bool d);
+// def block_try_loop() -> None:
+void block_try_loop();
+// @error_return(Fail)
+// def block_er(c: bool) -> int32:
+std::expected<int32_t, Fail> block_er(bool c);
+// def block_finally(c: bool) -> None:
+void block_finally(bool c);
+// def block_arm_rebind(c: bool) -> None:
+void block_arm_rebind(bool c);
+// @error_return(Fail)
+// def block_er_nested(n: int32) -> int32:
+std::expected<int32_t, Fail> block_er_nested(int32_t n);
+// def lend_counter(c: Counter) -> tuple[Counter, int32]:
+std::tuple<Counter*, int32_t> lend_counter(Counter& c);
+// def block_unpack_borrow(b: Counter, c: bool) -> None:
+void block_unpack_borrow(Counter& b, bool c);
+// def block_borrow_first(seed: Counter, c: bool) -> None:
+void block_borrow_first(Counter& seed, bool c);
+// def block_alias_rebind(c: bool) -> None:
+void block_alias_rebind(bool c);
+// def arm_alias_rebind_try() -> None:
+void arm_alias_rebind_try();
+// def arm_alias_rebind_match(c: bool) -> None:
+void arm_alias_rebind_match(bool c);
+// def arm_alias_rebind_else(c: bool) -> None:
+void arm_alias_rebind_else(bool c);
+// def arm_alias_rebind_optional(c: bool) -> None:
+void arm_alias_rebind_optional(bool c);
+// def make_tagged_pair(i: int32) -> Own[tuple[Tagged, int32]]:
+std::tuple<Tagged, int32_t> make_tagged_pair(int32_t i);
+// def block_unpack_own(c: bool) -> None:
+void block_unpack_own(bool c);
+// def view_drops() -> Own[list[str]]:
+std::vector<std::string> view_drops();
+// def slot_drop_plain() -> None:
+void slot_drop_plain();
+// def slot_drop_gen(c: bool) -> Iterator[int32]:
+__gen_slot_drop_gen slot_drop_gen(bool c);
+// async def slot_drop_async(c: bool) -> int32:
+__coro_slot_drop_async slot_drop_async(bool c);
+// async def slot_drop_async_main() -> None:
+__coro_slot_drop_async_main slot_drop_async_main();
+// def make_src(n: int32) -> tuple[Own[Src], int32]:
+std::tuple<Src, int32_t> make_src(int32_t n);
+// def make_srcs(n: int32) -> Own[tuple[Src, Src]]:
+std::tuple<Src, Src> make_srcs(int32_t n);
+// def slot_drop_unpack_plain() -> None:
+void slot_drop_unpack_plain();
+// def slot_drop_unpack_gen(c: bool) -> Iterator[int32]:
+__gen_slot_drop_unpack_gen slot_drop_unpack_gen(bool c);
+// def slot_drop_walrus_gen() -> Iterator[int32]:
+__gen_slot_drop_walrus_gen slot_drop_walrus_gen();
+// def slot_drop_view_before(n: int32) -> None:
+void slot_drop_view_before(int32_t n);
+// def slot_drop_view_after(n: int32) -> None:
+void slot_drop_view_after(int32_t n);
+// def lend_viewer(w: Viewer) -> tuple[Viewer, int32]:
+std::tuple<Viewer*, int32_t> lend_viewer(Viewer& w);
+// def slot_drop_borrow_unpack(w0: Viewer) -> None:
+void slot_drop_borrow_unpack(Viewer& w0);
+// def slot_drop_borrow_unpack_main() -> None:
+void slot_drop_borrow_unpack_main();
 // def main() -> None:
 void main();
 
@@ -43,6 +166,473 @@ inline std::ostream& operator<<(std::ostream& os, const Counter& obj) {
     return os;
 }
 
+// class Inner:
+struct Inner {
+    // cs: list[Counter]
+    std::vector<Counter> cs;
+
+    // def __init__(self, i: int32) -> None:
+    Inner() = default;
+    explicit Inner(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Inner& obj) {
+    ::tpy::print_object_default(os, "Inner", obj);
+    return os;
+}
+
+// class Deep:
+struct Deep {
+    // inner: Inner
+    Inner inner;
+
+    // def __init__(self, i: int32) -> None:
+    Deep() = default;
+    explicit Deep(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Deep";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Deep& obj) {
+    ::tpy::print_object_default(os, "Deep", obj);
+    return os;
+}
+
+// class Viewing:
+struct Viewing {
+    // s: str
+    std::string s;
+    // v: StrView
+    std::string_view v;
+
+    // def __init__(self, n: int32, v: StrView) -> None:
+    Viewing() = default;
+    explicit Viewing(int32_t n, std::string_view v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Viewing";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Viewing& obj) {
+    ::tpy::print_object_default(os, "Viewing", obj);
+    return os;
+}
+
+// class Managed:
+struct Managed {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Managed() = default;
+    explicit Managed(int32_t n);
+
+    // def __enter__(self) -> "Managed":
+    Managed& __enter__();
+
+    // def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+    void __exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Managed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Managed& obj) {
+    ::tpy::print_object_default(os, "Managed", obj);
+    return os;
+}
+
+// class Keeper:
+struct Keeper {
+    // p: Ptr[Counter]
+    Counter* p;
+
+    // def __init__(self, c: Counter) -> None:
+    Keeper() = default;
+    explicit Keeper(Counter& c);
+
+    // def save(self, c: Counter) -> None:
+    void save(Counter& c);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Keeper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Keeper& obj) {
+    ::tpy::print_object_default(os, "Keeper", obj);
+    return os;
+}
+
+// class Escaping:
+struct Escaping {
+    // c: Counter
+    Counter c;
+    // k: Ptr[Keeper]
+    Keeper* k;
+
+    // def __init__(self, n: int32, k: Keeper) -> None:
+    Escaping() = default;
+    explicit Escaping(int32_t n, Keeper& k);
+
+    // @property
+    // def value(self) -> int32:
+    int32_t value() const;
+
+    // @value.setter
+    // def value(self, v: int32) -> None:
+    void set_value(int32_t v);
+
+    // @readonly(False)
+    // def __getitem__(self, i: int32) -> Counter:
+    Counter& __getitem__(int32_t i);
+
+    Counter& operator[](int32_t i) {
+        return __getitem__(i);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Escaping";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Escaping& obj) {
+    ::tpy::print_object_default(os, "Escaping", obj);
+    return os;
+}
+
+// class A:
+struct A {
+    // x: int32
+    int32_t x;
+
+    // def __init__(self, x: int32) -> None:
+    A() = default;
+    explicit A(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.A";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const A& obj) {
+    ::tpy::print_object_default(os, "A", obj);
+    return os;
+}
+
+// class HA:
+struct HA {
+    // xs: list[A]
+    std::vector<A> xs;
+
+    // def __init__(self, i: int32) -> None:
+    HA() = default;
+    explicit HA(int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.HA";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const HA& obj) {
+    ::tpy::print_object_default(os, "HA", obj);
+    return os;
+}
+
+// class Looper:
+struct Looper {
+
+    // def __init__(self) -> None:
+    Looper();
+
+    // def run(self) -> None:
+    void run() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Looper";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Looper& obj) {
+    ::tpy::print_object_default(os, "Looper", obj);
+    return os;
+}
+
+// class Fail(Exception, ReturnException):
+struct Fail : ::tpy::ReturnException {
+
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Fail";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Fail& obj) {
+    ::tpy::print_object_default(os, "Fail", obj);
+    return os;
+}
+
+// class Tagged:
+struct Tagged {
+    // s: str
+    std::string s;
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Tagged() = default;
+    explicit Tagged(int32_t n);
+
+    // def bump(self) -> None:
+    void bump();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tagged& obj) {
+    ::tpy::print_object_default(os, "Tagged", obj);
+    return os;
+}
+
+// class Src:
+struct Src {
+    // s: str
+    std::string s;
+
+    // def __init__(self, n: int32) -> None:
+    Src() = default;
+    explicit Src(int32_t n);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Src";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Src& obj) {
+    ::tpy::print_object_default(os, "Src", obj);
+    return os;
+}
+
+// class Viewer:
+struct Viewer {
+    // v: StrView
+    std::string_view v;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, v: StrView) -> None:
+    explicit Viewer(std::string_view v);
+    Viewer(const Viewer&) = delete;
+    Viewer& operator=(const Viewer&) = delete;
+    Viewer(Viewer&& other) noexcept;
+    Viewer& operator=(Viewer&& other) noexcept;
+
+    // def __del__(self) -> None:
+    ~Viewer();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Viewer";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Viewer& obj) {
+    ::tpy::print_object_default(os, "Viewer", obj);
+    return os;
+}
+
+// async def slot_drop_async(c: bool) -> int32:
+struct __coro_slot_drop_async {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    bool c;
+    Src* p = nullptr;
+    std::optional<Src> __ptr_slot_f0;
+    std::optional<Src> __ptr_slot_f1;
+    ::tpy::frame_slot<Viewer> w;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_slot_drop_async(bool c_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(std::move(c_)) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_slot_drop_async&) {
+        return os << "<coroutine slot_drop_async>";
+    }
+};
+
+// async def slot_drop_async_main() -> None:
+struct __coro_slot_drop_async_main {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    int32_t __await_lift_0;
+    std::optional<__coro_slot_drop_async> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_slot_drop_async_main()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<::std::monostate> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_slot_drop_async_main&) {
+        return os << "<coroutine slot_drop_async_main>";
+    }
+};
+
+// def gen_nested_list_root(c: bool) -> Iterator[int32]:
+struct __gen_gen_nested_list_root : public ::tpy::next_iter_mixin<__gen_gen_nested_list_root, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    std::array<std::array<A, 2>, 1>* xs = nullptr;
+    std::optional<std::array<std::array<A, 2>, 1>> __ptr_slot_f0;
+    std::optional<std::array<std::array<A, 2>, 1>> __ptr_slot_f1;
+    A* saved = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_nested_list_root(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_nested_list_root& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_nested_list_root&) {
+        return os << "<generator gen_nested_list_root>";
+    }
+};
+
+// def gen_list_root(c: bool) -> Iterator[int32]:
+struct __gen_gen_list_root : public ::tpy::next_iter_mixin<__gen_gen_list_root, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    std::vector<HA>* xs = nullptr;
+    std::optional<std::vector<HA>> __ptr_slot_f0;
+    std::optional<std::vector<HA>> __ptr_slot_f1;
+    A* saved = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_list_root(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_list_root& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_list_root&) {
+        return os << "<generator gen_list_root>";
+    }
+};
+
+// def gen_dict_root(c: bool) -> Iterator[int32]:
+struct __gen_gen_dict_root : public ::tpy::next_iter_mixin<__gen_gen_dict_root, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    ::tpy::ordered_map<int32_t, HA>* d = nullptr;
+    std::optional<::tpy::ordered_map<int32_t, HA>> __ptr_slot_f0;
+    std::optional<::tpy::ordered_map<int32_t, HA>> __ptr_slot_f1;
+    A* saved = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_gen_dict_root(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_dict_root& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_dict_root&) {
+        return os << "<generator gen_dict_root>";
+    }
+};
+
+// def slot_drop_gen(c: bool) -> Iterator[int32]:
+struct __gen_slot_drop_gen : public ::tpy::next_iter_mixin<__gen_slot_drop_gen, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    Src* p = nullptr;
+    std::optional<Src> __ptr_slot_f0;
+    std::optional<Src> __ptr_slot_f1;
+    ::tpy::frame_slot<Viewer> w;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_slot_drop_gen(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_slot_drop_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_slot_drop_gen&) {
+        return os << "<generator slot_drop_gen>";
+    }
+};
+
+// def slot_drop_unpack_gen(c: bool) -> Iterator[int32]:
+struct __gen_slot_drop_unpack_gen : public ::tpy::next_iter_mixin<__gen_slot_drop_unpack_gen, int32_t> {
+    ::tpy::frame_state __state;
+    bool c;
+    Src* p = nullptr;
+    std::optional<Src> __ptr_slot_f0;
+    std::optional<Src> __ptr_slot_f1;
+    int32_t k;
+    ::tpy::frame_slot<Viewer> w;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_slot_drop_unpack_gen(bool c_)
+        : __state(S_INITIAL),
+          c(std::move(c_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_slot_drop_unpack_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_slot_drop_unpack_gen&) {
+        return os << "<generator slot_drop_unpack_gen>";
+    }
+};
+
+// def slot_drop_walrus_gen() -> Iterator[int32]:
+struct __gen_slot_drop_walrus_gen : public ::tpy::next_iter_mixin<__gen_slot_drop_walrus_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Src* p = nullptr;
+    std::optional<Src> __ptr_slot_f0;
+    std::optional<Src> __ptr_slot_f1;
+    ::tpy::frame_slot<Viewer> w;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_DONE = 4,
+    };
+
+    __gen_slot_drop_walrus_gen() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_slot_drop_walrus_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_slot_drop_walrus_gen&) {
+        return os << "<generator slot_drop_walrus_gen>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
@@ -52,6 +642,162 @@ inline Counter::Counter(int32_t n) : n(n) {}
 //     self.n += 1
 inline void Counter::bump() {
     this->n = ::tpy::add_check<int32_t>(this->n, 1);
+}
+
+// def __init__(self, i: int32) -> None:
+//     self.cs = [Counter(i), Counter(i + 1)]
+inline Inner::Inner(int32_t i) : cs(std::vector<Counter>{Counter(i), Counter((::tpy::add_check<int32_t>(i, 1)))}) {}
+
+// def __init__(self, i: int32) -> None:
+//     self.inner = Inner(i)
+inline Deep::Deep(int32_t i) : inner(Inner(i)) {}
+
+// def __init__(self, n: int32, v: StrView) -> None:
+//     self.s = "abcdefghijklmnopqrstuvwxyz0123456789" + str(n)
+//     self.v = v
+inline Viewing::Viewing(int32_t n, std::string_view v)
+    : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789", ::tpy::fixed_to_str<int32_t>(n)))),
+      v(v) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Managed::Managed(int32_t n) : n(n) {}
+
+// def __enter__(self) -> "Managed":
+//     return self
+inline Managed& Managed::__enter__() {
+    return (*this);
+}
+
+// def __exit__(self, exc_type, exc_val, exc_tb) -> None:
+//     print("with-scalar exit", self.n)
+inline void Managed::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
+    std::cout << "with-scalar exit" << " " << this->n << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, c: Counter) -> None:
+//     self.p = take_ptr(c)
+inline Keeper::Keeper(Counter& c) : p(&c) {}
+
+// def save(self, c: Counter) -> None:
+//     self.p = take_ptr(c)
+inline void Keeper::save(Counter& c) {
+    this->p = &c;
+}
+
+// def __init__(self, n: int32, k: Keeper) -> None:
+//     self.c = Counter(n)
+//     self.k = take_ptr(k)
+//     if n == 1:
+//         # The constructor hands out the address of its own field.
+//         self.k.save(self.c)
+inline Escaping::Escaping(int32_t n, Keeper& k)
+    : c(Counter(n)),
+      k(&k) {
+    if ((n == 1)) {
+        ::tpy::deref_check(this->k).save(this->c);
+    }
+}
+
+// @property
+// def value(self) -> int32:
+//     return self.c.n
+inline int32_t Escaping::value() const {
+    return this->c.n;
+}
+
+// @value.setter
+// def value(self, v: int32) -> None:
+//     self.k.save(self.c)
+inline void Escaping::set_value(int32_t v) {
+    ::tpy::deref_check(this->k).save(this->c);
+}
+
+// @readonly(False)
+// def __getitem__(self, i: int32) -> Counter:
+//     self.k.save(self.c)
+//     return self.c
+inline Counter& Escaping::__getitem__(int32_t i) {
+    ::tpy::deref_check(this->k).save(this->c);
+    return this->c;
+}
+
+// def __init__(self, x: int32) -> None:
+//     self.x = x
+inline A::A(int32_t x) : x(x) {}
+
+// def __init__(self, i: int32) -> None:
+//     self.xs = [A(i), A(i + 1)]
+inline HA::HA(int32_t i) : xs(std::vector<A>{A(i), A((::tpy::add_check<int32_t>(i, 1)))}) {}
+
+// def __init__(self) -> None:
+//     pass
+inline Looper::Looper() {
+}
+
+// # hoisted-method: the same loop in a method body.
+// def run(self) -> None:
+//     keep = Counter(0)
+//     for i in range(1):
+//         p = Counter(i)
+//         p = Counter(i + 7)  # tpyc: ok
+//         # Conservative (BUGS.md#loop-slot-reuse-false-warning).
+//         keep = p  # tpyc: warning(/'keep' will not keep the object/)
+//     keep.bump()
+//     print("hoisted-method", keep.n, p.n)
+inline void Looper::run() const {
+    Counter __slot_1 = Counter(0);
+    Counter* keep = &__slot_1;
+    std::optional<Counter> __slot_2;
+    std::optional<Counter> __slot_3;
+    Counter* p;
+    for (int32_t i = 0; i < 1; ++i) {
+        p = &*(__slot_2 = Counter(i));
+        p = &*(__slot_3 = Counter((::tpy::add_check<int32_t>(i, 7))));
+        keep = p;
+    }
+    keep->bump();
+    std::cout << "hoisted-method" << " " << keep->n << " " << p->n << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.s = "tagged-object-with-a-long-heap-string-" + str(n)
+//     self.n = n
+inline Tagged::Tagged(int32_t n)
+    : s((::tpy::str_concat("tagged-object-with-a-long-heap-string-", ::tpy::fixed_to_str<int32_t>(n)))),
+      n(n) {}
+
+// def bump(self) -> None:
+//     self.n += 1
+inline void Tagged::bump() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.s = "abcdefghijklmnopqrstuvwxyz0123456789-" + str(n)
+inline Src::Src(int32_t n) : s((::tpy::str_concat("abcdefghijklmnopqrstuvwxyz0123456789-", ::tpy::fixed_to_str<int32_t>(n)))) {}
+
+// def __init__(self, v: StrView) -> None:
+//     self.v = v
+inline Viewer::Viewer(std::string_view v) : v(v) {}
+
+inline Viewer::Viewer(Viewer&& other) noexcept : v(std::move(other.v)) {
+    other.__tpy_owned_ = false;
+}
+inline Viewer& Viewer::operator=(Viewer&& other) noexcept {
+    if (this != &other) {
+        this->~Viewer();
+        new (this) Viewer(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     # Reads the viewed string: its storage must still be alive.
+//     VIEW_DROPS.append(str(self.v))
+inline Viewer::~Viewer() {
+    if (!this->__tpy_owned_) return;
+    VIEW_DROPS->push_back(std::string(this->v));
 }
 void __tpy_init();
 } // namespace tpyapp::main

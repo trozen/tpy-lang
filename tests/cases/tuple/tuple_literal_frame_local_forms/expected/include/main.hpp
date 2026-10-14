@@ -325,7 +325,9 @@ struct __gen_loop_reassigned : public ::tpy::next_iter_mixin<__gen_loop_reassign
 struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_then_call, int32_t> {
     ::tpy::frame_state __state;
     bool c;
-    ::tpy::frame_slot<std::tuple<A, int32_t>> t;
+    std::tuple<A*, int32_t> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -350,7 +352,9 @@ struct __gen_literal_then_call : public ::tpy::next_iter_mixin<__gen_literal_the
 struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_literal, int32_t> {
     ::tpy::frame_state __state;
     bool c;
-    ::tpy::frame_slot<std::tuple<A, int32_t>> t;
+    std::tuple<A*, int32_t> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -374,7 +378,9 @@ struct __gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_call_then_l
 // def call_reassigned() -> Iterator[int32]:
 struct __gen_call_reassigned : public ::tpy::next_iter_mixin<__gen_call_reassigned, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<std::tuple<A, int32_t>> t;
+    std::tuple<A*, int32_t> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

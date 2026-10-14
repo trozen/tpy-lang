@@ -239,9 +239,10 @@ int32_t local_rebound(Box& b, bool again) {
     auto __tup_1 = ::tpyapp::main::mk_tok(b);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> u{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     if (again) {
         auto __tup_2 = ::tpyapp::main::mk_tok(b);
-        (*std::get<0>(u)) = std::move(std::get<0>(__tup_2));
+        std::get<0>(u) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(u) = std::get<1>(__tup_2);
     }
     return ::tpyapp::main::mixed_take(std::tuple<Tok, Box*>{std::move(*std::get<0>(u)), std::get<1>(u)});

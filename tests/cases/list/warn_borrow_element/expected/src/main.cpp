@@ -64,10 +64,10 @@ void test_value_type_no_borrow() {
 //     items.append(Point(int32(5), int32(6)))  # tpyc: ok
 //     print(len(items))
 void test_reassign_clears_borrows() {
-    std::optional<std::vector<Point>> __slot_2;
     std::vector<Point> __slot_1 = {Point(1, 2)};
     std::vector<Point>* items = &__slot_1;
     Point& v = ::tpy::__getitem__((*items), 0);
+    std::optional<std::vector<Point>> __slot_2;
     items = &*(__slot_2 = {Point(3, 4)});
     items->push_back(Point(5, 6));
     std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
@@ -81,9 +81,9 @@ void test_reassign_clears_borrows() {
 //     items.append(Point(int32(5), int32(6)))  # tpyc: ok
 //     print(v.x)
 void test_reassign_borrower_clears() {
-    std::optional<Point> __slot_1;
     std::vector<Point> items = {Point(1, 2), Point(3, 4)};
     Point* v = &(::tpy::__getitem__(items, 0));
+    std::optional<Point> __slot_1;
     v = &*(__slot_1 = Point(9, 9));
     items.push_back(Point(5, 6));
     std::cout << v->x << "\n" << ::tpy::check_signals;

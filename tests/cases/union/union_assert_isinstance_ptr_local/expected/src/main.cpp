@@ -10,9 +10,9 @@ namespace tpyapp::main {
 //     assert isinstance(v, Rect)
 //     return v.width
 int32_t process(bool flag) {
-    std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     ::tpy::Union<Circle, Rect> __slot_1 = Circle(1);
     ::tpy::Union<Circle*, Rect*> v = ::tpy::to_ptr_variant(__slot_1);
+    std::optional<::tpy::Union<Circle, Rect>> __slot_2;
     __slot_2.emplace(Rect(3));
     v = ::tpy::to_ptr_variant(*__slot_2);
     if (!(std::holds_alternative<Rect*>(v))) ::tpy::raise_assertion_error();

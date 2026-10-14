@@ -2025,7 +2025,8 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
     def _lower_leaf_inner(stmt: TpyStmt) -> THIRStmt:
         if isinstance(stmt, TpyVarDecl) and stmt.name in frame_fields:
-            _reject_tuple_site_own(stmt, stmt.name, analyzer)
+            if lc.binding(stmt.name).ptr_tuple is None:
+                _reject_tuple_site_own(stmt, stmt.name, analyzer)
             begin_stmt()
             if stmt.init is None:
                 # An annotation-only decl (`x: int32`) of a name the frame
@@ -2463,8 +2464,11 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                         reject="res.btuple_yield_source",
                         target_readonly=target_ro)
                 elif (isinstance(yv_src, TpyName)
-                        and (lc.frame_local(yv_src.name,
-                                            FrameLocalClass.BORROW_TUPLE)
+                        # A pointer tuple's owned elements live in frame
+                        # storage its next rebind may write in place.
+                        and ((lc.frame_local(yv_src.name,
+                                             FrameLocalClass.BORROW_TUPLE)
+                              and lc.binding(yv_src.name).ptr_tuple is None)
                              or _bare_yield_tuple_name_ok(
                                  yv_src.name, lc, declared))):
                     yield_values[ys] = _lower_expr(yv_src, lc, declared)
@@ -2616,10 +2620,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
 
                 if (isinstance(yv_src, TpyIfExpr)
                         and isinstance(yv_src.then_expr, TpyName)
-                        and lc.binding(yv_src.then_expr.name).frame_slot
+                        and lc.frame_storage_name(yv_src.then_expr.name)
                         and isinstance(yv_src.else_expr, TpyName)
-                        and lc.binding(yv_src.else_expr.name).frame_slot):
-                    # A TERNARY of frame-slot names hands out the
+                        and lc.frame_storage_name(yv_src.else_expr.name)):
+                    # A TERNARY of frame-storage names hands out the
                     # branch-picked borrow (`((flag) ? ((*a)) : ((*b)))`) --
                     # one THIRIfExpr, both operands lowered as branch
                     # expressions so neither hoists a temp.
@@ -2729,19 +2733,10 @@ def _lower_resumable(func: TpyFunction, analyzer, render_type,
                     _witness(f"res.yield_{half}_param")
                     return
                 if not (isinstance(yv_src, TpyName)
-                        and (lc.binding(yv_src.name).frame_slot
-                             or lc.frame_local(yv_src.name,
-                                               FrameLocalClass.LOOP_PTR,
-                                               FrameLocalClass.ALIAS_PTR)
-                             # a pointer-repr Optional loop var, narrowed (sema
-                             # types the yield at the inner `T`): the nullable
-                             # `T*` points into the iterated container.
-                             or lc.binding(yv_src.name).opt_ptr_loop_var)):
+                        and lc.frame_storage_name(yv_src.name)):
                     raise ThirUnsupported("res.yield_type")
-                # A frame_slot / pointer-form loop var / alias local NAME:
-                # every one of the three is frame-owned storage or a pointer
-                # into storage the frame outlives, so the borrow it hands out
-                # stays live across the suspension. Sema already rejects
+                # A frame-storage NAME: the borrow it hands out stays live
+                # across the suspension. Sema already rejects
                 # yielding an OWNING record local by reference ("declare
                 # Iterator[Own[R]]").
                 yield_values[ys] = _yield_borrow_name(yv_src)
@@ -3046,7 +3041,8 @@ def _lower_member_nested_def(nd, lc, declared) -> 'tuple':
         with _nested_def_lowering_scope(
                 lc, func, declared, self_captured=True,
                 nonlocal_names=nd.nonlocal_names) as body_declared:
-            body = _lower_stmts(func.body, lc, body_declared)
+            body = _lower_stmts(func.body, lc, body_declared,
+                                function_body=True)
             if lc.unhandled_hoists:
                 note_detail("nesteddef.hoisted_vars")
                 raise ThirUnsupported("res.nested_def_member")

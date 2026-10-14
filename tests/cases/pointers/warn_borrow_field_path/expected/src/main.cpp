@@ -51,10 +51,10 @@ void external_field_path() {
 //     c.items.append(Point(7, 8))  # tpyc: ok
 //     print(len(c.items))
 void reassign_clears_borrow() {
-    std::optional<Container> __slot_2;
     Container __slot_1 = Container();
     Container* c = &__slot_1;
     Point* ptr = &::tpy::__getitem__(c->items, 0);
+    std::optional<Container> __slot_2;
     c = &*(__slot_2 = Container());
     c->items.push_back(Point(7, 8));
     std::cout << ::tpy::__len__(c->items) << "\n" << ::tpy::check_signals;

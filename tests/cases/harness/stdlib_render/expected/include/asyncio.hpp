@@ -925,8 +925,6 @@ struct _GatherSettledFuture {
     //         orig_i += 1
     //     return poll_ready(result)
     ::tpystd::tpy::Poll<std::vector<Settled<T>>> __poll__(::tpystd::coro::Waker waker) {
-        std::optional<Settled<T>> __slot_1;
-        std::optional<Settled<T>> __slot_2;
         int32_t n = ::tpy::__len__(this->_tasks);
         if ((n == 0)) {
             std::vector<Settled<T>> empty = std::vector<Settled<T>>{};
@@ -974,6 +972,8 @@ struct _GatherSettledFuture {
         }
         std::vector<Settled<T>> result = std::vector<Settled<T>>{};
         int32_t orig_i = 0;
+        std::optional<Settled<T>> __slot_1;
+        std::optional<Settled<T>> __slot_2;
         while ((orig_i < n)) {
             bool settled_via_value = false;
             int32_t k = 0;

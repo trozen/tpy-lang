@@ -32,9 +32,10 @@ int32_t copied(const Cell& source, int32_t count) {
 int32_t replaced(int32_t count) {
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
+    std::optional<Cell> __slot_2;
     int32_t __stop_0 = count;
     for (int32_t i = 0; i < __stop_0; ++i) {
-        (*current) = Cell((((current->value == 1)) ? (2) : (1)));
+        current = &*(__slot_2 = Cell((((current->value == 1)) ? (2) : (1))));
     }
     return current->value;
 }
@@ -49,11 +50,11 @@ int32_t replaced(int32_t count) {
 //         current = Cell(i)  # tpyc: ok
 //     return original.value if current.value == 2 else 0
 int32_t retained() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(3);
     Cell* current = &__slot_1;
     Cell& original = (*current);
     current->value = 9;
+    std::optional<Cell> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         current = &*(__slot_2 = Cell(i));
     }

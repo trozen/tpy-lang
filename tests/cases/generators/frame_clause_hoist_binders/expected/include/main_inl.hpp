@@ -903,11 +903,11 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if:
         __state = S_DONE;  // until a yield sets where to resume
         if (::tpyapp::main::flag()) {
             auto __tup_1 = ::tpyapp::main::own_cell(::tpy::BigInt(4));
-            r.emplace(std::move(std::get<0>(__tup_1)));
+            r = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
             k = std::get<1>(__tup_1);
         } else {
             auto __tup_2 = ::tpyapp::main::own_cell(::tpy::BigInt(5));
-            r.emplace(std::move(std::get<0>(__tup_2)));
+            r = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
             k = std::get<1>(__tup_2);
         }
         __state = S_RESUME_0;
@@ -919,7 +919,7 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_gen_own_record_if:
             return Cell(::tpy::BigInt((::tpy::add_check<int32_t>(200, i))));
         }));
         __state = S_RESUME_1;
-        return std::format("{}/{}", ((*r).v).to_string(), ::tpy::__len__((*junk)));
+        return std::format("{}/{}", (r->v).to_string(), ::tpy::__len__((*junk)));
     }
     case S_RESUME_1: {  // after: yield f"{r.v}/{len(junk)}"
         __state = S_DONE;

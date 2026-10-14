@@ -11,11 +11,11 @@ namespace tpyapp::main {
 //     p = Point(3, 4)
 //     print(p.x)
 void main() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(::tpy::BigInt(1), ::tpy::BigInt(2));
     Point* p = &__slot_1;
     std::cout << p->x << "\n" << ::tpy::check_signals;
     { auto __del_sink = std::move(*p); }
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(::tpy::BigInt(3), ::tpy::BigInt(4)));
     std::cout << p->x << "\n" << ::tpy::check_signals;
 }

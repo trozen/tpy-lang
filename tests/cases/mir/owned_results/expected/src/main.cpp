@@ -64,8 +64,9 @@ Point forward(int32_t n) {
 Point reassigned(bool flag, int32_t n) {
     Point __slot_1 = Point(n, 0);
     Point* p = &__slot_1;
+    std::optional<Point> __slot_2;
     if (flag) {
-        (*p) = Point(0, n);
+        p = &*(__slot_2 = Point(0, n));
     }
     return std::move((*p));
 }
@@ -78,7 +79,8 @@ Point reassigned(bool flag, int32_t n) {
 Point reseat_return(int32_t n) {
     Point __slot_1 = ::tpyapp::main::make(n);
     Point* p = &__slot_1;
-    (*p) = ::tpyapp::main::make((::tpy::add_check<int32_t>(n, 1)));
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = ::tpyapp::main::make((::tpy::add_check<int32_t>(n, 1))));
     return std::move((*p));
 }
 
@@ -107,15 +109,16 @@ int32_t spawn_temp(const Pool& pool) {
     return pool.spawn(4).y;
 }
 
-// # free function: a reseat of a local by a second call
+// # free function: a reseat of a local by a second call, into a slot of its own
 // def reseat(n: int32) -> int32:  # tpyc: mir(covered) mir_summary(known)
 //     p = make(n)
-//     p = make(n + 1)  # tpyc: mir_owned(p) mir_write(p)
+//     p = make(n + 1)  # tpyc: mir_borrowed(p) mir_write(p@113)
 //     return p.x
 int32_t reseat(int32_t n) {
     Point __slot_1 = ::tpyapp::main::make(n);
     Point* p = &__slot_1;
-    (*p) = ::tpyapp::main::make((::tpy::add_check<int32_t>(n, 1)));
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = ::tpyapp::main::make((::tpy::add_check<int32_t>(n, 1))));
     return p->x;
 }
 
@@ -186,8 +189,8 @@ int32_t lend_temp(int32_t n) {
 //         return p.x
 //     return 0
 int32_t maybe(bool flag, int32_t n) {
-    std::optional<Point> __slot_1;
     Point* p = nullptr;
+    std::optional<Point> __slot_1;
     if (flag) {
         p = &*(__slot_1 = ::tpyapp::main::make(n));
     }

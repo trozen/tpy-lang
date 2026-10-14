@@ -110,6 +110,8 @@ class _FrameFormInputs:
     owning_tuple_locals: 'dict[str, TpyType | None]'
     own_rebind_names: 'frozenset[str]'
     pointer_form_names: 'set[str]'
+    # The pointer tuples (`CodeGenContext.frame_pointer_tuples`).
+    pointer_tuples: 'dict[str, TpyType | None]' = field(default_factory=dict)
     borrow_tuple_names: 'set[str]' = field(default_factory=set)
     owning_str: 'set[str]' = field(default_factory=set)
     source_form_fields: 'dict[str, str]' = field(default_factory=dict)
@@ -1880,6 +1882,7 @@ class AsyncCoroCodegen:
         storage instead of growing a second answer to that question."""
         return _FrameFormInputs(
             owning_tuple_locals=self.ctx.owning_generator_tuple_locals(func),
+            pointer_tuples=self.ctx.frame_pointer_tuples(func),
             own_rebind_names=self.ctx.analyzer.function_own_rebind_names.get(
                 func, frozenset()),
             # Statement-level borrow aliases (single-assign / tuple-unpack)
@@ -1950,6 +1953,12 @@ class AsyncCoroCodegen:
         # emit.
         if self.functions.protocols.is_static_protocol_param(ltype_inner):
             kind = rcfg.FrameLocalKind.PROTOCOL
+        elif inp.pointer_tuples.get(lname) is not None:
+            # A pointer tuple: each owned element is the scalar reference
+            # local, its object in a per-site field of its own, so the
+            # field is the borrow-form tuple of the plain body's local.
+            kind = rcfg.FrameLocalKind.BORROW_TUPLE
+            effective_type = inp.pointer_tuples[lname]
         elif lname in source_form_fields:
             # Loop var whose alias-vs-own choice belongs to C++: the
             # payload is spelled from the source's iteration protocol,
@@ -2102,7 +2111,8 @@ class AsyncCoroCodegen:
                 payload=payload,
                 effective_type=effective_type)
 
-        state.frame_layout = rcfg.FrameLayoutPlan(bindings=bindings)
+        state.frame_layout = rcfg.FrameLayoutPlan(
+            bindings=bindings, pointer_tuples=frozenset(inp.pointer_tuples))
         return state.frame_layout
 
     def _for_source_aliases(self, func: TpyFunction, record_name: str | None,
@@ -2262,21 +2272,26 @@ class AsyncCoroCodegen:
                 drop_runs_user_code=drops))
 
         # Per-write-site materialization slots for rvalue writes into
-        # pointer-form frame locals (see _prescan_resumable_ptr_slots).
-        slot_sites = {fname: stmt for stmt, fname in state.ptr_slot_map.items()}
-        for fname, ftype in state.ptr_slot_fields:
-            site = slot_sites.get(fname)
-            target, init = self._ptr_slot_site(site)
-            target_t = local_types.get(target) if target is not None else None
+        # pointer-form frame locals (see _prescan_resumable_ptr_slots). Each
+        # follows the local it backs, so the frame destroys it in that
+        # local's turn rather than after every other field.
+        site_slots: dict[str, list[FrameField]] = {}
+        for slot in state.ptr_slot_fields:
+            target_t = local_types.get(slot.local)
             if isinstance(target_t, OptionalType):
                 target_t = target_t.inner
             drops = (target_t is None
                      or unwrap_ref_type(target_t).drop_runs_user_code())
-            loop_machinery.append(FrameField(
-                name=fname, decl=f"{INDENT}{ftype} {fname};\n",
-                borrows=frozenset(read_names(init)) if init is not None
-                else frozenset(),
-                drop_runs_user_code=drops))
+            slot_field = FrameField(
+                name=slot.name, decl=f"{INDENT}{slot.cpp} {slot.name};\n",
+                borrows=frozenset(read_names(slot.value)),
+                drop_runs_user_code=drops)
+            if any(f.name == slot.local for f in local_fields):
+                site_slots.setdefault(slot.local, []).append(slot_field)
+            else:
+                loop_machinery.append(slot_field)
+        local_fields = [g for f in local_fields
+                        for g in (f, *site_slots.get(f.name, ()))]
 
         # Context-manager fields for CFG-decomposed `with`-with-await
         # bodies. One per WithItem: an owning `frame_slot<T>` for a
@@ -2377,16 +2392,6 @@ class AsyncCoroCodegen:
             return frozenset([src])
         return reads
 
-    @staticmethod
-    def _ptr_slot_site(site: 'TpyStmt | None'
-                       ) -> 'tuple[str | None, TpyExpr | None]':
-        """(the local, the value) a rebind-slot write site stores."""
-        if isinstance(site, TpyVarDecl):
-            return site.name, site.init
-        if isinstance(site, TpyAssign) and isinstance(site.target, TpyName):
-            return site.target.name, site.value
-        return None, None
-
     def _with_field_items(self, func: TpyFunction) -> 'dict[str, TpyWithItem]':
         """Each `__with_ctx_<n>` field -> the `with` item whose manager it
         holds."""
@@ -2453,8 +2458,8 @@ class AsyncCoroCodegen:
                 untraced.add(lname)
             for root in roots:
                 edge(lname, root)
-        for stmt, fname in state.ptr_slot_map.items():
-            edge(self._ptr_slot_site(stmt)[0], fname)
+        for slot in state.ptr_slot_fields:
+            edge(slot.local, slot.name)
         for root, targets in state.const_source_edges.items():
             for target in targets:
                 edge(target, root)
@@ -2542,9 +2547,9 @@ class AsyncCoroCodegen:
             out.write(
                 f"{INDENT}::tpy::frame_slot<{verdict.payload}> {cpp_name};\n")
         elif kind is rcfg.FrameLocalKind.BORROW_TUPLE:
-            cpp_type = self.types.tuple_borrow_cpp(
-                ltype_inner, const=verdict.const)
-            init = emit_prims.placeholder_init(ltype_inner, cpp_type)
+            bt = verdict.effective_type or ltype_inner
+            cpp_type = self.types.tuple_borrow_cpp(bt, const=verdict.const)
+            init = emit_prims.placeholder_init(bt, cpp_type)
             out.write(f"{INDENT}{cpp_type} {cpp_name}{init};\n")
         elif kind is rcfg.FrameLocalKind.VALUE:
             cpp_type = self.types.type_to_cpp(ltype_inner)
@@ -2837,7 +2842,6 @@ class AsyncCoroCodegen:
         old_borrow_form_tuple_locals = self.ctx.borrow_form_tuple_locals
         old_optional_borrow_tuple_locals = self.ctx.optional_borrow_tuple_locals
         old_type_param_bounds = self.ctx.current_type_param_bounds
-        old_ptr_slot_map = self.ctx.resumable_ptr_slot_map
 
         # Reset frame-specific fields before setup_body_scope, since the
         # `setup_resumable_frame_locals` call inside it reads
@@ -2945,7 +2949,6 @@ class AsyncCoroCodegen:
             self.ctx.generator_with_owned_ctx = old_with_owned_ctx
             self.ctx.generator_pointer_alias_locals = old_pointer_alias_locals
             self.ctx.frame_const_bindings = old_frame_const_bindings
-            self.ctx.resumable_ptr_slot_map = old_ptr_slot_map
             self.ctx.generator_self_ref = old_self_ref
             self.ctx.owned_view_frame_params = old_owned_view_params
             self.ctx.movable_locals = old_movable_locals
@@ -4532,19 +4535,24 @@ class AsyncCoroCodegen:
     def _prescan_resumable_ptr_slots(
             self, func: TpyFunction, body: list[TpyStmt]) -> None:
         """Reserve one `std::optional<T>` frame field per rvalue write into
-        a pointer-form frame local (decl init or rebind). The pointer field
-        outlives every case block, so the materialization slot must too --
-        an inline or hoisted per-call slot dies at the next suspension (or
-        the next `__next__` call) while the pointer still aims at it.
+        a pointer-form frame local (decl init or rebind; a walrus of a
+        rebound reference local), and per owned element of a pointer
+        tuple's binding or of a rebound reference local's unpack. The
+        pointer field outlives every case block, so the materialization slot
+        must too -- an inline or hoisted per-call slot dies at the next
+        suspension (or the next `__next__` call) while the pointer still
+        aims at it.
 
-        Which writes need a slot is `ptr_slot_field_type`'s call (shared
-        with the pointer-local reseat lowering, which rejects on a
-        missing entry). Fields land on `state.ptr_slot_fields`; the site
-        map (`stmt -> field`) on `state.ptr_slot_map`, seeded into the
-        body ctx by `setup_resumable_frame_locals`. One field per write
-        sema's alias-rebind verdict does not send in place: an alias
-        holding the previous value keeps a live target.
+        Which writes need a slot is decided here once, per (write, element)
+        -- None for the scalar: a scalar's is `ptr_slot_field_type`'s call,
+        an element's `ptr_tuple_elem_storage`'s. Fields land on
+        `state.ptr_slot_fields`; the site map (`stmt -> {element ->
+        field}`) on `state.ptr_slot_map`, which the lowering reads
+        (`rcfg.ptr_slot_field`) and rejects a reseat it finds no field for.
+        One field per write sema's alias-rebind verdict does not send in
+        place: an alias holding the previous value keeps a live target.
         """
+        from ..thir.lower.bindings import ptr_tuple_elem_storage
         state = rcfg.resumable_state(func)
         if state.ptr_slots_prescanned:
             return
@@ -4554,14 +4562,52 @@ class AsyncCoroCodegen:
                      rcfg.FrameLocalKind.REBIND_PTR)
         ptr_names = {n for n, v in layout.bindings.items()
                      if v.kind in ptr_kinds}
-        if not ptr_names:
+        ptr_tuples = {n: v.effective_type for n, v in layout.bindings.items()
+                      if v.kind is rcfg.FrameLocalKind.BORROW_TUPLE
+                      and n in layout.pointer_tuples
+                      and v.effective_type is not None}
+        if not ptr_names and not ptr_tuples:
             return
         local_types = dict(func.generator_locals or [])
-        fields: list[tuple[str, str]] = []
+        owned_masks = self.ctx.analyzer.ctx.tuple_elem_owned
+        elem_verdicts = self.ctx.analyzer.ctx.tuple_elem_storage
+        fields: list[rcfg.PtrSlotField] = []
         uid_map: IdentityMap = IdentityMap()
 
-        def visit(stmt: TpyStmt, name: str, init: 'TpyExpr | None') -> None:
-            if name not in ptr_names or init is None:
+        def reserve(stmt: 'TpyStmt | TpyExpr', elem: 'int | None',
+                    field_cpp: str, local: str, value: TpyExpr) -> None:
+            fname = f"__ptr_slot_f{len(fields)}"
+            fields.append(rcfg.PtrSlotField(fname, field_cpp, local, value))
+            uid_map.setdefault(stmt, {})[elem] = fname
+
+        def visit_tuple(stmt: TpyStmt, name: str, init: TpyExpr) -> None:
+            ptt = ptr_tuples[name]
+            # Visited even where every element is written in place: the
+            # lowering refuses a binding the prescan never saw.
+            uid_map.setdefault(stmt, {})
+            mask = owned_masks.get(stmt) or ()
+            const = name in state.const_frame_bindings
+            for i, et in enumerate(ptt.element_types):
+                if not (i < len(mask) and mask[i]):
+                    continue
+                if ptr_tuple_elem_storage(
+                        elem_verdicts.get(stmt), i, et, first=False,
+                        const=const) is RebindStorage.IN_PLACE:
+                    continue
+                pointee = unwrap_readonly(unwrap_ref_type(
+                    unwrap_send_sync(unwrap_own(et))))
+                reserve(stmt, i,
+                        f"std::optional<{self.types.type_to_cpp(pointee)}>",
+                        name, init)
+
+        def visit(stmt: 'TpyStmt | TpyExpr', name: str,
+                  init: 'TpyExpr | None') -> None:
+            if init is None:
+                return
+            if name in ptr_tuples:
+                visit_tuple(stmt, name, init)
+                return
+            if name not in ptr_names:
                 return
             # An IN_PLACE rebind assigns through the pointer into the
             # storage it already aims at: no field of its own. The reseat
@@ -4577,9 +4623,26 @@ class AsyncCoroCodegen:
                 self.ctx, init, target_type, cpp_type)
             if field_cpp is None:
                 return
-            fname = f"__ptr_slot_f{len(fields)}"
-            fields.append((fname, field_cpp))
-            uid_map[stmt] = fname
+            reserve(stmt, None, field_cpp, name, init)
+
+        rebind_names = {n for n, v in layout.bindings.items()
+                        if v.kind is rcfg.FrameLocalKind.REBIND_PTR}
+
+        def visit_unpack(stmt: TpyTupleUnpack) -> None:
+            # A rebound reference local taking an element over (sema's
+            # `is_owned`, the verdict that makes a rebind of it a site) lands
+            # it in a field of this site's own, as its assignments do; the
+            # site is never stamped IN_PLACE. The lowering binds exactly the
+            # targets reserved here, moving each out of the holder.
+            for i, name in enumerate(stmt.targets):
+                if (name not in rebind_names
+                        or not (i < len(stmt.is_owned) and stmt.is_owned[i])):
+                    continue
+                pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                    unwrap_own(stmt.target_types[i]))))
+                reserve(stmt, i,
+                        f"std::optional<{self.types.type_to_cpp(pointee)}>",
+                        name, stmt.value)
 
         def walk(stmts: list[TpyStmt]) -> None:
             for s in stmts:
@@ -4589,6 +4652,11 @@ class AsyncCoroCodegen:
                     visit(s, s.name, s.init)
                 elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
                     visit(s, s.target.name, s.value)
+                elif isinstance(s, TpyTupleUnpack):
+                    visit_unpack(s)
+                for w in walrus_bindings(s):
+                    if w.target in rebind_names:
+                        visit(w, w.target, w.value)
                 if hasattr(s, "sub_bodies"):
                     for b in s.sub_bodies():
                         walk(b)

@@ -227,16 +227,20 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_mixed_borrowed_rebound
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A*>{A(1), &(b)});
-        saved = &((*std::get<1>((*t))));
+        auto __tup_1 = std::tuple<A, A*>{A(1), &(b)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = std::get<1>(__tup_1);
+        saved = &((*std::get<1>(t)));
         __state = S_RESUME_0;
         return saved->x;
     }
     case S_RESUME_0: {  // after: yield saved.x
-        t.emplace(std::tuple<A, A*>{A(9), &(c)});
+        auto __tup_2 = std::tuple<A, A*>{A(9), &(c)};
+        std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::get<1>(__tup_2);
         saved->x = 70;
         __state = S_RESUME_1;
-        return std::get<1>((*t))->x;
+        return std::get<1>(t)->x;
     }
     case S_RESUME_1: {  // after: yield t[1].x
         __state = S_RESUME_2;
@@ -264,18 +268,22 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_rebind_before_alias::_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A>{A(1), A(2)});
+        auto __tup_1 = std::tuple<A, A>{A(1), A(2)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = &*(__ptr_slot_f1 = std::move(std::get<1>(__tup_1)));
         if (c) {
-            t.emplace(std::tuple<A, A>{A(9), A(8)});
+            auto __tup_2 = std::tuple<A, A>{A(9), A(8)};
+            std::get<0>(t) = &*(__ptr_slot_f2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = &*(__ptr_slot_f3 = std::move(std::get<1>(__tup_2)));
         }
-        saved = &(std::get<1>((*t)));
+        saved = &((*std::get<1>(t)));
         __state = S_RESUME_0;
         return saved->x;
     }
     case S_RESUME_0: {  // after: yield saved.x
         saved->x = 5;
         __state = S_RESUME_1;
-        return std::get<1>((*t)).x;
+        return std::get<1>(t)->x;
     }
     case S_RESUME_1: {  // after: yield t[1].x
         __state = S_DONE;
@@ -298,16 +306,20 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_alias_after_last_rebin
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A>{A(1), A(2)});
-        t.emplace(std::tuple<A, A>{A(3), A(4)});
-        saved = &(std::get<1>((*t)));
+        auto __tup_1 = std::tuple<A, A>{A(1), A(2)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = &*(__ptr_slot_f1 = std::move(std::get<1>(__tup_1)));
+        auto __tup_2 = std::tuple<A, A>{A(3), A(4)};
+        std::get<0>(t) = &*(__ptr_slot_f2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = &*(__ptr_slot_f3 = std::move(std::get<1>(__tup_2)));
+        saved = &((*std::get<1>(t)));
         __state = S_RESUME_0;
         return saved->x;
     }
     case S_RESUME_0: {  // after: yield saved.x
         saved->x = 7;
         __state = S_RESUME_1;
-        return std::get<1>((*t)).x;
+        return std::get<1>(t)->x;
     }
     case S_RESUME_1: {  // after: yield t[1].x
         __state = S_DONE;
@@ -333,7 +345,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A>{A(1), A(2)});
+        auto __tup_1 = std::tuple<A, A>{A(1), A(2)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = &*(__ptr_slot_f1 = std::move(std::get<1>(__tup_1)));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(1));
         __state = S_JOIN_0;
@@ -342,7 +356,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__
     case S_RESUME_0: {  // after: yield saved.x
         saved->x = 5;
         __state = S_RESUME_1;
-        return std::get<1>((*t)).x;
+        return std::get<1>(t)->x;
     }
     case S_RESUME_1: {  // after: yield t[1].x
         __state = S_DONE;
@@ -350,12 +364,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__
     }
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
-            saved = &(std::get<1>((*t)));
+            saved = &((*std::get<1>(t)));
             __state = S_RESUME_0;
             return saved->x;
         }
         i = ((*__for_i_0))++;
-        t.emplace(std::tuple<A, A>{A(10), A(11)});
+        auto __tup_2 = std::tuple<A, A>{A(10), A(11)};
+        std::get<0>(t) = &*(__ptr_slot_f2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = &*(__ptr_slot_f3 = std::move(std::get<1>(__tup_2)));
         __state = S_JOIN_0;
         continue;
     }
@@ -364,7 +380,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_orelse_alias::__next__
     __builtin_unreachable();
 }
 
-// # workaround 1 for a rebind after the alias: bind a copy. The copy is detached
+// # a copy bound before a rebind: the copy is detached
 // # from the slot, so a write through it is not seen through `t`, and the
 // # rebind leaves it alone.
 // def copy_alias(c: bool) -> Iterator[int32]:
@@ -381,26 +397,30 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_copy_alias::__next__()
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A>{A(1), A(2)});
-        saved.emplace(A(std::get<1>((*t))));
+        auto __tup_1 = std::tuple<A, A>{A(1), A(2)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = &*(__ptr_slot_f1 = std::move(std::get<1>(__tup_1)));
+        saved.emplace(A((*std::get<1>(t))));
         __state = S_RESUME_0;
         return (*saved).x;
     }
     case S_RESUME_0: {  // after: yield saved.x
         (*saved).x = 5;
         __state = S_RESUME_1;
-        return std::get<1>((*t)).x;
+        return std::get<1>(t)->x;
     }
     case S_RESUME_1: {  // after: yield t[1].x
         if (c) {
-            t.emplace(std::tuple<A, A>{A(9), A(8)});
+            auto __tup_2 = std::tuple<A, A>{A(9), A(8)};
+            std::get<0>(t) = &*(__ptr_slot_f2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = &*(__ptr_slot_f3 = std::move(std::get<1>(__tup_2)));
         }
         __state = S_RESUME_2;
         return (*saved).x;
     }
     case S_RESUME_2: {  // after: yield saved.x
         __state = S_RESUME_3;
-        return std::get<1>((*t)).x;
+        return std::get<1>(t)->x;
     }
     case S_RESUME_3: {  // after: yield t[1].x
         __state = S_DONE;
@@ -411,7 +431,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_copy_alias::__next__()
     __builtin_unreachable();
 }
 
-// # workaround 1 through a record field and a list inside the tuple.
+// # a copy through a record field and a list inside the tuple.
 // def copy_chained(c: bool) -> Iterator[int32]:
 //     t = (H(1), 5)
 //     saved = copy(t[0].xs[1])  # tpyc: ok
@@ -424,15 +444,19 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_copy_chained::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<H, int32_t>{H(1), 5});
-        saved.emplace(A(::tpy::__getitem__(std::get<0>((*t)).xs, 1)));
+        auto __tup_1 = std::tuple<H, int32_t>{H(1), 5};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_1));
+        saved.emplace(A(::tpy::__getitem__(std::get<0>(t)->xs, 1)));
         (*saved).x = 50;
         __state = S_RESUME_0;
-        return ::tpy::__getitem__(std::get<0>((*t)).xs, 1).x;
+        return ::tpy::__getitem__(std::get<0>(t)->xs, 1).x;
     }
     case S_RESUME_0: {  // after: yield t[0].xs[1].x
         if (c) {
-            t.emplace(std::tuple<H, int32_t>{H(10), 6});
+            auto __tup_2 = std::tuple<H, int32_t>{H(10), 6};
+            std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_2));
         }
         __state = S_RESUME_1;
         return (*saved).x;
@@ -446,7 +470,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_copy_chained::__next__
     __builtin_unreachable();
 }
 
-// # workaround 2 through a tuple inside a list slot: the alias is taken after
+// # a tuple inside a list slot: the alias is taken after
 // # the last rebind, so a write through it is seen through the slot.
 // def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
 //     xs = [(A(1), A(2))]
@@ -460,13 +484,13 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_list_of_tuples_after_r
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs.emplace(std::array<std::tuple<A, A>, 1>{std::tuple<A, A>{A(1), A(2)}});
+        xs = &*(__ptr_slot_f0 = {std::tuple<A, A>{A(1), A(2)}});
         __state = S_RESUME_0;
         return std::get<1>(::tpy::__getitem__((*xs), 0)).x;
     }
     case S_RESUME_0: {  // after: yield xs[0][1].x
         if (c) {
-            xs.emplace(std::array<std::tuple<A, A>, 1>{std::tuple<A, A>{A(9), A(8)}});
+            xs = &*(__ptr_slot_f1 = {std::tuple<A, A>{A(9), A(8)}});
         }
         saved = &(std::get<1>(::tpy::__getitem__((*xs), 0)));
         saved->x = 5;

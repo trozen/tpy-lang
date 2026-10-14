@@ -18,8 +18,8 @@ std::tuple<int32_t, Box> make_pair(int32_t n) {
 //         return first
 //     return 0
 int32_t use(Holder& h) {
-    std::tuple<int32_t, Box*> t;
     std::optional<std::tuple<int32_t, Box>> __slot_1;
+    std::tuple<int32_t, Box*> t;
     if ((std::get<0>((t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(__slot_1.emplace(::tpyapp::main::make_pair(9))), t)) > 0)) {
         int32_t first = std::get<1>(t)->val;
         t = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(h.pair);

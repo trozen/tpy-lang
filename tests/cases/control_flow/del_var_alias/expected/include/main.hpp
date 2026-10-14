@@ -8,11 +8,20 @@
 namespace tpyapp::main {
 
 struct Obj;
+struct Holder;
+struct Drop;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_owner_del;
+struct __gen_gen_field_alias;
+
 // def make() -> Own[Obj]:
 Obj make();
+// def gen_owner_del() -> Iterator[int]:
+__gen_gen_owner_del gen_owner_del();
+// def gen_field_alias() -> Iterator[int]:
+__gen_gen_field_alias gen_field_alias();
 // def main() -> None:
 void main();
 
@@ -32,9 +41,119 @@ inline std::ostream& operator<<(std::ostream& os, const Obj& obj) {
     return os;
 }
 
+// class Holder:
+struct Holder {
+    // obj: Obj
+    Obj obj;
+
+    // def __init__(self) -> None:
+    Holder();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// class Drop:
+struct Drop {
+    // val: int
+    ::tpy::BigInt val;
+    bool __tpy_owned_ = true;
+
+    // def __init__(self, val: int) -> None:
+    explicit Drop(const ::tpy::BigInt& val);
+    Drop(const Drop&) = delete;
+    Drop& operator=(const Drop&) = delete;
+    Drop(Drop&& other) noexcept;
+    Drop& operator=(Drop&& other) noexcept;
+
+    // def __del__(self) -> None:
+    ~Drop();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Drop";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Drop& obj) {
+    ::tpy::print_object_default(os, "Drop", obj);
+    return os;
+}
+
+// def gen_owner_del() -> Iterator[int]:
+struct __gen_gen_owner_del : public ::tpy::next_iter_mixin<__gen_gen_owner_del, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<Drop> p;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_owner_del() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_owner_del& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_owner_del&) {
+        return os << "<generator gen_owner_del>";
+    }
+};
+
+// def gen_field_alias() -> Iterator[int]:
+struct __gen_gen_field_alias : public ::tpy::next_iter_mixin<__gen_gen_field_alias, ::tpy::BigInt> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<Holder> h;
+    Obj* inner = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_gen_field_alias() : __state(S_INITIAL) {}
+
+    std::expected<::tpy::BigInt, ::tpy::StopIteration> __next__();
+    __gen_gen_field_alias& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_field_alias&) {
+        return os << "<generator gen_field_alias>";
+    }
+};
+
 
 // def __init__(self, val: int) -> None:
 //     self.val = val
 inline Obj::Obj(const ::tpy::BigInt& val) : val(val) {}
+
+// def __init__(self) -> None:
+//     self.obj = Obj(3)
+inline Holder::Holder() : obj(Obj(::tpy::BigInt(3))) {}
+
+// def __init__(self, val: int) -> None:
+//     self.val = val
+inline Drop::Drop(const ::tpy::BigInt& val) : val(val) {}
+
+inline Drop::Drop(Drop&& other) noexcept : val(std::move(other.val)) {
+    other.__tpy_owned_ = false;
+}
+inline Drop& Drop::operator=(Drop&& other) noexcept {
+    if (this != &other) {
+        this->~Drop();
+        new (this) Drop(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     print("drop", self.val)
+inline Drop::~Drop() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    std::cout << "drop" << " " << this->val << "\n" << ::tpy::check_signals;
+}
 void __tpy_init();
 } // namespace tpyapp::main

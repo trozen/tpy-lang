@@ -45,8 +45,6 @@ void __tpy_builder_argparse_help_1() {
 //     ["--tag", "a", "--tag", "b", "--num", "1", "--num", "2", "--mode"]
 // )
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
-    std::optional<std::vector<std::string>> __slot_1;
-    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     std::vector<std::string>* tag = nullptr;
     std::vector<std::string> __tpy_argparse_acc_tag = std::vector<std::string>{};
     bool __tpy_argparse_seen_tag = false;
@@ -89,9 +87,11 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             ::tpystd::sys::exit__int32(2);
         }
     }
+    std::optional<std::vector<std::string>> __slot_1;
     if (__tpy_argparse_seen_tag) {
         tag = &*(__slot_1 = std::vector<std::string>(__tpy_argparse_acc_tag));
     }
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
     if (__tpy_argparse_seen_num) {
         num = &*(__slot_2 = std::vector<::tpy::BigInt>(__tpy_argparse_acc_num));
     }

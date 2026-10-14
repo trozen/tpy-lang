@@ -28,7 +28,6 @@ void greet_cat(const Cat& c) {
 //     else:
 //         greet_dog(pet)
 void main() {
-    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     ::tpy::Union<Cat, Dog> __slot_1 = Dog("Rex");
     ::tpy::Union<Cat*, Dog*> pet = ::tpy::to_ptr_variant(__slot_1);
     if (true) {
@@ -38,6 +37,7 @@ void main() {
         auto& __pet = *std::get<Cat*>(pet);
         ::tpyapp::main::greet_cat(__pet);
     }
+    std::optional<::tpy::Union<Cat, Dog>> __slot_2;
     __slot_2.emplace(Cat("Whiskers"));
     pet = ::tpy::to_ptr_variant(*__slot_2);
     if (std::holds_alternative<Cat*>(pet)) {

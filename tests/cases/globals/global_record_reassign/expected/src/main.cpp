@@ -24,9 +24,11 @@ void __tpy_init() {
     static Container __global_slot_1 = Container(1);
     c = &__global_slot_1;
     std::cout << c->value << "\n" << ::tpy::check_signals;
-    (*c) = Container(2);
+    static std::optional<Container> __global_slot_2;
+    c = &*(__global_slot_2 = Container(2));
     std::cout << c->value << "\n" << ::tpy::check_signals;
-    (*c) = Container(3);
+    static std::optional<Container> __global_slot_3;
+    c = &*(__global_slot_3 = Container(3));
     std::cout << c->value << "\n" << ::tpy::check_signals;
 }
 

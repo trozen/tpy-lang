@@ -27,10 +27,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_decl_inside_while::__n
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            p.emplace(Point(0));
-            p.emplace(Point(i));
+            p = &*(__ptr_slot_f0 = Point(0));
+            p = &*(__ptr_slot_f1 = Point(i));
             __state = S_RESUME_0;
-            return (*p).x;
+            return p->x;
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -63,10 +63,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_decl_inside_for::__nex
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
         v = *((*__for_it_0))++;
-        p.emplace(Point(0));
-        p.emplace(Point(v));
+        p = &*(__ptr_slot_f0 = Point(0));
+        p = &*(__ptr_slot_f1 = Point(v));
         __state = S_RESUME_0;
-        return (*p).x;
+        return p->x;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
@@ -85,7 +85,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_before_while::__next__
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        p.emplace(Point(11));
+        p = &*(__ptr_slot_f0 = Point(11));
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -97,9 +97,9 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_before_while::__next__
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            p.emplace(Point(i));
+            p = &*(__ptr_slot_f1 = Point(i));
             __state = S_RESUME_0;
-            return (*p).x;
+            return p->x;
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
@@ -123,8 +123,8 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_before_while_after_dra
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        p.emplace(Point(11));
-        p.emplace(Point(12));
+        p = &*(__ptr_slot_f0 = Point(11));
+        p = &*(__ptr_slot_f1 = Point(12));
         i = 0;
         __state = S_JOIN_0;
         continue;
@@ -136,13 +136,76 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_before_while_after_dra
     }
     case S_JOIN_0: {
         if ((i < n)) {
-            p.emplace(Point(i));
+            p = &*(__ptr_slot_f2 = Point(i));
             __state = S_RESUME_0;
-            return (*p).x;
+            return p->x;
         } else {
             __state = S_DONE;
             return ::tpy::make_unexpected(::tpy::StopIteration{});
         }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # a rebound record local that is yielded: the consumer's reference reaches
+// # the object the frame holds, so its mutation shows in the generator
+// def yield_rebound() -> Iterator[Point]:
+//     p = Point(1)
+//     yield p                              # -> S_RESUME_0
+//     print("yield_rebound gen:", p.x)
+//     p = Point(10)  # tpyc: ok
+//     yield p                              # -> S_RESUME_1
+//     print("yield_rebound gen:", p.x)
+inline std::expected<::tpy::val_or_ref<Point>, ::tpy::StopIteration> __gen_yield_rebound::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        p = &*(__ptr_slot_f0 = Point(1));
+        __state = S_RESUME_0;
+        return (*p);
+    }
+    case S_RESUME_0: {  // after: yield p
+        std::cout << "yield_rebound gen:" << " " << p->x << "\n" << ::tpy::check_signals;
+        p = &*(__ptr_slot_f1 = Point(10));
+        __state = S_RESUME_1;
+        return (*p);
+    }
+    case S_RESUME_1: {  // after: yield p
+        std::cout << "yield_rebound gen:" << " " << p->x << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # the consumer keeps the first yielded object across the next pull: the
+// # rebind at its own site takes a frame field of its own, so the first object
+// # survives it
+// def yield_kept_across_pull() -> Iterator[Cell]:
+//     c = Cell(1)
+//     yield c                                      # -> S_RESUME_0
+//     c = Cell(2)  # tpyc: ok
+//     yield c                                      # -> S_RESUME_1
+inline std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __gen_yield_kept_across_pull::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        c = &*(__ptr_slot_f0 = Cell(1));
+        __state = S_RESUME_0;
+        return (*c);
+    }
+    case S_RESUME_0: {  // after: yield c
+        c = &*(__ptr_slot_f1 = Cell(2));
+        __state = S_RESUME_1;
+        return (*c);
+    }
+    case S_RESUME_1: {  // after: yield c
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

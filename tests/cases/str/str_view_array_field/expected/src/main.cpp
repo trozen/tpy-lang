@@ -62,7 +62,8 @@ void test_record_reassigned() {
     Person __slot_1 = Person("Dave", 40);
     Person* p = &__slot_1;
     std::string s = p->name;
-    (*p) = Person("Eve", 35);
+    std::optional<Person> __slot_2;
+    p = &*(__slot_2 = Person("Eve", 35));
     std::cout << s << "\n" << ::tpy::check_signals;
 }
 

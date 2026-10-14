@@ -65,8 +65,6 @@ void __tpy_builder_argparse_help_1() {
 //     ["--include", "core", "--include", "extra",
 //      "--paths", "a", "b", "c"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
-    std::optional<std::vector<Tag>> __slot_2;
-    std::optional<std::vector<Tag>> __slot_3;
     std::vector<Tag>* include = nullptr;
     std::vector<Tag> __tpy_argparse_acc_include = std::vector<Tag>{};
     bool __tpy_argparse_seen_include = false;
@@ -83,6 +81,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
         __tpy_argparse_h = (::tpy::add_check<int32_t>(__tpy_argparse_h, 1));
     }
     int32_t __tpy_argparse_i = 0;
+    std::optional<std::vector<Tag>> __slot_2;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--include")) {
@@ -94,7 +93,7 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
             __tpy_argparse_seen_include = true;
         } else if ((__tpy_argparse_tok == "--paths")) {
-            (*__tpy_argparse_acc_paths) = std::vector<Tag>{};
+            __tpy_argparse_acc_paths = &*(__slot_2 = std::vector<Tag>{});
             int32_t __tpy_argparse_j = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
             while (((__tpy_argparse_j < ::tpy::__len__(argv)) && (!(::tpy::str_startswith(::tpy::__getitem__(argv, __tpy_argparse_j), "-"))))) {
                 __tpy_argparse_acc_paths->push_back(Tag::from_arg(::tpy::__getitem__(argv, __tpy_argparse_j)));
@@ -111,11 +110,13 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
             ::tpystd::sys::exit__int32(2);
         }
     }
+    std::optional<std::vector<Tag>> __slot_3;
     if (__tpy_argparse_seen_include) {
-        include = &*(__slot_2 = std::vector<Tag>(__tpy_argparse_acc_include));
+        include = &*(__slot_3 = std::vector<Tag>(__tpy_argparse_acc_include));
     }
+    std::optional<std::vector<Tag>> __slot_4;
     if (__tpy_argparse_seen_paths) {
-        paths = &*(__slot_3 = std::vector<Tag>((*__tpy_argparse_acc_paths)));
+        paths = &*(__slot_4 = std::vector<Tag>((*__tpy_argparse_acc_paths)));
     }
     return __tpy_builder_argparse_args_1(std::move(include ? std::optional<std::vector<Tag>>(std::move(*include)) : std::nullopt), std::move(paths ? std::optional<std::vector<Tag>>(std::move(*paths)) : std::nullopt));
 }

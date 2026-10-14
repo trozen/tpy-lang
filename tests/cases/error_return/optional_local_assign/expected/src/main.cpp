@@ -26,8 +26,8 @@ std::expected<Box, Bad> decode(bool ok) {
 //         return b.v
 //     return -2
 int32_t run(bool ok) {
-    std::optional<Box> __slot_1;
     Box* b = nullptr;
+    std::optional<Box> __slot_1;
     {
         {
             auto __try_tmp_2 = ::tpyapp::main::decode(ok);

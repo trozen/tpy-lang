@@ -64,7 +64,9 @@ inline std::ostream& operator<<(std::ostream& os, const Box& obj) {
 struct __gen_frame_literal : public ::tpy::next_iter_mixin<__gen_frame_literal, int32_t> {
     ::tpy::frame_state __state;
     Box& b;
-    ::tpy::frame_slot<std::tuple<Box, Box*>> t;
+    std::tuple<Box*, Box*> t;
+    std::optional<Box> __ptr_slot_f0;
+    std::optional<Box> __ptr_slot_f1;
     int32_t k;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;

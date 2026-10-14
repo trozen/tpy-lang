@@ -407,7 +407,8 @@ void extend_pos(std::vector<int64_t>& typed) {
 void rebind_pos() {
     std::vector<int64_t> __slot_1 = std::vector<int64_t>{};
     std::vector<int64_t>* xs = &__slot_1;
-    (*xs) = {1, 2};
+    std::optional<std::vector<int64_t>> __slot_2;
+    xs = &*(__slot_2 = {1, 2});
     xs->push_back(::tpyapp::main::wide());
     std::cout << "rebind:" << " " << ::tpy::__getitem__((*xs), 0) << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }

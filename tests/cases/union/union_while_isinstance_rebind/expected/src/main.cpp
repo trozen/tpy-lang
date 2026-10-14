@@ -13,10 +13,10 @@ namespace tpyapp::main {
 //         t = B("done")
 //     return total
 ::tpy::BigInt drain(std::vector<::tpy::BigInt>&& seed) {
-    std::optional<::tpy::Union<A, B>> __slot_2;
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     int32_t total = 0;
+    std::optional<::tpy::Union<A, B>> __slot_2;
     while (std::holds_alternative<A*>(t)) {
         auto& __t = *std::get<A*>(t);
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(__t.items));
@@ -55,10 +55,10 @@ namespace tpyapp::main {
 //         t = B("x")
 //     return total
 ::tpy::BigInt compound(std::vector<::tpy::BigInt>&& seed, bool flag) {
-    std::optional<::tpy::Union<A, B>> __slot_2;
     ::tpy::Union<A, B> __slot_1 = A(std::move(seed));
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     int32_t total = 0;
+    std::optional<::tpy::Union<A, B>> __slot_2;
     while ((std::holds_alternative<A*>(t) && flag)) {
         auto& __t = *std::get<A*>(t);
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__(__t.items));
@@ -79,11 +79,11 @@ namespace tpyapp::main {
 //         keep = False
 //     return n
 ::tpy::BigInt or_rebind() {
-    std::optional<::tpy::Union<A, B>> __slot_2;
     ::tpy::Union<A, B> __slot_1 = A(std::vector<::tpy::BigInt>{1});
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     bool keep = true;
     int32_t n = 0;
+    std::optional<::tpy::Union<A, B>> __slot_2;
     while ((std::holds_alternative<A*>(t) || keep)) {
         n = ::tpy::add_check<int32_t>(n, 1);
         __slot_2.emplace(B("x"));
@@ -102,10 +102,10 @@ namespace tpyapp::main {
 //         t = B("x")
 //     return n
 ::tpy::BigInt not_rebind() {
-    std::optional<::tpy::Union<A, B>> __slot_2;
     ::tpy::Union<A, B> __slot_1 = A(std::vector<::tpy::BigInt>{1, 2});
     ::tpy::Union<A*, B*> t = ::tpy::to_ptr_variant(__slot_1);
     int32_t n = 0;
+    std::optional<::tpy::Union<A, B>> __slot_2;
     while ((!(std::holds_alternative<B*>(t)))) {
         auto& __t = *std::get<A*>(t);
         n = ::tpy::add_check<int32_t>(n, 1);

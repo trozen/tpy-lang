@@ -192,7 +192,9 @@ def _expr(e: THIRExpr) -> str:
         return f"char({e.value!r})"
     if isinstance(e, THIRWalrus):
         decl = f" [decl {e.cpp_type}]" if e.cpp_type is not None else ""
-        return f"walrus({e.name}{decl}, {_expr(e.value)})"
+        slot = (f" [slot {e.reseat_slot}]" if e.reseat_slot is not None
+                else "")
+        return f"walrus({e.name}{decl}{slot}, {_expr(e.value)})"
     if isinstance(e, THIRBinOp):
         return f"binop({_expr(e.left)}, {e.op}, {_expr(e.right)})"
     if isinstance(e, THIRValueSelect):
@@ -458,9 +460,9 @@ def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     # A predeclaration is part of where a name lives, so the dump shows it at
     # the statement that owns it.
     pad = "  " * depth
-    slots = {rec.name: cpp for rec, cpp in getattr(stmt, "hoist_slots", ())}
+    slots = {rec.name for rec in getattr(stmt, "hoist_slots", ())}
     lines = [f"{pad}hoist %{h.name}: {h.cpp_type}"
-             + (f" [slot {slots[h.name]}]" if h.name in slots else "")
+             + (" [slot]" if h.name in slots else "")
              for h in getattr(stmt, "hoist_decls", ())]
     return lines + _stmt_body_lines(stmt, depth)
 

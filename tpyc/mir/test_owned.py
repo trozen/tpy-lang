@@ -9,7 +9,7 @@ import pytest
 from ..parse import RebindStorage
 from ..thir import nodes as th
 from ..thir.lower.storage import record_layout
-from ..thir.testutil import _compile, _entry
+from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import THIRValidationError, validate_constructor, validate_function
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
@@ -130,6 +130,8 @@ def replacement_loop(flag: bool) -> int32:
 @pytest.fixture(scope="module")
 def artifacts() -> Artifacts:
     compiler, modules = _compile(SOURCE)
+    # The in-place reseats MIR models; sema leaves every rebind OWN.
+    force_in_place(modules, {"in_place": None, "replacement_loop": None})
     sources, ctx = compiler.generate_code_and_thir(_entry(modules))
     assert sources
     return ({node.name: fn for node, fn in ctx.thir_functions.items()},

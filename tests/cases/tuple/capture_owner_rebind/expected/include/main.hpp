@@ -91,9 +91,9 @@ struct __coro_asynchronous {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     Cell* current = nullptr;
-    std::tuple<Cell*> saved;
     std::optional<Cell> __ptr_slot_f0;
     std::optional<Cell> __ptr_slot_f1;
+    std::tuple<Cell*> saved;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -118,9 +118,9 @@ struct __coro_asynchronous {
 struct __gen_suspended : public ::tpy::next_iter_mixin<__gen_suspended, int32_t> {
     ::tpy::frame_state __state;
     Cell* current = nullptr;
-    std::tuple<Cell*> saved;
     std::optional<Cell> __ptr_slot_f0;
     std::optional<Cell> __ptr_slot_f1;
+    std::tuple<Cell*> saved;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -153,11 +153,11 @@ inline Cell::Cell(int32_t value) : value(value) {}
 //     saved[0].value = 9
 //     self.result = current.value
 inline Runner::Runner() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell*>(current);
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     this->result = current->value;
@@ -172,11 +172,11 @@ inline Runner::Runner() {
 //     saved[0].value = 9
 //     print("method", saved[0].value, current.value, self.result)
 inline void Runner::run() const {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell*>(current);
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "method" << " " << std::get<0>(saved)->value << " " << current->value << " " << this->result << "\n" << ::tpy::check_signals;
@@ -191,11 +191,11 @@ inline void Runner::run() const {
 //     print("generic", seed, saved[0].value, current.value)
 template<typename T>
 void generic(::tpy::param_val_or_ref_t<T> seed) {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell*>(current);
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "generic" << " " << ::tpy::ValuePrinter(seed) << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;

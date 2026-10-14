@@ -174,7 +174,9 @@ inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
 struct __coro_async_handler_raise_finally {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<P> p;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    std::optional<P> __ptr_slot_f1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -216,7 +218,9 @@ struct __coro_async_handler_raise_finally {
 // def gen_handler_raise_finally() -> Iterator[int32]:
 struct __gen_gen_handler_raise_finally : public ::tpy::next_iter_mixin<__gen_gen_handler_raise_finally, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<P> p;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    std::optional<P> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

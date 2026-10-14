@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir import nodes as th
+from ..thir.source import UNBOUND
 from ..thir.testutil import _compile, _entry
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
@@ -340,7 +341,7 @@ def test_incomplete_or_inconsistent_hoist_facts_fail_closed(hoists: Hoists, dama
         stmt = replace(stmt, hoisted_bindings=(replace(fact, optional_layout=th.THIROptionalLayout(INT32),
                                                        tuple_layout=th.THIRTupleLayout((INT32,))),))
     else:
-        stmt = replace(stmt, hoist_slots=(("value", "int32_t"),))
+        stmt = replace(stmt, hoist_slots=(UNBOUND,))
     result = lower_function(replace(fn, body=(stmt, *rest)), MIRBodyId("bad", damage), definitions=definitions)
     assert isinstance(result, MIRNotCovered), result
 

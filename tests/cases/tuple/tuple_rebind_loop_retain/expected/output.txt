@@ -1,3 +1,13 @@
 loop-retain 10 0
 loop-retain 11 11
 loop-retain 12 12
+gen-loop-alias 111
+gen-loop-alias 111
+holder-loop [1, 20, 30] 30
+nested-loop [1, 2, 10, 11, 20, 21]
+gen-nested-loop [1, 2, 10, 11, 20, 21]
+co-nested-loop [1, 2, 10, 11, 20, 21]
+scalar-nested-loop [1, 2, 10, 11, 20, 21]
+holder-two-hop-loop [102, 111] 111
+fresh-iterable-loop [12, 14, 40, 42]
+range-len-loop [10, 11, 20, 21, 10, 11, 20, 21]

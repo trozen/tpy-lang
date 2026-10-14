@@ -6,12 +6,14 @@
 namespace tpyapp::main {
 
 // def gen() -> Iterator[int32]:
-//     # Two write sites, nothing aliases the first payload: the second write
-//     # assigns through the pointer and drops Resource(1) right there.
 //     saved: Optional[Resource] = Resource(1)
-//     yield 1                                                                 # -> S_RESUME_0
+//     yield 1                                                         # -> S_RESUME_0
+//     # The rebind's new payload lands in a field of its own.
 //     saved = Resource(2)
-//     yield 2                                                                 # -> S_RESUME_1
+//     yield 2                                                         # -> S_RESUME_1
+//     # The defined drop point of the current payload, in both runs.
+//     del saved
+//     yield 3                                                         # -> S_RESUME_2
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
@@ -21,11 +23,16 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen::__next__() {
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        (*saved) = Resource(2);
+        saved = &*(__ptr_slot_f1 = Resource(2));
         __state = S_RESUME_1;
         return 2;
     }
     case S_RESUME_1: {  // after: yield 2
+        { auto __del_sink = std::move(*saved); }
+        __state = S_RESUME_2;
+        return 3;
+    }
+    case S_RESUME_2: {  // after: yield 3
         __state = S_DONE;
         return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

@@ -127,7 +127,7 @@ void call_fill_control(int32_t k);
 void reused_construct(int32_t n);
 // def stamped(s: str) -> int32:  # tpyc: mir(uncovered /^constructor body effects$/)
 int32_t stamped(std::string_view s);
-// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 void reseat_self(int32_t k, bool flag);
 // def member_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
 void member_self(int32_t k, bool flag);

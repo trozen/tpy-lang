@@ -1,10 +1,10 @@
 # An alias of a tuple element inside a generator / coroutine frame points at
 # the element's referent: a borrowed element is already a pointer, so the
-# alias copies it rather than taking the address of the element slot. The
-# rejected shapes (a rebind that can run after an alias of a by-value
-# element, including a `finally` rebind after a handler's alias) are pinned
-# by the error_frame_*alias_rebind cases; the *_after_rebind sections are
-# the rewrite their diagnostic names, the copy_* sections the other one.
+# alias copies it rather than taking the address of the element slot. A
+# rebound tuple is a pointer tuple whose owned element's object sits in a
+# frame field per binding site, so an alias taken before a rebind keeps the
+# old object (tuple/frame_tuple_rebind_storage); the sections below take the
+# alias after the last rebind, or bind a copy.
 import asyncio
 from typing import Iterator
 
@@ -157,7 +157,7 @@ def orelse_alias() -> Iterator[int32]:
     yield t[1].x
 
 
-# workaround 1 for a rebind after the alias: bind a copy. The copy is detached
+# a copy bound before a rebind: the copy is detached
 # from the slot, so a write through it is not seen through `t`, and the
 # rebind leaves it alone.
 def copy_alias(c: bool) -> Iterator[int32]:
@@ -172,7 +172,7 @@ def copy_alias(c: bool) -> Iterator[int32]:
     yield t[1].x
 
 
-# workaround 1 through a record field and a list inside the tuple.
+# a copy through a record field and a list inside the tuple.
 def copy_chained(c: bool) -> Iterator[int32]:
     t = (H(1), 5)
     saved = copy(t[0].xs[1])  # tpyc: ok
@@ -183,7 +183,7 @@ def copy_chained(c: bool) -> Iterator[int32]:
     yield saved.x
 
 
-# workaround 2 through a tuple inside a list slot: the alias is taken after
+# a tuple inside a list slot: the alias is taken after
 # the last rebind, so a write through it is seen through the slot.
 def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
     xs = [(A(1), A(2))]
@@ -195,7 +195,7 @@ def list_of_tuples_after_rebind(c: bool) -> Iterator[int32]:
     yield xs[0][1].x
 
 
-# workaround 1, coroutine twin. (A MIXED slot's owned element cannot be
+# a copy, coroutine twin. (A MIXED slot's owned element cannot be
 # copied yet: BUGS.md#tuple-elem-copy-mixed-or-list-rejects.)
 async def co_copy(c: bool) -> int32:
     t = (A(1), A(2))
@@ -207,7 +207,7 @@ async def co_copy(c: bool) -> int32:
     return saved.x * 100 + t[0].x
 
 
-# workaround 2, coroutine twin on the owned element of a mixed slot: the
+# coroutine, the owned element of a mixed slot: the
 # alias is taken after the last rebind, so it aliases the new element in
 # place and a write through it is seen through the slot.
 async def co_alias_after_rebind(b: A, c: bool) -> int32:

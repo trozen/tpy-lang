@@ -146,6 +146,7 @@ void match_break() {
 void continue_rebind() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
+    std::optional<P> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         std::cout << "continue_rebind" << " " << i << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
         if ((i == 0)) {
@@ -153,7 +154,7 @@ void continue_rebind() {
             ::tpyapp::main::take(std::move(__tmp_1));
             continue;
         }
-        (*p) = P(5);
+        p = &*(__slot_2 = P(5));
     }
 }
 
@@ -654,6 +655,7 @@ void finally_continue() {
     std::optional<P> __slot_1;
     P* p = &*(__slot_1 = P(1));
     int32_t n = 0;
+    std::optional<P> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         std::cout << "finally_continue" << " " << i << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
         {
@@ -666,7 +668,7 @@ void finally_continue() {
                     n = ::tpy::add_check<int32_t>(n, 1);
                     continue;
                 }
-                (*p) = P(5);
+                p = &*(__slot_2 = P(5));
             } catch (...) {
                 if (!__fin_ran_15) {
                     n = ::tpy::add_check<int32_t>(n, 1);
@@ -718,11 +720,12 @@ void suppressed_while_true() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
     int32_t i = 0;
+    std::optional<P> __slot_2;
     auto __ctx_4 = Suppress();
     __ctx_4.__enter__();
     try {
         while (true) {
-            (*p) = P(2);
+            p = &*(__slot_2 = P(2));
             P __tmp_1 = (*p);
             ::tpyapp::main::take(std::move(__tmp_1));
             ::tpyapp::main::fail_at(i, 1);
@@ -803,12 +806,13 @@ void zero_trip_for(const std::vector<int32_t>& xs) {
     P* y = &__slot_1;
     P __tmp_1 = (*y);
     ::tpyapp::main::take(std::move(__tmp_1));
+    std::optional<P> __slot_2;
     auto& __obj_0 = xs;
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t x = *__beg_0;
-        (*y) = P(2);
+        y = &*(__slot_2 = P(2));
     }
     std::cout << "zero_trip_for" << " " << ::tpy::__len__(y->xs) << "\n" << ::tpy::check_signals;
 }
@@ -827,8 +831,9 @@ void zero_trip_while(int32_t n) {
     P __tmp_1 = (*y);
     ::tpyapp::main::take(std::move(__tmp_1));
     int32_t i = 0;
+    std::optional<P> __slot_2;
     while ((i < n)) {
-        (*y) = P(2);
+        y = &*(__slot_2 = P(2));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
     std::cout << "zero_trip_while" << " " << ::tpy::__len__(y->xs) << "\n" << ::tpy::check_signals;
@@ -846,8 +851,9 @@ void while_true_rebind() {
     P __slot_1 = P(1);
     P* y = &__slot_1;
     ::tpyapp::main::take(std::move((*y)));
+    std::optional<P> __slot_2;
     while (true) {
-        (*y) = P(2);
+        y = &*(__slot_2 = P(2));
         break;
     }
     std::cout << "while_true_rebind" << " " << ::tpy::__len__(y->xs) << "\n" << ::tpy::check_signals;

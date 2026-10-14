@@ -19,10 +19,10 @@ Holder make_holder(int32_t x) {
 //     p.tag = p.tag + "!"
 //     return first + "/" + p.tag
 std::string rebound(int32_t x) {
-    std::optional<Point> __slot_2;
     std::optional<Point> __slot_1 = ::tpyapp::main::make_holder(x).value;
     Point* p = ::tpy::optional_to_ptr(__slot_1);
     std::string first = (((p == nullptr)) ? ("none") : (p->tag));
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point("set"));
     p->tag = (::tpy::str_concat(p->tag, "!"));
     return (::tpy::str_concat((::tpy::str_concat(first, "/")), p->tag));
@@ -36,9 +36,9 @@ std::string rebound(int32_t x) {
 //         p = Point("set")
 //     return "none" if p is None else p.tag
 std::string branch_rebound(int32_t x) {
-    std::optional<Point> __slot_2;
     std::optional<Point> __slot_1 = ::tpyapp::main::make_holder(x).value;
     Point* p = ::tpy::optional_to_ptr(__slot_1);
+    std::optional<Point> __slot_2;
     if ((x > 1)) {
         p = &*(__slot_2 = Point("set"));
     }

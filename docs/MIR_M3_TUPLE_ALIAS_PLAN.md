@@ -153,8 +153,10 @@ The broader tuple feature is not assumed correct:
 
 - The constructor-literal rebind emit mismatch above blocks that producer.
 - `BUGS.md#resumable-alias-identity` records frame backing overwritten under
-  surviving aliases; `BUGS.md#frame-tuple-reassigned-owning-alias` records
-  remaining frame owning/borrow mixing and whole-alias gaps.
+  surviving aliases; the frame owning/borrow mixing and whole-alias gaps
+  closed when frames took the rebound pointer tuple (tuple plan step 5.3),
+  and `BUGS.md#frame-ptr-tuple-consuming-unpack-rejects` records the
+  frame's remaining consuming-unpack gap.
 - `BUGS.md#readonly-auto-tuple-copy-fact` and
   `BUGS.md#optional-tuple-unpack-readonly-fact` block relying on those sibling
   metadata paths without their own checks.

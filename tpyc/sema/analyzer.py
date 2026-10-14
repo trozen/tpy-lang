@@ -396,6 +396,10 @@ class SemanticAnalyzer:
         # (the alias-rebind pass's OWN verdict) -- the frame layout's
         # pointer-form criterion.
         self.function_own_rebind_names: IdentityMap = IdentityMap()
+        # Per function: each pointer tuple's form as the lowering decides it
+        # (`thir.lower.bindings.ptr_tuple_decision`), shared by the binding
+        # planner and the frame layout.
+        self.ptr_tuple_decisions: IdentityMap = IdentityMap()
         # Per function: what each generator-object local borrows
         # (FunctionTrackingState.frame_local_roots), for the frame layout.
         self.function_frame_local_roots: IdentityMap = IdentityMap()
@@ -3298,10 +3302,6 @@ class SemanticAnalyzer:
             # Finalize nested def escape analysis (same as _analyze_function)
             self._finalize_nested_def_escapes()
             self._warn_stale_value_captures()
-            finalize_pointer_tuples(self.ctx, method, nested=False,
-                                    compat=self.compat)
-
-            self.ctx.in_consuming_method = prev_consuming
 
             # Warn if __next__ has no raise StopIteration (likely infinite loop)
             # Skip for native methods (cpp_template set) -- StopIteration handled in C++
@@ -3355,6 +3355,11 @@ class SemanticAnalyzer:
                 self._collect_generator_locals(method, local_ns, exclude_self=True)
             self.compat.drain_deferred_escape_checks()
             self._enqueue_generic_yield_settle()
+            # After the deduction, as a function body's: its declared-slot
+            # checks read the settled types.
+            finalize_pointer_tuples(self.ctx, method, nested=False,
+                                    compat=self.compat)
+            self.ctx.in_consuming_method = prev_consuming
 
             # Store Phase 1 local mutation facts on the method body's own
             # FunctionInfo. A @overload implementation has none (callers

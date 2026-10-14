@@ -35,7 +35,8 @@ from .nodes import (
     TpyBoolLiteral, TpyAssign, TpyVarDecl, TpyIf, TpyWhile, TpyBreak,
     TpyMatch, TpyWith, TpyAssert, TpyUnaryOp, SourceLocation,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
-    TpyGeneratorExpression, TpyFunction, ParseError,
+    TpyGeneratorExpression, TpyFunction, TpyNamedExpr, ParseError,
+    stamp_stands_for, walk_expr_tree,
 )
 
 
@@ -64,6 +65,28 @@ def _has_await(expr: TpyExpr | None) -> bool:
         if _has_await(child):
             return True
     return False
+
+
+def _stamp_stands_for(stmt: TpyStmt, prefix: list[TpyStmt]) -> None:
+    """Stamp the temporaries of `prefix` whose value `stmt` binds to a
+    variable -- by its own binding (`p = __await_ternary_0`) or by a walrus
+    in its expressions (`if (p := __await_ternary_0)[0].n`) -- with the
+    program's variable they stand for."""
+    binds: list[tuple[str, TpyExpr | None]] = []
+    if isinstance(stmt, TpyVarDecl):
+        binds.append((stmt.stands_for or stmt.name, stmt.init))
+    elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
+        binds.append((stmt.target.name, stmt.value))
+
+    def visit(e: TpyExpr) -> bool:
+        if isinstance(e, TpyNamedExpr):
+            binds.append((e.target, e.value))
+        return True
+
+    for e in stmt.exprs():
+        walk_expr_tree(e, visit)
+    for target, value in binds:
+        stamp_stands_for(prefix, target, value)
 
 
 class _Desugarer:
@@ -106,6 +129,8 @@ class _Desugarer:
         # before the (once-evaluated) statement.
         prefix: list[TpyStmt] = []
         self._lower_stmt_exprs(stmt, prefix)
+        if prefix:
+            _stamp_stands_for(stmt, prefix)
         return prefix + [stmt]
 
     def _recurse_sub_bodies(self, stmt: TpyStmt) -> None:
@@ -196,6 +221,8 @@ class _Desugarer:
         else_branch = list(orelse) + [TpyBreak(loc=loc)]
         gate = TpyIf(condition=cond_val, then_body=body,
                      else_body=else_branch, loc=loc)
+        if cond_prefix:
+            _stamp_stands_for(gate, cond_prefix)
         new_body = list(cond_prefix) + [gate]
         return [TpyWhile(condition=TpyBoolLiteral(True, loc=loc),
                          body=new_body, orelse=[], loc=loc)]

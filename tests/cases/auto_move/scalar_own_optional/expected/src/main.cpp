@@ -195,15 +195,15 @@ void test_first_decl_pointer_local() {
 //     z = make(int32(-1))
 //     print(z is None)
 void test_rebind_from_successive_returns() {
-    std::optional<P> __slot_2;
-    std::optional<P> __slot_3;
     std::optional<P> __slot_1 = ::tpyapp::main::make(41);
     P* z = ::tpy::optional_to_ptr(__slot_1);
+    std::optional<P> __slot_2;
     __slot_2 = ::tpyapp::main::make(43);
     z = ::tpy::optional_to_ptr(__slot_2);
     if ((z != nullptr)) {
         std::cout << z->x << "\n" << ::tpy::check_signals;
     }
+    std::optional<P> __slot_3;
     __slot_3 = ::tpyapp::main::make(-1);
     z = ::tpy::optional_to_ptr(__slot_3);
     std::cout << ::tpy::print_bool((z == nullptr)) << "\n" << ::tpy::check_signals;

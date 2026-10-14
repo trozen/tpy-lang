@@ -25,7 +25,8 @@ void main() {
     Point* p = &__slot_1;
     p->x = 0;
     p->y = 0;
-    (*p) = Point();
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point());
     p->x = 1;
     p->y = 2;
     Point& alias = (*p);

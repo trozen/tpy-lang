@@ -22,7 +22,8 @@ int32_t literal_position(const F& f) {
         a->push_back(3);
         std::cout << "literal: after decl" << " " << ::tpy::__len__((*a)) << "\n" << ::tpy::check_signals;
     }
-    (*a) = f.make();
+    std::optional<std::vector<int32_t>> __slot_2;
+    a = &*(__slot_2 = f.make());
     if ((a == nullptr)) {
         return -1;
     }
@@ -40,12 +41,12 @@ int32_t literal_position(const F& f) {
 //         return -1
 //     return len(a)
 int32_t none_arm_position(const F& f, bool c) {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{1, 2};
     std::vector<int32_t>* a = &__slot_1;
     if (c) {
         a = nullptr;
     }
+    std::optional<std::vector<int32_t>> __slot_2;
     a = &*(__slot_2 = f.make());
     if ((a == nullptr)) {
         return -1;
@@ -87,7 +88,8 @@ int32_t Builder::build() const {
     if ((a != nullptr)) {
         a->push_back(3);
     }
-    (*a) = this->f.make();
+    std::optional<std::vector<int32_t>> __slot_2;
+    a = &*(__slot_2 = this->f.make());
     if ((a == nullptr)) {
         return -1;
     }

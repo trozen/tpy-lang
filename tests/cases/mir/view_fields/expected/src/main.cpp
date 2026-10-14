@@ -74,7 +74,6 @@ void alias_replaced(int32_t k, bool flag) {
 //         a = mk(k + 2)
 //     print("copied_rebind", u.s, t.s)
 void copied_rebind(int32_t k, bool flag) {
-    std::optional<Tok> __slot_2;
     std::string a = ::tpyapp::main::mk(k);
     std::string b = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1)));
     Tok __slot_1 = Tok(a, 1);
@@ -82,6 +81,7 @@ void copied_rebind(int32_t k, bool flag) {
     Tok& u = (*t);
     u.n = 7;
     std::cout << "copied_rebind" << " " << t->n << "\n" << ::tpy::check_signals;
+    std::optional<Tok> __slot_2;
     t = &*(__slot_2 = Tok(b, 2));
     if (flag) {
         a = ::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 2)));
@@ -367,8 +367,9 @@ void branch(int32_t k, bool flag) {
     std::string a = ::tpyapp::main::mk(k);
     Tok __slot_1 = Tok("lit", 1);
     Tok* t = &__slot_1;
+    std::optional<Tok> __slot_2;
     if (flag) {
-        (*t) = Tok(a, 2);
+        t = &*(__slot_2 = Tok(a, 2));
     }
     std::cout << "branch" << " " << t->s << "\n" << ::tpy::check_signals;
 }

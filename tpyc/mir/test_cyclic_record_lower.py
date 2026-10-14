@@ -6,7 +6,7 @@ from collections.abc import Iterator
 import pytest
 
 from ..thir import nodes as th
-from ..thir.testutil import _compile, _entry
+from ..thir.testutil import _compile, _entry, force_in_place
 from ..thir.validate import _iter_children
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
@@ -141,6 +141,9 @@ class Runner:
 
 Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction], MIRDefinitions, str]
 
+IN_PLACE_SITES = {"replaced": None, "optional": None, "twice": None,
+                  "native": None, "__init__": None}
+
 
 def nodes(root: th.THIRNode) -> Iterator[th.THIRNode]:
     yield root
@@ -151,6 +154,8 @@ def nodes(root: th.THIRNode) -> Iterator[th.THIRNode]:
 @pytest.fixture(scope="module")
 def artifacts() -> Artifacts:
     compiler, modules = _compile(SOURCE)
+    # The in-place reseats MIR models; sema leaves every rebind OWN.
+    force_in_place(modules, IN_PLACE_SITES)
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     definitions = MIRDefinitions(tuple(ctx.thir_constructors.values()))
     functions = {node.name: fn for node, fn in ctx.thir_functions.items()}
@@ -254,6 +259,7 @@ def test_source_storage_fact_is_required(artifacts: Artifacts, dropped: dict, re
 
 def test_codegen_collection_includes_loop_copy() -> None:
     compiler, modules = _compile(SOURCE)
+    force_in_place(modules, IN_PLACE_SITES)
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
     dumped = dump_codegen_mir(entry.ast, entry.analyzer, ctx, entry.name,

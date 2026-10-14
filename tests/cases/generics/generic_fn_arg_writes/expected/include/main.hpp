@@ -246,9 +246,10 @@ template<typename T, typename __F0>
 ::tpy::own_return_t<T> red(__F0&& func, std::vector<T>& a) {
     T __slot_1 = T(::tpy::__getitem__(a, 0));
     T* acc = &__slot_1;
+    std::optional<T> __slot_2;
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        (*acc) = func((*acc), ::tpy::__getitem__(a, i));
+        acc = &*(__slot_2 = func((*acc), ::tpy::__getitem__(a, i)));
     }
     return std::move((*acc));
 }

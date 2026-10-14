@@ -78,9 +78,9 @@ void test_iter_borrow_aug_assign() {
 //     items += [Point(int32(2))]  # tpyc: ok
 //     print(len(items))
 void test_reassign_borrower_clears() {
-    std::optional<Point> __slot_1;
     std::vector<Point> items = {Point(1)};
     Point* v = &(::tpy::__getitem__(items, 0));
+    std::optional<Point> __slot_1;
     v = &*(__slot_1 = Point(9));
     ::tpy::list_extend(items, std::vector<Point>{Point(2)});
     std::cout << ::tpy::__len__(items) << "\n" << ::tpy::check_signals;

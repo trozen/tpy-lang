@@ -18,8 +18,8 @@ namespace tpyapp::main {
 //     xs.append(4)
 //     return len(xs)
 int32_t none_then_literal(bool c) {
-    std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t>* xs = nullptr;
+    std::optional<std::vector<int32_t>> __slot_1;
     if (c) {
         xs = &*(__slot_1 = std::vector<int32_t>{1, 2, 3});
     }
@@ -41,7 +41,8 @@ int32_t none_then_literal(bool c) {
 int32_t call_then_literal(const F& f) {
     std::vector<int32_t> __slot_1 = f.make();
     std::vector<int32_t>* a = &__slot_1;
-    (*a) = std::vector<int32_t>{1, 2, 3};
+    std::optional<std::vector<int32_t>> __slot_2;
+    a = &*(__slot_2 = std::vector<int32_t>{1, 2, 3});
     if ((a == nullptr)) {
         return 0;
     }
@@ -61,8 +62,9 @@ int32_t call_then_literal(const F& f) {
 int32_t literal_then_literal(bool c) {
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{9};
     std::vector<int32_t>* xs = &__slot_1;
+    std::optional<std::vector<int32_t>> __slot_2;
     if (c) {
-        (*xs) = std::vector<int32_t>{1, 2, 3};
+        xs = &*(__slot_2 = std::vector<int32_t>{1, 2, 3});
     }
     if ((xs == nullptr)) {
         return 0;
@@ -82,12 +84,12 @@ int32_t literal_then_literal(bool c) {
 //     xs.append(5)
 //     return len(xs)
 int32_t literal_none_literal(bool c) {
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{9};
     std::vector<int32_t>* xs = &__slot_1;
     if (c) {
         xs = nullptr;
     }
+    std::optional<std::vector<int32_t>> __slot_2;
     xs = &*(__slot_2 = std::vector<int32_t>{1, 2, 3, 4});
     if ((xs == nullptr)) {
         return 0;
@@ -111,13 +113,13 @@ int32_t literal_none_literal(bool c) {
 //     return len(xs)
 int32_t branch_hoisted(const F& f, bool c, bool d) {
     std::optional<std::vector<int32_t>> __slot_1;
-    std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     if (c) {
         xs = &*(__slot_1 = f.make());
     } else {
         xs = nullptr;
     }
+    std::optional<std::vector<int32_t>> __slot_2;
     if (d) {
         xs = &*(__slot_2 = {1, 2, 3});
     }
@@ -212,7 +214,7 @@ __coro_coro_literal coro_literal(bool c) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        (*a) = std::vector<int32_t>{1, 2, 3};
+        a = &*(__ptr_slot_f1 = std::vector<int32_t>{1, 2, 3});
         if ((a == nullptr)) {
             __state = S_DONE;
             int32_t __tpy_async_ret = 0;

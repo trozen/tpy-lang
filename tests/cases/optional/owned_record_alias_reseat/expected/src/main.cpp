@@ -25,8 +25,6 @@ namespace tpyapp::main {
 //     if saved is not None:
 //         print("free cleared:", saved.value, current is None)
 void free_reseat(bool flag) {
-    std::optional<Cell> __slot_2;
-    std::optional<Cell> __slot_3;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     Cell* saved = current;
@@ -36,6 +34,8 @@ void free_reseat(bool flag) {
     if ((saved != nullptr)) {
         std::cout << "free shared:" << " " << saved->value << "\n" << ::tpy::check_signals;
     }
+    std::optional<Cell> __slot_2;
+    std::optional<Cell> __slot_3;
     if (flag) {
         current = &*(__slot_2 = Cell(2));
     } else {
@@ -79,13 +79,13 @@ void main() {
 //     if saved is not None:
 //         self.value = saved.value
 Host::Host() : value(0) {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     Cell* saved = current;
     if ((current != nullptr)) {
         current->value = 7;
     }
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     if ((saved != nullptr)) {
         this->value = saved->value;

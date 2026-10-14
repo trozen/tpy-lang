@@ -20,12 +20,12 @@ int32_t close(Handle&& h) {
 //     print(close(h))    # tpyc: ok (auto-move, alias doesn't constrain)
 //     print(alias.fd)
 void main() {
-    std::optional<Handle> __slot_2;
     Handle __slot_1 = Handle();
     Handle* h = &__slot_1;
     h->fd = 42;
     Handle& alias = (*h);
     std::cout << alias.fd << "\n" << ::tpy::check_signals;
+    std::optional<Handle> __slot_2;
     h = &*(__slot_2 = Handle());
     h->fd = 99;
     std::cout << ::tpyapp::main::close(std::move((*h))) << "\n" << ::tpy::check_signals;

@@ -1,25 +1,8 @@
-drop a
-drop b
-alive: c
-drop c
----
-drop init
-drop loop
-drop loop
-alive: loop
-drop loop
----
-drop start
-alive: branch
-drop branch
----
-alive: start
-drop start
----
-~Child x
-~Base x
-~Child y
-~Base y
-alive: z
-~Child z
-~Base z
+straight alive: c
+straight dropped: ['a', 'b', 'c']
+loop alive: loop
+loop dropped: ['init', 'loop', 'loop', 'loop']
+conditional alive: branch
+conditional dropped: ['branch', 'start']
+conditional alive: start
+conditional dropped: ['start']

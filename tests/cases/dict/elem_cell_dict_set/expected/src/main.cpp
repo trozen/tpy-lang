@@ -527,7 +527,8 @@ void select_pos(bool c) {
 void rebind_pos() {
     ::tpy::ordered_map<std::string, int64_t> __slot_1 = ::tpy::ordered_map<std::string, int64_t>({{"a", 1}});
     ::tpy::ordered_map<std::string, int64_t>* dd2 = &__slot_1;
-    (*dd2) = ::tpy::ordered_map<std::string, int64_t>({{"b", ::tpyapp::main::wide()}});
+    std::optional<::tpy::ordered_map<std::string, int64_t>> __slot_2;
+    dd2 = &*(__slot_2 = ::tpy::ordered_map<std::string, int64_t>({{"b", ::tpyapp::main::wide()}}));
     std::cout << "rebind:" << " " << ::tpy::DictPrinter((*dd2)) << "\n" << ::tpy::check_signals;
 }
 

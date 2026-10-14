@@ -23,8 +23,9 @@ int32_t test(Point& a, bool cond) {
     Point __slot_1 = Point();
     Point* p = &__slot_1;
     p->x = 10;
+    std::optional<Point> __slot_2;
     if (cond) {
-        (*p) = Point();
+        p = &*(__slot_2 = Point());
         p->x = 20;
     } else {
         p = &(a);

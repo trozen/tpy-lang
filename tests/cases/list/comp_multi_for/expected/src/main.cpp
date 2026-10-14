@@ -1231,7 +1231,8 @@ void kept(const std::vector<int32_t>& xs) {
         int32_t v = ::tpy::unwrap_ref(*__r_1);
         std::cout << "kept" << " " << v << "\n" << ::tpy::check_signals;
     }
-    (*b_list) = {5};
+    std::optional<std::vector<int32_t>> __slot_2;
+    b_list = &*(__slot_2 = {5});
     std::cout << "kept rebound after" << " " << ::tpy::ListPrinter((*b_list)) << "\n" << ::tpy::check_signals;
 }
 

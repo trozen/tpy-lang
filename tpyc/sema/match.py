@@ -40,6 +40,7 @@ from ..parse.nodes import (
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
 from ..value_category import is_rvalue_source
+from .alias_rebind import stamp_capture_rebind
 from .context import record_stmt_borrow_binding, register_capture_alias_borrow
 from ..symbol_binding import SymbolKind
 from .receiver_calls import is_invalidating_method
@@ -353,6 +354,8 @@ class MatchAnalyzer:
                         f"subject ('{ty}') but '{name}' already has type "
                         f"'{existing}'; add a 'case None:' arm before it or "
                         f"use a fresh name", case.pattern)
+                if existing is not None:
+                    stamp_capture_rebind(self.ctx, stmt, name, existing)
                 # A capture that ALIASES readonly storage is readonly too. The
                 # isinstance twin needs no such step (it narrows the subject's
                 # own binding, which already carries the qualifier); a capture

@@ -346,8 +346,9 @@ std::string Pattern::_substitute(std::string_view repl, std::string_view subject
     ::tpy::UninitHeapStorage<uint8_t> __slot_1 = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(cap));
     ::tpy::UninitHeapStorage<uint8_t>* outbuf = &__slot_1;
     int32_t rc = ::pcre2_substitute_8(this->_code.get(), sub_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject)), 0, (static_cast<uint32_t>(opts | ::tpystd::_bindings::pcre2::PCRE2_SUBSTITUTE_OVERFLOW_LENGTH)), md, this->_mctx.get(), repl_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(repl)), outbuf->ptr(), &outlen);
+    std::optional<::tpy::UninitHeapStorage<uint8_t>> __slot_2;
     if ((rc == ::tpystd::_bindings::pcre2::PCRE2_ERROR_NOMEMORY)) {
-        (*outbuf) = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(outlen));
+        outbuf = &*(__slot_2 = ::tpy::UninitHeapStorage<uint8_t>(static_cast<uint32_t>(outlen)));
         rc = ::pcre2_substitute_8(this->_code.get(), sub_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(subject)), 0, opts, md, this->_mctx.get(), repl_data, ::tpy::int_cast_check<uint64_t>(::tpy::__len__(repl)), outbuf->ptr(), &outlen);
     }
     if ((rc < 0)) {

@@ -79,13 +79,13 @@ void test_optional() {
 
 
 std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-    std::optional<Seconds> __slot_1;
     {
         auto __try_tmp_6 = __reader.read_object_start();
         if (!__try_tmp_6.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_6.error()));
     }
     std::string name = "";
     Seconds* when = nullptr;
+    std::optional<Seconds> __slot_1;
     while (__reader.has_next()) {
         std::string_view __key;
         {
@@ -126,8 +126,6 @@ std::expected<Event, ::tpystd::tplib::json::parser::JsonError> Event::__json_dec
 }
 
 std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__json_decode__(::tpystd::tplib::json::parser::JsonReader& __reader) {
-    std::optional<Seconds> __slot_1;
-    std::optional<Seconds> __slot_2;
     {
         auto __try_tmp_12 = __reader.read_object_start();
         if (!__try_tmp_12.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_12.error()));
@@ -135,6 +133,8 @@ std::expected<Schedule, ::tpystd::tplib::json::parser::JsonError> Schedule::__js
     std::vector<Event> events = std::vector<Event>{};
     Seconds* default_duration = nullptr;
     Seconds* deadline = nullptr;
+    std::optional<Seconds> __slot_1;
+    std::optional<Seconds> __slot_2;
     while (__reader.has_next()) {
         std::string_view __key;
         {

@@ -335,7 +335,8 @@ void main() {
     Box* b = &__slot_1;
     ::tpyapp::main::literal_local((*b));
     std::cout << "literal_local" << " " << b->n << "\n" << ::tpy::check_signals;
-    (*b) = Box(0);
+    std::optional<Box> __slot_2;
+    b = &*(__slot_2 = Box(0));
     std::cout << "literal_mixed" << " " << ::tpyapp::main::literal_mixed((*b)) << " " << b->n << "\n" << ::tpy::check_signals;
     Box __tmp_1 = Box(0);
     std::cout << "literal_mixed_optional" << " " << ::tpyapp::main::literal_mixed_optional(&(__tmp_1)) << "\n" << ::tpy::check_signals;
@@ -350,10 +351,12 @@ void main() {
     Box __tmp_6 = Box(0);
     std::cout << "nested_shadow" << " " << ::tpyapp::main::nested_shadow(__tmp_5, __tmp_6) << "\n" << ::tpy::check_signals;
     std::cout << "readonly_optional_unpack" << " " << ::tpyapp::main::readonly_optional_unpack(::tpy::tuple_value_to_borrow<std::tuple<const Box*, int32_t>>(std::tuple<Box, int32_t>{Box(4), 1})) << "\n" << ::tpy::check_signals;
-    (*b) = Box(0);
+    std::optional<Box> __slot_3;
+    b = &*(__slot_3 = Box(0));
     ::tpyapp::main::call_local((*b));
     std::cout << "call_local" << " " << b->n << "\n" << ::tpy::check_signals;
-    (*b) = Box(0);
+    std::optional<Box> __slot_4;
+    b = &*(__slot_4 = Box(0));
     std::cout << "mixed_local" << " " << ::tpyapp::main::mixed_local((*b)) << " " << b->n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::elem_of_param_list(xs);
     std::cout << "elem_of_param_list" << " " << std::get<0>(::tpy::__getitem__(xs, 0)).n << "\n" << ::tpy::check_signals;

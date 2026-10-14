@@ -286,7 +286,8 @@ void main() {
     })) << "\n" << ::tpy::check_signals;
     Bag __slot_1 = Bag();
     Bag* again = &__slot_1;
-    (*again) = Bag();
+    std::optional<Bag> __slot_2;
+    again = &*(__slot_2 = Bag());
     again->items.push_back("c");
     std::cout << "comp_rebound" << " " << ::tpy::ListPrinter(({
         std::vector<std::string> __result;
@@ -515,8 +516,8 @@ void main() {
     })) << " " << s4.it.n << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(s4)) << " " << ::tpy::builtin_sum<int32_t>(s4) << "\n" << ::tpy::check_signals;
     Src s5 = Src();
     std::cout << "member_proto" << " " << ::tpy::ListPrinter(::tpyapp::main::proto_comp(s5)) << " " << s5.it.n << "\n" << ::tpy::check_signals;
-    Cnt __slot_2 = Cnt(3);
-    Cnt* c2 = &__slot_2;
+    Cnt __slot_3 = Cnt(3);
+    Cnt* c2 = &__slot_3;
     std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __src_40 = (*c2);
@@ -529,7 +530,8 @@ void main() {
         }
         std::move(__result);
     })) << " " << c2->n << "\n" << ::tpy::check_signals;
-    (*c2) = Cnt(2);
+    std::optional<Cnt> __slot_4;
+    c2 = &*(__slot_4 = Cnt(2));
     std::cout << "reassigned" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;
         auto& __src_42 = (*c2);
@@ -553,7 +555,8 @@ void main() {
         }
         std::move(__result);
     })) << "\n" << ::tpy::check_signals;
-    (*c2) = Cnt(2);
+    std::optional<Cnt> __slot_5;
+    c2 = &*(__slot_5 = Cnt(2));
     std::cout << "reassigned_set" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted<int32_t>(::tpy::set_construct<int32_t>((*c2)))) << " " << c2->n << "\n" << ::tpy::check_signals;
     Tx t = Tx();
     t.begin();

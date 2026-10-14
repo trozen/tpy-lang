@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 import copy
-from collections.abc import Callable, Iterator, Mapping, Set as AbstractSet
+from collections.abc import (Callable, Iterable, Iterator, Mapping,
+                             Set as AbstractSet)
 from contextlib import contextmanager
 from dataclasses import dataclass, field, fields, replace
 from enum import Enum, auto
@@ -11,6 +12,7 @@ from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
                             TpyNamedExpr, TpyVarDecl, TpyWith,
                             iter_capture_bindings)
+from ...identity_map import IdentityMap
 from ...prescan import scan_reassigned_vars
 from ...typesys import pointer_repr_optional
 from ...type_def_registry import has_view_param_form
@@ -39,8 +41,14 @@ from ...typesys import (
     Representation,
     return_representation,
 )
-from ..source import UNBOUND, BindingRepr, NameFacts
-from ..nodes import THIRFormConvert, THIRNarrowedRead, THIRSelf, THIRUnionExtraction, THIRUnionLayout
+from ..source import UNBOUND, BindingRepr, NameFacts, slot_key
+from ..nodes import (THIRAssign, THIRErrorReturnBind, THIRFormConvert,
+                     THIRLambda, THIRNarrowedRead, THIRNestedDef, THIRNode,
+                     THIRPtrLocalRebind, THIRRebindSlot,
+                     THIRSelf, THIRStmt, THIRStmtSeq, THIRTupleElemTarget,
+                     THIRTupleUnpack, THIRUnionExtraction, THIRUnionLayout,
+                     THIRWalrus)
+from ..validate import _iter_children
 from .captures import CaptureSites
 from .predicates import (
     _callable_value,
@@ -1397,6 +1405,122 @@ def nested_def_prescan(func: TpyFunction, outer: _Prescan, analyzer,
     return prescan
 
 
+class StorageSlots:
+    """The rebind slots of a lowering: each claimed by the write that fills
+    it, keyed by its site, and anchored at the function-body-level
+    statement containing that write in the final lowered body
+    (`THIRStmt.anchored_slots`), which the emitter declares it immediately
+    before. A slot every write of a binding refills (a borrow tuple's
+    owning-call slot) is anchored at the earliest of those statements. A
+    nested def's body is a body of its own."""
+    __slots__ = ("_by_site", "_shared", "_order")
+
+    def __init__(self) -> None:
+        self._by_site: IdentityMap[object, dict[tuple[int, object],
+                                                THIRRebindSlot]] = IdentityMap()
+        self._shared: dict[object, THIRRebindSlot] = {}
+        self._order: dict[THIRRebindSlot, tuple[int, int, int]] = {}
+
+    def anchor(self, body: 'Iterable[THIRStmt]') -> None:
+        """Stamp each statement of a lowered body with the slots its final
+        THIR fills, in source order of their sites. Read off the final
+        body, so a slot only an abandoned (retried) arm claimed anchors
+        nowhere."""
+        seen: set[THIRRebindSlot] = set()
+        for node in body:
+            slots = [s for s in _filled_slots(node) if s not in seen]
+            if slots:
+                seen.update(slots)
+                slots.sort(key=lambda s: self._order[s])
+                object.__setattr__(node, "anchored_slots", tuple(slots))
+
+    def stamp(self, node: object, site: object) -> None:
+        """Claim the slot of each write among the nodes the lowering of
+        `site` (a statement, a walrus) built: a write that fills a slot of
+        its own (`own_slot_cpp`) claims the site's, one that refills its
+        binding's one slot (`binding_slot_cpp`) claims that."""
+        if isinstance(node, THIRStmtSeq):
+            for sub in node.stmts:
+                self.stamp(sub, site)
+            return
+        if not isinstance(node, (THIRStmt, THIRWalrus)):
+            return
+        for rec, elem, write in _rebind_writes(node):
+            cpp = write.own_slot_cpp
+            if cpp is not None and rec is not None:
+                object.__setattr__(write, "own_slot", self.claim(
+                    slot_key(rec), site, elem, rec.name, cpp))
+        shared = node.binding_slot_cpp
+        if shared is not None and node.binding is not None:
+            object.__setattr__(node, "own_slot", self.claim_shared(
+                slot_key(node.binding), node.binding.name, shared))
+
+    def claim(self, key: object, site: object, elem: int | None,
+              name: str, cpp: str) -> THIRRebindSlot:
+        """The slot the rebind at `site` (`elem`: its tuple element) fills.
+        A site lowered twice (a retried arm) reclaims the same slot."""
+        elem_n = -1 if elem is None else elem
+        per_site = self._by_site.setdefault(site, {})
+        hit = per_site.get((elem_n, key))
+        if hit is not None and hit.cpp == cpp:
+            return hit
+        loc = getattr(site, "loc", None)
+        slot = self._new(name, cpp,
+                         (loc.line, loc.column, elem_n) if loc is not None
+                         else (0, 0, elem_n))
+        per_site[(elem_n, key)] = slot
+        return slot
+
+    def claim_shared(self, key: object, name: str,
+                     cpp: str) -> THIRRebindSlot:
+        """The one slot every write of the binding `key` refills."""
+        slot = self._shared.get(key)
+        if slot is None:
+            slot = self._shared[key] = self._new(name, cpp, (0, 0, -1))
+            return slot
+        assert slot.cpp == cpp, (
+            f"the writes of {name!r} disagree on its slot: {slot.cpp} vs {cpp}")
+        return slot
+
+    def _new(self, name: str, cpp: str,
+             order: tuple[int, int, int]) -> THIRRebindSlot:
+        slot = THIRRebindSlot(name=name, cpp=cpp)
+        self._order[slot] = order
+        return slot
+
+
+def _filled_slots(stmt: THIRStmt) -> list[THIRRebindSlot]:
+    """The slots the writes under body-level statement `stmt` fill, each
+    once; a nested def or a lambda is a body of its own."""
+    out: dict[THIRRebindSlot, None] = {}
+    stack: list[THIRNode] = [stmt]
+    while stack:
+        node = stack.pop()
+        if isinstance(node, (THIRNestedDef, THIRLambda)):
+            continue
+        for write in (node, *(w for _, _, w in _rebind_writes(node))):
+            slot = getattr(write, "own_slot", None)
+            if slot is not None:
+                out[slot] = None
+        # Pre-order, so sites without a loc keep the order they emit in.
+        stack.extend(reversed(list(_iter_children(node))))
+    return list(out)
+
+
+def _rebind_writes(node: object) -> Iterator[tuple[
+        BindingRepr | None, int | None,
+        THIRAssign | THIRPtrLocalRebind | THIRErrorReturnBind
+        | THIRTupleElemTarget]]:
+    """Each `(record, element, write)` of `node` that may fill a slot of
+    its own: the write's `own_slot_cpp` says whether it does."""
+    if isinstance(node, (THIRAssign, THIRPtrLocalRebind,
+                         THIRErrorReturnBind)):
+        yield node.binding, None, node
+    elif isinstance(node, THIRTupleUnpack) and node.tuple_target is not None:
+        for t in node.elem_targets:
+            yield node.tuple_binding, t.index, t
+
+
 @dataclass
 class _NarrowScope:
     """Lowering's branch/loop-scoped isinstance-narrowing state.
@@ -1556,6 +1680,8 @@ _LC_NOT_NAME_KEYED = (
     "import_calls", "nested_returns",
     # The binding table's shadow check: the table models inner scopes itself.
     "table", "cursor", "shadow_report", "move_region",
+    # Keyed by a binding's SlotKey and by a write's site identity.
+    "storage_slots",
 )
 _LC_INHERITED_BY_DESIGN = (
     # A lazily computed body-wide memo: a restore would discard a result
@@ -1675,7 +1801,8 @@ class _LowerCtx:
                  "in_for_body",
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "member_self", "_alias_taken_memo",
-                 "table", "cursor", "shadow_report", "move_region")
+                 "table", "cursor", "shadow_report", "move_region",
+                 "storage_slots")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -1892,6 +2019,8 @@ class _LowerCtx:
         self.table = None
         self.cursor = None
         self.shadow_report = None
+        # The rebind slots the writes claim, and where each is declared.
+        self.storage_slots = StorageSlots()
         # The names a sink may move inside a `moves_only` region; None
         # outside one, where the binding's record decides.
         self.move_region: frozenset[str] | None = None
@@ -2067,6 +2196,19 @@ class _LowerCtx:
     def frame_local(self, name: str, *classes: FrameLocalClass) -> bool:
         """Whether `name` is a frame member of one of `classes`."""
         return self.binding(name).frame_class in classes
+
+    def frame_storage_name(self, name: str) -> bool:
+        """Whether `name` is a frame local whose storage the frame owns or
+        outlives, so a borrow of it stays live across a suspension: a
+        `frame_slot`, a pointer-form loop variable / alias / rebind-slot
+        local, or a narrowed pointer-repr Optional loop variable (its `T*`
+        points into the iterated container)."""
+        rec = self.binding(name)
+        return (rec.frame_slot
+                or rec.frame_class in (FrameLocalClass.LOOP_PTR,
+                                       FrameLocalClass.ALIAS_PTR,
+                                       FrameLocalClass.REBIND_PTR)
+                or rec.opt_ptr_loop_var)
 
     def plain_frame_field(self, name: str) -> bool:
         """A frame member whose decl / reassign renders as the plain

@@ -1,7 +1,7 @@
 # A nested def re-pointing an enclosing rebound tuple, or an alias of one,
-# through `nonlocal` would be invisible to the enclosing body's in-place
-# rebinds, so it is refused at the closure's binding
-# (BUGS.md#nonlocal-rebind-overwrites-in-place).
+# through `nonlocal` is a binding the enclosing body's pointer-tuple facts
+# never see (the roots it points into), so it is refused at the closure's
+# binding (BUGS.md#nonlocal-rebind-overwrites-in-place).
 from tpy import Own, int32
 
 

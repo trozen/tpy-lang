@@ -29,8 +29,6 @@ void __tpy_builder_argparse_help_1() {
 
 // args = parser.parse_args(["core:strict", "--out", "release"])
 __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<std::string>& argv) {
-    std::optional<Tag> __slot_2;
-    std::optional<Tag> __slot_3;
     Tag* __tpy_argparse_acc_input = nullptr;
     Tag* out = nullptr;
     Tag __slot_1 = Tag::from_arg("ci:nightly");
@@ -45,6 +43,9 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
     }
     int32_t __tpy_argparse_i = 0;
     int32_t __tpy_argparse_pi = 0;
+    std::optional<Tag> __slot_2;
+    std::optional<Tag> __slot_3;
+    std::optional<Tag> __slot_4;
     while ((__tpy_argparse_i < ::tpy::__len__(argv))) {
         std::string __tpy_argparse_tok = argv[static_cast<std::size_t>(__tpy_argparse_i)];
         if ((__tpy_argparse_tok == "--out")) {
@@ -59,10 +60,10 @@ __tpy_builder_argparse_args_1 __tpy_builder_argparse_parse_1(const std::vector<s
                 ::tpy::as_ostream((*::tpystd::sys::stderr)) << __tpy_argparse_usage << "\n" << (::tpy::str_concat((::tpy::str_concat("prog: error: ", "missing value for ")), __tpy_argparse_tok)) << "\n" << ::tpy::check_signals;
                 ::tpystd::sys::exit__int32(2);
             }
-            (*label) = Tag::from_arg(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1))));
+            label = &*(__slot_3 = Tag::from_arg(::tpy::__getitem__(argv, (::tpy::add_check<int32_t>(__tpy_argparse_i, 1)))));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 2));
         } else if ((__tpy_argparse_pi == 0)) {
-            __tpy_argparse_acc_input = &*(__slot_3 = Tag::from_arg(__tpy_argparse_tok));
+            __tpy_argparse_acc_input = &*(__slot_4 = Tag::from_arg(__tpy_argparse_tok));
             __tpy_argparse_pi = (::tpy::add_check<int32_t>(__tpy_argparse_pi, 1));
             __tpy_argparse_i = (::tpy::add_check<int32_t>(__tpy_argparse_i, 1));
         } else {

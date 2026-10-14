@@ -110,6 +110,35 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_per_resume::__next
     __builtin_unreachable();
 }
 
+// # generator's nested def: a straight-line rebind under an alias takes a slot
+// # of its own, declared right before the rebind's statement in the member body
+// def gen_rebind_alias() -> Iterator[int32]:
+//     def inner(k: int32) -> int32:
+//         p = Rec(k)
+//         alias = p
+//         p = Rec(k * 100)  # tpyc: ok
+//         alias.x += 1
+//         print("rebind_alias in:", alias.x, p.x)
+//         return alias.x + p.x
+//
+//     yield inner(2)                               # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_rebind_alias::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        // def inner: frame member
+        __state = S_RESUME_0;
+        return inner(2);
+    }
+    case S_RESUME_0: {  // after: yield inner(2)
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // def gen(self) -> Iterator[int32]:
 //     def inner() -> int32:  # tpyc: ok
 //         with RCM(1) as rr:

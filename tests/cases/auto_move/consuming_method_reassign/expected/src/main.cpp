@@ -15,7 +15,8 @@ void main() {
     Wrapper __slot_1 = Wrapper(::tpy::BigInt(42));
     Wrapper* w = &__slot_1;
     ::tpy::BigInt r1 = std::move(*w).take();
-    (*w) = Wrapper(::tpy::BigInt(99));
+    std::optional<Wrapper> __slot_2;
+    w = &*(__slot_2 = Wrapper(::tpy::BigInt(99)));
     ::tpy::BigInt r2 = std::move(*w).take();
     std::cout << r1 << "\n" << ::tpy::check_signals;
     std::cout << r2 << "\n" << ::tpy::check_signals;

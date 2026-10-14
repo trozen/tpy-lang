@@ -43,22 +43,22 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_section::__next__(
     __builtin_unreachable();
 }
 
-// # generator frame, no alias: the object drops at the rebind, not with the frame
+// # generator frame, no alias: both objects drop, once
 // def gen_drop() -> Iterator[int32]:
-//     r = Noisy("g1")
+//     r = Counted("g1")
 //     yield 1                         # -> S_RESUME_0
-//     r = Noisy("g2")  # tpyc: ok
+//     r = Counted("g2")  # tpyc: ok
 //     yield 2                         # -> S_RESUME_1
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_drop::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        r.emplace(Noisy("g1"));
+        r = &*(__ptr_slot_f0 = Counted("g1"));
         __state = S_RESUME_0;
         return 1;
     }
     case S_RESUME_0: {  // after: yield 1
-        r.emplace(Noisy("g2"));
+        r = &*(__ptr_slot_f1 = Counted("g2"));
         __state = S_RESUME_1;
         return 2;
     }

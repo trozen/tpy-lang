@@ -18,9 +18,10 @@ void hoist_and_reassign() {
     std::optional<Point> __slot_2;
     Point __slot_1 = Point(0, 0);
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_3;
     for (int32_t i = 0; i < 3; ++i) {
         Point* p = &*(__slot_2 = Point(i, 0));
-        (*p) = Point(i, (::tpy::add_check<int32_t>(i, 10)));
+        p = &*(__slot_3 = Point(i, (::tpy::add_check<int32_t>(i, 10))));
         saved = p;
     }
     std::cout << saved->x << " " << saved->y << "\n" << ::tpy::check_signals;

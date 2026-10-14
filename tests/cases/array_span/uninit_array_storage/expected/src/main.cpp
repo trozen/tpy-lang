@@ -55,7 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::optional<::tpy::UninitArrayStorage<Point, 3>> __global_slot_2;
     static ::tpy::UninitArrayStorage<int32_t, 4> __global_slot_1 = ::tpy::UninitArrayStorage<int32_t, 4>();
     storage = &__global_slot_1;
     storage->init(0, 10);
@@ -69,6 +68,7 @@ void __tpy_init() {
     storage->drop(0);
     storage->drop(1);
     storage->drop(2);
+    static std::optional<::tpy::UninitArrayStorage<Point, 3>> __global_slot_2;
     points = &*(__global_slot_2 = ::tpy::UninitArrayStorage<Point, 3>());
     points->init(0, Point(1, 2));
     points->init(1, Point(3, 4));

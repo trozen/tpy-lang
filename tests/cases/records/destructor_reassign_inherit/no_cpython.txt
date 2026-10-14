@@ -1,0 +1,4 @@
+CPython does not auto-chain __del__ to a base class: the `~Base` lines are the
+C++ parent destructor the warning on Child.__del__ announces. The drop order
+differs too: CPython drops a superseded object at the rebind, here it lives in
+its slot until the function returns (a timing Python does not promise).

@@ -14,8 +14,8 @@ inline std::expected<double, ::tpy::StopIteration> __gen_gen_body::__next__() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        e.emplace(::tpy::ordered_map<std::string, float>({{"a", 0.25f}}));
-        e.emplace(::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
+        e = &*(__ptr_slot_f0 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}}));
+        e = &*(__ptr_slot_f1 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
         __state = S_RESUME_0;
         return (static_cast<double>(::tpy::__getitem__((*e), "k")) + (::tpy::__getitem__(fs, 0)));
     }

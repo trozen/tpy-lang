@@ -2384,8 +2384,7 @@ class TypeCompatibility:
                 self.ctx, fn, f.current_reassigned_vars,
                 f.current_param_names | f.current_nonlocal_names):
             return borrow, False
-        if (fn is not None and not (fn.is_generator or fn.is_async)
-                and fn not in self.ctx.pointer_tuples_by_func):
+        if fn is not None and fn not in self.ctx.pointer_tuples_by_func:
             return borrow, True
         return var_type, False
 

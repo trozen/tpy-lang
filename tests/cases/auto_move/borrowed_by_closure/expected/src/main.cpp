@@ -644,7 +644,8 @@ void rebind_after_consume() {
     };
     Point __tmp_1 = (*p);
     s.consume(std::move(__tmp_1));
-    (*p) = Point();
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point());
     p->items.push_back(4);
     show();
 }
@@ -918,9 +919,11 @@ void main() {
     std::cout << "via_getitem" << " " << ::tpyapp::main::via_getitem() << "\n" << ::tpy::check_signals;
     ::tpyapp::main::rebind_after_consume();
     std::cout << "finally_after_handler" << " " << ::tpyapp::main::finally_after_handler(true) << "\n" << ::tpy::check_signals;
-    (*r) = ::tpyapp::main::finally_return_defers(Point());
+    std::optional<Point> __slot_2;
+    r = &*(__slot_2 = ::tpyapp::main::finally_return_defers(Point()));
     std::cout << "finally_return_defers" << " " << ::tpy::__len__(r->items) << "\n" << ::tpy::check_signals;
-    (*r) = ::tpyapp::main::del_holder_return(Point());
+    std::optional<Point> __slot_3;
+    r = &*(__slot_3 = ::tpyapp::main::del_holder_return(Point()));
     std::cout << "del_holder_return done" << "\n" << ::tpy::check_signals;
     std::tuple<Point, int32_t> t = ::tpyapp::main::del_holder_tuple();
     std::cout << "del_holder_tuple" << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;

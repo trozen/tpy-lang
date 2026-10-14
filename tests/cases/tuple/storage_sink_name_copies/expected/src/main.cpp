@@ -208,11 +208,12 @@ std::vector<std::tuple<P, P>> closure(P& p) {
 std::vector<std::tuple<P, P>> in_finally(P& p) {
     std::vector<std::tuple<P, P>> __slot_1 = std::vector<std::tuple<P, P>>{};
     std::vector<std::tuple<P, P>>* ys = &__slot_1;
+    std::optional<std::vector<std::tuple<P, P>>> __slot_2;
     std::tuple<P*, P*> t;
     {
         try {
             t = std::tuple<P*, P*>{&(p), &(p)};
-            (*ys) = {::tpy::tuple_to_storage<std::tuple<P, P>>(t)};
+            ys = &*(__slot_2 = {::tpy::tuple_to_storage<std::tuple<P, P>>(t)});
         } catch (...) {
             std::cout << "finally" << "\n" << ::tpy::check_signals;
             throw;
@@ -355,11 +356,12 @@ void main() {
     std::vector<std::tuple<P, P>> y17 = ::tpyapp::main::in_match(a, 1);
     std::vector<std::tuple<P, P>> __slot_1 = std::vector<std::tuple<P, P>>{};
     std::vector<std::tuple<P, P>>* y18 = &__slot_1;
+    std::optional<std::vector<std::tuple<P, P>>> __slot_2;
     {
         {
             auto __try_tmp_2 = ::tpyapp::main::in_error_return(a);
             if (!__try_tmp_2.has_value()) goto __except_1;
-            (*y18) = ::tpy::unwrap_ref_move(*__try_tmp_2);
+            y18 = &*(__slot_2 = ::tpy::unwrap_ref_move(*__try_tmp_2));
         }
         goto __after_try_1;
         // except Bad:

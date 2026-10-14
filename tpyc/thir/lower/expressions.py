@@ -178,6 +178,7 @@ from .arg_table import (_ArgReq, _ArgRow, _ArgSink, arg_ok, register_sink)
 from ...sema.literal_utils import numeric_literal_truth
 from ...sema.type_ops import signature_may_return_borrow
 from ...sema.own_copy import contains_reference_type
+from ...sema.alias_rebind import alias_sources
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import (render_int_literal_value,
                                          target_less_int_literal_type)
@@ -626,6 +627,7 @@ _MEMBERSHIP_RECV = _ExprUse(pos=SinkPos.RECEIVER,
 from .checks import (
     CallForm,
     call_form,
+    frame_object_slot,
     own_element_copied,
     tuple_elem_payload,
     _record_copy_borrow_ret,
@@ -8235,20 +8237,23 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # (`(t := make_pair(9))[0]`): the emplace-into-slot render with
             # the bare-name tail (`(t = ::tpy::tuple_to_pointer<{borrow}>(
             # __slot_N.emplace(...)), t)`); the if-head hoist pre-declared
-            # both the local and the slot.
+            # the local, a pointer tuple, so the slot is the binding's.
+            wrec = lc.binding(e.target)
             bc = (vtu.to_cpp_return_const()
-                  if lc.binding(e.target).const_borrow_tuple
+                  if wrec.const_borrow_tuple
                   else vtu.to_cpp_return())
             wv = _lower_expr(e.value, lc, declared,
                              use=_ExprUse(result=_ExprResultUse.STORAGE,
                                           allow_temps=True,
                                           pos=SinkPos.WALRUS_TARGET))
             _witness("expr.walrus_btuple_emplace")
-            return THIRWalrus(
+            node = THIRWalrus(
                 result_type=vtu, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
                 value=wv, slot_cpp=lc.render_type(vtu), borrow_cpp=bc,
-                tail="name", loc=loc, binding=lc.binding(e.target))
+                tail="name", loc=loc, binding=wrec)
+            lc.storage_slots.stamp(node, e)
+            return node
         if e.target in lc.prescan.hoisted:
             raise ThirUnsupported("expr.walrus")
         # The walrus that declares its target's record pre-declares it; any
@@ -8404,13 +8409,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                              pos=SinkPos.WALRUS_TARGET))
             declared[e.target] = cvt
             _witness("expr.walrus_btuple_slot")
-            return THIRWalrus(
+            wrec = lc.binding(e.target)
+            node = THIRWalrus(
                 result_type=cvt, name=e.target,
                 cpp_name=escape_cpp_name(e.target),
                 value=lowered_value,
                 cpp_type=cvt.to_cpp_return(),
                 slot_cpp=lc.render_type(cvt), borrow_cpp=cvt.to_cpp_return(),
-                tail="name", loc=loc, binding=lc.binding(e.target))
+                tail="name", loc=loc, binding=wrec)
+            lc.storage_slots.stamp(node, e)
+            return node
         # An owned-tuple return off a CALL (`(t := make_pair(5))` at a
         # declared `Own[tuple[..]]` / owned-movable return) takes the
         # deferred-init OPTIONAL slot, not the borrow predecl.
@@ -11621,6 +11629,13 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         # spells.
         note_detail("walrus.frame_coro_handle")
         raise ThirUnsupported("expr.walrus")
+    if any(lc.binding(n).ptr_tuple is not None
+           for n in alias_sources(e.value) or ()):
+        # A value that is a rebound pointer tuple (`(q := p)`, `(q := p if
+        # c else p)`): no frame field's walrus write spells a tuple of
+        # element pointers, as no plain body's walrus does.
+        note_detail("walrus.frame_ptr_tuple_src")
+        raise ThirUnsupported("expr.walrus")
     if lc.binding(e.target).frame_slot:
         # An owning `frame_slot<T>` field: emplace destroys any prior payload,
         # constructs in place and hands back the `T&` the expression evaluates
@@ -11670,8 +11685,9 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         # the address of a dying temporary), or a frame_slot NAME whose
         # deref read is frame storage (`(x = &((*buf)), *x)`).
         if (isinstance(e.value, TpyName)
-                and lc.binding(e.value.name).frame_slot):
-            value = _lower_expr(e.value, lc, declared)
+                and lc.frame_storage_name(e.value.name)):
+            value = _lower_expr(e.value, lc, declared,
+                                use=_ExprUse(pos=SinkPos.ALIAS_BIND))
             declared[e.target] = vtu
             _witness("expr.walrus_frame_alias_slot")
             return THIRWalrus(result_type=vtu, name=e.target,
@@ -11695,6 +11711,13 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
                 and _subscript_container_recv_type(
                     e.value.obj, declared, analyzer) is not None):
             note_detail("walrus.frame_alias_src")
+            raise ThirUnsupported("expr.walrus")
+        if (isinstance(e.value.obj, TpyName)
+                and lc.binding(e.value.obj.name).ptr_tuple is not None):
+            # An element of a rebound pointer tuple (`(a := p[0])`) is
+            # itself a pointer, not the lvalue this arm addresses; the plain
+            # body's walrus admits no element source either.
+            note_detail("walrus.frame_ptr_tuple_src")
             raise ThirUnsupported("expr.walrus")
         value = _lower_expr(e.value, lc, declared, subscript_prechecked=True)
         declared[e.target] = vtu
@@ -11723,6 +11746,21 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         _witness("expr.walrus_frame_btuple")
         return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
                           value=value, tail="name", loc=loc)
+    if (lc.frame_local(e.target, FrameLocalClass.REBIND_PTR)
+            and is_rvalue_source(analyzer, e.value)):
+        # A rebound reference local's binding takes storage of its own: the
+        # object lands in this walrus's frame field and the pointer
+        # re-points at it, as the local's assignments do
+        # (`(xs = &*(__ptr_slot_f0 = v), *xs)`).
+        value = bindings.rebind_ptr_frame_value(e.value, vtu, lc, declared, loc,
+                                       "expr.walrus")
+        fld = bindings.rebind_ptr_frame_field(lc, e, "expr.walrus")
+        declared[e.target] = vtu
+        _witness("expr.walrus_frame_rebind_ptr")
+        return THIRWalrus(result_type=vtu, name=e.target, cpp_name=cpp_name,
+                          value=value, reseat_slot=fld,
+                          rebuild=frame_object_slot(vtu), tail="deref",
+                          loc=loc)
     if not lc.plain_frame_field(e.target):
         # Every family whose write render is NOT the plain member assign
         # (erased @dynamic handles, pointer-form loop vars, unpack alias
@@ -11877,13 +11915,14 @@ def _borrow_tuple_bare_names(lc: '_LowerCtx',
 
     Both disjuncts are positive evidence. The local one pairs the reassign
     fact with `_borrow_tuple_local_type`'s storage carve-out AND excludes
-    every resumable frame name: the lane's owning tuple slots reach neither
+    a resumable frame's owning tuple slot: it reaches neither
     `storage_tuple_locals` nor a valid borrow render, so the carve-out
-    alone would read them as borrow and drop their lift."""
+    alone would read it as borrow and drop its lift. A frame's borrow-form
+    tuple field (a pointer tuple among them) reads bare as the plain
+    body's local does."""
     names = set(_borrow_tuple_param_names(lc))
     names |= {n for n in lc.prescan.reassigned
               if not lc.binding(n).frame_slot
-              and not lc.frame_local(n, FrameLocalClass.BORROW_TUPLE)
               and _borrow_tuple_local_type(
                   n, declared, lc.names_with("storage_tuple")) is not None}
     if not (lc.func.is_generator or lc.func.is_async):

@@ -549,10 +549,10 @@ template<typename K, typename V>
 //     return read(m)
 template<typename V>
 int32_t generic_opt(const ::tpy::ordered_map<std::string, std::optional<V>>& d, std::string_view k, std::string_view fk, const std::function<int32_t(::tpy::param_val_or_ref_t<V>)>& read) {
-    std::optional<V> __slot_2;
     const V* dflt = ::tpy::optional_to_ptr(::tpy::__getitem__(d, fk));
     std::optional<V> __slot_1 = ::tpy::dict_get_default(d, "q", dflt);
     V* m = ::tpy::optional_to_ptr(__slot_1);
+    std::optional<V> __slot_2;
     __slot_2 = ::tpy::dict_get_default(d, k, dflt);
     m = ::tpy::optional_to_ptr(__slot_2);
     std::optional<V> __slot_3 = ::tpy::dict_get_default(d, "zz", nullptr);

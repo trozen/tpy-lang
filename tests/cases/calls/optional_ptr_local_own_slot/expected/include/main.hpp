@@ -88,12 +88,12 @@ struct __coro_async_body {
     bool c;
     ::tpy::frame_slot<std::vector<std::optional<Pic>>> patches;
     Pic* patch = nullptr;
-    Pic* other = nullptr;
-    Pic* third = nullptr;
-    ::tpy::frame_slot<Bag> b;
     std::optional<Pic> __ptr_slot_f0;
+    Pic* other = nullptr;
     std::optional<Pic> __ptr_slot_f1;
+    Pic* third = nullptr;
     std::optional<Pic> __ptr_slot_f2;
+    ::tpy::frame_slot<Bag> b;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -122,9 +122,9 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, int32_t> {
     ::tpy::frame_slot<std::vector<std::optional<Pic>>> patches;
     int32_t j;
     Pic* patch = nullptr;
+    std::optional<Pic> __ptr_slot_f0;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
-    std::optional<Pic> __ptr_slot_f0;
 
     enum : int32_t {
         S_INITIAL = 0,

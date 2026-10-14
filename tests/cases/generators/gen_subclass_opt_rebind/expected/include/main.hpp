@@ -69,6 +69,7 @@ struct __gen_gen : public ::tpy::next_iter_mixin<__gen_gen, std::string> {
     ::tpy::frame_state __state;
     Animal* p = nullptr;
     std::optional<Animal> __ptr_slot_f0;
+    std::optional<Animal> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

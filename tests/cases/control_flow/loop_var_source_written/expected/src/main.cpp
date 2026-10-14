@@ -1302,7 +1302,8 @@ void post_loop_rebind() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         s = *__beg_0;
     }
-    (*a) = {LONG_B};
+    std::optional<std::vector<std::string>> __slot_2;
+    a = &*(__slot_2 = {LONG_B});
     std::cout << "post_loop_rebind:" << " " << s << " " << ::tpy::__len__((*a)) << "\n" << ::tpy::check_signals;
 }
 

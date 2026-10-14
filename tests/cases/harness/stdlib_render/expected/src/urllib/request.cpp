@@ -70,8 +70,6 @@ namespace tpystd::urllib::request {
 //     conn.request(method, target, data, None)
 //     return conn.getresponse()
 ::tpystd::http::client::HTTPResponse _urlopen(std::string_view url, std::optional<::tpy::BytesView> data, std::optional<double> timeout, const ::tpystd::ssl::SSLContext* context, std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> injected) {
-    std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_1;
-    std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_2;
     ::tpystd::urllib::parse::SplitResult parts = ::tpystd::urllib::parse::urlsplit(url);
     std::string scheme = parts.scheme;
     if (((scheme != "http") && (scheme != "https"))) {
@@ -97,6 +95,8 @@ namespace tpystd::urllib::request {
         throw URLError((::tpy::str_concat("no host in URL: ", url)));
     }
     std::optional<::tpy::BigInt> pnum = parts.port();
+    std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_1;
+    std::optional<::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>> __slot_2;
     ::tpystd::tplib::box::Box<::tpystd::http::client::_Connection>* conn;
     if ((scheme == "https")) {
         int32_t hport = HTTPS_PORT;

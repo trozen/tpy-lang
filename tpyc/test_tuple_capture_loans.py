@@ -1,4 +1,4 @@
-"""Tuple payload loans gate replacement storage without pinning C++ spelling."""
+"""Tuple payload loans and replacement storage, without pinning C++ spelling."""
 
 import pytest
 
@@ -22,39 +22,32 @@ def borrow_record(cell: Cell) -> Cell:
 """
 
 
-@pytest.mark.parametrize(("binding", "use", "expected"), [
-    ("saved = (current,)\ncurrent.value = 4", "saved[0].value",
-     RebindStorage.OWN),
-    ("saved = (current,)\ncurrent.value = 4\nsaved = saved", "saved[0].value",
-     RebindStorage.OWN),
+@pytest.mark.parametrize(("binding", "use"), [
+    ("saved = (current,)\ncurrent.value = 4", "saved[0].value"),
+    ("saved = (current,)\ncurrent.value = 4\nsaved = saved", "saved[0].value"),
     ("alias = const_borrowed(current)\nsaved = (alias,)\ncurrent.value = 4",
-     "saved[0].value", RebindStorage.OWN),
-    ("saved = (current.value,)", "saved[0]", RebindStorage.IN_PLACE),
-    ("saved = (current,)", "saved[0].value", RebindStorage.IN_PLACE),
-    ("saved = borrowed(current)\ncurrent.value = 4", "saved[0].value",
-     RebindStorage.OWN),
+     "saved[0].value"),
+    ("saved = (current.value,)", "saved[0]"),
+    ("saved = (current,)", "saved[0].value"),
+    ("saved = borrowed(current)\ncurrent.value = 4", "saved[0].value"),
     ("flag = current.value > 0\nsaved = (current,) if flag else (other,)\n"
-     "current.value = 4\nother.value = 5", "saved[0].value",
-     RebindStorage.OWN),
+     "current.value = 4\nother.value = 5", "saved[0].value"),
     ("flag = current.value > 0\nsaved = (other,) if flag else (current,)\n"
-     "current.value = 4\nother.value = 5", "saved[0].value",
-     RebindStorage.OWN),
+     "current.value = 4\nother.value = 5", "saved[0].value"),
     ("saved: tuple[Cell | None] = (borrow_record(current),)\ncurrent.value = 4",
-     "saved[0] is None", RebindStorage.OWN),
-    ("print((saved := (1, current))[0])\ncurrent.value = 4", "saved[1].value",
-     RebindStorage.OWN),
+     "saved[0] is None"),
+    ("print((saved := (1, current))[0])\ncurrent.value = 4", "saved[1].value"),
     ("pair = (current,)\nsaved = pair\npair = (other,)\n"
-     "other.value = 5\ncurrent.value = 4", "saved[0].value",
-     RebindStorage.OWN),
+     "other.value = 5\ncurrent.value = 4", "saved[0].value"),
     ("saved = (current,)\ncurrent.value = 4\nsaved = (other,)\n"
-     "other.value = 5", "saved[0].value", RebindStorage.IN_PLACE),
+     "other.value = 5", "saved[0].value"),
     ("pair = (current,)\ncurrent.value = 4\n"
-     "saved: tuple[Cell] | None = pair", "current.value",
-     RebindStorage.OWN),
+     "saved: tuple[Cell] | None = pair", "current.value"),
 ])
-def test_replacement_respects_captured_payload(
-        binding: str, use: str, expected: RebindStorage) -> None:
-    # Sema-only: nullable/readonly/conditional tuples have narrower THIR coverage.
+def test_replacement_takes_its_own_storage(binding: str, use: str) -> None:
+    # Sema-only: nullable/readonly/conditional tuples have narrower THIR
+    # coverage. Whatever a tuple capture still holds of the old object, the
+    # rebind takes storage of its own (reuse is MIR's to prove).
     body = ("current = Cell(1)\nother = Cell(3)\n" + binding
             + "\ncurrent = Cell(2)\nprint(" + use + ")\n")
     source = PRELUDE + "def subject() -> None:\n" + "".join(
@@ -66,7 +59,7 @@ def test_replacement_respects_captured_payload(
                     if isinstance(stmt, TpyVarDecl) and stmt.name == "current"
                     and stmt.rebind_storage is not None]
     assert len(replacements) == 1
-    assert replacements[0].rebind_storage is expected
+    assert replacements[0].rebind_storage is RebindStorage.OWN
 
 
 @pytest.mark.parametrize(("write", "warns"), [

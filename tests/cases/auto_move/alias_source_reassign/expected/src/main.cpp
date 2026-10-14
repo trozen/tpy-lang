@@ -22,13 +22,13 @@ int32_t consume(Point&& p) {
 //     print(consume(p))   # tpyc: ok (auto-move, alias doesn't constrain)
 //     print(alias.x)
 void main() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point();
     Point* p = &__slot_1;
     p->x = 1;
     p->y = 2;
     Point& alias = (*p);
     std::cout << alias.x << "\n" << ::tpy::check_signals;
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point());
     p->x = 10;
     p->y = 20;

@@ -436,11 +436,11 @@ struct __coro_async_all {
 struct __gen_gen_section : public ::tpy::next_iter_mixin<__gen_gen_section, int32_t> {
     ::tpy::frame_state __state;
     Pic* p = nullptr;
+    std::optional<Pic> __ptr_slot_f0;
+    std::optional<Pic> __ptr_slot_f1;
     int32_t i;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
     ::tpy::frame_loop_slot<int32_t> __for_stop_0;
-    std::optional<Pic> __ptr_slot_f0;
-    std::optional<Pic> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

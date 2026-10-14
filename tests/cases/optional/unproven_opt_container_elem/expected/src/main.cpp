@@ -174,8 +174,8 @@ int32_t match_arm(const std::vector<P>* d, int32_t k) {
 //     # pointer local: a reseated `T*` local, not a parameter
 //     return d[0].x  # tpyc: warning(/Potential None access/)
 int32_t pointer_local(bool flag) {
-    std::optional<std::vector<P>> __slot_1;
     std::vector<P>* d = nullptr;
+    std::optional<std::vector<P>> __slot_1;
     if (flag) {
         d = &*(__slot_1 = std::vector<P>{P(13)});
     }

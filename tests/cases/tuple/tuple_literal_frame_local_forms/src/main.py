@@ -91,7 +91,8 @@ def loop_reassigned() -> Iterator[int32]:
 
 
 # a fresh literal in one branch and an OWNING CALL in the other: both hand the
-# frame the element storage, so the join agrees and one owning slot serves both
+# frame the element storage, each its own frame field (the pointer tuple's
+# element at each binding site)
 def literal_then_call(c: bool) -> Iterator[int32]:
     if c:
         t = (A(1), 2)  # tpyc: ok
@@ -113,8 +114,9 @@ def call_then_literal(c: bool) -> Iterator[int32]:
     yield t[0].v + t[1]
 
 
-# an owning call REASSIGNED across a suspension: every init emplaces fresh
-# storage into the one slot, so the second binding is not a dangling borrow
+# an owning call REASSIGNED across a suspension: the first binding's element
+# takes a frame field, and the rebind (nothing holds the old object) writes
+# into it in place, so the second binding is not a dangling borrow
 def call_reassigned() -> Iterator[int32]:
     t = make_pair()  # tpyc: ok
     yield t[0].v

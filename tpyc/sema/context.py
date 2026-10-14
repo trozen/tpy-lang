@@ -44,13 +44,13 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, is_bufferless_scalar,
     is_protocol_type, TypeParamRef, substitute_type_params_structural,
-    is_indirection_type, following_components, record_owner,
+    is_indirection_type, following_components, is_owned_leaf, record_owner,
 )
 from ..namespace import BindingKind, NameBinding, Namespace
 from ..symbol_binding import (SymbolBinding, SymbolKind, resolve_type_path,
                               walk_attribute_chain)
-from ..type_def_registry import (enum_info_of, int_traits_of, is_borrowing_view_type,
-                                 is_bytes_type, is_str_type, type_def_of)
+from ..type_def_registry import (enum_info_of, int_traits_of,
+                                 is_borrowing_view_type, type_def_of)
 from ..parse import (
     const_tuple_index,
     ResultForm,
@@ -625,67 +625,102 @@ class LendSource(NamedTuple):
 
 def holds_no_pointer(t: TpyType) -> bool:
     """A value of this declared type holds nothing that can point into other
-    storage: a bufferless scalar or an owned `str` / `bytes`."""
+    storage: a bufferless scalar (a number whose width is still pending
+    among them) or a value owning an opaque buffer (`is_owned_leaf`: `str`,
+    `String`, `bytes`, `int`)."""
     t = unwrap_qualifiers(t)
-    return is_bufferless_scalar(t) or is_str_type(t) or is_bytes_type(t)
+    return (is_bufferless_scalar(t) or isinstance(t, PendingNumType)
+            or is_owned_leaf(t))
 
 
-def value_may_point(t: TpyType) -> bool:
-    """A value of this declared type (a field, a moved `self` field, a type
-    argument) may be or hold a pointer into other storage: a value type
-    that is not pointer-free (a `Ptr`, a view, a callable, a user value
-    type), a protocol, a type parameter, or an Optional / union / tuple
-    with such a member. A reference type holds its own storage; what its
-    fields point at is `reference_may_hold_pointer`, and for a moved
-    `self` field BUGS.md#self-aimed-ptr-field-borrow-unrecorded."""
+def leaves_hold_no_pointer(t: TpyType) -> bool:
+    """A binding of this declared type holds nothing that can point into
+    other storage: no leaf -- through tuple, Optional and union members
+    (`tuple[int32, int32]`, `str | None`) -- is a reference type, which a
+    binding refers to rather than owns, or a value that may point
+    (`value_may_point`)."""
     t = unwrap_qualifiers(t)
     if isinstance(t, (OptionalType, UnionType, TupleType)):
-        return any(value_may_point(m) for m in t.inner_types())
-    if holds_no_pointer(t):
+        return all(leaves_hold_no_pointer(m) for m in t.inner_types())
+    return not (_is_reference_nominal(t) or value_may_point(t))
+
+
+def _is_reference_nominal(t: TpyType) -> bool:
+    # A generator or coroutine frame is no storage of its own: it keeps
+    # what it borrows.
+    return (isinstance(t, NominalType) and not t.is_value_type()
+            and not isinstance(t, ConcreteFrameType)
+            and not (is_protocol_type(t) or is_dyn_protocol(t)))
+
+
+def value_may_point(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
+    """A value of this declared type (a field, a moved `self` field, a type
+    argument) may be or hold a pointer into other storage. An allow-list:
+    it holds none only when it is pointer-free (`holds_no_pointer`), a
+    user value type whose type arguments, fields and bases hold none
+    (`_parts_may_hold_pointer`), a reference type -- which holds its own
+    storage; what its fields point at is `reference_may_hold_pointer`, and
+    for a moved `self` field BUGS.md#self-aimed-ptr-field-borrow-unrecorded
+    -- or an Optional / union / tuple of such members. Anything else (a
+    `Ptr`, a view, a callable, a native value type, a generator or coroutine frame, a
+    protocol, a type parameter, a type not settled yet) may point."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(value_may_point(m, seen) for m in t.inner_types())
+    if holds_no_pointer(t) or _is_reference_nominal(t):
         return False
-    # A generator or coroutine frame keeps what it borrows.
-    return (t.is_value_type() or isinstance(t, (TypeParamRef,
-                                                ConcreteFrameType))
-            or is_protocol_type(t) or is_dyn_protocol(t))
+    if isinstance(t, NominalType) and t.is_value_type():
+        td = type_def_of(t)
+        rec = td.record if td is not None else None
+        # A native value type's fields do not describe what it holds.
+        if (rec is not None and rec.is_value_type and not rec.is_native
+                and not rec.is_borrowing_view):
+            return _parts_may_hold_pointer(t, rec, seen)
+    return True
 
 
-def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
-    """A value of type `t` may be or hold a pointer into storage it does
-    not own: `value_may_point` for a value type or a frame,
-    `reference_may_hold_pointer` for what a reference type holds."""
-    m = unwrap_qualifiers(t)
-    if isinstance(m, (OptionalType, UnionType, TupleType)):
-        return any(may_hold_pointer(x, seen) for x in m.inner_types())
-    if (isinstance(m, NominalType) and not m.is_value_type()
-            and not isinstance(m, ConcreteFrameType)
-            and not (is_protocol_type(m) or is_dyn_protocol(m))):
-        return reference_may_hold_pointer(m, seen)
-    return value_may_point(m)
+def _parts_may_hold_pointer(t: NominalType, rec: RecordInfo | None,
+                            seen: frozenset[TpyType]) -> bool:
+    """Whether a record type may hold a pointer through a type argument
+    (`W[StrView]`), a field or a base class (`may_hold_pointer` of each).
+    A protocol it conforms to holds no storage of its own."""
+    if t in seen:
+        return False
+    seen = seen | {t}
+    args = [a for a in t.type_args if isinstance(a, TpyType)]
+    if any(may_hold_pointer(a, seen) for a in args):
+        return True
+    if rec is None:
+        return False
+    subst = dict(zip(rec.type_params, args))
+    return any(
+        may_hold_pointer(
+            substitute_type_params_structural(m, subst) if subst else m, seen)
+        for m in [*(f.type for f in rec.fields),
+                  *(p for p in rec.parents
+                    if not (is_protocol_type(p) or is_dyn_protocol(p)))])
 
 
 def reference_may_hold_pointer(t: NominalType,
                                seen: frozenset[TpyType] = frozenset()) -> bool:
     """Whether a reference-type value may hold a pointer into storage it
-    does not own, through a type argument (`W[StrView]`), a field or a
-    base, recursing into reference-type members (`value_may_point`)."""
-    if t in seen:
-        return False
-    seen = seen | {t}
-
-    def may(m: TpyType) -> bool:
-        return may_hold_pointer(m, seen)
-
-    args = [a for a in t.type_args if isinstance(a, TpyType)]
-    if any(may(a) for a in args):
-        return True
+    does not own (`_parts_may_hold_pointer`)."""
     td = type_def_of(t)
-    rec = td.record if td is not None else None
-    if rec is None:
-        return False
-    subst = dict(zip(rec.type_params, args))
-    return any(
-        may(substitute_type_params_structural(m, subst) if subst else m)
-        for m in [*(f.type for f in rec.fields), *rec.parents])
+    return _parts_may_hold_pointer(t, td.record if td is not None else None,
+                                   seen)
+
+
+def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
+    """Whether a value of this type, a fresh one included, may be or hold a
+    pointer into storage it does not own: `value_may_point` for a value
+    type or a frame, `reference_may_hold_pointer` for a reference type,
+    through tuple, Optional and union members."""
+    t = unwrap_qualifiers(t)
+    if isinstance(t, (OptionalType, UnionType, TupleType)):
+        return any(may_hold_pointer(m, seen) for m in t.inner_types())
+    if _is_reference_nominal(t):
+        return reference_may_hold_pointer(t, seen)
+    return value_may_point(t, seen)
 
 
 def temp_element_can_back(slot: TpyType | None,
@@ -2252,10 +2287,13 @@ class FunctionTrackingState:
     # keyed by the binding node (var-decl, assign, walrus); the alias-rebind
     # storage pass reads it after the walk.
     bind_kinds: IdentityMap = field(default_factory=IdentityMap)
-    # Every rvalue rebind of a reference local sema stamped (default OWN);
-    # the pass decides them and derives `own_rebind_names`. Identity-keyed
-    # so the nested-def state deep copy keeps the real statement objects.
-    gate_sites: IdentitySet = field(default_factory=IdentitySet)
+    # Every binding statement with an rvalue rebind of a reference local
+    # (OWN), to the names it rebinds so (several for a tuple unpack or a
+    # `match`'s captures); the
+    # pass derives `own_rebind_names` from them. Identity-keyed so the
+    # nested-def state deep copy keeps the real statement objects.
+    gate_sites: 'IdentityMap[TpyStmt, frozenset[str]]' = field(
+        default_factory=IdentityMap)
     # The gate sites that bind a name already declared as a generator
     # object, to what the new frame borrows (None: nothing): the pass
     # rejects one that rebinds and cannot be rebuilt in place.
@@ -2284,7 +2322,7 @@ class FunctionTrackingState:
     # after the block is an error.
     block_closed_frames: 'dict[str, tuple[str, str]]' = field(
         default_factory=dict)
-    # Locals with a rebind the pass left OWN, for the frame layout's
+    # Locals with an OWN rebind site, for the frame layout's
     # pointer-form verdict; harvested per function by the analyzer.
     own_rebind_names: frozenset[str] = frozenset()
     # Locals whose sole binding is a fresh constructor call of their exact static
@@ -2836,9 +2874,10 @@ class SemanticContext:
     # does not own). A frame, an `Own` parameter and a loop variable have no
     # OWN storage for such a site yet; their lowering reports it.
     tuple_own_sites: IdentityMap = field(default_factory=IdentityMap)
-    # Each decided tuple rebind site's per-element verdict: one entry per
-    # element, None where the binding does not own it, else the storage the
-    # element's new object takes (the scalar's verdict asked per element).
+    # A tuple rebind site's per-element verdict: one entry per element, None
+    # where the binding does not own it, else the storage the element's new
+    # object takes. Sema records none -- every owned element takes storage
+    # of its own (OWN) until MIR proves reusing the old one safe.
     tuple_elem_storage: IdentityMap = field(default_factory=IdentityMap)
     # Each last-use read of a tuple local holding a reference element, with
     # the elements every storage reaching it owns: what a consuming sink may

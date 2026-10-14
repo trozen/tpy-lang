@@ -166,6 +166,7 @@ struct __coro_coro_call_then_literal {
     const F& f;
     std::vector<int32_t>* a = nullptr;
     std::optional<std::vector<int32_t>> __ptr_slot_f0;
+    std::optional<std::vector<int32_t>> __ptr_slot_f1;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
     enum : int32_t {
@@ -252,6 +253,7 @@ struct __gen_gen_call_then_literal : public ::tpy::next_iter_mixin<__gen_gen_cal
     const F& f;
     std::vector<int32_t>* a = nullptr;
     std::optional<std::vector<int32_t>> __ptr_slot_f0;
+    std::optional<std::vector<int32_t>> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -384,8 +386,8 @@ inline Holder::Holder(int32_t n) : f(F(n)) {}
 //     d[3] = 30
 //     return len(d)
 inline int32_t Holder::build(bool c) const {
-    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_1;
     ::tpy::ordered_map<int32_t, int32_t>* d = nullptr;
+    std::optional<::tpy::ordered_map<int32_t, int32_t>> __slot_1;
     if (c) {
         d = &*(__slot_1 = ::tpy::ordered_map<int32_t, int32_t>({{1, 10}, {2, 20}}));
     }

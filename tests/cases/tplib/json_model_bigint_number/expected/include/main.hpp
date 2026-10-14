@@ -82,9 +82,9 @@ inline std::string Repo::__repr__() const {
 }
 
 inline Repo Repo::from_json(std::string_view __s) {
-    std::optional<Repo> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Repo* __result = nullptr;
+    std::optional<Repo> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
         {

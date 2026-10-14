@@ -148,9 +148,9 @@ inline std::string Msg::__repr__() const {
 }
 
 inline Msg Msg::from_json(std::string_view __s) {
-    std::optional<Msg> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Msg* __result = nullptr;
+    std::optional<Msg> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
         {

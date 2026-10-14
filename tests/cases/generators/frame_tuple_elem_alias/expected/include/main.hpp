@@ -153,7 +153,11 @@ struct __coro_co_copy {
     ::tpy::frame_state __state;
     bool __cancel_pending;
     bool c;
-    ::tpy::frame_slot<std::tuple<A, A>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
+    std::optional<A> __ptr_slot_f2;
+    std::optional<A> __ptr_slot_f3;
     ::tpy::frame_slot<A> saved;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
 
@@ -182,7 +186,9 @@ struct __coro_co_alias_after_rebind {
     bool __cancel_pending;
     A& b;
     bool c;
-    ::tpy::frame_slot<std::tuple<A, A*>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
     A* saved = nullptr;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
     std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_1;
@@ -392,7 +398,9 @@ struct __gen_mixed_borrowed_rebound : public ::tpy::next_iter_mixin<__gen_mixed_
     ::tpy::frame_state __state;
     A& b;
     A& c;
-    ::tpy::frame_slot<std::tuple<A, A*>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
     A* saved = nullptr;
 
     enum : int32_t {
@@ -420,7 +428,11 @@ struct __gen_mixed_borrowed_rebound : public ::tpy::next_iter_mixin<__gen_mixed_
 struct __gen_rebind_before_alias : public ::tpy::next_iter_mixin<__gen_rebind_before_alias, int32_t> {
     ::tpy::frame_state __state;
     bool c;
-    ::tpy::frame_slot<std::tuple<A, A>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
+    std::optional<A> __ptr_slot_f2;
+    std::optional<A> __ptr_slot_f3;
     A* saved = nullptr;
 
     enum : int32_t {
@@ -445,7 +457,11 @@ struct __gen_rebind_before_alias : public ::tpy::next_iter_mixin<__gen_rebind_be
 // def alias_after_last_rebind() -> Iterator[int32]:
 struct __gen_alias_after_last_rebind : public ::tpy::next_iter_mixin<__gen_alias_after_last_rebind, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<std::tuple<A, A>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
+    std::optional<A> __ptr_slot_f2;
+    std::optional<A> __ptr_slot_f3;
     A* saved = nullptr;
 
     enum : int32_t {
@@ -468,7 +484,11 @@ struct __gen_alias_after_last_rebind : public ::tpy::next_iter_mixin<__gen_alias
 // def orelse_alias() -> Iterator[int32]:
 struct __gen_orelse_alias : public ::tpy::next_iter_mixin<__gen_orelse_alias, int32_t> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<std::tuple<A, A>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
+    std::optional<A> __ptr_slot_f2;
+    std::optional<A> __ptr_slot_f3;
     int32_t i;
     A* saved = nullptr;
     ::tpy::frame_loop_slot<int32_t> __for_i_0;
@@ -496,7 +516,11 @@ struct __gen_orelse_alias : public ::tpy::next_iter_mixin<__gen_orelse_alias, in
 struct __gen_copy_alias : public ::tpy::next_iter_mixin<__gen_copy_alias, int32_t> {
     ::tpy::frame_state __state;
     bool c;
-    ::tpy::frame_slot<std::tuple<A, A>> t;
+    std::tuple<A*, A*> t;
+    std::optional<A> __ptr_slot_f0;
+    std::optional<A> __ptr_slot_f1;
+    std::optional<A> __ptr_slot_f2;
+    std::optional<A> __ptr_slot_f3;
     ::tpy::frame_slot<A> saved;
 
     enum : int32_t {
@@ -524,7 +548,9 @@ struct __gen_copy_alias : public ::tpy::next_iter_mixin<__gen_copy_alias, int32_
 struct __gen_copy_chained : public ::tpy::next_iter_mixin<__gen_copy_chained, int32_t> {
     ::tpy::frame_state __state;
     bool c;
-    ::tpy::frame_slot<std::tuple<H, int32_t>> t;
+    std::tuple<H*, int32_t> t;
+    std::optional<H> __ptr_slot_f0;
+    std::optional<H> __ptr_slot_f1;
     ::tpy::frame_slot<A> saved;
 
     enum : int32_t {
@@ -550,7 +576,9 @@ struct __gen_copy_chained : public ::tpy::next_iter_mixin<__gen_copy_chained, in
 struct __gen_list_of_tuples_after_rebind : public ::tpy::next_iter_mixin<__gen_list_of_tuples_after_rebind, int32_t> {
     ::tpy::frame_state __state;
     bool c;
-    ::tpy::frame_slot<std::array<std::tuple<A, A>, 1>> xs;
+    std::array<std::tuple<A, A>, 1>* xs = nullptr;
+    std::optional<std::array<std::tuple<A, A>, 1>> __ptr_slot_f0;
+    std::optional<std::array<std::tuple<A, A>, 1>> __ptr_slot_f1;
     A* saved = nullptr;
 
     enum : int32_t {

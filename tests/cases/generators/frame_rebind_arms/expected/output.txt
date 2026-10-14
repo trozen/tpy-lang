@@ -1,0 +1,42 @@
+ternary: 12
+ternary: 13
+ternary gen: 13 12
+ternary: 2
+ternary: 2
+ternary gen: 3 2
+print: 0
+print gen: [3, 4, 5]
+print: 1
+print gen: {3: 4}
+print co: [3, 4]
+print: 2
+walrus_alias: 1
+walrus_alias gen: [1, 2, 9]
+walrus_alias: 3
+walrus_alias co: [1, 2, 9]
+walrus_alias: 3
+unpack: 1
+unpack gen: 2 13 3
+unpack: 13
+unpack co: 2 13 3
+unpack: 13
+unpack_only: 1
+unpack_only gen: 1 15 11
+unpack_only: 15
+unpack_only co: 1 15 11
+unpack_only: 15
+unpack_only_loop: 1
+unpack_only_loop: 1
+unpack_only_loop: 21
+unpack_only_loop gen: 1 15
+unpack_only_loop co: 1 15
+unpack_only_loop: 15
+walrus_first: 3
+walrus_first: 0
+walrus_first gen: [5, 6, 7] [1, 2, 3]
+walrus_first: 3
+walrus_first co: [5, 6, 7] [1, 2]
+walrus_first: 5
+loop gen: [1]
+loop gen: [2, 3]
+loop: 101 105 [[1, 9], [2, 3, 9]]

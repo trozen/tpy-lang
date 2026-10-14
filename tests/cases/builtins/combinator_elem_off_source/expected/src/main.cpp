@@ -1038,7 +1038,6 @@ int32_t match_arm(std::vector<Cell>& cells, int32_t k) {
 //     print("match_arm", match_arm(cells, 3), match_arm(cells, 0))
 //     show("match_arm", cells)
 void main() {
-    std::optional<std::vector<Cell>> __slot_2;
     std::vector<Cell> __slot_1 = {Cell(1), Cell(2)};
     std::vector<Cell>* cells = &__slot_1;
     std::cout << "ro_enumerate" << " " << ::tpyapp::main::ro_enumerate((*cells)) << "\n" << ::tpy::check_signals;
@@ -1058,7 +1057,8 @@ void main() {
     ::tpyapp::main::mut_map((*cells));
     ::tpyapp::main::show("mut_map", (*cells));
     std::cout << "ro_map" << " " << ::tpyapp::main::ro_map((*cells)) << "\n" << ::tpy::check_signals;
-    (*cells) = {Cell(1), Cell(2)};
+    std::optional<std::vector<Cell>> __slot_2;
+    cells = &*(__slot_2 = {Cell(1), Cell(2)});
     ::tpyapp::main::nested_enumerate_filter((*cells));
     std::vector<int32_t> __tmp_3 = {10, 20};
     ::tpyapp::main::nested_zip_reversed((*cells), __tmp_3);
@@ -1068,7 +1068,8 @@ void main() {
     ::tpyapp::main::show("nested_param", (*cells));
     ::tpyapp::main::collect_copies();
     ::tpyapp::main::closure_mut();
-    (*cells) = {Cell(1), Cell(2)};
+    std::optional<std::vector<Cell>> __slot_3;
+    cells = &*(__slot_3 = {Cell(1), Cell(2)});
     std::cout << "gen_ro" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_ro((*cells)))) << "\n" << ::tpy::check_signals;
     std::cout << "gen_mut" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_mut((*cells)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("gen_mut", (*cells));
@@ -1084,7 +1085,8 @@ void main() {
     bag.bump_all();
     ::tpyapp::main::show("method_bump", bag.cells);
     std::cout << "comp_total" << " " << bag.comp_total({1, 2}) << "\n" << ::tpy::check_signals;
-    (*cells) = {Cell(1), Cell(2)};
+    std::optional<std::vector<Cell>> __slot_4;
+    cells = &*(__slot_4 = {Cell(1), Cell(2)});
     std::cout << "async_mut" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_mut((*cells)))) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::show("async_mut", (*cells));
     std::vector<int32_t> __tmp_6 = {10, 20};
@@ -1092,7 +1094,8 @@ void main() {
     std::vector<std::string> __tmp_7 = {"a", "bb"};
     std::vector<int32_t> __tmp_8 = {1, 2};
     ::tpyapp::main::values(__tmp_7, __tmp_8);
-    cells = &*(__slot_2 = {Cell(1), Cell(2)});
+    std::optional<std::vector<Cell>> __slot_5;
+    cells = &*(__slot_5 = {Cell(1), Cell(2)});
     {
         std::cout << "er_body" << " " << ({ auto __er_2 = ::tpyapp::main::er_body((*cells)); if (!__er_2.has_value()) goto __except_1; ::tpy::unwrap_ref_move(*__er_2); }) << "\n" << ::tpy::check_signals;
         goto __after_try_1;

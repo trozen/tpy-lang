@@ -18,15 +18,15 @@ namespace tpyapp::main {
 //     p = Point(9)
 //     return saved.x * 100 + p.x
 ::tpy::BigInt escaped_alias() {
-    std::optional<Point> __slot_2;
-    std::optional<Point> __slot_3;
     Point __slot_1 = Point(::tpy::BigInt(0));
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_2;
     Point* p;
     for (int32_t i = 0; i < 3; ++i) {
         p = &*(__slot_2 = Point(::tpy::BigInt(i)));
         saved = p;
     }
+    std::optional<Point> __slot_3;
     p = &*(__slot_3 = Point(::tpy::BigInt(9)));
     return ((((saved->x) * (::tpy::BigInt(100)))) + (p->x));
 }
@@ -42,11 +42,11 @@ namespace tpyapp::main {
 //     return p.x
 ::tpy::BigInt mutate_through_alias() {
     std::optional<Point> __slot_1;
-    std::optional<Point> __slot_2;
     Point* p;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_1 = Point(::tpy::BigInt(i)));
     }
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(::tpy::BigInt(9)));
     Point& q = (*p);
     q.x = ::tpy::BigInt(55);

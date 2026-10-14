@@ -46,7 +46,8 @@ void main() {
     std::cout << y << "\n" << ::tpy::check_signals;
     Container<int32_t> __slot_1 = Container<int32_t>();
     Container<int32_t>* r = &__slot_1;
-    (*r) = Container<int32_t>();
+    std::optional<Container<int32_t>> __slot_2;
+    r = &*(__slot_2 = Container<int32_t>());
     std::cout << (*r) << "\n" << ::tpy::check_signals;
     Pair<int32_t, std::string> p = Pair<int32_t, std::string>(42);
     std::cout << p << "\n" << ::tpy::check_signals;

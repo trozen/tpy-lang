@@ -798,7 +798,9 @@ inline __gen_Response_iter_content Response::iter_content(int32_t chunk_size) {
 struct __gen_Response_iter_lines : public ::tpy::next_iter_mixin<__gen_Response_iter_lines, ::tpy::Bytes> {
     ::tpy::frame_state __state;
     Response& __self;
-    ::tpy::frame_slot<::tpy::ByteArray> pending;
+    ::tpy::ByteArray* pending = nullptr;
+    std::optional<::tpy::ByteArray> __ptr_slot_f0;
+    std::optional<::tpy::ByteArray> __ptr_slot_f1;
     ::tpy::Bytes tail;
     int32_t tend;
     int32_t end;

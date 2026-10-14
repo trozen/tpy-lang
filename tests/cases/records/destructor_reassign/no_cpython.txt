@@ -1,4 +1,0 @@
-CPython does not auto-chain __del__ to a base class, which test_inherit
-exercises: the `~Base` lines are the C++ parent destructor the warning on
-Child.__del__ announces. The reassignment drop order itself matches CPython
-(the superseded object drops at the rebind).

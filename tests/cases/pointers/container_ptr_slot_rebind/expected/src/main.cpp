@@ -150,10 +150,9 @@ void rebound_generic_borrow(std::vector<int32_t>& other) {
 //     items.append(5)
 //     return total + len(items)
 int32_t hoisted() {
-    std::optional<std::vector<int32_t>> __slot_1;
-    std::optional<std::vector<int32_t>> __slot_2;
     int32_t i = 0;
     int32_t total = 0;
+    std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t>* items;
     while ((i < 2)) {
         {
@@ -166,6 +165,7 @@ int32_t hoisted() {
         total = ::tpy::add_check<int32_t>(total, ::tpy::__len__((*items)));
         i = ::tpy::add_check<int32_t>(i, 1);
     }
+    std::optional<std::vector<int32_t>> __slot_2;
     items = &*(__slot_2 = ::tpyapp::main::mk_list());
     items->push_back(5);
     return (::tpy::add_check<int32_t>(total, ::tpy::__len__((*items))));

@@ -6,14 +6,18 @@
 # (the warned copy into an owned position), borrowed-place and field-place
 # (the warned mutation of storage the binding still borrows), walk-rebind
 # and copy-carry (a loop rebind's warned slot reuse, run once), and
-# loop-two-site, loop-two-site-two-hop, loop-two-site-while and
-# loop-three-site (a loop rebind's warned clobber of a live alias,
-# BUGS.md#loop-two-site-rebind-clobbers-alias, run once).
+# loop-two-site, loop-two-site-two-hop and loop-two-site-while (a loop
+# rebind's warned clobber of a live alias,
+# BUGS.md#loop-rebind-site-slot-reuse-warned, run once). The untracked-*,
+# retain-*, tuple-view, range-field, copied-elem and mapped-elem sections bind
+# a holder by a path no tracked loan records (two hops in, a view, a capture,
+# a callee keeping a pointer): every rebind takes storage of its own, so the
+# old object outlives it.
 import asyncio
 from typing import Callable, Iterator
 
-from tpy import (Own, ReturnException, copy, error_return, int32, nocopy,
-                 take_ptr)
+from tpy import (Own, Ptr, ReturnException, StrView, ValueType, copy,
+                 error_return, int32, nocopy, take_ptr)
 
 
 class Box:
@@ -538,8 +542,9 @@ def nonlocal_write(v: Box) -> None:
 
 async def frame_body(v: Box) -> int32:
     p = make_mixed(1, v)
-    # async: a coroutine's tuple stays the frame's own storage tuple, and an
-    # element alias taken across a suspension writes into it.
+    # async: a coroutine's rebound tuple is the pointer tuple too; with no
+    # holder the rebind writes in place into the first binding's frame field,
+    # and an element alias taken across a suspension writes into that field.
     p = make_mixed(2, v)  # tpyc: ok
     await asyncio.sleep(0)
     a = p[0]
@@ -728,7 +733,8 @@ c0.n += 100
 print("module-call", c0b.n, c1b.n, C[0].n, C[1].n)
 
 # module-call-alias: a function handing out the tuple global is an alias no
-# loan records, so the rebind gives the new element a static of its own.
+# loan records; the rebind gives the new element a static of its own, as every
+# module-level rebind does.
 P = make_mixed(1, V)
 
 
@@ -741,6 +747,20 @@ S2 = grab()
 P = make_mixed(9, V)  # tpyc: ok
 S[0].n += 100
 print("module-call-alias", S2[0].n, P[0].n)
+
+# module-call-alias-scalar: the scalar twin, a function handing out the global
+# itself; the old object survives the rebind.
+B = Box(10)
+
+
+def grab_box() -> Box:
+    return B
+
+
+SB = grab_box()
+B = Box(9)  # tpyc: ok
+SB.n += 100
+print("module-call-alias-scalar", SB.n, B.n)
 
 
 def alias_order_early(v: Box) -> None:
@@ -900,25 +920,24 @@ def copy_carry(v: Box) -> None:
         print("copy-carry", p[0].n, p[1].n, old.n)
 
 
-# The name is bound at two sites in the loop body: the second writes in place
-# into the first site's slot, so the first site rebuilds the slot the alias
-# took on the previous pass (BUGS.md#loop-two-site-rebind-clobbers-alias). Run
-# once, so both runs agree.
+# The name is bound at two sites in the loop body, each with a slot of its
+# own: the alias takes the second site's object, which the second site
+# rebuilds on the next pass. Run once, so both runs agree.
 def loop_two_site(v: Box) -> None:
     s = make_mixed(0, v)
     s = make_mixed(1, v)
     r = s
     for i in range(1):
         r = s
+        s = make_mixed(3 + i, v)  # tpyc: ok
         # loop-two-site: warns as the one-site rebind does.
-        s = make_mixed(3 + i, v)  # tpyc: warning(/'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own/)
-        s = make_mixed(5 + i, v)
+        s = make_mixed(5 + i, v)  # tpyc: warning(/'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own/)
     r[0].n += 100
     print("loop-two-site", r[0].n, s[0].n)
 
 
 # The alias reaches the loop's object through a second name (`r = q`,
-# `q = s`; BUGS.md#loop-two-site-rebind-clobbers-alias).
+# `q = s`).
 def loop_two_site_two_hop(v: Box, c: bool) -> None:
     p = make_mixed(1, v)
     p = make_mixed(2, v)
@@ -928,9 +947,9 @@ def loop_two_site_two_hop(v: Box, c: bool) -> None:
     for i in range(1):
         r = q
         r[0].n += 10
+        s = make_mixed(3 + i, v)  # tpyc: ok
         # loop-two-site-two-hop: 'r' reaches the slot through 'q'.
-        s = make_mixed(3 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
-        s = make_mixed(5 + i, v)
+        s = make_mixed(5 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
         if c:
             q = s
         else:
@@ -952,8 +971,7 @@ def loop_two_site_silent(v: Box) -> None:
         print("loop-two-site-silent", s[0].n)
 
 
-# The `while` spelling of the two in-loop sites
-# (BUGS.md#loop-two-site-rebind-clobbers-alias). Run once, so both runs agree.
+# The `while` spelling of the two in-loop sites. Run once, so both runs agree.
 def loop_two_site_while(v: Box) -> None:
     s = make_mixed(0, v)
     s = make_mixed(1, v)
@@ -961,17 +979,17 @@ def loop_two_site_while(v: Box) -> None:
     i = 0
     while i < 1:
         r = s
-        # loop-two-site-while: warns at the first site.
-        s = make_mixed(3 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
-        s = make_mixed(5 + i, v)
+        s = make_mixed(3 + i, v)  # tpyc: ok
+        # loop-two-site-while: warns at the second site, whose slot 'r' holds.
+        s = make_mixed(5 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
         i += 1
     r[0].n += 100
     print("loop-two-site-while", r[0].n, s[0].n)
 
 
 # Three in-loop sites, the alias taken after the second: its object lives in
-# the first site's slot, which the first site rebuilds
-# (BUGS.md#loop-two-site-rebind-clobbers-alias). Run once, so both runs agree.
+# the second site's slot, and the alias is rebound before that site runs
+# again, so nothing it still reads is rebuilt: no warning.
 def loop_three_site(v: Box) -> None:
     s = make_mixed(0, v)
     s = make_mixed(1, v)
@@ -979,7 +997,7 @@ def loop_three_site(v: Box) -> None:
     t = s
     for i in range(1):
         # loop-three-site: 'r' holds the second site's object here.
-        s = make_mixed(10 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
+        s = make_mixed(10 + i, v)  # tpyc: ok
         if i > 0:
             print("loop-three-site-iter", r[0].n, t[0].n)
         s = make_mixed(20 + i, v)
@@ -1318,6 +1336,214 @@ def nested_own_param(v: Box) -> None:
     print("nested-own-param", inner(hb, v), hb.bp[0].n)
 
 
+class TwoHop:
+    xs: list[Box]
+
+    def __init__(self, i: int32) -> None:
+        self.xs = [Box(i), Box(i + 1)]
+
+
+class Named:
+    s: str
+    n: int32
+
+    def __init__(self, i: int32) -> None:
+        self.s = "abcdefghijklmnopqrstuvwxyz0123456789" + str(i)
+        self.n = i
+
+
+class Lab(ValueType):
+    lab: StrView
+
+    def __init__(self, lab: StrView) -> None:
+        self.lab = lab
+
+
+class Labelled:
+    s: str
+    w: Lab
+
+    def __init__(self, src: str) -> None:
+        self.s = src + "!"
+        self.w = Lab(self.s)
+
+
+class Keeper:
+    p: Ptr[Box]
+
+    def __init__(self, b: Box) -> None:
+        self.p = take_ptr(b)
+
+    def save(self, b: Box) -> int32:
+        self.p = take_ptr(b)
+        return 1
+
+
+def pick_box(b: Box) -> tuple[Box, int32]:
+    return (b, 0)
+
+
+# A holder bound by a path into an owned element that no tracked loan records
+# keeps the old element's object: the rebind takes storage of its own.
+def untracked_two_hop(c: bool) -> None:
+    t = (TwoHop(1), 5)
+    # untracked-two-hop: two hops into element 0.
+    saved = t[0].xs[1]  # tpyc: ok
+    if c:
+        t = (TwoHop(10), 6)
+    saved.n += 100
+    print("untracked-two-hop", saved.n, t[0].xs[1].n)
+
+
+def untracked_strview(c: bool) -> None:
+    t = (Named(1), 5)
+    # untracked-strview: the view points into element 0's string.
+    v: StrView = t[0].s  # tpyc: ok
+    if c:
+        t = (Named(2), 6)
+    print("untracked-strview", v, t[1])
+
+
+def untracked_value_view(c: bool, a: str, b: str) -> None:
+    t = (Labelled(a), 5)
+    # untracked-value-view: a value whose view points into element 0.
+    w = t[0].w  # tpyc: ok
+    if c:
+        t = (Labelled(b), 6)
+    print("untracked-value-view", w.lab, t[0].w.lab)
+
+
+def untracked_fresh_view(c: bool) -> None:
+    t = (Named(1), 5)
+    # untracked-fresh-view: a new value around a view of element 0.
+    w = Lab(t[0].s)  # tpyc: ok
+    if c:
+        t = (Named(2), 6)
+    print("untracked-fresh-view", w.lab)
+
+
+def untracked_match_capture(c: bool) -> None:
+    t = (TwoHop(1), 5)
+    # untracked-match-capture: the capture is bound two hops in.
+    match t[0].xs[1]:  # tpyc: ok
+        case Box() as saved:
+            if c:
+                t = (TwoHop(10), 6)
+            saved.n += 100
+            print("untracked-match-capture", saved.n, t[1])
+
+
+def untracked_for_unpack(c: bool) -> None:
+    t = (TwoHop(1), 5)
+    # untracked-for-unpack: the loop target that keeps the borrow.
+    for i, saved in enumerate(t[0].xs):  # tpyc: ok
+        if i == 1:
+            if c:
+                # The loop target's loan is filed at the loop head, which a
+                # rebind's back edge reaches: a conservative warning
+                # (BUGS.md#loop-slot-reuse-false-warning).
+                t = (TwoHop(10), 6)  # tpyc: warning(/'saved' will not keep the object it was given/)
+            saved.n += 100
+            print("untracked-for-unpack", saved.n, t[0].xs[1].n)
+
+
+def untracked_literal_unpack(c: bool) -> None:
+    t = (TwoHop(1), 5)
+    h = TwoHop(20)
+    # untracked-literal-unpack: each target of a literal unpack.
+    saved, a = (t[0].xs[1], h.xs[0])  # tpyc: ok
+    # The same path as the SECOND target.
+    b, kept = (h.xs[1], t[0].xs[1])  # tpyc: ok
+    if c:
+        t = (TwoHop(10), 6)
+    saved.n += 100
+    kept.n += 1000
+    print("untracked-literal-unpack", saved.n, a.n, kept.n, b.n,
+          t[0].xs[1].n)
+
+
+def untracked_chained(c: bool) -> None:
+    t = (TwoHop(1), 5)
+    # untracked-chained: each name target of a chained assignment holds the
+    # old element two hops in.
+    x = saved = t[0].xs[1]  # tpyc: ok
+    if c:
+        t = (TwoHop(10), 6)
+    saved.n += 100
+    x.n += 1000
+    print("untracked-chained", saved.n, x.n, t[0].xs[1].n)
+
+
+def untracked_call_unpack(c: bool) -> None:
+    t = (TwoHop(1), 5)
+    # untracked-call-unpack: a call lends the element's path to the target.
+    saved, k = pick_box(t[0].xs[1])  # tpyc: ok
+    if c:
+        t = (TwoHop(10), 6)
+    saved.n += 100
+    print("untracked-call-unpack", saved.n + k, t[0].xs[1].n)
+
+
+def retain_binding(c: bool) -> None:
+    k = Keeper(Box(99))
+    t = (Box(1), 0)
+    # retain-binding: the callee keeps a pointer to the element.
+    n = k.save(t[0])  # tpyc: ok
+    if c:
+        t = (Box(10), 0)
+    k.p.n += 100
+    print("retain-binding", n, k.p.n, t[0].n)
+
+
+def retain_statement(c: bool) -> None:
+    k = Keeper(Box(99))
+    t = (Box(1), 0)
+    # retain-statement: the same call as a statement.
+    k.save(t[0])  # tpyc: ok
+    if c:
+        t = (Box(10), 0)
+    k.p.n += 100
+    print("retain-statement", k.p.n, t[0].n)
+
+
+def tuple_view(c: bool) -> None:
+    t = (Named(1), 0)
+    # tuple-view: a tuple whose element views element 0's string.
+    u = (Lab(t[0].s), 0)  # tpyc: ok
+    if c:
+        t = (Named(10), 0)
+    print("tuple-view", u[0].lab)
+
+
+def range_field(c: bool) -> None:
+    t = (Named(1), 0)
+    # range-field: the loop bound is read off the element before the loop.
+    for i in range(t[0].n):  # tpyc: ok
+        if c:
+            t = (Named(10), 0)
+        print("range-field", i, t[0].n)
+
+
+def copied_elem(c: bool) -> None:
+    t = (Named(1), 0)
+    # copied-elem: a list of numbers read off the element.
+    copied = [t[0].n, 7]  # tpyc: ok
+    if c:
+        t = (Named(10), 0)
+    copied.append(t[0].n)
+    print("copied-elem", copied)
+
+
+def mapped_elem(c: bool) -> None:
+    t = (Named(1), 0)
+    # mapped-elem: a dict of strings read off the element.
+    v = {1: t[0].s}  # tpyc: ok
+    if c:
+        t = (Named(10), 0)
+    v[2] = t[0].s
+    print("mapped-elem", v[1][-1], v[2][-2:])
+
+
 def main() -> None:
     v = Box(5)
     w = Box(6)
@@ -1434,6 +1660,21 @@ def main() -> None:
     owning_rebind_alias(Box(3))
     HCtor(Box(3))
     nested_own_param(Box(3))
+    untracked_two_hop(True)
+    untracked_strview(True)
+    untracked_value_view(True, "a" * 40, "b" * 40)
+    untracked_fresh_view(True)
+    untracked_match_capture(True)
+    untracked_for_unpack(True)
+    untracked_literal_unpack(True)
+    untracked_chained(True)
+    untracked_call_unpack(True)
+    retain_binding(True)
+    retain_statement(True)
+    tuple_view(True)
+    range_field(True)
+    copied_elem(True)
+    mapped_elem(True)
 
 
 main()

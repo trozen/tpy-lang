@@ -16,10 +16,11 @@ namespace tpyapp::main {
 void copy_is_independent() {
     Point __slot_1 = Point(-1);
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
         Point p = Point(i);
         if ((i == 0)) {
-            (*saved) = Point(p);
+            saved = &*(__slot_2 = Point(p));
             p.x = 99;
         }
     }
@@ -39,10 +40,11 @@ void copy_is_independent() {
 void copy_outlives_the_loop() {
     Point __slot_1 = Point(-1);
     Point* saved = &__slot_1;
+    std::optional<Point> __slot_2;
     for (int32_t i = 0; i < 4; ++i) {
         Point p = Point(i);
         if ((i == 1)) {
-            (*saved) = Point(p);
+            saved = &*(__slot_2 = Point(p));
         }
     }
     saved->x = 77;
@@ -61,8 +63,8 @@ void copy_outlives_the_loop() {
 //     if saved is not None:
 //         print(saved.x)
 void copy_into_optional_target() {
-    std::optional<Point> __slot_1;
     Point* saved = nullptr;
+    std::optional<Point> __slot_1;
     for (int32_t i = 0; i < 3; ++i) {
         Point p = Point(i);
         if ((saved == nullptr)) {

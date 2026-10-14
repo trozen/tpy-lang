@@ -37,13 +37,14 @@ template<typename T, typename U, ::tpystd::typing::Iterable<T> T_a, typename __F
 ::tpy::own_return_t<U> reduce__Fn_U_T_U__Iterable_T__U(__F0&& func, T_a& a, ::tpy::param_val_or_ref_t<U> initial) {
     U __slot_1 = U(initial);
     U* acc = &__slot_1;
+    std::optional<U> __slot_2;
     auto& __src_0 = a;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
     for (;;) {
         auto __r_1 = __itr_0.__next__();
         if (!__r_1.has_value()) break;
         auto&& x = ::tpy::unwrap_ref(*__r_1);
-        (*acc) = func((*acc), x);
+        acc = &*(__slot_2 = func((*acc), x));
     }
     return std::move((*acc));
 }
@@ -65,9 +66,10 @@ template<typename T, typename __F0>
     }
     T __slot_1 = T(::tpy::__getitem__(a, 0));
     T* acc = &__slot_1;
+    std::optional<T> __slot_2;
     int32_t __stop_0 = ::tpy::__len__(a);
     for (int32_t i = 1; i < __stop_0; ++i) {
-        (*acc) = func((*acc), ::tpy::__getitem__(a, i));
+        acc = &*(__slot_2 = func((*acc), ::tpy::__getitem__(a, i)));
     }
     return std::move((*acc));
 }

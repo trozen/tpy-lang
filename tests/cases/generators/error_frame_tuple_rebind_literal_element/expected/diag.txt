@@ -1,0 +1,1 @@
+main.py:18: error: in function 'g': element 0 of the tuple bound to 't' here is an expression whose storage is not known here; storing it in 't', which holds an element of its own, is not yet supported here; bind it to a name of its own first and use that name

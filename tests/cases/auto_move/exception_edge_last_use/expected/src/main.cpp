@@ -51,6 +51,7 @@ std::expected<int32_t, Fail> check(bool c) {
 void handler_raise_finally() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
+    std::optional<P> __slot_2;
     {
         try {
             try {
@@ -59,7 +60,7 @@ void handler_raise_finally() {
                 P __tmp_1 = (*p);
                 ::tpyapp::main::take(std::move(__tmp_1));
                 ::tpyapp::main::boom(true);
-                (*p) = P(5);
+                p = &*(__slot_2 = P(5));
             }
         } catch (...) {
             std::cout << "handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
@@ -84,6 +85,7 @@ void handler_raise_finally() {
 void outer_handler_reads() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
+    std::optional<P> __slot_2;
     {
         try {
             {
@@ -93,7 +95,7 @@ void outer_handler_reads() {
                     P __tmp_1 = (*p);
                     ::tpyapp::main::take(std::move(__tmp_1));
                     ::tpyapp::main::boom(true);
-                    (*p) = P(5);
+                    p = &*(__slot_2 = P(5));
                 }
             }
         } catch (const ::tpy::ValueError&) {
@@ -137,13 +139,14 @@ void swallowed_raise() {
 void swallowed_call() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
+    std::optional<P> __slot_2;
     auto __ctx_2 = Swallow();
     __ctx_2.__enter__();
     try {
         P __tmp_1 = (*p);
         ::tpyapp::main::take(std::move(__tmp_1));
         ::tpyapp::main::boom(true);
-        (*p) = P(5);
+        p = &*(__slot_2 = P(5));
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         if (!__ctx_2.__exit__({}, &__exc_2, {})) throw;
@@ -182,7 +185,7 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        p.emplace(P(1));
+        p = &*(__ptr_slot_f0 = P(1));
         __state = S_JOIN_1;
         continue;
     }
@@ -206,7 +209,7 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
                 P __tmp_1 = (*p);
                 ::tpyapp::main::take(std::move(__tmp_1));
                 ::tpyapp::main::boom(true);
-                p.emplace(P(5));
+                p = &*(__ptr_slot_f1 = P(5));
                 __fin_ran_6 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -241,7 +244,7 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
                 P __tmp_2 = (*p);
                 ::tpyapp::main::take(std::move(__tmp_2));
                 ::tpyapp::main::boom(true);
-                p.emplace(P(5));
+                p = &*(__ptr_slot_f1 = P(5));
                 __fin_ran_8 = true;
                 this->__finally_0();
                 __state = S_JOIN_0;
@@ -267,7 +270,7 @@ __gen_gen_handler_raise_finally gen_handler_raise_finally() {
 }
 
 void __coro_async_handler_raise_finally::__finally_0() {
-    std::cout << "async_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n" << ::tpy::check_signals;
+    std::cout << "async_handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
 }
 
 // async def async_handler_raise_finally() -> int32:
@@ -289,6 +292,7 @@ __coro_async_handler_raise_finally async_handler_raise_finally() {
 std::expected<int32_t, Fail> error_return_finally() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
+    std::optional<P> __slot_2;
     {
         bool __fin_ran_9 = false;
         try {
@@ -303,7 +307,7 @@ std::expected<int32_t, Fail> error_return_finally() {
                     return __tpy_ret_0;
                 }
             }
-            (*p) = P(5);
+            p = &*(__slot_2 = P(5));
         } catch (...) {
             if (!__fin_ran_9) {
                 std::cout << "error_return_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
@@ -384,12 +388,13 @@ void if_with_swallow(bool c) {
 void plain_with() {
     P __slot_1 = P(1);
     P* p = &__slot_1;
+    std::optional<P> __slot_2;
     auto __ctx_4 = Plain();
     __ctx_4.__enter__();
     try {
         P __tmp_1 = (*p);
         ::tpyapp::main::take(std::move(__tmp_1));
-        (*p) = P(5);
+        p = &*(__slot_2 = P(5));
         goto __with_exit_4;
     } catch (::tpy::BaseException& __exc_4) {
         __ctx_4.__exit__({}, &__exc_4, {});

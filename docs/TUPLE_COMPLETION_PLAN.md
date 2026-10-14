@@ -568,7 +568,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
       locals by 5.2; the loop variable and the parameter keep it,
       `BUGS.md#scalar-loop-var-rebind-rejects`,
       `BUGS.md#own-param-rebind-clobbers-alias`). `tests/cases/tuple/
-      tuple_rebind_sites`, `error_tuple_rebind_site_own`. The external lender of a
+      tuple_rebind_sites`, `error_tuple_rebind_loop_var`,
+      `error_tuple_rebind_own_param`. The external lender of a
       module-level call result (`R = ident(V); V = Box(8)`, the tuple and
       the scalar twin alike) takes storage of its own: a module function's
       borrow facts are not known when module statements are analyzed, and
@@ -576,7 +577,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
       callee (`BUGS.md#module-loop-rebind-callee-pointer-escape-unwarned`);
       an `Optional[tuple]` binding and a nested tuple element holding an
       object are no sites.
-    - [x] 5.2 -- locals, storage PER OBJECT (decided 2026-10-09): a tuple
+    - [x] 5.2 (245aa09339) -- locals, storage PER OBJECT (decided 2026-10-09): a tuple
       local the body rebinds that owns a reference element at some binding
       is the pointer tuple at every binding, and each owned element is the
       scalar reference local at its site -- the first binding's own slot
@@ -589,8 +590,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
       value itself keeps (`p = make_mixed(9, p[0])`); a borrowed element
       re-points. One node: `THIRTupleUnpack` in tuple-target mode. Module
       level takes the same per-element statics (the park is gone), every
-      owned element a static of its own
-      (`BUGS.md#module-rebind-callee-returned-global-clobbers`). Last use
+      owned element a static of its own. Last use
       at an owning slot converts element by element (`S{std::move(
       *std::get<0>(p)), (*std::get<1>(p))}`: an element owned on every
       path reaching the read moves, a borrowed one is copied); the
@@ -622,9 +622,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
       every pass and warns, as the scalar's does, with a wording of its
       own where the new value keeps part of the old one; the value both
       warnings name is wrong
-      (`BUGS.md#loop-rebind-site-slot-reuse-warned`), however many sites
-      in the body bind the name
-      (`BUGS.md#loop-two-site-rebind-clobbers-alias`). After the body,
+      (`BUGS.md#loop-rebind-site-slot-reuse-warned`). After the body,
       one located reject each
       (`BUGS.md#ptr-tuple-capture-and-binder-rejects`): a closure that can
       outlive the body capturing a pointer tuple (an escaping nested
@@ -661,12 +659,28 @@ per shape; the mixed tuple global (D2) waits on that entry.
       Kept: the whole-tuple slot of an `Optional[tuple]` binding and of a
       first walrus binding (`BUGS.md#tuple-whole-slot-optional-walrus`).
       MIR does not lower the tuple-target unpack (TODO.md).
-    - [ ] 5.3 -- frames: the scalar's per-site frame slot per owned element
-      (OWN elements join `own_rebind_names`); narrows
-      `_rebound_tuple_alias_reject` to the paths the pass does not prove
-      (container-rooted, nested, multi-hop). Fixes the frame's silent
-      alias copy (`BUGS.md#frame-tuple-alias-copies`) and the frame rebind
-      reject (`BUGS.md#frame-tuple-rebind-own-site-rejects`).
+    - [ ] 5.3 -- frames: a generator or coroutine body's rebound owning
+      tuple is the pointer tuple, sema's set and the planner's one
+      `ptr_tuple_decision` shared with the plain body and read by the frame
+      layout; each owned element's object takes a per-site frame field the
+      slot prescan reserves per (binding, element), the scalar's
+      `__ptr_slot_fN` render. `_rebound_tuple_alias_reject` no longer sees a
+      pointer-tuple root (the field is no frame slot) and keeps the
+      container-rooted paths (`BUGS.md#resumable-alias-identity`). Fixes the
+      frame's silent alias copy after a rebind
+      (`BUGS.md#frame-tuple-alias-copies` keeps its once-bound face) and the
+      frame rebind reject. Every plain-body refusal applies to frames too
+      (decision D3 = A, 2026-10-12): the container literal element
+      (`BUGS.md#ptr-tuple-literal-element-rejects`), the nested element read
+      (`BUGS.md#nested-storage-tuple-element-read`) and the generic element
+      (`BUGS.md#rebound-tuple-generic-element-rejects`), each correct in a
+      frame before. Also: every rebind of a reference local and every owned
+      tuple element takes storage of its own until MIR proves reuse safe
+      (user decision 2026-10-13, replacing D2 = A), which fixes the 5.2
+      regression of `BUGS.md#nested-list-literal-alias-rebind-clobbers`
+      with no holder refusal -- and a pointer tuple bound to an await's result is
+      refused at the binding (`BUGS.md#await-bind-pointer-local-seam`,
+      decision D1 = A). Pinned by `tests/cases/tuple/frame_tuple_rebind_storage`.
     - [ ] 5.4 -- an owning sink over an element owned on some paths and
       borrowed on others takes the scalar's warned copy instead of the
       located reject: `p = (w, v); if c: p = mk(1, v)` then `take(p[0])`
@@ -677,8 +691,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
       consuming unpack alike). Everyday code, so it heads the tuple
       backlog after 5.3 (user, 2026-10-12); the first slice of TODO.md "A
       tuple element is a name: the scalar binding decides each element".
-  Also owned here, after the steps: multi-hop loans
-  (`BUGS.md#nested-list-literal-alias-rebind-clobbers`), the pending-return
+  Also owned here, after the steps: the rejects multi-hop holders still
+  reach (`BUGS.md#nested-list-literal-alias-rebind-clobbers`), the pending-return
   holder (`BUGS.md#finally-mutate-then-rebind-return`), the container FIELD
   as a borrow-tuple element (`btuple.elem_container_field`).
 

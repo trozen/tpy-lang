@@ -113,8 +113,8 @@ Box via_closure_rebind() {
 //     finally:
 //         bump()
 std::optional<Box> opt_via_closure(bool flag) {
-    std::optional<Box> __slot_1;
     Box* b = nullptr;
+    std::optional<Box> __slot_1;
     if (flag) {
         b = &*(__slot_1 = Box());
     }

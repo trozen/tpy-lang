@@ -31,8 +31,8 @@ int32_t opt_param(const Cell* o) {
 //         return (-maybe) + (+maybe) + (~maybe)  # tpyc: ok
 //     return 0
 int32_t opt_local(bool flag) {
-    std::optional<Cell> __slot_1;
     Cell* maybe = nullptr;
+    std::optional<Cell> __slot_1;
     if (flag) {
         maybe = &*(__slot_1 = Cell(6));
     }

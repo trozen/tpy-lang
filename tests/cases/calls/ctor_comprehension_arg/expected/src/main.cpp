@@ -277,6 +277,7 @@ void rebind_slot_reseat(int32_t k) {
     Flat __slot_1 = Flat(__tmp_1);
     Flat* f = &__slot_1;
     std::cout << "rebind_slot_reseat" << " " << f->n << "\n" << ::tpy::check_signals;
+    std::optional<Flat> __slot_2;
     std::vector<::tpy::Bytes> __tmp_2 = ({
         std::vector<::tpy::Bytes> __result;
         int32_t __stop_1 = (::tpy::add_check<int32_t>(k, 1));
@@ -286,7 +287,7 @@ void rebind_slot_reseat(int32_t k) {
         }
         std::move(__result);
     });
-    (*f) = Flat(__tmp_2);
+    f = &*(__slot_2 = Flat(__tmp_2));
     std::cout << "rebind_slot_reseat" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 
@@ -356,6 +357,7 @@ void blocks(int32_t k) {
     }
     __with_exit_1:
     __ctx_1.__exit__({}, nullptr, {});
+    std::optional<Flat> __slot_2;
     {
         try {
             std::vector<::tpy::Bytes> __tmp_2 = ({
@@ -367,12 +369,13 @@ void blocks(int32_t k) {
                 }
                 std::move(__result);
             });
-            (*f) = Flat(__tmp_2);
+            f = &*(__slot_2 = Flat(__tmp_2));
             std::cout << "try_body" << " " << f->n << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::ValueError&) {
             std::cout << "try_body err" << "\n" << ::tpy::check_signals;
         }
     }
+    std::optional<Flat> __slot_3;
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 3: {
@@ -385,7 +388,7 @@ void blocks(int32_t k) {
             }
             std::move(__result);
         });
-        (*f) = Flat(__tmp_3);
+        f = &*(__slot_3 = Flat(__tmp_3));
         std::cout << "match_arm" << " " << f->n << "\n" << ::tpy::check_signals;
         break;
     }
@@ -422,6 +425,7 @@ void hoisted_reseat(int32_t k) {
     }
     __with_exit_2:
     __ctx_2.__exit__({}, nullptr, {});
+    std::optional<Flat> __slot_2;
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;
         int32_t __stop_0 = k;
@@ -431,7 +435,7 @@ void hoisted_reseat(int32_t k) {
         }
         std::move(__result);
     });
-    (*f) = Flat(__tmp_1);
+    f = &*(__slot_2 = Flat(__tmp_1));
     std::cout << "hoisted_reseat" << " " << f->n << "\n" << ::tpy::check_signals;
 }
 

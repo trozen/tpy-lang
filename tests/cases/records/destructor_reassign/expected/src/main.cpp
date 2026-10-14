@@ -3,84 +3,97 @@
 
 namespace tpyapp::main {
 
+std::vector<std::string>* DROPS{};
 
-// def test_straight():
+// def drops() -> Own[list[str]]:
+//     out = sorted(DROPS)
+//     DROPS.clear()
+//     return out
+std::vector<std::string> drops() {
+    std::vector<std::string> out = ::tpy::builtin_sorted<std::string>((*DROPS));
+    DROPS->clear();
+    return out;
+}
+
+// def test_straight() -> None:
 //     r = Resource("a")
+//     # straight: two rebinds, three objects, each dropped once.
 //     r = Resource("b")
 //     r = Resource("c")
-//     print("alive:", r.name)
+//     print("straight alive:", r.name)
 void test_straight() {
     Resource __slot_1 = Resource("a");
     Resource* r = &__slot_1;
-    (*r) = Resource("b");
-    (*r) = Resource("c");
-    std::cout << "alive:" << " " << r->name << "\n" << ::tpy::check_signals;
+    std::optional<Resource> __slot_2;
+    r = &*(__slot_2 = Resource("b"));
+    std::optional<Resource> __slot_3;
+    r = &*(__slot_3 = Resource("c"));
+    std::cout << "straight alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
-// def test_loop():
+// def test_loop() -> None:
 //     r = Resource("init")
 //     for i in range(3):
+//         # loop: the site runs three times, dropping each previous object.
 //         r = Resource("loop")
-//     print("alive:", r.name)
+//     print("loop alive:", r.name)
 void test_loop() {
     Resource __slot_1 = Resource("init");
     Resource* r = &__slot_1;
+    std::optional<Resource> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {
-        (*r) = Resource("loop");
+        r = &*(__slot_2 = Resource("loop"));
     }
-    std::cout << "alive:" << " " << r->name << "\n" << ::tpy::check_signals;
+    std::cout << "loop alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
-// def test_conditional(flag: int32):
+// def test_conditional(flag: int32) -> None:
 //     r = Resource("start")
 //     if flag > 0:
+//         # conditional: the rebind runs on one path only.
 //         r = Resource("branch")
-//     print("alive:", r.name)
+//     print("conditional alive:", r.name)
 void test_conditional(int32_t flag) {
     Resource __slot_1 = Resource("start");
     Resource* r = &__slot_1;
+    std::optional<Resource> __slot_2;
     if ((flag > 0)) {
-        (*r) = Resource("branch");
+        r = &*(__slot_2 = Resource("branch"));
     }
-    std::cout << "alive:" << " " << r->name << "\n" << ::tpy::check_signals;
+    std::cout << "conditional alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
-// def test_inherit():
-//     c = Child("x")
-//     c = Child("y")
-//     c = Child("z")
-//     print("alive:", c.tag)
-void test_inherit() {
-    Child __slot_1 = Child("x");
-    Child* c = &__slot_1;
-    (*c) = Child("y");
-    (*c) = Child("z");
-    std::cout << "alive:" << " " << c->tag << "\n" << ::tpy::check_signals;
+// def main() -> None:
+//     test_straight()
+//     print("straight dropped:", drops())
+//     test_loop()
+//     print("loop dropped:", drops())
+//     test_conditional(1)
+//     print("conditional dropped:", drops())
+//     test_conditional(0)
+//     print("conditional dropped:", drops())
+void main() {
+    ::tpyapp::main::test_straight();
+    std::cout << "straight dropped:" << " " << ::tpy::ListPrinter(::tpyapp::main::drops()) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::test_loop();
+    std::cout << "loop dropped:" << " " << ::tpy::ListPrinter(::tpyapp::main::drops()) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::test_conditional(1);
+    std::cout << "conditional dropped:" << " " << ::tpy::ListPrinter(::tpyapp::main::drops()) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::test_conditional(0);
+    std::cout << "conditional dropped:" << " " << ::tpy::ListPrinter(::tpyapp::main::drops()) << "\n" << ::tpy::check_signals;
 }
 
-// test_straight()
-// print("---")
-// test_loop()
-// print("---")
-// test_conditional(1)
-// print("---")
-// test_conditional(0)
-// print("---")
-// test_inherit()
+// DROPS: list[str] = []
+//
+// main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::main::test_straight();
-    std::cout << "---" << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::test_loop();
-    std::cout << "---" << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::test_conditional(1);
-    std::cout << "---" << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::test_conditional(0);
-    std::cout << "---" << "\n" << ::tpy::check_signals;
-    ::tpyapp::main::test_inherit();
+    static std::vector<std::string> __global_slot_1 = std::vector<std::string>{};
+    DROPS = &__global_slot_1;
+    ::tpyapp::main::main();
 }
 
 } // namespace tpyapp::main

@@ -132,7 +132,9 @@ inline std::ostream& operator<<(std::ostream& os, const C& obj) {
 struct __coro_coro {
     ::tpy::frame_state __state;
     bool __cancel_pending;
-    ::tpy::frame_slot<std::vector<int32_t>> xs;
+    std::vector<int32_t>* xs = nullptr;
+    std::optional<std::vector<int32_t>> __ptr_slot_f0;
+    std::optional<std::vector<int32_t>> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -175,7 +177,8 @@ inline void Guard::__exit__(std::monostate et, const ::tpy::BaseException* ev, s
 inline C::C() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -186,7 +189,7 @@ inline C::C() {
             __result.push_back((::tpy::add_check<int32_t>(x, 1)));
         }
         std::move(__result);
-    });
+    }));
     this->n = ::tpy::__getitem__((*xs), 0);
     this->xs = {1, 2, 3};
 }
@@ -199,7 +202,8 @@ inline C::C() {
 inline int32_t C::bump(const std::vector<int32_t>& ys) const {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* xs = &__slot_1;
-    (*xs) = ({
+    std::optional<std::vector<int32_t>> __slot_2;
+    xs = &*(__slot_2 = ({
         std::vector<int32_t> __result;
         auto& __obj_0 = (*xs);
         __result.reserve(static_cast<std::size_t>(__obj_0.size()));
@@ -210,7 +214,7 @@ inline int32_t C::bump(const std::vector<int32_t>& ys) const {
             __result.push_back((::tpy::add_check<int32_t>(x, ::tpy::__getitem__(ys, 0))));
         }
         std::move(__result);
-    });
+    }));
     return ::tpy::__getitem__((*xs), 0);
 }
 

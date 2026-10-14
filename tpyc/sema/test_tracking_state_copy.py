@@ -61,8 +61,8 @@ def _populated() -> FunctionTrackingState:
     pre_analyzed[call] = [INT32]
     binds: IdentityMap = IdentityMap()
     binds[N.TpyAssign(N.TpyName("y"), expr)] = BindKind.RVALUE
-    gates: IdentitySet = IdentitySet()
-    gates.add(N.TpyPassStmt())
+    gates: IdentityMap = IdentityMap()
+    gates[N.TpyPassStmt()] = frozenset({'p'})
     frame_rebinds: IdentityMap = IdentityMap()
     frame_rebinds[N.TpyVarDecl("g", None, None)] = None
     return FunctionTrackingState(

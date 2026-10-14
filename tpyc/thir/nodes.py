@@ -262,9 +262,42 @@ class THIRExpr(THIRNode):
                                        held=held))
 
 
+@dataclass(frozen=True, eq=False)
+class THIRRebindSlot:
+    """One rebind's storage of its own (`std::optional<cpp> __slot_N;`),
+    for an object a rebind of `name` puts there. The rebind that fills it
+    carries it (`own_slot`), and so does its anchor, the function-body-level
+    statement containing that rebind (`THIRStmt.anchored_slots`), which the
+    emitter declares it immediately before. Compared by identity: each is
+    one site's slot, or one binding's for a slot every write of it refills
+    (a borrow tuple's owning-call slot, anchored at its earliest write)."""
+    name: str
+    cpp: str
+
+
 @dataclass(frozen=True)
 class THIRStmt(THIRNode):
-    """Base statement."""
+    """Base statement. `anchored_slots`: on a function-body-level
+    statement, the rebind slots of the rebinds it contains, in source
+    order of their sites (`StorageSlots.anchor`). The emitter declares
+    each immediately before the statement, so the slot outlives every
+    block its rebind sits in, and it dies before the locals declared
+    ahead of the statement, which the object it holds may view."""
+    anchored_slots: tuple[THIRRebindSlot, ...] = field(
+        default=(), kw_only=True, compare=False, repr=False)
+
+    @property
+    def bound_name(self) -> 'str | None':
+        """The name whose record this statement's `binding` holds
+        (`stamp_bindings`), None for a statement without one."""
+        return None
+
+    @property
+    def binding_slot_cpp(self) -> 'str | None':
+        """What the one slot this write's binding refills on every
+        owning-call write holds (a borrow tuple's, see THIRWalrus.slot_cpp),
+        None for a statement that fills none."""
+        return None
 
 
 # --- Expressions ---
@@ -399,17 +432,30 @@ class THIRWalrus(THIRExpr):
     tail: 'str | None' = None
     addr_of: bool = False
     # REASSIGNED borrow-tuple walrus (`(t := make_pair(9))` later rebound):
-    # the owning slot `std::optional<{slot_cpp}> __slot_N;` is allocated at
-    # emit (reused per target across sibling occurrences) and the value
-    # renders `tuple_to_pointer<{borrow_cpp}>(__slot_N.emplace({v}))`,
-    # with the bare-name result tail (`, t`).
+    # the value renders `tuple_to_pointer<{borrow_cpp}>(__slot_N.emplace(
+    # {v}))` into the binding's one owning slot (`own_slot`, a
+    # `std::optional<{slot_cpp}>` every owning-call write refills), with the
+    # bare-name result tail (`, t`).
     slot_cpp: 'str | None' = None
     borrow_cpp: 'str | None' = None
+    own_slot: 'THIRRebindSlot | None' = field(
+        default=None, kw_only=True, compare=False, repr=False)
     # A resumable-frame `frame_slot<T>` target: the write is
     # `name.emplace(v)` (the slot has no operator=), and the string is the
     # type prefix a bare brace-init value needs to bind to emplace's
     # forwarding ref (`typed_brace_init`).
     emplace_cpp: 'str | None' = None
+    # A REBIND_PTR frame target: the frame field this site's object lands
+    # in, which the pointer re-points at (`(xs = &*(__ptr_slot_f0 = v),
+    # *xs)`); `rebuild` as THIRAssign's.
+    reseat_slot: 'str | None' = None
+    rebuild: bool = False
+
+    @property
+    def binding_slot_cpp(self) -> 'str | None':
+        """What the binding's one owning-call slot this write fills holds
+        (`slot_cpp`), else None."""
+        return self.slot_cpp
 
 
 @dataclass(frozen=True)
@@ -2364,6 +2410,20 @@ class THIRVarDecl(THIRStmt):
     # (`std::optional<B>{::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))}`);
     # this carries the borrow tuple spelling B.
     btuple_opt_borrow_cpp: str | None = None
+    # The borrow-tuple slot this decl fills (`btuple_slot_cpp`), which its
+    # owning-call reseats refill (see THIRAssign.own_slot).
+    own_slot: THIRRebindSlot | None = field(
+        default=None, kw_only=True, compare=False, repr=False)
+
+    @property
+    def bound_name(self) -> str:
+        return self.name
+
+    @property
+    def binding_slot_cpp(self) -> 'str | None':
+        """What the binding's one owning-call slot holds, which this decl
+        fills first (see THIRWalrus.slot_cpp), else None."""
+        return self.btuple_slot_cpp
 
 
 class PtrSlotKind(Enum):
@@ -2440,11 +2500,11 @@ class PtrSlotKind(Enum):
     OPT_FIELD_RVALUE = auto()
     # Rvalue reseat of a branch-hoisted pointer-local that carries NO if-head
     # rebind slot (the name is reassigned but not rvalue-reassigned -- the
-    # mixed rvalue/lvalue flavor): the first such reseat allocates the
-    # `std::optional<T> __slot_N;` lazily into the function-top hoist lines
-    # and registers it for reuse; every reseat renders
-    # `name = &*(__slot_N = <rvalue>);` (the is_hoisted rvalue branch).
-    # `val_cpp` carries the slot's T spelling.
+    # mixed rvalue/lvalue flavor): each write takes a
+    # `std::optional<T> __slot_N;` of its own (`THIRRebindSlot`), unless
+    # it writes in place; every
+    # one renders `name = &*(__slot_N = <rvalue>);` (the is_hoisted rvalue
+    # branch). `val_cpp` carries the slot's T spelling.
     BRANCH_RVALUE = auto()
     # Resumable frame body: an rvalue reseat of a pointer-form frame local
     # materializes in its prescanned FRAME-FIELD slot (one per write site,
@@ -2517,7 +2577,6 @@ FLUSHING_REBIND_KINDS = frozenset({
     PtrSlotKind.UNION_RVALUE,
 })
 
-
 @dataclass(frozen=True)
 class THIRPtrLocalDecl(THIRStmt):
     """First declaration of a pointer-repr local backed by the `__slot_N`
@@ -2529,8 +2588,7 @@ class THIRPtrLocalDecl(THIRStmt):
     and the full pointer-variant spelling for the UNION_* kinds. `val_cpp`
     is the value-variant spelling backing a UNION slot (None for OPT_*,
     whose slots reuse `cpp_type`). An rvalue reseat of the name decides its
-    own storage (`THIRAssign.rebind_storage` / `THIRPtrLocalRebind`), so
-    the decl pre-declares no rebind slot."""
+    own storage (`THIRAssign.rebind_storage` / `THIRPtrLocalRebind`)."""
     binding: 'BindingRepr | None' = field(
         default=None, kw_only=True, compare=False, repr=False)
     name: str
@@ -2561,6 +2619,10 @@ class THIRPtrLocalDecl(THIRStmt):
     # the prefix -- the rebind `std::optional<T>` slot stays non-const.
     is_const: bool = False
 
+    @property
+    def bound_name(self) -> str:
+        return self.name
+
 
 @dataclass(frozen=True)
 class THIRPtrLocalRebind(THIRStmt):
@@ -2589,6 +2651,30 @@ class THIRPtrLocalRebind(THIRStmt):
     rebind_storage: 'RebindStorage | None' = None
     # See THIRAssign.rebuild: the slot holds a generator / coroutine frame.
     rebuild: bool = False
+    # The slot `own_slot_cpp` asks for (see THIRAssign.own_slot).
+    own_slot: THIRRebindSlot | None = field(
+        default=None, kw_only=True, compare=False, repr=False)
+
+    @property
+    def bound_name(self) -> str:
+        return self.name
+
+    @property
+    def own_slot_cpp(self) -> 'str | None':
+        """What the storage of its own this write fills holds, else None:
+        the storage-optional and union reseats always take one; the
+        branch and module-global writes unless they write in place or
+        have no spelled slot type."""
+        if self.kind in (PtrSlotKind.OPT_FIELD_RVALUE,
+                         PtrSlotKind.OPT_STORAGE_CALL,
+                         PtrSlotKind.UNION_RVALUE):
+            return self.val_cpp
+        if self.kind in (PtrSlotKind.BRANCH_RVALUE, PtrSlotKind.GLOBAL_REBIND,
+                         PtrSlotKind.GLOBAL_HOIST_RVALUE):
+            if self.rebind_storage is RebindStorage.IN_PLACE:
+                return None
+            return self.val_cpp
+        return None
 
 
 @dataclass(frozen=True)
@@ -2628,10 +2714,10 @@ class THIRAssign(THIRStmt):
     storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     recv_eval: 'THIRExpr | None' = None
     recv_wrap: 'str | None' = None
-    # A nullable borrow-tuple reseat from an OWNING tuple call
-    # (`t = make_pair(9)` over `t: tuple[..] | None`): the rvalue emplaces
-    # into the name's pre-declared rebind slot, the borrow tuple spelling B
-    # here, and the assign renders `t = std::optional<B>{
+    # A borrow-tuple reseat from an OWNING tuple call (`t = make_pair(9)`):
+    # the rvalue emplaces into the binding's one owning slot (`own_slot`,
+    # holding `slot_cpp`), the borrow tuple spelling B here; a nullable
+    # one (`t: tuple[..] | None`) renders `t = std::optional<B>{
     # ::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))};` through
     # `btuple_opt_cpp` -- the reseat sibling of THIRVarDecl.btuple_slot_cpp.
     btuple_borrow_cpp: 'str | None' = None
@@ -2647,6 +2733,34 @@ class THIRAssign(THIRStmt):
     # IN_PLACE destroys it and constructs the new one in its storage, OWN
     # emplaces the site's slot.
     rebuild: bool = False
+    # The slot this write fills (`own_slot_cpp`, or the borrow-tuple slot
+    # an owning-call reseat refills), stamped by the lowering
+    # (`StorageSlots`).
+    own_slot: THIRRebindSlot | None = field(
+        default=None, kw_only=True, compare=False, repr=False)
+
+    @property
+    def bound_name(self) -> 'str | None':
+        return self.target.name if isinstance(self.target, THIRName) else None
+
+    @property
+    def binding_slot_cpp(self) -> 'str | None':
+        """What the binding's one owning-call slot an owning-call reseat
+        of a borrow tuple refills holds (`slot_cpp`), else None."""
+        if self.btuple_borrow_cpp is None or not isinstance(self.target,
+                                                            THIRName):
+            return None
+        return self.slot_cpp
+
+    @property
+    def own_slot_cpp(self) -> 'str | None':
+        """What the storage of its own this write fills holds (an OWN
+        rvalue reseat of a pointer local), else None."""
+        if (not isinstance(self.target, THIRName)
+                or self.btuple_borrow_cpp is not None
+                or self.rebind_storage is not RebindStorage.OWN):
+            return None
+        return self.slot_cpp
 
 
 @dataclass(frozen=True)
@@ -2734,6 +2848,10 @@ class THIRFrameSlotWrite(THIRStmt):
     value: THIRExpr
     cpp_type: str | None = None
 
+    @property
+    def bound_name(self) -> str:
+        return self.name
+
 
 @dataclass(frozen=True)
 class THIRCoroHandleMove(THIRStmt):
@@ -2747,6 +2865,10 @@ class THIRCoroHandleMove(THIRStmt):
         default=None, kw_only=True, compare=False, repr=False)
     target: str
     source: str
+
+    @property
+    def bound_name(self) -> str:
+        return self.target
 
 
 @dataclass(frozen=True)
@@ -3094,16 +3216,17 @@ class THIRIf(THIRStmt):
     `T*` / `Base*` pointer-local for reassigned non-values and @dynamic
     protocols. `hoisted_bindings` records semantic facts for eligible
     predeclarations; incomplete inventories are not usable for analysis.
-    `hoist_slots` reserves backing for branch-bound borrow-tuple locals
-    with an owning-call source. When used, the emitter writes their
-    `std::optional<std::tuple<...>> __slot_N;` at function entry. The
-    narrowing-condition path never carries hoists (deferred)."""
+    `hoist_slots` names the branch-bound borrow-tuple locals with an
+    owning-call source, whose writes fill the binding's one owning slot
+    (`own_slot`, declared before the body-level statement of the earliest
+    write: the predeclaration is a pointer tuple).
+    The narrowing-condition path never carries hoists (deferred)."""
     condition: THIRExpr
     then_body: tuple[THIRStmt, ...]
     else_body: tuple[THIRStmt, ...] = ()
     else_is_nested: bool = False
     hoist_decls: tuple[HoistDecl, ...] = ()
-    hoist_slots: tuple[tuple['BindingRepr', str], ...] = ()
+    hoist_slots: tuple['BindingRepr', ...] = ()
     hoisted_bindings: tuple[THIRHoistedBinding, ...] = ()
     # A protocol-isinstance condition compiles to a CONCEPT test: the
     # keyword renders `if constexpr`. Per-node -- an
@@ -3286,12 +3409,31 @@ class TupleElemBind(Enum):
 class THIRTupleElemTarget:
     """One element of a tuple-target unpack: its index, its bind, and for an
     OWNED element the storage verdict (None: the first binding's own slot)
-    and the object's C++ type."""
+    and the object's C++ type; in a resumable frame the frame field its
+    object takes (`field`, None: in place) and whether that object is a
+    frame rebuilt in the field (`rebuild`)."""
     index: int
     elem_type: TpyType
     bind: TupleElemBind
     storage: 'RebindStorage | None' = None
     slot_cpp: str | None = None
+    # See THIRAssign.own_slot (declared before `field`, which shadows the
+    # dataclass helper in the class body).
+    own_slot: THIRRebindSlot | None = field(
+        default=None, kw_only=True, compare=False, repr=False)
+    field: str | None = None
+    rebuild: bool = False
+
+    @property
+    def own_slot_cpp(self) -> 'str | None':
+        """What the storage of its own a later binding's OWNED element
+        fills holds, else None (the first binding's own slot, an in-place
+        write, a frame field)."""
+        if (self.bind is not TupleElemBind.OWNED or self.storage is None
+                or self.storage is RebindStorage.IN_PLACE
+                or self.field is not None):
+            return None
+        return self.slot_cpp
 
 
 @dataclass(frozen=True)
@@ -3345,6 +3487,9 @@ class THIRTupleUnpack(THIRStmt):
         "frame_assign"  -> name = <wrapped get>;
         "frame_emplace" -> name.emplace(<wrapped get>);   // frame_slot<T>
                            // (typed_brace_init is identity for a get-expr)
+        "frame_rebind_ptr" -> name = &*(<slot> = <wrapped get>);
+                           // REBIND_PTR target off an owned element; the
+                           // slot is the target's `slot_fields` entry
 
     None at discard slots.
 
@@ -3377,6 +3522,9 @@ class THIRTupleUnpack(THIRStmt):
     # "" / "move" (the only produced tokens -- ref elements reject at
     # lowering today).
     wraps: tuple[str, ...] = ()
+    # Per-target frame field of a "frame_rebind_ptr" bind, None elsewhere
+    # (empty: no such bind).
+    slot_fields: tuple[str | None, ...] = ()
     source_bind: TupleSourceBind = TupleSourceBind.NAME_CREF
     source_wrap_cpp: str | None = None
     tuple_target: 'THIRName | None' = None
@@ -3389,7 +3537,7 @@ class THIRTupleUnpack(THIRStmt):
         "ptr_variant",
         "unwrap_ref", "global_slot", "global_ptr",
         "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
-        "frame_ptr_elem",
+        "frame_ptr_elem", "frame_rebind_ptr",
     })
 
     def __post_init__(self) -> None:
@@ -3830,6 +3978,22 @@ class THIRErrorReturnBind(THIRStmt):
     slot_cpp: 'str | None' = None
     alias_bind: bool = False
     target: 'THIRExpr | None' = None
+    # See THIRAssign.own_slot.
+    own_slot: THIRRebindSlot | None = field(
+        default=None, kw_only=True, compare=False, repr=False)
+
+    @property
+    def bound_name(self) -> str:
+        return self.name
+
+    @property
+    def own_slot_cpp(self) -> 'str | None':
+        """What the storage of its own the pointer bind fills holds, else
+        None (an in-place write, or no pointer bind)."""
+        if (not self.ptr_rebind or self.target is not None
+                or self.rebind_storage is RebindStorage.IN_PLACE):
+            return None
+        return self.slot_cpp
 
 
 @dataclass(frozen=True)

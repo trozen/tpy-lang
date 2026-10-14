@@ -2,6 +2,7 @@ module-loop 101 12
 module-literal 8 4 4
 module-call 120 21 30 31
 module-call-alias 101 9
+module-call-alias-scalar 110 9
 retain-early 6 7 109
 retain-late 6 7 109
 function 101 9 7
@@ -113,3 +114,18 @@ ternary-param-roots 150 50 150 2
 owning-rebind-alias 102 1003
 ctor-self-root 150 150
 nested-own-param 150 150
+untracked-two-hop 102 11
+untracked-strview abcdefghijklmnopqrstuvwxyz01234567891 6
+untracked-value-view aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa! bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb!
+untracked-fresh-view abcdefghijklmnopqrstuvwxyz01234567891
+untracked-match-capture 102 6
+untracked-for-unpack 102 11
+untracked-literal-unpack 1102 20 1102 21 11
+untracked-chained 1102 1102 11
+untracked-call-unpack 102 11
+retain-binding 1 101 10
+retain-statement 101 10
+tuple-view abcdefghijklmnopqrstuvwxyz01234567891
+range-field 0 10
+copied-elem [1, 7, 10]
+mapped-elem 1 10

@@ -1,0 +1,7 @@
+alive: z
+~Child z
+~Base z
+~Child y
+~Base y
+~Child x
+~Base x

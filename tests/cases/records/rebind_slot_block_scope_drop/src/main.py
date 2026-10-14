@@ -1,7 +1,9 @@
-# A rebind slot reserved inside a BLOCK (if / loop body) is declared at the
-# function prologue, so the value it holds outlives the block. Pins the CURRENT
-# drop timing, which is wrong: the superseded value should drop at the rebind,
-# as CPython does. See no_cpython.txt for the tracked cause.
+# A rebind of a record local first declared inside a BLOCK (if / loop body)
+# takes a slot declared before the `if` / `while` statement: the superseded
+# value drops at the block's closing brace, the last one at function exit,
+# and a later pass of a loop drops the previous pass's last value at its
+# rebind (CPython drops the superseded one at the rebind, a timing Python
+# does not promise). See no_cpython.txt.
 from tpy import int32
 
 

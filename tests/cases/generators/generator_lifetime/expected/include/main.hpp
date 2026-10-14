@@ -553,7 +553,9 @@ struct __gen_plain_items : public ::tpy::next_iter_mixin<__gen_plain_items, int3
 // def cells() -> Iterator[Cell]:
 struct __gen_cells : public ::tpy::next_iter_mixin<__gen_cells, ::tpy::val_or_ref<Cell>> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<Cell> c;
+    Cell* c = nullptr;
+    std::optional<Cell> __ptr_slot_f0;
+    std::optional<Cell> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,
@@ -801,11 +803,11 @@ struct __gen_gen_branch : public ::tpy::next_iter_mixin<__gen_gen_branch, int32_
     const std::vector<int32_t>& xs;
     ::tpy::frame_slot<std::vector<int32_t>> ys;
     __gen_items* g = nullptr;
+    std::optional<__gen_items> __ptr_slot_f0;
+    std::optional<__gen_items> __ptr_slot_f1;
     int32_t v;
     using __for_src_0_t = decltype(((*g)));
     ::tpy::frame_loop_slot<::tpy::iter_next_t<__for_src_0_t>> __for_r_0;
-    std::optional<__gen_items> __ptr_slot_f0;
-    std::optional<__gen_items> __ptr_slot_f1;
 
     enum : int32_t {
         S_INITIAL = 0,

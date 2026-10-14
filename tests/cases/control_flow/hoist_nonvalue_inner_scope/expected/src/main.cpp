@@ -190,7 +190,6 @@ void sibling_decl(bool a) {
 void post_loop_redecl() {
     std::optional<Flat> __slot_1;
     std::optional<Flat> __slot_2;
-    std::optional<Flat> __slot_3;
     Flat* f;
     for (int32_t i = 0; i < 2; ++i) {
         if ((i == 0)) {
@@ -200,6 +199,7 @@ void post_loop_redecl() {
         }
         std::cout << "post_loop_redecl" << " " << f->n << "\n" << ::tpy::check_signals;
     }
+    std::optional<Flat> __slot_3;
     f = &*(__slot_3 = Flat(99));
     f->n = ::tpy::add_check<int32_t>(f->n, 1);
     std::cout << "post_loop_redecl" << " " << f->n << "\n" << ::tpy::check_signals;
@@ -345,7 +345,6 @@ void optional_list_init() {
 //         print("optional_redecl_post_loop", p.n)
 void optional_redecl_post_loop() {
     std::optional<Pic> __slot_1;
-    std::optional<Pic> __slot_2;
     Pic* p;
     for (int32_t i = 0; i < 2; ++i) {
         p = nullptr;
@@ -356,8 +355,10 @@ void optional_redecl_post_loop() {
             std::cout << "optional_redecl_post_loop" << " " << p->n << "\n" << ::tpy::check_signals;
         }
     }
+    std::optional<Pic> __slot_2;
     p = &*(__slot_2 = Pic(9));
-    (*p) = Pic(10);
+    std::optional<Pic> __slot_3;
+    p = &*(__slot_3 = Pic(10));
     if ((p != nullptr)) {
         p->n = ::tpy::add_check<int32_t>(p->n, 1);
         std::cout << "optional_redecl_post_loop" << " " << p->n << "\n" << ::tpy::check_signals;

@@ -661,10 +661,10 @@ void call_fill_control(int32_t k) {
 //         r.s = "static"
 //     print("reused_construct", len(r.buf))
 void reused_construct(int32_t n) {
-    std::optional<R> __slot_1;
     std::string_view v = "static";
     R anchor = R("anchor", "static");
     R* r = &(anchor);
+    std::optional<R> __slot_1;
     int32_t __stop_0 = n;
     for (int32_t i = 0; i < __stop_0; ++i) {
         r = &(anchor);
@@ -685,9 +685,9 @@ int32_t stamped(std::string_view s) {
     return st.n;
 }
 
-// # free function: an in-place reseat whose new record views the buffer the reseat replaces
-// # (BUGS.md#record-view-member-source-replaced)
-// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+// # free function: a reseat whose new record views the old record's buffer: the
+// # old record keeps a slot of its own, so nothing the view reads is replaced
+// def reseat_self(k: int32, flag: bool) -> None:  # tpyc: mir(covered)
 //     r = R(mk(k), "static")
 //     if flag:
 //         r = R(mk(k + 1), r.buf)
@@ -695,8 +695,9 @@ int32_t stamped(std::string_view s) {
 void reseat_self(int32_t k, bool flag) {
     R __slot_1 = R(::tpyapp::main::mk(k), "static");
     R* r = &__slot_1;
+    std::optional<R> __slot_2;
     if (flag) {
-        (*r) = R(::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1))), r->buf);
+        r = &*(__slot_2 = R(::tpyapp::main::mk((::tpy::add_check<int32_t>(k, 1))), r->buf));
     }
     std::cout << "reseat_self" << " " << r->s << "\n" << ::tpy::check_signals;
 }

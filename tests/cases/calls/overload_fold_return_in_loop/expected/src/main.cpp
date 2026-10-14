@@ -322,7 +322,8 @@ void bump(A& a) {
 ::tpy::BigInt redecl__int(const ::tpy::BigInt& x) {
     A __slot_1 = A(x);
     A* y = &__slot_1;
-    (*y) = A(((y->x) + (::tpy::BigInt(1))));
+    std::optional<A> __slot_2;
+    y = &*(__slot_2 = A(((y->x) + (::tpy::BigInt(1)))));
     return y->x;
 }
 
@@ -331,7 +332,8 @@ void bump(A& a) {
 ::tpy::BigInt redecl__str(std::string_view x) {
     A __slot_1 = A(::tpy::BigInt(0));
     A* y = &__slot_1;
-    (*y) = A(((y->x) + (::tpy::BigInt(1))));
+    std::optional<A> __slot_2;
+    y = &*(__slot_2 = A(((y->x) + (::tpy::BigInt(1)))));
     return y->x;
 }
 

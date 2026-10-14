@@ -779,7 +779,9 @@ struct __gen_gen_own_record_try : public ::tpy::next_iter_mixin<__gen_gen_own_re
 // def gen_own_record_if() -> Iterator[str]:
 struct __gen_gen_own_record_if : public ::tpy::next_iter_mixin<__gen_gen_own_record_if, std::string> {
     ::tpy::frame_state __state;
-    ::tpy::frame_slot<Cell> r;
+    Cell* r = nullptr;
+    std::optional<Cell> __ptr_slot_f0;
+    std::optional<Cell> __ptr_slot_f1;
     ::tpy::BigInt k;
     ::tpy::frame_slot<std::array<Cell, 50>> junk;
 

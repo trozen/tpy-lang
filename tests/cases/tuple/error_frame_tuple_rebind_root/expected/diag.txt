@@ -1,0 +1,1 @@
+main.py:25: error: 'p' keeps objects of its own in storage of 'gen', so a binding of it that owns nothing may point only into a parameter's or self's storage for now; here it points into 'q', a local of 'gen'; bind this value to a name of its own

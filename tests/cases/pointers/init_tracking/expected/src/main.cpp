@@ -38,8 +38,9 @@ void value_init() {
 void assign_before_if(bool cond) {
     Point __slot_1 = Point(1, 2);
     Point* x = &__slot_1;
+    std::optional<Point> __slot_2;
     if (cond) {
-        (*x) = Point(3, 4);
+        x = &*(__slot_2 = Point(3, 4));
     }
     std::cout << x->x << " " << x->y << "\n" << ::tpy::check_signals;
 }

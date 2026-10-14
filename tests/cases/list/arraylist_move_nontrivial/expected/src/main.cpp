@@ -104,7 +104,8 @@ void main() {
     std::cout << moved[0].name << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<Item, 4> __slot_1 = ::tpyapp::main::make();
     ::tpystd::tplib::array_list::ArrayList<Item, 4>* acc = &__slot_1;
-    (*acc) = ::tpyapp::main::make_full();
+    std::optional<::tpystd::tplib::array_list::ArrayList<Item, 4>> __slot_2;
+    acc = &*(__slot_2 = ::tpyapp::main::make_full());
     std::cout << ::tpy::__len__((*acc)) << " " << (*acc)[0].name << " " << (*acc)[3].name << "\n" << ::tpy::check_signals;
 }
 

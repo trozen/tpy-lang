@@ -98,10 +98,10 @@ inline Driver::Driver(int32_t x) : x(x) {}
 //     p = Point("again")
 //     return p.tag
 inline std::string Driver::run() const {
-    std::optional<Point> __slot_2;
     std::optional<Point> __slot_1 = ::tpyapp::main::make_holder(this->x).value;
     Point* p = ::tpy::optional_to_ptr(__slot_1);
     p = nullptr;
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point("again"));
     return p->tag;
 }

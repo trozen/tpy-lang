@@ -168,7 +168,8 @@ void test_declared_float_global() {
 void test_hint_float32_literal() {
     ::tpy::ordered_map<std::string, float> __slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});
     ::tpy::ordered_map<std::string, float>* e = &__slot_1;
-    (*e) = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}});
+    std::optional<::tpy::ordered_map<std::string, float>> __slot_2;
+    e = &*(__slot_2 = ::tpy::ordered_map<std::string, float>({{"k", 0.5f}}));
     std::cout << "hint_float32" << " " << ::tpy::DictPrinter((*e)) << "\n" << ::tpy::check_signals;
 }
 
@@ -192,8 +193,8 @@ void test_hint_lambda() {
 //     ys.append(2.5)
 //     print("hint_generic", ys, xs)
 void test_hint_generic_call(std::vector<double>& xs) {
-    std::optional<std::vector<double>> __slot_1;
     std::vector<double>* ys = &(xs);
+    std::optional<std::vector<double>> __slot_1;
     ys = &*(__slot_1 = ::tpyapp::main::empty_list<double>(::tpy::BigInt(3)));
     ys->push_back(2.5);
     std::cout << "hint_generic" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
@@ -214,7 +215,8 @@ void test_hint_generic_call(std::vector<double>& xs) {
 void test_hint_nested_empty() {
     ::tpy::ordered_map<std::string, std::vector<double>> __slot_1 = ::tpyapp::main::make_groups();
     ::tpy::ordered_map<std::string, std::vector<double>>* d = &__slot_1;
-    (*d) = ::tpy::ordered_map<std::string, std::vector<double>>({{"b", {}}});
+    std::optional<::tpy::ordered_map<std::string, std::vector<double>>> __slot_2;
+    d = &*(__slot_2 = ::tpy::ordered_map<std::string, std::vector<double>>({{"b", {}}}));
     ::tpy::__getitem__((*d), "b").push_back(2.5);
     std::cout << "hint_nested_empty" << " " << ::tpy::DictPrinter((*d)) << "\n" << ::tpy::check_signals;
 }

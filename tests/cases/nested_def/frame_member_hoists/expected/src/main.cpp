@@ -114,6 +114,22 @@ __gen_gen_per_resume gen_per_resume() {
     return __gen_gen_per_resume();
 }
 
+int32_t __gen_gen_rebind_alias::inner(int32_t k) {
+    Rec __slot_1 = Rec(k);
+    Rec* p = &__slot_1;
+    Rec& alias = (*p);
+    std::optional<Rec> __slot_2;
+    p = &*(__slot_2 = Rec((::tpy::mul_check<int32_t>(k, 100))));
+    alias.x = ::tpy::add_check<int32_t>(alias.x, 1);
+    std::cout << "rebind_alias in:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
+    return (::tpy::add_check<int32_t>(alias.x, p->x));
+}
+
+// def gen_rebind_alias() -> Iterator[int32]:
+__gen_gen_rebind_alias gen_rebind_alias() {
+    return __gen_gen_rebind_alias();
+}
+
 // def main() -> None:
 //     for v in gen_own_slot():
 //         print("own_slot:", v)
@@ -125,6 +141,8 @@ __gen_gen_per_resume gen_per_resume() {
 //     print("dyn:", asyncio.run(coro_dyn()))
 //     for v in gen_per_resume():
 //         print("per_resume:", v)
+//     for v in gen_rebind_alias():
+//         print("rebind_alias:", v)
 void main() {
     {
         auto __src_0 = ::tpyapp::main::gen_own_slot();
@@ -166,6 +184,16 @@ void main() {
             if (!__r_7.has_value()) break;
             int32_t v = ::tpy::unwrap_ref(*__r_7);
             std::cout << "per_resume:" << " " << v << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __src_8 = ::tpyapp::main::gen_rebind_alias();
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            int32_t v = ::tpy::unwrap_ref(*__r_9);
+            std::cout << "rebind_alias:" << " " << v << "\n" << ::tpy::check_signals;
         }
     }
 }

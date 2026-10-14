@@ -6,7 +6,7 @@ from textwrap import indent
 import pytest
 
 from ..thir import nodes as th
-from ..thir.testutil import _compile, _entry
+from ..thir.testutil import _compile, _entry, force_in_place
 from .collect import dump_codegen_mir
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -47,6 +47,9 @@ def replace_copy(source: Cell, n: int32) -> int32:
 {read}    return 0
 '''
     compiler, modules = _compile(source)
+    if not retained:
+        # The in-place copy MIR models; sema leaves every rebind OWN.
+        force_in_place(modules, {"replace_copy": None})
     (_, cpp), ctx = compiler.generate_code_and_thir(_entry(modules))
     body = next(fn for node, fn in ctx.thir_functions.items() if node.name == "replace_copy")
     fn = lower_function(body, MIRBodyId("reused", "copy"),

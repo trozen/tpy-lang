@@ -1,6 +1,8 @@
 A record local first declared inside a block (`if` / loop body) lives in
-block-scoped C++ storage, so its LAST value drops at the closing brace
-(`drop if-second` before `after block`) where CPython, whose locals are
-function-scoped, drops it at function exit. The superseded values drop at the
-rebind on both. The block-exit timing is the general block-local storage
-rule, not the rebind slot model.
+block-scoped C++ storage, while the slot its rebind takes is declared before
+the `if` / `while` statement holding the block: the superseded value drops at
+the closing brace (`drop if-first`, before `after block`), the last one at
+function exit, and a loop's slot is reused per pass, so a pass's rebind drops
+the previous pass's last value. CPython, whose locals are function-scoped,
+drops the superseded value at the rebind. The block-exit timing is the
+general block-local storage rule.

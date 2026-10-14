@@ -211,9 +211,9 @@ inline std::string User::__repr__() const {
 }
 
 inline User User::from_json(std::string_view __s) {
-    std::optional<User> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     User* __result = nullptr;
+    std::optional<User> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_1;
         {
@@ -314,9 +314,9 @@ inline std::string WithDefault::__repr__() const {
 }
 
 inline WithDefault WithDefault::from_json(std::string_view __s) {
-    std::optional<WithDefault> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     WithDefault* __result = nullptr;
+    std::optional<WithDefault> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_3;
         {
@@ -414,9 +414,9 @@ inline std::string Base::__repr__() const {
 }
 
 inline Base Base::from_json(std::string_view __s) {
-    std::optional<Base> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Base* __result = nullptr;
+    std::optional<Base> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_5;
         {
@@ -523,9 +523,9 @@ inline std::string Extended::__repr__() const {
 }
 
 inline Extended Extended::from_json(std::string_view __s) {
-    std::optional<Extended> __slot_1;
     ::tpystd::tplib::json::parser::JsonReader __reader = ::tpystd::tplib::json::parser::JsonReader(__s);
     Extended* __result = nullptr;
+    std::optional<Extended> __slot_1;
     {
         std::optional<::tpystd::tplib::json::parser::JsonError> __err_opt_7;
         {

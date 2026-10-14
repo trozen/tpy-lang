@@ -130,7 +130,7 @@ __gen_list_of_tuples_after_rebind list_of_tuples_after_rebind(bool c) {
     return __gen_list_of_tuples_after_rebind(c);
 }
 
-// # workaround 1, coroutine twin. (A MIXED slot's owned element cannot be
+// # a copy, coroutine twin. (A MIXED slot's owned element cannot be
 // # copied yet: BUGS.md#tuple-elem-copy-mixed-or-list-rejects.)
 // async def co_copy(c: bool) -> int32:
 //     t = (A(1), A(2))
@@ -144,8 +144,10 @@ __gen_list_of_tuples_after_rebind list_of_tuples_after_rebind(bool c) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A>{A(1), A(2)});
-        saved.emplace(A(std::get<0>((*t))));
+        auto __tup_1 = std::tuple<A, A>{A(1), A(2)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = &*(__ptr_slot_f1 = std::move(std::get<1>(__tup_1)));
+        saved.emplace(A((*std::get<0>(t))));
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -157,10 +159,12 @@ __gen_list_of_tuples_after_rebind list_of_tuples_after_rebind(bool c) {
         __sub_0.reset();
         (*saved).x = 6;
         if (c) {
-            t.emplace(std::tuple<A, A>{A(9), A(8)});
+            auto __tup_2 = std::tuple<A, A>{A(9), A(8)};
+            std::get<0>(t) = &*(__ptr_slot_f2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = &*(__ptr_slot_f3 = std::move(std::get<1>(__tup_2)));
         }
         __state = S_DONE;
-        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>((*saved).x, 100)), std::get<0>((*t)).x));
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>((*saved).x, 100)), std::get<0>(t)->x));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -174,7 +178,7 @@ __coro_co_copy co_copy(bool c) {
     return __coro_co_copy(c);
 }
 
-// # workaround 2, coroutine twin on the owned element of a mixed slot: the
+// # coroutine, the owned element of a mixed slot: the
 // # alias is taken after the last rebind, so it aliases the new element in
 // # place and a write through it is seen through the slot.
 // async def co_alias_after_rebind(b: A, c: bool) -> int32:
@@ -190,7 +194,9 @@ __coro_co_copy co_copy(bool c) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<A, A*>{A(1), &(b)});
+        auto __tup_1 = std::tuple<A, A*>{A(1), &(b)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = std::get<1>(__tup_1);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -201,9 +207,11 @@ __coro_co_copy co_copy(bool c) {
         (void)std::move(__r0).value();
         __sub_0.reset();
         if (c) {
-            t.emplace(std::tuple<A, A*>{A(9), &(b)});
+            auto __tup_2 = std::tuple<A, A*>{A(9), &(b)};
+            std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::get<1>(__tup_2);
         }
-        saved = &(std::get<0>((*t)));
+        saved = &((*std::get<0>(t)));
         __sub_1.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_1;
         continue;
@@ -215,7 +223,7 @@ __coro_co_copy co_copy(bool c) {
         __sub_1.reset();
         saved->x = 7;
         __state = S_DONE;
-        int32_t __tpy_async_ret = std::get<0>((*t)).x;
+        int32_t __tpy_async_ret = std::get<0>(t)->x;
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -446,11 +454,11 @@ void main() {
 
 // # An alias of a tuple element inside a generator / coroutine frame points at
 // # the element's referent: a borrowed element is already a pointer, so the
-// # alias copies it rather than taking the address of the element slot. The
-// # rejected shapes (a rebind that can run after an alias of a by-value
-// # element, including a `finally` rebind after a handler's alias) are pinned
-// # by the error_frame_*alias_rebind cases; the *_after_rebind sections are
-// # the rewrite their diagnostic names, the copy_* sections the other one.
+// # alias copies it rather than taking the address of the element slot. A
+// # rebound tuple is a pointer tuple whose owned element's object sits in a
+// # frame field per binding site, so an alias taken before a rebind keeps the
+// # old object (tuple/frame_tuple_rebind_storage); the sections below take the
+// # alias after the last rebind, or bind a copy.
 // import asyncio
 //
 // main()

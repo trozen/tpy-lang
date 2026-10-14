@@ -4,7 +4,7 @@
 # rebound inside it, and whether an earlier same-scope rebind already drained
 # its declaration. The alias-clobber shape (an alias taken before the rebind)
 # is pinned by records/warn_alias_rebind_clobber.
-from tpy import int32
+from tpy import Ptr, int32, take_ptr
 from typing import Iterator
 
 
@@ -55,6 +55,47 @@ def before_while_after_drain(n: int32) -> Iterator[int32]:
         i += 1
 
 
+# a rebound record local that is yielded: the consumer's reference reaches
+# the object the frame holds, so its mutation shows in the generator
+def yield_rebound() -> Iterator[Point]:
+    p = Point(1)
+    yield p
+    print("yield_rebound gen:", p.x)
+    p = Point(10)  # tpyc: ok
+    yield p
+    print("yield_rebound gen:", p.x)
+
+
+class Cell:
+    v: int32
+
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+# the consumer keeps the first yielded object across the next pull: the
+# rebind at its own site takes a frame field of its own, so the first object
+# survives it
+def yield_kept_across_pull() -> Iterator[Cell]:
+    c = Cell(1)
+    yield c
+    c = Cell(2)  # tpyc: ok
+    yield c
+
+
+# the consumer's handle on the first object, kept across the next pull (a
+# `Ptr`: a loop variable cannot outlive its pass, and a reference-typed
+# `next()` result does not lower yet)
+def kept_across_pull() -> None:
+    first: Ptr[Cell] = None
+    for c in yield_kept_across_pull():
+        if first is None:
+            first = take_ptr(c)
+        else:
+            first.v += 100
+            print("yield_kept_across_pull:", first.v, c.v)
+
+
 def main() -> None:
     for got in decl_inside_while(3):
         print("while:", got)
@@ -67,6 +108,12 @@ def main() -> None:
 
     for got in before_while_after_drain(2):
         print("after_drain:", got)
+
+    for q in yield_rebound():
+        q.bump()
+        print("yield_rebound:", q.x)
+
+    kept_across_pull()
 
 
 main()

@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     assert h is not None
 //     return h  # tpyc: ok
 Handle extract() {
-    std::optional<Handle> __slot_1;
     Handle* h = nullptr;
+    std::optional<Handle> __slot_1;
     h = &*(__slot_1 = Handle());
     h->value = 88;
     if (!((h != nullptr))) ::tpy::raise_assertion_error();

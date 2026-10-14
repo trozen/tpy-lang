@@ -18,15 +18,19 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_literal::__next_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        t.emplace(std::tuple<Box, Box*>{Box(1), &(b)});
+        auto __tup_1 = std::tuple<Box, Box*>{Box(1), &(b)};
+        std::get<0>(t) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(t) = std::get<1>(__tup_1);
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
         __state = S_JOIN_0;
         continue;
     }
     case S_RESUME_0: {  // after: yield t[0].n
-        t.emplace(std::tuple<Box, Box*>{Box((::tpy::add_check<int32_t>(10, k))), &(b)});
-        std::get<1>((*t))->n = ::tpy::add_check<int32_t>(std::get<1>((*t))->n, 1);
+        auto __tup_2 = std::tuple<Box, Box*>{Box((::tpy::add_check<int32_t>(10, k))), &(b)};
+        std::get<0>(t) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::get<1>(__tup_2);
+        std::get<1>(t)->n = ::tpy::add_check<int32_t>(std::get<1>(t)->n, 1);
         __state = S_JOIN_0;
         continue;
     }
@@ -37,11 +41,11 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_frame_literal::__next_
     case S_JOIN_0: {
         if (!((*__for_i_0) < (*__for_stop_0))) {
             __state = S_RESUME_1;
-            return std::get<0>((*t)).n;
+            return std::get<0>(t)->n;
         }
         k = ((*__for_i_0))++;
         __state = S_RESUME_0;
-        return std::get<0>((*t)).n;
+        return std::get<0>(t)->n;
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

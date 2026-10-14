@@ -23,11 +23,11 @@ std::tuple<Cell*> borrowed(Cell& cell) {
 //     saved[1].value = 9
 //     print("literal after", saved[0].value, current.value, saved[2])
 void literal() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell*, Cell*, int32_t>{current, current, current->value};
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::cout << "literal before" << " " << std::get<0>(saved)->value << " " << current->value << " " << std::get<2>(saved) << "\n" << ::tpy::check_signals;
     std::get<1>(saved)->value = 9;
@@ -42,11 +42,11 @@ void literal() {
 //     saved[0].value = 9
 //     print("singleton", saved[0].value, current.value)
 void singleton() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell*>(current);
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "singleton" << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
@@ -65,7 +65,6 @@ void singleton() {
 //     saved[0].value = 9
 //     print("copies", saved[0].value, pair[0].value, current.value)
 void copies() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     Cell other = Cell(3);
@@ -74,6 +73,7 @@ void copies() {
     pair = std::tuple<Cell*>(&(other));
     other.value = 5;
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "copies" << " " << std::get<0>(saved)->value << " " << std::get<0>(pair)->value << " " << current->value << "\n" << ::tpy::check_signals;
@@ -91,7 +91,6 @@ void copies() {
 //     saved[0].value = 9
 //     print("reassigned", saved[0].value, current.value, other.value)
 void reassigned() {
-    std::optional<Cell> __slot_2;
     Cell other = Cell(3);
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
@@ -99,6 +98,7 @@ void reassigned() {
     other.value = 5;
     saved = std::tuple<Cell*>(current);
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "reassigned" << " " << std::get<0>(saved)->value << " " << current->value << " " << other.value << "\n" << ::tpy::check_signals;
@@ -114,12 +114,12 @@ void reassigned() {
 //     saved[0].value = 9
 //     print("self", saved[0].value, current.value)
 void self_assignment() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     std::tuple<Cell*> saved = std::tuple<Cell*>(current);
     current->value = 4;
     saved = saved;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "self" << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
@@ -134,11 +134,11 @@ void self_assignment() {
 //     saved[0].value = 9
 //     print("call", saved[0].value, current.value)
 void call_result() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = ::tpyapp::main::borrowed((*current));
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<0>(saved)->value = 9;
     std::cout << "call" << " " << std::get<0>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
@@ -155,12 +155,12 @@ void call_result() {
 //     saved[0].value = 9
 //     print("branch", flag, saved[0].value, current.value)
 void branch(bool flag) {
-    std::optional<Cell> __slot_2;
-    std::optional<Cell> __slot_3;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell*>(current);
     current->value = 4;
+    std::optional<Cell> __slot_2;
+    std::optional<Cell> __slot_3;
     if (flag) {
         current = &*(__slot_2 = Cell(2));
     } else {
@@ -180,7 +180,8 @@ void scalar_inverse() {
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     std::tuple<int32_t> saved = std::tuple<int32_t>(current->value);
-    (*current) = Cell(2);
+    std::optional<Cell> __slot_2;
+    current = &*(__slot_2 = Cell(2));
     std::cout << "scalar" << " " << std::get<0>(saved) << " " << current->value << "\n" << ::tpy::check_signals;
 }
 
@@ -193,12 +194,12 @@ void scalar_inverse() {
 //     saved[1].value = 9
 //     print("walrus", saved[1].value, current.value)
 void walrus() {
-    std::optional<Cell> __slot_2;
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     std::tuple<int32_t, Cell*> saved;
     std::cout << "walrus scalar" << " " << std::get<0>((saved = std::tuple<int32_t, Cell*>{1, current})) << "\n" << ::tpy::check_signals;
     current->value = 4;
+    std::optional<Cell> __slot_2;
     current = &*(__slot_2 = Cell(2));
     std::get<1>(saved)->value = 9;
     std::cout << "walrus" << " " << std::get<1>(saved)->value << " " << current->value << "\n" << ::tpy::check_signals;
@@ -215,7 +216,8 @@ void moved_inverse() {
     Cell __slot_1 = Cell(1);
     Cell* current = &__slot_1;
     auto saved = std::tuple<Cell>(std::move((*current)));
-    (*current) = Cell(2);
+    std::optional<Cell> __slot_2;
+    current = &*(__slot_2 = Cell(2));
     std::get<0>(saved).value = 9;
     std::cout << "moved" << " " << std::get<0>(saved).value << " " << current->value << "\n" << ::tpy::check_signals;
 }
@@ -280,11 +282,11 @@ __coro_asynchronous asynchronous() {
 //     print("closure", inner())
 void closure() {
     auto inner = []() -> int32_t {
-        std::optional<Cell> __slot_2;
         Cell __slot_1 = Cell(1);
         Cell* current = &__slot_1;
         auto saved = std::tuple<Cell*>(current);
         current->value = 4;
+        std::optional<Cell> __slot_2;
         current = &*(__slot_2 = Cell(2));
         std::get<0>(saved)->value = 9;
         return current->value;

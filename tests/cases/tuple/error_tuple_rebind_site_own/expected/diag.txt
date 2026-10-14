@@ -1,1 +1,0 @@
-main.py:24: error: in function 'rebind': 'u' still refers to the object an element of 'p' was bound to, so the object the rebind of 'p' creates needs storage of its own, which is not yet supported here; bind the new value to a name of its own

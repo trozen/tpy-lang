@@ -12,7 +12,7 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
-from ..thir.testutil import _compile, _entry
+from ..thir.testutil import _compile, _entry, force_in_place
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType
 from .call_contract import (
@@ -236,6 +236,8 @@ class _Program:
 @pytest.fixture(scope="module")
 def program():
     compiler, modules = _compile(SOURCE)
+    # The in-place reseat MIR models; sema leaves every rebind OWN.
+    force_in_place(modules, {"reseat": None})
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
     with compiler.mir_analysis(((entry, ctx),)) as mir:

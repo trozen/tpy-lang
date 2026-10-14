@@ -31,8 +31,8 @@ int32_t decl_position() {
 //         return -1
 //     return b.tag()
 int32_t reseat_position(bool c) {
-    std::optional<Base> __slot_1;
     Base* b = nullptr;
+    std::optional<Base> __slot_1;
     if (c) {
         b = &*(__slot_1 = Child());
     }

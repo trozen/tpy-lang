@@ -28,13 +28,14 @@ void main() {
     b.get().next = c.clone();
     ::tpystd::tplib::rc::Rc<Node> __slot_1 = a.clone();
     ::tpystd::tplib::rc::Rc<Node>* cur = &__slot_1;
+    std::optional<::tpystd::tplib::rc::Rc<Node>> __slot_2;
     while (true) {
         std::cout << cur->get().value << "\n" << ::tpy::check_signals;
         ::tpystd::tplib::rc::Rc<Node>* nxt = ::tpy::optional_to_ptr(cur->get().next);
         if ((nxt == nullptr)) {
             break;
         }
-        (*cur) = nxt->clone();
+        cur = &*(__slot_2 = nxt->clone());
     }
 }
 

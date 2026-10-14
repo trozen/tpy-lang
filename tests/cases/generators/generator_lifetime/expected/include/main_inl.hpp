@@ -42,12 +42,12 @@ inline std::expected<::tpy::val_or_ref<Cell>, ::tpy::StopIteration> __gen_cells:
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        c.emplace(Cell(0));
+        c = &*(__ptr_slot_f0 = Cell(0));
         __state = S_RESUME_0;
         return (*c);
     }
     case S_RESUME_0: {  // after: yield c
-        c.emplace(Cell(10));
+        c = &*(__ptr_slot_f1 = Cell(10));
         __state = S_RESUME_1;
         return (*c);
     }

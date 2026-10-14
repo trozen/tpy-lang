@@ -38,9 +38,10 @@ void main() {
     }
     Container __slot_1 = Container(::tpy::BigInt(2));
     Container* c3 = &__slot_1;
+    std::optional<Container> __slot_2;
     while (::tpy::__bool__((*c3))) {
         std::cout << c3->count << "\n" << ::tpy::check_signals;
-        (*c3) = Container(((c3->count) - (::tpy::BigInt(1))));
+        c3 = &*(__slot_2 = Container(((c3->count) - (::tpy::BigInt(1)))));
     }
     if ((!(::tpy::__bool__(c2)))) {
         std::cout << "c2 falsy" << "\n" << ::tpy::check_signals;

@@ -29,6 +29,48 @@ __gen_before_while_after_drain before_while_after_drain(int32_t n) {
     return __gen_before_while_after_drain(n);
 }
 
+
+// def yield_rebound() -> Iterator[Point]:
+__gen_yield_rebound yield_rebound() {
+    return __gen_yield_rebound();
+}
+
+
+// def yield_kept_across_pull() -> Iterator[Cell]:
+__gen_yield_kept_across_pull yield_kept_across_pull() {
+    return __gen_yield_kept_across_pull();
+}
+
+// # the consumer's handle on the first object, kept across the next pull (a
+// # `Ptr`: a loop variable cannot outlive its pass, and a reference-typed
+// # `next()` result does not lower yet)
+// def kept_across_pull() -> None:
+//     first: Ptr[Cell] = None
+//     for c in yield_kept_across_pull():
+//         if first is None:
+//             first = take_ptr(c)
+//         else:
+//             first.v += 100
+//             print("yield_kept_across_pull:", first.v, c.v)
+void kept_across_pull() {
+    Cell* first = nullptr;
+    {
+        auto __src_0 = ::tpyapp::main::yield_kept_across_pull();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& c = ::tpy::unwrap_ref(*__r_1);
+            if ((first == nullptr)) {
+                first = &c;
+            } else {
+                first->v = ::tpy::add_check<int32_t>(first->v, 100);
+                std::cout << "yield_kept_across_pull:" << " " << first->v << " " << c.v << "\n" << ::tpy::check_signals;
+            }
+        }
+    }
+}
+
 // def main() -> None:
 //     for got in decl_inside_while(3):
 //         print("while:", got)
@@ -41,6 +83,12 @@ __gen_before_while_after_drain before_while_after_drain(int32_t n) {
 //
 //     for got in before_while_after_drain(2):
 //         print("after_drain:", got)
+//
+//     for q in yield_rebound():
+//         q.bump()
+//         print("yield_rebound:", q.x)
+//
+//     kept_across_pull()
 void main() {
     {
         auto __src_0 = ::tpyapp::main::decl_inside_while(3);
@@ -83,6 +131,18 @@ void main() {
             std::cout << "after_drain:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
+    {
+        auto __src_8 = ::tpyapp::main::yield_rebound();
+        auto&& __itr_8 = ::tpy::__iter__(__src_8);
+        for (;;) {
+            auto __r_9 = __itr_8.__next__();
+            if (!__r_9.has_value()) break;
+            auto&& q = ::tpy::unwrap_ref(*__r_9);
+            q.bump();
+            std::cout << "yield_rebound:" << " " << q.x << "\n" << ::tpy::check_signals;
+        }
+    }
+    ::tpyapp::main::kept_across_pull();
 }
 
 // main()

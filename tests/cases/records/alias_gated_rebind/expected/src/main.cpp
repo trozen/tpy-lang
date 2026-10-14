@@ -6,9 +6,20 @@
 
 namespace tpyapp::main {
 
+std::vector<std::string>* DROPS{};
 Point* g{};
 Point* galias{};
 Noisy* gr{};
+
+// def drops() -> Own[list[str]]:
+//     out = sorted(DROPS)
+//     DROPS.clear()
+//     return out
+std::vector<std::string> drops() {
+    std::vector<std::string> out = ::tpy::builtin_sorted<std::string>((*DROPS));
+    DROPS->clear();
+    return out;
+}
 
 // # free function, whole-name alias: the alias is live, so the rebind owns
 // def free_alias() -> None:
@@ -18,28 +29,30 @@ Noisy* gr{};
 //     alias.bump()
 //     print("free_alias:", alias.x, p.x)
 void free_alias() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(1);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
     alias.bump();
     std::cout << "free_alias:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
-// # free function, no alias: in place, each superseded object drops at the rebind
+// # free function, no alias: every superseded object drops, once
 // def free_drop() -> None:
-//     r = Noisy("a")
-//     r = Noisy("b")  # tpyc: ok
+//     r = Counted("a")
+//     r = Counted("b")  # tpyc: ok
 //     print("free_drop alive:", r.name)
-//     r = Noisy("c")
+//     r = Counted("c")
 //     print("free_drop alive:", r.name)
 void free_drop() {
-    Noisy __slot_1 = Noisy("a");
-    Noisy* r = &__slot_1;
-    (*r) = Noisy("b");
+    Counted __slot_1 = Counted("a");
+    Counted* r = &__slot_1;
+    std::optional<Counted> __slot_2;
+    r = &*(__slot_2 = Counted("b"));
     std::cout << "free_drop alive:" << " " << r->name << "\n" << ::tpy::check_signals;
-    (*r) = Noisy("c");
+    std::optional<Counted> __slot_3;
+    r = &*(__slot_3 = Counted("c"));
     std::cout << "free_drop alive:" << " " << r->name << "\n" << ::tpy::check_signals;
 }
 
@@ -52,12 +65,13 @@ void free_drop() {
 //     alias.bump()
 //     print("second_rebind:", alias.x, p.x)
 void second_rebind() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(3);
     Point* p = &__slot_1;
-    (*p) = Point(4);
+    std::optional<Point> __slot_2;
+    p = &*(__slot_2 = Point(4));
     Point& alias = (*p);
-    p = &*(__slot_2 = Point(50));
+    std::optional<Point> __slot_3;
+    p = &*(__slot_3 = Point(50));
     alias.bump();
     std::cout << "second_rebind:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
 }
@@ -70,10 +84,10 @@ void second_rebind() {
 //     inner.bump()
 //     print("field_chain:", inner.x, h.inner.x)
 void field_chain() {
-    std::optional<Holder> __slot_2;
     Holder __slot_1 = Holder(Point(5));
     Holder* h = &__slot_1;
     Point& inner = h->inner;
+    std::optional<Holder> __slot_2;
     h = &*(__slot_2 = Holder(Point(50)));
     inner.bump();
     std::cout << "field_chain:" << " " << inner.x << " " << h->inner.x << "\n" << ::tpy::check_signals;
@@ -87,10 +101,10 @@ void field_chain() {
 //     e.bump()
 //     print("element_loan:", e.x, xs[0].x)
 void element_loan() {
-    std::optional<std::array<Point, 1>> __slot_2;
     std::array<Point, 1> __slot_1 = {Point(7)};
     std::array<Point, 1>* xs = &__slot_1;
     Point& e = ::tpy::__getitem__((*xs), 0);
+    std::optional<std::array<Point, 1>> __slot_2;
     xs = &*(__slot_2 = {Point(50)});
     e.bump();
     std::cout << "element_loan:" << " " << e.x << " " << ::tpy::__getitem__((*xs), 0).x << "\n" << ::tpy::check_signals;
@@ -105,11 +119,11 @@ void element_loan() {
 //     r.x += 100
 //     print("ptr_copy:", r.x, p.x)
 void ptr_copy() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(9);
     Point* p = &__slot_1;
     Point* q = &(*p);
     Point* r = q;
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
     r->x = ::tpy::add_check<int32_t>(r->x, 100);
     std::cout << "ptr_copy:" << " " << r->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -127,11 +141,11 @@ void ptr_copy() {
 //     print("dead_alias alive:", r.name)
 //     r.armed = False
 void dead_alias() {
-    std::optional<Noisy> __slot_2;
     Noisy __slot_1 = Noisy("d1");
     Noisy* r = &__slot_1;
     Noisy& alias = (*r);
     std::cout << "dead_alias:" << " " << alias.name << "\n" << ::tpy::check_signals;
+    std::optional<Noisy> __slot_2;
     r = &*(__slot_2 = Noisy("d2"));
     std::cout << "dead_alias alive:" << " " << r->name << "\n" << ::tpy::check_signals;
     r->armed = false;
@@ -148,14 +162,14 @@ void dead_alias() {
 //     alias.bump()
 //     print("after_branch:", alias.x, p.x)
 void after_branch(bool c) {
-    std::optional<Point> __slot_2;
-    std::optional<Point> __slot_3;
     Point __slot_1 = Point(15);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     if (c) {
         p = &*(__slot_2 = Point(16));
     }
+    std::optional<Point> __slot_3;
     p = &*(__slot_3 = Point(50));
     alias.bump();
     std::cout << "after_branch:" << " " << alias.x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -173,16 +187,16 @@ void after_branch(bool c) {
 //     saved.bump()
 //     print("after_loop:", saved.x, p.x)
 void after_loop() {
-    std::optional<Point> __slot_3;
-    std::optional<Point> __slot_4;
     Point __slot_1 = Point(17);
     Point* saved = &__slot_1;
     Point __slot_2 = Point(18);
     Point* p = &__slot_2;
+    std::optional<Point> __slot_3;
     for (int32_t i = 0; i < 2; ++i) {
         p = &*(__slot_3 = Point(i));
         saved = p;
     }
+    std::optional<Point> __slot_4;
     p = &*(__slot_4 = Point(50));
     saved->bump();
     std::cout << "after_loop:" << " " << saved->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -199,11 +213,11 @@ void after_loop() {
 //     alias.bump()
 //     print("loan_before_loop:", alias.x, p.x)
 void loan_before_loop() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(20);
     Point* p = &__slot_1;
     Point& alias = (*p);
     int32_t i = 0;
+    std::optional<Point> __slot_2;
     while ((i < 2)) {
         p = &*(__slot_2 = Point(i));
         i = ::tpy::add_check<int32_t>(i, 1);
@@ -220,10 +234,10 @@ void loan_before_loop() {
 //     q.bump()
 //     print("borrow_call:", q.x, h.inner.x)
 void borrow_call() {
-    std::optional<Holder> __slot_2;
     Holder __slot_1 = Holder(Point(16));
     Holder* h = &__slot_1;
     Point& q = h->peek();
+    std::optional<Holder> __slot_2;
     h = &*(__slot_2 = Holder(Point(60)));
     q.bump();
     std::cout << "borrow_call:" << " " << q.x << " " << h->inner.x << "\n" << ::tpy::check_signals;
@@ -238,10 +252,10 @@ void borrow_call() {
 //     w.p.x += 100
 //     print("ptr_escapes:", w.p.x, p.x)
 void ptr_escapes_into_record() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(17);
     Point* p = &__slot_1;
     Wrap w = Wrap(&(*p));
+    std::optional<Point> __slot_2;
     p = &*(__slot_2 = Point(50));
     ::tpy::deref_check(w.p).x = ::tpy::add_check<int32_t>(::tpy::deref_check(w.p).x, 100);
     std::cout << "ptr_escapes:" << " " << w.p->x << " " << p->x << "\n" << ::tpy::check_signals;
@@ -256,10 +270,10 @@ void ptr_escapes_into_record() {
 //     for v in g:
 //         print("generator_holds_receiver:", v, wk.x)
 void generator_holds_receiver() {
-    std::optional<Walker> __slot_2;
     Walker __slot_1 = Walker(18);
     Walker* wk = &__slot_1;
     __gen_Walker_walk g = wk->walk();
+    std::optional<Walker> __slot_2;
     wk = &*(__slot_2 = Walker(50));
     auto& __src_0 = g;
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -281,6 +295,22 @@ __gen_gen_section gen_section() {
 // def gen_drop() -> Iterator[int32]:
 __gen_gen_drop gen_drop() {
     return __gen_gen_drop();
+}
+
+// def run_gen_drop() -> None:
+//     for got in gen_drop():
+//         print("gen_drop:", got)
+void run_gen_drop() {
+    {
+        auto __src_0 = ::tpyapp::main::gen_drop();
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            int32_t got = ::tpy::unwrap_ref(*__r_1);
+            std::cout << "gen_drop:" << " " << got << "\n" << ::tpy::check_signals;
+        }
+    }
 }
 
 // # async frame
@@ -335,10 +365,10 @@ __coro_async_section async_section() {
 //     inner()
 void nested_def_section() {
     auto inner = []() {
-        std::optional<Point> __slot_2;
         Point __slot_1 = Point(11);
         Point* n = &__slot_1;
         Point& nalias = (*n);
+        std::optional<Point> __slot_2;
         n = &*(__slot_2 = Point(50));
         nalias.bump();
         std::cout << "nested_def:" << " " << nalias.x << " " << n->x << "\n" << ::tpy::check_signals;
@@ -388,10 +418,10 @@ void with_body() {
 //         alias.bump()
 //         print("try_finally:", alias.x, p.x)
 void try_finally() {
-    std::optional<Point> __slot_2;
     Point __slot_1 = Point(13);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     {
         try {
             p = &*(__slot_2 = Point(50));
@@ -417,11 +447,11 @@ void try_finally() {
 //     alias.bump()
 //     print("match_arm:", alias.x, p.x)
 void match_arm(int32_t n) {
-    std::optional<Point> __slot_2;
-    std::optional<Point> __slot_3;
     Point __slot_1 = Point(14);
     Point* p = &__slot_1;
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
+    std::optional<Point> __slot_3;
     auto& __match_subject_1 = n;
     switch (__match_subject_1) {
     case 0: {
@@ -459,7 +489,6 @@ std::expected<Point, Fail> make_point(int32_t v) {
 //     return alias.x + p.x
 std::expected<int32_t, Fail> error_return_body() {
     std::optional<Point> __slot_1;
-    std::optional<Point> __slot_2;
     Point* p;
     {
         auto __try_tmp_1 = ::tpyapp::main::make_point(15);
@@ -467,6 +496,7 @@ std::expected<int32_t, Fail> error_return_body() {
         p = &*(__slot_1 = ::tpy::unwrap_ref_move(*__try_tmp_1));
     }
     Point& alias = (*p);
+    std::optional<Point> __slot_2;
     {
         auto __try_tmp_2 = ::tpyapp::main::make_point(50);
         if (!__try_tmp_2.has_value()) return ::tpy::make_unexpected(std::move(__try_tmp_2.error()));
@@ -479,6 +509,7 @@ std::expected<int32_t, Fail> error_return_body() {
 // def main() -> None:
 //     free_alias()
 //     free_drop()
+//     print("free_drop dropped:", drops())
 //     second_rebind()
 //     field_chain()
 //     element_loan()
@@ -496,8 +527,8 @@ std::expected<int32_t, Fail> error_return_body() {
 //     Runner().run()
 //     for got in gen_section():
 //         print("gen:", got)
-//     for got in gen_drop():
-//         print("gen_drop:", got)
+//     run_gen_drop()
+//     print("gen_drop dropped:", drops())
 //     print("async:", asyncio.run(async_section()))
 //     nested_def_section()
 //     with_body()
@@ -511,6 +542,7 @@ std::expected<int32_t, Fail> error_return_body() {
 void main() {
     ::tpyapp::main::free_alias();
     ::tpyapp::main::free_drop();
+    std::cout << "free_drop dropped:" << " " << ::tpy::ListPrinter(::tpyapp::main::drops()) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::second_rebind();
     ::tpyapp::main::field_chain();
     ::tpyapp::main::element_loan();
@@ -536,16 +568,8 @@ void main() {
             std::cout << "gen:" << " " << got << "\n" << ::tpy::check_signals;
         }
     }
-    {
-        auto __src_2 = ::tpyapp::main::gen_drop();
-        auto&& __itr_2 = ::tpy::__iter__(__src_2);
-        for (;;) {
-            auto __r_3 = __itr_2.__next__();
-            if (!__r_3.has_value()) break;
-            int32_t got = ::tpy::unwrap_ref(*__r_3);
-            std::cout << "gen_drop:" << " " << got << "\n" << ::tpy::check_signals;
-        }
-    }
+    ::tpyapp::main::run_gen_drop();
+    std::cout << "gen_drop dropped:" << " " << ::tpy::ListPrinter(::tpyapp::main::drops()) << "\n" << ::tpy::check_signals;
     std::cout << "async:" << " " << ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::async_section())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::nested_def_section();
     ::tpyapp::main::with_body();
@@ -563,24 +587,29 @@ void main() {
 }
 
 
-// # The alias-gated slot model: an rvalue rebind of a reference local writes IN
-// # PLACE when nothing aliases its current object (the superseded object drops
-// # at the rebind, as under CPython) and takes storage of its OWN when a live
-// # loan still points at it (the loan keeps the old object). One section per
-// # position and loan shape; every section mutates through the loan AFTER the
-// # rebind and reads both handles, and the Noisy sections print the drop order.
+// # The rebind slot model: an rvalue rebind of a reference local takes storage
+// # of its OWN, so a live loan keeps the old object. One section per position
+// # and loan shape; every section mutates through the loan AFTER the rebind and
+// # reads both handles. The Counted sections check that every superseded object
+// # drops exactly once; when (at the rebind under CPython, when its slot dies
+// # here) is no part of Python's semantics, so they read the drops only after
+// # the function has returned.
 // import asyncio
+//
+// DROPS: list[str] = []
 //
 // main()
 //
-// # module level: a pointer-slot global rebound under a live alias owns; an
-// # unaliased rebind of another writes in place
+// # module level: a pointer-slot global rebound under a live alias keeps the
+// # old object; an unaliased one is rebound the same way (its objects are
+// # disarmed: a global's drop comes at exit, CPython's at the rebind)
 // g = Point(12)
 // galias = g
 // g = Point(50)  # tpyc: ok
 // galias.bump()
 // print("module:", galias.x, g.x)
 // gr = Noisy("m1")
+// gr.armed = False
 // gr = Noisy("m2")  # tpyc: ok
 // print("module alive:", gr.name)
 // gr.armed = False
@@ -589,18 +618,22 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    static std::optional<Point> __global_slot_2;
     ::tpystd::asyncio::__tpy_init();
+    static std::vector<std::string> __global_slot_1 = std::vector<std::string>{};
+    DROPS = &__global_slot_1;
     ::tpyapp::main::main();
-    static Point __global_slot_1 = Point(12);
-    g = &__global_slot_1;
+    static Point __global_slot_2 = Point(12);
+    g = &__global_slot_2;
     galias = g;
-    g = &*(__global_slot_2 = Point(50));
+    static std::optional<Point> __global_slot_3;
+    g = &*(__global_slot_3 = Point(50));
     galias->bump();
     std::cout << "module:" << " " << galias->x << " " << g->x << "\n" << ::tpy::check_signals;
-    static Noisy __global_slot_3 = Noisy("m1");
-    gr = &__global_slot_3;
-    (*gr) = Noisy("m2");
+    static Noisy __global_slot_4 = Noisy("m1");
+    gr = &__global_slot_4;
+    gr->armed = false;
+    static std::optional<Noisy> __global_slot_5;
+    gr = &*(__global_slot_5 = Noisy("m2"));
     std::cout << "module alive:" << " " << gr->name << "\n" << ::tpy::check_signals;
     gr->armed = false;
 }

@@ -959,7 +959,8 @@ def lower_function(func: TpyFunction, analyzer, render_type=None,
         param_copies = _param_reassign_copies(func, analyzer, params=src_params)
         if stub is not None and default_locals:
             param_copies = param_copies + default_locals
-        body = _lower_stmts(func.body, lc, declared, top_level=True)
+        body = _lower_stmts(func.body, lc, declared, top_level=True,
+                            function_body=True)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")
         receiver = (method_receiver(func, self_type, analyzer, stub=stub)
@@ -1257,7 +1258,8 @@ def lower_constructor(record, init_method: TpyFunction, analyzer,
             ) for n, t in init_method.params),
             mil_inits=tuple(field_inits),
             base_inits=tuple(base_inits),
-            body=_lower_stmts(body_stmts, lc, body_declared),
+            body=_lower_stmts(body_stmts, lc, body_declared,
+                              function_body=True),
         )
         if _rejects_lambda_hoist(ctor.body):
             raise ThirUnsupported("nested_def.rebind_slot_hoist")
@@ -1838,17 +1840,16 @@ def _iter_thir(roots):
 
 
 def _needs_held_back_slot(node) -> bool:
-    """A THIR statement whose emit PRE-declares a rebind slot -- one reserved at
-    a declaration whose C++ declaration is held back until a rebind consumes it
-    (`_declare_rebind_slot`).
+    """A THIR statement predeclaring a name whose owning-call writes fill
+    the binding's one slot (`THIRIf.hoist_slots`).
 
-    Such a declaration is drained at the prologue of the body being emitted. A
-    body rendered into a C++ lambda needs that drain INSIDE the lambda (the
-    enclosing prologue is outside its capture list): the nested-def emitter
-    buffers and prepends; what remains guarded here is the cross-scope
+    That slot is declared before the body-level statement its earliest write
+    sits in. A body rendered into a C++ lambda is a body of its own, whose
+    slots the nested-def emitter declares INSIDE the lambda (the enclosing
+    body is outside its capture list); what remains guarded here is the cross-scope
     `nonlocal` hazard (`_rejects_lambda_hoist`). Mirrors
-    `_rejects_global_slot`: every emit site calling `_declare_rebind_slot`
-    must be represented here."""
+    `_rejects_global_slot`: every statement predeclaring such a name must be
+    represented here."""
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
     return False
@@ -1873,8 +1874,8 @@ def cross_scope_rebind_site(
     """The `(name, loc)` of a rebind in a LAMBDA-rendered body that CONSUMES a
     rebind slot the ENCLOSING scope reserved, or None.
 
-    The slot is declared at the enclosing body's prologue, outside the lambda's
-    capture list: inside the lambda it dies each invocation while the pointer
+    The slot is declared in the enclosing body, outside the lambda's capture
+    list: inside the lambda it dies each invocation while the pointer
     aliasing it is captured and outlives it, and outside it the lambda cannot
     name it. Nothing checks it at emit time, so this predicate is
     its entire protection. A lambda body reserving its OWN slot is not a hazard
@@ -1923,9 +1924,12 @@ def _rejects_global_slot(node) -> bool:
     and only GLOBAL_RVALUE is wired for that -- its three sibling writes
     (`GLOBAL_REBIND` reuses that same slot, `GLOBAL_NULL`,
     `GLOBAL_PTR_COPY` and the PTR_ADDR RESEAT allocate none) call
-    `next_slot()` nowhere. NB the PTR_ADDR *decl* flavor does draw a slot
-    (its rvalue-reseat rebind slot), which is why the THIRPtrLocalDecl arm
-    below stays a blanket reject rather than exempting the kind by name.
+    `next_slot()` nowhere. A rebind's own slot is no such slot: it is
+    declared before its anchor, a body-level statement, with the scope's
+    static spelling (`StorageSlots`). The THIRPtrLocalDecl arm stays a blanket reject
+    although its slot-less kinds (OPT_NONE, PTR_ADDR, UNION_ADDR,
+    DYN_PROTOCOL_ERASED) draw none: exempting them would admit module-level
+    shapes no case covers.
 
     THE INVARIANT THIS GUARDS IS MEMORY SAFETY, not byte-identity: a
     block-scoped `__slot_N` at namespace scope leaves the global pointing at a
@@ -2070,7 +2074,8 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         note(ex.reason, ex.loc, ex.message)
         return None
     try:
-        body = _lower_stmts(carrier.body, lc, declared, top_level=True)
+        body = _lower_stmts(carrier.body, lc, declared, top_level=True,
+                            function_body=True)
         if lc.unhandled_hoists:
             raise ThirUnsupported("body.hoisted_vars")
         fn = THIRFunction(name="__tpy_init", params=(),

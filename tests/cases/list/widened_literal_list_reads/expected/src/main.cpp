@@ -209,7 +209,8 @@ void stores() {
     std::vector<::tpy::BigInt> __slot_1 = {1, 2};
     std::vector<::tpy::BigInt>* zs = &__slot_1;
     ::tpy::BigInt k = ::tpy::__getitem__((*zs), 0);
-    (*zs) = {static_cast<int64_t>(5000000000), 3, 4};
+    std::optional<std::vector<::tpy::BigInt>> __slot_2;
+    zs = &*(__slot_2 = {static_cast<int64_t>(5000000000), 3, 4});
     std::vector<::tpy::BigInt> vs = {1};
     ::tpy::BigInt m = ::tpy::__getitem__(vs, 0);
     ::tpy::list_extend(vs, std::array<::tpy::BigInt, 1>{static_cast<int64_t>(5000000000)});

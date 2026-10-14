@@ -20,6 +20,8 @@ Box* c1b{};
 std::tuple<Box*, Box*> P{};
 std::tuple<Box*, Box*> S{};
 std::tuple<Box*, Box*> S2{};
+Box* B{};
+Box* SB{};
 
 // def make_mixed(n: int32, b: Box) -> tuple[Own[Box], Box]:
 //     return (Box(n), b)
@@ -127,16 +129,17 @@ int32_t own_sink(std::tuple<Tok, Box> p) {
 //     p[1].n += 100
 //     print("retain-early", v.n, p[0].n, p[1].n)
 void retain_early(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::defined_later(9, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
+    std::optional<Box> __slot_3;
     auto __tup_3 = ::tpyapp::main::defined_later(7, (*std::get<0>(p)));
-    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+    std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
     std::get<1>(p) = std::get<1>(__tup_3);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 100);
     std::cout << "retain-early" << " " << v.n << " " << std::get<0>(p)->n << " " << std::get<1>(p)->n << "\n" << ::tpy::check_signals;
@@ -157,16 +160,17 @@ std::tuple<Box, Box*> defined_later(int32_t n, Box& b) {
 //     p[1].n += 100
 //     print("retain-late", v.n, p[0].n, p[1].n)
 void retain_late(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::defined_later(9, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
+    std::optional<Box> __slot_3;
     auto __tup_3 = ::tpyapp::main::defined_later(7, (*std::get<0>(p)));
-    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+    std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
     std::get<1>(p) = std::get<1>(__tup_3);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 100);
     std::cout << "retain-late" << " " << v.n << " " << std::get<0>(p)->n << " " << std::get<1>(p)->n << "\n" << ::tpy::check_signals;
@@ -182,12 +186,12 @@ void retain_late(Box& v) {
 //     p[1].n += 1
 //     print("function", a2.n, p[0].n, w.n)
 void function(Box& v, Box& w) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, w);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -207,17 +211,18 @@ void function(Box& v, Box& w) {
 //     a.n += 100
 //     print("in-place-then-own", a2.n, p[0].n)
 void in_place_then_own(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_3;
     auto __tup_3 = ::tpyapp::main::make_mixed(3, v);
-    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+    std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
     std::get<1>(p) = std::get<1>(__tup_3);
     a.n = ::tpy::add_check<int32_t>(a.n, 100);
     std::cout << "in-place-then-own" << " " << a2.n << " " << std::get<0>(p)->n << "\n" << ::tpy::check_signals;
@@ -231,11 +236,11 @@ void in_place_then_own(Box& v) {
 //     p[1].n += 100
 //     print("rhs-retains", p[0].n, a.n)
 void rhs_retains(Box& b) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, b);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, (*std::get<0>(p)));
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -258,14 +263,16 @@ void eval_order() {
     auto __tup_1 = std::tuple<Box, int32_t>{Box(1), 0};
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, int32_t> p{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::optional<Box> __slot_2;
     auto __tup_2 = std::tuple<Box, int32_t>{Box(9), std::get<0>(p)->n};
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::move(std::get<1>(__tup_2));
     std::cout << "eval-order" << " " << std::get<0>(p)->n << " " << std::get<1>(p) << "\n" << ::tpy::check_signals;
+    std::optional<Box> __slot_3;
     {
         try {
             auto __tup_3 = std::tuple<Box, int32_t>{Box(5), ::tpyapp::main::fail()};
-            (*std::get<0>(p)) = std::move(std::get<0>(__tup_3));
+            std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
             std::get<1>(p) = std::move(std::get<1>(__tup_3));
         } catch (const ::tpy::ValueError&) {
             std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 1);
@@ -291,8 +298,6 @@ void hoisted(bool c) {
     std::optional<Box> __slot_2;
     std::optional<Box> __slot_3;
     std::optional<Box> __slot_4;
-    std::optional<Box> __slot_5;
-    std::optional<Box> __slot_6;
     std::tuple<Box*, Box*> t;
     if (c) {
         auto __tup_1 = ::tpyapp::main::pair(1);
@@ -305,6 +310,8 @@ void hoisted(bool c) {
     }
     auto u = t;
     auto u2 = t;
+    std::optional<Box> __slot_5;
+    std::optional<Box> __slot_6;
     auto __tup_3 = ::tpyapp::main::pair(9);
     std::get<0>(t) = &*(__slot_5 = std::move(std::get<0>(__tup_3)));
     std::get<1>(t) = &*(__slot_6 = std::move(std::get<1>(__tup_3)));
@@ -323,12 +330,12 @@ void hoisted(bool c) {
 //     a.n += 1
 //     print("del", a2.n, p[0].n)
 void deleted(Box& b) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, b);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, b);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -346,8 +353,9 @@ void literal(Box& b) {
     auto __tup_1 = std::tuple<Box, Box*>{Box(1), &(b)};
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> t{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = std::tuple<Box, Box*>{Box(2), &(b)};
-    (*std::get<0>(t)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(t) = std::get<1>(__tup_2);
     std::get<1>(t)->n = ::tpy::add_check<int32_t>(std::get<1>(t)->n, 1);
     std::cout << "literal" << " " << std::get<0>(t)->n << " " << std::get<1>(t)->n << " " << b.n << "\n" << ::tpy::check_signals;
@@ -362,16 +370,17 @@ void literal(Box& b) {
 //     a.n += 100
 //     print("owned-call", a2.n, t[0].n, t[1].n)
 void owned_call() {
-    std::optional<Box> __slot_3;
     auto __tup_1 = ::tpyapp::main::pair(1);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     Box __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Box*, Box*> t{&__slot_1, &__slot_2};
     Box& a = (*std::get<1>(t));
     Box& a2 = (*std::get<1>(t));
+    std::optional<Box> __slot_3;
+    std::optional<Box> __slot_4;
     auto __tup_2 = ::tpyapp::main::pair(5);
-    (*std::get<0>(t)) = std::move(std::get<0>(__tup_2));
-    std::get<1>(t) = &*(__slot_3 = std::move(std::get<1>(__tup_2)));
+    std::get<0>(t) = &*(__slot_3 = std::move(std::get<0>(__tup_2)));
+    std::get<1>(t) = &*(__slot_4 = std::move(std::get<1>(__tup_2)));
     a.n = ::tpy::add_check<int32_t>(a.n, 100);
     std::cout << "owned-call" << " " << a2.n << " " << std::get<0>(t)->n << " " << std::get<1>(t)->n << "\n" << ::tpy::check_signals;
 }
@@ -387,8 +396,9 @@ void alias_after(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto t = p;
     std::get<0>(t)->n = 7;
@@ -454,9 +464,10 @@ void arg_last_use(bool c, Box& b) {
     auto __tup_1 = ::tpyapp::main::make_str(1, b);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*, std::string> p{&__slot_1, std::get<1>(__tup_1), std::move(std::get<2>(__tup_1))};
+    std::optional<Tok> __slot_2;
     if (c) {
         auto __tup_2 = ::tpyapp::main::make_str(2, b);
-        (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
         std::get<2>(p) = std::move(std::get<2>(__tup_2));
     }
@@ -474,10 +485,12 @@ std::tuple<Tok, Tok> return_last_use(bool c) {
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     Tok __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Tok*, Tok*> t{&__slot_1, &__slot_2};
+    std::optional<Tok> __slot_3;
+    std::optional<Tok> __slot_4;
     if (c) {
         auto __tup_2 = ::tpyapp::main::tok_pair(5);
-        (*std::get<0>(t)) = std::move(std::get<0>(__tup_2));
-        (*std::get<1>(t)) = std::move(std::get<1>(__tup_2));
+        std::get<0>(t) = &*(__slot_3 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = &*(__slot_4 = std::move(std::get<1>(__tup_2)));
     }
     return std::tuple<Tok, Tok>{std::move(*std::get<0>(t)), std::move(*std::get<1>(t))};
 }
@@ -492,8 +505,9 @@ std::tuple<Bag, Bag> return_borrowed(Bag& b) {
     auto __tup_1 = ::tpyapp::main::make_bag(1, b);
     Bag __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Bag*, Bag*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Bag> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_bag(2, b);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     return std::tuple<Bag, Bag>{std::move(*std::get<0>(p)), (*std::get<1>(p))};
 }
@@ -508,8 +522,9 @@ void own_arg(Box& b) {
     auto __tup_1 = ::tpyapp::main::make_tok(1, b);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_tok(2, b);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::cout << "own-arg" << " " << ::tpyapp::main::own_sink(std::tuple<Tok, Box>{std::move(*std::get<0>(p)), (*std::get<1>(p))}) << " " << b.n << "\n" << ::tpy::check_signals;
 }
@@ -526,8 +541,9 @@ void consuming(Box& b) {
     auto __tup_1 = ::tpyapp::main::make_tok(1, b);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_tok(9, b);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto& __tup_3 = p;
     Tok a = std::move(*std::get<0>(__tup_3));
@@ -548,12 +564,12 @@ void consuming(Box& b) {
 //         a.n += 100
 //     print("try-finally", a2.n, p[0].n)
 void try_finally(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     {
         try {
             auto __tup_2 = ::tpyapp::main::make_mixed(9, v);
@@ -578,12 +594,12 @@ void try_finally(Box& v) {
 //     a.n += 100
 //     print("with", a2.n, p[0].n)
 void with_body(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __ctx_1 = Ctx();
     __ctx_1.__enter__();
     try {
@@ -615,22 +631,23 @@ void with_body(Box& v) {
 //     t = tok_pair(7)
 //     print("mutable-sources", a.n, t[0].n, h.toks[0].n)
 void mutable_sources(Holder& h) {
-    std::optional<Tok> __slot_3;
-    std::optional<Tok> __slot_4;
-    std::optional<Tok> __slot_5;
     auto __tup_1 = ::tpyapp::main::tok_pair(1);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     Tok __slot_2 = std::move(std::get<1>(__tup_1));
     std::tuple<Tok*, Tok*> t{&__slot_1, &__slot_2};
     Tok& a = (*std::get<1>(t));
+    std::optional<Tok> __slot_3;
+    std::optional<Tok> __slot_4;
     auto __tup_2 = ::tpyapp::main::tok_pair(5);
-    (*std::get<0>(t)) = std::move(std::get<0>(__tup_2));
-    std::get<1>(t) = &*(__slot_3 = std::move(std::get<1>(__tup_2)));
+    std::get<0>(t) = &*(__slot_3 = std::move(std::get<0>(__tup_2)));
+    std::get<1>(t) = &*(__slot_4 = std::move(std::get<1>(__tup_2)));
     t = ::tpy::tuple_to_pointer<std::tuple<Tok*, Tok*>>(h.toks);
     std::get<0>(t)->n = ::tpy::add_check<int32_t>(std::get<0>(t)->n, 10);
+    std::optional<Tok> __slot_5;
+    std::optional<Tok> __slot_6;
     auto __tup_3 = ::tpyapp::main::tok_pair(7);
-    std::get<0>(t) = &*(__slot_4 = std::move(std::get<0>(__tup_3)));
-    std::get<1>(t) = &*(__slot_5 = std::move(std::get<1>(__tup_3)));
+    std::get<0>(t) = &*(__slot_5 = std::move(std::get<0>(__tup_3)));
+    std::get<1>(t) = &*(__slot_6 = std::move(std::get<1>(__tup_3)));
     std::cout << "mutable-sources" << " " << a.n << " " << std::get<0>(t)->n << " " << std::get<0>(h.toks).n << "\n" << ::tpy::check_signals;
 }
 
@@ -647,8 +664,9 @@ void name_element(Box& v, const Box& w) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = std::tuple<Box, Box*>{w, &(v)};
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
     std::cout << "name-element" << " " << std::get<0>(p)->n << "\n" << ::tpy::check_signals;
@@ -678,12 +696,12 @@ void elem_arg(Box& b) {
 //     pt.n += 100
 //     print("take-ptr", a.n, p[0].n)
 void take_pointer(Box& b) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, b);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box* pt = &(*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, b);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -708,8 +726,9 @@ void elem_reseat(Box& v, Box& w) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     Box* z = &(v);
     z = std::get<0>(p);
@@ -732,6 +751,7 @@ void elem_reseat(Box& v, Box& w) {
 //     print("for-hoist", p[0].n)
 void for_hoist(Box& v) {
     std::optional<Box> __slot_1;
+    std::optional<Box> __slot_2;
     std::tuple<Box*, Box*> p;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_1 = ::tpyapp::main::make_mixed(i, v);
@@ -739,7 +759,7 @@ void for_hoist(Box& v) {
         std::get<1>(p) = std::get<1>(__tup_1);
         if ((i == 1)) {
             auto __tup_2 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(10, i)), v);
-            (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+            std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
             std::get<1>(p) = std::get<1>(__tup_2);
         }
     }
@@ -761,12 +781,12 @@ void for_hoist(Box& v) {
 //     u[0].n += 100
 //     print("name-bound", p[0].n, keep[0].n, u[0].n)
 void name_bound(Box& v, bool c) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> keep = p;
     if (c) {
@@ -774,8 +794,9 @@ void name_bound(Box& v, bool c) {
     }
     std::get<0>(keep)->n = ::tpy::add_check<int32_t>(std::get<0>(keep)->n, 5);
     std::tuple<Box*, Box*> u = p;
+    std::optional<Box> __slot_3;
     auto __tup_3 = ::tpyapp::main::make_mixed(9, v);
-    std::get<0>(u) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+    std::get<0>(u) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
     std::get<1>(u) = std::get<1>(__tup_3);
     std::get<0>(u)->n = ::tpy::add_check<int32_t>(std::get<0>(u)->n, 100);
     std::cout << "name-bound" << " " << std::get<0>(p)->n << " " << std::get<0>(keep)->n << " " << std::get<0>(u)->n << "\n" << ::tpy::check_signals;
@@ -791,9 +812,10 @@ std::tuple<Tok, int32_t> own_elem_return(bool c) {
     auto __tup_1 = ::tpyapp::main::tok_int(3);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, int32_t> p{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::optional<Tok> __slot_2;
     if (c) {
         auto __tup_2 = ::tpyapp::main::tok_int(4);
-        (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::move(std::get<1>(__tup_2));
     }
     return std::tuple<Tok, int32_t>{std::move(*std::get<0>(p)), std::move(std::get<1>(p))};
@@ -812,12 +834,12 @@ std::tuple<Tok, int32_t> own_elem_return(bool c) {
 //     a.n += 100
 //     print("match", a2.n, p[0].n)
 void matched(int32_t k, Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto& __match_subject_1 = k;
     switch (__match_subject_1) {
     case 1: {
@@ -844,12 +866,12 @@ void matched(int32_t k, Box& v) {
 //     a.n += 100
 //     return a2.n * 100 + p[0].n
 std::expected<int32_t, Fail> fallible_rebind(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
     Box& a2 = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(9, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -886,7 +908,6 @@ void branch_once(bool c, Box& v) {
 //     a0.n += 100
 //     print("unpack-alias", o.n, a1.n, p[0].n)
 void unpack_alias(Box& b) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, b);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
@@ -894,6 +915,7 @@ void unpack_alias(Box& b) {
     auto&& a0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
     auto&& a1 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
     Box& o = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_3 = ::tpyapp::main::make_mixed(9, b);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
     std::get<1>(p) = std::get<1>(__tup_3);
@@ -914,11 +936,11 @@ void unpack_alias(Box& b) {
 //     a.n += 100
 //     print("closure", get(), a.n)
 void closure(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -940,11 +962,11 @@ void closure(Box& v) {
 //     p[0].n += 1
 //     print("comprehension", xs[1], a.n, p[0].n)
 void comprehension(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
     Box& a = (*std::get<0>(p));
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
     std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
@@ -973,8 +995,9 @@ void nonlocal_write(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto bump = [&p]() {
         std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 5);
@@ -986,10 +1009,11 @@ void nonlocal_write(Box& v) {
 
 // async def frame_body(v: Box) -> int32:
 //     p = make_mixed(1, v)
-//     # async: a coroutine's tuple stays the frame's own storage tuple, and an
-//     # element alias taken across a suspension writes into it.
+//     # async: a coroutine's rebound tuple is the pointer tuple too; with no
+//     # holder the rebind writes in place into the first binding's frame field,
+//     # and an element alias taken across a suspension writes into that field.
 //     p = make_mixed(2, v)  # tpyc: ok
-//     await asyncio.sleep(0)                                                    # -> S_RESUME_0
+//     await asyncio.sleep(0)                                                     # -> S_RESUME_0
 //     a = p[0]
 //     a.n += 10
 //     p[1].n += 1
@@ -998,8 +1022,12 @@ void nonlocal_write(Box& v) {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        p.emplace(::tpyapp::main::make_mixed(1, v));
-        p.emplace(::tpyapp::main::make_mixed(2, v));
+        auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
+        std::get<0>(p) = &*(__ptr_slot_f0 = std::move(std::get<0>(__tup_1)));
+        std::get<1>(p) = std::get<1>(__tup_1);
+        auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
+        std::get<0>(p) = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(p) = std::get<1>(__tup_2);
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -1009,11 +1037,11 @@ void nonlocal_write(Box& v) {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        a = &(std::get<0>((*p)));
+        a = &((*std::get<0>(p)));
         a->n = ::tpy::add_check<int32_t>(a->n, 10);
-        std::get<1>((*p))->n = ::tpy::add_check<int32_t>(std::get<1>((*p))->n, 1);
+        std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
         __state = S_DONE;
-        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(std::get<0>((*p)).n, 100)), std::get<1>((*p))->n));
+        int32_t __tpy_async_ret = (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(std::get<0>(p)->n, 100)), std::get<1>(p)->n));
         return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
     }
     case S_DONE: ::tpy::tpy_panic("poll after Ready");
@@ -1076,19 +1104,20 @@ void written_then_field(HB& h, Box& v) {
 //             x.n += 100
 //             print("match-capture", x.n, p[0].n)
 void match_capture(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
+    std::optional<Box> __slot_3;
     Box* x;
     auto& __match_subject_1 = (*std::get<0>(p));
     {
         x = &(__match_subject_1);
         auto __tup_3 = ::tpyapp::main::make_mixed(9, v);
-        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+        std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(p) = std::get<1>(__tup_3);
         x->n = ::tpy::add_check<int32_t>(x->n, 100);
         std::cout << "match-capture" << " " << x->n << " " << std::get<0>(p)->n << "\n" << ::tpy::check_signals;
@@ -1112,14 +1141,16 @@ void hoist_alias(Box& v, bool c) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto __tup_3 = ::tpyapp::main::make_mixed(3, v);
-    Box __slot_2 = std::move(std::get<0>(__tup_3));
-    std::tuple<Box*, Box*> q{&__slot_2, std::get<1>(__tup_3)};
+    Box __slot_3 = std::move(std::get<0>(__tup_3));
+    std::tuple<Box*, Box*> q{&__slot_3, std::get<1>(__tup_3)};
+    std::optional<Box> __slot_4;
     auto __tup_4 = ::tpyapp::main::make_mixed(4, v);
-    (*std::get<0>(q)) = std::move(std::get<0>(__tup_4));
+    std::get<0>(q) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
     std::get<1>(q) = std::get<1>(__tup_4);
     std::tuple<Box*, Box*> u;
     if (c) {
@@ -1156,8 +1187,9 @@ void mixed_arg(Bag& v) {
     auto __tup_1 = ::tpyapp::main::make_bag(1, v);
     Bag __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Bag*, Bag*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Bag> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_bag(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::cout << "mixed-arg" << " " << ::tpyapp::main::own_mixed(std::tuple<Bag, Bag*>{std::move(*std::get<0>(p)), std::get<1>(p)}) << " " << ::tpy::__len__(v.xs) << "\n" << ::tpy::check_signals;
     v.xs.push_back(1);
@@ -1180,8 +1212,9 @@ void except_binder(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 1);
     std::cout << "except-binder" << " " << std::get<0>(p)->n << " " << v.n << "\n" << ::tpy::check_signals;
@@ -1246,8 +1279,9 @@ void borrowed_place(std::vector<Box>& xs, Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = std::tuple<Box, Box*>{Box(9), &(::tpy::__getitem__(xs, 0))};
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 100);
     ::tpy::__getitem__(xs, 0).n = ::tpy::add_check<int32_t>(::tpy::__getitem__(xs, 0).n, 1);
@@ -1270,8 +1304,9 @@ void field_place(HB& h, Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = std::tuple<Box, Box*>{Box(9), &(h.b)};
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 100);
     std::cout << "field-place" << " " << std::get<0>(p)->n << " " << std::get<1>(p)->n << " " << h.b.n << "\n" << ::tpy::check_signals;
@@ -1294,10 +1329,10 @@ __gen_gen_values gen_values(const Box& b) {
 //         p[0].n += 1
 //         print("gen-loop", x, p[0].n)
 void gen_loop(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     {
         auto __src_0 = ::tpyapp::main::gen_values((*std::get<0>(p)));
         auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -1328,14 +1363,16 @@ void swap_names(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto& __tup_3 = p;
     Box x = std::move(*std::get<0>(__tup_3));
     auto&& y = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_3)));
+    std::optional<Box> __slot_3;
     auto __tup_4 = std::tuple<Box, Box*>{y, &(x)};
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_4));
+    std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_4)));
     std::get<1>(p) = std::get<1>(__tup_4);
     x.n = ::tpy::add_check<int32_t>(x.n, 100);
     std::cout << "swap-names" << " " << std::get<0>(p)->n << " " << std::get<1>(p)->n << " " << x.n << " " << v.n << "\n" << ::tpy::check_signals;
@@ -1345,6 +1382,12 @@ void swap_names(Box& v) {
 //     return P
 std::tuple<Box*, Box*> grab() {
     return P;
+}
+
+// def grab_box() -> Box:
+//     return B
+Box& grab_box() {
+    return (*B);
 }
 
 // def alias_order_early(v: Box) -> None:
@@ -1364,14 +1407,16 @@ void alias_order_early(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_tok(3, v);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> s{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_tok(4, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(s) = std::get<1>(__tup_2);
     auto __tup_3 = ::tpyapp::main::make_tok(1, v);
-    Tok __slot_2 = std::move(std::get<0>(__tup_3));
-    std::tuple<Tok*, Box*> p{&__slot_2, std::get<1>(__tup_3)};
+    Tok __slot_3 = std::move(std::get<0>(__tup_3));
+    std::tuple<Tok*, Box*> p{&__slot_3, std::get<1>(__tup_3)};
+    std::optional<Tok> __slot_4;
     auto __tup_4 = ::tpyapp::main::make_tok(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_4));
+    std::get<0>(p) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
     std::get<1>(p) = std::get<1>(__tup_4);
     std::tuple<Tok*, Box*> q = p;
     std::tuple<Tok*, Box*> r = q;
@@ -1400,17 +1445,19 @@ void alias_order_late(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_tok(1, v);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_tok(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Tok*, Box*> q = p;
     std::tuple<Tok*, Box*> r = q;
     r = q;
     auto __tup_3 = ::tpyapp::main::make_tok(3, v);
-    Tok __slot_2 = std::move(std::get<0>(__tup_3));
-    std::tuple<Tok*, Box*> s{&__slot_2, std::get<1>(__tup_3)};
+    Tok __slot_3 = std::move(std::get<0>(__tup_3));
+    std::tuple<Tok*, Box*> s{&__slot_3, std::get<1>(__tup_3)};
+    std::optional<Tok> __slot_4;
     auto __tup_4 = ::tpyapp::main::make_tok(4, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+    std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
     std::get<1>(s) = std::get<1>(__tup_4);
     q = s;
     r = q;
@@ -1431,8 +1478,9 @@ void alias_flat(Box& v, bool c) {
     auto __tup_1 = ::tpyapp::main::make_tok(1, v);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_tok(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Tok*, Box*> q = p;
     if (c) {
@@ -1459,8 +1507,9 @@ void alias_nested(Box& v, bool c) {
     auto __tup_1 = ::tpyapp::main::make_tok(1, v);
     Tok __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Tok*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Tok> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_tok(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto k = [&c, &p]() -> int32_t {
         std::tuple<Tok*, Box*> q = p;
@@ -1546,8 +1595,9 @@ void genexpr_read(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     Box& a = (*std::get<0>(p));
     auto __tmp_1 = ::tpyapp::main::__genexpr_genexpr_read_1(2, p);
@@ -1693,8 +1743,9 @@ void genexpr_nested(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto q = p;
     Box& a = (*std::get<0>(p));
@@ -1780,8 +1831,9 @@ void genexpr_in_def(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     Box& a = (*std::get<0>(p));
     auto k = [&p]() -> int32_t {
@@ -1804,8 +1856,9 @@ std::function<int32_t()> capture_copy(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     Box p0 = Box((*std::get<0>(p)));
     return [p0, v]() -> int32_t { return (::tpy::add_check<int32_t>((::tpy::mul_check<int32_t>(p0.n, 100)), v.n)); };
@@ -1827,8 +1880,9 @@ void lambda_comprehension(Box& v, const std::vector<std::tuple<Box, Box>>& xs) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::vector<std::function<int32_t()>> fs = ({
         std::vector<std::function<int32_t()>> __result;
@@ -1863,13 +1917,14 @@ __gen_walk walk(const Bag& b) {
 //             p[0].xs.append(7)
 //             print("walk-rebind", x, len(p[0].xs), p[0].xs[0])
 void walk_rebind(Bag& v) {
-    std::optional<Bag> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_bag(1, v);
     Bag __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Bag*, Bag*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Bag> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_bag(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
+    std::optional<Bag> __slot_3;
     for (int32_t i = 0; i < 1; ++i) {
         {
             auto __src_1 = ::tpyapp::main::walk((*std::get<0>(p)));
@@ -1879,7 +1934,7 @@ void walk_rebind(Bag& v) {
                 if (!__r_2.has_value()) break;
                 int32_t x = ::tpy::unwrap_ref(*__r_2);
                 auto __tup_3 = ::tpyapp::main::make_bag((::tpy::add_check<int32_t>(50, x)), v);
-                std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+                std::get<0>(p) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
                 std::get<1>(p) = std::get<1>(__tup_3);
                 std::get<0>(p)->xs.push_back(7);
                 std::cout << "walk-rebind" << " " << x << " " << ::tpy::__len__(std::get<0>(p)->xs) << " " << ::tpy::__getitem__(std::get<0>(p)->xs, 0) << "\n" << ::tpy::check_signals;
@@ -1904,47 +1959,49 @@ void copy_carry(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(0, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     for (int32_t i = 0; i < 1; ++i) {
         Box old = Box((*std::get<0>(p)));
         auto __tup_2 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(10, i)), old);
-        (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
         std::get<1>(p)->n = ::tpy::add_check<int32_t>(std::get<1>(p)->n, 100);
         std::cout << "copy-carry" << " " << std::get<0>(p)->n << " " << std::get<1>(p)->n << " " << old.n << "\n" << ::tpy::check_signals;
     }
 }
 
-// # The name is bound at two sites in the loop body: the second writes in place
-// # into the first site's slot, so the first site rebuilds the slot the alias
-// # took on the previous pass (BUGS.md#loop-two-site-rebind-clobbers-alias). Run
-// # once, so both runs agree.
+// # The name is bound at two sites in the loop body, each with a slot of its
+// # own: the alias takes the second site's object, which the second site
+// # rebuilds on the next pass. Run once, so both runs agree.
 // def loop_two_site(v: Box) -> None:
 //     s = make_mixed(0, v)
 //     s = make_mixed(1, v)
 //     r = s
 //     for i in range(1):
 //         r = s
+//         s = make_mixed(3 + i, v)  # tpyc: ok
 //         # loop-two-site: warns as the one-site rebind does.
-//         s = make_mixed(3 + i, v)  # tpyc: warning(/'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own/)
-//         s = make_mixed(5 + i, v)
+//         s = make_mixed(5 + i, v)  # tpyc: warning(/'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own/)
 //     r[0].n += 100
 //     print("loop-two-site", r[0].n, s[0].n)
 void loop_two_site(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(0, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> s{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(1, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(s) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> r = s;
+    std::optional<Box> __slot_3;
+    std::optional<Box> __slot_4;
     for (int32_t i = 0; i < 1; ++i) {
         r = s;
         auto __tup_3 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(3, i)), v);
-        std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(s) = std::get<1>(__tup_3);
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(5, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+        std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
         std::get<1>(s) = std::get<1>(__tup_4);
     }
     std::get<0>(r)->n = ::tpy::add_check<int32_t>(std::get<0>(r)->n, 100);
@@ -1952,7 +2009,7 @@ void loop_two_site(Box& v) {
 }
 
 // # The alias reaches the loop's object through a second name (`r = q`,
-// # `q = s`; BUGS.md#loop-two-site-rebind-clobbers-alias).
+// # `q = s`).
 // def loop_two_site_two_hop(v: Box, c: bool) -> None:
 //     p = make_mixed(1, v)
 //     p = make_mixed(2, v)
@@ -1962,9 +2019,9 @@ void loop_two_site(Box& v) {
 //     for i in range(1):
 //         r = q
 //         r[0].n += 10
+//         s = make_mixed(3 + i, v)  # tpyc: ok
 //         # loop-two-site-two-hop: 'r' reaches the slot through 'q'.
-//         s = make_mixed(3 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
-//         s = make_mixed(5 + i, v)
+//         s = make_mixed(5 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
 //         if c:
 //             q = s
 //         else:
@@ -1973,26 +2030,28 @@ void loop_two_site(Box& v) {
 //     q[0].n += 1000
 //     print("loop-two-site-two-hop", r[0].n, q[0].n, s[0].n, p[0].n)
 void loop_two_site_two_hop(Box& v, bool c) {
-    std::optional<Box> __slot_3;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::tuple<Box*, Box*> r = q;
     auto __tup_3 = ::tpyapp::main::make_mixed(0, v);
-    Box __slot_2 = std::move(std::get<0>(__tup_3));
-    std::tuple<Box*, Box*> s{&__slot_2, std::get<1>(__tup_3)};
+    Box __slot_3 = std::move(std::get<0>(__tup_3));
+    std::tuple<Box*, Box*> s{&__slot_3, std::get<1>(__tup_3)};
+    std::optional<Box> __slot_4;
+    std::optional<Box> __slot_5;
     for (int32_t i = 0; i < 1; ++i) {
         r = q;
         std::get<0>(r)->n = ::tpy::add_check<int32_t>(std::get<0>(r)->n, 10);
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(3, i)), v);
-        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_4)));
+        std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
         std::get<1>(s) = std::get<1>(__tup_4);
         auto __tup_5 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(5, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_5));
+        std::get<0>(s) = &*(__slot_5 = std::move(std::get<0>(__tup_5)));
         std::get<1>(s) = std::get<1>(__tup_5);
         if (c) {
             q = s;
@@ -2019,23 +2078,25 @@ void loop_two_site_silent(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(0, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> s{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(1, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(s) = std::get<1>(__tup_2);
+    std::optional<Box> __slot_3;
+    std::optional<Box> __slot_4;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_3 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(3, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_3));
+        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(s) = std::get<1>(__tup_3);
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(5, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+        std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
         std::get<1>(s) = std::get<1>(__tup_4);
         std::get<0>(s)->n = ::tpy::add_check<int32_t>(std::get<0>(s)->n, 100);
         std::cout << "loop-two-site-silent" << " " << std::get<0>(s)->n << "\n" << ::tpy::check_signals;
     }
 }
 
-// # The `while` spelling of the two in-loop sites
-// # (BUGS.md#loop-two-site-rebind-clobbers-alias). Run once, so both runs agree.
+// # The `while` spelling of the two in-loop sites. Run once, so both runs agree.
 // def loop_two_site_while(v: Box) -> None:
 //     s = make_mixed(0, v)
 //     s = make_mixed(1, v)
@@ -2043,29 +2104,31 @@ void loop_two_site_silent(Box& v) {
 //     i = 0
 //     while i < 1:
 //         r = s
-//         # loop-two-site-while: warns at the first site.
-//         s = make_mixed(3 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
-//         s = make_mixed(5 + i, v)
+//         s = make_mixed(3 + i, v)  # tpyc: ok
+//         # loop-two-site-while: warns at the second site, whose slot 'r' holds.
+//         s = make_mixed(5 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
 //         i += 1
 //     r[0].n += 100
 //     print("loop-two-site-while", r[0].n, s[0].n)
 void loop_two_site_while(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(0, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> s{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(1, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(s) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> r = s;
     int32_t i = 0;
+    std::optional<Box> __slot_3;
+    std::optional<Box> __slot_4;
     while ((i < 1)) {
         r = s;
         auto __tup_3 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(3, i)), v);
-        std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(s) = std::get<1>(__tup_3);
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(5, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+        std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
         std::get<1>(s) = std::get<1>(__tup_4);
         i = ::tpy::add_check<int32_t>(i, 1);
     }
@@ -2074,8 +2137,8 @@ void loop_two_site_while(Box& v) {
 }
 
 // # Three in-loop sites, the alias taken after the second: its object lives in
-// # the first site's slot, which the first site rebuilds
-// # (BUGS.md#loop-two-site-rebind-clobbers-alias). Run once, so both runs agree.
+// # the second site's slot, and the alias is rebound before that site runs
+// # again, so nothing it still reads is rebuilt: no warning.
 // def loop_three_site(v: Box) -> None:
 //     s = make_mixed(0, v)
 //     s = make_mixed(1, v)
@@ -2083,7 +2146,7 @@ void loop_two_site_while(Box& v) {
 //     t = s
 //     for i in range(1):
 //         # loop-three-site: 'r' holds the second site's object here.
-//         s = make_mixed(10 + i, v)  # tpyc: warning(/'r' will not keep the object it was given/)
+//         s = make_mixed(10 + i, v)  # tpyc: ok
 //         if i > 0:
 //             print("loop-three-site-iter", r[0].n, t[0].n)
 //         s = make_mixed(20 + i, v)
@@ -2093,29 +2156,31 @@ void loop_two_site_while(Box& v) {
 //     r[0].n += 100
 //     print("loop-three-site", r[0].n, t[0].n, s[0].n)
 void loop_three_site(Box& v) {
-    std::optional<Box> __slot_2;
-    std::optional<Box> __slot_3;
     auto __tup_1 = ::tpyapp::main::make_mixed(0, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> s{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(1, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(s) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> r = s;
     std::tuple<Box*, Box*> t = s;
+    std::optional<Box> __slot_3;
+    std::optional<Box> __slot_4;
+    std::optional<Box> __slot_5;
     for (int32_t i = 0; i < 1; ++i) {
         auto __tup_3 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(10, i)), v);
-        std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(s) = std::get<1>(__tup_3);
         if ((i > 0)) {
             std::cout << "loop-three-site-iter" << " " << std::get<0>(r)->n << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
         }
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(20, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+        std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
         std::get<1>(s) = std::get<1>(__tup_4);
         r = s;
         auto __tup_5 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(30, i)), v);
-        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_5)));
+        std::get<0>(s) = &*(__slot_5 = std::move(std::get<0>(__tup_5)));
         std::get<1>(s) = std::get<1>(__tup_5);
         t = s;
     }
@@ -2137,23 +2202,25 @@ void loop_three_site(Box& v) {
 //         s = make_mixed(5 + i, v)  # tpyc: ok
 //     print("loop-two-site-read-before", s[0].n)
 void loop_two_site_read_before(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(0, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> s{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(1, v);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(s) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> r = s;
+    std::optional<Box> __slot_3;
+    std::optional<Box> __slot_4;
     for (int32_t i = 0; i < 2; ++i) {
         r = s;
         std::get<0>(r)->n = ::tpy::add_check<int32_t>(std::get<0>(r)->n, 100);
         std::cout << "loop-two-site-read-before" << " " << std::get<0>(r)->n << " " << std::get<0>(s)->n << "\n" << ::tpy::check_signals;
         auto __tup_3 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(3, i)), v);
-        std::get<0>(s) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+        std::get<0>(s) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
         std::get<1>(s) = std::get<1>(__tup_3);
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(5, i)), v);
-        (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+        std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
         std::get<1>(s) = std::get<1>(__tup_4);
     }
     std::cout << "loop-two-site-read-before" << " " << std::get<0>(s)->n << "\n" << ::tpy::check_signals;
@@ -2400,8 +2467,9 @@ void lambda_param(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::function<int32_t(int32_t)> f = [](int32_t p) -> int32_t { return (::tpy::add_check<int32_t>(p, 1)); };
     std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
@@ -2423,8 +2491,9 @@ void mixed_bindings(HB& h, Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
@@ -2448,8 +2517,9 @@ void mixed_bindings_reverse(HB& h, Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
     std::get<0>(h.bp).n = ::tpy::add_check<int32_t>(std::get<0>(h.bp).n, 10);
@@ -2473,8 +2543,9 @@ void mixed_bindings_read(HB& h, Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
@@ -2499,8 +2570,9 @@ void field_repoint_loop(HB& h, Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     for (int32_t i = 0; i < 2; ++i) {
@@ -2528,8 +2600,9 @@ void field_repoint_branch(HB& h, Box& v, bool c) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q;
     if (c) {
@@ -2554,17 +2627,18 @@ void field_repoint_branch(HB& h, Box& v, bool c) {
 //     q[1].n += 1
 //     print("literal-after-alias", p[0].n, q[1].n, v.n)
 void literal_after_alias(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
+    std::optional<Box> __slot_3;
     auto __tup_3 = std::tuple<Box, Box*>{v, &(v)};
-    std::get<0>(q) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+    std::get<0>(q) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
     std::get<1>(q) = std::get<1>(__tup_3);
     std::get<1>(q)->n = ::tpy::add_check<int32_t>(std::get<1>(q)->n, 1);
     std::cout << "literal-after-alias" << " " << std::get<0>(p)->n << " " << std::get<1>(q)->n << " " << v.n << "\n" << ::tpy::check_signals;
@@ -2584,8 +2658,9 @@ void alias_after_literal(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = std::tuple<Box*, Box*>{&(v), &(v)};
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 1);
@@ -2607,14 +2682,16 @@ void ternary_alias(Box& v, Box& w, bool c) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     auto __tup_3 = ::tpyapp::main::make_mixed(5, w);
-    Box __slot_2 = std::move(std::get<0>(__tup_3));
-    std::tuple<Box*, Box*> s{&__slot_2, std::get<1>(__tup_3)};
+    Box __slot_3 = std::move(std::get<0>(__tup_3));
+    std::tuple<Box*, Box*> s{&__slot_3, std::get<1>(__tup_3)};
+    std::optional<Box> __slot_4;
     auto __tup_4 = ::tpyapp::main::make_mixed(6, w);
-    (*std::get<0>(s)) = std::move(std::get<0>(__tup_4));
+    std::get<0>(s) = &*(__slot_4 = std::move(std::get<0>(__tup_4)));
     std::get<1>(s) = std::get<1>(__tup_4);
     auto q = ((c) ? (p) : (s));
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
@@ -2637,8 +2714,9 @@ void ternary_param_roots(HB& h, HB& g, Box& v, bool c) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     q = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
@@ -2660,17 +2738,18 @@ void ternary_param_roots(HB& h, HB& g, Box& v, bool c) {
 //     q[0].n += 1000
 //     print("owning-rebind-alias", p[0].n, q[0].n)
 void owning_rebind_alias(Box& v) {
-    std::optional<Box> __slot_2;
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
+    std::optional<Box> __slot_3;
     auto __tup_3 = ::tpyapp::main::make_mixed(3, v);
-    std::get<0>(q) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+    std::get<0>(q) = &*(__slot_3 = std::move(std::get<0>(__tup_3)));
     std::get<1>(q) = std::get<1>(__tup_3);
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 1000);
     std::cout << "owning-rebind-alias" << " " << std::get<0>(p)->n << " " << std::get<0>(q)->n << "\n" << ::tpy::check_signals;
@@ -2693,8 +2772,9 @@ void nested_own_param(Box& v) {
         auto __tup_1 = ::tpyapp::main::make_mixed(1, w);
         Box __slot_1 = std::move(std::get<0>(__tup_1));
         std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+        std::optional<Box> __slot_2;
         auto __tup_2 = ::tpyapp::main::make_mixed(2, w);
-        (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+        std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
         std::get<1>(p) = std::get<1>(__tup_2);
         p = ::tpy::tuple_to_pointer<std::tuple<Box*, Box*>>(h.bp);
         std::get<0>(p)->n = ::tpy::add_check<int32_t>(std::get<0>(p)->n, 100);
@@ -2702,6 +2782,399 @@ void nested_own_param(Box& v) {
     };
     HB hb = HB();
     std::cout << "nested-own-param" << " " << inner(hb, v) << " " << std::get<0>(hb.bp).n << "\n" << ::tpy::check_signals;
+}
+
+// def pick_box(b: Box) -> tuple[Box, int32]:
+//     return (b, 0)
+std::tuple<Box*, int32_t> pick_box(Box& b) {
+    return std::tuple<Box*, int32_t>{&(b), 0};
+}
+
+// # A holder bound by a path into an owned element that no tracked loan records
+// # keeps the old element's object: the rebind takes storage of its own.
+// def untracked_two_hop(c: bool) -> None:
+//     t = (TwoHop(1), 5)
+//     # untracked-two-hop: two hops into element 0.
+//     saved = t[0].xs[1]  # tpyc: ok
+//     if c:
+//         t = (TwoHop(10), 6)
+//     saved.n += 100
+//     print("untracked-two-hop", saved.n, t[0].xs[1].n)
+void untracked_two_hop(bool c) {
+    auto __tup_1 = std::tuple<TwoHop, int32_t>{TwoHop(1), 5};
+    TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    Box& saved = ::tpy::__getitem__(std::get<0>(t)->xs, 1);
+    std::optional<TwoHop> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    saved.n = ::tpy::add_check<int32_t>(saved.n, 100);
+    std::cout << "untracked-two-hop" << " " << saved.n << " " << ::tpy::__getitem__(std::get<0>(t)->xs, 1).n << "\n" << ::tpy::check_signals;
+}
+
+// def untracked_strview(c: bool) -> None:
+//     t = (Named(1), 5)
+//     # untracked-strview: the view points into element 0's string.
+//     v: StrView = t[0].s  # tpyc: ok
+//     if c:
+//         t = (Named(2), 6)
+//     print("untracked-strview", v, t[1])
+void untracked_strview(bool c) {
+    auto __tup_1 = std::tuple<Named, int32_t>{Named(1), 5};
+    Named __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Named*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::string_view v = std::get<0>(t)->s;
+    std::optional<Named> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Named, int32_t>{Named(2), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    std::cout << "untracked-strview" << " " << v << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
+}
+
+// def untracked_value_view(c: bool, a: str, b: str) -> None:
+//     t = (Labelled(a), 5)
+//     # untracked-value-view: a value whose view points into element 0.
+//     w = t[0].w  # tpyc: ok
+//     if c:
+//         t = (Labelled(b), 6)
+//     print("untracked-value-view", w.lab, t[0].w.lab)
+void untracked_value_view(bool c, std::string_view a, std::string_view b) {
+    auto __tup_1 = std::tuple<Labelled, int32_t>{Labelled(a), 5};
+    Labelled __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Labelled*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    Lab w = std::get<0>(t)->w;
+    std::optional<Labelled> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Labelled, int32_t>{Labelled(b), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    std::cout << "untracked-value-view" << " " << w.lab << " " << std::get<0>(t)->w.lab << "\n" << ::tpy::check_signals;
+}
+
+// def untracked_fresh_view(c: bool) -> None:
+//     t = (Named(1), 5)
+//     # untracked-fresh-view: a new value around a view of element 0.
+//     w = Lab(t[0].s)  # tpyc: ok
+//     if c:
+//         t = (Named(2), 6)
+//     print("untracked-fresh-view", w.lab)
+void untracked_fresh_view(bool c) {
+    auto __tup_1 = std::tuple<Named, int32_t>{Named(1), 5};
+    Named __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Named*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    Lab w = Lab(std::get<0>(t)->s);
+    std::optional<Named> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Named, int32_t>{Named(2), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    std::cout << "untracked-fresh-view" << " " << w.lab << "\n" << ::tpy::check_signals;
+}
+
+// def untracked_match_capture(c: bool) -> None:
+//     t = (TwoHop(1), 5)
+//     # untracked-match-capture: the capture is bound two hops in.
+//     match t[0].xs[1]:  # tpyc: ok
+//         case Box() as saved:
+//             if c:
+//                 t = (TwoHop(10), 6)
+//             saved.n += 100
+//             print("untracked-match-capture", saved.n, t[1])
+void untracked_match_capture(bool c) {
+    auto __tup_1 = std::tuple<TwoHop, int32_t>{TwoHop(1), 5};
+    TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::optional<TwoHop> __slot_2;
+    Box* saved;
+    auto& __match_subject_1 = ::tpy::__getitem__(std::get<0>(t)->xs, 1);
+    {
+        saved = &(__match_subject_1);
+        if (c) {
+            auto __tup_2 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+            std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_2));
+        }
+        saved->n = ::tpy::add_check<int32_t>(saved->n, 100);
+        std::cout << "untracked-match-capture" << " " << saved->n << " " << std::get<1>(t) << "\n" << ::tpy::check_signals;
+    }
+}
+
+// def untracked_for_unpack(c: bool) -> None:
+//     t = (TwoHop(1), 5)
+//     # untracked-for-unpack: the loop target that keeps the borrow.
+//     for i, saved in enumerate(t[0].xs):  # tpyc: ok
+//         if i == 1:
+//             if c:
+//                 # The loop target's loan is filed at the loop head, which a
+//                 # rebind's back edge reaches: a conservative warning
+//                 # (BUGS.md#loop-slot-reuse-false-warning).
+//                 t = (TwoHop(10), 6)  # tpyc: warning(/'saved' will not keep the object it was given/)
+//             saved.n += 100
+//             print("untracked-for-unpack", saved.n, t[0].xs[1].n)
+void untracked_for_unpack(bool c) {
+    auto __tup_1 = std::tuple<TwoHop, int32_t>{TwoHop(1), 5};
+    TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::optional<TwoHop> __slot_2;
+    {
+        auto __src_0 = ::tpy::builtin_enumerate(std::get<0>(t)->xs);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& __for_tup_0 = ::tpy::unwrap_ref(*__r_1);
+            auto& __tup_2 = __for_tup_0;
+            int32_t i = std::get<0>(__tup_2);
+            auto&& saved = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<1>(__tup_2)));
+            if ((i == 1)) {
+                if (c) {
+                    auto __tup_3 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+                    std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+                    std::get<1>(t) = std::move(std::get<1>(__tup_3));
+                }
+                saved.n = ::tpy::add_check<int32_t>(saved.n, 100);
+                std::cout << "untracked-for-unpack" << " " << saved.n << " " << ::tpy::__getitem__(std::get<0>(t)->xs, 1).n << "\n" << ::tpy::check_signals;
+            }
+        }
+    }
+}
+
+// def untracked_literal_unpack(c: bool) -> None:
+//     t = (TwoHop(1), 5)
+//     h = TwoHop(20)
+//     # untracked-literal-unpack: each target of a literal unpack.
+//     saved, a = (t[0].xs[1], h.xs[0])  # tpyc: ok
+//     # The same path as the SECOND target.
+//     b, kept = (h.xs[1], t[0].xs[1])  # tpyc: ok
+//     if c:
+//         t = (TwoHop(10), 6)
+//     saved.n += 100
+//     kept.n += 1000
+//     print("untracked-literal-unpack", saved.n, a.n, kept.n, b.n,
+//           t[0].xs[1].n)
+void untracked_literal_unpack(bool c) {
+    auto __tup_1 = std::tuple<TwoHop, int32_t>{TwoHop(1), 5};
+    TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    TwoHop h = TwoHop(20);
+    Box& __unpack_0_0 = ::tpy::__getitem__(std::get<0>(t)->xs, 1);
+    Box& __unpack_0_1 = ::tpy::__getitem__(h.xs, 0);
+    Box& saved = __unpack_0_0;
+    Box& a = __unpack_0_1;
+    Box& __unpack_1_0 = ::tpy::__getitem__(h.xs, 1);
+    Box& __unpack_1_1 = ::tpy::__getitem__(std::get<0>(t)->xs, 1);
+    Box& b = __unpack_1_0;
+    Box& kept = __unpack_1_1;
+    std::optional<TwoHop> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    saved.n = ::tpy::add_check<int32_t>(saved.n, 100);
+    kept.n = ::tpy::add_check<int32_t>(kept.n, 1000);
+    std::cout << "untracked-literal-unpack" << " " << saved.n << " " << a.n << " " << kept.n << " " << b.n << " " << ::tpy::__getitem__(std::get<0>(t)->xs, 1).n << "\n" << ::tpy::check_signals;
+}
+
+// def untracked_chained(c: bool) -> None:
+//     t = (TwoHop(1), 5)
+//     # untracked-chained: each name target of a chained assignment holds the
+//     # old element two hops in.
+//     x = saved = t[0].xs[1]  # tpyc: ok
+//     if c:
+//         t = (TwoHop(10), 6)
+//     saved.n += 100
+//     x.n += 1000
+//     print("untracked-chained", saved.n, x.n, t[0].xs[1].n)
+void untracked_chained(bool c) {
+    auto __tup_1 = std::tuple<TwoHop, int32_t>{TwoHop(1), 5};
+    TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    Box& x = ::tpy::__getitem__(std::get<0>(t)->xs, 1);
+    Box& saved = x;
+    std::optional<TwoHop> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    saved.n = ::tpy::add_check<int32_t>(saved.n, 100);
+    x.n = ::tpy::add_check<int32_t>(x.n, 1000);
+    std::cout << "untracked-chained" << " " << saved.n << " " << x.n << " " << ::tpy::__getitem__(std::get<0>(t)->xs, 1).n << "\n" << ::tpy::check_signals;
+}
+
+// def untracked_call_unpack(c: bool) -> None:
+//     t = (TwoHop(1), 5)
+//     # untracked-call-unpack: a call lends the element's path to the target.
+//     saved, k = pick_box(t[0].xs[1])  # tpyc: ok
+//     if c:
+//         t = (TwoHop(10), 6)
+//     saved.n += 100
+//     print("untracked-call-unpack", saved.n + k, t[0].xs[1].n)
+void untracked_call_unpack(bool c) {
+    auto __tup_1 = std::tuple<TwoHop, int32_t>{TwoHop(1), 5};
+    TwoHop __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<TwoHop*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    auto __tup_2 = ::tpyapp::main::pick_box(::tpy::__getitem__(std::get<0>(t)->xs, 1));
+    auto&& saved = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+    int32_t k = std::get<1>(__tup_2);
+    std::optional<TwoHop> __slot_2;
+    if (c) {
+        auto __tup_3 = std::tuple<TwoHop, int32_t>{TwoHop(10), 6};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_3)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_3));
+    }
+    saved.n = ::tpy::add_check<int32_t>(saved.n, 100);
+    std::cout << "untracked-call-unpack" << " " << (::tpy::add_check<int32_t>(saved.n, k)) << " " << ::tpy::__getitem__(std::get<0>(t)->xs, 1).n << "\n" << ::tpy::check_signals;
+}
+
+// def retain_binding(c: bool) -> None:
+//     k = Keeper(Box(99))
+//     t = (Box(1), 0)
+//     # retain-binding: the callee keeps a pointer to the element.
+//     n = k.save(t[0])  # tpyc: ok
+//     if c:
+//         t = (Box(10), 0)
+//     k.p.n += 100
+//     print("retain-binding", n, k.p.n, t[0].n)
+void retain_binding(bool c) {
+    Box __tmp_1 = Box(99);
+    Keeper k = Keeper(__tmp_1);
+    auto __tup_1 = std::tuple<Box, int32_t>{Box(1), 0};
+    Box __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Box*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    int32_t n = k.save((*std::get<0>(t)));
+    std::optional<Box> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Box, int32_t>{Box(10), 0};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    ::tpy::deref_check(k.p).n = ::tpy::add_check<int32_t>(::tpy::deref_check(k.p).n, 100);
+    std::cout << "retain-binding" << " " << n << " " << k.p->n << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
+}
+
+// def retain_statement(c: bool) -> None:
+//     k = Keeper(Box(99))
+//     t = (Box(1), 0)
+//     # retain-statement: the same call as a statement.
+//     k.save(t[0])  # tpyc: ok
+//     if c:
+//         t = (Box(10), 0)
+//     k.p.n += 100
+//     print("retain-statement", k.p.n, t[0].n)
+void retain_statement(bool c) {
+    Box __tmp_1 = Box(99);
+    Keeper k = Keeper(__tmp_1);
+    auto __tup_1 = std::tuple<Box, int32_t>{Box(1), 0};
+    Box __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Box*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    k.save((*std::get<0>(t)));
+    std::optional<Box> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Box, int32_t>{Box(10), 0};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    ::tpy::deref_check(k.p).n = ::tpy::add_check<int32_t>(::tpy::deref_check(k.p).n, 100);
+    std::cout << "retain-statement" << " " << k.p->n << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
+}
+
+// def tuple_view(c: bool) -> None:
+//     t = (Named(1), 0)
+//     # tuple-view: a tuple whose element views element 0's string.
+//     u = (Lab(t[0].s), 0)  # tpyc: ok
+//     if c:
+//         t = (Named(10), 0)
+//     print("tuple-view", u[0].lab)
+void tuple_view(bool c) {
+    auto __tup_1 = std::tuple<Named, int32_t>{Named(1), 0};
+    Named __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Named*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::tuple<Lab, int32_t> u = std::tuple<Lab, int32_t>{Lab(std::get<0>(t)->s), 0};
+    std::optional<Named> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Named, int32_t>{Named(10), 0};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    std::cout << "tuple-view" << " " << std::get<0>(u).lab << "\n" << ::tpy::check_signals;
+}
+
+// def range_field(c: bool) -> None:
+//     t = (Named(1), 0)
+//     # range-field: the loop bound is read off the element before the loop.
+//     for i in range(t[0].n):  # tpyc: ok
+//         if c:
+//             t = (Named(10), 0)
+//         print("range-field", i, t[0].n)
+void range_field(bool c) {
+    auto __tup_1 = std::tuple<Named, int32_t>{Named(1), 0};
+    Named __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Named*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::optional<Named> __slot_2;
+    int32_t __stop_0 = std::get<0>(t)->n;
+    for (int32_t i = 0; i < __stop_0; ++i) {
+        if (c) {
+            auto __tup_2 = std::tuple<Named, int32_t>{Named(10), 0};
+            std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+            std::get<1>(t) = std::move(std::get<1>(__tup_2));
+        }
+        std::cout << "range-field" << " " << i << " " << std::get<0>(t)->n << "\n" << ::tpy::check_signals;
+    }
+}
+
+// def copied_elem(c: bool) -> None:
+//     t = (Named(1), 0)
+//     # copied-elem: a list of numbers read off the element.
+//     copied = [t[0].n, 7]  # tpyc: ok
+//     if c:
+//         t = (Named(10), 0)
+//     copied.append(t[0].n)
+//     print("copied-elem", copied)
+void copied_elem(bool c) {
+    auto __tup_1 = std::tuple<Named, int32_t>{Named(1), 0};
+    Named __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Named*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    std::vector<int32_t> copied = {std::get<0>(t)->n, 7};
+    std::optional<Named> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Named, int32_t>{Named(10), 0};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    copied.push_back(std::get<0>(t)->n);
+    std::cout << "copied-elem" << " " << ::tpy::ListPrinter(copied) << "\n" << ::tpy::check_signals;
+}
+
+// def mapped_elem(c: bool) -> None:
+//     t = (Named(1), 0)
+//     # mapped-elem: a dict of strings read off the element.
+//     v = {1: t[0].s}  # tpyc: ok
+//     if c:
+//         t = (Named(10), 0)
+//     v[2] = t[0].s
+//     print("mapped-elem", v[1][-1], v[2][-2:])
+void mapped_elem(bool c) {
+    auto __tup_1 = std::tuple<Named, int32_t>{Named(1), 0};
+    Named __slot_1 = std::move(std::get<0>(__tup_1));
+    std::tuple<Named*, int32_t> t{&__slot_1, std::move(std::get<1>(__tup_1))};
+    ::tpy::ordered_map<int32_t, std::string> v = ::tpy::ordered_map<int32_t, std::string>({{1, std::get<0>(t)->s}});
+    std::optional<Named> __slot_2;
+    if (c) {
+        auto __tup_2 = std::tuple<Named, int32_t>{Named(10), 0};
+        std::get<0>(t) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
+        std::get<1>(t) = std::move(std::get<1>(__tup_2));
+    }
+    ::tpy::__setitem__(v, 2, std::get<0>(t)->s);
+    std::cout << "mapped-elem" << " " << ::tpy::__getitem__(::tpy::__getitem__(v, 1), -1) << " " << ::tpy::str_slice(::tpy::__getitem__(v, 2), ::tpy::BasicSlice{-2, std::nullopt}) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -2820,6 +3293,21 @@ void nested_own_param(Box& v) {
 //     owning_rebind_alias(Box(3))
 //     HCtor(Box(3))
 //     nested_own_param(Box(3))
+//     untracked_two_hop(True)
+//     untracked_strview(True)
+//     untracked_value_view(True, "a" * 40, "b" * 40)
+//     untracked_fresh_view(True)
+//     untracked_match_capture(True)
+//     untracked_for_unpack(True)
+//     untracked_literal_unpack(True)
+//     untracked_chained(True)
+//     untracked_call_unpack(True)
+//     retain_binding(True)
+//     retain_statement(True)
+//     tuple_view(True)
+//     range_field(True)
+//     copied_elem(True)
+//     mapped_elem(True)
 void main() {
     Box v = Box(5);
     Box w = Box(6);
@@ -3041,6 +3529,21 @@ void main() {
     (void)(HCtor(__tmp_101));
     Box __tmp_102 = Box(3);
     ::tpyapp::main::nested_own_param(__tmp_102);
+    ::tpyapp::main::untracked_two_hop(true);
+    ::tpyapp::main::untracked_strview(true);
+    ::tpyapp::main::untracked_value_view(true, (::tpy::str_repeat("a", 40)), (::tpy::str_repeat("b", 40)));
+    ::tpyapp::main::untracked_fresh_view(true);
+    ::tpyapp::main::untracked_match_capture(true);
+    ::tpyapp::main::untracked_for_unpack(true);
+    ::tpyapp::main::untracked_literal_unpack(true);
+    ::tpyapp::main::untracked_chained(true);
+    ::tpyapp::main::untracked_call_unpack(true);
+    ::tpyapp::main::retain_binding(true);
+    ::tpyapp::main::retain_statement(true);
+    ::tpyapp::main::tuple_view(true);
+    ::tpyapp::main::range_field(true);
+    ::tpyapp::main::copied_elem(true);
+    ::tpyapp::main::mapped_elem(true);
 }
 
 
@@ -3058,8 +3561,9 @@ void HM::repoint(Box& v) {
     auto __tup_1 = ::tpyapp::main::make_mixed(1, v);
     Box __slot_1 = std::move(std::get<0>(__tup_1));
     std::tuple<Box*, Box*> p{&__slot_1, std::get<1>(__tup_1)};
+    std::optional<Box> __slot_2;
     auto __tup_2 = ::tpyapp::main::make_mixed(2, v);
-    (*std::get<0>(p)) = std::move(std::get<0>(__tup_2));
+    std::get<0>(p) = &*(__slot_2 = std::move(std::get<0>(__tup_2)));
     std::get<1>(p) = std::get<1>(__tup_2);
     std::tuple<Box*, Box*> q = p;
     std::get<0>(q)->n = ::tpy::add_check<int32_t>(std::get<0>(q)->n, 100);
@@ -3076,9 +3580,13 @@ void HM::repoint(Box& v) {
 // # (the warned copy into an owned position), borrowed-place and field-place
 // # (the warned mutation of storage the binding still borrows), walk-rebind
 // # and copy-carry (a loop rebind's warned slot reuse, run once), and
-// # loop-two-site, loop-two-site-two-hop, loop-two-site-while and
-// # loop-three-site (a loop rebind's warned clobber of a live alias,
-// # BUGS.md#loop-two-site-rebind-clobbers-alias, run once).
+// # loop-two-site, loop-two-site-two-hop and loop-two-site-while (a loop
+// # rebind's warned clobber of a live alias,
+// # BUGS.md#loop-rebind-site-slot-reuse-warned, run once). The untracked-*,
+// # retain-*, tuple-view, range-field, copied-elem and mapped-elem sections bind
+// # a holder by a path no tracked loan records (two hops in, a view, a capture,
+// # a callee keeping a pointer): every rebind takes storage of its own, so the
+// # old object outlives it.
 // import asyncio
 //
 // V = Box(2)
@@ -3110,7 +3618,8 @@ void HM::repoint(Box& v) {
 // print("module-call", c0b.n, c1b.n, C[0].n, C[1].n)
 //
 // # module-call-alias: a function handing out the tuple global is an alias no
-// # loan records, so the rebind gives the new element a static of its own.
+// # loan records; the rebind gives the new element a static of its own, as every
+// # module-level rebind does.
 // P = make_mixed(1, V)
 //
 // S = grab()
@@ -3119,13 +3628,21 @@ void HM::repoint(Box& v) {
 // S[0].n += 100
 // print("module-call-alias", S2[0].n, P[0].n)
 //
+// # module-call-alias-scalar: the scalar twin, a function handing out the global
+// # itself; the old object survives the rebind.
+// B = Box(10)
+//
+// SB = grab_box()
+// B = Box(9)  # tpyc: ok
+// SB.n += 100
+// print("module-call-alias-scalar", SB.n, B.n)
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
-    static std::optional<Box> __global_slot_4;
     ::tpystd::asyncio::__tpy_init();
     static Box __global_slot_1 = Box(2);
     V = &__global_slot_1;
@@ -3139,6 +3656,7 @@ void __tpy_init() {
     saved = std::get<0>(__tup_2);
     auto& __tup_3 = M;
     saved2 = std::get<0>(__tup_3);
+    static std::optional<Box> __global_slot_4;
     for (int32_t i = 0; i < 2; ++i) {
         auto __tup_4 = ::tpyapp::main::make_mixed((::tpy::add_check<int32_t>(10, i)), (*V));
         std::get<0>(M) = &*(__global_slot_4 = std::move(std::get<0>(__tup_4)));
@@ -3187,6 +3705,13 @@ void __tpy_init() {
     std::get<1>(P) = std::get<1>(__tup_12);
     std::get<0>(S)->n = ::tpy::add_check<int32_t>(std::get<0>(S)->n, 100);
     std::cout << "module-call-alias" << " " << std::get<0>(S2)->n << " " << std::get<0>(P)->n << "\n" << ::tpy::check_signals;
+    static Box __global_slot_13 = Box(10);
+    B = &__global_slot_13;
+    SB = &(::tpyapp::main::grab_box());
+    static std::optional<Box> __global_slot_14;
+    B = &*(__global_slot_14 = Box(9));
+    SB->n = ::tpy::add_check<int32_t>(SB->n, 100);
+    std::cout << "module-call-alias-scalar" << " " << SB->n << " " << B->n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

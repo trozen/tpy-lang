@@ -18,11 +18,11 @@ namespace tpyapp::main {
 //         saved = p
 //     print(saved.x, saved.y)
 void rebind_gap() {
-    std::optional<Point> __slot_3;
     Point __slot_1 = Point(0, 0);
     Point* p = &__slot_1;
     Point __slot_2 = Point(0, 0);
     Point* saved = &__slot_2;
+    std::optional<Point> __slot_3;
     for (int32_t i = 0; i < 3; ++i) {
         p = &*(__slot_3 = Point(i, i));
         saved = p;

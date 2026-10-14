@@ -5,17 +5,17 @@
 
 namespace tpyapp::main {
 
-// # The two sites in a generator body: the same warning at the first site
-// # (BUGS.md#loop-two-site-rebind-clobbers-alias).
+// # The two sites in a generator body: the same warning at the second site
+// # (BUGS.md#loop-rebind-site-slot-reuse-warned).
 // def loop_two_site_gen() -> Iterator[int32]:
 //     p = Point(0)
 //     p = Point(1)
 //     held = p
 //     for i in range(2):
 //         held = p
-//         p = Point(3 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
+//         p = Point(3 + i)  # tpyc: ok
 //         yield p.x                                                                          # -> S_RESUME_0
-//         p = Point(5 + i)
+//         p = Point(5 + i)  # tpyc: warning(/'held' will not keep the object it was given/)
 //     held.x += 100
 //     yield held.x                                                                           # -> S_RESUME_1
 inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_two_site_gen::__next__() {
@@ -23,7 +23,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_two_site_gen::__n
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         p = &*(__ptr_slot_f0 = Point(0));
-        (*p) = Point(1);
+        p = &*(__ptr_slot_f1 = Point(1));
         held = &((*p));
         __for_i_0.emplace(int32_t(0));
         __for_stop_0.emplace(static_cast<int32_t>(2));
@@ -31,7 +31,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_two_site_gen::__n
         continue;
     }
     case S_RESUME_0: {  // after: yield p.x
-        (*p) = Point((::tpy::add_check<int32_t>(5, i)));
+        p = &*(__ptr_slot_f3 = Point((::tpy::add_check<int32_t>(5, i))));
         __state = S_JOIN_0;
         continue;
     }
@@ -47,9 +47,62 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_two_site_gen::__n
         }
         i = ((*__for_i_0))++;
         held = &((*p));
-        p = &*(__ptr_slot_f1 = Point((::tpy::add_check<int32_t>(3, i))));
+        p = &*(__ptr_slot_f2 = Point((::tpy::add_check<int32_t>(3, i))));
         __state = S_RESUME_0;
         return p->x;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # The unpack rebinding a generator local: `keep` takes the first pass's
+// # object and the unpack rebuilds that slot on the next pass, warned as the
+// # assignment twin is (BUGS.md#loop-rebind-site-slot-reuse-warned).
+// def loop_unpack_site_gen() -> Iterator[int32]:
+//     a = Point(1)
+//     keep = a
+//     yield a.x                                                                                # -> S_RESUME_0
+//     for i in range(3):
+//         a, b = mk2(10 * i)  # tpyc: warning(/'keep' will not keep the object it was given/)
+//         if i == 0:
+//             keep = a
+//         yield a.x + b.x                                                                      # -> S_RESUME_1
+//     yield keep.x                                                                             # -> S_RESUME_2
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_loop_unpack_site_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        a = &*(__ptr_slot_f0 = Point(1));
+        keep = &((*a));
+        __state = S_RESUME_0;
+        return a->x;
+    }
+    case S_RESUME_0: {  // after: yield a.x
+        __for_i_0.emplace(int32_t(0));
+        __for_stop_0.emplace(static_cast<int32_t>(3));
+        __state = S_JOIN_0;
+        continue;
+    }
+    case S_RESUME_2: {  // after: yield keep.x
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_RESUME_1:  // after: yield a.x + b.x
+    case S_JOIN_0: {
+        if (!((*__for_i_0) < (*__for_stop_0))) {
+            __state = S_RESUME_2;
+            return keep->x;
+        }
+        i = ((*__for_i_0))++;
+        auto __tup_1 = ::tpyapp::main::mk2((::tpy::mul_check<int32_t>(10, i)));
+        a = &*(__ptr_slot_f1 = std::move(std::get<0>(__tup_1)));
+        b.emplace(std::move(std::get<1>(__tup_1)));
+        if ((i == 0)) {
+            keep = a;
+        }
+        __state = S_RESUME_1;
+        return (::tpy::add_check<int32_t>(a->x, (*b).x));
     }
     case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
     }

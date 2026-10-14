@@ -22,7 +22,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_handler_raise_fina
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        p.emplace(P(1));
+        p = &*(__ptr_slot_f0 = P(1));
         __state = S_RESUME_0;
         return 0;
     }
@@ -35,13 +35,13 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_handler_raise_fina
                     P __tmp_1 = (*p);
                     ::tpyapp::main::take(std::move(__tmp_1));
                     ::tpyapp::main::boom(true);
-                    p.emplace(P(5));
+                    p = &*(__ptr_slot_f1 = P(5));
                 }
             } catch (...) {
-                std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n" << ::tpy::check_signals;
+                std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
                 throw;
             }
-            std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__((*p).xs) << "\n" << ::tpy::check_signals;
+            std::cout << "gen_handler_raise_finally" << " " << ::tpy::__len__(p->xs) << "\n" << ::tpy::check_signals;
         }
         __state = S_RESUME_1;
         return 1;

@@ -8,19 +8,20 @@
 namespace tpyapp::main {
 
 struct Resource;
-struct Base;
-struct Child;
 
+extern std::vector<std::string>* DROPS;
 inline constexpr std::string_view __name__ = "__main__";
 
-// def test_straight():
+// def drops() -> Own[list[str]]:
+std::vector<std::string> drops();
+// def test_straight() -> None:
 void test_straight();
-// def test_loop():
+// def test_loop() -> None:
 void test_loop();
-// def test_conditional(flag: int32):
+// def test_conditional(flag: int32) -> None:
 void test_conditional(int32_t flag);
-// def test_inherit():
-void test_inherit();
+// def main() -> None:
+void main();
 
 // class Resource:
 struct Resource {
@@ -28,14 +29,14 @@ struct Resource {
     std::string name;
     bool __tpy_owned_ = true;
 
-    // def __init__(self, name: str):
+    // def __init__(self, name: str) -> None:
     explicit Resource(std::string_view name);
     Resource(const Resource&) = delete;
     Resource& operator=(const Resource&) = delete;
     Resource(Resource&& other) noexcept;
     Resource& operator=(Resource&& other) noexcept;
 
-    // def __del__(self):
+    // def __del__(self) -> None:
     ~Resource();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Resource";
 };
@@ -45,51 +46,8 @@ inline std::ostream& operator<<(std::ostream& os, const Resource& obj) {
     return os;
 }
 
-// class Base:
-struct Base {
-    // tag: str
-    std::string tag;
-    bool __tpy_owned_ = true;
 
-    // def __init__(self, tag: str):
-    explicit Base(std::string_view tag);
-    Base(const Base&) = delete;
-    Base& operator=(const Base&) = delete;
-    Base(Base&& other) noexcept;
-    Base& operator=(Base&& other) noexcept;
-
-    // def __del__(self):
-    ~Base();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Base& obj) {
-    ::tpy::print_object_default(os, "Base", obj);
-    return os;
-}
-
-// class Child(Base):
-struct Child : Base {
-
-    // def __init__(self, tag: str):
-    explicit Child(std::string_view tag);
-    Child(const Child&) = delete;
-    Child& operator=(const Child&) = delete;
-    Child(Child&& other) noexcept;
-    Child& operator=(Child&& other) noexcept;
-
-    // def __del__(self):
-    ~Child();
-    static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Child& obj) {
-    ::tpy::print_object_default(os, "Child", obj);
-    return os;
-}
-
-
-// def __init__(self, name: str):
+// def __init__(self, name: str) -> None:
 //     self.name = name
 inline Resource::Resource(std::string_view name) : name(name) {}
 
@@ -104,58 +62,12 @@ inline Resource& Resource::operator=(Resource&& other) noexcept {
     return *this;
 }
 
-// def __del__(self):
-//     print("drop", self.name)
+// def __del__(self) -> None:
+//     DROPS.append(self.name)
 inline Resource::~Resource() {
     if (!this->__tpy_owned_) return;
-    ::tpy::DeferSignals __tpy_defer_signals;
-    std::cout << "drop" << " " << this->name << "\n" << ::tpy::check_signals;
-}
-
-// def __init__(self, tag: str):
-//     self.tag = tag
-inline Base::Base(std::string_view tag) : tag(tag) {}
-
-inline Base::Base(Base&& other) noexcept : tag(std::move(other.tag)) {
-    other.__tpy_owned_ = false;
-}
-inline Base& Base::operator=(Base&& other) noexcept {
-    if (this != &other) {
-        this->~Base();
-        new (this) Base(std::move(other));
-    }
-    return *this;
-}
-
-// def __del__(self):
-//     print("~Base", self.tag)
-inline Base::~Base() {
-    if (!this->__tpy_owned_) return;
-    ::tpy::DeferSignals __tpy_defer_signals;
-    std::cout << "~Base" << " " << this->tag << "\n" << ::tpy::check_signals;
-}
-
-// def __init__(self, tag: str):
-//     super().__init__(tag)
-inline Child::Child(std::string_view tag) : Base(tag) {}
-
-inline Child::Child(Child&& other) noexcept : Base(std::move(other)) {
-    other.__tpy_owned_ = false;
-}
-inline Child& Child::operator=(Child&& other) noexcept {
-    if (this != &other) {
-        this->~Child();
-        new (this) Child(std::move(other));
-    }
-    return *this;
-}
-
-// def __del__(self):
-//     print("~Child", self.tag)
-inline Child::~Child() {
-    if (!this->__tpy_owned_) return;
-    ::tpy::DeferSignals __tpy_defer_signals;
-    std::cout << "~Child" << " " << this->tag << "\n" << ::tpy::check_signals;
+    std::string __tmp_1{this->name};
+    DROPS->push_back(std::move(__tmp_1));
 }
 void __tpy_init();
 } // namespace tpyapp::main

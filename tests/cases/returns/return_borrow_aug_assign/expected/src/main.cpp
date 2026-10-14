@@ -68,9 +68,9 @@ void test_no_borrow_no_warn() {
 //     data += [Point(5, 6)]          # tpyc: ok
 //     print(len(data))               # 3
 void test_borrow_cleared_no_warn() {
-    std::optional<Point> __slot_1;
     std::vector<Point> data = {Point(1, 2), Point(3, 4)};
     Point* first = &(::tpyapp::main::get_first(data));
+    std::optional<Point> __slot_1;
     first = &*(__slot_1 = Point(9, 9));
     ::tpy::list_extend(data, {Point(5, 6)});
     std::cout << ::tpy::__len__(data) << "\n" << ::tpy::check_signals;

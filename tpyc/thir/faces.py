@@ -3075,6 +3075,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "res.frame_unpack",             # frame-target tuple unpack (rvalue source)
     "res.unpack_union_elem",        # value-tuple call source with a value-
                                     # union element at the frame unpack
+    "res.unpack_rebind_ptr",        # REBIND_PTR unpack target off an
+                                    # owned element, into the site's field
     "res.unpack_opt_ptr",           # optional_to_ptr unpack target bind
     "res.unpack_storage_wrap",      # alias frame targets off a storage-form
                                     # lvalue: tuple_to_pointer off the lvalue
@@ -3310,6 +3312,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr.walrus_frame_alias_call", # `T*` alias field off a BORROW call:
                                     # `(w = &(dict_get_default(d, k, fb)), *w)`
     "expr.walrus_frame_btuple",     # borrow tuple field: `(bt = v, bt)`
+    "expr.walrus_frame_rebind_ptr", # REBIND_PTR field off an rvalue, into
+                                    # the site's field:
+                                    # `(xs = &*(__ptr_slot_f0 = v), *xs)`
     "expr.walrus_frame_field",      # plain field: `(n = v)`
     "ifexpr.isin_narrow_str",       # isinstance-narrowed select at a str
                                     # result: the shared view/owned verdict
