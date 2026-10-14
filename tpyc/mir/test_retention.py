@@ -182,7 +182,8 @@ def test_optional_in_place_exempts_only_its_own_holder(live_alias: bool) -> None
     ))
     result = analyze(fn)
     assert {c.holder for c in result.conflicts} == ({MIRPlace(SAVED)} if live_alias else set())
-    assert all(c.affected == MIRReferent(MIRPlace(CURRENT, (MIROptionalPayload(),)), True) for c in result.conflicts)
+    # An Optional parameter's payload names the parameter outside the body (`external_origin`).
+    assert all(c.affected == MIRReferent(MIRPlace(CURRENT), True) for c in result.conflicts)
 
 
 def test_scalar_field_write_is_shared_mutation_not_replacement() -> None:

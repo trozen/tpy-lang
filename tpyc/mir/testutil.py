@@ -19,7 +19,7 @@ from .nodes import (
     MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements, place_layout,
 )
 from .region_flow import MIRRegionFlow
-from .coverage import container_view_holder, owned_container, owned_tuple
+from .coverage import PAYLOAD_RECORD, container_view_holder, owned_container, owned_tuple
 from .validate import statement_reads
 
 # The structural writes the interpreter runs for a native method stub, by
@@ -298,7 +298,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRConstruct():
                     target = slots[stmt.target.root]
                     typ = (place_layout(MIRPlace(stmt.target.root), slots).type
-                           if stmt.target.projections == (MIROptionalPayload(), MIRDeref())
+                           if stmt.target.projections == PAYLOAD_RECORD
                            else target.container_layout.subscript.type
                            if stmt.target.projections == (MIRContainerElements(),) else target.type)
                     layout = records[typ]

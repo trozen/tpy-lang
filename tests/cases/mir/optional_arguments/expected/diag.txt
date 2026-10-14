@@ -1,0 +1,11 @@
+main.py:31: warning: copies Q | None into field; use copy() to make this explicit
+main.py:42: warning: copies Q | None into field; use copy() to make this explicit
+main.py:72: warning: copies Q | None into field; use copy() to make this explicit
+main.py:247: warning: argument 'p' contains 'p.items', which 'grow_both' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(p)') or restructure so the call does not hand over both
+main.py:261: warning: argument 'h' contains 'h.p', which 'replace_holder' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(h)') or restructure so the call does not hand over both
+main.py:273: warning: argument 'h.p' is what 'clear_read' modifies through parameter 'h' while it still uses 'p'; pass a copy ('copy(h.p)') or restructure so the call does not hand over both
+main.py:278: warning: argument 'h.p' is what 'H.clear_read' modifies through parameter 'self' while it still uses 'p'; pass a copy ('copy(h.p)') or restructure so the call does not hand over both
+main.py:290: warning: argument 'h.p' is what 'replace_read' modifies through parameter 'h' while it still uses 'p'; pass a copy ('copy(h.p)') or restructure so the call does not hand over both
+main.py:299: warning: argument 'h.p' is what 'relay' modifies through parameter 'h' while it still uses 'p'; pass a copy ('copy(h.p)') or restructure so the call does not hand over both
+main.py:320: warning: argument 'o' points into 'h.p', which 'wr' modifies through parameter 'p' while it still uses 'q'; pass a copy ('copy(o)') or restructure so the call does not hand over both
+main.py:409: warning: argument 't' contains 't.text', which 'retext_view' modifies through parameter 'b' while it still uses 'a'; pass a copy ('copy(t)') or restructure so the call does not hand over both

@@ -13,8 +13,8 @@ from ..thir.scalar_leaves import (
     record_type, storage_leaf, view_compatible, view_leaf,
 )
 from ..type_def_registry import ParamPassing, type_def_of
-from ..typesys import NominalType, OptionalType, OwnType, ReadonlyType, TpyType, unwrap_readonly, unwrap_ref_type
-from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS
+from ..typesys import NominalType, OwnType, ReadonlyType, TpyType, unwrap_readonly, unwrap_ref_type
+from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, optional_parameter_layout
 from .coverage import MIRUnsupported, literal_type, plain, require, scalar_param
 from .nodes import (
     MIRConstant, MIRContainerLayout, MIRField, MIRFieldId, MIRMemberInitMode, MIROptionalConstruct, MIRRecordLayout,
@@ -73,17 +73,19 @@ def owned_record_parameter(p: th.THIRParam) -> NominalType | None:
             and isinstance(bare, NominalType) and record_type(bare) else None)
 
 
-def optional_parameter(p: th.THIRParam) -> NominalType | None:
-    """The payload record of an Optional record parameter (`P | None`): the
-    caller's pointer at the payload it lends readonly, or null. None for
-    anything else."""
-    layout = p.optional_layout
-    payload = layout.payload if isinstance(layout, th.THIROptionalLayout) else None
-    typ = unwrap_readonly(unwrap_ref_type(p.type))
-    return (payload.type if isinstance(payload, th.THIRBorrowedRecord) and payload.readonly
-            and p.passing is ParamPassing.POINTER and p.borrowed_record is None
-            and isinstance(typ, OptionalType) and not typ.force_pointer_repr and typ.inner == payload.type
-            and record_type(payload.type) else None)
+def optional_parameter(p: th.THIRParam) -> th.THIROptionalLayout | None:
+    """The payload layout of an Optional parameter MIR models, at a
+    constructor and a call alike (`optional_parameter_layout`): the
+    caller's pointer at its payload record, or null; or a scalar Optional
+    by value. None for anything else."""
+    return (optional_parameter_layout(p.type, p.passing, p.optional_layout)
+            if p.borrowed_record is None else None)
+
+
+def optional_record_parameter(p: th.THIRParam) -> NominalType | None:
+    """The payload record of an Optional record parameter, else None."""
+    layout = optional_parameter(p)
+    return layout.payload.type if layout is not None and isinstance(layout.payload, th.THIRBorrowedRecord) else None
 
 
 def view_parameter(p: th.THIRParam) -> bool:
@@ -291,7 +293,7 @@ def _optional_initializer(expr: th.THIRExpr, params: Mapping[str, th.THIRParam],
                     and name.form is th.Form.BORROW, "constructor form conversion")
             plain(name, {"name", "is_last_use", "is_movable", "optional_read"})
             param = params.get(name.name)
-            require(expr, param is not None and optional_parameter(param) == payload
+            require(expr, param is not None and optional_record_parameter(param) == payload
                     and name.optional_read == th.THIROptionalRead(param.optional_layout, False),
                     "constructor initializer needs parameter")
             require(expr, definition.layout.copyable, "constructor copies a noncopyable record")

@@ -27,8 +27,8 @@ from .nodes import (
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .coverage import (
-    call_place, container_holder, container_view_holder, owned_tuple, path_step, scalar_member, scalar_slot,
-    view_holder, view_member,
+    call_place, container_holder, container_view_holder, optional_record_holder, owned_tuple, path_step,
+    scalar_member, scalar_slot, view_holder, view_member,
 )
 
 
@@ -175,6 +175,10 @@ def object_keys(slot: MIRSlot, layouts: Mapping[TpyType, MIRRecordLayout]) -> tu
     through inline record members, whose layouts come with the record's."""
     if slot.value_kind is MIRValueKind.OWNED and slot.container_layout is None and record_type(slot.type):
         pass
+    elif _optional_record_parameter(slot):
+        # The payload record an Optional parameter lends, keyed like a
+        # borrowed record parameter's (`external_origin`).
+        return _member_keys(MIRPlace(slot.id), layouts.get(origin_type(slot)), layouts)
     elif not (slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.BORROWED
               and record_type(slot.type)):
         return ()
@@ -313,10 +317,25 @@ def _project(refs: frozenset[MIRReferent],
 def external_origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPlace:
     """What a parameter or global leaf names outside the body: its own
     identity, except that a container view (a Span) names the elements
-    region it views, so an element read or a write through it lands there."""
+    region it views, so an element read or a write through it lands there,
+    and an Optional record parameter's payload names the parameter itself
+    -- the record it lends, as a borrowed record parameter's does."""
     if not leaf.projections and container_view_holder(slots[leaf.root]):
         return MIRPlace(leaf.root, (MIRContainerElements(),))
+    if leaf.projections == (MIROptionalPayload(),) and _optional_record_parameter(slots[leaf.root]):
+        return MIRPlace(leaf.root)
     return leaf
+
+
+def origin_type(root: MIRSlot) -> TpyType:
+    """The type of the object a referent rooted at `root` names: the slot's
+    own, except that an Optional record parameter's origin
+    (`external_origin`) is the payload record it lends."""
+    return root.optional_layout.type if _optional_record_parameter(root) else root.type
+
+
+def _optional_record_parameter(slot: MIRSlot) -> bool:
+    return slot.kind is MIRSlotKind.PARAMETER and optional_record_holder(slot)
 
 
 def resolve_referents(place: MIRPlace, state: MIRReferents,
@@ -455,12 +474,12 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
                 if key not in state:
                     raise MIRUnseededLoan(key, "record move of an object with no stored loan")
             return {key: state[source_key] for key, source_key in moved.items()}
-        case MIRCall(summary=summary) if summary.transfers:
+        case MIRCall(present_effects=effects) if effects.transfers:
             # An owned record result holds exactly the loans its transfers name.
             filled: dict[MIRPlace, frozenset[MIRReferent]] = {}
             for key, path in keys.items():
                 loans = frozenset().union(*(
-                    transfer_loans(value, t, key, state, slots) for t in summary.transfers
+                    transfer_loans(value, t, key, state, slots) for t in effects.transfers
                     if isinstance(t.holder, MIRResultHolder) and tuple(map(path_step, t.path)) == path))
                 if not loans:
                     raise MIRUnseededLoan(key, "record storage filled with no stored loan")
@@ -533,7 +552,8 @@ def transfer_loans(call: MIRCall, transfer: MIRLoanTransfer, key: MIRPlace, stat
     """The caller's loans a transfer's source names at a call: a literal's
     static storage, or what the source argument's place (`call_place`)
     holds -- a view's or a lent owned leaf's referents, or the loan a view
-    member of its object stores."""
+    member of its object stores. `transfer` is one of the call's
+    `present_effects`."""
     if isinstance(transfer.source, MIRStaticLoan):
         return frozenset({MIRReferent(key, external=True, static=True)})
     loans = resolve_referents(call_place(call, transfer.source, transfer.source_path, slots), state, slots)
@@ -547,7 +567,7 @@ def apply_transfers(call: MIRCall, state: dict[MIRPlace, frozenset[MIRReferent]]
     """Join each loan a callee may store in an argument's object into that
     object's stored-loan entry, to a fixpoint: one transfer's source may be
     another's holder, and the arguments may be one object."""
-    transfers = sorted((t for t in call.summary.transfers if not isinstance(t.holder, MIRResultHolder)),
+    transfers = sorted((t for t in call.present_effects.transfers if not isinstance(t.holder, MIRResultHolder)),
                        key=lambda t: (t.holder, len(t.path)))
     changed = True
     while changed:
@@ -577,7 +597,7 @@ def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRS
     its elements region, so a `result` holder that is no container takes
     that region of a container argument. A path is never re-projected."""
     origins: set[MIRReferent] = set()
-    for origin in call.summary.returns:
+    for origin in call.present_effects.returns:
         argument = slots[call.arguments[origin.parameter]]
         refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots)
         if not refs:
@@ -597,7 +617,7 @@ def call_return_problem(call: MIRCall, result: MIRSlot, state: MIRReferents,
     elements region (its writes would land under that region, where no
     write of the container reaches); a view of an owned leaf needs an
     owned-leaf endpoint; a record holder a record or an elements region."""
-    for origin in call.summary.returns:
+    for origin in call.present_effects.returns:
         argument = slots[call.arguments[origin.parameter]]
         endpoint = origin.path[-1] if origin.path else None
         if container_holder(result):

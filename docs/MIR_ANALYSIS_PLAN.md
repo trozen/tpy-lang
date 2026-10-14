@@ -4165,16 +4165,20 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   views cannot hold the member (`_may_hold`); any other type may. A read
   after a killed fact refuses ("optional payload access without current
   presence proof").
-- **Constructors.** A `P | None` parameter (`definitions.optional_parameter`,
-  borrow form `const P*`) is admitted; `_optional_initializer` handles the
-  parameter copied into the field, `None`, and a composed `P(..)`
-  (`_composed_member`, shared with the record member arm, which both check
-  the record is movable). Caller constructs take an Optional operand: none,
+- **Constructors.** An Optional parameter is admitted by the predicate calls
+  share (`definitions.optional_parameter`, wrapping
+  `call_contract.optional_parameter_layout`): a `P | None` pointer at a
+  readonly or mutable payload, or a scalar `int32 | None` by value.
+  `_optional_initializer` handles the parameter copied into the field,
+  `None`, and a composed `P(..)` (`_composed_member`, shared with the
+  record member arm, which both check the record is movable). Caller constructs take an Optional operand: none,
   `&name`, `optional_to_ptr(field)`, an Optional name, or an argument
   temporary (the construct carries the raise of its payload copy).
-- **Conflicts pinned.** `alias(h, h)` (`o = a.p; b.p = None; o.x`),
-  `callee` (`o = h.p; clear(h); o.x`), `H.via_self`, `copy_both`: a
-  `replacement` conflict each. Narrowings ended by a write through another
+- **Conflicts pinned.** `callee` (`o = h.p; clear(h); o.x`) and
+  `H.via_self`: a `replacement` conflict each; `alias` (`o = a.p; b.p =
+  None; o.x`) and `copy_both`, whose conflict needs two parameters naming
+  one holder, publish it as an `alias_obligation` since an Optional holder
+  slot has a summary ([Optional parameters](#optional-parameters)). Narrowings ended by a write through another
   path (`fresh_alias`, `fresh_call`, `fresh_condition`) refuse. Safe
   siblings stay covered (`alias_read_first`, `alias_other_field`,
   `keep_other_field`, `refill`).
@@ -4189,9 +4193,6 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
     `if b.p is not None`): "optional field copy from a narrowed payload".
   - A whole-field store of a call's owned Optional result (`h.p =
     find(11)`): "record initializer type mismatch" (`store_found`).
-  - An Optional argument at a free-function or method call: "call needs
-    unwrapped scalar binding" (`optional_operand` serves constructor calls
-    only).
   - Union, tuple, scalar-Optional and `str | None` fields; payloads that
     hold a loan or have a record field: "unsupported record fields".
 - **Precision.** Presence runs before dependencies, so its kill rule is a
@@ -4210,6 +4211,70 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   (`pointers/escape_hoist_call_source` `while_nested_section`: a holder
   into a loop-local replaced before a read MIR cannot prove the inner loop
   skips; sema warns there too).
+
+#### Optional parameters
+
+A parameter `p: P | None` (payload a plain loan-free record) or `k: int32 |
+None` (a scalar payload) has a KNOWN summary, and every call kind binds its
+argument the same way. Analysis only: generated C++ is unchanged; which
+bodies MIR covers, their conflict verdicts and the argument-alias warnings
+change. Pinned by `tests/cases/mir/optional_arguments`.
+
+```python
+def peek(p: P | None) -> int32:     # summary KNOWN (was OPAQUE)
+    return p.v if p is not None else -1
+def relay(q: P, h: H) -> int32:     # covered (was "call needs finalized known summary")
+    return peek(None) + peek(q) + peek(h.p) + h.peek(q)
+def clear_read(p: P | None, h: H) -> int32:   # conflict: alias_obligation
+    h.p = None
+    return p.v if p is not None else 0
+clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
+                     # modifies through parameter 'h' while it still uses 'p'; ...
+```
+
+- **Binding.** A record-payload Optional parameter is a POINTER at the
+  caller's payload record (C++ `const P*` / `P*`), readonly iff the payload
+  is; a scalar-payload Optional parameter is the callee's own VALUE. One
+  admission predicate serves constructors and calls
+  (`call_contract.optional_parameter_layout`, wrapped by
+  `definitions.optional_parameter`); the summary's `MIRParameterBinding`
+  carries the THIR payload layout (`optional_layout`) and, for a record
+  payload, the record it borrows; `parameter_binding_problem` checks both.
+- **Origin.** The payload record an Optional parameter lends names the
+  parameter itself outside the body (`dependencies.external_origin`, keyed
+  like a borrowed record parameter's in `object_keys`), so writes under the
+  payload, stored loans (`_transfers`) and alias obligations read it like a
+  borrowed record parameter; the object it names is the payload record
+  (`dependencies.origin_type`), so retention types it as that record. A
+  store under any other non-owned root keeps the summary opaque ("summary
+  store under an unmodeled holder").
+- **Summary paths** carry no payload step: a path under an Optional
+  parameter is the path under its payload record, and `coverage.call_place`
+  adds the `payload, deref` prefix back at each call, for a BORROWED
+  payload layout only (a scalar payload has no place under it). Presence
+  tests, Optional copies and constructs on the parameter's holder slot are
+  accepted where the field forms are (`summaries._optional_place`).
+- **Callers.** Free-function, method and constructor calls bind the argument
+  through the one `optional_operand` pair (`_Coverage` / `_Builder` in
+  `lower.py`): null, `&name`, `optional_to_ptr(field)`, an argument
+  temporary, an Optional holder, a narrowed name (a narrowed Optional name is
+  a record source, `record_source`). A scalar payload is built into a
+  temporary of the full expression. Passing a narrowed Optional or union
+  name to a plain parameter is an ordinary scalar or record argument. A
+  `None` argument is ABSENT (`MIRCall.absent`, checked against the empty
+  construct by the validator): the callee's writes, stored loans, return
+  origins and no-alias obligations through that parameter name no caller
+  storage. Every call-effect consumer reads them through the one filtered
+  view, `MIRCall.present_effects`.
+- **Kept refusals.** A ternary Optional argument ("unsupported optional
+  argument"); a callee returning its payload as a borrowed record
+  ("unsupported metadata: optional_read"); a record-payload temporary at a
+  constructor's Optional parameter (`H(Q(4))`, "named argument crosses
+  unproven evaluation order"; a scalar one, `U(1, 5)`, is covered) or a
+  temporary in a body without THIR's temporary plan; Optional payload kinds not
+  modeled (`str | None`, containers, `Own[P | None]`, BigInt `int | None`);
+  payloads holding a loan ("wrapper holds a borrow"). TODO.md MIR entry,
+  "Left by the Optional-parameters unit".
 
 #### Argument-alias obligations: the first MIR diagnostic
 

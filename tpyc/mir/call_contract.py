@@ -6,8 +6,8 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING
 
 from ..thir.nodes import (
-    THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunctionIdentity, THIRResolvedCallee,
-    THIRStubCallee, THIRStubContract, THIRStubIdentity,
+    THIRBorrowedRecord, THIRCallableSignature, THIRFieldIdentity, THIRFunctionIdentity, THIROptionalLayout,
+    THIRResolvedCallee, THIRStubCallee, THIRStubContract, THIRStubIdentity,
 )
 from ..thir.scalar_leaves import (
     container_element, container_view, holds_loan, modeled_members, native_container_subject, native_container_type,
@@ -16,7 +16,7 @@ from ..thir.scalar_leaves import (
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import (
-    NominalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
+    NominalType, OptionalType, OwnType, ReadonlyType, RefType, Representation, TpyType, VoidType, is_owned_leaf,
     is_protocol_type,
     passing_representation, return_representation, unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
@@ -154,11 +154,14 @@ class MIRParameterBinding:
     through it as a readonly borrow (False for a by-value parameter, which
     reaches nothing of the caller's), and the record a record parameter
     borrows. A stub's protocol parameter keeps its protocol type: which
-    leaf it binds is the argument's fact, checked at each call."""
+    leaf it binds is the argument's fact, checked at each call. An Optional
+    parameter (`optional_parameter_layout`) carries its payload layout, and
+    an Optional record parameter borrows its payload record."""
     type: TpyType
     passing: ParamPassing
     readonly: bool
     borrowed_record: THIRBorrowedRecord | None = None
+    optional_layout: THIROptionalLayout | None = None
 
     @property
     def protocol(self) -> bool:
@@ -282,6 +285,45 @@ def container_result(typ: TpyType) -> THIRBorrowedRecord | None:
     return THIRBorrowedRecord(bare, isinstance(unwrap_ref_type(typ), ReadonlyType))
 
 
+def reference_problem(ref: THIRBorrowedRecord, typ: TpyType) -> str | None:
+    """Check a borrowed-record fact against the type it is read at: a
+    record at a definite access, of exactly the type's record."""
+    if not (record_type(ref.type) and type(ref.readonly) is bool):
+        return "unsupported reference fact"
+    return None if unwrap_readonly(unwrap_ref_type(typ)) == ref.type else "reference type mismatch"
+
+
+def optional_layout_problem(typ: TpyType, layout: object) -> str | None:
+    """Check THIR's payload layout against the Optional type it lays out:
+    a pointer at the type's own payload record, never lending more access
+    than the type grants, or the type's own scalar leaf."""
+    outer = unwrap_ref_type(typ)
+    bare = unwrap_readonly(outer)
+    if not isinstance(layout, THIROptionalLayout) or not isinstance(bare, OptionalType) or bare.force_pointer_repr:
+        return "unsupported optional layout"
+    payload = layout.payload
+    if isinstance(payload, THIRBorrowedRecord):
+        if (problem := reference_problem(payload, bare.inner)) is not None:
+            return problem
+        if not (payload.readonly or bare == outer and unwrap_readonly(bare.inner) == bare.inner):
+            return "optional layout increases access"
+        return None
+    return None if storage_leaf(payload) and unwrap_readonly(bare.inner) == payload else "unsupported optional payload"
+
+
+def optional_parameter_layout(typ: TpyType, passing: ParamPassing | None,
+                              layout: object) -> THIROptionalLayout | None:
+    """The one admission of an Optional parameter, at a constructor and at
+    a call alike: `P | None` as a pointer at the caller's payload record
+    (at the payload's published access), or an inert scalar Optional by
+    value. Returns the payload layout THIR published; None for any other
+    parameter."""
+    if optional_layout_problem(typ, layout) is not None:
+        return None
+    record = isinstance(layout.payload, THIRBorrowedRecord)
+    return layout if passing is (ParamPassing.POINTER if record else ParamPassing.VALUE) else None
+
+
 def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> str | None:
     """Check one binding against its declared type: the passing is the
     type's own at one of the two const verdicts, and the access agrees with
@@ -306,6 +348,14 @@ def parameter_binding_problem(typ: TpyType, binding: 'MIRParameterBinding') -> s
     if binding.passing not in (typ.param_passing(False), typ.param_passing(True)):
         return "call parameter passing differs from its type"
     ref = binding.borrowed_record
+    layout = binding.optional_layout
+    if layout is not None or isinstance(declared, OptionalType):
+        # A record payload is borrowed at its own access; a scalar is the callee's value.
+        payload = layout.payload if isinstance(layout, THIROptionalLayout) else None
+        expected = (payload if isinstance(payload, THIRBorrowedRecord) else None,
+                    isinstance(payload, THIRBorrowedRecord) and payload.readonly)
+        return (None if optional_parameter_layout(typ, binding.passing, layout) is not None
+                and (ref, binding.readonly) == expected else "unsupported optional call parameter")
     if ref is not None:
         # Storage handed over is the callee's own, never a borrow of the caller's.
         if (handed or not isinstance(ref, THIRBorrowedRecord) or ref.type != bare
@@ -365,10 +415,8 @@ def result_problem(typ: TpyType, ref: THIRBorrowedRecord | None) -> str | None:
         declared = container_result(typ)
         return (None if declared is not None and declared.type == ref.type and type(ref.readonly) is bool
                 and (ref.readonly or not declared.readonly) else "invalid borrowed result")
-    if (not isinstance(ref, THIRBorrowedRecord) or type(ref.readonly) is not bool
+    if (not isinstance(ref, THIRBorrowedRecord) or reference_problem(ref, typ) is not None
             or not isinstance(typ, (RefType, ReadonlyType))
-            or not record_type(ref.type)
-            or unwrap_readonly(unwrap_ref_type(typ)) != ref.type
             or isinstance(unwrap_ref_type(typ), ReadonlyType) and not ref.readonly):
         return "invalid borrowed result"
     return None

@@ -8,7 +8,9 @@ from ..typesys import TpyType, unwrap_readonly
 
 from .call_contract import MIRAliasObligation, MIRParameterWrite
 from .coverage import call_place, container_holder, summary_path, whole_wrapper_field
-from .dependencies import MIRDependencies, MIRReferent, _referent, analyze_dependencies, resolve_referents
+from .dependencies import (
+    MIRDependencies, MIRReferent, _referent, analyze_dependencies, origin_type, resolve_referents,
+)
 from .dump import _location, _place, _write_step, obligation_text
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness
 from .nodes import (
@@ -100,7 +102,7 @@ def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bo
 
 def _referent_type(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> TpyType | None:
     """The type of the object a referent names, when its path is fields only."""
-    typ = slots[ref.place.root].type
+    typ = origin_type(slots[ref.place.root])
     for projection in ref.place.projections:
         if not isinstance(projection, MIRField):
             return None
@@ -248,9 +250,9 @@ def _call_obligation_conflicts(fn: MIRFunction, dependencies: MIRDependencies,
             call = statement_call(stmt)
             point = MIRPoint(block.id, index)
             state = dependencies.referents.get(point)
-            if call is None or not call.summary.obligations or state is None:
+            if call is None or not call.present_effects.obligations or state is None:
                 continue
-            for obligation in sorted(call.summary.obligations, key=_obligation_key):
+            for obligation in sorted(call.present_effects.obligations, key=_obligation_key):
                 write = obligation.written
                 affected = resolve_referents(call_place(call, write.parameter, write.path, slots), state, slots)
                 holder = MIRPlace(call.arguments[obligation.parameter])

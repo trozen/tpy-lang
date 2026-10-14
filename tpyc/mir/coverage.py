@@ -119,6 +119,12 @@ def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
     container argument (owned, borrowed, or a view)."""
     argument = slots[call.arguments[parameter]]
     through = argument.value_kind is MIRValueKind.BORROWED and not container_view_holder(argument)
+    if argument.value_kind is MIRValueKind.OPTIONAL:
+        # An Optional argument lends the record its payload points at; a
+        # scalar payload is the callee's own copy, under which no path lies.
+        if not optional_record_holder(argument):
+            raise MIRValidationError("call path under an Optional argument with no borrowed payload")
+        return MIRPlace(argument.id, PAYLOAD_RECORD + tuple(map(path_step, path)))
     return MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(path_step, path)))
 
 
@@ -130,7 +136,7 @@ def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tupl
     """The caller's places a call may write: each summarized write's
     parameter path (`call_place`)."""
     return tuple(call_place(call, write.parameter, write.path, slots)
-                 for write in sorted(call.summary.writes, key=lambda w: (w.parameter, _path_key(w.path))))
+                 for write in sorted(call.present_effects.writes, key=lambda w: (w.parameter, _path_key(w.path))))
 
 
 def container_view_holder(slot: MIRSlot) -> bool:
@@ -205,6 +211,25 @@ def owned_tuple(slot: MIRSlot) -> bool:
     return (slot.value_kind is MIRValueKind.TUPLE and isinstance(slot.tuple_layout, MIRTupleLayout)
             and any(isinstance(m, MIRTupleElement) and m.kind is MIRValueKind.OWNED
                     for m in slot.tuple_layout.elements))
+
+
+def optional_record_holder(slot: MIRSlot) -> bool:
+    """An Optional holder whose payload is a borrowed record: a pointer at
+    the record a parameter or a lent argument names."""
+    return (slot.value_kind is MIRValueKind.OPTIONAL and slot.optional_layout is not None
+            and slot.optional_layout.kind is MIRValueKind.BORROWED)
+
+
+# The steps from an Optional record holder to the record its payload points at.
+PAYLOAD_RECORD = (MIROptionalPayload(), MIRDeref())
+
+
+def payload_record_path(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[object, ...] | None:
+    """The projections under the record an Optional record holder's payload
+    points at (`payload, deref, ...`), or None for any other place."""
+    if optional_record_holder(slots[place.root]) and place.projections[:2] == PAYLOAD_RECORD:
+        return place.projections[2:]
+    return None
 
 
 def scalar_wrapper(slot: MIRSlot) -> bool:

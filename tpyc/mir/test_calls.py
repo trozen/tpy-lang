@@ -12,15 +12,19 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL
-from .call_contract import MIRGlobalId, MIRSummaryResult, MIRSummaryState, summary_problem
+from .call_contract import (
+    MIR_RESULT, MIR_STATIC, MIRGlobalId, MIRLoanTransfer, MIRSummaryResult, MIRSummaryState, summary_problem,
+)
+from .call_effects import analyze_call_effects
+from .coverage import call_write_places
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
-from .dependencies import analyze_dependencies
+from .dependencies import MIRUnseededLoan, analyze_dependencies, apply_transfers
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
-    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, MIRValueKind,
+    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, MIRValueKind, statement_call,
 )
 from .lower import lower_function
 from .presence import _analyze_presence
@@ -131,15 +135,25 @@ def global_writer() -> int32:
 def calls_global_writer() -> int32:
     return global_writer()
 
-def optional_scalar_argument(value: int32 | None) -> int32:
-    if value is not None:
-        return identity(value)
-    return 0
-
-def optional_record_argument(cell: Cell | None) -> int32:
+def maybe_read(cell: Cell | None) -> int32:
     if cell is not None:
         return read(cell)
     return 0
+
+def optional_record_argument(cell: Cell, flag: bool) -> int32:
+    return maybe_read(cell if flag else None)
+
+def maybe_write(cell: Cell | None) -> None:
+    if cell is not None:
+        cell.value = 7
+
+def absent_write() -> int32:
+    maybe_write(None)
+    return 0
+
+def present_write(cell: Cell) -> int32:
+    maybe_write(cell)
+    return cell.value
 
 def noisy(cell: Cell) -> int32:
     before = read(cell)
@@ -380,12 +394,55 @@ def test_scalar_global_argument_is_read_before_the_call(artifacts: Artifacts) ->
 
 
 @pytest.mark.parametrize(("name", "reason"), [
-    ("optional_scalar_argument", "call needs unwrapped scalar binding"),
-    ("optional_record_argument", "call needs unwrapped record binding"),
+    ("optional_record_argument", "unsupported optional argument"),
 ])
 def test_argument_adaptations_remain_explicitly_uncovered(artifacts: Artifacts, name: str, reason: str) -> None:
     result = next(body for bid, body in artifacts[1].bodies.items() if bid.declaration.split("@")[0] == name)
     assert isinstance(result, MIRNotCovered) and result.reason == reason
+
+
+def _call_statement(body: MIRFunction) -> tuple[int, int, MIRCall]:
+    return next((b, i, call) for b, block in enumerate(body.blocks)
+                for i, stmt in enumerate(block.statements) if (call := statement_call(stmt)) is not None)
+
+
+def test_a_none_argument_is_absent_and_its_writes_reach_nothing(artifacts: Artifacts) -> None:
+    _, workspace, _, _, _ = artifacts
+    absent = body_named(workspace, "absent_write")
+    _, _, call = _call_statement(absent)
+    assert call.absent == frozenset({0}) and call.summary.writes
+    assert call_write_places(call, {s.id: s for s in absent.slots}) == ()
+    assert not isinstance(analyze_call_effects(absent, analyze_dependencies(absent, analyze_liveness(absent))),
+                          MIRNotCovered)
+    # A present argument is never absent, and the validator refuses the claim.
+    present = body_named(workspace, "present_write")
+    b, i, call = _call_statement(present)
+    assert call.absent == frozenset()
+    block = present.blocks[b]
+    forged = replace(block.statements[i], call=replace(call, absent=frozenset({0})))
+    blocks = (*present.blocks[:b], replace(block, statements=(*block.statements[:i], forged,
+                                                               *block.statements[i + 1:])), *present.blocks[b + 1:])
+    with pytest.raises(MIRValidationError, match="call absent argument is not an empty Optional"):
+        validate_function(replace(present, blocks=blocks))
+
+
+def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artifacts) -> None:
+    _, workspace, _, _, _ = artifacts
+    body = body_named(workspace, "absent_write")
+    slots = {s.id: s for s in body.slots}
+    _, _, call = _call_statement(body)
+    value = th.THIRFieldIdentity("main", "value", call.summary.parameters[0].type)
+    into_absent = MIRLoanTransfer(0, (value,), MIR_STATIC)
+    from_absent = MIRLoanTransfer(MIR_RESULT, (value,), 0)
+    forged = replace(call, summary=replace(call.summary, transfers=frozenset({into_absent, from_absent})))
+    assert forged.absent == frozenset({0})
+    assert forged.present_effects.transfers == frozenset()
+    state: dict = {}
+    apply_transfers(forged, state, slots)
+    assert state == {}
+    # Present, the same transfer is applied: the empty Optional holds no object to store into.
+    with pytest.raises(MIRUnseededLoan, match="call transfer into no object"):
+        apply_transfers(replace(forged, absent=frozenset()), {}, slots)
 
 
 def test_global_reads_union_through_consumed_summaries(artifacts: Artifacts) -> None:

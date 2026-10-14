@@ -39,7 +39,7 @@ String, bytes) then views as places (both landed), B3 containers as places
 (first half landed; in the retained-loans half declared storage members,
 user method summaries, property accessors with projected return origins,
 inherited records, owned record results, nested records, view fields
-slices 1 to 3 and Optional record fields landed; the first advisory warning,
+slices 1 to 3, Optional record fields and Optional parameters landed; the first advisory warning,
 for arguments aliasing storage the callee writes, landed with no-alias
 obligations in call summaries), then cleanup, B4 generator/async frames, with B5 call summaries alongside and B6
 the advisory checker and authority transition

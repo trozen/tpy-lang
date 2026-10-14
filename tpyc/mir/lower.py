@@ -42,8 +42,8 @@ from .nodes import (
     statement_target,
 )
 from .coverage import (
-    MIRUnsupported, container_view_holder, literal_type, owned_container, plain as _plain, require as _require,
-    scalar_param, scalar_wrapper,
+    PAYLOAD_RECORD, MIRUnsupported, container_view_holder, literal_type, owned_container, plain as _plain,
+    require as _require, scalar_param, scalar_wrapper,
 )
 from .definitions import (
     MIRComposedConstruct, MIRConstructorDefinition, MIRContainerDefinition, MIRDefinitions, MIRFieldInitializer,
@@ -52,8 +52,9 @@ from .definitions import (
 )
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult,
-    MIRSummaryState, binds_at, borrowed_result_of, bound_result, container_result, owned_record_result,
-    path_hops, stub_protocol_argument, stub_summary, summary_problem, transfer_ends, view_result,
+    MIRSummaryState, binds_at, borrowed_result_of, bound_result, container_result, optional_layout_problem,
+    owned_record_result, path_hops, reference_problem, stub_protocol_argument, stub_summary, summary_problem,
+    transfer_ends, view_result,
 )
 from .validate import (MIRDefiniteAssignmentError, MIRPresenceError, MIRRepeatedInitializationError,
                        body_may_raise, reaches_element, statement_reads, successors,
@@ -224,6 +225,9 @@ class _Coverage:
         self.select_temporaries: IdentityMap[th.THIRSlotEmplace, th.THIRBorrowedRecord] = IdentityMap()
         # Each checked record source (`record_source`): the record it names and its access.
         self.record_sources: IdentityMap[th.THIRExpr, th.THIRBorrowedRecord] = IdentityMap()
+        # The record sources a name's own holder points at, lent through that
+        # holder; any other (a member, a narrowed Optional's payload) is borrowed.
+        self.held_sources: IdentitySet[th.THIRExpr] = IdentitySet()
         # The leaf type each checked expression has in MIR; a number literal's
         # comes from its context, not its node.
         self.types: IdentityMap[th.THIRExpr, TpyType] = IdentityMap()
@@ -306,7 +310,7 @@ class _Coverage:
         receiver_readonly = False
         for index, (arg, binding) in enumerate(zip(_call_arguments(expr), summary.parameters)):
             ref = binding.borrowed_record
-            if ref is None:
+            if ref is None or binding.optional_layout is not None:
                 self.argument(arg, binding)
             else:
                 if isinstance(arg, th.THIRArgTemp):
@@ -323,9 +327,8 @@ class _Coverage:
                     _require(arg, isinstance(arg, (th.THIRName, th.THIRSelf))
                              and arg.form is th.Form.BORROW, "call needs borrowed record name")
                     source_name = arg.name if isinstance(arg, th.THIRName) else "self"
-                    _require(arg, source_name not in self.payload_aliases and source_name not in self.optionals,
-                             "call needs unwrapped record binding")
-                    actual = self.references[self.reference_name(arg)]
+                    _require(arg, source_name not in self.payload_aliases, "call needs unwrapped record binding")
+                    actual = self.record_source(arg)
                 _require(arg, self.binds_at(arg, actual.type, ref.type) and (not actual.readonly or ref.readonly),
                          "call record argument mismatch")
                 self.lent_loans(arg, actual.type, ref.type)
@@ -458,6 +461,9 @@ class _Coverage:
         any admitted scalar expression, evaluated into a temporary before
         the call (a scalar global is read there). Evaluation order among
         arguments is the order rule's (`argument_order_rule`)."""
+        if binding.optional_layout is not None:
+            self.optional_operand(arg, binding.type, binding.optional_layout)
+            return
         if owned_value_type(binding.type) is not None:
             self.owned_argument(arg, binding.type, binding.passing)
             return
@@ -481,9 +487,6 @@ class _Coverage:
             self.container_argument(arg, binding)
             return
         typ = arg.result_type if binding.protocol else binding.type
-        _require(arg, not isinstance(arg, th.THIRName)
-                 or (arg.name not in self.optionals and arg.name not in self.unions),
-                 "call needs unwrapped scalar binding")
         _require(arg, self.expr(arg, typ) == typ, "call scalar argument mismatch")
 
     def container_argument(self, arg: th.THIRExpr, binding: MIRParameterBinding) -> None:
@@ -1401,9 +1404,9 @@ class _Coverage:
                     elif view_leaf(param.type):
                         # A view parameter takes the loan its argument holds.
                         self.view_value(arg, param.type)
-                    elif optional_parameter(param) is not None:
-                        # An Optional record parameter: a pointer at a payload the member copies.
-                        self.optional_operand(arg, param.optional_layout)
+                    elif (layout := optional_parameter(param)) is not None:
+                        # An Optional parameter: a pointer at a payload the member copies, or a scalar.
+                        self.optional_operand(arg, param.type, layout)
                     else:
                         _require(arg, self.expr(arg, param.type) == param.type, "constructor argument type")
                     _require(arg, not self.writes[arg], "effectful constructor argument")
@@ -1451,13 +1454,24 @@ class _Coverage:
                 raise MIRUnsupported(expr, "unsupported record initializer")
         self.writes[expr] = writing
 
-    def optional_operand(self, arg: th.THIRExpr, layout: th.THIROptionalLayout) -> None:
-        """An argument an Optional record parameter binds (`P | None`, a
-        pointer): null, the address of a record source or of a temporary
-        built for the call, an Optional field's payload (`optional_to_ptr`),
-        or an Optional holder's own pointer. The callee only reads the
-        payload, so the loan ends with the call."""
+    def optional_operand(self, arg: th.THIRExpr, typ: TpyType, layout: th.THIROptionalLayout) -> None:
+        """An argument an Optional parameter of type `typ` binds, at a call
+        and a constructor alike. A record payload (`P | None`, a pointer):
+        null, the address of a record source or of a temporary built for the
+        call, an Optional field's payload (`optional_to_ptr`), or an Optional
+        holder's own pointer; what the callee writes through the payload and
+        whether its result borrows it is its summary's to say. A scalar
+        payload (`int32 | None`) takes what an Optional declaration takes."""
+        self.optional_layout(arg, layout, typ)
         target = layout.payload
+        if not isinstance(target, th.THIRBorrowedRecord):
+            self.optional_source(arg, layout)
+            self.writes.setdefault(arg, False)
+            # The holder the payload is built into is a temporary of the full
+            # expression, so a loop condition initializes it once per pass.
+            _require(arg, self.active_temporaries is not None, "temporary needs full-expression boundary")
+            self.active_temporaries.append(arg)
+            return
         match arg:
             case th.THIRArgTemp():
                 self.argument_temporary(arg, target, addr_of=True)
@@ -1474,7 +1488,9 @@ class _Coverage:
                          "unsupported optional argument")
                 self.payload_compatible(arg, self.record_source(arg.value), target)
             case th.THIRName() if arg.name in self.optionals:
-                self.payload_compatible(arg, self.optional_name(arg, extract=False).payload, target)
+                # A narrowed name still passes its holder's pointer.
+                extract = arg.optional_read is not None and arg.optional_read.extract
+                self.payload_compatible(arg, self.optional_name(arg, extract=extract).payload, target)
             case _:
                 raise MIRUnsupported(arg, "unsupported optional argument")
         _require(arg, arg.form is th.Form.BORROW, "unsupported optional argument")
@@ -1637,9 +1653,8 @@ class _Coverage:
 
     def reference(self, node: object, ref: th.THIRBorrowedRecord, typ: TpyType) -> None:
         _require(node, isinstance(ref, th.THIRBorrowedRecord), "invalid reference fact")
-        _require(node, record_type(ref.type) and type(ref.readonly) is bool, "unsupported reference fact")
-        _require(node, unwrap_readonly(unwrap_ref_type(typ)) == ref.type,
-                 "reference type mismatch")
+        problem = reference_problem(ref, typ)
+        _require(node, problem is None, problem or "reference type mismatch")
 
     def lent_loans(self, arg: th.THIRExpr, storage: NominalType, slot: NominalType) -> None:
         """A record lent to a callee whose parameter type holds a loan (`slot`,
@@ -1872,7 +1887,13 @@ class _Coverage:
             _require(expr, isinstance(member, th.THIRBorrowedRecord), "record source needs record storage")
             self.record_sources[expr] = member
             return member
-        source = self.references[self.reference_name(expr)]
+        if isinstance(expr, th.THIRName) and expr.name in self.optionals:
+            # A narrowed Optional name: the record its payload points at.
+            source = self.optional_name(expr, extract=True).payload
+            _require(expr, isinstance(source, th.THIRBorrowedRecord), "record source needs record storage")
+        else:
+            source = self.references[self.reference_name(expr)]
+            self.held_sources.add(expr)
         self.record_sources[expr] = source
         return source
 
@@ -2088,20 +2109,10 @@ class _Coverage:
         return member
 
     def optional_layout(self, node: object, layout: th.THIROptionalLayout, typ: TpyType) -> None:
-        outer_readonly = unwrap_readonly(unwrap_ref_type(typ)) != unwrap_ref_type(typ)
-        typ = unwrap_readonly(unwrap_ref_type(typ))
-        _require(node, isinstance(layout, th.THIROptionalLayout)
-                 and isinstance(typ, OptionalType) and not typ.force_pointer_repr,
-                 "unsupported optional layout")
-        member = layout.payload
-        if isinstance(member, th.THIRBorrowedRecord):
-            self.reference(node, member, typ.inner)
-            self.wrapped_record(node, member.type)
-            _require(node, (not outer_readonly and unwrap_readonly(typ.inner) == typ.inner) or member.readonly,
-                     "optional layout increases access")
-        else:
-            _require(node, storage_leaf(member) and unwrap_readonly(typ.inner) == member,
-                     "unsupported optional payload")
+        problem = optional_layout_problem(typ, layout)
+        _require(node, problem is None, problem or "unsupported optional layout")
+        if isinstance(layout.payload, th.THIRBorrowedRecord):
+            self.wrapped_record(node, layout.payload.type)
 
     def optional_name(self, expr: th.THIRName, *, extract: bool) -> th.THIROptionalLayout:
         _plain(expr, {"name", "is_last_use", "is_movable", "deref", "indirect", "optional_read"})
@@ -3130,6 +3141,8 @@ class _Builder:
         self.fn = fn
         self.slots: list[MIRSlot] = []
         self.constant_bools: dict[MIRSlotId, bool] = {}
+        # Optional arguments built empty for their call (`MIRCall.absent`).
+        self.empty_arguments: set[MIRSlotId] = set()
         self.bindings: dict[str, MIRSlotId] = {}
         self.blocks: list[_Block] = []
         self.region = MIRRegionId(body, 0)
@@ -3147,6 +3160,7 @@ class _Builder:
         self.calls = coverage.calls
         self.borrowed_result = coverage.result
         self.record_sources = coverage.record_sources
+        self.held_sources = coverage.held_sources
         self.record_temporaries = IdentityMap((*coverage.argument_temporaries.items(),
                                               *coverage.select_temporaries.items()))
         self.temp_plan = fn.temp_plan if self.record_temporaries else None
@@ -3525,9 +3539,14 @@ class _Builder:
         arguments = tuple(self.argument(arg, binding)
                           for arg, binding in zip(_call_arguments(expr), summary.parameters))
         return MIRCall(summary, arguments, not summary.normal_return_only, expr.loc,
-                       isinstance(expr, th.THIRMethodCall))
+                       isinstance(expr, th.THIRMethodCall), self.absent(arguments))
+
+    def absent(self, arguments: tuple[MIRSlotId, ...]) -> frozenset[int]:
+        return frozenset(i for i, sid in enumerate(arguments) if sid in self.empty_arguments)
 
     def argument(self, arg: th.THIRExpr, binding: MIRParameterBinding) -> MIRSlotId:
+        if binding.optional_layout is not None:
+            return self.optional_operand(arg, binding.type, binding.optional_layout)
         if binding.borrowed_record is not None:
             if isinstance(arg, th.THIRArgTemp):
                 return self.temp_holders[self.temp_plan.placement(arg).index]
@@ -3665,17 +3684,20 @@ class _Builder:
         storage a name's holder reaches, or a member place."""
         if isinstance(expr, th.THIRFieldAccess):
             return self.place(expr)
-        return MIRPlace(self.place(expr).root, (MIRDeref(),))
+        # A name's holder, or a narrowed Optional name's payload, points at it.
+        place = self.place(expr)
+        return MIRPlace(place.root, (*place.projections, MIRDeref()))
 
     def record_holder(self, expr: th.THIRExpr) -> MIRSlotId:
         """A holder of a record source for an operation that reads one (a
-        lent argument, a copied element): a name's own holder, else a
-        borrow of the member place at the access coverage checked."""
-        if not isinstance(expr, th.THIRFieldAccess):
+        lent argument, a copied element): a name's own holder
+        (`held_sources`), else a borrow of the source's place (a member, a
+        narrowed Optional's payload) at the access coverage checked."""
+        if expr in self.held_sources:
             return self.place(expr).root
         fact = self.record_sources[expr]
         holder = self.slot(fact.type, reference=fact)
-        self.write(holder, MIRBorrow(self.place(expr), self.chain_raises(expr)), expr.loc)
+        self.write(holder, MIRBorrow(self.record_source(expr), self.chain_raises(expr)), expr.loc)
         return holder
 
     def constructor_argument(self, arg: th.THIRExpr, param: th.THIRParam) -> MIRSlotId:
@@ -3697,19 +3719,27 @@ class _Builder:
             return holder
         if view_leaf(param.type):
             return self.view_slot(arg)
-        if optional_parameter(param) is not None:
-            return self.optional_operand(arg, param)
+        if (layout := optional_parameter(param)) is not None:
+            return self.optional_operand(arg, param.type, layout)
         return self.expr(arg)
 
-    def optional_operand(self, arg: th.THIRExpr, param: th.THIRParam) -> MIRSlotId:
-        """An Optional holder of what an Optional record parameter's argument
-        points at (`_Coverage.optional_operand`)."""
-        dest = self.slot(param.type, optional_layout=param.optional_layout)
+    def optional_operand(self, arg: th.THIRExpr, typ: TpyType, layout: th.THIROptionalLayout) -> MIRSlotId:
+        """An Optional holder of what an Optional parameter's argument
+        points at, or of its scalar payload (`_Coverage.optional_operand`)."""
+        scalar = not isinstance(layout.payload, th.THIRBorrowedRecord)
+        # A scalar payload lives in the region the call runs in, like a scalar Optional local's.
+        dest = self.slot(typ, optional_layout=layout, storage_duration=(
+            (self.region if self.region.index else MIRStorageDuration.BODY) if scalar else None))
+        if scalar:
+            self.write(dest, self.optional_value(arg, layout), arg.loc,
+                       self.payload_write(dest, MIRPayloadWriteMode.INITIALIZE))
+            return dest
         match arg:
             case th.THIRArgTemp():
                 value = MIROptionalConstruct(MIRPlace(self.temp_holders[self.temp_plan.placement(arg).index]))
             case th.THIROptionalPtrArg(value=None):
                 value = MIROptionalConstruct()
+                self.empty_arguments.add(dest)
             case th.THIROptionalPtrArg(lift=True):
                 value = MIROptionalCopy(self.place(arg.value))
             case th.THIROptionalPtrArg():
@@ -4117,7 +4147,7 @@ class _Builder:
                         self.write(dest, self.optional_record(stmt.value, stmt.optional_layout.payload,
                                                              MIRRecordWriteMode.OWN_SITE), loc)
                     elif isinstance(stmt, th.THIRAssign) and stmt.rebind_storage is RebindStorage.IN_PLACE:
-                        self.write(MIRPlace(dest, (MIROptionalPayload(), MIRDeref())),
+                        self.write(MIRPlace(dest, PAYLOAD_RECORD),
                                    self.record_value(stmt.value), loc, MIRRecordWrite(MIRRecordWriteMode.IN_PLACE, dest))
                     else:
                         self.write(dest, self.optional_value(stmt.value, stmt.optional_layout), loc,
@@ -4420,8 +4450,8 @@ class _Builder:
                 self.initialize_temporaries(stmt.value)
                 arguments = tuple(self.argument(arg, binding) for arg, binding
                                   in zip((target.receiver, target.index, stmt.value), summary.parameters))
-                self.current.statements.append(
-                    MIRCallStmt(MIRCall(summary, arguments, not summary.normal_return_only), stmt.loc))
+                self.current.statements.append(MIRCallStmt(MIRCall(
+                    summary, arguments, not summary.normal_return_only, absent=self.absent(arguments)), stmt.loc))
             return
         with self.full_expression(stmt.value):
             member = self.element_places[target].layout.subscript

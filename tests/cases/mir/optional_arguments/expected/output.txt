@@ -1,0 +1,20 @@
+call_free 4
+call_free_temp 4
+call_method 9
+call_ctor 4
+call_ctor_temp 1
+call_bump 206
+call_none 1
+call_items 2 22
+call_holder 0
+call_scalar 31 10
+scalar_loops 12 6
+via_scalar 4 0
+narrowed_plain 8 0
+call_scalar_ctor 5
+call_scalar_ctor_arg 6
+clear_read_silent 3
+retext_call 1
+grow_then_iter 1
+read_then_put 6
+pick 7

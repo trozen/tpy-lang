@@ -21,8 +21,10 @@ inline constexpr std::string_view __name__ = "__main__";
 void clear(H& h);
 // def read(h: H) -> int32:  # tpyc: mir(covered) mir_summary(known)
 int32_t read(const H& h);
-// def alias(a: H, b: H, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// def alias(a: H, b: H, flag: bool) -> int32:  # tpyc: mir(conflict /alias_obligation/)
 int32_t alias(const H& a, H& b, bool flag);
+// def alias_call(h: H) -> int32:  # tpyc: mir(conflict /argument_alias/)
+int32_t alias_call(H& h);
 // def alias_read_first(a: H, b: H) -> int32:  # tpyc: mir(covered)
 int32_t alias_read_first(const H& a, H& b);
 // def alias_other_field(a: H, b: H) -> int32:  # tpyc: mir(covered)
@@ -47,7 +49,7 @@ int32_t refill(H& h);
 void copy_field(H& a, const H& b);
 // def copy_param(b: H, o: P | None) -> None:  # tpyc: mir(covered)
 void copy_param(H& b, const P* o);
-// def copy_both(a: H, b: H, o: P | None, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+// def copy_both(a: H, b: H, o: P | None, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
 void copy_both(H& a, H& b, const P* o, bool flag);
 // def written_then_read(h: H) -> int32:  # tpyc: mir(uncovered /unproven optional field read/)
 int32_t written_then_read(H& h);

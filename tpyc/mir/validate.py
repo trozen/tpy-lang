@@ -38,9 +38,9 @@ from .nodes import (
 )
 from .presence import MIRPresence, _analyze_presence
 from .coverage import (
-    container_view_holder, handed_record, leaf_borrow, owned_borrow, owned_container, owned_storage, owned_tuple,
-    primitive_operand, read_leaf, region_holder, scalar_member, scalar_slot, scalar_wrapper, view_compatible,
-    view_holder, view_member,
+    PAYLOAD_RECORD, container_view_holder, handed_record, leaf_borrow, owned_borrow, owned_container, owned_storage,
+    owned_tuple, primitive_operand, read_leaf, region_holder, scalar_member, scalar_slot, scalar_wrapper,
+    view_compatible, view_holder, view_member,
 )
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .call_contract import (
@@ -48,6 +48,22 @@ from .call_contract import (
     transfer_ends,
 )
 from .definitions import layout_copy_may_raise, with_access
+
+
+def _empty_optionals(fn: MIRFunction) -> frozenset[MIRSlotId]:
+    """The Optional temporaries every write leaves empty: what a call's
+    `absent` parameter may name."""
+    written: dict[MIRSlotId, bool] = {}
+    for block in fn.blocks:
+        for stmt in block.statements:
+            target = statement_target(stmt)
+            if target is not None:
+                empty = (isinstance(stmt, MIRAssign) and not target.projections
+                         and stmt.value == MIROptionalConstruct())
+                written[target.root] = written.get(target.root, True) and empty
+    return frozenset(s.id for s in fn.slots
+                     if s.kind is MIRSlotKind.TEMPORARY and s.value_kind is MIRValueKind.OPTIONAL
+                     and written.get(s.id, False))
 
 
 def _expected_member(arg: TpyType, leaves_only: bool, readonly: bool,
@@ -974,6 +990,8 @@ def _validate_structure(fn: MIRFunction) -> None:
         return (source.type == target.type and source.kind is target.kind
                 and (not source.readonly or target.readonly))
 
+    empty_optionals = _empty_optionals(fn)
+
     def validate_call(call: MIRCall) -> None:
         _require(isinstance(call, MIRCall) and call.summary in call_summaries,
                  "call summary does not belong to this body")
@@ -984,6 +1002,9 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(type(call.may_raise) is bool and call.may_raise is (not summary.normal_return_only),
                  "call exit fact mismatch")
         _require(len(call.arguments) == len(summary.parameters), "call arity mismatch")
+        _require(isinstance(call.absent, frozenset) and all(
+            type(i) is int and 0 <= i < len(call.arguments) and call.arguments[i] in empty_optionals
+            for i in call.absent), "call absent argument is not an empty Optional")
         transferred = []
         for transfer in summary.transfers:
             for end in transfer_ends(transfer, summary.parameters, summary.callee.signature.return_type):
@@ -1050,6 +1071,14 @@ def _validate_structure(fn: MIRFunction) -> None:
             if owned is not None and binding.passing in BORROWING_PASSINGS and view_holder(source):
                 # A view of the parameter's family is lent as the view it already is.
                 _require(view_compatible(source.type, owned), "call owned-leaf argument mismatch")
+                continue
+            if isinstance(binding.type, OptionalType):
+                # An Optional holder of the payload the binding borrows, or of its scalar.
+                expected = (MIROptionalLayout(ref.type, MIRValueKind.BORROWED, ref.readonly) if ref is not None
+                            else MIROptionalLayout(binding.type.inner))
+                _require(source.type == binding.type and source.value_kind is MIRValueKind.OPTIONAL
+                         and source.optional_layout is not None
+                         and compatible_element(source.optional_layout, expected), "call optional argument mismatch")
                 continue
             # Record storage binds at its own type or a struct-base ancestor's;
             # every other binding is exact.
@@ -1407,10 +1436,12 @@ def _validate_structure(fn: MIRFunction) -> None:
                     owning_blocks.add(block.id)
             elif isinstance(fact, MIRPayloadWrite):
                 _require(isinstance(fact.mode, MIRPayloadWriteMode), "invalid payload write mode")
-                _require(not stmt.target.projections and target.kind is MIRSlotKind.LOCAL
+                # A temporary (a call's Optional argument) is only ever initialized.
+                _require(not stmt.target.projections and (target.kind is MIRSlotKind.LOCAL or (
+                    target.kind is MIRSlotKind.TEMPORARY and fact.mode is not MIRPayloadWriteMode.ASSIGN))
                          and scalar_wrapper(target)
                          and isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)),
-                         "payload write needs local scalar wrapper operation")
+                         "payload write needs a local or temporary scalar wrapper operation")
                 if fact.mode in (MIRPayloadWriteMode.INITIALIZE, MIRPayloadWriteMode.INITIALIZE_REGION):
                     _require(target.id not in payload_initializations, "repeated payload initialization")
                     payload_initializations.add(target.id)
@@ -1450,7 +1481,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                                  and ((target.value_kind is MIRValueKind.BORROWED
                                        and stmt.target.projections == (MIRDeref(),))
                                       or (target.value_kind is MIRValueKind.OPTIONAL
-                                          and stmt.target.projections == (MIROptionalPayload(), MIRDeref()))),
+                                          and stmt.target.projections == PAYLOAD_RECORD)),
                                  "invalid in-place rebind owner or target")
             else:
                 _require(fact is None, "invalid storage write fact")
@@ -1612,7 +1643,7 @@ def _validate_structure(fn: MIRFunction) -> None:
                     target = slots[stmt.target.root]
                     _require(target_type in records and (
                         (not stmt.target.projections and target.value_kind is MIRValueKind.OWNED)
-                        or stmt.target.projections in ((MIRDeref(),), (MIROptionalPayload(), MIRDeref()))),
+                        or stmt.target.projections in ((MIRDeref(),), PAYLOAD_RECORD)),
                         "record destination type")
                     if fact is not None and fact.mode in (MIRRecordWriteMode.OWN_SITE, MIRRecordWriteMode.OPTIONAL_ASSIGN):
                         _require(records[target_type].movable, "reusable backing needs movable record")

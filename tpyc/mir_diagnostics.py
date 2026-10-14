@@ -268,7 +268,12 @@ def alias_warning(alias: MIRArgumentAlias, program: MIRProgram, sites: CallSites
     subject = f"argument '{argument}'" if argument else f"the argument for parameter '{held}'"
     # A slice of an owned leaf views its storage under the leaf's own place
     # (MIR places have no slice step), so the argument lies strictly inside.
-    if alias.relation is MIRAliasRelation.IS and not (
+    # An Optional field passed as itself resolves to its payload, a step with
+    # no Python spelling: spelled as the storage it is, it IS that storage.
+    relation = alias.relation
+    if relation is MIRAliasRelation.INTO and argument is not None and argument == storage:
+        relation = MIRAliasRelation.IS
+    if relation is MIRAliasRelation.IS and not (
             analyzed is not None and isinstance(peel_coerce(analyzed), TpySubscript)):
         message = (f"{subject} is what '{callee}' modifies through parameter '{writer}' "
                    f"while it still uses '{held}'; {remedy}")

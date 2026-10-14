@@ -169,7 +169,7 @@ def test_loop_assignments_use_joined_incoming_tags(optional: bool) -> None:
 def test_payload_fact_cannot_authorize_scalar_or_parameter_writes() -> None:
     for stmt in (MIRAssign(MIRPlace(GUARD), MIRConstant(True), storage_write=INIT),
                  write(False, 0, target=PARAM, fact=INIT)):
-        with pytest.raises(MIRValidationError, match="payload write needs local scalar wrapper operation"):
+        with pytest.raises(MIRValidationError, match="payload write needs a local or temporary scalar wrapper"):
             validate_function(wrapper_function(False, MIRBlock(ENTRY, (stmt,), MIRReturn(VALUE))))
 
 

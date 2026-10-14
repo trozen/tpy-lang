@@ -22,8 +22,8 @@ int32_t read(const H& h) {
     return 0;
 }
 
-// # free function conflict: `a` and `b` may name one holder; emptying b.p ends what o holds
-// def alias(a: H, b: H, flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)
+// # free function conflict: `a` and `b` may name one holder; emptying b.p ends what o holds (a no-alias obligation)
+// def alias(a: H, b: H, flag: bool) -> int32:  # tpyc: mir(conflict /alias_obligation/)
 //     o = a.p
 //     if flag:
 //         b.p = None
@@ -39,6 +39,13 @@ int32_t alias(const H& a, H& b, bool flag) {
         return o->x;
     }
     return 0;
+}
+
+// # witness, never run: the caller passes one holder as both, so the obligation `alias` publishes is a warning
+// def alias_call(h: H) -> int32:  # tpyc: mir(conflict /argument_alias/)
+//     return alias(h, h, True)  # tpyc: warning(/argument 'h' contains 'h.p', which 'alias' modifies through parameter 'b' while it still uses 'a'/)
+int32_t alias_call(H& h) {
+    return ::tpyapp::main::alias(h, h, true);
 }
 
 // # safe sibling: the holder is read before b.p is emptied
@@ -201,8 +208,8 @@ void copy_param(H& b, const P* o) {
     b.p = ::tpy::ptr_to_optional(o);
 }
 
-// # conflict: `o` may point into a.p, which emptying or reassigning a.p ends before o is read
-// def copy_both(a: H, b: H, o: P | None, flag: bool) -> None:  # tpyc: mir(conflict /replacement/)
+// # conflict: `o` may point into a.p, which reassigning a.p ends before o is read (a no-alias obligation)
+// def copy_both(a: H, b: H, o: P | None, flag: bool) -> None:  # tpyc: mir(conflict /alias_obligation/)
 //     if flag:
 //         a.p = b.p  # tpyc: warning(/copies P \| None into field/)
 //     b.p = o  # tpyc: warning(/copies P \| None into field/)
