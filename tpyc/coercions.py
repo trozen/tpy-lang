@@ -371,7 +371,8 @@ COERCIONS: list[Coercion] = [
         to_type=is_float32_type,
         widening_safe=True,
         context_free_wrap=True,
-        codegen=lambda e, _a, _b, _c: f"static_cast<float>({e})",
+        # BigInt converts explicitly to `double` only.
+        codegen=lambda e, _a, _b, _c: f"static_cast<float>(static_cast<double>({e}))",
     ),
     # float32 -> float (widening, lossless)
     Coercion(

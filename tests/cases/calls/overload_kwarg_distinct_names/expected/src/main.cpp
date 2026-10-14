@@ -32,11 +32,11 @@ int32_t report__int32__int32__int32(int32_t a, int32_t b, int32_t count) {
 //     n2: int32 = report(int32(2), int32(5), count=int32(3))  # 21
 //     print(n2)
 void main() {
-    std::string s = ::tpyapp::main::report__int32__int32__str(3, 0, std::string_view("tag"));
+    std::string s = ::tpyapp::main::report__int32__int32__str(3, 0, "tag");
     std::cout << s << "\n" << ::tpy::check_signals;
     int32_t n = ::tpyapp::main::report__int32__int32__int32(3, 0, 4);
     std::cout << n << "\n" << ::tpy::check_signals;
-    std::string s2 = ::tpyapp::main::report__int32__int32__str(2, 5, std::string_view("sum"));
+    std::string s2 = ::tpyapp::main::report__int32__int32__str(2, 5, "sum");
     std::cout << s2 << "\n" << ::tpy::check_signals;
     int32_t n2 = ::tpyapp::main::report__int32__int32__int32(2, 5, 3);
     std::cout << n2 << "\n" << ::tpy::check_signals;

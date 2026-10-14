@@ -12,7 +12,7 @@ namespace tpyapp::main {
 void main() {
     std::vector<int32_t> nums = {3, 1, 2};
     std::cout << ::tpyapp::main::pick__list_T<int32_t>(nums) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::pick__str(std::string_view("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::pick__str("hello") << "\n" << ::tpy::check_signals;
 }
 
 // main()

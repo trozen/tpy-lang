@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from ..sema.numeric_lattice import fixed_int_range_contains
-from ..type_def_registry import is_big_int_type, is_fixed_int_type
-from ..typesys import TpyType
+from ..type_def_registry import int_traits_of, is_big_int_type, is_fixed_int_type
+from ..typesys import BIGINT, INT32, INT64, UINT64, TpyType
 
 _INT32_MAX = 2**31 - 1
 _INT32_MIN = -(2**31)
@@ -15,11 +15,27 @@ _INT64_MIN = -(2**63)
 _UINT64_MAX = 2**64 - 1
 
 
+def target_less_int_literal_type(value: int) -> TpyType:
+    """The C++ type of `value` rendered with no target slot: `int32` while
+    it fits one, else `int64` / `uint64`, else `int` (BigInt)."""
+    if -_INT32_MAX <= value <= _INT32_MAX:
+        return INT32
+    if _INT64_MIN <= value <= _INT64_MAX:
+        return INT64
+    if _INT64_MAX < value <= _UINT64_MAX:
+        return UINT64
+    return BIGINT
+
+
 def render_int_literal_value(
         value: int, target_type: TpyType | None, *,
         default_int_type: TpyType,
-        type_to_cpp: Callable[[TpyType], str]) -> str:
-    """Render one integer literal for an optional target slot."""
+        type_to_cpp: Callable[[TpyType], str],
+        exact_type: bool = False) -> str:
+    """Render one integer literal for an optional target slot.
+
+    `exact_type`: the render must have a fixed-width target's own C++ type,
+    not merely convert to it -- where C++ chooses among overloads by it."""
     if is_big_int_type(target_type):
         # Exclude INT32_MIN from the bare ctor arm: its positive token is a C++
         # long on some targets, making BigInt overload resolution ambiguous.
@@ -63,13 +79,19 @@ def render_int_literal_value(
         # above already returned), so e.g. an int literal into a float slot gets
         # an inner static_cast<int64_t> that the outer numeric cast then wraps --
         # a harmless identity nesting, intentionally not special-cased.
-        if -_INT32_MAX <= value <= _INT32_MAX:
+        own = target_less_int_literal_type(value)
+        if own is INT32:
             return bare
-        if _INT64_MIN <= value <= _INT64_MAX:
-            return f"static_cast<int64_t>({bare})"
-        if _INT64_MAX < value <= _UINT64_MAX:
-            return f"static_cast<uint64_t>({bare})"
-        return f'::tpy::BigInt::from_str("{value}")'
+        if own is BIGINT:
+            return f'::tpy::BigInt::from_str("{value}")'
+        return f"static_cast<{type_to_cpp(own)}>({bare})"
+    if exact_type:
+        # A bare token in int range is `int`, which is `int32_t` everywhere.
+        traits = int_traits_of(target_type)
+        if (traits is not None and traits.bits == 32 and traits.signed
+                and -_INT32_MAX <= value <= _INT32_MAX):
+            return bare
+        return f"static_cast<{type_to_cpp(target_type)}>({bare})"
     if target_type is default_int_type:
         return bare
     # Keep naturally fitting int constants bare to avoid conversion warnings.

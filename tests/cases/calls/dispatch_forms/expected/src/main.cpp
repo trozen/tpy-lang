@@ -117,7 +117,7 @@ std::expected<::tpy::BigInt, Empty> parse__int__int(const ::tpy::BigInt& n, cons
 // def parse_both() -> int:
 //     return parse("ab") + parse(-1, 2)  # tpyc: ok
 std::expected<::tpy::BigInt, Empty> parse_both() {
-    return ((({ auto __er_1 = ::tpyapp::main::parse__str(std::string_view("ab")); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); })) + (({ auto __er_2 = ::tpyapp::main::parse__int__int(::tpy::BigInt(-1), ::tpy::BigInt(2)); if (!__er_2.has_value()) return ::tpy::make_unexpected(std::move(__er_2.error())); ::tpy::unwrap_ref_move(*__er_2); })));
+    return ((({ auto __er_1 = ::tpyapp::main::parse__str("ab"); if (!__er_1.has_value()) return ::tpy::make_unexpected(std::move(__er_1.error())); ::tpy::unwrap_ref_move(*__er_1); })) + (({ auto __er_2 = ::tpyapp::main::parse__int__int(::tpy::BigInt(-1), ::tpy::BigInt(2)); if (!__er_2.has_value()) return ::tpy::make_unexpected(std::move(__er_2.error())); ::tpy::unwrap_ref_move(*__er_2); })));
 }
 
 // def main() -> None:
@@ -144,8 +144,8 @@ std::expected<::tpy::BigInt, Empty> parse_both() {
 //         print("error_return: propagated")
 void main() {
     std::cout << "free_arity:" << " " << ::tpyapp::main::area__int32(3) << " " << ::tpyapp::main::area__int32__int32(2, 5) << "\n" << ::tpy::check_signals;
-    std::cout << "free_type:" << " " << ::tpyapp::main::tag__int32(1) << " " << ::tpyapp::main::tag__str(std::string_view("abc")) << "\n" << ::tpy::check_signals;
-    std::cout << "free_order:" << " " << ::tpyapp::main::kind__int32(3) << " " << ::tpyapp::main::kind__str(std::string_view("s")) << "\n" << ::tpy::check_signals;
+    std::cout << "free_type:" << " " << ::tpyapp::main::tag__int32(1) << " " << ::tpyapp::main::tag__str("abc") << "\n" << ::tpy::check_signals;
+    std::cout << "free_order:" << " " << ::tpyapp::main::kind__int32(3) << " " << ::tpyapp::main::kind__str("s") << "\n" << ::tpy::check_signals;
     Acc a = Acc();
     a.add(2);
     a.add(std::string_view("xyz"));
@@ -154,10 +154,10 @@ void main() {
     ::tpyapp::main::push__list_int32(xs);
     ::tpyapp::main::push__list_int32__int32(xs, 7);
     std::cout << "reference:" << " " << ::tpy::ListPrinter(xs) << "\n" << ::tpy::check_signals;
-    std::cout << "overload:" << " " << ::tpyapp::main::show__int(::tpy::BigInt(7)) << " " << ::tpyapp::main::show__str(std::string_view("q")) << "\n" << ::tpy::check_signals;
+    std::cout << "overload:" << " " << ::tpyapp::main::show__int(::tpy::BigInt(7)) << " " << ::tpyapp::main::show__str("q") << "\n" << ::tpy::check_signals;
     {
-        std::cout << "error_return:" << " " << ({ auto __er_4 = ::tpyapp::main::parse__str(std::string_view("abc")); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << " " << ({ auto __er_5 = ::tpyapp::main::parse__int__int(::tpy::BigInt(2), ::tpy::BigInt(3)); if (!__er_5.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_5); }) << "\n" << ::tpy::check_signals;
-        std::cout << ({ auto __er_6 = ::tpyapp::main::parse__str(std::string_view("")); if (!__er_6.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_6); }) << "\n" << ::tpy::check_signals;
+        std::cout << "error_return:" << " " << ({ auto __er_4 = ::tpyapp::main::parse__str("abc"); if (!__er_4.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_4); }) << " " << ({ auto __er_5 = ::tpyapp::main::parse__int__int(::tpy::BigInt(2), ::tpy::BigInt(3)); if (!__er_5.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_5); }) << "\n" << ::tpy::check_signals;
+        std::cout << ({ auto __er_6 = ::tpyapp::main::parse__str(""); if (!__er_6.has_value()) goto __except_3; ::tpy::unwrap_ref_move(*__er_6); }) << "\n" << ::tpy::check_signals;
         goto __after_try_3;
         // except Empty:
         __except_3:;

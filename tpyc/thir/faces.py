@@ -510,7 +510,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "call.template_arg_dropped",    # @cpp_template never spells {i}: the
                                     # arg render cannot reach the expansion
     "call.expr_callee",             # computed callable: (callee)(args)
-    "call.strlit_overload_pin",     # str literal pinned to its overloaded slot
+    "call.literal_overload_pin",    # literal pinned to its overloaded slot's type
     "call.native_c_free",           # C-linkage @native free callee -> raw `sym(args)`
     "call.own_iter_arg",            # movable last-use container into an Iterable slot -> ::tpy::own_iter(std::move(x))
     "call.own_iter_rvalue_arg",     # fresh container temporary into an Iterable[Own[T]] slot (reference T) -> ::tpy::own_iter(<temp>)

@@ -51,7 +51,7 @@ void main() {
     std::cout << (*::tpystd::os::_environ::environ)["TPY_ENV_A"] << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_A"))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_MISSING"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv__str(std::string_view("TPY_ENV_A"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(::tpystd::os::getenv__str("TPY_ENV_A")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_ENV_A")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_ENV_MISSING")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val((*::tpystd::os::_environ::environ).get("TPY_ENV_MISSING", "d")) << "\n" << ::tpy::check_signals;
@@ -60,10 +60,10 @@ void main() {
     std::cout << (*::tpystd::os::_environ::environ)["TPY_ENV_A"] << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__((*::tpystd::os::_environ::environ), "TPY_ENV_A");
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_A"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpystd::os::getenv__str__str(std::string_view("TPY_ENV_A"), std::string_view("gone")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpystd::os::getenv__str__str("TPY_ENV_A", "gone") << "\n" << ::tpy::check_signals;
     ::tpystd::os::putenv("TPY_ENV_B", "2");
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_B"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((!::tpystd::os::getenv__str(std::string_view("TPY_ENV_B")).has_value())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!::tpystd::os::getenv__str("TPY_ENV_B").has_value())) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ENV_C", "3");
     ::tpystd::os::unsetenv("TPY_ENV_C");
     std::cout << ::tpy::print_bool(((*::tpystd::os::_environ::environ).__contains__("TPY_ENV_C"))) << "\n" << ::tpy::check_signals;

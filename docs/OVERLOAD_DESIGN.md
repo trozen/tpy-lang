@@ -109,6 +109,34 @@ and two constrained templates over unrelated protocols are unordered).
 - Methods, operator dunders and constructors still share one C++ name per
   set and leave the choice to C++: protocol conformance calls a method by
   its Python name (BUGS.md#dispatch-method-variant-reresolved-by-cpp).
+- A literal argument is pinned to the parameter sema picked: a call to a
+  TPy overload set (not generic, not `@native` / `@cpp_template`) renders a
+  str or numeric literal as a value of that parameter's own type, so the
+  shared name binds the picked variant even where C++ alone would not (a
+  bare `"x"` or `7` converts to a `bool` variant by a standard conversion,
+  a bare `3` to every arithmetic variant alike). The pin recognizes a
+  numeric literal by sema's type (an int or float literal type), so it
+  covers more than a literal token. A str literal takes the view form
+  (`std::string_view("x")`). A constant over literals (`3`, `1 + 2`, `+3`,
+  `- -3`) renders by its value: an int at an int parameter its typed render
+  (`static_cast<int16_t>(3)`, `::tpy::BigInt(7)`), any other the cast its
+  coercion row spells (`static_cast<double>(3)`), a float at `float32` a
+  cast from its double value (`static_cast<float>(0.1)`, never the `f`
+  suffix, which rounds the decimal text to float once). Any other
+  literal-typed argument -- a walrus, a conditional with equal branches --
+  is evaluated once and converted from its own C++ type to the parameter's
+  through the coercion table (`::tpy::BigInt((w = 3))`,
+  `((w = 3)).to_fixed_check<int16_t>()` for a BigInt `w`); a scalar
+  parameter always takes the cast, even from the same type, because a
+  conditional's literal arms render at C++'s own literal types
+  (`-2147483648` is a `long`), and only a BigInt value at an `int`
+  parameter stays bare; a narrower fixed width and `float` -> `float32`,
+  which have no row, take a plain cast. An Optional parameter wraps the result in the
+  optional type itself (`std::optional<double>(0.1)`, since a payload value
+  would lose to a plain variant's standard conversion). The pin fires only
+  where the variants share one C++ name -- methods, constructors -- since a
+  free call names its variant (`variant_cpp_name`) and C++ has nothing left
+  to choose (`tpyc/thir/lower/checks.py` `_literal_pin_slot`).
 - Not an interop API (a known limitation): the name follows the parameter
   types' spelling and, on a collision, the declaration order, so
   hand-written C++ should not call a variant -- or the set -- by name.
@@ -306,10 +334,11 @@ overload and C++ `operator[]` picks what runs; the ranking only credits its
 receiver effects, and swallows a tie (BUGS.md#record-getitem-overload-first-wins).
 A record's binary
 operator dunder set does not go through it yet: `a + b` takes the first
-`__add__` variant that matches (BUGS.md#operator-overload-first-match). It
-waits on the int-literal ranking (BUGS.md#overload-int-literal-picks-float):
-ranked like a call, `timedelta * 3` would take `timedelta`'s `float`
-variant.
+`__add__` variant that matches (BUGS.md#operator-overload-first-match). An
+operator's literal takes its home from the other operand, not the default
+width, so ranked like a call `x * 1000` on a `float` `x` would take an
+`int` dunder; the operator sets keep the first match until the ranking has
+that home.
 
 Under CPython, the `@dispatch` stand-in (`dispatch` in
 `lib/cpy/tpy/__init__.py`) does not rank: it runs the first variant in
@@ -342,7 +371,7 @@ lower numeric value beats higher):
 
 | # | Tier | Matches |
 |---|------|---------|
-| 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also `IntLiteral` -> fixed-int in range, `None` -> `Void`, `Callable` -> `Fn`, pending views -> resolved views. |
+| 1 | `EXACT_CONCRETE` | `arg == param` after stripping `Readonly` / `Own` / `Ref` / `Optional`; also a numeric literal at its home (an int literal at the default int width it fits, a float literal at `float`) or an int literal at a fixed width it fits, `None` -> `Void`, `Callable` -> `Fn`, pending views -> resolved views. |
 | 2 | `EXACT_GENERIC_SHAPE` | Param declared with a type parameter inside a concrete outer shape: `list[T]` matching `list[int32]`, `Ptr[T]`, `tuple[T, T]`, `T \| None`, `Callable[[Rec], T]`, etc. |
 | 3 | `SUBCLASS` | A subclass argument at a base-class param: a user record (`Dog` at `Animal`), or a `Ptr` pointee (`Ptr[Dog]` at `Ptr[Animal]`, never dropping a `readonly`); an owned base (`Own[Animal]`) ranks the same, and the call then refuses the slicing move. Its cost is the MRO distance (`TypeRegistry.subclass_distance`: 1 for the first ancestor), so the nearer base wins. |
 | 4 | `PROTOCOL_EXPLICIT` | Protocol conformance via declared `extends` / `implemented_protocols` / protocol-to-protocol inheritance, plus compiler-intrinsic short-circuits: `GenExpr` / `CopyIter` / `OwnIter` satisfying `Iterable`; `Enum` satisfying `Hashable` / `Comparable` / `Equatable`; `Tuple` satisfying `Hashable`; `ValueType` / `Default` marker protocols; `Stringable` (satisfied by any type with `__str__` **or** `__repr__`, mirroring Python's `object.__str__ -> __repr__` fallback). |
@@ -389,13 +418,15 @@ both stages), compared key by key:
    elements: the widening cost of every `PROTOCOL_EXPLICIT` /
    `GENERIC_PROTOCOL_EXPLICIT` argument, read from the conformance
    (`TypeOperations.protocol_type_args_of`: a `dict[int8, int32]` is an
-   `Iterable[int8]`), plus how far a converted fixed int or float widens
-   (`_scalar_widening_cost`). A candidate that converts nothing beats one
-   that widens elements, at any tier.
+   `Iterable[int8]`), plus how far a converted fixed int, float or numeric
+   literal widens (`_scalar_widening_cost`; a literal from its home). A
+   candidate that converts nothing beats one that widens elements, at any
+   tier.
 5. **Tier counts** -- the negated per-tier count vector (more matches at
    the strongest tier first, lexicographically).
-6. **Cost** -- the sum of the remaining per-argument costs: a literal's
-   distance from its default width, a subclass argument's MRO distance.
+6. **Cost** -- the sum of the remaining per-argument costs: an int
+   literal's distance from its home at a fixed width it fits, a subclass
+   argument's MRO distance.
 
 **Widening cost** (`_scalar_widening_cost` / `_type_args_widening_cost`) is 0
 for exact matches and positive when an argument is widening to a param type:
@@ -405,11 +436,32 @@ for exact matches and positive when an argument is widening to a param type:
 - Fixed-int -> `BigInt`: 8.
 - Fixed-int -> float: 16.
 - Float -> wider float: 1.
+- `BigInt` -> fixed-int: ordered, wider closer and unsigned after signed of
+  a width (int64 1, uint64 2, int32 9, ..., uint8 16); `BigInt` -> `float`
+  17, -> `float32` 18. This is the scale of an int literal under
+  `--default-int=BigInt`, so `divmod(7, 2)` and `pow(2, 10)` pick their
+  `int` variants and `m(3)` at `int32` / `float` the fixed width.
 - `IntLiteralType` and `UnknownElementType` (empty-list element) bias toward
   `default_int_type`: the cost is computed as if the source were
   `default_int_type`. This is how `sum([])` resolves to the `Iterable[int32]`
   overload at cost 0 under the default config, matching CPython's
-  `sum([]) == 0` (int).
+  `sum([]) == 0` (int). `FloatLiteralType` is priced from `float` the same
+  way (0 there, 1 at `float32`).
+
+**A numeric literal is priced on that one scale, from its home** -- the
+default int width for an int literal that fits it, `float` for a float
+literal. At its home it is an exact strict match; at a fixed width it fits,
+a strict match whose cost is its distance from the home; anywhere else
+(`int` or `float` under the default `int32`, `float32` for a float literal)
+it converts, its distance in the conversion-widening key as a typed value's.
+So with `m(x: int)` / `m(x: float)`, `m(3)` runs `int` (8 < 16) and
+`m(0.5)` `float`; `w(0.25)` at `float32` / `float` runs `float` (exact),
+`g(0.1, Dog())` at `(float32, Dog)` / `(float, Animal)` runs the `float`
+variant (a strict match, where the `float32` one converts), `j(16777217)` at `int` /
+`float32` runs `int`; `p(3)` at `int64` / `Hashable` keeps `int64`, and
+`m(1000000000000)` at `int64` / `int` keeps `int64` (the literal does not
+fit its `int32` home, so `int64` is the strict match). An int literal costs
+the same at `float` and `float32` (BUGS.md#dispatch-int-float-width-tie).
 - For protocol params, cost is aggregated over the type args the argument
   instantiates the protocol with, as its conformance gives them (e.g.
   `list[int32]` vs `Iterable[int64]` scores 4 on the single element slot;
@@ -533,9 +585,7 @@ CPython runs the first declared
 argument as the base picks a variant: `a: Animal = d; t(a, d, n8)` runs
 `t(x: Animal, y: Dog, z: int64)`. The DECLARED (static) type picks, not
 the runtime type (CPython's `isinstance` would still see a `Dog`), and
-binding the subclass at the base type warns "upcast narrows". A bare float literal at a `float32` /
-`float` pair is such a tie until literals rank by a default width
-(BUGS.md#dispatch-float-width-order); `float32(0.25)` / `float(0.25)` picks.
+binding the subclass at the base type warns "upcast narrows".
 
 **A readonly argument does not re-rank.** Ranking reads signatures only, so
 when the best variant takes a mutable parameter and the argument is
@@ -566,12 +616,13 @@ mode, with the same cells: tier by the declared shape, container meets,
 element widening), and an argument the strict match refuses takes a
 `CONVERTED` cell where `type_matches_with_coercion` accepts it: a scalar
 conversion (`int8` at `int64`, a `BigInt` narrowing into a fixed width, a
-fixed int at `float`), an int literal at `int` / `float` (which the strict
-match refuses), `Callable` -> `Fn`, `Deref[T]`, a subclass value at a
+fixed int at `float`), a numeric literal away from its home and from a
+fixed width it fits (an int literal at `int` / `float`, a float literal at
+`float32`), `Callable` -> `Fn`, `Deref[T]`, a subclass value at a
 pointer to its base, a payload converting into an `Optional` parameter.
-The cell's cost is an int literal's distance from the default width
-(`_int_literal_penalty`) and a subclass's MRO distance; a converted fixed
-int or float widens by `_scalar_widening_cost`; a literal its
+The cell's cost is a subclass's MRO distance; a converted fixed int, float
+or numeric literal widens by `_scalar_widening_cost` (a literal from its
+home); a literal its
 conversion row's `check_range` refuses is no conversion there (an int
 literal a fixed-width parameter cannot hold, a float literal `float32`
 cannot), so `h(10000000000, n8)` at `h(int32, int64)` / `h(str, int64)`

@@ -259,7 +259,7 @@ void main() {
     const R* p = h.get_member();
     h.bump(10);
     std::cout << "member" << " " << (((p != nullptr)) ? (p->x) : (-1)) << "\n" << ::tpy::check_signals;
-    const R* o = ::tpyapp::main::pick__H__str(h, std::string_view("alt"));
+    const R* o = ::tpyapp::main::pick__H__str(h, "alt");
     h.bump(10);
     std::cout << "overload" << " " << (((o != nullptr)) ? (o->x) : (-1)) << "\n" << ::tpy::check_signals;
     const R* q = ::tpyapp::main::pick_ro__readonly_H__int32(h, 0);

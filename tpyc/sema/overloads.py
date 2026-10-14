@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
     same_class,
-    TpyType, IntLiteralType, FloatLiteralType, BIGINT,
+    TpyType, IntLiteralType, FloatLiteralType, FLOAT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, PendingViewType, LiteralType, LiteralTag,
     PendingBytesType, TupleType, UnknownElementType, PendingContainerType,
@@ -186,10 +186,12 @@ def _scalar_widening_cost(
     match tier so that e.g. ``list[int32]`` prefers ``Iterable[int32]`` over
     ``Iterable[int64]`` / ``Iterable[int]`` / ``Iterable[float]``.
 
-    ``IntLiteralType`` ranks as the ``default_int_type`` would (so a list of
-    ``int`` literals under ``default_int=int32`` scores ``Iterable[int32]``
-    exactly like ``list[int32]`` does). When ``default_int_type`` is None,
-    IntLiteral comparisons fall back to the generic cross-type distance.
+    A numeric literal ranks from its home: ``IntLiteralType`` as the
+    ``default_int_type`` would (so a list of ``int`` literals under
+    ``default_int=int32`` scores ``Iterable[int32]`` exactly like
+    ``list[int32]`` does), ``FloatLiteralType`` as ``float``. When
+    ``default_int_type`` is None, IntLiteral comparisons fall back to the
+    generic cross-type distance.
     """
     if actual == expected:
         return 0
@@ -203,8 +205,20 @@ def _scalar_widening_cost(
         if expected == default_int_type:
             return 0
         return _scalar_widening_cost(default_int_type, expected, default_int_type)
+    if isinstance(actual, FloatLiteralType):
+        if expected == FLOAT:
+            return 0
+        return _scalar_widening_cost(FLOAT, expected, default_int_type)
     a_tr = int_traits_of(actual)
     e_tr = int_traits_of(expected)
+    if is_big_int_type(actual):
+        # From a BigInt (the home of an int literal under
+        # `--default-int=BigInt`) the fixed widths are ordered, wider closer
+        # and unsigned after signed of a width, then float, then float32.
+        if e_tr is not None:
+            return 1 + 2 * ((64 - e_tr.bits) // 8) + (0 if e_tr.signed else 1)
+        if is_any_float_type(expected):
+            return 17 if expected == FLOAT else 18
     if a_tr is not None and e_tr is not None:
         # Fixed-int -> fixed-int: bit-width gap, plus a small sign-flip penalty
         # so e.g. int32 -> int64 beats int32 -> uint64.
@@ -458,16 +472,20 @@ def _classify_strict_match(
         if (all(_strip(a) == _strip(p) for a, p in zip(arg_inner.param_types, param_inner.param_types))
                 and _strip(arg_inner.return_type) == _strip(param_inner.return_type)):
             return (MatchTier.EXACT_CONCRETE, 0)
-    # IntLiteralType matches the specific fixed-width int it was inferred to (from
-    # generic resolution). This allows resolved-generic overloads like
-    # range(stop: int32) to match IntLiteralType(5) in the first pass.
-    # Cost ranks by widening distance from default_int_type so str(IntLiteralType)
-    # picks the default-width overload (int32) over the smallest-fitting one
-    # (int8) when multiple fixed-int overloads accept the value.
-    if isinstance(arg_inner, IntLiteralType) and is_fixed_int_type(param_inner):
-        if int_literal_fits_fixed_int(arg_inner, param_inner):
-            return (MatchTier.EXACT_CONCRETE,
-                    _scalar_widening_cost(arg_inner, param_inner, default_int_type))
+    # A numeric literal matches strictly at its home (`_scalar_widening_cost`
+    # 0: the default int width, `float` for a float literal) and an int
+    # literal at any fixed width it fits, so range(stop: int32) takes
+    # IntLiteralType(5) in the first pass. The cost is the distance from
+    # the home, so str(IntLiteralType) picks the default-width overload
+    # (int32) over the smallest-fitting one (int8).
+    if isinstance(arg_inner, (IntLiteralType, FloatLiteralType)):
+        cost = _scalar_widening_cost(arg_inner, param_inner, default_int_type)
+        if is_fixed_int_type(param_inner):
+            if (isinstance(arg_inner, IntLiteralType)
+                    and int_literal_fits_fixed_int(arg_inner, param_inner)):
+                return (MatchTier.EXACT_CONCRETE, cost)
+        elif cost == 0:
+            return (MatchTier.EXACT_CONCRETE, 0)
     # None literal (NoneType) matches None type annotation (VoidType)
     if isinstance(arg_inner, NoneType) and isinstance(param_inner, VoidType):
         return (MatchTier.EXACT_CONCRETE, 0)
@@ -749,35 +767,9 @@ def type_matches_with_coercion(
     return False
 
 
-def _int_literal_penalty(arg_t: TpyType, target: TpyType,
-                         default_int_type: TpyType) -> int:
-    """How far an integer literal argument's conversion target
-    (`_conversion_target`) is from the default integer type (0 there), so
-    a literal prefers the default width."""
-    if not isinstance(arg_t, IntLiteralType):
-        return 0
-    ptype = target
-    if ptype == default_int_type:
-        return 0
-    default_tr = int_traits_of(default_int_type)
-    if default_tr is not None:
-        ptype_tr = int_traits_of(ptype)
-        if ptype_tr is not None:
-            # Keep preference stable around configured width/signedness.
-            width_gap = abs(ptype_tr.bits - default_tr.bits) // 8
-            sign_penalty = 1 if ptype_tr.signed != default_tr.signed else 0
-            return 1 + width_gap + sign_penalty
-        if is_big_int_type(ptype):
-            return 8
-    if is_big_int_type(default_int_type):
-        if is_fixed_int_type(ptype):
-            return 2
-    return 1
-
-
 def _numeric_scalar(t: TpyType) -> bool:
     return (int_traits_of(t) is not None or is_big_int_type(t)
-            or is_any_float_type(t))
+            or isinstance(t, IntLiteralType) or is_any_float_type(t))
 
 
 def _conversion_target(arg_inner: TpyType, param_type: TpyType) -> TpyType:
@@ -811,10 +803,9 @@ def _converted_cell(
 ) -> _Conversion | None:
     """How an argument the strict match refuses converts to its parameter,
     None when it does not: whether it narrows (a BigInt into a fixed
-    width), how far a numeric scalar widens (`_scalar_widening_cost`), and
-    its cost -- an integer literal's distance from the default width
-    (`_int_literal_penalty`), a subclass's from its base
-    (`_coercion_upcast_distance`). A literal its conversion row's
+    width), how far a numeric scalar widens (`_scalar_widening_cost`, a
+    numeric literal from its home), and its cost -- a subclass's distance
+    from its base (`_coercion_upcast_distance`). A literal its conversion row's
     `check_range` refuses (an int literal a fixed width cannot hold, a
     float literal float32 cannot) is no conversion there: the call would
     reject it after the pick."""
@@ -831,13 +822,10 @@ def _converted_cell(
         return None
     narrowing = int(is_big_int_type(arg_inner) and is_fixed_int_type(target))
     widening = 0
-    if (not isinstance(arg_inner, (IntLiteralType, FloatLiteralType))
-            and not is_big_int_type(arg_inner)
+    if (not is_big_int_type(arg_inner)
             and _numeric_scalar(arg_inner) and _numeric_scalar(target)):
         widening = _scalar_widening_cost(arg_inner, target, default_int_type)
-    default = default_int_type if default_int_type is not None else BIGINT
-    cost = (_int_literal_penalty(arg_inner, target, default)
-            + (_coercion_upcast_distance(arg_type, target, subclass_checker) or 0))
+    cost = _coercion_upcast_distance(arg_type, target, subclass_checker) or 0
     return _Conversion(narrowing, widening, cost)
 
 

@@ -63,8 +63,8 @@ std::string g__lit_r__rb(std::string_view x, std::string_view mode) {
 //     print("mixed:", g("a", "rb"))  # tpyc: ok -- the str variant, mode given
 void mixed_section() {
     std::cout << "mixed:" << " " << ::tpyapp::main::g__int32(1) << "\n" << ::tpy::check_signals;
-    std::cout << "mixed:" << " " << ::tpyapp::main::g__lit_r__rb(std::string_view("a")) << "\n" << ::tpy::check_signals;
-    std::cout << "mixed:" << " " << ::tpyapp::main::g__lit_r__rb(std::string_view("a"), "rb") << "\n" << ::tpy::check_signals;
+    std::cout << "mixed:" << " " << ::tpyapp::main::g__lit_r__rb("a") << "\n" << ::tpy::check_signals;
+    std::cout << "mixed:" << " " << ::tpyapp::main::g__lit_r__rb("a", "rb") << "\n" << ::tpy::check_signals;
 }
 
 // @dispatch

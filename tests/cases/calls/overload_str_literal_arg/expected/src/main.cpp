@@ -57,11 +57,11 @@ std::string echo(std::string_view x) {
 //     print(c.kind("ok"))
 //     print(c.kind(True))
 void main() {
-    std::cout << ::tpyapp::main::kind__str(std::string_view("ok")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::kind__str("ok") << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::kind__bool(true) << "\n" << ::tpy::check_signals;
     std::string_view s = "ok";
     std::cout << ::tpyapp::main::kind__str(s) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::sv__StrView(std::string_view("v")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::sv__StrView("v") << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::gen_ov__T<std::string>("hi") << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::main::echo("hi") << "\n" << ::tpy::check_signals;
     C c = C();

@@ -330,7 +330,7 @@ void generic_call() {
     int64_t k = ::tpy::__getitem__(a, 0);
     std::cout << "fn.sorted_key" << " " << ::tpy::ListPrinter(::tpy::builtin_sorted_key<int64_t>(a, neg)) << " " << (::tpy::add_check<int64_t>(k, ::tpyapp::main::w64())) << " " << (::tpy::add_check<int64_t>(::tpy::__getitem__(a, 1), ::tpyapp::main::w64())) << "\n" << ::tpy::check_signals;
     std::array<int32_t, 2> ys = {1, 2};
-    std::cout << "fn.overloaded" << " " << ::tpyapp::main::total__Span_int32(::tpy::as_mut_span(ys)) << " " << ::tpyapp::main::total__str(std::string_view("ab")) << "\n" << ::tpy::check_signals;
+    std::cout << "fn.overloaded" << " " << ::tpyapp::main::total__Span_int32(::tpy::as_mut_span(ys)) << " " << ::tpyapp::main::total__str("ab") << "\n" << ::tpy::check_signals;
 }
 
 // def typed_slots() -> None:

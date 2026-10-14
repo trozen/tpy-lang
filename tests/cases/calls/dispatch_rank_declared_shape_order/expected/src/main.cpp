@@ -804,8 +804,9 @@ void coerce_callable_base() {
 //     d = Dog()
 //     n8: int8 = 1
 //     n64: int64 = 1
-//     # The int literal converts at `int` as at int64, so two bases at exact
-//     # int64 beat two subclasses at `int`.
+//     # The int literal fits int64 strictly but only converts at `int` (priced
+//     # from its int32 home), so the two bases convert fewer arguments
+//     # (BUGS.md#overload-literal-price-three-keys).
 //     print("coerce_literal_int:", cli(d, d, 5, n8), cli(d, d, 5, n64), d.hits)  # tpyc: ok
 void coerce_literal_int() {
     Dog d = Dog();
@@ -821,6 +822,46 @@ void coerce_literal_int() {
 void coerce_literal_range() {
     int8_t n8 = 1;
     std::cout << "coerce_literal_range:" << " " << ::tpyapp::main::clr__float__int64(1e+300, static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+}
+
+// @dispatch
+// def lhf(x: float) -> str:
+//     return "float"
+std::string lhf__float(double x) {
+    return "float";
+}
+
+// @dispatch
+// def lhf(x: int) -> str:
+//     return "int"
+std::string lhf__int(const ::tpy::BigInt& x) {
+    return "int";
+}
+
+// @dispatch
+// def lhw(x: float32) -> str:
+//     return "f32"
+std::string lhw__float32(float x) {
+    return "f32";
+}
+
+// @dispatch
+// def lhw(x: float) -> str:
+//     return "f64"
+std::string lhw__float(double x) {
+    return "f64";
+}
+
+// def literal_home() -> None:
+//     h = LitHome()
+//     # A literal is exact at its home (`int` at the default width, `float`),
+//     # whichever variant is declared first.
+//     print("literal_home:", lhf(3), lhf(0.5), lhw(0.25))  # tpyc: ok
+//     print("literal_home:", h.mv(7), h.mv(True), h.opt(3), h.opt(0.5))  # tpyc: ok
+void literal_home() {
+    LitHome h = LitHome();
+    std::cout << "literal_home:" << " " << ::tpyapp::main::lhf__int(::tpy::BigInt(3)) << " " << ::tpyapp::main::lhf__float(0.5) << " " << ::tpyapp::main::lhw__float(0.25) << "\n" << ::tpy::check_signals;
+    std::cout << "literal_home:" << " " << h.mv(::tpy::BigInt(7)) << " " << h.mv(true) << " " << h.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(3))) << " " << h.opt(std::optional<double>(0.5)) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:
@@ -860,6 +901,7 @@ void coerce_literal_range() {
 //     coerce_callable_base()
 //     coerce_literal_int()
 //     coerce_literal_range()
+//     literal_home()
 void main() {
     ::tpyapp::main::proto_vs_t();
     ::tpyapp::main::base_vs_t();
@@ -897,6 +939,7 @@ void main() {
     ::tpyapp::main::coerce_callable_base();
     ::tpyapp::main::coerce_literal_int();
     ::tpyapp::main::coerce_literal_range();
+    ::tpyapp::main::literal_home();
 }
 
 // main()

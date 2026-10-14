@@ -67,6 +67,7 @@ from tpyc.typesys import (
     STR,
     TupleType,
     UINT8,
+    UINT16,
     UINT32,
     UINT64,
     UNKNOWN_ELEMENT,
@@ -185,6 +186,22 @@ def test_scalar_widening_cost_int_literal_uses_default_as_proxy():
 def test_scalar_widening_cost_int_literal_without_default_is_generic():
     il = IntLiteralType(value=1)
     assert _scalar_widening_cost(il, INT32) == 1
+
+
+def test_scalar_widening_cost_float_literal_home_is_float():
+    fl = FloatLiteralType(value=0.5)
+    assert _scalar_widening_cost(fl, FLOAT) == 0
+    assert _scalar_widening_cost(fl, FLOAT32) == 1
+
+
+def test_scalar_widening_cost_from_bigint_orders_the_widths():
+    # From a BigInt home (`--default-int=BigInt`): the fixed widths, wider
+    # closer and unsigned after signed, then float, then float32.
+    il = IntLiteralType(value=1)
+    order = [INT64, UINT64, INT32, UINT32, INT16, UINT16, INT8, UINT8,
+             FLOAT, FLOAT32]
+    costs = [_scalar_widening_cost(il, t, default_int_type=BIGINT) for t in order]
+    assert costs == [1, 2, 9, 10, 13, 14, 15, 16, 17, 18]
 
 
 def test_scalar_widening_cost_unknown_element_biases_to_default_int():
@@ -683,16 +700,30 @@ def test_narrowing_ranks_before_the_tiers():
     assert floats.rank() < narrows.rank()
 
 
-def test_int_literal_at_int_is_converted():
-    # The strict stage refuses an int literal at `int` / `float`; the
-    # conversion stage converts it, its cost the distance from the default
-    # width -- through an optional parameter too.
+def test_numeric_literal_ranks_on_one_scale_from_its_home():
+    # A numeric literal matches strictly at its home (the default int width,
+    # `float` for a float literal); elsewhere it converts, priced from that
+    # home in the conversion-widening key as a typed value is -- through an
+    # optional parameter too.
     lit = IntLiteralType(value=5)
+    assert _classify_strict_match(lit, INT32, default_int_type=INT32) == (
+        MatchTier.EXACT_CONCRETE, 0)
+    assert _classify_strict_match(lit, BIGINT, default_int_type=BIGINT) == (
+        MatchTier.EXACT_CONCRETE, 0)
+    assert _classify_strict_match(lit, BIGINT, default_int_type=INT32) is None
     at_int = _convert_fit([lit], [BIGINT])
+    at_float = _convert_fit([lit], [FLOAT])
     at_opt = _convert_fit([lit], [OptionalType(BIGINT)])
-    assert at_int is not None and at_opt is not None
-    assert at_int.per_arg == ((MatchTier.CONVERTED, 8),)
-    assert at_opt.per_arg == at_int.per_arg
+    assert at_int is not None and at_float is not None and at_opt is not None
+    assert at_int.per_arg == ((MatchTier.CONVERTED, 0),)
+    assert (at_int.conversion_widening, at_float.conversion_widening) == (8, 16)
+    assert at_opt.rank() == at_int.rank()
+    assert at_int.rank() < at_float.rank()
+    flit = FloatLiteralType(value=0.5)
+    assert _classify_strict_match(flit, FLOAT) == (MatchTier.EXACT_CONCRETE, 0)
+    assert _classify_strict_match(flit, FLOAT32) is None
+    at_f32 = _convert_fit([flit], [FLOAT32])
+    assert at_f32 is not None and at_f32.conversion_widening == 1
     # A literal a fixed width cannot hold is no conversion there, nor at an
     # owned optional payload of that width.
     assert _convert_fit([IntLiteralType(value=10**10)], [INT32]) is None

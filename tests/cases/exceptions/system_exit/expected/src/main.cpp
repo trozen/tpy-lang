@@ -152,7 +152,7 @@ void codes() {
     }
     {
         try {
-            ::tpystd::sys::exit__str(std::string_view("bye"));
+            ::tpystd::sys::exit__str("bye");
         } catch (const ::tpy::SystemExit& e) {
             ::tpyapp::main::show("codes str", e);
         }

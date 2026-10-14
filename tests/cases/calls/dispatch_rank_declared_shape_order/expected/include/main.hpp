@@ -28,6 +28,7 @@ struct C2;
 struct D2;
 struct Twins;
 struct Walker;
+struct LitHome;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -394,6 +395,20 @@ void coerce_callable_base();
 void coerce_literal_int();
 // def coerce_literal_range() -> None:
 void coerce_literal_range();
+// @dispatch
+// def lhf(x: float) -> str:
+std::string lhf__float(double x);
+// @dispatch
+// def lhf(x: int) -> str:
+std::string lhf__int(const ::tpy::BigInt& x);
+// @dispatch
+// def lhw(x: float32) -> str:
+std::string lhw__float32(float x);
+// @dispatch
+// def lhw(x: float) -> str:
+std::string lhw__float(double x);
+// def literal_home() -> None:
+void literal_home();
 // def main() -> None:
 void main();
 
@@ -559,6 +574,35 @@ struct Walker {
 
 inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
     ::tpy::print_object_default(os, "Walker", obj);
+    return os;
+}
+
+// class LitHome:
+struct LitHome {
+
+    // def __init__(self) -> None:
+    LitHome();
+
+    // @dispatch
+    // def mv(self, x: int) -> int:
+    ::tpy::BigInt mv(const ::tpy::BigInt& x) const;
+
+    // @dispatch
+    // def mv(self, x: bool) -> int:
+    ::tpy::BigInt mv(bool x) const;
+
+    // @dispatch
+    // def opt(self, x: float | None) -> str:
+    std::string opt(std::optional<double> x) const;
+
+    // @dispatch
+    // def opt(self, x: int | None) -> str:
+    std::string opt(std::optional<::tpy::BigInt> x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.LitHome";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const LitHome& obj) {
+    ::tpy::print_object_default(os, "LitHome", obj);
     return os;
 }
 
@@ -728,6 +772,39 @@ inline std::string Walker::go(const ::tpy::BigInt& x) const {
 //     return "int64"
 inline std::string Walker::go(int64_t x) const {
     return "int64";
+}
+
+// def __init__(self) -> None:
+//     pass
+inline LitHome::LitHome() {
+}
+
+// @dispatch
+// def mv(self, x: int) -> int:
+//     return 3
+inline ::tpy::BigInt LitHome::mv(const ::tpy::BigInt& x) const {
+    return ::tpy::BigInt(3);
+}
+
+// @dispatch
+// def mv(self, x: bool) -> int:
+//     return 2
+inline ::tpy::BigInt LitHome::mv(bool x) const {
+    return ::tpy::BigInt(2);
+}
+
+// @dispatch
+// def opt(self, x: float | None) -> str:
+//     return "floatopt"
+inline std::string LitHome::opt(std::optional<double> x) const {
+    return "floatopt";
+}
+
+// @dispatch
+// def opt(self, x: int | None) -> str:
+//     return "intopt"
+inline std::string LitHome::opt(std::optional<::tpy::BigInt> x) const {
+    return "intopt";
 }
 
 // def __init__(self) -> None:

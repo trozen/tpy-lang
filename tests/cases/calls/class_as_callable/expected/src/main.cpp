@@ -240,7 +240,7 @@ void builtins_() {
     std::string_view a = "3";
     std::string_view b = "12";
     std::cout << "max key" << " " << ::tpy::max_key(a, b, [](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }) << "\n" << ::tpy::check_signals;
-    std::cout << "overload" << " " << ((::tpyapp::main::conv__Callable_str_int__str([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, std::string_view("41"))) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv__Callable_int_str__int([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
+    std::cout << "overload" << " " << ((::tpyapp::main::conv__Callable_str_int__str([](std::string_view __tpy_fa0) -> ::tpy::BigInt { return ::tpy::BigInt::from_str(__tpy_fa0); }, "41")) + (::tpy::BigInt(1))) << " " << (::tpy::str_concat(::tpyapp::main::conv__Callable_int_str__int([](const ::tpy::BigInt& __tpy_fa0) -> std::string { return (__tpy_fa0).to_string(); }, ::tpy::BigInt(41)), "!")) << "\n" << ::tpy::check_signals;
 }
 
 // def method_field_ctor() -> None:

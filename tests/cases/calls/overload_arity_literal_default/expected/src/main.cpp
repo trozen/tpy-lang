@@ -42,8 +42,8 @@ std::string repeat__str__int(std::string_view s, const ::tpy::BigInt& count) {
 //     print(repeat("ab"))
 //     print(repeat("ab", 3))
 void main() {
-    std::cout << ::tpyapp::main::repeat__str(std::string_view("ab")) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::repeat__str__int(std::string_view("ab"), ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::repeat__str("ab") << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::repeat__str__int("ab", ::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
 }
 
 // main()

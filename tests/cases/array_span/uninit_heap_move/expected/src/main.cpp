@@ -24,7 +24,7 @@ namespace tpyapp::main {
 //     s.drop(0)
 //     return val
 int32_t consume(::tpy::UninitHeapStorage<int32_t>&& s) {
-    int32_t val = s.load(0);
+    int32_t val = s.load(static_cast<uint32_t>(0));
     s.drop(0);
     return val;
 }
@@ -55,8 +55,8 @@ void __tpy_init() {
 
     static ::tpy::UninitHeapStorage<int32_t> __global_slot_1 = ::tpyapp::main::make_storage();
     storage = &__global_slot_1;
-    std::cout << storage->load(0) << "\n" << ::tpy::check_signals;
-    std::cout << storage->load(1) << "\n" << ::tpy::check_signals;
+    std::cout << storage->load(static_cast<uint32_t>(0)) << "\n" << ::tpy::check_signals;
+    std::cout << storage->load(static_cast<uint32_t>(1)) << "\n" << ::tpy::check_signals;
     storage->drop(0);
     storage->drop(1);
     ::tpyapp::main::test_pass_own();

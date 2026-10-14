@@ -155,7 +155,7 @@ void main() {
     std::cout << "call_rvalue" << " " << Holder::take_list(__tmp_11) << "\n" << ::tpy::check_signals;
     std::cout << "tuple_literal" << " " << ::tpyapp::pets::request("http://x", std::tuple<std::string, std::string>{"user", "pw"}) << "\n" << ::tpy::check_signals;
     std::cout << "bytes_own" << " " << std::string(::tpy::__str__(::tpyapp::main::wrap_b(::tpy::bytes_literal("xy", 2)))) << "\n" << ::tpy::check_signals;
-    std::cout << "dispatch" << " " << ::tpyapp::pets::ov__str(std::string_view("abc")) << " " << K::sov(std::string_view("abc")) << "\n" << ::tpy::check_signals;
+    std::cout << "dispatch" << " " << ::tpyapp::pets::ov__str("abc") << " " << K::sov(std::string_view("abc")) << "\n" << ::tpy::check_signals;
     std::cout << "generic_dispatch" << " " << GBox<int32_t>(1).ov(std::string_view("abc")) << "\n" << ::tpy::check_signals;
     std::vector<::tpy::BigInt> __tmp_12 = {::tpyapp::main::tick("order_free", ::tpy::BigInt(1))};
     ::tpy::BigInt n = ::tpyapp::pets::seq(__tmp_12, ::tpyapp::main::tick("order_free", ::tpy::BigInt(2)));

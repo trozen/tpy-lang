@@ -1,0 +1,30 @@
+module: 6 int int16
+free_function: int float float
+free_function: f64 int int16
+free_function: f64_animal 1
+free_function: 12
+free_function: 2.0 7.0
+overload_stubs: 1 3
+method: 6 0.125
+method: intopt intopt f64opt int32opt int16opt
+method: int16 int16 3 2 f64
+method: 7 7 7 3
+method: 1.0 -1.0
+method: 3 3
+method: fopt fopt
+method: 2361183241434822606848
+method: 7 7 3 1
+method: int16 int64
+method: fopt 0.5
+method: 2361183241434822606848
+method: 3 3000000000 3 0.5 1180591620717411303424
+method: 0.25 0.5 fopt -2
+method: 1.0000000200408773e+20
+method: fopt 9.999999980506448e+18
+method: int32 int32
+inverse: int64 dog 10 fixed
+inverse: wide int64 float
+inverse: 10
+generator: [6, -4]
+comprehension: ['int16', 'int16'] ['int', 'int']
+lambda: intopt int

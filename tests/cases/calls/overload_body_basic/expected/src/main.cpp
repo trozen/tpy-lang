@@ -23,7 +23,7 @@ std::string describe__str(std::string_view x) {
 //     print(describe("hello"))
 void main() {
     std::cout << ::tpyapp::main::describe__int(::tpy::BigInt(42)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpyapp::main::describe__str(std::string_view("hello")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::main::describe__str("hello") << "\n" << ::tpy::check_signals;
 }
 
 // main()

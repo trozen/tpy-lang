@@ -69,6 +69,7 @@ from ...typesys import (
     BYTES_FAMILY,
     CallableType,
     CHAR,
+    FLOAT,
     FloatLiteralType,
     INT32,
     IntLiteralType,
@@ -159,7 +160,8 @@ from ...typesys import (
     polymorphic_source_is_pointer,
 )
 from ...symbol_binding import SymbolKind, lookup_imported
-from ...coercions import wrap_into_any, CoercionContext
+from ...coercions import (wrap_into_any, CoercionContext,
+                          context_free_wrap_template, resolve_coercion)
 from ...compilation_context import get_current_compiler
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
@@ -177,7 +179,8 @@ from ...sema.literal_utils import numeric_literal_truth
 from ...sema.type_ops import signature_may_return_borrow
 from ...sema.own_copy import contains_reference_type
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
-from ...codegen_cpp.int_literals import render_int_literal_value
+from ...codegen_cpp.int_literals import (render_int_literal_value,
+                                         target_less_int_literal_type)
 from ..source import BindingKind, BindingRepr, Held, SelectResult, Source
 from ..nodes import (
     THIRBorrowedRecord,
@@ -837,7 +840,10 @@ from .checks import (
     _own_bytes_literal_arg,
     _own_str_literal_arg,
     _str_pass_through_arg,
-    _strlit_pin_slot,
+    _literal_pin_slot,
+    _numeric_literal_type,
+    _numeric_literal_value,
+    _pinned_literal_payload,
     _subscript_elem_reject,
     _subscript_recv_reject,
     _str_aug_append_ok,
@@ -10943,18 +10949,10 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                           temp_args=temp_args)
             _require_method_call_arg(
                 e, a, ptype, index, lc, declared, temp_args=temp_args)
-            pin_slot = _strlit_pin_slot(a, ptype, e.resolved_function_info)
-            if pin_slot is not None:
-                # The method-side twin of the free call's str-literal pin: an
-                # overloaded callee would bind a competing overload through
-                # the `const char[N]` conversions.
-                _witness("call.strlit_overload_pin")
-                pinned = _lower_expr(a, lc, declared)
-                return THIRCoerce(
-                    result_type=ptype, expr=pinned,
-                    coercion_name="strlit_overload_pin",
-                    wrap=f"{pin_slot.to_cpp_param_type()}({{0}})",
-                    form=pinned.form, loc=getattr(a, "loc", None))
+            pinned = _pinned_literal_arg(a, ptype, e.resolved_function_info,
+                                         lc, declared)
+            if pinned is not None:
+                return pinned
             if temp_args:
                 ut = _value_union_temp_slot(a, ptype, declared, lc.analyzer)
                 if ut is not None and not (isinstance(a, TpyName)
@@ -14339,19 +14337,9 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
                 readonly_target=readonly_target, **body_facts)
         if not ok:
             raise ThirUnsupported(call_reject_reason("expr.call"))
-    pin_slot = _strlit_pin_slot(a, ptype, _callee_fi)
-    if pin_slot is not None:
-        # A bare str literal is `const char[N]`, whose array-to-pointer /
-        # boolean conversions outrank the user-defined string_view one, so an
-        # overloaded callee would bind a competing overload: pin the literal
-        # to its slot's view form (the `overloaded_call` branch).
-        _witness("call.strlit_overload_pin")
-        pinned = _lower_expr(a, lc, declared)
-        return THIRCoerce(
-            result_type=ptype, expr=pinned,
-            coercion_name="strlit_overload_pin",
-            wrap=f"{pin_slot.to_cpp_param_type()}({{0}})",
-            form=pinned.form, loc=getattr(a, "loc", None))
+    pinned = _pinned_literal_arg(a, ptype, _callee_fi, lc, declared)
+    if pinned is not None:
+        return pinned
     if (kind is not None and kind[0] in ("native", "native_c", "template")
             and isinstance(a, (TpyCall, TpyMethodCall))
             and _native_container_call_arg(a, ptype, analyzer)):
@@ -19302,16 +19290,113 @@ def _fixed_int_binop_fi(t: 'TpyType', op: str, analyzer):
 
 
 def _retarget_int_literal(v: THIRLiteral, slot: TpyType,
-                          lc: '_LowerCtx') -> THIRLiteral:
-    st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
-    if isinstance(st, OwnType):
-        st = unwrap_readonly(st.wrapped)
+                          lc: '_LowerCtx',
+                          exact_type: bool = False) -> THIRLiteral:
+    st = repr_shape(slot)
     return replace(
         v, result_type=st,
         int_cpp=render_int_literal_value(
             v.value, st,
             default_int_type=lc.analyzer.ctx.default_int_type,
-            type_to_cpp=lambda t: lc.render_type(t)))
+            type_to_cpp=lambda t: lc.render_type(t),
+            exact_type=exact_type))
+
+
+def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
+                        lc: '_LowerCtx',
+                        declared: dict[str, TpyType]) -> 'THIRExpr | None':
+    """ONE literal argument of an overloaded TPy callee rendered as a value
+    of its parameter's own type (`_literal_pin_slot`), or None when it takes
+    no pin. Several variants of a method share one C++ name, so C++ picks
+    among them again by its own rules: a bare `"x"` binds a `bool` variant,
+    a bare `3` a `bool` or narrower one; a free call names its variant and
+    takes no pin. A str
+    literal takes its slot's view form (`std::string_view("x")`); a numeric
+    literal renders from the value sema folded (`1 + 2` is `3`): an int at
+    an int slot the typed render (`static_cast<int16_t>(3)`,
+    `::tpy::BigInt(3)`), any other its target-less render converted to the
+    slot's type (`_pinned_literal_conversion`: `static_cast<double>(3)`;
+    a float at a `float32` slot `static_cast<float>(0.1)`) -- Python makes the binary64 value first and
+    rounds that to float32, while the `f` suffix rounds the decimal text
+    once (BUGS.md#float32-literal-single-rounding); an Optional slot the
+    optional type itself (`std::optional<double>(0.1)`), since a payload
+    value loses to a plain variant's standard conversion. An argument that
+    keeps a literal's type without being a constant (a walrus, an
+    equal-branch conditional) renders as itself, converted to the slot's
+    type (`_pinned_literal_conversion`), so it is evaluated once."""
+    slot = _literal_pin_slot(a, ptype, fi, lc.analyzer)
+    if slot is None:
+        return None
+    _witness("call.literal_overload_pin")
+    loc = getattr(a, "loc", None)
+    lit_t = _numeric_literal_type(a, lc.analyzer)
+    if lit_t is None:
+        pinned = _lower_expr(a, lc, declared)
+        return THIRCoerce(
+            result_type=ptype, expr=pinned,
+            coercion_name="literal_overload_pin",
+            wrap=f"{slot.to_cpp_param_type()}({{0}})",
+            form=pinned.form, loc=loc)
+    payload = _pinned_literal_payload(slot)
+    value = _numeric_literal_value(a, lc.analyzer)
+    if value is None:
+        pinned = _lower_expr(_peel_coerce(a), lc, declared)
+    elif isinstance(lit_t, IntLiteralType):
+        pinned = _lower_int_literal(value, lit_t, lc, loc)
+    else:
+        pinned = THIRLiteral(result_type=lit_t, value=value, loc=loc)
+    if (isinstance(pinned, THIRLiteral) and isinstance(lit_t, IntLiteralType)
+            and (is_fixed_int_type(payload) or is_big_int_type(payload))):
+        pinned = _retarget_int_literal(pinned, payload, lc, exact_type=True)
+    else:
+        pinned = _pinned_literal_conversion(pinned, payload, lc, loc)
+    optional = repr_shape(slot)
+    if isinstance(optional, OptionalType):
+        pinned = THIRCoerce(
+            result_type=ptype, expr=pinned,
+            coercion_name="literal_overload_pin",
+            wrap=f"{lc.render_type(optional)}({{0}})",
+            form=pinned.form, loc=loc)
+    return pinned
+
+
+def _pinned_literal_conversion(v: 'THIRExpr', payload: TpyType,
+                               lc: '_LowerCtx', loc) -> 'THIRExpr':
+    """A pinned literal-typed argument `v` converted to its slot's scalar
+    `payload` from the C++ type `v` renders as -- its own type, a literal's
+    target-less render (`target_less_int_literal_type`, `float`) -- through
+    that pair's coercion row. An evaluated expression at a scalar slot
+    takes its cast even from the same type: a conditional's literal arms
+    render at C++'s own literal types (`-2147483648` is a `long`), which the
+    THIR type does not record. A rendered literal value of the slot's type
+    and a BigInt value at a BigInt slot stay bare (the latter binds without
+    a copy).
+    Two pairs have no row, since a typed value never converts implicitly
+    that way: a narrower fixed width and `float` -> `float32`; sema's
+    literal type proves the value fits the first and Python rounds the
+    binary64 value for the second, so both take a plain cast."""
+    source = repr_shape(v.result_type)
+    if isinstance(source, IntLiteralType):
+        source = (target_less_int_literal_type(source.value)
+                  if source.value is not None
+                  else lc.analyzer.ctx.default_int_type)
+    elif isinstance(source, FloatLiteralType):
+        source = FLOAT
+    if source == payload and (isinstance(v, THIRLiteral)
+                              or is_big_int_type(payload)):
+        return v
+    row = (resolve_coercion(source, payload, CoercionContext.ARG)
+           if source != payload else None)
+    wrap = (context_free_wrap_template(row, source, payload)
+            if row is not None else None)
+    if wrap is None:
+        return THIRCoerce(
+            result_type=payload, expr=v,
+            coercion_name="literal_overload_pin",
+            wrap=f"static_cast<{lc.render_type(payload)}>({{0}})",
+            form=v.form, loc=loc)
+    return THIRCoerce(result_type=payload, expr=v, coercion_name=row.name,
+                      wrap=wrap, form=v.form, loc=loc)
 
 
 def _slot_literal_retype(v: 'THIRExpr | None',
@@ -19329,9 +19414,7 @@ def _slot_literal_retype(v: 'THIRExpr | None',
     passes through."""
     if slot is None or not isinstance(slot, TpyType):
         return v
-    st = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(slot)))
-    if isinstance(st, OwnType):
-        st = unwrap_readonly(st.wrapped)
+    st = repr_shape(slot)
     if (isinstance(v, THIRUnaryArith) and isinstance(v.operand, THIRLiteral)
             and isinstance(v.operand.value, float) and is_float32_type(st)):
         # A negated float literal (`-3.0` into a float32 slot): the `f` suffix

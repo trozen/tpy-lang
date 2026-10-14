@@ -319,7 +319,7 @@ def test_literal_and_view_coercions_are_not_certified_conversions():
     assert not th.THIRCoerce(STR, th.THIRName(CHAR, "c"), "char_to_borrowed_str").certified_conversion
     assert th.THIRCoerce(STR, th.THIRName(CHAR, "c"), "char_to_str", wrap="f({0})").certified_conversion
     # A tag no rule declares is refused.
-    assert not th.THIRCoerce(STR, name, "strlit_overload_pin").certified_conversion
+    assert not th.THIRCoerce(STR, name, "literal_overload_pin").certified_conversion
     # Only a read into the family's owned type is the source's own storage:
     # a view target renders a view, and `str -> String` materializes at a parameter.
     assert not th.THIRCoerce(STRVIEW, name, "str_to_strview").owned_passthrough

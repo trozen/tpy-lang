@@ -1,0 +1,5 @@
+builtins: (3, 1) 1024
+free_function: int32 int64
+free_function: float
+method: int float
+method: int64 3.0 100 3

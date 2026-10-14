@@ -42,3 +42,5 @@ coerce_callable: base base 2
 coerce_callable_base: base 1
 coerce_literal_int: bases-i64 bases-i64 2
 coerce_literal_range: f64
+literal_home: int float f64
+literal_home: 3 2 intopt floatopt

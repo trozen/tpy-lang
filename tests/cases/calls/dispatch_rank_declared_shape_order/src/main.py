@@ -867,8 +867,9 @@ def coerce_literal_int() -> None:
     d = Dog()
     n8: int8 = 1
     n64: int64 = 1
-    # The int literal converts at `int` as at int64, so two bases at exact
-    # int64 beat two subclasses at `int`.
+    # The int literal fits int64 strictly but only converts at `int` (priced
+    # from its int32 home), so the two bases convert fewer arguments
+    # (BUGS.md#overload-literal-price-three-keys).
     print("coerce_literal_int:", cli(d, d, 5, n8), cli(d, d, 5, n64), d.hits)  # tpyc: ok
 
 
@@ -876,6 +877,55 @@ def coerce_literal_range() -> None:
     n8: int8 = 1
     # A float literal float32 cannot hold is no conversion there.
     print("coerce_literal_range:", clr(1e300, n8))  # tpyc: ok
+
+
+@dispatch
+def lhf(x: float) -> str:
+    return "float"
+
+
+@dispatch
+def lhf(x: int) -> str:
+    return "int"
+
+
+@dispatch
+def lhw(x: float32) -> str:
+    return "f32"
+
+
+@dispatch
+def lhw(x: float) -> str:
+    return "f64"
+
+
+class LitHome:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def mv(self, x: int) -> int:
+        return 3
+
+    @dispatch
+    def mv(self, x: bool) -> int:
+        return 2
+
+    @dispatch
+    def opt(self, x: float | None) -> str:
+        return "floatopt"
+
+    @dispatch
+    def opt(self, x: int | None) -> str:
+        return "intopt"
+
+
+def literal_home() -> None:
+    h = LitHome()
+    # A literal is exact at its home (`int` at the default width, `float`),
+    # whichever variant is declared first.
+    print("literal_home:", lhf(3), lhf(0.5), lhw(0.25))  # tpyc: ok
+    print("literal_home:", h.mv(7), h.mv(True), h.opt(3), h.opt(0.5))  # tpyc: ok
 
 
 def main() -> None:
@@ -915,6 +965,7 @@ def main() -> None:
     coerce_callable_base()
     coerce_literal_int()
     coerce_literal_range()
+    literal_home()
 
 
 main()

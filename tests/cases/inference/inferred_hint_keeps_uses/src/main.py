@@ -345,8 +345,7 @@ def overload_args_pick(n: int32) -> None:
     print("args_pick_nested", y)
     x = float32(0.5)
     # An explicit float32 argument under a float32 local picks the float32
-    # width_h variant; a bare float literal is ambiguous between float32 and
-    # float until literals rank by a default width (BUGS.md#dispatch-float-width-order).
+    # width_h variant; a bare float literal would pick `float`, its home.
     x = width_h(float32(0.25))  # tpyc: ok
     print("args_pick_float32", x)
     w = int64(0)

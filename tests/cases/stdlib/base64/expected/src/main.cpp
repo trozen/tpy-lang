@@ -157,13 +157,13 @@ void main() {
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("YWFh\n", 5))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::decodebytes(::tpy::bytes_literal("aGVsbG8=\n", 9))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64encode(::tpy::ByteArray(::tpy::bytes_literal("\xfb\xff", 2)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode__str__bytes_None__bool(std::string_view("TWFu"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode__str(std::string_view("TWFu"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode__str(std::string_view("-_8="))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode__str__bool__bytes_None(std::string_view("MZXW6YTB"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode__str__bool__bytes_None(std::string_view("mzxw6ytb"), true)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode__str__bool(std::string_view("486921"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode__str__bool(std::string_view("48af"), true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b64decode__str__bytes_None__bool("TWFu")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::standard_b64decode__str("TWFu")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::urlsafe_b64decode__str("-_8=")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode__str__bool__bytes_None("MZXW6YTB")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b32decode__str__bool__bytes_None("mzxw6ytb", true)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode__str__bool("486921")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::BytesPrinter(::tpystd::base64::b16decode__str__bool("48af", true)) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpystd::base64::b64decode__bytes__bytes_None__bool(::tpy::bytes_literal("????", 4), std::nullopt, true);

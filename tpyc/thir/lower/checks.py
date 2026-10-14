@@ -51,7 +51,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarDecl,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union
+from ...typesys import pointer_repr_optional, pointer_variant_union, repr_shape
 from ...typesys import (
     param_may_be_written,
     ConcreteFrameType, ConcreteGenType,
@@ -105,7 +105,7 @@ from ...typesys import (
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
 from ...sema.literal_utils import fixed_int_literal_value_from_expr
-from ...prescan import chain_root_name
+from ...prescan import chain_root_name, literal_constant
 from ...type_def_registry import (
     is_varargs,
     type_def_of,
@@ -4145,44 +4145,86 @@ def _call_arity_ok(e: 'TpyCall | TpyMethodCall', fi) -> bool:
     return True
 
 
-def _strlit_overload_pin_fires(e: 'TpyCall', fi) -> bool:
-    """Whether a str-literal arg to this call takes the overloaded
-    pin (`param_view_t("...")`): a MULTI-overload, non-generic callee, plus
-    the per-arg firing test (the
-    pin fires only when the str literal's param slot renders `str`/`StrView`).
-    A str literal into any OTHER slot -- a `char`, a `Literal[...]` mode
-    selector, an owned `String` -- renders through its own arm, so only a
-    str/StrView slot takes the pin. Used to keep the native
-    context-manager face from over-rejecting a str-literal overloaded call
-    whose pin never actually fires."""
+def _literal_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
+    """Whether a literal arg to this call takes the overloaded pin
+    (`_literal_pin_slot`): a MULTI-overload, non-generic callee, plus the
+    per-arg firing test. Used to keep the native context-manager face from
+    over-rejecting an overloaded call whose pin never actually fires."""
     if fi is None:
         return False
     params = fi.params
     return any(i < len(params)
-               and _strlit_pin_slot(a, params[i].type, fi) is not None
+               and _literal_pin_slot(a, params[i].type, fi, analyzer) is not None
                for i, a in enumerate(e.args))
 
 
-def _strlit_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
-                     fi) -> 'TpyType | None':
-    """The param slot ONE str-literal arg must be pinned to
-    (`std::string_view("x")`), or None when this arg takes no pin: the
-    callee is one of an overload set (`FunctionInfo.overloaded`) emitted from
-    TPy -- not generic, and not a @native / @cpp_template stub, whose C++ is
+def _numeric_literal_type(a: TpyExpr,
+                          analyzer) -> 'IntLiteralType | FloatLiteralType | None':
+    """Sema's literal type of a numeric argument (`IntLiteralType` /
+    `FloatLiteralType`) -- a literal, a constant folded over literals, or
+    an expression that keeps a literal's type (a walrus, a conditional with
+    equal branches) -- else None. Overload ranking prices exactly these as
+    literals."""
+    t = analyzer.get_expr_type(_peel_coerce(a))
+    return t if isinstance(t, (IntLiteralType, FloatLiteralType)) else None
+
+
+def _numeric_literal_value(a: TpyExpr, analyzer) -> 'int | float | None':
+    """The value of a numeric literal argument, read from its literal type
+    (`_numeric_literal_type`, any magnitude), when the argument is a
+    constant over literals (`1 + 2`, `+3`, `~0`) and so can render as that
+    value -- else None. A walrus or a conditional is not: rendering its
+    value would drop its effects."""
+    t = _numeric_literal_type(a, analyzer)
+    if t is None or literal_constant(_peel_coerce(a)) is None:
+        return None
+    return t.value
+
+
+def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
+                      fi, analyzer) -> 'TpyType | None':
+    """The param slot ONE literal arg must be pinned to -- rendered as a
+    value of the slot's own type, so C++ binds the variant sema picked --
+    or None when this arg takes no pin: the callee is one of an overload set
+    (`FunctionInfo.overloaded`) whose variants share one C++ name (a free
+    function's variants each have their own, `variant_cpp_name`, so its
+    call already names the one sema picked), emitted from TPy -- not
+    generic, and not a @native / @cpp_template function stub, whose C++ is
     written against its own spelling and expands through the native arm --
-    and the arg's slot renders `str`/`StrView`. Every call loop asks this
-    with the callee it resolved, whichever way it was spelled."""
-    if not isinstance(_peel_coerce(a), TpyStrLiteral):
+    and the arg is a str
+    literal at a `str`/`StrView` slot (a `const char[N]`'s pointer and
+    boolean conversions outrank the view one) or a numeric literal at a
+    numeric slot or an Optional of one (a bare `3` converts to every
+    arithmetic variant alike, and outranks the user-defined conversion to
+    BigInt). Every call loop asks this with the callee it resolved,
+    whichever way it was spelled."""
+    is_str = isinstance(_peel_coerce(a), TpyStrLiteral)
+    if not is_str and _numeric_literal_type(a, analyzer) is None:
         return None
     if (fi is None or fi.is_generic() or not fi.overloaded
+            or fi.variant_cpp_name is not None
             or fi.cpp_template is not None or fi.native_function
             or fi.native_name):
         return None
     slot = (unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype, TpyType) else None)
-    if slot is not None and (is_str_type(slot) or is_str_view_type(slot)):
+    if slot is None:
+        return None
+    if is_str:
+        return slot if (is_str_type(slot) or is_str_view_type(slot)) else None
+    payload = _pinned_literal_payload(slot)
+    if (is_fixed_int_type(payload) or is_big_int_type(payload)
+            or is_float_type(payload)):
         return slot
     return None
+
+
+def _pinned_literal_payload(slot: TpyType) -> TpyType:
+    """The scalar a numeric literal pinned at `slot` renders as: the slot,
+    or an Optional slot's payload."""
+    slot = repr_shape(slot)
+    return (repr_shape(slot.inner)
+            if isinstance(slot, OptionalType) else slot)
 
 
 def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
@@ -4193,7 +4235,7 @@ def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
     `::tpy::symbol(args)` -- the same render the stored `__ctx_N`
     manager gets. The plain/imported/ctor manager sources ride
     `_record_rvalue_source_shape`; this covers the native residue those two
-    reject. Guards the callee kind, arity, and the str-literal overloaded pin
+    reject. Guards the callee kind, arity, and the literal overloaded pin
     (open's `Literal` mode arg does not pin -- a LiteralType slot). Args are
     validated by the manager expr's own lowering arm (shallow, like
     `_record_rvalue_source_shape`)."""
@@ -4207,7 +4249,7 @@ def _native_ctx_manager_ok(e: TpyExpr, analyzer) -> bool:
     k = _free_callee_kind(e, analyzer)
     if k is None or k[0] != "native":
         return False
-    return not _strlit_overload_pin_fires(e, fi)
+    return not _literal_overload_pin_fires(e, fi, analyzer)
 
 
 def _native_record_rvalue_call_shape(e: TpyExpr, analyzer) -> bool:
@@ -10882,7 +10924,7 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
     slot's coercion (an int literal into a BigInt slot wraps, a float literal
     into a float32 slot gets the `f` suffix) rather than the method path's
     target-less spelling, and `overloaded_call` is never threaded -- harmless,
-    since the str-literal pin fires only on overload sets, which reject here.
+    since the literal pin fires only on overload sets, which reject here.
 
     The shared marker / receiver-shape / fi-kind / arity rejects already ran in
     method-call lowering; `_plain_member_call_markers_ok` also disposed of
