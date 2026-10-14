@@ -2677,6 +2677,11 @@ class Compiler:
             return None
         return compiled.module_attributes.get(name)
 
+    def get_module(self, module_name: str) -> 'CompiledModule | None':
+        """The compiled module by name: the registry shape the attribute-table
+        walks (`symbol_binding.walk_attribute_chain`) read."""
+        return self.modules.get(module_name)
+
     def _lookup_in_module(
         self, module_name: str, name: str,
         _seen: set[str] | None = None,
@@ -2757,6 +2762,8 @@ class Compiler:
         compilation phase order is legible inline in `_resolve_types_for_module`.
         """
         from tpyc.parse.resolve_refs import resolve_refs
+        if compiled.ast.resolver is not None:
+            compiled.ast.resolver.attach_module_tables(self, compiled.name)
         try:
             resolve_refs(compiled.ast)
         except ParseError as e:

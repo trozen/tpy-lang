@@ -35,8 +35,9 @@ def test_bare_name_fallback_when_module_absent():
     reg = TypeRegistry()
     local = _enum("__main__.Color")
     reg.enums["Color"] = local
-    # No ModuleInfo for the qualified module -> fall back to the bare slot,
-    # matching the prior get_enum(short) behavior (never a regression).
-    assert reg.find_enum_by_qname("nowhere.Color") is local
+    # No ModuleInfo for the qualified module -> the bare slot answers only
+    # with the enum that IS this qname, never an unrelated same-named one.
+    assert reg.find_enum_by_qname("nowhere.Color") is None
+    assert reg.find_enum_by_qname("__main__.Color") is local
     assert reg.find_enum_by_qname("Color") is local
     assert reg.find_enum_by_qname("Missing") is None

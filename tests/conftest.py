@@ -1336,8 +1336,8 @@ def _reusable_emission(compiler: Compiler, req: CaseRequest) -> dict[str, Module
     if any(compiler.include_path_map.get(name) != path
            for name, path in emission.include_paths.items()):
         return {}
-    # Keyed by bare name, and the lowering of library bodies reads it
-    # (BUGS.md#return-exception-bare-name).
+    # Keyed by bare name and read by sema (BUGS.md#return-exception-bare-name),
+    # which analyzed the template's library modules before these names.
     if not compiler.return_exception_names <= emission.return_exception_names:
         return {}
     return emission.modules

@@ -1,8 +1,9 @@
 # csv.DictReader / csv.DictWriter (dict[str, str] row surface) over io text
 # buffers -- parity-checked against real CPython csv (the cpy phase).
 import io
-# Direct import: module-qualified construction of a generic class
-# (`csv.DictReader(...)`) is a known compiler gap (BUGS.md).
+# Direct import: a module-qualified construction as a `for` iterable
+# (`for row in csv.DictReader(f):`) is a known compiler gap (TODO.md, "A
+# module-member constructor has two routes").
 from csv import DictReader, DictWriter
 
 

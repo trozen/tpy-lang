@@ -1,0 +1,1 @@
+main.py:14: error: __copy__ must return Box[T], got Own[Box[Point]]

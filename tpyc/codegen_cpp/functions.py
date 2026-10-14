@@ -55,6 +55,7 @@ if TYPE_CHECKING:
     from .context import CodeGenContext
     from .types import TypeResolver
     from .protocols import ProtocolGenerator, ProtocolParamInfo
+    from ..sema import SemanticAnalyzer
 
 
 def _pointer_slot_cpp(var_type: TpyType, cpp_type: str) -> str:
@@ -206,6 +207,24 @@ def factory_default_to_cpp(field_type: TpyType) -> str:
     return "{}"
 
 
+def type_member_default_cpp(analyzer: SemanticAnalyzer, expr: TpyFieldAccess) -> str | None:
+    """C++ for a default sema resolved to a member of a class or enum
+    (`check_type_member_default`): the scoped enumerator of `enum_member_of`
+    (`Color.RED` -> `::tpyapp::m::Color::RED`) or the class constant of
+    `class_constant_owner` (`Outer.LIMIT` -> `::tpyapp::m::Outer::LIMIT`).
+    None when sema stamped neither."""
+    if expr.enum_member_of is not None:
+        return enum_member_cpp(expr.enum_member_of, analyzer.ctx.module_name,
+                               expr.field)
+    if expr.class_constant_owner is not None:
+        # The access spelling the expression lowering uses; a default's owner
+        # is never generic (sema admits none), so no instantiation renderer.
+        # Imported here: the THIR lowering imports this module.
+        from ..thir.lower.predicates import _class_constant_cpp
+        return _class_constant_cpp(expr, analyzer, None)
+    return None
+
+
 def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
     """Convert a constant default expression to its C++ representation."""
     return default_to_cpp_from_analyzer(ctx.analyzer, expr, ptype)
@@ -275,17 +294,13 @@ def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,
             source_module, original_name = imp
             return qualified_cpp_name(source_module, original_name)
         return escape_cpp_name(expr.name)
-    if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
-        # Enum-member default: MemoryOrder.SEQ_CST -> the scoped enumerator.
-        # get_enum resolves both local and imported enums (parser accepts the
-        # Name.attr shape without type info, so a non-enum reaching here is a
-        # user error, not an internal one).
-        enum_type = analyzer.registry.get_enum(expr.obj.name)
-        if enum_type is not None:
-            return enum_member_cpp(enum_type, analyzer.ctx.module_name, expr.field)
+    if isinstance(expr, TpyFieldAccess):
+        member = type_member_default_cpp(analyzer, expr)
+        if member is not None:
+            return member
         raise CodeGenError(
-            f"default value '{expr.obj.name}.{expr.field}' is not a resolvable "
-            f"enum member", expr.loc)
+            f"default value '{expr.field}' is not a resolvable enum member "
+            f"or class constant", expr.loc)
     if isinstance(expr, TpyUnaryOp) and expr.op == "-":
         return f"-{default_to_cpp_from_analyzer(analyzer, expr.operand, ptype)}"
     if isinstance(expr, TpyCall):
@@ -618,7 +633,8 @@ class FunctionGenerator:
         """Check if all protocols in a ProtocolParamInfo are functionally const."""
         if info is None or not info.protocols:
             return False
-        return all(self.protocols.is_protocol_const(p.name) for p in info.protocols)
+        return all(self.protocols.is_protocol_const(protocol_info_of(p))
+                   for p in info.protocols)
 
     def shim_return_cpp(self, method: TpyFunction) -> str:
         """The return a shim delegating to `method` (an operator, the call
@@ -1443,7 +1459,7 @@ class FunctionGenerator:
             return {}
         result: dict[str, bool] = {}
         for proto, proto_info in self.ctx.analyzer.registry.iter_dynamic_protocols(record_info):
-            for method_sig in self.protocols.collect_concept_methods(proto.name):
+            for method_sig in self.protocols.collect_concept_methods(proto_info):
                 # First-wins (MRO is nearest-first; most-derived protocol
                 # decides the slot's const-ness). Diamond hierarchies with
                 # conflicting const-ness across sibling protocols for the

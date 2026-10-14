@@ -20,7 +20,7 @@ from __future__ import annotations
 import contextlib
 import copy
 import io
-from dataclasses import dataclass, field, fields, is_dataclass
+from dataclasses import dataclass, field, fields, is_dataclass, replace as dc_replace
 from enum import IntEnum
 from functools import partial
 from typing import NoReturn, TYPE_CHECKING
@@ -1237,12 +1237,7 @@ class AsyncCoroCodegen:
             for h in stmt.handlers:
                 lifted_body = transform(func, h.body) if h.body else h.body
                 if not _same_elements(lifted_body, h.body):
-                    rebuilt.append(TpyExceptHandler(
-                        exception_type=h.exception_type,
-                        binding=h.binding,
-                        body=lifted_body,
-                        loc=h.loc,
-                    ))
+                    rebuilt.append(dc_replace(h, body=lifted_body))
                     any_changed = True
                 else:
                     rebuilt.append(h)

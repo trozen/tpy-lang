@@ -1,0 +1,1 @@
+main.py:16: error: 'Outer.LIMIT' is not an exception class

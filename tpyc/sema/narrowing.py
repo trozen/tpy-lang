@@ -382,7 +382,7 @@ class NarrowingTracker:
             if (expr.isinstance_is_protocol
                     and is_protocol_type(effective) and is_protocol_type(check_type)
                     and self.protocols.protocol_inherits_from(
-                        check_type.name, effective.name)):
+                        check_type, effective)):
                 return {name: check_type}, {}
 
         # is None / is not None on union or optional types

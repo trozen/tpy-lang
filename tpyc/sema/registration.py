@@ -86,8 +86,9 @@ from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
 from ..macro_api import expr_to_cpp_default
 from .literal_utils import const_expr_type, is_char_literal_init
 from ..symbol_binding import (
-    SymbolKind, install_binding, protocol_kind_for,
+    SymbolKind, install_binding, protocol_kind_for, resolve_type_path,
 )
+from ..parse.nodes import name_path
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -244,35 +245,59 @@ def _enum_default_matches_field(field_type: TpyType, member_info: EnumInfo) -> b
                for inner in field_type.inner_types())
 
 
-def check_enum_member_default(expr: TpyExpr, target_type: 'TpyType | None',
-                              registry: 'TypeRegistry | None', loc: object,
-                              *, target_noun: str) -> bool:
-    """Validate a `Name.MEMBER` enum-member default against `target_type`.
+def check_type_member_default(
+        ctx: 'SemanticContext', expr: TpyExpr, target_type: 'TpyType | None',
+        loc: object, *, target_noun: str, scope_record: str | None = None,
+        compat: 'TypeCompatibility | None' = None) -> bool:
+    """Validate a default that names a member of a class or enum --
+    `Color.RED`, `m.Outer.Kind.A`, `Outer.LIMIT` -- against `target_type`.
 
-    Returns True when `expr` is a member of a registered enum matching
-    `target_type` (or `target_type` is None, e.g. a still-generic param slot).
-    Raises on a missing member or an enum that mismatches `target_type`
-    (codegen would otherwise emit a type-mismatched initializer C++ rejects
-    opaquely). Returns False when `expr` is not an enum-member shape -- not
-    `Name.attr`, or the base name is not a registered enum -- so the caller
-    applies its own handling. Shared by field- and parameter-default
-    validation so the two default surfaces stay consistent."""
-    if registry is None or not (
-            isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName)):
+    The receiver resolves in the DEFINING scope, as CPython evaluates a
+    default once where the `def` / field is: the class body (`scope_record`)
+    first, then the module; a parameter of the function never shadows it.
+    An enum member or a `Final` class constant is admitted and the default
+    carries the fact its printer reads (`enum_member_of` /
+    `class_constant_owner`). Raises on a missing enum member or a type that
+    mismatches `target_type`. Returns False when `expr` names no such member,
+    so the caller applies its own handling. Shared by field- and
+    parameter-default validation so the two default surfaces stay
+    consistent."""
+    if not isinstance(expr, TpyFieldAccess):
         return False
-    enum_t = registry.get_enum(expr.obj.name)
-    if enum_t is None:
+    path = name_path(expr.obj)
+    if path is None:
         return False
-    info = enum_info_of(enum_t)
-    if info is not None and expr.field in info.members:
-        if target_type is not None and not _enum_default_matches_field(target_type, info):
-            raise SemanticError(
-                f"Default '{expr.obj.name}.{expr.field}' has enum type "
-                f"'{expr.obj.name}', which does not match the declared "
-                f"{target_noun} type '{target_type}'", loc)
-        return True
-    raise SemanticError(
-        f"'{expr.field}' is not a member of enum '{expr.obj.name}'", loc)
+    owner = None
+    if scope_record is not None:
+        owner = resolve_type_path(
+            ctx, ctx.module_name, f"{scope_record}.{path[0]}", path[1:])
+    if owner is None:
+        owner = ctx.type_ref(expr.obj)
+    if owner is None:
+        return False
+    spelled = ".".join(path)
+    if owner.kind == SymbolKind.ENUM:
+        info = enum_info_of(owner.info)
+        if info is not None and expr.field in info.members:
+            if target_type is not None and not _enum_default_matches_field(target_type, info):
+                raise SemanticError(
+                    f"Default '{spelled}.{expr.field}' has enum type "
+                    f"'{spelled}', which does not match the declared "
+                    f"{target_noun} type '{target_type}'", loc)
+            expr.enum_member_of = owner.info
+            return True
+        raise SemanticError(
+            f"'{expr.field}' is not a member of enum '{spelled}'", loc)
+    holder = ctx.registry.find_class_constant_owner(owner.info, expr.field)
+    if holder is None or holder.type_params:
+        return False
+    if (compat is not None and target_type is not None
+            and not contains_type_param(target_type)):
+        compat.check_type_compatible(
+            holder.class_constants[expr.field].type, target_type,
+            f"{target_noun} default", loc)
+    expr.class_constant_owner = holder
+    return True
 
 
 def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
@@ -316,18 +341,21 @@ def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
 
 
 def _validate_const_field_default(expr: TpyExpr, loc: object,
-                                  registry: 'TypeRegistry | None' = None,
+                                  ctx: 'SemanticContext',
                                   field_type: TpyType | None = None,
                                   compat: 'TypeCompatibility | None' = None,
-                                  field_name: str = "") -> None:
+                                  field_name: str = "",
+                                  record_name: str | None = None) -> None:
     """Validate that a field default expression is a compile-time constant."""
     if expr_to_cpp_default(expr) is not None:
         check_default_value_type(expr, field_type, compat, loc,
                                  target_noun="field", target_name=field_name)
         return
-    # Enum members are constants: `c: Color = Color.RED` emits a C++ constant
-    # initializer. Type-aware -- see check_enum_member_default.
-    if check_enum_member_default(expr, field_type, registry, loc, target_noun="field"):
+    # Enum members and class constants are constants: `c: Color = Color.RED`
+    # emits a C++ constant initializer. Type-aware -- see
+    # check_type_member_default.
+    if check_type_member_default(ctx, expr, field_type, loc, target_noun="field",
+                                 scope_record=record_name, compat=compat):
         return
     # Resolved call from a macro module (e.g. field()) used outside its macro
     if isinstance(expr, (TpyCall, TpyMethodCall)) and getattr(expr, 'resolved_import', None) is not None:
@@ -839,16 +867,14 @@ class TypeRegistrar:
         # finality and type, otherwise C could silently override A's Final
         # by matching B first or skip B's type check entirely.
         cc_keys = class_constants.keys()
-        seen_bases: set[str] = set()
+        seen_bases: set[int] = set()
         queue: list[NominalType] = [b for b in record.bases if isinstance(b, NominalType)]
         while queue:
             base = queue.pop(0)
-            if base.name in seen_bases:
+            parent = self.ctx.registry.get_record_for_type(base)
+            if parent is None or id(parent) in seen_bases:
                 continue
-            seen_bases.add(base.name)
-            parent = self.ctx.registry.get_record(base.name)
-            if parent is None:
-                continue
+            seen_bases.add(id(parent))
             for cc_name in cc_keys & parent.class_constants.keys():
                 self._check_class_constant_shadow(
                     record, parent, cc_name, class_constants, finality,
@@ -1464,8 +1490,8 @@ class TypeRegistrar:
         for fld in record.fields:
             if fld.default_expr is not None and not fld.is_factory_default:
                 _validate_const_field_default(
-                    fld.default_expr, fld.loc, self.ctx.registry, fld.type,
-                    self.compat, fld.name)
+                    fld.default_expr, fld.loc, self.ctx, fld.type,
+                    self.compat, fld.name, record.name)
 
         init_params = []
         if record.init_method:
@@ -1708,7 +1734,7 @@ class TypeRegistrar:
                         f"'{method.name}' must return self ('{record.display_name}'), not None",
                         method.loc or record.loc,
                     )
-                if not (isinstance(method_return, NominalType) and method_return.name == record.name):
+                if not same_base_type(method_return, record_self_type):
                     raise SemanticError(
                         f"'{method.name}' must return self ('{record.display_name}'), "
                         f"got '{method_return}'",
@@ -1745,7 +1771,7 @@ class TypeRegistrar:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
                                                     is_kwargs=True))
-            self._validate_param_defaults(method_param_infos)
+            self._validate_param_defaults(method_param_infos, record.name)
             # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
             # and the body-return checker. Cancellable structurally extends
@@ -1950,9 +1976,10 @@ class TypeRegistrar:
                 )
             ret = copy_info.return_type
             inner = ret.wrapped if isinstance(ret, OwnType) else ret
-            if not (isinstance(inner, NominalType) and inner.name == record.name):
+            # The instantiation too: a copy of `Box[T]` is a `Box[T]`.
+            if not same_base_type(inner, record_self_type):
                 raise SemanticError(
-                    f"__copy__ must return {record.name}, got {ret}",
+                    f"__copy__ must return {record_self_type}, got {ret}",
                     copy_loc,
                 )
 
@@ -2018,8 +2045,8 @@ class TypeRegistrar:
                 if (not ok and isinstance(exc_val_t, OptionalType)
                         and isinstance(exc_val_t.inner, NominalType)
                         and base_exc_record is not None):
-                    inner_record = self.ctx.registry.find_record(
-                        exc_val_t.inner.name)
+                    inner_record = self.ctx.registry.get_record_for_type(
+                        exc_val_t.inner)
                     ok = inner_record is base_exc_record
                 if not ok:
                     raise SemanticError(
@@ -2171,7 +2198,7 @@ class TypeRegistrar:
         # Full validation (protocols, circular check) is deferred to validate_record_inheritance.
         provisional_parent = None
         for base in record.bases:
-            if isinstance(base, NominalType) and self.ctx.registry.get_record(base.name) is not None:
+            if isinstance(base, NominalType) and self.ctx.registry.get_record_for_type(base) is not None:
                 provisional_parent = base
                 break
 
@@ -2358,9 +2385,9 @@ class TypeRegistrar:
             for base in record.bases:
                 if isinstance(base, NominalType):
                     # Protocols are fine (express interface conformance, not C++ inheritance)
-                    if self.ctx.registry.scan_by_short_name(base.name):
+                    if self.ctx.registry.protocol_for_type(base) is not None:
                         continue
-                    base_record = self.ctx.registry.get_record(base.name)
+                    base_record = self.ctx.registry.get_record_for_type(base)
                     if not base_record or not base_record.is_native:
                         raise SemanticError(
                             f"@{record.linkage.value} class '{record.name}' can only inherit from other @native classes",
@@ -2373,31 +2400,22 @@ class TypeRegistrar:
         implemented_protocols: list[NominalType] = []
 
         for base_type in record.bases:
-            # Get the base name to check if it's actually a protocol
-            base_name = None
-            if isinstance(base_type, NominalType):
-                base_name = base_type.name
-
             # Check if this base is actually a protocol (handles forward references)
-            is_protocol_base = False
-            if base_name and self.ctx.registry.scan_by_short_name(base_name) is not None:
-                is_protocol_base = True
+            base_proto = self.ctx.registry.protocol_for_type(base_type)
 
-            if is_protocol_base:
+            if base_proto is not None:
                 # It's a protocol implementation - set the is_protocol flag correctly
-                protocol_type = base_type.with_protocol_flag(True) if isinstance(base_type, NominalType) else base_type
+                protocol_type = base_type.with_protocol_flag(True)
                 # Set _module_qname from the protocol's registry entry so that
                 # qualified_name() returns the correct module (not just the
                 # _protocol_modules fallback which is first-write-wins)
-                if isinstance(protocol_type, NominalType) and not protocol_type._module_qname:
-                    proto_info = self.ctx.registry.scan_by_short_name(base_name)
-                    if proto_info and proto_info.module:
-                        # Use public module name for qualified_name() comparisons
-                        pub_module = public_module_name(proto_info.module)
-                        protocol_type = NominalType(
-                            protocol_type.name, protocol_type.type_args, True,
-                            f"{pub_module}.{protocol_type.name}",
-                            protocol_type.is_dynamic_protocol)
+                if not protocol_type._module_qname and base_proto.module:
+                    # Use public module name for qualified_name() comparisons
+                    pub_module = public_module_name(base_proto.module)
+                    protocol_type = NominalType(
+                        protocol_type.name, protocol_type.type_args, True,
+                        f"{pub_module}.{protocol_type.name}",
+                        protocol_type.is_dynamic_protocol)
                 implemented_protocols.append(protocol_type)
             elif isinstance(base_type, NominalType) and base_type.is_record:
                 # Check if parent is generic and requires type args
@@ -2454,7 +2472,7 @@ class TypeRegistrar:
         for proto in implemented_protocols:
             if not isinstance(proto, NominalType) or not proto.is_dynamic_protocol:
                 continue
-            proto_info = self.ctx.registry.scan_by_short_name(proto.name)
+            proto_info = self.ctx.registry.protocol_for_type(proto)
             if proto_info is None or not proto_info.type_params:
                 continue
             for method_sig in proto_info.methods:
@@ -2474,7 +2492,7 @@ class TypeRegistrar:
         # (C3 would fail as "inconsistent ordering" but the message would be less targeted).
         for p in record_info.parents:
             if isinstance(p, NominalType) and p.is_user_record:
-                if self._has_circular_inheritance(record.name, p.name):
+                if self._has_circular_inheritance(record_info, p):
                     raise SemanticError(
                         f"Circular inheritance detected: '{record.name}' inherits from '{p.name}'",
                         record.loc
@@ -2797,10 +2815,11 @@ class TypeRegistrar:
         # separately for the bases-have-vtable question).
         supertypes: set[str] = set()
         for proto in record_info.implemented_protocols:
-            supertypes.add(proto.name)
             proto_info = protocol_info_of(proto)
-            if proto_info is not None:
-                supertypes.update(proto_info.transitive_supertypes)
+            if proto_info is None:
+                continue
+            supertypes.add(proto_info.qualified_name())
+            supertypes.update(proto_info.transitive_supertypes)
         record_info.transitive_supertypes = frozenset(supertypes)
 
     def _check_marker_claim(
@@ -3343,23 +3362,22 @@ class TypeRegistrar:
                         record.loc
                     )
 
-    def _has_circular_inheritance(self, record_name: str, parent_name: str) -> bool:
-        """Check if record_name is reachable from parent_name via any ancestor chain."""
-        visited: set[str] = set()
-        stack: list[str] = [parent_name]
+    def _has_circular_inheritance(self, record_info: RecordInfo,
+                                  parent: NominalType) -> bool:
+        """Check if `record_info` is reachable from `parent` via any ancestor
+        chain -- by identity, so a base sharing the class's name
+        (`class Inner(m.Outer.Inner)`) is no cycle."""
+        registry = self.ctx.registry
+        visited: set[int] = set()
+        stack: list[NominalType] = [parent]
         while stack:
-            current = stack.pop()
-            if current == record_name:
+            current = registry.get_record_for_type(stack.pop())
+            if current is None or id(current) in visited:
+                continue
+            if current is record_info:
                 return True
-            if current in visited:
-                continue
-            visited.add(current)
-            parent_info = self.ctx.registry.get_record(current)
-            if parent_info is None:
-                continue
-            for p in parent_info.parents:
-                if isinstance(p, NominalType):
-                    stack.append(p.name)
+            visited.add(id(current))
+            stack.extend(p for p in current.parents if isinstance(p, NominalType))
         return False
 
     def _check_method_hiding(self, record: TpyRecord, record_info: RecordInfo,
@@ -3421,7 +3439,8 @@ class TypeRegistrar:
             found_in_protocol: str | None = None
             found_in_dynamic_protocol = False
             for proto_type in record_info.implemented_protocols:
-                all_proto_methods = self.protocols.collect_protocol_methods(proto_type.name)
+                all_proto_methods = self.protocols.collect_protocol_methods(
+                    protocol_info_of(proto_type))
                 if any(m.name == method_name for m in all_proto_methods):
                     found_in_protocol = proto_type.name
                     found_in_dynamic_protocol = getattr(proto_type, 'is_dynamic_protocol', False)
@@ -3466,8 +3485,8 @@ class TypeRegistrar:
         Used to suppress the "method hides ancestor" warning when codegen will
         emit the method as `override` on a virtual @dynamic-protocol slot.
         """
-        for proto, _ in self.ctx.registry.iter_dynamic_protocols(record_info):
-            for sig in self.protocols.collect_protocol_methods(proto.name):
+        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
+            for sig in self.protocols.collect_protocol_methods(proto_info):
                 if sig.name == method_name:
                     return True
         return False
@@ -3536,9 +3555,8 @@ class TypeRegistrar:
         # Attach ProtocolInfo to the TypeDef registry under a stable qname.
         # User protocols in entry-point modules fall back to `__main__.<name>`,
         # mirroring the record/enum convention.
-        qname_module = info.module if info.module else "__main__"
         attach_dynamic_type_def(
-            f"{qname_module}.{info.name}",
+            info.qualified_name(),
             TypeCategory.PROTOCOL,
             protocol=info,
         )
@@ -3547,28 +3565,26 @@ class TypeRegistrar:
         """Populate ``ProtocolInfo.transitive_supertypes`` for one protocol.
 
         Must run after every protocol in the current module is registered
-        so in-module parents resolve via ``scan_by_short_name``; cross-
-        module parents resolve too because modules are compiled in
-        topological order. The ``visited`` guard makes a malformed
-        cycle in ``parent_protocols`` (rejected elsewhere in sema, but
-        cheap to defend here) terminate instead of hang.
+        so in-module parents resolve through their TypeDef; cross-module
+        parents resolve too because modules are compiled in topological
+        order. The ``ancestors`` guard makes a malformed cycle in
+        ``parent_protocols`` (rejected elsewhere in sema, but cheap to
+        defend here) terminate instead of hang.
         """
         info = self.ctx.registry.scan_by_short_name(protocol.name)
         if info is None:
             return
         ancestors: set[str] = set()
-        visited: set[str] = set()
-        stack: list[str] = [p.name for p in info.parent_protocols]
+        stack: list[NominalType] = list(info.parent_protocols)
         while stack:
-            name = stack.pop()
-            if name in visited:
-                continue
-            visited.add(name)
-            ancestors.add(name)
-            parent_info = self.ctx.registry.scan_by_short_name(name)
+            parent_info = self.ctx.registry.protocol_for_type(stack.pop())
             if parent_info is None:
+                continue  # not a protocol: validate_protocol_parents reports it
+            qname = parent_info.qualified_name()
+            if qname in ancestors:
                 continue
-            stack.extend(p.name for p in parent_info.parent_protocols)
+            ancestors.add(qname)
+            stack.extend(parent_info.parent_protocols)
         info.transitive_supertypes = frozenset(ancestors)
 
     def validate_protocol_parents(self, protocol: TpyProtocol) -> None:
@@ -3579,7 +3595,7 @@ class TypeRegistrar:
         surface (methods + fields from all ancestor protocols).
         """
         for parent in protocol.parent_protocols:
-            parent_info = self.ctx.registry.scan_by_short_name(parent.name)
+            parent_info = self.ctx.registry.protocol_for_type(parent)
             if parent_info is None:
                 raise SemanticError(
                     f"Protocol '{protocol.name}' inherits from '{parent.name}', "
@@ -3605,8 +3621,9 @@ class TypeRegistrar:
         Checks the full inherited surface (methods + fields from all ancestors),
         since codegen emits all inherited members into the C++ base class.
         """
-        all_methods = self.protocols.collect_protocol_methods(protocol.name)
-        all_fields = self.protocols.collect_protocol_fields(protocol.name)
+        info = self.ctx.registry.scan_by_short_name(protocol.name)
+        all_methods = self.protocols.collect_protocol_methods(info)
+        all_fields = self.protocols.collect_protocol_fields(info)
 
         # Markerless @dynamic protocols (no methods, no fields) are allowed:
         # they're phylum tags used by the polymorphism predicate to gate
@@ -3787,13 +3804,15 @@ class TypeRegistrar:
             and not is_owned_in_coro_frame(ptype)
         )
 
-    def _validate_param_defaults(self, param_infos: 'list[ParamInfo]') -> None:
+    def _validate_param_defaults(self, param_infos: 'list[ParamInfo]',
+                                 scope_record: str | None = None) -> None:
         """Type-check parameter defaults against their declared types.
 
         The parser accepts a default by shape alone; this is the type-aware
         gate, keeping parameter defaults consistent with field defaults. A
         `Final[T]` name resolves too late to see here and is checked in the
-        analyzer instead."""
+        analyzer instead. `scope_record` is the class whose body defines a
+        method, the first scope a dotted default resolves in."""
         for pi in param_infos:
             default = pi.default_expr
             if default is None:
@@ -3814,11 +3833,13 @@ class TypeRegistrar:
                     f"an enum-member default requires a concrete enum-typed "
                     f"parameter; parameter '{pi.name}' has generic type "
                     f"'{pi.type}'", default.loc)
-            if not check_enum_member_default(
-                    default, pi.type, self.ctx.registry, default.loc,
-                    target_noun="parameter"):
+            if not check_type_member_default(
+                    self.ctx, default, pi.type, default.loc,
+                    target_noun="parameter", scope_record=scope_record,
+                    compat=self.compat):
+                spelled = ".".join(name_path(default) or (default.field,))
                 raise SemanticError(
-                    f"default value '{default.obj.name}.{default.field}' is not "
+                    f"default value '{spelled}' is not "
                     f"a resolvable enum member", default.loc)
 
     def validate_ast_param_defaults(self, func: TpyFunction) -> None:
@@ -3985,7 +4006,7 @@ class TypeRegistrar:
             resolved_kwarg_type = self.type_ops.resolve_type(func.kwarg_type)
             # Validate no field name conflicts with regular params
             if isinstance(resolved_kwarg_type, NominalType):
-                td_record = self.ctx.registry.get_record(resolved_kwarg_type.name)
+                td_record = self.ctx.registry.get_record_for_type(resolved_kwarg_type)
                 if td_record is not None:
                     param_names = {n for n, _ in resolved_params}
                     for fld in td_record.fields:

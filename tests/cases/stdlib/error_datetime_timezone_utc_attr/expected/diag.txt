@@ -1,1 +1,1 @@
-main.py:9: error: 'timezone' is not a variable
+main.py:9: error: class 'timezone' has no attribute 'utc'

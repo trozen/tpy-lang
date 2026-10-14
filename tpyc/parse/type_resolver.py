@@ -38,9 +38,11 @@ from .nodes import (
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, ResolverInputNode,
 )
 from .imports import _IMPLICIT_MODULES
+from ..symbol_binding import ModuleTables, SymbolKind, resolve_type_path
 
 if TYPE_CHECKING:
     from .parser import Parser
+    from ..typesys import ProtocolInfo
 
 
 # Map of fixed-int type names to their singleton instances.  Used by
@@ -117,6 +119,9 @@ class TypeResolver:
         # produce a NominalType(name) placeholder rather than an "Unknown
         # type" error.  Recursive calls inside resolve() inherit this naturally.
         self._pending_alias: str | None = None
+        # Set by `attach_module_tables`.
+        self._module_tables = None
+        self._current_module: str | None = None
 
     @property
     def registry(self):
@@ -432,42 +437,33 @@ class TypeResolver:
                 kind = type_param_scope[name]
                 return TypeParamRef(name, kind=kind)
 
-            # Dotted (qualified or nested class)
+            # Dotted: a module member (`m.X`, `pkg.sub.mod.X`) or a type
+            # path through classes (`m.Outer.Inner`, `Outer.Kind`).
             if "." in name:
-                parts = name.split(".")
-                # 2-level qualified (mod.Attr)
-                if len(parts) == 2:
-                    mod, attr = parts
-                    resolved_q = self._resolve_qualified_type_name_str(mod, attr)
-                    if resolved_q:
-                        primitive = self._resolve_primitive_type(
-                            *resolved_q, loc=ref.loc, is_type_arg=is_type_arg)
-                        if primitive is not None:
-                            return primitive
-                        registered = self._resolve_registered_type(
-                            resolved_q[1], loc=ref.loc, resolved=resolved_q)
-                        if registered is not None:
-                            return self._upgrade_from_type_def(
-                                registered, resolved_q, loc=ref.loc)
-                        # Submodule-import path (`from pkg import submod`):
-                        # `attr` is not in the importer's local registry but
-                        # is exported by the source module. Consult the source
-                        # module directly so the type carries its cross-module
-                        # qname.
-                        cross = self._resolve_qualified_cross_module(
-                            *resolved_q, loc=ref.loc)
-                        if cross is not None:
-                            return cross
-                # Nested dotted class: Outer.Inner, Outer.Mid.Inner, ...
-                dotted = self._resolve_dotted_class_name_str(name)
-                if dotted is not None:
-                    rinfo = parser.registry.get_record(dotted)
-                    if rinfo is not None:
-                        qname = self._user_record_qname(dotted, None)
-                        return NominalType(dotted, _module_qname=qname)
-                    enum_type = parser.registry.get_enum(dotted)
-                    if enum_type is not None:
-                        return enum_type
+                resolved_q = self._module_member(name)
+                if resolved_q:
+                    primitive = self._resolve_primitive_type(
+                        *resolved_q, loc=ref.loc, is_type_arg=is_type_arg)
+                    if primitive is not None:
+                        return primitive
+                path_type = self.type_path(name, ref, type_param_scope)
+                if path_type is not None:
+                    return path_type
+                if resolved_q:
+                    registered = self._resolve_registered_type(
+                        resolved_q[1], loc=ref.loc, resolved=resolved_q)
+                    if registered is not None:
+                        return self._upgrade_from_type_def(
+                            registered, resolved_q, loc=ref.loc)
+                    # Submodule-import path (`from pkg import submod`):
+                    # `attr` is not in the importer's local registry but
+                    # is exported by the source module. Consult the source
+                    # module directly so the type carries its cross-module
+                    # qname.
+                    cross = self._resolve_qualified_cross_module(
+                        *resolved_q, loc=ref.loc)
+                    if cross is not None:
+                        return cross
                 # Helpful error for unimported implicit module
                 self._raise_unresolved_qualified_error_str(name, ref.loc)
                 raise ResolutionFailure(
@@ -560,12 +556,7 @@ class TypeResolver:
                 name, module=parser._public_module(), args=resolved_args)
 
         if "." in name:
-            parts = name.split(".")
-            if len(parts) == 2:
-                mod, attr = parts
-                resolved = self._resolve_qualified_type_name_str(mod, attr)
-            else:
-                resolved = None
+            resolved = self._module_member(name)
         else:
             resolved = parser._resolve_type_name(name)
 
@@ -610,7 +601,7 @@ class TypeResolver:
             self._raise_unresolved_qualified_error_str(name, ref.loc)
 
         # User-defined generic protocols
-        if user_protocol := parser.registry.scan_by_short_name(resolved_container):
+        if user_protocol := self._named_protocol(resolved_container, resolved):
             if user_protocol.type_params:
                 expected = len(user_protocol.type_params)
                 if len(ref.args) != expected:
@@ -645,6 +636,10 @@ class TypeResolver:
         # Unresolved bare (non-dotted) name -- helpful import hint
         if not resolved and "." not in name and name:
             parser._raise_unresolved_import_error(name, loc=ref.loc)
+        if "." in name:
+            path_type = self.type_path(name, ref, type_param_scope)
+            if path_type is not None:
+                return path_type
         if (resolved or parser.registry.get_record(resolved_container) is not None
                 or resolved_container in parser._module_class_names):
             type_args = self._resolve_record_type_args_from_ref(
@@ -666,15 +661,6 @@ class TypeResolver:
                 resolved_container, type_args, is_protocol,
                 qname, is_dynamic_protocol,
             )
-
-        # Nested generic records (Outer.Inner[T])
-        if "." in name:
-            dotted = self._resolve_dotted_class_name_str(name)
-            if dotted is not None and parser.registry.get_record(dotted) is not None:
-                type_args = self._resolve_record_type_args_from_ref(
-                    ref, dotted, type_param_scope)
-                qname = self._user_record_qname(dotted, None)
-                return NominalType(dotted, type_args, _module_qname=qname)
 
         raise ResolutionFailure(f"Unknown generic type: {name}", loc=ref.loc)
 
@@ -931,7 +917,7 @@ class TypeResolver:
             if parser.registry.get_record(dotted) is not None:
                 qname = self._user_record_qname(dotted, None)
                 return NominalType(dotted, _module_qname=qname)
-        if (user_protocol := parser.registry.scan_by_short_name(name)) is not None:
+        if (user_protocol := self._named_protocol(name, resolved)) is not None:
             if user_protocol.type_params:
                 from ..diagnostics import SemanticError
                 raise SemanticError(
@@ -990,6 +976,19 @@ class TypeResolver:
             return NominalType(name)
         return None
 
+    def _named_protocol(
+        self, name: str, resolved: tuple[str, str] | None,
+    ) -> 'ProtocolInfo | None':
+        """The protocol `name` denotes: the one `resolved`'s module defines
+        when the name came through a module (`m.P`, `from m import P`), so
+        a same-named protocol of this module never answers for it; else
+        this module's binding."""
+        if resolved is not None:
+            td = get_type_def(f"{resolved[0]}.{resolved[1]}")
+            if td is not None and td.protocol is not None:
+                return td.protocol
+        return self._parser.registry.scan_by_short_name(name)
+
     def _resolve_qualified_cross_module(
         self, source_module: str, attr: str,
         *, loc: SourceLocation | None = None,
@@ -998,20 +997,15 @@ class TypeResolver:
 
         Used when ``submod.X`` qualifies a type from a submodule that the
         importing module has bound (via `from pkg import submod`) but
-        whose individual records / enums / type aliases are not in the
-        importer's local registry. Returns a NominalType / enum_type /
-        alias type with the correct cross-module qname, or None.
+        whose type aliases / protocols are not in the importer's local
+        registry (classes and enums resolve through `type_path`). Returns
+        an alias type or a protocol NominalType with the correct
+        cross-module qname, or None.
         """
         parser = self._parser
         mod_info = parser.registry.get_module(source_module)
         if mod_info is None:
             return None
-        if mod_info.records and attr in mod_info.records:
-            rinfo = mod_info.records[attr]
-            qname = f"{rinfo.module}.{attr}" if rinfo.module else f"{source_module}.{attr}"
-            return NominalType(attr, _module_qname=qname)
-        if mod_info.enums and attr in mod_info.enums:
-            return mod_info.enums[attr]
         if mod_info.type_aliases and attr in mod_info.type_aliases:
             alias_info = mod_info.type_aliases[attr]
             if alias_info.type_params:
@@ -1041,31 +1035,94 @@ class TypeResolver:
             )
         return None
 
-    def _resolve_qualified_type_name_str(
-        self, local_module: str, attr: str,
-    ) -> tuple[str, str] | None:
-        """Loc-agnostic variant of _resolve_qualified_type_name: takes
-        the module-local name and attribute directly."""
+    def module_head(self, local: str) -> str | None:
+        """The module a dotted head names (`m`, an alias `mm`, `pkg.sub.mod`,
+        a promoted `from pkg import submod`), or None when the head is not a
+        bare-imported module or a module-level definition shadows it.
+        `from X import ...` does NOT put the module name in scope."""
         parser = self._parser
-        if local_module in parser._local_defs:
+        if local.split(".", 1)[0] in parser._local_defs:
             return None
-        canonical = parser._reverse_module_aliases.get(local_module, local_module)
+        canonical = parser._reverse_module_aliases.get(local, local)
         imports = parser._imports.imports
         if imports is None or canonical not in imports:
             return None
+        # None marks a whole-module import of a parser-keyword module; a
+        # user module's bare import is an empty set listed in
+        # `_bare_module_imports`.
         entry = imports[canonical]
         if entry is not None and not (
                 isinstance(entry, set) and canonical in parser._bare_module_imports):
             return None
-        return (canonical, attr)
+        return canonical
 
-    def _resolve_dotted_class_name_str(self, dotted: str) -> str | None:
-        """Loc-agnostic variant of _resolve_dotted_class_name: check if a
-        dotted-name string resolves to a known module class."""
-        parts = dotted.split(".")
-        if parts and parts[0] in self._parser._module_class_names:
-            return dotted
+    def _module_member(self, dotted: str) -> tuple[str, str] | None:
+        """`(module, attr)` when `dotted` is a module head plus ONE member
+        (`m.X`, `pkg.sub.mod.X`), else None."""
+        head, _, attr = dotted.rpartition(".")
+        module = self.module_head(head) if head else None
+        return (module, attr) if module is not None else None
+
+    def attach_module_tables(self, modules: ModuleTables, current_module: str) -> None:
+        """Give the resolver the workspace's per-module attribute tables
+        (`modules.get_module(name).module_attributes`), which type paths
+        through classes walk, and the name of the module being resolved.
+        The compiler attaches them before `resolve_refs`: the tables are
+        filled by then, the sema registry's ModuleInfo is not."""
+        self._module_tables = modules
+        self._current_module = current_module
+
+    def _type_path_head(self, parts: list[str]) -> tuple[str, str, list[str]] | None:
+        """Split a dotted type path at its head: the longest prefix naming
+        a module, else a class of this module or a from-imported name.
+        Returns `(start_module, first_name, members)` for
+        `resolve_type_path`."""
+        for k in range(len(parts) - 1, 0, -1):
+            module = self.module_head(".".join(parts[:k]))
+            if module is not None:
+                return (module, parts[k], parts[k + 1:])
+        parser = self._parser
+        head = parts[0]
+        if head in parser._module_class_names:
+            return (self._current_module, head, parts[1:])
+        resolved = parser._resolve_type_name(head)
+        if resolved is not None:
+            return (resolved[0], resolved[1], parts[1:])
         return None
+
+    def type_path(
+        self, dotted: str, ref: 'TpyTypeRef | None' = None,
+        type_param_scope: dict[str, TypeParamKind] | None = None,
+    ) -> TpyType | None:
+        """The class or enum a dotted path names (`m.Outer.Inner`,
+        `pkg.sub.mod.Color`, `Outer.Kind` through a local or from-imported
+        `Outer`), with `ref`'s type arguments, or None."""
+        if self._module_tables is None:
+            return None
+        head = self._type_path_head(dotted.split("."))
+        if head is None:
+            return None
+        bd = resolve_type_path(self._module_tables, *head)
+        if bd is None:
+            return None
+        # The module being resolved has not registered yet, so its
+        # skeletons still carry its file name; the parser knows the public
+        # name (`__main__` for the entry point).
+        local = bd.defining_module == self._current_module
+        public = self._parser._public_module() if local else None
+        if bd.kind == SymbolKind.ENUM:
+            if ref is not None and ref.args:
+                return None
+            if local:
+                return NominalType(
+                    bd.canonical_name, _module_qname=f"{public}.{bd.canonical_name}")
+            return bd.info
+        info = bd.info
+        type_args = (self._resolve_record_type_args_from_ref(
+            ref, bd.canonical_name, type_param_scope) if ref is not None else ())
+        return NominalType(
+            bd.canonical_name, type_args,
+            _module_qname=f"{public or info.module}.{bd.canonical_name}")
 
     def _raise_unresolved_qualified_error_str(
         self, dotted: str, loc: SourceLocation | None,

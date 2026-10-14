@@ -1865,14 +1865,14 @@ inline ::tpystd::datetime::datetime datetime::combine(::tpystd::datetime::date d
 //                   tz: timezone | ZoneInfo | None = None) -> "datetime":
 //     return datetime._from_epoch_us(_timestamp_to_us(t), tz is None, tz)
 inline ::tpystd::datetime::datetime datetime::fromtimestamp(double t, const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
-    return datetime::_from_epoch_us(::tpystd::datetime::_timestamp_to_us(t), (std::holds_alternative<std::monostate>(tz)), tz);
+    return ::tpystd::datetime::datetime::_from_epoch_us(::tpystd::datetime::_timestamp_to_us(t), (std::holds_alternative<std::monostate>(tz)), tz);
 }
 
 // @staticmethod
 // def utcfromtimestamp(t: float) -> "datetime":
 //     return datetime._from_epoch_us(_timestamp_to_us(t), False)
 inline ::tpystd::datetime::datetime datetime::utcfromtimestamp(double t) {
-    return datetime::_from_epoch_us(::tpystd::datetime::_timestamp_to_us(t), false);
+    return ::tpystd::datetime::datetime::_from_epoch_us(::tpystd::datetime::_timestamp_to_us(t), false);
 }
 
 // @staticmethod
@@ -1880,21 +1880,21 @@ inline ::tpystd::datetime::datetime datetime::utcfromtimestamp(double t) {
 //     return datetime._from_epoch_us(int(_time.time_ns()) // 1000,
 //                                    tz is None, tz)
 inline ::tpystd::datetime::datetime datetime::now(const ::tpy::Union<std::monostate, ::tpystd::datetime::ZoneInfo, ::tpystd::datetime::timezone>& tz) {
-    return datetime::_from_epoch_us(((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::time::time_ns()))) / (::tpy::BigInt(1000))), (std::holds_alternative<std::monostate>(tz)), tz);
+    return ::tpystd::datetime::datetime::_from_epoch_us(((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::time::time_ns()))) / (::tpy::BigInt(1000))), (std::holds_alternative<std::monostate>(tz)), tz);
 }
 
 // @staticmethod
 // def utcnow() -> "datetime":
 //     return datetime._from_epoch_us(int(_time.time_ns()) // 1000, False)
 inline ::tpystd::datetime::datetime datetime::utcnow() {
-    return datetime::_from_epoch_us(((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::time::time_ns()))) / (::tpy::BigInt(1000))), false);
+    return ::tpystd::datetime::datetime::_from_epoch_us(((::tpy::BigInt(static_cast<int64_t>(::tpy::stdlib::time::time_ns()))) / (::tpy::BigInt(1000))), false);
 }
 
 // @staticmethod
 // def today() -> "datetime":
 //     return datetime.now()
 inline ::tpystd::datetime::datetime datetime::today() {
-    return datetime::now();
+    return ::tpystd::datetime::datetime::now();
 }
 
 // def toordinal(self) -> int:

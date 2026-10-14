@@ -11,7 +11,7 @@ from .typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType,
     NominalType, PtrType, OptionalType, OwnType, is_readonly_ptr,
     is_readonly_span, PendingListType, TypeParamRef, TypeParamKind, ReadonlyType,
-    is_integer_type, unwrap_readonly, AnyType, same_nominal_symbol_loose,
+    is_integer_type, unwrap_readonly, AnyType, same_base_type,
     VIEW_TYPE_FAMILIES,
 )
 from .type_def_registry import (
@@ -571,7 +571,7 @@ COERCIONS: list[Coercion] = [
         to_type=_is_mutable_ptr,
         type_match=lambda rec, ptr: (
             isinstance(ptr.pointee, NominalType) and ptr.pointee.is_user_record
-            and same_nominal_symbol_loose(rec, ptr.pointee)
+            and same_base_type(rec, ptr.pointee)
         ),
         requires_lvalue=True,
         requires_mutable_lvalue=True,
@@ -586,7 +586,7 @@ COERCIONS: list[Coercion] = [
         to_type=_is_readonly_ptr_match,
         type_match=lambda rec, ptr: (
             isinstance(ptr.inner_pointee, NominalType) and ptr.inner_pointee.is_user_record
-            and same_nominal_symbol_loose(rec, ptr.inner_pointee)
+            and same_base_type(rec, ptr.inner_pointee)
         ),
         requires_lvalue=True,
         forbid_return_local=True,

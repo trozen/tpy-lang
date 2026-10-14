@@ -3,7 +3,7 @@
 import typing
 from dataclasses import fields
 
-from .. import typesys
+from .. import symbol_binding, typesys
 from . import nodes as _nodes
 from .nodes import TpyFieldAccess, TpyMethodCall, TpyName
 
@@ -18,6 +18,7 @@ def _call_slots() -> list[str]:
     """
     ns = dict(vars(_nodes))
     ns.update(vars(typesys))
+    ns.update(vars(symbol_binding))
     hints = typing.get_type_hints(TpyFieldAccess, ns, include_extras=False)
     return [f.name for f in fields(TpyFieldAccess)
             if _is_method_call_slot(hints.get(f.name))]

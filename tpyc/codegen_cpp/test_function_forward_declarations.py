@@ -6,7 +6,7 @@ from .. import get_lib_dir
 from ..compilation_context import activate_compiler
 from ..compiler import Compiler
 from ..parse import TpyFunction
-from .generator import _func_uses_nested_type, _references_nested_type
+from .generator import _func_needed_class_qnames
 
 
 def test_nested_signature_predicate_traverses_wrappers_and_return_types() -> None:
@@ -42,14 +42,15 @@ def inverse(value: tuple[list[Flat], int | None]) -> None:
     modules = compiler.compile()
     entry = next(m for m in modules if m.is_entry_point)
     functions = {func.name: func for func in entry.ast.functions}
+    registry = entry.analyzer.registry
     with activate_compiler(compiler):
         for name, typ in functions["wrapped"].params:
-            assert _references_nested_type(typ), name
-            # Return-only signatures use the same conservative scheduling rule.
+            # Return-only signatures use the same scheduling rule.
             returning = TpyFunction("returning", [], typ, [])
-            assert _func_uses_nested_type(returning), name
-        assert _func_uses_nested_type(functions["wrapped"])
-        assert not _func_uses_nested_type(functions["inverse"])
+            assert _func_needed_class_qnames(returning, registry), name
+        assert _func_needed_class_qnames(functions["wrapped"], registry) == {
+            "__main__.Outer.Inner", "__main__.Outer.Kind"}
+        assert not _func_needed_class_qnames(functions["inverse"], registry)
     hpp, _ = compiler.generate_code_to_strings(entry)
     outer = hpp.index("struct Outer {")
     complete = hpp.index("\n};", outer) + len("\n};")

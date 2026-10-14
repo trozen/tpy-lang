@@ -9085,8 +9085,6 @@ def _marker_reject(e: TpyMethodCall, analyzer) -> str:
         return "method.marker.kwargs"
     if e.typed_dict_get_field is not None:
         return "method.marker.typed_dict"
-    if e.is_nested_constructor or e.is_nested_enum_constructor:
-        return "method.marker.nested_ctor"
     if e.is_callable_field:
         return "method.marker.callable_field"
     if e.macro_expansion is not None:
@@ -9226,7 +9224,6 @@ def _marker_call_kind(e: TpyMethodCall, analyzer, *,
     # EXPLICIT type args are rejected here; INFERRED ones flow to the
     # per-branch generic decisions below.
     if (e.typed_dict_get_field is not None
-            or e.is_nested_constructor or e.is_nested_enum_constructor
             or e.is_callable_field or e.macro_expansion is not None
             or e.fstr_expansion is not None
             # EXPLICIT type args are rejected -- EXCEPT where sema already

@@ -580,7 +580,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # the constant ordinal int
     "call.range_object",            # `range(...)` in object position ->
                                     # `::tpy::Range<T>(...)`
-    "ctor.nested_record",           # `Outer.Inner(args)` -> `Outer::Inner(args)`
     "call.cast_passthrough",        # `typing.cast(T, x)` non-Any -> bare `x`
     "call.cast_any",                # `typing.cast(T, x)` from Any ->
                                     # `::tpy::any_cast_or_panic<T>(x)`
@@ -2260,7 +2259,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "enum.value",                   # `.value` -> `static_cast<U>(x)`
     "enum.name",                    # `.name` -> `EnumUtil<E>::name(x)` (BORROW)
     "enum.repr_print",              # @native enum print arg -> `::tpy::__repr__`
-    "enum.nested_from_value",       # `Outer.Kind(v)` EnumUtil from_value
     # F-string per-arg rows (the wrap table; witnessed during local
     # classification and again at lowering -- non-vacuity only needs a
     # nonzero count).

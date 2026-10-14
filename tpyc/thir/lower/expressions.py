@@ -9032,10 +9032,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                             type_cpp = unwrap_readonly(unwrap_ref_type(
                                 unwrap_send_sync(rtype))).to_cpp()
                         else:
-                            # The resolved record's own name, not the callee
-                            # spelling: `cls(...)` inside a @classmethod names
-                            # no C++ type (the two are equal elsewhere).
-                            type_cpp = ri.name
+                            # The result type's spelling, not the callee's:
+                            # `cls(...)` inside a @classmethod names no C++
+                            # type, and a nested record (`Outer.Inner`)
+                            # spells `Outer::Inner`.
+                            type_cpp = lc.render_type(unwrap_readonly(
+                                unwrap_ref_type(unwrap_send_sync(rtype))))
             ctor_mut = fi.mutated_params or frozenset()
             eff_params = fi.params
             if not eff_params and e.args:
@@ -10258,7 +10260,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # that then RAISES (an `astuple` expansion is a bare tuple
             # literal with no arm). That inflated signal is how a dead arm
             # once passed the zero-witness check.
-            expansion = _lower_expr(e.macro_expansion, lc, declared)
+            expansion = _lower_expr(e.macro_expansion, lc, declared, use=use)
             _witness("call.macro_expansion")
             return expansion
         iterable_override = ((
@@ -10278,53 +10280,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             # receiver that dies with the statement would dangle.
             or (builds_named_frame(e, analyzer)
                 and _member_gen_call_iterable_ok(e, declared, analyzer)))
-        if e.is_nested_enum_constructor:
-            if (not e.nested_type_name or e.kwargs
-                    or e.double_star_unpack is not None or len(e.args) != 1):
-                raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            nested_t = analyzer.registry.get_enum(e.nested_type_name)
-            arg_type = analyzer.get_expr_type(e.args[0])
-            if (nested_t is None or _eligible_enum(nested_t, analyzer) is None
-                    or not _resolved_scalar(arg_type, analyzer)
-                    or _runtime_bigint(arg_type, analyzer)):
-                raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            # `Outer.Kind(v)` -> `::tpy::EnumUtil<Outer::Kind>::from_value(v)`
-            # -- the nested-enum arm. Spelled via enum_cpp_name
-            # like the top-level E(x) arm -- `Outer::Kind` locally, qualified
-            # cross-module.
-            _witness("enum.nested_from_value")
-            spelled = enum_cpp_name(nested_t, analyzer.ctx.module_name)
-            return THIRCall(
-                result_type=rtype, callee=e.method,
-                args=(_lower_expr(e.args[0], lc, declared),),
-                cpp_template=(f"::tpy::EnumUtil<{spelled}>"
-                              "::from_value({0})"),
-                constructs=True,
-                loc=loc)
-        if e.is_nested_constructor:
-            # `Outer.Inner(args)` -> `Outer::Inner(args)`. The type spelling
-            # is `NominalType(nested_type_name).to_cpp()` (module-qualified
-            # cross-module); args render plainly, exactly like the enum arm.
-            if (not e.nested_type_name or e.kwargs
-                    or e.double_star_unpack is not None):
-                raise ThirUnsupported(call_reject_reason("expr.method_call"))
-            _witness("ctor.nested_record")
-            _nested_res = unwrap_readonly(unwrap_ref_type(rtype))
-            if (isinstance(_nested_res, NominalType)
-                    and _nested_res.type_args):
-                # A GENERIC nested record spells its resolved arguments, the
-                # way the top-level sibling does. Leaving them to CTAD only
-                # ever worked by accident: a constructor parameter whose slot
-                # is derived from `T` (`::tpy::readonly_form_t<T>`) is a
-                # non-deduced context, so `Outer::Box(7)` has nothing to
-                # deduce from.
-                type_cpp = lc.render_type(_nested_res)
-            else:
-                type_cpp = lc.render_type(NominalType(e.nested_type_name))
-            return THIRCtorCall(
-                result_type=rtype, type_cpp=type_cpp,
-                args=tuple(_lower_expr(a, lc, declared) for a in e.args),
-                form=Form.STORAGE, loc=loc)
         # A plain generic METHOD call's type args ride the member spelling
         # (`recv.method<targs>(args)`), so they are not a marker here; they
         # compose with an unproven-Optional receiver's checked deref
@@ -10773,7 +10728,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                         and e.super_parent_type is None
                         and e.unbound_self_parent_type is None
                         and not e.is_static_call
-                        and not e.is_nested_constructor
                         and e.typed_dict_get_field is None
                         and not e.inferred_type_args
                         and lit_member is None

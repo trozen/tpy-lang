@@ -6,7 +6,7 @@ from datetime import timezone
 
 
 def main() -> None:
-    print(timezone.utc)  # tpyc: error(/not a variable/)
+    print(timezone.utc)  # tpyc: error(/class 'timezone' has no attribute 'utc'/)
 
 
 main()

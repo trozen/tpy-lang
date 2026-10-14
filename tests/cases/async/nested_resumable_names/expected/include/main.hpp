@@ -163,6 +163,14 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::Layer_Deep& obj) 
     return os;
 }
 
+// def delegated(inner: Outer.Inner) -> Iterator[int]:
+__gen_delegated delegated(const Outer::Inner& inner);
+// async def nested_compute(inner: Outer.Inner, delta: int = 1) -> int:
+__coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta = ::tpy::BigInt(1));
+// async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
+template <typename T>
+__coro_nested_echo<T> nested_echo(Outer::Inner& inner, ::tpy::param_val_or_ref_t<T> value, ::tpy::BigInt delta = ::tpy::BigInt(1));
+
 // class Outer_Layer:
 struct Outer_Layer {
     // class Deep:
@@ -199,14 +207,6 @@ inline std::ostream& operator<<(std::ostream& os, const Outer_Layer_Deep& obj) {
     ::tpy::print_object_default(os, "Outer_Layer_Deep", obj);
     return os;
 }
-
-// def delegated(inner: Outer.Inner) -> Iterator[int]:
-__gen_delegated delegated(const Outer::Inner& inner);
-// async def nested_compute(inner: Outer.Inner, delta: int = 1) -> int:
-__coro_nested_compute nested_compute(Outer::Inner& inner, ::tpy::BigInt delta = ::tpy::BigInt(1));
-// async def nested_echo[T](inner: Outer.Inner, value: T, delta: int = 1) -> T:
-template <typename T>
-__coro_nested_echo<T> nested_echo(Outer::Inner& inner, ::tpy::param_val_or_ref_t<T> value, ::tpy::BigInt delta = ::tpy::BigInt(1));
 
 // async def get(self) -> T:
 template <typename T>

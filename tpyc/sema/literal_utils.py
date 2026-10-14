@@ -39,8 +39,8 @@ def const_expr_type(expr: TpyExpr) -> 'TpyType | None':
 
     Covers the grammar the parser admits in default position (see
     `_validate_const_default`) minus the two shapes resolved elsewhere: an
-    enum member (`check_enum_member_default`) and a `Final[T]` name (bound
-    too late to see here). Literal types mirror `analyze_expr` exactly so a
+    enum member or class constant (`check_type_member_default`) and a
+    `Final[T]` name (bound too late to see here). Literal types mirror `analyze_expr` exactly so a
     default is judged by the same rules as the equivalent assignment.
     """
     if isinstance(expr, TpyCoerce):

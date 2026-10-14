@@ -18,7 +18,7 @@ void main() {
     std::cout << a.code << "\n" << ::tpy::check_signals;
     {
         try {
-            ::tpyapp::ea::Err(::tpy::BigInt(9)).__raise__();
+            throw ::tpyapp::ea::Err(::tpy::BigInt(9));
         } catch (const ::tpyapp::ea::Err& e) {
             std::cout << e.code << "\n" << ::tpy::check_signals;
         }

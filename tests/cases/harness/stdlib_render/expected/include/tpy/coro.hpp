@@ -195,7 +195,7 @@ template<typename T>
 //     return aw.__poll__(Waker())
 template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 ::tpystd::tpy::Poll<T> poll_once(T_aw& aw) {
-    return aw.__poll__(Waker());
+    return aw.__poll__(::tpystd::coro::Waker());
 }
 // # Poll an awaitable once and report whether it raised CancelledError.
 // # Test convenience: production code should `try: await aw / except
@@ -210,7 +210,7 @@ template<typename T, ::tpystd::coro::Awaitable<T> T_aw>
 bool task_poll_cancelled(T_aw& aw) {
     {
         try {
-            aw.__poll__(Waker());
+            aw.__poll__(::tpystd::coro::Waker());
             return false;
         } catch (const ::tpy::CancelledError&) {
             return true;

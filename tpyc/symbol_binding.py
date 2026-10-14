@@ -20,6 +20,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from enum import Enum
+from typing import Any, Protocol
+
+
+class ModuleTables(Protocol):
+    """What hands out a module's attribute table holder by module name: the
+    sema registry, the compiler, or a module's own analysis context (whose
+    ModuleInfo is not registered while it is analyzed)."""
+    def get_module(self, name: str) -> Any: ...
 
 
 class SymbolKind(Enum):
@@ -242,6 +250,39 @@ def walk_attribute_chain(
         if bd.defining_module is None:
             return None
         cur_mod, cur_name = bd.defining_module, bd.canonical_name
+
+
+TYPE_PATH_KINDS = frozenset({SymbolKind.RECORD, SymbolKind.ENUM})
+
+
+def resolve_type_path(
+    registry: ModuleTables, module_name: str, name: str,
+    members: 'tuple[str, ...] | list[str]' = (),
+) -> 'SymbolBinding | None':
+    """Resolve the class / enum `name` bound in `module_name`'s
+    attribute table, then each of `members` as a type nested in what the
+    previous step reached (`m.Outer.Inner` is `("m", "Outer", ["Inner"])`).
+
+    A nested type is keyed by its dotted name in its defining module's table
+    (`"Outer.Inner"`), so each step looks the dotted name up where the
+    previous one was DEFINED, following re-exports. Returns a binding whose
+    `defining_module` is that definer and `canonical_name` the dotted name
+    there, or None when a step names no type.
+    """
+    accept = is_kind(*TYPE_PATH_KINDS)
+    hit = walk_attribute_chain(registry, module_name, name, accept)
+    for seg in members:
+        if hit is None:
+            return None
+        mod, canonical, _bd = hit
+        hit = walk_attribute_chain(registry, mod, f"{canonical}.{seg}", accept)
+    if hit is None:
+        return None
+    mod, canonical, bd = hit
+    return SymbolBinding(
+        local_name=".".join((name, *members)), kind=bd.kind, info=bd.info,
+        defining_module=mod, canonical_name=canonical,
+    )
 
 
 _MACRO_KINDS = frozenset({

@@ -28,7 +28,8 @@ from ..typesys import (
     PendingGenericInstanceType, contains_fn_type,
     INT32, VOID, BIGINT, FLOAT, STRVIEW, BYTES, BYTESVIEW, BOOL, is_protocol_type, is_protocol_union, final_type_str_to_strview,
     is_final_allowed_inner, FINAL_INNER_TYPE_ERROR,
-    qualify_exception_name, is_return_exception, is_exception_type, error_return_matches,
+    qualify_exception_name, is_return_exception, is_exception_record, error_return_matches,
+    record_owner,
     FunctionInfo, ParamInfo, RecordInfo, MutationCallEdge,
     make_ref, unwrap_ref_type, RefType, param_has_mutable_borrow_surface,
     is_integer_type, is_any_int_type, is_numeric_type, is_primitive_type, is_readonly_span,
@@ -39,7 +40,7 @@ from ..typesys import (
     is_dyn_protocol, is_fn_type, coro_struct_owner,
     ConcreteCoroType, ConcreteFrameType, ConcreteGenType, make_concrete_coro,
     make_cancellable,
-    bare_name, held_whole_borrow_sources,
+    held_whole_borrow_sources,
     result_borrow_sources)
 from ..parse import (
     collect_name_refs,
@@ -77,7 +78,7 @@ from ..liveness import (analyze_last_uses, closure_pinned_names,
                         collect_nested_def_nonlocal_rebinds,
                         stmts_terminate, tuple_literal_leaves,
                         while_head_always_true)
-from ..parse.nodes import SourceLocation, VarLinkage, op_spelling
+from ..parse.nodes import SourceLocation, VarLinkage, op_spelling, name_path
 from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_operands,
                       proven_lend_roots,
                       canonical_storage_key,
@@ -2066,10 +2067,11 @@ class StatementAnalyzer:
                             self._record_field_rebind_outside_init(
                                 rinfo, target.field)
                     if isinstance(actual, NominalType):
-                        info = self.ctx.registry.get_record(actual.name)
+                        info = self.ctx.registry.get_record_for_type(actual)
                         if info is not None:
                             in_own_init = (
-                                in_any_init and rec.name == actual.name
+                                in_any_init
+                                and info is self.ctx.registry.get_record(rec.name)
                             )
                             if (info.is_frozen or info.is_value_type) and not in_own_init:
                                 kind = ("frozen dataclass" if info.is_frozen
@@ -2125,25 +2127,10 @@ class StatementAnalyzer:
 
         Returns the enum NominalType if so, None otherwise.
         """
-        iterable = stmt.iterable
-        if not isinstance(iterable, TpyName):
+        ref = self.ctx.type_ref(stmt.iterable)
+        if ref is None or ref.kind != SymbolKind.ENUM:
             return None
-        binding = self.ctx.func.current_ns.lookup(iterable.name) if self.ctx.func.current_ns else None
-        if binding is None:
-            return None
-        if binding.kind == BindingKind.ENUM and binding.enum_type is not None:
-            return binding.enum_type
-        if binding.kind == BindingKind.IMPORTED_NAME and binding.import_source:
-            src_mod, original_name = binding.import_source
-            # Resolve via the source module's qname, not the bare canonical
-            # name: a same-canonical-named local enum wins the bare
-            # `registry.enums` slot, so `get_enum(original_name)` could
-            # return the local enum instead of the imported one.
-            enum_type = self.ctx.registry.find_enum_by_qname(
-                f"{src_mod}.{original_name}")
-            if enum_type is not None:
-                return enum_type
-        return None
+        return ref.info
 
     def _decide_awaiting_lists(self) -> None:
         """A list literal handed out undecided for a typed container slot
@@ -3019,16 +3006,14 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 f"'raise {stmt.exception_type}' can only be used inside a function", stmt)
 
-        bare_exc = bare_name(stmt.exception_type)
-        record = self.ctx.registry.find_record(bare_exc)
+        record = self._raised_class(stmt)
         if not record:
             # Not a type -- check if it's a variable of exception type
             self._analyze_raise_name_as_expr(stmt)
             return
 
-        qualified_exc = qualify_exception_name(
-            stmt.exception_type, self.ctx.registry, self.ctx.module_name)
-        is_cf = is_return_exception(qualified_exc)
+        qualified_exc = self._exception_qname(stmt.exception_type, record)
+        is_cf = record.is_return_exception or is_return_exception(qualified_exc)
 
         if is_cf:
             # Return-tier: must be inside @error_return(E) function with matching E
@@ -3043,7 +3028,7 @@ class StatementAnalyzer:
                     f"@error_return({stmt.exception_type})", stmt)
         else:
             # Throw-tier: must inherit from Exception
-            if not is_exception_type(stmt.exception_type, self.ctx.registry):
+            if not is_exception_record(record, self.ctx.registry):
                 raise self.ctx.error(
                     f"'{stmt.exception_type}' is not an exception type; "
                     f"it must inherit from Exception",
@@ -3133,7 +3118,46 @@ class StatementAnalyzer:
         stmt.raise_via_virtual = record.virtual_raise and not is_cf
         # Propagate qualified name to AST
         stmt.exception_type = qualified_exc
+        stmt.resolved_type = record_owner(record)
         self.init.mark_terminated()
+
+    def _raised_class(self, stmt: TpyRaise) -> 'RecordInfo | None':
+        """The class a type-form raise names (`raise E`, `raise E(args)`),
+        resolved like any type path; None when the name is not a class. A
+        dotted path arrives resolved (`_analyze_raise_expr`); a raise a macro
+        built from a qualified name alone resolves by that name."""
+        if stmt.resolved_type is not None:
+            return self.ctx.registry.get_record_for_type(stmt.resolved_type)
+        if "." in stmt.exception_type:
+            return self.ctx.registry.find_record_by_qname(stmt.exception_type)
+        ref = self.ctx.type_ref_path([stmt.exception_type])
+        return ref.info if ref is not None and ref.kind == SymbolKind.RECORD else None
+
+    def _exception_qname(self, spelled: str, record: 'RecordInfo') -> str:
+        """The qualified name an exception class is matched by against
+        `@error_return(...)`: a bare spelling qualifies as the decorator's
+        does (`qualify_exception_name`), a dotted path by the class it
+        resolved to."""
+        if "." not in spelled:
+            return qualify_exception_name(
+                spelled, self.ctx.registry, self.ctx.module_name)
+        return record.qualified_name()
+
+    def _handler_class(self, h: TpyExceptHandler) -> 'RecordInfo | None':
+        """The class an except clause names, resolved like any type path
+        (`except m.Outer.Err:`). A clause a macro built from a qualified
+        name alone resolves by that name."""
+        if h.exception_path:
+            path = list(h.exception_path)
+            ref = self.ctx.type_ref_path(path)
+            if ref is not None:
+                return ref.info if ref.kind == SymbolKind.RECORD else None
+            miss = self.ctx.type_path_miss(path, "an exception class")
+            if miss is not None:
+                raise self.ctx.error(miss, h)
+            return None
+        return self.ctx.registry.find_record_by_qname(qualify_exception_name(
+            h.exception_type, self.ctx.registry, self.ctx.module_name))
 
     def _analyze_raise_expr(self, stmt: TpyRaise) -> None:
         """Analyze 'raise <expr>' where expr is a general expression.
@@ -3147,6 +3171,26 @@ class StatementAnalyzer:
         if not isinstance(func, TpyFunction):
             raise self.ctx.error(
                 "'raise' can only be used inside a function", stmt)
+        # `raise m.Err` / `raise Outer.Err(args)`: a dotted class is the type
+        # form, as the bare name is. The type form takes positional
+        # arguments only; a keyword call raises the constructed value.
+        raised = stmt.raise_expr
+        if isinstance(raised, TpyMethodCall):
+            obj, member = raised.obj, raised.method
+        else:
+            obj, member = raised, None
+        path = name_path(obj) if member is not None or isinstance(obj, TpyFieldAccess) else None
+        ref = self.ctx.type_ref(obj, member) if path is not None else None
+        is_kw_call = isinstance(raised, TpyMethodCall) and bool(raised.kwargs)
+        if ref is not None and ref.kind == SymbolKind.RECORD and not is_kw_call:
+            stmt.exception_type = ".".join(path if member is None else [*path, member])
+            stmt.resolved_type = self.ctx.type_of_ref(ref)
+            if isinstance(raised, TpyMethodCall):
+                stmt.args = list(raised.args)
+                stmt.is_call_form = True
+            stmt.raise_expr = None
+            self._analyze_raise(stmt)
+            return
         expr_type = self.expr.analyze_expr(stmt.raise_expr)
         # Peel __deref__ until we hit a non-Deref type. Box[Throwable]
         # peels once to Throwable; an Optional[Box[T]] field already
@@ -3171,7 +3215,8 @@ class StatementAnalyzer:
                 self.init.mark_terminated()
                 return
             if isinstance(t, NominalType) and not t.is_protocol:
-                if is_exception_type(t.name, self.ctx.registry):
+                t_record = self.ctx.registry.get_record_for_type(t)
+                if t_record is not None and is_exception_record(t_record, self.ctx.registry):
                     self.init.mark_terminated()
                     return
             raise self.ctx.error(
@@ -3179,14 +3224,14 @@ class StatementAnalyzer:
                 f"its __deref__ target '{t}' is not Throwable",
                 stmt)
         type_name = self._raise_expr_type_name(expr_type, stmt)
-        if is_return_exception(
-                qualify_exception_name(type_name, self.ctx.registry, self.ctx.module_name)):
+        raised_record = self.ctx.registry.get_record_for_type(unwrap_qualifiers(expr_type))
+        if raised_record is not None and raised_record.is_return_exception:
             raise self.ctx.error(
                 f"'raise <expr>' cannot be used with ReturnException type "
                 f"'{type_name}'; use direct 'raise {type_name}' inside "
                 f"an @error_return function instead",
                 stmt)
-        if not is_exception_type(type_name, self.ctx.registry):
+        if raised_record is None or not is_exception_record(raised_record, self.ctx.registry):
             raise self.ctx.error(
                 f"cannot raise expression of type '{type_name}'; "
                 f"it must inherit from Exception",
@@ -3240,9 +3285,8 @@ class StatementAnalyzer:
                 proto is not None
                 and f"{proto.module}.{proto.name}" == qnames.RETURN_EXCEPTION
             )
-            if is_cf_catch_all or is_return_exception(
-                    qualify_exception_name(
-                        h.exception_type, self.ctx.registry, self.ctx.module_name)):
+            record = None if is_cf_catch_all else self._handler_class(h)
+            if is_cf_catch_all or (record is not None and record.is_return_exception):
                 has_cf = True
             else:
                 has_throw = True
@@ -3478,11 +3522,13 @@ class StatementAnalyzer:
             raise self.ctx.error(
                 "'except ReturnException as' binding is not supported", stmt)
 
+        handler_record = None
         if not is_return_exception_catch_all:
-            bare_exc = bare_name(handler.exception_type)
-            if not self.ctx.registry.find_record(bare_exc):
+            handler_record = self._handler_class(handler)
+            if handler_record is None:
                 raise self.ctx.error(
                     f"Unknown error type '{handler.exception_type}'", stmt)
+            handler.resolved_type = record_owner(handler_record)
 
         # Set try context so call analysis can allow error_return calls
         prev_try_error = self.ctx.func.try_except_error_type
@@ -3491,8 +3537,8 @@ class StatementAnalyzer:
         if is_return_exception_catch_all:
             self.ctx.func.try_except_error_type = "*"
         else:
-            self.ctx.func.try_except_error_type = qualify_exception_name(
-                handler.exception_type, self.ctx.registry, self.ctx.module_name)
+            self.ctx.func.try_except_error_type = self._exception_qname(
+                handler.exception_type, handler_record)
 
         for s in stmt.try_body:
             self.analyze_stmt(s)
@@ -3526,7 +3572,7 @@ class StatementAnalyzer:
         prev_ns_binding = None
         ns_bound = False
         if handler.binding:
-            exc_record = self.ctx.registry.find_record_by_qname(handler.exception_type)
+            exc_record = handler_record
             if exc_record:
                 exc_type = NominalType(exc_record.name, _module_qname=exc_record.qualified_name())
                 self.ctx.func.current_scope.bindings[handler.binding] = exc_type
@@ -3596,18 +3642,17 @@ class StatementAnalyzer:
         handler_records: list[RecordInfo | None] = []
         for h in stmt.handlers:
             if h.exception_type is not None:
-                qualified = qualify_exception_name(
-                    h.exception_type, self.ctx.registry, self.ctx.module_name)
-                record = self.ctx.registry.find_record_by_qname(qualified)
+                record = self._handler_class(h)
                 if not record:
                     raise self.ctx.error(
                         f"Unknown exception type '{h.exception_type}'", stmt)
-                if not is_exception_type(qualified, self.ctx.registry):
+                if not is_exception_record(record, self.ctx.registry):
                     raise self.ctx.error(
                         f"'{h.exception_type}' is not an exception type; "
                         f"it must inherit from Exception", stmt)
                 handler_records.append(record)
-                h.exception_type = qualified
+                h.exception_type = self._exception_qname(h.exception_type, record)
+                h.resolved_type = record_owner(record)
             else:
                 handler_records.append(None)
 

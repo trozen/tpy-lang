@@ -1533,20 +1533,6 @@
    "func": "_lower_expr_impl",
    "reason_src": "call_reject_reason('expr.method_call')"
   },
-  "tpyc/thir/lower/expressions.py:8818": {
-   "arm": "enum.nested_from_value",
-   "depth": 3,
-   "file": "tpyc/thir/lower/expressions.py",
-   "func": "_lower_expr_impl",
-   "reason_src": "call_reject_reason('expr.method_call')"
-  },
-  "tpyc/thir/lower/expressions.py:8832": {
-   "arm": "ctor.nested_record",
-   "depth": 2,
-   "file": "tpyc/thir/lower/expressions.py",
-   "func": "_lower_expr_impl",
-   "reason_src": "call_reject_reason('expr.method_call')"
-  },
   "tpyc/thir/lower/expressions.py:8876": {
    "arm": "method.marker.callable_field",
    "depth": 3,

@@ -12,7 +12,6 @@ import pytest
 from tpyc.typesys import (
     NominalType, RecordInfo, TypeRegistry,
     c3_linearize, C3LinearizationError,
-    same_nominal_symbol_loose,
 )
 from tpyc.type_def_registry import (
     attach_dynamic_type_def, TypeCategory, clear_dynamic_type_defs,

@@ -163,6 +163,7 @@ class TpyExpr:
 if TYPE_CHECKING:
     from ..coercions import Coercion
     from ..sema.context import LoanInfo
+    from ..symbol_binding import SymbolBinding
     from ..typesys import FunctionInfo, RecordInfo, ResolvedBinop, ResolvedUnaryop
 
 
@@ -431,7 +432,9 @@ class TpyCall(TpyCallLike):
     cast_target_type: TpyType | None = None  # Set by sema for typing.cast(T, x): the resolved target type
     cast_source_is_any: bool = False         # Set by sema for typing.cast: True iff source's static type is Any
     compile_time_assert: bool = False        # Set by sema for assert_send[T]()/assert_sync[T](): checked in sema, elided in codegen
-    macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
+    # Set by sema: the expression this call IS, lowered in its place -- a
+    # @call_macro's replacement, an @inline body, a getattr/hasattr synth.
+    macro_expansion: 'TpyExpr | None' = None
     dunder_call: 'TpyMethodCall | None' = None  # Set by sema: obj(args) -> obj.__call__(args)
     # D16 v1.5: try/catch lambda forms. Inner __getattr__ call is stored here;
     # codegen wraps it in a lambda that catches AttributeError.
@@ -508,13 +511,13 @@ class TpyMethodCall(TpyCallLike):
     deref_narrowed_to: TpyType | None = None
     ptr_non_null: bool = False  # Set by sema: receiver is a provably non-null Ptr (or Ptr[readonly[T]])
     is_callable_field: bool = False  # Set by sema: method name is a Callable-typed field
-    macro_expansion: 'TpyExpr | None' = None  # Set by sema: replacement expr from @call_macro
+    # Set by sema: the expression this call IS, lowered in its place -- a
+    # @call_macro's replacement, or the constructor / `from_value` call of
+    # the class or enum a dotted callee names (`m.Outer.Inner(5)`).
+    macro_expansion: 'TpyExpr | None' = None
     typed_dict_get_field: str | None = None  # Set by sema: td.get("key") -> field access
     typed_dict_get_optional: bool = False  # Set by sema: total=False field, absent by default
     fstr_expansion: 'TpyExpr | None' = None  # Set by sema: inlined FStr method body
-    is_nested_constructor: bool = False  # Set by sema: Outer.Inner() nested record constructor
-    is_nested_enum_constructor: bool = False  # Set by sema: Outer.Kind(v) nested enum from_value
-    nested_type_name: str | None = None  # Set by sema: dotted name for nested type calls
     # See TpyCall.representational_subst_params for the contract.
     representational_subst_params: frozenset[str] | None = None
 
@@ -562,6 +565,13 @@ class TpyFieldAccess(TpyExpr):
     module_var_access: Optional[tuple[str, str]] = None  # Set by sema for `pkg.sub.X` variable access on a dotted module: (module_qname, var_name)
     native_field_name: Optional[str] = None  # Set by sema: the matched field's native_field() C++ rename (own-fields-first lookup, so a subclass redeclaration shadows an ancestor's rename)
     enum_member_of: Optional[TpyType] = None  # Set by sema: type-level enum member access (Color.RED); the enum NominalType
+    # Set by sema: the class or enum this dotted path names (`m.Color` in
+    # `m.Color.RED`), when a member is read off it; it is no storage.
+    names_type: 'SymbolBinding | None' = None
+    # Set by sema: a dotted class (`m.Outer.Inner`) at a Callable/Fn slot
+    # stands for this synthesized `lambda *a: C(*a)`; read it through
+    # `lambda_of`.
+    factory_expansion: 'TpyLambda | None' = None
     # Set by sema: a consuming method's `self.<field>` read that MAY move the
     # field out (it sits in a return nothing of the method runs after); a
     # position whose lowering has no move row still rejects. Every other
@@ -594,6 +604,20 @@ class TpyFieldAccess(TpyExpr):
         return [self.obj]
 
 
+def name_path(expr: TpyExpr) -> list[str] | None:
+    """The names of a dotted name chain (`m.Outer.Inner` ->
+    `["m", "Outer", "Inner"]`), or None for any other expression."""
+    parts: list[str] = []
+    while isinstance(expr, TpyFieldAccess):
+        parts.append(expr.field)
+        expr = expr.obj
+    if not isinstance(expr, TpyName):
+        return None
+    parts.append(expr.name)
+    parts.reverse()
+    return parts
+
+
 def const_tuple_index(index: TpyExpr) -> int | None:
     """The compile-time index of a tuple subscript: an int literal or a
     negated one (still negative here), else None."""
@@ -608,7 +632,8 @@ def const_tuple_index(index: TpyExpr) -> int | None:
 def lambda_of(expr: TpyExpr) -> TpyExpr:
     """`expr` as the callable value it stands for: the lambda sema
     synthesized for a class name used at a Callable/Fn slot, else `expr`."""
-    if isinstance(expr, TpyName) and expr.factory_expansion is not None:
+    if (isinstance(expr, (TpyName, TpyFieldAccess))
+            and expr.factory_expansion is not None):
         return expr.factory_expansion
     return expr
 
@@ -1309,6 +1334,9 @@ class TpyRaise(TpyStmt):
     raise_expr: TpyExpr | None = None  # expression form: raise <expr> (throw-tier only)
     is_call_form: bool = False  # raise Name() vs raise Name (set by parser)
     deref_depth: int = 0  # Set by sema: __deref__ steps to peel before calling __raise__ (Phase 20)
+    # Set by sema on the type form: the class raised (its record's type), so
+    # the raise-tier and C++ spelling read the class, not its name.
+    resolved_type: Optional[TpyType] = None
     # The exception's __init__, so codegen lowers each ctor arg through the same
     # shared arg-lowering loop a normal `X(args)` construction uses (protocol /
     # covariant / optional-ptr / union / mutated-temp dispatch, not just the
@@ -1340,6 +1368,11 @@ class TpyExceptHandler:
     # True when this clause was one element of a tuple form. Diagnostics only:
     # lets a message about handler count name what the user actually wrote.
     from_tuple_clause: bool = False
+    # The names the clause spells (`("m", "Outer", "Err")`); sema resolves
+    # them like any type path.
+    exception_path: tuple[str, ...] = ()
+    # Set by sema: the class caught (its record's type).
+    resolved_type: Optional[TpyType] = None
 
 
 @dataclass

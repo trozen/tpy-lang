@@ -1,0 +1,1 @@
+main.py:25: error: type pattern 'm.Outer.Inner' does not match field type 'Outer.Inner' (different type, same name)

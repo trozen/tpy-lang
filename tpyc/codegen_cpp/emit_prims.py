@@ -50,7 +50,7 @@ from ..typesys import (
     NominalType, OptionalType,
     OwnType, PendingViewType, PtrType, ReadonlyType, TpyType, TupleType,
     UnionType, VoidType,
-    collapse_tuple_own_elements, error_return_to_cpp, is_dyn_protocol,
+    collapse_tuple_own_elements, error_return_to_cpp, exception_record_cpp, handler_exception_record, is_dyn_protocol,
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
     is_protocol_type, is_void_like_type, placeholder_value_inits,
     polymorphic_source_inner, param_takes_ownership,
@@ -435,10 +435,9 @@ def emit_except_handler_header(ctx: 'CodeGenContext', out: TextIO,
     if handler.exception_type is None:
         out.write(" catch (...) {\n")
         return
-    cpp_type = error_return_to_cpp(
-        handler.exception_type,
-        ctx.analyzer.ctx.module_name,
-        ctx.analyzer.registry)
+    module = ctx.analyzer.ctx.module_name
+    cpp_type = exception_record_cpp(
+        handler_exception_record(handler, ctx.analyzer.registry, module), module)
     if handler.binding:
         binding = escape_cpp_name(handler.binding)
         out.write(f" catch (const {cpp_type}& {binding}) {{\n")

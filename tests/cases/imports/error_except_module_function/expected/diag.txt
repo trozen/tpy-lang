@@ -1,0 +1,1 @@
+main.py:9: error: 'mx.f' is not an exception class

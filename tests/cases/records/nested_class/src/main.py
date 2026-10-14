@@ -16,7 +16,7 @@ class Outer:
 
         # A defaulted parameter of a NESTED constructor, filled by a
         # positional argument or left to its default; the keyword
-        # spelling is tests/cases/calls/error_nested_ctor_kwargs.
+        # spelling is in tests/cases/imports/type_paths.
         def __init__(self, v: int32, w: int32 = 0) -> None:
             self.v = v + w
 

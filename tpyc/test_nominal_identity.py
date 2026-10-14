@@ -20,7 +20,7 @@ import pytest
 
 from tpyc.typesys import (
     ModuleInfo, NominalType, RecordInfo, TypeRegistry,
-    make_union, UnionType, same_nominal_symbol_loose,
+    make_union, UnionType, same_class, same_base_type, INT32,
 )
 from tpyc.type_def_registry import (
     attach_dynamic_type_def, TypeCategory, clear_dynamic_type_defs,
@@ -56,9 +56,8 @@ class TestNominalEquality:
         assert hash(a) != hash(b) or a != b  # hashes may collide, equality must not
 
     def test_bare_and_qname_bearing_unequal(self) -> None:
-        # Strict contract: bare != qname-bearing.  Transitional sites
-        # that want the loose bridge must call
-        # `same_nominal_symbol_loose` explicitly.
+        # Strict contract: bare != qname-bearing.  Sites bridging a
+        # placeholder call `same_class` / `same_base_type` explicitly.
         bare = NominalType("Foo")
         qn = NominalType("Foo", _module_qname="mod.Foo")
         assert bare != qn
@@ -99,28 +98,30 @@ class TestNominalEquality:
 
 
 # ---------------------------------------------------------------------------
-# 2. same_nominal_symbol_loose -- transitional bridging helper
+# 2. same_class / same_base_type -- placeholder bridging
 # ---------------------------------------------------------------------------
 
 class TestLooseBridging:
     def test_bare_matches_qname_bearing(self) -> None:
         bare = NominalType("Foo")
         qn = NominalType("Foo", _module_qname="mod.Foo")
-        assert same_nominal_symbol_loose(bare, qn)
-        assert same_nominal_symbol_loose(qn, bare)
+        assert same_class(bare, qn)
+        assert same_class(qn, bare)
+        assert same_base_type(bare, qn)
 
     def test_different_qnames_still_unequal(self) -> None:
-        # loose must NOT paper over cross-module collisions.
+        # The bridge must NOT paper over cross-module collisions.
         a = NominalType("Foo", _module_qname="pkg_a.Foo")
         b = NominalType("Foo", _module_qname="pkg_b.Foo")
-        assert not same_nominal_symbol_loose(a, b)
+        assert not same_class(a, b)
 
     def test_rejects_structural_differences(self) -> None:
-        # Different name / type_args / is_protocol -> False regardless
-        # of qname state.
+        # Different name -> False regardless of qname state; different
+        # type args are one class but not one base type.
         bare_a = NominalType("Foo")
         bare_b = NominalType("Bar")
-        assert not same_nominal_symbol_loose(bare_a, bare_b)
+        assert not same_class(bare_a, bare_b)
+        assert not same_base_type(NominalType("Foo", (INT32,)), NominalType("Foo"))
 
 
 # ---------------------------------------------------------------------------

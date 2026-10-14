@@ -205,42 +205,6 @@
  },
  {
   "file": "tpyc/thir/lower/expressions.py",
-  "line": 8791,
-  "func": "_lower_expr_impl",
-  "reason": "call_reject_reason(\"expr.method_call\")",
-  "bin": "DEAD",
-  "confidence": "medium",
-  "evidence": "Guard is `not nested_type_name or kwargs or double_star or len(args) != 1` under `e.is_nested_enum_constructor`. Sema refuses every rejected shape before lowering: 'Nested enum \\'Outer.Kind\\' constructor takes exactly 1 positional argument' (arity and kwargs) and 'Cannot use *unpacking here: the call target does not accept *args' (double-star/star). `nested_type_name` is set whenever the marker is.",
-  "probe": null,
-  "plain_raise": false,
-  "known_shape": null
- },
- {
-  "file": "tpyc/thir/lower/expressions.py",
-  "line": 8797,
-  "func": "_lower_expr_impl",
-  "reason": "call_reject_reason(\"expr.method_call\")",
-  "bin": "BREAKS",
-  "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER: AST emits, THIR falls back, and the escaping ThirUnsupported was CONSTRUCTED at expressions.py:8797 (recorded reason 'expr.method_call', traced through any re-composition).",
-  "probe": "scripts/thir_migration/review/probes/expr2/p8797_nested_enum_bigint.py",
-  "plain_raise": false,
-  "known_shape": null
- },
- {
-  "file": "tpyc/thir/lower/expressions.py",
-  "line": 8818,
-  "func": "_lower_expr_impl",
-  "reason": "call_reject_reason(\"expr.method_call\")",
-  "bin": "BREAKS",
-  "confidence": "high",
-  "evidence": "Probe verdict BREAKS_AT_CUTOVER: AST emits, THIR falls back, and the escaping ThirUnsupported was CONSTRUCTED at expressions.py:8818 (recorded reason 'expr.method_call', traced through any re-composition).",
-  "probe": "scripts/thir_migration/review/probes/expr2/p8818_nested_ctor_kw.py",
-  "plain_raise": false,
-  "known_shape": null
- },
- {
-  "file": "tpyc/thir/lower/expressions.py",
   "line": 8832,
   "func": "_lower_expr_impl",
   "reason": "call_reject_reason(\"expr.method_call\")",

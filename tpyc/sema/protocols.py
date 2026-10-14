@@ -12,6 +12,7 @@ import re
 import dataclasses
 
 from ..typesys import (
+    same_class,
     TpyType, NominalType, TypeParamRef, SelfType, OwnType, ReadonlyType, RefType,
     MethodSignature, FunctionInfo, FieldInfo, RecordInfo, PropertyInfo, is_protocol_type,
     ListRepeatType, GenExprType, make_list, TupleType, OptionalType, PtrType, IntLiteralType, FloatLiteralType, AnyType, PendingListType, UnknownElementType, BIGINT, FLOAT,
@@ -160,7 +161,7 @@ class ProtocolChecker:
         if not all(m.is_readonly for m in proto_info.methods):
             return False
         for parent in proto_info.parent_protocols:
-            parent_info = self.ctx.registry.scan_by_short_name(parent.name)
+            parent_info = protocol_info_of(parent)
             if parent_info is None:
                 return False  # unknown parent -- conservatively non-readonly
             if not self.is_all_readonly(parent_info):
@@ -439,11 +440,11 @@ class ProtocolChecker:
 
         # Protocol-to-protocol: check if actual inherits from protocol (or is same protocol)
         if is_protocol_type(actual):
-            if actual.name == protocol.name:
+            if same_class(actual, protocol):
                 return (ProtocolConformanceKind.EXPLICIT
                         if actual.type_args == protocol.type_args else None)
             # Check if actual protocol inherits from the required protocol
-            if self.protocol_inherits_from(actual.name, protocol.name):
+            if self.protocol_inherits_from(actual, protocol):
                 return ProtocolConformanceKind.EXPLICIT
 
         # Marker protocols require explicit extends declaration
@@ -494,7 +495,7 @@ class ProtocolChecker:
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
         # Collect all required methods (including inherited)
-        all_methods = self.collect_protocol_methods(protocol.name)
+        all_methods = self.collect_protocol_methods(protocol_info)
         for method_sig in all_methods:
             expected_params = [
                 self.type_ops.substitute_types(ptype, type_subst)
@@ -510,7 +511,7 @@ class ProtocolChecker:
                 return None
 
         # Collect all required fields (including inherited)
-        all_fields = self.collect_protocol_fields(protocol.name)
+        all_fields = self.collect_protocol_fields(protocol_info)
         for field_name, field_type in all_fields:
             expected_type = self.type_ops.substitute_types(field_type, type_subst)
             if not self.type_has_field_with_type(actual, field_name, expected_type):
@@ -846,7 +847,7 @@ class ProtocolChecker:
             return True
         # Generic Self: MyType[T] matches bare MyType (unparameterized Self substitution)
         if (isinstance(actual, NominalType) and isinstance(expected, NominalType)
-                and actual.name == expected.name and not expected.type_args):
+                and same_class(actual, expected) and not expected.type_args):
             return True
         # Unwrap ownership/const/ref wrappers: Own[T], readonly[T], and Ref[T]
         # all satisfy protocol -> T. Ref[T] arises from make_ref on non-value
@@ -879,7 +880,8 @@ class ProtocolChecker:
             return self.type_conforms_to_protocol(unwrapped, expected)
         return False
 
-    def collect_protocol_methods(self, protocol_name: str, visited: set[str] | None = None) -> list[MethodSignature]:
+    def collect_protocol_methods(self, protocol_info: 'ProtocolInfo | None',
+                                 visited: set[str] | None = None) -> list[MethodSignature]:
         """Collect methods from a protocol and all its parents.
 
         Avoids duplicates by name (direct methods take precedence over inherited).
@@ -887,15 +889,13 @@ class ProtocolChecker:
         type arguments so a child of `Iterable[T]` sees `__iter__(self) ->
         Iterator[T]` in the child's own type-param scope.
         """
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return []  # Prevent cycles
-        visited.add(protocol_name)
-
-        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
+        if visited is None:
+            visited = set()
+        if protocol_info.qualified_name() in visited:
+            return []  # Prevent cycles
+        visited.add(protocol_info.qualified_name())
 
         # Start with direct methods
         methods_by_name: dict[str, MethodSignature] = {}
@@ -904,9 +904,9 @@ class ProtocolChecker:
 
         # Add inherited methods (only if not already defined directly)
         for parent in protocol_info.parent_protocols:
-            parent_info = self.ctx.registry.scan_by_short_name(parent.name)
+            parent_info = protocol_info_of(parent)
             type_subst = _build_parent_protocol_subst(parent, parent_info)
-            for method in self.collect_protocol_methods(parent.name, visited):
+            for method in self.collect_protocol_methods(parent_info, visited):
                 if method.name not in methods_by_name:
                     methods_by_name[method.name] = _substitute_method_signature(
                         method, type_subst, self.type_ops,
@@ -914,21 +914,20 @@ class ProtocolChecker:
 
         return list(methods_by_name.values())
 
-    def collect_protocol_fields(self, protocol_name: str, visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
+    def collect_protocol_fields(self, protocol_info: 'ProtocolInfo | None',
+                                visited: set[str] | None = None) -> list[tuple[str, TpyType]]:
         """Collect fields from a protocol and all its parents.
 
         Avoids duplicates by name (direct fields take precedence over inherited).
         Substitutes parent type parameters as in `collect_protocol_methods`.
         """
-        if visited is None:
-            visited = set()
-        if protocol_name in visited:
-            return []  # Prevent cycles
-        visited.add(protocol_name)
-
-        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
         if protocol_info is None:
             return []
+        if visited is None:
+            visited = set()
+        if protocol_info.qualified_name() in visited:
+            return []  # Prevent cycles
+        visited.add(protocol_info.qualified_name())
 
         # Start with direct fields
         fields_by_name: dict[str, tuple[str, TpyType]] = {}
@@ -937,9 +936,9 @@ class ProtocolChecker:
 
         # Add inherited fields (only if not already defined directly)
         for parent in protocol_info.parent_protocols:
-            parent_info = self.ctx.registry.scan_by_short_name(parent.name)
+            parent_info = protocol_info_of(parent)
             type_subst = _build_parent_protocol_subst(parent, parent_info)
-            for field_name, field_type in self.collect_protocol_fields(parent.name, visited):
+            for field_name, field_type in self.collect_protocol_fields(parent_info, visited):
                 if field_name not in fields_by_name:
                     resolved_type = (self.type_ops.substitute_types(field_type, type_subst)
                                      if type_subst else field_type)
@@ -947,7 +946,8 @@ class ProtocolChecker:
 
         return list(fields_by_name.values())
 
-    def protocol_inherits_from(self, protocol_name: str, ancestor_name: str) -> bool:
+    def protocol_inherits_from(self, protocol: NominalType,
+                               ancestor: NominalType) -> bool:
         """Check if a protocol inherits from another protocol (directly or
         indirectly), or is the same protocol.
 
@@ -955,11 +955,9 @@ class ProtocolChecker:
         ``is_subtype`` itself is strict (ancestor-only), and conformance
         callers want ``P inherits P`` to be true.
         """
-        if protocol_name == ancestor_name:
+        if same_class(protocol, ancestor):
             return True
-        return is_subtype(
-            self.ctx.registry.scan_by_short_name(protocol_name), ancestor_name
-        )
+        return is_subtype(protocol_info_of(protocol), protocol_info_of(ancestor))
 
     def get_protocol_method_signature(
         self,
@@ -991,7 +989,7 @@ class ProtocolChecker:
             return None
 
         # Find the method (including inherited methods)
-        all_methods = self.collect_protocol_methods(protocol.name)
+        all_methods = self.collect_protocol_methods(protocol_info)
         for method_sig in all_methods:
             if method_sig.name == method_name:
                 # Build type substitution: Self -> actual_self, plus protocol type params
@@ -1264,7 +1262,7 @@ class ProtocolChecker:
             type_subst.update(dict(zip(protocol_info.type_params, protocol.type_args)))
 
         # Collect all required methods (including inherited)
-        all_methods = self.collect_protocol_methods(protocol.name)
+        all_methods = self.collect_protocol_methods(protocol_info)
         for method_sig in all_methods:
             expected_params = [
                 self.type_ops.substitute_types(ptype, type_subst)
@@ -1284,7 +1282,7 @@ class ProtocolChecker:
             ))
 
         # Check fields
-        all_fields = self.collect_protocol_fields(protocol.name)
+        all_fields = self.collect_protocol_fields(protocol_info)
         for field_name, field_type in all_fields:
             expected_type = self.type_ops.substitute_types(field_type, type_subst)
             if not self.type_has_field_with_type(record_type, field_name, expected_type):

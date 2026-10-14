@@ -29,7 +29,7 @@ from .desugar_suspensions import desugar_suspension_positions
 if TYPE_CHECKING:
     from ..typesys import TpyType
 from .nodes import (
-    ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage, OverloadForm,
+    name_path, ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage, OverloadForm,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
     ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -775,47 +775,12 @@ class Parser:
         return None
 
     def _resolve_qualified_type_name(self, node: ast.Attribute) -> tuple[str, str] | None:
-        """Resolve module.Name -> (module, name) or None.
-
-        Only resolves if the module was bare-imported (import X or import X as Y).
-        'from X import ...' does NOT put the module name in scope.
-        Returns None if the module prefix is shadowed by a local definition.
-        """
+        """Resolve module.Name -> (module, name) or None (see
+        `TypeResolver.module_head`)."""
         if not isinstance(node.value, ast.Name):
             return None
-        local_module = node.value.id
-        if local_module in self._local_defs:
-            return None
-        canonical = self._reverse_module_aliases.get(local_module, local_module)
-        # Verify the module was bare-imported (imports[canonical] is None means
-        # whole-module import; the key being absent means no import at all).
-        # For parser-keyword modules, None marks whole-module import.
-        # For user modules, they're in bare_module_imports (checked via imports dict).
-        imports = self._imports.imports
-        if imports is None or canonical not in imports:
-            return None
-        entry = imports[canonical]
-        # None means whole-module import (parser-keyword modules).
-        # For user modules, bare import sets an empty set AND adds to bare_module_imports.
-        if entry is not None and not (isinstance(entry, set) and canonical in self._bare_module_imports):
-            return None
-        return (canonical, node.attr)
-
-    def _resolve_dotted_class_name(self, node: ast.Attribute) -> str | None:
-        """Resolve Outer.Inner (or Outer.Mid.Inner) to a dotted name string.
-
-        Returns the dotted name if the root is a known class name, else None.
-        """
-        parts: list[str] = []
-        cur: ast.expr = node
-        while isinstance(cur, ast.Attribute):
-            parts.append(cur.attr)
-            cur = cur.value
-        if isinstance(cur, ast.Name) and cur.id in self._module_class_names:
-            parts.append(cur.id)
-            parts.reverse()
-            return ".".join(parts)
-        return None
+        module = self._resolver.module_head(node.value.id)
+        return (module, node.attr) if module is not None else None
 
     def _raise_unresolved_import_error(
         self, raw_name: str, node: ast.expr | None = None,
@@ -3499,15 +3464,9 @@ class Parser:
             return self._parse_subscript_type_ref(node, type_param_scope, loc)
 
         if isinstance(node, ast.Attribute):
-            parts: list[str] = []
-            cur: ast.expr = node
-            while isinstance(cur, ast.Attribute):
-                parts.append(cur.attr)
-                cur = cur.value
-            if isinstance(cur, ast.Name):
-                parts.append(cur.id)
-                parts.reverse()
-                return TpyTypeRef(".".join(parts), (), loc)
+            dotted = self._dotted_type_ref_name(node)
+            if dotted is not None:
+                return TpyTypeRef(dotted, (), loc)
             raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
         if isinstance(node, ast.Constant) and node.value is None:
@@ -3544,6 +3503,22 @@ class Parser:
 
         raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
+    def _dotted_type_ref_name(self, node: ast.Attribute) -> str | None:
+        """The dotted spelling of an attribute-chain annotation, or None when
+        its root is not a name. A root naming a type nested in the enclosing
+        class (`Inner.Deep` inside `Outer`) is spelled from the module level,
+        as a bare nested name is (`_parse_type_ref`)."""
+        parts: list[str] = []
+        cur: ast.expr = node
+        while isinstance(cur, ast.Attribute):
+            parts.append(cur.attr)
+            cur = cur.value
+        if not isinstance(cur, ast.Name):
+            return None
+        parts.append(self._nested_type_scope.get(cur.id, cur.id))
+        parts.reverse()
+        return ".".join(parts)
+
     def _parse_subscript_type_ref(
         self, node: ast.Subscript,
         type_param_scope: dict[str, TypeParamKind] | None,
@@ -3555,21 +3530,7 @@ class Parser:
             raw_name: str | None = node.value.id
         elif isinstance(node.value, ast.Attribute):
             resolved = self._resolve_qualified_type_name(node.value)
-            # Build full dotted name from the Attribute chain so 3+ level
-            # (a.b.c.D[T]) nested-class references reach the resolver's
-            # _resolve_dotted_class_name_str path. 2-level stays identical to
-            # the original "value.attr" form.
-            parts: list[str] = []
-            cur: ast.expr = node.value
-            while isinstance(cur, ast.Attribute):
-                parts.append(cur.attr)
-                cur = cur.value
-            if isinstance(cur, ast.Name):
-                parts.append(cur.id)
-                parts.reverse()
-                raw_name = ".".join(parts)
-            else:
-                raw_name = None
+            raw_name = self._dotted_type_ref_name(node.value)
         else:
             raise ParseError(f"Cannot parse type annotation: {ast.dump(node)}", node)
 
@@ -3722,8 +3683,8 @@ class Parser:
         typically invoke this after `_parse_function` has already
         restored the enclosing scope on the parser instance.
 
-        Used by non-top-level callers of `_parse_function` (nested defs,
-        macro fragment parsing, @builtin_decorator stubs) that need
+        Used by non-top-level callers of `_parse_function` (macro fragment
+        parsing and its nested defs, @builtin_decorator stubs) that need
         TpyType immediately, without waiting for the post-parse
         `resolve_refs` pass. Top-level functions leave refs in place for
         that pass to resolve.
@@ -4114,11 +4075,11 @@ class Parser:
         if isinstance(exc, ast.Name):
             name = exc.id
             return TpyRaise(exception_type=name, loc=loc)
-        # raise Name() or raise Name(args...)
-        if isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name):
+        # raise Name() or raise Name(args...); a keyword call raises the
+        # constructed value (`raise <expr>`)
+        if (isinstance(exc, ast.Call) and isinstance(exc.func, ast.Name)
+                and not exc.keywords):
             name = exc.func.id
-            if exc.keywords:
-                raise ParseError(f"'raise {name}' does not accept keyword arguments", node)
             args = [self._parse_expr(a) for a in exc.args]
             return TpyRaise(exception_type=name, args=args, is_call_form=True, loc=loc)
         # raise <expr> -- general expression (e.g. raise obj.make_err(), raise errors[i])
@@ -4173,7 +4134,8 @@ class Parser:
                 handlers.append(TpyExceptHandler(
                     exception_type=exception_type, binding=h.name,
                     body=body if i == 0 else copy.deepcopy(body), loc=h_loc,
-                    from_tuple_clause=isinstance(h.type, ast.Tuple)))
+                    from_tuple_clause=isinstance(h.type, ast.Tuple),
+                    exception_path=tuple(exception_type.split("."))))
         try_body = self._parse_body(node.body)
         else_body = self._parse_body(node.orelse)
         finally_body = self._parse_body(node.finalbody)
@@ -4222,13 +4184,8 @@ class Parser:
                 f"nested generator functions are not supported (function "
                 f"'{node.name}' contains 'yield'); define the generator at "
                 f"module or class level", node)
-        # Nested defs live inside a function body, so sema's top-level
-        # resolve_refs pre-pass doesn't see them. Resolve
-        # refs immediately, passing the enclosing function's type-param
-        # scope so outer generic params still resolve inside the nested
-        # body. _parse_function restored self._type_param_scope to the
-        # enclosing value before returning.
-        self._finalize_function_refs(func, outer_scope=self._type_param_scope)
+        # The signature resolves with the enclosing body in `resolve_refs`,
+        # after the import table is canonicalized.
         func.is_nested_def = True
         return TpyNestedDef(func=func, loc=loc)
 
@@ -4796,10 +4753,11 @@ class Parser:
         # Sema validates the binding (parser doesn't see globals or imports yet).
         if isinstance(expr, TpyName):
             return
-        # Enum-member access (MemoryOrder.SEQ_CST): a compile-time constant
-        # (its C++ form is a scoped enumerator). The parser has no type info
-        # yet, so accept the Name.attr shape; codegen resolves the enum.
-        if isinstance(expr, TpyFieldAccess) and isinstance(expr.obj, TpyName):
+        # A member of a class or enum (`MemoryOrder.SEQ_CST`,
+        # `m.Outer.Kind.A`, `Outer.LIMIT`): the parser has no type info yet,
+        # so accept the dotted-name shape; sema resolves it and admits an
+        # enum member or a Final class constant.
+        if isinstance(expr, TpyFieldAccess) and name_path(expr) is not None:
             return
         if isinstance(expr, TpyUnaryOp) and expr.op == "-":
             if isinstance(expr.operand, (TpyIntLiteral, TpyFloatLiteral)):
@@ -4990,6 +4948,14 @@ class FragmentParser(Parser):
         if local_name in get_typing_exports():
             return ("typing", local_name)
         return None
+
+    def _parse_nested_def(self, node: ast.FunctionDef, loc: SourceLocation | None) -> TpyNestedDef:
+        # A fragment is consumed after `resolve_refs` ran, so its nested
+        # defs resolve here, under the enclosing type-param scope
+        # (`_parse_function` restored it before returning).
+        nested = super()._parse_nested_def(node, loc)
+        self._finalize_function_refs(nested.func, outer_scope=self._type_param_scope)
+        return nested
 
     def _raise_unresolved_import_error(
         self, raw_name: str, node: ast.expr | None = None,

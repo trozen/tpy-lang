@@ -55,6 +55,7 @@ from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from .context import OpenCallArgs, PENDING_CONTAINER_TYPES, field_chain_storage_key
+from ..parse.nodes import name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
 from ..value_category import (declared_result_is_value, frame_factory_callee,
@@ -960,7 +961,7 @@ class CallAnalyzer:
             expr.double_star_unpack = None
             return
 
-        record = self.ctx.registry.get_record(td_type.name)
+        record = self.ctx.registry.get_record_for_type(td_type)
         if record is None:
             raise self.ctx.error(
                 f"**kwargs type '{td_type.name}' is not a TypedDict", expr)
@@ -1001,7 +1002,7 @@ class CallAnalyzer:
             expr.double_star_unpack = None
             return
 
-        record = self.ctx.registry.get_record(td_type.name)
+        record = self.ctx.registry.get_record_for_type(td_type)
         if record is None:
             raise self.ctx.error(f"**kwargs type '{td_type.name}' is not a TypedDict", expr)
         td_call = self._build_td_call(record, dict(expr.kwargs), f"{expr.method}()", expr)
@@ -1143,20 +1144,19 @@ class CallAnalyzer:
         return expr.func_name
 
     def _record_for_local_name(self, name: str) -> 'RecordInfo | None':
-        """Resolve a possibly import-aliased local name to its record.
-
-        `get_record(name)` is keyed by short name and collides for two records
-        sharing a short name imported from different modules. Override it only
-        when the import table proves the short-name lookup landed in a *different*
-        module (the genuine collision) -- otherwise the plain lookup is kept, so
-        builtins and ordinary single records resolve exactly as before.
-        """
-        rec = self.ctx.registry.get_record(name)
-        imp = self.ctx.imported_names.get(name)
-        if imp is not None and rec is not None and rec.defining_module != imp[0]:
-            authoritative = self.ctx.registry.find_module_record(*imp)
-            if authoritative is not None:
-                return authoritative
+        """The class a bare callee name denotes, resolved like every other
+        type path (`type_ref_path`): its scoped binding, an import, or a
+        builtin -- never another module's class that shares the short
+        name. Outside its own module a generic `@builtin_type` class (`Span`,
+        `list`) constructs through its type factory, which infers its type
+        arguments."""
+        ref = self.ctx.type_ref_path([name])
+        if ref is None or ref.kind != SymbolKind.RECORD:
+            return None
+        rec = ref.info
+        if (rec.builtin_type_key and rec.type_params
+                and rec.defining_module != self.ctx.module_name):
+            return None
         return rec
 
     def stamp_result_borrow(self, expr: TpyCallLike,
@@ -2273,25 +2273,20 @@ class CallAnalyzer:
                 expr,
             )
         first_arg = expr.args[0]
-        if not isinstance(first_arg, TpyName):
+        path = name_path(first_arg)
+        if path is None or self.ctx.func.current_ns is None:
             raise self.ctx.error(
                 "try_parse() first argument must be an enum type name",
                 expr,
             )
-        # Resolve the name to an enum type
-        if self.ctx.func.current_ns is None:
-            raise self.ctx.error(
-                "try_parse() first argument must be an enum type name",
-                expr,
-            )
-        binding = self.ctx.func.current_ns.lookup(first_arg.name)
-        if binding is None or binding.kind != BindingKind.ENUM:
+        ref = self.ctx.type_ref(first_arg)
+        if ref is None or ref.kind != SymbolKind.ENUM:
             raise self.ctx.error(
                 f"try_parse() first argument must be an enum type, "
-                f"got '{first_arg.name}'",
+                f"got '{'.'.join(path)}'",
                 expr,
             )
-        enum_type = binding.enum_type
+        enum_type = ref.info
         # Analyze second arg and check it's a string
         arg_type = self.expr.analyze_expr(expr.args[1])
         if not is_any_str_type(arg_type):
@@ -2346,19 +2341,20 @@ class CallAnalyzer:
         """Resolve a type name used as the second argument to isinstance()
         (or as the first arg to typing.cast).
 
-        Handles user-defined records and builtin type names (int, str, bool, float,
-        fixed-int types like int32, etc.). Resolves `Any` (bare or aliased
+        Reached for a bare name that names no class (`_type_operand`
+        resolves classes, user and builtin, through the type-path resolver
+        first): builtin scalar names (int32, ...), type aliases and `Any`. Resolves `Any` (bare or aliased
         via `from typing import Any as A`) to AnyType when `allow_any=True`;
         otherwise rejects with the isinstance-flavoured "Any is not a
         runtime class" error. typing.cast wants the resolved AnyType so it
         can raise its own cast-flavoured rejection at one site.
 
-        `allow_bare_generic` (isinstance only) resolves a bare container
-        generic -- `dict` / `list` / `set` -- and an alias of one to a
-        bare NominalType, so the union-membership path narrows to the matching
-        member. A *parameterized* generic or its alias (`dict[str, JsonValue]`)
-        is rejected, mirroring CPython (`isinstance(x, dict[str, int])` raises
-        "cannot be a parameterized generic"). Off for typing.cast.
+        `allow_bare_generic` (isinstance only) resolves an alias of a
+        complete class to that class; an alias of a container generic
+        (`dict[str, JsonValue]`) is rejected pointing at the bare class,
+        which `_type_operand` resolves like any class (CPython's
+        `isinstance(x, dict[str, int])` raises "cannot be a parameterized
+        generic"). Off for typing.cast.
         """
         if (name == "Any"
                 or self.ctx.imported_names.get(name) == ("typing", "Any")):
@@ -2369,19 +2365,6 @@ class CallAnalyzer:
                 "Any is not a runtime class",
                 expr,
             )
-        # User-defined records. Resolve through the import table first: a bare
-        # `get_record(name)` is keyed by short name and collides for same-name
-        # records imported from different modules, so it would test against the
-        # wrong class (and narrow to its qname).
-        imp = self.ctx.imported_names.get(name)
-        if imp is not None:
-            module, original = imp
-            record = self.ctx.registry.find_module_record(module, original)
-            if record:
-                return NominalType(original, _module_qname=record.qualified_name())
-        record = self.ctx.registry.get_record(name)
-        if record:
-            return NominalType(name, _module_qname=record.qualified_name())
         # Builtin type names
         resolved = _resolve_concrete_type_name(name)
         if resolved is not None:
@@ -2401,10 +2384,6 @@ class CallAnalyzer:
                 expr,
             )
         if allow_bare_generic:
-            # Bare container generic (`dict`) -- runtime-checkable against the
-            # value's variant alternative, exactly what `case dict():` emits.
-            if name in self._BARE_RUNTIME_GENERICS:
-                return NominalType(name)
             if alias_info is not None and isinstance(alias_info.body, NominalType):
                 body = alias_info.body
                 # An alias of a container generic, bare or parameterized, has
@@ -2436,6 +2415,31 @@ class CallAnalyzer:
             )
         raise self.ctx.error(f"isinstance() second argument must be a type, got '{name}'", expr)
 
+    def _type_operand(
+        self, arg: TpyExpr, expr: TpyCall, *, allow_any: bool = False,
+        allow_bare_generic: bool = False,
+    ) -> TpyType | None:
+        """The type an isinstance / cast type operand names: a class
+        through the type-path resolver (`C`, `m.Outer.Inner`), else a bare
+        builtin or alias name (`_resolve_isinstance_type`). None when the
+        operand is no name at all, so the caller reports its own shape
+        error."""
+        path = name_path(arg)
+        if path is None:
+            return None
+        ref = self.ctx.type_ref(arg)
+        # A type form (`Any`) is no runtime class; its name says so below.
+        if (ref is not None and ref.kind == SymbolKind.RECORD
+                and not ref.info.is_keyword_stub):
+            return self.ctx.type_of_ref(ref)
+        if isinstance(arg, TpyName):
+            return self._resolve_isinstance_type(
+                arg.name, expr, allow_any=allow_any,
+                allow_bare_generic=allow_bare_generic)
+        raise self.ctx.error(
+            f"isinstance() second argument must be a type, got '{'.'.join(path)}'",
+            expr)
+
     def _resolve_isinstance_check_types(
         self, second_arg: TpyExpr, expr: TpyCall,
     ) -> list[TpyType]:
@@ -2453,18 +2457,18 @@ class CallAnalyzer:
                 )
             types: list[TpyType] = []
             for elem in second_arg.elements:
-                if not isinstance(elem, TpyName):
+                elem_type = self._type_operand(elem, expr, allow_bare_generic=True)
+                if elem_type is None:
                     raise self.ctx.error(
                         "isinstance() tuple elements must be type names", expr
                     )
-                types.append(self._resolve_isinstance_type(
-                    elem.name, expr, allow_bare_generic=True))
+                types.append(elem_type)
             return types
         if isinstance(second_arg, TpyBinOp) and second_arg.op == "|":
             return self._resolve_inline_union_check_types(second_arg, expr)
-        if isinstance(second_arg, TpyName):
-            return [self._resolve_isinstance_type(
-                second_arg.name, expr, allow_bare_generic=True)]
+        single = self._type_operand(second_arg, expr, allow_bare_generic=True)
+        if single is not None:
+            return [single]
         raise self.ctx.error(
             "isinstance() second argument must be a type name, an inline "
             "union (`A | B`), or a tuple of type names",
@@ -2500,9 +2504,9 @@ class CallAnalyzer:
                     "separately with `x is None`.",
                     expr,
                 )
-            elif isinstance(operand, TpyName):
-                types.append(self._resolve_isinstance_type(
-                    operand.name, expr, allow_bare_generic=True))
+            elif (operand_type := self._type_operand(
+                    operand, expr, allow_bare_generic=True)) is not None:
+                types.append(operand_type)
             else:
                 # A non-type operand (literal / expression); a parameterized
                 # generic (`A | list[int]`) is already rejected at parse time.
@@ -2548,14 +2552,16 @@ class CallAnalyzer:
 
     def _isinstance_member_match(self, member: TpyType, check: TpyType) -> bool:
         """True if union `member` is the alternative a `isinstance(x, check)`
-        selects. Exact structural match, or a bare container generic (`dict`)
-        matching that member's container kind regardless of element types."""
+        selects. Exact structural match, or a bare generic class (`dict`,
+        `m.Box`) matching that class's member at any type arguments -- by
+        the class's identity, as a class pattern selects."""
         if member == check:
             return True
-        return (isinstance(check, NominalType) and not check.type_args
-                and check.name in self._BARE_RUNTIME_GENERICS
-                and isinstance(member, NominalType)
-                and member.name == check.name)
+        if not isinstance(check, NominalType) or check.type_args:
+            return False
+        reg = self.ctx.registry
+        record = reg.get_record_for_type(check)
+        return record is not None and reg.is_instance_of(member, record)
 
     def _evaluate_static_isinstance(
         self, var_type: TpyType, check_types: list[TpyType], expr: TpyCall,
@@ -3136,19 +3142,16 @@ class CallAnalyzer:
                 expr,
             )
 
-        type_arg = expr.args[0]
-        if not isinstance(type_arg, TpyName):
+        # allow_any=True resolves bare `Any` and aliased imports (`from
+        # typing import Any as A`) to AnyType rather than raising; we reject
+        # Any with a cast-flavoured message in one place below.
+        target_type = self._type_operand(expr.args[0], expr, allow_any=True)
+        if target_type is None:
             raise self.ctx.error(
                 "typing.cast() target must be a concrete type, not a union "
                 "or other expression",
                 expr,
             )
-        # _resolve_isinstance_type with allow_any=True resolves bare `Any`
-        # and aliased imports (`from typing import Any as A`) to AnyType
-        # rather than raising; we reject Any with a cast-flavoured message
-        # in one place below.
-        target_type = self._resolve_isinstance_type(
-            type_arg.name, expr, allow_any=True)
         if isinstance(target_type, AnyType):
             raise self.ctx.error(
                 "typing.cast(Any, ...) is meaningless -- pick a concrete type",
@@ -4191,7 +4194,7 @@ class CallAnalyzer:
         if record.builtin_type_key == qnames.BOOL and len(arg_types) == 1:
             arg_type = arg_types[0]
             if isinstance(arg_type, NominalType):
-                arg_record = self.ctx.registry.get_record(arg_type.name)
+                arg_record = self.ctx.registry.get_record_for_type(arg_type)
                 if arg_record and arg_record.get_method_overloads("__len__"):
                     expr.resolved_function_info = FunctionInfo(
                         name="__len__",
@@ -4787,8 +4790,8 @@ class CallAnalyzer:
             return True
         if isinstance(arg, TpyName):
             return (self._is_function_binding(arg)
-                    or self.expr._names_class(arg.name))
-        return False
+                    or self.expr._names_class(arg))
+        return isinstance(arg, TpyFieldAccess) and self.expr._names_class(arg)
 
     def _resolve_regime_c(
         self,
@@ -5056,7 +5059,8 @@ class CallAnalyzer:
                 slot_type: TpyType = (
                     self._lambda_body_dry_run(arg, hint) if needs_body_trial else hint
                 )
-            elif isinstance(arg, TpyName) and self.expr._names_class(arg.name):
+            elif (isinstance(arg, (TpyName, TpyFieldAccess))
+                    and self.expr._names_class(arg)):
                 # A class name stands for `lambda *a: C(*a)`: this
                 # candidate fits when that construction types under its
                 # hint. The winner builds the name's real expansion when
@@ -5064,7 +5068,7 @@ class CallAnalyzer:
                 slot_type = self._lambda_body_dry_run(
                     self.expr._class_factory_lambda(
                         arg, len(hint.param_types)),
-                    hint, as_class=arg.name)
+                    hint, as_class=".".join(name_path(arg) or ()))
             elif isinstance(arg, TpyName) and self._is_function_binding(arg):
                 # Pure dry matcher: returns matched data, raises on ambiguity.
                 func_infos = self._named_function_overloads(arg)
@@ -5489,7 +5493,7 @@ class CallAnalyzer:
         if expr.func_name == "abs" and len(arg_types) == 1:
             inner = unwrap_readonly(unwrap_ref_type(arg_types[0]))
             if isinstance(inner, NominalType):
-                abs_rec = self.ctx.registry.get_record(inner.name)
+                abs_rec = self.ctx.registry.get_record_for_type(inner)
                 abs_overloads = abs_rec.get_method_overloads("__abs__") if abs_rec else None
                 if abs_overloads:
                     ret = abs_overloads[0].return_type
@@ -7066,7 +7070,7 @@ class CallAnalyzer:
             # For flat modules: bind the name directly (log_infra -> log_infra).
             # For dotted modules (e.g. "mylog.infra"): bind the root segment
             # ("mylog") so ast.name("mylog.infra").func() resolves via the
-            # dotted-module chain in _try_resolve_dotted_module.
+            # dotted-module chain in `SemanticContext.module_named_by`.
             root = dep_mod.split(".")[0]
             self.ctx.macro_ns.bind_module(dep_mod, alias=root)
 

@@ -37,13 +37,14 @@ from .context import (
     INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
     escape_cpp_name, enum_member_cpp, forward_param)
 from ..parse import TpyNoneLiteral
-from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp
+from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp, type_member_default_cpp
 from .int_literals import render_int_literal_value
 from .resumable_cfg import ResumableShape
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
 from ..type_def_registry import (
     is_span_iter,
     is_big_int_type, is_bytes_type, int_traits_of,
+    has_view_param_form, view_to_owned_conv,
     enum_info_of, protocol_info_of, record_base_cpp,
     is_set, is_dict,
 )
@@ -142,14 +143,21 @@ class RecordGenerator:
         # Build dependency graph
         # Only consider user-defined parents (NominalType records), not builtin types
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
+        registry = self.ctx.analyzer.registry
+        # A parent is a dependency when it IS one of these records -- a
+        # foreign base sharing a local record's name is not.
+        own_name_of = {id(ri): r.name for r in records
+                       if (ri := registry.get_record(r.name)) is not None}
         for record in records:
-            record_info = self.ctx.analyzer.registry.get_record(record.name)
+            record_info = registry.get_record(record.name)
             if record_info is None:
                 continue
             for p in record_info.parents:
-                if (isinstance(p, NominalType) and p.is_user_record
-                        and p.name in record_by_name):
-                    dependencies[record.name].add(p.name)
+                if not (isinstance(p, NominalType) and p.is_user_record):
+                    continue
+                parent_name = own_name_of.get(id(registry.get_record_for_type(p)))
+                if parent_name is not None:
+                    dependencies[record.name].add(parent_name)
             # Hashed-container element dependency: walk each field's type
             # peeling wrappers, collect user-record key types from any
             # nested set/dict so std::hash<K> is emitted before this
@@ -398,6 +406,11 @@ class RecordGenerator:
                 # expression render (which needs resolved facts) can't be used.
                 init = self._render_enum_member_default(fld.default_expr)
                 if init is not None:
+                    # A `str` / `bytes` class constant is its view form
+                    # (`static constexpr std::string_view`); the owned field
+                    # constructs from it explicitly.
+                    if has_view_param_form(fld.type):
+                        init = f"{view_to_owned_conv(fld.type)}({init})"
                     default = f" = {init}"
             elif fld.is_factory_default:
                 default = f" = {factory_default_to_cpp(fld.type)}"
@@ -1459,17 +1472,12 @@ class RecordGenerator:
         out.write(f"{INDENT}template<{friend_tparams}> friend struct {cpp_name};\n")
 
     def _render_enum_member_default(self, expr) -> str | None:
-        """C++ for a validated enum-member field default
-        (`Color.RED` -> `tpyapp::mod::Color::RED`), or None when the
-        expr isn't that shape (registration would have rejected it)."""
-        if not (isinstance(expr, TpyFieldAccess)
-                and isinstance(expr.obj, TpyName)):
+        """C++ for a validated enum-member / class-constant field default
+        (`Color.RED` -> `tpyapp::mod::Color::RED`), or None when the expr
+        isn't that shape (registration would have rejected it)."""
+        if not isinstance(expr, TpyFieldAccess):
             return None
-        enum_type = self.ctx.analyzer.registry.get_enum(expr.obj.name)
-        if enum_type is None:
-            return None
-        return enum_member_cpp(enum_type, self.ctx.analyzer.ctx.module_name,
-                               expr.field)
+        return type_member_default_cpp(self.ctx.analyzer, expr)
 
     def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
         """Generate operator[] for subscript read syntax.

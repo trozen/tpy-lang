@@ -12,17 +12,17 @@ import heapq
 import io
 import sys as _sys
 
-from ..typesys import TpyType, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteFrameType, unwrap_readonly, unwrap_own, unwrap_ref_type
+from ..typesys import TpyType, TypeRegistry, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteFrameType, unwrap_readonly, unwrap_own, unwrap_ref_type
 from ..identity_map import IdentityMap
 from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
-from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage
+from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage, TpyFieldAccess
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from .resumable_cfg import (
     ResumableShape, recursive_delegation_error, resumable_state,
 )
 
-from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr
+from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr, enum_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .records import RecordGenerator
@@ -82,19 +82,33 @@ class _ProtocolDeps:
     records_by_name: dict[str, TpyRecord] = field(default_factory=dict)
 
 
-def _references_nested_type(typ: TpyType) -> bool:
-    """Check if a type references a nested type (dotted name)."""
+def _nested_type_qnames(typ: TpyType, registry: TypeRegistry,
+                        out: set[str]) -> None:
     if (isinstance(typ, NominalType) or is_enum_type(typ)) and "." in typ.name:
-        return True
-    return any(_references_nested_type(inner) for inner in typ.inner_types())
+        q = typ.qualified_name()
+        if q is None:
+            # A parser placeholder (no qname) names a class of this module.
+            info = registry.get_record_for_type(typ)
+            q = info.qualified_name() if info is not None else None
+        if q is not None:
+            out.add(q)
+    for inner in typ.inner_types():
+        _nested_type_qnames(inner, registry, out)
 
 
-def _func_uses_nested_type(func: TpyFunction) -> bool:
-    """Check if a function's signature references any nested type."""
+def _func_needed_class_qnames(func: TpyFunction, registry: TypeRegistry) -> set[str]:
+    """Qualified names of what a prototype names inside a class: a nested
+    signature type, a default's class-constant owner (`n = Outer.N` spells
+    `Outer::N`). A prototype naming any is deferred until those classes are
+    complete."""
+    out: set[str] = set()
     for _, ptype in func.params:
-        if _references_nested_type(ptype):
-            return True
-    return _references_nested_type(func.return_type)
+        _nested_type_qnames(ptype, registry, out)
+    _nested_type_qnames(func.return_type, registry, out)
+    for d in func.defaults:
+        if isinstance(d, TpyFieldAccess) and d.class_constant_owner is not None:
+            out.add(d.class_constant_owner.qualified_name())
+    return out
 
 
 class CodeGenerator:
@@ -354,13 +368,28 @@ class CodeGenerator:
                         continue
                     register_native_cpp_name(
                         short, qualified_cpp_name(record_info.module, short))
+            # An enum reached through a module path (`m.Color`) is imported
+            # by no short name: key its spelling by qname, the slot
+            # `NominalType` reads first.
+            if dep_module.is_builtin:
+                continue
+            for enum_type in dep_module.enums.values():
+                qname = enum_type.qualified_name()
+                einfo = enum_info_of(enum_type)
+                if qname is None or qname in native_cpp_names or einfo is None:
+                    continue
+                if (not (einfo.is_native and einfo.native_name)
+                        and einfo.module_name in (None, current_module)):
+                    continue
+                register_native_cpp_name(
+                    qname, enum_cpp_name(enum_type, current_module, einfo=einfo))
         # A module-local enum declaration must win its own canonical name --
         # the "also map the canonical name" step below is unconditional
         # otherwise, so it would clobber `native_cpp_names[name]` with the
         # FOREIGN qualified spelling whenever this module also declares its
         # own unrelated enum sharing that short name (an aliased import's
         # canonical name colliding with a local declaration).
-        local_enum_names = {e.name for e in module.enums}
+        local_enum_names = {e.name for e in module.all_enums()}
         for local_name in list(self.analyzer.registry.enums.keys()):
             qual = self.analyzer.registry.imported_enum_qualification(
                 local_name, current_module)
@@ -1774,15 +1803,16 @@ class CodeGenerator:
 
         # Function forward declarations (before records, so inline
         # constructor/method bodies can call free functions).
-        # Functions whose signatures reference nested types are deferred
-        # until after record definitions (the parent struct must be complete).
-        deferred_fwd_funcs: list[TpyFunction] = []
+        # A prototype naming something inside a class is deferred until the
+        # records it names are complete (placed in the record loop below).
+        registry = self.analyzer.registry
+        deferred_fwd_funcs: list[tuple[TpyFunction, set[str]]] = []
         emitted_fwd_func = False
         for func in module.functions:
             if func.skip_codegen:
                 continue
-            if _func_uses_nested_type(func):
-                deferred_fwd_funcs.append(func)
+            if needs := _func_needed_class_qnames(func, registry):
+                deferred_fwd_funcs.append((func, needs))
             elif self._gen_function_forward_decl(hpp, func):
                 emitted_fwd_func = True
         if emitted_fwd_func:
@@ -1805,10 +1835,42 @@ class CodeGenerator:
 
         # Full record definitions (skip those already defined early)
         sorted_records = self.records.sort_records_by_inheritance(module.records)
+
+        def defined_in_loop(record: TpyRecord) -> bool:
+            return (record.name not in deps.early_definition_records
+                    and record.name not in deps.bound_protocol_records)
+
+        # A deferred prototype follows the last record it needs complete, so
+        # an inline (template) body of a later record can call it. One it
+        # needs from another module, or from a record defined early, is
+        # complete already.
+        loop_qnames: dict[str, str] = {}
         for record in sorted_records:
-            if record.name in deps.early_definition_records:
-                continue
-            if record.name in deps.bound_protocol_records:
+            info = registry.get_record(record.name)
+            if defined_in_loop(record) and info is not None:
+                loop_qnames[info.qualified_name()] = record.name
+        pending_fwd: list[tuple[TpyFunction, set[str]]] = []
+        for func, needs in deferred_fwd_funcs:
+            waits: set[str] = set()
+            for need in needs:
+                waits.update(name for q, name in loop_qnames.items()
+                             if need == q or need.startswith(q + "."))
+            pending_fwd.append((func, waits))
+
+        def emit_ready_fwd(done: str | None) -> None:
+            for _func, waits in pending_fwd:
+                waits.discard(done)
+            ready = [func for func, waits in pending_fwd if not waits]
+            if not ready:
+                return
+            for func in ready:
+                self._gen_function_forward_decl(hpp, func)
+            hpp.write("\n")
+            pending_fwd[:] = [(f, w) for f, w in pending_fwd if w]
+
+        emit_ready_fwd(None)
+        for record in sorted_records:
+            if not defined_in_loop(record):
                 continue
             self.records.gen_record_decl(hpp, record)
             self._emit_hash_specialization(hpp, record)
@@ -1821,12 +1883,7 @@ class CodeGenerator:
             self._emit_value_type_spec(hpp, record)
             self._emit_nested_value_type_specs(hpp, record)
             hpp.write("\n")
-
-        # Deferred forward declarations for functions with nested types
-        for func in deferred_fwd_funcs:
-            self._gen_function_forward_decl(hpp, func)
-        if deferred_fwd_funcs:
-            hpp.write("\n")
+            emit_ready_fwd(record.name)
 
         # Dynamic protocol Adapter / RefAdapter specs at global scope.
         # Emitted here (rather than right after the protocol forward
@@ -2384,7 +2441,6 @@ class CodeGenerator:
 
     def _gen_enum_util_decls_for(self, out: TextIO, enums: list) -> None:
         """Generate ::tpy::EnumUtil<E> specialization declarations for given enums."""
-        from .context import enum_cpp_name
         cur_module = self.ctx.module_name
         for enum in enums:
             enum_type = self.ctx.analyzer.registry.get_enum(enum.name)
@@ -2415,7 +2471,6 @@ class CodeGenerator:
 
     def _gen_enum_source_defs(self, out: TextIO, module: TpyModule) -> None:
         """Generate ::tpy::EnumUtil<E> member definitions in namespace tpy."""
-        from .context import enum_cpp_name
         cur_module = self.ctx.module_name
         out.write("namespace tpy {\n\n")
         for enum in module.all_enums():

@@ -23,6 +23,7 @@ from ..symbol_binding import lookup_imported, SymbolKind
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
+    from ..typesys import ProtocolInfo
 
 # Unified protocol parameter info: name, list of protocol types (1+), nullable flag
 ProtocolParamInfo = namedtuple('ProtocolParamInfo', ['name', 'protocols', 'has_none'])
@@ -183,7 +184,7 @@ def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
     inherits the protocol base class through the inheritance chain and no adapter
     wrapping is needed.
 
-    Match is by short name; type_args are ignored. Cross-instantiation
+    Match is by qualified name; type_args are ignored. Cross-instantiation
     mismatches (e.g. assigning `Container[int32]` into `Container[str]`)
     are already rejected by sema before this helper runs.
 
@@ -209,15 +210,16 @@ def record_inherits_dynamic(concrete_type: TpyType, protocol: NominalType,
     """
     if not isinstance(concrete_type, NominalType) or not concrete_type.is_user_record:
         return False
-    record_info = registry.get_record(concrete_type.name)
-    if record_info is None or record_info.is_native:
+    record_info = registry.get_record_for_type(concrete_type)
+    target = protocol_info_of(protocol)
+    if record_info is None or record_info.is_native or target is None:
         return False
-    proto_name = protocol.name
     for p in record_info.implemented_protocols:
         pi = protocol_info_of(p)
         if pi is None or not pi.is_dynamic:
             continue
-        if p.name == proto_name or is_subtype(pi, proto_name):
+        if (pi.qualified_name() == target.qualified_name()
+                or is_subtype(pi, target)):
             return True
     return False
 
@@ -234,8 +236,7 @@ def dyn_forward_ok(source: TpyType, target: TpyType, analyzer) -> bool:
     if (source.qualified_name() == target.qualified_name()
             and source.type_args == target.type_args):
         return True
-    return is_subtype(
-        analyzer.registry.scan_by_short_name(source.name), target.name)
+    return is_subtype(protocol_info_of(source), protocol_info_of(target))
 
 
 def resolve_own_source_type(arg: 'TpyExpr', declared: 'TpyType | None',
@@ -265,7 +266,7 @@ def resolve_own_source_type(arg: 'TpyExpr', declared: 'TpyType | None',
     if obj is not None:
         obj_type = analyzer.get_expr_type(obj)
         if isinstance(obj_type, NominalType) and obj_type.type_args:
-            record_info = analyzer.registry.get_record(obj_type.name)
+            record_info = analyzer.registry.get_record_for_type(obj_type)
             if record_info and record_info.type_params:
                 sub = dict(zip(record_info.type_params,
                                obj_type.type_args)).get(inner.name)
@@ -622,25 +623,24 @@ class ProtocolGenerator:
             result += f"  requires {' && '.join(requires_parts)}\n"
         return result
 
-    def collect_concept_methods(self, protocol_name: str) -> list[MethodSignature]:
-        return self.ctx.analyzer.protocols.collect_protocol_methods(protocol_name)
+    def collect_concept_methods(self, pi: 'ProtocolInfo | None') -> list[MethodSignature]:
+        return self.ctx.analyzer.protocols.collect_protocol_methods(pi)
 
-    def is_protocol_const(self, protocol_name: str) -> bool:
+    def is_protocol_const(self, pi: 'ProtocolInfo | None') -> bool:
         """Check if a protocol is functionally const (all methods are readonly).
 
         True when the protocol-level is_readonly flag is set, or when every
         method (including inherited ones) is individually @readonly.
         """
-        pi = self.ctx.analyzer.registry.scan_by_short_name(protocol_name)
         if pi is None:
             return False
         if pi.is_readonly:
             return True
-        all_methods = self.collect_concept_methods(protocol_name)
+        all_methods = self.collect_concept_methods(pi)
         return bool(all_methods) and all(m.is_readonly for m in all_methods)
 
-    def collect_concept_fields(self, protocol_name: str) -> list[tuple[str, TpyType]]:
-        return self.ctx.analyzer.protocols.collect_protocol_fields(protocol_name)
+    def collect_concept_fields(self, pi: 'ProtocolInfo | None') -> list[tuple[str, TpyType]]:
+        return self.ctx.analyzer.protocols.collect_protocol_fields(pi)
 
     def gen_concept_decl(self, out: TextIO, protocol: TpyProtocol) -> None:
         """Generate a C++20 concept for a user-defined protocol.
@@ -683,8 +683,8 @@ class ProtocolGenerator:
         out.write(f"template<{', '.join(template_params)}>\n")
 
         # Collect all methods including inherited ones
-        all_methods = self.collect_concept_methods(protocol.name)
-        all_fields_for_decl = self.collect_concept_fields(protocol.name)
+        all_methods = self.collect_concept_methods(protocol_info)
+        all_fields_for_decl = self.collect_concept_fields(protocol_info)
 
         # @dynamic protocols use __{Name}_Concept__ so the clean name is
         # free for the base class struct
@@ -698,7 +698,7 @@ class ProtocolGenerator:
         if not all_methods and not all_fields_for_decl:
             out.write(f"concept {concept_name} = true;\n")
             return True
-        if self.is_protocol_const(protocol.name):
+        if self.is_protocol_const(protocol_info):
             out.write(f"concept {concept_name} = requires(const T& t) {{\n")
         else:
             out.write(f"concept {concept_name} = requires(T& t) {{\n")
@@ -792,7 +792,7 @@ class ProtocolGenerator:
                 out.write(f"{INDENT}{{ {call_expr} }} -> std::convertible_to<{ret_cpp}>;\n")
 
         # Collect all fields including inherited ones
-        all_fields = self.collect_concept_fields(protocol.name)
+        all_fields = self.collect_concept_fields(protocol_info)
         for field_name, field_type in all_fields:
             field_cpp = concept_type_cpp(field_type)
             out.write(f"{INDENT}{{ t.{field_name} }} -> std::convertible_to<{field_cpp}>;\n")
@@ -824,16 +824,16 @@ class ProtocolGenerator:
         if protocol_info is None:
             return
 
-        all_methods = self.collect_concept_methods(protocol.name)
+        all_methods = self.collect_concept_methods(protocol_info)
 
         # Collect @dynamic parent bases and their already-declared methods
         dynamic_parent_bases: list[str] = []
         parent_dynamic_methods: set[str] = set()
         for parent in protocol_info.parent_protocols:
-            parent_info = self.ctx.analyzer.registry.scan_by_short_name(parent.name)
+            parent_info = protocol_info_of(parent)
             if parent_info and parent_info.is_dynamic:
                 dynamic_parent_bases.append(self.get_dynamic_base_name(parent))
-                for m in self.collect_concept_methods(parent.name):
+                for m in self.collect_concept_methods(parent_info):
                     parent_dynamic_methods.add(m.name)
 
         # Methods to declare in this base class (exclude those in @dynamic parents)
@@ -936,7 +936,7 @@ class ProtocolGenerator:
         if protocol_info.cpp_concept:
             return
 
-        all_methods = self.collect_concept_methods(protocol.name)
+        all_methods = self.collect_concept_methods(protocol_info)
         qbase_name = f"{module_namespace}::{protocol.name}"
         qconcept = f"{module_namespace}::__{protocol.name}_Concept__"
 

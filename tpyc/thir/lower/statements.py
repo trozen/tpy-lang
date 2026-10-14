@@ -108,11 +108,10 @@ from ...typesys import (
     owned_tuple_storage_type,
     contains_pending_leaf,
     is_void_like_type,
-    error_return_to_cpp,
+    exception_record_cpp,
+    handler_exception_record,
     is_dyn_protocol,
     is_protocol_type,
-    is_return_exception,
-    qualify_exception_name,
     resolve_int_literals,
     unwrap_readonly,
     unwrap_ref_type,
@@ -4157,12 +4156,9 @@ def _lower_if_hoist_predecls(stmt: TpyIf, hoists: dict,
     return hoist_decls, hoist.slots
 
 def _handler_binding_type(h: TpyExceptHandler, analyzer) -> 'NominalType | None':
-    """The `as`-binding's type, exactly as sema binds it (`NominalType` over
-    the registry record; `h.exception_type` is sema-qualified in place)."""
-    rec = analyzer.registry.find_record_by_qname(h.exception_type)
-    if rec is None:
-        return None
-    return record_owner(rec)
+    """The `as`-binding's type, exactly as sema binds it: the class the
+    clause resolved to."""
+    return h.resolved_type
 
 def _error_return_stmt_fi(expr: TpyExpr, analyzer):
     """The FunctionInfo when `expr` is an @error_return call handled at
@@ -16798,24 +16794,20 @@ def _lower_try(stmt: TpyTry, lc: _LowerCtx, declared: dict[str, TpyType],
     err_opt_cpp: 'str | None' = None
     for h in _bindings.scoped(lc, stmt.handlers):
         cpp = None
-        if h.exception_type is not None:
-            cpp = error_return_to_cpp(h.exception_type,
-                                      lc.analyzer.ctx.module_name,
-                                      lc.analyzer.registry)
+        h_record = (handler_exception_record(
+            h, lc.analyzer.registry, lc.analyzer.ctx.module_name)
+            if h.exception_type is not None else None)
+        if h_record is not None:
+            cpp = exception_record_cpp(h_record, lc.analyzer.ctx.module_name)
         h_declared = dict(declared)
         if h.binding:
             bt = _handler_binding_type(h, lc.analyzer)
             assert bt is not None, "ineligible handler reached lowering"
             h_declared[h.binding] = bt
         if stmt.tier is TryTier.RETURN and h.binding:
-            # The `__err_opt_N` capture decl spells the QUALIFIED error type
-            # (the `qualify_exception_name` wrap).
-            err_opt_cpp = error_return_to_cpp(
-                qualify_exception_name(h.exception_type,
-                                       lc.analyzer.registry,
-                                       lc.analyzer.ctx.module_name),
-                lc.analyzer.ctx.module_name,
-                lc.analyzer.registry)
+            # The `__err_opt_N` capture decl spells the error type.
+            err_opt_cpp = exception_record_cpp(
+                h_record, lc.analyzer.ctx.module_name)
         _bindings.require_entered(lc, h)
         handlers.append(THIRExceptHandler(
             cpp_type=cpp, binding=h.binding,
@@ -16901,7 +16893,10 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
     if stmt.exception_type is None:
         _witness("raise.bare")
         return THIRRaise(loc=loc)
-    return_tier = is_return_exception(stmt.exception_type)
+    raised = lc.analyzer.registry.get_record_for_type(stmt.resolved_type)
+    if raised is None:
+        raise ThirUnsupported("stmt.raise")
+    return_tier = raised.is_return_exception
     if return_tier and lc.error_return_cpp is None:
         # Sema confines a ReturnException raise to @error_return bodies;
         # defensive -- any other context rejects.
@@ -16923,9 +16918,7 @@ def _lower_raise(stmt: TpyRaise, lc: _LowerCtx, declared: dict[str, TpyType],
             lowered_args = _lower_ctor_call_args(
                 stmt.args, init, lc, declared, temp_args=True)
     _witness("raise.ctor")
-    cpp = error_return_to_cpp(stmt.exception_type,
-                              lc.analyzer.ctx.module_name,
-                              lc.analyzer.registry)
+    cpp = exception_record_cpp(raised, lc.analyzer.ctx.module_name)
     return THIRRaise(
         cpp_type=cpp,
         args=tuple(lowered_args),

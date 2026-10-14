@@ -127,7 +127,7 @@ from ..type_def_registry import (
     is_str_type, is_str_view_type, enum_info_of,
     protocol_info_of,
 )
-from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType
+from ..typesys import unwrap_own, is_protocol_type, is_protocol_union, RefType, ProtocolInfo
 from ..parse.resolve_refs import (
     _walk_body, _merged_method_scope, _record_scope,
     promote_bare_nominals,
@@ -138,6 +138,7 @@ from .function_macros import run_function_macros, run_deferred_sema_macros
 from ..symbol_binding import (
     SymbolKind, install_binding, lookup_imported, protocol_kind_for,
     is_macro_kind, is_kind, walk_attribute_chain, resolve_definer,
+    resolve_type_path,
 )
 
 
@@ -484,17 +485,10 @@ class SemanticAnalyzer:
         This mirrors CPython's builtins module. Names like int, str, len, print
         are available in every scope without explicit import.
         """
-        # Python builtin types (as constructors)
-        # These are registered as IMPORTED_NAME from "builtins" module
-        # Generic types (list) are also registered - they're handled by generic type
-        # inference code but need namespace entry to distinguish from tpy types
-        python_builtin_types = ["int", "str", "bool", "float", "bytes", "bytearray",
-                                "list", "dict", "set",
-                                "slice", "super",
-                                "BaseException", "Exception", "StopIteration",
-                                "TextIO"]
-        for name in python_builtin_types:
-            self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
+        # The builtin classes come from the builtins module's own table
+        # (`_bind_builtin_classes`); `super` is the one builtin it does not
+        # define.
+        self.ctx.builtins_ns.bind_imported_name("super", "builtins", "super")
 
         # Python builtin functions -- available without import (like CPython).
         # Registered in both builtins_ns (for sema lookup) and imported_names
@@ -510,6 +504,21 @@ class SemanticAnalyzer:
         for name in python_builtin_functions:
             self.ctx.builtins_ns.bind_imported_name(name, "builtins", name)
             self.ctx.imported_names[name] = ("builtins", name)
+
+    def _bind_builtin_classes(self) -> None:
+        """Bind every class and enum the builtins module defines in
+        builtins_ns, as CPython's builtins scope holds them all
+        (`KeyboardInterrupt`, `TimeoutError`). The builtins module itself and
+        the implicit modules compiled before it see none of them."""
+        mi = self.registry.get_module("builtins")
+        if mi is None or mi.module_attributes is None:
+            return
+        ns = self.ctx.builtins_ns
+        for name in mi.module_attributes:
+            if "." in name or name.startswith("_") or ns.has_local(name):
+                continue
+            if resolve_type_path(self.registry, "builtins", name) is not None:
+                ns.bind_imported_name(name, "builtins", name)
 
     # Sub-phase indices used by the phase-counter assertion: the three
     # declaration sub-phases, then the body phases `analyze_component_bodies`
@@ -588,6 +597,7 @@ class SemanticAnalyzer:
         # Set module context
         self.ctx.module_name = module_name
         self.ctx.cpp_module_name = cpp_module_name or module_name
+        self._bind_builtin_classes()
         self.ctx.module_cpp_namespace = getattr(module.directives, 'cpp_namespace', None) if hasattr(module, 'directives') else None
         # Stash the module's plugin payload so a @call_macro (which runs during
         # Pass 7 with no module handed to it) can read it via ctx.module_data.
@@ -700,15 +710,19 @@ class SemanticAnalyzer:
                 shadow_names.add(proto.name.split(".", 1)[0])
         if not shadow_names:
             return
+        # A nested type is a member too: `Outer.Inner` hides a module-level
+        # `Inner` inside `Outer`'s scope.
+        nested: dict[str | None, set[str]] = {}
+        for decl in (*module.all_records(), *module.all_enums()):
+            owner, sep, leaf = decl.name.rpartition(".")
+            owner_ri = registry.get_record(owner) if sep else None
+            if owner_ri is not None:
+                nested.setdefault(owner_ri.qualified_name(), set()).add(leaf)
         for record in module.all_records():
             ri = registry.get_record(record.name)
             if ri is None:
                 continue
-            members = (set(ri.methods) | {f.name for f in ri.fields}
-                       | set(ri.properties) | set(ri.class_constants))
-            for anc in registry.iter_ancestor_records(ri):
-                members |= (set(anc.methods) | {f.name for f in anc.fields}
-                            | set(anc.properties) | set(anc.class_constants))
+            members = registry.class_member_names(ri, nested)
             ri.shadows_local_type = not members.isdisjoint(shadow_names)
 
     def register_records_and_protocols(self, module: TpyModule) -> None:
@@ -1256,26 +1270,25 @@ class SemanticAnalyzer:
         that mismatches the virtual slot.
         """
         visited: set[str] = set()
-        for proto_type, _ in self.ctx.registry.iter_dynamic_protocols(record_info):
+        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
             # Search this dynamic protocol and ALL its ancestors for method_name,
             # regardless of whether ancestors are themselves dynamic.
-            if self._proto_hierarchy_has_nonconst(proto_type.name, method_name, visited):
+            if self._proto_hierarchy_has_nonconst(proto_info, method_name, visited):
                 return True
         return False
 
-    def _proto_hierarchy_has_nonconst(self, proto_name: str, method_name: str, visited: set[str]) -> bool:
+    def _proto_hierarchy_has_nonconst(self, proto_info: 'ProtocolInfo | None',
+                                      method_name: str, visited: set[str]) -> bool:
         """Search method_name in this protocol and all ancestors (ignoring dynamic flag)."""
-        if proto_name in visited:
+        if proto_info is None or proto_info.qualified_name() in visited:
             return False
-        visited.add(proto_name)
-        proto_info = self.ctx.registry.scan_by_short_name(proto_name)
-        if proto_info is None:
-            return False
+        visited.add(proto_info.qualified_name())
         for sig in proto_info.methods:
             if sig.name == method_name and not sig.is_readonly:
                 return True
         for parent in proto_info.parent_protocols:
-            if self._proto_hierarchy_has_nonconst(parent.name, method_name, visited):
+            if self._proto_hierarchy_has_nonconst(
+                    protocol_info_of(parent), method_name, visited):
                 return True
         return False
 
@@ -1377,21 +1390,18 @@ class SemanticAnalyzer:
         invariant is in place the day protocols gain vararg method support.
         """
         visited: set[str] = set()
-        for proto_type, _ in self.ctx.registry.iter_dynamic_protocols(record_info):
+        for _, proto_info in self.ctx.registry.iter_dynamic_protocols(record_info):
             if self._proto_hierarchy_has_vararg_nonconst(
-                    proto_type.name, method_name, visited):
+                    proto_info, method_name, visited):
                 return True
         return False
 
     def _proto_hierarchy_has_vararg_nonconst(
-        self, proto_name: str, method_name: str, visited: set[str],
+        self, proto_info: 'ProtocolInfo | None', method_name: str, visited: set[str],
     ) -> bool:
-        if proto_name in visited:
+        if proto_info is None or proto_info.qualified_name() in visited:
             return False
-        visited.add(proto_name)
-        proto_info = self.ctx.registry.scan_by_short_name(proto_name)
-        if proto_info is None:
-            return False
+        visited.add(proto_info.qualified_name())
         for sig in proto_info.methods:
             if sig.name != method_name:
                 continue
@@ -1402,7 +1412,7 @@ class SemanticAnalyzer:
                     return True
         for parent in proto_info.parent_protocols:
             if self._proto_hierarchy_has_vararg_nonconst(
-                    parent.name, method_name, visited):
+                    protocol_info_of(parent), method_name, visited):
                 return True
         return False
 
@@ -3313,7 +3323,7 @@ class SemanticAnalyzer:
                     for p in record_info.parents:
                         if not hasattr(p, 'name'):
                             continue
-                        parent_info = self.ctx.registry.get_record(p.name)
+                        parent_info = self.ctx.registry.get_record_for_type(p)
                         if parent_info and parent_info.get_method("__del__") is not None:
                             parent_has_del = True
                             break

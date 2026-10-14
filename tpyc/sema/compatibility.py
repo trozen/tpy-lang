@@ -12,6 +12,7 @@ from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
 
 from ..typesys import pointer_repr_optional, readonly_access
 from ..typesys import (
+    same_class,
     make_readonly,
     ELEM,
     TpyType, IntLiteralType, FloatLiteralType, ListRepeatType,
@@ -28,7 +29,7 @@ from ..typesys import (
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     unwrap_qualifiers,
-    disambiguated_pair, ConcreteCoroType, recorded_return_borrow_sources,
+    ConcreteCoroType, recorded_return_borrow_sources,
     GenExprType, is_open_type_param_return, PendingNumType,
     global_binds_by_reference)
 from .. import qnames
@@ -1620,7 +1621,7 @@ class TypeCompatibility:
         # The C++ Expr wrapper struct's template constructor handles implicit
         # conversion from Lit to Expr, so Box<Expr>(Lit{...}) compiles.
         if (isinstance(actual, NominalType) and isinstance(expected, NominalType)
-                and actual.name == expected.name
+                and same_class(actual, expected)
                 and actual.type_args and expected.type_args
                 and len(actual.type_args) == len(expected.type_args)
                 and actual.type_args != expected.type_args):
@@ -2790,7 +2791,7 @@ class TypeCompatibility:
     def _pair(self, expected: TpyType, actual: TpyType) -> tuple[str, str]:
         """`disambiguated_pair` over the user-facing spellings
         (`diag_type`)."""
-        return disambiguated_pair(self.diag_type(expected),
+        return self.ctx.type_pair(self.diag_type(expected),
                                   self.diag_type(actual))
 
     def call_type_text(self, t: TpyType) -> str:
@@ -3295,11 +3296,11 @@ class TypeCompatibility:
         element guards so the covariant-vs-slice line is drawn in one place."""
         if not (isinstance(actual, NominalType) and actual.is_user_record
                 and isinstance(expected, NominalType) and expected.is_user_record
-                and actual.name == expected.name
+                and same_class(actual, expected)
                 and actual.type_args and expected.type_args
                 and actual.type_args != expected.type_args):
             return False
-        record_info = self.ctx.registry.get_record(actual.name)
+        record_info = self.ctx.registry.get_record_for_type(actual)
         if record_info is None or not record_info.type_params:
             return False
         covariant = get_covariant_params(record_info)

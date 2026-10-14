@@ -19,14 +19,17 @@ from typing import Any, Callable, Collection, Iterable, Iterator, NamedTuple, Op
 from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
 from .identity_map import IdentityMap
+from .symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 
 if TYPE_CHECKING:
-    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyExpr, TpyFunction, TpyMethodCall, TypeRefNode
+    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyExpr, TpyFunction, TpyMethodCall, TypeRefNode, TpyExceptHandler
 
 
 # Toggled (default off) only by qualified_type_str, so diagnostics can render
-# module-qualified nominals without changing ordinary str(type).
+# module-qualified nominals without changing ordinary str(type). While set, a
+# class of `_qualify_local_module` keeps the name it has there.
 _qualify_nominals_in_str = False
+_qualify_local_module: str | None = None
 
 # Toggled (default off) by codegen only while emitting a record whose member
 # name shadows a same-named local type. While set, a local record/enum leaf
@@ -48,29 +51,37 @@ def qualify_shadowed_nominals():
         _qualify_shadowed_nominals = prev
 
 
-def qualified_type_str(t: 'TpyType') -> str:
-    """Render `t` like `str(t)` but with cross-module nominal leaves qualified
-    by their defining module (`red.Tag`, `list[red.Tag]`)."""
-    global _qualify_nominals_in_str
-    prev = _qualify_nominals_in_str
-    _qualify_nominals_in_str = True
+def qualified_type_str(t: 'TpyType', local_module: str | None = None) -> str:
+    """Render `t` like `str(t)` but with user class leaves (records, enums)
+    qualified by their defining module (`red.Tag`, `list[m.Outer.Inner]`);
+    a class of `local_module` -- the module being analyzed -- keeps its name
+    there (`Outer.Inner`)."""
+    global _qualify_nominals_in_str, _qualify_local_module
+    prev = (_qualify_nominals_in_str, _qualify_local_module)
+    _qualify_nominals_in_str, _qualify_local_module = True, local_module
     try:
         return str(t)
     finally:
-        _qualify_nominals_in_str = prev
+        _qualify_nominals_in_str, _qualify_local_module = prev
 
 
-def disambiguated_pair(expected: 'TpyType', actual: 'TpyType') -> tuple[str, str]:
+def disambiguated_pair(expected: 'TpyType', actual: 'TpyType',
+                       local_module: str | None = None) -> tuple[str, str]:
     """Render `(expected, actual)` for an `expected X, got Y` diagnostic.
 
-    When the two render to the same string but are distinct cross-module types
-    (`Tag` vs `Tag`, `list[Tag]` vs `list[Tag]`), qualify both so the (correct)
-    rejection is legible (`red.Tag` / `blue.Tag`); otherwise leave them plain.
+    When the two read alike but are distinct types -- the same string
+    (`Tag` vs `Tag`, `list[Tag]` vs `list[Tag]`) or two classes sharing a
+    name (`Box` vs `Box[int]` of another module) -- qualify both
+    (`qualified_type_str`) so the (correct) rejection is legible
+    (`red.Tag` / `blue.Tag`); otherwise leave them plain.
     """
     e, a = str(expected), str(actual)
-    if e != a:
+    same_name = (isinstance(expected, NominalType) and isinstance(actual, NominalType)
+                 and expected.name == actual.name and not same_class(expected, actual))
+    if e != a and not same_name:
         return e, a
-    eq, aq = qualified_type_str(expected), qualified_type_str(actual)
+    eq = qualified_type_str(expected, local_module)
+    aq = qualified_type_str(actual, local_module)
     if eq != aq:
         return eq, aq
     return e, a
@@ -190,6 +201,31 @@ def error_return_to_cpp(name: str, current_module: str | None,
             return short
         return qualified_cpp_name(module_path, short)
     return name
+
+
+def exception_record_cpp(record: 'RecordInfo', current_module: str | None) -> str:
+    """The C++ type of the exception class `record` at a catch or raise in
+    `current_module`: its `@native` name, else its module-qualified name,
+    else (declared here) its own name, nested classes `::`-joined."""
+    from tpyc.codegen_cpp.context import local_class_cpp, qualified_cpp_name
+    if record.native_name:
+        return record.native_name
+    if (record.module is None or current_module is None
+            or current_module in (record.module, record.defining_module)):
+        return local_class_cpp(record.qualified_name(), record.name)
+    return qualified_cpp_name(record.module, record.name)
+
+
+def handler_exception_record(handler: 'TpyExceptHandler', registry: 'TypeRegistry',
+                             current_module: str | None) -> 'RecordInfo | None':
+    """The class an except clause catches: the one sema resolved it to
+    (`resolved_type`), or for a clause the compiler synthesized after sema
+    (an `async for`'s `StopAsyncIteration`) the class its name qualifies
+    to."""
+    if handler.resolved_type is not None:
+        return registry.get_record_for_type(handler.resolved_type)
+    return registry.find_record_by_qname(qualify_exception_name(
+        handler.exception_type, registry, current_module))
 
 
 # Per-compilation maps for type-name resolution
@@ -323,15 +359,19 @@ def is_exception_type(name: str, registry: 'TypeRegistry') -> bool:
 
     Accepts both bare ('ValueError') and module-qualified ('re.error') names.
     Dotted names route through find_record_by_qname so a same-bare-named local
-    class doesn't shadow the qualified target.
+    class doesn't shadow the qualified target. A caller holding the class
+    asks `is_exception_record`.
     """
-    from tpyc import qnames
     if "." in name:
         child = registry.find_record_by_qname(name)
     else:
         child = registry.find_record(name)
-    if child is None:
-        return False
+    return child is not None and is_exception_record(child, registry)
+
+
+def is_exception_record(child: 'RecordInfo', registry: 'TypeRegistry') -> bool:
+    """Whether the class `child` inherits from Exception or BaseException."""
+    from tpyc import qnames
     for qname in (qnames.EXCEPTION, qnames.BASE_EXCEPTION):
         base = registry.find_record_by_qname(qname)
         if base is not None and (child is base or registry.is_subclass_of_record(child, base)):
@@ -1139,8 +1179,8 @@ class NominalType(TpyType):
     # equality and hash so `pkg_a.Foo` vs `pkg_b.Foo` (or `Foo` bare
     # vs `mod.Foo`) never collapse via set/dict dedup.  Do NOT use
     # `==` to bridge a parser placeholder with its resolved
-    # counterpart -- call `same_nominal_symbol_loose(a, b)` for that
-    # axis instead (see module-level helper below).
+    # counterpart -- `same_class` / `same_base_type` (module-level
+    # helpers below) answer that.
     _module_qname: str | None = field(default=None)
     is_dynamic_protocol: bool = field(default=False, compare=False, hash=False)
 
@@ -1237,9 +1277,12 @@ class NominalType(TpyType):
     def __str__(self) -> str:
         name = self.name
         # Builtins (`list`, `dict`, ...) never collide cross-module, so only
-        # qualify user records -- qualifying `list` to `builtins.list` is noise.
-        if _qualify_nominals_in_str and self.is_user_record:
-            name = self.qualified_name() or self.name
+        # qualify user classes -- qualifying `list` to `builtins.list` is noise.
+        if _qualify_nominals_in_str and (self.is_user_record
+                                         or _enum_info_of(self) is not None):
+            qname = self.qualified_name()
+            if qname and qname != f"{_qualify_local_module}.{self.name}":
+                name = qname
         if self.type_args:
             args = ", ".join(
                 str(t) if isinstance(t, TpyType) else str(t)
@@ -1458,46 +1501,30 @@ class NominalType(TpyType):
                          self.is_dynamic_protocol)
 
 
-def same_nominal_symbol_loose(a: 'TpyType', b: 'TpyType') -> bool:
-    """Transition-era equivalence for NominalTypes where one side may
-    be a parser placeholder without `_module_qname` set.
+def same_class(a: 'TpyType', b: 'TpyType') -> bool:
+    """`a` and `b` name one class (record, enum or protocol) at any type
+    arguments: by qualified name, and by short name only where a side has
+    none (a parser placeholder) -- so `a.Box[X]` and `b.Box[X]`, or a nested
+    `m.Outer.Inner` and a local `Outer.Inner`, are never one class.
 
-    Returns True when both are NominalTypes with matching `name`,
-    `type_args`, and `is_protocol`, and their qnames are either equal
-    or at least one is `None`.  DO NOT use this as a drop-in for `==`
-    -- strict `__eq__` remains the correct comparison for resolved
-    types in sets/dicts/unions.  This helper exists only for the
-    narrow set of sites that compare across the parse/resolve
-    boundary, where one side may be a placeholder minted pre-qname
-    that must still match a qname-bearing counterpart:
-    `TypeRegistry.is_subclass_of`'s parent-chain walk (a recorded
-    parent reference vs a qname-bearing argument), the
-    `record_to_ptr` / `record_to_const_ptr` coercions (the `&value`
-    pointee may be a parser placeholder), and the match value-pattern
-    enum-identity check in `sema/match.py::_validate_value_pattern`
-    (where both sides are always qname-bearing, so the loose fallback
-    is inert -- it reuses this helper for the name/type_args/is_protocol
-    equality rather than for placeholder tolerance).  Keep the call-site
-    list short; each addition should be justified at review time.
-    """
+    The one definition of class identity across the parse/resolve
+    boundary; strict `==` stays the comparison for resolved types in
+    sets, dicts and unions."""
     if not (isinstance(a, NominalType) and isinstance(b, NominalType)):
         return False
-    if a.name != b.name or a.type_args != b.type_args or a.is_protocol != b.is_protocol:
-        return False
-    if a._module_qname is None or b._module_qname is None:
-        return True
-    return a._module_qname == b._module_qname
+    qa, qb = a.qualified_name(), b.qualified_name()
+    if qa and qb:
+        return qa == qb
+    return a.name == b.name
 
 
 def same_base_type(a: 'TpyType', b: 'TpyType') -> bool:
-    """Type equivalence for inheritance graph walks.
-
-    NominalTypes go through `same_nominal_symbol_loose` so pre-resolve parent
-    placeholders still match their resolved counterparts; everything else
-    uses Python equality.
-    """
+    """Type equivalence for inheritance graph walks and pointer coercions:
+    one class (`same_class`, so pre-resolve parent placeholders still match
+    their resolved counterparts) at the same type arguments; everything
+    else uses Python equality."""
     if isinstance(a, NominalType) and isinstance(b, NominalType):
-        return same_nominal_symbol_loose(a, b)
+        return same_class(a, b) and a.type_args == b.type_args
     return a == b
 
 
@@ -6533,7 +6560,7 @@ _ELEMENT_FROM_FIRST_ARG_CATEGORIES = frozenset({
 })
 
 # View-type family descriptors (must follow singleton definitions)
-from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type, enum_info_of as _enum_info_of
+from .type_def_registry import is_string_type as _is_string_type, is_bytearray_type as _is_bytearray_type, enum_info_of as _enum_info_of, protocol_info_of as _protocol_info_of
 from .type_def_registry import is_borrowing_view_type as _is_borrowing_view_type
 
 
@@ -6691,7 +6718,7 @@ def is_polymorphic_class_type(typ: TpyType, registry: 'TypeRegistry') -> bool:
     """
     if not isinstance(typ, NominalType) or typ.is_protocol:
         return False
-    record_info = registry.get_record(typ.name)
+    record_info = registry.get_record_for_type(typ)
     if record_info is None:
         return False
     cached = record_info._is_polymorphic_class
@@ -7423,7 +7450,7 @@ class RecordInfo:
     # inheritance validation; the single source both consumers read.
     shadows_local_type: bool = False
     implemented_protocols: list['NominalType'] = field(default_factory=list)  # Explicit protocol implementations
-    # Short names of every protocol this record implements directly OR
+    # Qualified names of every protocol this record implements directly OR
     # transitively via parent-protocol chains. Populated once by sema
     # after implemented_protocols is finalized; never mutated afterward.
     # Single source of truth for record-implements-protocol queries; see
@@ -8540,12 +8567,16 @@ class ProtocolInfo:
     is_readonly: bool = False  # All methods are read-only (safe for readonly[T] args)
     is_dynamic: bool = False  # Supports runtime dispatch via base/adapter
     module: str = ""  # Module that defines this protocol (e.g. "typing", "tpy")
-    # Short names of every protocol reachable via repeated parent_protocols
-    # walks (self excluded). Populated once by sema after all protocols in
-    # the module are registered; never mutated afterward. The single source
-    # of truth for nominal protocol-to-protocol subtyping queries; see
-    # tpyc.type_def_registry.is_subtype.
+    # Qualified names of every protocol reachable via repeated
+    # parent_protocols walks (self excluded). Populated once by sema after
+    # all protocols in the module are registered; never mutated afterward.
+    # The single source of truth for nominal protocol-to-protocol subtyping
+    # queries; see tpyc.type_def_registry.is_subtype.
     transitive_supertypes: frozenset[str] = field(default_factory=frozenset)
+
+    def qualified_name(self) -> str:
+        """Stable qname, the protocol's TypeDef key."""
+        return f"{self.module or '__main__'}.{self.name}"
 
 
 @dataclass
@@ -9007,7 +9038,7 @@ class TypeRegistry:
             return result
         if not record.parents or not isinstance(record.parents[0], NominalType):
             return list(record.fields)
-        parent = self.get_record(record.parents[0].name)
+        parent = self.get_record_for_type(record.parents[0])
         if parent is None:
             return list(record.fields)
         return self.get_all_fields(parent) + list(record.fields)
@@ -9080,17 +9111,28 @@ class TypeRegistry:
         result = self._user_qname_index.get(qname)
         if result is not None:
             return result
-        # Fall back to module lookup, then short-name fallback. The
-        # short-name fallback covers the entry-point case: a module
-        # never has its own ModuleInfo registered in `registry.modules`
-        # during its own analyze, so `find_module_record("__main__", ...)`
-        # would return None even though the record is in `self.records`.
+        # Fall back to the module's records, then its attribute table
+        # (a re-export: `utils.int32` is `tpy.int32`), then this registry's
+        # own records -- the entry point never has its own ModuleInfo
+        # registered during its own analyze. A short-name entry counts only
+        # when it is the class the qname names.
         if "." in qname:
-            module_name, short = qname.rsplit(".", 1)
-            result = self.find_module_record(module_name, short)
-            if result is not None:
-                return result
-            return self.records.get(short)
+            # Every split: a nested class is keyed `Outer.Inner` in its module.
+            splits = [(qname[:i], qname[i + 1:])
+                      for i in range(len(qname) - 1, 0, -1) if qname[i] == "."]
+            for module_name, rest in splits:
+                result = self.find_module_record(module_name, rest)
+                if result is not None:
+                    return result
+                hit = walk_attribute_chain(self, module_name, rest,
+                                           is_kind(SymbolKind.RECORD))
+                if hit is not None:
+                    return hit[2].info
+            for _, rest in splits:
+                result = self.records.get(rest)
+                if result is not None and result.qualified_name() == qname:
+                    return result
+            return None
         return self.find_record(qname)
 
     def get_builtin_record(self, qname: str) -> Optional[RecordInfo]:
@@ -9124,6 +9166,19 @@ class TypeRegistry:
                     result.append(r)
                     seen.add(r.name)
         return result
+
+    def class_member_names(self, record: RecordInfo,
+                           nested_types: 'dict[str, set[str]] | None' = None) -> set[str]:
+        """The attribute names `record` reaches through itself and its
+        ancestors: methods, fields, properties, class constants, and -- when
+        the caller maps record qnames to them -- nested type names."""
+        names: set[str] = set()
+        for ri in (record, *self.iter_ancestor_records(record)):
+            names.update(ri.methods, ri.properties, ri.class_constants)
+            names.update(f.name for f in ri.fields)
+            if nested_types is not None:
+                names.update(nested_types.get(ri.qualified_name(), ()))
+        return names
 
     def iter_ancestor_records(self, record: RecordInfo, *, reverse: bool = False) -> Iterator[RecordInfo]:
         """Yield each RecordInfo in record.mro_ancestors, skipping non-user-record
@@ -9243,11 +9298,9 @@ class TypeRegistry:
         if child_info is None:
             return None
         # Parent references recorded pre-qname-mint may be bare; `parent`
-        # may be qname-bearing. `loose` matches strictly when both have
-        # qnames (keeps cross-module shadowing honest) and permissively
-        # when either is bare.
+        # may be qname-bearing (see `same_class`).
         for i, ancestor in enumerate(child_info.mro_ancestors):
-            if same_nominal_symbol_loose(ancestor, parent):
+            if same_base_type(ancestor, parent):
                 return i + 1
         return None
 
@@ -9415,11 +9468,21 @@ class TypeRegistry:
                 result = self._user_qname_index.get(qname) or self._qname_index.get(qname)
                 if result is not None:
                     return result
+                # Not indexed yet (registration order): the short-name entry
+                # counts only when it is that class.
+                result = self.records.get(tpy_type.name)
+                return result if result is not None and result.qualified_name() == qname else None
             return self.records.get(tpy_type.name)
         qname = tpy_type.qualified_name()
         if qname:
             return self._qname_index.get(qname)
         return None
+
+    def is_instance_of(self, tpy_type: 'TpyType', record: RecordInfo) -> bool:
+        """`tpy_type` is a `record` instance at any type arguments
+        (`Box[str]` under `Box`) -- by the record's identity, never by its
+        short name."""
+        return same_class(tpy_type, record_owner(record))
 
     def receiver_record(self, tpy_type: 'TpyType') -> Optional[RecordInfo]:
         """The record whose methods and properties a receiver of `tpy_type`
@@ -9430,6 +9493,16 @@ class TypeRegistry:
         if einfo is not None:
             return einfo.companion
         return self.get_record_for_type(tpy_type)
+
+    def protocol_for_type(self, tpy_type: 'TpyType') -> Optional[ProtocolInfo]:
+        """The protocol a NominalType names, by its qualified name; a parser
+        placeholder without one resolves through this module's binding (the
+        protocol twin of `get_record_for_type`)."""
+        if not isinstance(tpy_type, NominalType):
+            return None
+        if tpy_type._module_qname:
+            return _protocol_info_of(tpy_type)
+        return self.scan_by_short_name(tpy_type.name)
 
     def scan_by_short_name(self, name: str) -> Optional[ProtocolInfo]:
         """Resolve a module-local short name (or import alias) to a
@@ -9459,15 +9532,21 @@ class TypeRegistry:
         slot holds an unrelated local enum of the same canonical name; mirrors
         `find_record_by_qname`'s module-dict + short-name fallback tail. No
         dedicated qname index is needed -- a local enum always wins its own
-        bare slot, so the short-name fallback stays authoritative for
-        current-module refs (whose `ModuleInfo` isn't in `self.modules` yet).
+        bare slot, so the short-name fallback answers current-module refs
+        (whose `ModuleInfo` isn't in `self.modules` yet), and only with the
+        enum whose qname this is.
         """
         if "." in qname:
             module_name, short = qname.rsplit(".", 1)
             mod = self.modules.get(module_name)
             if mod is not None and short in mod.enums:
                 return mod.enums[short]
-            return self.enums.get(short)
+            # Only the enum that IS this qname: a dotted path (`Outer.Kind`)
+            # must not land on an unrelated enum sharing the short name.
+            local = self.enums.get(short)
+            if local is not None and local.qualified_name() == qname:
+                return local
+            return None
         return self.enums.get(qname)
 
     def is_known_type(self, name: str) -> bool:

@@ -1,0 +1,1 @@
+main.py:12: error: Cannot compare enum types 'Color' and 'mq.Color'

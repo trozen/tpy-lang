@@ -27,6 +27,7 @@ from ..parse import (
     TpyFString, TpyExpr, TpyCoerce, TpySubscript,
     is_super_del_call,
 )
+from ..parse.nodes import name_path
 from ..namespace import BindingKind
 from ..coercions import CoercionContext
 from ..prescan import _expr_to_narrowing_key
@@ -49,7 +50,8 @@ from .pending_num import (ContainerCells, Entry, is_pending_num,
                           leaves_as_numbers, root_of, with_container)
 from .receiver_calls import (call_mutates_receiver, check_receiver_call_loans,
                              credit_receiver_mutation, implicit_readonly_result_hint,
-                             receiver_is_readonly)
+                             receiver_is_readonly, record_protocol_arg_calls)
+from ..symbol_binding import SymbolBinding, SymbolKind
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -103,28 +105,6 @@ def _collect_unresolved(
     if hasattr(typ, 'members'):
         for m in typ.members:
             _collect_unresolved(m, inferred, param_names, out)
-
-
-def _resolve_dotted_record_chain(expr: TpyFieldAccess, ctx: 'SemanticContext') -> str | None:
-    """Resolve a chain of field accesses to a nested record dotted name.
-
-    Returns the dotted name (e.g., "Outer.Mid") if the chain resolves to a
-    registered nested record, or None otherwise.
-    """
-    if isinstance(expr.obj, TpyName):
-        if ctx.func.current_ns:
-            binding = ctx.func.current_ns.lookup(expr.obj.name)
-            if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
-                dotted = f"{expr.obj.name}.{expr.field}"
-                if ctx.registry.get_record(dotted) is not None:
-                    return dotted
-    elif isinstance(expr.obj, TpyFieldAccess):
-        parent = _resolve_dotted_record_chain(expr.obj, ctx)
-        if parent is not None:
-            dotted = f"{parent}.{expr.field}"
-            if ctx.registry.get_record(dotted) is not None:
-                return dotted
-    return None
 
 
 class MethodAnalyzer:
@@ -723,7 +703,7 @@ class MethodAnalyzer:
         """Check if expr.method is a Callable-typed field and analyze the call."""
         if not isinstance(obj_type, NominalType):
             return None
-        rec = self.ctx.registry.get_record(obj_type.name)
+        rec = self.ctx.registry.get_record_for_type(obj_type)
         if rec is None:
             return None
         callable_type = None
@@ -789,75 +769,27 @@ class MethodAnalyzer:
 
     def _analyze_method_call_impl(self, expr: TpyMethodCall,
                                   obj_type: TpyType | None = None) -> TpyType:
-        if isinstance(expr.obj, TpyName):
-            # ClassName.staticmethod() pattern
+        if isinstance(expr.obj, (TpyName, TpyFieldAccess)):
+            # `Outer.Inner(...)`, `m.Outer(...)`, `m.Color(2)`: the callee
+            # names a class or enum.
+            constructed = self.ctx.type_ref(expr.obj, expr.method)
+            if (constructed is not None
+                    and not self._module_member_construction(expr, constructed)):
+                return self._analyze_type_call(expr, constructed)
+            # `Cls.staticmethod()`, `m.Outer.make()`, `Base.method(self)`
             result = self._analyze_static_method_call(expr)
             if result is not None:
                 return result
 
-            # Nested type constructor: Container.Inner(...) or Container.Kind(value)
-            if self.ctx.func.current_ns:
-                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
-                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
-                    nested_result = self._analyze_nested_type_call(expr)
-                    if nested_result is not None:
-                        return nested_result
-
-            # Reject method calls on enum types (enums have no class methods)
-            if self.ctx.func.current_ns:
-                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
-                if binding and binding.kind == BindingKind.ENUM:
-                    raise self.ctx.error(
-                        f"Enum type '{expr.obj.name}' has no method '{expr.method}'",
-                        expr,
-                    )
-
+        if isinstance(expr.obj, TpyName):
             # module.function() pattern (import X -> X.func())
             result = self._analyze_module_method_call(expr)
             if result is not None:
                 return result
 
-        # Nested type constructor via chained access: Outer.Mid.Deep(...)
-        if isinstance(expr.obj, TpyFieldAccess):
-            parent_dotted = _resolve_dotted_record_chain(expr.obj, self.ctx)
-            if parent_dotted is not None:
-                dotted = f"{parent_dotted}.{expr.method}"
-                nested_record = self.ctx.registry.get_record(dotted)
-                if nested_record is not None:
-                    fake_call = TpyCall(
-                        func=TpyName(name=dotted, loc=expr.loc),
-                        args=expr.args,
-                        kwargs=expr.kwargs,
-                        type_args=expr.type_args,
-                        type_args_parse_error=expr.type_args_parse_error,
-                        loc=expr.loc,
-                    )
-                    expr.is_nested_constructor = True
-                    expr.nested_type_name = dotted
-                    result = self.calls._analyze_record_constructor(fake_call, nested_record)
-                    self.ctx.set_expr_type(expr, result)
-                    return result
-
-        # Module-qualified static method call: m.Foo.method() or pkg.sub.Foo.method().
-        # Receiver shape is TpyFieldAccess(<module-chain>, ClassName); none of the
-        # other TpyFieldAccess branches recognise it because the inner is a module
-        # binding (not a record chain) and the leaf is a class (not a function).
-        # `user_module_call` is only set for the static-method dispatch -- the
-        # unbound-self path (BaseN.method(self, ...)) uses `this->Parent::method`
-        # codegen that doesn't go through the module-qualified namespace.
-        if isinstance(expr.obj, TpyFieldAccess):
-            resolved = self._try_resolve_module_qualified_class(expr.obj)
-            if resolved is not None:
-                module_name, _class_short, record_info = resolved
-                result = self._dispatch_static_method_call(expr, record_info)
-                if result is not None:
-                    if expr.is_static_call:
-                        expr.user_module_call = module_name
-                    return result
-
         # Dotted module access: X.Y.func(), X.Y.Z.func(), etc.
         if isinstance(expr.obj, TpyFieldAccess):
-            dotted_name = self._try_resolve_dotted_module(expr.obj)
+            dotted_name = self.ctx.module_named_by(expr.obj)
             if dotted_name:
                 flat_obj = TpyName(name=dotted_name, loc=expr.obj.loc)
                 flat_expr = TpyMethodCall(
@@ -1111,52 +1043,62 @@ class MethodAnalyzer:
             # Use-after-consume is already caught by _analyze_name before we get here.
             self.ctx.func.consumed_vars.add(name)
 
-    def _analyze_nested_type_call(self, expr: TpyMethodCall) -> TpyType | None:
-        """Check for Outer.Inner(...) nested type constructor call. Returns type or None."""
-        assert isinstance(expr.obj, TpyName)
-        dotted = f"{expr.obj.name}.{expr.method}"
-        # Nested record constructor
-        nested_record = self.ctx.registry.get_record(dotted)
-        if nested_record is not None:
-            # Rewrite as a direct constructor call
-            fake_call = TpyCall(
-                func=TpyName(name=dotted, loc=expr.loc),
-                args=expr.args,
-                kwargs=expr.kwargs,
-                type_args=expr.type_args,
-                type_args_parse_error=expr.type_args_parse_error,
-                loc=expr.loc,
-            )
-            # Mark the original expr so codegen knows it's a constructor
-            expr.is_nested_constructor = True
-            expr.nested_type_name = dotted
-            result = self.calls._analyze_record_constructor(fake_call, nested_record)
-            # Copy type info back
-            self.ctx.set_expr_type(expr, result)
-            return result
-        # Nested enum constructor (from_value)
-        nested_enum = self.ctx.registry.get_enum(dotted)
-        if nested_enum is not None:
-            # Container.Kind(1) -> Container::Kind from_value
-            if len(expr.args) != 1 or expr.kwargs:
-                raise self.ctx.error(
-                    f"Nested enum '{dotted}' constructor takes exactly 1 positional argument",
-                    expr)
-            arg_type = self.expr.analyze_expr(expr.args[0])
-            if not is_any_int_type(arg_type):
-                raise self.ctx.error(
-                    f"Cannot construct '{dotted}' from '{arg_type}', "
-                    f"expected an integer type",
-                    expr)
-            expr.is_nested_enum_constructor = True
-            expr.nested_type_name = dotted
-            return nested_enum
-        return None
+    def _analyze_type_call(self, expr: TpyMethodCall, ref: SymbolBinding) -> TpyType:
+        """A call whose callee names a class or enum through a dotted path
+        (`Outer.Inner(5)`, `m.Outer(1)`, `m.Color(2)`): the ordinary
+        constructor / `from_value` call a bare name would make, kept as this
+        call's expansion, with the call-level passes a bare one gets."""
+        call = TpyCall(
+            func=TpyName(name=ref.info.name, loc=expr.loc),
+            args=expr.args, kwargs=expr.kwargs,
+            double_star_unpack=expr.double_star_unpack,
+            type_args=expr.type_args,
+            type_args_parse_error=expr.type_args_parse_error,
+            loc=expr.loc,
+        )
+        if ref.kind == SymbolKind.ENUM:
+            result = self.calls._analyze_enum_from_value(call, ref.info)
+        else:
+            record = ref.info
+            if expr.type_args:
+                # Explicit type arguments are the instantiation, as
+                # `Box[int](3)` spells it.
+                call.call_type = NominalType(
+                    record.name, tuple(expr.type_args),
+                    _module_qname=record.qualified_name())
+            result = self.calls._analyze_record_constructor(call, record)
+        self.ctx.set_expr_type(call, result)
+        self.calls.defer_argument_copies(call)
+        record_protocol_arg_calls(self.ctx, call)
+        # The call is its expansion; its arguments are the expansion's,
+        # keywords resolved to positions.
+        expr.args = call.args
+        expr.kwargs = call.kwargs
+        expr.double_star_unpack = call.double_star_unpack
+        expr.macro_expansion = call
+        return result
+
+    def _module_member_construction(self, expr: TpyMethodCall,
+                                    ref: SymbolBinding) -> bool:
+        """Whether `expr` constructs a non-generic class that is a direct
+        member of a module (`m.Rec(...)`, `pkg.sub.Rec(...)`, `tpy.int32(...)`):
+        that keeps the module-call constructor route (`user_module_call` /
+        `builtin_module_call`), whose call node the lowering's statement
+        arms (`async with m.Gate()`) admit."""
+        if ref.kind != SymbolKind.RECORD or ref.info.type_params:
+            return False
+        module_name = self.ctx.module_named_by(expr.obj)
+        if module_name is None:
+            return False
+        module_info = self.ctx.registry.get_module(module_name)
+        return (ref.info.builtin_type_key is not None
+                or (module_info is not None
+                    and module_info.records.get(expr.method) is not None))
 
     def _analyze_static_method_call(self, expr: TpyMethodCall) -> TpyType | None:
         """Check for ClassName.staticmethod() or BaseN.method(self, ...) pattern.
 
-        Returns the call's type, or None if ClassName is not a record binding
+        Returns the call's type, or None if the receiver names no class
         (fall-through to other method-call dispatch).
 
         Routes (checked in order):
@@ -1165,37 +1107,37 @@ class MethodAnalyzer:
            record: rebinds to instance-method machinery, dispatches statically
            to BaseN's definition. First arg must literally be 'self'.
         """
-        assert isinstance(expr.obj, TpyName)
         if self.ctx.func.current_ns is None:
             return None
-
-        record_info = None
-        binding = self.ctx.func.current_ns.lookup(expr.obj.name)
-        if binding and binding.kind == BindingKind.RECORD:
-            # Read the record off the binding rather than re-deriving it from
-            # the receiver's spelling: the binding is authoritative (`cls`
-            # names its record, and get_record's short-name key collides
-            # across modules).
-            record_info = binding.record_info
-        elif binding and binding.kind == BindingKind.IMPORTED_NAME:
-            # A builtin class (`Exception`) is bound in builtins_ns without
-            # an imported_names entry; its binding carries the source.
-            import_info = (self.ctx.imported_names.get(expr.obj.name)
-                           or binding.import_source)
-            if import_info:
-                record_info = self.ctx.registry.find_record_by_qname(
-                    f"{import_info[0]}.{import_info[1]}")
-        elif binding and binding.kind == BindingKind.ENUM:
-            # `Color.m()` / `cls.m()`: the enum's methods are its companion's.
-            record_info = self.ctx.registry.receiver_record(binding.enum_type)
-        elif binding is None:
-            # The builtin classes outside builtins_ns (`ValueError`) resolve
-            # without a binding, as their constructors do.
-            record_info = self.calls._record_for_local_name(expr.obj.name)
-
-        if record_info is None:
+        owner = self.ctx.type_ref(expr.obj)
+        if owner is None:
             return None
-        return self._dispatch_static_method_call(expr, record_info)
+        if owner.kind == SymbolKind.ENUM:
+            # `Color.m()` / `cls.m()`: the enum's methods are its companion's.
+            record_info = self.ctx.registry.receiver_record(owner.info)
+        else:
+            record_info = owner.info
+
+        result = (self._dispatch_static_method_call(expr, record_info)
+                  if record_info is not None else None)
+        if result is None:
+            if owner.kind == SymbolKind.ENUM:
+                raise self.ctx.error(
+                    f"Enum type '{owner.local_name}' has no method '{expr.method}'",
+                    expr,
+                )
+            path = name_path(expr.obj)
+            if path is not None and not self.ctx.class_has_member(owner, expr.method):
+                raise self.ctx.error(
+                    self.ctx.type_path_miss([*path, expr.method], "a class"), expr)
+            return None
+        # The module-qualified static arm (`m.Foo.method()`) spells the
+        # class through the module the receiver names.
+        if expr.is_static_call and isinstance(expr.obj, TpyFieldAccess):
+            module_name = self.ctx.module_named_by(expr.obj.obj)
+            if module_name is not None:
+                expr.user_module_call = module_name
+        return result
 
     def _reject_inherited_classmethod(
         self, expr: TpyMethodCall, record_info: RecordInfo,
@@ -1261,36 +1203,6 @@ class MethodAnalyzer:
         expr.is_static_call = True
         expr.static_call_owner = record_info
         return return_type
-
-    def _try_resolve_module_qualified_class(
-        self, obj: TpyFieldAccess,
-    ) -> tuple[str, str, RecordInfo] | None:
-        """Resolve `obj` as `<module-chain>.ClassName` to (module_name, class_short, record_info).
-
-        Handles both single-segment module references (`TpyName(m).Class`) and
-        dotted-segment ones (`TpyFieldAccess(pkg.sub).Class`). Returns None when
-        the inner receiver isn't a module binding or the named class isn't
-        registered in that module.
-        """
-        class_short = obj.field
-        if isinstance(obj.obj, TpyName):
-            module_name = self._resolve_module_name(obj.obj.name)
-        elif isinstance(obj.obj, TpyFieldAccess):
-            module_name = self._try_resolve_dotted_module(obj.obj)
-        else:
-            return None
-        if module_name is None:
-            return None
-        record_info = self.ctx.registry.find_record_by_qname(
-            f"{module_name}.{class_short}")
-        if record_info is None:
-            enum_t = self.ctx.registry.find_enum_by_qname(
-                f"{module_name}.{class_short}")
-            if enum_t is not None:
-                record_info = self.ctx.registry.receiver_record(enum_t)
-        if record_info is None:
-            return None
-        return (module_name, class_short, record_info)
 
     def _analyze_unbound_self_method_call(
         self, expr: TpyMethodCall, record_info, overloads: list[FunctionInfo],
@@ -1518,7 +1430,7 @@ class MethodAnalyzer:
         assert isinstance(expr.obj, TpyName)
 
         if module_name is None:
-            module_name = self._resolve_module_name(expr.obj.name)
+            module_name = self.ctx.module_named_by(expr.obj)
             if module_name is None:
                 return None
 
@@ -1592,8 +1504,8 @@ class MethodAnalyzer:
 
         # User record constructor invoked via qualified access (e.g.
         # `module.RecordName(...)` after `from pkg import module`).
-        # Generic records left out -- this path doesn't forward type_args,
-        # so let them fall through to the existing generic handling below.
+        # Generic records construct through the type-call route
+        # (`_analyze_type_call`), which forwards type_args.
         if (module_info and module_info.records
                 and expr.method in module_info.records
                 and not module_info.records[expr.method].type_params):
@@ -1623,44 +1535,6 @@ class MethodAnalyzer:
                     expr, macro_fn, ult_mod, ult_name)
 
         raise self.ctx.error(f"Module '{module_name}' has no function '{expr.method}'", expr)
-
-    def _try_resolve_dotted_module(self, obj: TpyFieldAccess) -> str | None:
-        """Try to resolve nested field access as a dotted module name.
-
-        Walks the TpyFieldAccess chain to collect segments (e.g.,
-        a.b.c -> ["a", "b", "c"]), then checks the registry.
-        Returns None if the base name is shadowed (bound as anything other
-        than MODULE).
-        """
-        segments: list[str] = []
-        current = obj
-        while isinstance(current, TpyFieldAccess):
-            segments.append(current.field)
-            current = current.obj
-        if not isinstance(current, TpyName):
-            return None
-
-        # Only resolve as module if base name is unbound or bound as MODULE
-        if self.ctx.func.current_ns:
-            binding = self.ctx.func.current_ns.lookup(current.name)
-            if binding and binding.kind != BindingKind.MODULE:
-                return None
-
-        segments.append(current.name)
-        segments.reverse()
-        dotted_name = ".".join(segments)
-        if self.ctx.registry.get_module(dotted_name):
-            return dotted_name
-        return None
-
-    def _resolve_module_name(self, name: str) -> str | None:
-        """Resolve a name to a module name if it refers to a module. Returns None otherwise."""
-        if self.ctx.func.current_ns is None:
-            return None
-        binding = self.ctx.func.current_ns.lookup(name)
-        if binding and binding.kind == BindingKind.MODULE:
-            return binding.import_source[0] if binding.import_source else name
-        return None
 
     # ------------------------------------------------------------------
     # Pending generic instance method calls (Phase 7a)
@@ -1815,7 +1689,7 @@ class MethodAnalyzer:
             target = target.inner
         target = unwrap_readonly(unwrap_ref_type(target))
 
-        if not isinstance(target, NominalType) or target.name != info.record_name:
+        if not self.ctx.registry.is_instance_of(target, info.record_info):
             return None
         if not target.type_args or len(target.type_args) != len(info.type_params):
             return None
@@ -2292,23 +2166,23 @@ class MethodAnalyzer:
                 expr)
         return method_subst
 
-    def _is_protocol_method_readonly(self, protocol_name: str, method_name: str) -> bool:
+    def _is_protocol_method_readonly(self, protocol: NominalType, method_name: str) -> bool:
         """Check if a protocol method is readonly (per-method or protocol-level).
 
         Searches inherited methods too, so a @readonly method from a parent
         protocol is correctly recognized.
         """
-        proto_info = self.ctx.registry.scan_by_short_name(protocol_name)
+        proto_info = protocol_info_of(protocol)
         if proto_info is None:
             return False
         if proto_info.is_readonly:
             return True
-        for msig in self.protocols.collect_protocol_methods(protocol_name):
+        for msig in self.protocols.collect_protocol_methods(proto_info):
             if msig.name == method_name:
                 return msig.is_readonly
         return False
 
-    def _build_protocol_method_info(self, protocol_name: str, method_name: str,
+    def _build_protocol_method_info(self, protocol: NominalType, method_name: str,
                                      raw_params: list[tuple[str, TpyType]],
                                      return_type: TpyType,
                                      cpp_template: str | None = None,
@@ -2330,7 +2204,7 @@ class MethodAnalyzer:
         return FunctionInfo(
             name=method_name, params=params, return_type=return_type,
             is_method=True,
-            is_readonly=self._is_protocol_method_readonly(protocol_name, method_name),
+            is_readonly=self._is_protocol_method_readonly(protocol, method_name),
             cpp_template=cpp_template,
             error_return_type=error_return_type,
         )
@@ -2343,7 +2217,7 @@ class MethodAnalyzer:
                 raise self.ctx.error(f"Protocol '{obj_type.name}' has no method '{expr.method}'", expr)
             raw_params, return_type, cpp_template, param_defaults, n_posonly = method_sig
             fi = self._build_protocol_method_info(
-                obj_type.name, expr.method, raw_params, return_type,
+                obj_type, expr.method, raw_params, return_type,
                 cpp_template, param_defaults, n_posonly)
             return self._resolve_and_check_args(expr, [fi], {})
 
@@ -2355,7 +2229,7 @@ class MethodAnalyzer:
                     raise self.ctx.error(f"Protocol '{bound.name}' has no method '{expr.method}'", expr)
                 raw_params, return_type, cpp_template, param_defaults, n_posonly = method_sig
                 fi = self._build_protocol_method_info(
-                    bound.name, expr.method, raw_params, return_type,
+                    bound, expr.method, raw_params, return_type,
                     cpp_template, param_defaults, n_posonly)
                 return self._resolve_and_check_args(expr, [fi], {})
 

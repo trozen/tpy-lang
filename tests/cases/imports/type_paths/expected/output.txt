@@ -1,0 +1,72 @@
+module: 11 RED 7
+annotation: 2 3 31 5 1006
+return: B
+enums: A B RED B=20
+generic: 4 4
+field: 7
+base: 7 80
+mx: 900
+nested def: 11 11
+ctor: 2 3 31 5 1006 600
+ctor generic: 7 8
+ctor kwargs: 9 10 1001 1003
+ctor own: 3
+from_value: BLUE A 6 Kind.B A
+members: BLUE 1 B Kind.B 10
+constants: 7 9 7 9
+iter: A
+iter: B
+by name: 1
+isinstance: True True True
+cast: 7
+pattern: mod 20
+value pattern: blue
+pattern: m one
+value pattern: red
+local pattern: local
+local pattern: m
+field pattern: m
+field pattern: mx
+generic pattern: A
+generic pattern: B
+local defaults: loc 3 x 4
+field str default: loc
+generic caller: loc 3 1005
+protocol: 4 15
+error_return: caught
+async: caught
+factory: 5 6 7
+defaults: B BLUE 7 A A BLUE 3 A
+field default: BLUE 2
+shadow: 2 A
+method: 3
+comprehension: [0, 10]
+generator: [0, 1]
+lambda: 5
+arm: 9 A
+loop: p True
+loop: q True
+except: m nested
+except: mx flat
+except: tuple
+except: local flat
+except: local nested
+except: from-import nested
+except: module shadows builtin
+except: keyword 3
+except: bare keyword 4
+same-name generic: m 11
+same-name generic: mx 201
+same-name isinstance: m 3
+same-name isinstance: mx 300
+bare generic isinstance: 6
+callable builtin: made boom
+make: 1
+same-name base: 101
+shadow builtin: mx mx
+protocol identity: 4 4
+protocol parent: 11 6 6
+shade: 2 RED 5 6
+shade: 2
+shade: module
+shade: nested

@@ -181,6 +181,7 @@ from ...codegen_cpp.context import (
     enum_cpp_name,
     escape_cpp_name,
     is_constructor_call,
+    local_class_cpp,
     qualified_cpp_name,
 )
 from ...namespace import BindingKind
@@ -2792,8 +2793,7 @@ def _class_constant_cpp(e: TpyFieldAccess, analyzer,
         if qual:
             cpp_qname = qualified_cpp_name(*qual)
         else:
-            cpp_qname = "::".join(
-                escape_cpp_name(part) for part in owner.name.split("."))
+            cpp_qname = local_class_cpp(owner.qualified_name(), owner.name)
     cc_field = owner.class_constants.get(e.field)
     cpp_member = (cc_field.native_name if cc_field and cc_field.native_name
                   else escape_cpp_name(e.field))
@@ -4092,7 +4092,6 @@ def _user_deref_stub_method_ok(e: TpyExpr, declared: dict[str, TpyType],
             or e.user_module_call is not None
             or e.builtin_module_call is not None
             or e.typed_dict_get_field is not None
-            or e.is_nested_constructor or e.is_nested_enum_constructor
             or e.is_callable_field or e.macro_expansion is not None
             or e.fstr_expansion is not None or e.type_args
             or e.inferred_type_args or e.needs_optional_runtime_check):
@@ -4133,7 +4132,6 @@ def _deref_member_call_ok(e: TpyMethodCall) -> bool:
             or e.user_module_call is not None
             or e.builtin_module_call is not None
             or e.typed_dict_get_field is not None
-            or e.is_nested_constructor or e.is_nested_enum_constructor
             or e.is_callable_field or e.macro_expansion is not None
             or e.fstr_expansion is not None or e.type_args
             or e.inferred_type_args or e.needs_optional_runtime_check):
@@ -11744,8 +11742,7 @@ def _plain_member_call_markers_ok(e: TpyMethodCall, *,
                 or e.user_module_call is not None
                 or e.builtin_module_call is not None
                 or e.typed_dict_get_field is not None
-                or e.is_nested_constructor or e.is_nested_enum_constructor
-                or e.is_callable_field or e.macro_expansion is not None
+                    or e.is_callable_field or e.macro_expansion is not None
                 or e.fstr_expansion is not None
                 or ((e.type_args or e.inferred_type_args) and not targs_ok)
                 or e.deref_depth

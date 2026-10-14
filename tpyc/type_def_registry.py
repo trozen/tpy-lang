@@ -1199,9 +1199,10 @@ def record_base_cpp(record: "RecordInfo", parent: "NominalType",
     return render(parent) if render is not None else parent.to_cpp()
 
 
-def is_subtype(sub: "RecordInfo | ProtocolInfo | None", supertype_name: str) -> bool:
-    """Return True if ``sub`` is a nominal subtype of the protocol named
-    ``supertype_name``.
+def is_subtype(sub: "RecordInfo | ProtocolInfo | None",
+               supertype: "ProtocolInfo | None") -> bool:
+    """Return True if ``sub`` is a nominal subtype of the protocol
+    ``supertype`` (by its qualified name, never its short name).
 
     The single source of truth for nominal subtype queries. Membership is
     a set lookup against ``sub.transitive_supertypes`` (populated once at
@@ -1210,14 +1211,12 @@ def is_subtype(sub: "RecordInfo | ProtocolInfo | None", supertype_name: str) -> 
     record, structural conformance via collected methods -- are layered
     at the call site, not baked into the cache.
 
-    Same-name match: a protocol is its own subtype only if you treat
-    ``supertype_name == sub.name`` explicitly; this helper returns False
-    in that case so the kernel stays pure ancestor lookup. Callers that
-    want reflexivity should check ``sub.name == supertype_name`` first.
+    Strict: a protocol is not its own subtype, so the kernel stays pure
+    ancestor lookup; callers that want reflexivity check identity first.
     """
-    if sub is None:
+    if sub is None or supertype is None:
         return False
-    return supertype_name in sub.transitive_supertypes
+    return supertype.qualified_name() in sub.transitive_supertypes
 
 
 def enum_info_of(t: "TpyType") -> Optional[EnumInfo]:

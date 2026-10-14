@@ -180,9 +180,10 @@ class InertWalk:
     # -- expressions --------------------------------------------------------
 
     def field_chain_root(self, e: TpyFieldAccess) -> TpyExpr:
-        """The root under a chain of plain field reads."""
+        """The root under a chain of plain field reads; a dotted path naming a
+        class or enum (`m.Outer`) is a root of its own."""
         cur: TpyExpr = e
-        while isinstance(cur, TpyFieldAccess):
+        while isinstance(cur, TpyFieldAccess) and cur.names_type is None:
             self.require(self.plain_field_read(cur))
             cur = cur.obj
         return cur
@@ -254,7 +255,11 @@ class InertWalk:
         """The parts of a field or element read: the place under it, and a
         subscript's key."""
         if isinstance(e, TpyFieldAccess):
-            self.place(self.field_chain_root(e))
+            self.require(e.factory_expansion is None)
+            root = self.field_chain_root(e)
+            # A class or enum named by its path is no storage to read.
+            if not isinstance(root, TpyFieldAccess):
+                self.place(root)
             return
         callee = e.record_getitem or e.getitem_callee
         if callee is not None:
@@ -378,11 +383,13 @@ class InertWalk:
 
     def method_call(self, e: TpyMethodCall) -> None:
         self.on_node(e)
-        self.require(e.fstr_expansion is None and e.macro_expansion is None
+        if e.macro_expansion is not None:
+            # The call is its expansion (`m.Color(1)` is `Color(1)`).
+            self.walk(e.macro_expansion)
+            return
+        self.require(e.fstr_expansion is None
                      and not e.is_callable_field
                      and e.typed_dict_get_field is None
-                     and not e.is_nested_constructor
-                     and not e.is_nested_enum_constructor
                      and e.deref_depth == 0 and e.super_parent_type is None
                      and e.unbound_self_parent_type is None
                      and e.subscript_callee is None

@@ -356,7 +356,7 @@ inline widget::widget(const ::tpy::BigInt& c) : Color(c) {}
 // def kind(self) -> Color:
 //     return Color.RED if self.Color == 0 else Color.GREEN
 inline ::tpyapp::main::Color widget::kind() const {
-    return (((this->Color == 0)) ? (Color::RED) : (Color::GREEN));
+    return (((this->Color == 0)) ? (::tpyapp::main::Color::RED) : (::tpyapp::main::Color::GREEN));
 }
 
 // def read(self) -> Own[day]:

@@ -17,7 +17,7 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_qualifiers,
     is_any_str_type, is_numeric_type, is_protocol_type,
     polymorphic_source_inner, deref_dispatch_inner,
-    same_nominal_symbol_loose,
+    same_class, record_owner,
 )
 from ..modules import _resolve_concrete_type_name
 from .flow_facts import FlowFacts
@@ -36,10 +36,12 @@ from ..parse import (
     TpyClassPattern, TpyLiteralPattern, TpyValuePattern, TpyOrPattern, TpyAsPattern,
 )
 from ..parse.nodes import (
+    name_path,
     stmt_has_any_suspension, iter_capture_bindings, body_writes_name,
 )
 from ..value_category import is_rvalue_source
 from .context import record_stmt_borrow_binding, register_capture_alias_borrow
+from ..symbol_binding import SymbolKind
 from .receiver_calls import is_invalidating_method
 
 if TYPE_CHECKING:
@@ -129,6 +131,17 @@ def _subst_type_params(typ: TpyType, subst: dict[str, TpyType]) -> TpyType:
     return typ.map_inner_types(lambda t: _subst_type_params(t, subst))
 
 
+
+# An arm's key in the duplicate-case / exhaustiveness bookkeeping: the matched
+# type itself (type equality is its identity, type arguments included, so
+# `a.Box[a.Point]` and `a.Box[b.Point]` stay apart) plus the arm's field
+# constraints.
+PatternKey = tuple[TpyType, tuple[object, ...]]
+
+
+def _type_key(t: TpyType, constraint: tuple[object, ...] = ()) -> PatternKey:
+    return (t, constraint)
+
 class OrPatternKind(Enum):
     UNION = "union"
     NONUNION = "nonunion"
@@ -182,7 +195,7 @@ class MatchAnalyzer:
         is_record = (
             isinstance(effective_type, NominalType)
             and effective_type.is_user_record
-            and self.ctx.registry.get_record(effective_type.name) is not None
+            and self.ctx.registry.get_record_for_type(effective_type) is not None
         )
         is_optional = isinstance(effective_type, OptionalType)
         # @dynamic-protocol / polymorphic-class subject: dispatch by runtime
@@ -240,7 +253,7 @@ class MatchAnalyzer:
         # both. Exhaustiveness and unreachable-arm checks track each side.
         covers_none = False
         covers_value = False
-        seen_types: set[str] = set()
+        seen_types: set[PatternKey] = set()
         seen_values: set[object] = set()
         # Polymorphic dispatch: resolved arm types, in source order, for the
         # subclass-shadowing unreachable check (a later arm whose type is a
@@ -873,7 +886,7 @@ class MatchAnalyzer:
 
     def _analyze_pattern_polymorphic(
         self, pattern: TpyPattern, source_inner: TpyType,
-        seen_types: set[str], seen_poly: list[TpyType],
+        seen_types: set[PatternKey], seen_poly: list[TpyType],
         bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Analyze a pattern against a @dynamic / polymorphic subject."""
@@ -910,23 +923,41 @@ class MatchAnalyzer:
                 "unsupported pattern for @dynamic / polymorphic subject", pattern
             )
 
+    def _pattern_class(
+        self, pattern: TpyClassPattern,
+    ) -> 'tuple[str, RecordInfo | None, TpyType | None]':
+        """The class a class pattern names, resolved like every other type
+        path (`Point()`, `Outer.Inner()`, `m.Outer.Inner()`): its spelling
+        for diagnostics, its record, and the type it names -- a builtin
+        scalar (`int32()`) has no record, and a name that is no class has
+        neither."""
+        path = name_path(pattern.cls)
+        spelled = ".".join(path) if path is not None else "<expression>"
+        ref = self.ctx.type_ref(pattern.cls) if path is not None else None
+        if ref is None:
+            scalar = _resolve_concrete_type_name(spelled) if path and len(path) == 1 else None
+            return spelled, None, scalar
+        if ref.kind == SymbolKind.ENUM:
+            return spelled, None, None
+        return spelled, ref.info, record_owner(ref.info)
+
+    def _is_instance_of(self, t: TpyType, record: 'RecordInfo') -> bool:
+        return self.ctx.registry.is_instance_of(t, record)
+
     def _analyze_class_pattern_polymorphic(
         self, pattern: TpyClassPattern, source_inner: TpyType,
-        seen_types: set[str], seen_poly: list[TpyType],
+        seen_types: set[PatternKey], seen_poly: list[TpyType],
         bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Validate a class pattern names a subclass / conformer of the
         polymorphic root, bind its fields, and flag duplicate / unreachable
         arms."""
-        if not isinstance(pattern.cls, TpyName):
-            raise self.ctx.error("class pattern must use a simple name", pattern)
-        cls_name = pattern.cls.name
+        cls_name, record, ptype = self._pattern_class(pattern)
 
         resolved = self._resolve_polymorphic_pattern_type(
-            cls_name, source_inner, pattern)
+            cls_name, ptype, source_inner, pattern)
         pattern.resolved_type = resolved
 
-        record = self.ctx.registry.get_record(cls_name)
         if record is not None:
             self._resolve_class_pattern_fields(pattern, record, bindings)
         elif pattern.keywords or pattern.positional:
@@ -940,7 +971,7 @@ class MatchAnalyzer:
         # unreachable. Fold the constraint into the dedup key and keep the arm
         # out of `seen_poly` (the catch-all set for the unreachable check).
         constraint = MatchAnalyzer._field_constraint_key(pattern)
-        type_key = str(resolved) + constraint
+        type_key = _type_key(resolved, constraint)
         if type_key in seen_types:
             raise self.ctx.error(
                 f"duplicate case for '{cls_name}' in match statement", pattern
@@ -959,15 +990,12 @@ class MatchAnalyzer:
             seen_poly.append(resolved)
 
     def _resolve_polymorphic_pattern_type(
-        self, name: str, source_inner: TpyType, pattern: TpyClassPattern,
+        self, name: str, resolved: TpyType | None, source_inner: TpyType,
+        pattern: TpyClassPattern,
     ) -> NominalType:
-        """Resolve a class-pattern name and validate it can match the
+        """Validate the type a class pattern names can match the
         polymorphic root (C++ inheritance, structural conformance, or
         subclass), mirroring isinstance's dispatch validation."""
-        resolved = _resolve_concrete_type_name(name)
-        record = self.ctx.registry.get_record(name)
-        if resolved is None and record is not None:
-            resolved = NominalType(name, _module_qname=record.qualified_name())
         if resolved is None or not isinstance(resolved, NominalType):
             raise self.ctx.error(
                 f"unknown type '{name}' in match pattern", pattern
@@ -989,7 +1017,7 @@ class MatchAnalyzer:
 
     def _analyze_or_pattern_polymorphic(
         self, pattern: TpyOrPattern, source_inner: TpyType,
-        seen_types: set[str], seen_poly: list[TpyType],
+        seen_types: set[PatternKey], seen_poly: list[TpyType],
         bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Or-pattern over polymorphic class patterns (type-test only)."""
@@ -1059,14 +1087,14 @@ class MatchAnalyzer:
 
     def _match_missing_cases(
         self, subject_type: TpyType,
-        seen_types: set[str], seen_values: set[object],
+        seen_types: set[PatternKey], seen_values: set[object],
     ) -> list[str]:
         """Return human-readable names of uncovered cases for finite-valued types."""
         if isinstance(subject_type, UnionType):
             return [
                 "None" if isinstance(m, NoneType) else str(m)
                 for m in subject_type.members
-                if str(m) not in seen_types
+                if _type_key(m) not in seen_types
             ]
 
         if is_enum_type(subject_type):
@@ -1104,7 +1132,7 @@ class MatchAnalyzer:
 
     def _analyze_pattern(
         self, pattern: TpyPattern, subject_type: UnionType,
-        seen_types: set[str], bindings: dict[str, TpyType], stmt: TpyMatch,
+        seen_types: set[PatternKey], bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Analyze a pattern against the subject type and collect bindings."""
         if isinstance(pattern, TpyWildcardPattern):
@@ -1140,7 +1168,7 @@ class MatchAnalyzer:
                     f"'case None:' requires None to be a member of the "
                     f"union subject; got '{subject_type}'", pattern,
                 )
-            none_key = str(NoneType())
+            none_key = _type_key(NoneType())
             if none_key in seen_types:
                 raise self.ctx.error(
                     "duplicate 'case None:' arm", pattern,
@@ -1155,22 +1183,12 @@ class MatchAnalyzer:
 
     def _analyze_class_pattern(
         self, pattern: TpyClassPattern, subject_type: UnionType,
-        seen_types: set[str], bindings: dict[str, TpyType], stmt: TpyMatch,
+        seen_types: set[PatternKey], bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Analyze a class pattern: validate union membership and field bindings."""
-        if not isinstance(pattern.cls, TpyName):
-            raise self.ctx.error(
-                "class pattern must use a simple name", pattern
-            )
-        cls_name = pattern.cls.name
-
-        # Resolve to a type and find matching union member.
-        # Try exact match first (records, primitives), then fall back to
-        # searching union members by base name (handles parameterized types
-        # like list[Tree], Box[str] matched by bare list(), Box()).
-        record = self.ctx.registry.get_record(cls_name)
+        cls_name, record, ptype = self._pattern_class(pattern)
         resolved_type = self._resolve_pattern_type(
-            cls_name, subject_type, record is not None, pattern, stmt)
+            cls_name, subject_type, record, ptype, pattern, stmt)
 
         pattern.resolved_type = resolved_type
 
@@ -1193,101 +1211,77 @@ class MatchAnalyzer:
 
     def _resolve_pattern_type(
         self, name: str, subject_type: UnionType,
-        is_record: bool, pattern: TpyClassPattern, stmt: TpyMatch,
+        record: 'RecordInfo | None', resolved: TpyType | None,
+        pattern: TpyClassPattern, stmt: TpyMatch,
     ) -> TpyType:
-        """Resolve a type name in a match class pattern against a union subject.
+        """Resolve the type a match class pattern names against a union
+        subject.
 
         Resolution order:
         1. Exact match: record NominalType or primitive (int32, str, bool, ...)
-        2. Name-based member search: find the union member whose base name
-           matches (handles parameterized types like list[T], Box[str])
+        2. The union members that are instances of the pattern's record
+           (parameterized ones like Box[str] under `Box()`, `list()` over
+           `list[T]`), by identity.
 
         `subject_type` may be a stand-in union synthesized from a wrapper's
         alternatives, which has no user-facing spelling, so rejections name
         `stmt.subject_type` -- the type as written at the match.
         """
-        resolved = _resolve_concrete_type_name(name)
-        if resolved is None and is_record:
-            # Mint qname so exact-match against union members (line 441
-            # below) works under strict NominalType equality.  Without
-            # the qname, the match fails for cross-module records and
-            # we fall through to the short-name fuzzy path.
-            info = self.ctx.registry.get_record(name)
-            qname = info.qualified_name() if info else None
-            resolved = NominalType(name, _module_qname=qname)
-        # Check exact match against union members
-        if resolved is not None:
-            if any(m == resolved for m in subject_type.members):
-                return resolved
-            same_name = [m for m in subject_type.members
-                         if getattr(m, 'name', None) == name]
-            if not same_name:
-                raise self.ctx.error(
-                    f"'{name}' is not a member of union "
-                    f"'{stmt.subject_type}'", pattern
-                )
-            # A same-bare-named member that is NOT parameterized is a distinct
-            # (e.g. alias-imported) record: exact qname identity already failed
-            # above, so a bare-name match here would bind the wrong record.
-            # Only the base-name fuzzy path below -- for parameterized members
-            # like `Box[str]` under a bare `Box` pattern -- may match by name.
-            if not any(getattr(m, 'type_args', ()) for m in same_name):
-                member = same_name[0]
-                pat_disp = (resolved.qualified_name()
-                            if isinstance(resolved, NominalType) else None) or name
-                subj_disp = (member.qualified_name()
-                             if isinstance(member, NominalType) else None) or name
-                raise self.ctx.error(
-                    f"class pattern '{pat_disp}' does not match union member "
-                    f"'{subj_disp}' (different type, same name)", pattern
-                )
-
-        # Fall back: search union members by base name (for parameterized types)
-        matches = [m for m in subject_type.members
-                   if getattr(m, 'name', None) == name]
+        if resolved is not None and any(m == resolved for m in subject_type.members):
+            return resolved
+        matches = ([m for m in subject_type.members
+                    if self._is_instance_of(m, record)]
+                   if record is not None else [])
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
             # Try disambiguation using field type sub-patterns
             # (e.g. Box(value=str()) narrows Box[str] | Box[int] to Box[str])
-            disambiguated = self._disambiguate_by_field_types(
-                name, matches, pattern)
+            disambiguated = (self._disambiguate_by_field_types(
+                name, record, matches, pattern) if record is not None else None)
             if disambiguated is not None:
                 return disambiguated
             raise self.ctx.error(
                 f"ambiguous '{name}' pattern: union has multiple {name} members",
                 pattern,
             )
-        raise self.ctx.error(f"unknown type '{name}' in match pattern", pattern)
+        if resolved is None:
+            raise self.ctx.error(f"unknown type '{name}' in match pattern", pattern)
+        short = resolved.name if isinstance(resolved, NominalType) else name
+        same_name = [m for m in subject_type.members
+                     if getattr(m, 'name', None) == short]
+        if not same_name:
+            raise self.ctx.error(
+                f"'{name}' is not a member of union "
+                f"'{stmt.subject_type}'", pattern
+            )
+        # A same-named member that is not the pattern's class is a distinct
+        # (e.g. alias-imported) record.
+        member = same_name[0]
+        pat_disp, subj_disp = self.ctx.type_pair(resolved, member)
+        raise self.ctx.error(
+            f"class pattern '{pat_disp}' does not match union member "
+            f"'{subj_disp}' (different type, same name)", pattern
+        )
 
     def _analyze_class_pattern_record(
         self, pattern: TpyClassPattern, subject_type: NominalType,
         bindings: dict[str, TpyType], stmt: TpyMatch,
     ) -> None:
         """Analyze a class pattern on a concrete record subject (field-value matching)."""
-        if not isinstance(pattern.cls, TpyName):
-            raise self.ctx.error(
-                "class pattern must use a simple name", pattern
-            )
-        cls_name = pattern.cls.name
-
-        record = self.ctx.registry.get_record(cls_name)
+        cls_name, record, _ = self._pattern_class(pattern)
         if record is None:
             raise self.ctx.error(f"unknown type '{cls_name}' in match pattern", pattern)
 
-        # Compare by qualified identity, not bare name: a record sharing the
-        # subject's canonical name (one imported under an alias) is a distinct
-        # type, so its class pattern must not bind fields against the subject.
-        # The pattern name is a source spelling (maybe an alias), so compare
-        # the resolved record's qname to the subject's rather than names.
-        pat_qname = record.qualified_name()
-        subj_qname = subject_type.qualified_name()
-        mismatch = (pat_qname != subj_qname if pat_qname and subj_qname
-                    else cls_name != subject_type.name)
-        if mismatch:
-            same_bare = cls_name == subject_type.name
-            pat_disp = (pat_qname or cls_name) if same_bare else cls_name
-            subj_disp = (subj_qname or subject_type.name) if same_bare else subject_type.name
+        # A record sharing the subject's name (one imported under an alias)
+        # is a distinct type, so its class pattern must not bind fields
+        # against the subject.
+        if not self._is_instance_of(subject_type, record):
+            if record.name == subject_type.name:
+                pat_disp, subj_disp = self.ctx.type_pair(
+                    record_owner(record), subject_type)
+            else:
+                pat_disp, subj_disp = cls_name, subject_type.name
             raise self.ctx.error(
                 f"class pattern '{pat_disp}' does not match "
                 f"subject type '{subj_disp}'", pattern
@@ -1301,7 +1295,8 @@ class MatchAnalyzer:
         bindings: dict[str, TpyType],
     ) -> None:
         """Resolve positional patterns and validate keyword field bindings."""
-        cls_name = pattern.cls.name if isinstance(pattern.cls, TpyName) else "?"
+        path = name_path(pattern.cls)
+        cls_name = ".".join(path) if path is not None else "?"
 
         # Use match_args for positional resolution (if set by macro), own fields otherwise.
         # For field type lookup, include inherited fields.
@@ -1544,7 +1539,7 @@ class MatchAnalyzer:
             # Class pattern on the inner type (e.g. case Point(): on Optional[Point])
             inner = subject_type.inner
             if isinstance(inner, NominalType) and inner.is_user_record:
-                record = self.ctx.registry.get_record(inner.name)
+                record = self.ctx.registry.get_record_for_type(inner)
                 if record is not None:
                     self._analyze_class_pattern_record(pattern, inner, bindings, stmt)
                     return
@@ -1863,15 +1858,10 @@ class MatchAnalyzer:
             # helper's None-qname loose fallback can't fire here -- every enum
             # carries a qname by registration, and an alias rebinds the same
             # NominalType object rather than minting a bare one.
-            if not is_enum_type(val_type) or not same_nominal_symbol_loose(val_type, subject_type):
-                # Disambiguate with the intrinsic qname when the two enums
-                # share a bare name (the aliased-import case), else "'E' does
-                # not match 'E'" is meaningless. `disambiguated_pair` can't be
-                # used here: it qualifies via the codegen namespace map, which
-                # isn't populated at sema time, so it renders both as 'E'.
-                same_bare = is_enum_type(val_type) and val_type.name == subject_type.name
-                val_disp = (val_type.qualified_name() or str(val_type)) if same_bare else str(val_type)
-                subj_disp = (subject_type.qualified_name() or str(subject_type)) if same_bare else str(subject_type)
+            if not is_enum_type(val_type) or not same_class(val_type, subject_type):
+                # Two enums sharing a bare name (the aliased-import case) are
+                # told apart by module, else "'E' does not match 'E'".
+                val_disp, subj_disp = self.ctx.type_pair(val_type, subject_type)
                 raise self.ctx.error(
                     f"value pattern type '{val_disp}' does not match "
                     f"subject type '{subj_disp}'", pattern
@@ -1920,30 +1910,30 @@ class MatchAnalyzer:
     @staticmethod
     def _build_pattern_type_key(
         pattern: TpyClassPattern, resolved_type: TpyType,
-    ) -> str:
+    ) -> PatternKey:
         """Build a key for duplicate-case / exhaustiveness detection, folding
         in field-value constraints so a conditional arm (`Dog(legs=4)`) stays
         distinct from `Dog()` / `Dog(legs=5)` and is reported as uncovered."""
-        return str(resolved_type) + MatchAnalyzer._field_constraint_key(pattern)
+        return _type_key(resolved_type, MatchAnalyzer._field_constraint_key(pattern))
 
     @staticmethod
-    def _field_constraint_key(pattern: TpyClassPattern) -> str:
+    def _field_constraint_key(pattern: TpyClassPattern) -> tuple[object, ...]:
         """Canonical signature of a class pattern's field-value constraints
         (literals + union field guards, recursing through nested record
         sub-patterns). Empty when the pattern only binds / type-tests fields."""
-        parts: list[str] = []
+        parts: list[object] = []
         for field_name, sub in pattern.keywords:
             inner = sub.pattern if isinstance(sub, TpyAsPattern) else sub
             if isinstance(inner, TpyLiteralPattern):
-                parts.append(f"+{field_name}={inner.value!r}")
+                parts.append(("=", field_name, type(inner.value), inner.value))
             elif isinstance(inner, TpyClassPattern) and inner.is_union_field_guard:
-                parts.append(f"+{field_name}:{inner.resolved_type}"
-                             + MatchAnalyzer._field_constraint_key(inner))
+                parts.append((":", field_name, inner.resolved_type,
+                              MatchAnalyzer._field_constraint_key(inner)))
             elif isinstance(inner, TpyClassPattern):
                 sub_key = MatchAnalyzer._field_constraint_key(inner)
                 if sub_key:
-                    parts.append(f"+{field_name}{sub_key}")
-        return "".join(parts)
+                    parts.append(("", field_name, sub_key))
+        return tuple(parts)
 
     @staticmethod
     def _is_constraining_sub_pattern(sub: TpyPattern) -> bool:
@@ -1978,10 +1968,10 @@ class MatchAnalyzer:
         return subst
 
     def _disambiguate_by_field_types(
-        self, cls_name: str, candidates: list[TpyType],
+        self, cls_name: str, record: 'RecordInfo', candidates: list[TpyType],
         pattern: TpyClassPattern,
     ) -> TpyType | None:
-        """Try to disambiguate multiple same-name union members using field type sub-patterns.
+        """Try to disambiguate several union members of one class using field type sub-patterns.
 
         For example, Box(value=str()) on union Box[str] | Box[int] narrows to Box[str]
         by checking which candidate's 'value' field type matches 'str'.
@@ -1992,9 +1982,6 @@ class MatchAnalyzer:
         Returns the unique matching candidate, or None if no type guards are present.
         Raises an error if type guards are present but no candidate matches.
         """
-        record = self.ctx.registry.get_record(cls_name)
-        if record is None:
-            return None
         if not self._has_type_sub_patterns(pattern, record):
             return None
 
@@ -2058,47 +2045,34 @@ class MatchAnalyzer:
             inner = sub_pat
             if isinstance(inner, TpyAsPattern):
                 inner = inner.pattern
-            if not isinstance(inner, TpyClassPattern) or not isinstance(inner.cls, TpyName):
+            if not isinstance(inner, TpyClassPattern):
                 continue
 
-            type_name = inner.cls.name
             field_type = next((f.type for f in all_fields if f.name == field_name), None)
             if field_type is None:
                 return False
             resolved = _subst_type_params(field_type, subst) if subst else field_type
 
-            if not self._type_pattern_compatible(type_name, resolved, inner):
+            if not self._type_pattern_compatible(inner, resolved):
                 return False
         return True
 
     def _type_pattern_compatible(
-        self, type_name: str, field_type: TpyType,
-        inner_pattern: TpyClassPattern,
+        self, inner_pattern: TpyClassPattern, field_type: TpyType,
     ) -> bool:
-        """Check if a type name matches a field type, recursing into inner patterns."""
-        # Resolve to a concrete type
-        pattern_type = _resolve_concrete_type_name(type_name)
-        if pattern_type is not None:
+        """Check if a type sub-pattern matches a field type, recursing into inner patterns."""
+        _, inner_record, pattern_type = self._pattern_class(inner_pattern)
+        if inner_record is None:
+            if pattern_type is None:
+                return False
             if field_type == pattern_type:
                 return True
             if isinstance(field_type, UnionType):
                 return any(m == pattern_type for m in field_type.members)
             return False
 
-        # User record: match by name
-        inner_record = self.ctx.registry.get_record(type_name)
-        if inner_record is None:
-            return False
-
-        # Collect matching types from field_type
-        if isinstance(field_type, NominalType) and field_type.name == type_name:
-            candidates = [field_type]
-        elif isinstance(field_type, UnionType):
-            candidates = [m for m in field_type.members
-                          if isinstance(m, NominalType) and m.name == type_name]
-        else:
-            return False
-
+        members = field_type.members if isinstance(field_type, UnionType) else [field_type]
+        candidates = [m for m in members if self._is_instance_of(m, inner_record)]
         if not candidates:
             return False
 
@@ -2121,17 +2095,7 @@ class MatchAnalyzer:
         Returns the matched type (for binding). Sets sub_pattern.resolved_type
         when the field is a union (signals codegen to emit holds_alternative).
         """
-        if not isinstance(sub_pattern.cls, TpyName):
-            raise self.ctx.error(
-                "type pattern in field must use a simple name", sub_pattern
-            )
-        cls_name = sub_pattern.cls.name
-
-        pattern_type = _resolve_concrete_type_name(cls_name)
-        if pattern_type is None:
-            info = self.ctx.registry.get_record(cls_name)
-            if info is not None:
-                pattern_type = NominalType(cls_name, _module_qname=info.qualified_name())
+        cls_name, info, pattern_type = self._pattern_class(sub_pattern)
         if pattern_type is None:
             raise self.ctx.error(
                 f"unknown type '{cls_name}' in field type pattern", sub_pattern
@@ -2140,16 +2104,15 @@ class MatchAnalyzer:
         # Exact match: compile-time type guard (no runtime check)
         if field_type == pattern_type:
             return field_type
-        if isinstance(field_type, NominalType) and field_type.name == cls_name:
+        if info is not None and self._is_instance_of(field_type, info):
             return field_type
 
         # Union field: check if field_type is a union containing pattern_type
-        is_record = isinstance(pattern_type, NominalType)
         if isinstance(field_type, UnionType):
-            if is_record:
-                # Records: match by name (handles parameterized types like Box[str])
+            if info is not None:
+                # Records: match by identity (any type arguments, Box[str])
                 matches = [m for m in field_type.members
-                           if isinstance(m, NominalType) and m.name == cls_name]
+                           if self._is_instance_of(m, info)]
             else:
                 # Primitives: exact type match
                 matches = [m for m in field_type.members if m == pattern_type]
@@ -2160,11 +2123,10 @@ class MatchAnalyzer:
                 return matches[0]
 
             if len(matches) > 1:
-                # Multiple same-name members -- try inner patterns for disambiguation
-                inner_record = self.ctx.registry.get_record(cls_name)
-                if inner_record is not None and (sub_pattern.keywords or sub_pattern.positional):
+                # Several members of one class -- try inner patterns for disambiguation
+                if info is not None and (sub_pattern.keywords or sub_pattern.positional):
                     disambiguated = self._disambiguate_by_field_types(
-                        cls_name, matches, sub_pattern)
+                        cls_name, info, matches, sub_pattern)
                     if disambiguated is not None:
                         sub_pattern.resolved_type = disambiguated
                         sub_pattern.is_union_field_guard = True
@@ -2179,6 +2141,13 @@ class MatchAnalyzer:
                 f"field union type '{field_type}'", sub_pattern
             )
 
+        if (isinstance(field_type, NominalType) and isinstance(pattern_type, NominalType)
+                and field_type.name == pattern_type.name):
+            pat_disp, field_disp = self.ctx.type_pair(pattern_type, field_type)
+            raise self.ctx.error(
+                f"type pattern '{pat_disp}' does not match field type "
+                f"'{field_disp}' (different type, same name)", sub_pattern
+            )
         raise self.ctx.error(
             f"type pattern '{cls_name}' does not match "
             f"field type '{field_type}'", sub_pattern
@@ -2189,10 +2158,7 @@ class MatchAnalyzer:
         bindings: dict[str, TpyType],
     ) -> None:
         """Recursively resolve field patterns on a nested class sub-pattern."""
-        if not isinstance(sub_pattern.cls, TpyName):
-            return
-        cls_name = sub_pattern.cls.name
-        record = self.ctx.registry.get_record(cls_name)
+        cls_name, record, _ = self._pattern_class(sub_pattern)
         if record is None:
             raise self.ctx.error(
                 f"type '{cls_name}' does not support field patterns", sub_pattern

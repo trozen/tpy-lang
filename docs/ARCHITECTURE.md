@@ -567,6 +567,16 @@ keyed by name -- they share-point the underlying Info objects
 module's `exports.records`) but do not carry attribution; the
 table is where defining_module / canonical_name live.
 
+Every dotted name of a class or enum (`m.Outer.Inner`, `pkg.sub.mod.Kind`,
+`Outer.Err`) resolves through one walk over these tables,
+`resolve_type_path`: each layer resolves the path's HEAD in its own scope
+-- the parser's `TypeResolver` (given the tables by
+`TypeResolver.attach_module_tables`) for annotations, bases and bounds,
+sema's `SemanticContext.type_ref` (the scoped `Namespace`, so a local
+shadows a module) for expressions, patterns, `isinstance` / `cast`,
+defaults and `except` / `raise` -- and the walk follows each nested
+member, keyed `"Outer.Inner"` in its defining module's table.
+
 Only types backed by a real `TypeDef` entry (records, enums,
 protocols, type-factory-backed generics) are canonicalized. Type
 aliases, decorator names, and other non-nominal imports stay in
@@ -835,11 +845,16 @@ writing one.
 
 2. **`NominalType.__eq__` / `__hash__` include `_module_qname`
    strictly** (transitive equivalence; set/dict behavior is
-   insertion-order independent). A helper `same_nominal_symbol_loose`
-   in `typesys.py` covers the narrow set of sites that compare
-   across the parse/resolve boundary (bare placeholder vs qname-
-   bearing) -- `TypeRegistry.is_subclass_of`'s parent-chain walk
-   and the `record_to_ptr` / `record_to_const_ptr` coercions.
+   insertion-order independent). "Same class" has ONE definition,
+   `typesys.same_class`: by qualified name, by short name only where
+   a side is a parser placeholder without one. `same_base_type`
+   (same class at the same type arguments -- the inheritance walks,
+   the `record_to_ptr` coercions, a `__copy__` / in-place dunder's
+   return) and `TypeRegistry.is_instance_of` (a type against a
+   `RecordInfo`) are thin cases of it. Protocols are keyed the same
+   way: `ProtocolInfo.qualified_name()` keys the subtype closure
+   (`is_subtype`), and `TypeRegistry.protocol_for_type` is the
+   protocol twin of `get_record_for_type`.
 
 3. **Never use `type(x) == type(y)` for nominal-kind dispatch.** Use
    qname/category predicates or explicit `NominalType.name`

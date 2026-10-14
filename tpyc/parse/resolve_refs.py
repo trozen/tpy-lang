@@ -10,9 +10,9 @@ Covers every module-level annotation site: type aliases, top-level
 `TpyVarDecl`, function / overload-group signatures, type-parameter
 bounds, record fields / bases / methods / self, protocol fields and
 method signatures, and expression-level type uses inside bodies.
-Nested defs and macro-fragment functions are resolved eagerly at parse
-time (`parser._finalize_function_refs` / `_parse_method`) and are not
-re-walked here.
+Nested-def signatures resolve with their enclosing body, under its
+type-param scope. Macro-fragment functions are resolved eagerly at parse
+time (`parser._finalize_function_refs` / `_parse_method`).
 
 The walker uses `module.resolver` (a `TypeResolver` constructed by the
 parser) as the only authority for name binding.  Field-default
@@ -34,13 +34,13 @@ from .nodes import (
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef,
     TpyInferFromDefaultRef, ParseError, ResolutionFailure,
     TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyName,
-    SourceLocation, TpyLambda,
+    SourceLocation, TpyLambda, name_path,
 )
 from .type_resolver import _FIXED_INT_MAP
 from ..diagnostics import SemanticError
 
 if TYPE_CHECKING:
-    from .nodes import TpyExpr
+    from .nodes import TpyExpr, TpyFunction
     from .type_resolver import TypeResolver
 
 _REF_TYPES = (TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef)
@@ -75,9 +75,9 @@ def _infer_field_type_from_default(
       - Fixed-int constructor calls (`int32(...)`, ...) -> the matching
         singleton.
       - `int()` / `float()` -> BIGINT / FLOAT.
-      - Calls to a resolvable record / protocol / enum name (same-module
-        or imported via the canonicalized import table) -> qname-
-        bearing NominalType.
+      - Calls to a resolvable record / protocol / enum name or dotted
+        type path (same-module, imported via the canonicalized import
+        table, `m.Outer.Inner(...)`) -> qname-bearing NominalType.
 
     Returns None if the expression does not match any recognised form;
     the caller raises "Cannot infer type for field 'X'".
@@ -90,9 +90,11 @@ def _infer_field_type_from_default(
         return FLOAT
     if isinstance(expr, TpyStrLiteral):
         return STR
-    if not (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)):
+    type_name = _callee_path(expr)
+    if type_name is None:
         return None
-    type_name = expr.func_name
+    if "." in type_name:
+        return resolver.type_path(type_name)
     if (fixed_int := _FIXED_INT_MAP.get(type_name)) is not None:
         return fixed_int
     if type_name == "int":
@@ -109,6 +111,17 @@ def _infer_field_type_from_default(
     if isinstance(resolved, NominalType):
         return resolved
     return None
+
+
+def _callee_path(expr: 'TpyExpr') -> str | None:
+    """The dotted name a call's callee spells (`Foo`, `m.Outer.Inner`), or
+    None for any other callee."""
+    if isinstance(expr, TpyCall):
+        return expr.func.name if isinstance(expr.func, TpyName) else None
+    if not isinstance(expr, TpyMethodCall):
+        return None
+    path = name_path(expr.obj)
+    return ".".join((*path, expr.method)) if path is not None else None
 
 
 def _func_scope(func):
@@ -202,6 +215,19 @@ def resolve_method_body_refs(method, record, resolver, *, promote_registry=None)
     _walk_body(method.body, scope, resolver, promote_registry=promote_registry)
 
 
+def _resolve_signature(func: TpyFunction, resolver: TypeResolver,
+                       scope: dict[str, TypeParamKind] | None) -> None:
+    """Resolve a function's parameter / return / *args / **kwargs refs in
+    place under `scope`; already-resolved slots pass through."""
+    func.params = [(n, _resolve_value_position(resolver, t, scope))
+                   for (n, t) in func.params]
+    func.return_type = _resolve_return_slot(resolver, func.return_type, scope)
+    if func.vararg_type is not None:
+        func.vararg_type = _resolve_value_position(resolver, func.vararg_type, scope)
+    if func.kwarg_type is not None:
+        func.kwarg_type = _resolve_value_position(resolver, func.kwarg_type, scope)
+
+
 def _walk_body(stmts, call_scope, resolver, *, promote_registry=None):
     """Body walker extracted so both `resolve_refs` and
     `resolve_method_body_refs` share the same traversal.
@@ -229,25 +255,7 @@ def _walk_body(stmts, call_scope, resolver, *, promote_registry=None):
         # loop above is a no-op for nested defs -- the body must be
         # walked here explicitly, under the nested function's own scope.
         if isinstance(stmt, TpyNestedDef):
-            # Nested def signatures are resolved at parse time (before
-            # the compiler canonicalizes cross-module imports), so any
-            # imported-record param types land as bare NominalTypes.
-            # Promote them now that `promote_registry` has the full
-            # cross-module picture.
-            if promote_registry is not None:
-                stmt.func.params = [
-                    (n, promote_bare_nominals(t, promote_registry))
-                    for n, t in stmt.func.params
-                ]
-                if stmt.func.return_type is not None:
-                    stmt.func.return_type = promote_bare_nominals(
-                        stmt.func.return_type, promote_registry)
-                if stmt.func.vararg_type is not None:
-                    stmt.func.vararg_type = promote_bare_nominals(
-                        stmt.func.vararg_type, promote_registry)
-                if stmt.func.kwarg_type is not None:
-                    stmt.func.kwarg_type = promote_bare_nominals(
-                        stmt.func.kwarg_type, promote_registry)
+            _resolve_signature(stmt.func, resolver, call_scope)
             nested_scope = _func_scope(stmt.func) or call_scope
             _walk_body(stmt.func.body, nested_scope, resolver, promote_registry=promote_registry)
 
@@ -391,15 +399,10 @@ def resolve_refs(module: TpyModule) -> None:
         module.type_aliases = resolved_aliases
 
     # Top-level functions (methods are resolved in the record loop
-    # below; nested defs are eagerly resolved at parse time).
+    # below; nested defs with the body walk at the end).
     for func in module.functions:
         scope = _func_scope(func)
-        func.params = [(n, _resolve(t, scope)) for (n, t) in func.params]
-        func.return_type = _resolve_return_type(func.return_type, scope)
-        if func.vararg_type is not None:
-            func.vararg_type = _resolve(func.vararg_type, scope)
-        if func.kwarg_type is not None:
-            func.kwarg_type = _resolve(func.kwarg_type, scope)
+        _resolve_signature(func, resolver, scope)
         func.type_param_bounds = _resolve_bounds(func.type_param_bounds, scope)
 
     # All records (including nested) -- fields, methods, bases.  Record

@@ -5,6 +5,7 @@ Core expression analysis including literals, names, operators, field access, and
 """
 
 from __future__ import annotations
+import copy
 from contextlib import AbstractContextManager, ExitStack, nullcontext
 from dataclasses import replace as dc_replace
 from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
@@ -13,7 +14,8 @@ from ..typesys import canonical_readonly, make_readonly, substitute_type_params_
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import body_function_info
 from ..typesys import (
-    TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo, disambiguated_pair,
+    same_class,
+    TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo,
     NominalType, PtrType, OwnType, make_array, make_dict, make_set, make_span, make_list, span_as_mutable, PendingListType, ListRepeatType, GenExprType, TupleType, unify_literal_types,
     TypeParamRef, TypeParamKind, ListLiteralInfo, NoneType, AnyType, OptionalType, UnionType, VoidType,
     ReadonlyType, unwrap_readonly, unwrap_qualifiers, PendingContainerType, is_any_str_type, PendingStrType, PendingViewType,
@@ -31,7 +33,7 @@ from ..typesys import (
     unwrap_own, coro_struct_owner, is_readonly_span, collapse_tuple_own_elements, global_binds_by_reference, owned_element_type,
     ConcreteCoroType, make_concrete_gen, is_dyn_protocol,
     RecursiveAliasInstanceType, recursive_union_alternatives)
-from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling
+from ..parse.nodes import GENEXPR_FUNC_PREFIX, op_spelling, name_path
 from ..parse import (
     const_tuple_index,
     ResultForm,
@@ -61,7 +63,8 @@ from ..type_def_registry import (
     find_factory_by_simple_name, protocol_info_of,
     type_def_of, is_borrowing_view_type,
 )
-from ..namespace import BindingKind, NameBinding
+from ..namespace import BindingKind
+from ..symbol_binding import SymbolBinding, SymbolKind
 from .frame_traits import build_closure_frame
 from ..coercions import CoercionContext, resolve_coercion
 from ..prescan import (
@@ -1268,6 +1271,13 @@ class ExpressionAnalyzer:
             if result is not None:
                 self.ctx.set_expr_type(expr, result)
                 return result
+        # A class named through a dotted path (`m.Outer.Inner`) at a
+        # Callable/Fn slot, as a bare class name above.
+        if isinstance(expr, TpyFieldAccess) and is_callable_type(lambda_hint):
+            result = self._try_class_factory(expr, lambda_slot)
+            if result is not None:
+                self.ctx.set_expr_type(expr, result)
+                return result
 
         # An and/or at a declared slot: its operands are analysed against
         # the declared type first, as a ternary's arms are.
@@ -2281,11 +2291,12 @@ class ExpressionAnalyzer:
             right_check = repr_shape(right_type)
             # Enum identity: lower to ==/!=
             if is_enum_type(left_check) and is_enum_type(right_check):
-                if left_check.name == right_check.name:
+                if same_class(left_check, right_check):
                     expr.op = "==" if expr.op == "is" else "!="
                     return BOOL
                 raise self.ctx.error(
-                    f"Cannot compare enum types '{left_check.name}' and '{right_check.name}'",
+                    "Cannot compare enum types '{}' and '{}'".format(
+                        *self.ctx.type_pair(left_check, right_check)),
                     expr,
                 )
             # Bool literal identity: lower to ==/!=
@@ -2338,9 +2349,10 @@ class ExpressionAnalyzer:
                     expr.int_enum_coercion = right_effective
                     return BOOL
                 if is_enum_type(left_effective) and is_enum_type(right_effective):
-                    if left_effective.name != right_effective.name:
+                    if not same_class(left_effective, right_effective):
                         raise self.ctx.error(
-                            f"Cannot compare enum types '{left_effective.name}' and '{right_effective.name}'",
+                            "Cannot compare enum types '{}' and '{}'".format(
+                                *self.ctx.type_pair(left_effective, right_effective)),
                             expr,
                         )
                     # IntEnum supports ordering; base Enum does not
@@ -2648,10 +2660,10 @@ class ExpressionAnalyzer:
                 other_side = left_effective
             if int_enum_side is not None:
                 if is_int_enum_type(other_side):
-                    if other_side.name != int_enum_side.name:
+                    if not same_class(other_side, int_enum_side):
                         raise self.ctx.error(
-                            f"Cannot mix arithmetic between '{int_enum_side.name}' "
-                            f"and '{other_side.name}'",
+                            "Cannot mix arithmetic between '{}' and '{}'".format(
+                                *self.ctx.type_pair(int_enum_side, other_side)),
                             expr,
                         )
                 if (is_int_enum_type(other_side) or isinstance(other_side, IntLiteralType)
@@ -3193,47 +3205,30 @@ class ExpressionAnalyzer:
 
         return None
 
-    def _resolve_nested_type_access(self, parent_name: str, field: str,
-                                       expr: TpyFieldAccess) -> TpyType | None:
-        """Check if parent_name.field is a nested enum or record. Returns type or None."""
-        dotted = f"{parent_name}.{field}"
-        nested_enum = self.ctx.registry.get_enum(dotted)
-        if nested_enum is not None:
-            return nested_enum
-        nested_record = self.ctx.registry.get_record(dotted)
-        if nested_record is not None:
-            return NominalType(dotted)
-        return None
-
-    def _resolve_nested_chain(self, expr: TpyFieldAccess) -> tuple[str, TpyType] | None:
-        """Resolve a chain of field accesses to a nested type (e.g., Outer.Mid.Inner).
-
-        Returns (dotted_name, resolved_type) or None if not a nested type chain.
-        """
-        if isinstance(expr.obj, TpyName):
-            if self.ctx.func.current_ns:
-                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
-                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
-                    dotted = f"{expr.obj.name}.{expr.field}"
-                    nested_enum = self.ctx.registry.get_enum(dotted)
-                    if nested_enum is not None:
-                        return (dotted, nested_enum)
-                    nested_record = self.ctx.registry.get_record(dotted)
-                    if nested_record is not None:
-                        return (dotted, NominalType(dotted))
-        elif isinstance(expr.obj, TpyFieldAccess):
-            parent = self._resolve_nested_chain(expr.obj)
-            if parent is not None:
-                dotted_parent, parent_type = parent
-                if isinstance(parent_type, NominalType):
-                    dotted = f"{dotted_parent}.{expr.field}"
-                    nested_enum = self.ctx.registry.get_enum(dotted)
-                    if nested_enum is not None:
-                        return (dotted, nested_enum)
-                    nested_record = self.ctx.registry.get_record(dotted)
-                    if nested_record is not None:
-                        return (dotted, NominalType(dotted))
-        return None
+    def _type_member_access(
+        self, expr: TpyFieldAccess, owner: SymbolBinding,
+    ) -> TpyType | None:
+        """`expr.field` read off the class or enum `owner` that `expr.obj`
+        names: an enum member, an ancestor's field from a subclass method,
+        a class constant. None leaves the access to the value path."""
+        if owner.kind == SymbolKind.ENUM:
+            enum_type = owner.info
+            if expr.field in enum_info_of(enum_type).members:
+                expr.enum_member_of = enum_type
+                return enum_type
+            companion = self.ctx.registry.receiver_record(enum_type)
+            if (companion is not None
+                    and companion.get_method_overloads(expr.field)):
+                raise self.ctx.error(
+                    f"'{enum_type.name}.{expr.field}' is a method; an enum "
+                    f"method cannot be used as a value yet -- call it",
+                    expr)
+            raise self.ctx.error(
+                f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
+        unbound = self._try_unbound_self_field_access(expr, owner.info)
+        if unbound is not None:
+            return unbound
+        return self._class_constant_access_on_record(expr, owner.info)
 
     def _lookup_class_constant_owner(
         self, record: RecordInfo, expr: TpyFieldAccess,
@@ -3278,18 +3273,6 @@ class ExpressionAnalyzer:
         expr.class_constant_owner = owner
         return owner.class_constants[expr.field].type
 
-    def _try_class_constant_access(
-        self, expr: TpyFieldAccess, binding: NameBinding,
-    ) -> TpyType | None:
-        """Resolve `<RecordName>.<field>` against the record's class_constants
-        (with MRO walk via `_lookup_class_constant_owner`).
-        """
-        assert isinstance(expr.obj, TpyName)
-        record_info = self.ctx.class_record_of(binding)
-        if record_info is None:
-            return None
-        return self._class_constant_access_on_record(expr, record_info)
-
     def _class_constant_access_on_record(
         self, expr: TpyFieldAccess, record_info: RecordInfo,
     ) -> TpyType | None:
@@ -3312,7 +3295,7 @@ class ExpressionAnalyzer:
         return self._lookup_class_constant_owner(record_info, expr)
 
     def _try_unbound_self_field_access(
-        self, expr: TpyFieldAccess, binding: NameBinding,
+        self, expr: TpyFieldAccess, record_info: RecordInfo,
     ) -> TpyType | None:
         """Handle `BaseN.field` accessing an ancestor subobject's field.
 
@@ -3321,7 +3304,6 @@ class ExpressionAnalyzer:
         resolve to a known record) so the caller can fall through to the
         regular field-access path.
         """
-        assert isinstance(expr.obj, TpyName)
         current_rec_parse = self.ctx.record_ctx.record
         current_fn = self.ctx.func.current_function
         if (current_rec_parse is None
@@ -3332,17 +3314,6 @@ class ExpressionAnalyzer:
             return None
         current_rec = self.ctx.registry.get_record(current_rec_parse.name)
         if current_rec is None:
-            return None
-
-        record_info = None
-        if binding.kind == BindingKind.RECORD:
-            record_info = self.ctx.registry.get_record(expr.obj.name)
-        elif binding.kind == BindingKind.IMPORTED_NAME:
-            import_info = self.ctx.imported_names.get(expr.obj.name)
-            if import_info:
-                record_info = self.ctx.registry.find_record_by_qname(
-                    f"{import_info[0]}.{import_info[1]}")
-        if record_info is None:
             return None
 
         # Walk BaseN's own MRO so `B.foo` resolves a field B inherits from
@@ -3379,95 +3350,32 @@ class ExpressionAnalyzer:
     def _analyze_field_access(self, expr: TpyFieldAccess,
                              obj_type: TpyType | None = None) -> TpyType:
         """Analyze a field access."""
-        # Check for module variable access (e.g., sys.argv)
-        if isinstance(expr.obj, TpyName):
-            if self.ctx.func.current_ns:
-                binding = self.ctx.func.current_ns.lookup(expr.obj.name)
-                if binding and binding.kind == BindingKind.MODULE:
-                    # Get actual module name (may differ from local name for aliased imports)
-                    module_name = binding.import_source[0] if binding.import_source else expr.obj.name
-                    module_info = self.ctx.registry.get_module(module_name)
-                    if module_info and expr.field in module_info.variables:
-                        return module_info.variables[expr.field].type
-                    # If not a variable, let it fall through to error at the end
-                    # (method calls are handled in _analyze_method_call)
+        # A module variable: `sys.argv`, `pkg.sub.X`.
+        module_name = self.ctx.module_named_by(expr.obj)
+        if module_name is not None:
+            module_info = self.ctx.registry.get_module(module_name)
+            if module_info is not None and expr.field in module_info.variables:
+                if isinstance(expr.obj, TpyFieldAccess):
+                    expr.module_var_access = (module_name, expr.field)
+                return module_info.variables[expr.field].type
 
-                # Enum type-level member access: Color.Red -> EnumType
-                if binding and binding.kind == BindingKind.ENUM:
-                    enum_type = binding.enum_type
-                    if expr.field in enum_info_of(enum_type).members:
-                        expr.enum_member_of = enum_type
-                        return enum_type
-                    companion = self.ctx.registry.receiver_record(enum_type)
-                    if (companion is not None
-                            and companion.get_method_overloads(expr.field)):
-                        raise self.ctx.error(
-                            f"'{enum_type.name}.{expr.field}' is a method; an enum "
-                            f"method cannot be used as a value yet -- call it",
-                            expr)
-                    raise self.ctx.error(
-                        f"Enum '{enum_type.name}' has no member '{expr.field}'", expr)
-
-                # Nested type access on a record: Container.Kind, Container.Inner
-                # Also check IMPORTED_NAME that resolves to a record (cross-module)
-                if binding and binding.kind in (BindingKind.RECORD, BindingKind.IMPORTED_NAME):
-                    nested = self._resolve_nested_type_access(expr.obj.name, expr.field, expr)
-                    if nested is not None:
-                        return nested
-                    unbound = self._try_unbound_self_field_access(expr, binding)
-                    if unbound is not None:
-                        return unbound
-                    class_const = self._try_class_constant_access(expr, binding)
-                    if class_const is not None:
-                        return class_const
-
-        # Module-qualified class member access: m.Foo.CONST, pkg.sub.Foo.CONST.
-        # Mirrors the method-call dispatcher's _try_resolve_module_qualified_class.
-        # Codegen reads class_constant_owner (set inside the helper) to emit the
-        # full C++ qname; the syntactic receiver shape doesn't matter from there.
-        if isinstance(expr.obj, TpyFieldAccess):
-            resolved = self.methods._try_resolve_module_qualified_class(expr.obj)
-            if resolved is not None:
-                _module_name, _class_short, record_info = resolved
-                class_const = self._class_constant_access_on_record(expr, record_info)
-                if class_const is not None:
-                    return class_const
-
-        # `import pkg.sub` + `pkg.sub.X`: walk the chain to recover a dotted
-        # module name and treat the leaf as a variable on that module.
-        # Mirrors the method-call form that already works via
-        # MethodAnalyzer._try_resolve_dotted_module.
-        if isinstance(expr.obj, TpyFieldAccess):
-            dotted_name = self.methods._try_resolve_dotted_module(expr.obj)
-            if dotted_name is not None:
-                module_info = self.ctx.registry.get_module(dotted_name)
-                if module_info is not None and expr.field in module_info.variables:
-                    expr.module_var_access = (dotted_name, expr.field)
-                    return module_info.variables[expr.field].type
-
-        # Handle chained nested type access: Outer.Mid.Inner.field
-        if isinstance(expr.obj, TpyFieldAccess):
-            chain = self._resolve_nested_chain(expr.obj)
-            if chain is not None:
-                # chain is a (dotted_name, type) for the intermediate nested type
-                dotted_name, chain_type = chain
-                if is_enum_type(chain_type):
-                    if expr.field in enum_info_of(chain_type).members:
-                        # Same fact the TpyName-receiver arm stamps: a
-                        # type-level member access (`Outer.Kind.TEXT`), so
-                        # downstream consumers need not re-derive the chain.
-                        expr.enum_member_of = chain_type
-                        return chain_type
-                    if expr.field in ("name", "value"):
-                        pass  # fall through to normal field access
-                    else:
-                        raise self.ctx.error(
-                            f"Enum '{chain_type.name}' has no member '{expr.field}'", expr)
-                elif isinstance(chain_type, NominalType):
-                    # Try further nesting
-                    nested = self._resolve_nested_type_access(dotted_name, expr.field, expr)
-                    if nested is not None:
-                        return nested
+        # A class used as a value is not one, spelled bare (`Outer`) or
+        # through a path (`m.Outer`, `Outer.Inner`).
+        if self.ctx.type_ref(expr) is not None:
+            raise self.ctx.error(
+                f"'{'.'.join(name_path(expr) or ())}' is not a variable", expr)
+        # A member of the class or enum the receiver names: `Color.RED`,
+        # `m.Outer.Kind.A`, `Outer.Inner.K`, `Base.field` from a subclass.
+        owner = self.ctx.type_ref(expr.obj)
+        if owner is not None:
+            member = self._type_member_access(expr, owner)
+            if member is not None:
+                if isinstance(expr.obj, TpyFieldAccess):
+                    expr.obj.names_type = owner
+                return member
+            path = name_path(expr)
+            if path is not None and not self.ctx.class_has_member(owner, expr.field):
+                raise self.ctx.error(self.ctx.type_path_miss(path, "a class"), expr)
 
         if obj_type is None:
             obj_type = self.analyze_expr(expr.obj)
@@ -3840,7 +3748,7 @@ class ExpressionAnalyzer:
                 if (isinstance(elem_type, NominalType) and elem_type.is_user_record
                         and isinstance(expected_elem, NominalType) and expected_elem.is_user_record
                         and not self.compat.is_covariant_generic_upcast(elem_type, expected_elem)):
-                    exp_s, act_s = disambiguated_pair(expected_elem, elem_type)
+                    exp_s, act_s = self.ctx.type_pair(expected_elem, elem_type)
                     raise self.ctx.error(
                         f"List literal element {i} has type {act_s}, "
                         f"incompatible with annotated element type {exp_s}", expr
@@ -3858,7 +3766,7 @@ class ExpressionAnalyzer:
                     if self.pend.list_cells(elem_type) is not None:
                         # The refusal names the list and its annotation.
                         raise
-                    exp_s, act_s = disambiguated_pair(
+                    exp_s, act_s = self.ctx.type_pair(
                         expected_elem, self.compat.diag_type(elem_type))
                     raise self.ctx.error(
                         f"List literal element {i} has type {act_s}, "
@@ -4695,7 +4603,7 @@ class ExpressionAnalyzer:
                         source_expr=expr.keys[i - 1],
                         target_is_storage_form=True)
                 except SemanticError:
-                    exp_s, act_s = disambiguated_pair(expected_key, kt)
+                    exp_s, act_s = self.ctx.type_pair(expected_key, kt)
                     raise self.ctx.error(
                         f"Dict literal key {i} has type {act_s}, "
                         f"incompatible with annotated key type {exp_s}", expr)
@@ -4744,7 +4652,7 @@ class ExpressionAnalyzer:
                         source_expr=expr.values[i - 1],
                         target_is_storage_form=True)
                 except SemanticError:
-                    exp_s, act_s = disambiguated_pair(expected_value, vt)
+                    exp_s, act_s = self.ctx.type_pair(expected_value, vt)
                     raise self.ctx.error(
                         f"Dict literal value {i} has type {act_s}, "
                         f"incompatible with annotated value type {exp_s}", expr)
@@ -4851,7 +4759,7 @@ class ExpressionAnalyzer:
                         source_expr=expr.elements[i - 1],
                         target_is_storage_form=True)
                 except SemanticError:
-                    exp_s, act_s = disambiguated_pair(expected_elem, et)
+                    exp_s, act_s = self.ctx.type_pair(expected_elem, et)
                     raise self.ctx.error(
                         f"Set literal element {i} has type {act_s}, "
                         f"incompatible with annotated element type {exp_s}", expr,
@@ -4926,7 +4834,7 @@ class ExpressionAnalyzer:
                 first_type = elem_type
                 continue
             if first_type != elem_type:
-                exp_s, act_s = disambiguated_pair(first_type, elem_type)
+                exp_s, act_s = self.ctx.type_pair(first_type, elem_type)
                 raise self.ctx.error(f"List repetition element {i} has type {act_s}, expected {exp_s}", expr)
 
         # Repetition copies the element into every slot (CPython aliases),
@@ -5351,7 +5259,7 @@ class ExpressionAnalyzer:
             if (isinstance(result_elem_type, NominalType) and result_elem_type.is_user_record
                     and isinstance(expected_elem, NominalType) and expected_elem.is_user_record
                     and not self.compat.is_covariant_generic_upcast(result_elem_type, expected_elem)):
-                exp_s, act_s = disambiguated_pair(expected_elem, result_elem_type)
+                exp_s, act_s = self.ctx.type_pair(expected_elem, result_elem_type)
                 raise self.ctx.error(
                     f"{kind.capitalize()} comprehension element has type {act_s}, "
                     f"incompatible with annotated element type {exp_s}", expr
@@ -5796,17 +5704,16 @@ class ExpressionAnalyzer:
         # this node under an Optional receiver type the winner does not have.
         expr.needs_optional_runtime_check = False
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
-        if isinstance(expr.obj, TpyName) and self.ctx.func.current_ns:
-            binding = self.ctx.func.current_ns.lookup(expr.obj.name)
-            if binding and binding.kind == BindingKind.ENUM:
-                index_type = self.analyze_expr(expr.index)
-                if not is_any_str_type(index_type):
-                    raise self.ctx.error(
-                        f"Enum subscript index must be a string, got '{index_type}'",
-                        expr,
-                    )
-                expr.enum_from_name = binding.enum_type
-                return binding.enum_type
+        owner = self.ctx.type_ref(expr.obj)
+        if owner is not None and owner.kind == SymbolKind.ENUM:
+            index_type = self.analyze_expr(expr.index)
+            if not is_any_str_type(index_type):
+                raise self.ctx.error(
+                    f"Enum subscript index must be a string, got '{index_type}'",
+                    expr,
+                )
+            expr.enum_from_name = owner.info
+            return owner.info
 
         if obj_type is None:
             # An element read leaves the element of a list literal as its
@@ -6529,55 +6436,54 @@ class ExpressionAnalyzer:
 
     # --- Class names as callables ---
 
-    def _names_class(self, name: str) -> bool:
-        """Whether `name` is bound to a class a call constructs: a record,
-        an enum, or an imported class with a constructor. A function,
+    def _names_class(self, expr: TpyExpr) -> bool:
+        """Whether `expr` names a class a call constructs: a class or enum
+        the type-path resolver reaches (`C`, `m.Outer.Inner`). A function,
         module, protocol, variable or type form (`Fn`, `Own`) is not."""
-        ns = self.ctx.func.current_ns
-        binding = ns.lookup(name) if ns else None
-        if binding is None:
-            return False
-        if binding.kind == BindingKind.ENUM:
-            return True
-        record = self.ctx.class_record_of(binding)
-        if binding.kind == BindingKind.RECORD:
+        if isinstance(expr, TpyName):
+            ns = self.ctx.func.current_ns
+            binding = ns.lookup(expr.name) if ns else None
             # `cls` in a classmethod is the class as a value, which needs
             # `type[T]`; its own diagnostic says so.
-            return not binding.is_sema_alias
-        if binding.kind != BindingKind.IMPORTED_NAME or not binding.import_source:
+            if (binding is not None and binding.kind == BindingKind.RECORD
+                    and binding.is_sema_alias):
+                return False
+        ref = self.ctx.type_ref(expr)
+        if ref is None:
             return False
-        if self.ctx.registry.get_function(name):
-            return False
-        if (self.calls._record_for_local_name(name) is not None
-                or self.ctx.registry.get_enum(name) is not None):
-            return True
-        # Found only through its qualified import (a builtin): a class only
-        # when it declares a constructor, which a type form does not.
-        return (record is not None
-                and bool(record.get_method_overloads("__init__")))
+        return ref.kind == SymbolKind.ENUM or not ref.info.is_keyword_stub
 
-    def _try_class_factory(self, expr: TpyName,
+    def _try_class_factory(self, expr: 'TpyName | TpyFieldAccess',
                            hint: SlotHint) -> CallableType | None:
         """A class name at a Callable/Fn slot stands for `lambda *a: C(*a)`
         at the slot's arity, so the slot's parameter types pick the
         constructor overload and its return type types the construction.
         The lambda is kept on the name (`factory_expansion`) and lowered in
         its place. None when the name is not a class."""
-        if not self._names_class(expr.name):
+        if not self._names_class(expr):
             return None
         lam = self._class_factory_lambda(expr, len(hint.type.param_types))
-        typ = self._analyze_lambda_with_fn_hint(lam, hint, as_class=expr.name)
+        typ = self._analyze_lambda_with_fn_hint(
+            lam, hint, as_class=".".join(name_path(expr) or ()))
         self.ctx.set_expr_type(lam, typ)
         expr.factory_expansion = lam
         return typ
 
     @staticmethod
-    def _class_factory_lambda(expr: TpyName, arity: int) -> TpyLambda:
-        """`lambda *a: C(*a)` for the class name `expr`, unanalyzed."""
+    def _class_factory_lambda(expr: 'TpyName | TpyFieldAccess',
+                              arity: int) -> TpyLambda:
+        """`lambda *a: C(*a)` for the class `expr` names, unanalyzed: the
+        call spells the class as `expr` does, so a dotted path constructs
+        through the same type-call route as a written one."""
         pnames = [f"__tpy_fa{i}" for i in range(arity)]
-        call = TpyCall(func=TpyName(expr.name, loc=expr.loc),
-                       args=[TpyName(p, loc=expr.loc) for p in pnames],
-                       loc=expr.loc)
+        args: list[TpyExpr] = [TpyName(p, loc=expr.loc) for p in pnames]
+        call: TpyExpr
+        if isinstance(expr, TpyFieldAccess):
+            call = TpyMethodCall(obj=copy.deepcopy(expr.obj), method=expr.field,
+                                 args=args, loc=expr.loc)
+        else:
+            call = TpyCall(func=TpyName(expr.name, loc=expr.loc),
+                           args=args, loc=expr.loc)
         return TpyLambda(param_names=pnames, body=call, loc=expr.loc)
 
     def _lookup_capture_type(self, name: str) -> 'TpyType | None':

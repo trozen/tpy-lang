@@ -1,1 +1,1 @@
-main.py:5: error: 'tpy' is not a variable
+main.py:5: error: class 'tpy' has no attribute 'unsafe'

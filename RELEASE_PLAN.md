@@ -54,9 +54,7 @@ release commit (annotated; the build hook bakes `git describe`), then
   after the freeze; a narrow stopgap is recorded there)
 - The 0.6.0 known limitations, silent miscompiles first
 - Rejects the ports filed: `prebound-list-rebound-in-loop-from-comprehension`,
-  `tuple-local-ref-element-unpack-rejects`,
-  `str-field-write-through-subscript-rejects`, module-qualified class
-  names
+  `str-field-write-through-subscript-rejects`
 
 Queue (triage at 0.7 planning; not commitments):
 

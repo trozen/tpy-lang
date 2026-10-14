@@ -20,7 +20,7 @@ from ..typesys import (
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
     polymorphic_source_is_pointer, param_takes_ownership,
-    declared_result_readonly,
+    declared_result_readonly, shadowed_local_cpp_name,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -620,6 +620,8 @@ def static_class_cpp(registry, implicit_stdlib_modules: 'set[str]',
             and record_info.module in implicit_stdlib_modules
             and record_info.module != module_name):
         return qualified_cpp_name(record_info.module, record_info.name), record_info
+    if record_info is not None:
+        return local_class_cpp(record_info.qualified_name(), class_name), record_info
     return class_name, record_info
 
 
@@ -631,6 +633,15 @@ def enum_companion_cpp(owner, module_name: str | None) -> str:
     if owner.module == module_name:
         return escape_cpp_name(owner.name)
     return qualified_cpp_name(owner.module, owner.name)
+
+
+def local_class_cpp(qname: str | None, name: str) -> str:
+    """The C++ spelling of a class, enum or exception declared in the module
+    being emitted: fully qualified inside a record whose member shadows it
+    (a method body names the module's class, as CPython does), else its own
+    name, nested classes `::`-joined."""
+    return (shadowed_local_cpp_name(qname)
+            or "::".join(escape_cpp_name(part) for part in name.split(".")))
 
 
 def module_static_class_cpp(registry, user_module: str,
@@ -695,9 +706,7 @@ def enum_cpp_name(enum_type: TpyType, current_module: str, *,
         return qualified_cpp_name(einfo.module_name, enum_type.name)
     if absolute:
         return qualified_cpp_name(current_module, enum_type.name)
-    if "." in enum_type.name:
-        return enum_type.name.replace(".", "::")
-    return enum_type.name
+    return local_class_cpp(enum_type.qualified_name(), enum_type.name)
 
 
 def enum_member_cpp(enum_type: TpyType, current_module: str, member: str) -> str:

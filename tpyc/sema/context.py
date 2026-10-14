@@ -13,7 +13,7 @@ from typing import Any, Callable, Container, Iterator, NamedTuple, TYPE_CHECKING
 
 from ..identity_map import IdentityMap, IdentitySet
 from ..macro_loader import MacroRegistry
-from ..parse.nodes import SourceLocation, TryTier
+from ..parse.nodes import SourceLocation, TryTier, name_path
 from .. import qnames
 from . import own_copy
 from .value_range import ValueRange
@@ -29,7 +29,7 @@ if TYPE_CHECKING:
     from .slot_hint import SlotHint
 
 from ..typesys import (
-    global_tuple_binding_type,
+    global_tuple_binding_type, disambiguated_pair,
     TpyType, recorded_return_borrow_sources, TypeRegistry, ContainerLiteralInfo, ListLiteralInfo, ViewVarInfo, TypeParamKind, IntLiteralType,
     INT32, BIGINT, NominalType, ReadonlyType, OwnType, OptionalType, UnionType, TupleType,
     RecursiveAliasInstanceType, recursive_union_alternatives, ConcreteFrameType,
@@ -44,10 +44,12 @@ from ..typesys import (
     FunctionInfo, ParamInfo, RecordInfo,
     is_dyn_protocol, contains_pending_leaf, is_bufferless_scalar,
     is_protocol_type, TypeParamRef, substitute_type_params_structural,
-    is_indirection_type, following_components,
+    is_indirection_type, following_components, record_owner,
 )
 from ..namespace import BindingKind, NameBinding, Namespace
-from ..type_def_registry import (int_traits_of, is_borrowing_view_type,
+from ..symbol_binding import (SymbolBinding, SymbolKind, resolve_type_path,
+                              walk_attribute_chain)
+from ..type_def_registry import (enum_info_of, int_traits_of, is_borrowing_view_type,
                                  is_bytes_type, is_str_type, type_def_of)
 from ..parse import (
     const_tuple_index,
@@ -647,7 +649,7 @@ def value_may_point(t: TpyType) -> bool:
             or is_protocol_type(t) or is_dyn_protocol(t))
 
 
-def may_hold_pointer(t: TpyType, seen: frozenset[str] = frozenset()) -> bool:
+def may_hold_pointer(t: TpyType, seen: frozenset[TpyType] = frozenset()) -> bool:
     """A value of type `t` may be or hold a pointer into storage it does
     not own: `value_may_point` for a value type or a frame,
     `reference_may_hold_pointer` for what a reference type holds."""
@@ -662,14 +664,13 @@ def may_hold_pointer(t: TpyType, seen: frozenset[str] = frozenset()) -> bool:
 
 
 def reference_may_hold_pointer(t: NominalType,
-                               seen: frozenset[str] = frozenset()) -> bool:
+                               seen: frozenset[TpyType] = frozenset()) -> bool:
     """Whether a reference-type value may hold a pointer into storage it
     does not own, through a type argument (`W[StrView]`), a field or a
     base, recursing into reference-type members (`value_may_point`)."""
-    key = str(t)
-    if key in seen:
+    if t in seen:
         return False
-    seen = seen | {key}
+    seen = seen | {t}
 
     def may(m: TpyType) -> bool:
         return may_hold_pointer(m, seen)
@@ -3252,6 +3253,128 @@ class SemanticContext:
             return self.registry.find_record_by_qname(f"{module}.{original}")
         return None
 
+    def get_module(self, module_name: str) -> object | None:
+        """The attribute-table holder `resolve_type_path` walks: this
+        module's own table (a module never finds its own ModuleInfo while it
+        is analyzed), else the registered module's."""
+        if module_name == self.module_name:
+            return self
+        return self.registry.get_module(module_name)
+
+    def _scope_ns(self) -> Namespace | None:
+        """The lexical scope names resolve in: the body being analyzed, else
+        the module (declarations resolve where they are defined)."""
+        return self.func.current_ns or self.global_ns
+
+    def _module_of_path(self, root: str, segments: 'list[str]') -> str | None:
+        """The module `root.segments...` names: a name bound to an imported
+        module (`m`, an alias `mm`), or a dotted chain whose root is unbound
+        or a module (`pkg.sub.mod`). None when the root is bound to
+        anything but a module -- a local, parameter or class of that name
+        shadows the module."""
+        ns = self._scope_ns()
+        binding = ns.lookup(root) if ns is not None else None
+        if binding is not None and binding.kind != BindingKind.MODULE:
+            return None
+        if not segments:
+            if binding is None:
+                return None
+            return binding.import_source[0] if binding.import_source else root
+        # A dotted chain spells the module from its root name: `import
+        # pkg.sub` binds `pkg` to the submodule it imported.
+        dotted = ".".join((root, *segments))
+        return dotted if self.registry.get_module(dotted) is not None else None
+
+    def module_named_by(self, expr: TpyExpr) -> str | None:
+        """The module an expression names (`m`, `mm`, `pkg.sub.mod`), or
+        None. The head step of every module-qualified call and type path."""
+        path = name_path(expr)
+        return self._module_of_path(path[0], path[1:]) if path else None
+
+    def type_ref(self, expr: TpyExpr, member: str | None = None) -> SymbolBinding | None:
+        """The class or enum `expr` names -- `expr.member` when `member` is
+        given -- or None. The head is a class / enum binding (local,
+        from-imported, `cls`) or the longest prefix naming a module (`m`,
+        `mm`, `pkg.sub.mod`); every further segment is a type nested in what
+        the previous one reached (`resolve_type_path`). A local or
+        parameter named like the head shadows it."""
+        path = name_path(expr)
+        if path is None:
+            return None
+        if member is not None:
+            path.append(member)
+        return self.type_ref_path(path)
+
+    def type_ref_path(self, path: 'list[str]') -> SymbolBinding | None:
+        """`type_ref` over the names of a dotted path (`["m", "Outer",
+        "Err"]`), for a position that holds the names rather than an
+        expression (an `except` clause)."""
+        root, members = path[0], list(path[1:])
+        ns = self._scope_ns()
+        binding = ns.lookup(root) if ns is not None else None
+        if binding is None or binding.kind == BindingKind.MODULE:
+            for k in range(len(members) - 1, -1, -1):
+                module = self._module_of_path(root, members[:k])
+                if module is not None:
+                    return resolve_type_path(self, module, members[k], members[k + 1:])
+            return None
+        if binding.kind == BindingKind.ENUM:
+            if members:
+                return None
+            enum_type = binding.enum_type
+            return SymbolBinding(
+                local_name=root, kind=SymbolKind.ENUM, info=enum_type,
+                defining_module=None, canonical_name=enum_type.name)
+        record = self.class_record_of(binding)
+        if record is None:
+            if binding.kind != BindingKind.IMPORTED_NAME or binding.import_source is None:
+                return None
+            return resolve_type_path(self, *binding.import_source, members)
+        if not members:
+            return SymbolBinding(
+                local_name=root, kind=SymbolKind.RECORD, info=record,
+                defining_module=record.defining_module, canonical_name=record.name)
+        return resolve_type_path(
+            self, record.defining_module or self.module_name, record.name, members)
+
+    def type_path_miss(self, path: 'list[str]', not_a_type: str) -> str | None:
+        """Why a dotted path `type_ref_path` did not resolve: the longest
+        prefix naming a module or class and the member it lacks, in
+        CPython's AttributeError words -- or, when that member exists but
+        is no class, that it is not `not_a_type`. None when no prefix
+        resolves."""
+        for k in range(len(path) - 1, 0, -1):
+            prefix, missing = path[:k], path[k]
+            spelled = ".".join(prefix)
+            owner = self.type_ref_path(prefix)
+            if owner is not None:
+                if not self.class_has_member(owner, missing):
+                    return f"class '{spelled}' has no attribute '{missing}'"
+                return f"'{'.'.join(path)}' is not {not_a_type}"
+            module = self._module_of_path(prefix[0], prefix[1:])
+            if module is not None:
+                if walk_attribute_chain(self, module, missing, lambda _b: True) is None:
+                    return f"module '{spelled}' has no attribute '{missing}'"
+                return f"'{'.'.join(path)}' is not {not_a_type}"
+        return None
+
+    def class_has_member(self, owner: SymbolBinding, name: str) -> bool:
+        if owner.kind == SymbolKind.ENUM:
+            info = enum_info_of(owner.info)
+            return info is not None and name in info.members
+        return name in self.registry.class_member_names(owner.info)
+
+    def type_pair(self, a: TpyType, b: TpyType) -> tuple[str, str]:
+        """`disambiguated_pair` for this module: two types that read alike
+        are told apart by module, a class of this module keeping its name."""
+        return disambiguated_pair(a, b, self.module_name)
+
+    def type_of_ref(self, ref: SymbolBinding) -> TpyType:
+        """The type a class or enum reference names (its instances' type)."""
+        if ref.kind == SymbolKind.ENUM:
+            return ref.info
+        return record_owner(ref.info)
+
     def _resolve_loc(self, node: TpyExpr | TpyStmt | TpyRecord | None) -> SourceLocation | None:
         """Resolve source location from a node, with fallback to current function/record."""
         loc = getattr(node, 'loc', None) if node else None
@@ -4399,7 +4522,7 @@ class SemanticContext:
             if cur is None:
                 return False
             bare = unwrap_ref_type(unwrap_qualifiers(cur))
-            record = (self.registry.find_record(bare.name)
+            record = (self.registry.get_record_for_type(bare)
                       if isinstance(bare, NominalType) else None)
             if record is None:
                 return False

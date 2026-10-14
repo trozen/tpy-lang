@@ -12,6 +12,7 @@ from collections.abc import Hashable
 from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
+    same_class,
     TpyType, IntLiteralType, FloatLiteralType, BIGINT,
     TypeParamRef, TypeParamKind, FunctionInfo, is_protocol_type, unwrap_readonly,
     PendingStrType, PendingViewType, LiteralType, LiteralTag,
@@ -158,7 +159,7 @@ def _structural_match(arg: TpyType, param: TpyType) -> bool:
     # Post-Phase-D all containers/primitives/records are NominalType; type()
     # equality alone passes list[int32] vs set[int32]. Require matching name
     # so structural recursion only fires for same-kind NominalType pairs.
-    if isinstance(arg, NominalType) and arg.name != param.name:
+    if isinstance(arg, NominalType) and not same_class(arg, param):
         return False
     # PtrType: readonly arg cannot match mutable param (would drop const)
     if isinstance(arg, PtrType) and isinstance(param, PtrType):

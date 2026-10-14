@@ -9,6 +9,7 @@ from dataclasses import dataclass, field, replace as dc_replace
 from typing import Callable, Literal, Mapping, Sequence, TYPE_CHECKING
 
 from ..typesys import (
+    same_class,
     canonical_readonly, settled_substitution,
     TpyType, TypeParamRef, NominalType, RecursiveAliasInstanceType, PtrType, is_readonly_ptr, OwnType, ReadonlyType, AutoReadonlyType, AutoOwnType, InteriorMutableType,
     bound_as_spelled, make_array, make_list, PendingListType, PendingViewType, GenExprType, SelfType, OptionalType, UnionType,
@@ -1234,7 +1235,7 @@ class TypeOperations:
             arg_type, protocol_name, registry=self.ctx.registry)
         if ext is not None:
             return [ext]
-        return self._infer_protocol_type_arg_structurally(arg_type, protocol_name)
+        return self._infer_protocol_type_arg_structurally(arg_type, protocol)
 
     def _match_protocol_type_args_with_inference(
         self,
@@ -1273,7 +1274,7 @@ class TypeOperations:
         return bound_any
 
     def _infer_protocol_type_arg_structurally(
-        self, arg_type: TpyType, protocol_name: str,
+        self, arg_type: TpyType, protocol: NominalType,
     ) -> list[TpyType | None] | None:
         """Infer a protocol's type args by matching method signatures structurally.
 
@@ -1289,7 +1290,7 @@ class TypeOperations:
         (e.g. Iterator[int32]) matching a different protocol (e.g. Iterable[T]),
         looks up the arg protocol's method signatures and matches them.
         """
-        protocol_info = self.ctx.registry.scan_by_short_name(protocol_name)
+        protocol_info = self.ctx.registry.protocol_for_type(protocol)
         if protocol_info is None or not protocol_info.type_params:
             return None
 
@@ -1416,15 +1417,9 @@ class TypeOperations:
         inferred: dict[str, TpyType],
     ) -> bool:
         """Match a generic record NominalType against arg_type (e.g., Box[T])."""
-        if not (isinstance(arg_type, NominalType) and arg_type.is_record and arg_type.name == param_type.name):
-            return False
-        # Two records sharing a short name across modules must not unify: when
-        # both qnames are known and differ, they are distinct types even though
-        # the short name matches. (Compared here rather than via
-        # same_nominal_symbol_loose, which also checks type_args -- those are
-        # exactly what inference is solving for, e.g. Box[T] vs Box[int32].)
-        if (arg_type._module_qname is not None and param_type._module_qname is not None
-                and arg_type._module_qname != param_type._module_qname):
+        # Type args are what inference solves for (Box[T] vs Box[int32]).
+        if not (isinstance(arg_type, NominalType) and arg_type.is_record
+                and same_class(arg_type, param_type)):
             return False
         if len(param_type.type_args) != len(arg_type.type_args):
             return False
@@ -2128,13 +2123,12 @@ class TypeOperations:
         """
         if not isinstance(concrete, NominalType) or not concrete.is_user_record:
             return False
-        record_info = self.ctx.registry.get_record(concrete.name)
+        record_info = self.ctx.registry.get_record_for_type(concrete)
         if record_info is None or record_info.is_native:
             return False
-        if not is_subtype(record_info, protocol.name):
-            return False
         proto_info = protocol_info_of(protocol)
-        return proto_info is not None and proto_info.is_dynamic
+        return (proto_info is not None and proto_info.is_dynamic
+                and is_subtype(record_info, proto_info))
 
     def match_generic_constructor(
         self, params: list, arg_types: list[TpyType]
