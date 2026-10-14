@@ -46,6 +46,7 @@
 #include <tpy/stdlib/os.hpp>
 #include "tpystd/os/_types.hpp"
 #include "tpystd/os/path.hpp"
+#include "tpystd/platform.hpp"
 #include "tpystd/random.hpp"
 #include "tpystd/re.hpp"
 #include "tpystd/signal.hpp"

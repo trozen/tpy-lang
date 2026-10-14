@@ -16,7 +16,7 @@ from ..typesys import pointer_repr_optional
 from ..typesys import (
     TpyType, PtrType, OwnType, ReadonlyType, OptionalType, NominalType, SelfType,
     IntLiteralType, TypeParamRef, UnionType, TupleType, FunctionInfo, ModuleInfo, INT32,
-    AliasRef, RecursiveUnionInfo, RecordInfo,
+    AliasRef, RecursiveUnionInfo, RecordInfo, ModuleVarInfo,
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
     polymorphic_source_is_pointer, param_takes_ownership,
@@ -459,10 +459,10 @@ def imported_variable_cpp(registry, imported_names: 'dict[str, tuple[str, str]]'
     behind every cross-module variable read.
     Detection keys on the IMMEDIATE import source's `variables` dict (the
     shadow-resilient `imported_names` history, not the attribute table);
-    the spelling follows the re-export chain to the ultimate defining
-    module so the qname renders against a module that actually emits the
-    symbol. A native_global variable spells its user-specified C++ symbol
-    name instead (already absolute-qualified at registration)."""
+    the spelling names the ultimate defining module so the qname renders
+    against a module that actually emits the symbol. A native_global
+    variable spells its user-specified C++ symbol name instead (already
+    absolute-qualified at registration)."""
     imp = imported_names.get(name)
     if imp is None:
         return None
@@ -470,14 +470,21 @@ def imported_variable_cpp(registry, imported_names: 'dict[str, tuple[str, str]]'
     src_info = registry.get_module(src_mod)
     if src_info is None or orig not in src_info.variables:
         return None
-    source_module, original_name = resolve_definer(
-        registry, src_mod, orig, SymbolKind.VARIABLE)
-    source_info = registry.get_module(source_module)
-    if source_info is not None:
-        var_info = source_info.variables.get(original_name)
-        if var_info is not None and var_info.native_cpp_name is not None:
-            return var_info.native_cpp_name
-    return qualified_cpp_name(source_module, original_name)
+    return module_variable_cpp(registry, src_mod, orig)[0]
+
+
+def module_variable_cpp(registry, module: str, name: str,
+                        ) -> 'tuple[str, ModuleVarInfo | None]':
+    """The C++ spelling of `module`'s variable `name` and `module`'s own
+    ModuleVarInfo for it. A re-export's entry already carries its definer's
+    native symbol and pointer-slot fact; a plain global spells the
+    definer's qname."""
+    info = registry.get_module(module)
+    var_info = info.variables.get(name) if info is not None else None
+    if var_info is not None and var_info.native_cpp_name is not None:
+        return var_info.native_cpp_name, var_info
+    return qualified_cpp_name(*resolve_definer(
+        registry, module, name, SymbolKind.VARIABLE)), var_info
 
 
 def _native_facade_init_targets(registry, native_module: str) -> list[str]:

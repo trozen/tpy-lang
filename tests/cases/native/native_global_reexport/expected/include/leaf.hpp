@@ -5,7 +5,8 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 
-extern "C" int32_t tpy_test_global;
+extern "C" const int32_t tpy_test_global;
+extern std::vector<int32_t> tpy_test_xs;
 
 namespace tpyapp::leaf {
 

@@ -6643,7 +6643,10 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
   - Qualified type annotations work: `tp.int32`, `t.Optional[tp.int32]`, `typing.Protocol`
 - **Working**: Submodule namespace binding -- `from pkg import submod` binds `submod` as a usable namespace. Qualified calls (`submod.fn(...)`), record constructors (`submod.RecordName(...)`), and type annotations (`field: submod.RecordName`) all resolve through the submodule's exports. Aliased form (`from pkg import submod as alias`) works the same way.
 - **Working**: `import pkg.sub` then `pkg.sub.X` for both function calls and variable / constant access (`pkg.sub.fn()`, `pkg.sub.CONST`).
-- **Working**: `import sys` - system module with `sys.argv`, `sys.stdout`, `sys.stderr`, `sys.exit(code)` (raises `SystemExit`; see "`sys.exit` -> `SystemExit`" under Error Handling), `sys.maxsize`, `sys.byteorder`, `sys.maxunicode`
+- **Working**: `import sys` - system module with `sys.argv`, `sys.stdout`, `sys.stderr`, `sys.exit(code)` (raises `SystemExit`; see "`sys.exit` -> `SystemExit`" under Error Handling), `sys.platform`, `sys.maxsize`, `sys.byteorder`, `sys.maxunicode`
+  - `sys.platform`, `sys.byteorder` and `sys.maxsize` are the BUILD TARGET's values, CPython's spelling for that OS (`"linux"`, `"darwin"`, `"freebsd<N>"`, `"win32"`), decided by the target compiler (`runtime/cpp/include/tpy/platform.hpp`), so a cross build answers for the machine it builds for. Android and iOS stop the C++ build with a named error until supported. A comparison folds to a constant in the C++, but both branches of `if sys.platform == ...` are still compiled for every target.
+  - **Restriction**: they are `Final`, so another module cannot rebind them (see "Final Constants" semantics): `sys.platform = "x"` is rejected (*Cannot reassign Final variable 'sys.platform'*), where CPython lets a program rebind it.
+- **Working**: `import platform` - `platform.system()` (`"Linux"` / `"Darwin"` / `"FreeBSD"` / `"Windows"`, pure TPy over `sys.platform`) and `platform.machine()` (`os.uname().machine` on the target: `"x86_64"`, `"aarch64"`; `"arm64"` on macOS). The other `platform` functions are not implemented
 - **Working**: `import math` - mathematical functions
 - **Working**: Namespace wrapping for modules (each module gets its own C++ namespace)
 - **Working**: User-defined modules (multi-file projects)
@@ -6989,7 +6992,8 @@ Currently working with a stable surface:
 |---|---|
 | `math` | Done (~99%). Checked libm bindings + pure TPy helpers; tuple as iterable waits on tuple iteration |
 | `time` | Stub (`time()`, `sleep()`). More planned |
-| `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `maxsize`, `byteorder`, `maxunicode`). More planned |
+| `sys` | Stub (`argv`, `stdout`, `stderr`, `exit`, `platform`, `maxsize`, `byteorder`, `maxunicode`). More planned |
+| `platform` | Partial (`system()`, `machine()`) -- the build target's identity |
 | `random` | Stub (`random()`, `seed()`). Target: pure-TPy Mersenne Twister |
 | `bisect` | Done. Pure TPy over the `Comparable` protocol |
 | `functools` | Partial. 3-arg `reduce(func, a, initial)` only. See STDLIB_ROADMAP.md for blocked items |
@@ -7310,6 +7314,7 @@ VERSION: Final[tuple[int32, int32, int32]] = (1, 2, 3)
 
 **Semantics** (stricter than Python's `Final`):
 - Frozen binding: cannot be reassigned at module level, cannot use `global X` in functions
+- Frozen across modules too: another module's `Final` cannot be reassigned through the module (`m.X = ...`, `m.X += ...`: *Cannot reassign Final variable 'm.X'*), where CPython allows it -- a documented restriction (`sys.platform` is the everyday case)
 - Immutable value: treated as readonly (no mutation through the binding)
 - Local shadowing allowed: functions can declare local variables with the same name
 - Initializer must be a compile-time constant: literal, reference to a previously declared Final, constant arithmetic, primitive type constructor (`int32(x)`, `float32(x)`, etc.) with a constant argument, tuple of constants, or `@call_macro` expansion that reduces to a constant (no forward references)
@@ -7478,7 +7483,7 @@ lives: int32 = native_global()
 ```
 
 
-Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_global(..., array=True)` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
+Generated C++ emits `extern` declarations before the module namespace; a `Final[T] = native_global(...)` constant is declared `extern const T`, so the runtime defines it `const` (or `inline constexpr` in a header, as `tpy/platform.hpp` does for `sys.platform`) and a C++ compiler can fold it. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_global(..., array=True)` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
 
 ### Module Settings: `__tpy__` (Working)
 
@@ -7509,8 +7514,14 @@ the generated code, like `__all__`.
 | `"includes"` | a list or tuple of entries: a header string, or `{"header": str, "platform"?: str}` |
 | `"links"` | a list or tuple of entries: a library string, or `{"lib": str, "managed"?: bool, "platform"?: str}` |
 
-`"platform"` is a `sys.platform` value, one of `"linux"`, `"darwin"`, `"win32"`. `__tpy__ = {}` is
-allowed (an ordinary module).
+`"platform"` is a `sys.platform` value, one of `"linux"`, `"darwin"`, `"win32"`, `"freebsd"`
+(FreeBSD's `sys.platform` carries its major version; the filter names the OS). It
+names the BUILD TARGET, never the machine running tpyc: a filtered include is
+emitted under `#if defined(TPY_PLATFORM_<NAME>)` (`TPY_PLATFORM_LINUX`,
+`_DARWIN`, `_WIN32`, `_FREEBSD`, decided once in `tpy/target_platform.hpp`),
+so the generated C++ is the same for every target; a filtered library joins the link when the build's compiler targets that
+platform, and `sources.cmake` appends it under `if(CMAKE_SYSTEM_NAME STREQUAL ...)`.
+`__tpy__ = {}` is allowed (an ordinary module).
 
 - **`"mod": "native"`** -- declaration-only module: no `.hpp` or `.cpp` is generated. Use for modules that only declare `@native` bindings to existing C/C++ types. Each module must declare this explicitly (it does not propagate from parent packages).
 - **`"mod": "macro"`** -- a compile-time macro module, executed under CPython by tpyc and never compiled to C++ (see `docs/MACRO_DESIGN.md`).
@@ -7523,7 +7534,7 @@ allowed (an ordinary module).
 
 - a value that is not a dict literal (`__tpy__ must be a dict literal`, e.g. `dict(mod="ext")`), `**` unpacking in it (`` `**` unpacking is not allowed; spell every key ``), a key that is not a string literal (`keys must be string literals`)
 - an unknown key (`__tpy__: unknown setting 'cpp_namspace' (known: mod, cpp_namespace, includes, links)`), an unknown key in an `includes` / `links` entry, a duplicate key, an entry dict missing `"header"` / `"lib"`
-- a bad value: a `"mod"` other than the three kinds, an invalid C++ namespace, `includes` / `links` that are not a list or tuple, an entry that is neither a string nor a dict (`entries must be a string or a dict`), a non-string `"cpp_namespace"` / `"header"` / `"lib"` (`must be a string`), a `"platform"` other than `"linux"` / `"darwin"` / `"win32"`, a non-bool `"managed"`
+- a bad value: a `"mod"` other than the three kinds, an invalid C++ namespace, `includes` / `links` that are not a list or tuple, an entry that is neither a string nor a dict (`entries must be a string or a dict`), a non-string `"cpp_namespace"` / `"header"` / `"lib"` (`must be a string`), a `"platform"` other than `"linux"` / `"darwin"` / `"win32"` / `"freebsd"`, a non-bool `"managed"`
 - a value that is not a literal (a name, an f-string, a call): only string, bool, list, tuple and dict literals
 - placement: `__tpy__ must come before any other code` -- Python's own `from __future__` rule: only the module docstring (the first statement) and `from __future__` imports may precede it, so a `pass` or a second string statement before it is code
 - any other module-level binding of the name: a second assignment, `__tpy__ += ...`, an annotated or conditional assignment, `del __tpy__`, `import x as __tpy__`, `def` / `class __tpy__`, `except ... as __tpy__`, `case __tpy__:`, a walrus in a comprehension, or `global __tpy__` plus an assignment in a function (`__tpy__ must be assigned once, at module top level`)
@@ -7531,7 +7542,9 @@ allowed (an ordinary module).
 - a `"mod": "macro"` module handed to the compiler directly (`a "mod": "macro" module runs under CPython at compile time; import it from a TPy module instead of compiling it`)
 - a leftover `# tpy: <directive>` comment (`native_module`, `macro_module`, `ext_module`, `cpp_namespace`, `include`, `link`) before the first code, a comment inside a multi-line `__tpy__` included (`'# tpy:' directives were replaced by __tpy__`): the comment syntax was removed in one step, so an unconverted module fails loudly instead of silently losing its settings. Other `# tpy: ...` prose is an ordinary comment.
 
-Macro modules run under CPython, so a macro module may read its own `__tpy__`
+Macro modules run under CPython, so they see the HOST's `sys.platform`, not
+the build target's; a macro that branches on it expands for the machine running
+tpyc. A macro module may also read its own `__tpy__`
 (`KIND = __tpy__["mod"]`, also from a function, `global __tpy__` included),
 list it in `__all__`, and mutate the dict at CPython run time
 (`__tpy__["mod"] = ...`); tpyc reads the literal, so a mutation changes no
@@ -7550,7 +7563,7 @@ attribute (like every non-`Final` global).
 
 ---
 
-### Platform Support (Working pattern; native builds only)
+### Platform Support (Working pattern)
 
 TPy targets Linux and macOS/*BSD today. Platform differences are handled by
 **three** mechanisms, layered by where they resolve. The governing rule:
@@ -7573,20 +7586,23 @@ divergence lives in hand-written runtime `.cpp` or in per-platform constants.
    `EINPROGRESS`), which are read from `extern "C"` globals in `socket_impl.cpp`
    rather than hardcoded. See "Native Global Variables" above for `native_global`.
 3. **`"platform"` on a `__tpy__` `"includes"` / `"links"` entry** --
-   filters an include or linker flag by platform. Unlike the two above, these
-   resolve against the **build host's** `sys.platform` when `tpyc` runs (there
-   is no `--target` flag), so they are correct only for **native builds**
-   (host == target).
+   filters an include or linker flag by the **build target**: the include is
+   guarded by the platform's predefined macro, and the library joins the link
+   when the build's compiler targets that platform
+   (`CppCompilerConfig.target_platform`, probed from the compiler command,
+   a `--target` on it included), so an osxcross build links its darwin
+   entries; `sources.cmake` keeps the filter as a `CMAKE_SYSTEM_NAME`
+   condition.
 
-**Known gap (cross-compilation / Windows).** Because layer 3 is host-based and
-there is no target-selection facility, cross-compiling (e.g. building a Windows
-binary on Linux) is not supported, and adding a third OS (Windows: Winsock2
-sockets, an IOCP reactor, `WSAStartup`/`WSACleanup` lifecycle, `-lws2_32`) needs
-a proper design for target-aware conditional compilation. There is also no
-TPy-*source*-level platform branch (no compile-time `PLATFORM` constant with
-dead-branch elimination), which would matter only once platform divergence
-appears in *logic* rather than in a constant or a syscall wrapper. Tracked in
-`docs/FEATURE_ROADMAP.md` (Phase H).
+`sys.platform` (and `platform.system()` over it) is the source-level view of
+the same fact, decided by the target compiler.
+
+**Known gap (Windows / source-level branches).** Adding a third OS (Windows:
+Winsock2 sockets, an IOCP reactor, `WSAStartup`/`WSACleanup` lifecycle,
+`-lws2_32`) is runtime work in layer 1. An `if sys.platform == ...` branch
+compiles on every target (its comparison folds, the dead branch is not
+eliminated), so stdlib `.py` cannot yet branch on platform in *logic* that
+only builds on one OS. Tracked in `docs/FEATURE_ROADMAP.md` (Phase H).
 
 ---
 

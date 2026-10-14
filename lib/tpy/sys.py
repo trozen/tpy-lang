@@ -1,8 +1,9 @@
 # sys module: argv requires runtime init (not native_module)
-__tpy__ = {"cpp_namespace": "tpystd::sys"}
+__tpy__ = {"cpp_namespace": "tpystd::sys",
+           "includes": ["<tpy/platform.hpp>"]}
 from typing import Final
 from tpy import int32, dispatch
-from tpy.extern import native
+from tpy.extern import native, native_global
 
 
 @native("tpy::get_sys_argv")
@@ -11,12 +12,11 @@ def _get_sys_argv() -> list[str]: ...
 
 argv: list[str] = _get_sys_argv()
 
-# CPython's value on 64-bit platforms (2**63 - 1). TPy targets 64-bit;
-# a 32-bit target would need a per-target constant.
-maxsize: Final[int] = 9223372036854775807
-
-# TPy targets little-endian (x86-64 / ARM64), same assumption as maxsize.
-byteorder: Final[str] = "little"
+# The build target's values, decided by its compiler (tpy/platform.hpp):
+# a cross build answers for the machine it builds for.
+platform: Final[str] = native_global("tpy::sys_platform")
+byteorder: Final[str] = native_global("tpy::sys_byteorder")
+maxsize: Final[int] = native_global("tpy::sys_maxsize")
 
 # U+10FFFF -- fixed by the Unicode standard, so target-independent (unlike
 # maxsize / byteorder).

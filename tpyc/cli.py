@@ -332,6 +332,7 @@ def _cache_options_key(args: argparse.Namespace, input_path: Path,
         "variant": _build_variant(args),
         "default_int": args.default_int,
         "compiler": list(config.compiler),
+        "target_platform": config.target_platform,
         "std": config.std,
         "ccache": config.ccache,
         "extra_flags": list(config.extra_flags),
@@ -1041,7 +1042,9 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
 
         # Generate sources.cmake for CMake integration
         runtime_dir = get_runtime_dir()
-        link_flags = compiler.collect_link_flags()
+        # The build takes what its target admits; sources.cmake keeps every
+        # entry under its platform's CMake condition.
+        build_target = cpp_config.target_platform if cpp_config is not None else None
 
         # Resolve third-party deps (e.g. PCRE2 declared via
         # `{"lib": "pcre2", "managed": True}` in `__tpy__`) into concrete build inputs.
@@ -1049,15 +1052,18 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
         # a module in the compile graph needs that lib -- surface it as a
         # clean compile error.
         from .build.third_party import (
-            resolve_build_plan, DisabledLibError, SystemLibVersionError,
+            get_lib, resolve_build_plan, DisabledLibError, SystemLibVersionError,
         )
         third_party_modes = _third_party_modes(args)
         try:
             third_party_plan = resolve_build_plan(
-                dep_names=compiler.collect_third_party_deps(),
+                dep_names=compiler.collect_third_party_deps(build_target),
                 runtime_cpp_dir=runtime_dir / "cpp",
                 modes=third_party_modes,
             )
+            cmake_third_party = [
+                (get_lib(name, runtime_dir / "cpp"), platform)
+                for name, platform in compiler.third_party_entries()]
         except (DisabledLibError, SystemLibVersionError) as exc:
             print(f"error: {exc}", file=sys.stderr)
             return 1
@@ -1069,9 +1075,9 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
         cmake_layout.generate_cmake(
             runtime_include_dir=runtime_dir / "cpp" / "include",
             cpp_files=all_cpp_paths,
-            link_flags=link_flags,
+            link_libs=compiler.link_entries(),
             bundle_runtime=args.bundle_runtime and not building and explicit_output,
-            third_party_libs=third_party_plan.libs,
+            third_party_libs=cmake_third_party,
             runtime_cpp_sources=runtime_cpp_sources or None,
             compile_definitions=_compile_definitions(args),
         )
@@ -1084,7 +1090,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
             binary_path = layout.so_path() if ext_module_build else layout.binary_path()
 
             opt_flags = _opt_flags(args)
-            cpp_config.link_flags = link_flags
+            cpp_config.link_flags = compiler.collect_link_flags(cpp_config.target_platform)
 
             # Build or reuse precompiled header. Skipped for ext_module
             # builds: the shared PCH is compiled without -fPIC, and

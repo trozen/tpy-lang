@@ -156,21 +156,33 @@ of phase, to avoid costly retrofitting when concurrency arrives.
 
 **H3 -- Cross-platform / Windows.** Linux + macOS/*BSD work today via a
 three-layer pattern (C++ `#ifdef` in runtime `.cpp`, `native_global` for
-divergent constants, host-filtered `__tpy__` `"includes"` / `"links"` entries with a `"platform"`); the
+divergent constants, target-filtered `__tpy__` `"includes"` / `"links"` entries with a `"platform"`); the
 macOS reactor (kqueue) / signal (self-pipe) backend and the platform-correct
 `socket`/`os` constants are the worked examples. See
 [LANGUAGE_FEATURES.md "Platform Support"](LANGUAGE_FEATURES.md) for the
 pattern and rule (keep stdlib `.py` platform-neutral; push divergence into
-the C++ facade). Two structural gaps must be designed before Windows lands,
-**neither built speculatively**:
-1. **Target-awareness.** `platform=` filtering keys on the build host's
-   `sys.platform`, not a target -- so cross-compilation picks the wrong
-   includes/links. A `--target` notion (and routing `#ifdef`/`native_global`
-   selection through it) is the prerequisite for cross-builds.
-2. **Source-level platform conditional.** No compile-time `PLATFORM` constant
-   with dead-branch elimination, so stdlib `.py` can't branch on platform in
-   *logic* (only constants/syscalls diverge today). Worth adding only when
-   logic genuinely needs to diverge.
+the C++ facade). Two structural gaps had to be designed before Windows lands:
+1. **Target-awareness.** Done: the build target is one fact
+   (`CppCompilerConfig.target_platform`, probed from the compiler command,
+   a `--target` on it included); `"platform"` filters guard includes by the target's
+   predefined macro and filter links by that fact (`sources.cmake` keeps them
+   as `CMAKE_SYSTEM_NAME` conditions), and `sys.platform` / `platform.system()`
+   read the target's value.
+2. **Source-level platform conditional.** `sys.platform` is now the
+   compile-time-known constant (a comparison folds in the C++), but both
+   branches of `if sys.platform == ...` are still analyzed and compiled for
+   every target, so a branch cannot use an API another platform lacks. What
+   is missing is dead-branch elimination before analysis, pinned to the
+   build target by a generated `static_assert` that the C++ preprocessor's
+   `sys.platform` matches the one tpyc eliminated against. This entry tracks
+   that unit. It also settles the build target's deciders, three today: the
+   C++ preprocessor (values, includes), `CppCompilerConfig.target_platform`
+   (direct-build links; `-dumpmachine`, host fallback when the probe fails)
+   and `CMAKE_SYSTEM_NAME` (`sources.cmake` links). If tpyc takes the target
+   when it generates C++ (elimination needs it before analysis), the
+   per-entry conditions in `sources.cmake` become a plain list plus one
+   check that `CMAKE_SYSTEM_NAME` matches, and the direct build gets the
+   `static_assert` too.
 
 The Windows runtime work itself (Winsock2 socket backend, IOCP reactor,
 `WSAStartup`/`WSACleanup` lifecycle, `-lws2_32`) slots into the existing
@@ -907,7 +919,8 @@ reader (`tpyc/parse/module_settings.py`) lets all of them share one implementati
 
 **Current state**: Done. Keys implemented: `"mod"` (`"native"` / `"macro"` /
 `"ext"`), `"cpp_namespace"`, `"includes"`, `"links"` (raw or `"managed"`,
-optional `"platform"` of `"linux"` / `"macos"` / `"windows"`). The full schema
+optional `"platform"` of `"linux"` / `"darwin"` / `"win32"` / `"freebsd"`,
+naming the build target). The full schema
 and every rejection are in `LANGUAGE_FEATURES.md` ("Module Settings").
 
 `__tpy__` must precede everything but the docstring and `from __future__`

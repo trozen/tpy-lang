@@ -339,6 +339,72 @@ class TestImportComponentBodies:
         assert gen.generic_yield_borrows
 
 
+class TestReexportedVariableEntry:
+    @pytest.mark.parametrize(("mid", "peer"), [
+        ("mid", None), ("a", "b"), ("z", "y")])
+    def test_reexport_entry_carries_definer_facts(self, tmp_path, mid, peer):
+        """A re-exporter's ModuleVarInfo carries the definer's native symbol
+        and pointer-slot fact, so a read through the re-exporter's entry
+        renders the definer's storage -- also when the re-exporter sits in
+        an import cycle, whichever member registers first (a native_global
+        itself cannot sit in one: it is executable module-level code)."""
+        (tmp_path / "leaf.py").write_text(
+            "from tpy import int32\n"
+            "from tpy.extern import native_global\n"
+            "\n"
+            'xs: list[int32] = native_global("g_xs")\n'
+            "ys: list[int32] = [1]\n"
+        )
+        (tmp_path / f"{mid}.py").write_text(
+            (f"import {peer}\n" if peer else "")
+            + "from leaf import xs, ys\n")
+        if peer:
+            (tmp_path / f"{peer}.py").write_text(f"import {mid}\n")
+        entry = tmp_path / "main.py"
+        entry.write_text(f"import {mid}\n")
+        compiler = Compiler(entry, lib_dirs=_STDLIB_DIRS)
+        modules = {m.name: m for m in compiler.compile()}
+        registry = modules["main"].analyzer.registry
+        for module in ("leaf", mid):
+            variables = registry.get_module(module).variables
+            assert variables["xs"].native_cpp_name == "::g_xs"
+            assert not variables["xs"].is_pointer
+            assert variables["ys"].native_cpp_name is None
+            assert variables["ys"].is_pointer
+
+    def test_two_hop_reexport_entry_carries_definer_facts(self, tmp_path):
+        """A re-export of a re-export carries the definer's facts too, so
+        `top.xs` renders leaf's native symbol, not a slot of mid or top."""
+        (tmp_path / "leaf.py").write_text(
+            "from tpy import int32\n"
+            "from tpy.extern import native_global\n"
+            "\n"
+            'xs: list[int32] = native_global("g_xs")\n'
+            "ys: list[int32] = [1]\n"
+        )
+        (tmp_path / "mid.py").write_text("from leaf import xs, ys\n")
+        (tmp_path / "top.py").write_text("from mid import xs, ys\n")
+        entry = tmp_path / "main.py"
+        entry.write_text(
+            "import top\n"
+            "\n"
+            "def main() -> None:\n"
+            "    print(len(top.xs), len(top.ys))\n"
+            "\n"
+            "main()\n")
+        compiler = Compiler(entry, lib_dirs=_STDLIB_DIRS)
+        modules = {m.name: m for m in compiler.compile()}
+        registry = modules["main"].analyzer.registry
+        for module in ("leaf", "mid", "top"):
+            variables = registry.get_module(module).variables
+            assert variables["xs"].native_cpp_name == "::g_xs"
+            assert not variables["xs"].is_pointer
+            assert variables["ys"].native_cpp_name is None
+            assert variables["ys"].is_pointer
+        _, cpp = compiler.generate_code_to_strings(modules["main"])
+        assert "__len__(::g_xs)" in cpp
+
+
 class _CoroImportPlugin(FrontendPlugin):
     name = "coro_import"
     extensions = (".coro_import",)

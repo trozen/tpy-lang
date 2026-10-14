@@ -8,37 +8,37 @@
 #include "tpystd/os.hpp"
 #include <tpy/stdlib/os.hpp>
 
-extern "C" int32_t tpy_const_termios_tcsanow;
-extern "C" int32_t tpy_const_termios_tcsadrain;
-extern "C" int32_t tpy_const_termios_tcsaflush;
-extern "C" int32_t tpy_const_termios_vmin;
-extern "C" int32_t tpy_const_termios_vtime;
-extern "C" int32_t tpy_const_termios_nccs;
-extern "C" int64_t tpy_const_termios_ignbrk;
-extern "C" int64_t tpy_const_termios_brkint;
-extern "C" int64_t tpy_const_termios_ignpar;
-extern "C" int64_t tpy_const_termios_parmrk;
-extern "C" int64_t tpy_const_termios_inpck;
-extern "C" int64_t tpy_const_termios_istrip;
-extern "C" int64_t tpy_const_termios_inlcr;
-extern "C" int64_t tpy_const_termios_igncr;
-extern "C" int64_t tpy_const_termios_icrnl;
-extern "C" int64_t tpy_const_termios_ixon;
-extern "C" int64_t tpy_const_termios_ixany;
-extern "C" int64_t tpy_const_termios_ixoff;
-extern "C" int64_t tpy_const_termios_opost;
-extern "C" int64_t tpy_const_termios_parenb;
-extern "C" int64_t tpy_const_termios_csize;
-extern "C" int64_t tpy_const_termios_cs8;
-extern "C" int64_t tpy_const_termios_echo;
-extern "C" int64_t tpy_const_termios_echoe;
-extern "C" int64_t tpy_const_termios_echok;
-extern "C" int64_t tpy_const_termios_echonl;
-extern "C" int64_t tpy_const_termios_icanon;
-extern "C" int64_t tpy_const_termios_iexten;
-extern "C" int64_t tpy_const_termios_isig;
-extern "C" int64_t tpy_const_termios_noflsh;
-extern "C" int64_t tpy_const_termios_tostop;
+extern "C" const int32_t tpy_const_termios_tcsanow;
+extern "C" const int32_t tpy_const_termios_tcsadrain;
+extern "C" const int32_t tpy_const_termios_tcsaflush;
+extern "C" const int32_t tpy_const_termios_vmin;
+extern "C" const int32_t tpy_const_termios_vtime;
+extern "C" const int32_t tpy_const_termios_nccs;
+extern "C" const int64_t tpy_const_termios_ignbrk;
+extern "C" const int64_t tpy_const_termios_brkint;
+extern "C" const int64_t tpy_const_termios_ignpar;
+extern "C" const int64_t tpy_const_termios_parmrk;
+extern "C" const int64_t tpy_const_termios_inpck;
+extern "C" const int64_t tpy_const_termios_istrip;
+extern "C" const int64_t tpy_const_termios_inlcr;
+extern "C" const int64_t tpy_const_termios_igncr;
+extern "C" const int64_t tpy_const_termios_icrnl;
+extern "C" const int64_t tpy_const_termios_ixon;
+extern "C" const int64_t tpy_const_termios_ixany;
+extern "C" const int64_t tpy_const_termios_ixoff;
+extern "C" const int64_t tpy_const_termios_opost;
+extern "C" const int64_t tpy_const_termios_parenb;
+extern "C" const int64_t tpy_const_termios_csize;
+extern "C" const int64_t tpy_const_termios_cs8;
+extern "C" const int64_t tpy_const_termios_echo;
+extern "C" const int64_t tpy_const_termios_echoe;
+extern "C" const int64_t tpy_const_termios_echok;
+extern "C" const int64_t tpy_const_termios_echonl;
+extern "C" const int64_t tpy_const_termios_icanon;
+extern "C" const int64_t tpy_const_termios_iexten;
+extern "C" const int64_t tpy_const_termios_isig;
+extern "C" const int64_t tpy_const_termios_noflsh;
+extern "C" const int64_t tpy_const_termios_tostop;
 
 namespace tpystd::termios {
 

@@ -76,6 +76,7 @@ int32_t _pin_cycle_copy() {
 // import os._native
 // import os._types
 // import os.path
+// import platform
 // import random
 // import re
 // import signal
@@ -169,6 +170,7 @@ void __tpy_init() {
     ::tpystd::os::_environ::__tpy_init();
     ::tpystd::os::_types::__tpy_init();
     ::tpystd::os::path::__tpy_init();
+    ::tpystd::platform::__tpy_init();
     ::tpystd::random::__tpy_init();
     ::tpystd::re::__tpy_init();
     ::tpystd::signal::__tpy_init();

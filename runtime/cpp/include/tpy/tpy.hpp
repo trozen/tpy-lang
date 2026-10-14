@@ -12,6 +12,9 @@
 // Core utilities (no dependencies)
 #include "core.hpp"
 
+// The build target's TPY_PLATFORM_* macro (read by `__tpy__` include guards)
+#include "target_platform.hpp"
+
 // Async primitives: CancelledError only. Waker / Awaker / Poll<T> /
 // Awaitable<T> are pure-TPy in `lib/tpy/tpy/coro/__init__.py` (Waker,
 // Awaker, Awaitable concept) and `lib/tpy/tpy/_core/_types.py` (Poll).

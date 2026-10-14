@@ -83,7 +83,7 @@ def test_parser_strips_the_header():
     ('__tpy__ = {"links": [{"managed": True}]}\n',
      '__tpy__["links"] entry is missing "lib"', 1),
     ('__tpy__ = {"includes": [{"header": "w.hpp", "platform": "windwos"}]}\n',
-     '"platform" must be one of "linux", "darwin", "win32"', 1),
+     '"platform" must be one of "linux", "darwin", "win32", "freebsd"', 1),
     ('__tpy__ = {"links": [{"lib": "z", "managed": "yes"}]}\n',
      '"managed" must be True or False', 1),
     ('__tpy__ = {"cpp_namespace": NAME}\n', "must be a literal", 1),

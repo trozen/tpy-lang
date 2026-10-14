@@ -1253,7 +1253,7 @@ New tests:
 - `star_import_all_filter/` -- `__all__` filters star, explicit
   unaffected.
 - `multi_hop_variable_reexport/` -- 3-module variable re-export
-  chain, transitive `cpp_expr` resolution.
+  chain, resolved to the ultimate definer.
 - `macro_reexport/` -- `from utils import dataclass` (or a
   user-defined `@class_macro`) re-exported through a non-facade
   module; verify the macro identity propagates and the
@@ -1403,8 +1403,6 @@ The work landed across 8 commits, one per phase of the plan:
       of reading `FunctionInfo.originating_module` directly.
       Same answer (the binding's `defining_module` carries the
       ultimate definer), but the helper is finally load-bearing.
-    - `_exports_to_module_info`'s variable cpp_expr consults
-      `compiled.module_attributes` via `qualify_imported`.
     - Second pre-pop pass `_pre_populate_reexport_bindings`
       fixpoint-resolves cycle re-export bindings BEFORE any
       module's bind_imports runs. Closes the
@@ -1438,9 +1436,8 @@ The work landed across 8 commits, one per phase of the plan:
   definers in the post-review fix above; full migration of
   every cross-module reference to `qualify_imported` is still
   outstanding.) The wire-up commits migrate the function-call
-  codegen sites and `_exports_to_module_info`'s variable
-  cpp_expr to call `qualify_imported(cell.binding, ...)`; the
-  helper is now load-bearing rather than aspirational.
+  codegen sites to call `qualify_imported(cell.binding, ...)`;
+  the helper is now load-bearing rather than aspirational.
 - PLACEHOLDER `BindingCell` state was specced for cycle
   re-export of names defined later in topo order, but the
   shipped solution went through a second pre-pop pass

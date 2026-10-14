@@ -3,6 +3,9 @@
 
 #include <tpy/tpy.hpp>
 #include "native_types.hpp"
+#if defined(TPY_PLATFORM_WIN32)
+#include "windows_only.hpp"
+#endif
 
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"

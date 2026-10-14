@@ -3168,7 +3168,7 @@ THIR_FACES: frozenset[str] = frozenset({
     "field.class_const_recv_effect",
     # Module-variable read -> the fixed registered spelling (lowering;
     # `mod.X` off a MODULE binding or the dotted `pkg.sub.X` marker --
-    # native_cpp_name / (*slot) / qualified cpp_expr).
+    # native_cpp_name / (*slot) / the definer's qualified name).
     "field.module_var",
     # Class-constant / classvar write -> the bare qualified lvalue
     # (lowering; `C::X = v;` -- gen_class_constant_lvalue's assign arm).

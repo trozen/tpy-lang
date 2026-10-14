@@ -41,6 +41,7 @@ import os._environ
 import os._native
 import os._types
 import os.path
+import platform
 import random
 import re
 import signal

@@ -209,7 +209,20 @@ def get_lib(name: str, runtime_cpp_dir: Path) -> ThirdPartyLib:
 # CMake snippet emission
 # ---------------------------------------------------------------------------
 
-def emit_cmake_snippet(lib: ThirdPartyLib) -> str:
+def cmake_target_var(lib: ThirdPartyLib) -> str:
+    """The CMake variable the selector sets to the library's link target."""
+    return f"TPY_{lib.name.upper()}_TARGET"
+
+
+def cmake_selected_marker(lib: ThirdPartyLib) -> str:
+    """The variable a sources.cmake sets once it has run the library's
+    selector and unsets at its end. A repeated entry guards on it rather
+    than on the target variable, which a preset or an earlier included
+    sources.cmake may already have set."""
+    return f"TPYC_{lib.name.upper()}_SELECTED"
+
+
+def emit_cmake_snippet(lib: ThirdPartyLib, indent: str = "") -> str:
     """Emit the 3-mode CMake selector for one library.
 
     Produces a fragment intended to be inserted into ``sources.cmake`` after
@@ -223,9 +236,10 @@ def emit_cmake_snippet(lib: ThirdPartyLib) -> str:
         ``third_party/<name>/`` next to ``sources.cmake``;
       * in ``auto`` mode: ``find_package(... QUIET)`` with bundled fallback;
       * appends the resolved target to ``TPYC_LIBRARIES``.
+
+    Every line starts with ``indent`` (the body of an enclosing ``if()``).
     """
-    upper = lib.name.upper()
-    target_var = f"TPY_{upper}_TARGET"
+    target_var = cmake_target_var(lib)
     ver = f" {lib.min_version}" if lib.min_version else ""
     comps = " ".join(lib.find_package_components)
     comp_arg = f" COMPONENTS {comps}" if comps else ""
@@ -270,7 +284,7 @@ def emit_cmake_snippet(lib: ThirdPartyLib) -> str:
         out.append('    endif()')
     out.append('endif()')
     out.append(f'list(APPEND TPYC_LIBRARIES ${{{target_var}}})')
-    return "\n".join(out)
+    return "\n".join(indent + line for line in out)
 
 
 # ---------------------------------------------------------------------------
@@ -465,7 +479,7 @@ def resolve_build_plan(
     """Resolve declared third-party deps into concrete build inputs.
 
     ``dep_names``: ordered, deduplicated list of lib names (from
-    ``Compiler.collect_third_party_deps()``).
+    ``Compiler.collect_third_party_deps(target)``).
 
     ``modes``: per-lib mode override (e.g. ``{"pcre2": "system"}`` from
     ``--pcre2=system``). Falls back to each lib's ``default_mode``.

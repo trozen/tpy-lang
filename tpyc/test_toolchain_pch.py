@@ -15,10 +15,19 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from tpyc import repl_backends, toolchain
 from tpyc.toolchain import (
     CppCompilerConfig, get_or_build_pch, pch_is_current, pch_is_path_sensitive,
 )
+
+
+@pytest.fixture(autouse=True)
+def _no_target_probe(monkeypatch):
+    # A config probes its target at construction; the faked subprocess.run
+    # here stands for the PCH build only.
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine", lambda compiler: "")
 
 
 def _capture_pch_cmd(monkeypatch, family, tmp_path):

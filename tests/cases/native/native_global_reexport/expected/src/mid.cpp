@@ -16,7 +16,7 @@ int32_t use_normal() {
     return ::tpyapp::leaf::NORMAL_VAL;
 }
 
-// from leaf import GLOBAL_VAL, NORMAL_VAL
+// from leaf import GLOBAL_VAL, NORMAL_VAL, xs
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

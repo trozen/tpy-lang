@@ -105,7 +105,9 @@ class REPLSession:
         runtime_cpp = get_runtime_dir() / "cpp"
         if self._runtime_sources is None:
             self._runtime_sources = discover_runtime_cpp_sources(runtime_cpp)
-        dep_names = tuple(compiler.collect_third_party_deps())
+        assert self._backend is not None
+        target = self._backend.target_platform
+        dep_names = tuple(compiler.collect_third_party_deps(target))
         plan = self._plan_cache.get(dep_names)
         if plan is None:
             plan = resolve_build_plan(list(dep_names), runtime_cpp, modes={})
@@ -115,7 +117,7 @@ class REPLSession:
             third_party_sources=plan.c_sources,
             include_dirs=plan.extra_include_dirs,
             link_flags=[*plan.extra_link_flags,
-                        *compiler.collect_link_flags()],
+                        *compiler.collect_link_flags(target)],
         )
 
     def _preload_file(self, filepath: Path) -> bool:

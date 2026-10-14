@@ -123,7 +123,8 @@ Examples of the policy in action:
 | [`builtins`](#builtins) | P0 | Partial | ~75% | mixed | Implicit import. Core types + most common functions + most exception types present and catchable (`Index/Key/Lookup/Value/Type/Attribute/Assertion/OS/FileNotFound/Permission/Connection (+BrokenPipe/Reset/Refused/Aborted)/ZeroDivision/Overflow/FloatingPoint/Arithmetic/Runtime/Recursion/EOF/NotImplemented/Memory/StopIteration`); fixed-int arithmetic overflow stays panic by design (future policy switch). Missing: `frozenset`, `complex`, `memoryview`, `format`, `ascii`, `callable`, `id`, `type(x)` runtime. D16 dyn-attrs (`getattr`/`setattr`/`delattr`/`hasattr` for both literal and runtime names) fully shipped. See [builtins](#builtins) for per-item status |
 | [`math`](#math) | P0 | Done | ~99% | mixed | Checked libm bindings + pure TPy wrappers. All CPython funcs present with matching signatures (`Iterable[float]` for fsum/sumprod/dist; `prod` has int32 / int (BigInt) / float overloads). Remaining gap: tuple as iterable (blocked on tuple-iteration bundle) |
 | [`time`](#time) | P0 | Partial | ~50% | mixed | Thin clock/sleep syscalls. `time`, `sleep`, `perf_counter`, `monotonic`, `time_ns`, `perf_counter_ns`, `monotonic_ns`, `process_time`, `tzset` (CPython-parity no-op: TPy's tz provider pins TZ at first use) all done. Missing `struct_time`/`strftime`/`gmtime`/`localtime`/timezone constants |
-| [`sys`](#sys) | P0 | Stub | ~20% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `maxsize` done; needs `stdin`/`path`/`version_info` |
+| [`sys`](#sys) | P0 | Stub | ~25% | mixed | Thin syscall bindings + pure TPy. `argv`, `stdout`, `stderr`, `exit`, `platform`, `maxsize`, `byteorder` done; needs `stdin`/`path`/`version_info`/`implementation` |
+| [`platform`](#platform) | P2 | Partial | ~10% | mixed | `system()` (pure TPy over `sys.platform`) and `machine()` (native binding to a target constant) done; the rest Missing |
 | [`os`](#os) | P0 | Partial | ~72% | mixed | Filesystem queries (`getcwd`/`chdir`/`listdir`/`scandir`/`getenv`) + `stat`/`lstat`/`fstat` -> `stat_result`, `scandir` -> `DirEntry`; mutating ops (`mkdir`/`makedirs`/`rmdir`/`removedirs`/`remove`/`unlink`/`rename`/`replace`/`symlink`/`readlink`/`link`/`truncate`/`ftruncate`/`chmod`/`chown`/`utime`/`fsync`) over raw POSIX with the shared PEP 3151 errno->OSError table (structured `.errno`/`.strerror`/`.filename` + CPython-exact `str(e)`); low-level fd I/O (`open`/`close`/`read`/`write`/`lseek`/`pipe`/`dup`/`dup2` + `O_*`/`SEEK_*`, `get_blocking`/`set_blocking`, `openpty`); `access`(+`*_OK`); `urandom`; process/system queries (`getpid`/`getppid`/`getuid` family/`getlogin`/`umask`/`cpu_count`/`strerror`/`isatty`/`get_terminal_size`); `fspath`; module constants (`name`/`sep`/...); `environ` snapshot mapping + `putenv`/`unsetenv` + `pop`/`setdefault`/`update`/`clear`/`copy`; `walk` (topdown + bottomup, `followlinks`, `onerror`-callback + default error-skip); process control (`kill`/`waitpid`/`WNOHANG`/`waitstatus_to_exitcode`). Spawning is `subprocess.Popen`; `fork`/`exec*`/`system` deferred **Un-importable at `--default-int int64` / `BigInt`** -- sema fails inside the module; see BUGS.md "18 stdlib modules fail sema". |
 | [`os.path`](#ospath) | P0 | Partial | ~96% | mixed | Pure-string POSIX surface (`join`/`split`/`splitext`/`basename`/`dirname`/`isabs`/`normpath`/`splitdrive`/`commonprefix`/`commonpath`/`normcase` + constants) plus filesystem queries (`exists`/`lexists`/`isfile`/`isdir`/`islink`/`getsize`/`abspath`/`realpath`(+`strict=`)/`relpath`/`getmtime`/`getatime`/`getctime`/`samefile`/`samestat`/`ismount`/`expandvars`/`expanduser`). CPython byte-compatible against `posixpath` **Un-importable at `--default-int int64` / `BigInt`** -- sema fails inside the module; see BUGS.md "18 stdlib modules fail sema". |
 | [`pathlib`](#pathlib) | P0 | Missing | 0% | -- | Class-heavy; depends on filesystem bindings |
@@ -439,7 +440,7 @@ absolute timing values are non-deterministic).
 ### sys
 
 Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`,
-`maxsize`, `byteorder`, `maxunicode`.
+`platform`, `maxsize`, `byteorder`, `maxunicode`.
 
 | Item | Status | Notes |
 |---|---|---|
@@ -447,17 +448,35 @@ Current: `lib/tpy/sys.py` -- native; `argv`, `stdout`, `stderr`, `exit`,
 | `stdout`, `stderr` | Done | Backed by `tpy::StdStream` (wraps `std::cout` / `std::cerr`); satisfy the `Writable` protocol so they work as `print(file=...)` targets and expose `write(str) -> int32` / `flush()` |
 | `stdin` | Missing | Needs read-side protocol; lower priority than write |
 | `exit(code)` | Done | Raises `SystemExit(code)`; `code` is an `int32` (an `int` narrows to it), a `str` or `None` (the default). Typed `-> None`, not `NoReturn` |
-| `platform` | Missing | Compile-time constant |
+| `platform` | Done | The BUILD TARGET's value (`"linux"`, `"darwin"`, `"freebsd<N>"`, `"win32"`; Android / iOS a named C++ build error), a `Final[str]` bound through `native_global` to `tpy/platform.hpp`, which picks it by the target compiler's predefined macros. Read-only: `sys.platform = ...` is rejected (Final) |
+| `implementation` | Missing | `sys.implementation.name` etc.; needs a design for what TPy reports |
 | `version`, `version_info` | Missing | Already in `tpy.version`; could re-export |
 | `path` | Missing | List; relates to import machinery (TPy resolves at compile time, so semantics differ) |
 | `modules` | Missing | Not meaningful under static compilation |
-| `maxsize` | Done | Pure-TPy `int` constant, CPython's 64-bit value (`2**63 - 1`) |
-| `byteorder` | Done | Pure-TPy `str` constant `"little"` (TPy targets little-endian x86-64 / ARM64) |
+| `maxsize` | Done | The target's `PTRDIFF_MAX` (CPython's `Py_ssize_t` maximum), an `int` (BigInt) defined in `runtime/cpp/src/stdlib/sys_impl.cpp` and bound through `native_global` |
+| `byteorder` | Done | The target's `std::endian::native` (`"little"` / `"big"`), from `tpy/platform.hpp` through `native_global` |
 | `maxunicode` | Done | Pure-TPy `int` constant `1114111` (U+10FFFF, target-independent) |
 | `getsizeof` | Missing | Hard: sizes differ from CPython (inline fields vs boxed) |
 | `executable` | Missing | `argv[0]` / `/proc/self/exe` |
 
-Tests: `sys_argv`, `sys_maxsize`, `sys_byteorder`, `kwargs_print_file_std`.
+Tests: `sys_argv`, `sys_maxsize`, `sys_byteorder`, `sys_platform`,
+`error_sys_platform_assign`, `kwargs_print_file_std`.
+
+### platform
+
+Current: `lib/tpy/platform.py` -- pure TPy over `sys.platform`, plus a
+`native_global` binding for `machine()` (`tpy/platform_machine.hpp`). Answers for the BUILD TARGET
+(a cross build reports the machine it builds for), where CPython reports the
+machine it runs on -- the same thing for a native build.
+
+| Item | Status | Notes |
+|---|---|---|
+| `system()` | Done | If-chain over `sys.platform`: `"Linux"`, `"Darwin"`, `"FreeBSD"`, `"Windows"` |
+| `machine()` | Done | `os.uname().machine` on the target, from `tpy/platform_machine.hpp`: `"x86_64"` (`"amd64"` on FreeBSD, `"AMD64"` on Windows), `"aarch64"` on Linux, `"arm64"` on macOS / FreeBSD, `"ARM64"` on Windows; another architecture is a named C++ build error |
+| `python_implementation()` | Missing | Needs the same design as `sys.implementation` |
+| `release()`, `version()`, `node()`, `uname()`, `processor()`, `architecture()`, `platform()`, `mac_ver()`, `libc_ver()`, `freedesktop_os_release()` | Missing | Run-time OS queries (`uname(2)` and friends) |
+
+Tests: `sys_platform`.
 
 ### os
 

@@ -5,24 +5,24 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 
-extern "C" int32_t tpy_const_eagain;
-extern "C" int32_t tpy_const_eagain;
-extern "C" int32_t tpy_const_einprogress;
-extern "C" int32_t tpy_const_epipe;
-extern "C" int32_t tpy_const_econnreset;
-extern "C" int32_t tpy_const_econnrefused;
-extern "C" int32_t tpy_const_econnaborted;
-extern "C" int32_t tpy_const_enoent;
-extern "C" int32_t tpy_const_eexist;
-extern "C" int32_t tpy_const_eacces;
-extern "C" int32_t tpy_const_eperm;
-extern "C" int32_t tpy_const_eisdir;
-extern "C" int32_t tpy_const_enotdir;
-extern "C" int32_t tpy_const_ebadf;
-extern "C" int32_t tpy_const_etimedout;
-extern "C" int32_t tpy_const_einval;
-extern "C" int32_t tpy_const_enotty;
-extern "C" int32_t tpy_const_espipe;
+extern "C" const int32_t tpy_const_eagain;
+extern "C" const int32_t tpy_const_eagain;
+extern "C" const int32_t tpy_const_einprogress;
+extern "C" const int32_t tpy_const_epipe;
+extern "C" const int32_t tpy_const_econnreset;
+extern "C" const int32_t tpy_const_econnrefused;
+extern "C" const int32_t tpy_const_econnaborted;
+extern "C" const int32_t tpy_const_enoent;
+extern "C" const int32_t tpy_const_eexist;
+extern "C" const int32_t tpy_const_eacces;
+extern "C" const int32_t tpy_const_eperm;
+extern "C" const int32_t tpy_const_eisdir;
+extern "C" const int32_t tpy_const_enotdir;
+extern "C" const int32_t tpy_const_ebadf;
+extern "C" const int32_t tpy_const_etimedout;
+extern "C" const int32_t tpy_const_einval;
+extern "C" const int32_t tpy_const_enotty;
+extern "C" const int32_t tpy_const_espipe;
 
 namespace tpystd::errno_mod {
 

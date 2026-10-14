@@ -7,19 +7,19 @@
 #include <tpy/stdlib/signal_h.hpp>
 #include "tpystd/types.hpp"
 
-extern "C" int32_t tpy_const_sighup;
-extern "C" int32_t tpy_const_sigint;
-extern "C" int32_t tpy_const_sigquit;
-extern "C" int32_t tpy_const_sigkill;
-extern "C" int32_t tpy_const_sigusr1;
-extern "C" int32_t tpy_const_sigusr2;
-extern "C" int32_t tpy_const_sigpipe;
-extern "C" int32_t tpy_const_sigalrm;
-extern "C" int32_t tpy_const_sigterm;
-extern "C" int32_t tpy_const_sigchld;
-extern "C" int32_t tpy_const_sigcont;
-extern "C" int32_t tpy_const_sigtstp;
-extern "C" int32_t tpy_const_sigwinch;
+extern "C" const int32_t tpy_const_sighup;
+extern "C" const int32_t tpy_const_sigint;
+extern "C" const int32_t tpy_const_sigquit;
+extern "C" const int32_t tpy_const_sigkill;
+extern "C" const int32_t tpy_const_sigusr1;
+extern "C" const int32_t tpy_const_sigusr2;
+extern "C" const int32_t tpy_const_sigpipe;
+extern "C" const int32_t tpy_const_sigalrm;
+extern "C" const int32_t tpy_const_sigterm;
+extern "C" const int32_t tpy_const_sigchld;
+extern "C" const int32_t tpy_const_sigcont;
+extern "C" const int32_t tpy_const_sigtstp;
+extern "C" const int32_t tpy_const_sigwinch;
 
 namespace tpystd::signal {
 

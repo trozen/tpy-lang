@@ -169,6 +169,8 @@ def test_backend_support_objects_compile_once_and_in_order(monkeypatch, tmp_path
         return sp.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr("tpyc.repl_backends.subprocess.run", fake_run)
+    # the config's target probe is not a support-object compile
+    monkeypatch.setattr("tpyc.toolchain.compiler_dumpmachine", lambda compiler: "")
     backend = CompileBackend(["g++"], tmp_path, "repl")
 
     rt = tmp_path / "rt_impl.cpp"

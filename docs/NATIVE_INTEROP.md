@@ -166,6 +166,7 @@ Field reads and writes emit the renamed C/C++ member (`v.x` -> `v.m_x`, `a.port`
 ### Global variables
 
 ```python
+from typing import Final
 from tpy.extern import native_global
 
 # C++ global
@@ -181,6 +182,9 @@ data: Ptr[int32] = native_global("shared_data", binding="C", array=True)
 # (native globals emit at :: regardless of the module's cpp_namespace,
 # matching C ABI conventions for externally-linked variables)
 tick: int32 = native_global()
+
+# Read-only global
+limit: Final[int32] = native_global("engine::limit")
 ```
 
 Global imports must be at module level and require a type annotation. Generated C++:
@@ -194,7 +198,18 @@ extern "C" int32_t DG_FrameCount;
 
 // C global array
 extern "C" int32_t shared_data[];
+
+// Final: declared const
+namespace engine { extern const int32_t limit; }
 ```
+
+A `Final[T] = native_global(...)` is declared `extern const T`, so the C++ definition must be const too. A const namespace-scope variable has internal linkage unless declared `extern`, so the definition either has the `extern` declaration in scope (include the header that declares it) or carries `extern const` itself:
+
+```cpp
+namespace engine { extern const int32_t limit = 64; }
+```
+
+Bind a C global that changes at run time without `Final`: the const declaration lets the C++ compiler assume the object never changes.
 
 References to imported globals emit the C/C++ name directly: `print(frame_count)` -> `std::cout << DG_FrameCount`.
 
@@ -873,7 +888,7 @@ Overrides the C++ namespace for the module's generated code (default: `tpyapp::m
 
 ### `"includes"`
 
-Each entry adds an `#include` directive. Quoted paths use `#include "..."`, angle-bracket paths use `#include <...>`. An entry dict takes an optional platform filter, a `sys.platform` value: `"linux"`, `"darwin"` (macOS) or `"win32"` (Windows).
+Each entry adds an `#include` directive. Quoted paths use `#include "..."`, angle-bracket paths use `#include <...>`. An entry dict takes an optional platform filter, a `sys.platform` value: `"linux"`, `"darwin"` (macOS), `"win32"` (Windows) or `"freebsd"`. The filter names the BUILD TARGET, not the machine running tpyc: a filtered include is rendered under `#if defined(TPY_PLATFORM_<NAME>)` (`TPY_PLATFORM_LINUX`, `_DARWIN`, `_WIN32`, `_FREEBSD`). `runtime/cpp/include/tpy/target_platform.hpp` defines exactly one of them from the target compiler's predefined macros (none on Android or iOS, which also define `__linux__` / `__APPLE__`), and `sys.platform` reads the same macro, so a guard and `sys.platform` always agree.
 
 ```python
 __tpy__ = {"includes": ["mylib/types.h",
@@ -885,7 +900,7 @@ In native modules, includes propagate transitively into any consumer whose gener
 
 ### `"links"`
 
-Each entry passes `-l<name>` to the linker. An entry dict takes an optional platform filter, or `"managed": True` to resolve a registered third-party library instead (`tpyc --<lib>=bundled|system|auto|none`).
+Each entry passes `-l<name>` to the linker. An entry dict takes an optional platform filter (the same `sys.platform` values as `"includes"`), or `"managed": True` to resolve a registered third-party library instead (`tpyc --<lib>=bundled|system|auto|none`). The filter names the BUILD TARGET: a build keeps the entry when its compiler targets that platform, and `sources.cmake` keeps it under an `if(CMAKE_SYSTEM_NAME STREQUAL ...)` condition, in declaration order; a repeated name links at its first entry the target admits, in both.
 
 ```python
 __tpy__ = {"links": ["SDL2",

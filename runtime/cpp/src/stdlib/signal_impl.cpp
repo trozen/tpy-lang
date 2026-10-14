@@ -887,20 +887,21 @@ int tpy_signal_raise(int sig) {
 // SIG* macros are in scope in every TPy-generated TU on macOS, so a plain
 // `int32_t SIGINT` constant there would be mangled by the macro. Exposed as
 // extern globals (read via `native_global`), same as socket_impl's
-// tpy_const_*. Non-const so the type matches the `extern int32_t` decl
-// native_global emits.
-std::int32_t tpy_const_sighup = SIGHUP;
-std::int32_t tpy_const_sigint = SIGINT;
-std::int32_t tpy_const_sigquit = SIGQUIT;
-std::int32_t tpy_const_sigkill = SIGKILL;
-std::int32_t tpy_const_sigusr1 = SIGUSR1;
-std::int32_t tpy_const_sigusr2 = SIGUSR2;
-std::int32_t tpy_const_sigpipe = SIGPIPE;
-std::int32_t tpy_const_sigalrm = SIGALRM;
-std::int32_t tpy_const_sigterm = SIGTERM;
-std::int32_t tpy_const_sigchld = SIGCHLD;
-std::int32_t tpy_const_sigcont = SIGCONT;
-std::int32_t tpy_const_sigtstp = SIGTSTP;
-std::int32_t tpy_const_sigwinch = SIGWINCH;
+// tpy_const_*. `extern const`: the `Final` native_global declaration is
+// const, and inside `extern "C" {}` a const would otherwise get internal
+// linkage.
+extern const std::int32_t tpy_const_sighup = SIGHUP;
+extern const std::int32_t tpy_const_sigint = SIGINT;
+extern const std::int32_t tpy_const_sigquit = SIGQUIT;
+extern const std::int32_t tpy_const_sigkill = SIGKILL;
+extern const std::int32_t tpy_const_sigusr1 = SIGUSR1;
+extern const std::int32_t tpy_const_sigusr2 = SIGUSR2;
+extern const std::int32_t tpy_const_sigpipe = SIGPIPE;
+extern const std::int32_t tpy_const_sigalrm = SIGALRM;
+extern const std::int32_t tpy_const_sigterm = SIGTERM;
+extern const std::int32_t tpy_const_sigchld = SIGCHLD;
+extern const std::int32_t tpy_const_sigcont = SIGCONT;
+extern const std::int32_t tpy_const_sigtstp = SIGTSTP;
+extern const std::int32_t tpy_const_sigwinch = SIGWINCH;
 
 }  // extern "C"

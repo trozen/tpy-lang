@@ -9,17 +9,29 @@ namespace tpyapp::main {
 //     print(GLOBAL_VAL)     # re-exported through mid, used directly here
 //     print(use_normal())   # plain Final re-export still works (inverse case)
 //     print(NORMAL_VAL)
+//     # module attribute: renders the native symbol, not a `mid` qname
+//     print(mid.GLOBAL_VAL)  # tpyc: ok
+//     print(mid.NORMAL_VAL)
+//     # a re-exported NON-value native_global through the module attribute:
+//     # the entry carries leaf's native symbol, so no `(*slot)` deref
+//     mid.xs.append(2)  # tpyc: ok
+//     print(len(mid.xs))  # tpyc: ok
 void main() {
     std::cout << ::tpyapp::mid::use_global() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy_test_global << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::mid::use_normal() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::leaf::NORMAL_VAL << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy_test_global << "\n" << ::tpy::check_signals;
+    std::cout << ::tpyapp::leaf::NORMAL_VAL << "\n" << ::tpy::check_signals;
+    ::tpy_test_xs.push_back(2);
+    std::cout << ::tpy::__len__(::tpy_test_xs) << "\n" << ::tpy::check_signals;
 }
 
 // # Cross-module re-export of a native_global through a non-entry module's
-// # header. Exercises both the name path (`from mid import GLOBAL_VAL`) and the
-// # function path (`use_global()` reads the re-exported native_global).
-// from mid import use_global, use_normal, GLOBAL_VAL, NORMAL_VAL
+// # header. Exercises the name path (`from mid import GLOBAL_VAL`), the
+// # module-attribute path (`mid.GLOBAL_VAL`) and the function path
+// # (`use_global()` reads the re-exported native_global).
+// import mid
 //
 // main()
 void __tpy_init() {

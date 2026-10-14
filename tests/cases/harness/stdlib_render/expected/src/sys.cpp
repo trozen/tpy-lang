@@ -6,8 +6,6 @@ namespace tpystd::sys {
 std::vector<std::string>* argv{};
 ::tpy::StdStream* stdout{};
 ::tpy::StdStream* stderr{};
-// maxsize: Final[int] = 9223372036854775807
-const ::tpy::BigInt maxsize = ::tpy::BigInt(static_cast<int64_t>(9223372036854775807LL));
 // maxunicode: Final[int] = 0x10FFFF
 const ::tpy::BigInt maxunicode = ::tpy::BigInt(1114111);
 
@@ -67,7 +65,7 @@ void exit__None_int32_str(const ::tpy::Union<std::monostate, int32_t, std::strin
     throw ::tpy::SystemExit{};
 }
 
-// from tpy.extern import native
+// from tpy.extern import native, native_global
 //
 // argv: list[str] = _get_sys_argv()
 //

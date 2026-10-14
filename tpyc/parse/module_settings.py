@@ -13,21 +13,17 @@ import ast
 import io
 import re
 import symtable
-import sys
 import tokenize
 import unicodedata
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Literal, TypeGuard
 
+from ..toolchain import PLATFORMS
 from .imports import NonLiteralAllError, read_module_all
 from .nodes import ModuleDirectives, ParseError, SourceLocation
 
 SETTINGS_NAME = "__tpy__"
-
-# `sys.platform` values, so a filter reads as the check a Python program
-# would write.
-PLATFORMS = ("linux", "darwin", "win32")
 
 # The retired `# tpy: <directive>` comments `__tpy__` replaced, in their old
 # bare-name or call shape, so prose that merely starts with `# tpy:` passes.
@@ -37,12 +33,6 @@ _STALE_DIRECTIVE_RE = re.compile(
 
 _REBIND_MSG = "__tpy__ must be assigned once, at module top level"
 _READ_MSG = "__tpy__ holds compile-time module settings and cannot be read"
-
-
-def platform_matches(platform_filter: str | None) -> bool:
-    """True when a settings entry's `"platform"` admits the host
-    (BUGS.md#platform-filter-matches-host: it should be the build target)."""
-    return platform_filter is None or sys.platform == platform_filter
 
 
 def is_future_import(node: ast.AST) -> TypeGuard[ast.ImportFrom]:
@@ -178,14 +168,14 @@ _SCHEMA = _Record(
             pattern=re.compile(r'[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*'),
             pattern_error="invalid C++ namespace {!r} (must look like 'foo' or 'foo::bar')"),
         "includes": _Entries(
-            _Record({"header": _Str(), "platform": _Str(choices=PLATFORMS)},
+            _Record({"header": _Str(), "platform": _Str(choices=tuple(PLATFORMS))},
                     required=("header",)),
             shorthand="header"),
         "links": _Entries(
             # managed=True routes through the third-party registry
             # (tpyc/build/third_party.py); otherwise a raw `-l<lib>`.
             _Record({"lib": _Str(), "managed": _Bool(),
-                     "platform": _Str(choices=PLATFORMS)},
+                     "platform": _Str(choices=tuple(PLATFORMS))},
                     required=("lib",)),
             shorthand="lib"),
     },

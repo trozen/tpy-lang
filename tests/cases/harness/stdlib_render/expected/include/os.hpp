@@ -10,21 +10,21 @@
 #include "tpystd/os/_types.hpp"
 #include "tpystd/os/path.hpp"
 
-namespace tpy::stdlib::os { extern int64_t kc_o_rdonly; }
-namespace tpy::stdlib::os { extern int64_t kc_o_wronly; }
-namespace tpy::stdlib::os { extern int64_t kc_o_rdwr; }
-namespace tpy::stdlib::os { extern int64_t kc_o_creat; }
-namespace tpy::stdlib::os { extern int64_t kc_o_excl; }
-namespace tpy::stdlib::os { extern int64_t kc_o_trunc; }
-namespace tpy::stdlib::os { extern int64_t kc_o_append; }
-namespace tpy::stdlib::os { extern int64_t kc_seek_set; }
-namespace tpy::stdlib::os { extern int64_t kc_seek_cur; }
-namespace tpy::stdlib::os { extern int64_t kc_seek_end; }
-namespace tpy::stdlib::os { extern int64_t kc_f_ok; }
-namespace tpy::stdlib::os { extern int64_t kc_r_ok; }
-namespace tpy::stdlib::os { extern int64_t kc_w_ok; }
-namespace tpy::stdlib::os { extern int64_t kc_x_ok; }
-namespace tpy::stdlib::os { extern int64_t kc_wnohang; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_rdonly; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_wronly; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_rdwr; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_creat; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_excl; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_trunc; }
+namespace tpy::stdlib::os { extern const int64_t kc_o_append; }
+namespace tpy::stdlib::os { extern const int64_t kc_seek_set; }
+namespace tpy::stdlib::os { extern const int64_t kc_seek_cur; }
+namespace tpy::stdlib::os { extern const int64_t kc_seek_end; }
+namespace tpy::stdlib::os { extern const int64_t kc_f_ok; }
+namespace tpy::stdlib::os { extern const int64_t kc_r_ok; }
+namespace tpy::stdlib::os { extern const int64_t kc_w_ok; }
+namespace tpy::stdlib::os { extern const int64_t kc_x_ok; }
+namespace tpy::stdlib::os { extern const int64_t kc_wnohang; }
 
 namespace tpystd::os {
 

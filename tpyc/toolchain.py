@@ -116,23 +116,53 @@ def _find_all_zig() -> tuple[str | None, str | None]:
     return system, bundled
 
 
+@dataclass(frozen=True)
+class TargetPlatform:
+    """How one build-target OS is named on each side of the build."""
+    macro: str  # its TPY_PLATFORM_* macro (runtime/cpp/include/tpy/target_platform.hpp)
+    cmake_system: str  # its CMAKE_SYSTEM_NAME
+    triple_markers: tuple[str, ...]  # substrings of its target triples
+
+
+# The build-target OSes, keyed by the `sys.platform` prefix CPython answers
+# there (FreeBSD's value carries the major version, `freebsd14`). The one
+# table: `__tpy__` "platform" filters, the include guards, the CMake link
+# conditions and the host / compiler-target detection all read it.
+PLATFORMS: dict[str, TargetPlatform] = {
+    "linux": TargetPlatform("TPY_PLATFORM_LINUX", "Linux", ("linux",)),
+    "darwin": TargetPlatform("TPY_PLATFORM_DARWIN", "Darwin", ("darwin", "apple", "macos")),
+    "win32": TargetPlatform("TPY_PLATFORM_WIN32", "Windows", ("windows", "mingw", "msvc")),
+    "freebsd": TargetPlatform("TPY_PLATFORM_FREEBSD", "FreeBSD", ("freebsd",)),
+}
+
+
+def platform_matches(platform_filter: str | None, target: str) -> bool:
+    """True when a settings entry's `"platform"` admits the build `target`
+    (a `PLATFORMS` key: `CppCompilerConfig.target_platform`)."""
+    return platform_filter is None or platform_filter == target
+
+
+# Targets whose triples also name a supported OS's marker (`linux`, `apple`)
+# but that TPy does not support; target_platform.hpp defines no
+# TPY_PLATFORM_* macro for them, so no "platform" filter may match either.
+UNSUPPORTED_TRIPLE_OSES = ("android", "ios", "tvos", "watchos", "xros")
+
+
 def _triple_to_os(triple: str) -> str:
-    """Map a -dumpmachine target triple to an OS token ('darwin', 'linux',
-    'windows', or 'unknown')."""
+    """Map a -dumpmachine target triple to a `PLATFORMS` key, 'unsupported'
+    for a recognized target TPy does not support, or 'unknown'."""
     t = triple.lower()
-    if "darwin" in t or "apple" in t or "macos" in t:
-        return "darwin"
-    if "linux" in t:
-        return "linux"
-    if "windows" in t or "mingw" in t or "msvc" in t:
-        return "windows"
-    return "unknown"
+    if any(part.startswith(UNSUPPORTED_TRIPLE_OSES) for part in t.split("-")):
+        return "unsupported"
+    return next((key for key, row in PLATFORMS.items()
+                 if any(marker in t for marker in row.triple_markers)),
+                "unknown")
 
 
 def host_os() -> str:
-    """This machine's OS token, comparable to compiler_target_os()."""
-    return {"linux": "linux", "darwin": "darwin",
-            "win32": "windows"}.get(sys.platform, "unknown")
+    """This machine's `PLATFORMS` key, comparable to compiler_target_os()."""
+    return next((key for key in PLATFORMS if sys.platform.startswith(key)),
+                "unknown")
 
 
 @functools.lru_cache(maxsize=None)
@@ -150,11 +180,11 @@ def compiler_dumpmachine(compiler: tuple[str, ...]) -> str:
 
 
 def compiler_target_os(compiler: tuple[str, ...]) -> str:
-    """The OS a compiler command TARGETS, probed via `-dumpmachine`. An
-    osxcross clang++ answers darwin on a Linux host -- how cross builds are
-    detected without any flag. Falls back to the host OS when the probe fails
-    or the triple is unrecognized (a compiler without -dumpmachine is assumed
-    native)."""
+    """The OS (a `PLATFORMS` key) a compiler command TARGETS, probed via
+    `-dumpmachine`. An osxcross clang++ answers darwin on a Linux host --
+    how cross builds are detected without any flag. Falls back to the host
+    OS when the probe fails or the triple is unrecognized (a compiler
+    without -dumpmachine is assumed native)."""
     triple = compiler_dumpmachine(tuple(compiler))
     if not triple:
         return host_os()
@@ -171,20 +201,20 @@ def compiler_target_os(compiler: tuple[str, ...]) -> str:
 MACOS_VERSION_MIN = "13.3"
 
 
-def darwin_version_min_flags(compiler: list[str]) -> list[str]:
-    """The deployment-target pin for darwin-targeting compilers, [] for
-    everything else (or when the command already carries its own pin).
-    Carried on the compiler command itself so every driver invocation --
-    C++ and C compiles, PCH, link -- inherits it."""
+def darwin_version_min_flags(compiler: list[str], target: str) -> list[str]:
+    """The deployment-target pin for a darwin `target`, [] for everything
+    else (or when the command already carries its own pin). Carried on the
+    compiler command itself so every driver invocation -- C++ and C
+    compiles, PCH, link -- inherits it."""
     if any(a.startswith(("-mmacosx-version-min", "-mmacos-version-min"))
            for a in compiler):
         return []
-    if compiler_target_os(tuple(compiler)) != "darwin":
+    if target != "darwin":
         return []
     return [f"-mmacosx-version-min={MACOS_VERSION_MIN}"]
 
 
-def darwin_cross_ld_flags(compiler: list[str]) -> list[str]:
+def darwin_cross_ld_flags(compiler: list[str], target: str) -> list[str]:
     """Point a darwin-cross compiler at the toolchain's Mach-O linker.
 
     A cross build's clang driver searches for `ld` at link time and would
@@ -198,7 +228,7 @@ def darwin_cross_ld_flags(compiler: list[str]) -> list[str]:
     if any(a.startswith("--ld-path") or a.startswith("-fuse-ld")
            for a in compiler):
         return []
-    if compiler_target_os(tuple(compiler)) != "darwin":
+    if target != "darwin":
         return []
     dirname = os.path.dirname(compiler[0])
     if not dirname:
@@ -212,7 +242,7 @@ def darwin_cross_ld_flags(compiler: list[str]) -> list[str]:
     return [f"--ld-path={ld}"]
 
 
-def shared_link_flags(compiler: list[str]) -> list[str]:
+def shared_link_flags(target: str) -> list[str]:
     """Link flags that turn a link step into a loadable CPython extension.
 
     ELF resolves the facade's undefined `Py*` symbols against the host
@@ -222,11 +252,12 @@ def shared_link_flags(compiler: list[str]) -> list[str]:
     own `LDSHARED` uses there. Function AND data symbols (`_Py_NoneStruct`,
     the `PyExc_*` pointers) both resolve at load under it.
 
-    Keyed on the compiler's TARGET os, so a native mac build and an osxcross
-    cross-build emit the same line (`darwin_cross_ld_flags` above keys the
-    same way, at the same link site).
+    Keyed on the build's TARGET os (`CppCompilerConfig.target_platform`),
+    so a native mac build and an osxcross cross-build emit the same line
+    (`darwin_cross_ld_flags` above keys the same way, at the same link
+    site).
     """
-    if compiler_target_os(tuple(compiler)) == "darwin":
+    if target == "darwin":
         return ["-bundle", "-undefined", "dynamic_lookup"]
     return ["-shared"]
 
@@ -1103,6 +1134,21 @@ class CppCompilerConfig:
     # `strict_warn_flags(compiler)` so we catch generated-code regressions.
     warn_flags: list[str] = field(default_factory=list)
 
+    # The `PLATFORMS` key of the OS this config builds for: probed from
+    # `compiler` at construction and by `use_compiler`, the host's when the
+    # probe fails or answers an unrecognized triple. Every target-dependent
+    # build decision (link entries, third-party deps, the darwin pin and
+    # link flags) reads it.
+    target_platform: str = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.target_platform = compiler_target_os(tuple(self.compiler))
+
+    def use_compiler(self, compiler: list[str]) -> None:
+        """Replace the compiler command, re-deciding the target with it."""
+        self.compiler = compiler
+        self.target_platform = compiler_target_os(tuple(compiler))
+
     @property
     def compiler_name(self) -> str:
         """Display name for the compiler (e.g. 'g++', 'zig c++')."""
@@ -1131,6 +1177,8 @@ class CppCompilerConfig:
                 warn_toolchain_unsupported(compiler)
             else:
                 compiler = _auto_detect_compiler()
-        compiler = [*compiler, *darwin_version_min_flags(compiler)]
         ccache = not _is_zig(compiler) and shutil.which("ccache") is not None
-        return cls(compiler=compiler, ccache=ccache)
+        config = cls(compiler=compiler, ccache=ccache)
+        config.use_compiler([*compiler, *darwin_version_min_flags(
+            compiler, config.target_platform)])
+        return config

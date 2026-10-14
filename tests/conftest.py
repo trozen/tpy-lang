@@ -64,7 +64,7 @@ from tpyc.compiler import (
     strict_warn_flags, get_or_build_pch, list_compilers, CompilerNotFoundError,
 )
 from tpyc.toolchain import (
-    compiler_target_os, host_os, mark_cache_entry_used, pch_is_path_sensitive,
+    host_os, mark_cache_entry_used, pch_is_path_sensitive,
     shared_cache_root, sweep_shared_cache, third_party_source_driver, CACHE_DIRS,
     EXEC_RESULTS_DIR, PCH_DIR, STDLIB_OBJS_DIR,
 )
@@ -299,7 +299,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     # default_mode, bundled); _stdlib_cache_key folds any overrides so
     # per-mode caches never collide.
     third_party_plan = resolve_build_plan(
-        dep_names=compiler.collect_third_party_deps(),
+        dep_names=compiler.collect_third_party_deps(CPP_CONFIG.target_platform),
         runtime_cpp_dir=RUNTIME_DIR.parent,
         modes=DEP_MODES,
     )
@@ -501,6 +501,7 @@ def _stdlib_cache_key() -> str:
     h.update(b"\0")
     h.update(repr((
         CPP_CONFIG.compiler,
+        CPP_CONFIG.target_platform,
         CPP_CONFIG.std,
         CPP_CONFIG.extra_flags,
         CPP_CONFIG.warn_flags,
@@ -642,6 +643,7 @@ def _pch_cache_key() -> str:
     h.update(b"\0")
     h.update(repr((
         CPP_CONFIG.compiler,
+        CPP_CONFIG.target_platform,
         CPP_CONFIG.std,
         CPP_CONFIG.extra_flags,
         CPP_CONFIG.warn_flags,
@@ -1479,11 +1481,11 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
         subscript_bounds_facts = ctx.subscript_bounds_facts if ctx else None
         div_zero_facts = ctx.div_zero_facts if ctx else None
         cast_safe_facts = ctx.cast_safe_facts if ctx else None
-        link_flags = compiler.collect_link_flags()
+        link_flags = compiler.collect_link_flags(CPP_CONFIG.target_platform)
         # Resolve third-party deps for this case's own imports; modes come
         # from --dep-mode (default: bundled).
         tp_plan = resolve_build_plan(
-            dep_names=compiler.collect_third_party_deps(),
+            dep_names=compiler.collect_third_party_deps(CPP_CONFIG.target_platform),
             runtime_cpp_dir=RUNTIME_DIR.parent,
             modes=req.dep_modes,
         )
@@ -1743,7 +1745,7 @@ def pytest_configure(config):
             pytest.exit(str(exc), returncode=1)
         chosen.warn_flags = strict_warn_flags(chosen.compiler)
         # Mutate in place so every module-level CPP_CONFIG reference sees it.
-        CPP_CONFIG.compiler = chosen.compiler
+        CPP_CONFIG.use_compiler(chosen.compiler)
         CPP_CONFIG.std = chosen.std
         CPP_CONFIG.extra_flags = chosen.extra_flags
         CPP_CONFIG.ccache = chosen.ccache and not config.getoption("--no-ccache")
@@ -2112,8 +2114,8 @@ def merge_link_flags(case_flags: list[str], cache_flags: list[str]) -> list[str]
 
 
 def exec_target_os() -> str:
-    """OS the exec-phase toolchain targets (probed once per compiler)."""
-    return compiler_target_os(tuple(CPP_CONFIG.compiler))
+    """OS the exec-phase toolchain targets."""
+    return CPP_CONFIG.target_platform
 
 
 def exec_is_cross() -> bool:
@@ -2202,6 +2204,7 @@ def compute_exec_fingerprint(
     h.update(b"\0")
     h.update(repr((
         CPP_CONFIG.compiler,
+        CPP_CONFIG.target_platform,
         CPP_CONFIG.std,
         CPP_CONFIG.extra_flags,
         CPP_CONFIG.warn_flags,

@@ -166,20 +166,21 @@ int tpy_set_timeout(int fd, double seconds) {
 // `native_global`) for the same reason as the helpers above -- keep
 // <sys/socket.h> / <errno.h> out of every TPy-generated TU. Values that are
 // identical across Linux and macOS/BSD (AF_INET, SOCK_*, IPPROTO_*,
-// TCP_NODELAY, SHUT_*) stay as literals facade-side. Non-const so the type
-// matches the `extern int32_t` the native_global decl emits.
-std::int32_t tpy_const_sol_socket = SOL_SOCKET;
-std::int32_t tpy_const_so_reuseaddr = SO_REUSEADDR;
-std::int32_t tpy_const_so_error = SO_ERROR;
-std::int32_t tpy_const_so_keepalive = SO_KEEPALIVE;
-std::int32_t tpy_const_af_inet6 = AF_INET6;
-std::int32_t tpy_const_msg_dontwait = MSG_DONTWAIT;
-std::int32_t tpy_const_eagain = EAGAIN;
-std::int32_t tpy_const_eintr = EINTR;
-std::int32_t tpy_const_einprogress = EINPROGRESS;
-std::int32_t tpy_const_epipe = EPIPE;
-std::int32_t tpy_const_econnreset = ECONNRESET;
-std::int32_t tpy_const_econnrefused = ECONNREFUSED;
-std::int32_t tpy_const_econnaborted = ECONNABORTED;
+// TCP_NODELAY, SHUT_*) stay as literals facade-side. `extern const`: the
+// `Final` native_global declaration is const, and inside `extern "C" {}` a
+// const would otherwise get internal linkage.
+extern const std::int32_t tpy_const_sol_socket = SOL_SOCKET;
+extern const std::int32_t tpy_const_so_reuseaddr = SO_REUSEADDR;
+extern const std::int32_t tpy_const_so_error = SO_ERROR;
+extern const std::int32_t tpy_const_so_keepalive = SO_KEEPALIVE;
+extern const std::int32_t tpy_const_af_inet6 = AF_INET6;
+extern const std::int32_t tpy_const_msg_dontwait = MSG_DONTWAIT;
+extern const std::int32_t tpy_const_eagain = EAGAIN;
+extern const std::int32_t tpy_const_eintr = EINTR;
+extern const std::int32_t tpy_const_einprogress = EINPROGRESS;
+extern const std::int32_t tpy_const_epipe = EPIPE;
+extern const std::int32_t tpy_const_econnreset = ECONNRESET;
+extern const std::int32_t tpy_const_econnrefused = ECONNREFUSED;
+extern const std::int32_t tpy_const_econnaborted = ECONNABORTED;
 
 }  // extern "C"

@@ -182,6 +182,7 @@ from ...codegen_cpp.context import (
     escape_cpp_name,
     is_constructor_call,
     local_class_cpp,
+    module_variable_cpp,
     qualified_cpp_name,
 )
 from ...namespace import BindingKind
@@ -2667,18 +2668,15 @@ def _module_var_read_cpp(module_name: str, var_name: str,
                          analyzer) -> 'str | None':
     """The render of a module-variable read (`mod.X` / `pkg.sub.X`): the
     declared native symbol, the `(*slot)` deref for a non-value pointer slot,
-    or the qualified `cpp_expr`. None when the (module, var) pair is not
+    or the definer's qualified name. None when the (module, var) pair is not
     registered -- other arms own those, so the caller rejects instead of
     guessing."""
-    mi = analyzer.registry.get_module(module_name)
-    if mi is None or var_name not in mi.variables:
+    cpp, vi = module_variable_cpp(analyzer.registry, module_name, var_name)
+    if vi is None:
         return None
-    vi = mi.variables[var_name]
-    if vi.native_cpp_name is not None:
-        return vi.native_cpp_name
-    if vi.is_pointer:
-        return f"(*{vi.cpp_expr})"
-    return vi.cpp_expr
+    if vi.native_cpp_name is None and vi.is_pointer:
+        return f"(*{cpp})"
+    return cpp
 
 
 def _module_var_access_pair(recv, declared: dict[str, TpyType],

@@ -10,9 +10,9 @@
 #include "tpystd/tplib.hpp"
 #include "tpystd/tplib/box.hpp"
 
-namespace tpy::stdlib::os { extern int32_t kc_seek_set32; }
-namespace tpy::stdlib::os { extern int32_t kc_seek_cur32; }
-namespace tpy::stdlib::os { extern int32_t kc_seek_end32; }
+namespace tpy::stdlib::os { extern const int32_t kc_seek_set32; }
+namespace tpy::stdlib::os { extern const int32_t kc_seek_cur32; }
+namespace tpy::stdlib::os { extern const int32_t kc_seek_end32; }
 
 namespace tpystd::io {
 

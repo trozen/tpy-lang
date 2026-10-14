@@ -2,8 +2,14 @@
 #pragma once
 
 #include <tpy/tpy.hpp>
+#include <tpy/platform.hpp>
+
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+
+namespace tpy { extern const std::string_view sys_platform; }
+namespace tpy { extern const std::string_view sys_byteorder; }
+namespace tpy { extern const ::tpy::BigInt sys_maxsize; }
 
 namespace tpystd::sys {
 
@@ -11,10 +17,6 @@ extern std::vector<std::string>* argv;
 extern ::tpy::StdStream* stdout;
 extern ::tpy::StdStream* stderr;
 inline constexpr std::string_view __name__ = "sys";
-// maxsize: Final[int] = 9223372036854775807
-extern const ::tpy::BigInt maxsize;
-// byteorder: Final[str] = "little"
-inline constexpr std::string_view byteorder = "little";
 // maxunicode: Final[int] = 0x10FFFF
 extern const ::tpy::BigInt maxunicode;
 

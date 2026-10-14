@@ -5,6 +5,8 @@ namespace tpyapp::leaf {
 
 
 // from tpy.extern import native_global
+//
+// xs: list[int32] = native_global("tpy_test_xs")
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;

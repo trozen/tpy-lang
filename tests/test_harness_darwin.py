@@ -23,9 +23,15 @@ def test_triple_to_os() -> None:
     assert _triple_to_os("arm64-apple-darwin24") == "darwin"
     assert _triple_to_os("aarch64-apple-macos14") == "darwin"
     assert _triple_to_os("x86_64-linux-gnu") == "linux"
-    assert _triple_to_os("x86_64-pc-windows-msvc") == "windows"
-    assert _triple_to_os("x86_64-w64-mingw32") == "windows"
+    assert _triple_to_os("x86_64-pc-windows-msvc") == "win32"
+    assert _triple_to_os("x86_64-w64-mingw32") == "win32"
+    assert _triple_to_os("x86_64-unknown-freebsd14.1") == "freebsd"
     assert _triple_to_os("wasm32-unknown-unknown") == "unknown"
+    # They also carry `linux` / `apple`, but target_platform.hpp defines no
+    # TPY_PLATFORM_* macro there, so no filter may match them.
+    assert _triple_to_os("aarch64-linux-android34") == "unsupported"
+    assert _triple_to_os("arm64-apple-ios17.0") == "unsupported"
+    assert _triple_to_os("arm64-apple-ios17.0-simulator") == "unsupported"
 
 
 def test_compiler_target_os_probe(tmp_path: Path) -> None:
@@ -56,6 +62,10 @@ def _fake_compiler(tmp_path: Path, name: str, triple: str) -> Path:
     return fake
 
 
+def _target(cxx: Path) -> str:
+    return CppCompilerConfig(compiler=[str(cxx)]).target_platform
+
+
 def test_shared_link_flags(tmp_path: Path) -> None:
     """The extension link recipe is per-TARGET, not per-host: Mach-O refuses
     to leave the facade's `Py*` symbols undefined under plain `-shared` (the
@@ -66,11 +76,11 @@ def test_shared_link_flags(tmp_path: Path) -> None:
     cross-build emit the same line -- a host-keyed check would silently give
     the cross row the wrong recipe."""
     darwin = _fake_compiler(tmp_path, "sl-clang++", "arm64-apple-darwin25.5")
-    assert shared_link_flags([str(darwin)]) == [
+    assert shared_link_flags(_target(darwin)) == [
         "-bundle", "-undefined", "dynamic_lookup"]
 
     linux = _fake_compiler(tmp_path, "sl-g++", "x86_64-linux-gnu")
-    assert shared_link_flags([str(linux)]) == ["-shared"]
+    assert shared_link_flags(_target(linux)) == ["-shared"]
 
 
 def test_darwin_version_min_flags(tmp_path: Path) -> None:
@@ -78,14 +88,14 @@ def test_darwin_version_min_flags(tmp_path: Path) -> None:
     ones don't; an existing pin (either spelling) is never duplicated."""
     pin = f"-mmacosx-version-min={MACOS_VERSION_MIN}"
     darwin = _fake_compiler(tmp_path, "oa64-clang++", "arm64-apple-darwin25.5")
-    assert darwin_version_min_flags([str(darwin)]) == [pin]
+    assert darwin_version_min_flags([str(darwin)], _target(darwin)) == [pin]
 
     linux = _fake_compiler(tmp_path, "lx-g++", "x86_64-linux-gnu")
-    assert darwin_version_min_flags([str(linux)]) == []
+    assert darwin_version_min_flags([str(linux)], _target(linux)) == []
 
-    assert darwin_version_min_flags([str(darwin), pin]) == []
+    assert darwin_version_min_flags([str(darwin), pin], "darwin") == []
     assert darwin_version_min_flags(
-        [str(darwin), "-mmacos-version-min=14.0"]) == []
+        [str(darwin), "-mmacos-version-min=14.0"], "darwin") == []
 
 
 def test_darwin_cross_ld_flags(tmp_path: Path) -> None:
@@ -96,20 +106,20 @@ def test_darwin_cross_ld_flags(tmp_path: Path) -> None:
     cxx = _fake_compiler(tmp_path, f"{triple}-clang++-19", triple)
 
     # No sibling ld yet -> no flag (bare command falls back to host ld).
-    assert darwin_cross_ld_flags([str(cxx)]) == []
+    assert darwin_cross_ld_flags([str(cxx)], _target(cxx)) == []
 
     ld = tmp_path / f"{triple}-ld"
     ld.write_text("#!/bin/sh\n")
     ld.chmod(0o755)
-    assert darwin_cross_ld_flags([str(cxx)]) == [f"--ld-path={ld}"]
+    assert darwin_cross_ld_flags([str(cxx)], _target(cxx)) == [f"--ld-path={ld}"]
 
     # An explicit linker choice is never overridden.
-    assert darwin_cross_ld_flags([str(cxx), "-fuse-ld=lld"]) == []
-    assert darwin_cross_ld_flags([str(cxx), f"--ld-path={ld}"]) == []
+    assert darwin_cross_ld_flags([str(cxx), "-fuse-ld=lld"], "darwin") == []
+    assert darwin_cross_ld_flags([str(cxx), f"--ld-path={ld}"], "darwin") == []
 
     # A native (non-darwin) target gets nothing.
     linux = _fake_compiler(tmp_path, "lx2-g++", "x86_64-linux-gnu")
-    assert darwin_cross_ld_flags([str(linux)]) == []
+    assert darwin_cross_ld_flags([str(linux)], _target(linux)) == []
 
 
 def test_darwin_cross_ld_flags_bare_name(tmp_path: Path,
@@ -120,7 +130,7 @@ def test_darwin_cross_ld_flags_bare_name(tmp_path: Path,
     triple = "arm64-apple-darwin25.5"
     _fake_compiler(tmp_path, "od2-clang++", triple)
     monkeypatch.setenv("PATH", str(tmp_path) + os.pathsep + os.environ["PATH"])
-    assert darwin_cross_ld_flags(["od2-clang++"]) == []
+    assert darwin_cross_ld_flags(["od2-clang++"], "darwin") == []
 
 
 def test_derive_c_compiler_bare_name_mappings(monkeypatch) -> None:

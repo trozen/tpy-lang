@@ -3544,7 +3544,7 @@ def _module_var_len_arg(arg: TpyFieldAccess, locals_: dict[str, TpyType],
     """Whether a `mod.X` field access reads a REGISTERED module variable --
     dotted (`os.path.X`) or off a bare module binding (`os.environ`). Such a
     read has its own render (the native symbol, the `(*slot)` pointer deref,
-    or the qualified `cpp_expr`), never a bare pointer name."""
+    or the definer's qualified name), never a bare pointer name."""
     if arg.module_var_access is not None:
         return True
     recv = _bare_module_recv(arg.obj, locals_, analyzer)

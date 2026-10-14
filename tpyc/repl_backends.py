@@ -37,7 +37,7 @@ def _fmt_ms(seconds: float) -> str:
 
 
 from . import get_runtime_dir
-from .toolchain import (PCH_DIR, compile_pool, get_or_build_pch, mark_cache_entry_used,
+from .toolchain import (PCH_DIR, compile_pool, get_or_build_pch, host_os, mark_cache_entry_used,
                         pch_is_current, shared_cache_root)
 
 
@@ -90,6 +90,13 @@ class REPLBackend(abc.ABC):
     @abc.abstractmethod
     def name(self) -> str:
         """Human-readable backend name (e.g. 'clang-repl-18', 'g++-14')."""
+
+    @property
+    def target_platform(self) -> str:
+        """The `PLATFORMS` key of the OS the backend builds for. A REPL runs
+        what it builds on this machine, so the host's unless a compile
+        backend's toolchain says otherwise."""
+        return host_os()
 
     @abc.abstractmethod
     def startup(self) -> None:
@@ -168,6 +175,10 @@ class CompileBackend(REPLBackend):
     @property
     def name(self) -> str:
         return self._config.compiler_name
+
+    @property
+    def target_platform(self) -> str:
+        return self._config.target_platform
 
     @property
     def pch_cache_dir(self) -> Path:

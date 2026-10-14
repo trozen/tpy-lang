@@ -9,19 +9,19 @@
 #include "tpystd/io.hpp"
 #include "tpystd/os.hpp"
 
-extern "C" int32_t tpy_const_af_inet6;
-extern "C" int32_t tpy_const_sol_socket;
-extern "C" int32_t tpy_const_so_reuseaddr;
-extern "C" int32_t tpy_const_so_keepalive;
-extern "C" int32_t tpy_const_so_error;
-extern "C" int32_t tpy_const_msg_dontwait;
-extern "C" int32_t tpy_const_eagain;
-extern "C" int32_t tpy_const_eintr;
-extern "C" int32_t tpy_const_einprogress;
-extern "C" int32_t tpy_const_epipe;
-extern "C" int32_t tpy_const_econnreset;
-extern "C" int32_t tpy_const_econnrefused;
-extern "C" int32_t tpy_const_econnaborted;
+extern "C" const int32_t tpy_const_af_inet6;
+extern "C" const int32_t tpy_const_sol_socket;
+extern "C" const int32_t tpy_const_so_reuseaddr;
+extern "C" const int32_t tpy_const_so_keepalive;
+extern "C" const int32_t tpy_const_so_error;
+extern "C" const int32_t tpy_const_msg_dontwait;
+extern "C" const int32_t tpy_const_eagain;
+extern "C" const int32_t tpy_const_eintr;
+extern "C" const int32_t tpy_const_einprogress;
+extern "C" const int32_t tpy_const_epipe;
+extern "C" const int32_t tpy_const_econnreset;
+extern "C" const int32_t tpy_const_econnrefused;
+extern "C" const int32_t tpy_const_econnaborted;
 
 namespace tpystd::socket {
 

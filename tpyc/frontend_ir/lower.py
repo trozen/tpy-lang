@@ -68,6 +68,7 @@ from ..parse.nodes import (
     TpyWhile,
     TpyWildcardPattern,
 )
+from ..toolchain import PLATFORMS
 from ..typesys import FieldInfo, RecordInfo
 from .decorators import (
     DecoratorEntry, DecoratorRegistryError, DecoratorRoute, build_registry)
@@ -247,6 +248,21 @@ def lower_module(
         diags.append(_ir_invalid(
             plugin_name, fm,
             "FrontendModule.qname is empty",
+        ))
+        return LoweredFrontend(module=None, diagnostics=diags)
+
+    unknown_platforms = sorted({
+        platform
+        for entries in (fm.directives.cpp_includes, fm.directives.link_libs,
+                        fm.directives.third_party_deps)
+        for _, platform in entries
+        if platform is not None and platform not in PLATFORMS})
+    if unknown_platforms:
+        diags.append(_ir_invalid(
+            plugin_name, fm,
+            f"FrontendDirectives platform filter "
+            f"{', '.join(map(repr, unknown_platforms))} is not one of "
+            f"{', '.join(map(repr, PLATFORMS))}",
         ))
         return LoweredFrontend(module=None, diagnostics=diags)
 

@@ -1930,14 +1930,24 @@ class StatementAnalyzer:
         return (binding is not None
                 and self.ctx.class_record_of(binding) is not None)
 
-    def _check_class_constant_write(self, target: TpyExpr, stmt: TpyStmt) -> None:
-        """Reject `=` / `+=` on Final class constants; warn on instance-side
+    def _check_constant_write(self, target: TpyExpr, stmt: TpyStmt) -> None:
+        """Reject `=` / `+=` on Final class constants and on another module's
+        Final variables (`sys.platform = ...`); warn on instance-side
         writes to mutable ClassVar (CPython would create an instance attribute
         instead of writing through to class storage -- mypy/pyright already
         flag this; matching them keeps the tooling story consistent).
         """
         if not isinstance(target, TpyFieldAccess):
             return
+        module_name = self.ctx.module_named_by(target.obj)
+        if module_name is not None:
+            module_info = self.ctx.registry.get_module(module_name)
+            var = module_info.variables.get(target.field) if module_info is not None else None
+            if var is not None and var.is_final:
+                raise self.ctx.error(
+                    f"Cannot reassign Final variable '{module_name}.{target.field}'",
+                    stmt,
+                )
         owner = target.class_constant_owner
         if owner is None:
             return
@@ -7398,7 +7408,7 @@ class StatementAnalyzer:
                      if isinstance(stmt.target, TpyName) else None)
         list_cells = (self.pend.container_cells(target_type)
                       if isinstance(stmt.target, TpyName) else None)
-        self._check_class_constant_write(stmt.target, stmt)
+        self._check_constant_write(stmt.target, stmt)
         # D16 dyn-attr write detection: if the read-side analysis resolved the
         # target via __getattr__ (static lookup miss + dyn-readable class),
         # reinterpret as a __setattr__ write. Synthesize a method call and
@@ -8488,7 +8498,7 @@ class StatementAnalyzer:
                 f"Augmented assignment on property '{stmt.target.field}' is not yet supported",
                 stmt,
             )
-        self._check_class_constant_write(stmt.target, stmt)
+        self._check_constant_write(stmt.target, stmt)
         # Aug-assign replaces the target's value with a freshly computed one
         # (owned str/bytes concat, reallocated list, etc.), so any prior
         # param-derived / safe-to-return provenance is now stale and must be

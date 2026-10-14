@@ -18,7 +18,7 @@ from typing import Any, Callable, Iterable, Iterator, NamedTuple, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
-from .parse.module_settings import platform_matches, read_source_settings
+from .parse.module_settings import read_source_settings
 from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
@@ -40,7 +40,10 @@ from .type_def_registry import (
 )
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import ThirRejectError
-from .codegen_cpp.context import qualified_cpp_name, get_include_path, module_to_include_path
+from .codegen_cpp.context import (
+    get_include_path, module_to_include_path, module_native_global_names,
+    qualify_native_name,
+)
 from .compilation_context import activate_compiler
 from .typesys import (
     TpyType, INT32, INT64, BIGINT, VOID, NominalType,
@@ -60,12 +63,14 @@ from .toolchain import (  # noqa: F401 -- re-exported: external callers import t
     list_compilers,
     strict_warn_flags, get_or_build_pch, discover_runtime_cpp_sources,
     third_party_source_driver, darwin_cross_ld_flags, shared_link_flags,
+    PLATFORMS, platform_matches,
     _derive_c_compiler, _is_zig,
     _find_all_versioned, _find_best_versioned, _find_all_zig, _find_zig,
     _resolve_compiler, _auto_detect_compiler, _cxx_aliases,
 )
 from .symbol_binding import (
     BindingCell, SymbolKind, install_binding, protocol_kind_for,
+    resolve_definer,
 )
 from .mir.collect import call_definitions
 from .mir.definitions import MIRDefinitions
@@ -150,6 +155,24 @@ def parse_default_int_type(name: str) -> TpyType:
         f"Unsupported default int type '{name}'. Expected one of: "
         f"{', '.join(DEFAULT_INT_CHOICES)}"
     )
+
+
+def admitted_names(entries: list[tuple[str, str | None]],
+                   target: str | None) -> list[str]:
+    """The names of the (name, platform) settings `entries` the build
+    `target` (a `PLATFORMS` key) admits -- every entry's with no target --
+    in order, a repeated name at its first admitted occurrence."""
+    return list(dict.fromkeys(
+        name for name, platform in entries
+        if target is None or platform_matches(platform, target)))
+
+
+def _cmake_system_condition(platform: str | None) -> str | None:
+    """The CMake `if()` condition admitting `platform` (a `PLATFORMS`
+    key), None for an unfiltered entry."""
+    if platform is None:
+        return None
+    return f'CMAKE_SYSTEM_NAME STREQUAL "{PLATFORMS[platform].cmake_system}"'
 
 
 class BuildLayout:
@@ -377,8 +400,8 @@ class BuildLayout:
             # Link-only: a darwin-cross driver would otherwise pick the host's
             # ELF `ld`. Not on config.compiler (it errors as unused on -c
             # compiles); the link is the single place it belongs.
-            *darwin_cross_ld_flags(config.compiler),
-            *(shared_link_flags(config.compiler) if shared else []),
+            *darwin_cross_ld_flags(config.compiler, config.target_platform),
+            *(shared_link_flags(config.target_platform) if shared else []),
             "-o", str(output),
             *obj_files,
             *(extra_objects or []),
@@ -391,10 +414,10 @@ class BuildLayout:
         self,
         runtime_include_dir: Path,
         cpp_files: list[Path],
-        link_flags: list[str] | None = None,
+        link_libs: list[tuple[str, str | None]] | None = None,
         extra_include_dirs: list[Path] | None = None,
         bundle_runtime: bool = True,
-        third_party_libs: list[Any] | None = None,
+        third_party_libs: list[tuple[Any, str | None]] | None = None,
         runtime_cpp_sources: list[Path] | None = None,
         compile_definitions: list[str] | None = None,
     ) -> Path:
@@ -405,7 +428,8 @@ class BuildLayout:
           TPYC_INCLUDE_DIRS -- include directories (generated headers + runtime)
           TPYC_LIBRARIES    -- link libraries (from `__tpy__` "links",
                                extended at configure time by third-party
-                               selectors)
+                               selectors); an entry with a "platform" is
+                               appended under `if(CMAKE_SYSTEM_NAME ...)`
           TPYC_COMPILE_DEFINITIONS -- defines the build options selected
                                (`--no-signals`); empty by default. They change
                                the runtime headers, so they go on every TU
@@ -415,8 +439,10 @@ class BuildLayout:
         When bundle_runtime is True (default), the runtime headers are copied
         into the output directory so the result is self-contained.
 
-        third_party_libs (list of `tpyc.build.third_party.ThirdPartyLib`)
-        gets the 3-mode CMake selector emitted for each. When bundle_runtime
+        link_libs: (lib, platform) pairs of the plain "links" entries.
+        third_party_libs: (`tpyc.build.third_party.ThirdPartyLib`, platform)
+        pairs; each library gets the 3-mode CMake selector, under the
+        CMake condition of its platforms. When bundle_runtime
         is True, vendored source trees are also copied alongside the runtime
         so the output is fully self-contained.
 
@@ -475,10 +501,13 @@ class BuildLayout:
             except ValueError:
                 include_dirs.append(str(extra_d))
 
-        libraries = []
-        for flag in (link_flags or []):
-            if flag.startswith("-l"):
-                libraries.append(flag[2:])
+        link_libs = link_libs or []
+        # Every entry appends in declaration order under its own condition
+        # and a repeated name keeps its first ADMITTED occurrence, the rule
+        # the direct build applies, so both link in the same order.
+        leading = 0
+        while leading < len(link_libs) and link_libs[leading][1] is None:
+            leading += 1
 
         lines = [
             "# Generated by tpyc -- include() this from your CMakeLists.txt",
@@ -505,9 +534,20 @@ class BuildLayout:
         lines.append("")
 
         lines.append("set(TPYC_LIBRARIES")
-        for lib in libraries:
+        for lib, _ in link_libs[:leading]:
             lines.append(f"    {lib}")
         lines.append(")")
+        for lib, platform in link_libs[leading:]:
+            condition = _cmake_system_condition(platform)
+            if condition is None:
+                lines.append(f"list(APPEND TPYC_LIBRARIES {lib})")
+            else:
+                lines += [f"if({condition})",
+                          f"    list(APPEND TPYC_LIBRARIES {lib})",
+                          "endif()"]
+        lib_names = [lib for lib, _ in link_libs]
+        if len(set(lib_names)) < len(lib_names):
+            lines.append("list(REMOVE_DUPLICATES TPYC_LIBRARIES)")
         lines.append("")
 
         # Third-party libraries (PCRE2 etc.). Each lib emits a 3-mode
@@ -516,14 +556,42 @@ class BuildLayout:
         if third_party_libs:
             from .build.third_party import (
                 emit_cmake_snippet, bundle_source_tree, collect_licenses,
+                cmake_selected_marker,
             )
-            for lib in third_party_libs:
-                lines.append(emit_cmake_snippet(lib))
+            managed = {lib.name: lib for lib, _ in third_party_libs}
+            names = [lib.name for lib, _ in third_party_libs]
+            repeated = {n for n in names if names.count(n) > 1}
+            # Declaration order, each entry under its own condition; a
+            # repeated library's selector runs only at its first ADMITTED
+            # occurrence (the marker is set from then on), so it is
+            # configured once and links where the direct build puts it.
+            seen: set[str] = set()
+            for lib, platform in third_party_libs:
+                condition = _cmake_system_condition(platform)
+                marker = cmake_selected_marker(lib)
+                if lib.name in seen:
+                    once = f"NOT DEFINED {marker}"
+                    condition = (once if condition is None
+                                 else f"({condition}) AND {once}")
+                indent = "" if condition is None else "    "
+                if condition is not None:
+                    lines.append(f"if({condition})")
+                lines.append(emit_cmake_snippet(lib, indent=indent))
+                if lib.name in repeated:
+                    lines.append(f"{indent}set({marker} TRUE)")
+                if condition is not None:
+                    lines.append("endif()")
                 lines.append("")
-                if bundle_runtime:
+                if bundle_runtime and lib.name not in seen:
                     bundle_source_tree(lib, self.root_dir)
+                seen.add(lib.name)
+            for name in dict.fromkeys(names):
+                if name in repeated:
+                    lines.append(f"unset({cmake_selected_marker(managed[name])})")
+            if repeated:
+                lines.append("")
             if bundle_runtime:
-                collect_licenses(third_party_libs, self.root_dir)
+                collect_licenses(list(managed.values()), self.root_dir)
 
         lines.append("set(TPYC_COMPILE_DEFINITIONS")
         for definition in (compile_definitions or []):
@@ -3597,44 +3665,38 @@ class Compiler:
             ModuleInfo suitable for registry storage.
         """
         from .typesys import ModuleInfo, ModuleVarInfo, FinalType
-        from .parse import TpyVarDecl, VarLinkage
 
         functions = dict(exports.functions)
 
-        # Collect native_global declarations from this module's top-level
-        # statements so use sites in other modules can emit the correct
-        # absolute-qualified C++ name instead of the module-namespace-based one.
-        native_globals_by_name: dict[str, str] = {}
-        if compiled is not None:
-            for stmt in compiled.ast.top_level_stmts:
-                if isinstance(stmt, TpyVarDecl) and stmt.linkage != VarLinkage.DEFAULT:
-                    cpp_name = stmt.native_name or stmt.name
-                    native_globals_by_name[stmt.name] = f"::{cpp_name}"
+        # A re-export's entry carries its DEFINER's facts (native symbol,
+        # pointer slot), so a read through any module's entry renders the
+        # definer's storage without walking the chain again.
+        native_symbols: dict[str, dict[str, str]] = {}
 
-        # cpp_expr is the cross-module use-site form, always absolute
-        # (`::tpyapp::...`). Re-exported variables resolve to their
-        # ultimate defining module via the attribute-table binding;
-        # falls back to a local-module qname for entries the backfill
-        # didn't reach (ad-hoc ModuleExports without a CompiledModule).
-        from .symbol_binding import lookup_qualified
-        attrs = compiled.module_attributes if compiled is not None else None
+        def native_symbol(module: str, var: str) -> str | None:
+            if module not in native_symbols:
+                dep = compiled if module == name else self.modules.get(module)
+                native_symbols[module] = (
+                    module_native_global_names(dep.ast.top_level_stmts)
+                    if dep is not None else {})
+            symbol = native_symbols[module].get(var)
+            return qualify_native_name(symbol) if symbol is not None else None
+
         variables = {}
         for k, v in exports.variables.items():
-            qual = lookup_qualified(attrs, k, name)
-            if qual is not None:
-                cpp_expr = qualified_cpp_name(*qual)
-            else:
-                cpp_expr = qualified_cpp_name(name, k)
+            def_mod, def_name = (
+                resolve_definer(self, name, k, SymbolKind.VARIABLE)
+                if compiled is not None else (name, k))
+            native_name = native_symbol(def_mod, def_name)
             # Non-Final non-value-type globals are stored as T* pointers in C++;
             # native_globals are declared directly via `extern T name;` so they
             # don't add the pointer indirection layer regardless of value-type-ness.
-            is_native_global = k in native_globals_by_name
             is_ptr = (not isinstance(v, FinalType)
                       and not v.is_value_type()
-                      and not is_native_global)
+                      and native_name is None)
             variables[k] = ModuleVarInfo(
-                k, v, cpp_expr, is_pointer=is_ptr,
-                native_cpp_name=native_globals_by_name.get(k),
+                k, v, is_pointer=is_ptr,
+                native_cpp_name=native_name,
                 is_final=k in exports.final_variables,
             )
 
@@ -4322,36 +4384,29 @@ class Compiler:
         emits a PyInit_-exporting .so instead of an executable."""
         return any(c.ast.directives.ext_module for c in self.modules.values())
 
-    def collect_link_flags(self) -> list[str]:
-        """Collect -l linker flags from all compiled modules' link directives.
+    def link_entries(self) -> list[tuple[str, str | None]]:
+        """The plain `-l` libraries of every module's `__tpy__` "links"
+        with their platform filters, deduplicated, in order -- for an
+        output that keeps the condition (sources.cmake)."""
+        return list(dict.fromkeys(
+            entry for compiled in self.modules.values()
+            for entry in compiled.ast.directives.link_libs))
 
-        Filters by current platform. Deduplicates while preserving order.
-        """
-        seen: set[str] = set()
-        flags: list[str] = []
-        for compiled in self.modules.values():
-            for lib, platform_filter in compiled.ast.directives.link_libs:
-                if not platform_matches(platform_filter):
-                    continue
-                flag = f"-l{lib}"
-                if flag not in seen:
-                    seen.add(flag)
-                    flags.append(flag)
-        return flags
+    def third_party_entries(self) -> list[tuple[str, str | None]]:
+        """The managed third-party libraries of every module's `__tpy__`
+        "links" with their platform filters, deduplicated, in order."""
+        return list(dict.fromkeys(
+            entry for compiled in self.modules.values()
+            for entry in compiled.ast.directives.third_party_deps))
 
-    def collect_third_party_deps(self) -> list[str]:
-        """Collect third-party library names declared by `__tpy__` "links" entries with `"managed": True`.
+    def collect_link_flags(self, target: str) -> list[str]:
+        """The `-l` flags of the plain link entries the build `target` (a
+        `PLATFORMS` key) admits, deduplicated, in order."""
+        return [f"-l{lib}" for lib in admitted_names(self.link_entries(), target)]
 
-        Filters by current platform, deduplicates while preserving order.
-        Names map to entries in ``tpyc.build.third_party._FACTORIES``.
-        """
-        seen: set[str] = set()
-        names: list[str] = []
-        for compiled in self.modules.values():
-            for name, platform_filter in compiled.ast.directives.third_party_deps:
-                if not platform_matches(platform_filter):
-                    continue
-                if name not in seen:
-                    seen.add(name)
-                    names.append(name)
-        return names
+    def collect_third_party_deps(self, target: str | None) -> list[str]:
+        """The managed third-party library names the build `target` admits,
+        deduplicated, in order; every platform's with no target (an output
+        that is not built here). Names map to entries in
+        ``tpyc.build.third_party._FACTORIES``."""
+        return admitted_names(self.third_party_entries(), target)

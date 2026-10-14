@@ -111,30 +111,30 @@ bool access_path(std::string_view path, int64_t mode);
 
 // open()/lseek()/access() flag, whence, and mode constants, exposed to TPy via
 // native_global. Sourced from the real macros so the platform-varying values
-// (O_CREAT family differs Linux vs macOS) are correct; non-const so the TPy
-// native_global binding's `extern int64_t` matches. The TPy-side names (os.O_*,
+// (O_CREAT family differs Linux vs macOS) are correct; const, matching the
+// `extern const` a `Final` native_global declares. The TPy-side names (os.O_*,
 // os.SEEK_*, os.*_OK) would collide with these libc macros if emitted as C++
 // symbols, which is exactly why they bind to these safe-named globals instead.
-extern int64_t kc_o_rdonly;
-extern int64_t kc_o_wronly;
-extern int64_t kc_o_rdwr;
-extern int64_t kc_o_creat;
-extern int64_t kc_o_excl;
-extern int64_t kc_o_trunc;
-extern int64_t kc_o_append;
-extern int64_t kc_seek_set;
-extern int64_t kc_seek_cur;
-extern int64_t kc_seek_end;
-extern int64_t kc_f_ok;
-extern int64_t kc_r_ok;
-extern int64_t kc_w_ok;
-extern int64_t kc_x_ok;
+extern const int64_t kc_o_rdonly;
+extern const int64_t kc_o_wronly;
+extern const int64_t kc_o_rdwr;
+extern const int64_t kc_o_creat;
+extern const int64_t kc_o_excl;
+extern const int64_t kc_o_trunc;
+extern const int64_t kc_o_append;
+extern const int64_t kc_seek_set;
+extern const int64_t kc_seek_cur;
+extern const int64_t kc_seek_end;
+extern const int64_t kc_f_ok;
+extern const int64_t kc_r_ok;
+extern const int64_t kc_w_ok;
+extern const int64_t kc_x_ok;
 
 // int32 SEEK_* for io.seek (its whence is int32, not the int64 os.lseek uses);
 // same POSIX values, separate width.
-extern int32_t kc_seek_set32;
-extern int32_t kc_seek_cur32;
-extern int32_t kc_seek_end32;
+extern const int32_t kc_seek_set32;
+extern const int32_t kc_seek_cur32;
+extern const int32_t kc_seek_end32;
 
 // Process identity + small system queries. getpid/getppid/getuid/... can't fail
 // (POSIX). getlogin raises OSError on failure (no controlling terminal); umask
@@ -172,7 +172,7 @@ std::tuple<int64_t, int64_t> waitpid(int64_t pid, int64_t options);
 // gone, no fd left. Lets a wait for a child share one poll() with other fds.
 int64_t pidfd_open(int64_t pid);
 int64_t waitstatus_to_exitcode(int64_t status);
-extern int64_t kc_wnohang;
+extern const int64_t kc_wnohang;
 
 // subprocess.Popen backing: posix_spawnp `args` with the current environment.
 // Each *_spec is subprocess's PIPE (-1) / STDOUT (-2, stderr only) /

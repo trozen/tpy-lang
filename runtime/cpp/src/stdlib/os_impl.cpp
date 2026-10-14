@@ -544,23 +544,23 @@ StatTuple fstat_fd(int64_t fd) {
 
 // Constant values from the real macros (see os.hpp for why TPy binds these via
 // native_global rather than naming the constants directly).
-int64_t kc_o_rdonly = O_RDONLY;
-int64_t kc_o_wronly = O_WRONLY;
-int64_t kc_o_rdwr   = O_RDWR;
-int64_t kc_o_creat  = O_CREAT;
-int64_t kc_o_excl   = O_EXCL;
-int64_t kc_o_trunc  = O_TRUNC;
-int64_t kc_o_append = O_APPEND;
-int64_t kc_seek_set = SEEK_SET;
-int64_t kc_seek_cur = SEEK_CUR;
-int64_t kc_seek_end = SEEK_END;
-int64_t kc_f_ok     = F_OK;
-int64_t kc_r_ok     = R_OK;
-int64_t kc_w_ok     = W_OK;
-int64_t kc_x_ok     = X_OK;
-int32_t kc_seek_set32 = SEEK_SET;
-int32_t kc_seek_cur32 = SEEK_CUR;
-int32_t kc_seek_end32 = SEEK_END;
+const int64_t kc_o_rdonly = O_RDONLY;
+const int64_t kc_o_wronly = O_WRONLY;
+const int64_t kc_o_rdwr   = O_RDWR;
+const int64_t kc_o_creat  = O_CREAT;
+const int64_t kc_o_excl   = O_EXCL;
+const int64_t kc_o_trunc  = O_TRUNC;
+const int64_t kc_o_append = O_APPEND;
+const int64_t kc_seek_set = SEEK_SET;
+const int64_t kc_seek_cur = SEEK_CUR;
+const int64_t kc_seek_end = SEEK_END;
+const int64_t kc_f_ok     = F_OK;
+const int64_t kc_r_ok     = R_OK;
+const int64_t kc_w_ok     = W_OK;
+const int64_t kc_x_ok     = X_OK;
+const int32_t kc_seek_set32 = SEEK_SET;
+const int32_t kc_seek_cur32 = SEEK_CUR;
+const int32_t kc_seek_end32 = SEEK_END;
 
 // --- Process identity + small system queries -------------------------------
 
@@ -744,7 +744,7 @@ int64_t waitstatus_to_exitcode(int64_t status) {
     ::tpy::raise_value_error("invalid wait status: {}", s);
 }
 
-int64_t kc_wnohang = WNOHANG;
+const int64_t kc_wnohang = WNOHANG;
 
 // Closing every non-stdio fd in the child needs a closefrom file action
 // (glibc >= 2.34) or Apple's close-on-exec-by-default spawn flag. Without
@@ -993,18 +993,19 @@ extern "C" {
 // File-domain errno constant values for the `errno` facade module, sourced
 // from <errno.h> here for the same reason socket_impl.cpp exposes the
 // network-domain set: platform-correct values without pulling system headers
-// into TPy-generated TUs. Non-const so the type matches the `extern int32_t`
-// the native_global decl emits.
-std::int32_t tpy_const_enoent = ENOENT;
-std::int32_t tpy_const_eexist = EEXIST;
-std::int32_t tpy_const_eacces = EACCES;
-std::int32_t tpy_const_eperm = EPERM;
-std::int32_t tpy_const_eisdir = EISDIR;
-std::int32_t tpy_const_enotdir = ENOTDIR;
-std::int32_t tpy_const_ebadf = EBADF;
-std::int32_t tpy_const_etimedout = ETIMEDOUT;
-std::int32_t tpy_const_einval = EINVAL;
-std::int32_t tpy_const_enotty = ENOTTY;
-std::int32_t tpy_const_espipe = ESPIPE;
+// into TPy-generated TUs. `extern const`: the `Final` native_global
+// declaration is const, and inside `extern "C" {}` a const would otherwise
+// get internal linkage.
+extern const std::int32_t tpy_const_enoent = ENOENT;
+extern const std::int32_t tpy_const_eexist = EEXIST;
+extern const std::int32_t tpy_const_eacces = EACCES;
+extern const std::int32_t tpy_const_eperm = EPERM;
+extern const std::int32_t tpy_const_eisdir = EISDIR;
+extern const std::int32_t tpy_const_enotdir = ENOTDIR;
+extern const std::int32_t tpy_const_ebadf = EBADF;
+extern const std::int32_t tpy_const_etimedout = ETIMEDOUT;
+extern const std::int32_t tpy_const_einval = EINVAL;
+extern const std::int32_t tpy_const_enotty = ENOTTY;
+extern const std::int32_t tpy_const_espipe = ESPIPE;
 
 }  // extern "C"

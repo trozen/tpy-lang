@@ -14,7 +14,7 @@ namespace tpyapp::main {
 //     n = 32
 //     print(n < sys.maxunicode)
 void main() {
-    std::string_view bo = ::tpystd::sys::byteorder;
+    std::string_view bo = ::tpy::sys_byteorder;
     std::cout << bo << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((bo == "little")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::sys::maxunicode << "\n" << ::tpy::check_signals;

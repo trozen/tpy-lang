@@ -17,7 +17,7 @@ from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage, TpyFieldAccess
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
-from ..parse.module_settings import platform_matches
+from ..toolchain import PLATFORMS
 from .resumable_cfg import (
     ResumableShape, recursive_delegation_error, resumable_state,
 )
@@ -50,6 +50,32 @@ def _emits_own_cpp(typ: NominalType) -> bool:
     if td is not None and (td.cpp_formatter is not None or td.is_compile_time_only):
         return True
     return typ.name in require_current_compiler().native_cpp_names
+
+
+def _write_settings_include(out: TextIO, header: str, platform: str | None,
+                            emitted: set[tuple[str, str | None]]) -> None:
+    """One `__tpy__` "includes" entry. A platform-filtered entry is guarded
+    by its platform's predefined macro, so the generated C++ is the same
+    whatever machine runs tpyc and the build target's preprocessor picks.
+    Deduplicated by (header, platform); an unconditional include of the
+    header makes its guarded ones redundant."""
+    if (header, platform) in emitted or (header, None) in emitted:
+        return
+    emitted.add((header, platform))
+    spelled = header if header.startswith('<') and header.endswith('>') else f'"{header}"'
+    if platform is None:
+        out.write(f'#include {spelled}\n')
+    else:
+        out.write(f'#if defined({PLATFORMS[platform].macro})\n'
+                  f'#include {spelled}\n'
+                  f'#endif\n')
+
+
+def _native_global_cpp_type(stmt: TpyVarDecl, var_type: TpyType) -> str:
+    """A `Final[T] = native_global(...)` binds a constant the runtime
+    defines `const` (possibly `constexpr`), so its declaration says so."""
+    cpp_type = var_type.to_cpp()
+    return f"const {cpp_type}" if stmt.is_final else cpp_type
 
 # Rendered lines (source-echo comments excluded) of a generator `__next__`
 # still worth defining inline in `<mod>_inl.hpp`. Measured with the consumer in
@@ -2630,15 +2656,10 @@ class CodeGenerator:
         out.write("#pragma once\n\n")
         out.write('#include <tpy/tpy.hpp>\n')
         included: set[str] = set()
+        included_headers: set[tuple[str, str | None]] = set()
         if directives and directives.includes:
             for include_path, platform in directives.includes:
-                if not platform_matches(platform):
-                    continue
-                if include_path.startswith('<') and include_path.endswith('>'):
-                    out.write(f'#include {include_path}\n')
-                else:
-                    out.write(f'#include "{include_path}"\n')
-                included.add(include_path)
+                _write_settings_include(out, include_path, platform, included_headers)
             out.write('\n')
         # Skip implicit stdlib peers we don't actually depend on -- auto-
         # including unrelated peers creates cycles when two stdlib modules
@@ -2696,15 +2717,7 @@ class CodeGenerator:
 
         def emit_native_includes(info) -> None:
             for inc, platform in info.includes:
-                if not platform_matches(platform):
-                    continue
-                if inc in included:
-                    continue
-                if inc.startswith('<') and inc.endswith('>'):
-                    out.write(f'#include {inc}\n')
-                else:
-                    out.write(f'#include "{inc}"\n')
-                included.add(inc)
+                _write_settings_include(out, inc, platform, included_headers)
 
         def emit_non_native(mod_name: str) -> None:
             if mod_name == self.ctx.module_name or mod_name in included:
@@ -2782,10 +2795,10 @@ class CodeGenerator:
                         elem_cpp = var_type.to_cpp()
                     out.write(f'extern "C" {elem_cpp} {cpp_name}[];\n')
                 elif stmt.linkage == VarLinkage.NATIVE_C:
-                    cpp_type = var_type.to_cpp()
+                    cpp_type = _native_global_cpp_type(stmt, var_type)
                     out.write(f'extern "C" {cpp_type} {cpp_name};\n')
                 else:
-                    cpp_type = var_type.to_cpp()
+                    cpp_type = _native_global_cpp_type(stmt, var_type)
                     ns, bare = FunctionGenerator._split_native_name(cpp_name)
                     if ns:
                         out.write(f"namespace {ns} {{ extern {cpp_type} {bare}; }}\n")

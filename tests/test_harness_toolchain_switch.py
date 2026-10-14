@@ -9,6 +9,7 @@ from pathlib import Path
 import pytest
 
 import conftest
+from tpyc import toolchain
 
 
 class FakeToolchain:
@@ -42,13 +43,15 @@ def worker(monkeypatch):
         return FakeToolchain(cxx, ccache=True)
     monkeypatch.setattr(conftest.CppCompilerConfig, "from_env", staticmethod(from_env))
     monkeypatch.setattr(conftest, "strict_warn_flags", lambda compiler: ["-Wall"])
+    monkeypatch.setattr(toolchain, "compiler_dumpmachine",
+                        lambda compiler: "x86_64-unknown-freebsd14.1")
     # the real sweep would act on this machine's shared cache
     monkeypatch.setattr(conftest, "_sweep_shared_cache", lambda: None)
     # pytest_configure mutates these module globals; the real ones must
     # survive for the rest of this worker's session
     monkeypatch.setattr(conftest, "DEP_MODES", {})
     monkeypatch.setattr(conftest, "UPDATE_EXPECTED", conftest.UPDATE_EXPECTED)
-    for attr in ("compiler", "std", "extra_flags", "ccache", "warn_flags"):
+    for attr in ("compiler", "target_platform", "std", "extra_flags", "ccache", "warn_flags"):
         monkeypatch.setattr(conftest.CPP_CONFIG, attr, getattr(conftest.CPP_CONFIG, attr))
     return resolved
 
@@ -57,6 +60,7 @@ def test_worker_resolves_cxx_by_name(worker):
     conftest.pytest_configure(FakeConfig(**{"--cxx": "clang"}))
     assert worker == ["clang"]
     assert conftest.CPP_CONFIG.compiler == ["/opt/clang/bin/c++"]
+    assert conftest.CPP_CONFIG.target_platform == "freebsd"  # decided by the new compiler
     assert conftest.CPP_CONFIG.ccache is True
     assert "CXX" not in os.environ  # nothing travels through the environment
 
