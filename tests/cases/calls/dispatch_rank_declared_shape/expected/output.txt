@@ -24,3 +24,27 @@ receiver_twins: mut mut 11
 own_base: own own True
 plain_int: bare bare
 callable_result: 102 4
+coerce_base_vs_proto: base base base 3
+coerce_base_vs_proto: base 4
+coerce_base_vs_proto: base 5
+coerce_ptr: base 1
+coerce_base_vs_t_param: base 1
+coerce_elem_widen: i32 generic
+coerce_generic_shapes: genproto
+coerce_generic_shapes: shape 0
+coerce_generic_shapes: shape 0
+coerce_generic_shapes: shape 0
+coerce_proto_vs_t: proto proto 2
+coerce_literal_vs_str: lit lit
+coerce_optional_base: opt 1
+coerce_width: int64
+coerce_subclass_vs_proto: dog 1
+coerce_method: int64
+coerce_optional_scalar: dog 1
+coerce_optional_scalar: dog 1
+coerce_tie_escape: animal_dog 1
+coerce_container: i64 i64
+coerce_callable: base base 2
+coerce_callable_base: base 1
+coerce_literal_int: bases-i64 bases-i64 2
+coerce_literal_range: f64

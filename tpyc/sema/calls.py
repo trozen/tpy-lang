@@ -65,9 +65,9 @@ from .own_copy import (KIND_SLOT, contains_reference_type, copy_result_under_wri
                        slot_message, value_call_copy_message)
 from .iter_loans import IterElementSource, iter_element_source
 from .overloads import (
-    type_matches_numeric, coercion_pass_rank, CoercionFit,
+    type_matches_numeric,
     resolve_overload, OverloadAmbiguityError,
-    _classify_overload, _expand_arg_types_with_kwargs,
+    OverloadCandidate, rank_overload_candidates, _expand_arg_types_with_kwargs,
     _scalar_widening_cost, call_resolves_param, call_resolves_params,
 )
 from .context import (
@@ -4898,83 +4898,26 @@ class CallAnalyzer:
                 continue
             candidate_evidences.append(evidence)
 
-        # Score candidates manually (resolve_overload takes a single
-        # arg_types; we have per-candidate arg_types here).
-        protocol_checker = self.protocols.type_conforms_to_protocol
-        classifier = self.protocols.classify_protocol_conformance
-        scored: list[tuple[
-            tuple[int, int, tuple[int, ...], int],
-            FunctionInfo,
-            list[TpyType],
-            dict[str, TpyType],
-            tuple[FunctionInfo, dict[str, TpyType]] | None,
-        ]] = []
-        for substituted, arg_types, kwarg_types, origin in candidate_evidences:
-            fit = _classify_overload(
-                substituted, arg_types,
-                protocol_checker, classifier,
-                self.ctx.default_int_type, self.type_ops,
-                kwarg_types=kwarg_types or None,
-                subclass_checker=self.ctx.registry.subclass_distance,
-            )
-            if fit is not None:
-                scored.append((fit.rank(), substituted, arg_types, kwarg_types, origin))
+        # Each candidate carries its own argument types, so the ranking
+        # takes them per candidate rather than through resolve_overload.
+        pick = rank_overload_candidates(
+            [OverloadCandidate(substituted, arg_types, kwarg_types or None)
+             for substituted, arg_types, kwarg_types, _ in candidate_evidences],
+            protocol_checker=self.protocols.type_conforms_to_protocol,
+            classifier=self.protocols.classify_protocol_conformance,
+            deref_checker=deref_checker,
+            default_int_type=self.ctx.default_int_type,
+            subclass_checker=self.ctx.registry.subclass_distance,
+            type_ops=self.type_ops,
+        )
 
         matched: FunctionInfo | None = None
         matched_origin: tuple[FunctionInfo, dict[str, TpyType]] | None = None
         winner_arg_types: list[TpyType] | None = None
         winner_kwarg_types: dict[str, TpyType] | None = None
-
-        if scored:
-            scored.sort(key=lambda c: c[0])
-            best_score = scored[0][0]
-            seen: set[tuple[TpyType, ...]] = set()
-            unique_tied: list[tuple[FunctionInfo, list[TpyType], dict[str, TpyType], tuple[FunctionInfo, dict[str, TpyType]] | None]] = []
-            for score, substituted, args, kwargs, origin in scored:
-                if score != best_score:
-                    break
-                key = tuple(p.type for p in substituted.params)
-                if key not in seen:
-                    seen.add(key)
-                    unique_tied.append((substituted, args, kwargs, origin))
-            if len(unique_tied) > 1:
-                raise OverloadAmbiguityError(tuple(u[0] for u in unique_tied))
-            matched, winner_arg_types, winner_kwarg_types, matched_origin = unique_tied[0]
-        else:
-            # Coercion-pass fallback: mirror resolve_overload's pass 2 so
-            # `Ptr[T] -> T`, `BigInt -> int32`, and other registered
-            # coercions still apply at non-Fn slots when no candidate
-            # passed strict scoring.
-            subclass_checker = self.ctx.registry.subclass_distance
-            coercion_scored: list[tuple[
-                CoercionFit,
-                FunctionInfo,
-                list[TpyType],
-                dict[str, TpyType],
-                tuple[FunctionInfo, dict[str, TpyType]] | None,
-            ]] = []
-            for substituted, arg_types, kwarg_types, origin in candidate_evidences:
-                effective_args = arg_types
-                if kwarg_types:
-                    expanded = _expand_arg_types_with_kwargs(
-                        effective_args, kwarg_types, substituted)
-                    if expanded is None:
-                        continue
-                    effective_args = expanded
-                if not (substituted.min_args <= len(effective_args) <= substituted.max_args):
-                    continue
-                fit = coercion_pass_rank(
-                    effective_args, [p.type for p in substituted.params],
-                    protocol_checker, deref_checker, subclass_checker,
-                    self.type_ops, self.ctx.default_int_type,
-                    declared=substituted,
-                    generic=substituted.is_generic())
-                if fit is not None:
-                    coercion_scored.append(
-                        (fit, substituted, arg_types, kwarg_types, origin))
-            if coercion_scored:
-                coercion_scored.sort(key=lambda x: x[0].rank())
-                _, matched, winner_arg_types, winner_kwarg_types, matched_origin = coercion_scored[0]
+        if pick.winner is not None:
+            matched, winner_arg_types, winner_kwarg_types, matched_origin = (
+                candidate_evidences[pick.winner])
 
         # arg_types for downstream diagnostics: the winner's typed list
         # if any candidate matched, else the baseline (with ANY at any
@@ -4992,10 +4935,10 @@ class CallAnalyzer:
         # the user's call shape) > pre-analysis failure.
         first_contextual_error = saved_dry_error or saved_unhinted_error
 
-        # Enrichment uses the substituted candidate pool for literal
-        # promotion. Build a candidate list from the scored entries (or
-        # candidate_evidences if none scored) for enriched_types.
-        pool_for_enrich = [s[1] for s in scored] if scored else [e[0] for e in candidate_evidences]
+        # Literal promotion reads the substituted candidates the strict
+        # stage found applicable, or every candidate when it found none.
+        pool_for_enrich = ([candidate_evidences[i][0] for i in pick.strict]
+                           if pick.strict else [e[0] for e in candidate_evidences])
         enriched_types = _enrich_literal_types(display_arg_types, expr.args, pool_for_enrich)
 
         return ResolveResult(
@@ -5832,13 +5775,9 @@ class CallAnalyzer:
         Turns the exception-carried tied candidates into an actionable message
         anchored at the call site; callers ``raise`` the returned error.
         """
-        sigs = "; ".join(self.compat.call_signature_text(c)
-                         for c in err.candidates)
         return self.ctx.error(
-            f"Ambiguous overload for '{func_name}': "
-            f"multiple candidates match equally: {sigs}",
-            expr,
-        )
+            self.compat.ambiguous_overload_text(func_name, err.candidates),
+            expr)
 
     def _unsafe_cast_diagnostics(self, expr: TpyCall, arg_type: TpyType) -> None:
         """Targeted diagnostics for unsafe_cast when overload resolution fails."""

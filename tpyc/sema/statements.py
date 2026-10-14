@@ -3072,9 +3072,10 @@ class StatementAnalyzer:
                             type_ops=self.type_ops,
                         )
                     except OverloadAmbiguityError as e:
-                        sigs = ", ".join(self.compat.call_signature_text(c)
-                                         for c in e.candidates)
-                        raise self.ctx.error(f"Ambiguous overload: {sigs}", stmt)
+                        raise self.ctx.error(
+                            self.compat.ambiguous_overload_text(
+                                f"{stmt.exception_type}.__init__", e.candidates),
+                            stmt)
                     if winner is None:
                         types_str = ", ".join(self.compat.call_type_text(t)
                                               for t in arg_types)

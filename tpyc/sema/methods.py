@@ -543,11 +543,9 @@ class MethodAnalyzer:
                         kwarg_types=kwarg_types,
                     )
                 except OverloadAmbiguityError as e:
-                    sigs = "; ".join(self.compat.call_signature_text(c)
-                                     for c in e.candidates)
                     raise self.ctx.error(
-                        f"Ambiguous overload for '{expr.method}': "
-                        f"multiple candidates match equally: {sigs}", expr)
+                        self.compat.ambiguous_overload_text(
+                            expr.method, e.candidates), expr)
                 if resolved is None:
                     if kwarg_types:
                         accepted_names = {p.name for o in overloads for p in o.params}

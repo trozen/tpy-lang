@@ -27,7 +27,7 @@ from ..type_def_registry import (
     is_str_type, is_bytes_type, is_str_category, is_bytes_category,
     int_traits_of,
 )
-from ..coercions import resolve_coercion, CoercionContext
+from ..coercions import resolve_coercion, CoercionContext, int_literal_fits_fixed_int
 from ..identity_map import IdentityMap
 from .protocols import ProtocolConformanceKind
 
@@ -42,7 +42,7 @@ if TYPE_CHECKING:
 
 
 class MatchTier(Enum):
-    """Specificity of a strict-pass overload match.
+    """Specificity of an argument's overload match.
 
     The integer ``value`` is the rank (lower = more specific) and doubles as
     an index into the per-tier count array in ``_score``. Not an ``IntEnum``
@@ -57,6 +57,10 @@ class MatchTier(Enum):
     GENERIC_PROTOCOL_EXPLICIT = 6  # generic over protocol param, explicit conformance
     GENERIC_PROTOCOL_STRUCTURAL = 7  # generic over protocol param, structural conformance
     GENERIC_WILDCARD = 8           # bare T / unconstrained generic
+    # An argument the strict match refuses and a conversion accepts (the
+    # conversion stage only). The converted count leads the rank
+    # (`OverloadFit.rank`), so this slot never decides between candidates.
+    CONVERTED = 9
 
 
 _NUM_MATCH_TIERS = len(MatchTier)
@@ -67,9 +71,9 @@ _TIER_COUNTS_SIZE = _NUM_MATCH_TIERS + 1
 
 
 class OverloadAmbiguityError(Exception):
-    """Raised by ``resolve_overload`` when multiple candidates tie at the top
-    of first-pass ranking (same tier counts, same widening cost, distinct
-    signatures).
+    """Raised by ``rank_overload_candidates`` (and so ``resolve_overload``)
+    when several candidates with distinct signatures tie at the top of the
+    ranking, in either stage.
 
     Callers with source-location context should catch this and re-raise as a
     proper ``SemanticError`` so the user sees the call site, not a bare
@@ -397,7 +401,7 @@ def _upcast_distance(arg_type: TpyType, param_type: TpyType,
 def _coercion_upcast_distance(arg_type: TpyType, param_type: TpyType,
                               subclass_checker: 'SubclassChecker | None'
                               ) -> int | None:
-    """`_upcast_distance` in the coercion pass, which also passes a
+    """`_upcast_distance` in the conversion stage, which also passes a
     subclass record value at a pointer to its base."""
     distance = _upcast_distance(arg_type, param_type, subclass_checker)
     if distance is not None:
@@ -460,8 +464,7 @@ def _classify_strict_match(
     # picks the default-width overload (int32) over the smallest-fitting one
     # (int8) when multiple fixed-int overloads accept the value.
     if isinstance(arg_inner, IntLiteralType) and is_fixed_int_type(param_inner):
-        tr = int_traits_of(param_inner)
-        if arg_inner.value is None or tr.min_value <= arg_inner.value <= tr.max_value:
+        if int_literal_fits_fixed_int(arg_inner, param_inner):
             return (MatchTier.EXACT_CONCRETE,
                     _scalar_widening_cost(arg_inner, param_inner, default_int_type))
     # None literal (NoneType) matches None type annotation (VoidType)
@@ -486,7 +489,7 @@ def _classify_strict_match(
     if isinstance(arg_inner, PendingStrType) and is_str_type(param_inner):
         return (MatchTier.EXACT_CONCRETE, 0)
     # Single-value LiteralType matches multi-value LiteralType if value is in the set.
-    # Only in strict pass -- LiteralType -> base type is deferred to coercion pass
+    # LiteralType -> base type is left to the conversion stage (a converted cell)
     # so that Literal stubs are preferred over plain stubs regardless of order.
     if isinstance(arg_inner, LiteralType) and isinstance(param_inner, LiteralType):
         return ((MatchTier.EXACT_CONCRETE, 0)
@@ -632,10 +635,7 @@ def type_matches_numeric(
         return True
     if isinstance(arg_type, IntLiteralType):
         if is_fixed_int_type(param_type):
-            if arg_type.value is None:
-                return True  # Unknown value -- can't range-check, allow match
-            tr = int_traits_of(param_type)
-            return tr.min_value <= arg_type.value <= tr.max_value
+            return int_literal_fits_fixed_int(arg_type, param_type)
         if is_big_int_type(param_type) or isinstance(param_type, IntLiteralType):
             return True
         if is_float_type(param_type):
@@ -674,7 +674,10 @@ def type_matches_with_coercion(
 ) -> bool:
     """Type matching allowing IntLiteral flexibility, protocols, and registered coercions.
 
-    Used for overload resolution second pass and constructor matching.
+    The applicability check of the conversion stage of overload resolution
+    (`_converted_cell`), which hands it the argument's conversion target
+    (`_conversion_target`), so an Optional parameter arrives here as its
+    payload for a non-optional argument.
     """
     # An undecided container is applicable here exactly when it is in the
     # strict pass (`_undecided_container_arm`).
@@ -745,13 +748,14 @@ def type_matches_with_coercion(
     return False
 
 
-def _int_literal_penalty(arg_t: TpyType, ptype: TpyType,
+def _int_literal_penalty(arg_t: TpyType, target: TpyType,
                          default_int_type: TpyType) -> int:
-    """How far an integer literal argument's parameter is from the default
-    integer type (0 there), so a literal prefers the default width."""
+    """How far an integer literal argument's conversion target
+    (`_conversion_target`) is from the default integer type (0 there), so
+    a literal prefers the default width."""
     if not isinstance(arg_t, IntLiteralType):
         return 0
-    ptype = unwrap_ref_type(ptype)
+    ptype = target
     if ptype == default_int_type:
         return 0
     default_tr = int_traits_of(default_int_type)
@@ -770,69 +774,70 @@ def _int_literal_penalty(arg_t: TpyType, ptype: TpyType,
     return 1
 
 
-class CoercionFit(NamedTuple):
-    """A candidate's coercion-pass match (`coercion_pass_rank`): its
-    container widening (`_container_fit`), how many arguments match without
-    a conversion, how far the call narrows a scalar (a BigInt into a
-    fixed-width slot, an integer literal away from the default width), how
-    far up their MROs its subclass arguments convert (`_upcast_distance`,
-    summed), and whether it is a generic one's instantiation."""
-    widening: int
-    exact: int
+def _numeric_scalar(t: TpyType) -> bool:
+    return (int_traits_of(t) is not None or is_big_int_type(t)
+            or is_any_float_type(t))
+
+
+def _conversion_target(arg_inner: TpyType, param_type: TpyType) -> TpyType:
+    """The type an argument converts to at `param_type`: the parameter
+    without its qualifiers, and an optional one's payload unless the
+    argument is optional or None itself."""
+    def _bare(t: TpyType) -> TpyType:
+        t = unwrap_ref_type(unwrap_readonly(t))
+        return t.wrapped if isinstance(t, OwnType) else t
+    target = _bare(param_type)
+    if (isinstance(target, OptionalType)
+            and not isinstance(arg_inner, (OptionalType, NoneType))):
+        # The payload carries its own qualifiers (`Own[float32] | None`).
+        target = _bare(target.inner)
+    return target
+
+
+class _Conversion(NamedTuple):
+    """How one argument converts to its parameter (`_converted_cell`)."""
     narrowing: int
-    generic: bool
-    upcast: int
-
-    def rank(self) -> tuple[int, int, int, bool, int]:
-        """Lower is better: the least container widening, then the most
-        arguments matching without a conversion, the least narrowing, a
-        concrete signature over a generic instantiation, then the nearest
-        bases. A generic instantiated at the argument's own class upcasts
-        nothing, so the distance only orders concrete bases, as SUBCLASS
-        ranks above bare T in the strict pass; it keeps another argument's
-        conversion from turning the nearer base into a declaration-order
-        tie."""
-        return (self.widening, -self.exact, self.narrowing, self.generic,
-                self.upcast)
+    widening: int
+    cost: int
 
 
-def coercion_pass_rank(
-    args: list[TpyType], params: list[TpyType],
+def _converted_cell(
+    arg_type: TpyType, param_type: TpyType,
     protocol_checker: ProtocolChecker | None,
     deref_checker: DerefChecker | None,
     subclass_checker: SubclassChecker | None,
-    type_ops: 'TypeOperations | None',
     default_int_type: TpyType | None,
-    declared: FunctionInfo | None = None,
-    generic: bool = False,
-) -> CoercionFit | None:
-    """A candidate's fit in the coercion pass, or None when an argument
-    does not convert to its parameter. `declared`: the candidate, asked
-    which parameters the call resolves (`call_resolves_param`), so a view
-    there decides; `generic`: it is a generic one's instantiation."""
-    meets = [(_undecided_container_arm(
-                  a, p, type_ops,
-                  declared is not None and call_resolves_param(declared, i))
-              if _undecided_container(a) else None)
-             for i, (a, p) in enumerate(zip(args, params))]
-    widening = _container_fit(meets, default_int_type, type_ops)
-    if widening is None:
+) -> _Conversion | None:
+    """How an argument the strict match refuses converts to its parameter,
+    None when it does not: whether it narrows (a BigInt into a fixed
+    width), how far a numeric scalar widens (`_scalar_widening_cost`), and
+    its cost -- an integer literal's distance from the default width
+    (`_int_literal_penalty`), a subclass's from its base
+    (`_coercion_upcast_distance`). A literal its conversion row's
+    `check_range` refuses (an int literal a fixed width cannot hold, a
+    float literal float32 cannot) is no conversion there: the call would
+    reject it after the pick."""
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
+    if isinstance(arg_inner, OwnType):
+        arg_inner = arg_inner.wrapped
+    target = _conversion_target(arg_inner, param_type)
+    row = resolve_coercion(arg_inner, target, CoercionContext.ARG)
+    if (row is not None and row.check_range is not None
+            and not row.check_range(arg_inner, target)):
         return None
-    if not all(type_matches_with_coercion(a, p, protocol_checker, deref_checker,
-                                          subclass_checker)
-               for a, p, meet in zip(args, params, meets)
-               if meet is None or is_protocol_type(
-                   unwrap_ref_type(unwrap_readonly(p)))):
+    if not type_matches_with_coercion(arg_type, target, protocol_checker,
+                                      deref_checker, subclass_checker):
         return None
-    exact = sum(1 for a, p in zip(args, params) if type_matches_numeric(a, p))
+    narrowing = int(is_big_int_type(arg_inner) and is_fixed_int_type(target))
+    widening = 0
+    if (not isinstance(arg_inner, (IntLiteralType, FloatLiteralType))
+            and not is_big_int_type(arg_inner)
+            and _numeric_scalar(arg_inner) and _numeric_scalar(target)):
+        widening = _scalar_widening_cost(arg_inner, target, default_int_type)
     default = default_int_type if default_int_type is not None else BIGINT
-    narrowing = sum(1 for a, p in zip(args, params)
-                    if is_big_int_type(a) and is_fixed_int_type(unwrap_ref_type(p)))
-    narrowing += sum(_int_literal_penalty(a, p, default)
-                     for a, p in zip(args, params))
-    upcast = sum(_coercion_upcast_distance(a, p, subclass_checker) or 0
-                 for a, p in zip(args, params))
-    return CoercionFit(widening, exact, narrowing, generic, upcast)
+    cost = (_int_literal_penalty(arg_inner, target, default)
+            + (_coercion_upcast_distance(arg_type, target, subclass_checker) or 0))
+    return _Conversion(narrowing, widening, cost)
 
 
 def _expand_arg_types_with_kwargs(
@@ -904,20 +909,39 @@ def _expand_arg_types_with_kwargs(
 
 
 class OverloadFit(NamedTuple):
-    """A candidate's strict-pass match (`_classify_overload`): its
-    container widening (`_container_fit`), how far its explicit protocol
-    matches widen their arguments' elements, and its per-argument tiers
-    (each with its cost, `_score`)."""
+    """A candidate's match (`_classify_overload`): its container widening
+    (`_container_fit`), how far the call narrows a scalar (a BigInt into a
+    fixed-width parameter), how far its arguments' conversions widen them
+    (the elements an explicit protocol match widens, a converted numeric
+    scalar), and one cell per argument -- its tier (`CONVERTED` for one
+    only a conversion accepts) with its cost (`_score`)."""
     widening: int
-    element_widening: int
+    narrowing: int
+    conversion_widening: int
     per_arg: tuple[tuple[MatchTier, int], ...]
 
-    def rank(self) -> tuple[int, int, tuple[int, ...], int]:
-        """Lower is better: the container widening first -- an overload
-        never widens a container another applicable one takes as it is --
-        then the element widening, which converts the argument as well,
-        then the tier counts and the summed cost (`_score`)."""
-        return (self.widening, self.element_widening, *_score(self.per_arg))
+    @property
+    def converted(self) -> int:
+        """How many arguments only a conversion accepts; a strict match
+        converts none."""
+        return sum(1 for tier, _ in self.per_arg if tier is MatchTier.CONVERTED)
+
+    def rank(self) -> tuple[int, int, int, int, tuple[int, ...], int]:
+        """Lower is better, one key for both stages: the fewest converted
+        arguments, then the container widening -- an overload never
+        widens a container another applicable one takes as it is -- the
+        least narrowing, the least conversion widening, then the tier
+        counts and the summed cost (`_score`). A strict match converts and
+        narrows nothing, so the strict stage ranks on the rest."""
+        return (self.converted, self.widening, self.narrowing,
+                self.conversion_widening, *_score(self.per_arg))
+
+
+def _has_type_param_params(overload: FunctionInfo) -> bool:
+    """Whether `overload` still names its own type parameters in its
+    parameters (a generic not yet instantiated by the call site)."""
+    return overload.is_generic() and any(
+        contains_type_param(p.type) for p in overload.params)
 
 
 def _classify_overload(
@@ -930,17 +954,24 @@ def _classify_overload(
     kwarg_types: dict[str, TpyType] | None = None,
     joined_out: 'IdentityMap[FunctionInfo, dict[str, TpyType]] | None' = None,
     subclass_checker: 'SubclassChecker | None' = None,
+    convert: bool = False,
+    deref_checker: 'DerefChecker | None' = None,
+    binding: dict[str, TpyType] | None = None,
 ) -> OverloadFit | None:
-    """Classify every arg against ``overload``'s params, returning its
-    container widening and per-arg tier vector on match or ``None`` if any
-    arg rejects (or the container arguments do not fit it together). A generic
-    overload refused for a joined fixed-int binding leaves its bindings in
-    ``joined_out`` for the second pass.
+    """Classify every arg against ``overload``'s params, returning its fit
+    or ``None`` if any arg rejects (or the container arguments do not fit
+    it together).
 
-    For generic overloads (``TypeParamRef`` in params), inference runs first
-    (using ``protocol_checker`` to validate type-parameter bounds) and
-    ``_classify_generic_param_match`` is used for the TPR params; other
-    params fall through to the regular strict classifier.
+    Strict (``convert`` off): for a generic overload (``TypeParamRef`` in
+    params) inference runs first (using ``protocol_checker`` to validate
+    type-parameter bounds) and ``_classify_generic_param_match`` gives the
+    TPR params their cells; one refused for a joined fixed-int binding
+    leaves its bindings in ``joined_out`` for the conversion stage.
+
+    ``convert`` on: an argument the strict match refuses takes a
+    ``CONVERTED`` cell where a conversion accepts it (`_converted_cell`).
+    Parameters are taken as given -- at ``binding``, a joined fixed-int
+    binding, when there is one -- with no inference.
     """
     if kwarg_types:
         expanded = _expand_arg_types_with_kwargs(arg_types, kwarg_types, overload)
@@ -949,8 +980,11 @@ def _classify_overload(
         arg_types = expanded
     if len(arg_types) < overload.min_args or len(arg_types) > overload.max_args:
         return None
-    has_tpr = overload.is_generic() and any(
-        contains_type_param(p.type) for p in overload.params)
+    params = overload.params
+    if convert and binding is not None:
+        assert type_ops is not None
+        params = type_ops.substitute_method_type_params(overload, binding).params
+    has_tpr = not convert and _has_type_param_params(overload)
     inferred: dict[str, TpyType] | None = None
     if has_tpr:
         if type_ops is None:
@@ -961,15 +995,17 @@ def _classify_overload(
             joined=joined,
         )
         # A joined fixed-int binding converts an argument, so it is no
-        # strict match; the second pass ranks it with the other conversions.
+        # strict match; the conversion stage ranks it at its instantiation.
         if inferred is not None and joined and joined_out is not None:
             joined_out[overload] = inferred
         if inferred is None or joined:
             return None
     per_arg: list[tuple[MatchTier, int]] = []
     meets: list[ContainerMeet | None] = []
-    element_widening = 0
-    for i, (arg_t, (_, ptype)) in enumerate(zip(arg_types, overload.params)):
+    narrowing = 0
+    conversion_widening = 0
+    for i, (arg_t, param) in enumerate(zip(arg_types, params)):
+        ptype = param.type
         resolved = ptype
         if (has_tpr and _undecided_container(arg_t)
                 and contains_type_param(ptype)):
@@ -1000,6 +1036,14 @@ def _classify_overload(
                                           type_ops, subclass_checker)
             if cell is not None and declared is not None:
                 cell = _declared_tier(declared, cell)
+        if cell is None and convert:
+            conversion = _converted_cell(arg_t, ptype, protocol_checker,
+                                         deref_checker, subclass_checker,
+                                         default_int_type)
+            if conversion is not None:
+                narrowing += conversion.narrowing
+                conversion_widening += conversion.widening
+                cell = (MatchTier.CONVERTED, conversion.cost)
         if cell is None:
             return None
         # A protocol match that widens the argument's elements converts
@@ -1008,13 +1052,122 @@ def _classify_overload(
         if cell[0] in (MatchTier.PROTOCOL_EXPLICIT,
                        MatchTier.GENERIC_PROTOCOL_EXPLICIT):
             if meet is None:
-                element_widening += cell[1]
+                conversion_widening += cell[1]
             cell = (cell[0], 0)
         per_arg.append(cell)
     widening = _container_fit(meets, default_int_type, type_ops)
     if widening is None:
         return None
-    return OverloadFit(widening, element_widening, tuple(per_arg))
+    return OverloadFit(widening, narrowing, conversion_widening, tuple(per_arg))
+
+
+class OverloadCandidate(NamedTuple):
+    """One candidate of an overloaded call: the signature and the argument
+    types the call has at it (a caller that types arguments per candidate
+    passes each its own)."""
+    overload: FunctionInfo
+    arg_types: list[TpyType]
+    kwarg_types: dict[str, TpyType] | None = None
+
+
+class OverloadPick(NamedTuple):
+    """`rank_overload_candidates`' answer: the winning candidate's index,
+    None when none is applicable, and the candidates the strict stage
+    found applicable (empty when it found none)."""
+    winner: int | None
+    strict: tuple[int, ...] = ()
+
+
+def _pick_best(candidates: list[OverloadCandidate],
+               ranked: list[tuple[tuple, int]]) -> int:
+    """The tie rule of every overloaded call: the best-ranked of the
+    applicable `(rank, index)` pairs. Candidates with one parameter-type
+    sequence match identically (a substituted generic and its concrete
+    twin), so the first of them stands for all; a top tie between distinct
+    signatures is refused in either stage (`OverloadAmbiguityError`)."""
+    ranked = sorted(ranked, key=lambda r: r[0])
+    best = ranked[0][0]
+    seen: set[tuple[TpyType, ...]] = set()
+    tied: list[int] = []
+    for score, index in ranked:
+        if score != best:
+            break
+        key = tuple(p.type for p in candidates[index].overload.params)
+        if key not in seen:
+            seen.add(key)
+            tied.append(index)
+    if len(tied) > 1:
+        raise OverloadAmbiguityError(
+            tuple(candidates[i].overload for i in tied))
+    return tied[0]
+
+
+def rank_overload_candidates(
+    candidates: list[OverloadCandidate],
+    protocol_checker: ProtocolChecker | None = None,
+    classifier: ProtocolClassifier | None = None,
+    deref_checker: DerefChecker | None = None,
+    default_int_type: TpyType | None = None,
+    subclass_checker: SubclassChecker | None = None,
+    type_ops: 'TypeOperations | None' = None,
+) -> OverloadPick:
+    """Two-stage overload resolution over one ranking (`OverloadFit.rank`).
+
+    The strict stage takes the candidates that convert no argument; when
+    none does, a generic overload the legacy structural match accepts
+    (``type_ops`` omitted: first match in declaration order); then the
+    conversion stage ranks every candidate a conversion makes applicable,
+    a generic refused for a joined fixed-int binding at its instantiation.
+    A non-generic candidate is classified once for both stages.
+    """
+    joined: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
+    fallback: int | None = None
+    fits: list[OverloadFit | None] = []
+    for index, cand in enumerate(candidates):
+        overload = cand.overload
+        generic = _has_type_param_params(overload)
+        if generic and type_ops is None:
+            # Legacy structural-match fallback for generic overloads when the
+            # caller hasn't plumbed type_ops (e.g. the error-message-preservation
+            # path in calls.py). Kwargs aren't supported on this fallback path
+            # because it uses raw structural matching without arity expansion.
+            if (fallback is None and not cand.kwarg_types
+                    and overload.min_args <= len(cand.arg_types) <= overload.max_args
+                    and all(_structural_match(arg_t, p.type)
+                            for arg_t, p in zip(cand.arg_types, overload.params))):
+                fallback = index
+            fits.append(None)
+            continue
+        fits.append(_classify_overload(
+            overload, cand.arg_types, protocol_checker, classifier,
+            default_int_type, type_ops, kwarg_types=cand.kwarg_types,
+            joined_out=joined, subclass_checker=subclass_checker,
+            convert=not generic, deref_checker=deref_checker,
+        ))
+    strict = [i for i, fit in enumerate(fits)
+              if fit is not None and fit.converted == 0]
+    if strict:
+        return OverloadPick(
+            _pick_best(candidates, [(fits[i].rank(), i) for i in strict]),
+            tuple(strict))
+    if fallback is not None:
+        return OverloadPick(fallback)
+    ranked: list[tuple[tuple, int]] = []
+    for index, cand in enumerate(candidates):
+        fit = fits[index]
+        if _has_type_param_params(cand.overload):
+            fit = _classify_overload(
+                cand.overload, cand.arg_types, protocol_checker, classifier,
+                default_int_type, type_ops, kwarg_types=cand.kwarg_types,
+                subclass_checker=subclass_checker, convert=True,
+                deref_checker=deref_checker,
+                binding=joined.get(cand.overload),
+            )
+        if fit is not None:
+            ranked.append((fit.rank(), index))
+    if not ranked:
+        return OverloadPick(None)
+    return OverloadPick(_pick_best(candidates, ranked))
 
 
 def resolve_overload(
@@ -1030,11 +1183,11 @@ def resolve_overload(
     type_ops: 'TypeOperations | None' = None,
     kwarg_types: dict[str, TpyType] | None = None,
 ) -> FunctionInfo | None:
-    """Two-pass overload resolution: strict tier-ranked match, then coercions.
+    """`rank_overload_candidates` over ``overloads`` at one argument list.
 
     ``protocol_classifier`` enables explicit-vs-structural tier discrimination;
     when omitted, protocol hits are conservatively scored as STRUCTURAL.
-    ``type_ops`` enables the generic first-pass path (inference + tier
+    ``type_ops`` enables the generic strict path (inference + tier
     ranking); when omitted, generic overloads fall back to the legacy
     structural match (first-match-wins in declaration order).
 
@@ -1042,9 +1195,9 @@ def resolve_overload(
     expansion inserts them at the matching param slots so kwargs can
     disambiguate overloads that positional args tie on.
 
-    Returns the winning ``FunctionInfo`` or ``None`` (no match, or ambiguous
-    -- genuine ties at the top of the first-pass score are refused rather
-    than broken by declaration order).
+    Returns the winning ``FunctionInfo`` or ``None`` when none matches;
+    a genuine tie at the top raises ``OverloadAmbiguityError`` rather than
+    being broken by declaration order.
     """
     # Pre-filter consuming vs borrowing overloads by receiver ownership.
     # Must run BEFORE readonly filter: consuming overloads are non-readonly,
@@ -1070,88 +1223,13 @@ def resolve_overload(
             if mut:
                 overloads = mut
 
-    classifier = protocol_classifier or _bool_checker_to_classifier(protocol_checker)
-
-    first_generic_match_fallback: FunctionInfo | None = None
-    joined_bindings: IdentityMap[FunctionInfo, dict[str, TpyType]] = IdentityMap()
-    scored_candidates: list[tuple[tuple[int, int, tuple[int, ...], int], FunctionInfo]] = []
-    for overload in overloads:
-        if type_ops is None and overload.is_generic() and any(
-                contains_type_param(p.type) for p in overload.params):
-            # Legacy structural-match fallback for generic overloads when the
-            # caller hasn't plumbed type_ops (e.g. the error-message-preservation
-            # path in calls.py). Kwargs aren't supported on this fallback path
-            # because it uses raw structural matching without arity expansion.
-            if kwarg_types:
-                continue
-            if (first_generic_match_fallback is None
-                    and len(arg_types) >= overload.min_args
-                    and len(arg_types) <= overload.max_args
-                    and all(_structural_match(arg_t, ptype)
-                            for arg_t, (_, ptype) in zip(arg_types, overload.params))):
-                first_generic_match_fallback = overload
-            continue
-        fit = _classify_overload(
-            overload, arg_types, protocol_checker, classifier, default_int_type, type_ops,
-            kwarg_types=kwarg_types, joined_out=joined_bindings,
-            subclass_checker=subclass_checker,
-        )
-        if fit is not None:
-            scored_candidates.append((fit.rank(), overload))
-
-    if scored_candidates:
-        if len(scored_candidates) == 1:
-            return scored_candidates[0][1]
-        scored_candidates.sort(key=lambda c: c[0])
-        best_score = scored_candidates[0][0]
-        # Functionally-identical signatures aren't genuine ambiguity: a
-        # substituted generic and its concrete twin (both appended by
-        # calls.py's unified pool) match identically. Dedupe by param-type
-        # sequence; stable sort keeps the first-declared.
-        seen: set[tuple[TpyType, ...]] = set()
-        unique_tied: list[FunctionInfo] = []
-        for score, ov in scored_candidates:
-            if score != best_score:
-                break
-            key = tuple(p.type for p in ov.params)
-            if key not in seen:
-                seen.add(key)
-                unique_tied.append(ov)
-        if len(unique_tied) > 1:
-            raise OverloadAmbiguityError(tuple(unique_tied))
-        return unique_tied[0]
-
-    if first_generic_match_fallback is not None:
-        return first_generic_match_fallback
-
-    # Second pass: allow coercions, prefer overload with most non-coercion
-    # matches and fewest narrowing conversions (BigInt->int32 is lossy).
-    candidates: list[tuple[CoercionFit, FunctionInfo]] = []
-    for overload in overloads:
-        effective_args = arg_types
-        if kwarg_types:
-            expanded = _expand_arg_types_with_kwargs(arg_types, kwarg_types, overload)
-            if expanded is None:
-                continue
-            effective_args = expanded
-        if len(effective_args) < overload.min_args or len(effective_args) > overload.max_args:
-            continue
-        params = [p.type for p in overload.params]
-        # A joined fixed-int binding is the generic match the strict pass
-        # refused; here it is ranked at its instantiation.
-        if type_ops is not None and overload in joined_bindings:
-            params = [p.type for p in type_ops.substitute_method_type_params(
-                overload, joined_bindings[overload]).params]
-        fit = coercion_pass_rank(effective_args, params, protocol_checker,
-                                 deref_checker, subclass_checker, type_ops,
-                                 default_int_type,
-                                 declared=overload,
-                                 generic=overload.is_generic())
-        if fit is not None:
-            candidates.append((fit, overload))
-
-    if candidates:
-        candidates.sort(key=lambda c: c[0].rank())
-        return candidates[0][1]
-
-    return None
+    pick = rank_overload_candidates(
+        [OverloadCandidate(ov, arg_types, kwarg_types) for ov in overloads],
+        protocol_checker=protocol_checker,
+        classifier=protocol_classifier or _bool_checker_to_classifier(protocol_checker),
+        deref_checker=deref_checker,
+        default_int_type=default_int_type,
+        subclass_checker=subclass_checker,
+        type_ops=type_ops,
+    )
+    return overloads[pick.winner] if pick.winner is not None else None

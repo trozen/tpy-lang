@@ -344,9 +344,10 @@ def overload_args_pick(n: int32) -> None:
     y = tot2(empty_list(3))  # tpyc: ok
     print("args_pick_nested", y)
     x = float32(0.5)
-    # A float literal argument under a float32 local; which width_h overload
-    # it picks follows their declaration order (BUGS.md#dispatch-float-width-order).
-    x = width_h(0.25)  # tpyc: ok
+    # An explicit float32 argument under a float32 local picks the float32
+    # width_h variant; a bare float literal is ambiguous between float32 and
+    # float until literals rank by a default width (BUGS.md#dispatch-float-width-order).
+    x = width_h(float32(0.25))  # tpyc: ok
     print("args_pick_float32", x)
     w = int64(0)
     # The literal's width, not the inferred int64 local, picks the overload.

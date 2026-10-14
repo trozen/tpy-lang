@@ -8,7 +8,8 @@ need a full ``SemanticContext``:
 * ``_score`` (aggregate ranking key).
 * ``_classify_strict_match`` for non-protocol shapes and the subclass tier.
 * ``_declared_tier`` (a generic parameter ranks by its declared shape).
-* ``OverloadFit.rank`` (element widening before the tiers).
+* ``OverloadFit.rank`` (the one key of both stages: converted count, then
+  the container widening, narrowing, conversion widening, tiers).
 * ``_bool_checker_to_classifier`` adapter semantics.
 * ``OverloadAmbiguityError`` payload.
 
@@ -33,7 +34,6 @@ from tpyc.sema.overloads import (
     _scalar_widening_cost,
     _undecided_container_arm,
     call_resolves_params,
-    coercion_pass_rank,
     resolve_overload,
     type_matches_with_coercion,
     _score,
@@ -104,6 +104,7 @@ def test_match_tier_is_total_ordered_lowest_most_specific():
         MatchTier.GENERIC_PROTOCOL_EXPLICIT,
         MatchTier.GENERIC_PROTOCOL_STRUCTURAL,
         MatchTier.GENERIC_WILDCARD,
+        MatchTier.CONVERTED,
     ]
     assert len(tiers) == len(MatchTier)
     values = [t.value for t in tiers]
@@ -319,18 +320,29 @@ def test_undecided_container_arm_leaves_protocols_and_type_params_alone():
     assert ops.asked == []
 
 
-def test_coercion_pass_rank_leads_with_container_widening():
+def _convert_fit(args, params, ops=None, subclass_checker=None, declared=None,
+                 protocol_checker=None):
+    """`_classify_overload` in the conversion stage, at a candidate taking
+    `params` (or `declared`)."""
+    overload = declared if declared is not None else _fn("f", *params)
+    return _classify_overload(overload, list(args), protocol_checker,
+                              _bool_checker_to_classifier(protocol_checker),
+                              INT32, ops, subclass_checker=subclass_checker,
+                              convert=True)
+
+
+def test_conversion_stage_container_widening_ranks():
     ops = _Ops({_list(INT32): [(None, INT32, INT32)], _list(INT64): [(None, INT32, INT64)]})
-    narrow = coercion_pass_rank([_OPEN_LIST], [_list(INT32)], None, None, None, ops, INT32)
-    wide = coercion_pass_rank([_OPEN_LIST], [_list(INT64)], None, None, None, ops, INT32)
+    narrow = _convert_fit([_OPEN_LIST], [_list(INT32)], ops)
+    wide = _convert_fit([_OPEN_LIST], [_list(INT64)], ops)
     assert narrow is not None and wide is not None
     assert narrow.widening < wide.widening
-    assert coercion_pass_rank([_OPEN_LIST], [_list(INT8)], None, None, None, ops, INT32) is None
+    assert _convert_fit([_OPEN_LIST], [_list(INT8)], ops) is None
 
 
-def test_coercion_pass_rank_asks_each_argument_once():
+def test_conversion_stage_asks_each_argument_once():
     ops = _Ops({_list(INT64): [(None, INT32, INT64)]})
-    coercion_pass_rank([_OPEN_LIST], [_list(INT64)], None, None, None, ops, INT32)
+    _convert_fit([_OPEN_LIST], [_list(INT64)], ops)
     assert ops.asked == [_list(INT64)]
 
 
@@ -352,10 +364,9 @@ def test_a_cell_passed_twice_must_be_wanted_at_one_type():
     # alone accepts `ms` at both, so it is not applicable.
     ops = _Ops({_list(INT32): [(_CELL, INT32, INT32)],
                 _list(INT64): [(_CELL, INT32, INT64)]})
-    assert coercion_pass_rank([_OPEN_LIST, _OPEN_LIST], [_list(INT32), _list(INT64)],
-                              None, None, None, ops, INT32) is None
-    same = coercion_pass_rank([_OPEN_LIST, _OPEN_LIST], [_list(INT64), _list(INT64)],
-                              None, None, None, ops, INT32)
+    assert _convert_fit([_OPEN_LIST, _OPEN_LIST], [_list(INT32), _list(INT64)],
+                        ops) is None
+    same = _convert_fit([_OPEN_LIST, _OPEN_LIST], [_list(INT64), _list(INT64)], ops)
     # One cell widened once.
     assert same is not None and same.widening == 4
 
@@ -610,33 +621,92 @@ def test_owned_base_ranks_as_subclass():
                                       subclass_checker=_distance)
 
 
-def test_coercion_pass_ranks_the_nearer_base():
+def test_conversion_stage_ranks_the_nearer_base():
     # `f(puppy, 1.5)` at `(Animal, float)` / `(Dog, float)`: the literal
     # converts at both, so the nearer base decides, not declaration order.
     lit = FloatLiteralType(value=1.5)
-    far = coercion_pass_rank([_PUPPY, lit], [_ANIMAL, FLOAT], None, None,
-                             _distance, None, INT32)
-    near = coercion_pass_rank([_PUPPY, lit], [_DOG, FLOAT], None, None,
-                              _distance, None, INT32)
+    far = _convert_fit([_PUPPY, lit], [_ANIMAL, FLOAT], subclass_checker=_distance)
+    near = _convert_fit([_PUPPY, lit], [_DOG, FLOAT], subclass_checker=_distance)
     assert far is not None and near is not None
-    assert (far.upcast, near.upcast) == (2, 1)
+    assert (far.per_arg[0], near.per_arg[0]) == ((MatchTier.SUBCLASS, 2),
+                                                 (MatchTier.SUBCLASS, 1))
     assert near.rank() < far.rank()
-    # A value at a pointer to its base upcasts by the same distance.
-    ptr = coercion_pass_rank([_PUPPY], [PtrType(_ANIMAL)], None, None,
-                             _distance, None, INT32)
-    assert ptr is not None and ptr.upcast == 2
+    # A value at a pointer to its base converts, by the same distance.
+    ptr = _convert_fit([_PUPPY], [PtrType(_ANIMAL)], subclass_checker=_distance)
+    assert ptr is not None and ptr.per_arg == ((MatchTier.CONVERTED, 2),)
 
 
-def test_coercion_pass_ranks_a_base_above_bare_t():
-    # `f(dog, n8)` at `(Animal, int64)` / `[T](T, int64)`: T instantiated at
-    # Dog (a record T is `Ref[Dog]`) upcasts nothing, yet the concrete base
-    # wins, as in the strict pass.
-    base = coercion_pass_rank([_DOG, INT8], [_ANIMAL, INT64], None, None,
-                              _distance, None, INT32)
-    bare = coercion_pass_rank([_DOG, INT8], [RefType(_DOG), INT64], None, None,
-                              _distance, None, INT32, generic=True)
+def test_conversion_stage_ranks_a_base_above_bare_t():
+    # `f(dog, n8)` at `(Animal, int64)` / `[T](T, int64)` instantiated at
+    # Dog (a record T is `Ref[Dog]`): the declared shape gives the tier, so
+    # the concrete base wins, as in the strict stage.
+    base = _convert_fit([_DOG, INT8], [_ANIMAL, INT64], subclass_checker=_distance)
+    generic = FunctionInfo(name="f", params=(ParamInfo("a", _T), ParamInfo("n", INT64)),
+                           return_type=VOID, type_params=["T"])
+    inst = FunctionInfo(name="f", params=(ParamInfo("a", RefType(_DOG)), ParamInfo("n", INT64)),
+                        return_type=VOID, type_params=["T"], canonical_fi=generic)
+    bare = _convert_fit([_DOG, INT8], [], subclass_checker=_distance, declared=inst)
     assert base is not None and bare is not None
+    assert bare.per_arg[0] == (MatchTier.GENERIC_WILDCARD, 0)
     assert base.rank() < bare.rank()
+
+
+def test_strict_fit_converts_nothing_and_ranks_by_tiers():
+    # A strict match converts and narrows nothing: its rank is
+    # (0, container widening, 0, element widening, tier counts, cost).
+    fit = _convert_fit([_DOG, INT64], [_ANIMAL, INT64], subclass_checker=_distance)
+    assert fit is not None and fit.converted == 0
+    assert fit.rank()[:4] == (0, 0, 0, 0)
+    assert fit.rank()[4:] == _score(((MatchTier.SUBCLASS, 1),
+                                     (MatchTier.EXACT_CONCRETE, 0)))
+
+
+def test_converted_count_leads_the_rank():
+    # One conversion at an exact base outranks two at nearer cells, and
+    # beats any container widening.
+    one = OverloadFit(9, 0, 0, ((MatchTier.GENERIC_WILDCARD, 0),
+                                (MatchTier.CONVERTED, 0)))
+    two = OverloadFit(0, 0, 0, ((MatchTier.CONVERTED, 0),
+                                (MatchTier.CONVERTED, 0)))
+    assert one.converted == 1 and two.converted == 2
+    assert one.rank() < two.rank()
+
+
+def test_narrowing_ranks_before_the_tiers():
+    # `f(big)` (a BigInt) at `int64` / `float`: narrowing into the fixed
+    # width loses to the float conversion, whatever the tiers say.
+    big = BIGINT
+    narrows = _convert_fit([big, _DOG], [INT64, _DOG])
+    floats = _convert_fit([big, _DOG], [FLOAT, _ANIMAL], subclass_checker=_distance)
+    assert narrows is not None and floats is not None
+    assert (narrows.narrowing, floats.narrowing) == (1, 0)
+    assert floats.rank() < narrows.rank()
+
+
+def test_int_literal_at_int_is_converted():
+    # The strict stage refuses an int literal at `int` / `float`; the
+    # conversion stage converts it, its cost the distance from the default
+    # width -- through an optional parameter too.
+    lit = IntLiteralType(value=5)
+    at_int = _convert_fit([lit], [BIGINT])
+    at_opt = _convert_fit([lit], [OptionalType(BIGINT)])
+    assert at_int is not None and at_opt is not None
+    assert at_int.per_arg == ((MatchTier.CONVERTED, 8),)
+    assert at_opt.per_arg == at_int.per_arg
+    # A literal a fixed width cannot hold is no conversion there, nor at an
+    # owned optional payload of that width.
+    assert _convert_fit([IntLiteralType(value=10**10)], [INT32]) is None
+    assert _convert_fit([FloatLiteralType(value=1e300)],
+                        [OptionalType(OwnType(FLOAT32))]) is None
+
+
+def test_scalar_converts_into_an_optional_payload():
+    # An int8 at `int64 | None` converts as at `int64`, and widens as far.
+    opt = _convert_fit([INT8], [OptionalType(INT64)])
+    plain = _convert_fit([INT8], [INT64])
+    assert opt is not None and plain is not None
+    assert opt.rank() == plain.rank()
+    assert opt.conversion_widening > 0
 
 
 # --------------------------------------------------------------------------
@@ -682,10 +752,10 @@ def test_declared_protocol_over_type_param_keeps_the_conformance_kind():
 def test_fit_rank_element_widening_before_tiers():
     # A protocol match that converts no element beats a more specific one
     # that widens elements; the container widening still comes first.
-    widening = OverloadFit(0, 3, ((MatchTier.PROTOCOL_EXPLICIT, 0),))
-    exact = OverloadFit(0, 0, ((MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0),))
+    widening = OverloadFit(0, 0, 3, ((MatchTier.PROTOCOL_EXPLICIT, 0),))
+    exact = OverloadFit(0, 0, 0, ((MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0),))
     assert exact.rank() < widening.rank()
-    container = OverloadFit(1, 0, ((MatchTier.EXACT_CONCRETE, 0),))
+    container = OverloadFit(1, 0, 0, ((MatchTier.EXACT_CONCRETE, 0),))
     assert widening.rank() < container.rank()
 
 
@@ -704,7 +774,7 @@ def test_presubstituted_view_widens_an_undecided_container_once():
         inst, [_OPEN_LIST], lambda a, p: True,
         lambda a, p: ProtocolConformanceKind.EXPLICIT, INT32, ops)
     assert fit is not None
-    assert (fit.widening, fit.element_widening) == (4, 0)
+    assert (fit.widening, fit.conversion_widening) == (4, 0)
     assert fit.per_arg == ((MatchTier.GENERIC_PROTOCOL_EXPLICIT, 0),)
 
 
@@ -814,8 +884,8 @@ def a64() -> int64: return 1099511627776
             "    @dispatch\n    def __init__(self, xs: list[int64]) -> None:\n"
             "        self.n = 2\n"
             "def main() -> None:\n    xs = []\n    raise E(xs)\n",
-            r"^Ambiguous overload: __init__\(list\[str\]\), "
-            r"__init__\(list\[int64\]\)$",
+            r"^Ambiguous overload for 'E\.__init__': multiple candidates match "
+            r"equally: __init__\(list\[str\]\); __init__\(list\[int64\]\)$",
             id="raise-group-ambiguous"),
         # The `typing.overload` form: the stub the call resolves to decides
         # the local (its implementation's narrowing does not lower,

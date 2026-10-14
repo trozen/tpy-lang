@@ -287,11 +287,10 @@ chose not to support that combination.
 ### Call resolution
 
 At call sites the compiler resolves against **stub signatures** (not the
-implementation). Resolution runs in two passes in `sema/overloads.py`;
-in the first, declaration order of the stubs does not affect the winner (the
-second still breaks a tie by it and ranks by instantiated types:
-BUGS.md#overload-coercion-pass-tie-by-order,
-BUGS.md#overload-coercion-pass-loses-declared-tier).
+implementation). Resolution runs in two stages over ONE ranking in
+`sema/overloads.py` (`rank_overload_candidates`): a strict stage over the
+candidates that convert no argument, then, when none does, a conversion
+stage. Declaration order of the stubs affects the winner in neither.
 
 ```python
 d = Dog("Rex")
@@ -299,8 +298,13 @@ result = describe(d)  # resolves to stub 1: describe(Dog) -> str
 # result type: str (not str | int32)
 ```
 
-The ranking below covers free-function, method and constructor calls and a
-record's `__contains__` / `__getitem__` overload sets. A record's binary
+The ranking below covers free-function, method and constructor calls,
+Regime C's per-candidate arguments (below) and a record's `__contains__`
+overload set (the `in` test's emitted call leaves the final pick to C++,
+BUGS.md#dispatch-method-variant-reresolved-by-cpp). A record subscript is typed from its FIRST `__getitem__`
+overload and C++ `operator[]` picks what runs; the ranking only credits its
+receiver effects, and swallows a tie (BUGS.md#record-getitem-overload-first-wins).
+A record's binary
 operator dunder set does not go through it yet: `a + b` takes the first
 `__add__` variant that matches (BUGS.md#operator-overload-first-match). It
 waits on the int-literal ranking (BUGS.md#overload-int-literal-picks-float):
@@ -329,8 +333,8 @@ case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls).
 
 Each candidate overload classifies every argument into a `(tier, widening_cost)`
 pair. Candidates with any argument that fails to classify are rejected. The
-survivors are ranked by the four-key `OverloadFit.rank()` (below) and the
-lowest-ranked candidate wins. A unique winner in this pass skips pass two
+survivors are ranked by `OverloadFit.rank()` (below) and the
+lowest-ranked candidate wins. A winner in this pass skips pass two
 entirely.
 
 **Specificity tiers** (`MatchTier` in `sema/overloads.py`, strongest first --
@@ -353,7 +357,7 @@ bare `T` is the wildcard, a protocol over `T` a generic protocol, any other
 shape over `T` a generic shape. The instantiation decides only whether the
 argument is accepted, and the cost. This holds throughout the strict pass,
 including at the call sites that substitute a generic candidate's type
-parameters before ranking (the declared parameter is read through `overload.root`, the
+parameters before ranking, and in the conversion stage (the declared parameter is read through `overload.root`, the
 parameters `call_resolves_param` names), so a substituted generic never
 scores as an exact match. A parameter typed with the receiver class's type
 parameter (`def put(self, x: T)` on `class Box[T]`) is not the callee's own:
@@ -372,19 +376,25 @@ g(Dog())   # "animal" in either declaration order: SUBCLASS beats the
 g(3)       # "generic": the only applicable variant
 ```
 
-**Ranking rule** (`OverloadFit.rank()`, lower is better), compared key by key:
+**Ranking rule** (`OverloadFit.rank()`, lower is better, the one key of
+both stages), compared key by key:
 
-1. **Container widening** -- how far the candidate widens an undecided
+1. **Converted count** -- how many arguments only a conversion accepts
+   (second pass, below); 0 for every strict-pass candidate.
+2. **Container widening** -- how far the candidate widens an undecided
    container argument (below).
-2. **Element widening** -- how far a protocol match widens the argument's
+3. **Narrowing** -- how many converted arguments narrow (a `BigInt` into a
+   fixed-width parameter); 0 in the strict pass.
+4. **Conversion widening** -- how far a protocol match widens the argument's
    elements: the widening cost of every `PROTOCOL_EXPLICIT` /
    `GENERIC_PROTOCOL_EXPLICIT` argument, read from the conformance
    (`TypeOperations.protocol_type_args_of`: a `dict[int8, int32]` is an
-   `Iterable[int8]`). A candidate that converts nothing beats one that
-   widens elements, at any tier.
-3. **Tier counts** -- the negated per-tier count vector (more matches at
+   `Iterable[int8]`), plus how far a converted fixed int or float widens
+   (`_scalar_widening_cost`). A candidate that converts nothing beats one
+   that widens elements, at any tier.
+5. **Tier counts** -- the negated per-tier count vector (more matches at
    the strongest tier first, lexicographically).
-4. **Cost** -- the sum of the remaining per-argument costs: a literal's
+6. **Cost** -- the sum of the remaining per-argument costs: a literal's
    distance from its default width, a subclass argument's MRO distance.
 
 **Widening cost** (`_scalar_widening_cost` / `_type_args_widening_cost`) is 0
@@ -410,7 +420,7 @@ for exact matches and positive when an argument is widening to a param type:
   `Iterable[int32]` scores positive. A generic user record's declared
   protocol comes back unsubstituted (`Iterable[T]` for a `Bag[int8]`) and
   scores nothing (BUGS.md#extends-protocol-arg-unsubstituted). This cost is
-  the element widening, the second rank key.
+  the element widening, part of the conversion widening key.
 
 **Container literals written in the call.** A list literal is a pending
 container wherever it is written (its storage is decided later). A dict
@@ -461,18 +471,16 @@ says which wanted cells are tied both ways -- one list under two names
 does. Values that clash whatever is wanted are not a reason against a
 candidate: the call that decides the lists refuses them in its own words.
 
-The first key of a candidate's rank, in the strict pass, the coercion
-pass and Regime C alike, is its CONTAINER WIDENING: the sum of
+The first key of a candidate's rank after the converted count, in both
+passes and Regime C alike, is its CONTAINER WIDENING: the sum of
 `_scalar_widening_cost` over those leaves, each cell counted once and
 cells tied both ways as one. A
 declared view (`Iterable[int64]`) decides nothing, so it widens 0 (its
-per-element conversion cost is the element widening, the second key). Lower
-container widening wins outright -- an overload never widens a list that
-another applicable overload takes as it is -- and among equal container
-widening the order above applies unchanged (element widening, tiers, then
-cost, in the strict pass; the existing keys in the coercion pass, one named key,
-`CoercionFit.rank()`, that Regime C's coercion fallback shares, literal
-penalty and generic tie-break included). An applicable container at a
+per-element conversion cost is the element widening). Lower
+container widening wins outright among candidates that convert as many
+arguments -- an overload never widens a list that another applicable
+overload takes as it is -- and among equal container widening the order
+above applies unchanged. An applicable container at a
 concrete parameter is an `EXACT_CONCRETE` match at cost 0: its widening
 is counted once, in the first key. Nothing is decided while scoring: the winner is
 applied afterwards (`CallAnalyzer.apply_winner`, see `docs/ARCHITECTURE.md`
@@ -495,8 +503,9 @@ widens only when asked"). Over a `dict[int8, int32]`, its `keys()` or its
 the same way.
 
 **Ambiguity.** When the top candidates tie on every rank key AND have
-distinct signatures, the compiler refuses to pick arbitrarily. Declaration
-order is **not** used as a tiebreaker. The call site reports:
+distinct signatures, the compiler refuses to pick arbitrarily, in either
+pass. Declaration order is **not** used as a tiebreaker. The call site
+reports:
 
 ```
 Ambiguous overload for 'describe': multiple candidates match equally:
@@ -516,7 +525,17 @@ t(Dog(), Dog())   # error: Ambiguous overload for 't'
 
 each variant has one exact and one subclass argument at the same cost; a
 `t(x: Dog, y: Dog)` variant resolves it
-(`tests/cases/calls/error_dispatch_crossed_subclass_ambiguous`).
+(`tests/cases/calls/error_dispatch_crossed_subclass_ambiguous`). The same
+crossed pair with a third `z: int64` parameter, called `t(Dog(), Dog(), n8)`
+with `n8: int8`, ties in the second pass and is ambiguous too, though
+CPython runs the first declared
+(`tests/cases/calls/error_dispatch_coercion_tie_ambiguous`). Typing one
+argument as the base picks a variant: `a: Animal = d; t(a, d, n8)` runs
+`t(x: Animal, y: Dog, z: int64)`. The DECLARED (static) type picks, not
+the runtime type (CPython's `isinstance` would still see a `Dog`), and
+binding the subclass at the base type warns "upcast narrows". A bare float literal at a `float32` /
+`float` pair is such a tie until literals rank by a default width
+(BUGS.md#dispatch-float-width-order); `float32(0.25)` / `float(0.25)` picks.
 
 **A readonly argument does not re-rank.** Ranking reads signatures only, so
 when the best variant takes a mutable parameter and the argument is
@@ -539,25 +558,34 @@ Signatures that collapse to identical param-type tuples are deduped before
 the ambiguity check -- picking either produces identical codegen; the
 first declared is kept.
 
-#### Second pass: coercion fallback
+#### Second pass: conversions
 
-**Current limitation:** this pass ranks by the instantiated types, not the
-declared shape, so the first pass's order (base above protocol, Literal
-above its base type, no element widening) does not hold once an argument
-converts (BUGS.md#overload-coercion-pass-loses-declared-tier).
-
-Runs only when the first pass produced zero candidates. Accepts implicit
-coercions (narrowing conversions, `Callable` -> `Fn`, `Deref[T]`, subclass
-upcasts) and ranks by count of non-coercion matches first, then by number of
-narrowing conversions, with an `IntLiteralType` penalty derived from
-`default_int_type` to break ties deterministically, then a concrete
-signature over a generic instantiation (`f(dog, n8)` at `(Animal, int64)` /
-`[T](T, int64)` picks `Animal`, as the strict pass ranks a base above bare
-`T`), then by the summed MRO distance of its subclass arguments, so the
-nearer base still wins when another argument converts (`f(puppy, 1.5)` at
-`(Animal, float)` / `(Dog, float)` picks `Dog`). A remaining tie goes to the first declared -- unlike
-the first pass, which reports it ambiguous
-(BUGS.md#overload-coercion-pass-tie-by-order).
+Runs only when the first pass produced zero candidates. It classifies
+every argument as the first pass does (`_classify_overload` in conversion
+mode, with the same cells: tier by the declared shape, container meets,
+element widening), and an argument the strict match refuses takes a
+`CONVERTED` cell where `type_matches_with_coercion` accepts it: a scalar
+conversion (`int8` at `int64`, a `BigInt` narrowing into a fixed width, a
+fixed int at `float`), an int literal at `int` / `float` (which the strict
+match refuses), `Callable` -> `Fn`, `Deref[T]`, a subclass value at a
+pointer to its base, a payload converting into an `Optional` parameter.
+The cell's cost is an int literal's distance from the default width
+(`_int_literal_penalty`) and a subclass's MRO distance; a converted fixed
+int or float widens by `_scalar_widening_cost`; a literal its
+conversion row's `check_range` refuses is no conversion there (an int
+literal a fixed-width parameter cannot hold, a float literal `float32`
+cannot), so `h(10000000000, n8)` at `h(int32, int64)` / `h(str, int64)`
+has no match and `g(1e300, n8)` at `g(float32, int64)` /
+`g(float, int64)` picks `float`.
+The candidates rank by the same `OverloadFit.rank()`, the converted count
+first, so the pass keeps the first pass's order once an argument converts:
+`f(Dog(), n8)` at `(Named, int64)` / `(Animal, int64)` picks `Animal`, as
+`f(Dog(), m64)` does; `f("r", n8)` at `(str, int64)` /
+`(Literal["r", "w"], int64)` picks the `Literal`; `f(d, n8)` at
+`(Animal, int64)` / `[T](T, int64)` picks `Animal` whether `d` is a local
+or a parameter; `f(puppy, 1.5)` at `(Animal, float)` / `(Dog, float)`
+picks `Dog`. A top tie between distinct signatures is ambiguous, as in the
+first pass.
 
 A generic whose type parameter was bound by the JOIN of scalar fixed ints of
 different widths (`f[T](x: T, y: T)` at `(int32, int64)` binds `T = int64`)
@@ -565,7 +593,8 @@ converts an argument, so it is never a first-pass match: it ranks here, at
 its instantiation, like any conversion. `max(a64, b32)` picks
 `max[T: AnyFixedInt]` (one exact argument) over `max(int, int)` (none), and
 `f(int32(1), int64(2))` picks a concrete `f(x: int64, y: int64)` over the
-joined generic (a tie).
+joined generic in either order: both convert the `int32`, and the exact
+`int64` outranks the bare `T` the generic declares.
 
 #### Worked example: `sum([])`
 
@@ -646,9 +675,9 @@ Candidates that differ only in a type parameter's bound or a parameter's
 their arguments alike, so the regime choice counts them as ONE Fn-bearing
 candidate; the pool then picks between them by the bound.
 
-Regime C runs the same tier ranking as Regime A/B over the per-candidate
-evidence (via `_classify_overload`), then a coercion-pass fallback
-mirroring pass 2 above. The legacy structural-match fallback at the user
+Regime C ranks its per-candidate evidence through the same
+`rank_overload_candidates` as Regime A/B (both passes, one tie rule), each
+candidate at its own argument types. The legacy structural-match fallback at the user
 path's no-match recovery is gated on `contextual_callable_used` so it
 can't reason over synthesized callable types. Lambda body errors raised
 during a trial propagate through `_build_regime_c_evidence` into

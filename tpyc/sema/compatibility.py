@@ -2812,6 +2812,13 @@ class TypeCompatibility:
         return (f"{fi.name}("
                 f"{', '.join(self.call_type_text(p.type) for p in fi.params)})")
 
+    def ambiguous_overload_text(self, func_name: str,
+                                candidates: tuple['FunctionInfo', ...]) -> str:
+        """The message every call position reports a top tie with."""
+        sigs = "; ".join(self.call_signature_text(c) for c in candidates)
+        return (f"Ambiguous overload for '{func_name}': "
+                f"multiple candidates match equally: {sigs}")
+
     def diag_type(self, t: TpyType, slot: TpyType | None = None) -> TpyType:
         """User-facing type for diagnostics: a pending container literal is
         unresolved during body analysis, so render the container it

@@ -1,7 +1,7 @@
 # Overload ranking by declared shape, winner declared first (the other order:
 # calls/dispatch_rank_declared_shape_order); record variants bump `hits`.
-from typing import Callable, Protocol, overload
-from tpy import dispatch, readonly, Own, int8, int32, int64
+from typing import Callable, Iterable, Literal, Protocol, overload
+from tpy import dispatch, readonly, AnyFixedInt, Own, Ptr, float32, int8, int32, int64
 
 
 class Named(Protocol):
@@ -503,6 +503,437 @@ def callable_result() -> None:
     print("callable_result:", apply(rs, lambda r: r.n), rs[0].n)  # tpyc: ok
 
 
+# The coerce_* sections: an int8 / int / float literal converts at every
+# variant, so the conversion stage ranks them -- by the same cells as the
+# strict stage.
+@dispatch
+def cbp(x: Animal, n: int64) -> str:
+    x.hits += 1
+    return "base"
+
+
+@dispatch
+def cbp(x: Named, n: int64) -> str:
+    x.bump(10)
+    return "proto"
+
+
+def cbp_via(d: Dog, n: int8) -> str:
+    return cbp(d, n)  # tpyc: ok
+
+
+@dispatch
+def cbf(x: Animal, y: float32) -> str:
+    x.hits += 1
+    return "base"
+
+
+@dispatch
+def cbf(x: Named, y: float32) -> str:
+    x.bump(10)
+    return "proto"
+
+
+@dispatch
+def cpp(x: Animal, p: Ptr[Animal]) -> str:
+    p.hits += 1
+    return "base"
+
+
+@dispatch
+def cpp(x: Named, p: Ptr[Animal]) -> str:
+    p.hits += 10
+    return "proto"
+
+
+def cb_via(d: Dog, n: int8) -> str:
+    return cb(d, n)  # tpyc: ok
+
+
+@dispatch
+def cew(xs: Iterable[int32], n: int64) -> str:
+    return "i32"
+
+
+@dispatch
+def cew(xs: Iterable[int64], n: int64) -> str:
+    return "i64"
+
+
+@dispatch
+def ceg[T: AnyFixedInt](xs: Iterable[T], n: int64) -> str:
+    return "generic"
+
+
+@dispatch
+def ceg(xs: Iterable[int32], n: int64) -> str:
+    return "i32"
+
+
+@dispatch
+def cgt[T](x: Iterable[T], n: int64) -> str:
+    return "genproto"
+
+
+@dispatch
+def cgt[T](x: T, n: int64) -> str:
+    return "bare"
+
+
+@dispatch
+def cls(x: Literal["r", "w"], n: int64) -> str:
+    return "lit"
+
+
+@dispatch
+def cls(x: str, n: int64) -> str:
+    return "str"
+
+
+@dispatch
+def clf(x: Literal["r", "w"], y: float32) -> str:
+    return "lit"
+
+
+@dispatch
+def clf(x: str, y: float32) -> str:
+    return "str"
+
+
+@dispatch
+def cob(x: Animal | None, n: int64) -> str:
+    if x is not None:
+        x.hits += 1
+    return "opt"
+
+
+@dispatch
+def cob[T](x: T, n: int64) -> str:
+    return "bare"
+
+
+@dispatch
+def cwi(x: int64) -> str:
+    return "int64"
+
+
+@dispatch
+def cwi(x: int) -> str:
+    return "int"
+
+
+@dispatch
+def cpt(x: Named, n: int64) -> str:
+    x.bump(1)
+    return "proto"
+
+
+@dispatch
+def cpt[T](x: T, n: int64) -> str:
+    return "bare"
+
+
+def cpt_via(d: Dog, n: int8) -> str:
+    return cpt(d, n)  # tpyc: ok
+
+
+@dispatch
+def csg[T](x: list[T], n: int64) -> str:
+    x.clear()
+    return "shape"
+
+
+@dispatch
+def csg[T](x: Iterable[T], n: int64) -> str:
+    return "genproto"
+
+
+@dispatch
+def cst[T](x: list[T], n: int64) -> str:
+    x.clear()
+    return "shape"
+
+
+@dispatch
+def cst[T](x: T, n: int64) -> str:
+    return "bare"
+
+
+@dispatch
+def csf[T](x: list[T], y: float32) -> str:
+    x.clear()
+    return "shape"
+
+
+@dispatch
+def csf[T](x: T, y: float32) -> str:
+    return "bare"
+
+
+@dispatch
+def csp(x: Dog, n: int64) -> str:
+    x.hits += 1
+    return "dog"
+
+
+@dispatch
+def csp(x: Named, n: int64) -> str:
+    x.bump(10)
+    return "proto"
+
+
+class Walker:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def go(self, x: int64) -> str:
+        return "int64"
+
+    @dispatch
+    def go(self, x: int) -> str:
+        return "int"
+
+
+@dispatch
+def cgo(x: Dog, n: int64 | None) -> str:
+    x.hits += 1
+    return "dog"
+
+
+@dispatch
+def cgo(x: Animal, n: int64) -> str:
+    x.hits += 10
+    return "animal"
+
+
+@dispatch
+def cgl(x: Dog, n: int) -> str:
+    x.hits += 1
+    return "dog"
+
+
+@dispatch
+def cgl(x: Animal, n: int | None) -> str:
+    x.hits += 10
+    return "animal"
+
+
+@dispatch
+def ctie(x: Animal, y: Dog, z: int64) -> str:
+    y.hits += 1
+    return "animal_dog"
+
+
+@dispatch
+def ctie(x: Dog, y: Animal, z: int64) -> str:
+    y.hits += 10
+    return "dog_animal"
+
+
+@dispatch
+def ccw(xs: list[int64], n: int64, trigger: int64) -> str:
+    return "i64"
+
+
+@dispatch
+def ccw(xs: list[int32], n: float, trigger: int64) -> str:
+    return "i32-float"
+
+
+@dispatch
+def cfn(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
+    x.hits += g(1)
+    return "base"
+
+
+@dispatch
+def cfn(g: Callable[[int32], int32], x: Named, n: int64) -> str:
+    x.bump(g(10))
+    return "proto"
+
+
+@dispatch
+def cfb(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
+    x.hits += g(1)
+    return "base"
+
+
+@dispatch
+def cfb[T](g: Callable[[int32], int32], x: T, n: int64) -> str:
+    return "bare"
+
+
+@dispatch
+def cli(x: Animal, y: Animal, v: int64, n: int64) -> str:
+    y.hits += 1
+    return "bases-i64"
+
+
+@dispatch
+def cli(x: Dog, y: Dog, v: int, n: int64) -> str:
+    y.hits += 10
+    return "dogs-int"
+
+
+@dispatch
+def clr(x: float, n: int64) -> str:
+    return "f64"
+
+
+@dispatch
+def clr(x: float32, n: int64) -> str:
+    return "f32"
+
+
+def coerce_base_vs_proto() -> None:
+    d = Dog()
+    n8: int8 = 1
+    k: int = 1
+    # A base-class parameter beats a protocol when the int8 / int converts,
+    # from a local and from a parameter.
+    print("coerce_base_vs_proto:", cbp(d, n8), cbp(d, k), cbp_via(d, n8), d.hits)  # tpyc: ok
+    # A float literal converting at float32 ranks the same way.
+    print("coerce_base_vs_proto:", cbf(d, 1.5), d.hits)  # tpyc: ok
+    # Keyword arguments rank the same way.
+    print("coerce_base_vs_proto:", cbp(n=n8, x=d), d.hits)  # tpyc: ok
+
+
+def coerce_ptr() -> None:
+    d = Dog()
+    other = Dog()
+    # A Dog value converting at Ptr[Animal]: the base still beats the
+    # protocol, and the variant writes through the pointer.
+    print("coerce_ptr:", cpp(d, other), other.hits)  # tpyc: ok
+
+
+def coerce_base_vs_t_param() -> None:
+    d = Dog()
+    n: int8 = 3
+    # A Dog parameter ranks as a Dog local does: the base beats bare T.
+    print("coerce_base_vs_t_param:", cb_via(d, n), d.hits)  # tpyc: ok
+
+
+def coerce_elem_widen() -> None:
+    xs: list[int32] = [1, 2]
+    x8: list[int8] = [1, 2]
+    n8: int8 = 1
+    # The view that widens no element wins.
+    print("coerce_elem_widen:", cew(xs, n8), ceg(x8, n8))  # tpyc: ok
+
+
+def coerce_generic_shapes() -> None:
+    xs: list[int32] = [7, 8]
+    ys: list[int32] = [7, 8]
+    zs: list[int32] = [7, 8]
+    n8: int8 = 1
+    # A generic protocol beats bare T; a generic shape beats both.
+    print("coerce_generic_shapes:", cgt(xs, n8))  # tpyc: ok
+    print("coerce_generic_shapes:", csg(ys, n8), len(ys))  # tpyc: ok
+    print("coerce_generic_shapes:", cst(zs, n8), len(zs))  # tpyc: ok
+    print("coerce_generic_shapes:", csf(xs, 1.5), len(xs))  # tpyc: ok
+
+
+def coerce_proto_vs_t() -> None:
+    d = Dog()
+    n8: int8 = 1
+    # A protocol beats bare T, from a local and from a parameter.
+    print("coerce_proto_vs_t:", cpt(d, n8), cpt_via(d, n8), d.hits)  # tpyc: ok
+
+
+def coerce_literal_vs_str() -> None:
+    n8: int8 = 1
+    # A Literal parameter holding the value beats str.
+    print("coerce_literal_vs_str:", cls("r", n8), clf("r", 1.5))  # tpyc: ok
+
+
+def coerce_optional_base() -> None:
+    d = Dog()
+    n8: int8 = 1
+    # A base inside an Optional beats bare T and writes through the parameter.
+    print("coerce_optional_base:", cob(d, n8), d.hits)  # tpyc: ok
+
+
+def coerce_width() -> None:
+    n8: int8 = 1
+    # int8 widens less to int64 than to int.
+    print("coerce_width:", cwi(n8))  # tpyc: ok
+
+
+def coerce_subclass_vs_proto() -> None:
+    p = Puppy()
+    n8: int8 = 1
+    # A subclass at its base beats a protocol.
+    print("coerce_subclass_vs_proto:", csp(p, n8), p.hits)  # tpyc: ok
+
+
+def coerce_method() -> None:
+    w = Walker()
+    n8: int8 = 1
+    # A method set ranks the same: int8 widens less to int64 than to int.
+    print("coerce_method:", w.go(n8))  # tpyc: ok
+
+
+def coerce_optional_scalar() -> None:
+    p = Puppy()
+    n8: int8 = 1
+    # The int8 converts into the Optional payload as into a plain int64,
+    # so the nearer base decides.
+    print("coerce_optional_scalar:", cgo(p, n8), p.hits)  # tpyc: ok
+    q = Puppy()
+    # The int literal is as far from the default width at `int | None` as
+    # at `int`, so the nearer base decides.
+    print("coerce_optional_scalar:", cgl(q, 5), q.hits)  # tpyc: ok
+
+
+def coerce_tie_escape() -> None:
+    d = Dog()
+    # The DECLARED type picks the variant; the warning is that spelling's cost.
+    a: Animal = d  # tpyc: warning(/upcast narrows/)
+    n8: int8 = 1
+    # Two Dogs at the crossed pair tie (Ambiguous overload); typing the first
+    # one as Animal picks one variant.
+    print("coerce_tie_escape:", ctie(a, d, n8), d.hits)  # tpyc: ok
+
+
+def coerce_container() -> None:
+    n64: int64 = 1
+    n8: int8 = 1
+    # Fewer conversions beat a narrower list: the list[int64] variant
+    # converts only the int8, so it wins as in its strict twin.
+    print("coerce_container:", ccw([1, 2], n64, n8), ccw([1, 2], n64, n64))  # tpyc: ok
+
+
+def coerce_callable() -> None:
+    d = Dog()
+    n8: int8 = 1
+    n64: int64 = 1
+    # A callable argument beside a converting int8: the base beats the protocol.
+    print("coerce_callable:", cfn(lambda v: v, d, n8), cfn(lambda v: v, d, n64), d.hits)  # tpyc: ok
+
+
+def coerce_callable_base() -> None:
+    d = Dog()
+    n8: int8 = 1
+    # A callable argument beside a converting int8: the base beats bare T.
+    print("coerce_callable_base:", cfb(lambda v: v, d, n8), d.hits)  # tpyc: ok
+
+
+def coerce_literal_int() -> None:
+    d = Dog()
+    n8: int8 = 1
+    n64: int64 = 1
+    # The int literal converts at `int` as at int64, so two bases at exact
+    # int64 beat two subclasses at `int`.
+    print("coerce_literal_int:", cli(d, d, 5, n8), cli(d, d, 5, n64), d.hits)  # tpyc: ok
+
+
+def coerce_literal_range() -> None:
+    n8: int8 = 1
+    # A float literal float32 cannot hold is no conversion there.
+    print("coerce_literal_range:", clr(1e300, n8))  # tpyc: ok
+
+
 def main() -> None:
     proto_vs_t()
     base_vs_t()
@@ -525,6 +956,24 @@ def main() -> None:
     own_base()
     plain_int()
     callable_result()
+    coerce_base_vs_proto()
+    coerce_ptr()
+    coerce_base_vs_t_param()
+    coerce_elem_widen()
+    coerce_generic_shapes()
+    coerce_proto_vs_t()
+    coerce_literal_vs_str()
+    coerce_optional_base()
+    coerce_width()
+    coerce_subclass_vs_proto()
+    coerce_method()
+    coerce_optional_scalar()
+    coerce_tie_escape()
+    coerce_container()
+    coerce_callable()
+    coerce_callable_base()
+    coerce_literal_int()
+    coerce_literal_range()
 
 
 main()

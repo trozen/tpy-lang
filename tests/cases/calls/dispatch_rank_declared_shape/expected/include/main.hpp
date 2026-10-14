@@ -27,6 +27,7 @@ struct B2;
 struct C2;
 struct D2;
 struct Twins;
+struct Walker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -204,6 +205,207 @@ void own_base();
 void plain_int();
 // def callable_result() -> None:
 void callable_result();
+// @dispatch
+// def cbp(x: Animal, n: int64) -> str:
+std::string cbp__Animal__int64(Animal& x, int64_t n);
+// @dispatch
+// def cbp(x: Named, n: int64) -> str:
+template<Named T_x>
+std::string cbp__Named__int64(T_x& x, int64_t n);
+// def cbp_via(d: Dog, n: int8) -> str:
+std::string cbp_via(Dog& d, int8_t n);
+// @dispatch
+// def cbf(x: Animal, y: float32) -> str:
+std::string cbf__Animal__float32(Animal& x, float y);
+// @dispatch
+// def cbf(x: Named, y: float32) -> str:
+template<Named T_x>
+std::string cbf__Named__float32(T_x& x, float y);
+// @dispatch
+// def cpp(x: Animal, p: Ptr[Animal]) -> str:
+std::string cpp__Animal__Ptr_Animal(const Animal& x, Animal* p);
+// @dispatch
+// def cpp(x: Named, p: Ptr[Animal]) -> str:
+template<Named T_x>
+std::string cpp__Named__Ptr_Animal(const T_x& x, Animal* p);
+// def cb_via(d: Dog, n: int8) -> str:
+std::string cb_via(Dog& d, int8_t n);
+// @dispatch
+// def cew(xs: Iterable[int32], n: int64) -> str:
+template<::tpystd::typing::Iterable<int32_t> T_xs>
+std::string cew__Iterable_int32__int64(const T_xs& xs, int64_t n);
+// @dispatch
+// def cew(xs: Iterable[int64], n: int64) -> str:
+template<::tpystd::typing::Iterable<int64_t> T_xs>
+std::string cew__Iterable_int64__int64(const T_xs& xs, int64_t n);
+// @dispatch
+// def ceg[T: AnyFixedInt](xs: Iterable[T], n: int64) -> str:
+template<::tpy::AnyFixedInt T, ::tpystd::typing::Iterable<T> T_xs>
+std::string ceg__Iterable_T__int64(const T_xs& xs, int64_t n);
+// @dispatch
+// def ceg(xs: Iterable[int32], n: int64) -> str:
+template<::tpystd::typing::Iterable<int32_t> T_xs>
+std::string ceg__Iterable_int32__int64(const T_xs& xs, int64_t n);
+// @dispatch
+// def cgt[T](x: Iterable[T], n: int64) -> str:
+template<typename T, ::tpystd::typing::Iterable<T> T_x>
+std::string cgt__Iterable_T__int64(const T_x& x, int64_t n);
+// @dispatch
+// def cgt[T](x: T, n: int64) -> str:
+template<typename T>
+std::string cgt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n);
+// @dispatch
+// def cls(x: Literal["r", "w"], n: int64) -> str:
+std::string cls__lit_r__w(std::string_view x, int64_t n);
+// @dispatch
+// def cls(x: str, n: int64) -> str:
+std::string cls__str__int64(std::string_view x, int64_t n);
+// @dispatch
+// def clf(x: Literal["r", "w"], y: float32) -> str:
+std::string clf__lit_r__w(std::string_view x, float y);
+// @dispatch
+// def clf(x: str, y: float32) -> str:
+std::string clf__str__float32(std::string_view x, float y);
+// @dispatch
+// def cob(x: Animal | None, n: int64) -> str:
+std::string cob__Animal_None__int64(Animal* x, int64_t n);
+// @dispatch
+// def cob[T](x: T, n: int64) -> str:
+template<typename T>
+std::string cob__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n);
+// @dispatch
+// def cwi(x: int64) -> str:
+std::string cwi__int64(int64_t x);
+// @dispatch
+// def cwi(x: int) -> str:
+std::string cwi__int(const ::tpy::BigInt& x);
+// @dispatch
+// def cpt(x: Named, n: int64) -> str:
+template<Named T_x>
+std::string cpt__Named__int64(T_x& x, int64_t n);
+// @dispatch
+// def cpt[T](x: T, n: int64) -> str:
+template<typename T>
+std::string cpt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n);
+// def cpt_via(d: Dog, n: int8) -> str:
+std::string cpt_via(Dog& d, int8_t n);
+// @dispatch
+// def csg[T](x: list[T], n: int64) -> str:
+template<typename T>
+std::string csg__list_T__int64(std::vector<T>& x, int64_t n);
+// @dispatch
+// def csg[T](x: Iterable[T], n: int64) -> str:
+template<typename T, ::tpystd::typing::Iterable<T> T_x>
+std::string csg__Iterable_T__int64(const T_x& x, int64_t n);
+// @dispatch
+// def cst[T](x: list[T], n: int64) -> str:
+template<typename T>
+std::string cst__list_T__int64(std::vector<T>& x, int64_t n);
+// @dispatch
+// def cst[T](x: T, n: int64) -> str:
+template<typename T>
+std::string cst__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n);
+// @dispatch
+// def csf[T](x: list[T], y: float32) -> str:
+template<typename T>
+std::string csf__list_T__float32(std::vector<T>& x, float y);
+// @dispatch
+// def csf[T](x: T, y: float32) -> str:
+template<typename T>
+std::string csf__T__float32(::tpy::param_val_or_ref_t<T> x, float y);
+// @dispatch
+// def csp(x: Dog, n: int64) -> str:
+std::string csp__Dog__int64(Dog& x, int64_t n);
+// @dispatch
+// def csp(x: Named, n: int64) -> str:
+template<Named T_x>
+std::string csp__Named__int64(T_x& x, int64_t n);
+// @dispatch
+// def cgo(x: Dog, n: int64 | None) -> str:
+std::string cgo__Dog__int64_None(Dog& x, std::optional<int64_t> n);
+// @dispatch
+// def cgo(x: Animal, n: int64) -> str:
+std::string cgo__Animal__int64(Animal& x, int64_t n);
+// @dispatch
+// def cgl(x: Dog, n: int) -> str:
+std::string cgl__Dog__int(Dog& x, const ::tpy::BigInt& n);
+// @dispatch
+// def cgl(x: Animal, n: int | None) -> str:
+std::string cgl__Animal__int_None(Animal& x, std::optional<::tpy::BigInt> n);
+// @dispatch
+// def ctie(x: Animal, y: Dog, z: int64) -> str:
+std::string ctie__Animal__Dog__int64(const Animal& x, Dog& y, int64_t z);
+// @dispatch
+// def ctie(x: Dog, y: Animal, z: int64) -> str:
+std::string ctie__Dog__Animal__int64(const Dog& x, Animal& y, int64_t z);
+// @dispatch
+// def ccw(xs: list[int64], n: int64, trigger: int64) -> str:
+std::string ccw__list_int64__int64__int64(const std::vector<int64_t>& xs, int64_t n, int64_t trigger);
+// @dispatch
+// def ccw(xs: list[int32], n: float, trigger: int64) -> str:
+std::string ccw__list_int32__float__int64(const std::vector<int32_t>& xs, double n, int64_t trigger);
+// @dispatch
+// def cfn(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
+std::string cfn__Callable_int32_int32__Animal__int64(const std::function<int32_t(int32_t)>& g, Animal& x, int64_t n);
+// @dispatch
+// def cfn(g: Callable[[int32], int32], x: Named, n: int64) -> str:
+template<Named T_x>
+std::string cfn__Callable_int32_int32__Named__int64(const std::function<int32_t(int32_t)>& g, T_x& x, int64_t n);
+// @dispatch
+// def cfb(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
+std::string cfb__Callable_int32_int32__Animal__int64(const std::function<int32_t(int32_t)>& g, Animal& x, int64_t n);
+// @dispatch
+// def cfb[T](g: Callable[[int32], int32], x: T, n: int64) -> str:
+template<typename T>
+std::string cfb__Callable_int32_int32__T__int64(const std::function<int32_t(int32_t)>& g, ::tpy::param_val_or_ref_t<T> x, int64_t n);
+// @dispatch
+// def cli(x: Animal, y: Animal, v: int64, n: int64) -> str:
+std::string cli__Animal__Animal__int64__int64(const Animal& x, Animal& y, int64_t v, int64_t n);
+// @dispatch
+// def cli(x: Dog, y: Dog, v: int, n: int64) -> str:
+std::string cli__Dog__Dog__int__int64(const Dog& x, Dog& y, const ::tpy::BigInt& v, int64_t n);
+// @dispatch
+// def clr(x: float, n: int64) -> str:
+std::string clr__float__int64(double x, int64_t n);
+// @dispatch
+// def clr(x: float32, n: int64) -> str:
+std::string clr__float32__int64(float x, int64_t n);
+// def coerce_base_vs_proto() -> None:
+void coerce_base_vs_proto();
+// def coerce_ptr() -> None:
+void coerce_ptr();
+// def coerce_base_vs_t_param() -> None:
+void coerce_base_vs_t_param();
+// def coerce_elem_widen() -> None:
+void coerce_elem_widen();
+// def coerce_generic_shapes() -> None:
+void coerce_generic_shapes();
+// def coerce_proto_vs_t() -> None:
+void coerce_proto_vs_t();
+// def coerce_literal_vs_str() -> None:
+void coerce_literal_vs_str();
+// def coerce_optional_base() -> None:
+void coerce_optional_base();
+// def coerce_width() -> None:
+void coerce_width();
+// def coerce_subclass_vs_proto() -> None:
+void coerce_subclass_vs_proto();
+// def coerce_method() -> None:
+void coerce_method();
+// def coerce_optional_scalar() -> None:
+void coerce_optional_scalar();
+// def coerce_tie_escape() -> None:
+void coerce_tie_escape();
+// def coerce_container() -> None:
+void coerce_container();
+// def coerce_callable() -> None:
+void coerce_callable();
+// def coerce_callable_base() -> None:
+void coerce_callable_base();
+// def coerce_literal_int() -> None:
+void coerce_literal_int();
+// def coerce_literal_range() -> None:
+void coerce_literal_range();
 // def main() -> None:
 void main();
 
@@ -358,6 +560,27 @@ struct Twins {
 
 inline std::ostream& operator<<(std::ostream& os, const Twins& obj) {
     ::tpy::print_object_default(os, "Twins", obj);
+    return os;
+}
+
+// class Walker:
+struct Walker {
+
+    // def __init__(self) -> None:
+    Walker();
+
+    // @dispatch
+    // def go(self, x: int64) -> str:
+    std::string go(int64_t x) const;
+
+    // @dispatch
+    // def go(self, x: int) -> str:
+    std::string go(const ::tpy::BigInt& x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Walker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Walker& obj) {
+    ::tpy::print_object_default(os, "Walker", obj);
     return os;
 }
 
@@ -529,6 +752,25 @@ inline std::string Twins::g(bool y) const {
 }
 
 // def __init__(self) -> None:
+//     pass
+inline Walker::Walker() {
+}
+
+// @dispatch
+// def go(self, x: int64) -> str:
+//     return "int64"
+inline std::string Walker::go(int64_t x) const {
+    return "int64";
+}
+
+// @dispatch
+// def go(self, x: int) -> str:
+//     return "int"
+inline std::string Walker::go(const ::tpy::BigInt& x) const {
+    return "int";
+}
+
+// def __init__(self) -> None:
 //     super().__init__()
 inline Dog::Dog() : Animal() {}
 
@@ -680,6 +922,171 @@ int32_t apply__list_Rec__Callable_Rec_T(const std::vector<Rec>& xs, const std::f
 //     return "bare"
 template<typename T>
 std::string oq__T(::tpy::param_val_or_ref_t<T> x) {
+    return "bare";
+}
+// @dispatch
+// def cbp(x: Named, n: int64) -> str:
+//     x.bump(10)
+//     return "proto"
+template<Named T_x>
+std::string cbp__Named__int64(T_x& x, int64_t n) {
+    x.bump(10);
+    return "proto";
+}
+// @dispatch
+// def cbf(x: Named, y: float32) -> str:
+//     x.bump(10)
+//     return "proto"
+template<Named T_x>
+std::string cbf__Named__float32(T_x& x, float y) {
+    x.bump(10);
+    return "proto";
+}
+// @dispatch
+// def cpp(x: Named, p: Ptr[Animal]) -> str:
+//     p.hits += 10
+//     return "proto"
+template<Named T_x>
+std::string cpp__Named__Ptr_Animal(const T_x& x, Animal* p) {
+    ::tpy::deref_check(p).hits = ::tpy::add_check<int32_t>(::tpy::deref_check(p).hits, 10);
+    return "proto";
+}
+// @dispatch
+// def cew(xs: Iterable[int32], n: int64) -> str:
+//     return "i32"
+template<::tpystd::typing::Iterable<int32_t> T_xs>
+std::string cew__Iterable_int32__int64(const T_xs& xs, int64_t n) {
+    return "i32";
+}
+// @dispatch
+// def cew(xs: Iterable[int64], n: int64) -> str:
+//     return "i64"
+template<::tpystd::typing::Iterable<int64_t> T_xs>
+std::string cew__Iterable_int64__int64(const T_xs& xs, int64_t n) {
+    return "i64";
+}
+// @dispatch
+// def ceg[T: AnyFixedInt](xs: Iterable[T], n: int64) -> str:
+//     return "generic"
+template<::tpy::AnyFixedInt T, ::tpystd::typing::Iterable<T> T_xs>
+std::string ceg__Iterable_T__int64(const T_xs& xs, int64_t n) {
+    return "generic";
+}
+// @dispatch
+// def ceg(xs: Iterable[int32], n: int64) -> str:
+//     return "i32"
+template<::tpystd::typing::Iterable<int32_t> T_xs>
+std::string ceg__Iterable_int32__int64(const T_xs& xs, int64_t n) {
+    return "i32";
+}
+// @dispatch
+// def cgt[T](x: Iterable[T], n: int64) -> str:
+//     return "genproto"
+template<typename T, ::tpystd::typing::Iterable<T> T_x>
+std::string cgt__Iterable_T__int64(const T_x& x, int64_t n) {
+    return "genproto";
+}
+// @dispatch
+// def cgt[T](x: T, n: int64) -> str:
+//     return "bare"
+template<typename T>
+std::string cgt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
+    return "bare";
+}
+// @dispatch
+// def cob[T](x: T, n: int64) -> str:
+//     return "bare"
+template<typename T>
+std::string cob__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
+    return "bare";
+}
+// @dispatch
+// def cpt(x: Named, n: int64) -> str:
+//     x.bump(1)
+//     return "proto"
+template<Named T_x>
+std::string cpt__Named__int64(T_x& x, int64_t n) {
+    x.bump(1);
+    return "proto";
+}
+// @dispatch
+// def cpt[T](x: T, n: int64) -> str:
+//     return "bare"
+template<typename T>
+std::string cpt__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
+    return "bare";
+}
+// @dispatch
+// def csg[T](x: list[T], n: int64) -> str:
+//     x.clear()
+//     return "shape"
+template<typename T>
+std::string csg__list_T__int64(std::vector<T>& x, int64_t n) {
+    x.clear();
+    return "shape";
+}
+// @dispatch
+// def csg[T](x: Iterable[T], n: int64) -> str:
+//     return "genproto"
+template<typename T, ::tpystd::typing::Iterable<T> T_x>
+std::string csg__Iterable_T__int64(const T_x& x, int64_t n) {
+    return "genproto";
+}
+// @dispatch
+// def cst[T](x: list[T], n: int64) -> str:
+//     x.clear()
+//     return "shape"
+template<typename T>
+std::string cst__list_T__int64(std::vector<T>& x, int64_t n) {
+    x.clear();
+    return "shape";
+}
+// @dispatch
+// def cst[T](x: T, n: int64) -> str:
+//     return "bare"
+template<typename T>
+std::string cst__T__int64(::tpy::param_val_or_ref_t<T> x, int64_t n) {
+    return "bare";
+}
+// @dispatch
+// def csf[T](x: list[T], y: float32) -> str:
+//     x.clear()
+//     return "shape"
+template<typename T>
+std::string csf__list_T__float32(std::vector<T>& x, float y) {
+    x.clear();
+    return "shape";
+}
+// @dispatch
+// def csf[T](x: T, y: float32) -> str:
+//     return "bare"
+template<typename T>
+std::string csf__T__float32(::tpy::param_val_or_ref_t<T> x, float y) {
+    return "bare";
+}
+// @dispatch
+// def csp(x: Named, n: int64) -> str:
+//     x.bump(10)
+//     return "proto"
+template<Named T_x>
+std::string csp__Named__int64(T_x& x, int64_t n) {
+    x.bump(10);
+    return "proto";
+}
+// @dispatch
+// def cfn(g: Callable[[int32], int32], x: Named, n: int64) -> str:
+//     x.bump(g(10))
+//     return "proto"
+template<Named T_x>
+std::string cfn__Callable_int32_int32__Named__int64(const std::function<int32_t(int32_t)>& g, T_x& x, int64_t n) {
+    x.bump(g(10));
+    return "proto";
+}
+// @dispatch
+// def cfb[T](g: Callable[[int32], int32], x: T, n: int64) -> str:
+//     return "bare"
+template<typename T>
+std::string cfb__Callable_int32_int32__T__int64(const std::function<int32_t(int32_t)>& g, ::tpy::param_val_or_ref_t<T> x, int64_t n) {
     return "bare";
 }
 

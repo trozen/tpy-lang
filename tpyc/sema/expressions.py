@@ -2506,14 +2506,19 @@ class ExpressionAnalyzer:
                             check_left = self.ctx.default_int_for_literal(check_left)
                     leaf = self._contains_leaf(right_type, expr.left,
                                                left_type)
-                    matched = resolve_overload(
-                        subst_overloads,
-                        [leaf if leaf is not None else check_left],
-                        protocol_checker=self.protocols.type_conforms_to_protocol,
-                        protocol_classifier=self.protocols.classify_protocol_conformance,
-                        default_int_type=self.ctx.default_int_type,
-                        subclass_checker=self.ctx.registry.subclass_distance,
-                        type_ops=self.type_ops)
+                    try:
+                        matched = resolve_overload(
+                            subst_overloads,
+                            [leaf if leaf is not None else check_left],
+                            protocol_checker=self.protocols.type_conforms_to_protocol,
+                            protocol_classifier=self.protocols.classify_protocol_conformance,
+                            default_int_type=self.ctx.default_int_type,
+                            subclass_checker=self.ctx.registry.subclass_distance,
+                            type_ops=self.type_ops)
+                    except OverloadAmbiguityError as e:
+                        raise self.ctx.error(
+                            self.compat.ambiguous_overload_text(
+                                "__contains__", e.candidates), expr)
                     if matched is not None:
                         # Map back to the original (un-substituted) method for codegen
                         idx = subst_overloads.index(matched)

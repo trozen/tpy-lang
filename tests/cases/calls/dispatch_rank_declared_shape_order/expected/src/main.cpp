@@ -361,6 +361,468 @@ void callable_result() {
     std::cout << "callable_result:" << " " << ::tpyapp::main::apply__list_Rec__Callable_Rec_int32(rs, [](Rec& r) -> int32_t { return r.n; }) << " " << ::tpy::__getitem__(rs, 0).n << "\n" << ::tpy::check_signals;
 }
 
+// # The coerce_* sections: an int8 / int / float literal converts at every
+// # variant, so the conversion stage ranks them -- by the same cells as the
+// # strict stage. Every set declares the winner last.
+// @dispatch
+// def cbp(x: Animal, n: int64) -> str:
+//     x.hits += 1
+//     return "base"
+std::string cbp__Animal__int64(Animal& x, int64_t n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
+    return "base";
+}
+
+// def cbp_via(d: Dog, n: int8) -> str:
+//     return cbp(d, n)  # tpyc: ok
+std::string cbp_via(Dog& d, int8_t n) {
+    return ::tpyapp::main::cbp__Animal__int64(d, static_cast<int64_t>(n));
+}
+
+// @dispatch
+// def cbf(x: Animal, y: float32) -> str:
+//     x.hits += 1
+//     return "base"
+std::string cbf__Animal__float32(Animal& x, float y) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
+    return "base";
+}
+
+// @dispatch
+// def cpp(x: Animal, p: Ptr[Animal]) -> str:
+//     p.hits += 1
+//     return "base"
+std::string cpp__Animal__Ptr_Animal(const Animal& x, Animal* p) {
+    ::tpy::deref_check(p).hits = ::tpy::add_check<int32_t>(::tpy::deref_check(p).hits, 1);
+    return "base";
+}
+
+// def cb_via(d: Dog, n: int8) -> str:
+//     return cb(d, n)  # tpyc: ok
+std::string cb_via(Dog& d, int8_t n) {
+    return ::tpyapp::main::cb__Animal__int64(d, static_cast<int64_t>(n));
+}
+
+// @dispatch
+// def cls(x: str, n: int64) -> str:
+//     return "str"
+std::string cls__str__int64(std::string_view x, int64_t n) {
+    return "str";
+}
+
+// @dispatch
+// def cls(x: Literal["r", "w"], n: int64) -> str:
+//     return "lit"
+std::string cls__lit_r__w(std::string_view x, int64_t n) {
+    return "lit";
+}
+
+// @dispatch
+// def clf(x: str, y: float32) -> str:
+//     return "str"
+std::string clf__str__float32(std::string_view x, float y) {
+    return "str";
+}
+
+// @dispatch
+// def clf(x: Literal["r", "w"], y: float32) -> str:
+//     return "lit"
+std::string clf__lit_r__w(std::string_view x, float y) {
+    return "lit";
+}
+
+// @dispatch
+// def cob(x: Animal | None, n: int64) -> str:
+//     if x is not None:
+//         x.hits += 1
+//     return "opt"
+std::string cob__Animal_None__int64(Animal* x, int64_t n) {
+    if ((x != nullptr)) {
+        x->hits = ::tpy::add_check<int32_t>(x->hits, 1);
+    }
+    return "opt";
+}
+
+// @dispatch
+// def cwi(x: int) -> str:
+//     return "int"
+std::string cwi__int(const ::tpy::BigInt& x) {
+    return "int";
+}
+
+// @dispatch
+// def cwi(x: int64) -> str:
+//     return "int64"
+std::string cwi__int64(int64_t x) {
+    return "int64";
+}
+
+// def cpt_via(d: Dog, n: int8) -> str:
+//     return cpt(d, n)  # tpyc: ok
+std::string cpt_via(Dog& d, int8_t n) {
+    return ::tpyapp::main::cpt__Named__int64(d, static_cast<int64_t>(n));
+}
+
+// @dispatch
+// def csp(x: Dog, n: int64) -> str:
+//     x.hits += 1
+//     return "dog"
+std::string csp__Dog__int64(Dog& x, int64_t n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
+    return "dog";
+}
+
+// @dispatch
+// def cgo(x: Animal, n: int64) -> str:
+//     x.hits += 10
+//     return "animal"
+std::string cgo__Animal__int64(Animal& x, int64_t n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 10);
+    return "animal";
+}
+
+// @dispatch
+// def cgo(x: Dog, n: int64 | None) -> str:
+//     x.hits += 1
+//     return "dog"
+std::string cgo__Dog__int64_None(Dog& x, std::optional<int64_t> n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
+    return "dog";
+}
+
+// @dispatch
+// def cgl(x: Animal, n: int | None) -> str:
+//     x.hits += 10
+//     return "animal"
+std::string cgl__Animal__int_None(Animal& x, std::optional<::tpy::BigInt> n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 10);
+    return "animal";
+}
+
+// @dispatch
+// def cgl(x: Dog, n: int) -> str:
+//     x.hits += 1
+//     return "dog"
+std::string cgl__Dog__int(Dog& x, const ::tpy::BigInt& n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, 1);
+    return "dog";
+}
+
+// @dispatch
+// def ctie(x: Dog, y: Animal, z: int64) -> str:
+//     y.hits += 10
+//     return "dog_animal"
+std::string ctie__Dog__Animal__int64(const Dog& x, Animal& y, int64_t z) {
+    y.hits = ::tpy::add_check<int32_t>(y.hits, 10);
+    return "dog_animal";
+}
+
+// @dispatch
+// def ctie(x: Animal, y: Dog, z: int64) -> str:
+//     y.hits += 1
+//     return "animal_dog"
+std::string ctie__Animal__Dog__int64(const Animal& x, Dog& y, int64_t z) {
+    y.hits = ::tpy::add_check<int32_t>(y.hits, 1);
+    return "animal_dog";
+}
+
+// @dispatch
+// def ccw(xs: list[int32], n: float, trigger: int64) -> str:
+//     return "i32-float"
+std::string ccw__list_int32__float__int64(const std::vector<int32_t>& xs, double n, int64_t trigger) {
+    return "i32-float";
+}
+
+// @dispatch
+// def ccw(xs: list[int64], n: int64, trigger: int64) -> str:
+//     return "i64"
+std::string ccw__list_int64__int64__int64(const std::vector<int64_t>& xs, int64_t n, int64_t trigger) {
+    return "i64";
+}
+
+// @dispatch
+// def cfn(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
+//     x.hits += g(1)
+//     return "base"
+std::string cfn__Callable_int32_int32__Animal__int64(const std::function<int32_t(int32_t)>& g, Animal& x, int64_t n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, g(1));
+    return "base";
+}
+
+// @dispatch
+// def cfb(g: Callable[[int32], int32], x: Animal, n: int64) -> str:
+//     x.hits += g(1)
+//     return "base"
+std::string cfb__Callable_int32_int32__Animal__int64(const std::function<int32_t(int32_t)>& g, Animal& x, int64_t n) {
+    x.hits = ::tpy::add_check<int32_t>(x.hits, g(1));
+    return "base";
+}
+
+// @dispatch
+// def cli(x: Dog, y: Dog, v: int, n: int64) -> str:
+//     y.hits += 10
+//     return "dogs-int"
+std::string cli__Dog__Dog__int__int64(const Dog& x, Dog& y, const ::tpy::BigInt& v, int64_t n) {
+    y.hits = ::tpy::add_check<int32_t>(y.hits, 10);
+    return "dogs-int";
+}
+
+// @dispatch
+// def cli(x: Animal, y: Animal, v: int64, n: int64) -> str:
+//     y.hits += 1
+//     return "bases-i64"
+std::string cli__Animal__Animal__int64__int64(const Animal& x, Animal& y, int64_t v, int64_t n) {
+    y.hits = ::tpy::add_check<int32_t>(y.hits, 1);
+    return "bases-i64";
+}
+
+// @dispatch
+// def clr(x: float32, n: int64) -> str:
+//     return "f32"
+std::string clr__float32__int64(float x, int64_t n) {
+    return "f32";
+}
+
+// @dispatch
+// def clr(x: float, n: int64) -> str:
+//     return "f64"
+std::string clr__float__int64(double x, int64_t n) {
+    return "f64";
+}
+
+// def coerce_base_vs_proto() -> None:
+//     d = Dog()
+//     n8: int8 = 1
+//     k: int = 1
+//     # A base-class parameter beats a protocol when the int8 / int converts,
+//     # from a local and from a parameter.
+//     print("coerce_base_vs_proto:", cbp(d, n8), cbp(d, k), cbp_via(d, n8), d.hits)  # tpyc: ok
+//     # A float literal converting at float32 ranks the same way.
+//     print("coerce_base_vs_proto:", cbf(d, 1.5), d.hits)  # tpyc: ok
+//     # Keyword arguments rank the same way.
+//     print("coerce_base_vs_proto:", cbp(n=n8, x=d), d.hits)  # tpyc: ok
+void coerce_base_vs_proto() {
+    Dog d = Dog();
+    int8_t n8 = 1;
+    ::tpy::BigInt k = ::tpy::BigInt(1);
+    std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbp__Animal__int64(d, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::cbp__Animal__int64(d, (k).to_fixed_check<int64_t>()) << " " << ::tpyapp::main::cbp_via(d, n8) << " " << d.hits << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbf__Animal__float32(d, 1.5f) << " " << d.hits << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_base_vs_proto:" << " " << ::tpyapp::main::cbp__Animal__int64(d, static_cast<int64_t>(n8)) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_ptr() -> None:
+//     d = Dog()
+//     other = Dog()
+//     # A Dog value converting at Ptr[Animal]: the base still beats the
+//     # protocol, and the variant writes through the pointer.
+//     print("coerce_ptr:", cpp(d, other), other.hits)  # tpyc: ok
+void coerce_ptr() {
+    Dog d = Dog();
+    Dog other = Dog();
+    std::cout << "coerce_ptr:" << " " << ::tpyapp::main::cpp__Animal__Ptr_Animal(d, &other) << " " << other.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_base_vs_t_param() -> None:
+//     d = Dog()
+//     n: int8 = 3
+//     # A Dog parameter ranks as a Dog local does: the base beats bare T.
+//     print("coerce_base_vs_t_param:", cb_via(d, n), d.hits)  # tpyc: ok
+void coerce_base_vs_t_param() {
+    Dog d = Dog();
+    int8_t n = 3;
+    std::cout << "coerce_base_vs_t_param:" << " " << ::tpyapp::main::cb_via(d, n) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_elem_widen() -> None:
+//     xs: list[int32] = [1, 2]
+//     x8: list[int8] = [1, 2]
+//     n8: int8 = 1
+//     # The view that widens no element wins.
+//     print("coerce_elem_widen:", cew(xs, n8), ceg(x8, n8))  # tpyc: ok
+void coerce_elem_widen() {
+    std::vector<int32_t> xs = {1, 2};
+    std::vector<int8_t> x8 = {1, 2};
+    int8_t n8 = 1;
+    std::cout << "coerce_elem_widen:" << " " << ::tpyapp::main::cew__Iterable_int32__int64(xs, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::ceg__Iterable_T__int64<int8_t>(x8, static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_generic_shapes() -> None:
+//     xs: list[int32] = [7, 8]
+//     ys: list[int32] = [7, 8]
+//     zs: list[int32] = [7, 8]
+//     n8: int8 = 1
+//     # A generic protocol beats bare T; a generic shape beats both.
+//     print("coerce_generic_shapes:", cgt(xs, n8))  # tpyc: ok
+//     print("coerce_generic_shapes:", csg(ys, n8), len(ys))  # tpyc: ok
+//     print("coerce_generic_shapes:", cst(zs, n8), len(zs))  # tpyc: ok
+//     print("coerce_generic_shapes:", csf(xs, 1.5), len(xs))  # tpyc: ok
+void coerce_generic_shapes() {
+    std::vector<int32_t> xs = {7, 8};
+    std::vector<int32_t> ys = {7, 8};
+    std::vector<int32_t> zs = {7, 8};
+    int8_t n8 = 1;
+    std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::cgt__Iterable_T__int64<int32_t>(xs, static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::csg__list_T__int64<int32_t>(ys, static_cast<int64_t>(n8)) << " " << ::tpy::__len__(ys) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::cst__list_T__int64<int32_t>(zs, static_cast<int64_t>(n8)) << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
+    std::cout << "coerce_generic_shapes:" << " " << ::tpyapp::main::csf__list_T__float32<int32_t>(xs, 1.5f) << " " << ::tpy::__len__(xs) << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_proto_vs_t() -> None:
+//     d = Dog()
+//     n8: int8 = 1
+//     # A protocol beats bare T, from a local and from a parameter.
+//     print("coerce_proto_vs_t:", cpt(d, n8), cpt_via(d, n8), d.hits)  # tpyc: ok
+void coerce_proto_vs_t() {
+    Dog d = Dog();
+    int8_t n8 = 1;
+    std::cout << "coerce_proto_vs_t:" << " " << ::tpyapp::main::cpt__Named__int64(d, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::cpt_via(d, n8) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_literal_vs_str() -> None:
+//     n8: int8 = 1
+//     # A Literal parameter holding the value beats str.
+//     print("coerce_literal_vs_str:", cls("r", n8), clf("r", 1.5))  # tpyc: ok
+void coerce_literal_vs_str() {
+    int8_t n8 = 1;
+    std::cout << "coerce_literal_vs_str:" << " " << ::tpyapp::main::cls__lit_r__w("r", static_cast<int64_t>(n8)) << " " << ::tpyapp::main::clf__lit_r__w("r", 1.5f) << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_optional_base() -> None:
+//     d = Dog()
+//     n8: int8 = 1
+//     # A base inside an Optional beats bare T and writes through the parameter.
+//     print("coerce_optional_base:", cob(d, n8), d.hits)  # tpyc: ok
+void coerce_optional_base() {
+    Dog d = Dog();
+    int8_t n8 = 1;
+    std::cout << "coerce_optional_base:" << " " << ::tpyapp::main::cob__Animal_None__int64(&(d), static_cast<int64_t>(n8)) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_width() -> None:
+//     n8: int8 = 1
+//     # int8 widens less to int64 than to int.
+//     print("coerce_width:", cwi(n8))  # tpyc: ok
+void coerce_width() {
+    int8_t n8 = 1;
+    std::cout << "coerce_width:" << " " << ::tpyapp::main::cwi__int64(static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_subclass_vs_proto() -> None:
+//     p = Puppy()
+//     n8: int8 = 1
+//     # A subclass at its base beats a protocol.
+//     print("coerce_subclass_vs_proto:", csp(p, n8), p.hits)  # tpyc: ok
+void coerce_subclass_vs_proto() {
+    Puppy p = Puppy();
+    int8_t n8 = 1;
+    std::cout << "coerce_subclass_vs_proto:" << " " << ::tpyapp::main::csp__Dog__int64(p, static_cast<int64_t>(n8)) << " " << p.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_method() -> None:
+//     w = Walker()
+//     n8: int8 = 1
+//     # A method set ranks the same: int8 widens less to int64 than to int.
+//     print("coerce_method:", w.go(n8))  # tpyc: ok
+void coerce_method() {
+    Walker w = Walker();
+    int8_t n8 = 1;
+    std::cout << "coerce_method:" << " " << w.go(static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_optional_scalar() -> None:
+//     p = Puppy()
+//     n8: int8 = 1
+//     # The int8 converts into the Optional payload as into a plain int64,
+//     # so the nearer base decides.
+//     print("coerce_optional_scalar:", cgo(p, n8), p.hits)  # tpyc: ok
+//     q = Puppy()
+//     # The int literal is as far from the default width at `int | None` as
+//     # at `int`, so the nearer base decides.
+//     print("coerce_optional_scalar:", cgl(q, 5), q.hits)  # tpyc: ok
+void coerce_optional_scalar() {
+    Puppy p = Puppy();
+    int8_t n8 = 1;
+    std::cout << "coerce_optional_scalar:" << " " << ::tpyapp::main::cgo__Dog__int64_None(p, static_cast<std::optional<int64_t>>(n8)) << " " << p.hits << "\n" << ::tpy::check_signals;
+    Puppy q = Puppy();
+    std::cout << "coerce_optional_scalar:" << " " << ::tpyapp::main::cgl__Dog__int(q, ::tpy::BigInt(5)) << " " << q.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_tie_escape() -> None:
+//     d = Dog()
+//     # The DECLARED type picks the variant; the warning is that spelling's cost.
+//     a: Animal = d  # tpyc: warning(/upcast narrows/)
+//     n8: int8 = 1
+//     # Two Dogs at the crossed pair tie (Ambiguous overload); typing the first
+//     # one as Animal picks one variant.
+//     print("coerce_tie_escape:", ctie(a, d, n8), d.hits)  # tpyc: ok
+void coerce_tie_escape() {
+    Dog d = Dog();
+    Animal& a = d;
+    int8_t n8 = 1;
+    std::cout << "coerce_tie_escape:" << " " << ::tpyapp::main::ctie__Animal__Dog__int64(a, d, static_cast<int64_t>(n8)) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_container() -> None:
+//     n64: int64 = 1
+//     n8: int8 = 1
+//     # Fewer conversions beat a narrower list: the list[int64] variant
+//     # converts only the int8, so it wins as in its strict twin.
+//     print("coerce_container:", ccw([1, 2], n64, n8), ccw([1, 2], n64, n64))  # tpyc: ok
+void coerce_container() {
+    int64_t n64 = 1;
+    int8_t n8 = 1;
+    std::vector<int64_t> __tmp_1 = {1, 2};
+    std::vector<int64_t> __tmp_2 = {1, 2};
+    std::cout << "coerce_container:" << " " << ::tpyapp::main::ccw__list_int64__int64__int64(__tmp_1, n64, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::ccw__list_int64__int64__int64(__tmp_2, n64, n64) << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_callable() -> None:
+//     d = Dog()
+//     n8: int8 = 1
+//     n64: int64 = 1
+//     # A callable argument beside a converting int8: the base beats the protocol.
+//     print("coerce_callable:", cfn(lambda v: v, d, n8), cfn(lambda v: v, d, n64), d.hits)  # tpyc: ok
+void coerce_callable() {
+    Dog d = Dog();
+    int8_t n8 = 1;
+    int64_t n64 = 1;
+    std::cout << "coerce_callable:" << " " << ::tpyapp::main::cfn__Callable_int32_int32__Animal__int64([](int32_t v) -> int32_t { return v; }, d, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::cfn__Callable_int32_int32__Animal__int64([](int32_t v) -> int32_t { return v; }, d, n64) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_callable_base() -> None:
+//     d = Dog()
+//     n8: int8 = 1
+//     # A callable argument beside a converting int8: the base beats bare T.
+//     print("coerce_callable_base:", cfb(lambda v: v, d, n8), d.hits)  # tpyc: ok
+void coerce_callable_base() {
+    Dog d = Dog();
+    int8_t n8 = 1;
+    std::cout << "coerce_callable_base:" << " " << ::tpyapp::main::cfb__Callable_int32_int32__Animal__int64([](int32_t v) -> int32_t { return v; }, d, static_cast<int64_t>(n8)) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_literal_int() -> None:
+//     d = Dog()
+//     n8: int8 = 1
+//     n64: int64 = 1
+//     # The int literal converts at `int` as at int64, so two bases at exact
+//     # int64 beat two subclasses at `int`.
+//     print("coerce_literal_int:", cli(d, d, 5, n8), cli(d, d, 5, n64), d.hits)  # tpyc: ok
+void coerce_literal_int() {
+    Dog d = Dog();
+    int8_t n8 = 1;
+    int64_t n64 = 1;
+    std::cout << "coerce_literal_int:" << " " << ::tpyapp::main::cli__Animal__Animal__int64__int64(d, d, 5, static_cast<int64_t>(n8)) << " " << ::tpyapp::main::cli__Animal__Animal__int64__int64(d, d, 5, n64) << " " << d.hits << "\n" << ::tpy::check_signals;
+}
+
+// def coerce_literal_range() -> None:
+//     n8: int8 = 1
+//     # A float literal float32 cannot hold is no conversion there.
+//     print("coerce_literal_range:", clr(1e300, n8))  # tpyc: ok
+void coerce_literal_range() {
+    int8_t n8 = 1;
+    std::cout << "coerce_literal_range:" << " " << ::tpyapp::main::clr__float__int64(1e+300, static_cast<int64_t>(n8)) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     proto_vs_t()
 //     base_vs_t()
@@ -380,6 +842,24 @@ void callable_result() {
 //     own_base()
 //     plain_int()
 //     callable_result()
+//     coerce_base_vs_proto()
+//     coerce_ptr()
+//     coerce_base_vs_t_param()
+//     coerce_elem_widen()
+//     coerce_generic_shapes()
+//     coerce_proto_vs_t()
+//     coerce_literal_vs_str()
+//     coerce_optional_base()
+//     coerce_width()
+//     coerce_subclass_vs_proto()
+//     coerce_method()
+//     coerce_optional_scalar()
+//     coerce_tie_escape()
+//     coerce_container()
+//     coerce_callable()
+//     coerce_callable_base()
+//     coerce_literal_int()
+//     coerce_literal_range()
 void main() {
     ::tpyapp::main::proto_vs_t();
     ::tpyapp::main::base_vs_t();
@@ -399,6 +879,24 @@ void main() {
     ::tpyapp::main::own_base();
     ::tpyapp::main::plain_int();
     ::tpyapp::main::callable_result();
+    ::tpyapp::main::coerce_base_vs_proto();
+    ::tpyapp::main::coerce_ptr();
+    ::tpyapp::main::coerce_base_vs_t_param();
+    ::tpyapp::main::coerce_elem_widen();
+    ::tpyapp::main::coerce_generic_shapes();
+    ::tpyapp::main::coerce_proto_vs_t();
+    ::tpyapp::main::coerce_literal_vs_str();
+    ::tpyapp::main::coerce_optional_base();
+    ::tpyapp::main::coerce_width();
+    ::tpyapp::main::coerce_subclass_vs_proto();
+    ::tpyapp::main::coerce_method();
+    ::tpyapp::main::coerce_optional_scalar();
+    ::tpyapp::main::coerce_tie_escape();
+    ::tpyapp::main::coerce_container();
+    ::tpyapp::main::coerce_callable();
+    ::tpyapp::main::coerce_callable_base();
+    ::tpyapp::main::coerce_literal_int();
+    ::tpyapp::main::coerce_literal_range();
 }
 
 // main()
