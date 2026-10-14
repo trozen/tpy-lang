@@ -410,11 +410,19 @@ bindings on the per-module attribute table so a cycle peer's
 re-export *from* a cycle peer is the one remaining gap (BUGS.md
 entries) -- their bodies aren't TpyType-resolved at pre-pop time.
 
-The C++ back-end emits `<mod>_fwd.hpp` per cycle member with
+A native module (`"mod": "native"`) generates no C++, so it is never a
+C++ cycle peer: the C++ cycle is an import SCC's regular members, and
+only when at least two remain (or one imports itself). A regular module
+whose only cycle peers are native is compiled like any other module.
+The executable-statement gate still covers the whole import SCC; a
+native member passes it because sema keeps a native module
+declaration-only.
+
+The C++ back-end emits `<mod>_fwd.hpp` per C++ cycle peer with
 forward declarations of the module's records / enums / `@dynamic`
 protocol bases; cycle peers `#include` the fwd header in their
-`.hpp` and the full header in their `.cpp`. Method bodies on cycle
-members always emit out-of-line in `.cpp` so a small body's
+`.hpp` and the full header in their `.cpp`. Method bodies on C++ cycle
+peers always emit out-of-line in `.cpp` so a small body's
 inline-in-header optimization doesn't reach into a peer's complete
 type from the .hpp. A small non-template generator's `__next__` (at
 most 40 rendered lines) is the one body that still emits `inline`, in
@@ -425,12 +433,13 @@ goes).
 
 A workspace-wide completeness-graph reject gate
 (`_check_workspace_completeness_cycles`) runs after decl
-finalization and before body sema. For every non-trivial import
-SCC it walks each member's record fields and parents and rejects
+finalization and before body sema. For every C++ cycle (above) it
+walks each member's record fields and parents and rejects
 positions that would require a peer's *complete* type (concrete
 inheritance, by-value record fields, by-value containers, value-
 variant unions, static-protocol template constraints). The
-diagnostic names the offending field/parent + cycle members and
+diagnostic names the offending field/parent + the import cycle's
+members (native ones included) and
 points the user at `Ptr[T]` as the workaround.
 
 A body's analysis facts (the Phase 1 mutation and return-borrow sets,

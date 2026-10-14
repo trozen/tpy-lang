@@ -42,7 +42,9 @@ from ..parse.nodes import (
     TpyFieldAccess, TpyName, TpyCall,
     TpyMethodCall, TpyExprStmt, TpyRaise, TpyTry, TpyMatch, TpyNestedDef, TpyCoerce,
     TpyDelVar, SourceLocation, expr_contains_self_method_call,
+    VarLinkage, is_module_declaration,
 )
+from ..parse.module_settings import NATIVE_MODULE
 from .expressions import _collect_body_name_refs
 from ..interop.sema_validators import (
     validate_export_class_dunders, warn_export_class_return_alias,
@@ -285,6 +287,14 @@ def _genexpr_local_slot(func: TpyFunction, name: str) -> _GenexprTypeSlot:
         func.generator_locals = [(n, resolved if n == name else t)
                                  for n, t in func.generator_locals]
     return _GenexprTypeSlot(lambda: dict(func.generator_locals)[name], put)
+
+
+def _declares_only(stmt: TpyStmt) -> bool:
+    """A module-level statement that runs nothing, a `native_global`
+    binding included (its linkage is decided by analyzing it)."""
+    return (is_module_declaration(stmt)
+            or (isinstance(stmt, TpyVarDecl)
+                and stmt.linkage != VarLinkage.DEFAULT))
 
 
 class SemanticAnalyzer:
@@ -944,7 +954,10 @@ class SemanticAnalyzer:
         # topo order in the declarations pass).
         if module.top_level_stmts:
             self.ctx.module_top_level_stmts = module.top_level_stmts
-            self._analyze_top_level(module.top_level_stmts, declared_globals)
+            self._analyze_top_level(
+                module.top_level_stmts, declared_globals,
+                declaration_only=module.directives.native_module,
+                synthetic=name_decl if not is_private_submodule else None)
         self._advance_phase(
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
             self._PHASE_REGISTER_SIGNATURES,
@@ -3715,11 +3728,17 @@ class SemanticAnalyzer:
         return False
 
     def _analyze_top_level(self, stmts: list[TpyStmt],
-                           function_globals: set[str]) -> None:
+                           function_globals: set[str], *,
+                           declaration_only: bool = False,
+                           synthetic: TpyStmt | None = None) -> None:
         """Analyze top-level statements (for generated main()).
 
         Treats top-level code like a function body so list literals and other
-        constructs go through the same analysis path.
+        constructs go through the same analysis path. A `declaration_only`
+        (native) module generates no code, so any statement there but an
+        import, a bare declaration, a `native_global` binding or an inert
+        docstring / `pass` is rejected; `synthetic` is the compiler-injected
+        `__name__` declaration.
         """
         self.ctx.reset_function_tracking()
         self.ctx.func.current_function = MODULE_INIT_CONTEXT
@@ -3763,6 +3782,12 @@ class SemanticAnalyzer:
                 None if isinstance(stmt, TpyVarDecl) and stmt.module_init_local
                 else stmt)
             self.stmts.analyze_stmt(stmt)
+            if (declaration_only and stmt is not synthetic
+                    and not _declares_only(stmt)):
+                raise self.ctx.error(
+                    f"module-level statement not allowed in {NATIVE_MODULE}: "
+                    f"'{self.ctx.module_name}' is declaration-only",
+                    stmt)
         self.ctx.current_module_stmt = None
         self.deduction.resolve_all()
         self.compat.drain_deferred_escape_checks()

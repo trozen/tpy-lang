@@ -1,0 +1,1 @@
+m.py:15: error: Cyclic import members may only contain imports and bare type declarations at module level; found executable code in 'm'. Move the statement into a function, or break the cycle. Cycle: m <-> n

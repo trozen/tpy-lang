@@ -1,0 +1,7 @@
+native_pair: 4 3 5
+regular_native: 15
+regular_native: 6
+regular_native_field: 8
+regular_native_base: 7 14
+through_native: 101 107
+self_reexport: 10 7

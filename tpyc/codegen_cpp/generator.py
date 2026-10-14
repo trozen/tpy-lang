@@ -2032,6 +2032,12 @@ class CodeGenerator:
             bd = cell.binding
             if bd.defining_module is None:
                 continue  # local definition
+            # A name of ours re-imported through a peer (`from n import X
+            # as Y` where n imports X from us) needs no alias: use sites
+            # resolve it to our own definition, which the alias would
+            # precede.
+            if bd.defining_module == self.ctx.module_name:
+                continue
             # The binding's `info` carries the kind-specific payload
             # (function infos / RecordInfo / enum NominalType / variable
             # TpyType). Pass it through so the kind-specific blocks

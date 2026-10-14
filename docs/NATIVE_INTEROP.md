@@ -874,7 +874,7 @@ __tpy__ = {"mod": "native",
 
 ### `"mod": "native"`
 
-Marks a module as declaration-only. No `.hpp` or `.cpp` is generated. All `@native` entities are for type-checking only. Its `"includes"` are propagated to importing modules.
+Marks a module as declaration-only. No `.hpp` or `.cpp` is generated. All `@native` entities are for type-checking only. Its `"includes"` are propagated to importing modules. Module-level statements are limited to imports, bare declarations (`name: T`) and `native_global(...)` bindings (plus a docstring or `pass`); any other statement is rejected, since no generated code would run it.
 
 Each module that should be declaration-only must declare `"mod": "native"` itself -- it does not propagate from package `__init__.py` to child modules.
 

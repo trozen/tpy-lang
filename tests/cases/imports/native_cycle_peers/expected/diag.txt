@@ -1,0 +1,4 @@
+holder.py:13: warning: Import statement should be at the top of the file
+left.py:14: warning: Import statement should be at the top of the file
+nat_a.py:15: warning: Import statement should be at the top of the file
+owner.py:15: warning: Import statement should be at the top of the file

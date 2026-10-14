@@ -1519,10 +1519,11 @@ class CodeGenContext:
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
     # async-return value) consults it. None outside a frame emission.
     thir_resumable_leaf: "ResumableLeafEmitter | None" = None
-    # Peer modules in the same import-graph SCC. When a `<peer>.hpp`
+    # The module's C++ cycle: its import SCC's regular (non-native)
+    # members, which include each other's headers. When a `<peer>.hpp`
     # would be included from this module's header (vs cpp file), the
     # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic
-    # complete-type include. Empty for non-cycle modules.
+    # complete-type include. Empty outside a C++ cycle.
     cycle_peers: frozenset[str] = field(default_factory=frozenset)
 
     # --- Scope tracking ---

@@ -2319,6 +2319,13 @@ def is_init_trivia(stmt: TpyStmt) -> bool:
     return is_docstring(stmt) or isinstance(stmt, TpyPassStmt)
 
 
+def is_module_declaration(stmt: TpyStmt) -> bool:
+    """A module-level statement that runs none of the module's own code:
+    an import, a bare `name: T` declaration, a docstring or `pass`."""
+    return (isinstance(stmt, TpyImport) or is_init_trivia(stmt)
+            or (isinstance(stmt, TpyVarDecl) and stmt.init is None))
+
+
 def init_leading_run_end(body: list[TpyStmt]) -> int:
     """Index of the first `__init__` statement that is neither trivia nor a
     parent-initializer call. Only the calls before it keep their CPython

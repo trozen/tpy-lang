@@ -1508,6 +1508,11 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                              thir_bodies=thir_bodies, thir_faces=thir_faces)
 
     except (CompileError, SemanticError, ParseError, CodeGenError) as e:
+        if isinstance(e, (SemanticError, CodeGenError)) and e.filename is not None:
+            # The compiler stamps an imported module's error with a
+            # cwd-relative path; diag.txt and the annotations name the
+            # bare basename on every host.
+            e.filename = Path(e.filename).name
         line = e.format() if isinstance(e, CompileError) else e.format(src_file.name)
         # A codegen error in a library module comes after the case's own
         # bodies were lowered, and those count.

@@ -25,6 +25,9 @@ from .nodes import ModuleDirectives, ParseError, SourceLocation
 
 SETTINGS_NAME = "__tpy__"
 
+# How diagnostics name a native module, whose contents are declaration-only.
+NATIVE_MODULE = 'a native module ("mod": "native")'
+
 # The retired `# tpy: <directive>` comments `__tpy__` replaced, in their old
 # bare-name or call shape, so prose that merely starts with `# tpy:` passes.
 _STALE_DIRECTIVE_RE = re.compile(

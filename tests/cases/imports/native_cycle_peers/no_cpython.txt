@@ -1,0 +1,4 @@
+Every section runs through @native classes, functions and native_global
+bindings over the hand-written cycle_types.hpp. Under CPython those
+stubs have no behavior (an @native method body is "...", so `take`
+returns None and the fields never exist), so the output cannot match.

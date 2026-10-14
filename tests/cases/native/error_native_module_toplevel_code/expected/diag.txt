@@ -1,0 +1,1 @@
+nm.py:9: error: module-level statement not allowed in a native module ("mod": "native"): 'nm' is declaration-only

@@ -16,9 +16,9 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, NamedTuple, TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation
+from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, is_module_declaration
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
-from .parse.module_settings import read_source_settings
+from .parse.module_settings import NATIVE_MODULE as _NATIVE_MODULE, read_source_settings
 from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
@@ -83,9 +83,6 @@ if TYPE_CHECKING:
     from .mir.nodes import MIRFunction
     from .parse.nodes import TpyFunction, TpyName
     from .typesys import ModuleInfo, ModuleVarInfo
-
-
-_NATIVE_MODULE = 'a native module ("mod": "native")'
 
 
 def _has_static_protocol_param(params) -> bool:
@@ -765,6 +762,9 @@ class Compiler:
         # consults this to swap full <peer>.hpp includes for
         # <peer>_fwd.hpp in the header path.
         self._cycle_peers: dict[str, frozenset[str]] = {}
+        # Each C++ cycle peer's full import SCC (native members included),
+        # which the cycle diagnostics name.
+        self._cycle_import_component: dict[str, frozenset[str]] = {}
         # Direct user-module import edges, recorded by the SCC pass.
         self._import_succ: dict[str, list[str]] = {}
         # Per-module `<mod>_inl.hpp` verdicts and import closures, both asked
@@ -1995,16 +1995,28 @@ class Compiler:
 
         # Record cycle peers so codegen can emit `<peer>_fwd.hpp`
         # includes for SCC members and avoid the cyclic complete-
-        # header include problem.
+        # header include problem. A native module generates no header, so
+        # it is never a C++ peer: the include cycle is the import SCC's
+        # regular members, and a regular module whose only peers are
+        # native is in none.
         self._cycle_peers = {}
+        self._cycle_import_component = {}
         # A recompile (the REPL adds a module per line) can change both.
         self._emits_inl_cache = {}
         self._reach_cache = {}
         for component in sccs:
-            if len(component) > 1 or component[0] in succ.get(component[0], []):
-                peers = frozenset(component)
-                for member in component:
-                    self._cycle_peers[member] = peers
+            if not (len(component) > 1 or component[0] in succ.get(component[0], [])):
+                continue
+            regular = [m for m in component
+                       if not self.modules[m].ast.directives.native_module]
+            if not (len(regular) > 1
+                    or (len(regular) == 1 and regular[0] in succ[regular[0]])):
+                continue
+            peers = frozenset(regular)
+            import_component = frozenset(component)
+            for member in regular:
+                self._cycle_peers[member] = peers
+                self._cycle_import_component[member] = import_component
 
         # Move implicit stdlib modules (and their submodules) to the front
         # so they're analyzed before any user code. The topological sort
@@ -2065,25 +2077,28 @@ class Compiler:
         """
         if not self.compile_order:
             return
-        # Use the cycle-peers map produced by `_compute_compile_order`
-        # via Tarjan SCC -- only modules already in a non-trivial
-        # import SCC need checking. Records in non-cyclic modules can
-        # always be made complete via a normal #include.
+        # Only C++ cycle peers (`_cycle_peers`) need checking. Records
+        # outside one, native peers' types included, are made complete
+        # by a normal #include.
         if not self._cycle_peers:
             return
-        # Group cycle members by SCC for the diagnostic.
+        # One check per C++ cycle; the diagnostic names its import SCC.
         seen_components: set[frozenset[str]] = set()
-        for peers in self._cycle_peers.values():
+        for member, peers in self._cycle_peers.items():
             if peers in seen_components:
                 continue
             seen_components.add(peers)
-            self._reject_completeness_cycle_in_scc(peers)
+            self._reject_completeness_cycle_in_scc(
+                peers, self._cycle_import_component[member])
 
-    def _reject_completeness_cycle_in_scc(self, scc: frozenset[str]) -> None:
-        """Inspect every record in this SCC for complete-type cross-cycle
-        references; raise if any. The diagnostic names the first
-        offender (deterministic order over modules + record name +
-        field name)."""
+    def _reject_completeness_cycle_in_scc(
+        self, scc: frozenset[str], import_component: frozenset[str],
+    ) -> None:
+        """Inspect every record in this C++ cycle for complete-type
+        cross-cycle references; raise if any. The diagnostic names the
+        first offender (deterministic order over modules + record name +
+        field name) and the import cycle `import_component`, which also
+        holds the native modules the C++ cycle leaves out."""
 
         def _scc_peer_module(qname: str | None, current_module: str) -> str | None:
             """Module of an SCC peer for `qname`, or None if `qname` is
@@ -2196,11 +2211,11 @@ class Compiler:
                     if isinstance(parent, NominalType) and parent.is_user_record:
                         parent_mod = _scc_peer_module(parent._module_qname, member)
                         if parent_mod is not None:
-                            cycle_repr = " <-> ".join(sorted(scc))
+                            cycle_repr = " <-> ".join(sorted(import_component))
                             # RecordInfo carries no source location; pin
                             # to the first cross-cycle import in this
                             # module so the diagnostic has a usable line.
-                            lineno_n = self._first_cycle_import_line(compiled, scc)
+                            lineno_n = self._first_cycle_import_line(compiled, import_component)
                             raise CompileError(
                                 f"Cyclic import: '{record_name}' in "
                                 f"'{member}' concretely inherits from "
@@ -2217,7 +2232,7 @@ class Compiler:
                     found = _find_complete_required_peer(field.type, member)
                     if found is not None:
                         peer_mod, peer_name = found
-                        cycle_repr = " <-> ".join(sorted(scc))
+                        cycle_repr = " <-> ".join(sorted(import_component))
                         lineno_n = field.loc.line if field.loc else None
                         raise CompileError(
                             f"Cyclic import: field "
@@ -2259,7 +2274,7 @@ class Compiler:
                         or func.name in template_stub_fn_names):
                     continue
                 self._check_signature_for_cross_cycle_by_value(
-                    func, member, scc, compiled,
+                    func, member, import_component, compiled,
                     name_label=f"'{func.name}'",
                     where_label="function",
                     finder=_find_complete_required_peer,
@@ -2310,7 +2325,7 @@ class Compiler:
                     if not method_inline:
                         continue
                     self._check_signature_for_cross_cycle_by_value(
-                        method, member, scc, compiled,
+                        method, member, import_component, compiled,
                         name_label=f"'{record_name}.{method.name}'",
                         where_label="method",
                         finder=_find_complete_required_peer,
@@ -2332,7 +2347,7 @@ class Compiler:
                 if found is None:
                     continue
                 peer_mod, peer_name = found
-                cycle_repr = " <-> ".join(sorted(scc))
+                cycle_repr = " <-> ".join(sorted(import_component))
                 lineno_n = alias_loc.line if alias_loc else None
                 raise CompileError(
                     f"Cyclic import: recursive type alias "
@@ -2346,7 +2361,7 @@ class Compiler:
                 )
 
     def _check_signature_for_cross_cycle_by_value(
-        self, func, member: str, scc, compiled, *,
+        self, func, member: str, import_component, compiled, *,
         name_label: str, where_label: str, finder,
     ) -> None:
         """Walk a function/method signature for by-value cross-cycle
@@ -2354,7 +2369,8 @@ class Compiler:
 
         `finder` is the SCC-bound `_find_complete_required_peer`
         closure from the caller; it descends through containers /
-        unions / tuples / generic records.
+        unions / tuples / generic records. `import_component` is the
+        import cycle the diagnostic names.
         """
         positions: list[tuple[str, TpyType]] = [("return type", func.return_type)]
         for pname, ptype in func.params:
@@ -2364,7 +2380,7 @@ class Compiler:
             if found is None:
                 continue
             peer_mod, peer_name = found
-            cycle_repr = " <-> ".join(sorted(scc))
+            cycle_repr = " <-> ".join(sorted(import_component))
             lineno_n = func.loc.line if func.loc else None
             raise CompileError(
                 f"Cyclic import: {pos_label} of {name_label} in "
@@ -2404,8 +2420,10 @@ class Compiler:
         1. **Top-level statements not in the allowlist.** Cycle
            members must consist of declarations and imports only --
            any executable top-level code (calls, conditionals, loops,
-           assignments other than empty `name: T` decls) breaks the
-           order-independent body-sema invariant.
+           assignments other than empty `name: T` decls; see
+           `is_module_declaration`) breaks the order-independent
+           body-sema invariant. Native members are skipped: sema keeps
+           a native module declaration-only.
         2. **C++ type-completeness cycles.** Tarjan SCC over the
            *resolved type-dependency graph* (by-value fields,
            value-types in containers / tuples / unions / Own /
@@ -2436,19 +2454,18 @@ class Compiler:
         # stdlib facades sit inside cycles without breaking the C++
         # build. The order-independent body sema invariant is
         # protected by Category 1 below (no executable top-level code).
-        # Category 1: top-level statements not in the allowlist.
-        # Allowed: TpyImport, TpyVarDecl with init=None whose codegen is
-        # inert (declarations only). The synthetic `__name__` Final[str]
-        # is injected later (sub-phase 3); at this discovery-time check
-        # we only see user-authored statements.
+        # Category 1: top-level statements that run code
+        # (`is_module_declaration` is the allowlist). The synthetic
+        # `__name__` Final[str] is injected later (sub-phase 3); at this
+        # discovery-time check we only see user-authored statements.
         for name in members:
             compiled = self.modules.get(name)
-            if compiled is None:
+            # A native module runs nothing: sema rejects any of its
+            # statements but imports, bare declarations and native_global.
+            if compiled is None or compiled.ast.directives.native_module:
                 continue
             for stmt in compiled.ast.top_level_stmts or []:
-                if isinstance(stmt, TpyImport):
-                    continue
-                if isinstance(stmt, TpyVarDecl) and stmt.init is None:
+                if is_module_declaration(stmt):
                     continue
                 cycle_repr = " <-> ".join(members)
                 lineno_n = stmt.loc.line if stmt.loc else None
