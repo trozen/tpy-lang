@@ -42,7 +42,7 @@
 #     short literals. No fix planned -- the perf gap is small in practice and
 #     every idiomatic alternative pays a real cost. See IR_DESIGN.md for the
 #     design landscape.
-# tpy: cpp_namespace("tpystd::heapq")
+__tpy__ = {"cpp_namespace": "tpystd::heapq"}
 from tpy import int32, Comparable, Own, copy
 from typing import Iterator
 

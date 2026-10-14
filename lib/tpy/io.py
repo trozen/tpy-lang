@@ -21,7 +21,7 @@
 #   - close() drops the buffer; CPython matches.
 #   - getvalue() does not collapse chunks (avoids unsolicited mutation).
 #
-# tpy: cpp_namespace("tpystd::io")
+__tpy__ = {"cpp_namespace": "tpystd::io"}
 from typing import Final, Iterator, Protocol
 from tpy import (
     int32, int64, Own, nocopy, dynamic,

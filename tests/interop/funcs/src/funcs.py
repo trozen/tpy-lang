@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension example over the free-function surface: a no-arg int64
 # return (METH_NOARGS), int64 arguments (METH_VARARGS), and int/BigInt
 # marshalling including values beyond int64 (hex round-trip both ways).

@@ -2,7 +2,7 @@
 # element either: its CPython type handle lives in the defining module's glue,
 # so the per-element marshaller here has nothing to reference. Located error, not
 # a misbuild -- mirrors the top-level cross-module exposed-type guard.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 from other_mod import Counter

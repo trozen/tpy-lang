@@ -344,9 +344,9 @@ struct HttpClient {
 
 ```python
 # build_opts.py
-# tpy: native_module
-# tpy: cpp_namespace("x::core")
-# tpy: include("<x/build_opts.hpp>")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "x::core",
+           "includes": ["<x/build_opts.hpp>"]}
 from tpy.extern import native
 from typing import Final
 

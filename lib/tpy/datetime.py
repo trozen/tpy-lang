@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::datetime")
 # The datetime module: date / time / datetime / timedelta / timezone.
 # See docs/DATETIME_DESIGN.md. Value-typed frozen dataclasses; calendar math
 # and formatting are pure-TPy for byte-parity with CPython (the cpy test phase
@@ -18,6 +17,7 @@
 # `zoneinfo` module) + PEP 495 fold. The tz slot is the closed value union
 # timezone | ZoneInfo | None; user tzinfo subclasses stay unsupported.
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::datetime"}
 import time as _time
 from typing import Final
 from dataclasses import dataclass

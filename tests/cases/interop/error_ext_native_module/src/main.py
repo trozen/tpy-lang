@@ -1,6 +1,7 @@
-# An ext_module emits a generated CPython module; native_module is
-# declaration-only and emits no code -- the combination is contradictory and
-# rejected (it would otherwise produce a PyInit_-less, unimportable .so).
-# tpyc: error(/cannot be both .* ext_module.* and .* native_module/)
-# tpy: ext_module
-# tpy: native_module
+# An ext module and a native module are both values of the one "mod" key, so
+# declaring both is a duplicate key: the old ext+native contradiction (a
+# PyInit_-less, unimportable .so) can no longer be written.
+# Valid Python, rejected as a documented restriction (docs/LANGUAGE_FEATURES.md,
+# Module Settings: `__tpy__`).
+__tpy__ = {"mod": "ext",
+           "mod": "native"}  # tpyc: error(/duplicate key 'mod'/)

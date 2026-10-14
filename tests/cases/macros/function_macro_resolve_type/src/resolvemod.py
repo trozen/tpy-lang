@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Function macro that mints the bool type via ctx.resolve_type.
 
 Unlike function_macro_bool_locals (which borrowed bool off the return type),
 this resolves "bool" by name -- proving resolve_type supplies a usable type
 independent of the function signature.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast, VarDecl, StrLiteral,
 )

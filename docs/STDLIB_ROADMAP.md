@@ -76,7 +76,7 @@ future modules slot in predictably: `tpy/stdlib/random.hpp` ->
 on.
 
 Complementary Python-side convention (already in use): stdlib `.py` modules
-declare `# tpy: cpp_namespace("tpystd::<module>")` so the generated code for
+declare `__tpy__ = {"cpp_namespace": "tpystd::<module>"}` so the generated code for
 the pure-TPy wrappers lives under `tpystd::math::`, `tpystd::bisect::`, etc.
 Three layers, three namespaces, all distinct:
 

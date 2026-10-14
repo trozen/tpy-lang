@@ -2,7 +2,7 @@
 # can be exported, and it is a plain value rather than a thrown exception), so
 # @export on one is refused with that reason, not the "exposed automatically"
 # text a thrown exception class gets.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import ReturnException
 from tpy.extern import export
 

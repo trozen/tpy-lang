@@ -1,6 +1,6 @@
 # A dunder crossing the CPython boundary can't be a @staticmethod -- the
 # richcompare/repr/hash slot wrappers all unwrap a live `self` payload.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, uint64
 from tpy.extern import export
 

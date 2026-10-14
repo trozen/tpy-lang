@@ -1,5 +1,5 @@
 # Test native_global() with all variants: C/C++ binding, rename, bare name, array
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy import int32, Ptr, deref
 from tpy.extern import native_global
 

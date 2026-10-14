@@ -4,7 +4,7 @@ TurboPython Macro API
 Public API for macro modules. Macro modules import from this package to inspect
 and modify class definitions during compilation.
 
-Macro modules are normal .py files with a ``# tpy: macro_module`` directive.
+Macro modules are normal .py files declaring ``__tpy__ = {"mod": "macro"}``.
 They are executed via CPython during compilation (not compiled to C++).
 """
 

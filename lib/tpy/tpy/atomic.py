@@ -1,4 +1,3 @@
-# tpy: include("<tpy/atomic.hpp>")
 """Lock-free atomic scalars -- `Atomic[T]` over the fixed-width integer types.
 
 `Atomic[T: AnyFixedInt]` is a `@nocopy` (copying a shared counter would silently
@@ -13,6 +12,7 @@ boilerplate; pass an explicit weaker order only on hot paths:
     counter += 1                            # atomic RMW, seq_cst
     print(counter.load())
 """
+__tpy__ = {"includes": ["<tpy/atomic.hpp>"]}
 from enum import Enum
 from tpy import nocopy, unsafe_send, unsafe_sync, AnyFixedInt, readonly
 from tpy.extern import native, native_member

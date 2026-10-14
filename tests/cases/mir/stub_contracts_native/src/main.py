@@ -1,7 +1,7 @@
 # MIR verdicts for calls to user `@native` stubs: a free stub is admitted only with a
 # declared contract over readonly leaf parameters, and a user container's methods and
 # loops are modeled from its declared element storage (`elements=True`, `mutates=`).
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from typing import Iterator
 from tpy import int32, pure, readonly, Comparable, NativeIterable, Own, StrView, String
 from tpy.extern import native

@@ -16,9 +16,6 @@ namespace tpystd::_bindings::pcre2 {
 
 
 
-// # tpy: cpp_namespace("tpystd::_bindings::pcre2")
-// # tpy: include("<tpy/stdlib/pcre2_h.hpp>")
-// # tpy: link("pcre2", managed=True)
 // """Raw PCRE2 C bindings.
 //
 // One @native declaration per pcre2_*_8 primitive, matching the upstream C

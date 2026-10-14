@@ -2,7 +2,7 @@
 # container element it is deferred: the per-element C++ type render doesn't yet
 # namespace-qualify an exposed leaf below the top level (dict[str, list[Counter]]
 # would emit a bare 'Counter' that the glue namespace can't resolve).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

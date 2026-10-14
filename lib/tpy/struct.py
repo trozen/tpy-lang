@@ -1,4 +1,3 @@
-# tpy: macro_module
 """struct module as compile-time macros.
 
 Parses format string literals at compile time and expands to typed
@@ -12,6 +11,7 @@ Format string must be a literal (compile-time expansion).
 TODO: pack, pack_into (need statement expression or buffer-builder pattern).
 TODO: e (float16), P (pointer), n/N (ssize_t/size_t).
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     CallMacroContext, MacroArg, MacroError,

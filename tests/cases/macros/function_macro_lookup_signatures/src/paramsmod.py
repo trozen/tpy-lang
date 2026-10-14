@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Function macro exercising ctx.lookup_function_signatures: reads a
 callee's overload signatures (params + return type) -- module-local,
 imported, aliased, zero-param, unknown (None), and overloaded (a
 multi-element list, not None) -- and retypes a bool-string local to the
 type of the slot it flows into, proving the looked-up types drive a real
 deduction."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast,
     VarDecl, StrLiteral,

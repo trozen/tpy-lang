@@ -4,7 +4,7 @@
 # container-mutation warning. Span[readonly[T]] can never warn here (writing
 # through it is already a compile error elsewhere), and a non-mutating Span[T]
 # param has no observable divergence and stays quiet.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import Span, readonly, int32
 from tpy.extern import export
 

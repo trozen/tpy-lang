@@ -79,10 +79,6 @@ void main() {
     std::cout << static_cast<int32_t>(e) << "\n" << ::tpy::check_signals;
 }
 
-// # @native binding to an existing C++ enum class; tests print, match, .name, .value.
-// # Uses auto() so the C++ side is the source of truth for member values
-// # (declared C++-side as A=10, B=20 to prove TPy doesn't depend on a value mirror).
-// # tpy: include("native_types.hpp")
 // from enum import Enum, auto
 // from tpy.extern import native
 //

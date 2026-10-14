@@ -1,7 +1,7 @@
 # An unmarshallable PARAMETER type is rejected the same way as a return type:
 # the validation pass checks every @export param, not just the return. StrView
 # is a borrow form, not marshallable across the boundary (use str/bytes).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import StrView
 from tpy.extern import export
 

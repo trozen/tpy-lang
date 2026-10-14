@@ -13,9 +13,6 @@ namespace tpystd::_bindings::zlib {
 
 
 
-// # tpy: cpp_namespace("tpystd::_bindings::zlib")
-// # tpy: include("<tpy/stdlib/zlib_h.hpp>")
-// # tpy: link("zlib", managed=True)
 // """Raw zlib bindings over the TPy z_stream shim. Not for direct user import.
 //
 // The surface is the `tpy_zs_*` / `tpy_zlib_*` API implemented in

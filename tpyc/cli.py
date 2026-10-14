@@ -906,12 +906,12 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
         if has_errors:
             return 1
 
-        # A `# tpy: ext_module` builds a CPython extension `.so`, not an
+        # An ext module builds a CPython extension `.so`, not an
         # executable: there is no main() to emit or run.
         ext_module_build = compiler.is_ext_module_build()
         if ext_module_build:
             if args.exec:
-                print("error: cannot --exec a `# tpy: ext_module` -- it builds "
+                print("error: cannot --exec an ext module (`\"mod\": \"ext\"`) -- it builds "
                       "an importable .so, not a runnable program", file=sys.stderr)
                 return 1
             options.no_main = True
@@ -1044,7 +1044,7 @@ def _run_cli_in(is_runner: bool, temp_build_dir: _TempBuildDir) -> int:
         link_flags = compiler.collect_link_flags()
 
         # Resolve third-party deps (e.g. PCRE2 declared via
-        # `# tpy: link("pcre2", managed=True)`) into concrete build inputs.
+        # `{"lib": "pcre2", "managed": True}` in `__tpy__`) into concrete build inputs.
         # DisabledLibError is raised when the user passed `--<lib>=none` but
         # a module in the compile graph needs that lib -- surface it as a
         # clean compile error.

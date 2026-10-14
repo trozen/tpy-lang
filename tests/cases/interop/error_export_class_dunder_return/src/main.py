@@ -1,7 +1,7 @@
 # __repr__ crossing the CPython boundary must return str -- Py_tp_repr's
 # reprfunc wrapper marshals via to_py(std::string), so a non-str return has
 # nothing to convert.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

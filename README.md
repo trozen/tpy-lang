@@ -260,7 +260,7 @@ The generated code needs C++23 and the GCC statement-expression extension:
 g++ 13+, clang++ 19+ or another LLVM-based compiler. MSVC is not supported.
 Existing C and C++ code is reached through `@native` declarations, a
 TurboPython function gets C linkage with `@export(binding="C")`, and a
-module marked `# tpy: ext_module` builds into a regular CPython extension;
+module declaring `__tpy__ = {"mod": "ext"}` builds into a regular CPython extension;
 see [Emit and integrate C++](https://tpy-lang.org/docs/guide/building/#emit-and-integrate-c)
 and [Native interop](https://github.com/trozen/tpy-lang/blob/master/docs/NATIVE_INTEROP.md).
 

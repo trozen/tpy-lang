@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::builtins")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::builtins"}
 from .._bootstrap._decorators import readonly, Own, dispatch
 from .._bootstrap._extern import cpp_template, native, native_field, virtual_raise
 from .._core._types import int32, ReturnException, StrView, Throwable

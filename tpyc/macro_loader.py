@@ -1,7 +1,7 @@
 """
 TurboPython Macro Module Loader
 
-Discovers and loads ``# tpy: macro_module`` files via CPython during
+Discovers and loads ``"mod": "macro"`` modules via CPython during
 compilation. Macro modules are NOT compiled to C++ -- they run at compile
 time only.
 """
@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import importlib.util
 import inspect
-import re
 import sys
 import typing
 from pathlib import Path
@@ -20,6 +19,8 @@ import builtins as _builtins_module
 
 from . import macro_api as _macro_api
 from .build_cache import capture_input
+from .parse.module_settings import read_source_settings
+from .parse.nodes import ParseError
 
 
 # ---------------------------------------------------------------------------
@@ -80,19 +81,15 @@ def _make_restricted_builtins(
     return restricted
 
 
-_MACRO_MODULE_RE = re.compile(r'^\s*#\s*tpy:\s+macro_module\s*$')
-
-
-def is_macro_module_source(source: str) -> bool:
-    """Quick check whether source text contains ``# tpy: macro_module``."""
-    # Only scan the preamble (before first non-comment, non-blank line)
-    for line in source.splitlines():
-        stripped = line.strip()
-        if stripped and not stripped.startswith('#'):
-            break
-        if _MACRO_MODULE_RE.match(line):
-            return True
-    return False
+class MacroImportSettingsError(Exception):
+    """A malformed `__tpy__` in a module a macro module imports. Carried out
+    of the importing module's CPython exec unwrapped, so the compiler reports
+    it against the imported module's own path and line."""
+    def __init__(self, error: ParseError, module_name: str, path: Path) -> None:
+        super().__init__(error.message)
+        self.error = error
+        self.module_name = module_name
+        self.path = path
 
 
 def call_macro_field_function(
@@ -452,7 +449,11 @@ class MacroRegistry:
             if path.is_file():
                 capture_input(self.input_entries, path)  # before the read
                 source = path.read_text()
-                if is_macro_module_source(source):
+                try:
+                    kind = read_source_settings(source)[1].kind
+                except ParseError as e:
+                    raise MacroImportSettingsError(e, name, path) from e
+                if kind == "macro":
                     self.load_module(name, path)
                     return self._modules.get(name)
                 self.probe_rejected.append(str(path))
@@ -494,6 +495,9 @@ class MacroRegistry:
         self._loading.add(module_name)
         try:
             spec.loader.exec_module(mod)
+        except MacroImportSettingsError:
+            _macro_api._pending_macro_deps = None
+            raise
         except Exception as e:
             _macro_api._pending_macro_deps = None
             raise RuntimeError(

@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Error case: a deferred (post-sema) function macro raises ctx.error.
 
 require_int_return defers a callback to after type inference; the callback
 reads the return value's inferred type via ctx.type_of and errors when it
 isn't int32 -- exercising diagnostic propagation out of the post-sema phase.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import function_macro, FunctionMacroContext, TpyReturn
 
 

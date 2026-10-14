@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Identity-preserving borrow returns: a `-> Cls` return whose reference is
 # the receiver or a parameter crosses as the ORIGINAL PyObject (Py_IncRef in
 # the glue after an address match against self / the exposed-class params),

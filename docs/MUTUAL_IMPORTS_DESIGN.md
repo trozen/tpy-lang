@@ -172,8 +172,8 @@ per-module" property than today's per-module-with-publishing model.
 - Top-level statements with side effects in cycle members.
 - Cross-module by-value cross-references in cycles (C++ layout
   requires complete type -- rejected by the completeness graph gate).
-- Re-export facades inside cycles (`__init__.py` or `# tpy:
-  native_module` member of an SCC).
+- Re-export facades inside cycles (`__init__.py` or `"mod":
+  "native"` member of an SCC).
 
 ## Open design questions
 

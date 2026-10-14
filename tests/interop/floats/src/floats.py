@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension over the float boundary: float params/returns marshal as
 # C++ double (PyFloat_AsDouble/FromDouble). int/bool args coerce via __float__.
 # For the values exercised here -- real numbers plus the two error cases

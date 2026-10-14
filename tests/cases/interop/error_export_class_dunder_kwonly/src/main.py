@@ -3,7 +3,7 @@
 # methods and __init__ (tests/interop/defaults). A dunder reaches CPython as a
 # TYPE SLOT: the protocol hands the wrapper its operand directly, with no
 # argument tuple to parse, so there is no keyword to match.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

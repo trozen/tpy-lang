@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Smoke-test macro module exercising builder-trace infrastructure.
 
 A trivial @builder_macro for collecting (name, value) string entries and
@@ -6,6 +5,7 @@ synthesizing a record + factory function on the terminal call. Used by
 tests/cases/macros/builder_smoke/ to validate Phase 7 wiring without
 depending on argparse semantics.
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     builder_macro, builder_method, builder_returns, builder_terminal,

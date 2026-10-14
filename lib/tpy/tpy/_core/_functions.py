@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::tpy")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::tpy"}
 from tpy import Ptr
 from .._bootstrap._decorators import readonly, pure, Own
 from .._bootstrap._extern import native, cpp_template, value_ptr_coercion, builtin_function

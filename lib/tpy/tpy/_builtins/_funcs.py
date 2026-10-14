@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::builtins")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::builtins"}
 from .._typing import Sized, Sequence, Iterator, Iterable
 from .._bootstrap._decorators import readonly, pure, error_return, Own, Fn, dispatch
 from .._core._types import (

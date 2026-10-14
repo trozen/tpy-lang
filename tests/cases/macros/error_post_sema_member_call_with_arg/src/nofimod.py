@@ -1,6 +1,6 @@
-# tpy: macro_module
 """Post-sema macro: rewrites `sentinel(c)` -> `c.bump(2)`, a member call with
 no resolved FunctionInfo."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast, TpyCall, TpyName,
 )

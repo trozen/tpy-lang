@@ -16,8 +16,8 @@
 #   - Returns an http.client.HTTPResponse; .geturl()/.info()/.getcode() are not
 #     provided (use .status / .reason / .read() / .getheader()).
 # For a higher-level API see tplib.requests.
-# tpy: cpp_namespace("tpystd::urllib::request")
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::urllib::request"}
 from typing import Final
 from tpy import int32, Own, String
 from tplib import Box

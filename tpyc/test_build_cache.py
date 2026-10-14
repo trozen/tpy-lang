@@ -252,7 +252,7 @@ def test_resolver_logs_hits_and_misses(tmp_path):
 # binary. These drive the real Compiler front-end (no C++ toolchain) and
 # then record through the same helper the CLI uses.
 
-MACRO_SRC = ("# tpy: macro_module\n"
+MACRO_SRC = ('__tpy__ = {"mod": "macro"}\n'
              "from tpyc.macro_api import ClassInfo, class_macro\n"
              "\n"
              "\n"

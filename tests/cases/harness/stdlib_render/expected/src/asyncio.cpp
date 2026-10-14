@@ -1205,7 +1205,6 @@ bool _WaitQueue::remove(uint64_t ticket) {
     }
     return false;
 }
-// # tpy: cpp_namespace("tpystd::asyncio")
 // """asyncio v1 -- minimum viable async runtime.
 //
 // `run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /

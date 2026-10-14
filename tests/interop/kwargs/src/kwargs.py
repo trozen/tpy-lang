@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Keyword-argument marshalling across the @export boundary: free functions and a
 # class __init__ + methods all accept their params positionally OR by keyword
 # (PyArg_ParseTupleAndKeywords). move() mutates through keyword args and the

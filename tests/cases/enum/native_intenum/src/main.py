@@ -1,5 +1,5 @@
 # @native IntEnum with explicit underlying type (int8) matching the C++ side.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from enum import Enum, auto
 from tpy import int8
 from tpy.extern import native

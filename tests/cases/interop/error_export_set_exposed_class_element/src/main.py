@@ -2,7 +2,7 @@
 # CLASS cannot be a set element or dict key: a class does not conform to
 # Hashable, so the general set/dict-key check rejects it before the boundary --
 # exactly the deferral we want (list/tuple element and dict value still cross).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

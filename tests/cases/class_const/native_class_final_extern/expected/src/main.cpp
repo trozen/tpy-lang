@@ -14,9 +14,6 @@ void main() {
     std::cout << ::BuildOpts::RELEASE_TAG << "\n" << ::tpy::check_signals;
 }
 
-// # @native class with `Final[T]` (no value): bind to C++ static members.
-// # TPy emits no struct body; use sites resolve to <native_name>::<member>.
-// # tpy: include("native_types.hpp")
 // from tpy.extern import native
 //
 // main()

@@ -1,6 +1,6 @@
 """CPython extension glue emitter.
 
-Emits the glue TU for an `# tpy: ext_module` -- the `PyMethodDef` /
+Emits the glue TU for an ext module -- the `PyMethodDef` /
 `PyModuleDef` / `PyInit_` boilerplate plus one wrapper per `@export`-ed free
 function, the per-exposed-class `PyType_FromSpec` machinery (method/getset
 wrappers, slot tables, `tp_init`), and the `PyErr_NewException` types for
@@ -127,7 +127,7 @@ def doc_literal(text: str) -> str:
 
 
 class ExtensionGenerator:
-    """Emits the CPython extension glue TU for an `# tpy: ext_module`."""
+    """Emits the CPython extension glue TU for an ext module."""
 
     def __init__(self, ctx: CodeGenContext, records: RecordGenerator,
                  types: TypeResolver):
@@ -2062,7 +2062,7 @@ class ExtensionGenerator:
         out.write("        }\n")
 
     def generate_extension_glue(self, module: TpyModule, module_name: str) -> str:
-        """Emit the CPython extension glue TU for an `# tpy: ext_module`:
+        """Emit the CPython extension glue TU for an ext module:
         PyMethodDef/PyModuleDef/PyInit_ plus one wrapper per @export-ed
         function. Param/return types must be boundary-marshallable (sema
         already enforced this); the wrapper marshals via tpy::interop and the
@@ -2076,8 +2076,8 @@ class ExtensionGenerator:
         call_ns = self.ctx.module_name
         if not module_name.isidentifier():
             raise CodeGenError(
-                f"ext_module name '{module_name}' is not a valid CPython "
-                f"module identifier (needed for PyInit_)")
+                f'ext module ("mod": "ext") name \'{module_name}\' is not a '
+                f"valid CPython module identifier (needed for PyInit_)")
         sym = escape_cpp_name(module_name)
         exposed_classes = self._exposed_classes(module, module_name, call_ns)
         exposed_enums = self._exposed_enums(module, module_name)

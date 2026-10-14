@@ -1,6 +1,6 @@
 # An @error_return method can't cross the CPython boundary: it returns a
 # std::expected the plain-method wrapper has no unwrap step for.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, error_return, ReturnException
 from tpy.extern import export
 

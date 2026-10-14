@@ -1,6 +1,6 @@
 # An async dunder can't cross the CPython boundary: the compiled method
 # returns a coroutine frame, not the value the type slot wrapper marshals.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

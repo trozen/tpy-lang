@@ -1,4 +1,4 @@
-# tpy: native_module
+__tpy__ = {"mod": "native"}
 # super() is a compile-time construct in TPy (no runtime super-proxy object);
 # this stub exists only to give `super` a qualified name so sema can resolve
 # call-site references through the normal namespace chain instead of matching

@@ -108,8 +108,8 @@ instead of generating a body.
 
 ```python
 # tpy_sdl2/sdl2.py
-# tpy: include("SDL2/SDL.h")
-# tpy: link("SDL2")
+__tpy__ = {"includes": ["SDL2/SDL.h"],
+           "links": ["SDL2"]}
 from tpy.extern import native
 from tpy import int32, Ptr
 
@@ -133,8 +133,8 @@ def create_window(title: str, x: int32, y: int32, w: int32, h: int32, flags: int
 - `@export(binding="C")` = C export (TPy function callable from C)
 - Body is `...` (standard Python stub/Protocol convention)
 - The TPy function signature provides type checking -- no separate argtypes/restype
-- `# tpy: include(...)` emits `#include` in the generated C++
-- `# tpy: link(...)` passes `-l` to the linker
+- `__tpy__` `"includes"` emits `#include` in the generated C++
+- `__tpy__` `"links"` passes `-l` to the linker
 
 This also works for **exporting** TPy functions to C (needed for the DOOM platform
 functions) and for **declaring external globals**:
@@ -159,8 +159,8 @@ bindings using `@native(binding="C")`. It's pure TurboPython -- just function de
 
 ```python
 # tpy_sdl2/sdl2.py
-# tpy: include("SDL2/SDL.h")
-# tpy: link("SDL2")
+__tpy__ = {"includes": ["SDL2/SDL.h"],
+           "links": ["SDL2"]}
 from tpy.extern import native
 from tpy import int32, Ptr
 
@@ -211,7 +211,7 @@ needed beyond `@native(binding="C")`.
 
 ```python
 # doomgeneric_tpy.py
-# tpy: include("doomgeneric.h")
+__tpy__ = {"includes": ["doomgeneric.h"]}
 from tpy.extern import export, native_global
 from tpy import int32, Ptr, Array
 from tpy_sdl2 import (

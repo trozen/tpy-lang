@@ -1,6 +1,6 @@
 # An extended-slice assignment into a list of a native type that has no
 # default constructor still compiles and replaces the selected elements.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy import int32
 from tpy.extern import native
 

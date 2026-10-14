@@ -686,7 +686,7 @@ It can be deferred as a general language feature.
 
 ## 10. Compile-time macros without CPython
 
-Macro modules (`# tpy: macro_module`) run under CPython inside the compiler process
+Macro modules (`__tpy__ = {"mod": "macro"}`) run under CPython inside the compiler process
 today. `tpyc/macro_loader.py` restricts their imports to `tpyc.macro_api` and removes
 `open`/`exec`/`eval`, but that is a soft restriction, not a sandbox: compiling a
 project already runs its macro code with the compiler's privileges. A self-hosted

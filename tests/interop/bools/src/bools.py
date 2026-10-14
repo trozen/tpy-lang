@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension over the bool boundary plus a void-return @export:
 #  - bool params/returns marshal via PyObject_IsTrue / PyBool_FromLong, so any
 #    argument coerces by truthiness exactly like CPython's bool();

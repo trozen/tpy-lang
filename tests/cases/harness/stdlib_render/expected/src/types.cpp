@@ -4,7 +4,6 @@
 namespace tpystd::types {
 
 
-// # tpy: cpp_namespace("tpystd::types")
 // """Minimal `types` module -- `FrameType` only.
 //
 // `FrameType` is here so a `signal.signal` handler is annotated as in CPython,

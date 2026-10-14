@@ -1,6 +1,6 @@
 # __contains__ crossing the CPython boundary must return bool -- Py_sq_contains's
 # objobjproc returns -1/0/1, mapped from a bool result.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

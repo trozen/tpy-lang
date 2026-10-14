@@ -14,7 +14,7 @@
 # Known divergence: unquote of an invalid UTF-8 percent-sequence returns the raw
 # bytes, where CPython substitutes U+FFFD (errors='replace'); matching that needs
 # a lossy UTF-8 decode the runtime does not yet expose.
-# tpy: cpp_namespace("tpystd::urllib::parse")
+__tpy__ = {"cpp_namespace": "tpystd::urllib::parse"}
 from tpy import int32, uint8, char, Own
 
 _HEX: bytes = b"0123456789ABCDEF"

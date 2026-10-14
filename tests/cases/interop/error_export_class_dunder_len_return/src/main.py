@@ -1,6 +1,6 @@
 # __len__ crossing the CPython boundary must return a fixed-width int --
 # Py_mp_length/Py_sq_length's lenfunc returns Py_ssize_t.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

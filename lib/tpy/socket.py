@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::socket")
 """POSIX-sockets module, CPython-compatible surface.
 
 Backed by `_bindings.posix_socket` (raw @native bindings) + a few out-of-line
@@ -99,6 +98,7 @@ TODO -- v2 feature follow-ups. New scope, not compiler-blocked:
 """
 
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::socket"}
 from typing import Final
 from tpy import (
     int32, int64, uint8, uint16, uint32, uint64, Ptr, readonly, Own,

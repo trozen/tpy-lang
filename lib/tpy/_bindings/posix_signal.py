@@ -1,6 +1,3 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::_bindings::posix_signal")
-# tpy: include("<tpy/stdlib/signal_h.hpp>")
 """Raw signal C bindings.
 
 Thin @native layer over the flat helpers in
@@ -13,9 +10,12 @@ strategy).
 
 Declaration-only and not for direct user import.
 
-`# tpy: native_module` means no .cpp/.hpp is generated for this module; its
+`"mod": "native"` means no .cpp/.hpp is generated for this module; its
 bindings resolve at link time to the signal_impl.cpp symbols.
 """
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::_bindings::posix_signal",
+           "includes": ["<tpy/stdlib/signal_h.hpp>"]}
 
 from tpy import int32
 from tpy.extern import native

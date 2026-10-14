@@ -1,6 +1,6 @@
 # @export(binding="C") is invalid inside an ext_module: there @export exposes
 # to CPython, not extern "C".
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

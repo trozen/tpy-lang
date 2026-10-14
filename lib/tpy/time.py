@@ -1,7 +1,7 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::time")
-# tpy: include("<tpy/system.hpp>")
-# tpy: include("<tpy/stdlib/time.hpp>")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::time",
+           "includes": ["<tpy/system.hpp>",
+                        "<tpy/stdlib/time.hpp>"]}
 from tpy import int64
 from tpy.extern import native
 

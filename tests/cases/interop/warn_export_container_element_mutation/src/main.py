@@ -3,7 +3,7 @@
 # caller -- the container copy cliff, extended to exposed-class elements. The
 # existing mutated-param tracking already traces the loop variable back to the
 # param, so the same warning fires. A read-only element access stays quiet.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

@@ -1,2 +1,2 @@
-# tpy: native_module
-# tpy: cpp_namespace("dotted_init::pkg")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "dotted_init::pkg"}

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Default parameter values and keyword-only / positional-only params at the
 # @export boundary: the wrapper's PyArg format carries `|` for the optional run,
 # `$` for the keyword-only run, and an empty kwlist entry per positional-only

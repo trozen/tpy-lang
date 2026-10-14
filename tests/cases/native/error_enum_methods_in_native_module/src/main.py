@@ -1,10 +1,10 @@
-# An enum with methods in a native_module: the methods have bodies to emit,
-# and a native_module is declaration-only.
-# tpy: native_module
+# An enum with methods in a native module: the methods have bodies to emit,
+# and a native module is declaration-only.
+__tpy__ = {"mod": "native"}
 from enum import Enum
 
 
-class Color(Enum):  # tpyc: error(/methods on enum 'Color' not allowed in native_module/)
+class Color(Enum):  # tpyc: error(/methods on enum 'Color' not allowed in a native module/)
     Red = 0
 
     def label(self) -> str:

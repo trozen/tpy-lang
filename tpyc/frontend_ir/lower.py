@@ -398,7 +398,7 @@ def lower_module(
         includes=list(fm.directives.cpp_includes),
         link_libs=list(fm.directives.link_libs),
         third_party_deps=list(fm.directives.third_party_deps),
-        native_module=fm.directives.native_module,
+        kind=fm.directives.kind,
         cpp_namespace=fm.directives.cpp_namespace,
     )
 

@@ -3,7 +3,7 @@
 Per-module result keyed in `ModuleInfo.reached`. Used by codegen to drive
 header inclusion via a transitive closure: when a consumer module reaches
 module M, all M's reached external types must also be visible (so e.g.
-native `# tpy: include(...)` directives propagate through field chains).
+native `__tpy__` "includes" propagate through field chains).
 
 Walks all type-bearing positions in the module's resolved AST and extracts
 cross-module `NominalType._module_qname` references. The walk is conservative

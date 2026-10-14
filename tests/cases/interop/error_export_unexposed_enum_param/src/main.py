@@ -1,6 +1,6 @@
 # A non-@export enum has no CPython type to round-trip a value through, so it is
 # not a valid @export param/return type -- only exposed enums cross.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from enum import IntEnum
 from tpy.extern import export
 

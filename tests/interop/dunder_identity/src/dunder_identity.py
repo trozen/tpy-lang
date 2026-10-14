@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Dunder slots thread identity/view candidates like method wrappers: a
 # __getitem__ borrow return of `self` crosses as the SAME PyObject (incl.
 # through an inherited slot, un-sliced), of a never-reassigned field as

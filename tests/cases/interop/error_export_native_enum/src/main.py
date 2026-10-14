@@ -1,8 +1,8 @@
 # A @native enum maps to a C++ enum whose values come from that side, so it has
 # no TPy-declared member table to rebuild as a CPython enum -- @export on it is
 # rejected (only tpy-defined enums can be exposed).
-# tpy: ext_module
-# tpy: include("native_types.hpp")
+__tpy__ = {"mod": "ext",
+           "includes": ["native_types.hpp"]}
 from enum import Enum
 from tpy import int8
 from tpy.extern import native, export

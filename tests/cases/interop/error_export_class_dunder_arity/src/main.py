@@ -1,6 +1,6 @@
 # __eq__ crossing the CPython boundary must take exactly one parameter beyond
 # self -- Py_tp_richcompare only ever hands the wrapper (self, other, op).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

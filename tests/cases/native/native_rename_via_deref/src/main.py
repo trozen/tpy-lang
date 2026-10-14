@@ -1,7 +1,7 @@
 # Method call through a user-defined __deref__ whose target has an @native
 # rename. Exercises the deref_chain branch in codegen that was previously
 # emitting `expr.method` directly; it must now honor the native rename too.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy import int32, copy, auto_readonly
 from tpy.extern import native
 

@@ -1,7 +1,7 @@
 # Multiple inheritance cannot cross the boundary: CPython rejects two bases
 # with distinct C instance layouts, so an @export class with two record bases
 # is a located error even when both bases are exposed.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

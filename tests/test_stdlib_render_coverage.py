@@ -25,6 +25,7 @@ from conftest import TEST_CODEGEN_OPTIONS, module_to_expected_path
 
 from tpyc import get_lib_dir
 from tpyc.compiler import Compiler
+from tpyc.parse.module_settings import module_kind
 # The two table modules are imported for their SIDE EFFECT: a family exists
 # only once its `register_sink` call has run. conftest already pulls both in
 # transitively, but the expected set below is derived from the registry, so
@@ -88,8 +89,7 @@ def is_macro_module(name: str) -> bool:
         path = LIB_TPY / (name.replace(".", "/") + "/__init__.py")
     if not path.exists():
         return False
-    # Directives live in the header comment block; the parser scans the same way.
-    return "macro_module" in path.read_text(errors="replace")[:4000]
+    return module_kind(path) == "macro"
 
 
 def compile_lib_tpy(tmp_path: Path) -> tuple[Compiler, list]:

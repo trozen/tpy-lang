@@ -814,7 +814,7 @@ Allocation eLision Optimization) is unreliable across compilers. Since TPy targe
 performance-conscious users and has a planned `@noalloc` profile, the manual
 approach gives full control over allocation.
 
-**Future option**: A `# tpy: generator=coroutine` directive could opt into C++20
+**Future option**: A `__tpy__` setting (`"generator": "coroutine"`) could opt into C++20
 coroutines for specific modules where the simpler codegen is preferred and
 allocation is acceptable.
 

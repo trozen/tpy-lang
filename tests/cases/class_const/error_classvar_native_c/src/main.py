@@ -1,5 +1,5 @@
 # Error: @native_c records (C structs) have no static members.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy.extern import native
 from typing import ClassVar
 from tpy import int32

@@ -1,0 +1,1 @@
+main.py:5: error: __tpy__: unknown setting 'cpp_namspace' (known: mod, cpp_namespace, includes, links)

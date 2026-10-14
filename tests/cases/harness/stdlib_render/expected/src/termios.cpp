@@ -96,7 +96,6 @@ std::string TermAttributes::__repr__() const {
     }
     return (::tpy::str_concat(out, "]]"));
 }
-// # tpy: cpp_namespace("tpystd::termios")
 // """POSIX terminal control, CPython-compatible surface.
 //
 // `tcgetattr` returns a `TermAttributes` record instead of CPython's

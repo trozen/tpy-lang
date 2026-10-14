@@ -1,6 +1,3 @@
-# tpy: cpp_namespace("tpystd::asyncio::_executor")
-# tpy: include("<tpy/async.hpp>")
-# tpy: include("<tpy/stdlib/time.hpp>")
 """Internal asyncio scaffolding -- the TPy executor and the small
 helpers it needs. Not part of the public asyncio API; imported only
 by `lib/tpy/asyncio/` modules. See `docs/ASYNC_DESIGN.md` for the
@@ -12,6 +9,9 @@ executor; `Waker.wake()` dispatches `mark_runnable` through the
 the vtable slot directly -- no C++ ExecutorOps table, no templated
 thunks, no thread-local handle.
 """
+__tpy__ = {"cpp_namespace": "tpystd::asyncio::_executor",
+           "includes": ["<tpy/async.hpp>",
+                        "<tpy/stdlib/time.hpp>"]}
 import heapq
 
 from typing import Final, Protocol
@@ -218,7 +218,7 @@ class Task[T]:
 
     Regular @nocopy generic-class machinery: the C++ name
     (`::tpystd::asyncio::_executor::Task<T>`) is derived from this
-    module's `# tpy: cpp_namespace` directive through
+    module's `"cpp_namespace"` setting through
     `NominalType._fallback_cpp_base_name`, and awaitability comes from
     the `__poll__(self, w: Waker) -> Poll[T]` method below being
     structurally matched by `_extract_awaitable_inner` in

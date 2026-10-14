@@ -1,5 +1,4 @@
 # subprocess -- spawn child processes and talk to them over pipes.
-# tpy: cpp_namespace("tpystd::subprocess")
 """Minimal CPython-compatible `subprocess`: `Popen` over an argument list.
 
 `Popen(args, *, stdin=None, stdout=None, stderr=None)` spawns `args[0]`
@@ -23,6 +22,7 @@ Not supported: communicate(), run() and friends, text mode, cwd/env, shell
 and str args, pass_fds / close_fds=False, bufsize, and reaping of Popen
 objects dropped before their child exited.
 """
+__tpy__ = {"cpp_namespace": "tpystd::subprocess"}
 from typing import Final
 from tpy import int32, int64, nocopy
 from io import BufferedReader, BufferedWriter, FileIO

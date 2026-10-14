@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::_datetime_fmt")
+__tpy__ = {"cpp_namespace": "tpystd::_datetime_fmt"}
 # Formatting engines for the datetime module: the strftime directive
 # scanner plus the isoformat/offset/label helpers. Pure string builders
 # over component values; classes live in datetime.py.

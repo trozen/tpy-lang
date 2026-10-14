@@ -4,8 +4,8 @@
 # Rotations don't lose bits by construction; byteswap is endianness-neutral.
 # Use these instead of hand-rolled `(x << n) | (x >> (w-n))` which would
 # trip TPy's overflow-checked left shift.
-# tpy: native_module
-# tpy: cpp_namespace("tpy::bits")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpy::bits"}
 from tpy.extern import cpp_template
 from tpy import int32, uint32, uint64
 

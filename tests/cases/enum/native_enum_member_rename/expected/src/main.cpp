@@ -88,9 +88,6 @@ void main() {
     std::cout << static_cast<int32_t>(::cfg::Mode::Manual) << "\n" << ::tpy::check_signals;
 }
 
-// # @native enum where one C++ member name (None) is a Python keyword.
-// # Uses native_member("None") to alias the TPy-side name to the C++ symbol.
-// # tpy: include("native_types.hpp")
 // from enum import Enum, auto
 // from tpy.extern import native, native_member
 //

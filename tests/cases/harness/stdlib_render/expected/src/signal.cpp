@@ -117,7 +117,6 @@ void raise_signal(int32_t sig) {
     ::tpy::check_signals();
 }
 
-// # tpy: cpp_namespace("tpystd::signal")
 // """Minimal `signal` module -- `signal.signal` with a callable handler,
 // `default_int_handler`, `raise_signal`, and the common signal numbers.
 //

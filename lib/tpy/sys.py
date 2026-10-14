@@ -1,5 +1,5 @@
 # sys module: argv requires runtime init (not native_module)
-# tpy: cpp_namespace("tpystd::sys")
+__tpy__ = {"cpp_namespace": "tpystd::sys"}
 from typing import Final
 from tpy import int32, dispatch
 from tpy.extern import native

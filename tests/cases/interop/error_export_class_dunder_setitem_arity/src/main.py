@@ -1,7 +1,7 @@
 # __setitem__ crossing the CPython boundary must take exactly two parameters
 # beyond self -- Py_mp_ass_subscript's objobjargproc only ever hands the
 # wrapper (self, key, value).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int32, int64
 from tpy.extern import export
 

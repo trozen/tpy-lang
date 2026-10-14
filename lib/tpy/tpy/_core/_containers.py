@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::tpy")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::tpy"}
 from .._typing import Self, Iterator, Iterable
 from tpy import Span, Ptr
 from .._bootstrap._decorators import readonly, pure, nocopy, Own, dispatch

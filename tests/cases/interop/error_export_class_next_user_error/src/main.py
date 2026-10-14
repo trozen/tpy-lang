@@ -1,7 +1,7 @@
 # An exposed iterator must end with StopIteration: CPython's iterator protocol
 # has no other end signal, and a user return-only exception is a plain value
 # the tp_iternext wrapper cannot turn into a Python error.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int32, error_return, ReturnException
 from tpy.extern import export
 

@@ -1,10 +1,10 @@
-# tpy: cpp_namespace("tpystd::tty")
 """Terminal mode helpers over `termios`, CPython 3.12 surface.
 
 `setraw` / `setcbreak` return the attributes in force before the change, so
 the caller can hand them back to `termios.tcsetattr` to restore the terminal.
 Unlike CPython, the termios names are not re-exported here.
 """
+__tpy__ = {"cpp_namespace": "tpystd::tty"}
 from tpy import int32, int64, Own, dispatch
 import termios
 from termios import TermAttributes

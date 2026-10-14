@@ -3,7 +3,7 @@
 # each through the bare value marshaller), so the None gate the plain
 # function/method boundary admits is refused here with the rule named --
 # a slot that reached codegen would build a .so that fails at import.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int32
 from tpy.extern import export

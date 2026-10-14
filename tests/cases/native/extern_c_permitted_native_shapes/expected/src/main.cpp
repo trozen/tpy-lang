@@ -45,13 +45,6 @@ void main() {
     std::cout << "array:" << " " << p.x << " " << p.y << "\n" << ::tpy::check_signals;
 }
 
-// # The permitted side of the C-ABI gate for the two shapes that need a C
-// # companion: a nullable @native(binding="C") struct (pointer repr, in return
-// # AND param position) and a C-struct array global (the element names a struct
-// # the C header declares). Narrowing the gate again has to fail here. The
-// # companion-free shapes live in extern_c_permitted_types, which keeps its
-// # CPython run.
-// # tpy: include("native_types.hpp")
 // from tpy.extern import native, native_global, export
 //
 // # Array global whose element is the C struct itself.

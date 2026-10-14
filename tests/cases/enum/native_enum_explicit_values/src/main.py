@@ -2,7 +2,7 @@
 # verified against the C++ side via per-member static_assert at compile time.
 # If TPy and C++ disagree, the C++ build fails with a clear message rather
 # than silently miscompiling.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from enum import Enum
 from tpy.extern import native
 

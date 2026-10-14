@@ -1,6 +1,6 @@
 # A foreign exposed class used as an @export function param is a located
 # error, not a misbuilt .so (mirrors the enum cross-module rejection).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 from foo_mod import Foo

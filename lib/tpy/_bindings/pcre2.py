@@ -1,6 +1,3 @@
-# tpy: cpp_namespace("tpystd::_bindings::pcre2")
-# tpy: include("<tpy/stdlib/pcre2_h.hpp>")
-# tpy: link("pcre2", managed=True)
 """Raw PCRE2 C bindings.
 
 One @native declaration per pcre2_*_8 primitive, matching the upstream C
@@ -17,6 +14,9 @@ Naming:
 Constants are hardcoded uint32 values matching pcre2.h. PCRE2's flag values
 are part of its public ABI and don't change between versions.
 """
+__tpy__ = {"cpp_namespace": "tpystd::_bindings::pcre2",
+           "includes": ["<tpy/stdlib/pcre2_h.hpp>"],
+           "links": [{"lib": "pcre2", "managed": True}]}
 
 from typing import Final
 from tpy import Ptr, uint8, uint32, uint64, int32, readonly

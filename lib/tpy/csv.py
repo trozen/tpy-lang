@@ -20,7 +20,7 @@
 # register_dialect, Sniffer, DictReader restval/restkey, DictWriter
 # extrasaction='ignore'.
 #
-# tpy: cpp_namespace("tpystd::csv")
+__tpy__ = {"cpp_namespace": "tpystd::csv"}
 from typing import Iterator
 from tpy import Own, Ptr, Readable, Writable, int32
 

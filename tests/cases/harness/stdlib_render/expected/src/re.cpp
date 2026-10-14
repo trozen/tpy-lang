@@ -506,7 +506,6 @@ std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxspl
     out.push_back(std::string(::tpy::str_slice(subject, ::tpy::BasicSlice{last, std::nullopt})));
     return out;
 }
-// # tpy: cpp_namespace("tpystd::re")
 // """Regular expressions, CPython-compatible surface, backed by PCRE2.
 //
 // Architecture:

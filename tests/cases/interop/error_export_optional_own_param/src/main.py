@@ -1,6 +1,6 @@
 # `Optional[Own[Cls]]` at a param: the host keeps its reference through the
 # None gate too, so ownership can't transfer -- the same rejection as Own[Cls].
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int64, Own
 from tpy.extern import export

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Inheritance between exposed classes: Circle(Shape) and Disc(Circle) cross as
 # real CPython types with the base wired as tp_base -- isinstance/MRO,
 # inherited getset fields, MRO method override, base-typed params borrowing a

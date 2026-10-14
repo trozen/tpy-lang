@@ -2,7 +2,7 @@
 # CLASS as a tuple element is deferred: a tuple's non-value element uses borrow
 # form (const Cls*) while the per-element marshal builds storage form. Use a
 # list/dict of the class, or an enum/value-type tuple element.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

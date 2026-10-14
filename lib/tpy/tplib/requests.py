@@ -80,8 +80,8 @@
 #     `cookies=` accepts a dict[str, str] only (not a whole CookieJar).
 # Not supported (yet): streaming (stream=/iter_content), proxies, auth schemes
 # beyond Basic.
-# tpy: cpp_namespace("tpystd::tplib::requests")
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::tplib::requests"}
 from typing import Final, Iterator
 from tpy import int32, Own, String
 from tpy.version import version_info as _tpy_version_info

@@ -101,8 +101,8 @@
 #     codegen's __getitem__ lowering.
 #   - `-fno-stack-protector` on release / noalloc builds (compiler-flag
 #     decision, affects all code).
-# tpy: cpp_namespace("tpystd::random")
-# tpy: include("<tpy/stdlib/random.hpp>")
+__tpy__ = {"cpp_namespace": "tpystd::random",
+           "includes": ["<tpy/stdlib/random.hpp>"]}
 from tpy import int32, uint8, uint32, Array, copy, dispatch
 from tpy.extern import native
 import math

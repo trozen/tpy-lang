@@ -1,5 +1,5 @@
 # Test @native(binding="C") for C function imports with explicit symbol names
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy.extern import native
 from tpy import int32
 

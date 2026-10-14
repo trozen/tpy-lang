@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::tpy")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::tpy"}
 # Extern decorator stubs. builtin_decorator is the bootstrap primitive
 # (auto-resolved within this module via _EXTERN_KEYWORDS). All other
 # decorators are defined using @builtin_decorator.

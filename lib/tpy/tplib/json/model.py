@@ -1,4 +1,3 @@
-# tpy: macro_module
 """JSON model macro for TurboPython.
 
 Provides @model class macro that bundles @dataclass behavior with
@@ -69,6 +68,7 @@ used as a field in @model classes:
         name: str
         when: Seconds  # works as @model field
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,

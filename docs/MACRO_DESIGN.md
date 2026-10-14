@@ -4,7 +4,7 @@
 
 | Phase | Description | Status |
 |-------|-------------|--------|
-| 1 | Class macros: `@class_macro` decorator, `ClassInfo`/`FieldInfo`/`TypeInfo` API, `# tpy: macro_module` directive, `@dataclass` replacement | Done |
+| 1 | Class macros: `@class_macro` decorator, `ClassInfo`/`FieldInfo`/`TypeInfo` API, `__tpy__ = {"mod": "macro"}` marker, `@dataclass` replacement | Done |
 | 1b | Macro kwargs validation: typed macro signatures with automatic validation via `inspect.signature` | Done |
 | 1c | Generic `field()` handling: `Field` descriptor + `field()` function in macro module, `call_macro_field_function` infrastructure | Done |
 | 2 | Call-site macros: `@call_macro` functions expand at call site, receive `MacroArg` (expr + type), return replacement `TpyExpr`. First use cases: `asdict`/`astuple` | Done |
@@ -72,7 +72,7 @@ below.
 
 1. Parser sees `from dataclasses import dataclass` -- treats it as a regular file import
 2. Compiler discovers `lib/tpy/dataclasses.py` via normal module resolution
-3. Before parsing, checks for `# tpy: macro_module` -- detects it
+3. Before parsing, reads the module's `__tpy__` settings -- `"mod": "macro"`
 4. Loads it via CPython into `MacroRegistry` (not compiled to C++)
 5. During sema registration, `_apply_class_macros()` looks up the macro and invokes it
 6. Field defaults that are calls to macro-module functions (e.g. `field()`) are
@@ -270,7 +270,7 @@ so codegen sees them as ordinary declarations.
 ### Macro Module Format
 
 ```python
-# tpy: macro_module
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, MacroError,
     class_macro, ast, types, Expr, Stmt, Function,
@@ -287,10 +287,10 @@ def my_decorator(cls: ClassInfo, *, option: bool = False) -> None:
     pass
 ```
 
-Macro modules use `# tpy: macro_module` directive. They are executed via CPython
+Macro modules declare `__tpy__ = {"mod": "macro"}`. They are executed via CPython
 during compilation and never compiled to C++. Import restriction enforces that
 macros import only from `tpyc.macro_api` and other macro modules (files with
-`# tpy: macro_module` found in lib search paths). Dangerous builtins (`open`,
+`"mod": "macro"` found in lib search paths). Dangerous builtins (`open`,
 `exec`, `eval`, etc.) are also blocked.
 
 ## Use Cases

@@ -8624,9 +8624,9 @@ class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
     is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
-    is_native_module: bool = False  # True for # tpy: native_module (no __tpy_init, no .cpp)
+    is_native_module: bool = False  # True for a "mod": "native" module (no __tpy_init, no .cpp)
     generates_header: bool = True  # False for native_modules that produce no C++ output
-    includes: list[tuple[str, str | None]] = field(default_factory=list)  # # tpy: include() directives (path, platform_filter)
+    includes: list[tuple[str, str | None]] = field(default_factory=list)  # `__tpy__` "includes" (path, platform_filter)
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
     records: dict[str, RecordInfo] = field(default_factory=dict)  # type_name -> RecordInfo (exported types)
@@ -8636,7 +8636,7 @@ class ModuleInfo:
     enums: dict[str, 'NominalType'] = field(default_factory=dict)  # enum_name -> NominalType (enum-kind)
     # Defining modules whose symbols this module's generated code references.
     # Computed by sema.reach_analysis. Used by codegen to propagate native-
-    # module `# tpy: include(...)` directives transitively across native-to-
+    # module `__tpy__` "includes" transitively across native-to-
     # native chains (which have no .hpp to chain through).
     reached: set[str] = field(default_factory=set)
     # Per-module attribute table reference (Phase 2). Aliases the dict

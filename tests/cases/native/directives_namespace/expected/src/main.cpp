@@ -4,8 +4,6 @@
 namespace myproject::core {
 
 
-// # Test that # tpy: namespace overrides the default tpyapp namespace
-// # tpy: cpp_namespace("myproject::core")
 // def greet(name: str) -> str:
 //     return "hello " + name
 std::string greet(std::string_view name) {

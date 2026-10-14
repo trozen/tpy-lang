@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Call macros for f-string decomposition with deferred-copy semantics.
 
 Per-type wrapping:
@@ -10,6 +9,7 @@ Two macros:
 - log_debug(logger, f"...") -- explicit logger argument
 - log(f"...") -- auto-discovers _logger field or get_logger() method on first param
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     CallMacroContext, MacroArg,
     call_macro, macro_deps, ast, Expr,

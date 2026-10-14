@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::errno_mod")
 """Minimal `errno` module: the constants TPy's own stdlib maps to exception
 subclasses, for comparing `OSError.errno` in user code (the CPython idiom
 `e.errno == errno.ECONNREFUSED`).
@@ -8,6 +7,7 @@ native globals the socket module uses (Linux and macOS/BSD diverge on
 several), so comparisons are host-correct. Grow this list as more constants
 gain a consumer; CPython's full table is large and mostly unused.
 """
+__tpy__ = {"cpp_namespace": "tpystd::errno_mod"}
 
 from typing import Final
 from tpy import int32

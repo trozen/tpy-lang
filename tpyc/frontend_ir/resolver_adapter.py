@@ -35,7 +35,7 @@ class _PluginParserAdapter:
     import-related attributes from the IR; the parser-only bookkeeping
     fields stay at safe defaults (empty frozensets, empty dicts) because
     plugin modules have no parse-time class scan, no Python `ast` to
-    consult, and no `# tpy:` directive scanning.
+    consult, and no `__tpy__` settings reading.
     """
 
     def __init__(

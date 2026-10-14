@@ -1,6 +1,3 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::_bindings::posix_socket")
-# tpy: include("<tpy/stdlib/socket_h.hpp>")
 """Raw POSIX-sockets C bindings.
 
 Thin @native layer over libc's `socket`, `bind`, `connect`, ..., plus
@@ -19,11 +16,14 @@ Naming:
   * Wire values (AF_INET etc.) live in the public `socket` facade, not
     here -- posix_socket.py is declaration-only.
 
-The `# tpy: native_module` directive means no .cpp/.hpp is generated for
+The `"mod": "native"` setting means no .cpp/.hpp is generated for
 this module itself; its @native bindings resolve at link time to symbols
 in libc (for the socket/bind/... set) and in socket_impl.cpp (for the
 tpy_* set).
 """
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::_bindings::posix_socket",
+           "includes": ["<tpy/stdlib/socket_h.hpp>"]}
 
 from tpy import int32, uint8, uint16, uint32, uint64, int64, Ptr, readonly
 from tpy.extern import native
@@ -185,7 +185,7 @@ def tpy_set_timeout(fd: int32, seconds: float) -> int32: ...
 # ---------- Raw libc strerror ----------
 # Returns a human-readable description of `errnum`. Null-terminated C
 # string; caller wraps it in a TPy `str` via the usual ptr+length walk.
-# No `# tpy: include` needed for this -- <cstring> is transitively pulled
+# No `"includes"` setting needed for this -- <cstring> is transitively pulled
 # in via tpy.hpp, which declares `char* strerror(int)`. uint8_t* return
 # matches TPy's byte-buffer convention; ABI is identical. readonly because
 # libc's strerror buffer is thread-local / shared and must not be written.

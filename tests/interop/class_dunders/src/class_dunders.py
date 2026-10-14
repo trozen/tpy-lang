@@ -1,4 +1,3 @@
-# tpy: ext_module
 # Exposed-class dunders: __repr__ -> Py_tp_repr, __eq__/__ne__/__lt__ ->
 # Py_tp_richcompare, __hash__ -> Py_tp_hash. Vec2 defines
 # __eq__/__lt__/__hash__ but not __ne__ (auto-derived from __eq__, like
@@ -10,6 +9,7 @@
 # which specific comparison dunder populated tp_richcompare, so it nulls the
 # hash whenever richcompare is populated at all -- see ext_checks.py).
 from __future__ import annotations
+__tpy__ = {"mod": "ext"}
 from tpy import int64, uint64
 from tpy.extern import export
 

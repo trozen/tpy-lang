@@ -1,6 +1,3 @@
-# tpy: cpp_namespace("tpystd::_bindings::zlib")
-# tpy: include("<tpy/stdlib/zlib_h.hpp>")
-# tpy: link("zlib", managed=True)
 """Raw zlib bindings over the TPy z_stream shim. Not for direct user import.
 
 The surface is the `tpy_zs_*` / `tpy_zlib_*` API implemented in
@@ -16,6 +13,9 @@ zlib's code values are part of its stable ABI; the ones the facade needs
 are mirrored here under private names (the public `zlib` module exposes
 CPython's names).
 """
+__tpy__ = {"cpp_namespace": "tpystd::_bindings::zlib",
+           "includes": ["<tpy/stdlib/zlib_h.hpp>"],
+           "links": [{"lib": "zlib", "managed": True}]}
 
 from typing import Final
 from tpy import Ptr, uint8, uint32, int32, uint64, readonly

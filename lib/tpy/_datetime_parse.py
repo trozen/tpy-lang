@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::_datetime_parse")
+__tpy__ = {"cpp_namespace": "tpystd::_datetime_parse"}
 # Parsing engines for the datetime module: the strptime scanner (a
 # hand-rolled port of CPython's _strptime.py acceptance rules) and the
 # fromisoformat component parsers (3.11+ grammar, digit-strict like the

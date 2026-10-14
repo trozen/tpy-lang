@@ -1,6 +1,6 @@
-# tpy: macro_module
 """Post-sema deferred macro that calls note_param_mutated with an out-of-range
 param index -- the context must reject it, not corrupt the host's facts."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import function_macro, FunctionMacroContext
 
 

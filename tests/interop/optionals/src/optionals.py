@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Optional[T] at the @export boundary: None is the gate, a present value is T's
 # own crossing. The `T*` form (a reference class, a container) borrows the live
 # payload of an exposed class -- the same write-through alias and identity a

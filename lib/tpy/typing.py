@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::typing")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::typing"}
 from tpy._typing import (
     Protocol, Self, overload, override,
     Sized, Sequence, MutableSequence, Iterator, Iterable,

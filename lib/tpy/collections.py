@@ -16,7 +16,7 @@
 # TODO.md; until it lands this is silent.) update()/subtract() take another
 # Counter[T] only, not an arbitrary iterable / kwargs (CPython accepts both).
 #
-# tpy: cpp_namespace("tpystd::collections")
+__tpy__ = {"cpp_namespace": "tpystd::collections"}
 from typing import Iterable
 from tpy import Own, int32, Hashable, copy
 

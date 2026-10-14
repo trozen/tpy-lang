@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Shared helpers for TurboPython macro modules.
 
 Provides build_* functions for synthesizing common dunder methods
 (__init__, __eq__, __repr__, __hash__, ordering). Used by @dataclass,
 @model, and other class macros.
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, ast, types, Expr, Stmt, Function, Type,

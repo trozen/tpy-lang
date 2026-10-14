@@ -14,10 +14,6 @@ void main() {
     std::cout << ::BuildOpts::RELEASE_TAG << "\n" << ::tpy::check_signals;
 }
 
-// # Phase 10: native_field("rename") on a @native class constant. The Python
-// # identifier is `FLAG`, but the C++ side has `g_flag`. Use sites resolve to
-// # `<native_qname>::g_flag` instead of `<native_qname>::FLAG`.
-// # tpy: include("native_types.hpp")
 // from tpy.extern import native, native_field
 //
 // main()

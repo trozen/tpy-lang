@@ -4,7 +4,7 @@ stdlib modules.
 Each vendorable/system library is declared once as a ``ThirdPartyLib``.
 Stdlib `.py` modules signal their dependency with
 
-    # tpy: link("pcre2", managed=True)
+    __tpy__ = {"links": [{"lib": "pcre2", "managed": True}]}
 
 and the build layer (CMake emission via ``tpyc/compiler.py::generate_cmake``
 and the direct-compile path for ``tpyc -x`` / ``-b``) consults the
@@ -44,8 +44,8 @@ class DisabledLibError(Exception):
     def __init__(self, lib_name: str, cli_flag: str) -> None:
         super().__init__(
             f"'{lib_name}' is disabled ({cli_flag}=none) but is required by an "
-            f"imported module (declared via `# tpy: link(\"{lib_name}\", "
-            f"managed=True)`). Re-run with {cli_flag}=bundled, {cli_flag}=system, "
+            f"imported module (declared via `{{\"lib\": \"{lib_name}\", "
+            f"\"managed\": True}}` in its `__tpy__` \"links\"). Re-run with {cli_flag}=bundled, {cli_flag}=system, "
             f"or {cli_flag}=auto; or remove the `import` chain that pulls it in."
         )
         self.lib_name = lib_name
@@ -246,7 +246,7 @@ def emit_cmake_snippet(lib: ThirdPartyLib) -> str:
         return out_
 
     out: list[str] = []
-    out.append(f'# --- {lib.name} (via # tpy: link(..., managed=True)) ---')
+    out.append(f'# --- {lib.name} (via __tpy__ "links", managed) ---')
     out.append(
         f'set({lib.cmake_var} "{lib.default_mode}" CACHE STRING '
         f'"Source for {lib.name}: bundled | system | auto")'

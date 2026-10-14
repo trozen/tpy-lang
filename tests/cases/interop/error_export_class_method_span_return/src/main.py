@@ -1,7 +1,7 @@
 # A numeric Span crosses the boundary as a PARAM only (buffer-protocol
 # copy-in has no return direction); a Span method RETURN is rejected with a
 # located error, mirroring the free-function rule.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Span
 from tpy.extern import export
 

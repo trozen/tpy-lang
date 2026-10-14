@@ -1,5 +1,5 @@
-# tpy: macro_module
 """Function macro that resolves module-visible names by string and retypes string-bool locals."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast,
     VarDecl, StrLiteral,

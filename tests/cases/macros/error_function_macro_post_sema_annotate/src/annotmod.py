@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Post-sema deferred macro that wrongly calls annotate_local.
 
 annotate_local influences inference, which has already run by the time a
 deferred callback fires -- so the post-sema context must reject it rather
 than silently no-op. Pins that contract.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import function_macro, FunctionMacroContext
 
 

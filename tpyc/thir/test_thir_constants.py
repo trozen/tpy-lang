@@ -153,8 +153,8 @@ class TestTupleConstant:
                 ) in thir[0]
 
 
-MACRO_MOD = '''# tpy: macro_module
-"""Emits constant literals a Final initializer splices in place."""
+MACRO_MOD = '''"""Emits constant literals a Final initializer splices in place."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import CallMacroContext, Expr, call_macro, ast
 
 

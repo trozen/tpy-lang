@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Exposed enums and classes as CONTAINER elements at the @export boundary:
 # list[Color], list[Counter], dict[str, Counter], set[Color], dict[Color, V],
 # and an enum tuple element. Each element marshals through its module type handle

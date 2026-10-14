@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::json")
+__tpy__ = {"cpp_namespace": "tpystd::json"}
 # CPython-compatible json module.
 #
 # Pure-TPy wrapper over tplib.json's JsonReader/JsonWriter. Mirrors the

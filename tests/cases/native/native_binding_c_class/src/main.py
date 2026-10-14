@@ -1,6 +1,6 @@
 # Test @native(binding="C") on a class -- C struct import with aggregate init
 # Verifies aggregate initialization and native name in generated code
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy.extern import native
 from tpy import int32, Ptr
 

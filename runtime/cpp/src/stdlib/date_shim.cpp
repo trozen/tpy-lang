@@ -2,7 +2,7 @@
 // over the vendored Howard Hinnant date library -- the only TU that
 // includes its headers. Compiled together with the vendored tz.cpp via
 // tpyc/build/date.py, so it is built and linked only when a compiled
-// module declares `# tpy: link("date", managed=True)` -- NOT via
+// module declares `"links": [{"lib": "date", "managed": True}]` -- NOT via
 // discover_runtime_cpp_sources (always-on), which skips `*_shim.*` files
 // for exactly this reason.
 

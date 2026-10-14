@@ -1,4 +1,3 @@
-# tpy: ext_module
 # Docstrings on the exposed surface cross to the host as __doc__: the module
 # (m_doc), free functions and methods (ml_doc), the class (Py_tp_doc), a
 # @property (PyGetSetDef.doc) and a user exception type. An undocumented
@@ -16,6 +15,7 @@ bare newline, unlike `incr` below whose indented close leaves trailing
 spaces. The two shapes render through different branches of the docstring
 emitter, so both are pinned here.
 """
+__tpy__ = {"mod": "ext"}
 from enum import IntEnum
 
 from tpy import int64

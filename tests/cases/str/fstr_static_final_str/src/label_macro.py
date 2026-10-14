@@ -1,9 +1,9 @@
-# tpy: macro_module
 """Macro that exposes MacroFStringPart.is_static_str to observable output.
 
 Each f-string is lowered to ``label_fmt(fmt, ("static|dynamic", value), ...)``
 so the test output reveals how is_static_str classifies each part.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     CallMacroContext, MacroArg,
     call_macro, macro_deps, ast, Expr,

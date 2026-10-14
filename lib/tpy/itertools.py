@@ -2,7 +2,7 @@
 #
 # Coverage and the gaps still blocked on compiler work (and the BUGS.md /
 # TODO.md entries that gate them) are tracked in docs/STDLIB_ROADMAP.md.
-# tpy: cpp_namespace("tpystd::itertools")
+__tpy__ = {"cpp_namespace": "tpystd::itertools"}
 from typing import Iterator, Iterable, Optional, overload
 from tpy import Fn, int32
 

@@ -1,6 +1,6 @@
-# tpy: native_module
-# tpy: cpp_namespace("mylib")
-# tpy: include("native_types.hpp")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "mylib",
+           "includes": ["native_types.hpp"]}
 
 from tpy.extern import native
 

@@ -1,7 +1,7 @@
 # Only top-level module enums are exposed; a @export enum nested inside a class
 # is rejected (rather than silently dropped from the glue) until nested exposure
 # is designed.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from enum import IntEnum
 from tpy.extern import export
 

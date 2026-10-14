@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension over the fixed-width int boundary: each width round-trips
 # through its C++ type (int8_t..int64_t / uint8_t..uint64_t) with a per-width
 # range check at the boundary. In-range values match the TPy source under

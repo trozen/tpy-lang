@@ -1,7 +1,7 @@
 # A data-carrying user exception with an exposed-class field can't cross the
 # CPython boundary yet: marshalling a nested class instance to an attribute is
 # deferred (like the exposed-class getset-field case).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

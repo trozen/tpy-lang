@@ -122,9 +122,10 @@ forward-compatible; push determinism into the pinned compiler.
 
 Three layers, each with a distinct role; they do not overlap:
 
-1. **Source `# tpy:` directives** -- per-module, code-coupled facts that
-   travel with the code: `link(...)`, `include(...)`, `native_module`,
-   `macro_module`, `cpp_namespace(...)`. Parsed in `parse/parser.py`.
+1. **Source `__tpy__` settings** -- per-module, code-coupled facts that
+   travel with the code: `"links"`, `"includes"`, `"mod"` (`"native"` /
+   `"macro"` / `"ext"`), `"cpp_namespace"`. Read in
+   `parse/module_settings.py`.
    *Unchanged by this design.*
 2. **`pyproject.toml` `[tool.tpy]`** -- project-wide, stable build/link
    policy. **Scope: how to compile and link -- NOT how to resolve Python
@@ -280,7 +281,7 @@ three kinds, each known without the app categorizing anything:
 | Kind | Used | Known via |
 |---|---|---|
 | Runtime TPy lib | compiled into the binary | compiler follows the import graph and compiles the source it finds |
-| Compile-time tool (macro / plugin) | runs under CPython *during* compilation | the package's own `# tpy: macro_module` / `native_module` directives |
+| Compile-time tool (macro / plugin) | runs under CPython *during* compilation | the package's own `__tpy__` `"mod"` setting (`"macro"` / `"native"`) |
 | Dev tool (test harness, formatter) | not in the build | lives in `[dependency-groups].dev`, never `[project.dependencies]` |
 
 A TPy library marks itself with **standard Python self-declaration
@@ -584,7 +585,7 @@ very hard to walk back. (This is why the default build carries no
 
 A set of build options change *observable program semantics*, not just
 performance. They need a first-class, explicit home -- the mechanism is **not
-yet decided** (CLI flag / `[tool.tpy]` / per-module `# tpy:` directive /
+yet decided** (CLI flag / `[tool.tpy]` / per-module `__tpy__` setting /
 per-function decorator, layered). Captured here so it is handled before these
 accrete as ad-hoc one-off flags. Initial set:
 
@@ -626,12 +627,12 @@ Two categories that must **not** be conflated:
      module boundaries), and panic mode is whole-program-ish. This per-knob
      consistency rule is the main design fork.
 
-**Layering:** CLI flag > `[tool.tpy]` > `# tpy:` directive > built-in default
+**Layering:** CLI flag > `[tool.tpy]` > `__tpy__` setting > built-in default
 (the precedence the "Configuration layers" section already defines).
 
-**Overlaps existing work:** the `# tpy: default-int` per-module override and
-the `range-check` toggle are already listed as remaining directive work
-(FEATURE_ROADMAP "# tpy: directives"); this generalizes them into one coherent
+**Overlaps existing work:** a per-module `"default_int"` `__tpy__` override
+and the `range-check` toggle are already listed as remaining work
+(INTEGER_INFERENCE_DESIGN.md, TODO.md); this generalizes them into one coherent
 compilation-options surface rather than scattered flags. Distinct from CPython
 interop, which only *needs* the panic=throw knob -- but that knob is the first
 member of this set, which is why it surfaced here.

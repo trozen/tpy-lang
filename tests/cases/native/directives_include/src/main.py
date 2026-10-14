@@ -1,6 +1,6 @@
-# Test that # tpy: include directives are emitted in the generated header
-# tpy: include("mylib/mylib.h")
-# tpy: include("<system_header.h>")
+# Test that `__tpy__` "includes" are emitted in the generated header
+__tpy__ = {"includes": ["mylib/mylib.h",
+                        "<system_header.h>"]}
 
 def main() -> None:
     pass

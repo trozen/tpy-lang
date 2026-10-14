@@ -1812,7 +1812,7 @@ class TpyFunction:
     native_mutates: str | None = None
     # @native(element_effect=...): see FunctionInfo.native_element_effect.
     native_element_effect: str | None = None
-    # Set when @export is applied inside an `# tpy: ext_module`: the function
+    # Set when @export is applied inside an ext module: the function
     # stays DEFAULT linkage (an ordinary TPy function) but the extension glue
     # generator emits a CPython wrapper + PyMethodDef entry for it.
     exposed_to_host: bool = False
@@ -2056,7 +2056,7 @@ class TpyRecord:
     pending_deferred_macros: list[Any] = field(default_factory=list)
     nested_records: list[TpyRecord] = field(default_factory=list)
     nested_enums: list[TpyEnum] = field(default_factory=list)
-    # Bare `@export` inside an `# tpy: ext_module`: expose this class to the
+    # Bare `@export` inside an ext module: expose this class to the
     # host CPython module as a real Python type (PyType_FromSpec). Mirrors
     # TpyFunction.exposed_to_host; the record keeps DEFAULT linkage (the glue
     # is separate). Set only by the parser inside an ext_module.
@@ -2162,7 +2162,7 @@ class ParseWarning:
 
 @dataclass
 class ModuleDirectives:
-    """Module-level compiler directives from # tpy: comments."""
+    """Module-level compiler settings from the module's `__tpy__` dict."""
     # Each entry: (include_path, platform_filter_or_None)
     includes: list[tuple[str, str | None]] = field(default_factory=list)
     # Each entry: (lib_name, platform_filter_or_None)
@@ -2171,15 +2171,20 @@ class ModuleDirectives:
     # Resolved at build time via tpyc.build.third_party into include paths,
     # link flags, and CMake snippets based on the user's selected mode.
     third_party_deps: list[tuple[str, str | None]] = field(default_factory=list)
-    native_module: bool = False
-    # CPython extension module: @export exposes to the host interpreter and
-    # the build emits a PyInit_-exporting .so instead of an executable.
-    ext_module: bool = False
-    # Location of the `ext_module` directive, for diagnostics that point at it
-    # (e.g. the ext_module/native_module conflict).
-    ext_module_loc: 'SourceLocation | None' = None
+    # `__tpy__["mod"]`; None for an ordinary module.
+    kind: 'Literal["native", "macro", "ext"] | None' = None
     # Override C++ namespace (replaces tpyapp::module_name)
     cpp_namespace: str | None = None
+
+    @property
+    def native_module(self) -> bool:
+        return self.kind == "native"
+
+    @property
+    def ext_module(self) -> bool:
+        """CPython extension module: @export exposes to the host interpreter
+        and the build emits a PyInit_-exporting .so instead of an executable."""
+        return self.kind == "ext"
 
 
 @dataclass
@@ -2238,7 +2243,7 @@ class TpyModule:
     type_aliases: 'dict[str, tuple[TpyType | TypeRefNode, SourceLocation | None, list[str], list[TypeParamKind]]]' = field(default_factory=dict)
     # Parser warnings (e.g., imports after non-import code)
     parse_warnings: list[ParseWarning] = field(default_factory=list)
-    # Module-level # tpy: directives
+    # Module-level `__tpy__` settings
     directives: ModuleDirectives = field(default_factory=ModuleDirectives)
     # Union type aliases that need wrapper-struct representation (self- or mutually-recursive)
     recursive_union_names: set[str] = field(default_factory=set)

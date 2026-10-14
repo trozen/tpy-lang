@@ -9,7 +9,7 @@
 #     macro module).
 #
 # Gaps tracked in STDLIB_ROADMAP.md.
-# tpy: cpp_namespace("tpystd::functools")
+__tpy__ = {"cpp_namespace": "tpystd::functools"}
 from typing import Iterable
 from tpy import Fn, Own, copy, dispatch
 from _functools_macros import total_ordering

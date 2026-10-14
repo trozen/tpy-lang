@@ -47,7 +47,7 @@ For current feature status, see `LANGUAGE_FEATURES.md`.
 | B3 | Match/case | M-L | Done | [VI](#matchcase-with-pattern-matching) |
 | B4 | Dynamic dispatch -- @dynamic protocols | L | Done | [II](#dynamic-dispatch-dynp) |
 | B5 | Per-method type parameter bounds | S-M | Done | [I](#type-parameter-bounds----per-method) |
-| B6 | `# tpy:` directives | S-M | Done | [I](#tpy-directives) |
+| B6 | `__tpy__` module settings | S-M | Done | [I](#__tpy__-module-settings) |
 | B7 | float32 type | S | Done | [I](#float32-type) |
 | B8 | Dataclasses | M | Done (Phase 1; auto `__eq__`/`frozen`/`__hash__` pending) | [VII](#dataclasses) |
 | B9 | List comprehensions | M | Done | [VI](#list-comprehensions) |
@@ -156,7 +156,7 @@ of phase, to avoid costly retrofitting when concurrency arrives.
 
 **H3 -- Cross-platform / Windows.** Linux + macOS/*BSD work today via a
 three-layer pattern (C++ `#ifdef` in runtime `.cpp`, `native_global` for
-divergent constants, host-filtered `# tpy: include/link(platform=)`); the
+divergent constants, host-filtered `__tpy__` `"includes"` / `"links"` entries with a `"platform"`); the
 macOS reactor (kqueue) / signal (self-pipe) backend and the platform-correct
 `socket`/`os` constants are the worked examples. See
 [LANGUAGE_FEATURES.md "Platform Support"](LANGUAGE_FEATURES.md) for the
@@ -841,7 +841,7 @@ class BinOp:
 
 Compiler detects the cycle and auto-boxes the recursive fields. Emits a warning:
 "field 'left' auto-boxed due to recursive type cycle". Cleaner syntax but hidden
-allocation. Could be opt-in via a directive (`# tpy: auto-box`).
+allocation. Could be opt-in via a module setting (`__tpy__ = {"auto_box": True}`).
 
 Approach A is more aligned with TPy's philosophy (explicit, no hidden costs).
 Approach B can layer on top later.
@@ -884,16 +884,17 @@ See Future Extensions table for planned enhancements.
 
 ---
 
-### `# tpy:` Directives
+### `__tpy__` Module Settings
 
-Per-module configuration via source comments in the file preamble (before any code):
+Per-module configuration in one dict literal after the module docstring (it
+replaced the earlier `# tpy:` comment directives):
 
 ```python
-# tpy: include("mylib/mylib.h")       # add #include "mylib/mylib.h" to generated header
-# tpy: include("<SDL2/SDL.h>")         # add #include <SDL2/SDL.h> (angle-bracket)
-# tpy: link("SDL2")                    # add -lSDL2 linker flag
-# tpy: link("m", platform="linux")     # platform-filtered: only link on Linux
-# tpy: native_module                   # declaration-only module (no .hpp/.cpp generated)
+__tpy__ = {"mod": "native",                     # declaration-only module (no .hpp/.cpp generated)
+           "includes": ["mylib/mylib.h",          # add #include "mylib/mylib.h" to generated header
+                        "<SDL2/SDL.h>"],          # add #include <SDL2/SDL.h> (angle-bracket)
+           "links": ["SDL2",                      # add -lSDL2 linker flag
+                     {"lib": "m", "platform": "linux"}]}  # platform-filtered: only link on Linux
 ```
 
 **Why it matters**: Multiple features depend on this infrastructure -- `default-int`
@@ -901,20 +902,17 @@ Per-module configuration via source comments in the file preamble (before any co
 for native interop (blocks real C library integration and DOOM port), and potentially
 `profile=noalloc` for module-level performance profiles.
 
-Without a directive system, each of these needs its own ad-hoc mechanism. A unified
-`# tpy:` parser lets all of them share one implementation.
+Without a settings system, each of these needs its own ad-hoc mechanism. One
+reader (`tpyc/parse/module_settings.py`) lets all of them share one implementation.
 
-**Current state**: Done. Three directives implemented:
-- `include(path)` -- emits `#include` in the generated header (quoted or angle-bracket)
-- `link(lib)` / `link(lib, platform=name)` -- adds `-llib` linker flag with optional
-  platform filter (`"linux"`, `"macos"`, `"windows"`)
-- `native_module` -- marks the module as declaration-only (no `.hpp` or `.cpp`
-  generated); for modules that only declare `@native` bindings to existing
-  C/C++ entities. Includes are propagated to importing modules.
+**Current state**: Done. Keys implemented: `"mod"` (`"native"` / `"macro"` /
+`"ext"`), `"cpp_namespace"`, `"includes"`, `"links"` (raw or `"managed"`,
+optional `"platform"` of `"linux"` / `"macos"` / `"windows"`). The full schema
+and every rejection are in `LANGUAGE_FEATURES.md` ("Module Settings").
 
-Directives must appear in the file preamble (before any code). Unknown directives and
-malformed arguments produce warnings. The parser uses Python's `ast.literal_eval` for
-argument parsing (call-style syntax).
+`__tpy__` must precede everything but the docstring and `from __future__`
+imports. Unknown keys, malformed values, a rebinding of `__tpy__`, a read of it
+outside a macro module, and a leftover `# tpy:` comment are compile errors.
 
 Remaining: `default-int` per-module override, `range-check` toggle. These are
 the first members of a broader **compilation-options / semantic-knobs**
@@ -1747,20 +1745,9 @@ code. Similar needs exist elsewhere -- allocator choice, `@noalloc` profile
 gating, stdlib variants for embedded targets, debug vs release behavior,
 target-specific backends.
 
-Surface sketch (to be designed):
-
-```python
-# Library module picks an implementation at compile time
-# tpy: if feature(re_backend) == "pcre2"
-from _bindings.pcre2.re import *  # tpy: re-export
-# tpy: elif feature(re_backend) == "std"
-from _bindings.cppstd.re import *
-# tpy: else
-from _bindings.sre.re import *
-# tpy: endif
-```
-
-Or via a static `if` the compiler folds at sema time:
+Surface sketch (to be designed) -- a static `if` the compiler folds at sema
+time (comment directives are not an option: module settings live in
+`__tpy__`):
 
 ```python
 from tpy import feature
@@ -1772,8 +1759,8 @@ else:
 ```
 
 Flags set via `tpyc --feature re_backend=pcre2`, project config
-(`pyproject.toml` or a dedicated `tpyc.toml`), or `# tpy:` module-level
-directives for local overrides.
+(`pyproject.toml` or a dedicated `tpyc.toml`), or `__tpy__` module settings
+for local overrides.
 
 **Why it matters**: avoids forcing one stdlib backend on everyone; lets
 embedded users strip out features; cleanly swaps implementations for
@@ -1783,7 +1770,7 @@ as re`) -- the latter scales poorly across a real project.
 
 **Scope considerations**:
 - Per-module vs global: likely both. Project-wide default plus per-module
-  override via `# tpy:` directive.
+  override via a `__tpy__` setting.
 - Type-system implications: if two branches expose different types (PCRE2's
   `Pattern` vs std::regex's), downstream type checking must see exactly one
   branch. Simplest: require both branches to present a structurally identical
@@ -1794,8 +1781,8 @@ as re`) -- the latter scales poorly across a real project.
   function/class attributes today; a generalized profile system may subsume
   them.
 
-**Current state**: Not started. `# tpy:` directives exist (module-level flags
-like `profile=noalloc`) but are not evaluated as conditionals.
+**Current state**: Not started. `__tpy__` module settings exist but are not
+evaluated as conditionals.
 
 **Dependencies**: Design coordination with macro system (F2) and profile
 gates. No hard blockers. Distinct from compile-time module parameters (F11):
@@ -2821,9 +2808,9 @@ class HttpClient:
         ...
 
 # @native extern binding (the original motivating use case)
-# tpy: native_module
-# tpy: cpp_namespace("x::core")
-# tpy: include("<x/build_opts.hpp>")
+__tpy__ = {"mod": "native",            # at the top of the module
+           "cpp_namespace": "x::core",
+           "includes": ["<x/build_opts.hpp>"]}
 @native
 class BuildOpts:
     FLAG: Final[bool]            # binds to ::x::core::BuildOpts::FLAG

@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::zoneinfo")
+__tpy__ = {"cpp_namespace": "tpystd::zoneinfo"}
 # The zoneinfo module: IANA time zones for datetime. The classes live in
 # datetime.py (the ZoneInfo <-> datetime signature cycle forces one
 # module); this facade is the CPython-spelled import surface plus

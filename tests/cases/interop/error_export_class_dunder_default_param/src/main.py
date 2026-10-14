@@ -4,7 +4,7 @@
 # default is unreachable through the compiled slot -- and the glue's fixed
 # marshal-from-PyObject expression has no fallback value to substitute
 # either, so this would otherwise fail deep in the C++ build instead.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

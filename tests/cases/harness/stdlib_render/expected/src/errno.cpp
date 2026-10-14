@@ -4,7 +4,6 @@
 namespace tpystd::errno_mod {
 
 
-// # tpy: cpp_namespace("tpystd::errno_mod")
 // """Minimal `errno` module: the constants TPy's own stdlib maps to exception
 // subclasses, for comparing `OSError.errno` in user code (the CPython idiom
 // `e.errno == errno.ECONNREFUSED`).

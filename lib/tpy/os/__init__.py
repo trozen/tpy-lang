@@ -1,6 +1,6 @@
 # os -- miscellaneous operating system interfaces.
-# tpy: cpp_namespace("tpystd::os")
-# tpy: include("<tpy/stdlib/os.hpp>")
+__tpy__ = {"cpp_namespace": "tpystd::os",
+           "includes": ["<tpy/stdlib/os.hpp>"]}
 #
 # Filesystem queries over std::filesystem (mutating ops over raw POSIX
 # syscalls); the path-string surface lives in the `os.path` submodule. Raw

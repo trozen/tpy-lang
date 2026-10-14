@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Function macro exercising replace_expr on keyword-argument expressions.
 
 Call kwargs live in a `dict[str, TpyExpr]` field; this verifies the
 replace_expr walker descends into dict-valued fields (regression guard for
 the kwargs-unreachable gap).
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast, StrLiteral, VarDecl, TpyCall,
 )

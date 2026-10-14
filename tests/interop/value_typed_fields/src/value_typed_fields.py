@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # An exposed VALUE-type record used as a getset field of an exposed reference
 # class. Value types are immutable, so the getset copy-out is behaviorally
 # invisible: reading the field gives an equal value, the holder can replace the

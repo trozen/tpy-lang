@@ -1,5 +1,5 @@
 # tplib -- TurboPython standard library
-# tpy: cpp_namespace("tpystd::tplib")
+__tpy__ = {"cpp_namespace": "tpystd::tplib"}
 from tplib.box import Box
 # Weak is intentionally NOT re-exported here. It lives at tplib.rc.Weak so
 # that the future Arc[T] companion (`tplib.arc.Weak`) can take the same

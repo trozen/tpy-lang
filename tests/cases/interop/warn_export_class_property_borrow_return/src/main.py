@@ -5,7 +5,7 @@
 # method borrow-return warning. A never-reassigned class field crosses as an
 # aliasing borrow view (no warning), and Own[...] of a fresh or copy()'d
 # value stays quiet.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 

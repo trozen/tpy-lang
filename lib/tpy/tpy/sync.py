@@ -1,5 +1,3 @@
-# tpy: include("<tpy/sync.hpp>")
-# tpy: link("pthread")
 """Blocking synchronization primitives -- `Mutex[T]` and `RwLock[T]`.
 
 The interior-mutability primitives: a `Mutex[T]` / `RwLock[T]` is `@nocopy`,
@@ -30,6 +28,8 @@ implementation fields (`_payload` reached around the lock). See
 docs/SEND_SYNC_DESIGN.md (RwLock Sync bound) and BUGS.md.
 """
 from __future__ import annotations
+__tpy__ = {"includes": ["<tpy/sync.hpp>"],
+           "links": ["pthread"]}
 from typing import Protocol, Self
 from tpy import (Own, Ptr, uint32, Deref, nocopy, readonly, auto_readonly,
                  take_ptr, unsafe_send, unsafe_sync)

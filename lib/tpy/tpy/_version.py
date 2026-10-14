@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Compile-time macros exposing the tpyc compiler version to user code.
 
 Consumed by tpy/version.py to initialise tpy.version.__version__ and
@@ -6,6 +5,7 @@ tpy.version.version_info. Each macro runs during compilation (via the
 macro loader running on CPython) and emits a literal expression that
 the compiler splices into the generated C++ as a constant.
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     __version__ as _v, VERSION_INFO as _vi,

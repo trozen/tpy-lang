@@ -1,6 +1,6 @@
 # @native class with `Final[T]` (no value): bind to C++ static members.
 # TPy emits no struct body; use sites resolve to <native_name>::<member>.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy.extern import native
 from typing import Final
 from tpy import int32

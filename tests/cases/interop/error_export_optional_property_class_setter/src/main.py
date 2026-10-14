@@ -2,7 +2,7 @@
 # the None gate: the value arrives as a borrow of the live argument payload,
 # which the setter's ownership-transfer parameter cannot move from -- the
 # dedicated setter message, not the generic Own advice a setter cannot spell.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int32
 from tpy.extern import export

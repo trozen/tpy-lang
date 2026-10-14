@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Function macro exercising the post-sema deferred phase.
 
 `resolve_sentinel` runs at pass 5.5 but only schedules work: it defers a
@@ -8,6 +7,7 @@ is type-checked, reads the first argument's inferred type via ctx.type_of
 `sentinel(a, b)` call to `a + b` when the arg is int32, and types the emitted
 BinOp via set_expr_type so codegen sees it.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast, TpyCall, TpyName,
 )

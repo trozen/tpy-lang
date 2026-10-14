@@ -4,7 +4,7 @@
 # the C header declares). Narrowing the gate again has to fail here. The
 # companion-free shapes live in extern_c_permitted_types, which keeps its
 # CPython run.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy.extern import native, native_global, export
 from tpy import int32, Ptr, deref
 

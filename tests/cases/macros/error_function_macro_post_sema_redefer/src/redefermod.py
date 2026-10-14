@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Error case: a deferred post-sema callback that re-defers is rejected.
 
 bad_redefer defers _first; _first (running post-sema) calls
 defer_until_sema_complete again. The drain runs once and rejects the second
 registration rather than looping.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import function_macro, FunctionMacroContext
 
 

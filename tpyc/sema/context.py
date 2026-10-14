@@ -2931,7 +2931,7 @@ class SemanticContext:
     # consumed by `_register_union_wrappers` so the wrapper-index origin
     # matches the comparison codegen does against its own `module_name`.
     cpp_module_name: str = "__main__"
-    module_cpp_namespace: str | None = None  # from # tpy: cpp_namespace directive
+    module_cpp_namespace: str | None = None  # from `__tpy__` "cpp_namespace"
     # The current module's opaque plugin payload (`FrontendModule.macro_data`,
     # `TpyModule.macro_data`). Stashed per-module in `bind_imports` so a
     # `@call_macro` -- which runs during Pass 7 with no module passed to it --

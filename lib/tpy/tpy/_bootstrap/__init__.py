@@ -1,4 +1,4 @@
-# tpy: native_module
+__tpy__ = {"mod": "native"}
 from ._extern import (
     builtin_decorator, builtin_type,
     native, cpp_template,

@@ -1,7 +1,7 @@
 # A generic dunder crossing the CPython boundary is rejected: the compiled
 # method is a C++ template, but the slot wrapper needs one concrete method to
 # call (no way to supply template args through a fixed CPython C-API slot).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int32, int64
 from tpy.extern import export
 

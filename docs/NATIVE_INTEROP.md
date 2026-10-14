@@ -12,7 +12,7 @@ from tpy.extern import native, export
 
 - `@native` -- import a C/C++ entity (function, class, global) into TPy
 - `@export(binding="C")` -- export a TPy function with C linkage
-- `# tpy: native_module` -- mark a module as declaration-only (no generated code)
+- `__tpy__ = {"mod": "native"}` -- mark a module as declaration-only (no generated code)
 
 ## Progress
 
@@ -36,11 +36,11 @@ from tpy.extern import native, export
 | `native_member("cpp_name")` -- per-member C++ rename on `@native` enums | **Done** |
 | `@export(binding="C")` -- export TPy function | **Done** |
 | `native_global()` -- import C/C++ global variable | **Done** |
-| `# tpy: native_module` | **Done** |
-| `# tpy: include("header")` | **Done** |
-| `# tpy: include("header", platform="linux")` | **Done** |
-| `# tpy: link("lib")` | **Done** |
-| `# tpy: link("lib", platform="linux")` | **Done** |
+| `__tpy__` `"mod": "native"` | **Done** |
+| `__tpy__` `"includes": ["header"]` | **Done** |
+| `__tpy__` `"includes": [{"header": "header", "platform": "linux"}]` | **Done** |
+| `__tpy__` `"links": ["lib"]` | **Done** |
+| `__tpy__` `"links": [{"lib": "lib", "platform": "linux"}]` | **Done** |
 | Cross-module native imports | **Done** |
 | Package re-exports of native functions | **Done** |
 | Include propagation from native modules | **Done** |
@@ -58,7 +58,7 @@ from tpy.extern import native, export
 
 ## Importing: `@native`
 
-Declares a C/C++ entity that exists elsewhere. The compiler uses it for type-checking and codegen but generates no code for the entity itself. The actual definition must be available via `# tpy: include()` or the external build system.
+Declares a C/C++ entity that exists elsewhere. The compiler uses it for type-checking and codegen but generates no code for the entity itself. The actual definition must be available via a `__tpy__` `"includes"` entry or the external build system.
 
 ### Functions
 
@@ -201,7 +201,7 @@ References to imported globals emit the C/C++ name directly: `print(frame_count)
 ### Enums
 
 ```python
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from enum import Enum, auto
 from tpy.extern import native, native_member
 
@@ -226,7 +226,7 @@ class Tag(Enum):
     Gamma = 300                         # per-member static_assert
 ```
 
-`@native` enums bind to an existing C++ `enum class`; no enum declaration is generated and no `operator<<` is emitted (avoids conflict with user-provided one). The user's `# tpy: include(...)` directive must make the C++ enum type visible.
+`@native` enums bind to an existing C++ `enum class`; no enum declaration is generated and no `operator<<` is emitted (avoids conflict with user-provided one). The module's `__tpy__` `"includes"` must make the C++ enum type visible.
 
 **Two value-declaration modes.** The TPy-declared value is either *implicit* (via `auto()` or `native_member()`) -- in which case the C++ side is the source of truth and `e.value` reads `static_cast<underlying>(e)` directly -- or *explicit*, in which case codegen emits a per-member `static_assert` pinning the TPy-declared value to the C++ side. A mismatch fails at C++ compile time with a clear "does not match" message rather than silently miscompiling. Use explicit values when you want to document the binding's expected values in TPy source; use `auto()` when you don't want to mirror them.
 
@@ -843,45 +843,57 @@ blocking socket operation still tries without waiting and then polls, and
 
 ---
 
-## Module directives
+## Module settings (`__tpy__`)
 
-### `# tpy: native_module`
+A module's settings are one dict literal, `__tpy__`, after the docstring and
+before the imports. The full schema and every rejection are in
+`docs/LANGUAGE_FEATURES.md` ("Module Settings: `__tpy__`").
 
-Marks a module as declaration-only. No `.hpp` or `.cpp` is generated. All `@native` entities are for type-checking only. `# tpy: include()` directives are propagated to importing modules.
+```python
+"""Game type bindings."""
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "game",
+           "includes": ["<game/types.hpp>"],
+           "links": ["SDL2"]}
+```
 
-Each module that should be declaration-only must have its own `# tpy: native_module` directive -- it does not propagate from package `__init__.py` to child modules.
+### `"mod": "native"`
+
+Marks a module as declaration-only. No `.hpp` or `.cpp` is generated. All `@native` entities are for type-checking only. Its `"includes"` are propagated to importing modules.
+
+Each module that should be declaration-only must declare `"mod": "native"` itself -- it does not propagate from package `__init__.py` to child modules.
 
 See [Rename resolution](#rename-resolution) below for how `@native` renames interact with `cpp_namespace`.
 
-`@export` is not allowed in `native_module` modules (they are declaration-only).
+`@export` is not allowed in native modules (they are declaration-only).
 
-### `# tpy: cpp_namespace("ns")`
+### `"cpp_namespace": "ns"`
 
 Overrides the C++ namespace for the module's generated code (default: `tpyapp::module_name`). Also drives the [rename resolution](#rename-resolution) rule for `@native` entities in the module.
 
-### `# tpy: include("header")`
+### `"includes"`
 
-Adds an `#include` directive. Quoted paths use `#include "..."`, angle-bracket paths use `#include <...>`. Optional platform filter.
-
-```python
-# tpy: include("mylib/types.h")
-# tpy: include(<SDL2/SDL.h>)
-# tpy: include(<sys/time.h>, platform="linux")
-```
-
-In `native_module` modules, includes propagate transitively into any consumer whose generated C++ reaches a type defined in this module -- whether named explicitly in the consumer's imports or surfaced only through field/method chains on imported types. Native-to-native chains follow the same rule: a hand-written native header that forward-declares a type from another native module does not need to be edited; the consumer header pulls in both. In regular modules, includes go into the module's own generated header.
-
-### `# tpy: link("library")`
-
-Passes `-l<name>` to the linker. Optional platform filter.
+Each entry adds an `#include` directive. Quoted paths use `#include "..."`, angle-bracket paths use `#include <...>`. An entry dict takes an optional platform filter, a `sys.platform` value: `"linux"`, `"darwin"` (macOS) or `"win32"` (Windows).
 
 ```python
-# tpy: link("SDL2")
-# tpy: link("ws2_32", platform="windows")
-# tpy: link("pthread", platform="linux")
+__tpy__ = {"includes": ["mylib/types.h",
+                        "<SDL2/SDL.h>",
+                        {"header": "<sys/time.h>", "platform": "linux"}]}
 ```
 
-Link directives are collected from all modules in the dependency graph.
+In native modules, includes propagate transitively into any consumer whose generated C++ reaches a type defined in this module -- whether named explicitly in the consumer's imports or surfaced only through field/method chains on imported types. Native-to-native chains follow the same rule: a hand-written native header that forward-declares a type from another native module does not need to be edited; the consumer header pulls in both. In regular modules, includes go into the module's own generated header.
+
+### `"links"`
+
+Each entry passes `-l<name>` to the linker. An entry dict takes an optional platform filter, or `"managed": True` to resolve a registered third-party library instead (`tpyc --<lib>=bundled|system|auto|none`).
+
+```python
+__tpy__ = {"links": ["SDL2",
+                     {"lib": "ws2_32", "platform": "win32"},
+                     {"lib": "pthread", "platform": "linux"}]}
+```
+
+Links are collected from all modules in the dependency graph.
 
 ---
 
@@ -890,10 +902,10 @@ Link directives are collected from all modules in the dependency graph.
 Native entities imported in one module can be used in another via normal Python imports:
 
 ```python
-# types.py (native_module)
-# tpy: native_module
-# tpy: cpp_namespace("game")
-# tpy: include(<game/types.hpp>)
+# types.py (native module)
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "game",
+           "includes": ["<game/types.hpp>"]}
 
 @native
 class Player:
@@ -934,20 +946,20 @@ def helper_add(x: int32) -> int32:
 
 ### Rename resolution
 
-The rename string interacts with the module's `cpp_namespace` directive (if any). The rule covers both the no-rename case (`@native`) and the explicit-rename case (`@native("name")`), and applies to module-level `@native` functions, records, and protocols. C-linkage (`binding="C"`) and `@builtin_type` records are exempt -- their symbol names are unchanged by this rule.
+The rename string interacts with the module's `"cpp_namespace"` setting (if any). The rule covers both the no-rename case (`@native`) and the explicit-rename case (`@native("name")`), and applies to module-level `@native` functions, records, and protocols. C-linkage (`binding="C"`) and `@builtin_type` records are exempt -- their symbol names are unchanged by this rule.
 
-| Form | Interpretation | Emitted C++ (in `cpp_namespace("mylib")`) |
+| Form | Interpretation | Emitted C++ (with `"cpp_namespace": "mylib"`) |
 |------|----------------|-------------------------------------------|
 | `@native` (no rename) | relative to `cpp_namespace` | `::mylib::PythonName` |
 | `@native("foo")` (no `::` in string) | relative to `cpp_namespace` | `::mylib::foo` |
 | `@native("a::b")` (contains `::`) | absolute -- `cpp_namespace` ignored | `::a::b` |
 | `@native("::foo")` (leading `::`) | absolute to global scope | `::foo` |
 
-**Rule of thumb:** any `::` in the rename string opts out of the namespace prefix. Use `@native("::libc_name")` to bind to libc or other global-scope symbols from inside a namespaced module (e.g. `@native("::socket")` in a `cpp_namespace("tpystd::_bindings::posix_socket")` module).
+**Rule of thumb:** any `::` in the rename string opts out of the namespace prefix. Use `@native("::libc_name")` to bind to libc or other global-scope symbols from inside a namespaced module (e.g. `@native("::socket")` in a module with `"cpp_namespace": "tpystd::_bindings::posix_socket"`).
 
 ```python
-# tpy: cpp_namespace("engine::core")
-# tpy: include("<engine/core/types.hpp>")
+__tpy__ = {"cpp_namespace": "engine::core",
+           "includes": ["<engine/core/types.hpp>"]}
 
 from tpy.extern import native
 
@@ -982,7 +994,7 @@ All `@native` function calls (C++ linkage) emit their symbol absolute-qualified 
 | Non-stub method on `@native` class | `methods on @native class must be stubs` |
 | `native_global()` inside a function | `can only be used at module level` |
 | `native_global()` without type annotation | `requires a type annotation` |
-| `@export` in `native_module` | `@export not allowed in native_module` |
+| `@export` in a native module | `@export not allowed in a native module ("mod": "native")` |
 | Non-C-representable type in a `binding="C"` signature | `is not representable in the C ABI` (plus a per-family remedy) |
 | `*args` on a `binding="C"` function | `variadic parameters are not supported on a C-linkage function` |
 | Non-C-representable type on a `binding="C"` `native_global` | `is not representable in the C ABI` |

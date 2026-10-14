@@ -1,7 +1,7 @@
 # Optional[T] crosses at the top of a param/return only: as a container
 # ELEMENT it has no per-element gate, so `list[Optional[int32]]` stays
 # rejected with the located boundary error.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int32
 from tpy.extern import export

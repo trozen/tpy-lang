@@ -1,6 +1,6 @@
 # os.path -- common pathname manipulations (POSIX semantics).
-# tpy: cpp_namespace("tpystd::os::path")
-# tpy: include("<tpy/stdlib/os.hpp>")
+__tpy__ = {"cpp_namespace": "tpystd::os::path",
+           "includes": ["<tpy/stdlib/os.hpp>"]}
 from typing import Final
 from tpy import char, Own
 from ._native import (

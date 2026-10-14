@@ -1,6 +1,6 @@
 # A @native class's bindings render wherever it is reached: a subscript
 # through `__getitem__`, members through a Ptr, @cpp_template record args.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from typing import Iterator
 import asyncio
 from tpy import int32, Own, NativeIterable, Ptr, ValueType, readonly

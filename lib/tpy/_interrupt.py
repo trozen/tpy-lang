@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::_interrupt")
 """Signal delivery for the stdlib's blocking operations.
 
 The signal layer (runtime/cpp/src/stdlib/signal_impl.cpp) turns a signal
@@ -23,6 +22,7 @@ ahead of the system call, while its fd is in blocking mode.
 
 Internal: not for user import.
 """
+__tpy__ = {"cpp_namespace": "tpystd::_interrupt"}
 
 from typing import Final
 from tpy import int32

@@ -649,7 +649,7 @@ Topics worth looking up there when you need depth beyond this guide:
   channel close semantics ("Concurrency" / "Thread Safety Markers").
 - Union types (variant codegen, recursive unions).
 - `@native` / `@export` native interop for C++ bindings.
-- Authoring CPython extension modules (`# tpy: ext_module` + `@export`
+- Authoring CPython extension modules (`__tpy__ = {"mod": "ext"}` + `@export`
   -- compile TPy to an importable CPython `.so`; "CPython Extensions").
 - `@error_return` zero-cost error handling.
 - Protocol definition and conformance.

@@ -9,7 +9,6 @@ from __future__ import annotations
 import ast
 import copy
 import dataclasses
-import re
 import textwrap
 from typing import Any, Literal, NoReturn, TYPE_CHECKING
 
@@ -55,6 +54,9 @@ from .imports import (
     ImportProcessor, _PRIVATE_MODULE_PUBLIC_NAMES, _IMPLICIT_MODULES,
     get_builtins_exports, get_typing_exports, get_tpy_exports, read_module_all,
     NonLiteralAllError,
+)
+from .module_settings import (
+    SETTINGS_NAME, find_settings_header, is_preamble_stmt, read_module_settings,
 )
 from .. import qnames
 
@@ -254,153 +256,6 @@ def _attr_chain_to_dotted(node: ast.expr) -> str | None:
         parts.reverse()
         return ".".join(parts)
     return None
-
-
-# Requires whitespace after `tpy:` to avoid matching C++ namespace comments (# tpy::Foo)
-_DIRECTIVE_LINE_RE = re.compile(r'^#\s*tpy:\s+(\w.+)$')
-
-# Schema: (positional arg types, allowed keyword arg types)
-# Keys are the known directive names; unknown names produce a warning.
-_DIRECTIVE_SPECS: dict[str, tuple[list[type], dict[str, type]]] = {
-    "native_module":     ([], {}),
-    "macro_module":      ([], {}),
-    "ext_module":        ([], {}),
-    "include":           ([str], {"platform": str}),
-    # link: raw `-lfoo` by default; `managed=True` routes through the
-    # third-party registry (tpyc/build/third_party.py) for bundled/system/
-    # auto resolution via the `--<lib>=<mode>` CLI flag.
-    "link":              ([str], {"platform": str, "managed": bool}),
-    "cpp_namespace":     ([str], {}),
-}
-
-_CPP_NAMESPACE_RE = re.compile(r'^[A-Za-z_][A-Za-z0-9_]*(::[A-Za-z_][A-Za-z0-9_]*)*$')
-
-
-def _parse_directive_call(content: str) -> tuple[str, list, dict] | None:
-    """Parse directive content as a bare name or Python-style call.
-
-    Returns (name, positional_args, keyword_args), or None on parse error.
-    """
-    content = content.strip()
-    if re.match(r'^\w+$', content):
-        return (content, [], {})
-    try:
-        tree = ast.parse(content, mode='eval')
-        expr = tree.body
-        if isinstance(expr, ast.Call) and isinstance(expr.func, ast.Name):
-            name = expr.func.id
-            pos_args = [ast.literal_eval(a) for a in expr.args]
-            kw_args = {kw.arg: ast.literal_eval(kw.value)
-                       for kw in expr.keywords if kw.arg is not None}
-            return (name, pos_args, kw_args)
-    except (SyntaxError, ValueError):
-        pass
-    return None
-
-
-def _check_directive_args(
-    name: str, args: list, kwargs: dict,
-    spec: tuple[list[type], dict[str, type]],
-    loc: SourceLocation, warnings: list[ParseWarning],
-) -> bool:
-    """Validate args/kwargs against a directive spec. Returns True if valid."""
-    pos_types, kw_types = spec
-    if len(args) != len(pos_types):
-        warnings.append(ParseWarning(
-            f"'{name}' expects {len(pos_types)} positional argument(s), got {len(args)}", loc))
-        return False
-    for i, (val, typ) in enumerate(zip(args, pos_types)):
-        if not isinstance(val, typ):
-            warnings.append(ParseWarning(
-                f"'{name}' argument {i + 1} must be a {typ.__name__}", loc))
-            return False
-    unknown = {k for k in kwargs if k not in kw_types}
-    if unknown:
-        warnings.append(ParseWarning(
-            f"'{name}' unknown keyword arguments: {sorted(unknown)}", loc))
-        return False
-    for k, val in kwargs.items():
-        if not isinstance(val, kw_types[k]):
-            warnings.append(ParseWarning(
-                f"'{name}' keyword '{k}' must be a {kw_types[k].__name__}", loc))
-            return False
-    return True
-
-
-def _scan_directives(source_lines: list[str]) -> tuple[ModuleDirectives, list[ParseWarning]]:
-    """Scan all standalone # tpy: comment lines and return parsed directives."""
-    includes: list[tuple[str, str | None]] = []
-    link_libs: list[tuple[str, str | None]] = []
-    third_party_deps: list[tuple[str, str | None]] = []
-    native_module = False
-    ext_module = False
-    ext_module_loc: SourceLocation | None = None
-    cpp_namespace: str | None = None
-    warnings: list[ParseWarning] = []
-
-    preamble_ended = False
-    for lineno, line in enumerate(source_lines, start=1):
-        stripped = line.strip()
-        if stripped and not stripped.startswith('#'):
-            preamble_ended = True
-        if not stripped.startswith('#'):
-            continue
-        m = _DIRECTIVE_LINE_RE.match(stripped)
-        if not m:
-            continue
-        content = m.group(1).strip()
-        loc = SourceLocation(line=lineno)
-        if preamble_ended:
-            warnings.append(ParseWarning(
-                "# tpy: directives must appear before any code", loc))
-            continue
-
-        parsed = _parse_directive_call(content)
-        if parsed is None:
-            warnings.append(ParseWarning(f"invalid # tpy: directive syntax: {content!r}", loc))
-            continue
-
-        name, args, kwargs = parsed
-        spec = _DIRECTIVE_SPECS.get(name)
-        if spec is None:
-            warnings.append(ParseWarning(f"unknown # tpy: directive: {name!r}", loc))
-            continue
-        if not _check_directive_args(name, args, kwargs, spec, loc, warnings):
-            continue
-
-        if name == "native_module":
-            native_module = True
-        elif name == "ext_module":
-            ext_module = True
-            ext_module_loc = loc
-        elif name == "include":
-            includes.append((args[0], kwargs.get("platform")))
-        elif name == "link":
-            # managed=True -> registry-resolved third-party dep.
-            # managed=False (or omitted) -> raw -lfoo linker flag.
-            if kwargs.get("managed", False):
-                third_party_deps.append((args[0], kwargs.get("platform")))
-            else:
-                link_libs.append((args[0], kwargs.get("platform")))
-        elif name == "cpp_namespace":
-            ns_value = args[0]
-            if not _CPP_NAMESPACE_RE.match(ns_value):
-                warnings.append(ParseWarning(
-                    f"invalid namespace: {ns_value!r} (must be valid C++ namespace like 'foo::bar')", loc))
-                continue
-            if cpp_namespace is not None:
-                warnings.append(ParseWarning(
-                    f"duplicate 'cpp_namespace' directive (previous: {cpp_namespace!r})", loc))
-            cpp_namespace = ns_value
-
-    return ModuleDirectives(
-        includes=includes, link_libs=link_libs,
-        third_party_deps=third_party_deps,
-        native_module=native_module,
-        ext_module=ext_module,
-        ext_module_loc=ext_module_loc,
-        cpp_namespace=cpp_namespace,
-    ), warnings
 
 
 def _collect_bitor_arms(node: ast.BinOp) -> list[ast.expr]:
@@ -659,7 +514,7 @@ class Parser:
         # Attached to TpyModule.resolver at end of parse(); sema delegates
         # here.
         self._resolver = TypeResolver(self)
-        # Module # tpy: directives, populated by parse() before
+        # Module `__tpy__` settings, populated by parse() before
         # _parse_module so class/protocol/enum registration can see
         # cpp_namespace at registration time.
         self._directives = ModuleDirectives()
@@ -677,13 +532,16 @@ class Parser:
         return None
 
     @staticmethod
-    def _is_module_all_stmt(node: ast.AST) -> bool:
+    def _is_module_metadata_stmt(node: ast.AST) -> bool:
+        """`__all__` / `__tpy__` statements: compile-time module metadata,
+        read before the walk, never compiled to code."""
+        names = ("__all__", SETTINGS_NAME)
         if isinstance(node, ast.Assign):
-            return any(isinstance(t, ast.Name) and t.id == "__all__"
+            return any(isinstance(t, ast.Name) and t.id in names
                        for t in node.targets)
         if isinstance(node, (ast.AnnAssign, ast.AugAssign)):
             return (isinstance(node.target, ast.Name)
-                    and node.target.id == "__all__")
+                    and node.target.id in names)
         return False
 
     def _warn(self, message: str, node: ast.AST | None = None) -> None:
@@ -802,23 +660,16 @@ class Parser:
                 f"'{raw_name}' requires: from tpy import {raw_name}", node, loc=loc,
             )
 
-    def _is_ignorable_for_import_order(self, node: ast.stmt) -> bool:
-        """Check if a statement should be ignored for import ordering.
-
-        Module docstrings and pass statements don't count as "code"
-        for the purpose of detecting late imports.
-        """
-        if isinstance(node, ast.Pass):
-            return True
-        # Module docstring (expression statement with a string literal)
-        if isinstance(node, ast.Expr) and isinstance(node.value, ast.Constant) and isinstance(node.value.value, str):
-            return True
-        return False
-
     def parse(self, source: str, module_name: str | None = None,
               is_package_init: bool = False,
-              is_entry_point: bool = False) -> TpyModule:
+              is_entry_point: bool = False,
+              tree: ast.Module | None = None,
+              settings: ModuleDirectives | None = None) -> TpyModule:
         """Parse TurboPython source code into a TpyModule.
+
+        `tree` / `settings` are the compiler's already-parsed module and its
+        `read_module_settings` result (it routes on the module kind first);
+        without them the source is parsed and its settings read here.
 
         `is_entry_point` mirrors the compiler's convention of treating
         the entry-point module as `__main__` for qname purposes
@@ -836,13 +687,20 @@ class Parser:
         self._module_aliases = {}
         self._bare_module_imports = set()
         self._reverse_module_aliases = {}
-        tree = ast.parse(source)
+        if tree is None:
+            tree = ast.parse(source)
         # `clean=False` keeps the raw literal -- what CPython puts in `__doc__`.
         self._module_docstring = ast.get_docstring(tree, clean=False)
-        # Scan directives first so cpp_namespace is available while
-        # _parse_module registers records/protocols/enums.
-        directives, directive_warnings = _scan_directives(self.source_lines)
-        self._directives = directives
+        # Settings first so cpp_namespace is available while _parse_module
+        # registers records/protocols/enums.
+        if settings is None:
+            settings = read_module_settings(tree, source)
+        if settings.kind == "macro":
+            raise ParseError(
+                'a "mod": "macro" module runs under CPython at compile time; '
+                "import it from a TPy module instead of compiling it",
+                find_settings_header(tree))
+        self._directives = settings
         try:
             module_all_result = read_module_all(tree)
         except NonLiteralAllError as exc:
@@ -853,8 +711,7 @@ class Parser:
         module = self._parse_module(tree)
         if module_all_result is not None:
             module.module_all, module.module_all_loc = module_all_result
-        module.directives = directives
-        module.parse_warnings.extend(directive_warnings)
+        module.directives = settings
         # Attach the ref resolver so sema can resolve TypeRefNodes emitted
         # at annotation sites.  The TypeResolver instance holds a back-ref
         # to this parser and reads parser state each call, so sema sees
@@ -1151,13 +1008,10 @@ class Parser:
                 seen_non_import = True
                 self._register_type_alias(node.targets[0].id, node.value, type_aliases)
             else:
-                # `__all__` statements are compile-time export metadata
-                # (captured by read_module_all); they must not compile to
-                # runtime code.
-                if self._is_module_all_stmt(node):
+                if self._is_module_metadata_stmt(node):
                     continue
                 # Skip docstrings and pass statements for late import detection
-                if not self._is_ignorable_for_import_order(node):
+                if not is_preamble_stmt(node):
                     seen_non_import = True
                 # All other statements go through _parse_stmt (same as function bodies)
                 stmt = self._parse_stmt(node)
@@ -1653,12 +1507,12 @@ class Parser:
                 if not self._directives.ext_module:
                     raise ParseError(
                         f"class '{node.name}': @export is only valid inside an "
-                        "`# tpy: ext_module` (it exposes the class to CPython)",
+                        "ext module (`\"mod\": \"ext\"` in `__tpy__`; it exposes the class to CPython)",
                         dec)
                 pos, kw = self._validate_decorator_args(qname, arg, dec)
                 if kw or (isinstance(pos, str) and pos) or isinstance(pos, tuple):
                     raise ParseError(
-                        f"class '{node.name}': inside an `# tpy: ext_module`, "
+                        f"class '{node.name}': inside an ext module, "
                         "@export must be bare (it exposes the class to CPython "
                         "and takes no arguments)", dec)
                 exposed_to_host = True
@@ -2176,12 +2030,12 @@ class Parser:
                 if not self._directives.ext_module:
                     raise ParseError(
                         f"enum '{node.name}': @export is only valid inside an "
-                        "`# tpy: ext_module` (it exposes the enum to CPython)",
+                        "ext module (`\"mod\": \"ext\"` in `__tpy__`; it exposes the enum to CPython)",
                         dec)
                 pos, kw = self._validate_decorator_args(qname, arg, dec)
                 if kw or (isinstance(pos, str) and pos) or isinstance(pos, tuple):
                     raise ParseError(
-                        f"enum '{node.name}': inside an `# tpy: ext_module`, "
+                        f"enum '{node.name}': inside an ext module, "
                         "@export must be bare (it exposes the enum to CPython "
                         "and takes no arguments)", dec)
                 exposed_to_host = True
@@ -3037,7 +2891,7 @@ class Parser:
             elif qname == qnames.BUILTIN_FUNCTION:
                 builtin_function_key = pos
             elif qname in self._FUNCTION_LINKAGE_MAP:
-                # Inside an `# tpy: ext_module`, @export means "expose to the
+                # Inside an ext module, @export means "expose to the
                 # host CPython module" (a generated wrapper + PyMethodDef
                 # entry), NOT extern "C". The function keeps DEFAULT linkage;
                 # the glue is separate. Conflicting forms are loud errors so
@@ -3048,11 +2902,11 @@ class Parser:
                     # kwargs-marker tuple (schema absent) still rejects below.
                     if kw.get("binding"):
                         raise ParseError(
-                            'inside an `# tpy: ext_module`, @export exposes to '
+                            'inside an ext module, @export exposes to '
                             'CPython; remove binding="C"', dec)
                     if (isinstance(pos, str) and pos) or isinstance(pos, tuple):
                         raise ParseError(
-                            'inside an `# tpy: ext_module`, @export must be bare '
+                            'inside an ext module, @export must be bare '
                             '(it exposes the function to CPython and takes no '
                             'arguments)', dec)
                     exposed_to_host = True

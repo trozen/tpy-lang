@@ -2,7 +2,7 @@
 # (append / setitem) is not visible to the Python caller -- warn precisely where
 # sema proves the mutation happens. A read-only container param has no
 # observable divergence and stays quiet.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy.extern import export
 
 

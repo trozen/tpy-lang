@@ -1,6 +1,6 @@
 # Own[<exposed class>] is not a valid boundary type: the host keeps its
 # reference, so ownership can't transfer. Use the borrow form.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 

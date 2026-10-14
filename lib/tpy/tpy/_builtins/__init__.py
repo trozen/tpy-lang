@@ -1,4 +1,4 @@
-# tpy: native_module
+__tpy__ = {"mod": "native"}
 from ._exceptions import BaseException, Exception, ValueError, OSError, FileNotFoundError, PermissionError, FileExistsError, NotADirectoryError, IsADirectoryError, ConnectionError, BrokenPipeError, ConnectionResetError, ConnectionRefusedError, ConnectionAbortedError, BlockingIOError, ChildProcessError, InterruptedError, ProcessLookupError, AttributeError, AssertionError, LookupError, IndexError, KeyError, ArithmeticError, ZeroDivisionError, OverflowError, FloatingPointError, TypeError, NotImplementedError, RuntimeError, RecursionError, EOFError, MemoryError, StopIteration, StopAsyncIteration, TimeoutError, CancelledError, GeneratorExit, KeyboardInterrupt, SystemExit
 from ._range import Range, range
 from ._funcs import len, repr, hash, chr, ord, abs, min, max, pow, divmod, next, iter, round, print, input, isinstance, all, any, sum, sorted, bin, hex, oct, enumerate, reversed, zip, map, filter, getattr, setattr, delattr, hasattr

@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Deferred (post-sema) function macro that violates its own contract.
 
 `replace_expr` after inference means nothing re-types the replacement, so a
@@ -6,6 +5,7 @@ callback that skips `set_expr_type` leaves a node codegen has no type for.
 The macro is deliberately wrong -- the case pins the diagnostic that catches
 it, not the macro.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast, TpyCall, TpyName,
 )

@@ -1,1 +1,1 @@
-// stub header for testing # tpy: include directive
+// stub header for testing the __tpy__ "includes" setting

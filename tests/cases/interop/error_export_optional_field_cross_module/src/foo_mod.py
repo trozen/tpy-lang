@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from enum import IntEnum
 from tpy.extern import export
 

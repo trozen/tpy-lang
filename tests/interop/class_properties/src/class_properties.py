@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # @property on an exposed class crosses as a computed getset: the getter is a
 # zero-arg method return site (full method boundary set, incl. containers),
 # the setter a one-param method param site. A getter-only property is

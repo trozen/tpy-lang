@@ -83,7 +83,7 @@ class TestBuildCacheTracking:
     def test_load_module_records_file(self, tmp_path):
         from .macro_loader import MacroRegistry
         mac = tmp_path / "mymac.py"
-        mac.write_text("# tpy: macro_module\nX = 1\n")
+        mac.write_text('__tpy__ = {"mod": "macro"}\nX = 1\n')
         reg = MacroRegistry()
         reg.load_module("mymac", mac)
         assert reg.loaded_files == {"mymac": str(mac)}
@@ -115,7 +115,7 @@ class TestBuildCacheTracking:
         from .macro_loader import MacroRegistry
         libdir = tmp_path / "lib"
         libdir.mkdir()
-        (libdir / "helper.py").write_text("# tpy: macro_module\nY = 2\n")
+        (libdir / "helper.py").write_text('__tpy__ = {"mod": "macro"}\nY = 2\n')
         reg = MacroRegistry(search_dirs=[libdir])
         assert reg._resolve_macro_import("helper") is not None
         assert reg.loaded_files == {"helper": str(libdir / "helper.py")}
@@ -123,11 +123,28 @@ class TestBuildCacheTracking:
         assert reg.probe_rejected == []
         assert str(libdir / "helper.py") in reg.input_entries
 
+    def test_import_with_bad_settings_names_the_imported_module(self, tmp_path):
+        # The error must leave the importer's exec unwrapped, so the compiler
+        # reports it at the imported module's own path and line.
+        from .macro_loader import MacroImportSettingsError, MacroRegistry
+        libdir = tmp_path / "lib"
+        libdir.mkdir()
+        (libdir / "helper.py").write_text('"""Doc."""\n__tpy__ = {"mod": "macr"}\n')
+        outer = tmp_path / "outer.py"
+        outer.write_text('__tpy__ = {"mod": "macro"}\nimport helper\n')
+        reg = MacroRegistry(search_dirs=[libdir])
+        with pytest.raises(MacroImportSettingsError) as exc:
+            reg.load_module("outer", outer)
+        assert exc.value.module_name == "helper"
+        assert exc.value.path == libdir / "helper.py"
+        assert exc.value.error.lineno == 2
+        assert '__tpy__["mod"] must be one of' in exc.value.error.message
+
     def test_shared_input_entries_table(self, tmp_path):
         # The Compiler hands its own table in; captures must land there.
         from .macro_loader import MacroRegistry
         mac = tmp_path / "mymac.py"
-        mac.write_text("# tpy: macro_module\nX = 1\n")
+        mac.write_text('__tpy__ = {"mod": "macro"}\nX = 1\n')
         shared: dict[str, dict] = {}
         reg = MacroRegistry(input_entries=shared)
         reg.load_module("mymac", mac)

@@ -3799,7 +3799,7 @@ class SemanticAnalyzer:
         modules. Records / functions / type aliases already have dedicated
         resolution paths in the implicit-module branch; module-level variables
         do not. This helper covers the variable-only case so re-exported
-        constants (e.g. ``__version__`` from a ``# tpy: native_module``
+        constants (e.g. ``__version__`` from a native module
         ``tpy/__init__.py``) become first-class VARIABLE bindings instead of
         being rejected at use site as "not a variable".
         """

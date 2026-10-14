@@ -2,7 +2,7 @@
 # located reject as the plain `-> Cls` form: the check peels to the boundary
 # inner, so every borrow spelling (RefType or ReadonlyType-topped) lands on
 # the one reject.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, nocopy, readonly
 from tpy.extern import export
 

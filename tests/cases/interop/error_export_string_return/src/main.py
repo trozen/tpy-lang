@@ -1,6 +1,6 @@
 # The tpy-native owned `String` is rejected as an @export RETURN type too, not
 # just a parameter -- only the Python-facing `str` marshals back to the caller.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import String
 from tpy.extern import export
 

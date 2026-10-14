@@ -1,7 +1,7 @@
 # An @export class inheriting a non-exposed base is rejected: the base has no
 # CPython type to wire as tp_base (an exposed class can only inherit an
 # exposed class).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

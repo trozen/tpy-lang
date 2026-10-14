@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Function macro: type a string-bool local from a record param's field.
 
 Resolves the type of a field on the first record-typed param via
 ctx.get_field_type and uses it to retype `x = "true"/"false"` locals.
 Also probes get_method_return_type on the same param type.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast,
     VarDecl, StrLiteral,

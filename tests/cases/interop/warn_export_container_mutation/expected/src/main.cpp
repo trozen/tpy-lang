@@ -32,11 +32,6 @@ void add_one(::tpy::ordered_set<::tpy::BigInt>& s, const ::tpy::BigInt& v) {
     return ::tpy::BigInt(::tpy::__len__(s));
 }
 
-// # A list/dict/set @export param crosses the boundary copy-in, so mutating it
-// # (append / setitem) is not visible to the Python caller -- warn precisely where
-// # sema proves the mutation happens. A read-only container param has no
-// # observable divergence and stays quiet.
-// # tpy: ext_module
 // from tpy.extern import export
 void __tpy_init() {
     static bool initialized = false;

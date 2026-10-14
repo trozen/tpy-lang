@@ -1,7 +1,7 @@
 # A param/return type without a CPython boundary marshaller (StrView here -- a
 # borrow form, not marshallable across the boundary) is rejected before codegen,
 # not during glue generation.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import StrView
 from tpy.extern import export
 

@@ -1,4 +1,4 @@
-# tpy: macro_module
+__tpy__ = {"mod": "macro"}
 # Call macro in a package, using macro_deps with a dotted module name.
 from tpyc.macro_api import (
     CallMacroContext, MacroArg,

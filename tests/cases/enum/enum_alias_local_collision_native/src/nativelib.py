@@ -1,5 +1,5 @@
 # Declares the @native binding for lib::Color.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from enum import Enum, auto
 from tpy.extern import native
 

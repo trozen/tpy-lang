@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Builder macro that emits a record with a non-trivial method body.
 
 Used by tests/cases/macros/builder_method_body/ to verify that pass 5.5
@@ -7,6 +6,7 @@ analysis. The synthesized record carries a `total()` method whose body
 sums all `int32` fields -- something codegen cannot emit without
 sema-resolved expression types.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     builder_macro, builder_method, builder_terminal,
     BuilderContext, MacroArgs, TypeInfo, types, ast,

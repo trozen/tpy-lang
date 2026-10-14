@@ -1,6 +1,6 @@
 # An @export class whose annotated field type doesn't cross the boundary is
 # rejected: every field becomes a getset descriptor, so its type must marshal.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

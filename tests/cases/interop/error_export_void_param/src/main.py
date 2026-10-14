@@ -1,6 +1,6 @@
 # A None/void type is valid only as an @export *return*; as a parameter there is
 # no host value to unmarshal, so it is rejected like any unmarshallable type.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy.extern import export
 
 

@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::types")
 """Minimal `types` module -- `FrameType` only.
 
 `FrameType` is here so a `signal.signal` handler is annotated as in CPython,
@@ -7,6 +6,7 @@ objects: a handler always receives `None`, where CPython passes the
 interrupted frame. Under CPython `import types` resolves to the real stdlib
 module.
 """
+__tpy__ = {"cpp_namespace": "tpystd::types"}
 
 
 class FrameType:

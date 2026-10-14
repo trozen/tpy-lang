@@ -296,7 +296,7 @@ with key differences:
 3. **Soft by default, strict opt-in.** Violations are warnings in the default profile,
    errors in `@noalloc` / `@safe` contexts. This lets existing code compile while
    nudging toward safety.
-4. **Escape hatch.** `# tpy: unchecked-borrows` or `unsafe` blocks for code where the
+4. **Escape hatch.** A `__tpy__` setting (`"unchecked_borrows": True`) or `unsafe` blocks for code where the
    programmer knows better.
 
 ### Core Rule

@@ -19,8 +19,9 @@
  * DETACHES the thread, here and in the wrapper -- never std::terminate -- so a
  * handle torn down by stack unwinding never masks the exception in flight.
  *
- * Pulled in only by modules importing `tpy.thread` (via `# tpy: include`), and
- * -lpthread is likewise import-gated, so non-threaded programs pay nothing.
+ * Pulled in only by modules importing `tpy.thread` (via its `__tpy__`
+ * "includes"), and -lpthread is likewise import-gated, so non-threaded
+ * programs pay nothing.
  */
 
 #pragma once

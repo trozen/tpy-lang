@@ -2,7 +2,7 @@
 # The Ptr[T] method-call codegen path must honor the native rename the same way
 # the plain-value path does; otherwise generated code references a member the
 # C++ class does not have.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy import int32, Ptr, readonly, pure
 from tpy.extern import native, cpp_template
 

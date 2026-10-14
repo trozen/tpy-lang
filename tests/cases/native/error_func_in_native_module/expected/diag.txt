@@ -1,1 +1,1 @@
-main.py:5: error: non-native function 'add' not allowed in native_module ('main' is declaration-only)
+main.py:5: error: non-native function 'add' not allowed in a native module ("mod": "native"): 'main' is declaration-only

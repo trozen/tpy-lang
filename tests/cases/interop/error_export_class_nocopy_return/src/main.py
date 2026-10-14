@@ -1,6 +1,6 @@
 # A @nocopy exposed class returned by reference can't be copied out (copy ctor
 # deleted); return Own[Cls] to move it.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, nocopy
 from tpy.extern import export
 

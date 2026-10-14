@@ -1,6 +1,6 @@
 # A foreign aliased enum colliding with a local same-named exposed enum
 # must still be rejected as cross-module, not treated as local.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from enum import IntEnum
 from tpy.extern import export
 from enum_mod import Color as ForeignColor

@@ -1,1 +1,1 @@
-# tpy: cpp_namespace("mypkg")
+__tpy__ = {"cpp_namespace": "mypkg"}

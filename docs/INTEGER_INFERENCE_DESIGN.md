@@ -7,7 +7,7 @@
 | **Phase 1** | Global `--default-int` CLI flag, configurable default (int32/int64/BigInt), explicit `int` stays BigInt | Done |
 | **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses | Replaced by Phase 2b (uses never decide a type) |
 | **Phase 2b** | Pending integer locals: a literal-seeded function local is typed by the values stored in it, decided once the function is analyzed | Done (function locals; module globals and collection elements not covered) |
-| **Future** | Per-module/per-function overrides (`# tpy:` directives, `@tpy.config`), constant folding | Planned |
+| **Future** | Per-module/per-function overrides (`__tpy__` settings, `@tpy.config`), constant folding | Planned |
 
 Decision date: 2026-02-16
 
@@ -86,12 +86,12 @@ Explicit annotations/constructors override the default:
 
 We expect to add local overrides, but they are out of scope for Phase 1.
 
-Proposed syntax (subject to parser/directive design):
+Proposed syntax (subject to design):
 
-- Module-level directive:
-  - `# tpy: default-int=int32`
-  - `# tpy: default-int=int64`
-  - `# tpy: default-int=BigInt`
+- Module-level `__tpy__` setting:
+  - `__tpy__ = {"default_int": "int32"}`
+  - `__tpy__ = {"default_int": "int64"}`
+  - `__tpy__ = {"default_int": "BigInt"}`
 - Function-level decorator:
   - `@tpy.config(default_int="int32")`
   - `@tpy.config(default_int="int64")`
@@ -100,7 +100,7 @@ Proposed syntax (subject to parser/directive design):
 Proposed precedence (highest to lowest):
 
 1. Function-level override (`@tpy.config(...)`)
-2. Module-level directive (`# tpy: default-int=...`)
+2. Module-level setting (`__tpy__ = {"default_int": ...}`)
 3. CLI flag (`--default-int=...`)
 4. Compiler built-in default (`int32`)
 
@@ -159,7 +159,7 @@ Mitigation path:
 
 1. Deferred `IntLiteralType` resolution for context-sensitive optimization.
 2. Constant folding for pure integer expressions (`2 ** 16`, etc.).
-3. Optional per-module/per-function policy override (`# tpy:` / decorators).
+3. Optional per-module/per-function policy override (`__tpy__` / decorators).
 4. Policy interaction with future profiles (`@noalloc`, backend profiles).
 
 ## Phase 2a: Literal-Seeded Local Retro-Widening (Replaced)

@@ -206,7 +206,7 @@ TPy-core changes.
   `runtime/cpp/include/tpy/pascal_graph_sdl.hpp`); drawing
   happens against the Graph context's pixel buffer in pure TPy
   as before. Importing `GraphSDL` triggers a system `-lSDL2`
-  link via `# tpy: link("SDL2")` -- users need `libsdl2-dev`
+  link via `__tpy__ = {"links": ["SDL2"]}` -- users need `libsdl2-dev`
   installed. Programs that don't `uses GraphSDL` (including
   every regular test) compile without any SDL2 dependency.
   Manual demo lives at `frontends/pascal/sdl_demo/`.

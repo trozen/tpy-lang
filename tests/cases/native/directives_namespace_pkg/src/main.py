@@ -1,5 +1,5 @@
-# Test that # tpy: namespace in __init__.py propagates to child modules
-# tpy: cpp_namespace("myapp")
+# Test that `__tpy__` "cpp_namespace" in __init__.py propagates to child modules
+__tpy__ = {"cpp_namespace": "myapp"}
 from tpy import int32
 from mypkg.utils import add
 

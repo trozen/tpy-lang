@@ -1,5 +1,5 @@
-# tpy: macro_module
 """Call macro that requires a string-literal argument."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import call_macro, CallMacroContext, MacroArg, ast, Expr, TpyStrLiteral
 
 

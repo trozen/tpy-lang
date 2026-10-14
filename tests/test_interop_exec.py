@@ -1,6 +1,6 @@
 """CPython-extension ext-exec harness: the runtime half of interop testing.
 
-Each tests/interop/<case>/src/ holds an `# tpy: ext_module` source plus a
+Each tests/interop/<case>/src/ holds a `"mod": "ext"` source plus a
 driver.py (and optional ext_checks.py), mirroring the tests/cases input/
 output split; expected/ and the gitignored __tpyc__/ stay at the case root.
 For every case this proves, in the shape of the main snapshot harness:
@@ -145,20 +145,31 @@ _INTEROP_CASES = [
 ]
 
 
+def _require_ext_module(case_dir: Path, mod_py: Path | None) -> Path:
+    if mod_py is None:
+        pytest.fail(
+            f"{case_dir.name}: src/driver.py has no `__tpy__ = {{\"mod\": \"ext\"}}` "
+            f"module beside it",
+            pytrace=False,
+        )
+    return mod_py
+
+
 @pytest.mark.parametrize("case_dir, mod_py", _INTEROP_CASES)
 def test_exec_on_ext_module_rejected(case_dir, mod_py, tmp_path):
-    """`tpyc --exec` on an `# tpy: ext_module` must fail loudly: a .so is not
+    """`tpyc --exec` on an ext module must fail loudly: a .so is not
     runnable, so the CLI rejects it instead of building something it can't
     launch."""
+    mod_py = _require_ext_module(case_dir, mod_py)
     cmd = [sys.executable, "-P", "-m", "tpyc", str(mod_py), "-x", "-o", str(tmp_path)]
     result = subprocess.run(cmd, capture_output=True, text=True, cwd=PROJECT_ROOT)
     if result.returncode == 0:
         pytest.fail(
-            f"tpyc --exec on ext_module {mod_py.name} unexpectedly succeeded:\n"
+            f"tpyc --exec on ext module {mod_py.name} unexpectedly succeeded:\n"
             f"{result.stdout}",
             pytrace=False,
         )
-    if "ext_module" not in result.stderr or ".so" not in result.stderr:
+    if "ext module" not in result.stderr or ".so" not in result.stderr:
         pytest.fail(
             f"tpyc --exec rejection lacked the expected message:\n{result.stderr}",
             pytrace=False,
@@ -167,6 +178,7 @@ def test_exec_on_ext_module_rejected(case_dir, mod_py, tmp_path):
 
 @pytest.mark.parametrize("case_dir, mod_py", _INTEROP_CASES)
 def test_interop_exec(case_dir, mod_py, request):
+    mod_py = _require_ext_module(case_dir, mod_py)
     build_dir = case_dir / "__tpyc__"
     expected_dir = case_dir / "expected"
     mod = mod_py.stem

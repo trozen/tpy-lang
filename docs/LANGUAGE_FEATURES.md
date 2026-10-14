@@ -53,8 +53,8 @@ Different code paths have different requirements. Performance profiles control w
 Profiles can be set at multiple granularities:
 
 ```python
-# Module-level default
-# tpy: profile=noalloc
+# Module-level default (open: a `__tpy__` key, not yet accepted)
+__tpy__ = {"profile": "noalloc"}
 
 # Class-level
 @profile("noalloc")
@@ -6649,7 +6649,7 @@ s = repr([1, 2, 3])          # → "[1, 2, 3]" (same as str for containers)
 - **Working**: User-defined modules (multi-file projects)
 - **Working**: Package support (dotted imports, `__init__.py`, namespace packages)
 - **Working**: Relative imports (`from . import sibling`, `from ..pkg import func`)
-- **Working**: Universal re-export -- every module exposes its imports as module attributes, so `from b import X` works when `b` itself does `from c import X`, regardless of whether `b` is a `__init__.py` / `# tpy: native_module` / implicit-stdlib facade. Records, enums, protocols, functions, variables, and macros (class / call / builder) all flow through arbitrary chain depths. The consumer's `using` declarations land at the ultimate definer's namespace. Cycle peers re-export too, with cycle-aware `using` suppression in codegen for kinds that aren't forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). Re-exports of records / enums from a descendant submodule additionally get a relative-namespace forward-decl preamble in the parent's header (so `using ::pkg::sub::Name;` resolves when the sub's parent-walk pulls our header in mid-parse); the parallel using-decl for function / variable re-exports from a descendant submodule is suppressed, with codegen routing consumers through the ultimate definer's qualified name directly.
+- **Working**: Universal re-export -- every module exposes its imports as module attributes, so `from b import X` works when `b` itself does `from c import X`, regardless of whether `b` is a `__init__.py` / native module / implicit-stdlib facade. Records, enums, protocols, functions, variables, and macros (class / call / builder) all flow through arbitrary chain depths. The consumer's `using` declarations land at the ultimate definer's namespace. Cycle peers re-export too, with cycle-aware `using` suppression in codegen for kinds that aren't forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). Re-exports of records / enums from a descendant submodule additionally get a relative-namespace forward-decl preamble in the parent's header (so `using ::pkg::sub::Name;` resolves when the sub's parent-walk pulls our header in mid-parse); the parallel using-decl for function / variable re-exports from a descendant submodule is suppressed, with codegen routing consumers through the ultimate definer's qualified name directly.
 - **Working**: Shadowing detection -- local definitions (def, class, assignment) that shadow imported names are detected. Parser-resolved names (type annotations, decorators, base classes like `Enum`/`Protocol`/`TypedDict`, `auto()`) correctly respect shadowing. Warnings are emitted for `typing` and `enum` module names (e.g., `class Sized` after `from typing import Sized`, or `def auto()` after `from enum import auto`)
 - **Working**: Standard library infrastructure (`tplib`, `stdlib`) with `-L` search paths
 - **Working**: `tplib.Box[T]` -- heap-allocated owning container (via `from tplib import Box`)
@@ -6727,14 +6727,14 @@ print("after import")   # runs last
 
 Each module initializes only once (double-init guard prevents diamond dependency issues).
 
-**Circular imports:** Cyclic imports between user modules are accepted, including the `from b import bar` / `from b import B` / `from b import P` (protocol) / `from b import E` (enum) shapes where cycle members directly bind names from each other. Workspace-wide skeletal pre-registration mints `RecordInfo` / `FunctionInfo` / `ProtocolInfo` shells (and matching enum `NominalType` + `TypeDef.protocol` entries) from each module's parsed AST before any module's full sema runs; peer `bind_imports` finds stable references that the registration paths later mutate in place. Class macros (`@dataclass`, etc.) on cycle members work. The C++ back-end emits a per-module `<mod>_fwd.hpp` for cycle members; `<peer>.hpp` includes of cycle peers in the `.hpp` are swapped for the fwd version (the `.cpp` pulls in the full header for body-sema completeness), and cycle-member method bodies always emit out-of-line in `.cpp` so trivial inline-in-header bodies don't reach into a peer's complete type. Cycle members must contain only imports and bare type declarations at top level (no executable statements). Package `__init__.py` and `# tpy: native_module` re-export facades may now participate in cycles too (the cycle-facade reject gate was lifted by the per-module attribute table refactor); cycle-aware `using` suppression in codegen drops re-export `using` lines for symbols not forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). By-value cross-module references between cycle peers (concrete inheritance from a peer record, by-value field of peer record, peer record inside a container / tuple / value-variant union) get a structured sema diagnostic naming the offending field and the workaround (`Ptr[T]` or moving the value-stored field out of the cycle).
+**Circular imports:** Cyclic imports between user modules are accepted, including the `from b import bar` / `from b import B` / `from b import P` (protocol) / `from b import E` (enum) shapes where cycle members directly bind names from each other. Workspace-wide skeletal pre-registration mints `RecordInfo` / `FunctionInfo` / `ProtocolInfo` shells (and matching enum `NominalType` + `TypeDef.protocol` entries) from each module's parsed AST before any module's full sema runs; peer `bind_imports` finds stable references that the registration paths later mutate in place. Class macros (`@dataclass`, etc.) on cycle members work. The C++ back-end emits a per-module `<mod>_fwd.hpp` for cycle members; `<peer>.hpp` includes of cycle peers in the `.hpp` are swapped for the fwd version (the `.cpp` pulls in the full header for body-sema completeness), and cycle-member method bodies always emit out-of-line in `.cpp` so trivial inline-in-header bodies don't reach into a peer's complete type. Cycle members must contain only imports and bare type declarations at top level (no executable statements). Package `__init__.py` and native-module re-export facades may now participate in cycles too (the cycle-facade reject gate was lifted by the per-module attribute table refactor); cycle-aware `using` suppression in codegen drops re-export `using` lines for symbols not forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). By-value cross-module references between cycle peers (concrete inheritance from a peer record, by-value field of peer record, peer record inside a container / tuple / value-variant union) get a structured sema diagnostic naming the offending field and the workaround (`Ptr[T]` or moving the value-stored field out of the cycle).
 
 **Shadowing builtin modules:** User modules can shadow builtin modules (none currently -- `math`, `time`, `sys` moved to lib/tpy/). If you create `math.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
 ```
 main.py:1: warning: import 'math' shadows builtin module
 ```
 
-**C++ mapping:** Each module gets its own namespace (`tpyapp::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpyapp::mypackage::submod::func`). A `# tpy: cpp_namespace("ns")` directive replaces `tpyapp::<module>` for that module and its package children.
+**C++ mapping:** Each module gets its own namespace (`tpyapp::utils::Point`). Cross-module references use fully qualified names. Package modules use nested namespaces (`tpyapp::mypackage::submod::func`). A `"cpp_namespace": "ns"` setting in the module's `__tpy__` replaces `tpyapp::<module>` for that module and its package children.
 
 A call to a module-level function is qualified too, including a SAME-module one (`::tpyapp::main::apply(f, v)`, never a bare `apply(f, v)`). A bare call is an unqualified-id, so C++ argument-dependent lookup adds the namespaces of every argument type to the overload set: a `std::function` or `list` argument pulls in `std` and a `::tpy::` type pulls in `::tpy::`, and a same-named template there (`std::invoke`, `std::apply`) can be a better match than the user's own function. A qualified-id disables ADL, so a user function may safely carry any name. Calls through a LOCAL callable -- a nested `def` or a `Callable`/`Fn` value -- stay bare: they name a C++ local, which no namespace can reach.
 
@@ -6831,7 +6831,7 @@ result = add(1, 2)
 p = Point(10, 20)
 ```
 
-**Package `__init__.py` files** and **`# tpy: native_module` facades** are the same code path -- they just happen to be the most common re-export shape. The C++ output is the same.
+**Package `__init__.py` files** and **native-module facades** are the same code path -- they just happen to be the most common re-export shape. The C++ output is the same.
 
 **What can be re-exported:**
 - Functions
@@ -6855,7 +6855,7 @@ namespace tpyapp::utils {
 
 **Aliased re-exports** (`from .helpers import func as f`): functions use `inline auto&` aliases; records / enums / type aliases use `using NewName = ...;`.
 
-**Native-module facades** (`# tpy: native_module`, no `.hpp` generated): consumer codegen routes around the missing facade and qualifies directly to the ultimate defining module. The facade's `__tpy_init()` is synthesized at the consumer side; re-exported variable initialization chains through correctly.
+**Native-module facades** (`"mod": "native"`, no `.hpp` generated): consumer codegen routes around the missing facade and qualifies directly to the ultimate defining module. The facade's `__tpy_init()` is synthesized at the consumer side; re-exported variable initialization chains through correctly.
 
 **Cycle peers** also re-export, with one codegen wrinkle: cycle peers' headers include `<peer>_fwd.hpp` rather than `<peer>.hpp`, so cycle-aware suppression drops `using` lines whose target isn't forward-declarable in `_fwd.hpp` (functions, variables, static-protocol concepts). Consumer codegen still works because it qualifies directly to the ultimate definer rather than relying on the intermediate's `using`. The cycle-facade reject gate that used to prohibit `__init__.py` / `native_module` / implicit-stdlib facades inside cycles was lifted.
 
@@ -7358,9 +7358,9 @@ HttpClient.instances = 0               # mutation OK on ClassVar (rejected on Fi
 
 # `@native` extern binding -- Final[T] without an initializer binds to a
 # C++ static member declared in the user's header.
-# tpy: native_module
-# tpy: cpp_namespace("x::core")
-# tpy: include("<x/build_opts.hpp>")
+__tpy__ = {"mod": "native",            # at the top of the module
+           "cpp_namespace": "x::core",
+           "includes": ["<x/build_opts.hpp>"]}
 @native
 class BuildOpts:
     FLAG: Final[bool]                              # binds to ::x::core::BuildOpts::FLAG
@@ -7480,29 +7480,68 @@ lives: int32 = native_global()
 
 Generated C++ emits `extern` declarations before the module namespace. References use the C/C++ name directly. Must be at module level with a type annotation. For array globals, `native_global(..., array=True)` generates `extern "C" T name[];` (incomplete array type) which correctly links to C arrays and decays to a pointer when used.
 
-### Module-Level Directives (Working)
+### Module Settings: `__tpy__` (Working)
 
-Compiler directives are special comments that must appear in the file preamble (before any code):
+A module declares how tpyc treats it in one dict literal named `__tpy__`,
+placed after the module docstring and any `from __future__` imports and
+before everything else (PEP 8's dunder position):
 
 ```python
-# tpy: include("mylib/mylib.h")            # add #include "mylib/mylib.h" to generated header
-# tpy: include("<SDL2/SDL.h>")              # add #include <SDL2/SDL.h> (angle-bracket)
-# tpy: include(<sys/time.h>, platform="linux")  # platform-filtered include
-# tpy: link("SDL2")                         # add -lSDL2 linker flag
-# tpy: link("m", platform="linux")          # platform-filtered: only link on Linux
-# tpy: link("pcre2", managed=True)          # declare dependency on a registered third-party lib
-# tpy: native_module                        # declaration-only module (no .hpp/.cpp generated)
-# tpy: cpp_namespace("myproject::core")      # override C++ namespace
+"""Zlib bindings."""
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::zlib",
+           "includes": ["<tpy/stdlib/zlib_h.hpp>",
+                        {"header": "<sys/time.h>", "platform": "linux"}],
+           "links": ["m",
+                     {"lib": "zlib", "managed": True}]}
+
+from tpy.extern import native
 ```
 
-**Directives:**
-- **`include(path)`** / **`include(path, platform=name)`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`. In `native_module` modules, includes propagate transitively into any consumer whose generated C++ reaches a type defined in this module -- whether named explicitly in the consumer's imports or surfaced only through field/method chains on imported types. Native-to-native chains follow the same rule (a hand-written native header that forward-declares a type from another native module does not need to be edited; the consumer header pulls in both).
-- **`link(lib)` / `link(lib, platform=name)`** -- adds `-llib` linker flag. Raw, unconditional. Optional `platform` filter: `"linux"`, `"macos"`, `"windows"`.
-- **`link(lib, managed=True)`** -- declares a dependency on a registered third-party C/C++ library (defined in `tpyc/build/third_party.py`). The build layer resolves this to concrete include dirs, link flags, and vendored-source inclusion based on the user-selected mode (`tpyc --<lib>={bundled,system,auto,none}`). Higher-level than raw `link()`: one declaration covers all modes consistently across direct-compile (`tpyc -x`/`-b`) and CMake-emit paths. The `none` mode triggers a compile error if anything in the build graph declares the dependency -- useful for embedded targets that want to strip out an optional module. Used today by `lib/tpy/_bindings/pcre2.py` (`re`), `_bindings/mbedtls.py` (`ssl`), `_bindings/hinnant_date.py` (`datetime`) and `_bindings/zlib.py` (`zlib` / `gzip`, `--zlib`). Composes with `platform=`.
-- **`native_module`** -- marks the module as declaration-only: no `.hpp` or `.cpp` is generated. Use for modules that only declare `@native` bindings to existing C/C++ types. Each module must declare this explicitly (it does not propagate from parent packages).
-- **`cpp_namespace(name)`** -- overrides the C++ namespace for the module (replaces the default `tpyapp::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g., `cpp_namespace("mypkg")` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`). Also drives `@native` rename resolution: bare `@native` and `@native("name")` (no `::`) are relative to the namespace (e.g. `mypkg::name`); renames containing `::` are absolute and ignore the namespace (use `@native("::libc_fn")` to bind to libc from inside a namespaced module). See `docs/NATIVE_INTEROP.md` for the full rule.
+The dict is ordinary Python, so CPython runs the module unchanged (the
+assignment is inert there). tpyc reads it at compile time and strips it from
+the generated code, like `__all__`.
 
-Unknown directives produce a warning. Directives after the first line of code produce a warning and are ignored.
+| Key | Value |
+|---|---|
+| `"mod"` | `"native"`, `"macro"` or `"ext"`; absent = an ordinary module |
+| `"cpp_namespace"` | a string naming a C++ namespace (`"foo"`, `"foo::bar"`) |
+| `"includes"` | a list or tuple of entries: a header string, or `{"header": str, "platform"?: str}` |
+| `"links"` | a list or tuple of entries: a library string, or `{"lib": str, "managed"?: bool, "platform"?: str}` |
+
+`"platform"` is a `sys.platform` value, one of `"linux"`, `"darwin"`, `"win32"`. `__tpy__ = {}` is
+allowed (an ordinary module).
+
+- **`"mod": "native"`** -- declaration-only module: no `.hpp` or `.cpp` is generated. Use for modules that only declare `@native` bindings to existing C/C++ types. Each module must declare this explicitly (it does not propagate from parent packages).
+- **`"mod": "macro"`** -- a compile-time macro module, executed under CPython by tpyc and never compiled to C++ (see `docs/MACRO_DESIGN.md`).
+- **`"mod": "ext"`** -- a CPython extension module (see "CPython Extensions" below).
+- **`"cpp_namespace"`** -- overrides the C++ namespace for the module (replaces the default `tpyapp::module_name`). In `__init__.py`, child modules inherit the namespace with their relative name appended (e.g. `"cpp_namespace": "mypkg"` in `__init__.py` makes `pkg/foo.py` use `mypkg::foo`). Also drives `@native` rename resolution: bare `@native` and `@native("name")` (no `::`) are relative to the namespace (e.g. `mypkg::name`); renames containing `::` are absolute and ignore the namespace (use `@native("::libc_fn")` to bind to libc from inside a namespaced module). See `docs/NATIVE_INTEROP.md` for the full rule.
+- **`"includes"`** -- adds a C/C++ `#include` to the generated header. Quoted paths use `#include "..."`, angle-bracket paths (`<...>`) use `#include <...>`. In native modules, includes propagate transitively into any consumer whose generated C++ reaches a type defined in this module -- whether named explicitly in the consumer's imports or surfaced only through field/method chains on imported types. Native-to-native chains follow the same rule (a hand-written native header that forward-declares a type from another native module does not need to be edited; the consumer header pulls in both).
+- **`"links"`** -- a plain entry adds a raw `-l<lib>` linker flag. `"managed": True` instead declares a dependency on a registered third-party C/C++ library (defined in `tpyc/build/third_party.py`). The build layer resolves it to concrete include dirs, link flags, and vendored-source inclusion based on the user-selected mode (`tpyc --<lib>={bundled,system,auto,none}`): one declaration covers all modes consistently across direct-compile (`tpyc -x`/`-b`) and CMake-emit paths. The `none` mode triggers a compile error if anything in the build graph declares the dependency -- useful for embedded targets that want to strip out an optional module. Used today by `lib/tpy/_bindings/pcre2.py` (`re`), `_bindings/mbedtls.py` (`ssl`), `_bindings/hinnant_date.py` (`datetime`) and `_bindings/zlib.py` (`zlib` / `gzip`, `--zlib`).
+
+**`__tpy__` is a reserved module name.** tpyc rejects, each as a compile error at the offending line (for a rebinding or a read, the first `__tpy__` after the header -- Python's scoping decides whether the module has one, and a module with exactly one stray use gets that use's line):
+
+- a value that is not a dict literal (`__tpy__ must be a dict literal`, e.g. `dict(mod="ext")`), `**` unpacking in it (`` `**` unpacking is not allowed; spell every key ``), a key that is not a string literal (`keys must be string literals`)
+- an unknown key (`__tpy__: unknown setting 'cpp_namspace' (known: mod, cpp_namespace, includes, links)`), an unknown key in an `includes` / `links` entry, a duplicate key, an entry dict missing `"header"` / `"lib"`
+- a bad value: a `"mod"` other than the three kinds, an invalid C++ namespace, `includes` / `links` that are not a list or tuple, an entry that is neither a string nor a dict (`entries must be a string or a dict`), a non-string `"cpp_namespace"` / `"header"` / `"lib"` (`must be a string`), a `"platform"` other than `"linux"` / `"darwin"` / `"win32"`, a non-bool `"managed"`
+- a value that is not a literal (a name, an f-string, a call): only string, bool, list, tuple and dict literals
+- placement: `__tpy__ must come before any other code` -- Python's own `from __future__` rule: only the module docstring (the first statement) and `from __future__` imports may precede it, so a `pass` or a second string statement before it is code
+- any other module-level binding of the name: a second assignment, `__tpy__ += ...`, an annotated or conditional assignment, `del __tpy__`, `import x as __tpy__`, `def` / `class __tpy__`, `except ... as __tpy__`, `case __tpy__:`, a walrus in a comprehension, or `global __tpy__` plus an assignment in a function (`__tpy__ must be assigned once, at module top level`)
+- reading the module's own `__tpy__` from compiled code -- in any scope that sees the module global: a function, lambda, generator expression or comprehension (its first iterable included), a class body, a parameter, return or variable annotation (a function-local `y: __tpy__` too, which tpyc resolves as a type although CPython never evaluates it; not under `from __future__ import annotations`, where Python never evaluates one) -- mutating it (`__tpy__["k"] = v`, `__tpy__.update(...)`, `__tpy__["links"].append(...)` read the name), and listing it in `__all__` (`__tpy__ holds compile-time module settings and cannot be read`). Identifiers are NFKC-normalized as in Python, so a non-ASCII spelling of the name counts. A comprehension variable named `__tpy__` is the comprehension's own name. A bare `global __tpy__` in compiled code is rejected too: the compiled module has no such global (*name '__tpy__' is not defined at module level*).
+- a `"mod": "macro"` module handed to the compiler directly (`a "mod": "macro" module runs under CPython at compile time; import it from a TPy module instead of compiling it`)
+- a leftover `# tpy: <directive>` comment (`native_module`, `macro_module`, `ext_module`, `cpp_namespace`, `include`, `link`) before the first code, a comment inside a multi-line `__tpy__` included (`'# tpy:' directives were replaced by __tpy__`): the comment syntax was removed in one step, so an unconverted module fails loudly instead of silently losing its settings. Other `# tpy: ...` prose is an ordinary comment.
+
+Macro modules run under CPython, so a macro module may read its own `__tpy__`
+(`KIND = __tpy__["mod"]`, also from a function, `global __tpy__` included),
+list it in `__all__`, and mutate the dict at CPython run time
+(`__tpy__["mod"] = ...`); tpyc reads the literal, so a mutation changes no
+setting. Binding the name is rejected there as everywhere.
+
+A function local or a class attribute named `__tpy__` is an ordinary name.
+Reading another module's settings (`m.__tpy__`, `from m import __tpy__`)
+reports the same module-attribute error as `m.__all__` / `m.__version__`
+(tracked in BUGS.md). A compiled ext module's `.so` carries no `__tpy__`
+attribute (like every non-`Final` global).
 
 **Not yet supported:**
 - `@export(binding="C")` class -- export TPy struct for C (planned)
@@ -7532,9 +7571,9 @@ divergence lives in hand-written runtime `.cpp` or in per-platform constants.
    target-correct. Used for the `os` `O_*`/`SEEK_*` flags and the divergent
    `socket` constants (`SOL_SOCKET`, `SO_*`, `AF_INET6`, `EAGAIN`,
    `EINPROGRESS`), which are read from `extern "C"` globals in `socket_impl.cpp`
-   rather than hardcoded. See "Module-Level Directives" above for `native_global`.
-3. **`# tpy: include(path, platform=)` / `link(lib, platform=)`** directives --
-   filter an include or linker flag by platform. Unlike the two above, these
+   rather than hardcoded. See "Native Global Variables" above for `native_global`.
+3. **`"platform"` on a `__tpy__` `"includes"` / `"links"` entry** --
+   filters an include or linker flag by platform. Unlike the two above, these
    resolve against the **build host's** `sys.platform` when `tpyc` runs (there
    is no `--target` flag), so they are correct only for **native builds**
    (host == target).
@@ -7557,13 +7596,13 @@ The inverse of native interop: a TPy module compiled to a `.so` that ordinary
 CPython can `import`. Full design in `docs/CPYTHON_INTEROP.md` (abi3 / limited
 API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
 
-- **Working (model)**: a module marked `# tpy: ext_module` exports its
-  `@export`-ed functions to the host interpreter. Inside an `ext_module`,
+- **Working (model)**: a module declaring `__tpy__ = {"mod": "ext"}` (an ext
+  module) exports its `@export`-ed functions to the host interpreter. Inside an ext module,
   `@export` means "expose to CPython" (it generates a wrapper + `PyMethodDef`
   entry); the function itself stays an ordinary TPy function. Conflicting
-  forms (`@export(binding="C")`, a positional name) are compile errors, as is
-  combining `ext_module` with `native_module` (declaration-only -- no module
-  to export). `@export` signature constraints (param/return marshallability)
+  forms (`@export(binding="C")`, a positional name) are compile errors (an
+  ext module cannot also be a native one: both are values of the one `"mod"`
+  key). `@export` signature constraints (param/return marshallability)
   are validated before codegen, so the glue emitter assumes valid input;
   marshallability is a per-type `TypeDef.boundary_marshal` fact (so the
   Python-facing `str`/`bytes` marshal but the tpy-native `String` and the
@@ -7740,12 +7779,12 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   through it is already a compile error elsewhere). Verified in
   `tests/interop/span_numeric/`.
 - **Working (`.so` build mode, Linux + macOS)**: `tpyc -b` on an
-  `# tpy: ext_module` builds an importable `<mod>.so` directly -- every TU
+  ext module builds an importable `<mod>.so` directly -- every TU
   `-fPIC`, no `main()`, glue TU in the link set. The link recipe follows the
   compiler's target: ELF `-shared`, Mach-O `-bundle -undefined dynamic_lookup`
   (the undefined `Py*` symbols, functions and data alike, resolve against the
   host interpreter at import). Windows is not supported (MSVC, and no
-  statement-expression extension). `--exec` on an ext_module is a clean error
+  statement-expression extension). `--exec` on an ext module is a clean error
   (a `.so` is not runnable). The ext-exec snapshot harness
   (`tests/test_interop_exec.py`) snapshots the glue + module C++, builds the
   `.so`, imports it under CPython against `driver.py`, and asserts parity with
@@ -7769,7 +7808,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   exception chaining (`__cause__`/`__context__`), and panic -> exception are
   **not yet bridged**.
 - **Working (user-defined exception classes)**: a user exception class defined
-  in an ext_module gets its own Python type, created at `PyInit_`
+  in an ext module gets its own Python type, created at `PyInit_`
   (`PyErr_NewException`, inheriting its built-in base's `PyExc_*` or an already-
   created user base), added to the module (importable as `mymod.MyError`) and
   registered `typeid -> PyObject* + setter`; `set_py_err_from` consults that
@@ -7792,9 +7831,9 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   Excluded from v1 (deferred, tracked in
   `TODO.md`): container / exposed-class data fields (located error); full `args`
   fidelity; exception chaining; user exceptions defined in *another* module and
-  raised at the boundary (only ext_module-defined classes get a type -- imported
+  raised at the boundary (only ext-module-defined classes get a type -- imported
   ones still degrade).
-- **Working (exposed classes)**: a class marked `@export` in an ext_module is
+- **Working (exposed classes)**: a class marked `@export` in an ext module is
   exposed as a real CPython type built at `PyInit_` via `PyType_FromSpec`
   (importable as `mymod.Counter`). The instance embeds the TPy C++ payload
   after the `PyObject` header (`tpy::interop::Instance<T>`): `tp_init` runs the
@@ -8017,7 +8056,7 @@ API, floor 3.12, hand-rolled C-API glue, copy-in marshalling).
   work once these are wired. Any other dunder (`__call__`, `__bool__`, ...)
   is still **warned** -- not yet wired into the host type, so it would be
   silently absent otherwise.
-- **Working (enums + constants)**: an enum marked `@export` in an ext_module is
+- **Working (enums + constants)**: an enum marked `@export` in an ext module is
   recreated at `PyInit_` as a **real CPython enum type** -- `enum.IntEnum` for an
   `IntEnum`, `enum.Enum` for a plain `Enum` -- via the stdlib `enum` functional
   API with `module=` set, so `mymod.Color.RED` is observably identical to a
@@ -9292,7 +9331,7 @@ Send/Sync rules for built-in types:
       value: int32
   ```
 - **Phase 1 done**: Class macro system running Python during compilation
-  - `# tpy: macro_module` directive marks modules as compile-time-only
+  - `__tpy__ = {"mod": "macro"}` marks modules as compile-time-only
   - `@class_macro` functions receive `ClassInfo` and add/modify methods
   - `@dataclass` reimplemented as a class macro (`lib/tpy/dataclasses.py`)
   - `tpyc/macro_api.py` provides public API: metadata (`ClassInfo`, `FieldInfo`, `TypeInfo`), AST builder (`ast`), type builder (`types`), type aliases (`Expr`, `Stmt`, `Function`, `Type`). Macro modules import only from `macro_api`. AST builder includes `if_expr()`, `set_comprehension()`, `clone()`. Type builder includes `set()`. `TypeInfo` has `is_set`, `unwrap_optional()`.

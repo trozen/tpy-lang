@@ -90,8 +90,8 @@ PCRE2 template exactly: a `scripts/vendor_mbedtls.py` reproducer, a
 facade header `runtime/cpp/include/tpy/stdlib/mbedtls_h.hpp` that mirrors
 only the symbols/types we use and does **not** include the upstream C
 header (macro isolation), a `tpyc/build/mbedtls.py` factory registered in
-`tpyc/build/third_party.py`'s `_FACTORIES`, a `# tpy: link("mbedtls",
-managed=True)` directive in the bindings module, and a
+`tpyc/build/third_party.py`'s `_FACTORIES`, a `"links": [{"lib":
+"mbedtls", "managed": True}]` setting in the bindings module, and a
 `--mbedtls=bundled|system|auto|none` CLI flag (default bundled). The
 stdlib `.o` cache and exec-results markers invalidate automatically when
 the vendored tree changes, because `_runtime_hash()` already covers

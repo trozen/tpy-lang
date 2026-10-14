@@ -1,4 +1,4 @@
-# Re-exporting a Final[T] constant through a `# tpy: native_module`
+# Re-exporting a Final[T] constant through a `"mod": "native"`
 # package __init__.py. Codegen has to chase the reexport chain to the
 # defining module (the facade has no .hpp) and skip the facade-header
 # include (it doesn't exist).

@@ -1,11 +1,11 @@
-# tpy: macro_module
 """Compile-time class macros for `functools`.
 
 Hosts `@total_ordering`; the runtime helpers (`reduce`, etc.) live
 in `lib/tpy/functools.py`. The split exists because TPy modules
-cannot mix `# tpy: macro_module` with runtime functions that
+cannot mix `"mod": "macro"` with runtime functions that
 compile to C++.
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import ClassInfo, MacroError, class_macro, ast, types
 from _macro_helpers import ORDER_DUNDERS, ORDER_DUNDER_OPS

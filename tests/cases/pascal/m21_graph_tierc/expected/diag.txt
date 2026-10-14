@@ -1,1 +1,1 @@
-tpyc: warning: library module 'graph' has no # tpy: cpp_namespace directive (will use default 'tpyapp::graph')
+tpyc: warning: library module 'graph' has no `__tpy__` "cpp_namespace" setting (will use default 'tpyapp::graph')

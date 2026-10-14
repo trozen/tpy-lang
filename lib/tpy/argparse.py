@@ -1,4 +1,3 @@
-# tpy: macro_module
 """argparse builder-trace macro.
 
 Mirrors a slice of CPython's argparse.ArgumentParser surface as a
@@ -25,6 +24,7 @@ tracked in ``docs/MACRO_DESIGN.md`` (the argparse use-case section)
 and mirrored in ``docs/STDLIB_ROADMAP.md``. Keeping the canonical
 list there avoids drift between the macro module and the design doc.
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     builder_macro, builder_method, builder_returns, builder_terminal,

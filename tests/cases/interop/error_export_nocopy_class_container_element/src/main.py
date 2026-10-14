@@ -2,7 +2,7 @@
 # class (whose copy ctor is deleted) cannot be a container element -- rejected
 # with a located error instead of an opaque "deleted copy constructor" build
 # failure. (A @nocopy class still crosses as a plain borrow-form param.)
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, nocopy
 from tpy.extern import export
 

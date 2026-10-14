@@ -1,5 +1,5 @@
-# tpy: macro_module
 """A post-sema function macro that rewrites a marker call into `a + 1`."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     FunctionMacroContext, TpyCall, TpyName, ast, function_macro,
 )

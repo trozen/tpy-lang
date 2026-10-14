@@ -1,5 +1,5 @@
-# tpy: cpp_namespace("tpystd::math")
-# tpy: include("<tpy/stdlib/math.hpp>")
+__tpy__ = {"cpp_namespace": "tpystd::math",
+           "includes": ["<tpy/stdlib/math.hpp>"]}
 #
 # Pending items to reach full CPython `math` parity. Each is blocked on a
 # specific compiler gap tracked in TODO.md / BUGS.md; once fixed, update

@@ -12,7 +12,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
-from typing import Any, Union
+from typing import Any, Literal, Union
 
 
 API_VERSION = 1
@@ -743,12 +743,12 @@ class FrontendDirectives:
 
     Mirrors `tpyc.parse.nodes.ModuleDirectives`. M1 leaves everything at
     its default; only relevant when a plugin emits native C++ includes,
-    link libs, or marks itself as a native binding module.
+    link libs, or a module kind (`"native"` for a binding module).
     """
     cpp_includes: tuple[tuple[str, str | None], ...] = ()  # (header, platform_filter)
     link_libs: tuple[tuple[str, str | None], ...] = ()
     third_party_deps: tuple[tuple[str, str | None], ...] = ()
-    native_module: bool = False
+    kind: Literal["native", "macro", "ext"] | None = None
     cpp_namespace: str | None = None
 
 

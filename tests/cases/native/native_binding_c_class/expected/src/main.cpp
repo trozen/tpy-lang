@@ -20,9 +20,6 @@ void main() {
     std::cout << ::tpyapp::main::use_rect(&r) << "\n" << ::tpy::check_signals;
 }
 
-// # Test @native(binding="C") on a class -- C struct import with aggregate init
-// # Verifies aggregate initialization and native name in generated code
-// # tpy: include("native_types.hpp")
 // from tpy.extern import native
 //
 // main()

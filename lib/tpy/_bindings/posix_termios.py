@@ -1,6 +1,3 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::_bindings::posix_termios")
-# tpy: include("<tpy/stdlib/termios_h.hpp>")
 """Raw termios bindings.
 
 Thin @native layer over the two helpers in
@@ -12,6 +9,9 @@ errno return (0 on success) so the public `termios` facade can raise
 
 Declaration-only and not for direct user import.
 """
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::_bindings::posix_termios",
+           "includes": ["<tpy/stdlib/termios_h.hpp>"]}
 
 from tpy import Own, int32, int64, readonly
 from tpy.extern import native

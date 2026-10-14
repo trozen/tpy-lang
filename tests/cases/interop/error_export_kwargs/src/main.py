@@ -1,7 +1,7 @@
 # **kwargs is rejected at the @export boundary: the wrapper unpacks a fixed
 # kwlist of named slots, so an open-ended keyword pack has nowhere to land and
 # would be silently dropped. (*args is rejected next door for the same reason.)
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import TypedDict, Unpack
 
 from tpy import int64

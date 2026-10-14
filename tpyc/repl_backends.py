@@ -79,7 +79,7 @@ class ReplBuildDeps:
         # (PCRE2 .c files, Hinnant date tz.cpp + date_shim.cpp, ...)
         self.third_party_sources = third_party_sources or []
         self.include_dirs = include_dirs or []
-        # Managed-lib link flags + raw `# tpy: link()` flags, in that order
+        # Managed-lib link flags + raw `__tpy__` "links" flags, in that order
         self.link_flags = link_flags or []
 
 

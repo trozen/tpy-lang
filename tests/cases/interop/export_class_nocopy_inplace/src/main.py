@@ -3,7 +3,7 @@
 # construction (the nb_inplace wrapper hands back the same self PyObject,
 # never a copy), so @nocopy stays admitted there and the emitted glue
 # builds cleanly.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int32, nocopy
 from tpy.extern import export
 

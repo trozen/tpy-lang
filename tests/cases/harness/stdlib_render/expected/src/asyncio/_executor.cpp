@@ -414,9 +414,6 @@ void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
         attempt = ::tpy::add_check<int32_t>(attempt, 1);
     }
 }
-// # tpy: cpp_namespace("tpystd::asyncio::_executor")
-// # tpy: include("<tpy/async.hpp>")
-// # tpy: include("<tpy/stdlib/time.hpp>")
 // """Internal asyncio scaffolding -- the TPy executor and the small
 // helpers it needs. Not part of the public asyncio API; imported only
 // by `lib/tpy/asyncio/` modules. See `docs/ASYNC_DESIGN.md` for the
@@ -428,6 +425,7 @@ void Executor::drain_spawned_with_cancel(int32_t skip_id, int32_t max_polls) {
 // the vtable slot directly -- no C++ ExecutorOps table, no templated
 // thunks, no thread-local handle.
 // """
+//
 // import heapq
 //
 // from time import monotonic, sleep_until_steady

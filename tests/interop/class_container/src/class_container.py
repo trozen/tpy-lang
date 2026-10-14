@@ -1,4 +1,3 @@
-# tpy: ext_module
 # Exposed-class dunders: container protocol. __len__ ->
 # Py_mp_length/Py_sq_length; __getitem__ -> Py_mp_subscript; __setitem__ ->
 # Py_mp_ass_subscript (Box has no __delitem__, so `del box[i]` is rejected --
@@ -7,6 +6,7 @@
 # __next__ -> Py_tp_iter/Py_tp_iternext (__next__ is implicitly
 # @error_return(StopIteration), unwrapped by the glue instead of thrown).
 from __future__ import annotations
+__tpy__ = {"mod": "ext"}
 from tpy import int32, int64, Own
 from tpy.extern import export
 

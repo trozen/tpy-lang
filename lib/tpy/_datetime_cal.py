@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::_datetime_cal")
+__tpy__ = {"cpp_namespace": "tpystd::_datetime_cal"}
 # Calendar math for the datetime module: proleptic-Gregorian ordinals,
 # leap years, ISO week calendar, and the C-locale name tables shared by
 # the formatting and parsing engines. Pure functions over int; no class

@@ -454,7 +454,7 @@ relationships, never absolute local timestamps).
   parsers; tuple-returning (construction happens in datetime.py, keeping
   the parse layer free of the class layer).
 - `lib/tpy/_bindings/hinnant_date.py` -- `@native` binding over the facade
-  (declares the tz-backend dep via `# tpy: link("date", managed=True)`).
+  (declares the tz-backend dep via `"links": [{"lib": "date", "managed": True}]`).
 - `runtime/cpp/include/tpy/stdlib/datetime.hpp` -- hand-written facade over
   the tz backend (v2+).
 - `runtime/cpp/src/stdlib/date_shim.cpp` -- facade implementation; the only

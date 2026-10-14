@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Exposes module-level Final constants as CPython module attributes: each is an
 # init-time snapshot of the constant value marshalled via to_py. Covers int
 # (incl. a value beyond int64 that crosses via the BigInt hex round-trip), float,

@@ -1,4 +1,4 @@
-# tpy: native_module
+__tpy__ = {"mod": "native"}
 from tpy.extern import native
 from tpy import Ptr, Own, uint32, Span, nocopy, nomove, readonly, auto_readonly
 

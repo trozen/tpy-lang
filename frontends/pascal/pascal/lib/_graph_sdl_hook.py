@@ -1,5 +1,3 @@
-# tpy: include("<tpy/pascal_graph_sdl.hpp>")
-# tpy: link("SDL2")
 """Internal: SDL2 display hook for the Pascal Graph unit.
 
 Loaded transparently by the Pascal frontend plugin when `sdl` is on
@@ -19,6 +17,8 @@ The window opens at initgraph, is refreshed by delay/setvisualpage
 shown blocking at closegraph, then torn down. Programs that compile
 with `sdl=off` never import this module and stay SDL2-link-free.
 """
+__tpy__ = {"includes": ["<tpy/pascal_graph_sdl.hpp>"],
+           "links": ["SDL2"]}
 
 from tpy.extern import native
 from tpy import int32

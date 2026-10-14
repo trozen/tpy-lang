@@ -318,25 +318,6 @@ void _GzipReader::_read_eof() {
         this->_fp.prepend(c);
     }
 }
-// # gzip -- gzip compression and reading gzip files, a pure-TPy port of
-// # CPython's Lib/gzip.py over the `zlib` module.
-// #
-// # Surface: compress / decompress, open (read side), GzipFile (read side),
-// # BadGzipFile. The layering is CPython's: a GzipFile reads through an
-// # io.BufferedReader over a `_GzipReader` raw source, which parses member
-// # headers, inflates raw deflate data and checks each member's CRC-32 and
-// # length trailer. One header parser serves both the in-memory
-// # `decompress` (over an io.BytesIO) and the file reader.
-// #
-// # Divergences from CPython, all loud (compile errors):
-// #   - Only the read side of GzipFile: no write/append modes, no text modes,
-// #     no `fileobj=`, and no seek / tell / peek / read1 / fileno / mtime.
-// #   - `filename` is a `str` (no bytes or PathLike paths).
-// #   - `compress` raises OverflowError for an `mtime` outside [0, 2**32)
-// #     (CPython: struct.error, which TPy has no class for).
-// #   - Iterating a closed GzipFile raises at the first `next()`, not at
-// #     `iter()` (BUGS.md#file-iter-closed-check-deferred).
-// # tpy: cpp_namespace("tpystd::gzip")
 // import errno
 // import os
 // import time

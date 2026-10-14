@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Borrow-view field aliasing: a never-reassigned class-typed field crosses
 # as an aliasing view -- via a public read-only getset attribute, a method
 # return (plain and readonly), a property, the tp_iter slot, and a free

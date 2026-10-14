@@ -1,6 +1,6 @@
-# tpy: native_module
-# tpy: cpp_namespace("xcore")
-# tpy: include("<x/a.hpp>")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "xcore",
+           "includes": ["<x/a.hpp>"]}
 
 from tpy.extern import native
 

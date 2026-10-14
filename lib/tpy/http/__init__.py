@@ -7,7 +7,7 @@
 # carry `.phrase`/`.description` and `.is_success`-style helpers via a custom
 # __new__ -- TPy enums can't hold per-member data, so those attributes are
 # absent (a compile error if used, not a silent wrong value).
-# tpy: cpp_namespace("tpystd::http")
+__tpy__ = {"cpp_namespace": "tpystd::http"}
 from enum import IntEnum
 
 

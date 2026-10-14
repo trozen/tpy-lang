@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::tpy")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::tpy"}
 # _bootstrap must be imported before _core: _bootstrap._extern defines
 # @builtin_decorator stubs whose arg schemas are needed when parsing
 # decorator kwargs (e.g. @native(function=True)) in _core/_types.py.

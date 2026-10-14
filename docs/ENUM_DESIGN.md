@@ -294,7 +294,7 @@ cross-module import resolution (alongside existing `records`, `protocols`,
 
 ### Module Recognition
 
-`lib/tpy/enum.py` is a `# tpy: macro_module` that defines `Enum`, `IntEnum`,
+`lib/tpy/enum.py` is a `"mod": "macro"` module that defines `Enum`, `IntEnum`,
 and `auto`. It is discovered via normal module resolution (same as
 `dataclasses`). `_resolve_type_name()` tracks names imported via
 `from enum import Enum, auto` through the standard import system.

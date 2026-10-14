@@ -1,7 +1,7 @@
 # Native-module facade declaring C/C++ globals imported by main.py
-# tpy: native_module
-# tpy: cpp_namespace("mylib::core")
-# tpy: include("native_types.hpp")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "mylib::core",
+           "includes": ["native_types.hpp"]}
 
 from tpy import int32
 from tpy.extern import native_global

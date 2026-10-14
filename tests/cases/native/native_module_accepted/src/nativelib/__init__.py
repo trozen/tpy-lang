@@ -1,7 +1,7 @@
 # Native module declaring @native, @native(binding="C"), @native class, and @cpp_template
-# tpy: native_module
-# tpy: cpp_namespace("nativelib")
-# tpy: include("native_impl.hpp")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "nativelib",
+           "includes": ["native_impl.hpp"]}
 from tpy import int32
 from tpy.extern import native, cpp_template
 

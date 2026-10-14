@@ -360,7 +360,7 @@ registration. This is a general Send/Sync fixpoint gap (it reproduces with
   `tpy::MovableAtomic` trick.
 
 **Module placement (decided).** `tpy.sync`, parallel to `tpy.atomic`: the
-principle is *native-primitive wrappers (a `# tpy: include` header, not
+principle is *native-primitive wrappers (a `__tpy__` `"includes"` header, not
 expressible in pure TPy) live in `tpy.*`; pure-TPy smart pointers live in
 `tplib.*`*. So `Mutex`/`RwLock` are `tpy.sync` and `Arc` correctly stays
 `tplib.arc` (pure-TPy, built on `tpy.atomic`). The canonical pair spans two

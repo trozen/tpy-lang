@@ -1,7 +1,7 @@
 # `-> Optional[Cls]` over a @nocopy exposed class is the same borrow return
 # behind a None gate: the present arm copies the instance out, and the copy
 # is deleted -- rejected with the located @nocopy message, as `-> Cls` is.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int64, nocopy
 from tpy.extern import export

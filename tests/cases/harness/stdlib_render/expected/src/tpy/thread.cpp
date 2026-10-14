@@ -4,8 +4,6 @@
 namespace tpystd::tpy::thread {
 
 
-// # tpy: include("<tpy/threading.hpp>")
-// # tpy: link("pthread")
 // """OS-thread spawn/join -- V1 (Runnable-struct form).
 //
 // `spawn` moves a `Send` task onto a fresh OS thread, runs its `run()` there,

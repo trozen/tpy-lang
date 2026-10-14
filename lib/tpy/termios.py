@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::termios")
 """POSIX terminal control, CPython-compatible surface.
 
 `tcgetattr` returns a `TermAttributes` record instead of CPython's
@@ -10,6 +9,7 @@ helpers are the way to change a mode.
 Every failure raises `termios.error` (an `Exception`, not an `OSError`, as in
 CPython) whose `str()` is CPython's `(errno, 'strerror')`.
 """
+__tpy__ = {"cpp_namespace": "tpystd::termios"}
 from typing import Final
 
 from tpy import int32, int64, Own

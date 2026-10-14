@@ -1,6 +1,6 @@
 # A cross-module exposed enum used as a getset field is a located error (its
 # CPython type handle lives in the defining module's glue); a local one is valid.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy.extern import export
 from enum_mod import Color
 

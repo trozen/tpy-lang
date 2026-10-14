@@ -352,7 +352,7 @@ def module_to_include_path(module_name: str) -> str:
 def module_to_cpp_namespace(module_name: str) -> str:
     """Convert a dotted module name to a C++ namespace.
 
-    Checks the namespace map first (for # tpy: namespace overrides),
+    Checks the namespace map first (for `__tpy__` "cpp_namespace" overrides),
     falls back to "tpyapp::{module_name}".
     """
     compiler = get_current_compiler()
@@ -362,7 +362,7 @@ def module_to_cpp_namespace(module_name: str) -> str:
 
 
 def module_has_cpp_namespace_override(module_name: str) -> bool:
-    """True if `module_name` has an explicit `# tpy: cpp_namespace` directive
+    """True if `module_name` has an explicit `__tpy__` "cpp_namespace"
     (i.e. its C++ namespace differs from the default `tpyapp::<module>`)."""
     compiler = get_current_compiler()
     return compiler is not None and module_name in compiler.namespace_map
@@ -418,7 +418,7 @@ def free_callee_cpp(module_attributes, module_name: str, cpp_module_name: str,
     registration fact: a module-scope `def` is registered as
     `<module_name>.<name>`. `cpp_module_name` (the file-derived name codegen
     namespaces by, which differs from `module_name` for the entry point)
-    supplies the namespace, so a `# tpy: cpp_namespace` override is honored."""
+    supplies the namespace, so a `"cpp_namespace"` override is honored."""
     icc = imported_free_callee_cpp(module_attributes, func_name, mangled)
     if icc is not None:
         return icc

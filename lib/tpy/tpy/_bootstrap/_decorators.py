@@ -1,5 +1,5 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::tpy")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::tpy"}
 # Decorator and type modifier stubs for import resolution.
 # Type modifier stubs use @builtin_type so the compiler knows their
 # qualified name (e.g. "tpy.Own"). Codegen skips them via is_keyword_stub.

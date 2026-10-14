@@ -14,7 +14,7 @@
  * lock/unlock (and shared variants) are `std::mutex` / `std::shared_mutex`'s
  * own inherited members; the `_Raw*` stubs call only the named methods.
  *
- * Pulled in only by modules importing `tpy.sync` (via `# tpy: include`).
+ * Pulled in only by modules importing `tpy.sync` (via its `__tpy__` "includes").
  */
 
 #pragma once

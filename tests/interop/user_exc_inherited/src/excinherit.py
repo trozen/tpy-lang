@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Inherited data fields + transitive raise: a subclass of a data-carrying user
 # exception crosses BOTH its own and its inherited data fields as CPython
 # instance attributes, and the crossing is registry-driven so it fires even when

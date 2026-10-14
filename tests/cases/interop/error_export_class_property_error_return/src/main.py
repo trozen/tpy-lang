@@ -1,7 +1,7 @@
 # An @error_return property accessor can't cross the CPython boundary: the
 # compiled getter returns a std::expected the getset wrapper has no unwrap
 # step for (same rule as plain methods).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, error_return, ReturnException
 from tpy.extern import export
 

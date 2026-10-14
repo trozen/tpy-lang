@@ -1,6 +1,6 @@
 # An `@export` enum is recreated on the CPython side as a bare IntEnum/Enum,
 # so its TPy methods would be missing there: rejected rather than dropped.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from enum import Enum
 from tpy.extern import export
 

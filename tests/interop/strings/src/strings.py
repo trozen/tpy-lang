@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension over the str boundary: str params/returns marshal by copy.
 # str is immutable, so the boundary copy is unobservable; the divergent cases (a
 # non-str arg -> TypeError, a lone-surrogate str -> UnicodeEncodeError) are

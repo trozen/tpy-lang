@@ -4,9 +4,9 @@
 # constants and so cannot participate in a cycle -- importing os/__init__.
 # Internal: import via `os` / `os.path` (and `subprocess` for spawn_raw), not
 # directly.
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::os")
-# tpy: include("<tpy/stdlib/os.hpp>")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::os",
+           "includes": ["<tpy/stdlib/os.hpp>"]}
 from tpy import int64, Own
 from tpy.extern import native
 

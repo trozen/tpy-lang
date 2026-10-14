@@ -1,9 +1,9 @@
-# tpy: macro_module
 """Method-target function macro: introspects the enclosing record via
 ctx.self_type (None for staticmethods / free functions) and annotates a
 body local from one of the record's field types -- the pattern a
 plugin-hosted resolver macro uses to type locals in method bodies.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import function_macro, FunctionMacroContext
 
 

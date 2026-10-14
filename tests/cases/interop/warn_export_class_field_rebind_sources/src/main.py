@@ -2,7 +2,7 @@
 # a subclass method (normal spelling), the unbound-self spelling
 # (Base._b = ...), and a property setter all make the DECLARING record's
 # field view-ineligible, so its borrow returns copy and warn.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

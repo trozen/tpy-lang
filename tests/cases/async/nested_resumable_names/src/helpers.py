@@ -1,5 +1,5 @@
 # Imported nested frames must use this defining namespace through a Python alias.
-# tpy: cpp_namespace("nested_case::helpers")
+__tpy__ = {"cpp_namespace": "nested_case::helpers"}
 class Library:
     class Worker:
         value: int

@@ -1,6 +1,6 @@
 # __neg__ crossing the CPython boundary must return a boundary-marshallable
 # type; a plain (non-@export) record has no CPython type to wrap it in.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 

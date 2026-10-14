@@ -8,8 +8,8 @@
 # false_type. A [T: ValueType] bounded generic call expands its `requires`
 # clause via `is_value_type<T>::value`, which would have failed to satisfy
 # on MyHandle without an explicit specialization.
-# tpy: cpp_namespace("tpyapp::myns")
-# tpy: include("native_types.hpp")
+__tpy__ = {"cpp_namespace": "tpyapp::myns",
+           "includes": ["native_types.hpp"]}
 from tpy import int32, ValueType
 from tpy.extern import native
 

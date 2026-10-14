@@ -22,8 +22,6 @@ void _require_locked(bool locked) {
     }
 }
 
-// # tpy: include("<tpy/sync.hpp>")
-// # tpy: link("pthread")
 // """Blocking synchronization primitives -- `Mutex[T]` and `RwLock[T]`.
 //
 // The interior-mutability primitives: a `Mutex[T]` / `RwLock[T]` is `@nocopy`,

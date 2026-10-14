@@ -3,7 +3,7 @@
 # is an ownership transfer (Own auto-wrap) with nothing to move from. The
 # located error replaces an opaque C++ build failure. (The getter returns a
 # scalar so the case isolates the setter reject.)
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

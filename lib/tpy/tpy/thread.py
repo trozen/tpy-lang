@@ -1,5 +1,3 @@
-# tpy: include("<tpy/threading.hpp>")
-# tpy: link("pthread")
 """OS-thread spawn/join -- V1 (Runnable-struct form).
 
 `spawn` moves a `Send` task onto a fresh OS thread, runs its `run()` there,
@@ -16,6 +14,8 @@ from the task's `run()` return type (associated-type inference through the
 `ThreadTask[R]` bound). The explicit `spawn[R, T](task)` form still works but
 is not valid CPython (a generic function is not subscriptable at runtime).
 """
+__tpy__ = {"includes": ["<tpy/threading.hpp>"],
+           "links": ["pthread"]}
 from typing import Protocol
 from tpy import Own, Send, nocopy
 from tpy.extern import native

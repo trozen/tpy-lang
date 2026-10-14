@@ -1,4 +1,4 @@
-"""Whole-program `# tpy: ext_module` / `@export` validation.
+"""Whole-program ext module / `@export` validation.
 
 Run by the compiler orchestrator after all modules are analyzed (the checks
 need cross-module knowledge: locality of exposed types, resolved
@@ -25,16 +25,10 @@ if TYPE_CHECKING:
 
 
 def validate_ext_module_exports(compiler: 'Compiler') -> None:
-    """Validate `# tpy: ext_module` preconditions before codegen, so the
-    glue emitter can assume valid input:
-
-      - ext_module + native_module is contradictory: native is
-        declaration-only (no generated code, hence no module body to attach
-        PyInit_ to), so the combination would emit a PyInit_-less .so. The
-        empty-hpp early-return in _produce_module_sources is reachable only via
-        this combo, so rejecting it here removes the silent drop.
-      - Every @export-ed function's param/return types must have a CPython
-        boundary marshaller. Runs post-sema so the types are resolved.
+    """Validate ext-module preconditions before codegen, so the glue
+    emitter can assume valid input: every @export-ed function's param/return
+    types must have a CPython boundary marshaller. Runs post-sema so the
+    types are resolved.
     """
     from ..type_def_registry import (
         is_function_boundary_marshallable, is_span_boundary_param,
@@ -42,14 +36,6 @@ def validate_ext_module_exports(compiler: 'Compiler') -> None:
     for compiled in compiler.modules.values():
         if not compiled.ast.directives.ext_module:
             continue
-        if compiled.ast.directives.native_module:
-            loc = compiled.ast.directives.ext_module_loc
-            raise CompileError(
-                "a module cannot be both `# tpy: ext_module` and "
-                "`# tpy: native_module` (native is declaration-only and "
-                "emits no CPython module to export)",
-                compiled.name, compiled.path,
-                lineno=loc.line if loc else None)
         for func in compiled.ast.functions:
             if not func.exposed_to_host:
                 continue
@@ -126,7 +112,7 @@ def _warn_uncrossable_docstrings(compiled: 'CompiledModule') -> None:
             loc))
 
     mod = compiled.ast
-    check(mod.docstring, f"ext_module '{compiled.name}'", None)
+    check(mod.docstring, f"ext module '{compiled.name}'", None)
     for func in mod.functions:
         if func.exposed_to_host:
             check(callable_docstring(func), f"@export function '{func.name}'",

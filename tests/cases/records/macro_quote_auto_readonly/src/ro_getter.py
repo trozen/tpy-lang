@@ -1,4 +1,3 @@
-# tpy: macro_module
 """Regression: macros can emit @auto_readonly methods.
 
 Pins Phase F.3b.6.6 (FragmentParser method mode): `add_method_from_source`
@@ -6,6 +5,7 @@ must route through `_parse_method` so `has_auto_readonly_decorator` is
 set, and `expand_methods_for_record` then clones the method into
 mutable + const halves via sema.method_expansion.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import ClassInfo, class_macro
 
 

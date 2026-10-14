@@ -75,8 +75,6 @@ void main() {
     std::cout << static_cast<int>(static_cast<int8_t>(d)) << "\n" << ::tpy::check_signals;
 }
 
-// # @native IntEnum with explicit underlying type (int8) matching the C++ side.
-// # tpy: include("native_types.hpp")
 // from enum import Enum, auto
 //
 // from tpy.extern import native

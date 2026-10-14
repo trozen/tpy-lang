@@ -379,7 +379,7 @@ One workspace-wide input remains: the include-path collision rename
 (`Compiler._build_include_path_map`) looks at every module the program
 compiles, so a module's include path, and with it the C++ that includes it,
 can depend on another module of the program (a module declaring
-`cpp_namespace("tpystd::typing::_typing")` moves `tpy._typing`'s header); the
+`"cpp_namespace": "tpystd::typing::_typing"` moves `tpy._typing`'s header); the
 forked reuse guards it by comparing the template modules' include paths.
 What still leaks across modules by short name is filed: an imported
 module's recursive alias, or a native record of the closure, sharing its
@@ -391,7 +391,7 @@ cache").
 Cyclic imports between user modules are detected via Tarjan SCC over
 the import graph. Cycle members must be import + declaration only at
 top level (no executable statements); package `__init__.py` and
-`# tpy: native_module` re-export facades may participate as of the
+native-module re-export facades may participate as of the
 per-module attribute table refactor. All `from b import X` shapes
 (record, function, protocol, enum, plus re-exports through cycle
 peers) work: skeletal `RecordInfo` / `FunctionInfo` / `ProtocolInfo`
@@ -1008,7 +1008,7 @@ qname diverges from its defining file's `cpp_namespace` -- e.g.
 `Poll`, qname `tpy.coro.Poll`, body in `tpy/_core/_types.py` -- still
 routes through the correct header); unregistered qnames fall back to
 a prefix walk over registered modules. Codegen consumes the reached
-set to drive transitive `# tpy: include(...)` propagation through
+set to drive transitive `__tpy__` `"includes"` propagation through
 native records: when a consumer reaches a native record only via a
 field/method chain (and not via a direct import), the chain of
 native-module headers it depends on is emitted into the consumer

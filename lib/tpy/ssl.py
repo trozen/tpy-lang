@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::ssl")
 """TLS for sockets -- a CPython-compatible `ssl` surface backed by mbedTLS.
 
 The HTTPS *client* path: `create_default_context()` -> `SSLContext` ->
@@ -85,6 +84,7 @@ silent -- see docs/LANGUAGE_FEATURES.md):
 """
 
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::ssl"}
 from typing import Final
 from tpy import Ptr, uint8, uint32, int32, int64, uint64, readonly, Own, nocopy
 from tpy.mem import UninitHeapStorage

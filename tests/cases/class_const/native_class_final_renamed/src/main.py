@@ -1,7 +1,7 @@
 # Phase 10: native_field("rename") on a @native class constant. The Python
 # identifier is `FLAG`, but the C++ side has `g_flag`. Use sites resolve to
 # `<native_qname>::g_flag` instead of `<native_qname>::FLAG`.
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy.extern import native, native_field
 from typing import Final
 from tpy import int32

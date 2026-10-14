@@ -639,7 +639,6 @@ int64_t socket::_recv_waiting(uint8_t* buf, uint64_t size) const {
     }
     return ::tpy::bytes_from_buf(buf.ptr(), ::tpy::int_cast_check<uint64_t>(n));
 }
-// # tpy: cpp_namespace("tpystd::socket")
 // """POSIX-sockets module, CPython-compatible surface.
 //
 // Backed by `_bindings.posix_socket` (raw @native bindings) + a few out-of-line

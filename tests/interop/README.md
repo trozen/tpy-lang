@@ -15,7 +15,7 @@ uv run python tests/update_snapshots.py -k funcs    # regenerate expected/
 
 For each case directory (any `tests/interop/<case>/` whose `src/` holds a
 `driver.py`) the harness mirrors the main snapshot harness. Inputs -- the
-`# tpy: ext_module` module (its filename is the import name), `driver.py`,
+`__tpy__ = {"mod": "ext"}` module (its filename is the import name), `driver.py`,
 optional `ext_checks.py` -- live in `src/`, mirroring the `tests/cases` input/output split; `expected/` and the
 gitignored `__tpyc__/` build output stay at the case root:
 
@@ -30,7 +30,7 @@ gitignored `__tpyc__/` build output stay at the case root:
   A body THIR cannot lower is a `ThirRejectError` and lands in `diag.txt`
   like any other compile error.
 - **ext-exec** (cached, like the exec phase; **Linux and macOS**): `tpyc`'s
-  first-class `.so` build mode (`-b` on an `# tpy: ext_module` -> `-fPIC`,
+  first-class `.so` build mode (`-b` on an ext module -> `-fPIC`,
   no `main`, facade only -- never links libpython) produces an importable
   `<mod>.so`; CPython imports it and runs `driver.py`. Gated by a
   content-addressed marker (the same shared `exec-results/` cache the exec

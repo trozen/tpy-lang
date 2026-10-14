@@ -260,7 +260,6 @@ void Popen::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_va
     }
 }
 // # subprocess -- spawn child processes and talk to them over pipes.
-// # tpy: cpp_namespace("tpystd::subprocess")
 // """Minimal CPython-compatible `subprocess`: `Popen` over an argument list.
 //
 // `Popen(args, *, stdin=None, stdout=None, stderr=None)` spawns `args[0]`

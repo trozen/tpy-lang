@@ -14,8 +14,8 @@ void main() {
     std::cout << (::tpy::add_check<int32_t>(::tpyapp::constants::LIMIT, 1)) << "\n" << ::tpy::check_signals;
 }
 
-// # Re-exporting a Final[T] constant through a flat `# tpy: native_module`
-// # (not __init__.py). Exercises the can_reexport extension to native_module
+// # Re-exporting a Final[T] constant through a flat `"mod": "native"` module
+// # (not __init__.py). Exercises the can_reexport extension to native-module
 // # facades plus the reexport-chain chase in codegen.
 // from facade import VERSION, LIMIT
 //

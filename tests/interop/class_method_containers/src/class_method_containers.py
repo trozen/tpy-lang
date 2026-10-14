@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Containers and Span[T] at the exposed-class method boundary: __init__ and
 # method params/returns admit the same recursively-marshalled container set as
 # free @export functions (O(n) by-copy, docs/CPYTHON_INTEROP.md "container

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension over the bytes boundary: bytes params/returns marshal by
 # copy. bytes is immutable, so the boundary copy is unobservable; a non-bytes
 # argument (including bytearray, a mutable buffer that is not marshallable by

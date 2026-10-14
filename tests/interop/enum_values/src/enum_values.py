@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Marshals enum VALUES across the @export boundary: an exposed enum used as a
 # function (or method) param/return crosses as its CPython member. The value
 # round-trips through the module's enum type, so member identity is preserved

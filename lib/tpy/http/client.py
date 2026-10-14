@@ -30,8 +30,8 @@
 # HTTPSConnection imports `ssl`, so any program importing http.client links
 # the TLS backend (mbedTLS) -- discovery + managed-linking are import-driven
 # at module granularity, with no per-symbol use-driven scoping.
-# tpy: cpp_namespace("tpystd::http::client")
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::http::client"}
 from typing import Final, Protocol
 from tpy import int32, Own, String, dynamic, copy
 import socket

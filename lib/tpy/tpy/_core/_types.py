@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::tpy")
+__tpy__ = {"cpp_namespace": "tpystd::tpy"}
 from .._typing import Protocol, Self, Iterator, Iterable, Sized
 from tpy import (
     Span, Ptr,

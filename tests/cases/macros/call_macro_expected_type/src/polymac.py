@@ -1,5 +1,5 @@
-# tpy: macro_module
 """Call macro that picks a literal kind from ctx.expected_type."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import call_macro, CallMacroContext, MacroArg, ast, Expr, TpyStrLiteral
 
 

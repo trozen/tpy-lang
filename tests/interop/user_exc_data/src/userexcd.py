@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Faithful data-field crossing: a data-carrying user exception raised at the
 # @export boundary delivers its instance fields (scalar / str / bytes / exposed
 # enum) as CPython instance attributes, via PyErr_SetObject over a constructed

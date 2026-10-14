@@ -1,10 +1,13 @@
-# tpy: macro_module
 """Function-macro smoke test: read-only introspection + a warning.
 
 Proves a @function_macro runs at compile time on the decorated function
 and can read its params, return type, and body.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import function_macro, FunctionMacroContext
+
+# A macro module runs under CPython and may read its own settings.
+assert __tpy__["mod"] == "macro"
 
 
 @function_macro

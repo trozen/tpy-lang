@@ -14,8 +14,6 @@ void main() {
     std::cout << native_add(10, 32) << "\n" << ::tpy::check_signals;
 }
 
-// # Test @native(binding="C") for C function imports with explicit symbol names
-// # tpy: include("native_types.hpp")
 // from tpy.extern import native
 //
 // main()

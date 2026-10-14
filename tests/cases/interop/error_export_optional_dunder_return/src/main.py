@@ -2,7 +2,7 @@
 # would already route through the shared return ladder, but a slot pins its
 # shapes, so it is refused with the rule named until slots admit the gate
 # one by one (TODO "Optional boundary -- deferred slices").
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int32
 from tpy.extern import export

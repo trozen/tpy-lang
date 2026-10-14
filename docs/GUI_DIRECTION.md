@@ -188,7 +188,7 @@ In this repository:
 | Piece | Where | Use |
 |---|---|---|
 | `@native` with `binding="C"` | `docs/NATIVE_INTEROP.md` | binding layer 1 and the stopgap libraries directly, without their headers |
-| Vendoring model | `runtime/cpp/third_party/<lib>/`, `<lib>.vendor.json`, `scripts/vendor_<lib>.py`, facade header `runtime/cpp/include/tpy/stdlib/<lib>_h.hpp`, `tpyc --<lib>=bundled\|system\|auto\|none`, `# tpy: link("<lib>", managed=True)` | shipping SDL3 / Blend2D / HarfBuzz / FreeType like PCRE2, zlib and mbedtls today |
+| Vendoring model | `runtime/cpp/third_party/<lib>/`, `<lib>.vendor.json`, `scripts/vendor_<lib>.py`, facade header `runtime/cpp/include/tpy/stdlib/<lib>_h.hpp`, `tpyc --<lib>=bundled\|system\|auto\|none`, `"links": [{"lib": "<lib>", "managed": True}]` | shipping SDL3 / Blend2D / HarfBuzz / FreeType like PCRE2, zlib and mbedtls today |
 | Raw binding layer | `lib/tpy/_bindings/` | where the raw C bindings go; the user-facing modules wrap them |
 | `Rc[T]` / `Weak[T]` | `lib/tpy/tplib/rc.py` | element tree: children owned, parent links weak |
 | `@dynamic` protocols | `docs/DYNAMIC_PROTOCOL_DESIGN.md` | polymorphic elements and widgets in one tree |

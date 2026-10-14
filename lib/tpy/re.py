@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::re")
 """Regular expressions, CPython-compatible surface, backed by PCRE2.
 
 Architecture:
@@ -40,6 +39,7 @@ TODO(v2): items deferred to a follow-up slice -- each is independent:
 """
 
 from __future__ import annotations
+__tpy__ = {"cpp_namespace": "tpystd::re"}
 from typing import Final, Iterator, Optional
 from tpy import (
     int32, uint8, uint32, uint64, Ptr, readonly, Own, String, nocopy,

@@ -150,7 +150,7 @@ def test_build_cache_lifecycle(tmp_path: Path, request: pytest.FixtureRequest) -
     # file must be a tracked input, so editing it invalidates the cache
     # AND the new expansion takes effect.
     (tmp_path / "tagmac.py").write_text(
-        "# tpy: macro_module\n"
+        '__tpy__ = {"mod": "macro"}\n'
         "from tpyc.macro_api import ClassInfo, class_macro\n"
         "\n"
         "\n"

@@ -5,7 +5,7 @@
 # globals still copy and warn. A VALUE-type class is returned by value, a
 # copy by the language's own rule, so it does not warn; a setitem return is
 # discarded by the slot (nothing crosses), so it never warns.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own, ValueType, readonly
 from tpy.extern import export
 

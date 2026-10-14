@@ -2,7 +2,7 @@
 # copy-in (same as a free @export function), so a mutation the method makes to
 # it is not visible to the CPython caller -- warn precisely where sema proves
 # the mutation happens; a read-only param stays quiet.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Span
 from tpy.extern import export
 

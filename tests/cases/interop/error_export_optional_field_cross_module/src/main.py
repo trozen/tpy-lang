@@ -2,7 +2,7 @@
 # exposed enum (or value class) behind Optional at a getset field is the
 # same located error its bare sibling gets, not a glue that references a
 # handle this module never defines.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy.extern import export
 from foo_mod import Hue

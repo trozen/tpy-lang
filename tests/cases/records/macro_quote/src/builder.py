@@ -1,5 +1,5 @@
-# tpy: macro_module
 """Test macro module using quote/add_method_from_source APIs."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, class_macro, ast, types,
     Expr, Stmt, Function, Type,

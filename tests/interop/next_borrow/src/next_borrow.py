@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Borrow-form __next__ returns cross ALIASING, like plain Python: the
 # tp_iternext slot unwraps @error_return's val_or_ref borrow slot
 # (std::expected cannot hold T&) and threads the receiver candidate, so a

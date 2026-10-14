@@ -15,7 +15,7 @@ bool f(::xcore::S* s) {
 void main() {
 }
 
-// # Test that # tpy: include() of a native module transitively reached
+// # Test that the `__tpy__` "includes" of a native module transitively reached
 // # through a field/method chain is emitted into the consumer header.
 // # main.py only imports `s`, but `S.outer` returns A from module `a`, and
 // # `a.inner` is itself an A field of type B. Accessing `s.outer.inner.flag`

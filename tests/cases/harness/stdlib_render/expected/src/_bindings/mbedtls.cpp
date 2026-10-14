@@ -23,9 +23,6 @@ namespace tpystd::_bindings::mbedtls {
 
 
 
-// # tpy: cpp_namespace("tpystd::_bindings::mbedtls")
-// # tpy: include("<tpy/stdlib/mbedtls_h.hpp>")
-// # tpy: link("mbedtls", managed=True)
 // """Raw mbedTLS C bindings. Not for direct user import.
 //
 // The handshake surface is the cohesive `tpy_tls_*` session API implemented

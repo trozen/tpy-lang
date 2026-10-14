@@ -2,7 +2,7 @@
 # reject as a method return (property accessor returns carry the bare class
 # type -- no RefType normalization -- so the reject must peel to the
 # boundary inner).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, nocopy
 from tpy.extern import export
 

@@ -1,4 +1,4 @@
-# tpy: native_module
+__tpy__ = {"mod": "native"}
 from ._types import (
     # Structural protocols
     Truthy, Stringable, Representable, Hashable, Comparable, Equatable,

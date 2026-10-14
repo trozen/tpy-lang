@@ -1,9 +1,9 @@
-# tpy: cpp_namespace("tpystd::coro")
 """Coroutine / async runtime primitives.
 
 Module name borrowed from the design-doc's `Coroutine[T]` terminology
 (see Rust `std::task` / Tokio `tokio::task` for prior art).
 """
+__tpy__ = {"cpp_namespace": "tpystd::coro"}
 from .._typing import Protocol
 from .._bootstrap._decorators import Own, dynamic
 from .._bootstrap._extern import builtin_type

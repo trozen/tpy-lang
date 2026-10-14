@@ -2,7 +2,7 @@
 # value, but the buffer copy-in's backing vector dies when the wrapper
 # returns, so the stored span would dangle. Methods keep Span params (read
 # for the call's duration); setters must take list[T].
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int32, Span
 from tpy.extern import export
 

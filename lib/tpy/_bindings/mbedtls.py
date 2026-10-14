@@ -1,6 +1,3 @@
-# tpy: cpp_namespace("tpystd::_bindings::mbedtls")
-# tpy: include("<tpy/stdlib/mbedtls_h.hpp>")
-# tpy: link("mbedtls", managed=True)
 """Raw mbedTLS C bindings. Not for direct user import.
 
 The handshake surface is the cohesive `tpy_tls_*` session API implemented
@@ -12,6 +9,9 @@ single `Ptr[Session]`, using __del__ for RAII over the session lifetime.
 String args follow the socket.py convention: a (view pointer, length) pair
 that is NOT NUL-terminated; the shim copies + terminates internally.
 """
+__tpy__ = {"cpp_namespace": "tpystd::_bindings::mbedtls",
+           "includes": ["<tpy/stdlib/mbedtls_h.hpp>"],
+           "links": [{"lib": "mbedtls", "managed": True}]}
 
 from tpy import Ptr, uint8, uint32, int32, uint64, readonly
 from tpy.extern import native

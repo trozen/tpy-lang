@@ -1,4 +1,4 @@
-# tpy: macro_module
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import ClassInfo, class_macro, ast
 
 @class_macro

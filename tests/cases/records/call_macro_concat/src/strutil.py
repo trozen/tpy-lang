@@ -1,5 +1,5 @@
-# tpy: macro_module
 """Test macro module with a concat call-site macro."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import call_macro, CallMacroContext, MacroArg, ast, Expr
 
 

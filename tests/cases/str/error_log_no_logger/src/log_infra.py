@@ -1,4 +1,4 @@
-# tpy: native_module
+__tpy__ = {"mod": "native"}
 # Logging infrastructure: native types, wrappers, and dispatch.
 from tpy.extern import native
 

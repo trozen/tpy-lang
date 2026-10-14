@@ -1,7 +1,7 @@
-# Test that # tpy: native_module suppresses .cpp generation
-# tpy: native_module
-# tpy: include("<SDL2/SDL.h>")
-# tpy: link("SDL2")
+# Test that `__tpy__` "mod": "native" suppresses .cpp generation
+__tpy__ = {"mod": "native",
+           "includes": ["<SDL2/SDL.h>"],
+           "links": ["SDL2"]}
 
 from tpy.extern import native
 from tpy import int32

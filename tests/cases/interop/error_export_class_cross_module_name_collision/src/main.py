@@ -2,7 +2,7 @@
 # `ForeignFoo` (imported from foo_mod, aliased) as local here because this
 # module also defines its own unrelated @export class named `Foo` -- the
 # guard must resolve by qualified identity, not by bare name.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 from foo_mod import Foo as ForeignFoo

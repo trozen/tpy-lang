@@ -1092,8 +1092,8 @@ record.
 
 Call-site macros (`@call_macro`) and builder-trace macros
 (`@builder_macro`) are different mechanisms: they are decorators
-applied to *function definitions inside macro modules* (`# tpy:
-macro_module` Python files), not decorators a plugin would emit on
+applied to *function definitions inside macro modules* (`"mod":
+"macro"` Python files), not decorators a plugin would emit on
 its own declarations. Plugin-emitted code **may freely call**
 functions that happen to be call-site or builder-trace macros (the
 sema-time expansion happens at the call site automatically), but the
@@ -1101,8 +1101,8 @@ plugin itself does not declare such macros and does not list their
 names in `decorator_manifest`.
 
 Plugin-emitted modules **may not** themselves be macro modules. The
-plugin's `parse()` does not produce a `# tpy: macro_module`
-directive; macro modules are loaded and executed via a different
+plugin's `parse()` does not produce a `"mod": "macro"`
+setting; macro modules are loaded and executed via a different
 code path (`MacroRegistry`) that requires Python source.
 
 ### Options

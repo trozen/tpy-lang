@@ -21,7 +21,7 @@
  * `std::atomic`'s own): `load` accepts relaxed/consume/acquire/seq_cst; a CAS
  * `failure` order must not be release/acq_rel. An illegal order is UB.
  *
- * Pulled in only by modules importing `tpy.atomic` (via `# tpy: include`).
+ * Pulled in only by modules importing `tpy.atomic` (via its `__tpy__` "includes").
  */
 
 #pragma once

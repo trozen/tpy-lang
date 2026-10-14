@@ -3,7 +3,7 @@
 # `other` being an instance of this class (single type-guard-then-switch
 # shape, unlike arithmetic operators which marshal each op's operand per its
 # own declared type).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

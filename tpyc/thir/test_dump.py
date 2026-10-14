@@ -204,8 +204,8 @@ def test_bodyless_binding_says_it_has_no_body():
     # A @native binding is never ATTEMPTED, so it must not read as a reject:
     # the dump would otherwise name a lowering gap that does not exist.
     out = _dump(
-        "# tpy: include(\"<math.h>\")\n"
-        "# tpy: link(\"m\")\n"
+        "__tpy__ = {\"includes\": [\"<math.h>\"],\n"
+        "           \"links\": [\"m\"]}\n"
         "from tpy.extern import native\n"
         "from tpy import float64\n\n"
         "@native(binding=\"C\")\n"

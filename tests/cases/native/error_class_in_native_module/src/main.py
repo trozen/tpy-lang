@@ -1,7 +1,7 @@
-# Test that non-native classes in native_module produce an error
-# tpy: native_module
+# Test that non-native classes in a native module ("mod": "native") produce an error
+__tpy__ = {"mod": "native"}
 from tpy import int32
 
-class Point:  # tpyc: error(/not allowed in native_module/)
+class Point:  # tpyc: error(/not allowed in a native module/)
     x: int32
     y: int32

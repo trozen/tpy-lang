@@ -1,7 +1,7 @@
 # An @export class declaring a @dynamic protocol base is rejected: the virtual
 # C++ base's vptr displaces the payload layout the CPython instance embedding
 # relies on (Instance<T> casts).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Protocol
 from tpy import int64, dynamic
 from tpy.extern import export

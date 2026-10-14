@@ -1,6 +1,6 @@
 # @export on an enum inside an ext_module must be bare -- no positional rename
 # argument (mirrors the function/class rule).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from enum import IntEnum
 from tpy.extern import export
 

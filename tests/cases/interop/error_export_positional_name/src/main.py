@@ -1,5 +1,5 @@
 # @export inside an ext_module must be bare -- no positional rename argument.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

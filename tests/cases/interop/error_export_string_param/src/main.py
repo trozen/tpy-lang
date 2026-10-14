@@ -1,6 +1,6 @@
 # The tpy-native owned `String` is NOT marshallable across the @export
 # boundary -- only the Python-facing `str` is (a Python caller supplies str).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import String
 from tpy.extern import export
 

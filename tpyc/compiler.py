@@ -12,13 +12,13 @@ from __future__ import annotations
 import contextlib
 import os
 import shutil
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, NamedTuple, TYPE_CHECKING
 
 from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
+from .parse.module_settings import platform_matches, read_source_settings
 from .identity_map import IdentityMap, IdentitySet
 from .module_names import public_module_name as _public_module_name_of
 from .sema import SemanticAnalyzer, SemanticError, Diagnostic, DiagnosticLevel
@@ -52,7 +52,7 @@ from .typesys import (
 )
 from .type_def_registry import protocol_info_of, enum_info_of
 from .module_names import module_from_qname, public_module_name
-from .macro_loader import MacroRegistry, is_macro_module_source
+from .macro_loader import MacroImportSettingsError, MacroRegistry
 from .build_cache import capture_input
 from . import DEFAULT_INT_CHOICES  # noqa: F401 -- canonical home is tpyc/__init__ (light CLI import)
 from .toolchain import (  # noqa: F401 -- re-exported: external callers import these via tpyc.compiler
@@ -80,9 +80,7 @@ if TYPE_CHECKING:
     from .typesys import ModuleInfo, ModuleVarInfo
 
 
-
-# Maps user-facing platform names in # tpy: link() to sys.platform prefixes
-_PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
+_NATIVE_MODULE = 'a native module ("mod": "native")'
 
 
 def _has_static_protocol_param(params) -> bool:
@@ -213,7 +211,7 @@ class BuildLayout:
     def _module_path(module_name: str, suffix: str, base_dir: Path) -> Path:
         """Build a file path for `module_name` under `base_dir`.
 
-        Honors the `# tpy: include()` override (which gives a `.hpp`
+        Honors the `__tpy__` "includes" override (which gives a `.hpp`
         path; we strip and re-suffix). Otherwise dotted names map to
         nested directories with the leaf name as the file stem.
         `suffix` is the trailing component (".hpp", ".cpp",
@@ -234,7 +232,7 @@ class BuildLayout:
 
     def so_path(self) -> Path:
         """Path to the output CPython extension shared object
-        (`# tpy: ext_module` builds). A bare `<mod>.so` -- CPython accepts
+        (ext module builds). A bare `<mod>.so` -- CPython accepts
         that on sys.path without the platform EXT_SUFFIX."""
         return self.build_dir / f"{self.entry_module_name}.so"
 
@@ -282,7 +280,7 @@ class BuildLayout:
                        code; .o files go into a `runtime/` subdir of the
                        build dir (prefix avoids stem collisions with user
                        modules of the same name).
-            shared: Emit a shared object (`# tpy: ext_module` builds): every
+            shared: Emit a shared object (ext module builds): every
                        TU is compiled `-fPIC` and the final step links a
                        loadable `.so` instead of an executable (the recipe
                        itself is per-target -- see `shared_link_flags`).
@@ -405,7 +403,7 @@ class BuildLayout:
         Produces sources.cmake that sets:
           TPYC_SOURCES      -- list of generated .cpp files
           TPYC_INCLUDE_DIRS -- include directories (generated headers + runtime)
-          TPYC_LIBRARIES    -- link libraries (from # tpy: link() directives,
+          TPYC_LIBRARIES    -- link libraries (from `__tpy__` "links",
                                extended at configure time by third-party
                                selectors)
           TPYC_COMPILE_DEFINITIONS -- defines the build options selected
@@ -1406,11 +1404,19 @@ class Compiler:
         # documents the fail-safe rationale).
         capture_input(self.input_file_entries, path)
 
-        # Check for macro module directive before parsing (macro modules
-        # contain Python code that the TPy parser can't handle)
+        # The settings decide the module kind before the TPy parser sees it
+        # (macro modules contain Python code that the TPy parser can't handle)
         source = path.read_text()
-        if is_macro_module_source(source):
-            self._macro_registry.load_module(module_name, path)
+        try:
+            tree, settings = read_source_settings(source)
+        except ParseError as e:
+            raise CompileError(e.message, module_name, path, lineno=e.lineno)
+        if settings.kind == "macro":
+            try:
+                self._macro_registry.load_module(module_name, path)
+            except MacroImportSettingsError as e:
+                raise CompileError(e.error.message, e.module_name, e.path,
+                                   lineno=e.error.lineno)
             # Discover MACRO_DEPS so they get compiled, and add them as
             # dependencies of the importing module for correct compile order.
             macro_deps = self._macro_registry.get_deps(module_name)
@@ -1440,7 +1446,8 @@ class Compiler:
         try:
             ast = parser.parse(source, module_name=module_name,
                                is_package_init=is_package_init,
-                               is_entry_point=is_entry_point)
+                               is_entry_point=is_entry_point,
+                               tree=tree, settings=settings)
         except ParseError as e:
             raise CompileError(e.message, module_name, path, lineno=e.lineno)
         self._decorator_schemas.update(parser._decorator_schemas)
@@ -2335,7 +2342,7 @@ class Compiler:
            rejected -- forward declarations alone do not provide the
            layout the C++ back-end needs.
         3. **Re-export facades** in cycles (`is_package_init`,
-           `# tpy: native_module`, implicit stdlib facade members).
+           native modules, implicit stdlib facade members).
            Their re-export semantics conflict with the simple decl-
            registration ordering used inside an SCC.
 
@@ -4124,8 +4131,8 @@ class Compiler:
                 for func in compiled.ast.functions:
                     if func.linkage == FL.EXPORT_C:
                         raise CompileError(
-                            f"@export not allowed in native_module "
-                            f"('{compiled.name}' is declaration-only)",
+                            f"@export not allowed in {_NATIVE_MODULE}: "
+                            f"'{compiled.name}' is declaration-only",
                             compiled.name, compiled.path,
                             lineno=func.loc.line if func.loc else None)
                     if (func.linkage == FL.DEFAULT
@@ -4134,7 +4141,7 @@ class Compiler:
                             and not func.cpp_template):
                         raise CompileError(
                             f"non-native function '{func.name}' not allowed "
-                            f"in native_module ('{compiled.name}' is declaration-only)",
+                            f"in {_NATIVE_MODULE}: '{compiled.name}' is declaration-only",
                             compiled.name, compiled.path,
                             lineno=func.loc.line if func.loc else None)
                 for record in compiled.ast.records:
@@ -4144,13 +4151,13 @@ class Compiler:
                                 else f"non-native class '{record.name}'")
                         raise CompileError(
                             f"{what} not allowed "
-                            f"in native_module ('{compiled.name}' is declaration-only)",
+                            f"in {_NATIVE_MODULE}: '{compiled.name}' is declaration-only",
                             compiled.name, compiled.path,
                             lineno=record.loc.line if record.loc else None)
                 for proto in compiled.ast.protocols:
                     raise CompileError(
                         f"protocol '{proto.name}' not allowed in "
-                        f"native_module ('{compiled.name}' is declaration-only)",
+                        f"{_NATIVE_MODULE}: '{compiled.name}' is declaration-only",
                         compiled.name, compiled.path,
                         lineno=proto.loc.line if proto.loc else None)
             ns = compiled.ast.directives.cpp_namespace
@@ -4174,7 +4181,7 @@ class Compiler:
         validate_ext_module_exports(self)
 
     def _build_namespace_map(self) -> dict[str, str]:
-        """Build module_name -> C++ namespace mapping from # tpy: namespace directives.
+        """Build module_name -> C++ namespace mapping from `__tpy__` "cpp_namespace" settings.
 
         Rules:
         - Direct directive: module uses the specified namespace as-is.
@@ -4218,8 +4225,8 @@ class Compiler:
                 if self._is_lib_module(compiled):
                     self._map_warning(
                         name, "namespace",
-                        f"library module '{name}' has no # tpy: cpp_namespace "
-                        f"directive (will use default '{ns_map[name]}')")
+                        f"library module '{name}' has no `__tpy__` \"cpp_namespace\" "
+                        f"setting (will use default '{ns_map[name]}')")
 
         return ns_map
 
@@ -4306,7 +4313,7 @@ class Compiler:
         return list(self._ext_glue_cpp_paths)
 
     def is_ext_module_build(self) -> bool:
-        """True if any compiled module is a `# tpy: ext_module` -- the build
+        """True if any compiled module is an ext module -- the build
         emits a PyInit_-exporting .so instead of an executable."""
         return any(c.ast.directives.ext_module for c in self.modules.values())
 
@@ -4319,10 +4326,8 @@ class Compiler:
         flags: list[str] = []
         for compiled in self.modules.values():
             for lib, platform_filter in compiled.ast.directives.link_libs:
-                if platform_filter is not None:
-                    mapped = _PLATFORM_MAP.get(platform_filter.lower(), platform_filter)
-                    if not sys.platform.startswith(mapped):
-                        continue
+                if not platform_matches(platform_filter):
+                    continue
                 flag = f"-l{lib}"
                 if flag not in seen:
                     seen.add(flag)
@@ -4330,7 +4335,7 @@ class Compiler:
         return flags
 
     def collect_third_party_deps(self) -> list[str]:
-        """Collect third-party library names declared by `# tpy: link_third_party`.
+        """Collect third-party library names declared by `__tpy__` "links" entries with `"managed": True`.
 
         Filters by current platform, deduplicates while preserving order.
         Names map to entries in ``tpyc.build.third_party._FACTORIES``.
@@ -4339,11 +4344,8 @@ class Compiler:
         names: list[str] = []
         for compiled in self.modules.values():
             for name, platform_filter in compiled.ast.directives.third_party_deps:
-                if platform_filter is not None:
-                    mapped = _PLATFORM_MAP.get(
-                        platform_filter.lower(), platform_filter)
-                    if not sys.platform.startswith(mapped):
-                        continue
+                if not platform_matches(platform_filter):
+                    continue
                 if name not in seen:
                     seen.add(name)
                     names.append(name)

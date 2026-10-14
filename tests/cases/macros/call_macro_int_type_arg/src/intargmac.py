@@ -1,7 +1,7 @@
-# tpy: macro_module
 """Call macro that reads a MacroArg's TypeInfo, including its type_args --
 exercises TypeInfo.from_tpy_type over a generic whose `N: int` param binds a
 plain int (the `TpyType | int` type-arg convention)."""
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import call_macro, CallMacroContext, MacroArg, ast, Expr
 
 

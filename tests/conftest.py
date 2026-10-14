@@ -56,6 +56,7 @@ from tpyc.codegen_cpp.context import ThirRejectError
 from tpyc.compilation_context import activate_compiler
 from tpyc.identity_map import IdentityMap
 from tpyc.parse import Parser, ParseError
+from tpyc.parse.module_settings import module_kind
 from tpyc.sema import (SemanticAnalyzer, SemanticError, Diagnostic,
                        DiagnosticLevel, format_diagnostics)
 from tpyc.compiler import (
@@ -204,20 +205,6 @@ _stdlib_cache: _StdlibCache | None = None
 _stdlib_cache_initialized = False
 
 
-def _is_macro_module(path: Path) -> bool:
-    """True when a .py file has a '# tpy: macro_module' directive near the top."""
-    try:
-        with open(path, encoding="utf-8", errors="ignore") as f:
-            for i, line in enumerate(f):
-                if i >= 20:
-                    break
-                if "tpy: macro_module" in line:
-                    return True
-    except OSError:
-        pass
-    return False
-
-
 def _discover_stdlib_imports() -> list[str]:
     """Enumerate every importable runtime module under lib/tpy/ for the stub.
 
@@ -226,7 +213,7 @@ def _discover_stdlib_imports() -> list[str]:
       - __init__.py (parent package import brings these in)
       - _-prefixed path components (private; e.g. _macro_helpers, tpy._bootstrap)
       - __pycache__ directories
-      - modules marked '# tpy: macro_module' (compile-time only, no runtime code)
+      - `"mod": "macro"` modules (compile-time only, no runtime code)
 
     Output is deterministic (sorted) so the stub hashes stably.
     """
@@ -238,7 +225,7 @@ def _discover_stdlib_imports() -> list[str]:
         parts = rel.with_suffix("").parts
         if any(part.startswith("_") or part == "__pycache__" for part in parts):
             continue
-        if _is_macro_module(p):
+        if module_kind(p) == "macro":
             continue
         modules.append(".".join(parts))
     return modules
@@ -265,7 +252,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     build_dir = cache_dir / "build"
     build_dir.mkdir()
     # `generate_code` and `layout.cpp_path` both consult the active
-    # compiler's `include_path_map` to honor `# tpy: include` overrides
+    # compiler's `include_path_map` to honor `__tpy__` "includes" overrides
     # (e.g. lib/tpy/re.py -> `tpystd/re.hpp`). The path comparison below
     # needs the same override resolution as the writer used, so both
     # passes happen under the same `activate_compiler` block.
@@ -307,7 +294,7 @@ def _setup_stdlib_cache(cache_dir: Path) -> _StdlibCache:
     pch_include = [] if pch_header is None else ["-include", str(pch_header)]
 
     # Add include dirs for any third-party deps declared by stdlib modules
-    # (e.g. `# tpy: link_third_party("pcre2")` in _bindings/pcre2.py needs the
+    # (e.g. the managed "pcre2" link in _bindings/pcre2.py needs the
     # PCRE2 header on -I). Modes come from --dep-mode (default: each lib's
     # default_mode, bundled); _stdlib_cache_key folds any overrides so
     # per-mode caches never collide.
@@ -895,7 +882,7 @@ class CompileResult:
     type_annotation_errors: list[str] = field(default_factory=list)
     mir_annotation_errors: list[str] = field(default_factory=list)
     mir_fact_annotation_errors: list[str] = field(default_factory=list)
-    # Linker flags from # tpy: link() directives
+    # Linker flags from `__tpy__` "links"
     link_flags: list[str] = field(default_factory=list)
     # Third-party (link_third_party) build inputs: include dirs for the C
     # bindings, extra link flags (system mode), and bundled C source files
@@ -1945,7 +1932,7 @@ def find_force_includes(case_dir: Path) -> list[Path]:
 
     Returns .h files from the test's src/ directory. These are injected
     via -include so that native type definitions are visible in generated
-    headers without needing # tpy: include() directives.
+    headers without needing `__tpy__` "includes".
     """
     src_dir = case_dir / "src"
     return sorted(src_dir.glob("*.hpp"))
@@ -2280,21 +2267,22 @@ def record_exec_pass(fingerprint: str, case_id: str) -> None:
 # ---------------------------------------------------------------------------
 # CPython interop (ext-exec) cases
 # ---------------------------------------------------------------------------
-# Cases under tests/interop/<case>/: an `# tpy: ext_module` source plus a
+# Cases under tests/interop/<case>/: a `"mod": "ext"` source plus a
 # driver.py (and optional ext_checks.py). The ext-exec harness builds the
 # source into an importable .so, runs driver.py under CPython against it, and
 # asserts the SAME driver over the TPy source (lib/cpy stubs) matches.
 
-def discover_interop_cases() -> list[tuple[str, Path, Path]]:
+def discover_interop_cases() -> list[tuple[str, Path, Path | None]]:
     """Discover (name, case_dir, module_py) for every ext-exec interop case.
 
     A case is any tests/interop/<case>/ directory whose src/ holds a
-    driver.py; the module source is the lone `# tpy: ext_module` .py beside
+    driver.py; the module source is the lone `"mod": "ext"` .py beside
     it (driver.py and ext_checks.py are excluded). Inputs live under src/,
     mirroring tests/cases; expected/ and the gitignored __tpyc__/ build
-    output stay at the case root.
+    output stay at the case root. A case with no ext module keeps
+    `module_py` None so its tests fail instead of the case vanishing.
     """
-    cases: list[tuple[str, Path, Path]] = []
+    cases: list[tuple[str, Path, Path | None]] = []
     if not INTEROP_DIR.is_dir():
         return cases
     for case_dir in sorted(p for p in INTEROP_DIR.iterdir() if p.is_dir()):
@@ -2305,11 +2293,10 @@ def discover_interop_cases() -> list[tuple[str, Path, Path]]:
         for py in sorted(src_dir.glob("*.py")):
             if py.name in ("driver.py", "ext_checks.py"):
                 continue
-            if "# tpy: ext_module" in py.read_text():
+            if module_kind(py) == "ext":
                 mod_py = py
                 break
-        if mod_py is not None:
-            cases.append((case_dir.name, case_dir, mod_py))
+        cases.append((case_dir.name, case_dir, mod_py))
     return cases
 
 
@@ -2646,7 +2633,7 @@ def build_and_run(build_dir: Path, module_name: str,
                             (e.g., directories containing native type headers).
         force_includes: Headers to force-include via -include before all source
                         (e.g., native type definitions for interop tests).
-        link_flags: Extra linker flags from # tpy: link() directives.
+        link_flags: Extra linker flags from `__tpy__` "links".
         build_variant: Build variant ("debug" or "release").
         precompiled_objects: Pre-compiled .o files to link (e.g. stdlib objects).
         exclude_cpp_relpaths: Relative paths (under src/) to skip compiling

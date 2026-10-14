@@ -1,7 +1,7 @@
 # A dunder other than __init__ (and the currently-supported repr/str/eq/ne/
 # lt/le/gt/ge/hash group) on an exposed class is silently absent from the
 # host type; warn so it isn't a surprise. __call__ isn't wired yet.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

@@ -1,5 +1,5 @@
-# Test that # tpy: namespace overrides the default tpyapp namespace
-# tpy: cpp_namespace("myproject::core")
+# Test that `__tpy__` "cpp_namespace" overrides the default tpyapp namespace
+__tpy__ = {"cpp_namespace": "myproject::core"}
 
 def greet(name: str) -> str:
     return "hello " + name

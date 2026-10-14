@@ -1,6 +1,6 @@
 # A data-carrying user exception with a container field can't cross the CPython
 # boundary yet: the attribute-marshal path has no container emit (deferred).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

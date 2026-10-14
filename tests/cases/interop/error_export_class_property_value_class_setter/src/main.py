@@ -3,7 +3,7 @@
 # param is an ownership transfer regardless of value-ness -- the Own auto-wrap
 # runs before a user record's ValueType flag is known -- so the borrowed
 # argument payload cannot feed it. Steer to a plain method.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, ValueType
 from tpy.extern import export
 

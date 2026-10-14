@@ -1,1 +1,1 @@
-tpyc: warning: library module 'crt' has no # tpy: cpp_namespace directive (will use default 'tpyapp::crt')
+tpyc: warning: library module 'crt' has no `__tpy__` "cpp_namespace" setting (will use default 'tpyapp::crt')

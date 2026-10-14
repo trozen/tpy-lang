@@ -66,11 +66,6 @@ void main() {
     std::cout << ::tpy::__repr__(::tpy::EnumUtil<::ns::Tag>::from_value(200)) << "\n" << ::tpy::check_signals;
 }
 
-// # @native enum where the user spells explicit integer values. These are
-// # verified against the C++ side via per-member static_assert at compile time.
-// # If TPy and C++ disagree, the C++ build fails with a clear message rather
-// # than silently miscompiling.
-// # tpy: include("native_types.hpp")
 // from enum import Enum
 // from tpy.extern import native
 //

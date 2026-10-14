@@ -64,7 +64,6 @@ void cfmakecbreak(::tpystd::termios::TermAttributes& mode) {
     return ::tpystd::tty::setcbreak__int64__int32(fd, ::tpy_const_termios_tcsaflush);
 }
 
-// # tpy: cpp_namespace("tpystd::tty")
 // """Terminal mode helpers over `termios`, CPython 3.12 surface.
 //
 // `setraw` / `setcbreak` return the attributes in force before the change, so

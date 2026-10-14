@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Container marshalling across the @export boundary: list/dict/set/tuple cross
 # O(n) by-copy (docs/CPYTHON_INTEROP.md "container cliff"), recursively for
 # nested containers and str/bytes elements. The boundary deliberately COPIES --

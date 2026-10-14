@@ -3,7 +3,7 @@
 # the same reject the plain-method validator applies. Identity-only
 # enablement (a provable `return self`) is a deferred decision tracked in
 # TODO.md.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, nocopy
 from tpy.extern import export
 

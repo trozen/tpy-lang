@@ -1,6 +1,6 @@
 # __add__ crossing the CPython boundary must take exactly one parameter
 # beyond self -- Py_nb_add's binaryfunc only ever hands the wrapper (a, b).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 

@@ -101,7 +101,6 @@ int32_t _wait(int32_t fd, int32_t want_write, double deadline) {
     return ::tpy_interrupt_wait(fd, want_write, ::tpystd::_interrupt::remaining(deadline));
 }
 
-// # tpy: cpp_namespace("tpystd::_interrupt")
 // """Signal delivery for the stdlib's blocking operations.
 //
 // The signal layer (runtime/cpp/src/stdlib/signal_impl.cpp) turns a signal

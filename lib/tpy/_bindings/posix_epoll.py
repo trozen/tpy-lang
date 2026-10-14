@@ -1,6 +1,3 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::_bindings::posix_epoll")
-# tpy: include("<tpy/stdlib/epoll_h.hpp>")
 """Raw epoll C bindings (Linux).
 
 Thin @native layer over the three flat `tpy_epoll_*` helpers in
@@ -13,9 +10,12 @@ tpy_resolve_ipv4 strategy).
 Declaration-only and not for direct user import. The EPOLL* / EPOLL_CTL_*
 wire values are hardcoded TPy-side by the consuming reactor, not here.
 
-`# tpy: native_module` means no .cpp/.hpp is generated for this module;
+`"mod": "native"` means no .cpp/.hpp is generated for this module;
 its bindings resolve at link time to the tpy_epoll_* symbols.
 """
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::_bindings::posix_epoll",
+           "includes": ["<tpy/stdlib/epoll_h.hpp>"]}
 
 from tpy import int32, uint32, Ptr
 from tpy.extern import native

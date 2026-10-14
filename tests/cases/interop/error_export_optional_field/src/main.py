@@ -3,7 +3,7 @@
 # case a bare class field crosses on is not tracked through the gate --
 # rejected with that reasoning (the value form, `Optional[int32]` and
 # friends, crosses as a getset).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import Optional
 from tpy import int32
 from tpy.extern import export

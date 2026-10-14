@@ -10,7 +10,6 @@ from typing import Callable, TextIO, TYPE_CHECKING
 import contextlib
 import heapq
 import io
-import sys as _sys
 
 from ..typesys import TpyType, TypeRegistry, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteFrameType, unwrap_readonly, unwrap_own, unwrap_ref_type
 from ..identity_map import IdentityMap
@@ -18,6 +17,7 @@ from ..compilation_context import require_current_compiler
 from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage, TpyFieldAccess
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
+from ..parse.module_settings import platform_matches
 from .resumable_cfg import (
     ResumableShape, recursive_delegation_error, resumable_state,
 )
@@ -51,22 +51,11 @@ def _emits_own_cpp(typ: NominalType) -> bool:
         return True
     return typ.name in require_current_compiler().native_cpp_names
 
-# Maps user-facing platform names to sys.platform prefixes (also in compiler.py)
-_PLATFORM_MAP = {"windows": "win32", "linux": "linux", "macos": "darwin"}
-
 # Rendered lines (source-echo comments excluded) of a generator `__next__`
 # still worth defining inline in `<mod>_inl.hpp`. Measured with the consumer in
 # another module, gcc-14 -O3: 29 lines inlined -24%, 41 lines -11%, 53 lines
 # -7%, 77 lines -2%, ~84 lines no longer inlined at all; clang-20 inlined none.
 _INLINE_NEXT_MAX_LINES = 40
-
-
-def _platform_matches(platform_filter: str | None) -> bool:
-    """Check if a platform filter matches the current platform."""
-    if platform_filter is None:
-        return True
-    mapped = _PLATFORM_MAP.get(platform_filter.lower(), platform_filter)
-    return _sys.platform.startswith(mapped)
 
 
 @dataclass
@@ -328,7 +317,7 @@ class CodeGenerator:
         #       through `record_info.module`.
         #   (b) `@builtin_type`-with-body records (Task and future
         #       siblings) whose stub claims a well-known qname like
-        #       `tpy.Task` but whose body lives in a `# tpy: cpp_namespace`-
+        #       `tpy.Task` but whose body lives in a `"cpp_namespace"`-
         #       tagged module (e.g. `asyncio._executor`). These would
         #       otherwise mis-qualify as `tpyapp::<module>::Name`, so the
         #       defining_module + cpp_namespace override path is required.
@@ -702,7 +691,7 @@ class CodeGenerator:
 
         if module.directives.native_module:
             # Native modules are declaration-only -- no .hpp or .cpp generated.
-            # Their # tpy: include() directives are propagated to importing modules.
+            # Their `__tpy__` "includes" are propagated to importing modules.
             return "", ""
 
         self._write_header_preamble(hpp, native_funcs, native_globals, directives=module.directives)
@@ -1646,7 +1635,7 @@ class CodeGenerator:
 
         # Enum class declarations (before records, since records may have enum fields).
         # @native enums skip the declaration entirely -- the user's
-        # `# tpy: include(...)` directive provides the C++ enum class.
+        # `__tpy__` "includes" entry provides the C++ enum class.
         for enum in module.enums:
             if enum.is_native:
                 continue
@@ -2643,7 +2632,7 @@ class CodeGenerator:
         included: set[str] = set()
         if directives and directives.includes:
             for include_path, platform in directives.includes:
-                if not _platform_matches(platform):
+                if not platform_matches(platform):
                     continue
                 if include_path.startswith('<') and include_path.endswith('>'):
                     out.write(f'#include {include_path}\n')
@@ -2700,14 +2689,14 @@ class CodeGenerator:
         # Driven by the union of user_module_imports (today's literal-import set)
         # and module_reached (types referenced through field/method chains).
         # For native modules we recurse through their own reach so that
-        # # tpy: include() directives flow across native-to-native chains --
+        # `__tpy__` "includes" flow across native-to-native chains --
         # natives have no .hpp to chain through, so the consumer must emit
         # them all directly.
         chase_visited: set[str] = set()
 
         def emit_native_includes(info) -> None:
             for inc, platform in info.includes:
-                if not _platform_matches(platform):
+                if not platform_matches(platform):
                     continue
                 if inc in included:
                     continue
@@ -2832,7 +2821,7 @@ class CodeGenerator:
             out_buf.write(f"struct {cpp_name};\n")
         for enum in module.all_enums():
             # @native enums: skip the forward decl. The user's
-            # `# tpy: include(...)` provides the type; re-declaring with
+            # `__tpy__` "includes" entry provides the type; re-declaring with
             # the TPy-recorded underlying type would risk ODR mismatch.
             if enum.is_native:
                 continue

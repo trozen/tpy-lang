@@ -1,4 +1,3 @@
-# tpy: ext_module
 # Exposed-class dunders: arithmetic/ordering operators. __add__ (class +
 # class) and __mul__/__rmul__ (class * scalar, both directions -- the common
 # vector-scalar shape) -> Py_nb_add/Py_nb_multiply; __sub__/__rsub__ are
@@ -9,6 +8,7 @@
 # returns the SAME object -- unlike the other dunders' fresh-instance
 # returns); __pow__ -> Py_nb_power (ternary slot; a real modulus is rejected).
 from __future__ import annotations
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 

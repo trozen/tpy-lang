@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Span[T] numeric marshalling across the @export boundary (docs/
 # CPYTHON_INTEROP.md "buffer protocol"): a Span[readonly[T]]/Span[T] param
 # binds to any buffer-protocol exporter (array.array, memoryview, bytes,

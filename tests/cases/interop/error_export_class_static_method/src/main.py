@@ -1,6 +1,6 @@
 # A plain (non-dunder) @staticmethod on an exposed class is rejected: the glue
 # emits an instance-method wrapper that unwraps a live self payload.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Internal (`_`-prefixed) fields: a field whose name starts with `_` stays live
 # C++ payload state but never crosses the CPython boundary as an attribute --
 # uniform across BOTH attribute sites (exposed-class getset and exception

@@ -1,7 +1,7 @@
 # Test cpp_namespace auto-prefix: bare @native uses namespace prefix
-# tpy: native_module
-# tpy: cpp_namespace("mypkg")
-# tpy: include("native_types.hpp")
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "mypkg",
+           "includes": ["native_types.hpp"]}
 from tpy import int32, Ptr, Own
 from tpy.extern import native
 

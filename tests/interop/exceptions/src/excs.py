@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension exercising the exception bridge: a TPy exception raised in
 # an @export body crosses to the caller as the matching CPython exception type
 # with its message preserved, instead of collapsing to RuntimeError. Covers a

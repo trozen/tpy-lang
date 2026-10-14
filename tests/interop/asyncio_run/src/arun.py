@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # CPython extension whose @export functions run `asyncio.run` inside the host
 # interpreter. With no process-level signal layer the run arms one for its own
 # duration, installs its SIGINT handler over it, and must hand CPython its own

@@ -1,5 +1,5 @@
 # bisect -- array bisection algorithms
-# tpy: cpp_namespace("tpystd::bisect")
+__tpy__ = {"cpp_namespace": "tpystd::bisect"}
 from tpy import int32, Comparable, copy
 
 def bisect_left[T: Comparable](a: list[T], x: T) -> int32:

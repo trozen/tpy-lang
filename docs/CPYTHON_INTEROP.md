@@ -74,7 +74,7 @@ a vacuum. The THIR migration was in flight when this pass ran and has
 since landed: THIR is the single sema->codegen boundary for every body.
 That did not move any surface this work touches -- the `(hpp, cpp)`
 `generate()` contract + `generate_fwd_header` sibling, `all_cpp_paths`,
-`ModuleDirectives` / `_DIRECTIVE_SPECS`, `FunctionLinkage` /
+`ModuleDirectives` (read by `tpyc/parse/module_settings.py`), `FunctionLinkage` /
 `RecordLinkage`, the string-keyed `BorrowTracker` -- all of which live in
 the skeleton layer the migration kept. v1.0 stays IR-independent by design
 (copy-in, no foreign-borrow primitive), and the interop compiler footprint
@@ -104,9 +104,9 @@ design -- the same long pole.)
   existing phase 2.5) -- disjoint failure surface from interop correctness;
   the test harness builds the `.so` via `tpyc` directly, so the verification
   path never goes through packaging anyway.
-- **Trigger: the `# tpy: ext_module` directive** (a 3-line `_DIRECTIVE_SPECS`
-  addition), not a CLI flag -- "this module is a CPython extension" is a
-  code-coupled fact. Naming is filename-derived: `foo.py -> PyInit_foo ->
+- **Trigger: the `"mod": "ext"` module setting** (`__tpy__`; originally a
+  `# tpy: ext_module` comment directive), not a CLI flag -- "this module is
+  a CPython extension" is a code-coupled fact. Naming is filename-derived: `foo.py -> PyInit_foo ->
   foo.so`.
 - **Exposure: bare `@export`, anchored by `ext_module`.** `@export` means
   "this module's public *foreign* surface"; the module kind picks the ABI
@@ -161,7 +161,7 @@ design -- the same long pole.)
 - **Verification: two runs, identical driver.** A plain `driver.py`
   (`import main; print(main.add(2, 3))`) runs unchanged against both the
   built `.so` (new **ext-exec** variant) and the TPy *source* interpreted by
-  CPython (`# tpy: ext_module` is a comment, `@export` resolves to a
+  CPython (the `__tpy__` dict is inert there, `@export` resolves to a
   `lib/cpy` identity stub) -- giving TPy-vs-CPython parity for free. Build
   the thread with a **throwaway script first** (de-risk the `.so` build in
   hours), *then* harnessify. Defer the exec-cache extension; guard CPython
@@ -556,8 +556,8 @@ helpers"): the C-API binding is a thin `@native` layer
 
 ## Extension mode mechanics
 
-- **Declaration:** a module marker `# tpy: ext_module` (a near-free addition
-  to the directive registry, analog to `native_module` / `macro_module`).
+- **Declaration:** the module setting `__tpy__ = {"mod": "ext"}` (one value of
+  the `"mod"` key, beside `"native"` / `"macro"`).
   Exposure is **explicit opt-in** so the ABI surface is never accidental --
   but note `@export` *already exists* (meaning C-ABI `extern "C"`, and
   forbidden in `native_module`), so CPython exposure must *extend* that
@@ -886,9 +886,9 @@ machinery** -- three assumptions hold with only minor caveats, two needed
 corrections (folded in above), and one surfaces a real architectural
 dependency.
 
-**1. Markers / `@export` -- Holds, with a refinement.** `# tpy: ext_module`
-is a near-free directive addition (`_DIRECTIVE_SPECS` + a `ModuleDirectives`
-field + one branch in `parse/parser.py`). Decorators are recognized by
+**1. Markers / `@export` -- Holds, with a refinement.** The ext-module marker
+(then a `# tpy: ext_module` comment, now `"mod": "ext"` in `__tpy__`) was a
+near-free addition to the module-settings reader. Decorators are recognized by
 resolved qname via library-declared stubs, so a marker is mechanical -- *but*
 `@export` already exists (C-ABI `extern "C"`, forbidden in `native_module`).
 CPython exposure must extend that linkage machinery, and exposing **classes**
@@ -1000,8 +1000,9 @@ on AST nodes, don't sprawl interop logic across phases):
   (`sema_validators.py` for the per-module dunder/aliasing checks,
   `module_validators.py` for the whole-program export validation), invoked
   through thin hooks on the analyzer and compiler.
-- **Thin compiler hooks.** Parser: the `ext_module` directive + the `@export`
-  linkage extension (small touches to `_DIRECTIVE_SPECS` / the linkage map).
+- **Thin compiler hooks.** Parser: the `"mod": "ext"` setting (read in
+  `tpyc/parse/module_settings.py`) + the `@export` linkage extension (a small
+  touch to the linkage map).
   `cli.py` / `BuildLayout`: the `.so` build-output mode. Everything reads facts
   off AST nodes -- no new analyzer->codegen side tables.
 
@@ -1048,7 +1049,7 @@ under `tests/cases/interop/`. See `tests/interop/README.md`.
   glue TU** (`<mod>_ext.cpp`), and the front-end diagnostics (`diag.txt`,
   with `# tpyc:` annotation validation) into `expected/`.
 - **ext-exec** (cached, like the exec phase): build the `.so` via the
-  first-class `.so` build mode (`tpyc -b` on an `# tpy: ext_module`), run the
+  first-class `.so` build mode (`tpyc -b` on an ext module), run the
   driver under CPython importing it, compare stdout to `output.txt`. Gated by
   a content-addressed marker in the shared `exec-results/` cache.
 - **cpy parity** (always): run the *same* driver with

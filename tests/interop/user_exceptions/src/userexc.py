@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # User exception classes cross the @export boundary as their own Python type
 # (PyErr_NewException at PyInit_), inheriting their built-in base -- catchable as
 # the specific type AND the base, and importable as userexc.<Name>. Message-only

@@ -1,7 +1,7 @@
 # bytearray is a mutable reference type sharing bytes' C++ representation
 # (std::vector<uint8_t>); marshalling it by copy would silently drop the aliasing
 # CPython callers expect, so only the immutable value type `bytes` is admitted.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy.extern import export
 
 

@@ -1,4 +1,4 @@
-# Test that # tpy: include() from native modules is propagated to importers
+# Test that `__tpy__` "includes" of native modules are propagated to importers
 from tpy import int32
 from nativelib.ops import native_add
 

@@ -1,4 +1,4 @@
-# tpy: cpp_namespace("tpystd::typing")
+__tpy__ = {"cpp_namespace": "tpystd::typing"}
 from tpy import int32
 from .._bootstrap._decorators import readonly
 from .._bootstrap._extern import builtin_type, builtin_decorator, builtin_function

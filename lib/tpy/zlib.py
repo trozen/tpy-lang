@@ -22,7 +22,7 @@
 #   - `zlib._Compress(...)` / `zlib._Decompress(...)` construct directly in
 #     TPy; CPython has no such attributes (the underscore marks them private).
 #   - Lengths are int32: inputs and outputs are limited to 2 GiB.
-# tpy: cpp_namespace("tpystd::zlib")
+__tpy__ = {"cpp_namespace": "tpystd::zlib"}
 from typing import Final
 from tpy import Ptr, uint8, uint32, int32, uint64, readonly, nocopy, Own, take_ptr
 from tpy.mem import UninitHeapStorage

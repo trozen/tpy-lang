@@ -3,7 +3,7 @@
 # (a mutable reference type), not the Own wrapper (whose is_value_type is always
 # True). A bare `-> bytearray` is blocked earlier by the return-by-reference
 # check; Own[bytearray] is the form that reaches the boundary validator.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import Own
 from tpy.extern import export
 

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Combined-CPython-slot families across an exposed hierarchy: a derived class
 # overriding only PART of a slot family must keep the inherited other half --
 # __eq__ overridden under a base's explicit custom __ne__ (MRO dispatches !=

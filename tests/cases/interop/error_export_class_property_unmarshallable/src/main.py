@@ -1,6 +1,6 @@
 # A property whose getter return type isn't a boundary type is a located
 # error naming the property (same admission as a method return).
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy.extern import export
 
 

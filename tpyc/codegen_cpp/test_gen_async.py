@@ -78,7 +78,7 @@ def test_coroutine_references_use_defining_module_namespace(
     ) if nested else (
         "class Outer:\n    async def compute(self, n: int) -> int:\n        return n\n"
     )
-    directive = f'# tpy: cpp_namespace("{namespace}")\n' if namespace else ""
+    directive = f'__tpy__ = {{"cpp_namespace": "{namespace}"}}\n' if namespace else ""
     (tmp_path / "worker.py").write_text(directive + record)
     (tmp_path / "peer.py").write_text(record)
     if import_style == "record_alias":

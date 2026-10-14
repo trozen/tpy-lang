@@ -4,7 +4,7 @@
 # class `-> Cls` alias warning; Own[...] is the acknowledged spelling and stays
 # quiet. (The def lines also carry the copy-in warning: a returned borrow can
 # be mutated through by the caller in TPy, so sema marks the param mutated.)
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 

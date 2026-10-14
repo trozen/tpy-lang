@@ -1,6 +1,6 @@
 # An @overload method on an exposed class can't cross: the glue emits one
 # positional wrapper, which would silently expose only the first arity.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from typing import overload
 
 from tpy import int64

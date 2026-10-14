@@ -32,7 +32,7 @@
 # Uses tpy.bits.rotr32 for rotation and UIntN.add_wrap for wrapping
 # addition (TPy's +/<< on fixed-width ints are overflow-checked; hash
 # algorithms need modular arithmetic).
-# tpy: cpp_namespace("tpystd::hashlib")
+__tpy__ = {"cpp_namespace": "tpystd::hashlib"}
 from tpy import int32, uint8, uint32, uint64, Own
 from tpy.bits import rotr32
 

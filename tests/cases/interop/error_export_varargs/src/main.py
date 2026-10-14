@@ -1,6 +1,6 @@
 # *args is rejected at the @export boundary: the keyword-aware unpack marshals a
 # fixed param list, so a vararg pack would be silently dropped. Reject loudly.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64
 from tpy.extern import export
 

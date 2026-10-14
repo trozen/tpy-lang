@@ -41,11 +41,11 @@ def calls(fn: th.THIRFunction) -> list[th.THIRCall]:
 def artifacts(tmp_path_factory: pytest.TempPathFactory) -> Artifacts:
     folder = tmp_path_factory.mktemp("callee_metadata")
     helper = "from tpy import int32\ndef choose(flag: bool, x: int32) -> int32:\n    return x if flag else 0\n"
-    (folder / "helper.py").write_text('# tpy: cpp_namespace("custom_helpers")\n' + helper)
+    (folder / "helper.py").write_text('__tpy__ = {"cpp_namespace": "custom_helpers"}\n' + helper)
     (folder / "other.py").write_text(helper)
     (folder / "facade.py").write_text("from helper import choose as exported\n")
     source = """\
-# tpy: cpp_namespace("custom_entry")
+__tpy__ = {"cpp_namespace": "custom_entry"}
 from tpy import int32
 from helper import choose as selected
 from facade import exported

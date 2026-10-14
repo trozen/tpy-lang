@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::signal")
 """Minimal `signal` module -- `signal.signal` with a callable handler,
 `default_int_handler`, `raise_signal`, and the common signal numbers.
 
@@ -84,6 +83,7 @@ A build with `--no-signals` has no signal layer: `signal.signal` raises
 ValueError there, and a SIGINT, one sent by `raise_signal` included, takes
 the process's own disposition.
 """
+__tpy__ = {"cpp_namespace": "tpystd::signal"}
 from typing import Callable, Final
 
 from tpy import int32

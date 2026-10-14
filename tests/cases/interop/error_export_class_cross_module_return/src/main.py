@@ -1,6 +1,6 @@
 # Same rejection as the cross-module param case, but for an @export
 # function's return type.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int64, Own
 from tpy.extern import export
 from foo_mod import Foo

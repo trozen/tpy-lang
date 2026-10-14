@@ -4,7 +4,7 @@
 #   - Direct print(e):       gen_print -> ::tpy::__repr__(e) -> EnumUtil
 #   - print(Optional[E]):    print_optional_val's enum if-constexpr branch
 #   - print(list[E]):        repr_of -> __repr__(T) template via container path
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from enum import Enum, auto
 from tpy.extern import native
 

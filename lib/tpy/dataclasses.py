@@ -1,9 +1,9 @@
-# tpy: macro_module
 """Dataclass macro for TurboPython.
 
 This module implements @dataclass as a compile-time class macro.
 It is loaded by the compiler via CPython (not compiled to C++).
 """
+__tpy__ = {"mod": "macro"}
 
 from tpyc.macro_api import (
     ClassInfo, FieldInfo, TypeInfo, CallMacroContext, MacroArg, MacroError,

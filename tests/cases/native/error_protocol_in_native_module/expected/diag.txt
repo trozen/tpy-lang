@@ -1,1 +1,1 @@
-main.py:5: error: protocol 'Drawable' not allowed in native_module ('main' is declaration-only)
+main.py:5: error: protocol 'Drawable' not allowed in a native module ("mod": "native"): 'main' is declaration-only

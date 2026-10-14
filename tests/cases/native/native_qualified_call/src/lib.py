@@ -1,5 +1,5 @@
 # Mixed module: @native (C++) and @native(binding="C") (C) functions
-# tpy: include("native_types.hpp")
+__tpy__ = {"includes": ["native_types.hpp"]}
 from tpy import int32
 from tpy.extern import native
 

@@ -2,8 +2,8 @@
 # - bare rename ("name", no ::) is relative to cpp_namespace
 # - rename containing :: is absolute (module namespace ignored)
 # - leading :: is absolute to global scope
-# tpy: cpp_namespace("mylib")
-# tpy: include("native_types.hpp")
+__tpy__ = {"cpp_namespace": "mylib",
+           "includes": ["native_types.hpp"]}
 from tpy import int32
 from tpy.extern import native
 

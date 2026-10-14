@@ -26,12 +26,12 @@ bool same_task(::tpystd::coro::Waker a, ::tpystd::coro::Waker b) {
     return ::tpystd::tpy::Poll<std::monostate>::ready(std::monostate{});
 }
 
-// # tpy: cpp_namespace("tpystd::coro")
 // """Coroutine / async runtime primitives.
 //
 // Module name borrowed from the design-doc's `Coroutine[T]` terminology
 // (see Rust `std::task` / Tokio `tokio::task` for prior art).
 // """
+//
 // from .._typing import Protocol
 // from .._bootstrap._decorators import Own, dynamic
 // from .._bootstrap._extern import builtin_type

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # An exposed enum used as a getset FIELD of an exposed class. The field
 # round-trips its member through the module enum type (enum_to_py reconstructs
 # the singleton, enum_from_py is strict by-type), so reading preserves member

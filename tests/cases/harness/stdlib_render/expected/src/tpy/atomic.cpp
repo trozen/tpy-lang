@@ -80,7 +80,6 @@ void fence(::std::memory_order order) {
 }
 
 
-// # tpy: include("<tpy/atomic.hpp>")
 // """Lock-free atomic scalars -- `Atomic[T]` over the fixed-width integer types.
 //
 // `Atomic[T: AnyFixedInt]` is a `@nocopy` (copying a shared counter would silently
@@ -95,6 +94,7 @@ void fence(::std::memory_order order) {
 //     counter += 1                            # atomic RMW, seq_cst
 //     print(counter.load())
 // """
+//
 // from enum import Enum
 //
 // from tpy.extern import native, native_member

@@ -305,7 +305,6 @@ void SSLSocket::sendall(::tpy::BytesView data) {
         sent = (::tpy::add_check<uint64_t>(sent, ::tpy::int_cast_check<uint64_t>(rc)));
     }
 }
-// # tpy: cpp_namespace("tpystd::ssl")
 // """TLS for sockets -- a CPython-compatible `ssl` surface backed by mbedTLS.
 //
 // The HTTPS *client* path: `create_default_context()` -> `SSLContext` ->

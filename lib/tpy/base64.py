@@ -33,7 +33,7 @@
 # Compare against CPython on representative payloads before claiming a
 # fix works -- aim for parity with binascii on 1 MB, superior on small
 # inputs.
-# tpy: cpp_namespace("tpystd::base64")
+__tpy__ = {"cpp_namespace": "tpystd::base64"}
 from tpy import int32, uint8, dispatch
 
 _B64_STD: bytes = b"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/"

@@ -128,7 +128,7 @@ sema rules that drift apart).
 Where each piece of the feature lives:
 
 - **Parser** (`tpyc/parse/`) -- new AST node? new syntax form? new
-  `# tpy:` directive? Usually parser changes are small and confined.
+  `__tpy__` setting? Usually parser changes are small and confined.
 - **Sema** -- which sub-module (`statements.py` / `expressions.py` /
   `calls.py` / `methods.py` / `protocols.py` / `narrowing.py` /
   `value_range.py` / `flow_facts.py` / `match.py` / ...)? What new

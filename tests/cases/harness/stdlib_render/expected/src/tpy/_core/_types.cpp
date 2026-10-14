@@ -4,7 +4,6 @@
 namespace tpystd::tpy {
 
 
-// # tpy: cpp_namespace("tpystd::tpy")
 // from .._typing import Protocol, Self, Iterator, Iterable, Sized
 //
 // from .._bootstrap._decorators import readonly, pure, nocopy, Own, dynamic, dispatch

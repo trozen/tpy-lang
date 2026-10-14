@@ -1,4 +1,3 @@
-# tpy: cpp_namespace("tpystd::asyncio")
 """asyncio v1 -- minimum viable async runtime.
 
 `run` / `sleep` / `create_task` / `Task[T]` / `Future[T]` / `Event` /
@@ -7,6 +6,7 @@
 `runtime/cpp/include/tpy/async.hpp` and the TPy Executor in
 `_executor.py`. See `docs/ASYNC_DESIGN.md`.
 """
+__tpy__ = {"cpp_namespace": "tpystd::asyncio"}
 from typing import Final, Callable, Protocol
 from builtins import BaseException, Exception, TimeoutError, EOFError
 from tpy import (

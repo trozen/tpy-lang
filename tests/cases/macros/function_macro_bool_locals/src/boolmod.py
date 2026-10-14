@@ -1,10 +1,10 @@
-# tpy: macro_module
 """Function macro: type-deduce string-literal bool locals.
 
 A local introduced as `x = "true"/"false"` is retyped as bool and its
 initializer rewritten to a bool literal. Proves annotate_local +
 replace_expr end-to-end.
 """
+__tpy__ = {"mod": "macro"}
 from tpyc.macro_api import (
     function_macro, FunctionMacroContext, ast,
     VarDecl, StrLiteral,

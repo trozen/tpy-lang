@@ -1,7 +1,3 @@
-# tpy: native_module
-# tpy: cpp_namespace("tpystd::_bindings::hinnant_date")
-# tpy: include("<tpy/stdlib/datetime.hpp>")
-# tpy: link("date", managed=True)
 """Timezone-backend binding for the `datetime` stdlib module.
 
 One @native declaration per tpy/stdlib/datetime.hpp facade primitive.
@@ -11,6 +7,10 @@ so this surface must stay minimal and provider-neutral.
 
 Not for direct user import; the public surface is `datetime`.
 """
+__tpy__ = {"mod": "native",
+           "cpp_namespace": "tpystd::_bindings::hinnant_date",
+           "includes": ["<tpy/stdlib/datetime.hpp>"],
+           "links": [{"lib": "date", "managed": True}]}
 
 from tpy import int32, int64
 from tpy.extern import native

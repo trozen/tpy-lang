@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Exposes TPy enums as real CPython enum types. An @export IntEnum / Enum is
 # recreated at PyInit_ via the stdlib `enum` functional API (module= set), so
 # members, .name/.value, identity, iteration, value/name lookup, and the

@@ -1,4 +1,4 @@
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 # Exposes a TPy class as a real CPython type (PyType_FromSpec): construct from
 # Python, call methods, read/write annotated fields as getset descriptors, and
 # observe reference semantics -- bump() mutates through a borrowed parameter and

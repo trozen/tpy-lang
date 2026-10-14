@@ -16,7 +16,7 @@
 #     (CPython: struct.error, which TPy has no class for).
 #   - Iterating a closed GzipFile raises at the first `next()`, not at
 #     `iter()` (BUGS.md#file-iter-closed-check-deferred).
-# tpy: cpp_namespace("tpystd::gzip")
+__tpy__ = {"cpp_namespace": "tpystd::gzip"}
 import errno
 import os
 import time

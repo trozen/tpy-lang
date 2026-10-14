@@ -5,7 +5,7 @@
 # quiet; a reassignable-field source and a borrow list return still copy
 # and warn. Own[...] moves a fresh instance out (the quiet form). Runtime
 # aliasing is pinned in tests/interop/next_borrow.
-# tpy: ext_module
+__tpy__ = {"mod": "ext"}
 from tpy import int32, Own, readonly
 from tpy.extern import export
 
