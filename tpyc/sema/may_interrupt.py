@@ -98,7 +98,7 @@ class InertWalk:
         root = fi.root
         if root.checks_signals or fi.checks_signals or root.special_handling:
             return False
-        return is_declaration_only(fi, self.ctx.registry)
+        return is_declaration_only(fi)
 
     def on_node(self, node: 'TpyExpr | TpyStmt') -> None:
         """What every statement and expression must also satisfy."""

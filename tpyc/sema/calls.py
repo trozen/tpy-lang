@@ -16,7 +16,7 @@ from ..compilation_context import require_current_compiler
 from ..typesys import (
     is_indirection_type,
     make_readonly,
-    param_may_be_written,
+    declares_no_writes, param_may_be_written,
     any_default_suppressed,
     default_emittable_at,
     TpyType, NominalType, AliasRef, OwnType, OptionalType, TupleType, own_tuple_target, param_takes_ownership, strip_template_repr, make_list, PendingListType, PendingViewType, make_copy_iter, make_own_iter,
@@ -1106,13 +1106,6 @@ class CallAnalyzer:
                 return_type=return_type,
                 is_readonly=False,
                 is_constructor=True,
-                # Carry mutation facts so `_check_borrow_arg_conflicts`
-                # reads them off `expr.resolved_function_info` -- without
-                # this, ctor calls see `mutated_params=None` and emit
-                # false-positive "borrowed container" warnings even when
-                # the ctor provably doesn't structurally mutate the arg.
-                mutated_params=resolved_ctor.mutated_params,
-                structural_mutated_params=resolved_ctor.structural_mutated_params,
                 canonical_fi=ctor.root,
             )
             self._check_borrow_arg_conflicts(expr)
@@ -2217,7 +2210,7 @@ class CallAnalyzer:
             is_readonly=True,
             is_builtin_function=True,
             qualified_name="tpy.copy_iter",
-            return_borrows_from=frozenset({0}),
+            _return_borrows_from=frozenset({0}),
         )
         return result_type
 
@@ -3697,7 +3690,7 @@ class CallAnalyzer:
         the check until Phase 2 resolves the final facts.
         """
         fi = expr.resolved_function_info
-        if fi is None or fi.is_pure or fi.is_readonly:
+        if fi is None or fi.is_pure or declares_no_writes(fi):
             return
         # Use structural_mutated_params when available (precise); fall back to mutated_params.
         # structural_mutated_params is set for all locally-analyzed functions (None for builtins/imports).
@@ -3786,7 +3779,7 @@ class CallAnalyzer:
     def _check_loop_var_arg_mutation(self, expr: TpyCall | TpyMethodCall) -> None:
         """Mark for-each loop variables as mutated when passed to non-readonly params."""
         fi = expr.resolved_function_info
-        if fi is None or fi.is_readonly:
+        if fi is None or declares_no_writes(fi):
             return
         for i, param in enumerate(fi.params):
             if i >= len(expr.args):
@@ -3845,15 +3838,10 @@ class CallAnalyzer:
         fi = expr.resolved_function_info
         if fi is None or fi.is_pure:
             return
-        # `is_readonly` is a RECEIVER fact -- a const method may still mutate
-        # its non-self params, and `infer_method_const` sets the flag AFTER the
-        # defining module's bodies are analyzed, so a cross-module caller sees
-        # it where an intra-module caller did not. Only an UNANALYZED callee (a
-        # native / builtin stub with no body facts) may stand on the flag: there
-        # `@readonly` is the declaration that it mutates nothing at all, and
-        # without it the unknown-callee leg would conservatively mark every
-        # flowing argument mutated.
-        if fi.is_readonly and fi.root.direct_mutated_params is None:
+        # Without the declaration the unknown-callee leg would conservatively
+        # mark every flowing argument mutated; a bodied callee's `is_readonly`
+        # is a receiver fact and does not stand for its arguments.
+        if declares_no_writes(fi):
             return
         # The mutable clone of an @auto_readonly accessor (dict.values/items,
         # Box.get) hands out a borrow but does not mutate its receiver
@@ -6398,8 +6386,6 @@ class CallAnalyzer:
             return_type=return_type,
             is_readonly=False,
             is_constructor=True,
-            mutated_params=winner.mutated_params,
-            structural_mutated_params=winner.structural_mutated_params,
             canonical_fi=winner.root,
         )
         self._check_borrow_arg_conflicts(expr)

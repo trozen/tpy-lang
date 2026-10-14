@@ -1432,9 +1432,7 @@ def main() -> None:
     ternary_param_roots(HB(), HB(), Box(3), True)
     ternary_param_roots(HB(), HB(), Box(3), False)
     owning_rebind_alias(Box(3))
-    # A local argument: BUGS.md#ctor-param-free-call-mutation-rvalue-arg.
-    cv = Box(3)
-    HCtor(cv)
+    HCtor(Box(3))
     nested_own_param(Box(3))
 
 

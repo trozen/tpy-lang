@@ -2818,9 +2818,7 @@ void nested_own_param(Box& v) {
 //     ternary_param_roots(HB(), HB(), Box(3), True)
 //     ternary_param_roots(HB(), HB(), Box(3), False)
 //     owning_rebind_alias(Box(3))
-//     # A local argument: BUGS.md#ctor-param-free-call-mutation-rvalue-arg.
-//     cv = Box(3)
-//     HCtor(cv)
+//     HCtor(Box(3))
 //     nested_own_param(Box(3))
 void main() {
     Box v = Box(5);
@@ -3039,10 +3037,10 @@ void main() {
     ::tpyapp::main::ternary_param_roots(__tmp_97, __tmp_98, __tmp_99, false);
     Box __tmp_100 = Box(3);
     ::tpyapp::main::owning_rebind_alias(__tmp_100);
-    Box cv = Box(3);
-    (void)(HCtor(cv));
     Box __tmp_101 = Box(3);
-    ::tpyapp::main::nested_own_param(__tmp_101);
+    (void)(HCtor(__tmp_101));
+    Box __tmp_102 = Box(3);
+    ::tpyapp::main::nested_own_param(__tmp_102);
 }
 
 

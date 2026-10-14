@@ -59,7 +59,7 @@ def test_const_inference_consumers(
     fi = FunctionInfo(
         name="get", params=[ParamInfo("borrowed", RECORD), ParamInfo("changed", RECORD)],
         return_type=result, is_method=True, direct_self_mutated=False,
-        self_mutated=False, mutated_params=mutated, return_borrows_from=roots,
+        self_mutated=False, _mutated_params=mutated, _return_borrows_from=roots,
         return_lends_self_storage=roots is not None and -1 in roots,
         body=method,
     )
@@ -83,7 +83,7 @@ def test_self_borrow_through_a_handle_stays_const() -> None:
     # the pointee is not self's storage: a const receiver still lends it.
     fi = FunctionInfo(
         name="get", params=[], return_type=RECORD, is_method=True,
-        direct_self_mutated=False, self_mutated=False, return_borrows_from=SELF,
+        direct_self_mutated=False, self_mutated=False, _return_borrows_from=SELF,
         return_lends_self_storage=False,
     )
     infer_method_const([fi])
@@ -102,7 +102,7 @@ def test_self_borrow_through_a_handle_stays_const() -> None:
 def test_const_inference_exclusions(flags: dict[str, object]) -> None:
     fi = FunctionInfo(
         name="get", params=[], return_type=STRVIEW, is_method=True,
-        direct_self_mutated=False, self_mutated=False, return_borrows_from=SELF,
+        direct_self_mutated=False, self_mutated=False, _return_borrows_from=SELF,
         return_lends_self_storage=True,
     )
     for name, value in flags.items():

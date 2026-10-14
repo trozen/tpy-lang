@@ -267,12 +267,9 @@ def _register_call_result_borrow(ctx: SemanticContext, borrower: str, expr: TpyE
         # unknown. Assume it does: register an OPAQUE borrow from every
         # name-rooted argument so the auto-move gate demotes a later
         # consume to the copy path. Opaque stubs (native, builtin,
-        # cpp_template, bodyless overloads) are not in the pending set --
-        # for them None keeps meaning "borrows nothing". This readiness
-        # question reads the RAW field, unlike the sources below: the pending
-        # set holds the registry FIs, so the membership test and the None it
-        # qualifies must be about the same fi the call site resolved to.
-        if (fi in ctx.pending_borrow_fact_fis
+        # cpp_template) are not in the pending set -- for them None keeps
+        # meaning "borrows nothing".
+        if (ctx.return_borrow_fact_pending(fi)
                 and _signature_may_return_borrow(fi)):
             for src in call_lend_sources(operands, expr_type=None):
                 for root in _borrow_storage_roots(src.expr):

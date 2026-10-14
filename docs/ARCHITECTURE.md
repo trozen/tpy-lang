@@ -453,17 +453,25 @@ defaults at module boundaries, and a call into a cycle peer reads the
 peer's body facts. The edges are seeded during body sema
 (`_record_mutation_call_edges`), so a callee's facts may be at
 different maturity: `infer_method_const` has already run for an
-earlier component's methods but not for this component's own,
-cycle peers included. An edge gate must therefore never read `is_readonly`
--- a RECEIVER fact that also arrives late -- as "the callee mutates
-nothing"; only a callee with no body facts at all (`native` /
-builtin stub) may stand on the declaration. Such a callee is
-conservatively taken to mutate every argument it is handed, with one
-exemption: a slot bound through a call that LENDS the caller's storage
-(`MutationCallEdge.lent` -- a combinator result, a handle into it)
-propagates only the callee's element mutation (`elem_mutated_params`),
-and a body-less callee has no body to write through an element with,
-so `next(it)` over `it = zip(xs, ys)` leaves `xs` and `ys` const.
+earlier component's methods but not for this component's own, cycle
+peers included. The facts live on the ROOT FunctionInfo: a call site's
+view of it (a substituted generic, a filled-in `cpp_template`, a
+synthetic constructor -- `canonical_fi` set) holds none of its own and
+reads the root's, so a fact a body or Phase 2 settles later reaches
+every view. An edge gate must never read `is_readonly` -- a RECEIVER
+fact that also arrives late -- as "the callee mutates nothing"; a
+callee answers "writes no argument" by declaration (`@readonly` /
+`@pure`) only when it has no analyzed facts at all
+(`typesys.declares_no_writes`: a `native` / builtin stub, a protocol
+method's signature -- not a `typing.overload` stub, which carries its
+implementation's facts). A callee with neither facts nor such a
+declaration is conservatively taken to mutate every argument it is
+handed, with one exemption: a slot bound through a call that LENDS the
+caller's storage (`MutationCallEdge.lent` -- a combinator result, a
+handle into it) propagates only the callee's element mutation
+(`elem_mutated_params`), and a body-less callee has no body to write
+through an element with, so `next(it)` over `it = zip(xs, ys)` leaves
+`xs` and `ys` const.
 
 Const inference reads recorded return-borrow roots through
 `typesys.recorded_return_borrow_sources`. Receiver inference retains its

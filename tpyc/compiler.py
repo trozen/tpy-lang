@@ -1176,6 +1176,11 @@ class Compiler:
         return {m for m in names
                 if m in cls._IMPLICIT_STDLIB or m.startswith(prefixes)}
 
+    def module_info(self, name: str) -> 'ModuleInfo | None':
+        """The registered ModuleInfo of module `name` (the table every
+        analyzer's `TypeRegistry.modules` aliases)."""
+        return self._shared_modules.get(name)
+
     def is_user_module(self, compiled: CompiledModule) -> bool:
         """True if the module is user code (lives under the entry point directory)."""
         # The entry point is always user code, even with a synthetic path (e.g.

@@ -2260,11 +2260,6 @@ class TypeOperations:
             # Propagate so the substituted signature still names its ``**kw``
             # slot -- call-site kwargs packing resolves the pack by this name.
             kwarg_name=method.kwarg_name,
-            # Preserve analysis-derived facts -- indices are positional (unaffected by
-            # type substitution) and needed by call-site borrow/mutation checks.
-            return_borrows_from=method.return_borrows_from,
-            mutated_params=method.mutated_params,
-            structural_mutated_params=method.structural_mutated_params,
             # Needed at the call site to recognize the mutable half of an
             # @auto_readonly pair, whose receiver demotion is conditional on
             # whether the call result is actually mutated.

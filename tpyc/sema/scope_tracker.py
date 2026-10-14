@@ -117,8 +117,7 @@ def _call_result_sources(ctx: SemanticContext, expr: TpyExpr,
     # The ROOT carries the fact: a call site's resolved fi can be a
     # specialization synthesized before the callee's body facts landed.
     if fi.root.return_borrows_from is None:
-        pending = ctx.pending_borrow_fact_fis
-        if fi in pending or fi.root in pending:
+        if ctx.return_borrow_fact_pending(fi):
             # Body not analyzed yet (a forward reference): assume every
             # operand, as the borrow registration does.
             return [(src.expr, False)

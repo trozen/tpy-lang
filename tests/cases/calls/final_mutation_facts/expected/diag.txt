@@ -1,0 +1,7 @@
+main.py:115: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:201: warning: Passing borrowed container 'items' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:262: warning: copies list[P] into owned storage; use copy() to make this explicit
+main.py:270: warning: copies Bag[int] into owned storage; use copy() to make this explicit
+main.py:183: warning: Passing borrowed container 'xs' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:189: warning: Passing borrowed container 'ys' to non-readonly parameter 'xs' (function may invalidate references)
+main.py:194: warning: Passing borrowed container 'zs' to non-readonly parameter 'xs' (function may invalidate references)

@@ -7721,6 +7721,24 @@ class MutationCallEdge:
     lent: frozenset[int] = frozenset()
 
 
+def _root_fact(name: str) -> property:
+    """A FunctionInfo mutation fact stored on the root's `_<name>` slot. A
+    view (`canonical_fi` set) is a call site's copy of its root's signature
+    and holds no facts of its own, so writing one through it is a bug."""
+    slot = "_" + name
+
+    def get(self: 'FunctionInfo') -> Any:
+        return getattr(self.root, slot)
+
+    def put(self: 'FunctionInfo', value: Any) -> None:
+        assert self.canonical_fi is None, (
+            f"Internal error: mutation fact '{name}' written through a view "
+            f"of '{self.name}'")
+        setattr(self, slot, value)
+
+    return property(get, put)
+
+
 @dataclass
 class FunctionInfo:
     """Information about a function.
@@ -7829,25 +7847,30 @@ class FunctionInfo:
     # bindings, etc.). Readers using this for qname-based dispatch should
     # tolerate None (treat as "unknown / no qname-based match").
     owning_type_qname: str | None = None
-    mutated_params: Optional[frozenset[int]] = None  # Param indices proven mutated; None = unknown (conservative)
+    # The mutation facts below (the `_`-prefixed slots up to `_call_edges`)
+    # are read through `root` by the public properties after the fields: a
+    # view's slots are never read, so a fact a body or Phase 2 settles later
+    # reaches every call site's copy of the callee.
+    # Param indices proven mutated; None = unknown (conservative).
+    _mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     # Param indices whose address escapes into a mutable Ptr[T] field via
     # `self.FIELD = PARAM`. Used to suppress the `const T&` perf-default param
     # emission that would otherwise trigger `const T* -> T*` in the member
     # initializer list. Populated during body analysis; never propagated
     # transitively (escape is a per-body structural fact).
     addr_escapes_params: frozenset[int] = frozenset()
-    structural_mutated_params: Optional[frozenset[int]] = None
+    _structural_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     # Like mutated_params, but only structural mutations (append/insert/clear/del/etc.) that
     # invalidate element references. Excludes element-ref taking (a=items[0]) and field writes.
     # None = not yet analyzed; frozenset() = no structural mutation.
-    elem_mutated_params: Optional[frozenset[int]] = None
+    _elem_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
     # Like mutated_params, but only mutations THROUGH what the param lends --
     # a loop variable over it, an element or field borrow off it -- not of the
     # param itself (an advance of an iterator, an append). An argument bound
     # through a call that lends its result (`g(zip(xs, ys))`) carries only
     # this: advancing the combinator mutates nothing the caller passed.
     # Subset of mutated_params. None = not yet analyzed.
-    return_borrows_from: Optional[frozenset[int]] = None
+    _return_borrows_from: Optional[frozenset[int]] = field(default=None, compare=False)
     # Param indices whose storage the return value borrows from (8b).
     # -1 = self (methods only); 0, 1, ... = regular params.
     # None = not yet analyzed; frozenset() = no borrow (value/local return).
@@ -7871,10 +7894,10 @@ class FunctionInfo:
     # reference into it, so growing it leaves the result valid (a genexpr's
     # captures, read afresh at each pull).
     # Phase 1 local facts (set during sema, consumed by Phase 2 propagation)
-    direct_mutated_params: Optional[frozenset[int]] = None
-    direct_structural_mutated_params: Optional[frozenset[int]] = None
-    direct_elem_mutated_params: Optional[frozenset[int]] = None
-    call_edges: Optional[list['MutationCallEdge']] = None
+    _direct_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
+    _direct_structural_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
+    _direct_elem_mutated_params: Optional[frozenset[int]] = field(default=None, compare=False)
+    _call_edges: Optional[list['MutationCallEdge']] = field(default=None, compare=False)
     # Running this body may reach a Ctrl-C check point (or any code the
     # compiler cannot see through). False only when the body is INERT:
     # an allowlist walk (sema/may_interrupt.py) found nothing but builtin
@@ -7900,10 +7923,11 @@ class FunctionInfo:
     # override), set before Phase 2: a const receiver cannot call it.
     const_withheld: bool = False
     self_mutated: bool = True  # conservative default until Phase 2 resolves
-    # Back-pointer to the canonical registry FunctionInfo. Set on ephemeral
-    # copies produced by type-param substitution / cpp_template fill-in so
-    # mutation propagation reads facts from the canonical (which evolves
-    # through Phase 1 + Phase 2) rather than from a stale snapshot.
+    # Back-pointer to the canonical registry FunctionInfo. Set on a VIEW --
+    # a call site's copy of the signature (type-param substitution,
+    # cpp_template fill-in, a synthetic constructor) with the root's
+    # parameter positions -- so its mutation facts are the root's (which
+    # evolve through Phase 1 + Phase 2), never a stale snapshot.
     # compare/repr=False to keep dataclass equality and reprs unaffected.
     canonical_fi: Optional['FunctionInfo'] = field(default=None, compare=False, repr=False)
     # Auto-const inference must skip the mutable clone of an @auto_readonly
@@ -8002,6 +8026,15 @@ class FunctionInfo:
     @property
     def root(self) -> 'FunctionInfo':
         return self.canonical_fi or self
+
+    mutated_params = _root_fact("mutated_params")
+    structural_mutated_params = _root_fact("structural_mutated_params")
+    elem_mutated_params = _root_fact("elem_mutated_params")
+    return_borrows_from = _root_fact("return_borrows_from")
+    direct_mutated_params = _root_fact("direct_mutated_params")
+    direct_structural_mutated_params = _root_fact("direct_structural_mutated_params")
+    direct_elem_mutated_params = _root_fact("direct_elem_mutated_params")
+    call_edges = _root_fact("call_edges")
 
     @property
     def overloaded(self) -> bool:
@@ -8166,9 +8199,26 @@ def param_may_be_written(fi: 'FunctionInfo', idx: int) -> bool:
     root = fi.root
     if root.mutated_params is not None:
         return idx in root.mutated_params
-    return not (is_bodyless_binding(fi)
-                and (fi.is_readonly or root.is_readonly or fi.is_pure
-                     or root.is_pure))
+    return not declares_no_writes(fi)
+
+
+def declares_no_writes(fi: 'FunctionInfo') -> bool:
+    """Whether a call to `fi` writes nothing BY DECLARATION: a callee with no
+    body sema analyzes, marked `@readonly` or `@pure`, where the
+    declaration is the whole contract. No analyzed body: a builtin sema
+    handles itself, a declaration-only callee (`is_declaration_only`), or
+    a signature with no def behind it (a protocol method's call info). A
+    callee with recorded mutation facts -- a bodied one, or a stub carrying
+    its implementation's -- answers through them instead: a bodied
+    callee's `is_readonly` speaks for its receiver only."""
+    root = fi.root
+    signature_only = (root.body is None and root.declaration is None
+                      and not root.is_callable_value)
+    return ((root.special_handling or signature_only
+             or is_declaration_only(fi))
+            and (fi.is_readonly or root.is_readonly or fi.is_pure
+                 or root.is_pure)
+            and root.direct_mutated_params is None)
 
 
 def type_parts_any(t: TpyType, pred: Callable[[TpyType], bool],
@@ -8258,7 +8308,7 @@ def type_may_hold(t: TpyType, part: TpyType, registry) -> bool:
     return type_parts_any(t, lambda x: _may_be_same(x, part), registry)
 
 
-def is_declaration_only(fi: 'FunctionInfo', registry) -> bool:
+def is_declaration_only(fi: 'FunctionInfo') -> bool:
     """A callee the compiler sees no body for, so nothing user-written runs
     when it is called: a stub, a native or template binding
     (`is_bodyless_binding`), or a method of a `native_module` (its `...`
@@ -8270,8 +8320,9 @@ def is_declaration_only(fi: 'FunctionInfo', registry) -> bool:
         return False
     if is_bodyless_binding(root):
         return True
-    mod = (registry.get_module(root.originating_module)
-           if root.originating_module else None)
+    compiler = get_current_compiler()
+    mod = (compiler.module_info(root.originating_module)
+           if compiler is not None and root.originating_module else None)
     return mod is not None and mod.is_native_module
 
 
@@ -8302,17 +8353,12 @@ def is_bodyless_binding(fn) -> bool:
 def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     """Recorded source indices; missing facts are not proof of an owning result.
 
-    Read off the ROOT fi: a call site's `resolved_function_info` can be a
-    specialization synthesized before the callee's body facts landed, so the
-    copy still carries None (or a stale set) where the fact is now known --
-    two readers of the same call site would otherwise disagree. Every
-    PROVENANCE reader of the fact goes through here; a writer stamps the raw
-    fi. The readiness gate in `_register_call_result_borrow` is the one reader
-    that stays on the raw field on purpose: it pairs a None against
-    `ctx.pending_borrow_fact_fis`, which holds the registry FIs, so the
-    membership test and the None it qualifies must be about the same fi the
-    call site resolved to. That leaves a synthesized fi's None unqualified
-    (BUGS.md#pending-generic-receiver-call-borrow-unregistered).
+    Like every mutation fact, `return_borrows_from` reads through the ROOT
+    fi: a call site's `resolved_function_info` can be a view synthesized
+    before the callee's body facts landed, and its root carries the fact
+    once known. A None here means "not analyzed yet" only for a root in
+    `ctx.pending_borrow_fact_fis`; the readiness gates test the root's
+    membership for the same reason.
     """
     return fi.root.return_borrows_from or frozenset()
 

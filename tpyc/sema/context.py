@@ -3226,6 +3226,15 @@ class SemanticContext:
     # --- Diagnostics ---
     diagnostics: list[Diagnostic] = field(default_factory=list)
 
+    def return_borrow_fact_pending(self, fi: FunctionInfo) -> bool:
+        """Whether it is still unknown if `fi`'s result borrows an
+        argument, because its body in this import component has not been
+        analyzed yet. The set holds registry infos, so a call site's view
+        (a substituted generic, a constructor info) asks through its root."""
+        root = fi.root
+        return (root.return_borrows_from is None
+                and root in self.pending_borrow_fact_fis)
+
     def is_readonly_name(self, name: str) -> bool:
         """Check if a variable has readonly provenance in its declared scope type.
 

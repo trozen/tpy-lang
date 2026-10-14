@@ -89,9 +89,9 @@ from ..compilation_context import get_current_compiler
 from ..prescan import block_writes, loop_bindings_of
 from ..type_def_registry import is_free_copy_scalar
 from ..typesys import (
-    ReadonlyType, TpyType, is_bodyless_binding, is_declaration_only,
-    is_indirection_type, type_may_hold, unwrap_own, unwrap_qualifiers,
-    unwrap_readonly, unwrap_ref_type,
+    ReadonlyType, TpyType, declares_no_writes, is_bodyless_binding,
+    is_declaration_only, is_indirection_type, type_may_hold, unwrap_own,
+    unwrap_qualifiers, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import call_returns_cpp_ref
 from .iter_loans import iterated_storage
@@ -692,8 +692,8 @@ def call_write(ctx: 'SemanticContext', parts: CallParts,
     (its truthy answer is the label returned with OPERAND), or anything
     at all. A `@pure` callee writes nothing. Before mutation facts are
     final (`facts_final` False) a callee with a body may write anything;
-    once they are, an unanalyzed one declared `@readonly` writes nothing,
-    and a body writes its receiver unless it is known not to and an
+    a callee that declares it writes nothing (`declares_no_writes`) does
+    not, and a body writes its receiver unless it is known not to and an
     argument only at a parameter it may mutate. A builtin binding (or one
     sema handles itself, `special_handling`) writes its receiver unless
     `@readonly` (an `@auto_readonly` accessor's mutable clone does not),
@@ -706,8 +706,7 @@ def call_write(ctx: 'SemanticContext', parts: CallParts,
     bodyless = root.special_handling or is_bodyless_binding(root)
     if not bodyless and not facts_final:
         return None if root.is_pure else (CallWrite.BODY, None)
-    if root.is_pure or (root.is_readonly
-                        and root.direct_mutated_params is None):
+    if root.is_pure or declares_no_writes(fi):
         return None
     if not bodyless and globals_written:
         return CallWrite.GLOBAL, None
@@ -1084,7 +1083,7 @@ class _SourceProof(InertWalk):
     def admitted(self, fi: 'FunctionInfo') -> bool:
         root = fi.root
         return (root.is_pure or root.special_handling
-                or is_declaration_only(fi, self.ctx.registry))
+                or is_declaration_only(fi))
 
     def on_node(self, node: 'TpyExpr | TpyStmt') -> None:
         for call in implicit_calls(node):

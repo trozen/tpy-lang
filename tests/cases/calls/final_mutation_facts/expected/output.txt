@@ -1,0 +1,22 @@
+ctor_after 3
+ctor_after 11 111
+ctor_before 3
+ctor_before 21 121
+ctor_direct_order 6
+ctor_global 8
+ctor_borrow 2
+generic_borrow 2
+generic_borrow 2
+imported_readonly_borrow 2
+imported_readonly_loop_write 2 3
+field_only_silent 12 12
+field_only_silent 12 12
+bodyless_readonly_silent 6 6
+bodyless_pure_silent 6 6
+ctor_generator 4
+ctor_closure 5
+ctor_comprehension [2, 3]
+overload_stub_write 2
+auto_readonly_clone_write 1
+forward_generic_borrow 5 5 2
+pending_generic_receiver a long enough name to live on the heap a long enough name to live on the heap
