@@ -5,6 +5,25 @@
 
 namespace tpyapp::main {
 
+// # --- subscript with a value-type key: generator body
+// def gen_kind(tb: TemplateKindBag, k: Kind) -> Iterator[int32]:
+//     yield tb[k].n  # tpyc: ok                                   # -> S_RESUME_0
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_kind::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __state = S_RESUME_0;
+        return tb.at(static_cast<int32_t>(k)).n;
+    }
+    case S_RESUME_0: {  // after: yield tb[k].n  # tpyc: ok
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 // # --- subscript: generator body
 // def gen_member(b: MemberBag) -> Iterator[int32]:
 //     for k in range(3):

@@ -25,6 +25,7 @@ struct Reader;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+struct __gen_gen_kind;
 struct __gen_gen_member;
 struct __gen_gen_template;
 struct __gen_gen_function;
@@ -40,6 +41,11 @@ int32_t via_ptr(::nb::Root* p, const Holder& h);
 int32_t via_proven(::nb::Root* p);
 // def by_kind(b: KindBag, k: Kind) -> int32:
 int32_t by_kind(::nb::Bag& b, ::nb::Kind k);
+// def kind_keys(mb: readonly[MemberKindBag], tb: TemplateKindBag,
+//               fb: FunctionKindBag, k: Kind) -> int32:
+int32_t kind_keys(const ::nb::Bag& mb, const ::nb::Bag& tb, const ::nb::Bag& fb, ::nb::Kind k);
+// def gen_kind(tb: TemplateKindBag, k: Kind) -> Iterator[int32]:
+__gen_gen_kind gen_kind(const ::nb::Bag& tb, ::nb::Kind k);
 // def free_member(b: MemberBag, k: int32) -> int32:
 int32_t free_member(const ::nb::Bag& b, int32_t k);
 // def free_template(b: TemplateBag, k: int32) -> int32:
@@ -218,6 +224,31 @@ struct __coro_async_function {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_async_function&) {
         return os << "<coroutine async_function>";
+    }
+};
+
+// def gen_kind(tb: TemplateKindBag, k: Kind) -> Iterator[int32]:
+struct __gen_gen_kind : public ::tpy::next_iter_mixin<__gen_gen_kind, int32_t> {
+    ::tpy::frame_state __state;
+    const ::nb::Bag& tb;
+    ::nb::Kind k;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_kind(const ::nb::Bag& tb, ::nb::Kind k_)
+        : __state(S_INITIAL),
+          tb(tb),
+          k(std::move(k_)) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_gen_kind& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_kind&) {
+        return os << "<generator gen_kind>";
     }
 };
 

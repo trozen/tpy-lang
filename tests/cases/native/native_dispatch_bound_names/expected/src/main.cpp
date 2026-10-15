@@ -43,6 +43,20 @@ int32_t by_kind(::nb::Bag& b, ::nb::Kind k) {
     return b.at(static_cast<int32_t>(k)).n;
 }
 
+// # --- subscript with a value-type key: free function, a readonly receiver
+// def kind_keys(mb: readonly[MemberKindBag], tb: TemplateKindBag,
+//               fb: FunctionKindBag, k: Kind) -> int32:
+//     return mb[k].n + tb[k].n + fb[k].n  # tpyc: ok
+int32_t kind_keys(const ::nb::Bag& mb, const ::nb::Bag& tb, const ::nb::Bag& fb, ::nb::Kind k) {
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(mb.at(k).n, tb.at(static_cast<int32_t>(k)).n)), ::nb::bag_get(fb, k).n));
+}
+
+
+// def gen_kind(tb: TemplateKindBag, k: Kind) -> Iterator[int32]:
+__gen_gen_kind gen_kind(const ::nb::Bag& tb, ::nb::Kind k) {
+    return __gen_gen_kind(tb, k);
+}
+
 // # --- subscript: free function
 // def free_member(b: MemberBag, k: int32) -> int32:
 //     return b[k].n  # tpyc: ok
@@ -269,6 +283,10 @@ std::vector<int32_t> comp_function(const ::nb::Bag& b) {
 //     kb = KindBag()
 //     k = second_kind()
 //     print("template arg:", by_kind(kb, k))
+//     mkb = MemberKindBag()
+//     tkb = TemplateKindBag()
+//     fkb = FunctionKindBag()
+//     print("kind key:", kind_keys(mkb, tkb, fkb, k), list(gen_kind(tkb, k)))
 //     print("ptr proven:", via_proven(rt))
 //     a = MergeBag()
 //     o = MergeBag()
@@ -299,6 +317,10 @@ void main() {
     ::nb::Bag kb = ::nb::Bag();
     ::nb::Kind k = ::nb::second_kind();
     std::cout << "template arg:" << " " << ::tpyapp::main::by_kind(kb, k) << "\n" << ::tpy::check_signals;
+    ::nb::Bag mkb = ::nb::Bag();
+    ::nb::Bag tkb = ::nb::Bag();
+    ::nb::Bag fkb = ::nb::Bag();
+    std::cout << "kind key:" << " " << ::tpyapp::main::kind_keys(mkb, tkb, fkb, k) << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::gen_kind(tkb, k))) << "\n" << ::tpy::check_signals;
     std::cout << "ptr proven:" << " " << ::tpyapp::main::via_proven(&rt) << "\n" << ::tpy::check_signals;
     ::nb::Bag a = ::nb::Bag();
     ::nb::Bag o = ::nb::Bag();

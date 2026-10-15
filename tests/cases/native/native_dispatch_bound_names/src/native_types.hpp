@@ -8,12 +8,17 @@ struct Item {
     int32_t n;
 };
 
+// A C++ enum bound as a @native value type.
+enum class Kind : int32_t { First = 0, Second = 1 };
+
 // Three containers over the same storage, one per `__getitem__` binding
 // form: a renamed member, a cpp_template, a free function.
 struct Bag {
     std::vector<Item> items{{10}, {20}, {30}};
     Item& at(int32_t i) { return items[static_cast<std::size_t>(i)]; }
     const Item& at(int32_t i) const { return items[static_cast<std::size_t>(i)]; }
+    Item& at(Kind k) { return at(static_cast<int32_t>(k)); }
+    const Item& at(Kind k) const { return at(static_cast<int32_t>(k)); }
     // Adds each of `o`'s counts to this bag's.
     void merge(const Bag& o) {
         for (std::size_t i = 0; i < items.size(); ++i) items[i].n += o.items[i].n;
@@ -22,6 +27,8 @@ struct Bag {
 
 inline Item& bag_get(Bag& b, int32_t i) { return b.at(i); }
 inline const Item& bag_get(const Bag& b, int32_t i) { return b.at(i); }
+inline Item& bag_get(Bag& b, Kind k) { return b.at(k); }
+inline const Item& bag_get(const Bag& b, Kind k) { return b.at(k); }
 
 // An element-typed container whose `__getitem__` stub binds `at`; it has
 // no `__getitem__` member, so only the bound name builds.
@@ -47,8 +54,6 @@ struct Root {
     void bump() { item.n += 1; }
 };
 
-// A C++ enum bound as a @native value type, passed to a template method.
-enum class Kind : int32_t { First = 0, Second = 1 };
 inline Kind second_kind() { return Kind::Second; }
 
 }  // namespace nb

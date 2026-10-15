@@ -8,5 +8,6 @@ ret: 11 21 31
 ptr: 40 42 81
 ptr after: 41 43
 template arg: 20
+kind key: 60 [20]
 ptr proven: 44
 merged: 20

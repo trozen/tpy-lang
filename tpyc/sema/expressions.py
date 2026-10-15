@@ -5828,6 +5828,7 @@ class ExpressionAnalyzer:
                     key_t, ret_t = kr
                     if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
                         self._tag_record_getitem(expr, bare_obj, ret_t, index_type)
+                        self._stamp_getitem_callee(expr, bare_obj, ro_obj)
                         if ro_obj:
                             ret_t = _readonly_result(ret_t)
                         return make_ref(ret_t)

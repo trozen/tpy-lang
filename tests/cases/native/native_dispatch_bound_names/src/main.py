@@ -64,6 +64,32 @@ class KindBag:
     def by_kind(self, k: Kind) -> Item: ...
 
 
+# A non-integer (value-type) key binds the same three ways an int32 key does.
+@native("nb::Bag")
+class MemberKindBag:
+    def __init__(self) -> None: ...
+
+    @native("at")
+    @readonly
+    def __getitem__(self, k: Kind) -> Item: ...
+
+
+@native("nb::Bag")
+class TemplateKindBag:
+    def __init__(self) -> None: ...
+
+    @cpp_template("{self}.at(static_cast<int32_t>({0}))")
+    def __getitem__(self, k: Kind) -> Item: ...
+
+
+@native("nb::Bag")
+class FunctionKindBag:
+    def __init__(self) -> None: ...
+
+    @native("nb::bag_get", function=True)
+    def __getitem__(self, k: Kind) -> Item: ...
+
+
 @native("nb::Root")
 class Root:
     def __init__(self) -> None: ...
@@ -109,6 +135,17 @@ def via_proven(p: Ptr[Root]) -> int32:
 # --- template method: a @native value-type (C++ enum) argument
 def by_kind(b: KindBag, k: Kind) -> int32:
     return b.by_kind(k).n  # tpyc: ok
+
+
+# --- subscript with a value-type key: free function, a readonly receiver
+def kind_keys(mb: readonly[MemberKindBag], tb: TemplateKindBag,
+              fb: FunctionKindBag, k: Kind) -> int32:
+    return mb[k].n + tb[k].n + fb[k].n  # tpyc: ok
+
+
+# --- subscript with a value-type key: generator body
+def gen_kind(tb: TemplateKindBag, k: Kind) -> Iterator[int32]:
+    yield tb[k].n  # tpyc: ok
 
 
 class Cell:
@@ -256,6 +293,10 @@ def main() -> None:
     kb = KindBag()
     k = second_kind()
     print("template arg:", by_kind(kb, k))
+    mkb = MemberKindBag()
+    tkb = TemplateKindBag()
+    fkb = FunctionKindBag()
+    print("kind key:", kind_keys(mkb, tkb, fkb, k), list(gen_kind(tkb, k)))
     print("ptr proven:", via_proven(rt))
     a = MergeBag()
     o = MergeBag()
