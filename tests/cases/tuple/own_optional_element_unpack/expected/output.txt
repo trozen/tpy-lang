@@ -1,0 +1,56 @@
+free-keep 11
+free 111
+free 1 3
+ctor-keep 10
+ctor 0 3
+ctor-field 10
+method-keep 12
+method 112
+method 2 3
+closure-keep 13
+closure 113
+closure 3 3
+match-keep 14
+match 114
+match 4 3
+errret-keep 15
+errret 115
+errret 8
+for-keep 10
+for 110
+for 0 3
+for-keep 11
+for 111
+for 1 3
+ctor-keep 10
+ctor 0 3
+methsrc-keep 16
+methsrc 116
+methsrc 6 3
+twoopt-keep-a 17
+twoopt-keep-b 28
+twoopt-a 117
+twoopt-b 128
+twoopt 3
+nonzero-keep 18
+nonzero 118
+nonzero 8 3
+discard-keep 20
+discard 120
+discard 9 3
+mixed-keep 21
+mixed 121
+mixed 32 11 3
+whole-keep 22
+whole 122
+whole 12 3
+take 126
+take 16 3
+wholeempty True 17 3
+cbsrc-keep 28
+cbsrc 128
+cbsrc 18 3
+ownrec-keep 24
+ownrec 124 14 3
+pqnone-keep 25
+pqnone 15 3

@@ -3470,6 +3470,8 @@ class THIRTupleUnpack(THIRStmt):
         "move_pointee" -> T name = std::move(*std::get<i>(tup));
                           // the same off a pointer element
         "assign" -> name = std::get<i>(tup);   // reused target, no decl
+        "opt_ptr" -> T* name = std::get<i>(tup);   // ptr-repr Optional; the
+                     // "optional_to_ptr" wrap lifts a storage element
         "ptr_variant" -> ::tpy::Union<A*, B*> name =
                              ::tpy::to_ptr_variant(std::get<i>(tup));
                          // Own[A | B] element off the value-variant capture
@@ -3520,8 +3522,9 @@ class THIRTupleUnpack(THIRStmt):
     binds: tuple[str | None, ...] = ()
     source_cpp: str | None = None
     # Per-element pre-write wrap for the frame modes and the "assign" arm:
-    # "" / "move" (the only produced tokens -- ref elements reject at
-    # lowering today).
+    # "" / "move" (ref elements reject at lowering today); an "opt_ptr"
+    # target's "optional_to_ptr" marks a storage-form element
+    # (`T* a = ::tpy::optional_to_ptr(std::get<i>(tup));`).
     wraps: tuple[str, ...] = ()
     # Per-target frame field of a "frame_rebind_ptr" bind, None elsewhere
     # (empty: no such bind).

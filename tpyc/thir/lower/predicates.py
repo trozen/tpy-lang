@@ -9456,8 +9456,8 @@ def _owned_tuple_call_ret(ret: TpyType | None, analyzer) -> 'TupleType | None':
                     or isinstance(ew, RecursiveAliasInstanceType)
                     # The Own[P | None] element (`pair() ->
                     # tuple[Own[P|None], int32]`): a storage-optional
-                    # element the pointer-lift unpack consumes (opt_ptr
-                    # targets off the tuple_to_pointer'd capture).
+                    # element an opt_ptr target borrows from the capture
+                    # through `optional_to_ptr`.
                     or ((ew_opt := pointer_repr_optional(ew)) is not None
                         and _f1_record(unwrap_readonly(ew_opt.inner),
                                        analyzer))

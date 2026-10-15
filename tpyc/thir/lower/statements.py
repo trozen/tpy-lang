@@ -15796,6 +15796,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _witness("stmt.tuple_unpack.ptr_tuple_pointee_move")
         source_wrap_cpp = None
         ref_name_source = False
+        # Per-target pre-bind wraps of an RVALUE source's targets.
+        opt_wraps = [""] * len(bind_tags)
         if any(b in ("ref", "ptr", "opt_ptr", "global_ptr")
                for b in bind_tags):
             # Borrow/opt-ptr targets read `std::get<i>` off the borrow pointer
@@ -15854,32 +15856,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 ref_name_source = True
                 _witness("stmt.tuple_unpack.ref_global_source")
             elif isinstance(stmt.value, (TpyCall, TpyMethodCall)):
-                # A borrow-tuple-returning CALL source (`a, b = both(t1,
-                # t2)` / `conn, _ = srv.accept()`): the result is ALREADY
-                # borrow-form, so the plain RVALUE capture binds it
-                # (`auto __tup_N = both(t1, t2);`) and the ref/opt_ptr
-                # targets read `std::get` off it -- no lift. Falls through
-                # to the RVALUE tail; the call's own gates decide admission.
+                # A CALL source binds the plain RVALUE capture (`auto
+                # __tup_N = both(t1, t2);`), which lives to the end of the
+                # block, and the ref/opt_ptr targets read `std::get` off
+                # it -- no lift. Falls through to the RVALUE tail; the
+                # call's own gates decide admission.
                 _cu_vt = analyzer.get_expr_type(stmt.value)
                 _cu_vb = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
                     _cu_vt))) if _cu_vt is not None else None)
-                if (isinstance(_cu_vb, TupleType)
-                        and any(isinstance(e, OwnType)
-                                for e in _cu_vb.element_types)
-                        and _owned_tuple_call_ret(_cu_vt, analyzer)
-                        is not None):
-                    # A per-element-own STORAGE result with an Own[P|None]
-                    # element (`p, n = pair()`): the whole capture lifts via
-                    # tuple_to_pointer (`auto __tup_1 = ::tpy::
-                    # tuple_to_pointer<std::tuple<P*, int32_t>>(pair());`)
-                    # and the opt_ptr targets read the pointers bare.
-                    source_wrap_cpp = _borrow_tuple_wrap_cpp(
-                        stmt.target_types, analyzer)
-                    if source_wrap_cpp is None:
-                        note_detail("tuple_unpack.ref_source_form")
-                        raise ThirUnsupported("stmt.tuple_unpack")
-                    subscript_wrap_src = True
-                    _witness("stmt.tuple_unpack.call_storage_wrap")
+                if _storage_form_tuple_return(
+                        stmt.value.resolved_function_info):
+                    # A STORAGE-form result (`Own[tuple[P | None, ..]]`, or
+                    # per-element Own with no borrowed element) holds an
+                    # Optional element as `std::optional<P>`: its opt_ptr
+                    # target borrows from the holder (`P* o =
+                    # ::tpy::optional_to_ptr(std::get<0>(__tup_N));`).
+                    # Lifting the call rvalue through `tuple_to_pointer`
+                    # instead would point into a temporary dead at the `;`.
+                    for i, b in enumerate(bind_tags):
+                        if b == "opt_ptr":
+                            opt_wraps[i] = "optional_to_ptr"
+                    _witness("stmt.tuple_unpack.call_storage_source")
                 elif not (isinstance(_cu_vb, TupleType)
                           and _cu_vb.has_pointer_repr_element()):
                     note_detail("tuple_unpack.ref_source_form")
@@ -15983,7 +15980,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         rv_sb = (TupleSourceBind.NAME_CREF if lvalue_select
                  else TupleSourceBind.RVALUE)
         rv_binds, rv_wraps = _move_owned_buffer_targets(
-            stmt, rv_sb, bind_tags, declared, analyzer)
+            stmt, rv_sb, bind_tags, declared, analyzer,
+            wraps_in=opt_wraps if any(opt_wraps) else None)
         return THIRTupleUnpack(
             source="", targets=tuple(stmt.targets),
             target_cpps=tuple(target_cpps), binds=rv_binds, wraps=rv_wraps,

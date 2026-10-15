@@ -4498,6 +4498,14 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 # so the target lifts per element into the pointer variant.
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"::tpy::to_ptr_variant({get});\n")
+            elif bind == "opt_ptr":
+                # A storage-form element (`std::optional<T>` in an owning
+                # call's capture) lifts to the pointer the target borrows;
+                # a borrow-form element is that pointer already.
+                if stmt.wraps and stmt.wraps[i] == "optional_to_ptr":
+                    get = f"::tpy::optional_to_ptr({get})"
+                out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
+                          f"{get};\n")
             elif bind in ("move", "move_pointee"):
                 moved = (f"std::move({get})" if bind == "move"
                          else f"std::move(*{get})")

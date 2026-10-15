@@ -2308,10 +2308,10 @@ def _standalone_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an, *,
     if not is_new:
         return K.UNPACK_PLAIN
     if is_owned:
-        # The pointer-lift capture already holds an `Own[P | None]`
-        # element as `P*`; an `Own[A | B]` one as the value variant, lifted
-        # per element. A record, a recursive wrapper or a container moves
-        # out of the holder.
+        # The capture holds an `Own[P | None]` element as the storage
+        # optional and an `Own[A | B]` one as the value variant; the target
+        # borrows from the holder through a per-element lift. A record, a
+        # recursive wrapper or a container moves out of the holder.
         if _p._optional_ptr_borrow(tt, an) is not None:
             return K.UNPACK_OPT_PTR
         if _p._eligible_ptr_union(tt, an) is not None:

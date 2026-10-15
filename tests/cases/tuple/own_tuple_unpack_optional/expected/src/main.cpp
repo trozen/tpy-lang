@@ -26,8 +26,8 @@ int32_t borrow(const P* p) {
 //     print(borrow(p))
 //     print(n)
 void main() {
-    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(::tpyapp::main::pair());
-    P* p = std::get<0>(__tup_1);
+    auto __tup_1 = ::tpyapp::main::pair();
+    P* p = ::tpy::optional_to_ptr(std::get<0>(__tup_1));
     int32_t n = std::get<1>(__tup_1);
     std::cout << ::tpyapp::main::borrow(p) << "\n" << ::tpy::check_signals;
     std::cout << n << "\n" << ::tpy::check_signals;

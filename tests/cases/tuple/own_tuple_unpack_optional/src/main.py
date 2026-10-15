@@ -1,8 +1,8 @@
 # Tuple-unpacking a return of `tuple[Own[P|None], ...]`: the source tuple
 # is in storage form (`std::tuple<std::optional<P>, ...>`) because the
-# Own pushes per-element storage form via own_tuple_target. The unpack
-# must wrap the source with tuple_to_pointer so the pointer-form local
-# slot gets a `P*` rather than `std::optional<P>`.
+# Own pushes per-element storage form via own_tuple_target. The plain
+# capture holds the call result, and the pointer-form local borrows from
+# it through optional_to_ptr (the capture outlives the local's reads).
 from tpy import int32, Own
 
 

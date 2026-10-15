@@ -1277,8 +1277,6 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # `y = ::tpy::optional_to_ptr(x);`
     "reseat.opt_storage_call",      # OPT_STORAGE_CALL reseat re-fills the
                                     # decl slot and re-lifts the pointer
-    "stmt.tuple_unpack.call_storage_wrap",  # per-element-own call result
-                                    # lifts whole via tuple_to_pointer
     "name.func_ref_targs",          # generic fn ref spells the template-args
                                     # suffix (identity<int32_t>)
     "name.async_factory_wrap",      # async-def ref at a Callable slot:
@@ -2573,6 +2571,10 @@ THIR_FACES: frozenset[str] = frozenset({
     "stmt.tuple_unpack.call_borrow_source",  # `a, b = both(t1, t2)` -- the
                                     # borrow-form call result captures via
                                     # the plain RVALUE bind, no lift
+    "stmt.tuple_unpack.call_storage_source",  # `o, k = mko(1)` -- a
+                                    # storage-form call result, the same
+                                    # RVALUE bind; an opt_ptr target reads
+                                    # `optional_to_ptr(std::get<i>(..))`
     # `ref, owned = split(p)` -- a MIXED borrow+Own call result. Admission is
     # the only distinguishing site: the same RVALUE capture serves both slot
     # shapes, so the ref/move target renders are the shared ones.
