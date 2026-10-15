@@ -1348,7 +1348,7 @@
   ""
  ],
  "loop_decl__own__prop__local": [
-  "stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   ""
  ],
  "loop_decl__rec__meth__local": [

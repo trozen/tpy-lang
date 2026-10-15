@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from ..codegen_cpp.forms import LocalBinding
 from ..parse import RebindStorage
 from ..thir import nodes as th
 from ..thir.lower.storage import record_layout
@@ -212,7 +213,8 @@ def test_actual_producer_shapes_and_deterministic_dump(artifacts: Artifacts) -> 
     assert functions["replaced"].body[0].form is th.Form.BORROW
     assert functions["replaced"].body[2].rebind_storage is RebindStorage.OWN
     assert functions["in_place"].body[1].rebind_storage is RebindStorage.IN_PLACE
-    assert functions["owned_then_borrowed"].body[0].kind is th.PtrSlotKind.RECORD_RVALUE
+    assert (functions["owned_then_borrowed"].body[0].cpp_local_representation
+            is LocalBinding.REBIND_SLOT)
     assert isinstance(functions["copied"].body[1].init, th.THIRCopy)
     assert isinstance(functions["moved"].body[1].init, th.THIRMove)
     for name, operation in (("shared", MIRConstruct), ("copied", MIRCopy), ("moved", MIRMove)):

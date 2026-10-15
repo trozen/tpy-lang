@@ -130,6 +130,7 @@ if TYPE_CHECKING:
 
 from .alias_rebind import (decide_rebind_storage, finalize_pointer_tuples,
                            stamp_bind_kind, stamp_unpack_rebinds)
+from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
 from .compatibility import TupleSink
@@ -2550,7 +2551,15 @@ class StatementAnalyzer:
             self._declare_carried_in_arms(
                 [(stmt.else_body, carried_else, bindings_after_else)], predecl)
         elif isinstance(stmt, TpyWhile):
+            declared_before = set(self.ctx.func.var_scope_depth)
             head = self._analyze_condition_walrus(stmt.condition)
+            # A walrus the head declares binds an object of its own again
+            # on every pass, so for the body it is a loop-body binding: an
+            # alias kept from an earlier pass is the declaration twin's
+            # shared-slot case. A binder that borrows shares no slot.
+            head_binders = sorted(
+                n for n in condition_walrus_targets(stmt.condition)
+                - declared_before if n in self.ctx.func.owned_locals)
             self.narrowing.warn_truthy_value_optionals(stmt.condition)
             then_type_facts, _ = self.narrowing.condition_type_facts(stmt.condition)
             ptr_nn, _ = self.narrowing.condition_ptr_null_facts(stmt.condition)
@@ -2584,8 +2593,17 @@ class StatementAnalyzer:
                 # that method only handles type narrowing, not ptr non-null.
                 self.ctx.func.non_null_ptr_vars |= ptr_nn
                 self._apply_range_facts(range_true)
-                for s in stmt.body:
-                    self.analyze_stmt(s)
+                saved_binders = {n: self.ctx.local_decl_of(n)
+                                 for n in head_binders}
+                for n, (_depth, block) in saved_binders.items():
+                    self.ctx.declare_local(n, inner_scope.depth,
+                                           block_depth=block)
+                try:
+                    for s in stmt.body:
+                        self.analyze_stmt(s)
+                finally:
+                    for n, saved in saved_binders.items():
+                        self.ctx.restore_local_decl(n, saved)
             self._finish_loop_clauses(
                 stmt, inner_scope, edges, before=before,
                 consumed_before=consumed_before_loop,
@@ -2594,17 +2612,22 @@ class StatementAnalyzer:
                 # `if` arm's else-body.
                 head_exit_assigned=head.if_false)
         elif isinstance(stmt, TpyForEach):
-            if stmt.is_tuple_unpack and stmt.body:
-                # The head unpack is over the loop's per-iteration holder
-                # whoever built the node (parser, genexpr, a macro), so the
-                # ForEach's own fact is what marks it.
-                head = stmt.body[0]
-                if isinstance(head, TpyTupleUnpack):
-                    head.is_loop_head = True
-                    head.loop_body_rebinds = frozenset(scan_reassigned_vars(
-                        stmt.body[1:],
-                        pre_declared={t for t in head.targets
-                                      if t is not None}).reassigned)
+            # The head unpack is over the loop's per-iteration holder whoever
+            # built the node (parser, genexpr, a macro), so the ForEach's own
+            # fact is what marks it.
+            head = (stmt.body[0] if stmt.is_tuple_unpack and stmt.body
+                    and isinstance(stmt.body[0], TpyTupleUnpack) else None)
+            # The rebinds a binding of the loop sees: each pass binds the
+            # variable (or the head's targets) afresh, so only its own body's
+            # count. Decided once here, for every binding the loop makes.
+            stmt.loop_body_rebinds = frozenset(scan_reassigned_vars(
+                stmt.body[1:] if head is not None else stmt.body,
+                pre_declared=({t for t in head.targets if t is not None}
+                              if head is not None else {stmt.var}))
+                .reassigned)
+            if head is not None:
+                head.is_loop_head = True
+                head.loop_body_rebinds = stmt.loop_body_rebinds
             if stmt.is_async:
                 self._analyze_async_for(stmt)
                 return
@@ -2844,9 +2867,19 @@ class StatementAnalyzer:
                             for idx in sorted(deferred, reverse=True):
                                 del self.ctx.diagnostics[idx]
                 # Also suppress copy warnings when elem_type is Own[T]
-                # (e.g. Iterable[Own[T]] params) -- elements will be moved.
+                # (e.g. Iterable[Own[T]] params) -- elements will be moved,
+                # unless a rebind re-points the variable at an object it does
+                # not own (the declaration twin's copy).
                 if (stmt.consuming_iter_fi is None
-                        and isinstance(elem_type, OwnType)):
+                        and isinstance(elem_type, OwnType)
+                        and (not first_binding_storage(
+                            "loop", elem_type,
+                            rebound=stmt.var in stmt.loop_body_rebinds,
+                            hoisted=stmt.var
+                            in self.ctx.func.escape_hoisted_vars)
+                             .pointer
+                             or self.ctx.func.rebinds_keep_ownership(
+                                 stmt.var))):
                     deferred = self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
                     if deferred:
                         for idx in sorted(deferred, reverse=True):
@@ -6341,8 +6374,28 @@ class StatementAnalyzer:
                     self.ctx.func.frame_rebind_sites[stmt] = None
                     var_type = existing_type
                 else:
-                    var_type, stmt.init = self.compat.coerce_reassignment(
-                        stmt.name, existing_type, init_type, stmt.init, stmt)
+                    site_kind = ("loop" if stmt.name in self.ctx.func.loop_vars
+                                 else "with" if stmt.name
+                                 in self.ctx.func.with_target_names
+                                 else None)
+                    if (isinstance(existing_type, OwnType)
+                            and site_kind is not None
+                            and first_binding_storage(
+                                site_kind, existing_type, rebound=True,
+                                hoisted=False).pointer):
+                        # A rebound owning for or with target is a pointer
+                        # over its object (the storage policy): a rebind
+                        # re-points it rather than copying into it, so it
+                        # checks against the pointee, and the binding keeps
+                        # its owning type.
+                        _pointee, stmt.init = self.compat.coerce_reassignment(
+                            stmt.name, existing_type.wrapped, init_type,
+                            stmt.init, stmt)
+                        var_type = existing_type
+                    else:
+                        var_type, stmt.init = self.compat.coerce_reassignment(
+                            stmt.name, existing_type, init_type, stmt.init,
+                            stmt)
                 if var_type != existing_type:
                     # Keep codegen and `# tpyc: type()` in sync with the
                     # original declaration when the resolved type changed.

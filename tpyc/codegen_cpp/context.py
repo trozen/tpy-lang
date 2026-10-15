@@ -20,7 +20,7 @@ from ..typesys import (
     is_protocol_type, unwrap_readonly, unwrap_qualifiers, ensure_qualified, unwrap_ref_type,
     is_union_or_optional_type,
     polymorphic_source_is_pointer, param_takes_ownership,
-    declared_result_readonly, shadowed_local_cpp_name,
+    declared_result_readonly, shadowed_local_cpp_name, unwrap_own,
 )
 from ..parse import (
     SourceLocation, TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
@@ -760,8 +760,9 @@ def loop_var_binding(
     kind: LoopBinding, elem_type: TpyType, cpp_var: str, deref_expr: str,
     hoisted_tuple_lift_cpp: str | None = None,
     owned_step_expr: str | None = None,
-) -> str:
-    """Return the C++ loop variable binding line (no trailing newline) of
+    owned_slot: str | None = None,
+) -> list[str]:
+    """Return the C++ loop variable binding lines of
     the binding `kind` the loop variable's record decided
     (`loop_binding_kind`, asked once by the binding table's planner).
 
@@ -777,28 +778,36 @@ def loop_var_binding(
     owned_step_expr: the loop's step as an owned value for an `Own[T]` loop
     variable (OWNED / OWNED_STORAGE) -- the step's own value as an rvalue
     reference when the iterator owns it, else a copy.
+
+    owned_slot: an OWNED variable the body rebinds is a pointer over the
+    step, named so (`auto&& __own_N = <owned step>; T* x = &__own_N;`):
+    a rebind re-points it and an alias keeps the step's object.
     """
     if kind in (LoopBinding.OWNED, LoopBinding.OWNED_STORAGE):
         assert owned_step_expr is not None, "an Own loop variable needs the owned step"
+        if kind is LoopBinding.OWNED and owned_slot is not None:
+            pointee = unwrap_own(elem_type).to_cpp()
+            return [f"auto&& {owned_slot} = {owned_step_expr};",
+                    f"{pointee}* {cpp_var} = &{owned_slot};"]
         if kind is LoopBinding.OWNED:
-            return f"auto&& {cpp_var} = {owned_step_expr};"
-        return owned_storage_binding(elem_type, cpp_var, owned_step_expr)
+            return [f"auto&& {cpp_var} = {owned_step_expr};"]
+        return [owned_storage_binding(elem_type, cpp_var, owned_step_expr)]
     if isinstance(elem_type, OwnType):
         elem_type = elem_type.wrapped
     match kind:
         case LoopBinding.ASSIGN:
             if hoisted_tuple_lift_cpp is not None:
-                return (f"{cpp_var} = ::tpy::tuple_to_pointer"
-                        f"<{hoisted_tuple_lift_cpp}>({deref_expr});")
-            return f"{cpp_var} = {deref_expr};"
+                return [f"{cpp_var} = ::tpy::tuple_to_pointer"
+                        f"<{hoisted_tuple_lift_cpp}>({deref_expr});"]
+            return [f"{cpp_var} = {deref_expr};"]
         case LoopBinding.REFERENCE:
-            return f"auto&& {cpp_var} = {deref_expr};"
+            return [f"auto&& {cpp_var} = {deref_expr};"]
         case LoopBinding.CONST_REFERENCE:
-            return f"const auto& {cpp_var} = {deref_expr};"
+            return [f"const auto& {cpp_var} = {deref_expr};"]
         case LoopBinding.CONST_TYPED_REFERENCE:
-            return f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"
+            return [f"const {elem_type.to_cpp()}& {cpp_var} = {deref_expr};"]
         case LoopBinding.VALUE:
-            return f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"
+            return [f"{elem_type.to_cpp()} {cpp_var} = {deref_expr};"]
     raise AssertionError("unknown loop binding")
 
 

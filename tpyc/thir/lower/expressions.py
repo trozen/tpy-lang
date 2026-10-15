@@ -3519,6 +3519,21 @@ def _fold_literal_chain(e: TpyBinOp, literal_facts: dict) -> 'bool | None':
     return None
 
 
+def _operator_operand_use(*, temps_ok: bool, slot: 'TpyType | None',
+                          also: frozenset[SinkForm]) -> _ExprUse:
+    """The use a PLAIN operator operand takes -- the default row of both the
+    arithmetic and the compare arm. It reads through a full deref, so a
+    pointer-bound RECORD name derefs (`((*v)) + (inc)`, `((*p)) < (other)`)
+    rather than taking the bare arrow-receiver form its other consumers want.
+    `also` is what the arm admits beside the deref: a `forms=` REPLACES the
+    sink's row, and the compare arm keeps the OPERAND row's literal fold and
+    borrow-return passthrough, which the arithmetic arm does not take."""
+    return _ExprUse(allow_temps=temps_ok,
+                    slot_target=slot,
+                    pos=SinkPos.OPERAND,
+                    forms=_ONLY_INDIRECT_READ | also)
+
+
 def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
                        slot: 'TpyType | None') -> _ExprUse:
     """The use an ARITHMETIC operand takes -- shared by the binop arm and the
@@ -3530,14 +3545,11 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
     (`self.end - self.start`) renders the bare member read into the operator
     parens, exactly as that arm's field row does.
 
-    Everything else reads through a full deref, so a pointer-bound RECORD
-    name derefs here (`((*v)) + (inc)`, `-((*o))`) rather than taking the
-    bare arrow-receiver form its other consumers want. Only NAME reads read
-    the flag, so the two shape-guarded rows above cannot need it.
-    `_LEND_OK` is the OPERAND row's own verdict: the operator reads the
-    operand inside the full expression, so a result lending a dying
-    receiver's storage is still alive here. Spelled because this site names
-    `forms=` for the deref and a `forms=` REPLACES the row."""
+    Everything else is the plain operand (`_operator_operand_use`). Only
+    NAME reads read its deref, so the two shape-guarded rows above cannot
+    need it. `_LEND_OK` is the OPERAND row's own verdict: the operator reads
+    the operand inside the full expression, so a result lending a dying
+    receiver's storage is still alive here."""
     if _record_call_rvalue_operand(side, analyzer):
         return _ExprUse(result=_ExprResultUse.BORROW_BIND,
                         allow_temps=temps_ok,
@@ -3549,10 +3561,8 @@ def _arith_operand_use(side: TpyExpr, analyzer, *, temps_ok: bool,
             return _ExprUse(result=_ExprResultUse.BORROW_BIND,
                             allow_temps=temps_ok,
                             slot_target=slot)
-    return _ExprUse(allow_temps=temps_ok,
-                    slot_target=slot,
-                    pos=SinkPos.OPERAND,
-                    forms=_ONLY_INDIRECT_READ | _LEND_OK)
+    return _operator_operand_use(temps_ok=temps_ok, slot=slot,
+                                 also=_LEND_OK)
 
 
 def _lower_identity(e: TpyBinOp, lc: '_LowerCtx',
@@ -4903,9 +4913,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                         or _value_tuple(st, analyzer) is not None):
                     return _ExprUse(result=_ExprResultUse.BORROW_BIND)
             # Compare operands are target-less, so a both-literal
-            # sub-binop folds.
-            return _ExprUse(pos=SinkPos.OPERAND,
-                            allow_temps=temps_ok)
+            # sub-binop folds; the OPERAND row's verdicts ride the deref.
+            return _operator_operand_use(
+                temps_ok=temps_ok, slot=None,
+                also=_POS_FORMS[SinkPos.OPERAND])
 
         def _narrowed_union_read(side: TpyExpr, nu) -> 'THIRExpr | None':
             # The condition-scope-narrowed union NAME operand: the inline
@@ -5305,7 +5316,8 @@ def _name_read_deref(name: str, binding_type: 'TpyType | None',
     if use.admits(SinkForm.INDIRECT_READ) and _ptr_read_derefs(name, lc):
         return True
     if (lc.binding(name).frame_slot
-            or lc.binding(name).kind is BindingKind.WALRUS_OWNED_SLOT):
+            or (lc.binding(name).kind is BindingKind.WALRUS_OWNED_SLOT
+                and not lc.binding(name).pointer)):
         return True
     if (lc.binding(name).pointer and binding_type is not None
             and use.result not in (_ExprResultUse.RECEIVER,
@@ -8260,11 +8272,12 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 tail="name", loc=loc, binding=wrec)
             lc.storage_slots.stamp(node, e)
             return node
-        if e.target in lc.prescan.hoisted:
-            raise ThirUnsupported("expr.walrus")
         # The walrus that declares its target's record pre-declares it; any
         # other writes the binding in scope.
         wrec = bindings.fresh_record(lc.table, e, e.target)
+        if (e.target in lc.prescan.hoisted
+                and not (wrec is not None and wrec.rebind_slot)):
+            raise ThirUnsupported("expr.walrus")
         need_predecl = wrec is not None
         borrow_decls = analyzer.function_stmt_borrow_decls.get(
             lc.func, {})
@@ -8519,6 +8532,23 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                  forms=(None if wal_owned_tuple
                                         else _NO_FORMS)))
             declared[e.target] = vtu
+            if wrec is not None and wrec.rebind_slot:
+                # A rebound record: its object lands in a slot of this
+                # site's own and the pointer aims at it, as its rebinds' do
+                # (`(p = &*(__slot_N = v), *p)`).
+                _witness("expr.walrus_owned_rebind_slot")
+                # The slot stands before the body-level statement holding
+                # this walrus, before any loop it re-runs in: the hoist.
+                lc.unhandled_hoists.discard(e.target)
+                node = THIRWalrus(
+                    result_type=vtu, name=e.target,
+                    cpp_name=escape_cpp_name(e.target),
+                    value=lowered_value,
+                    cpp_type=f"{lc.render_type(vtu)}*", init="nullptr",
+                    fill_cpp=lc.render_type(vtu), tail="deref", loc=loc,
+                    binding=wrec)
+                lc.storage_slots.stamp(node, e)
+                return node
             _witness("expr.walrus_owned_slot")
             return THIRWalrus(
                 result_type=vtu, name=e.target,

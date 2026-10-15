@@ -959,8 +959,14 @@ Top-level analyzers (one module each):
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
 `frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`,
-`pending_num`, `context`.
+`storage_policy`, `pending_num`, `context`.
 Error classes live in `tpyc/diagnostics.py` (see "Compilation pipeline").
+
+`storage_policy` holds `first_binding_storage`, the one storage verdict
+(pointer over storage of its own, hoisted before the loop) for a reference
+local's first binding whatever binder made it; the binding table, the
+resumable frame layout and sema (the type check of a rebound owning `for` /
+`with` target, the owning loop's copy warning) all read it.
 
 `may_interrupt` decides, per analyzed body and at the end of its Phase-1
 analysis (no fixpoint), whether running the body may reach a Ctrl-C check

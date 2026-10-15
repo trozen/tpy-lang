@@ -217,22 +217,23 @@ def test_bodyless_binding_says_it_has_no_body():
 
 # One body lowers, the next rejects, a later one lowers and the module init
 # never gets its turn -- the no-THIR states the dump must keep apart. The rejecting shape is a
-# dict of Box rebound to another dict; if lowering ever admits it this test
-# goes vacuous, which the first assertion catches.
+# rebound record a tuple unpack takes an owned element into
+# (BUGS.md#sync-unpack-into-rebound-local-rejects); if lowering ever admits it
+# this test goes vacuous, which the first assertion catches.
 _REJECTING_MODULE = (
-    "from tpy import int32\n"
-    "from tplib import Box\n\n\n"
+    "from tpy import int32, Own\n\n\n"
     "class Point:\n"
     "    x: int32\n\n"
     "    def __init__(self, x: int32) -> None:\n"
     "        self.x = x\n\n\n"
+    "def mk(i: int32) -> tuple[Own[Point], int32]:\n"
+    "    return (Point(i), i)\n\n\n"
     "def lowers(n: int32) -> int32:\n"
     "    return n + 1\n\n\n"
     "def rejects() -> None:\n"
-    "    d = {1: Box(Point(1))}\n"
-    "    other = {2: Box(Point(2))}\n"
-    "    d = other\n"
-    "    print(len(d))\n\n\n"
+    "    p = Point(1)\n"
+    "    p, n = mk(2)\n"
+    "    print(p.x, n)\n\n\n"
     "def after() -> int32:\n"
     "    return 2\n\n\n"
     "def main() -> None:\n    print(lowers(1))\nmain()\n")

@@ -256,8 +256,12 @@ class BindingRepr:
     # `T*`: a read without a deref is the raw pointer, which only a whole
     # lift consumes.
     pointer: bool = False
-    # A pointer whose rvalue reseats go through a pre-declared slot.
+    # A rebound reference local held as a pointer over storage of its own
+    # (the storage policy, `first_binding_storage`): a rebind re-points it.
     rebind_slot: bool = False
+    # That storage stands before the loop the binding re-runs in (the
+    # escape hoist: an alias of it is kept across passes).
+    storage_hoisted: bool = False
     # A hoisted pointer without a rebind slot of its own: an rvalue reseat
     # fills one of its own, declared beside the predeclaration
     # (BRANCH_RVALUE).

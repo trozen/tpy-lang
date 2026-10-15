@@ -239,22 +239,22 @@ class Cell:
 
 def test_bodyless_and_rejected_and_unattempted_are_distinct() -> None:
     out = dump("""\
-from tpy import int32
+from tpy import int32, Own
 from tpy.extern import native
-from tplib import Box
 @native(binding="C")
 def external(x: int32) -> int32: ...
 class Point:
     x: int32
     def __init__(self, x: int32):
         self.x = x
+def mk(i: int32) -> tuple[Own[Point], int32]:
+    return (Point(i), i)
 def before() -> int32:
     return 1
 def rejects() -> None:
-    d = {1: Box(Point(1))}
-    other = {2: Box(Point(2))}
-    d = other
-    print(len(d))
+    p = Point(1)
+    p, n = mk(2)
+    print(p.x, n)
 def after() -> int32:
     return 2
 """)

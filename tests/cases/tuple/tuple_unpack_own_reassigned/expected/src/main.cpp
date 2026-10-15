@@ -23,10 +23,12 @@ Counter make_one() {
 //     print(b.n)
 void main() {
     auto __tup_1 = ::tpyapp::main::make_pair();
-    Counter a = std::move(std::get<0>(__tup_1));
+    Counter __slot_1 = std::move(std::get<0>(__tup_1));
+    Counter* a = &__slot_1;
     Counter b = std::move(std::get<1>(__tup_1));
-    a = ::tpyapp::main::make_one();
-    std::cout << a.n << "\n" << ::tpy::check_signals;
+    std::optional<Counter> __slot_2;
+    a = &*(__slot_2 = ::tpyapp::main::make_one());
+    std::cout << a->n << "\n" << ::tpy::check_signals;
     std::cout << b.n << "\n" << ::tpy::check_signals;
 }
 

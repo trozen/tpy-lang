@@ -1090,9 +1090,7 @@ class TpyTupleUnpack(TpyStmt):
     # borrowed. Sema sets it off the enclosing `TpyForEach.is_tuple_unpack`,
     # so a macro-built loop head is marked like a parsed one.
     is_loop_head: bool = False
-    # Set by sema at a loop head: the names the loop body rebinds. Each for
-    # head declares its targets afresh, so a sibling loop reusing a name is
-    # not a rebind of this binding.
+    # Set by sema at a loop head: its loop's `TpyForEach.loop_body_rebinds`.
     loop_body_rebinds: frozenset[str] = frozenset()
     # Set by sema:
     target_types: list[TpyType] = field(default_factory=list)
@@ -1282,6 +1280,10 @@ class TpyForEach(TpyStmt):
     # binding planner).
     copies_var: bool = False
     hoist_loop_var: bool = False  # set by sema: loop var used after loop, needs pre-declaration
+    # Set by sema: the names the loop body rebinds -- the variable's (or a
+    # head unpack's targets') binding sees only these, since each pass binds
+    # it afresh. None until sema reaches the loop.
+    loop_body_rebinds: frozenset[str] | None = None
     # Stamped by liveness: the loop variable is live on some exit from the
     # loop (a read after it, in its `else` clause, or on a later pass of an
     # enclosing loop) -- the only place a zero-trip head's leftover value is

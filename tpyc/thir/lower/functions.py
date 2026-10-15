@@ -107,6 +107,7 @@ from ..nodes import (
     THIRNestedDef,
     THIRPtrLocalDecl,
     THIRPtrLocalRebind,
+    THIRTupleUnpack,
     THIRVarDecl,
     PtrSlotKind,
     THIROverloadDefault,
@@ -1963,6 +1964,13 @@ def _rejects_global_slot(node) -> bool:
                                  PtrSlotKind.GLOBAL_HOIST_RVALUE)
     if isinstance(node, THIRIf):
         return bool(node.hoist_slots)
+    if isinstance(node, THIRTupleUnpack):
+        # A rebound target's element lands in a `__slot_N` of its own, the
+        # unpack twin of the REBIND_SLOT decl below; a hoisted one rides
+        # the hoist lines like RECORD_HOISTED.
+        return any((rec := node.target_slot(i)) is not None
+                   and not rec.storage_hoisted
+                   for i in range(len(node.targets)))
     if isinstance(node, THIRVarDecl):
         # The F2d rvalue pointer-local allocates its init slot; it carries no
         # `slot_cpp`, so the tail below cannot see it.
@@ -1999,6 +2007,8 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                    scan_override=analyzer.top_level_scan_result,
                    hoisted_override=analyzer.top_level_hoisted_vars,
                    move_through_override=analyzer.top_level_move_through_vars,
+                   escape_hoisted_override=(
+                       analyzer.top_level_escape_hoisted_vars),
                    top_level_scope=True)
     lc.prescan.native_globals = module_native_globals(module)
     declared: dict[str, TpyType] = {}

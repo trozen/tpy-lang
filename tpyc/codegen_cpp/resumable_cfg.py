@@ -156,6 +156,9 @@ class ResumableFuncState:
     # its statement, so it can be read across a suspension that the `with`
     # itself does not contain.
     with_target_payloads: 'dict[str, str]' = field(default_factory=dict)
+    # The targets among those whose enter type is a type parameter: the
+    # payload alone knows whether they alias, so they keep the slot.
+    with_generic_targets: 'set[str]' = field(default_factory=set)
     # TpyWith -> per-item `__with_ctx_<n>` number (None where not promoted),
     # for a NON-decomposed region whose OWNED manager backs an aliasing target.
     # The target's frame field points into `__enter__()`'s result, so the manager
@@ -208,6 +211,9 @@ class ResumableFuncState:
         default_factory=dict)
     # Every frame field in declaration order (`gen_async._frame_fields`).
     frame_fields: 'list[FrameField] | None' = None
+    # The locals the storage policy holds as a pointer over storage of their
+    # own (`AsyncCoroCodegen._rebound_ref_names`), read once per function.
+    rebound_ref_names: 'frozenset[str] | None' = None
 
 
 def resumable_state(func: 'TpyFunction') -> ResumableFuncState:

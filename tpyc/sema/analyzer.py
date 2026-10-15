@@ -392,10 +392,6 @@ class SemanticAnalyzer:
 
         # Per-function/method pre-scan results (shared with codegen)
         self.function_scan_results: IdentityMap = IdentityMap()
-        # Per function: locals some rvalue rebind of which owns its storage
-        # (the alias-rebind pass's OWN verdict) -- the frame layout's
-        # pointer-form criterion.
-        self.function_own_rebind_names: IdentityMap = IdentityMap()
         # Per function: each pointer tuple's form as the lowering decides it
         # (`thir.lower.bindings.ptr_tuple_decision`), shared by the binding
         # planner and the frame layout.
@@ -413,6 +409,10 @@ class SemanticAnalyzer:
         # Per-function/method hoisted vars (try/finally + branch predecl)
         self.function_hoisted_vars: IdentityMap = IdentityMap()
         self.top_level_hoisted_vars: set[str] = set()
+        # Their scope-escape subset alone: a binding kept across loop passes
+        # (the storage policy's `hoisted` input).
+        self.function_escape_hoisted_vars: IdentityMap = IdentityMap()
+        self.top_level_escape_hoisted_vars: set[str] = set()
 
         # Per-function/method move-through vars (lvalue alias promoted to rvalue)
         self.function_move_through_vars: IdentityMap = IdentityMap()
@@ -1999,7 +1999,6 @@ class SemanticAnalyzer:
     def _store_analysis_results(self, func: TpyFunction, scan: ScanResult) -> None:
         """Store prescan/liveness results for codegen consumption."""
         self.function_scan_results[func] = scan
-        self.function_own_rebind_names[func] = self.ctx.func.own_rebind_names
         self.function_frame_local_roots[func] = dict(
             self.ctx.func.frame_local_roots)
         deleted: set[str] = set()
@@ -2011,23 +2010,20 @@ class SemanticAnalyzer:
             self.function_closed_frames[func] = frozenset(closed)
         if self.ctx.func.hoisted_vars:
             self.function_hoisted_vars[func] = self.ctx.func.hoisted_vars.copy()
+        if self.ctx.func.escape_hoisted_vars:
+            self.function_escape_hoisted_vars[func] = (
+                self.ctx.func.escape_hoisted_vars.copy())
         if self.ctx.func.move_through_vars:
             self.function_move_through_vars[func] = self.ctx.func.move_through_vars.copy()
         # Compute movable locals from ever_owned_locals (survives FlowFacts restores)
         movable = set()
         for name in self.ctx.func.ever_owned_locals:
-            if name in self.ctx.func.hoisted_vars:
-                continue
-            if name in self.ctx.func.current_reassigned_vars and name in self.ctx.func.current_lvalue_reassigned:
-                continue
-            # Reassigned to a borrow source (reference-returning call, ternary
-            # of lvalues). The prescan's lvalue_reassigned can't see these (no
-            # type info, so it classifies them as rvalue), so they reach here
-            # via ever_owned; an auto-move at a later last use would steal from
-            # the aliased source.
-            if name in self.ctx.func.borrow_reassigned_vars:
-                continue
-            movable.add(name)
+            # A rebind to a borrow source (reference-returning call, ternary
+            # of lvalues) is one the prescan's lvalue_reassigned can't see
+            # (no type info, so it classifies them as rvalue); an auto-move
+            # at a later last use would steal from the aliased source.
+            if self.ctx.func.rebinds_keep_ownership(name):
+                movable.add(name)
         if movable:
             self.function_movable_locals[func] = movable
         if self.ctx.func.ever_owned_locals:
@@ -2045,6 +2041,8 @@ class SemanticAnalyzer:
         self.if_branch_decls.update(self.ctx.if_branch_decls)
         self.arm_branch_decls.update(self.ctx.arm_branch_decls)
         self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
+        self.function_escape_hoisted_vars.update(
+            self.ctx.nested_def_hoisted_vars)
 
     def _validate_named_defaults(self, func: TpyFunction) -> None:
         """Validate `def f(x: T = NAME)` defaults: NAME must be a Final[T] global.
@@ -3802,11 +3800,15 @@ class SemanticAnalyzer:
 
         if self.ctx.func.hoisted_vars:
             self.top_level_hoisted_vars = self.ctx.func.hoisted_vars.copy()
+        self.top_level_escape_hoisted_vars = (
+            self.ctx.func.escape_hoisted_vars.copy())
         if self.ctx.func.move_through_vars:
             self.top_level_move_through_vars = self.ctx.func.move_through_vars.copy()
         self.if_branch_decls.update(self.ctx.if_branch_decls)
         self.arm_branch_decls.update(self.ctx.arm_branch_decls)
         self.function_hoisted_vars.update(self.ctx.nested_def_hoisted_vars)
+        self.function_escape_hoisted_vars.update(
+            self.ctx.nested_def_hoisted_vars)
 
         self.ctx.func.current_function = None
         self.ctx.func.current_scope = None

@@ -349,8 +349,6 @@ def test_declared_readonly_field_restricts_captured_access(artifacts: Artifacts)
      "stmt.var_decl:decl.slot_type"),
     ("def sample(outer: Outer) -> int32:\n    pair = (outer,)\n    saved = pair[0].inner\n    return saved.value\n",
      "stmt.var_decl:decl.slot_type"),
-    ("def sample(outer: Outer) -> int32:\n    saved = outer.inner\n    saved = Cell(23)\n    return outer.inner.value\n",
-     "stmt.var_decl:decl.reseat_source"),
 ])
 def test_existing_frontend_alias_gates_remain(body: str, landmark: str) -> None:
     _, reasons = _strict_reject(SOURCE + body)

@@ -1147,8 +1147,10 @@ def _lower_comprehension_impl(
         pointers = pointers - ptr_hides
     if result_type is None:
         raise ThirUnsupported("comp.route", detail=True)
-    special_args = (pointers, lc.names_with("rebind_slot"), lc.names_with("storage_tuple"),
-                    lc.narrow.narrowed.keys())
+    # A rebound reference local is a pointer local too: a comp var hiding it
+    # is the pointer hide above.
+    special_args = (pointers, lc.names_with("rebind_slot") - ptr_hides,
+                    lc.names_with("storage_tuple"), lc.narrow.narrowed.keys())
     if is_array(result_type):
         array_route = _comp_array_route(init, result_type, declared,
                                         *special_args, analyzer)

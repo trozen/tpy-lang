@@ -382,6 +382,39 @@ void loop_two_site_read_before_section() {
     std::cout << "loop_two_site_read_before:" << " " << p->x << "\n" << ::tpy::check_signals;
 }
 
+// def mk_pair(i: int32) -> tuple[Own[Point], int32]:
+//     return (Point(i), i)
+std::tuple<Point, int32_t> mk_pair(int32_t i) {
+    return std::tuple<Point, int32_t>{Point(i), i};
+}
+
+// # A loop-body unpack target is the declaration's twin: `kept`, taken on the
+// # first pass only, shares the target's slot, so after the loop it reads the
+// # last pass's object -- the warning is true here.
+// def unpack_kept_first_pass_section() -> None:
+//     kept = Point(-1)
+//     for i in range(3):
+//         p, k = mk_pair(i)
+//         if i == 0:
+//             kept = p  # tpyc: warning(/'kept' will not keep the object/)
+//     kept.x += 100
+//     print("unpack_kept_first_pass:", kept.x)
+void unpack_kept_first_pass_section() {
+    std::optional<Point> __slot_2;
+    Point __slot_1 = Point(-1);
+    Point* kept = &__slot_1;
+    for (int32_t i = 0; i < 3; ++i) {
+        auto __tup_1 = ::tpyapp::main::mk_pair(i);
+        Point* p = &*(__slot_2 = std::move(std::get<0>(__tup_1)));
+        int32_t k = std::get<1>(__tup_1);
+        if ((i == 0)) {
+            kept = p;
+        }
+    }
+    kept->x = ::tpy::add_check<int32_t>(kept->x, 100);
+    std::cout << "unpack_kept_first_pass:" << " " << kept->x << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     loop_carried_section()
 //     for_carried_section()
@@ -398,6 +431,7 @@ void loop_two_site_read_before_section() {
 //     print("loop_unpack_site_gen:", list(loop_unpack_site_gen()))
 //     loop_capture_section()
 //     loop_capture_quiet_section()
+//     unpack_kept_first_pass_section()
 void main() {
     ::tpyapp::main::loop_carried_section();
     ::tpyapp::main::for_carried_section();
@@ -415,6 +449,7 @@ void main() {
     std::cout << "loop_unpack_site_gen:" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<int32_t>>(::tpyapp::main::loop_unpack_site_gen())) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::loop_capture_section();
     ::tpyapp::main::loop_capture_quiet_section();
+    ::tpyapp::main::unpack_kept_first_pass_section();
 }
 
 // main()

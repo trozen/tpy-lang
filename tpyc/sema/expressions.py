@@ -4199,7 +4199,9 @@ class ExpressionAnalyzer:
             # machinery, so reject them rather than emit a conflicting
             # redeclaration; value-typed locals route through the shared
             # reassignment-compat check (view tracking + coerce).
-            inner_existing = unwrap_readonly(existing)
+            # An owning for or with target (`Own[T]`) is the reference local
+            # it owns.
+            inner_existing = unwrap_own(unwrap_readonly(existing))
             borrow_tuple_existing = (isinstance(inner_existing, TupleType)
                                      and inner_existing.has_pointer_repr_element())
             if not inner_existing.is_value_type() or borrow_tuple_existing:

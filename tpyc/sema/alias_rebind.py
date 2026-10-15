@@ -2062,7 +2062,3 @@ def decide_rebind_storage(ctx: 'SemanticContext', stmts: list[TpyStmt], *,
     replay.decide()
     replay.check_loop_holds()
     replay.check_with_holds()
-    # The per-name verdict the frame layout consumes: a local with a rebind
-    # site goes pointer-form on a frame.
-    ctx.func.own_rebind_names = frozenset().union(
-        *replay.gate_sites.values())

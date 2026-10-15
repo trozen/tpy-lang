@@ -65,7 +65,8 @@ _FRESH_COLLECTION_NODES = (
     TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension,
 )
-from ..typesys import pointer_repr_optional
+from ..typesys import pointer_repr_optional, returns_cpp_reference_shape
+from ..sema.storage_policy import first_binding_storage
 from ..typesys import IntLiteralType, NominalType, TpyType, OptionalType, OwnType, ReadonlyType, TupleType, TypeParamRef, unwrap_readonly, unwrap_ref_type, unwrap_own, unwrap_send_sync, varargs_is_readonly, is_readonly_ptr, VoidType, is_fn_type, is_dyn_protocol, ConcreteFrameType, param_takes_ownership, body_function_info, body_method_info
 from ..value_category import (async_return_form, AsyncReturnForm,
                               declared_call_const,
@@ -108,7 +109,9 @@ class _FrameFormInputs:
     the layout and the for prescan read one classifier
     (`_frame_local_form`)."""
     owning_tuple_locals: 'dict[str, TpyType | None]'
-    own_rebind_names: 'frozenset[str]'
+    # The locals the storage policy holds as a pointer over storage of
+    # their own (`first_binding_storage`): the REBIND_PTR form.
+    rebound_ref_names: 'frozenset[str]'
     pointer_form_names: 'set[str]'
     # The pointer tuples (`CodeGenContext.frame_pointer_tuples`).
     pointer_tuples: 'dict[str, TpyType | None]' = field(default_factory=dict)
@@ -116,6 +119,16 @@ class _FrameFormInputs:
     owning_str: 'set[str]' = field(default_factory=set)
     source_form_fields: 'dict[str, str]' = field(default_factory=dict)
     pointer_payloads: 'dict[str, str]' = field(default_factory=dict)
+    # The `with ... as` targets among `source_form_fields`, and those of them
+    # whose enter type is a type parameter.
+    with_targets: 'set[str]' = field(default_factory=set)
+    with_generic_targets: 'set[str]' = field(default_factory=set)
+
+
+# The pointer-form frame locals a `with ... as` target aims at its enter
+# result through.
+_WITH_POINTER_KINDS = frozenset({rcfg.FrameLocalKind.PTR_ALIAS,
+                                 rcfg.FrameLocalKind.REBIND_PTR})
 
 
 def _cannot_hold_a_borrow(t: 'TpyType') -> bool:
@@ -1873,6 +1886,22 @@ class AsyncCoroCodegen:
 
     # -- Frame-local placement -------------------------------------------------
 
+    def _rebound_ref_names(self, func: TpyFunction) -> 'frozenset[str]':
+        """The frame locals the storage policy holds as a pointer over
+        storage of their own, from the name facts a plain body's bindings
+        read (`first_binding_storage`)."""
+        from ..thir.lower.bindings import body_rebound_names
+        state = rcfg.resumable_state(func)
+        if state.rebound_ref_names is None:
+            scan = self.ctx.analyzer.function_scan_results.get(func)
+            rebound = body_rebound_names(
+                func.body, scan.reassigned if scan is not None else set())
+            state.rebound_ref_names = frozenset(
+                n for n, t in (func.generator_locals or [])
+                if first_binding_storage("frame", t, rebound=n in rebound,
+                                         hoisted=False).pointer)
+        return state.rebound_ref_names
+
     def _frame_form_inputs(self, func: TpyFunction) -> '_FrameFormInputs':
         """The name sets a frame local's field FORM is read off, minus the
         ones the for and with prescans fill in.
@@ -1883,8 +1912,7 @@ class AsyncCoroCodegen:
         return _FrameFormInputs(
             owning_tuple_locals=self.ctx.owning_generator_tuple_locals(func),
             pointer_tuples=self.ctx.frame_pointer_tuples(func),
-            own_rebind_names=self.ctx.analyzer.function_own_rebind_names.get(
-                func, frozenset()),
+            rebound_ref_names=self._rebound_ref_names(func),
             # Statement-level borrow aliases (single-assign / tuple-unpack)
             # get a `T*` field rather than an owning frame_slot<T>: a `T*`
             # field kept live across suspensions.
@@ -1919,6 +1947,18 @@ class AsyncCoroCodegen:
                 return True
         return False
 
+    def _holds_rebound_ref(self, lname: str, ltype_inner: 'TpyType',
+                           inp: '_FrameFormInputs') -> bool:
+        """Whether the storage policy holds frame local `lname` as a
+        pointer over storage of its own (`rebound_ref_names`) and its type
+        has that form: a plain reference type, not a `@dynamic` handle (an
+        erased coroutine, a single-use object whose rebind drops the old
+        one)."""
+        bare = unwrap_own(ltype_inner)
+        return (lname in inp.rebound_ref_names
+                and emit_prims.is_plain_nonvalue(self.ctx, bare)
+                and not is_dyn_protocol(unwrap_readonly(bare)))
+
     def _frame_local_form(
             self, lname: str, ltype_inner: 'TpyType',
             inp: '_FrameFormInputs',
@@ -1937,7 +1977,6 @@ class AsyncCoroCodegen:
         borrow_tuple_names = inp.borrow_tuple_names
         owning_str = inp.owning_str
         owning_tuple_locals = inp.owning_tuple_locals
-        own_rebind_names = inp.own_rebind_names
         pointer_payloads = inp.pointer_payloads
         payload: str | None = None
         effective_type: 'TpyType | None' = None
@@ -1959,6 +1998,15 @@ class AsyncCoroCodegen:
             # field is the borrow-form tuple of the plain body's local.
             kind = rcfg.FrameLocalKind.BORROW_TUPLE
             effective_type = inp.pointer_tuples[lname]
+        elif (lname in source_form_fields
+                and lname in inp.with_targets
+                and lname not in inp.with_generic_targets
+                and self._holds_rebound_ref(lname, ltype_inner, inp)):
+            # A rebound `with ... as` target (the storage policy): a pointer
+            # its rebinds re-point, at a lent `__enter__()` result or at the
+            # item's own field over a by-value one; const over a `readonly`
+            # result (`_record_with_target_payloads`).
+            kind = rcfg.FrameLocalKind.REBIND_PTR
         elif lname in source_form_fields:
             # Loop var whose alias-vs-own choice belongs to C++: the
             # payload is spelled from the source's iteration protocol,
@@ -2013,14 +2061,13 @@ class AsyncCoroCodegen:
             # silent-copy divergence). Pointers default-construct to
             # null, so no frame_slot wrapper is needed.
             kind = rcfg.FrameLocalKind.BORROW_TUPLE
-        elif (lname in own_rebind_names
-                and emit_prims.is_plain_nonvalue(
-                    self.ctx, unwrap_own(ltype_inner))):
-            # Some rvalue rebind of this local must keep the superseded
-            # object alive for a loan (sema's OWN verdict), which an
-            # owning `frame_slot<T>` cannot: the local goes pointer-form
-            # over per-site materialization fields, and its IN_PLACE
-            # rebinds assign through the pointer.
+        elif self._holds_rebound_ref(lname, ltype_inner, inp):
+            # A rebound reference local keeps each object for its aliases,
+            # which an owning `frame_slot<T>` cannot: the local goes
+            # pointer-form over per-site materialization fields, and its
+            # IN_PLACE rebinds assign through the pointer. A `@dynamic`
+            # handle (an erased coroutine) is a single-use object whose
+            # rebind drops the old one: its own arm below.
             kind = rcfg.FrameLocalKind.REBIND_PTR
         elif (isinstance(ltype_inner, OwnType)
                 and not unwrap_own(ltype_inner).is_value_type()
@@ -2092,6 +2139,8 @@ class AsyncCoroCodegen:
         # payload is spelled from `__enter__()` (`with_enter_t<CM>`) because
         # alias-vs-own is not decidable here either.
         inp.source_form_fields.update(state.with_target_payloads)
+        inp.with_targets.update(state.with_target_payloads)
+        inp.with_generic_targets.update(state.with_generic_targets)
 
         bindings: dict[str, rcfg.FrameLocalLayout] = {}
         for lname, ltype in (func.generator_locals or []):
@@ -2106,6 +2155,7 @@ class AsyncCoroCodegen:
                 # it inside its element pointers).
                 const=(kind in (rcfg.FrameLocalKind.PTR_ALIAS,
                                 rcfg.FrameLocalKind.OPT_PTR,
+                                rcfg.FrameLocalKind.REBIND_PTR,
                                 rcfg.FrameLocalKind.BORROW_TUPLE)
                        and lname in state.const_frame_bindings),
                 payload=payload,
@@ -2561,8 +2611,9 @@ class AsyncCoroCodegen:
             out.write(
                 f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
         elif kind is rcfg.FrameLocalKind.REBIND_PTR:
-            inner_cpp = self.types.type_to_cpp(unwrap_own(ltype_inner))
-            out.write(f"{INDENT}{inner_cpp}* {cpp_name} = nullptr;\n")
+            inner_cpp = self.types.type_to_cpp(
+                unwrap_readonly(unwrap_own(ltype_inner)))
+            out.write(f"{INDENT}{const_pfx}{inner_cpp}* {cpp_name} = nullptr;\n")
         else:
             cpp_type = self.types.type_to_cpp(ltype_inner)
             out.write(f"{INDENT}::tpy::frame_slot<{cpp_type}> {cpp_name};\n")
@@ -4382,7 +4433,7 @@ class AsyncCoroCodegen:
                 for i in positions]
 
 
-    def _record_with_target_payloads(self, stmt: TpyWith,
+    def _record_with_target_payloads(self, func: TpyFunction, stmt: TpyWith,
                                      state: 'rcfg.ResumableState') -> None:
         """Record the C++ payload each `as`-target's frame field is spelled
         from: `::tpy::with_enter_t<CM>`, the element form of `CM::__enter__()`.
@@ -4397,6 +4448,11 @@ class AsyncCoroCodegen:
         value, so the target owns; and a view-family (`str` / `bytes`) target is
         given owning storage by the `OWNED_STR` arm instead, which a source-form
         payload would override (it is tested first).
+
+        A target the storage policy holds as a pointer over storage of its own
+        takes the pointer form at the payload's row (`_frame_local_form`),
+        const over a `readonly` result, unless its enter type is a type
+        parameter, which only the payload's instantiation can answer.
 
         Sync `with` only: an `async with` target is bound from `__aenter__`'s Poll
         payload, not from `__enter__` (which such a manager need not even
@@ -4429,6 +4485,11 @@ class AsyncCoroCodegen:
             ctx_cpp = self.types.type_to_cpp(unwrap_ref_type(ctx_t))
             state.with_target_payloads[item.target] = (
                 f"::tpy::with_enter_t<{ctx_cpp}>")
+            if isinstance(resolved_enter, TypeParamRef):
+                state.with_generic_targets.add(item.target)
+            elif (item.target in self._rebound_ref_names(func)
+                    and isinstance(unwrap_send_sync(enter_t), ReadonlyType)):
+                rcfg.mark_frame_const(state, item.target)
 
     def _prescan_with_manager_homes(self, func: TpyFunction,
                                     body: list[TpyStmt]) -> None:
@@ -4553,6 +4614,7 @@ class AsyncCoroCodegen:
         place: an alias holding the previous value keeps a live target.
         """
         from ..thir.lower.bindings import ptr_tuple_elem_storage
+        from ..thir.lower.context import binding_source_sites
         state = rcfg.resumable_state(func)
         if state.ptr_slots_prescanned:
             return
@@ -4644,24 +4706,37 @@ class AsyncCoroCodegen:
                         f"std::optional<{self.types.type_to_cpp(pointee)}>",
                         name, stmt.value)
 
-        def walk(stmts: list[TpyStmt]) -> None:
-            for s in stmts:
-                if isinstance(s, TpyNestedDef):
-                    continue
-                if isinstance(s, TpyVarDecl):
-                    visit(s, s.name, s.init)
-                elif isinstance(s, TpyAssign) and isinstance(s.target, TpyName):
-                    visit(s, s.target.name, s.value)
-                elif isinstance(s, TpyTupleUnpack):
-                    visit_unpack(s)
-                for w in walrus_bindings(s):
-                    if w.target in rebind_names:
-                        visit(w, w.target, w.value)
-                if hasattr(s, "sub_bodies"):
-                    for b in s.sub_bodies():
-                        walk(b)
+        with_ptr_names = {n for n, v in layout.bindings.items()
+                          if v.kind in _WITH_POINTER_KINDS}
 
-        walk(body)
+        def visit_with(stmt: TpyWith, item: TpyWithItem, name: str) -> None:
+            # A pointer-form target over a by-value `__enter__` result: the
+            # object lands in this item's field, the pointer aims at it.
+            if (stmt.is_async or name not in with_ptr_names
+                    or not isinstance(item.enter_type, TpyType)
+                    or returns_cpp_reference_shape(item.enter_type)):
+                return
+            pointee = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                unwrap_own(item.enter_type))))
+            reserve(item, None,
+                    f"std::optional<{self.types.type_to_cpp(pointee)}>",
+                    name, item.context_expr)
+
+        unpacks_seen: IdentityMap = IdentityMap()
+        for site in binding_source_sites(body, all_binders=True,
+                                         unpack_targets=True):
+            if isinstance(site.binder, TpyTupleUnpack):
+                if site.binder not in unpacks_seen:
+                    unpacks_seen[site.binder] = None
+                    visit_unpack(site.binder)
+            elif isinstance(site.source, TpyWithItem):
+                visit_with(site.stmt, site.source, site.target)
+            elif isinstance(site.binder, TpyMatch):
+                # A capture aliases the subject (sema refuses its rebind):
+                # no object of its own to land.
+                continue
+            elif not site.is_walrus or site.target in rebind_names:
+                visit(site.binder, site.target, site.source)
         state.ptr_slot_fields = fields
         state.ptr_slot_map = uid_map
 
@@ -4699,7 +4774,7 @@ class AsyncCoroCodegen:
                     # `with` itself does not contain. Record the payload its
                     # field is spelled from for every `with`; the manager field
                     # and state numbering below stay gated.
-                    self._record_with_target_payloads(s, state)
+                    self._record_with_target_payloads(func, s, state)
                     # A DECOMPOSED region needs the manager in the frame anyway
                     # (its states are disjoint). Whether a NON-decomposed one
                     # needs it depends on the target's field kind, which the frame
@@ -6393,7 +6468,7 @@ class AsyncCoroCodegen:
                 if isinstance(stmt, rcfg.AsyncForIterSetup):
                     self._emit_async_for_iter_setup(out, body_indent, stmt, func)
                 elif isinstance(stmt, rcfg.WithEnter):
-                    self._emit_with_enter(out, body_indent, stmt)
+                    self._emit_with_enter(out, body_indent, stmt, func)
                 elif isinstance(stmt, rcfg.AsyncWithSetup):
                     self._emit_async_with_setup(out, body_indent, stmt)
                 elif isinstance(stmt, rcfg.AsyncFinallyExit):
@@ -6644,19 +6719,27 @@ class AsyncCoroCodegen:
         out.write(f"{indent}}}\n")
 
     def _emit_with_enter(self, out: "TextIO", indent: str,
-                                stmt: 'rcfg.WithEnter') -> None:
+                         stmt: 'rcfg.WithEnter', func: TpyFunction) -> None:
         """Emit the with-stmt setup sequence (manager bind via
         `_emit_with_ctx_bind`, then the `__enter__` call):
             <target> = (*__with_ctx_<n>).__enter__();   # if target
             (*__with_ctx_<n>).__enter__();              # else
+        A pointer-form target takes the THIR with's bind
+        (`frame_with_pointer_bind`).
         """
+        from ..thir.emit import frame_with_pointer_bind
         ctx_n = stmt.ctx_n
         item = stmt.item
         self._emit_with_ctx_bind(out, indent, ctx_n, item)
         if item.target is not None:
             target = escape_cpp_name(item.target)
             enter_call = f"(*__with_ctx_{ctx_n}).__enter__()"
-            if item.target in self.ctx.generator_frame_slot_locals:
+            if (rcfg.resumable_state(func).frame_layout
+                    .bindings[item.target].kind in _WITH_POINTER_KINDS):
+                out.write(f"{indent}" + frame_with_pointer_bind(
+                    target, enter_call, rcfg.ptr_slot_field(func, item))
+                    + "\n")
+            elif item.target in self.ctx.generator_frame_slot_locals:
                 # A non-value `as`-target hoisted across a yield is backed by
                 # `tpy::frame_slot<T>` (deleted operator=); construct via
                 # emplace, mirroring the var-decl / reassign frame-slot paths.

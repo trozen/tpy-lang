@@ -11,6 +11,13 @@
 namespace tpyapp::main {
 
 struct P;
+struct Ctx;
+struct LentCtx;
+struct RoCtx;
+template<typename T> struct GCtx;
+struct Res;
+struct Cl;
+struct ClCtx;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -27,7 +34,26 @@ struct __gen_unpack_only_loop_gen;
 struct __coro_unpack_only_loop_co;
 struct __gen_walrus_first_gen;
 struct __coro_walrus_first_co;
+struct __gen_with_rvalue_gen;
+struct __gen_with_lvalue_gen;
+struct __coro_with_rvalue_co;
+struct __gen_with_leaf_gen;
+struct __gen_with_lent_gen;
+struct __coro_with_lent_co;
+struct __gen_with_lent_param_gen;
+struct __coro_with_lent_param_co;
+struct __gen_with_readonly_gen;
+struct __coro_with_readonly_co;
+struct __gen_with_readonly_leaf_gen;
+struct __gen_with_generic_gen;
+struct __gen_with_generic_rvalue_gen;
+struct __coro_with_generic_co;
+struct __gen_with_target_bound_gen;
+struct __coro_with_target_bound_co;
+struct __gen_with_target_rebound_gen;
+struct __coro_with_target_rebound_co;
 struct __gen_loop_gen;
+struct __gen_compare_gen;
 
 // def mk(i: int32) -> tuple[Own[P], int32]:
 std::tuple<P, int32_t> mk(int32_t i);
@@ -59,8 +85,48 @@ __coro_unpack_only_loop_co unpack_only_loop_co();
 __gen_walrus_first_gen walrus_first_gen();
 // async def walrus_first_co() -> int32:
 __coro_walrus_first_co walrus_first_co();
+// def with_rvalue_gen() -> Iterator[int32]:
+__gen_with_rvalue_gen with_rvalue_gen();
+// def with_lvalue_gen() -> Iterator[int32]:
+__gen_with_lvalue_gen with_lvalue_gen();
+// async def with_rvalue_co() -> int32:
+__coro_with_rvalue_co with_rvalue_co();
+// def with_leaf_gen() -> Iterator[int32]:
+__gen_with_leaf_gen with_leaf_gen();
+// def with_lent_gen(c: LentCtx) -> Iterator[int32]:
+__gen_with_lent_gen with_lent_gen(LentCtx& c);
+// async def with_lent_co(c: LentCtx) -> int32:
+__coro_with_lent_co with_lent_co(LentCtx& c);
+// def with_lent_param_gen(c: LentCtx, o: P) -> Iterator[int32]:
+__gen_with_lent_param_gen with_lent_param_gen(LentCtx& c, P& o);
+// async def with_lent_param_co(c: LentCtx, o: P) -> int32:
+__coro_with_lent_param_co with_lent_param_co(LentCtx& c, P& o);
+// def with_readonly_gen(c: RoCtx) -> Iterator[int32]:
+__gen_with_readonly_gen with_readonly_gen(RoCtx& c);
+// async def with_readonly_co(c: RoCtx) -> int32:
+__coro_with_readonly_co with_readonly_co(RoCtx& c);
+// def with_readonly_leaf_gen() -> Iterator[int32]:
+__gen_with_readonly_leaf_gen with_readonly_leaf_gen();
+// def with_generic_gen(c: GCtx[P], o: P) -> Iterator[int32]:
+__gen_with_generic_gen with_generic_gen(GCtx<P>& c, P& o);
+// def with_generic_rvalue_gen(c: GCtx[P]) -> Iterator[int32]:
+__gen_with_generic_rvalue_gen with_generic_rvalue_gen(GCtx<P>& c);
+// async def with_generic_co(c: GCtx[P], o: P) -> int32:
+__coro_with_generic_co with_generic_co(GCtx<P>& c, P& o);
+// def with_target_bound_gen() -> Iterator[int32]:
+__gen_with_target_bound_gen with_target_bound_gen();
+// async def with_target_bound_co() -> int32:
+__coro_with_target_bound_co with_target_bound_co();
+// def with_target_rebound_gen() -> Iterator[int32]:
+__gen_with_target_rebound_gen with_target_rebound_gen();
+// async def with_target_rebound_co() -> int32:
+__coro_with_target_rebound_co with_target_rebound_co();
 // def loop_gen(ps: list[P], xss: list[list[int32]], flag: bool) -> Iterator[P]:
 __gen_loop_gen loop_gen(std::vector<P>& ps, std::vector<std::vector<int32_t>>& xss, bool flag);
+// def mkc(i: int32) -> tuple[Own[Cl], int32]:
+std::tuple<Cl, int32_t> mkc(int32_t i);
+// def compare_gen() -> Iterator[int32]:
+__gen_compare_gen compare_gen();
 // def main() -> None:
 void main();
 
@@ -77,6 +143,163 @@ struct P {
 
 inline std::ostream& operator<<(std::ostream& os, const P& obj) {
     ::tpy::print_object_default(os, "P", obj);
+    return os;
+}
+
+// class Ctx:
+struct Ctx {
+
+    // def __init__(self) -> None:
+    Ctx();
+
+    // def __enter__(self) -> Own[P]:
+    P __enter__() const;
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Ctx";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Ctx& obj) {
+    ::tpy::print_object_default(os, "Ctx", obj);
+    return os;
+}
+
+// class LentCtx:
+struct LentCtx {
+    // p: P
+    P p;
+
+    // def __init__(self) -> None:
+    LentCtx();
+
+    // def __enter__(self) -> P:
+    P& __enter__();
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.LentCtx";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const LentCtx& obj) {
+    ::tpy::print_object_default(os, "LentCtx", obj);
+    return os;
+}
+
+// class RoCtx:
+struct RoCtx {
+    // p: P
+    P p;
+
+    // def __init__(self) -> None:
+    RoCtx();
+
+    // def __enter__(self) -> readonly[P]:
+    const P& __enter__();
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.RoCtx";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const RoCtx& obj) {
+    ::tpy::print_object_default(os, "RoCtx", obj);
+    return os;
+}
+
+// class GCtx[T]:
+template<typename T>
+struct GCtx {
+    // v: T
+    T v;
+
+    // def __init__(self, v: Own[T]) -> None:
+    //     self.v = v
+    GCtx() = default;
+    explicit GCtx(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
+    // def __enter__(self) -> T:
+    //     return self.v
+    ::tpy::val_or_ref_t<T> __enter__() {
+        return this->v;
+    }
+
+    // def __exit__(self, kind, value, tb) -> None:
+    //     pass
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.GCtx";
+};
+
+template<typename T>
+inline std::ostream& operator<<(std::ostream& os, const GCtx<T>& obj) {
+    ::tpy::print_object_default(os, "GCtx", obj);
+    return os;
+}
+
+// class Res:
+struct Res {
+    // n: list[int32]
+    std::vector<int32_t> n;
+
+    // def __init__(self, n: int32) -> None:
+    Res() = default;
+    explicit Res(int32_t n);
+
+    // def __enter__(self) -> "Res":
+    Res& __enter__();
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Res";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Res& obj) {
+    ::tpy::print_object_default(os, "Res", obj);
+    return os;
+}
+
+// class Cl:
+struct Cl {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Cl() = default;
+    explicit Cl(int32_t n);
+
+    // def __lt__(self, o: "Cl") -> bool:
+    bool __lt__(const Cl& o) const;
+
+    friend bool operator<(const Cl& lhs, const Cl& o) {
+        return lhs.__lt__(o);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cl";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cl& obj) {
+    ::tpy::print_object_default(os, "Cl", obj);
+    return os;
+}
+
+// class ClCtx:
+struct ClCtx {
+    // c: Cl
+    Cl c;
+
+    // def __init__(self) -> None:
+    ClCtx();
+
+    // def __enter__(self) -> Cl:
+    Cl& __enter__();
+
+    // def __exit__(self, kind, value, tb) -> None:
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ClCtx";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ClCtx& obj) {
+    ::tpy::print_object_default(os, "ClCtx", obj);
     return os;
 }
 
@@ -255,6 +478,304 @@ struct __coro_walrus_first_co {
 
     friend std::ostream& operator<<(std::ostream& os, const __coro_walrus_first_co&) {
         return os << "<coroutine walrus_first_co>";
+    }
+};
+
+// async def with_rvalue_co() -> int32:
+struct __coro_with_rvalue_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    std::optional<P> __ptr_slot_f1;
+    P* q = nullptr;
+    ::tpy::frame_slot<Ctx> __with_ctx_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_with_rvalue_co()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    __coro_with_rvalue_co(__coro_with_rvalue_co&&) = default;
+    ~__coro_with_rvalue_co() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_rvalue_co&) {
+        return os << "<coroutine with_rvalue_co>";
+    }
+};
+
+// async def with_lent_co(c: LentCtx) -> int32:
+struct __coro_with_lent_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    LentCtx& c;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    P* q = nullptr;
+    LentCtx* __with_ctx_0 = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_with_lent_co(LentCtx& c)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
+
+    __coro_with_lent_co(__coro_with_lent_co&&) = default;
+    ~__coro_with_lent_co() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_lent_co&) {
+        return os << "<coroutine with_lent_co>";
+    }
+};
+
+// async def with_lent_param_co(c: LentCtx, o: P) -> int32:
+struct __coro_with_lent_param_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    LentCtx& c;
+    P& o;
+    P* p = nullptr;
+    P* q = nullptr;
+    LentCtx* __with_ctx_0 = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_with_lent_param_co(LentCtx& c, P& o)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c),
+          o(o) {}
+
+    __coro_with_lent_param_co(__coro_with_lent_param_co&&) = default;
+    ~__coro_with_lent_param_co() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_lent_param_co&) {
+        return os << "<coroutine with_lent_param_co>";
+    }
+};
+
+// async def with_readonly_co(c: RoCtx) -> int32:
+struct __coro_with_readonly_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    RoCtx& c;
+    ::tpy::frame_slot<P> other;
+    const P* p = nullptr;
+    const P* q = nullptr;
+    RoCtx* __with_ctx_0 = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_with_readonly_co(RoCtx& c)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c) {}
+
+    __coro_with_readonly_co(__coro_with_readonly_co&&) = default;
+    ~__coro_with_readonly_co() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_readonly_co&) {
+        return os << "<coroutine with_readonly_co>";
+    }
+};
+
+// async def with_generic_co(c: GCtx[P], o: P) -> int32:
+struct __coro_with_generic_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    GCtx<P>& c;
+    P& o;
+    P* p = nullptr;
+    P* q = nullptr;
+    GCtx<P>* __with_ctx_0 = nullptr;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_JOIN_0 = 2,
+        S_JOIN_1 = 3,
+        S_DONE = 4,
+    };
+
+    __coro_with_generic_co(GCtx<P>& c, P& o)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          c(c),
+          o(o) {}
+
+    __coro_with_generic_co(__coro_with_generic_co&&) = default;
+    ~__coro_with_generic_co() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned coroutine");
+        }
+    }
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_generic_co&) {
+        return os << "<coroutine with_generic_co>";
+    }
+};
+
+// async def with_target_bound_co() -> int32:
+struct __coro_with_target_bound_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    Res* t = nullptr;
+    std::optional<Res> __ptr_slot_f0;
+    Res* keep = nullptr;
+    ::tpy::frame_slot<Res> __with_ctx_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_with_target_bound_co()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_target_bound_co&) {
+        return os << "<coroutine with_target_bound_co>";
+    }
+};
+
+// async def with_target_rebound_co() -> int32:
+struct __coro_with_target_rebound_co {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    Res* p = nullptr;
+    std::optional<Res> __ptr_slot_f0;
+    std::optional<Res> __ptr_slot_f1;
+    Res* keep = nullptr;
+    ::tpy::frame_slot<Res> __with_ctx_0;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_with_target_rebound_co()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<int32_t> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_with_target_rebound_co&) {
+        return os << "<coroutine with_target_rebound_co>";
     }
 };
 
@@ -449,6 +970,435 @@ struct __gen_walrus_first_gen : public ::tpy::next_iter_mixin<__gen_walrus_first
     }
 };
 
+// def with_rvalue_gen() -> Iterator[int32]:
+struct __gen_with_rvalue_gen : public ::tpy::next_iter_mixin<__gen_with_rvalue_gen, int32_t> {
+    ::tpy::frame_state __state;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    std::optional<P> __ptr_slot_f1;
+    P* q = nullptr;
+    ::tpy::frame_slot<Ctx> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_rvalue_gen() : __state(S_INITIAL) {}
+
+    __gen_with_rvalue_gen(__gen_with_rvalue_gen&&) = default;
+    ~__gen_with_rvalue_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_rvalue_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_rvalue_gen&) {
+        return os << "<generator with_rvalue_gen>";
+    }
+};
+
+// def with_lvalue_gen() -> Iterator[int32]:
+struct __gen_with_lvalue_gen : public ::tpy::next_iter_mixin<__gen_with_lvalue_gen, int32_t> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<P> other;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    P* q = nullptr;
+    ::tpy::frame_slot<Ctx> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_lvalue_gen() : __state(S_INITIAL) {}
+
+    __gen_with_lvalue_gen(__gen_with_lvalue_gen&&) = default;
+    ~__gen_with_lvalue_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_lvalue_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_lvalue_gen&) {
+        return os << "<generator with_lvalue_gen>";
+    }
+};
+
+// def with_leaf_gen() -> Iterator[int32]:
+struct __gen_with_leaf_gen : public ::tpy::next_iter_mixin<__gen_with_leaf_gen, int32_t> {
+    ::tpy::frame_state __state;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    std::optional<P> __ptr_slot_f1;
+    P* q = nullptr;
+    ::tpy::frame_slot<Ctx> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_with_leaf_gen() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_leaf_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_leaf_gen&) {
+        return os << "<generator with_leaf_gen>";
+    }
+};
+
+// def with_lent_gen(c: LentCtx) -> Iterator[int32]:
+struct __gen_with_lent_gen : public ::tpy::next_iter_mixin<__gen_with_lent_gen, int32_t> {
+    ::tpy::frame_state __state;
+    LentCtx& c;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    P* q = nullptr;
+    LentCtx* __with_ctx_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_lent_gen(LentCtx& c)
+        : __state(S_INITIAL),
+          c(c) {}
+
+    __gen_with_lent_gen(__gen_with_lent_gen&&) = default;
+    ~__gen_with_lent_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_lent_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_lent_gen&) {
+        return os << "<generator with_lent_gen>";
+    }
+};
+
+// def with_lent_param_gen(c: LentCtx, o: P) -> Iterator[int32]:
+struct __gen_with_lent_param_gen : public ::tpy::next_iter_mixin<__gen_with_lent_param_gen, int32_t> {
+    ::tpy::frame_state __state;
+    LentCtx& c;
+    P& o;
+    P* p = nullptr;
+    P* q = nullptr;
+    LentCtx* __with_ctx_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_lent_param_gen(LentCtx& c, P& o)
+        : __state(S_INITIAL),
+          c(c),
+          o(o) {}
+
+    __gen_with_lent_param_gen(__gen_with_lent_param_gen&&) = default;
+    ~__gen_with_lent_param_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_lent_param_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_lent_param_gen&) {
+        return os << "<generator with_lent_param_gen>";
+    }
+};
+
+// def with_readonly_gen(c: RoCtx) -> Iterator[int32]:
+struct __gen_with_readonly_gen : public ::tpy::next_iter_mixin<__gen_with_readonly_gen, int32_t> {
+    ::tpy::frame_state __state;
+    RoCtx& c;
+    ::tpy::frame_slot<P> other;
+    const P* p = nullptr;
+    const P* q = nullptr;
+    RoCtx* __with_ctx_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_readonly_gen(RoCtx& c)
+        : __state(S_INITIAL),
+          c(c) {}
+
+    __gen_with_readonly_gen(__gen_with_readonly_gen&&) = default;
+    ~__gen_with_readonly_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_readonly_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_readonly_gen&) {
+        return os << "<generator with_readonly_gen>";
+    }
+};
+
+// def with_readonly_leaf_gen() -> Iterator[int32]:
+struct __gen_with_readonly_leaf_gen : public ::tpy::next_iter_mixin<__gen_with_readonly_leaf_gen, int32_t> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<P> other;
+    const P* p = nullptr;
+    const P* q = nullptr;
+    ::tpy::frame_slot<RoCtx> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_with_readonly_leaf_gen() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_readonly_leaf_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_readonly_leaf_gen&) {
+        return os << "<generator with_readonly_leaf_gen>";
+    }
+};
+
+// def with_generic_gen(c: GCtx[P], o: P) -> Iterator[int32]:
+struct __gen_with_generic_gen : public ::tpy::next_iter_mixin<__gen_with_generic_gen, int32_t> {
+    ::tpy::frame_state __state;
+    GCtx<P>& c;
+    P& o;
+    P* p = nullptr;
+    P* q = nullptr;
+    GCtx<P>* __with_ctx_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_generic_gen(GCtx<P>& c, P& o)
+        : __state(S_INITIAL),
+          c(c),
+          o(o) {}
+
+    __gen_with_generic_gen(__gen_with_generic_gen&&) = default;
+    ~__gen_with_generic_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_generic_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_generic_gen&) {
+        return os << "<generator with_generic_gen>";
+    }
+};
+
+// def with_generic_rvalue_gen(c: GCtx[P]) -> Iterator[int32]:
+struct __gen_with_generic_rvalue_gen : public ::tpy::next_iter_mixin<__gen_with_generic_rvalue_gen, int32_t> {
+    ::tpy::frame_state __state;
+    GCtx<P>& c;
+    P* p = nullptr;
+    std::optional<P> __ptr_slot_f0;
+    P* q = nullptr;
+    GCtx<P>* __with_ctx_0 = nullptr;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_JOIN_0 = 3,
+        S_JOIN_1 = 4,
+        S_DONE = 5,
+    };
+
+    __gen_with_generic_rvalue_gen(GCtx<P>& c)
+        : __state(S_INITIAL),
+          c(c) {}
+
+    __gen_with_generic_rvalue_gen(__gen_with_generic_rvalue_gen&&) = default;
+    ~__gen_with_generic_rvalue_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_generic_rvalue_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_generic_rvalue_gen&) {
+        return os << "<generator with_generic_rvalue_gen>";
+    }
+};
+
+// def with_target_bound_gen() -> Iterator[int32]:
+struct __gen_with_target_bound_gen : public ::tpy::next_iter_mixin<__gen_with_target_bound_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Res* t = nullptr;
+    std::optional<Res> __ptr_slot_f0;
+    Res* keep = nullptr;
+    ::tpy::frame_slot<Res> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_with_target_bound_gen() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_target_bound_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_target_bound_gen&) {
+        return os << "<generator with_target_bound_gen>";
+    }
+};
+
+// def with_target_rebound_gen() -> Iterator[int32]:
+struct __gen_with_target_rebound_gen : public ::tpy::next_iter_mixin<__gen_with_target_rebound_gen, int32_t> {
+    ::tpy::frame_state __state;
+    Res* p = nullptr;
+    std::optional<Res> __ptr_slot_f0;
+    std::optional<Res> __ptr_slot_f1;
+    Res* keep = nullptr;
+    ::tpy::frame_slot<Res> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_DONE = 3,
+    };
+
+    __gen_with_target_rebound_gen() : __state(S_INITIAL) {}
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_with_target_rebound_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_with_target_rebound_gen&) {
+        return os << "<generator with_target_rebound_gen>";
+    }
+};
+
 // def loop_gen(ps: list[P], xss: list[list[int32]], flag: bool) -> Iterator[P]:
 struct __gen_loop_gen : public ::tpy::next_iter_mixin<__gen_loop_gen, ::tpy::val_or_ref<P>> {
     ::tpy::frame_state __state;
@@ -490,9 +1440,147 @@ struct __gen_loop_gen : public ::tpy::next_iter_mixin<__gen_loop_gen, ::tpy::val
     }
 };
 
+// def compare_gen() -> Iterator[int32]:
+struct __gen_compare_gen : public ::tpy::next_iter_mixin<__gen_compare_gen, int32_t> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<Cl> o;
+    Cl* p = nullptr;
+    Cl* q = nullptr;
+    std::optional<Cl> __ptr_slot_f0;
+    std::optional<Cl> __ptr_slot_f1;
+    std::optional<Cl> __ptr_slot_f2;
+    int32_t k;
+    Cl* keep = nullptr;
+    ::tpy::frame_slot<ClCtx> __with_ctx_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_RESUME_1 = 2,
+        S_RESUME_2 = 3,
+        S_JOIN_0 = 4,
+        S_JOIN_1 = 5,
+        S_DONE = 6,
+    };
+
+    __gen_compare_gen() : __state(S_INITIAL) {}
+
+    __gen_compare_gen(__gen_compare_gen&&) = default;
+    ~__gen_compare_gen() {
+        ::tpy::DeferSignals __tpy_defer_signals;
+        ::tpy::GeneratorExit __tpy_ge{};
+        try {
+            switch (__state) {
+            case S_RESUME_0:
+            case S_RESUME_1:
+                (*__with_ctx_0).__exit__({}, &__tpy_ge, {});
+                break;
+            default: break;
+            }
+        } catch (...) {
+            ::tpy::tpy_panic("exception in 'finally' cleanup while destroying abandoned generator");
+        }
+    }
+
+    std::expected<int32_t, ::tpy::StopIteration> __next__();
+    __gen_compare_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_compare_gen&) {
+        return os << "<generator compare_gen>";
+    }
+};
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline P::P(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+//     pass
+inline Ctx::Ctx() {
+}
+
+// def __enter__(self) -> Own[P]:
+//     return P(1)
+inline P Ctx::__enter__() const {
+    return P(1);
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     pass
+inline void Ctx::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+}
+
+// def __init__(self) -> None:
+//     self.p = P(1)
+inline LentCtx::LentCtx() : p(P(1)) {}
+
+// def __enter__(self) -> P:
+//     return self.p
+inline P& LentCtx::__enter__() {
+    return this->p;
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     pass
+inline void LentCtx::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+}
+
+// def __init__(self) -> None:
+//     self.p = P(1)
+inline RoCtx::RoCtx() : p(P(1)) {}
+
+// def __enter__(self) -> readonly[P]:
+//     return self.p
+inline const P& RoCtx::__enter__() {
+    return this->p;
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     self.p.n += 10
+inline void RoCtx::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) {
+    this->p.n = ::tpy::add_check<int32_t>(this->p.n, 10);
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = [n]
+inline Res::Res(int32_t n) : n(std::vector<int32_t>{n}) {}
+
+// def __enter__(self) -> "Res":
+//     return self
+inline Res& Res::__enter__() {
+    return (*this);
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     self.n[0] = -self.n[0]
+inline void Res::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) {
+    ::tpy::__setitem__(this->n, 0, ::tpy::neg_check<int32_t>(::tpy::__getitem__(this->n, 0)));
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Cl::Cl(int32_t n) : n(n) {}
+
+// def __lt__(self, o: "Cl") -> bool:
+//     return self.n < o.n
+inline bool Cl::__lt__(const Cl& o) const {
+    return (this->n < o.n);
+}
+
+// def __init__(self) -> None:
+//     self.c = Cl(1)
+inline ClCtx::ClCtx() : c(Cl(1)) {}
+
+// def __enter__(self) -> Cl:
+//     return self.c
+inline Cl& ClCtx::__enter__() {
+    return this->c;
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     pass
+inline void ClCtx::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+}
 void __tpy_init();
 } // namespace tpyapp::main

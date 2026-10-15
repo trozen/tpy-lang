@@ -339,6 +339,1121 @@ __coro_walrus_first_co walrus_first_co() {
     return __coro_walrus_first_co();
 }
 
+// # with-as: the target's first object lands in a frame field of the item's
+// # own, so the alias keeps it across a rebind, by rvalue or by lvalue
+// def with_rvalue_gen() -> Iterator[int32]:
+//     with Ctx() as p:
+//         q = p
+//         yield 0                              # -> S_RESUME_0
+//         p = P(2)  # tpyc: ok
+//         q.n += 10
+//         print("with_rvalue gen:", q.n, p.n)
+//         yield 1                              # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_rvalue_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Ctx());
+        p = &*(__ptr_slot_f0 = (*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &*(__ptr_slot_f1 = P(2));
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_rvalue gen:" << " " << q->n << " " << p->n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_2 = false;
+        try {
+            __fin_ran_2 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_2) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_2) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_rvalue_gen() -> Iterator[int32]:
+__gen_with_rvalue_gen with_rvalue_gen() {
+    return __gen_with_rvalue_gen();
+}
+
+// def with_lvalue_gen() -> Iterator[int32]:
+//     other = P(5)
+//     with Ctx() as p:
+//         q = p
+//         yield 0                                       # -> S_RESUME_0
+//         p = other  # tpyc: ok
+//         p.n += 100
+//         print("with_lvalue gen:", q.n, p.n, other.n)
+//         yield 1                                       # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_lvalue_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        other.emplace(P(5));
+        __with_ctx_0.emplace(Ctx());
+        p = &*(__ptr_slot_f0 = (*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &((*other));
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            std::cout << "with_lvalue gen:" << " " << q->n << " " << p->n << " " << (*other).n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_5 = false;
+        try {
+            __fin_ran_5 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_5) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_5) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = p;
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_lvalue_gen() -> Iterator[int32]:
+__gen_with_lvalue_gen with_lvalue_gen() {
+    return __gen_with_lvalue_gen();
+}
+
+// async def with_rvalue_co() -> int32:
+//     with Ctx() as p:
+//         q = p
+//         await asyncio.sleep(0)              # -> S_RESUME_0
+//         p = P(2)  # tpyc: ok
+//         q.n += 10
+//         print("with_rvalue co:", q.n, p.n)
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_with_rvalue_co::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Ctx());
+        p = &*(__ptr_slot_f0 = (*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        bool __fin_ran_7 = false;
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            p = &*(__ptr_slot_f1 = P(2));
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_rvalue co:" << " " << q->n << " " << p->n << "\n" << ::tpy::check_signals;
+            __fin_ran_7 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_7) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_7) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        int32_t __tpy_async_ret = p->n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_rvalue_co() -> int32:
+__coro_with_rvalue_co with_rvalue_co() {
+    return __coro_with_rvalue_co();
+}
+
+
+// def with_leaf_gen() -> Iterator[int32]:
+__gen_with_leaf_gen with_leaf_gen() {
+    return __gen_with_leaf_gen();
+}
+
+// # with-as over an `__enter__` that lends: the target points at the manager's
+// # object, a rebind after a suspension re-points it
+// def with_lent_gen(c: LentCtx) -> Iterator[int32]:
+//     with c as p:
+//         q = p
+//         yield 0                                    # -> S_RESUME_0
+//         p = P(2)  # tpyc: ok
+//         q.n += 10
+//         print("with_lent gen:", q.n, p.n, c.p.n)
+//         yield 1                                    # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_lent_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &*(__ptr_slot_f0 = P(2));
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_lent gen:" << " " << q->n << " " << p->n << " " << c.p.n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_11 = false;
+        try {
+            __fin_ran_11 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_11) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_11) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_lent_gen(c: LentCtx) -> Iterator[int32]:
+__gen_with_lent_gen with_lent_gen(LentCtx& c) {
+    return __gen_with_lent_gen(c);
+}
+
+// async def with_lent_co(c: LentCtx) -> int32:
+//     with c as p:
+//         q = p
+//         await asyncio.sleep(0)                   # -> S_RESUME_0
+//         p = P(2)  # tpyc: ok
+//         q.n += 10
+//         print("with_lent co:", q.n, p.n, c.p.n)
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_with_lent_co::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        bool __fin_ran_13 = false;
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            p = &*(__ptr_slot_f0 = P(2));
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_lent co:" << " " << q->n << " " << p->n << " " << c.p.n << "\n" << ::tpy::check_signals;
+            __fin_ran_13 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_13) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_13) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        int32_t __tpy_async_ret = p->n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_lent_co(c: LentCtx) -> int32:
+__coro_with_lent_co with_lent_co(LentCtx& c) {
+    return __coro_with_lent_co(c);
+}
+
+// # with-as over a lending `__enter__`, rebound to a parameter: the target
+// # re-points at the caller's object, the alias keeps the manager's
+// def with_lent_param_gen(c: LentCtx, o: P) -> Iterator[int32]:
+//     with c as p:
+//         q = p
+//         yield 0                                                # -> S_RESUME_0
+//         p = o  # tpyc: ok
+//         p.n += 100
+//         q.n += 10
+//         print("with_lent_param gen:", q.n, p.n, o.n, c.p.n)
+//         yield 1                                                # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_lent_param_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &(o);
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_lent_param gen:" << " " << q->n << " " << p->n << " " << o.n << " " << c.p.n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_16 = false;
+        try {
+            __fin_ran_16 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_16) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_16) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_lent_param_gen(c: LentCtx, o: P) -> Iterator[int32]:
+__gen_with_lent_param_gen with_lent_param_gen(LentCtx& c, P& o) {
+    return __gen_with_lent_param_gen(c, o);
+}
+
+// async def with_lent_param_co(c: LentCtx, o: P) -> int32:
+//     with c as p:
+//         q = p
+//         await asyncio.sleep(0)                              # -> S_RESUME_0
+//         p = o  # tpyc: ok
+//         p.n += 100
+//         q.n += 10
+//         print("with_lent_param co:", q.n, p.n, o.n, c.p.n)
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_with_lent_param_co::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        bool __fin_ran_18 = false;
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            p = &(o);
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_lent_param co:" << " " << q->n << " " << p->n << " " << o.n << " " << c.p.n << "\n" << ::tpy::check_signals;
+            __fin_ran_18 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_18) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_18) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        int32_t __tpy_async_ret = p->n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_lent_param_co(c: LentCtx, o: P) -> int32:
+__coro_with_lent_param_co with_lent_param_co(LentCtx& c, P& o) {
+    return __coro_with_lent_param_co(c, o);
+}
+
+// # with-as over an `__enter__` that lends a readonly object, rebound to an
+// # existing one: a const pointer the rebind re-points; writes to the objects
+// # themselves show through both names
+// def with_readonly_gen(c: RoCtx) -> Iterator[int32]:
+//     other = P(7)
+//     with c as p:
+//         q = p
+//         yield 0                                       # -> S_RESUME_0
+//         p = other  # tpyc: ok
+//         other.n += 100
+//         c.p.n += 10
+//         print("with_readonly gen:", q.n, p.n, c.p.n)
+//         yield 1                                       # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_readonly_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        other.emplace(P(7));
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &((*other));
+            (*other).n = ::tpy::add_check<int32_t>((*other).n, 100);
+            c.p.n = ::tpy::add_check<int32_t>(c.p.n, 10);
+            std::cout << "with_readonly gen:" << " " << q->n << " " << p->n << " " << c.p.n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_21 = false;
+        try {
+            __fin_ran_21 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_21) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_21) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_readonly_gen(c: RoCtx) -> Iterator[int32]:
+__gen_with_readonly_gen with_readonly_gen(RoCtx& c) {
+    return __gen_with_readonly_gen(c);
+}
+
+// async def with_readonly_co(c: RoCtx) -> int32:
+//     other = P(8)
+//     with c as p:
+//         q = p
+//         await asyncio.sleep(0)                       # -> S_RESUME_0
+//         p = other  # tpyc: ok
+//         other.n += 100
+//         c.p.n += 10
+//         print("with_readonly co:", q.n, p.n, c.p.n)
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_with_readonly_co::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        other.emplace(P(8));
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        bool __fin_ran_23 = false;
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            p = &((*other));
+            (*other).n = ::tpy::add_check<int32_t>((*other).n, 100);
+            c.p.n = ::tpy::add_check<int32_t>(c.p.n, 10);
+            std::cout << "with_readonly co:" << " " << q->n << " " << p->n << " " << c.p.n << "\n" << ::tpy::check_signals;
+            __fin_ran_23 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_23) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_23) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        int32_t __tpy_async_ret = p->n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_readonly_co(c: RoCtx) -> int32:
+__coro_with_readonly_co with_readonly_co(RoCtx& c) {
+    return __coro_with_readonly_co(c);
+}
+
+
+// def with_readonly_leaf_gen() -> Iterator[int32]:
+__gen_with_readonly_leaf_gen with_readonly_leaf_gen() {
+    return __gen_with_readonly_leaf_gen();
+}
+
+// # with-as over a generic `__enter__ -> T`: the target lends the manager's
+// # object, a rebind re-points it and the alias keeps the manager's
+// def with_generic_gen(c: GCtx[P], o: P) -> Iterator[int32]:
+//     with c as p:
+//         q = p
+//         yield 0                                             # -> S_RESUME_0
+//         p = o  # tpyc: ok
+//         p.n += 100
+//         q.n += 10
+//         print("with_generic gen:", q.n, p.n, o.n, c.v.n)
+//         yield 1                                             # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_generic_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &(o);
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_generic gen:" << " " << q->n << " " << p->n << " " << o.n << " " << c.v.n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_27 = false;
+        try {
+            __fin_ran_27 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_27) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_27) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_generic_gen(c: GCtx[P], o: P) -> Iterator[int32]:
+__gen_with_generic_gen with_generic_gen(GCtx<P>& c, P& o) {
+    return __gen_with_generic_gen(c, o);
+}
+
+// def with_generic_rvalue_gen(c: GCtx[P]) -> Iterator[int32]:
+//     with c as p:
+//         q = p
+//         yield 0                                              # -> S_RESUME_0
+//         p = P(5)  # tpyc: ok
+//         q.n += 10
+//         print("with_generic_rvalue gen:", q.n, p.n, c.v.n)
+//         yield 1                                              # -> S_RESUME_1
+std::expected<int32_t, ::tpy::StopIteration> __gen_with_generic_rvalue_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &*(__ptr_slot_f0 = P(5));
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_generic_rvalue gen:" << " " << q->n << " " << p->n << " " << c.v.n << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_30 = false;
+        try {
+            __fin_ran_30 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_30) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_30) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __state = S_RESUME_0;
+            return 0;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def with_generic_rvalue_gen(c: GCtx[P]) -> Iterator[int32]:
+__gen_with_generic_rvalue_gen with_generic_rvalue_gen(GCtx<P>& c) {
+    return __gen_with_generic_rvalue_gen(c);
+}
+
+// async def with_generic_co(c: GCtx[P], o: P) -> int32:
+//     with c as p:
+//         q = p
+//         await asyncio.sleep(0)                           # -> S_RESUME_0
+//         p = o  # tpyc: ok
+//         p.n += 100
+//         q.n += 10
+//         print("with_generic co:", q.n, p.n, o.n, c.v.n)
+//     return p.n
+::tpystd::tpy::Poll<int32_t> __coro_with_generic_co::__poll__(::tpystd::coro::Waker waker) {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0 = &(c);
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        bool __fin_ran_32 = false;
+        try {
+            auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+            if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+            (void)std::move(__r0).value();
+            __sub_0.reset();
+            p = &(o);
+            p->n = ::tpy::add_check<int32_t>(p->n, 100);
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            std::cout << "with_generic co:" << " " << q->n << " " << p->n << " " << o.n << " " << c.v.n << "\n" << ::tpy::check_signals;
+            __fin_ran_32 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_32) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_32) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_JOIN_0: {
+        __state = S_DONE;
+        int32_t __tpy_async_ret = p->n;
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_JOIN_1: {
+        try {
+            q = &((*p));
+            __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+            __state = S_RESUME_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_generic_co(c: GCtx[P], o: P) -> int32:
+__coro_with_generic_co with_generic_co(GCtx<P>& c, P& o) {
+    return __coro_with_generic_co(c, o);
+}
+
+
+// def with_target_bound_gen() -> Iterator[int32]:
+__gen_with_target_bound_gen with_target_bound_gen() {
+    return __gen_with_target_bound_gen();
+}
+
+// async def with_target_bound_co() -> int32:
+//     t = Res(1)
+//     keep = t
+//     await asyncio.sleep(0)                             # -> S_RESUME_0
+//     with Res(6) as t:  # tpyc: ok
+//         pass
+//     print("with_target_bound co:", t.n[0], keep.n[0])
+//     return t.n[0]
+::tpystd::tpy::Poll<int32_t> __coro_with_target_bound_co::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t = &*(__ptr_slot_f0 = Res(1));
+        keep = &((*t));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        __with_ctx_0.emplace(Res(6));
+        auto& __ctx_4 = (*__with_ctx_0);
+        t = &(__ctx_4.__enter__());
+        try {
+            goto __with_exit_4;
+        } catch (::tpy::BaseException& __exc_4) {
+            __ctx_4.__exit__({}, &__exc_4, {});
+            throw;
+        } catch (...) {
+            __ctx_4.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_4:
+        __ctx_4.__exit__({}, nullptr, {});
+        std::cout << "with_target_bound co:" << " " << ::tpy::__getitem__(t->n, 0) << " " << ::tpy::__getitem__(keep->n, 0) << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        int32_t __tpy_async_ret = ::tpy::__getitem__(t->n, 0);
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_target_bound_co() -> int32:
+__coro_with_target_bound_co with_target_bound_co() {
+    return __coro_with_target_bound_co();
+}
+
+
+// def with_target_rebound_gen() -> Iterator[int32]:
+__gen_with_target_rebound_gen with_target_rebound_gen() {
+    return __gen_with_target_rebound_gen();
+}
+
+// async def with_target_rebound_co() -> int32:
+//     p = Res(1)
+//     await asyncio.sleep(0)                               # -> S_RESUME_0
+//     p = Res(2)
+//     keep = p
+//     with Res(3) as p:  # tpyc: ok
+//         pass
+//     print("with_target_rebound co:", p.n[0], keep.n[0])
+//     return p.n[0]
+::tpystd::tpy::Poll<int32_t> __coro_with_target_rebound_co::__poll__(::tpystd::coro::Waker waker) {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        p = &*(__ptr_slot_f0 = Res(1));
+        __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
+        __state = S_RESUME_0;
+        continue;
+    }
+    case S_RESUME_0: {  // after: await asyncio.sleep(0)
+        auto __r0 = ::tpy::poll_with_cancel(__sub_0, __cancel_pending, waker);
+        if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
+        (void)std::move(__r0).value();
+        __sub_0.reset();
+        p = &*(__ptr_slot_f1 = Res(2));
+        keep = &((*p));
+        __with_ctx_0.emplace(Res(3));
+        auto& __ctx_6 = (*__with_ctx_0);
+        p = &(__ctx_6.__enter__());
+        try {
+            goto __with_exit_6;
+        } catch (::tpy::BaseException& __exc_6) {
+            __ctx_6.__exit__({}, &__exc_6, {});
+            throw;
+        } catch (...) {
+            __ctx_6.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_6:
+        __ctx_6.__exit__({}, nullptr, {});
+        std::cout << "with_target_rebound co:" << " " << ::tpy::__getitem__(p->n, 0) << " " << ::tpy::__getitem__(keep->n, 0) << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        int32_t __tpy_async_ret = ::tpy::__getitem__(p->n, 0);
+        return ::tpystd::tpy::Poll<int32_t>::ready(std::move(__tpy_async_ret));
+    }
+    case S_DONE: ::tpy::tpy_panic("poll after Ready");
+    }
+    __builtin_unreachable();
+}
+
+
+// async def with_target_rebound_co() -> int32:
+__coro_with_target_rebound_co with_target_rebound_co() {
+    return __coro_with_target_rebound_co();
+}
+
 // # loop: a pointer-form loop variable at the ternary, print and walrus arms
 // def loop_gen(ps: list[P], xss: list[list[int32]], flag: bool) -> Iterator[P]:
 //     b = P(2)
@@ -403,6 +1518,108 @@ __gen_loop_gen loop_gen(std::vector<P>& ps, std::vector<std::vector<int32_t>>& x
     return __gen_loop_gen(ps, xss, flag);
 }
 
+// def mkc(i: int32) -> tuple[Own[Cl], int32]:
+//     return (Cl(i), i)
+std::tuple<Cl, int32_t> mkc(int32_t i) {
+    return std::tuple<Cl, int32_t>{Cl(i), i};
+}
+
+// # compare: a with target and an unpack target rebound after a suspension,
+// # then mutated through the rebound object's name, read as compare operands
+// # (a rebound owning for target is BUGS.md#frame-for-own-target-rebind-rejects)
+// def compare_gen() -> Iterator[int32]:
+//     o = Cl(5)
+//     with ClCtx() as p:
+//         yield 0                                                                     # -> S_RESUME_0
+//         p = o
+//         o.n += 1
+//         print("compare gen:", Cl(5) < p, p < Cl(6), Cl(0) < p < Cl(9))  # tpyc: ok
+//         yield 1                                                                     # -> S_RESUME_1
+//     q = Cl(1)
+//     yield 2                                                                         # -> S_RESUME_2
+//     q = Cl(2)
+//     q, k = mkc(6)
+//     keep = q
+//     keep.n += 1
+//     print("compare gen:", Cl(6) < q, q < Cl(7), Cl(0) < q < Cl(9), k)  # tpyc: ok
+std::expected<int32_t, ::tpy::StopIteration> __gen_compare_gen::__next__() {
+    try {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        o.emplace(Cl(5));
+        __with_ctx_0.emplace(ClCtx());
+        p = &((*__with_ctx_0).__enter__());
+        __state = S_JOIN_1;
+        continue;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        try {
+            p = &((*o));
+            (*o).n = ::tpy::add_check<int32_t>((*o).n, 1);
+            std::cout << "compare gen:" << " " << ::tpy::print_bool(((Cl(5)) < ((*p)))) << " " << ::tpy::print_bool((((*p)) < (Cl(6)))) << " " << ::tpy::print_bool((((Cl(0)) < ((*p))) && (((*p)) < (Cl(9))))) << "\n" << ::tpy::check_signals;
+            __state = S_RESUME_1;
+            return 1;
+        } catch (::tpy::BaseException& __exc_0) {
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_1: {  // after: yield 1
+        bool __fin_ran_39 = false;
+        try {
+            __fin_ran_39 = true;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            __state = S_JOIN_0;
+            continue;
+        } catch (::tpy::BaseException& __exc_0) {
+            if (__fin_ran_39) throw;
+            (*__with_ctx_0).__exit__({}, &__exc_0, {});
+            throw;
+        } catch (...) {
+            if (__fin_ran_39) throw;
+            (*__with_ctx_0).__exit__({}, nullptr, {});
+            throw;
+        }
+    }
+    case S_RESUME_2: {  // after: yield 2
+        q = &*(__ptr_slot_f1 = Cl(2));
+        auto __tup_1 = ::tpyapp::main::mkc(6);
+        q = &*(__ptr_slot_f2 = std::move(std::get<0>(__tup_1)));
+        k = std::get<1>(__tup_1);
+        keep = &((*q));
+        keep->n = ::tpy::add_check<int32_t>(keep->n, 1);
+        std::cout << "compare gen:" << " " << ::tpy::print_bool(((Cl(6)) < ((*q)))) << " " << ::tpy::print_bool((((*q)) < (Cl(7)))) << " " << ::tpy::print_bool((((Cl(0)) < ((*q))) && (((*q)) < (Cl(9))))) << " " << k << "\n" << ::tpy::check_signals;
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_JOIN_0: {
+        q = &*(__ptr_slot_f0 = Cl(1));
+        __state = S_RESUME_2;
+        return 2;
+    }
+    case S_JOIN_1: {
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    } catch (...) {
+        __state = S_DONE;
+        throw;
+    }
+    __builtin_unreachable();
+}
+
+
+// def compare_gen() -> Iterator[int32]:
+__gen_compare_gen compare_gen() {
+    return __gen_compare_gen();
+}
+
 // def main() -> None:
 //     for c in ternary_gen(True):
 //         c.n += 10
@@ -433,11 +1650,49 @@ __gen_loop_gen loop_gen(std::vector<P>& ps, std::vector<std::vector<int32_t>>& x
 //         print("walrus_first:", x)
 //     r = asyncio.run(walrus_first_co())
 //     print("walrus_first:", r)
+//     for x in with_rvalue_gen():
+//         print("with_rvalue:", x)
+//     for x in with_lvalue_gen():
+//         print("with_lvalue:", x)
+//     r = asyncio.run(with_rvalue_co())
+//     print("with_rvalue:", r)
+//     for x in with_leaf_gen():
+//         print("with_leaf:", x)
+//     for x in with_lent_gen(LentCtx()):
+//         print("with_lent:", x)
+//     r = asyncio.run(with_lent_co(LentCtx()))
+//     print("with_lent:", r)
+//     for x in with_lent_param_gen(LentCtx(), P(3)):
+//         print("with_lent_param:", x)
+//     r = asyncio.run(with_lent_param_co(LentCtx(), P(4)))
+//     print("with_lent_param:", r)
+//     for x in with_readonly_gen(RoCtx()):
+//         print("with_readonly:", x)
+//     r = asyncio.run(with_readonly_co(RoCtx()))
+//     print("with_readonly:", r)
+//     for x in with_readonly_leaf_gen():
+//         print("with_readonly_leaf:", x)
+//     for x in with_generic_gen(GCtx(P(1)), P(3)):
+//         print("with_generic:", x)
+//     for x in with_generic_rvalue_gen(GCtx(P(1))):
+//         print("with_generic_rvalue:", x)
+//     r = asyncio.run(with_generic_co(GCtx(P(1)), P(4)))
+//     print("with_generic:", r)
+//     for x in with_target_bound_gen():
+//         print("with_target_bound:", x)
+//     r = asyncio.run(with_target_bound_co())
+//     print("with_target_bound:", r)
+//     for x in with_target_rebound_gen():
+//         print("with_target_rebound:", x)
+//     r = asyncio.run(with_target_rebound_co())
+//     print("with_target_rebound:", r)
 //     ps = [P(1), P(5)]
 //     xss = [[1], [2, 3]]
 //     for c in loop_gen(ps, xss, True):
 //         c.n += 100
 //     print("loop:", ps[0].n, ps[1].n, xss)
+//     for x in compare_gen():
+//         print("compare:", x)
 void main() {
     {
         auto __src_0 = ::tpyapp::main::ternary_gen(true);
@@ -532,25 +1787,175 @@ void main() {
     }
     r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::walrus_first_co()));
     std::cout << "walrus_first:" << " " << r << "\n" << ::tpy::check_signals;
-    std::vector<P> ps = {P(1), P(5)};
-    std::vector<std::vector<int32_t>> xss = {{1}, {2, 3}};
     {
-        auto __src_16 = ::tpyapp::main::loop_gen(ps, xss, true);
+        auto __src_16 = ::tpyapp::main::with_rvalue_gen();
         auto&& __itr_16 = ::tpy::__iter__(__src_16);
         for (;;) {
             auto __r_17 = __itr_16.__next__();
             if (!__r_17.has_value()) break;
-            auto&& c = ::tpy::unwrap_ref(*__r_17);
+            int32_t x = ::tpy::unwrap_ref(*__r_17);
+            std::cout << "with_rvalue:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        auto __src_18 = ::tpyapp::main::with_lvalue_gen();
+        auto&& __itr_18 = ::tpy::__iter__(__src_18);
+        for (;;) {
+            auto __r_19 = __itr_18.__next__();
+            if (!__r_19.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_19);
+            std::cout << "with_lvalue:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_rvalue_co()));
+    std::cout << "with_rvalue:" << " " << r << "\n" << ::tpy::check_signals;
+    {
+        auto __src_20 = ::tpyapp::main::with_leaf_gen();
+        auto&& __itr_20 = ::tpy::__iter__(__src_20);
+        for (;;) {
+            auto __r_21 = __itr_20.__next__();
+            if (!__r_21.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_21);
+            std::cout << "with_leaf:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        LentCtx __tmp_1 = LentCtx();
+        auto __src_22 = ::tpyapp::main::with_lent_gen(__tmp_1);
+        auto&& __itr_22 = ::tpy::__iter__(__src_22);
+        for (;;) {
+            auto __r_23 = __itr_22.__next__();
+            if (!__r_23.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_23);
+            std::cout << "with_lent:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    LentCtx __tmp_2 = LentCtx();
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_lent_co(__tmp_2)));
+    std::cout << "with_lent:" << " " << r << "\n" << ::tpy::check_signals;
+    {
+        LentCtx __tmp_3 = LentCtx();
+        P __tmp_4 = P(3);
+        auto __src_24 = ::tpyapp::main::with_lent_param_gen(__tmp_3, __tmp_4);
+        auto&& __itr_24 = ::tpy::__iter__(__src_24);
+        for (;;) {
+            auto __r_25 = __itr_24.__next__();
+            if (!__r_25.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_25);
+            std::cout << "with_lent_param:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    LentCtx __tmp_5 = LentCtx();
+    P __tmp_6 = P(4);
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_lent_param_co(__tmp_5, __tmp_6)));
+    std::cout << "with_lent_param:" << " " << r << "\n" << ::tpy::check_signals;
+    {
+        RoCtx __tmp_7 = RoCtx();
+        auto __src_26 = ::tpyapp::main::with_readonly_gen(__tmp_7);
+        auto&& __itr_26 = ::tpy::__iter__(__src_26);
+        for (;;) {
+            auto __r_27 = __itr_26.__next__();
+            if (!__r_27.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_27);
+            std::cout << "with_readonly:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    RoCtx __tmp_8 = RoCtx();
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_readonly_co(__tmp_8)));
+    std::cout << "with_readonly:" << " " << r << "\n" << ::tpy::check_signals;
+    {
+        auto __src_28 = ::tpyapp::main::with_readonly_leaf_gen();
+        auto&& __itr_28 = ::tpy::__iter__(__src_28);
+        for (;;) {
+            auto __r_29 = __itr_28.__next__();
+            if (!__r_29.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_29);
+            std::cout << "with_readonly_leaf:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        GCtx<P> __tmp_9 = GCtx<P>(P(1));
+        P __tmp_10 = P(3);
+        auto __src_30 = ::tpyapp::main::with_generic_gen(__tmp_9, __tmp_10);
+        auto&& __itr_30 = ::tpy::__iter__(__src_30);
+        for (;;) {
+            auto __r_31 = __itr_30.__next__();
+            if (!__r_31.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_31);
+            std::cout << "with_generic:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    {
+        GCtx<P> __tmp_11 = GCtx<P>(P(1));
+        auto __src_32 = ::tpyapp::main::with_generic_rvalue_gen(__tmp_11);
+        auto&& __itr_32 = ::tpy::__iter__(__src_32);
+        for (;;) {
+            auto __r_33 = __itr_32.__next__();
+            if (!__r_33.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_33);
+            std::cout << "with_generic_rvalue:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    GCtx<P> __tmp_12 = GCtx<P>(P(1));
+    P __tmp_13 = P(4);
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_generic_co(__tmp_12, __tmp_13)));
+    std::cout << "with_generic:" << " " << r << "\n" << ::tpy::check_signals;
+    {
+        auto __src_34 = ::tpyapp::main::with_target_bound_gen();
+        auto&& __itr_34 = ::tpy::__iter__(__src_34);
+        for (;;) {
+            auto __r_35 = __itr_34.__next__();
+            if (!__r_35.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_35);
+            std::cout << "with_target_bound:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_target_bound_co()));
+    std::cout << "with_target_bound:" << " " << r << "\n" << ::tpy::check_signals;
+    {
+        auto __src_36 = ::tpyapp::main::with_target_rebound_gen();
+        auto&& __itr_36 = ::tpy::__iter__(__src_36);
+        for (;;) {
+            auto __r_37 = __itr_36.__next__();
+            if (!__r_37.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_37);
+            std::cout << "with_target_rebound:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
+    r = ::tpystd::asyncio::run<int32_t>(::tpy::make_adapter<::tpystd::coro::Cancellable<int32_t>>(::tpyapp::main::with_target_rebound_co()));
+    std::cout << "with_target_rebound:" << " " << r << "\n" << ::tpy::check_signals;
+    std::vector<P> ps = {P(1), P(5)};
+    std::vector<std::vector<int32_t>> xss = {{1}, {2, 3}};
+    {
+        auto __src_38 = ::tpyapp::main::loop_gen(ps, xss, true);
+        auto&& __itr_38 = ::tpy::__iter__(__src_38);
+        for (;;) {
+            auto __r_39 = __itr_38.__next__();
+            if (!__r_39.has_value()) break;
+            auto&& c = ::tpy::unwrap_ref(*__r_39);
             c.n = ::tpy::add_check<int32_t>(c.n, 100);
         }
     }
     std::cout << "loop:" << " " << ::tpy::__getitem__(ps, 0).n << " " << ::tpy::__getitem__(ps, 1).n << " " << ::tpy::ListPrinter(xss) << "\n" << ::tpy::check_signals;
+    {
+        auto __src_40 = ::tpyapp::main::compare_gen();
+        auto&& __itr_40 = ::tpy::__iter__(__src_40);
+        for (;;) {
+            auto __r_41 = __itr_40.__next__();
+            if (!__r_41.has_value()) break;
+            int32_t x = ::tpy::unwrap_ref(*__r_41);
+            std::cout << "compare:" << " " << x << "\n" << ::tpy::check_signals;
+        }
+    }
 }
 
 // # A rebound reference local of a generator / async frame (a `T*` over storage
-// # of its own per binding site) at the yield ternary, print, walrus and unpack
-// # arms (an unpack that is the sole rebind included); a loop variable at the
-// # same arms rides the same frame-storage check.
+// # of its own per binding site) at the yield ternary, print, walrus, unpack and
+// # with-as arms (an unpack that is the sole rebind included, an `__enter__` that
+// # owns, lends, lends readonly or is generic, a rebind to a parameter, a with
+// # target over a local bound earlier); a loop variable at the same arms rides
+// # the same frame-storage check, and a rebound with / unpack target reads as a
+// # compare operand.
 // import asyncio
 //
 // main()

@@ -37,6 +37,58 @@ walrus_first gen: [5, 6, 7] [1, 2, 3]
 walrus_first: 3
 walrus_first co: [5, 6, 7] [1, 2]
 walrus_first: 5
+with_rvalue: 0
+with_rvalue gen: 11 2
+with_rvalue: 1
+with_lvalue: 0
+with_lvalue gen: 1 105 105
+with_lvalue: 1
+with_rvalue co: 11 2
+with_rvalue: 2
+with_leaf: 0
+with_leaf gen: 11 2
+with_leaf: 1
+with_lent: 0
+with_lent gen: 11 2 11
+with_lent: 1
+with_lent co: 11 2 11
+with_lent: 2
+with_lent_param: 0
+with_lent_param gen: 11 103 103 11
+with_lent_param: 1
+with_lent_param co: 11 104 104 11
+with_lent_param: 104
+with_readonly: 0
+with_readonly gen: 11 107 11
+with_readonly: 1
+with_readonly co: 11 108 11
+with_readonly: 108
+with_readonly_leaf: 0
+with_readonly_leaf gen: 11 107
+with_readonly_leaf: 1
+with_generic: 0
+with_generic gen: 11 103 103 11
+with_generic: 1
+with_generic_rvalue: 0
+with_generic_rvalue gen: 11 5 11
+with_generic_rvalue: 1
+with_generic co: 11 104 104 11
+with_generic: 104
+with_target_bound: 0
+with_target_bound gen: -6 1
+with_target_bound: 1
+with_target_bound co: -6 1
+with_target_bound: -6
+with_target_rebound: 0
+with_target_rebound gen: -3 2
+with_target_rebound: 1
+with_target_rebound co: -3 2
+with_target_rebound: -3
 loop gen: [1]
 loop gen: [2, 3]
 loop: 101 105 [[1, 9], [2, 3, 9]]
+compare: 0
+compare gen: True False True
+compare: 1
+compare: 2
+compare gen: True False True 6

@@ -2289,9 +2289,9 @@ class FunctionTrackingState:
     bind_kinds: IdentityMap = field(default_factory=IdentityMap)
     # Every binding statement with an rvalue rebind of a reference local
     # (OWN), to the names it rebinds so (several for a tuple unpack or a
-    # `match`'s captures); the
-    # pass derives `own_rebind_names` from them. Identity-keyed so the
-    # nested-def state deep copy keeps the real statement objects.
+    # `match`'s captures): the sites the alias-rebind pass decides storage
+    # at. Identity-keyed so the nested-def state deep copy keeps the real
+    # statement objects.
     gate_sites: 'IdentityMap[TpyStmt, frozenset[str]]' = field(
         default_factory=IdentityMap)
     # The gate sites that bind a name already declared as a generator
@@ -2322,9 +2322,6 @@ class FunctionTrackingState:
     # after the block is an error.
     block_closed_frames: 'dict[str, tuple[str, str]]' = field(
         default_factory=dict)
-    # Locals with an OWN rebind site, for the frame layout's
-    # pointer-form verdict; harvested per function by the analyzer.
-    own_rebind_names: frozenset[str] = frozenset()
     # Locals whose sole binding is a fresh constructor call of their exact static
     # type (never rebound -- field mutation doesn't count). Their dynamic type is
     # provably their static type, so the polymorphic-slicing guard may move them
@@ -2608,6 +2605,16 @@ class FunctionTrackingState:
             else:
                 setattr(new, name, deepcopy(value, memo))
         return new
+
+    def rebinds_keep_ownership(self, name: str) -> bool:
+        """Whether every rebind of local `name` hands it an object of its
+        own: none re-points it at an lvalue or a borrow, so a last use may
+        move out of what it holds. A hoisted local is a pointer slot no use
+        moves out of."""
+        if name in self.hoisted_vars or name in self.borrow_reassigned_vars:
+            return False
+        return not (name in self.current_reassigned_vars
+                    and name in self.current_lvalue_reassigned)
 
     # --- BindingProvenance accessors ---
     # Reads default-fill from an absent name; writes go through _bp_update,

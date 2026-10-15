@@ -1,0 +1,1 @@
+main.py:21: error: walrus reassignment of non-value local 's' is not supported yet; use a separate assignment statement

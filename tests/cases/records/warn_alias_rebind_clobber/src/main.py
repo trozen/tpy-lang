@@ -233,6 +233,23 @@ def loop_two_site_read_before_section() -> None:
     print("loop_two_site_read_before:", p.x)
 
 
+def mk_pair(i: int32) -> tuple[Own[Point], int32]:
+    return (Point(i), i)
+
+
+# A loop-body unpack target is the declaration's twin: `kept`, taken on the
+# first pass only, shares the target's slot, so after the loop it reads the
+# last pass's object -- the warning is true here.
+def unpack_kept_first_pass_section() -> None:
+    kept = Point(-1)
+    for i in range(3):
+        p, k = mk_pair(i)
+        if i == 0:
+            kept = p  # tpyc: warning(/'kept' will not keep the object/)
+    kept.x += 100
+    print("unpack_kept_first_pass:", kept.x)
+
+
 def main() -> None:
     loop_carried_section()
     for_carried_section()
@@ -249,6 +266,7 @@ def main() -> None:
     print("loop_unpack_site_gen:", list(loop_unpack_site_gen()))
     loop_capture_section()
     loop_capture_quiet_section()
+    unpack_kept_first_pass_section()
 
 
 main()

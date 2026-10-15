@@ -240,6 +240,25 @@ On a resumable frame the local is a `T* p` field over per-site
 declared right after `p`, and a rebind renders
 `p = &*(__ptr_slot_fN = <rvalue>);`.
 
+The FIRST binding's storage is decided once, for every binder kind -- a
+declaration, an `@error_return` unwrap, a tuple-unpack target, a walrus, an
+owning `for` target, a `with ... as` target -- by `first_binding_storage`
+(`tpyc/sema/storage_policy.py`). Its inputs are two order-free name facts,
+never which binder ran or what it bound from: the name is rebound in its
+scope (the prescan's `reassigned`, merged for a nested def; a loop target's
+own loop body), and the escape hoist keeps it across loop passes. Its
+`StorageVerdict` has two bits: `pointer` (the local is a `T*` over storage
+the first object keeps, `P __slot_1 = std::move(std::get<0>(__tup_1)); P* p
+= &__slot_1;`, so a rebind re-points it) and `hoisted` (that storage stands
+before the loop). A value type gets neither. The binding table
+(`classify_binding`, `tpyc/thir/lower/bindings.py`) reads it for every
+row, and a resumable frame reads the same verdict for its locals (site
+`"frame"`, where `hoisted` is moot: a frame field outlives every pass), so
+the sync body and the frame decide pointer form from one fact. Sema reads
+it too: a rebind of an owning `for` / `with` target is checked against the
+pointee when the verdict is a pointer, and the owning loop's copy warning
+follows the same verdict.
+
 ### Stack slot reuse in loops
 
 When no pointer escapes, the compiler reuses the stack slot:

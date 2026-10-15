@@ -1,0 +1,1 @@
+main.py:31: error: walrus reassignment of non-value local 'p' is not supported yet; use a separate assignment statement

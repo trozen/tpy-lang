@@ -450,12 +450,22 @@ class THIRWalrus(THIRExpr):
     # *xs)`); `rebuild` as THIRAssign's.
     reseat_slot: 'str | None' = None
     rebuild: bool = False
+    # A rebound reference local's first binding: the object lands in a slot
+    # of this site's own (`own_slot`, holding `fill_cpp`) that the pointer
+    # aims at (`(p = &*(__slot_N = v), *p)`), as its rebinds' objects do.
+    fill_cpp: 'str | None' = None
 
     @property
     def binding_slot_cpp(self) -> 'str | None':
         """What the binding's one owning-call slot this write fills holds
         (`slot_cpp`), else None."""
         return self.slot_cpp
+
+    @property
+    def own_slot_cpp(self) -> 'str | None':
+        """What the slot of its own this write fills holds (`fill_cpp`),
+        else None."""
+        return self.fill_cpp
 
 
 @dataclass(frozen=True)
@@ -2529,15 +2539,6 @@ class PtrSlotKind(Enum):
     # validator rejects; the `&(...)` lives in this kind's emit instead
     # (the UNION_ADDR precedent).
     PTR_ADDR = auto()
-    # Rvalue reseat of a SLOTLESS pointer-repr Optional local (an
-    # annotation-only decl): the first such
-    # reseat declares its PLAIN block slot in place and registers it
-    # (`T __slot_N = <rvalue>;\nname = &__slot_N;` --
-    # the no-slot rvalue branch); later rvalue
-    # reseats reuse it (`name = &(__slot_N = <rvalue>);`). `val_cpp`
-    # carries the pointee T spelling. Straight-line positions only (a
-    # block-scoped slot inside a branch/loop is not this slice).
-    INLINE_RVALUE = auto()
     # Module-init initializing write of a NON-VALUE global (`items:
     # list[int32] = [...]` at top level). The name is already declared at
     # namespace scope (`std::vector<int32_t>* items{};`), so only the slot
@@ -2572,7 +2573,7 @@ FLUSHING_REBIND_KINDS = frozenset({
     PtrSlotKind.FRAME_STORAGE_CALL, PtrSlotKind.FRAME_RVALUE,
     PtrSlotKind.OPT_FIELD_RVALUE, PtrSlotKind.OPT_STORAGE_CALL,
     PtrSlotKind.DYN_PROTOCOL, PtrSlotKind.GLOBAL_HOIST_RVALUE,
-    PtrSlotKind.GLOBAL_REBIND, PtrSlotKind.INLINE_RVALUE,
+    PtrSlotKind.GLOBAL_REBIND,
     PtrSlotKind.BRANCH_RVALUE, PtrSlotKind.UNION_INLINE_SLOT,
     PtrSlotKind.UNION_RVALUE,
 })
@@ -3540,6 +3541,17 @@ class THIRTupleUnpack(THIRStmt):
         "frame_ptr_elem", "frame_rebind_ptr",
     })
 
+    def target_slot(self, i: int) -> 'BindingRepr | None':
+        """The record of target `i` when its element lands in a slot of its
+        own, which the target points at (a rebound target taking over an
+        owned element; `storage_hoisted` says the slot stands at the body's
+        top), else None."""
+        rec = self.bindings[i] if i < len(self.bindings) else None
+        if (rec is not None and rec.rebind_slot and i < len(self.binds)
+                and self.binds[i] in ("move", "move_pointee")):
+            return rec
+        return None
+
     def __post_init__(self) -> None:
         # The payload/discriminator pairings the old boolean pile left
         # unchecked: each source form consumes exactly its own payload.
@@ -3734,6 +3746,11 @@ class WithTargetArm(Enum):
       * `FRAME_FIELD` -- resumable plain frame-field target (leaf `with`):
                         `<name> = __ctx_N.__enter__();` (the name's storage
                         IS the frame member -- no local decl)
+      * `FRAME_POINTER` -- resumable pointer-form frame target (leaf
+                        `with`): a by-value result lands in the item's own
+                        frame field, `<name> = &*(<field> = __ctx_N.__enter__());`
+                        (`target_field`), a lent one is aimed at,
+                        `<name> = &(__ctx_N.__enter__());`
     """
     NONE = auto()
     VALUE = auto()
@@ -3743,6 +3760,7 @@ class WithTargetArm(Enum):
     ASSIGN_OPT = auto()
     FRAME_SLOT = auto()
     FRAME_FIELD = auto()
+    FRAME_POINTER = auto()
 
 
 @dataclass(frozen=True)
@@ -3779,6 +3797,9 @@ class THIRWithItem:
     target_cpp: 'str | None' = None
     manager_hoist_cpp: 'str | None' = None
     frame_ctx: 'int | None' = None
+    # FRAME_POINTER over a by-value `__enter__` result: the frame field the
+    # object lands in.
+    target_field: 'str | None' = None
 
 
 @dataclass(frozen=True)

@@ -379,9 +379,9 @@ void handler_continue_finally() {
 //         finally:
 //             print("with_target_finally", i, t.n[0])
 void with_target_finally() {
-    std::optional<Res> __slot_1;
     std::optional<Res> __slot_2;
-    Res* t = &*(__slot_1 = Res(0));
+    Res __slot_1 = Res(0);
+    Res* t = &__slot_1;
     for (int32_t i = 0; i < 3; ++i) {
         {
             bool __fin_ran_5 = false;
@@ -652,8 +652,8 @@ void with_target_exception_finally() {
 //         finally:
 //             n += 1
 void finally_continue() {
-    std::optional<P> __slot_1;
-    P* p = &*(__slot_1 = P(1));
+    P __slot_1 = P(1);
+    P* p = &__slot_1;
     int32_t n = 0;
     std::optional<P> __slot_2;
     for (int32_t i = 0; i < 3; ++i) {

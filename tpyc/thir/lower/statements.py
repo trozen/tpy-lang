@@ -78,7 +78,7 @@ from ...parse.nodes import (
     is_docstring,
     is_super_del_call,
 )
-from ...typesys import pointer_repr_optional, repr_shape
+from ...typesys import pointer_repr_optional, repr_shape, returns_cpp_reference_shape
 from ...typesys import (
     is_readonly_result_type,
     unwrap_qualifiers,
@@ -2552,6 +2552,15 @@ UNPACK_BINDS: dict[BindingKind, str] = {
 }
 
 
+def _discard_target_hoist(stmt: TpyTupleUnpack, name: str,
+                          lc: '_LowerCtx') -> None:
+    """A fresh target whose slot stands at the body's top (its record's
+    `storage_hoisted`) consumes sema's escape hoist of it."""
+    rec = _bindings.fresh_record(lc.table, stmt, name)
+    if rec is not None and rec.storage_hoisted:
+        lc.unhandled_hoists.discard(name)
+
+
 def unpack_wrap_const(stmt: TpyTupleUnpack, lc: '_LowerCtx') -> bool:
     """Whether an unpack's `tuple_to_pointer` wrap spells const element
     pointers: its source is const, as the planner decided on the fresh
@@ -3640,7 +3649,7 @@ def _borrow_tuple_binding_sources(name: str, lc: '_LowerCtx'
     the emplace reseat, owned slot storage with no const bit to
     contribute."""
     sources: list[TpyExpr] = []
-    for tgt, src, _stmt, is_walrus in binding_source_sites(lc.func.body):
+    for tgt, src, _stmt, is_walrus, _b in binding_source_sites(lc.func.body):
         if tgt != name:
             continue
         if is_walrus and not _btuple_owning_call_init(src, lc.analyzer):
@@ -5024,12 +5033,12 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
     if not _opt_pointee_wide(pointee, analyzer):
         note_detail("decl.opt_slot_pointee")
         raise ThirUnsupported(stmt_reject_reason(stmt))
-    needs_rebind = stmt.name in lc.prescan.rvalue_reassigned
+    needs_rebind = rec.rebind_slot
     if stmt.init is None:
         # An annotation-only decl (`h: Handle | None`) renders the same
         # `T* x = nullptr;` as the explicit None init, but it allocates
-        # NO rebind slot at the decl -- the first rvalue reseat
-        # declares its block slot in place (the INLINE_RVALUE reseat arm).
+        # NO rebind slot at the decl -- each rvalue reseat fills a slot of
+        # its own (sema's `rebind_storage`).
         needs_rebind = False
         kind = PtrSlotKind.OPT_NONE
         init: THIRExpr | None = None
@@ -10552,10 +10561,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # copies bare (`z = first<int32_t>(xs);`) -- no slot write, slot
         # or no slot (the branch-hoisted flavor allocates none).
         if (stmt.name in declared and lc.declaring(stmt.name).pointer
-                # NOT slot-carrying names: the THIRAssign emit hijacks a
-                # rebind-slot member into `&*(__slot = ...)`, which is the
-                # OWNED reseat's render, not this bare copy.
-                and not lc.declaring(stmt.name).rebind_slot
                 and isinstance(stmt.init, (TpyCall, TpyMethodCall))
                 and _optional_ptr_borrow_wide(declared[stmt.name],
                                               analyzer) is not None
@@ -10570,6 +10575,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 # lift for either (TODO.md, "Four positions REJECT a
                 # storage-ref `@property` read").
                 and not reads_storage_form_optional(analyzer, stmt.init)):
+            # Rebind-slot locals too: emit's slot render needs rebind_storage.
             _witness("reseat.opt_call_pass")
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name, loc=loc),
@@ -10580,15 +10586,26 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                  forms=_decl_slot_forms(
                                      vtype, analyzer, whole_tuple_call=False,
                                      from_call=True, ptr_local=True),
-                                 allow_temps=True),
+                                 # An argument temporary dies with the
+                                 # statement's block while the pointer the
+                                 # result re-points may outlive it: the
+                                 # lvalue pointer reseat's refusal.
+                                 allow_temps=False),
                     allow_whole_optional=True),
                 loc=loc)
-        # F2d rebind-slot reseat: an rvalue ctor / by-value source. It lowers as a
-        # plain value-form call; emit wraps it as `p = &*(__slot_N = <value>)`
-        # using the rebind slot allocated at the decl. Checked before the lvalue
-        # POINTER reseat -- a rebind-slot local is in both `pointers` sets.
+        # F2d rebind-slot reseat: a rebind sema stamps as putting an object
+        # of its own into a rebound reference local (`rebind_storage`), or a
+        # branch-first write into a hoisted pointer, which is no rebind and
+        # asks the stamp's question itself. It lowers as a plain value-form
+        # call; emit wraps it as `p = &*(__slot_N = <value>)`. Checked
+        # before the lvalue POINTER reseat -- a rebind-slot local is in both
+        # `pointers` sets.
         if (lc.declaring(stmt.name).rebind_slot
                 and stmt.name in declared
+                and (stmt.rebind_storage is not None
+                     or (lc.declaring(stmt.name).kind
+                         is BindingKind.HOIST_POINTER
+                         and binds_owned_value(analyzer, stmt.init)))
                 and _eligible_ptr_union_wide(declared[stmt.name],
                                              lc.analyzer) is None):
             decl_u = pointer_repr_optional(declared[stmt.name])
@@ -10665,25 +10682,24 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     rebind_storage=_rebind_storage(stmt, stmt.name, lc),
                     slot_cpp=lc.render_type(unwrap_readonly(decl_u.inner)),
                     loc=loc)
-            if is_rvalue_source(analyzer, stmt.init):
-                if not _rebind_rvalue_source_ok(
-                        stmt.init, declared[stmt.name], analyzer,
-                        frame_roots_ok=_frame_slot_roots_ok(stmt.name, lc)):
-                    note_detail("decl.rebind_source")
-                    raise ThirUnsupported(stmt_reject_reason(stmt))
-                return THIRAssign(
-                    target=THIRName(result_type=vtype, name=stmt.name,
-                                    loc=loc),
-                    value=_lower_storage_value(
-                        stmt.init, declared[stmt.name], lc, declared, loc,
-                        use=_rebind_rvalue_use(stmt.init, declared[stmt.name])),
-                    rebind_storage=_rebind_storage(stmt, stmt.name, lc),
-                    slot_cpp=_rebind_slot_cpp(declared[stmt.name], lc),
-                    rebuild=frame_object_slot(declared[stmt.name]),
-                    loc=loc)
-            # An LVALUE reseat of a slot-holding name leaves the slot
-            # untouched and re-points the alias (`p = &(lvalue);`) -- fall
-            # through to the pointer reseat arms below.
+            if not _rebind_rvalue_source_ok(
+                    stmt.init, declared[stmt.name], analyzer,
+                    frame_roots_ok=_frame_slot_roots_ok(stmt.name, lc)):
+                note_detail("decl.rebind_source")
+                raise ThirUnsupported(stmt_reject_reason(stmt))
+            return THIRAssign(
+                target=THIRName(result_type=vtype, name=stmt.name,
+                                loc=loc),
+                value=_lower_storage_value(
+                    stmt.init, declared[stmt.name], lc, declared, loc,
+                    use=_rebind_rvalue_use(stmt.init, declared[stmt.name])),
+                rebind_storage=_rebind_storage(stmt, stmt.name, lc),
+                slot_cpp=_rebind_slot_cpp(declared[stmt.name], lc),
+                rebuild=frame_object_slot(declared[stmt.name]),
+                loc=loc)
+        # An LVALUE reseat of a slot-holding name leaves the slot untouched
+        # and re-points the alias (`p = &(lvalue);`): the pointer reseat
+        # arms below.
         # F2a pointer-local reseat: lift the new lvalue field source to `T*` via
         # `&(...)` (the same storage->borrow convert as the first decl). Eligibility
         # admitted only an F1-record field source here. result_type is the stripped
@@ -10871,20 +10887,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         name=stmt.name, kind=PtrSlotKind.FRAME_RVALUE,
                         value=value, val_cpp=fld,
                         rebind_storage=RebindStorage.OWN, loc=loc)
-                if (_opt_slot_rvalue_shape(stmt.init, pointee, analyzer)
-                        and not scope.in_branch and scope.loop_depth == 0
-                        and not lc.resumable_leaf_mode):
-                    # First rvalue reseat of a slotless local declares its
-                    # plain block slot in place; later ones reuse it (the
-                    # INLINE_RVALUE emit).
-                    _witness("reseat.opt_inline_rvalue")
-                    return THIRPtrLocalRebind(
-                        name=stmt.name, kind=PtrSlotKind.INLINE_RVALUE,
-                        value=_lower_expr(
-                            stmt.init, lc, declared,
-                            use=_ExprUse(result=_ExprResultUse.BORROW_BIND,
-                                         slot_target=pointee)),
-                        val_cpp=lc.render_type(pointee), loc=loc)
                 if (isinstance(stmt.init, TpyName)
                         and lc.binding(stmt.init.name).storage_opt
                         and _optional_ptr_borrow_wide(
@@ -11131,11 +11133,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                   and not lc.binding(stmt.init.name).optional_storage
                   and stmt.init.name not in lc.narrow.narrowed
                   # A slot with a const source re-points only as a const
-                  # pointer (the planner's slot verdict; a frame alias
+                  # pointer (the planner's slot verdict; a frame pointer
                   # field's own const).
                   and (not lc.declaring(stmt.name).const_source
                        or lc.declaring(stmt.name).const
-                       or (lc.frame_local(stmt.name, FrameLocalClass.ALIAS_PTR)
+                       or ((lc.frame_local(stmt.name, FrameLocalClass.ALIAS_PTR)
+                            or lc.frame_local(stmt.name,
+                                              FrameLocalClass.REBIND_PTR))
                            and lc.binding(stmt.name).frame_const))
                   and is_plain_nonvalue(unwrap_readonly(unwrap_ref_type(
                       unwrap_send_sync(declared[stmt.init.name]))))
@@ -15737,6 +15741,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     _witness("stmt.tuple_unpack.value_opt_record_target")
             target_cpps.append(cpp)
             bind_tags.append(bind)
+            _discard_target_hoist(stmt, name, lc)
             if bind == "move":
                 _witness("stmt.tuple_unpack.own_target")
             elif bind == "cref":
@@ -16065,6 +16070,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         target_cpps.append(cpp)
                         target_binds.append(bind)
                         body_declared[name] = tt
+                        _discard_target_hoist(up, name, lc)
                         if bind == "move":
                             # The consuming unpack over a STORAGE
                             # (own-element) yield tuple: the fresh owned
@@ -17062,6 +17068,18 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                 # tests + deref) -- the classification already seeded
                 # a pointer record.
                 arm_et = (WithTargetArm.FRAME_FIELD, resolved)
+            elif (lc.frame_local(item.target, FrameLocalClass.REBIND_PTR)
+                    or lc.frame_local(item.target,
+                                      FrameLocalClass.ALIAS_PTR)):
+                # A pointer-form field: a by-value enter result lands in
+                # the item's own frame field (the ptr-slot prescan's), a
+                # lent one is aimed at.
+                if (not returns_cpp_reference_shape(item.enter_type)
+                        and rcfg.ptr_slot_field(lc.func, item) is None):
+                    note_detail("with.frame_pointer_field")
+                    raise ThirUnsupported(stmt_reject_reason(stmt))
+                # The pointer's pointee: ownership is the binding's fact.
+                arm_et = (WithTargetArm.FRAME_POINTER, unwrap_own(resolved))
             elif lc.frame_local(item.target, FrameLocalClass.BORROW_TUPLE):
                 # A borrow-form tuple frame field (`std::tuple<Item*,
                 # int32>`): it is no plain frame field
@@ -17193,7 +17211,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                   WithTargetArm.ASSIGN_PTR: "with.ptr_target_reuse",
                   WithTargetArm.ASSIGN_OPT: "with.opt_slot_target",
                   WithTargetArm.FRAME_SLOT: "with.frame_slot_target",
-                  WithTargetArm.FRAME_FIELD: "with.frame_field_target"}[arm])
+                  WithTargetArm.FRAME_FIELD: "with.frame_field_target",
+                  WithTargetArm.FRAME_POINTER: "with.frame_pointer_target"}[arm])
         if (arm is WithTargetArm.FRAME_FIELD
                 and lc.frame_local(item.target, FrameLocalClass.BORROW_TUPLE)):
             _witness("with.frame_btuple_target")
@@ -17226,6 +17245,8 @@ def _lower_with(stmt: TpyWith, lc: _LowerCtx, declared: dict[str, TpyType],
                         if arm is WithTargetArm.PTR_DECL else None),
             manager_hoist_cpp=mgr_hoist_cpp,
             frame_ctx=frame_ctx_n,
+            target_field=(rcfg.ptr_slot_field(lc.func, item)
+                          if arm is WithTargetArm.FRAME_POINTER else None),
         ))
         if item.target is not None:
             declared[item.target] = et
@@ -17468,7 +17489,9 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
             wrap_use = _ExprUse(result=_ExprResultUse.BORROW_BIND,
                                 allow_temps=temps_ok)
         else:
-            wrap_use = _ExprUse(pos=SinkPos.PRINT_ARG, forms=_ONLY_INDIRECT_READ)
+            wrap_use = _ExprUse(pos=SinkPos.PRINT_ARG,
+                                forms=_ONLY_INDIRECT_READ,
+                                allow_temps=temps_ok)
         # The union STR row is DECLARED-type keyed (`::tpy::__str__(a)`
         # consumes the whole variant), so an assign-narrowed divergent
         # read is safe here -- the sink never sees the member type.

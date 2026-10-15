@@ -659,7 +659,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
       Kept: the whole-tuple slot of an `Optional[tuple]` binding and of a
       first walrus binding (`BUGS.md#tuple-whole-slot-optional-walrus`).
       MIR does not lower the tuple-target unpack (TODO.md).
-    - [ ] 5.3 -- frames: a generator or coroutine body's rebound owning
+    - [x] 5.3 (373a1b9704) -- frames: a generator or coroutine body's rebound owning
       tuple is the pointer tuple, sema's set and the planner's one
       `ptr_tuple_decision` shared with the plain body and read by the frame
       layout; each owned element's object takes a per-site frame field the
@@ -681,6 +681,13 @@ per shape; the mixed tuple global (D2) waits on that entry.
       with no holder refusal -- and a pointer tuple bound to an await's result is
       refused at the binding (`BUGS.md#await-bind-pointer-local-seam`,
       decision D1 = A). Pinned by `tests/cases/tuple/frame_tuple_rebind_storage`.
+      As landed: each rebind slot is declared right before the
+      function-body-level statement holding its rebind (placement E, user
+      2026-10-14), a frame's rebound local is a pointer over per-site fields
+      at the yield, ternary, print, walrus and unpack positions
+      (`tests/cases/generators/frame_rebind_arms`), and a frame unpack of an
+      `Own[tuple[...]]` call result into a reference target is refused
+      (A', `BUGS.md#frame-own-tuple-unpack-dangles`).
     - [ ] 5.4 -- an owning sink over an element owned on some paths and
       borrowed on others takes the scalar's warned copy instead of the
       located reject: `p = (w, v); if c: p = mk(1, v)` then `take(p[0])`

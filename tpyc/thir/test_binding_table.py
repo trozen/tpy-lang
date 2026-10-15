@@ -1227,8 +1227,9 @@ def pick(c: bool) -> int:
             element_type=inp.analyzer.get_expr_type(stmt.init.elements[0]),
             size=1, literal_id=0)
         rec = _bindings._decl_row(
-            _bindings._Site("decl", node=stmt, init=stmt.init), "xs",
-            pending, inp, lambda n: None)
+            _bindings._Site("decl", node=stmt, init=stmt.init,
+                            storage=_bindings.StorageVerdict(pointer=True)),
+            "xs", pending, inp, lambda n: None)
     assert rec.kind is BindingKind.DECL_CONTAINER_SLOT
 
 
@@ -1886,11 +1887,12 @@ def borrow_only(o: Outer, c: bool) -> int:
 
 @pytest.mark.parametrize("func_name, facts, expected", [
     # Owned then re-pointed at an lvalue: the pointer local at an if, a try
-    # and a match alike.
+    # and a match alike, rebound (the storage policy) -- the rebind slot at
+    # an if and a match, none at a try.
     ("owned_then_lvalue", {}, {
-        "x": (BindingKind.HOIST_POINTER, False, False, False),
+        "x": (BindingKind.HOIST_POINTER, False, True, False),
         "y": (BindingKind.HOIST_POINTER, False, False, False),
-        "z": (BindingKind.HOIST_POINTER, False, False, False)}),
+        "z": (BindingKind.HOIST_POINTER, False, True, False)}),
     # A readonly type: the const pointer at an if and a match.
     ("readonly_rebound", {}, {
         "x": (BindingKind.HOIST_CONST_POINTER, True, False, False),
@@ -1910,14 +1912,14 @@ def borrow_only(o: Outer, c: bool) -> int:
         "y": (BindingKind.HOIST_POINTER, False, False, False),
         "z": (BindingKind.HOIST_POINTER, False, True, False)}),
     # Borrow-only: the pointer local at both; the match's is the capture a
-    # nested match re-seats by address.
+    # nested match re-seats by address. The if's, bound in both arms, is
+    # rebound: its rebind slot.
     ("borrow_only", {}, {
-        "x": (BindingKind.HOIST_POINTER, False, False, False),
+        "x": (BindingKind.HOIST_POINTER, False, True, False),
         "z": (BindingKind.HOIST_POINTER, False, False, True)}),
-    # Borrow-only and rvalue-rebound (no program found; the fact is given):
-    # the rebind slot at both.
-    ("borrow_only", {"rvalue_reassigned": frozenset({"x", "z"}),
-                     "reassigned": frozenset({"x", "z"})}, {
+    # Borrow-only and rebound (no program found; the fact is given): the
+    # rebind slot at both.
+    ("borrow_only", {"reassigned": frozenset({"x", "z"})}, {
         "x": (BindingKind.HOIST_POINTER, False, True, False),
         "z": (BindingKind.HOIST_POINTER, False, True, True)}),
 ])

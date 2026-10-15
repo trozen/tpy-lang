@@ -10,7 +10,8 @@ from enum import Enum, auto
 from typing import NamedTuple
 from ...parse.nodes import (TpyAssign, TpyExpr, TpyMatch,
                             TpyFunction, TpyGlobal, TpyName,
-                            TpyNamedExpr, TpyVarDecl, TpyWith,
+                            TpyNamedExpr, TpyTupleUnpack, TpyVarDecl,
+                            TpyWith,
                             iter_capture_bindings)
 from ...identity_map import IdentityMap
 from ...prescan import scan_reassigned_vars
@@ -1008,7 +1009,7 @@ class _Prescan:
     codegen seeds into ctx (see setup_body_scope), recomputed here from the
     analyzer so lowering classifies identically without a CodeGenContext."""
     __slots__ = ("reassigned", "rvalue_reassigned", "nonlocal_names",
-                 "hoisted", "move_through",
+                 "hoisted", "escape_hoisted", "move_through",
                  "alias_sources", "alias_born", "owned_viewfam_params",
                  "ret_storage_opt", "ret_ptr_opt", "ret_borrow_tuple",
                  "ret_nullable_tuple",
@@ -1034,7 +1035,8 @@ class _Prescan:
     def __init__(self, func: TpyFunction, analyzer,
                  params_override=None, return_type_override=None,
                  scan_override=None, hoisted_override=None,
-                 move_through_override=None) -> None:
+                 move_through_override=None,
+                 escape_hoisted_override=None) -> None:
         # `params_override` / `return_type_override` carry a per-@overload
         # STUB's signature: the impl body is emitted against the stub's
         # types, so every signature-derived fact here must key on them.
@@ -1106,6 +1108,11 @@ class _Prescan:
         self.nonlocal_names: set[str] = set()
         self.hoisted = (analyzer.function_hoisted_vars.get(func, set())
                         if hoisted_override is None else hoisted_override)
+        # The scope-escape subset of `hoisted` (a `try`'s predeclarations
+        # are no escape): the storage policy's `hoisted` input.
+        self.escape_hoisted = (
+            analyzer.function_escape_hoisted_vars.get(func, set())
+            if escape_hoisted_override is None else escape_hoisted_override)
         self.move_through = (
             analyzer.function_move_through_vars.get(func, set())
             if move_through_override is None else move_through_override)
@@ -1402,6 +1409,9 @@ def nested_def_prescan(func: TpyFunction, outer: _Prescan, analyzer,
     # its slot inside the closure body.
     prescan.hoisted = outer.hoisted | analyzer.function_hoisted_vars.get(
         func, set())
+    prescan.escape_hoisted = (
+        outer.escape_hoisted
+        | analyzer.function_escape_hoisted_vars.get(func, set()))
     return prescan
 
 
@@ -1510,11 +1520,11 @@ def _filled_slots(stmt: THIRStmt) -> list[THIRRebindSlot]:
 def _rebind_writes(node: object) -> Iterator[tuple[
         BindingRepr | None, int | None,
         THIRAssign | THIRPtrLocalRebind | THIRErrorReturnBind
-        | THIRTupleElemTarget]]:
+        | THIRTupleElemTarget | THIRWalrus]]:
     """Each `(record, element, write)` of `node` that may fill a slot of
     its own: the write's `own_slot_cpp` says whether it does."""
     if isinstance(node, (THIRAssign, THIRPtrLocalRebind,
-                         THIRErrorReturnBind)):
+                         THIRErrorReturnBind, THIRWalrus)):
         yield node.binding, None, node
     elif isinstance(node, THIRTupleUnpack) and node.tuple_target is not None:
         for t in node.elem_targets:
@@ -1649,7 +1659,8 @@ _SHADOWED_LC_STATE = _BRANCH_SCOPED_SETS + (
 # `module_global_names` stay: they fence SYNTHESIZED names, which must avoid
 # the shadowed spellings too.
 _SHADOWED_PRESCAN_FACTS = _ParamFacts._fields + (
-    "reassigned", "rvalue_reassigned", "hoisted", "move_through",
+    "reassigned", "rvalue_reassigned", "hoisted", "escape_hoisted",
+    "move_through",
     "alias_sources", "alias_born",
     "global_seeded", "global_readonly", "global_cpp", "global_write_cpp",
     "global_slots", "native_globals",
@@ -1817,6 +1828,7 @@ class _LowerCtx:
                  scan_override=None,
                  hoisted_override=None,
                  move_through_override=None,
+                 escape_hoisted_override=None,
                  top_level_scope: bool = False) -> None:
         self.analyzer = analyzer
         self.func = func
@@ -1842,7 +1854,8 @@ class _LowerCtx:
                                 return_type_override=return_type_override,
                                 scan_override=scan_override,
                                 hoisted_override=hoisted_override,
-                                move_through_override=move_through_override)
+                                move_through_override=move_through_override,
+                                escape_hoisted_override=escape_hoisted_override)
         # Module-init walk: names live at NAMESPACE scope (pre-declared by the
         # generator, so every write is an assignment), slot temps are `static
         # __global_slot_N`, and non-value globals are writable pointer slots --
@@ -2303,49 +2316,72 @@ class _LowerCtx:
             self.member_self = saved_member_self
 
 
-def _walrus_pairs(expr):
-    """(target, value) for every walrus node in `expr` -- a generic
-    dataclass-field recursion over the Tpy nodes."""
+def _walrus_nodes(expr):
+    """Every walrus node in `expr` -- a generic dataclass-field recursion
+    over the Tpy nodes."""
     if expr is None or not isinstance(expr, TpyExpr):
         return
     if isinstance(expr, TpyNamedExpr):
-        yield expr.target, expr.value
+        yield expr
     for f in fields(expr):
         val = getattr(expr, f.name)
         if isinstance(val, TpyExpr):
-            yield from _walrus_pairs(val)
+            yield from _walrus_nodes(val)
         elif isinstance(val, list):
             for item in val:
                 if isinstance(item, TpyExpr):
-                    yield from _walrus_pairs(item)
+                    yield from _walrus_nodes(item)
 
 
-def binding_source_sites(body, *, all_binders: bool = False
-                         ) -> 'Iterator[tuple[str, object, object, bool]]':
-    """Every binding source in a body, in source order: `(target, source,
-    statement, is_walrus)` for each initialized VarDecl, each assignment to
-    a bare name and each walrus inside a statement's own expressions; with
-    `all_binders`, each match capture too, its source the subject, and each
-    `with ... as` target, its source the with item (the bound value is
-    its `__enter__` result)."""
+class BindingSourceSite(NamedTuple):
+    """One binding source of a body (`binding_source_sites`): the name it
+    binds, its source, the statement it sits in, whether it is a walrus,
+    and its binder -- the walrus node, the with item, else the
+    statement."""
+    target: str
+    source: object
+    stmt: object
+    is_walrus: bool
+    binder: object
+
+
+def binding_source_sites(body, *, all_binders: bool = False,
+                         unpack_targets: bool = False
+                         ) -> 'Iterator[BindingSourceSite]':
+    """Every binding source in a body, in source order: each initialized
+    VarDecl, each assignment to a bare name and each walrus inside a
+    statement's own expressions; with `all_binders`, each match capture
+    too, its source the subject, and each `with ... as` target, its source
+    the with item (the bound value is its `__enter__` result); with
+    `unpack_targets`, each tuple-unpack target, its source the whole
+    tuple."""
     for stmt in body:
         if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-            yield stmt.name, stmt.init, stmt, False
+            yield BindingSourceSite(stmt.name, stmt.init, stmt, False, stmt)
         elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
-            yield stmt.target.name, stmt.value, stmt, False
+            yield BindingSourceSite(stmt.target.name, stmt.value, stmt,
+                                    False, stmt)
+        elif unpack_targets and isinstance(stmt, TpyTupleUnpack):
+            for name in stmt.targets:
+                if name is not None:
+                    yield BindingSourceSite(name, stmt.value, stmt, False,
+                                            stmt)
         for e in stmt.exprs():
-            for tgt, src in _walrus_pairs(e):
-                yield tgt, src, stmt, True
+            for w in _walrus_nodes(e):
+                yield BindingSourceSite(w.target, w.value, stmt, True, w)
         if all_binders and isinstance(stmt, TpyMatch):
             for case in stmt.cases:
                 for cap in iter_capture_bindings(case.pattern):
-                    yield cap.name, stmt.subject, stmt, False
+                    yield BindingSourceSite(cap.name, stmt.subject, stmt,
+                                            False, stmt)
         if all_binders and isinstance(stmt, TpyWith):
             for item in stmt.items:
                 if item.target is not None:
-                    yield item.target, item, stmt, False
+                    yield BindingSourceSite(item.target, item, stmt, False,
+                                            item)
         for sub in stmt.sub_bodies():
-            yield from binding_source_sites(sub, all_binders=all_binders)
+            yield from binding_source_sites(sub, all_binders=all_binders,
+                                            unpack_targets=unpack_targets)
 
 
 @dataclass

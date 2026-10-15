@@ -277,4 +277,197 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walrus_first_gen::__ne
     __builtin_unreachable();
 }
 
+// # with-as in a with body that does not suspend (the leaf with)
+// def with_leaf_gen() -> Iterator[int32]:
+//     with Ctx() as p:
+//         q = p
+//         p = P(2)  # tpyc: ok
+//         q.n += 10
+//     yield 0                              # -> S_RESUME_0
+//     print("with_leaf gen:", q.n, p.n)
+//     yield 1                              # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_with_leaf_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        __with_ctx_0.emplace(Ctx());
+        auto& __ctx_1 = (*__with_ctx_0);
+        p = &*(__ptr_slot_f0 = __ctx_1.__enter__());
+        try {
+            q = p;
+            p = &*(__ptr_slot_f1 = P(2));
+            q->n = ::tpy::add_check<int32_t>(q->n, 10);
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        std::cout << "with_leaf gen:" << " " << q->n << " " << p->n << "\n" << ::tpy::check_signals;
+        __state = S_RESUME_1;
+        return 1;
+    }
+    case S_RESUME_1: {  // after: yield 1
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # with-as over a readonly `__enter__` in a with body that does not suspend:
+// # the const pointer re-points at an existing object, the alias keeps the
+// # manager's, so it sees the write `__exit__` makes to it
+// def with_readonly_leaf_gen() -> Iterator[int32]:
+//     other = P(7)
+//     yield 0                                       # -> S_RESUME_0
+//     with RoCtx() as p:
+//         q = p
+//         p = other  # tpyc: ok
+//         other.n += 100
+//     print("with_readonly_leaf gen:", q.n, p.n)
+//     yield 1                                       # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_with_readonly_leaf_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        other.emplace(P(7));
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        __with_ctx_0.emplace(RoCtx());
+        auto& __ctx_2 = (*__with_ctx_0);
+        p = &(__ctx_2.__enter__());
+        try {
+            q = p;
+            p = &((*other));
+            (*other).n = ::tpy::add_check<int32_t>((*other).n, 100);
+            goto __with_exit_2;
+        } catch (::tpy::BaseException& __exc_2) {
+            __ctx_2.__exit__({}, &__exc_2, {});
+            throw;
+        } catch (...) {
+            __ctx_2.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_2:
+        __ctx_2.__exit__({}, nullptr, {});
+        std::cout << "with_readonly_leaf gen:" << " " << q->n << " " << p->n << "\n" << ::tpy::check_signals;
+        __state = S_RESUME_1;
+        return 1;
+    }
+    case S_RESUME_1: {  // after: yield 1
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # with-as whose target is a local bound earlier in the frame: the target
+// # takes the manager's object, whose `__exit__` the name then shows
+// def with_target_bound_gen() -> Iterator[int32]:
+//     t = Res(1)
+//     keep = t
+//     yield 0                                             # -> S_RESUME_0
+//     with Res(6) as t:  # tpyc: ok
+//         pass
+//     print("with_target_bound gen:", t.n[0], keep.n[0])
+//     yield 1                                             # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_with_target_bound_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        t = &*(__ptr_slot_f0 = Res(1));
+        keep = &((*t));
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        __with_ctx_0.emplace(Res(6));
+        auto& __ctx_3 = (*__with_ctx_0);
+        t = &(__ctx_3.__enter__());
+        try {
+            goto __with_exit_3;
+        } catch (::tpy::BaseException& __exc_3) {
+            __ctx_3.__exit__({}, &__exc_3, {});
+            throw;
+        } catch (...) {
+            __ctx_3.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_3:
+        __ctx_3.__exit__({}, nullptr, {});
+        std::cout << "with_target_bound gen:" << " " << ::tpy::__getitem__(t->n, 0) << " " << ::tpy::__getitem__(keep->n, 0) << "\n" << ::tpy::check_signals;
+        __state = S_RESUME_1;
+        return 1;
+    }
+    case S_RESUME_1: {  // after: yield 1
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
+// # the same, over a local rebound before the with
+// def with_target_rebound_gen() -> Iterator[int32]:
+//     p = Res(1)
+//     yield 0                                               # -> S_RESUME_0
+//     p = Res(2)
+//     keep = p
+//     with Res(3) as p:  # tpyc: ok
+//         pass
+//     print("with_target_rebound gen:", p.n[0], keep.n[0])
+//     yield 1                                               # -> S_RESUME_1
+inline std::expected<int32_t, ::tpy::StopIteration> __gen_with_target_rebound_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        p = &*(__ptr_slot_f0 = Res(1));
+        __state = S_RESUME_0;
+        return 0;
+    }
+    case S_RESUME_0: {  // after: yield 0
+        p = &*(__ptr_slot_f1 = Res(2));
+        keep = &((*p));
+        __with_ctx_0.emplace(Res(3));
+        auto& __ctx_5 = (*__with_ctx_0);
+        p = &(__ctx_5.__enter__());
+        try {
+            goto __with_exit_5;
+        } catch (::tpy::BaseException& __exc_5) {
+            __ctx_5.__exit__({}, &__exc_5, {});
+            throw;
+        } catch (...) {
+            __ctx_5.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_5:
+        __ctx_5.__exit__({}, nullptr, {});
+        std::cout << "with_target_rebound gen:" << " " << ::tpy::__getitem__(p->n, 0) << " " << ::tpy::__getitem__(keep->n, 0) << "\n" << ::tpy::check_signals;
+        __state = S_RESUME_1;
+        return 1;
+    }
+    case S_RESUME_1: {  // after: yield 1
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 } // namespace tpyapp::main

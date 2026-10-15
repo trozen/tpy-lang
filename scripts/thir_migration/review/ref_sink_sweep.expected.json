@@ -482,7 +482,7 @@
  "array_i__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__ctor__own_call__field_write": [
   "ok",
@@ -540,9 +540,9 @@
   "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32)"
  ],
  "array_i__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__ctor__prop_own__field_write": [
   "ok",
@@ -600,7 +600,7 @@
   ""
  ],
  "array_i__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -917,7 +917,7 @@
  "array_i__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__fn__own_call__field_write": [
   "ok",
@@ -985,9 +985,9 @@
   "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32)"
  ],
  "array_i__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__fn__prop_own__field_write": [
   "ok",
@@ -1055,7 +1055,7 @@
   ""
  ],
  "array_i__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -1617,7 +1617,7 @@
  "array_i__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__meth__own_call__field_write": [
   "ok",
@@ -1685,9 +1685,9 @@
   "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32)"
  ],
  "array_i__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "array_i__meth__prop_own__field_write": [
   "ok",
@@ -1755,7 +1755,7 @@
   ""
  ],
  "array_i__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -2052,7 +2052,7 @@
  "array_i__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: Array = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__own_call__field_write": [
   "ok",
@@ -2120,9 +2120,9 @@
   "%x: Array = method_call(%b, v_own, []) %x[0] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "array_i__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Array = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[0] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "array_i__nested__prop_own__field_write": [
   "ok",
@@ -2190,7 +2190,7 @@
   ""
  ],
  "array_i__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -2590,9 +2590,9 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__ctor__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
  ],
  "bytearray__ctor__ctor_rvalue__field_write": [
   "ok",
@@ -2862,7 +2862,7 @@
  "bytearray__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__ctor__own_call__field_write": [
   "ok",
@@ -2920,9 +2920,9 @@
   "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__ctor__prop_own__field_write": [
   "ok",
@@ -3010,7 +3010,7 @@
   ""
  ],
  "bytearray__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -3135,9 +3135,9 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__fn__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
  ],
  "bytearray__fn__ctor_rvalue__field_write": [
   "ok",
@@ -3427,7 +3427,7 @@
  "bytearray__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__fn__own_call__field_write": [
   "ok",
@@ -3495,9 +3495,9 @@
   "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__fn__prop_own__field_write": [
   "ok",
@@ -3600,7 +3600,7 @@
   ""
  ],
  "bytearray__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -4005,9 +4005,9 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__meth__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
  ],
  "bytearray__meth__ctor_rvalue__field_write": [
   "ok",
@@ -4297,7 +4297,7 @@
  "bytearray__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__meth__own_call__field_write": [
   "ok",
@@ -4365,9 +4365,9 @@
   "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)])"
  ],
  "bytearray__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "bytearray__meth__prop_own__field_write": [
   "ok",
@@ -4470,7 +4470,7 @@
   ""
  ],
  "bytearray__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -4575,9 +4575,9 @@
   "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
  ],
  "bytearray__nested__ctor_rvalue__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = call(bytearray [template '::tpy::ByteArray({0})'], [bytes(b'cd') [span]]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__l"
  ],
  "bytearray__nested__ctor_rvalue__field_write": [
   "ok",
@@ -4867,7 +4867,7 @@
  "bytearray__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inne"
+  "%x: bytearray = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__own_call__field_write": [
   "ok",
@@ -4935,9 +4935,9 @@
   "%x: bytearray = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> uint8)]) call(nested_inner, [])"
  ],
  "bytearray__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: bytearray = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> uint8)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "bytearray__nested__prop_own__field_write": [
   "ok",
@@ -5040,7 +5040,7 @@
   ""
  ],
  "bytearray__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -5442,7 +5442,7 @@
  "deref_list__ctor__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__ctor__ctor_rvalue__field_write": [
   "ok",
@@ -5712,7 +5712,7 @@
  "deref_list__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__ctor__own_call__field_write": [
   "ok",
@@ -5770,9 +5770,9 @@
   "%x: DL = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__ctor__prop_own__field_write": [
   "ok",
@@ -5860,7 +5860,7 @@
   ""
  ],
  "deref_list__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -5987,7 +5987,7 @@
  "deref_list__fn__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__fn__ctor_rvalue__field_write": [
   "ok",
@@ -6277,7 +6277,7 @@
  "deref_list__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__fn__own_call__field_write": [
   "ok",
@@ -6345,9 +6345,9 @@
   "%x: DL = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__fn__prop_own__field_write": [
   "ok",
@@ -6450,7 +6450,7 @@
   ""
  ],
  "deref_list__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -6857,7 +6857,7 @@
  "deref_list__meth__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__meth__ctor_rvalue__field_write": [
   "ok",
@@ -7147,7 +7147,7 @@
  "deref_list__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__meth__own_call__field_write": [
   "ok",
@@ -7215,9 +7215,9 @@
   "%x: DL = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "deref_list__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__meth__prop_own__field_write": [
   "ok",
@@ -7320,7 +7320,7 @@
   ""
  ],
  "deref_list__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -7427,7 +7427,7 @@
  "deref_list__nested__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = ctor(DL, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw]) call(nested_i"
  ],
  "deref_list__nested__ctor_rvalue__field_write": [
   "ok",
@@ -7717,7 +7717,7 @@
  "deref_list__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1]"
+  "%x: DL = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw]) call(nested_i"
  ],
  "deref_list__nested__own_call__field_write": [
   "ok",
@@ -7785,9 +7785,9 @@
   "%x: DL = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "deref_list__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DL = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->push_back, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [call(deref [tpy::deref_check], [%s1])]) [raw])"
  ],
  "deref_list__nested__prop_own__field_write": [
   "ok",
@@ -7890,7 +7890,7 @@
   ""
  ],
  "deref_list__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -8292,7 +8292,7 @@
  "deref_rec__ctor__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
+  "%x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__ctor__ctor_rvalue__field_write": [
   "ok",
@@ -8562,7 +8562,7 @@
  "deref_rec__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
+  "%x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__ctor__own_call__field_write": [
   "ok",
@@ -8620,9 +8620,9 @@
   "%x: DR = method_call(%b, v_own, []) %x.x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DR = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__ctor__prop_own__field_write": [
   "ok",
@@ -8710,7 +8710,7 @@
   ""
  ],
  "deref_rec__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -8837,7 +8837,7 @@
  "deref_rec__fn__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
+  "%x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__fn__ctor_rvalue__field_write": [
   "ok",
@@ -9127,7 +9127,7 @@
  "deref_rec__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
+  "%x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__fn__own_call__field_write": [
   "ok",
@@ -9195,9 +9195,9 @@
   "%x: DR = method_call(%b, v_own, []) %x.x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DR = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__fn__prop_own__field_write": [
   "ok",
@@ -9300,7 +9300,7 @@
   ""
  ],
  "deref_rec__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -9707,7 +9707,7 @@
  "deref_rec__meth__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
+  "%x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__meth__ctor_rvalue__field_write": [
   "ok",
@@ -9997,7 +9997,7 @@
  "deref_rec__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
+  "%x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__meth__own_call__field_write": [
   "ok",
@@ -10065,9 +10065,9 @@
   "%x: DR = method_call(%b, v_own, []) %x.x = coerce(lit(9) -> int32)"
  ],
  "deref_rec__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DR = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw])"
  ],
  "deref_rec__meth__prop_own__field_write": [
   "ok",
@@ -10170,7 +10170,7 @@
   ""
  ],
  "deref_rec__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -10277,7 +10277,7 @@
  "deref_rec__nested__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) call(nested_inner, [])"
+  "%x: DR = ctor(DR, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__ctor_rvalue__field_write": [
   "ok",
@@ -10567,7 +10567,7 @@
  "deref_rec__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) call(nested_inner, [])"
+  "%x: DR = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__own_call__field_write": [
   "ok",
@@ -10635,9 +10635,9 @@
   "%x: DR = method_call(%b, v_own, []) %x.x = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "deref_rec__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: DR = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = coerce(lit(9) -> int32) print(%s1.x [raw]) call(nested_inner, [])"
  ],
  "deref_rec__nested__prop_own__field_write": [
   "ok",
@@ -10740,7 +10740,7 @@
   ""
  ],
  "deref_rec__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -11352,7 +11352,7 @@
  "dict_si__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "dict_si__ctor__own_call__field_write": [
   "ok",
@@ -11410,9 +11410,9 @@
   "%x: dict = method_call(%b, v_own, []) %x[str('z')] = coerce(lit(9) -> int32)"
  ],
  "dict_si__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: dict = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "dict_si__ctor__prop_own__field_write": [
   "ok",
@@ -11500,7 +11500,7 @@
   ""
  ],
  "dict_si__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -11847,7 +11847,7 @@
  "dict_si__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "dict_si__fn__own_call__field_write": [
   "ok",
@@ -11915,9 +11915,9 @@
   "%x: dict = method_call(%b, v_own, []) %x[str('z')] = coerce(lit(9) -> int32)"
  ],
  "dict_si__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: dict = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "dict_si__fn__prop_own__field_write": [
   "ok",
@@ -12020,7 +12020,7 @@
   ""
  ],
  "dict_si__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -12647,7 +12647,7 @@
  "dict_si__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "dict_si__meth__own_call__field_write": [
   "ok",
@@ -12715,9 +12715,9 @@
   "%x: dict = method_call(%b, v_own, []) %x[str('z')] = coerce(lit(9) -> int32)"
  ],
  "dict_si__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: dict = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "dict_si__meth__prop_own__field_write": [
   "ok",
@@ -12820,7 +12820,7 @@
   ""
  ],
  "dict_si__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -13147,7 +13147,7 @@
  "dict_si__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: dict = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__own_call__field_write": [
   "ok",
@@ -13215,9 +13215,9 @@
   "%x: dict = method_call(%b, v_own, []) %x[str('z')] = coerce(lit(9) -> int32) call(nested_inner, [])"
  ],
  "dict_si__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: dict = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 *%x[str('z')] = coerce(lit(9) -> int32) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "dict_si__nested__prop_own__field_write": [
   "ok",
@@ -13320,7 +13320,7 @@
   ""
  ],
  "dict_si__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -13722,7 +13722,7 @@
  "gen_rec__ctor__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, [])"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
  ],
  "gen_rec__ctor__ctor_rvalue__field_write": [
   "reject:stmt.assign:field_write.lift.storage",
@@ -13962,7 +13962,7 @@
  "gen_rec__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__ctor__own_call__field_write": [
   "reject:stmt.assign:field_write.lift.storage",
@@ -14020,9 +14020,9 @@
   "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
  ],
  "gen_rec__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__ctor__prop_own__field_write": [
   "reject:expr.method_call:method.ret_type",
@@ -14110,7 +14110,7 @@
   ""
  ],
  "gen_rec__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -14237,7 +14237,7 @@
  "gen_rec__fn__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, [])"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
  ],
  "gen_rec__fn__ctor_rvalue__field_write": [
   "ok",
@@ -14492,7 +14492,7 @@
  "gen_rec__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__fn__own_call__field_write": [
   "ok",
@@ -14560,9 +14560,9 @@
   "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
  ],
  "gen_rec__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__fn__prop_own__field_write": [
   "ok",
@@ -14665,7 +14665,7 @@
   ""
  ],
  "gen_rec__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -15072,7 +15072,7 @@
  "gen_rec__meth__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, [])"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
  ],
  "gen_rec__meth__ctor_rvalue__field_write": [
   "ok",
@@ -15327,7 +15327,7 @@
  "gen_rec__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__meth__own_call__field_write": [
   "ok",
@@ -15395,9 +15395,9 @@
   "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
  ],
  "gen_rec__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__meth__prop_own__field_write": [
   "ok",
@@ -15500,7 +15500,7 @@
   ""
  ],
  "gen_rec__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -15607,7 +15607,7 @@
  "gen_rec__nested__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, [])"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
  ],
  "gen_rec__nested__ctor_rvalue__field_write": [
   "ok",
@@ -15862,7 +15862,7 @@
  "gen_rec__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__own_call__field_write": [
   "ok",
@@ -15930,9 +15930,9 @@
   "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call(nested_in"
  ],
  "gen_rec__nested__prop_own__field_write": [
   "ok",
@@ -16035,7 +16035,7 @@
   ""
  ],
  "gen_rec__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -16735,7 +16735,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -16825,7 +16825,7 @@
   ""
  ],
  "list_i__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -17275,7 +17275,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -17380,7 +17380,7 @@
   ""
  ],
  "list_i__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -18110,7 +18110,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)])"
  ],
  "list_i__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -18215,7 +18215,7 @@
   ""
  ],
  "list_i__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -18645,7 +18645,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "list_i__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -18750,7 +18750,7 @@
   ""
  ],
  "list_i__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -19385,7 +19385,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -19445,7 +19445,7 @@
   ""
  ],
  "list_r__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -19865,7 +19865,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -19935,7 +19935,7 @@
   ""
  ],
  "list_r__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -20600,7 +20600,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])])"
  ],
  "list_r__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -20670,7 +20670,7 @@
   ""
  ],
  "list_r__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -21070,7 +21070,7 @@
   "%x: list = method_call(%b, v_own, []) method_call(%x, push_back, [ctor(R, [coerce(lit(9) -> int32)])]) call(nested_inner, [])"
  ],
  "list_r__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:stmt.var_decl:decl.reseat_source",
   "",
   ""
  ],
@@ -21140,7 +21140,7 @@
   ""
  ],
  "list_r__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -21542,7 +21542,7 @@
  "rec__ctor__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
+  "%x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__ctor__ctor_rvalue__field_write": [
   "ok",
@@ -21812,7 +21812,7 @@
  "rec__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
+  "%x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__ctor__own_call__field_write": [
   "ok",
@@ -21870,9 +21870,9 @@
   "%x: R = method_call(%b, v_own, []) %x.x = binop(%x.x, +, lit(1))"
  ],
  "rec__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: R = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__ctor__prop_own__field_write": [
   "ok",
@@ -21990,7 +21990,7 @@
   ""
  ],
  "rec__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -22117,7 +22117,7 @@
  "rec__fn__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
+  "%x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__fn__ctor_rvalue__field_write": [
   "ok",
@@ -22407,7 +22407,7 @@
  "rec__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
+  "%x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__fn__own_call__field_write": [
   "ok",
@@ -22475,9 +22475,9 @@
   "%x: R = method_call(%b, v_own, []) %x.x = binop(%x.x, +, lit(1))"
  ],
  "rec__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: R = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__fn__prop_own__field_write": [
   "ok",
@@ -22610,7 +22610,7 @@
   ""
  ],
  "rec__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -23017,7 +23017,7 @@
  "rec__meth__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
+  "%x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__meth__ctor_rvalue__field_write": [
   "ok",
@@ -23307,7 +23307,7 @@
  "rec__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
+  "%x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__meth__own_call__field_write": [
   "ok",
@@ -23375,9 +23375,9 @@
   "%x: R = method_call(%b, v_own, []) %x.x = binop(%x.x, +, lit(1))"
  ],
  "rec__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: R = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw])"
  ],
  "rec__meth__prop_own__field_write": [
   "ok",
@@ -23510,7 +23510,7 @@
   ""
  ],
  "rec__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -23617,7 +23617,7 @@
  "rec__nested__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) call(nested_inner, [])"
+  "%x: R = ctor(R, [coerce(lit(7) -> int32)]) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__ctor_rvalue__field_write": [
   "ok",
@@ -23907,7 +23907,7 @@
  "rec__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) call(nested_inner, [])"
+  "%x: R = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__own_call__field_write": [
   "ok",
@@ -23975,9 +23975,9 @@
   "%x: R = method_call(%b, v_own, []) %x.x = binop(%x.x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "ok",
   "",
-  ""
+  "%x: R = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 %x->x = binop(%x->x, +, lit(1)) print(%s1.x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__prop_own__field_write": [
   "ok",
@@ -24110,7 +24110,7 @@
   ""
  ],
  "rec__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.slot_type",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -24391,6 +24391,21 @@
  ],
  "ru_wrap__nested__local_last__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
+  "",
+  ""
+ ],
+ "ru_wrap__nested__param__decl_alias": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "ru_wrap__nested__param__decl_reassigned": [
+  "reject:stmt.nested_def:nesteddef.param_type",
+  "",
+  ""
+ ],
+ "ru_wrap__nested__param__return_borrow": [
+  "reject:stmt.nested_def:nesteddef.param_type",
   "",
   ""
  ],
@@ -24972,7 +24987,7 @@
  "set_i__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "set_i__ctor__own_call__field_write": [
   "ok",
@@ -25030,9 +25045,9 @@
   "%x: set = method_call(%b, v_own, []) method_call(%x, insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__ctor__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: set = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "set_i__ctor__prop_own__field_write": [
   "ok",
@@ -25120,7 +25135,7 @@
   ""
  ],
  "set_i__ctor__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -25502,7 +25517,7 @@
  "set_i__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "set_i__fn__own_call__field_write": [
   "ok",
@@ -25570,9 +25585,9 @@
   "%x: set = method_call(%b, v_own, []) method_call(%x, insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__fn__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: set = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "set_i__fn__prop_own__field_write": [
   "ok",
@@ -25675,7 +25690,7 @@
   ""
  ],
  "set_i__fn__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -26337,7 +26352,7 @@
  "set_i__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
+  "%x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "set_i__meth__own_call__field_write": [
   "ok",
@@ -26405,9 +26420,9 @@
   "%x: set = method_call(%b, v_own, []) method_call(%x, insert, [coerce(lit(9) -> int32)])"
  ],
  "set_i__meth__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: set = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw])"
  ],
  "set_i__meth__prop_own__field_write": [
   "ok",
@@ -26510,7 +26525,7 @@
   ""
  ],
  "set_i__meth__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],
@@ -26872,7 +26887,7 @@
  "set_i__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[record_rvalue] %x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
+  "%x: set = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__own_call__field_write": [
   "ok",
@@ -26940,9 +26955,9 @@
   "%x: set = method_call(%b, v_own, []) method_call(%x, insert, [coerce(lit(9) -> int32)]) call(nested_inner, [])"
  ],
  "set_i__nested__prop_own__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "ok",
   "",
-  ""
+  "%x: set = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->insert, [coerce(lit(9) -> int32)]) print(call(len [tpy::__len__], [%s1]) [raw]) call(nested_inner, [])"
  ],
  "set_i__nested__prop_own__field_write": [
   "ok",
@@ -27045,7 +27060,7 @@
   ""
  ],
  "set_i__nested__temp_accessor__decl_reassigned": [
-  "reject:stmt.var_decl:decl.container_call_reassigned",
+  "reject:expr.method_call:unspecified.lends_from_temporary",
   "Result borrows from temporary receiver object; the temporary is destroyed at end",
   ""
  ],

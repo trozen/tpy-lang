@@ -308,16 +308,6 @@ def test_annotation_only_with_explicit_storage_verdicts(artifacts: Artifacts) ->
     assert execute(fn, heap=heap) == 0 and len(heap) == 1
 
 
-def test_inline_slot_without_storage_verdict_stays_uncovered(artifacts: Artifacts) -> None:
-    source = artifacts[0]["annotation_only"]
-    first = source.body[1]
-    inline = th.THIRPtrLocalRebind(name=first.target.name, kind=th.PtrSlotKind.INLINE_RVALUE,
-                                  value=first.value, optional_layout=first.optional_layout)
-    fn = replace(source, body=(source.body[0], inline, *source.body[2:]))
-    result = lower(fn, artifacts[1])
-    assert isinstance(result, MIRNotCovered) and "unsupported optional reseat" in result.reason
-
-
 
 def test_upcast_constructor_does_not_claim_plain_payload_ownership() -> None:
     compiler, modules = _compile("""\

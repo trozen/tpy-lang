@@ -1,0 +1,86 @@
+free unpack_rvalue 11 2 1
+free unpack_lvalue 5 105 5
+free walrus_rvalue 11 2
+free walrus_lvalue 6 106
+free for_own_rvalue 11 9
+free for_own_lvalue 1 107
+free head_unpack 11 2 7
+while in_pass 10 50
+while in_pass 11 50
+while after_loop 9 100
+while alias_across_passes 3 0 3
+ctor unpack_rvalue 11 2 1
+ctor walrus_lvalue 6 101
+ctor for_own_rvalue 11 9
+method unpack_lvalue 5 105 5
+method walrus_rvalue 11 2
+method for_own_lvalue 1 106
+nested unpack_rvalue 11 2 1
+nested for_own_rvalue 11 9
+try unpack_rvalue 11 2 1
+try walrus_rvalue 11 2
+try for_own_lvalue 1 101
+match unpack_rvalue 11 2 1
+match walrus_rvalue 11 2
+if unpack_rvalue 11 2 1
+if for_own_rvalue 11 9
+loop unpack_rvalue 10 20 0
+loop walrus_rvalue 10 30
+loop unpack_rvalue 11 21 1
+loop walrus_rvalue 11 31
+error_return bind_lvalue 1 105 105
+decl field_alias_rvalue 24 3
+decl optional_lent 8
+inverse unpack_once 4 4 3
+inverse walrus_once 5 5
+inverse value_unpack 5 1 2
+inverse own_param 8
+inverse nonlocal 2
+with lent_rvalue 11 2 11
+loop_hoist unpack_field 101 1
+loop_hoist walrus_if 101
+loop_hoist unpack_keep 102
+ref_sink prop_own_record 2 4
+ref_sink prop_own_list 2 1
+ref_sink bytearray_ctor 2
+elif walrus_rvalue 11 2
+while alias_last_pass 3
+while borrowed_binder [101, 2]
+containers list_unpack 1 3 3
+containers dict_walrus 1 2
+for_own take 9
+for_own take 9
+for_own after 9 [9]
+print_arg for_own [9]
+print_arg for_own [9, 5]
+print_arg for_own_source [9, 5, 5]
+print_arg decl [8]
+print_arg decl_source [8, 6]
+take_rebind in_loop [0, 1] [9, 2]
+take_rebind in_loop [1, 1] [9, 2]
+take_rebind after_loop [0, 1]
+take_rebind after_loop [1, 1]
+take_rebind after_loop_source [5, 6]
+temp_receiver for_own 11 11
+opt_reseat named_receiver 15 15
+opt_reseat named_argument 13 13
+opt_reseat temp_receiver 15 15
+prop_own dict 2
+prop_own set 2
+prop_own array 9
+prop_own bytearray 2
+prop_own generic 5
+decl copy_rebound 11 2 1
+decl repeat_rebound 1 4
+compare unpack_eq True True 1
+compare unpack_lt True False 1
+compare walrus_eq True False
+compare walrus_lt True False
+compare for_own_eq True False
+compare for_own_lt True False
+compare chained True False
+compare with_eq True False
+compare with_lt True False
+compare decl_eq True False
+compare decl_lt True False
+module for_own_rvalue 11 10

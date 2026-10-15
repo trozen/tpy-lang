@@ -48,6 +48,10 @@ void loop_capture_quiet_section();
 __gen_loop_unpack_site_gen loop_unpack_site_gen();
 // def loop_two_site_read_before_section() -> None:
 void loop_two_site_read_before_section();
+// def mk_pair(i: int32) -> tuple[Own[Point], int32]:
+std::tuple<Point, int32_t> mk_pair(int32_t i);
+// def unpack_kept_first_pass_section() -> None:
+void unpack_kept_first_pass_section();
 // def main() -> None:
 void main();
 

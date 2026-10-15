@@ -1781,22 +1781,22 @@ def _local_binding_shape(
     analyzer,
     *,
     name: str,
-    reassigned: set[str],
-    rvalue_reassigned: set[str],
+    rebound: bool,
     hoisted: set[str],
     move_through: set[str],
 ) -> LocalBinding:
     """A first-declaration non-value local's C++ binding shape from its
-    resolved type, its init and the per-function prescan facts; `OTHER`
-    outside the modeled slice (hoisted / move-through / rvalue-sourced
-    locals, tuples / unions / protocols / generic slots, value types). The
-    first step of `_borrow_local_binding`, which the binding table's
-    declaration row asks (`bindings._decl_local_binding`)."""
+    resolved type, its init, the storage policy's verdict (`rebound`: the
+    declaration is a pointer over storage the first object keeps) and the
+    per-function prescan facts; `OTHER` outside the modeled slice (hoisted /
+    move-through / rvalue-sourced locals, tuples / unions / protocols /
+    generic slots, value types). The first step of `_borrow_local_binding`,
+    which the binding table's declaration row asks
+    (`bindings._decl_local_binding`)."""
     if init is None or target_type is None:
         return LocalBinding.OTHER
     if name in hoisted or name in move_through:
         return LocalBinding.OTHER
-    is_reassigned = name in reassigned
     if pointer_repr_optional(target_type) is not None:
         # None-literal and rvalue inits take the slot-hoist pointer-local
         # machinery (reassigned or not). THIR lowering sub-gates the
@@ -1812,23 +1812,23 @@ def _local_binding_shape(
         return LocalBinding.OTHER
     if is_plain_nonvalue(target_type):
         if is_rvalue_source(analyzer, init):
-            # An rvalue source (a ctor / by-value call). A name reassigned with an
-            # rvalue is a rebind-slot pointer-local; a single-assignment
-            # rvalue local needs no indirection
-            # (a plain value local) and is left to the caller's path.
-            return (LocalBinding.REBIND_SLOT if name in rvalue_reassigned
+            # An rvalue source (a ctor / by-value call). A rebound name is a
+            # rebind-slot pointer-local; a single-assignment rvalue local
+            # needs no indirection (a plain value local) and is left to the
+            # caller's path.
+            return (LocalBinding.REBIND_SLOT if rebound
                     else LocalBinding.OTHER)
         # An lvalue source binds a `T&` alias (single-assignment) or a reseatable
         # `T*` pointer-local (reassigned); both lift the lvalue storage to a borrow
         # at the binding site.
-        return LocalBinding.POINTER if is_reassigned else LocalBinding.REF_ALIAS
+        return LocalBinding.POINTER if rebound else LocalBinding.REF_ALIAS
     return LocalBinding.OTHER
 
 
 def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
                           declared: dict[str, TpyType], prescan: _Prescan,
-                          analyzer, pointers: 'AbstractSet[str]', lc
-                          ) -> 'LocalBinding | None':
+                          analyzer, pointers: 'AbstractSet[str]', lc, *,
+                          rebound: bool) -> 'LocalBinding | None':
     """The binding for a non-value local var-decl's *first* declaration, or None
     if it is outside the emit slice. The form decision comes from
     `_local_binding_shape`; the slice additionally requires a field-access source off an
@@ -1837,8 +1837,7 @@ def _borrow_local_binding(stmt: TpyVarDecl, target_type: TpyType | None,
     reassigned shapes of the same plain-record lvalue lift; POINTER's reseats are
     validated by declaration lowering."""
     binding = _local_binding_shape(
-        target_type, stmt.init, analyzer, name=stmt.name,
-        reassigned=prescan.reassigned, rvalue_reassigned=prescan.rvalue_reassigned,
+        target_type, stmt.init, analyzer, name=stmt.name, rebound=rebound,
         hoisted=prescan.hoisted, move_through=prescan.move_through)
     if binding is LocalBinding.OTHER:
         # A ptr-Optional element off a TUPLE-typed field (`first = h.t[0]`)

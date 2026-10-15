@@ -204,6 +204,9 @@ THIR_FACES: frozenset[str] = frozenset({
     "expr.walrus_owned_slot",       # owned non-value walrus off an Own
                                     # call: `std::optional<T> n;` +
                                     # `(n = make(), *n)`, `(*n)` dot reads
+    "expr.walrus_owned_rebind_slot",  # ... of a rebound record: `T* n =
+                                    # nullptr;` + `(n = &*(__slot_N =
+                                    # make()), *n)`, a slot of the site's own
     "expr.walrus_btuple",           # non-reassigned borrow-tuple walrus:
                                     # `std::tuple<..., T*> t;` + borrow
                                     # literal / tuple_to_pointer lift
@@ -2038,7 +2041,6 @@ THIR_FACES: frozenset[str] = frozenset({
     "reseat.opt_call_pass",         # borrow-returning ptr-opt call reseat:
                                     # the bare pointer copy, no slot write
     "reseat.opt_none",
-    "reseat.opt_inline_rvalue",  # slotless local: in-place plain block slot + later reuse
     "reseat.opt_ptr_copy",       # same-Optional borrow-name source: bare pointer copy
     # Rvalue reseat by sema's storage verdict: `(*x) = <rvalue>;` or
     # `x = &*(__slot_N = <rvalue>);` (THIRAssign's rebind arm).
@@ -2296,6 +2298,8 @@ THIR_FACES: frozenset[str] = frozenset({
     "with.manager_frame_ctx",       # leaf owned manager frame home: `__with_ctx_K.emplace(...)`
     "with.frame_slot_target",       # leaf frame_slot target: `<name>.emplace(__enter__());`
     "with.frame_field_target",      # leaf plain frame-field target: `<name> = __enter__();`
+    "with.frame_pointer_target",    # leaf pointer-form target: `<name> =
+                                    # &*(<field> = __enter__());` / `&(...)`
     "with.frame_btuple_target",     # ... its borrow-form tuple flavor
                                     # (`std::tuple<T*, ...>` frame member)
     "with.opt_slot_target",         # hoist-predeclared target -> name = __enter__();

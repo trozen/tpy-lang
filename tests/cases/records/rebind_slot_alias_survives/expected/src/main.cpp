@@ -532,8 +532,8 @@ std::expected<int32_t, Fail> block_er(bool c) {
 //     keep.bump()
 //     print("block-finally", c, keep.n, len(junk))
 void block_finally(bool c) {
-    std::optional<Counter> __slot_1;
-    Counter* keep = &*(__slot_1 = Counter(0));
+    Counter __slot_1 = Counter(0);
+    Counter* keep = &__slot_1;
     std::optional<Counter> __slot_2;
     std::optional<Counter> __slot_3;
     for (int32_t i = 0; i < 2; ++i) {
