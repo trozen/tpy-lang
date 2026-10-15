@@ -1,0 +1,11 @@
+randint: 5
+randint next: 2444712010
+randrange1: 0
+randrange1 next: 2444712010
+randrange2: 3
+randrange2 next: 2444712010
+randrange3: 2
+randrange3 next: 2444712010
+choice: only
+choice next: 2444712010
+instance next: 2687448230
