@@ -22,9 +22,8 @@ struct Inner {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Inner() = default;
-    explicit Inner(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Inner(::tpy::readonly_form_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -41,9 +40,8 @@ struct Outer {
     T inner;
 
     // def __init__(self, inner: T) -> None:
-    //     self.inner = inner
     Outer() = default;
-    explicit Outer(::tpy::readonly_form_t<T> inner) : inner(inner) {}
+    explicit Outer(::tpy::readonly_form_t<T> inner);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -52,6 +50,17 @@ inline std::ostream& operator<<(std::ostream& os, const Outer<T>& obj) {
     ::tpy::print_object_default(os, "Outer", obj);
     return os;
 }
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Inner<T>::Inner(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def __init__(self, inner: T) -> None:
+//     self.inner = inner
+template<typename T>
+inline Outer<T>::Outer(::tpy::readonly_form_t<T> inner) : inner(inner) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

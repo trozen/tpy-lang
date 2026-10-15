@@ -33,80 +33,21 @@ struct JoinHandle {
     bool __tpy_owned_ = true;
 
     // def __init__(self, raw: Own[_RawJoin[R]]) -> None:
-    //     self._raw = raw
-    //     self._consumed = False
-    explicit JoinHandle(::tpy::JoinHandle<R>&& raw)
-        : _raw(std::move(raw)),
-          _consumed(false) {}
+    explicit JoinHandle(::tpy::JoinHandle<R>&& raw);
     // non-copyable (@nocopy)
     JoinHandle(const JoinHandle&) = delete;
     JoinHandle& operator=(const JoinHandle&) = delete;
-    JoinHandle(JoinHandle&& other) noexcept
-        : _raw(std::move(other._raw)),
-          _consumed(std::move(other._consumed)) {
-        other.__tpy_owned_ = false;
-    }
-    JoinHandle& operator=(JoinHandle&& other) noexcept {
-        if (this != &other) {
-            this->~JoinHandle();
-            new (this) JoinHandle(std::move(other));
-        }
-        return *this;
-    }
+    JoinHandle(JoinHandle&& other) noexcept;
+    JoinHandle& operator=(JoinHandle&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     if not self._consumed:
-    //         self._raw.detach()
-    ~JoinHandle() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        if ((!(this->_consumed))) {
-            this->_raw.detach();
-        }
-    }
+    ~JoinHandle();
 
-    // # `-> Own[R]`, not `-> R`: the result is moved out of the future. A bare
-    // # `-> R` is the generic BORROW convention, which binds no rvalue -- and a
-    // # borrow would point into a task the worker thread already destroyed.
     // def join(self) -> Own[R]:
-    //     if self._consumed:
-    //         raise RuntimeError("JoinHandle.join(): handle already consumed")
-    //     if posix_signal.interrupt_armed():
-    //         # A thread's end is not an fd to wait on together with the Ctrl-C
-    //         # wake fd, so the wait goes in slices. A KeyboardInterrupt out of
-    //         # it leaves the handle unconsumed.
-    //         while not self._raw.wait_for(0.1):
-    //             posix_signal.check_signals()
-    //         # A Ctrl-C during the last slice is still this join's to deliver.
-    //         posix_signal.check_signals()
-    //     self._consumed = True
-    //     return self._raw.join()
-    ::tpy::own_return_t<R> join() {
-        if (this->_consumed) {
-            throw ::tpy::RuntimeError("JoinHandle.join(): handle already consumed");
-        }
-        if (::tpy::interrupt_armed()) {
-            while ((!(this->_raw.wait_for(0.1)))) {
-                ::tpy::check_signals();
-            }
-            ::tpy::check_signals();
-        }
-        this->_consumed = true;
-        return this->_raw.join();
-    }
+    ::tpy::own_return_t<R> join();
 
     // def detach(self) -> None:
-    //     if self._consumed:
-    //         raise RuntimeError("JoinHandle.detach(): handle already consumed")
-    //     self._consumed = True
-    //     self._raw.detach()
-    void detach() {
-        if (this->_consumed) {
-            throw ::tpy::RuntimeError("JoinHandle.detach(): handle already consumed");
-        }
-        this->_consumed = true;
-        this->_raw.detach();
-    }
+    void detach();
     static constexpr std::string_view __tpy_class_name__ = "tpy.thread.JoinHandle";
 };
 
@@ -114,6 +55,87 @@ template<typename R>
 inline std::ostream& operator<<(std::ostream& os, const JoinHandle<R>& obj) {
     ::tpy::print_object_default(os, "JoinHandle", obj);
     return os;
+}
+
+
+// def __init__(self, raw: Own[_RawJoin[R]]) -> None:
+//     self._raw = raw
+//     self._consumed = False
+template<typename R>
+inline JoinHandle<R>::JoinHandle(::tpy::JoinHandle<R>&& raw)
+    : _raw(std::move(raw)),
+      _consumed(false) {}
+
+template<typename R>
+inline JoinHandle<R>::JoinHandle(JoinHandle&& other) noexcept
+    : _raw(std::move(other._raw)),
+      _consumed(std::move(other._consumed)) {
+    other.__tpy_owned_ = false;
+}
+template<typename R>
+inline JoinHandle<R>& JoinHandle<R>::operator=(JoinHandle&& other) noexcept {
+    if (this != &other) {
+        this->~JoinHandle();
+        new (this) JoinHandle(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     if not self._consumed:
+//         self._raw.detach()
+template<typename R>
+inline JoinHandle<R>::~JoinHandle() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    if ((!(this->_consumed))) {
+        this->_raw.detach();
+    }
+}
+
+// # `-> Own[R]`, not `-> R`: the result is moved out of the future. A bare
+// # `-> R` is the generic BORROW convention, which binds no rvalue -- and a
+// # borrow would point into a task the worker thread already destroyed.
+// def join(self) -> Own[R]:
+//     if self._consumed:
+//         raise RuntimeError("JoinHandle.join(): handle already consumed")
+//     if posix_signal.interrupt_armed():
+//         # A thread's end is not an fd to wait on together with the Ctrl-C
+//         # wake fd, so the wait goes in slices. A KeyboardInterrupt out of
+//         # it leaves the handle unconsumed.
+//         while not self._raw.wait_for(0.1):
+//             posix_signal.check_signals()
+//         # A Ctrl-C during the last slice is still this join's to deliver.
+//         posix_signal.check_signals()
+//     self._consumed = True
+//     return self._raw.join()
+template<typename R>
+inline ::tpy::own_return_t<R> JoinHandle<R>::join() {
+    if (this->_consumed) {
+        throw ::tpy::RuntimeError("JoinHandle.join(): handle already consumed");
+    }
+    if (::tpy::interrupt_armed()) {
+        while ((!(this->_raw.wait_for(0.1)))) {
+            ::tpy::check_signals();
+        }
+        ::tpy::check_signals();
+    }
+    this->_consumed = true;
+    return this->_raw.join();
+}
+
+// def detach(self) -> None:
+//     if self._consumed:
+//         raise RuntimeError("JoinHandle.detach(): handle already consumed")
+//     self._consumed = True
+//     self._raw.detach()
+template<typename R>
+inline void JoinHandle<R>::detach() {
+    if (this->_consumed) {
+        throw ::tpy::RuntimeError("JoinHandle.detach(): handle already consumed");
+    }
+    this->_consumed = true;
+    this->_raw.detach();
 }
 
 // def spawn[R: Send, T: ThreadTask[R]](task: Send[Own[T]]) -> Own[JoinHandle[R]]:

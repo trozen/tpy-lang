@@ -52,17 +52,7 @@ struct _RcCell : _RcCellBase {
     ::tpy::UninitStorage<U> storage;
 
     // def __init__(self) -> None:
-    //     self.strong = 1
-    //     self.weak = 1
-    //     # Explicit init mirrors the C++ default-construction so the field
-    //     # is set before any use. Without it, TPy emits a warning about
-    //     # the unset field (CPython doesn't reach this stub -- it uses
-    //     # lib/cpy/tplib/rc.py which has a different internal model).
-    //     self.storage = UninitStorage[U]()
-    _RcCell()
-        : strong(1),
-          weak(1),
-          storage(::tpy::UninitStorage<U>()) {}
+    _RcCell();
     // non-copyable (@nocopy)
     _RcCell(const _RcCell&) = delete;
     _RcCell& operator=(const _RcCell&) = delete;
@@ -70,66 +60,19 @@ struct _RcCell : _RcCellBase {
     _RcCell& operator=(_RcCell&&) = default;
 
     // def incr_strong(self) -> None:
-    //     self.strong = self.strong + 1
-    void incr_strong() override {
-        this->strong = (::tpy::add_check<uint32_t>(this->strong, 1));
-    }
+    void incr_strong() override;
 
     // def release_strong(self) -> bool:
-    //     # Decrement strong; if it hit zero, destruct the inline payload
-    //     # FIRST (reset the owning slot) and THEN decrement the collective
-    //     # weak. Returns True iff the cell
-    //     # itself is now unreferenced and needs free. A nested Weak.__del__
-    //     # triggered by the payload destructor (self-Weak inside U) sees
-    //     # weak >= 2 (collective + its own) and can't free us mid-method.
-    //     new_strong = self.strong - 1
-    //     self.strong = new_strong
-    //     if new_strong == 0:
-    //         self.storage.reset()
-    //         new_weak = self.weak - 1
-    //         self.weak = new_weak
-    //         return new_weak == 0
-    //     return False
-    bool release_strong() override {
-        uint32_t new_strong = (::tpy::sub_check<uint32_t>(this->strong, 1));
-        this->strong = new_strong;
-        if ((new_strong == 0)) {
-            this->storage.reset();
-            uint32_t new_weak = (::tpy::sub_check<uint32_t>(this->weak, 1));
-            this->weak = new_weak;
-            return (new_weak == 0);
-        }
-        return false;
-    }
+    bool release_strong() override;
 
     // def try_incr_strong(self) -> bool:
-    //     if self.strong == 0:
-    //         return False
-    //     self.strong = self.strong + 1
-    //     return True
-    bool try_incr_strong() override {
-        if ((this->strong == 0)) {
-            return false;
-        }
-        this->strong = (::tpy::add_check<uint32_t>(this->strong, 1));
-        return true;
-    }
+    bool try_incr_strong() override;
 
     // def incr_weak(self) -> None:
-    //     self.weak = self.weak + 1
-    void incr_weak() override {
-        this->weak = (::tpy::add_check<uint32_t>(this->weak, 1));
-    }
+    void incr_weak() override;
 
     // def release_weak(self) -> bool:
-    //     new_weak = self.weak - 1
-    //     self.weak = new_weak
-    //     return new_weak == 0
-    bool release_weak() override {
-        uint32_t new_weak = (::tpy::sub_check<uint32_t>(this->weak, 1));
-        this->weak = new_weak;
-        return (new_weak == 0);
-    }
+    bool release_weak() override;
     static constexpr std::string_view __tpy_class_name__ = "tplib.rc._RcCell";
 };
 
@@ -149,40 +92,16 @@ struct Rc {
     T* _payload;
     bool __tpy_owned_ = true;
 
-    // # TODO: package-private once TPy gains a private-method mechanism;
-    // # only `Rc.new`, `clone`, `downgrade`, and `Weak.upgrade` should call.
     // def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
-    //     self._cell = cell
-    //     self._payload = payload
-    explicit Rc(_RcCellBase* cell, T* payload)
-        : _cell(cell),
-          _payload(payload) {}
+    explicit Rc(_RcCellBase* cell, T* payload);
     // non-copyable (@nocopy)
     Rc(const Rc&) = delete;
     Rc& operator=(const Rc&) = delete;
-    Rc(Rc&& other) noexcept
-        : _cell(std::move(other._cell)),
-          _payload(std::move(other._payload)) {
-        other.__tpy_owned_ = false;
-    }
-    Rc& operator=(Rc&& other) noexcept {
-        if (this != &other) {
-            this->~Rc();
-            new (this) Rc(std::move(other));
-        }
-        return *this;
-    }
+    Rc(Rc&& other) noexcept;
+    Rc& operator=(Rc&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     if self._cell.release_strong():
-    //         unsafe_release(self._cell)
-    ~Rc() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        if (::tpy::deref_check(this->_cell).release_strong()) {
-            ::tpy::heap_release(this->_cell);
-        }
-    }
+    ~Rc();
 
     template<typename __CovU_T>
         requires (std::is_base_of_v<T, __CovU_T>)
@@ -194,185 +113,93 @@ struct Rc {
     template<typename> friend struct Rc;
 
     // def __deref__(self) -> T:
-    //     return self.get()
-    ::tpy::val_or_ref_t<T> __deref__() {
-        return this->get();
-    }
+    ::tpy::val_or_ref_t<T> __deref__();
 
     // def __deref__(self) -> T:
-    //     return self.get()
-    ::tpy::val_or_cref_t<T> __deref__() const {
-        return this->get();
-    }
+    ::tpy::val_or_cref_t<T> __deref__() const;
 
-    // # DO NOT add an owning-store API (e.g. set(value: Own[T])) here -- Rc
-    // # is Covariant[T], so a writer through a Pet view could install a
-    // # non-Parrot into the slot a Rc[Parrot] clone is observing.
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self._payload
-    ::tpy::val_or_ref_t<T> get() {
-        return ::tpy::deref_check(this->_payload);
-    }
+    ::tpy::val_or_ref_t<T> get();
 
-    // # DO NOT add an owning-store API (e.g. set(value: Own[T])) here -- Rc
-    // # is Covariant[T], so a writer through a Pet view could install a
-    // # non-Parrot into the slot a Rc[Parrot] clone is observing.
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self._payload
-    ::tpy::val_or_cref_t<T> get() const {
-        return ::tpy::deref_check(this->_payload);
-    }
+    ::tpy::val_or_cref_t<T> get() const;
 
     // @staticmethod
     // def new[U: T](value: Own[U]) -> Own[Rc[T]]:
-    //     cell = unsafe_take(_RcCell[U]())
-    //     cell.storage.construct(value)
-    //     return Rc[T](cell, cell.storage.ptr())
     template<typename U>
-    static Rc<T> new_(::tpy::own_param_t<U> value) {
-        _RcCell<U>* cell = ::tpy::heap_take(_RcCell<U>());
-        ::tpy::deref_check(cell).storage.construct(std::move(value));
-        return Rc<T>(cell, cell->storage.ptr());
-    }
+    static Rc<T> new_(::tpy::own_param_t<U> value);
 
-    // # clone/downgrade are auto_readonly: a mutable handle yields a mutable
-    // # handle; a readonly handle (`readonly[Rc[T]]`) yields a readonly-payload
-    // # handle, so readonly can't be laundered into mutable access. The
-    // # `auto_readonly[T]` construction marker resolves per overload -- Rc[T] in
-    // # the mutable half, Rc[readonly[T]] in the const half.
-    // # TODO: once inference can bind a type param to readonly[T] (BUGS.md), the
-    // # explicit `Rc[auto_readonly[T]](...)` here (and in downgrade/upgrade/
-    // # Weak.clone) should reduce to plain `Rc(...)` and infer per overload.
     // @auto_readonly
     // def clone(self) -> Own[Rc[auto_readonly[T]]]:
-    //     self._cell.incr_strong()
-    //     return Rc[auto_readonly[T]](self._cell, self._payload)
-    Rc<T> clone() {
-        ::tpy::deref_check(this->_cell).incr_strong();
-        return Rc<T>(this->_cell, this->_payload);
-    }
+    Rc<T> clone();
 
-    // # clone/downgrade are auto_readonly: a mutable handle yields a mutable
-    // # handle; a readonly handle (`readonly[Rc[T]]`) yields a readonly-payload
-    // # handle, so readonly can't be laundered into mutable access. The
-    // # `auto_readonly[T]` construction marker resolves per overload -- Rc[T] in
-    // # the mutable half, Rc[readonly[T]] in the const half.
-    // # TODO: once inference can bind a type param to readonly[T] (BUGS.md), the
-    // # explicit `Rc[auto_readonly[T]](...)` here (and in downgrade/upgrade/
-    // # Weak.clone) should reduce to plain `Rc(...)` and infer per overload.
     // @auto_readonly
     // def clone(self) -> Own[Rc[auto_readonly[T]]]:
-    //     self._cell.incr_strong()
-    //     return Rc[auto_readonly[T]](self._cell, self._payload)
-    Rc<T> clone() const {
-        ::tpy::deref_check(this->_cell).incr_strong();
-        return Rc<T>(this->_cell, this->_payload);
-    }
+    Rc<T> clone() const;
 
     // @auto_readonly
     // def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
-    //     self._cell.incr_weak()
-    //     return Weak[auto_readonly[T]](self._cell, self._payload)
-    Weak<T> downgrade() {
-        ::tpy::deref_check(this->_cell).incr_weak();
-        return Weak<T>(this->_cell, this->_payload);
-    }
+    Weak<T> downgrade();
 
     // @auto_readonly
     // def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
-    //     self._cell.incr_weak()
-    //     return Weak[auto_readonly[T]](self._cell, self._payload)
-    Weak<T> downgrade() const {
-        ::tpy::deref_check(this->_cell).incr_weak();
-        return Weak<T>(this->_cell, this->_payload);
-    }
+    Weak<T> downgrade() const;
 
-    // # Equality and ordering delegate to T (content, matching Rust's
-    // # `Rc<T>::eq`). Two handles of a reference payload share a cell when
-    // # `a.get() is b.get()` (`a is b` compares the handles themselves).
     // def __str__(self) -> str:
-    //     return f"Rc({self.get()})"
-    std::string __str__() const {
-        return std::format("Rc({})", ::tpy::__str__(this->get()));
-    }
+    std::string __str__() const;
 
     // def __repr__(self) -> str:
-    //     return f"Rc({self.get()!r})"
-    std::string __repr__() const {
-        return std::format("Rc({})", ::tpy::repr_of(this->get()));
-    }
+    std::string __repr__() const;
 
     // def __eq__[T: Equatable](self, other: Rc[T]) -> bool:
-    //     return self.get() == other.get()
     bool __eq__(const Rc<T>& other) const
-      requires ::tpystd::tpy::Equatable<T> {
-        return ::tpy::eq(this->get(), other.get());
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // def __lt__[T: Comparable](self, other: Rc[T]) -> bool:
-    //     return self.get() < other.get()
     bool __lt__(const Rc<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (this->get() < other.get());
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __le__[T: Comparable](self, other: Rc[T]) -> bool:
-    //     return not other.get() < self.get()
     bool __le__(const Rc<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (!((other.get() < this->get())));
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __gt__[T: Comparable](self, other: Rc[T]) -> bool:
-    //     return other.get() < self.get()
     bool __gt__(const Rc<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (other.get() < this->get());
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __ge__[T: Comparable](self, other: Rc[T]) -> bool:
-    //     return not self.get() < other.get()
     bool __ge__(const Rc<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (!((this->get() < other.get())));
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __hash__[T: Hashable](self) -> uint64:
-    //     return hash(self.get())
     uint64_t __hash__() const
-      requires ::tpystd::tpy::Hashable<T> {
-        return ::tpy::__hash__(this->get());
-    }
+      requires ::tpystd::tpy::Hashable<T>;
 
-    friend bool operator==(const Rc& lhs, const Rc<T>& other) {
+    friend decltype(auto) operator==(const Rc& lhs, const Rc<T>& other) {
         return lhs.__eq__(other);
     }
 
-    friend bool operator<(const Rc& lhs, const Rc<T>& other) {
+    friend decltype(auto) operator<(const Rc& lhs, const Rc<T>& other) {
         return lhs.__lt__(other);
     }
 
-    friend bool operator<=(const Rc& lhs, const Rc<T>& other) {
+    friend decltype(auto) operator<=(const Rc& lhs, const Rc<T>& other) {
         return lhs.__le__(other);
     }
 
-    friend bool operator>(const Rc& lhs, const Rc<T>& other) {
+    friend decltype(auto) operator>(const Rc& lhs, const Rc<T>& other) {
         return lhs.__gt__(other);
     }
 
-    friend bool operator>=(const Rc& lhs, const Rc<T>& other) {
+    friend decltype(auto) operator>=(const Rc& lhs, const Rc<T>& other) {
         return lhs.__ge__(other);
     }
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "tplib.rc.Rc";
 };
 
@@ -392,87 +219,32 @@ struct Weak {
     T* _payload;
     bool __tpy_owned_ = true;
 
-    // # TODO: package-private (same as Rc.__init__).
     // def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
-    //     self._cell = cell
-    //     self._payload = payload
-    explicit Weak(_RcCellBase* cell, T* payload)
-        : _cell(cell),
-          _payload(payload) {}
+    explicit Weak(_RcCellBase* cell, T* payload);
     // non-copyable (@nocopy)
     Weak(const Weak&) = delete;
     Weak& operator=(const Weak&) = delete;
-    Weak(Weak&& other) noexcept
-        : _cell(std::move(other._cell)),
-          _payload(std::move(other._payload)) {
-        other.__tpy_owned_ = false;
-    }
-    Weak& operator=(Weak&& other) noexcept {
-        if (this != &other) {
-            this->~Weak();
-            new (this) Weak(std::move(other));
-        }
-        return *this;
-    }
+    Weak(Weak&& other) noexcept;
+    Weak& operator=(Weak&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     if self._cell.release_weak():
-    //         unsafe_release(self._cell)
-    ~Weak() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        if (::tpy::deref_check(this->_cell).release_weak()) {
-            ::tpy::heap_release(this->_cell);
-        }
-    }
+    ~Weak();
 
     // @auto_readonly
     // def upgrade(self) -> Own[Rc[auto_readonly[T]]] | None:
-    //     # Single vcall instead of get_strong + incr_strong: cell checks
-    //     # strong > 0 and increments atomically (in the local sense; Rc is
-    //     # non-atomic, so "atomically" here just means within one method).
-    //     if not self._cell.try_incr_strong():
-    //         return None
-    //     return Rc[auto_readonly[T]](self._cell, self._payload)
-    std::optional<Rc<T>> upgrade() {
-        if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
-            return std::nullopt;
-        }
-        return Rc<T>(this->_cell, this->_payload);
-    }
+    std::optional<Rc<T>> upgrade();
 
     // @auto_readonly
     // def upgrade(self) -> Own[Rc[auto_readonly[T]]] | None:
-    //     # Single vcall instead of get_strong + incr_strong: cell checks
-    //     # strong > 0 and increments atomically (in the local sense; Rc is
-    //     # non-atomic, so "atomically" here just means within one method).
-    //     if not self._cell.try_incr_strong():
-    //         return None
-    //     return Rc[auto_readonly[T]](self._cell, self._payload)
-    std::optional<Rc<T>> upgrade() const {
-        if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
-            return std::nullopt;
-        }
-        return Rc<T>(this->_cell, this->_payload);
-    }
+    std::optional<Rc<T>> upgrade() const;
 
     // @auto_readonly
     // def clone(self) -> Own[Weak[auto_readonly[T]]]:
-    //     self._cell.incr_weak()
-    //     return Weak[auto_readonly[T]](self._cell, self._payload)
-    Weak<T> clone() {
-        ::tpy::deref_check(this->_cell).incr_weak();
-        return Weak<T>(this->_cell, this->_payload);
-    }
+    Weak<T> clone();
 
     // @auto_readonly
     // def clone(self) -> Own[Weak[auto_readonly[T]]]:
-    //     self._cell.incr_weak()
-    //     return Weak[auto_readonly[T]](self._cell, self._payload)
-    Weak<T> clone() const {
-        ::tpy::deref_check(this->_cell).incr_weak();
-        return Weak<T>(this->_cell, this->_payload);
-    }
+    Weak<T> clone() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.rc.Weak";
 };
 
@@ -508,6 +280,393 @@ struct tpy::RefAdapter<tpystd::tplib::rc::_RcCellBase, T> : tpystd::tplib::rc::_
 };
 
 namespace tpystd::tplib::rc {
+
+
+// def __init__(self) -> None:
+//     self.strong = 1
+//     self.weak = 1
+//     # Explicit init mirrors the C++ default-construction so the field
+//     # is set before any use. Without it, TPy emits a warning about
+//     # the unset field (CPython doesn't reach this stub -- it uses
+//     # lib/cpy/tplib/rc.py which has a different internal model).
+//     self.storage = UninitStorage[U]()
+template<typename U>
+inline _RcCell<U>::_RcCell()
+    : strong(1),
+      weak(1),
+      storage(::tpy::UninitStorage<U>()) {}
+
+// def incr_strong(self) -> None:
+//     self.strong = self.strong + 1
+template<typename U>
+inline void _RcCell<U>::incr_strong() {
+    this->strong = (::tpy::add_check<uint32_t>(this->strong, 1));
+}
+
+// def release_strong(self) -> bool:
+//     # Decrement strong; if it hit zero, destruct the inline payload
+//     # FIRST (reset the owning slot) and THEN decrement the collective
+//     # weak. Returns True iff the cell
+//     # itself is now unreferenced and needs free. A nested Weak.__del__
+//     # triggered by the payload destructor (self-Weak inside U) sees
+//     # weak >= 2 (collective + its own) and can't free us mid-method.
+//     new_strong = self.strong - 1
+//     self.strong = new_strong
+//     if new_strong == 0:
+//         self.storage.reset()
+//         new_weak = self.weak - 1
+//         self.weak = new_weak
+//         return new_weak == 0
+//     return False
+template<typename U>
+inline bool _RcCell<U>::release_strong() {
+    uint32_t new_strong = (::tpy::sub_check<uint32_t>(this->strong, 1));
+    this->strong = new_strong;
+    if ((new_strong == 0)) {
+        this->storage.reset();
+        uint32_t new_weak = (::tpy::sub_check<uint32_t>(this->weak, 1));
+        this->weak = new_weak;
+        return (new_weak == 0);
+    }
+    return false;
+}
+
+// def try_incr_strong(self) -> bool:
+//     if self.strong == 0:
+//         return False
+//     self.strong = self.strong + 1
+//     return True
+template<typename U>
+inline bool _RcCell<U>::try_incr_strong() {
+    if ((this->strong == 0)) {
+        return false;
+    }
+    this->strong = (::tpy::add_check<uint32_t>(this->strong, 1));
+    return true;
+}
+
+// def incr_weak(self) -> None:
+//     self.weak = self.weak + 1
+template<typename U>
+inline void _RcCell<U>::incr_weak() {
+    this->weak = (::tpy::add_check<uint32_t>(this->weak, 1));
+}
+
+// def release_weak(self) -> bool:
+//     new_weak = self.weak - 1
+//     self.weak = new_weak
+//     return new_weak == 0
+template<typename U>
+inline bool _RcCell<U>::release_weak() {
+    uint32_t new_weak = (::tpy::sub_check<uint32_t>(this->weak, 1));
+    this->weak = new_weak;
+    return (new_weak == 0);
+}
+
+// # TODO: package-private once TPy gains a private-method mechanism;
+// # only `Rc.new`, `clone`, `downgrade`, and `Weak.upgrade` should call.
+// def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
+//     self._cell = cell
+//     self._payload = payload
+template<typename T>
+inline Rc<T>::Rc(_RcCellBase* cell, T* payload)
+    : _cell(cell),
+      _payload(payload) {}
+
+template<typename T>
+inline Rc<T>::Rc(Rc&& other) noexcept
+    : _cell(std::move(other._cell)),
+      _payload(std::move(other._payload)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Rc<T>& Rc<T>::operator=(Rc&& other) noexcept {
+    if (this != &other) {
+        this->~Rc();
+        new (this) Rc(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     if self._cell.release_strong():
+//         unsafe_release(self._cell)
+template<typename T>
+inline Rc<T>::~Rc() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    if (::tpy::deref_check(this->_cell).release_strong()) {
+        ::tpy::heap_release(this->_cell);
+    }
+}
+
+// def __deref__(self) -> T:
+//     return self.get()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Rc<T>::__deref__() {
+    return this->get();
+}
+
+// def __deref__(self) -> T:
+//     return self.get()
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Rc<T>::__deref__() const {
+    return this->get();
+}
+
+// # DO NOT add an owning-store API (e.g. set(value: Own[T])) here -- Rc
+// # is Covariant[T], so a writer through a Pet view could install a
+// # non-Parrot into the slot a Rc[Parrot] clone is observing.
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self._payload
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Rc<T>::get() {
+    return ::tpy::deref_check(this->_payload);
+}
+
+// # DO NOT add an owning-store API (e.g. set(value: Own[T])) here -- Rc
+// # is Covariant[T], so a writer through a Pet view could install a
+// # non-Parrot into the slot a Rc[Parrot] clone is observing.
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self._payload
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Rc<T>::get() const {
+    return ::tpy::deref_check(this->_payload);
+}
+
+// @staticmethod
+// def new[U: T](value: Own[U]) -> Own[Rc[T]]:
+//     cell = unsafe_take(_RcCell[U]())
+//     cell.storage.construct(value)
+//     return Rc[T](cell, cell.storage.ptr())
+template<typename T>
+template<typename U>
+inline Rc<T> Rc<T>::new_(::tpy::own_param_t<U> value) {
+    _RcCell<U>* cell = ::tpy::heap_take(_RcCell<U>());
+    ::tpy::deref_check(cell).storage.construct(std::move(value));
+    return Rc<T>(cell, cell->storage.ptr());
+}
+
+// # clone/downgrade are auto_readonly: a mutable handle yields a mutable
+// # handle; a readonly handle (`readonly[Rc[T]]`) yields a readonly-payload
+// # handle, so readonly can't be laundered into mutable access. The
+// # `auto_readonly[T]` construction marker resolves per overload -- Rc[T] in
+// # the mutable half, Rc[readonly[T]] in the const half.
+// # TODO: once inference can bind a type param to readonly[T] (BUGS.md), the
+// # explicit `Rc[auto_readonly[T]](...)` here (and in downgrade/upgrade/
+// # Weak.clone) should reduce to plain `Rc(...)` and infer per overload.
+// @auto_readonly
+// def clone(self) -> Own[Rc[auto_readonly[T]]]:
+//     self._cell.incr_strong()
+//     return Rc[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline Rc<T> Rc<T>::clone() {
+    ::tpy::deref_check(this->_cell).incr_strong();
+    return Rc<T>(this->_cell, this->_payload);
+}
+
+// # clone/downgrade are auto_readonly: a mutable handle yields a mutable
+// # handle; a readonly handle (`readonly[Rc[T]]`) yields a readonly-payload
+// # handle, so readonly can't be laundered into mutable access. The
+// # `auto_readonly[T]` construction marker resolves per overload -- Rc[T] in
+// # the mutable half, Rc[readonly[T]] in the const half.
+// # TODO: once inference can bind a type param to readonly[T] (BUGS.md), the
+// # explicit `Rc[auto_readonly[T]](...)` here (and in downgrade/upgrade/
+// # Weak.clone) should reduce to plain `Rc(...)` and infer per overload.
+// @auto_readonly
+// def clone(self) -> Own[Rc[auto_readonly[T]]]:
+//     self._cell.incr_strong()
+//     return Rc[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline Rc<T> Rc<T>::clone() const {
+    ::tpy::deref_check(this->_cell).incr_strong();
+    return Rc<T>(this->_cell, this->_payload);
+}
+
+// @auto_readonly
+// def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
+//     self._cell.incr_weak()
+//     return Weak[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline Weak<T> Rc<T>::downgrade() {
+    ::tpy::deref_check(this->_cell).incr_weak();
+    return Weak<T>(this->_cell, this->_payload);
+}
+
+// @auto_readonly
+// def downgrade(self) -> Own[Weak[auto_readonly[T]]]:
+//     self._cell.incr_weak()
+//     return Weak[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline Weak<T> Rc<T>::downgrade() const {
+    ::tpy::deref_check(this->_cell).incr_weak();
+    return Weak<T>(this->_cell, this->_payload);
+}
+
+// # Equality and ordering delegate to T (content, matching Rust's
+// # `Rc<T>::eq`). Two handles of a reference payload share a cell when
+// # `a.get() is b.get()` (`a is b` compares the handles themselves).
+// def __str__(self) -> str:
+//     return f"Rc({self.get()})"
+template<typename T>
+inline std::string Rc<T>::__str__() const {
+    return std::format("Rc({})", ::tpy::__str__(this->get()));
+}
+
+// def __repr__(self) -> str:
+//     return f"Rc({self.get()!r})"
+template<typename T>
+inline std::string Rc<T>::__repr__() const {
+    return std::format("Rc({})", ::tpy::repr_of(this->get()));
+}
+
+// def __eq__[T: Equatable](self, other: Rc[T]) -> bool:
+//     return self.get() == other.get()
+template<typename T>
+inline bool Rc<T>::__eq__(const Rc<T>& other) const
+  requires ::tpystd::tpy::Equatable<T> {
+    return ::tpy::eq(this->get(), other.get());
+}
+
+// def __lt__[T: Comparable](self, other: Rc[T]) -> bool:
+//     return self.get() < other.get()
+template<typename T>
+inline bool Rc<T>::__lt__(const Rc<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (this->get() < other.get());
+}
+
+// def __le__[T: Comparable](self, other: Rc[T]) -> bool:
+//     return not other.get() < self.get()
+template<typename T>
+inline bool Rc<T>::__le__(const Rc<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (!((other.get() < this->get())));
+}
+
+// def __gt__[T: Comparable](self, other: Rc[T]) -> bool:
+//     return other.get() < self.get()
+template<typename T>
+inline bool Rc<T>::__gt__(const Rc<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (other.get() < this->get());
+}
+
+// def __ge__[T: Comparable](self, other: Rc[T]) -> bool:
+//     return not self.get() < other.get()
+template<typename T>
+inline bool Rc<T>::__ge__(const Rc<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (!((this->get() < other.get())));
+}
+
+// def __hash__[T: Hashable](self) -> uint64:
+//     return hash(self.get())
+template<typename T>
+inline uint64_t Rc<T>::__hash__() const
+  requires ::tpystd::tpy::Hashable<T> {
+    return ::tpy::__hash__(this->get());
+}
+
+template<typename T>
+inline auto Rc<T>::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+template<typename T>
+inline auto Rc<T>::operator*() const -> decltype(__deref__()) {
+    return __deref__();
+}
+
+// # TODO: package-private (same as Rc.__init__).
+// def __init__(self, cell: Ptr[_RcCellBase], payload: Ptr[T]) -> None:
+//     self._cell = cell
+//     self._payload = payload
+template<typename T>
+inline Weak<T>::Weak(_RcCellBase* cell, T* payload)
+    : _cell(cell),
+      _payload(payload) {}
+
+template<typename T>
+inline Weak<T>::Weak(Weak&& other) noexcept
+    : _cell(std::move(other._cell)),
+      _payload(std::move(other._payload)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Weak<T>& Weak<T>::operator=(Weak&& other) noexcept {
+    if (this != &other) {
+        this->~Weak();
+        new (this) Weak(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     if self._cell.release_weak():
+//         unsafe_release(self._cell)
+template<typename T>
+inline Weak<T>::~Weak() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    if (::tpy::deref_check(this->_cell).release_weak()) {
+        ::tpy::heap_release(this->_cell);
+    }
+}
+
+// @auto_readonly
+// def upgrade(self) -> Own[Rc[auto_readonly[T]]] | None:
+//     # Single vcall instead of get_strong + incr_strong: cell checks
+//     # strong > 0 and increments atomically (in the local sense; Rc is
+//     # non-atomic, so "atomically" here just means within one method).
+//     if not self._cell.try_incr_strong():
+//         return None
+//     return Rc[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline std::optional<Rc<T>> Weak<T>::upgrade() {
+    if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
+        return std::nullopt;
+    }
+    return Rc<T>(this->_cell, this->_payload);
+}
+
+// @auto_readonly
+// def upgrade(self) -> Own[Rc[auto_readonly[T]]] | None:
+//     # Single vcall instead of get_strong + incr_strong: cell checks
+//     # strong > 0 and increments atomically (in the local sense; Rc is
+//     # non-atomic, so "atomically" here just means within one method).
+//     if not self._cell.try_incr_strong():
+//         return None
+//     return Rc[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline std::optional<Rc<T>> Weak<T>::upgrade() const {
+    if ((!(::tpy::deref_check(this->_cell).try_incr_strong()))) {
+        return std::nullopt;
+    }
+    return Rc<T>(this->_cell, this->_payload);
+}
+
+// @auto_readonly
+// def clone(self) -> Own[Weak[auto_readonly[T]]]:
+//     self._cell.incr_weak()
+//     return Weak[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline Weak<T> Weak<T>::clone() {
+    ::tpy::deref_check(this->_cell).incr_weak();
+    return Weak<T>(this->_cell, this->_payload);
+}
+
+// @auto_readonly
+// def clone(self) -> Own[Weak[auto_readonly[T]]]:
+//     self._cell.incr_weak()
+//     return Weak[auto_readonly[T]](self._cell, self._payload)
+template<typename T>
+inline Weak<T> Weak<T>::clone() const {
+    ::tpy::deref_check(this->_cell).incr_weak();
+    return Weak<T>(this->_cell, this->_payload);
+}
 
 void __tpy_init();
 } // namespace tpystd::tplib::rc

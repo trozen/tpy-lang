@@ -237,37 +237,13 @@ struct Bag {
     T b;
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
-    //     self.a = a
-    //     self.b = b
     Bag() = default;
-    explicit Bag(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b)
-        : a(std::move(a)),
-          b(std::move(b)) {}
+    explicit Bag(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b);
 
     __gen_Bag_items<T> items();
 
     // def count(self) -> int32:
-    //     # A generic class's own generator, bound in its body.
-    //     g = self.items()  # tpyc: ok
-    //     h = g
-    //     n = 0
-    //     for v in h:
-    //         n += 1
-    //     return n
-    int32_t count() {
-        auto g = this->items();
-        auto& h = g;
-        int32_t n = 0;
-        auto& __src_0 = h;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            const auto& v = ::tpy::unwrap_ref(*__r_1);
-            n = ::tpy::add_check<int32_t>(n, 1);
-        }
-        return n;
-    }
+    int32_t count();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -1146,6 +1122,39 @@ inline Val::Val(int32_t v) : v(v) {}
 inline int32_t Val::get() const {
     return this->v;
 }
+
+// def __init__(self, a: Own[T], b: Own[T]) -> None:
+//     self.a = a
+//     self.b = b
+template<typename T>
+inline Bag<T>::Bag(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b)
+    : a(std::move(a)),
+      b(std::move(b)) {}
+
+// def count(self) -> int32:
+//     # A generic class's own generator, bound in its body.
+//     g = self.items()  # tpyc: ok
+//     h = g
+//     n = 0
+//     for v in h:
+//         n += 1
+//     return n
+template<typename T>
+inline int32_t Bag<T>::count() {
+    auto g = this->items();
+    auto& h = g;
+    int32_t n = 0;
+    auto& __src_0 = h;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& v = ::tpy::unwrap_ref(*__r_1);
+        n = ::tpy::add_check<int32_t>(n, 1);
+    }
+    return n;
+}
+
 // def first(g: Iterator[int32]) -> int32:
 //     for v in g:
 //         return v

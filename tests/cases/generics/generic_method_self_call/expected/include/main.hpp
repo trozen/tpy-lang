@@ -21,22 +21,15 @@ struct Processor {
     T val;
 
     // def __init__(self, val: T):
-    //     self.val = val
     Processor() = default;
-    explicit Processor(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Processor(::tpy::readonly_form_t<T> val);
 
     // def wrap[U](self, x: U) -> U:
-    //     return x
     template<typename U>
-    ::tpy::val_or_ref_t<U> wrap(::tpy::param_val_or_ref_t<U> x) const {
-        return ::tpy::param_to_return<U>(x);
-    }
+    ::tpy::val_or_ref_t<U> wrap(::tpy::param_val_or_ref_t<U> x) const;
 
     // def process(self) -> int32:
-    //     return self.wrap(int32(99))
-    int32_t process() const {
-        return this->wrap<int32_t>(99);
-    }
+    int32_t process() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
@@ -44,6 +37,27 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Processor<T>& obj) {
     ::tpy::print_object_default(os, "Processor", obj);
     return os;
+}
+
+
+// def __init__(self, val: T):
+//     self.val = val
+template<typename T>
+inline Processor<T>::Processor(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def wrap[U](self, x: U) -> U:
+//     return x
+template<typename T>
+template<typename U>
+inline ::tpy::val_or_ref_t<U> Processor<T>::wrap(::tpy::param_val_or_ref_t<U> x) const {
+    return ::tpy::param_to_return<U>(x);
+}
+
+// def process(self) -> int32:
+//     return self.wrap(int32(99))
+template<typename T>
+inline int32_t Processor<T>::process() const {
+    return this->wrap<int32_t>(99);
 }
 
 void __tpy_init();

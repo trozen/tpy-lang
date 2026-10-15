@@ -23,28 +23,16 @@ struct Container {
     T val;
 
     // def __init__(self) -> None:
-    //     self.count = int32(0)
-    Container() : count(0) {}
+    Container();
 
     // def set(self, val: T) -> None:
-    //     self.val = val
-    //     self.count = self.count + int32(1)
-    void set(::tpy::param_val_or_ref_t<T> val) {
-        this->val = ::tpy::param_to_storage<T>(val);
-        this->count = (::tpy::add_check<int32_t>(this->count, 1));
-    }
+    void set(::tpy::param_val_or_ref_t<T> val);
 
     // def get(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // def get_count(self) -> int32:
-    //     return self.count
-    int32_t get_count() const {
-        return this->count;
-    }
+    int32_t get_count() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -52,6 +40,35 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     self.count = int32(0)
+template<typename T>
+inline Container<T>::Container() : count(0) {}
+
+// def set(self, val: T) -> None:
+//     self.val = val
+//     self.count = self.count + int32(1)
+template<typename T>
+inline void Container<T>::set(::tpy::param_val_or_ref_t<T> val) {
+    this->val = ::tpy::param_to_storage<T>(val);
+    this->count = (::tpy::add_check<int32_t>(this->count, 1));
+}
+
+// def get(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get() {
+    return this->val;
+}
+
+// def get_count(self) -> int32:
+//     return self.count
+template<typename T>
+inline int32_t Container<T>::get_count() const {
+    return this->count;
 }
 
 void __tpy_init();

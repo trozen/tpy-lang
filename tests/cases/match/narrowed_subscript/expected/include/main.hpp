@@ -76,9 +76,7 @@ struct Indexed {
     // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index) const;
 
-    int32_t operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    int32_t operator[](int32_t index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Indexed";
 };
 
@@ -210,6 +208,10 @@ struct __gen_generate : public ::tpy::next_iter_mixin<__gen_generate, int32_t> {
 //     return index + 20
 inline int32_t Indexed::__getitem__(int32_t index) const {
     return (::tpy::add_check<int32_t>(index, 20));
+}
+
+inline int32_t Indexed::operator[](int32_t index) const {
+    return __getitem__(index);
 }
 
 // # Constructor: the indexed scalar is consumed by a field store.

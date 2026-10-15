@@ -144,9 +144,8 @@ struct Box {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -283,6 +282,12 @@ inline ::tpy::BigInt Registry::run(std::function<::tpy::ordered_set<std::string>
 // def __init__(self, f: Callable[[], int]) -> None:
 //     self.n = f() + 1
 inline Counter::Counter(std::function<::tpy::BigInt()> f) : n(((f()) + (::tpy::BigInt(1)))) {}
+
+// def __init__(self, v: T) -> None:
+//     self.v = v
+template<::tpy::ValueType T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+
 // def apply(f: Fn[[str], int], s: str) -> int:
 //     return f(s)
 template<typename __F0>

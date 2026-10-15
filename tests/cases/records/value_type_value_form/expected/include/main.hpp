@@ -274,12 +274,8 @@ struct Pair {
     T second;
 
     // def __init__(self, first: T, second: T) -> None:
-    //     self.first = first
-    //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
-        : first(first),
-          second(second) {}
+    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -410,12 +406,7 @@ struct Cell {
     int32_t k;
 
     // def __init__(self, k: int32 = 5) -> None:
-    //     print("cell init", k)
-    //     self.k = k
-    explicit Cell(int32_t k = 5) {
-        std::cout << "cell init" << " " << k << "\n" << ::tpy::check_signals;
-        this->k = k;
-    }
+    explicit Cell(int32_t k = 5);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -438,8 +429,7 @@ struct Gauge {
     int32_t k;
 
     // def __init__(self, k: int32 = 5) -> None:
-    //     self.k = k
-    explicit Gauge(int32_t k = 5) : k(k) {}
+    explicit Gauge(int32_t k = 5);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Gauge";
 };
 
@@ -554,22 +544,10 @@ struct Measured {
     int32_t n = 0;
 
     // def __init__(self, s: Sized | None = None, k: int32 = 1) -> None:
-    //     print("measured init", k)
-    //     if s is not None:
-    //         self.n = s.size() + k
-    //     else:
-    //         self.n = k
     Measured();
     template<typename T_s = std::nullptr_t>
   requires (std::same_as<T_s, std::nullptr_t> || Sized<T_s>)
-    explicit Measured(const T_s* s = nullptr, int32_t k = 1) {
-        std::cout << "measured init" << " " << k << "\n" << ::tpy::check_signals;
-        if constexpr (!std::same_as<T_s, std::nullptr_t>) {
-            this->n = (::tpy::add_check<int32_t>(s->size(), k));
-        } else {
-            this->n = k;
-        }
-    }
+    explicit Measured(const T_s* s = nullptr, int32_t k = 1);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Measured";
 };
 
@@ -1777,6 +1755,46 @@ struct CalmTree {
         return os;
     }
 };
+
+
+// def __init__(self, first: T, second: T) -> None:
+//     self.first = first
+//     self.second = second
+template<::tpy::ValueType T>
+inline Pair<T>::Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
+    : first(first),
+      second(second) {}
+
+// def __init__(self, k: int32 = 5) -> None:
+//     print("cell init", k)
+//     self.k = k
+template<typename T>
+inline Cell<T>::Cell(int32_t k) {
+    std::cout << "cell init" << " " << k << "\n" << ::tpy::check_signals;
+    this->k = k;
+}
+
+// def __init__(self, k: int32 = 5) -> None:
+//     self.k = k
+template<typename T>
+inline Gauge<T>::Gauge(int32_t k) : k(k) {}
+
+// def __init__(self, s: Sized | None = None, k: int32 = 1) -> None:
+//     print("measured init", k)
+//     if s is not None:
+//         self.n = s.size() + k
+//     else:
+//         self.n = k
+template<typename T_s>
+  requires (std::same_as<T_s, std::nullptr_t> || Sized<T_s>)
+inline Measured::Measured(const T_s* s, int32_t k) {
+    std::cout << "measured init" << " " << k << "\n" << ::tpy::check_signals;
+    if constexpr (!std::same_as<T_s, std::nullptr_t>) {
+        this->n = (::tpy::add_check<int32_t>(s->size(), k));
+    } else {
+        this->n = k;
+    }
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

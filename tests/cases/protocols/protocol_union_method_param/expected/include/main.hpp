@@ -37,19 +37,9 @@ struct Processor {
     Processor();
 
     // def process(self, items: Measurable | Walkable) -> None:
-    //     if isinstance(items, Measurable):
-    //         self.count = items.measure()
-    //     elif isinstance(items, Walkable):
-    //         self.count = items.walk()
     template<typename T_items>
   requires (Measurable<T_items> || Walkable<T_items>)
-    void process(T_items& items) {
-        if constexpr (Measurable<T_items>) {
-            this->count = items.measure();
-        } else if constexpr (Walkable<T_items>) {
-            this->count = items.walk();
-        }
-    }
+    void process(T_items& items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
@@ -102,5 +92,21 @@ inline ::tpy::BigInt Ruler::measure() const {
 inline ::tpy::BigInt Walker::walk() const {
     return ::tpy::BigInt(99);
 }
+
+// def process(self, items: Measurable | Walkable) -> None:
+//     if isinstance(items, Measurable):
+//         self.count = items.measure()
+//     elif isinstance(items, Walkable):
+//         self.count = items.walk()
+template<typename T_items>
+  requires (Measurable<T_items> || Walkable<T_items>)
+inline void Processor::process(T_items& items) {
+    if constexpr (Measurable<T_items>) {
+        this->count = items.measure();
+    } else if constexpr (Walkable<T_items>) {
+        this->count = items.walk();
+    }
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

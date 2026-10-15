@@ -62,9 +62,8 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+    explicit Box(::tpy::own_param_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -98,6 +97,12 @@ struct Tree {
         return os;
     }
 };
+
+
+// def __init__(self, value: Own[T]) -> None:
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

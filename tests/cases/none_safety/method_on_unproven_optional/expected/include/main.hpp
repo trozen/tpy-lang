@@ -48,11 +48,8 @@ struct Bag {
     explicit Bag(int32_t n);
 
     // def conv[T](self, x: T) -> T:
-    //     return x
     template<typename T>
-    ::tpy::val_or_ref_t<T> conv(::tpy::param_val_or_ref_t<T> x) const {
-        return ::tpy::param_to_return<T>(x);
-    }
+    ::tpy::val_or_ref_t<T> conv(::tpy::param_val_or_ref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -104,5 +101,13 @@ inline Bag::Bag(int32_t n) : n(n) {}
 inline int32_t Dog::sound() {
     return 7;
 }
+
+// def conv[T](self, x: T) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Bag::conv(::tpy::param_val_or_ref_t<T> x) const {
+    return ::tpy::param_to_return<T>(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

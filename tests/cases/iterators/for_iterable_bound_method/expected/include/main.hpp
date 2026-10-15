@@ -67,27 +67,11 @@ struct Summer {
     T items;
 
     // def __init__(self, items: T) -> None:
-    //     self.items = items
     Summer() = default;
-    explicit Summer(::tpy::readonly_form_t<T> items) : items(items) {}
+    explicit Summer(::tpy::readonly_form_t<T> items);
 
     // def total(self) -> int32:
-    //     result: int32 = 0
-    //     for x in self.items:
-    //         result += x
-    //     return result
-    int32_t total() const {
-        int32_t result = 0;
-        auto& __src_0 = this->items;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            int32_t x = ::tpy::unwrap_ref(*__r_1);
-            result = ::tpy::add_check<int32_t>(result, x);
-        }
-        return result;
-    }
+    int32_t total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";
 };
 
@@ -132,5 +116,30 @@ inline MyRange::MyRange(int32_t start, int32_t limit)
 inline RangeIter MyRange::__iter__() const {
     return RangeIter(this->start, this->limit);
 }
+
+// def __init__(self, items: T) -> None:
+//     self.items = items
+template<::tpystd::typing::Iterable<int32_t> T>
+inline Summer<T>::Summer(::tpy::readonly_form_t<T> items) : items(items) {}
+
+// def total(self) -> int32:
+//     result: int32 = 0
+//     for x in self.items:
+//         result += x
+//     return result
+template<::tpystd::typing::Iterable<int32_t> T>
+inline int32_t Summer<T>::total() const {
+    int32_t result = 0;
+    auto& __src_0 = this->items;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        int32_t x = ::tpy::unwrap_ref(*__r_1);
+        result = ::tpy::add_check<int32_t>(result, x);
+    }
+    return result;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

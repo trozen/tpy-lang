@@ -26,8 +26,7 @@ struct Base {
     int32_t _v;
 
     // def __init__(self, x: int32 = 0) -> None:
-    //     self._v = x
-    explicit Base(int32_t x = 0) : _v(x) {}
+    explicit Base(int32_t x = 0);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -50,9 +49,8 @@ struct Typed {
     T val;
 
     // def __init__(self, x: T) -> None:
-    //     self.val = x  # tpyc: warning(/may copy/)
     Typed() = default;
-    explicit Typed(::tpy::readonly_form_t<T> x) : val(x) {}
+    explicit Typed(::tpy::readonly_form_t<T> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Typed";
 };
 
@@ -111,6 +109,17 @@ inline std::ostream& operator<<(std::ostream& os, const SubSub& obj) {
     ::tpy::print_object_default(os, "SubSub", obj);
     return os;
 }
+
+
+// def __init__(self, x: int32 = 0) -> None:
+//     self._v = x
+template<std::size_t N>
+inline Base<N>::Base(int32_t x) : _v(x) {}
+
+// def __init__(self, x: T) -> None:
+//     self.val = x  # tpyc: warning(/may copy/)
+template<typename T>
+inline Typed<T>::Typed(::tpy::readonly_form_t<T> x) : val(x) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

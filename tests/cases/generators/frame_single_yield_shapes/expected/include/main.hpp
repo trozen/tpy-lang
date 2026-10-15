@@ -33,9 +33,8 @@ struct Labels {
     T first;
 
     // def __init__(self, first: T) -> None:
-    //     self.first = first
     Labels() = default;
-    explicit Labels(::tpy::readonly_form_t<T> first) : first(first) {}
+    explicit Labels(::tpy::readonly_form_t<T> first);
 
     __gen_Labels_gen_it<T> gen_it(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
@@ -156,6 +155,12 @@ template <typename T>
 inline __gen_Labels_gen_it<T> Labels<T>::gen_it(::tpy::param_val_or_ref_t<T> v) {
     return __gen_Labels_gen_it<T>(*this, v);
 }
+
+
+// def __init__(self, first: T) -> None:
+//     self.first = first
+template<typename T>
+inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : first(first) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

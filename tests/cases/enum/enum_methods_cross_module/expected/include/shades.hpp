@@ -52,21 +52,14 @@ struct __enum_Shade {
     // def heavy(self) -> bool:
     bool heavy();
 
-    // # generic instance and static methods
     // def tag[T](self, x: T) -> T:
-    //     return x
     template<typename T>
-    ::tpy::val_or_ref_t<T> tag(::tpy::param_val_or_ref_t<T> x) const {
-        return ::tpy::param_to_return<T>(x);
-    }
+    ::tpy::val_or_ref_t<T> tag(::tpy::param_val_or_ref_t<T> x) const;
 
     // @staticmethod
     // def ident[T](x: T) -> T:
-    //     return x
     template<typename T>
-    static ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x) {
-        return ::tpy::param_to_return<T>(x);
-    }
+    static ::tpy::val_or_ref_t<T> ident(::tpy::param_val_or_ref_t<T> x);
 
     // @classmethod
     // def parse(cls, s: str) -> Self:
@@ -116,5 +109,22 @@ inline Shade __enum_Shade::parse(std::string_view s) {
 inline Shade __enum_Shade::darkest() {
     return Shade::Dark;
 }
+
+// # generic instance and static methods
+// def tag[T](self, x: T) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> __enum_Shade::tag(::tpy::param_val_or_ref_t<T> x) const {
+    return ::tpy::param_to_return<T>(x);
+}
+
+// @staticmethod
+// def ident[T](x: T) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> __enum_Shade::ident(::tpy::param_val_or_ref_t<T> x) {
+    return ::tpy::param_to_return<T>(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::shades

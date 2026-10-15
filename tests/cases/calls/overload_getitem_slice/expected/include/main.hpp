@@ -24,27 +24,15 @@ struct MyList {
 
     // @overload
     // def __getitem__(self, index: int32) -> int32: ...  # tpyc: ok
-    int32_t __getitem__(int32_t index) const {
-        return ::tpy::__getitem__(this->_data, index);
-    }
+    int32_t __getitem__(int32_t index) const;
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
-    std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        std::optional<int32_t> s_start = index.start;
-        std::optional<int32_t> s_stop = index.stop;
-        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
-    }
+    std::span<const int32_t> __getitem__(::tpy::Slice index) const;
 
-    int32_t operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    int32_t operator[](int32_t index) const;
 
-    std::span<const int32_t> operator[](::tpy::Slice index) const {
-        return __getitem__(index);
-    }
+    std::span<const int32_t> operator[](::tpy::Slice index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
 };
 
@@ -57,5 +45,29 @@ inline std::ostream& operator<<(std::ostream& os, const MyList& obj) {
 // def __init__(self) -> None:
 //     self._data = [int32(10), int32(20), int32(30), int32(40), int32(50)]
 inline MyList::MyList() : _data(std::vector<int32_t>{10, 20, 30, 40, 50}) {}
+
+// @overload
+// def __getitem__(self, index: int32) -> int32: ...  # tpyc: ok
+inline int32_t MyList::__getitem__(int32_t index) const {
+    return ::tpy::__getitem__(this->_data, index);
+}
+
+// @overload
+// def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+inline std::span<const int32_t> MyList::__getitem__(::tpy::Slice index) const {
+    std::optional<int32_t> s_start = index.start;
+    std::optional<int32_t> s_stop = index.stop;
+    int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+    int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+}
+
+inline int32_t MyList::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+inline std::span<const int32_t> MyList::operator[](::tpy::Slice index) const {
+    return __getitem__(index);
+}
 void __tpy_init();
 } // namespace tpyapp::main

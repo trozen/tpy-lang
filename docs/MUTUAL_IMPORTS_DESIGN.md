@@ -625,15 +625,60 @@ cross-cycle peer references at:
 
 - Concrete inheritance.
 - Record fields, including descents through containers, tuples,
-  unions, `Own`, value-variants, and generic-record `type_args`
-  (`Box[B]` where `B` is a cycle peer).
+  value unions, `Own`, value-variants, and generic-record `type_args`
+  (`Box[B]` where `B` is a cycle peer). The field check skips a
+  `| None` or a union over reference types, which a field stores by
+  value too (BUGS.md#cycle-field-message-advises-optional).
 - In-header-bodied function and method *signatures*: any function
   whose codegen emits its body in the `.hpp` (generic /
-  `@cpp_template` / Fn-typed param / static-protocol param) and any
-  method that codegen keeps inline-in-struct (record-generic /
-  method-templated / `__init__` / `__del__` / overload-dispatched).
-  Walks return type and each parameter via the same generic-aware
-  `_find_complete_required_peer` used for fields.
+  `@cpp_template` / Fn-typed param / static-protocol param, or an
+  `@overload` group with such a stub) and any member whose body
+  codegen defines in the header -- a template member (of a generic
+  record, or with its own template head or its group's) or an
+  `@overload` variant whose return is deduced (`-> Iterator[T]`, its
+  body in the struct). The gate walks the one list of members a
+  record's C++ declares (`record_emitted_members`,
+  `tpyc/codegen_cpp/protocols.py`: methods, the constructor and
+  destructor, each `@overload` variant -- never the implementation,
+  whose union signature is not emitted -- and each `@dispatch` variant
+  on its own) and asks codegen's own placement (`member_def`) for a
+  cycle member; every other body of a cycle member is in the `.cpp` --
+  a plain class's deduced member too -- so a non-template `__init__`,
+  `__del__`, `@overload` or `__getitem__` method may take a peer by
+  value. A delegating member (`operator[]`, `operator()`, `operator*`,
+  `size()`) is placed with the member it forwards to, so it needs no
+  row of its own. `@cpp_template` members stay rejected as a use-site
+  requirement: they have no declaration and expand wherever they are
+  called. Walks return type and each parameter via the same
+  generic-aware `_find_complete_required_peer` used for fields.
+- A plain class's friend operators (the record's shims of a friend
+  kind, `record_emitted_members`): hidden friends defined in the
+  struct, so in the header whatever their method's placement. Only the
+  classes the friend's C++ signature holds by value need the peer
+  complete, read from the decisions its render makes: a parameter
+  passed by value in its storage form (`TpyType.param_passing` VALUE;
+  a view, a reference or a pointer holds nothing); the return by the
+  slot `_resolve_return_type` spells (`return_slot_kind`,
+  `tpyc/codegen_cpp/protocols.py`) -- a plain return by
+  `TpyType.return_passing`, the fact `to_cpp_return` spells (VALUE
+  holds its storage parts, ELEMENTS each element's return form, a
+  reference or a pointer nothing), an `@error_return` success slot in
+  its storage form -- the borrow slot `val_or_ref<S>` only over a type
+  not returned by reference (`T | None`, a union of classes), as its
+  constructor from S instantiates S -- a protocol return nothing; and
+  the `@error_return` error type. A storage form holds
+  its parts (`typesys.types_held_by_value`): `Own[T]`'s, an Optional's
+  or a union's members, a tuple's elements, a container's arguments,
+  and a generic class's fields under its arguments (`Handle[B]`
+  storing a `Ptr[T]` holds no `B`). A reference-type peer (`const B&`)
+  passes. A generic class's friends are templated entities
+  instantiated where used, covered by the check of their members'
+  template bodies.
+- A module OUTSIDE a cycle that includes a cycle member's header also
+  includes the member's peers' full headers: the member's declarations
+  are written against `<peer>_fwd.hpp`, and C++ overload resolution in
+  the consumer looks at every candidate (an operator or overload
+  sibling taking `Val | None` instantiates `std::optional<Val>`).
 - Recursive type alias bodies (TPy synthesizes a wrapper struct for
   recursive aliases; same complete-type constraint as a record
   field).
@@ -833,14 +878,9 @@ asserted):
 - `error_mutual_generic_function_by_value` -- a's generic
   function takes B by value; b only references a via a function
   call (not by-value record).
-- `error_mutual_init_param_by_value` -- a's `__init__`
-  takes B by value; b only references a via a function call.
 - `error_mutual_inline_method_by_value` -- a's generic
   method takes B by value; b only references a via a function
   call.
-- `error_mutual_overload_method_by_value` -- a's overload-
-  dispatched method takes B by value; b only references a via
-  a function call.
 - `error_mutual_static_proto_param_by_value` -- a's
   static-protocol-typed function takes B by value; b only
   references a via a function call.

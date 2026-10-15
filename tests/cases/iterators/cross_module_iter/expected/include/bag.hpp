@@ -26,9 +26,8 @@ struct Bag {
     std::vector<T> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
-    //     self._items = items
     Bag() = default;
-    explicit Bag(std::vector<T>&& items) : _items(std::move(items)) {}
+    explicit Bag(std::vector<T>&& items);
     // non-copyable (@nocopy)
     Bag(const Bag&) = delete;
     Bag& operator=(const Bag&) = delete;
@@ -108,6 +107,12 @@ template <typename T>
 inline __gen_Bag___iter__<T> Bag<T>::__iter__() {
     return __gen_Bag___iter__<T>(*this);
 }
+
+
+// def __init__(self, items: Own[list[T]]) -> None:
+//     self._items = items
+template<typename T>
+inline Bag<T>::Bag(std::vector<T>&& items) : _items(std::move(items)) {}
 
 // def make_bag[T](items: Own[list[T]]) -> Own[Bag[T]]:
 //     return Bag[T](items)

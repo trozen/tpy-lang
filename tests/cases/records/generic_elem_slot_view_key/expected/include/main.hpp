@@ -47,49 +47,19 @@ struct Labels {
     ::tpystd::tplib::array_list::ArrayList<T, N> items;
 
     // def __init__(self) -> None:
-    //     self.items = ArrayList[T, N]()
-    Labels() : items(::tpystd::tplib::array_list::ArrayList<T, N>()) {}
+    Labels();
 
     // def add(self, value: T) -> None:
-    //     self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
-    void add(::tpy::param_val_or_ref_t<T> value) {
-        this->items.append(::tpy::param_to_storage<T>(value));
-    }
+    void add(::tpy::param_val_or_ref_t<T> value);
 
     // def drop(self, value: T) -> None:
-    //     # The element slot: `value` is the record's own T.
-    //     self.items.remove(value)
-    void drop(::tpy::param_val_or_ref_t<T> value) {
-        this->items.remove(value);
-    }
+    void drop(::tpy::param_val_or_ref_t<T> value);
 
     // def has(self, value: T) -> bool:
-    //     # A readonly method spells the slot `const T&` -- the SECOND generic
-    //     # parameter spelling, distinct from `param_val_or_ref_t<T>`.
-    //     for it in self.items:
-    //         if it == value:
-    //             return True
-    //     return False
-    bool has(::tpy::readonly_form_t<T> value) const {
-        auto& __src_0 = this->items;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            const auto& it = ::tpy::unwrap_ref(*__r_1);
-            if (::tpy::eq(it, value)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    bool has(::tpy::readonly_form_t<T> value) const;
 
     // def tag_len(self, tag: str) -> int32:
-    //     # INVERSE: a non-element str param -- still a std::string_view.
-    //     return len(tag)
-    int32_t tag_len(std::string_view tag) const {
-        return ::tpy::__len__(tag);
-    }
+    int32_t tag_len(std::string_view tag) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
 };
 
@@ -158,6 +128,57 @@ inline bool StrLabels::has(std::string_view value) const {
     }
     return false;
 }
+
+// def __init__(self) -> None:
+//     self.items = ArrayList[T, N]()
+template<::tpystd::tpy::Equatable T, std::size_t N>
+inline Labels<T, N>::Labels() : items(::tpystd::tplib::array_list::ArrayList<T, N>()) {}
+
+// def add(self, value: T) -> None:
+//     self.items.append(value)  # tpyc: warning(/may copy T into owned storage/)
+template<::tpystd::tpy::Equatable T, std::size_t N>
+inline void Labels<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
+    this->items.append(::tpy::param_to_storage<T>(value));
+}
+
+// def drop(self, value: T) -> None:
+//     # The element slot: `value` is the record's own T.
+//     self.items.remove(value)
+template<::tpystd::tpy::Equatable T, std::size_t N>
+inline void Labels<T, N>::drop(::tpy::param_val_or_ref_t<T> value) {
+    this->items.remove(value);
+}
+
+// def has(self, value: T) -> bool:
+//     # A readonly method spells the slot `const T&` -- the SECOND generic
+//     # parameter spelling, distinct from `param_val_or_ref_t<T>`.
+//     for it in self.items:
+//         if it == value:
+//             return True
+//     return False
+template<::tpystd::tpy::Equatable T, std::size_t N>
+inline bool Labels<T, N>::has(::tpy::readonly_form_t<T> value) const {
+    auto& __src_0 = this->items;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& it = ::tpy::unwrap_ref(*__r_1);
+        if (::tpy::eq(it, value)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// def tag_len(self, tag: str) -> int32:
+//     # INVERSE: a non-element str param -- still a std::string_view.
+//     return len(tag)
+template<::tpystd::tpy::Equatable T, std::size_t N>
+inline int32_t Labels<T, N>::tag_len(std::string_view tag) const {
+    return ::tpy::__len__(tag);
+}
+
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 //     for x in xs:
 //         if x == v:

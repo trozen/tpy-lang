@@ -101,9 +101,7 @@ struct Grid {
     // def __next__(self) -> int32:
     std::expected<int32_t, ::tpy::StopIteration> __next__() const;
 
-    Pt& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Pt& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
 };
 
@@ -165,9 +163,7 @@ struct Cells {
     // def __setitem__(self, i: int32, v: int32) -> None:
     void __setitem__(int32_t i, int32_t v);
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cells";
 };
 
@@ -329,6 +325,10 @@ inline std::expected<int32_t, ::tpy::StopIteration> Grid::__next__() const {
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
+inline Pt& Grid::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self) -> None:
 //     self.ps = [Pt(1)]
 //     self.opened = 0
@@ -403,6 +403,10 @@ inline void Cells::__setitem__(int32_t i, int32_t v) {
         this->ps.push_back(Pt(0));
     }
     ::tpy::__getitem__(this->ps, i).x = v;
+}
+
+inline int32_t Cells::operator[](int32_t i) const {
+    return __getitem__(i);
 }
 
 // def __init__(self) -> None:

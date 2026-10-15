@@ -57,15 +57,11 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value);
 
     // def print_value(self) -> None:
-    //     print(self.value.to_str())
-    void print_value() {
-        std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
-    }
+    void print_value();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -105,6 +101,19 @@ inline std::string Message::to_str() const {
 inline Container<Message> DefaultFactory::make(std::string_view text) const {
     return Container<Message>(Message(text));
 }
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<Printable T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def print_value(self) -> None:
+//     print(self.value.to_str())
+template<Printable T>
+inline void Container<T>::print_value() {
+    std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
+}
+
 // # Generic function using the factory protocol
 // def create_container[F: ContainerFactory](factory: F, text: str) -> Own[Container[Message]]:
 //     return factory.make(text)

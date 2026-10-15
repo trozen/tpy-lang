@@ -21,49 +21,18 @@ struct ArrayList {
     bool __tpy_owned_ = true;
 
     // def __init__(self, items: Spannable[T] | Iterable[Own[T]] | None = None) -> None:
-    //     self._storage = UninitArrayStorage[T, N]()
-    //     self._size = uint32(0)
-    //     if items is not None:
-    //         self.extend(items)
-    ArrayList() : ArrayList(static_cast<std::nullptr_t*>(nullptr)) {}
+    ArrayList();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
-    explicit ArrayList(const T_items* items = nullptr)
-        : _storage(::tpy::UninitArrayStorage<T, N>()),
-          _size(0) {
-        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            this->extend((*items));
-        }
-    }
+    explicit ArrayList(const T_items* items = nullptr);
     // copyable via __copy__
-    ArrayList(const ArrayList& other) : ArrayList(other.__copy__()) {}
-    ArrayList& operator=(const ArrayList& other) {
-        if (this != &other) { *this = other.__copy__(); }
-        return *this;
-    }
-    ArrayList(ArrayList&& other) noexcept
-        : _storage(),
-          _size() {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        this->_storage.relocate_from(other._storage, other._size);
-        this->_size = other._size;
-        other.__tpy_owned_ = false;
-    }
-    ArrayList& operator=(ArrayList&& other) noexcept {
-        if (this != &other) {
-            this->~ArrayList();
-            new (this) ArrayList(std::move(other));
-        }
-        return *this;
-    }
+    ArrayList(const ArrayList& other);
+    ArrayList& operator=(const ArrayList& other);
+    ArrayList(ArrayList&& other) noexcept;
+    ArrayList& operator=(ArrayList&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     self._storage.drop_n(uint32(0), self._size)
-    ~ArrayList() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        this->_storage.drop_n(0, this->_size);
-    }
+    ~ArrayList();
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -71,432 +40,126 @@ struct ArrayList {
     auto end() const { return this->__span__().end(); }
 
     // def __copy__(self) -> Own[ArrayList[T, N]]:
-    //     result = ArrayList[T, N]()
-    //     for ui in range(self._size):
-    //         result.append(copy(self._storage.load(ui)))
-    //     return result
-    ArrayList<T, N> __copy__() const {
-        ArrayList<T, N> result = ArrayList<T, N>();
-        uint32_t __stop_0 = this->_size;
-        for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            result.append(T(this->_storage.load(ui)));
-        }
-        return result;
-    }
+    ArrayList<T, N> __copy__() const;
 
     // def append(self, value: Own[T]) -> None:
-    //     assert self._size < self._storage.capacity()
-    //     self._storage.init(self._size, value)
-    //     self._size += 1
-    void append(::tpy::own_param_t<T> value) {
-        if (!((this->_size < this->_storage.capacity()))) ::tpy::raise_assertion_error();
-        this->_storage.init(this->_size, std::move(value));
-        this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
-    }
+    void append(::tpy::own_param_t<T> value);
 
     // def append_default[T: Default](self) -> None:
-    //     self.append(make_default())
     void append_default()
-      requires ::std::default_initializable<T> {
-        this->append(T{});
-    }
+      requires ::std::default_initializable<T>;
 
     // def pop(self, index: int32 | None = None) -> Own[T]:
-    //     assert self._size > 0
-    //     if index is None:
-    //         self._size -= 1
-    //         return self._storage.take(self._size)
-    //     ui = uint32.trunc(index)
-    //     assert ui < self._size
-    //     result = self._storage.take(ui)
-    //     self._storage.shift(ui + 1, ui, self._size - ui - 1)
-    //     self._size -= 1
-    //     return result
-    ::tpy::own_return_t<T> pop(std::optional<int32_t> index = std::nullopt) {
-        if (!((this->_size > 0))) ::tpy::raise_assertion_error();
-        if ((!index.has_value())) {
-            this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
-            return this->_storage.take(this->_size);
-        }
-        uint32_t ui = static_cast<uint32_t>((*index));
-        if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-        T result = this->_storage.take(ui);
-        this->_storage.shift((::tpy::add_check<uint32_t>(ui, 1)), ui, (::tpy::sub_check<uint32_t>((::tpy::sub_check<uint32_t>(this->_size, ui)), 1)));
-        this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
-        return result;
-    }
+    ::tpy::own_return_t<T> pop(std::optional<int32_t> index = std::nullopt);
 
     // def insert(self, index: int32, value: Own[T]) -> None:
-    //     assert self._size < self._storage.capacity()
-    //     ui = uint32.trunc(index)
-    //     assert ui <= self._size
-    //     self._storage.shift(ui, ui + 1, self._size - ui)
-    //     self._storage.init(ui, value)
-    //     self._size += 1
-    void insert(int32_t index, ::tpy::own_param_t<T> value) {
-        if (!((this->_size < this->_storage.capacity()))) ::tpy::raise_assertion_error();
-        uint32_t ui = static_cast<uint32_t>(index);
-        if (!((ui <= this->_size))) ::tpy::raise_assertion_error();
-        this->_storage.shift(ui, (::tpy::add_check<uint32_t>(ui, 1)), (::tpy::sub_check<uint32_t>(this->_size, ui)));
-        this->_storage.init(ui, std::move(value));
-        this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
-    }
+    void insert(int32_t index, ::tpy::own_param_t<T> value);
 
     // def index[T: Equatable](self, value: T) -> int32:
-    //     for ui in range(self._size):
-    //         if self._storage.load(ui) == value:
-    //             return int32.trunc(ui)
-    //     assert False, "list.index(x): x not in list"
     int32_t index(::tpy::readonly_form_t<T> value) const
-      requires ::tpystd::tpy::Equatable<T> {
-        uint32_t __stop_0 = this->_size;
-        for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            if (::tpy::eq(this->_storage.load(ui), value)) {
-                return static_cast<int32_t>(ui);
-            }
-        }
-        ::tpy::raise_assertion_error("list.index(x): x not in list");
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // def count[T: Equatable](self, value: T) -> int32:
-    //     n: int32 = 0
-    //     for ui in range(self._size):
-    //         if self._storage.load(ui) == value:
-    //             n += 1
-    //     return n
     int32_t count(::tpy::readonly_form_t<T> value) const
-      requires ::tpystd::tpy::Equatable<T> {
-        int32_t n = 0;
-        uint32_t __stop_0 = this->_size;
-        for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            if (::tpy::eq(this->_storage.load(ui), value)) {
-                n = ::tpy::add_check<int32_t>(n, 1);
-            }
-        }
-        return n;
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // def remove[T: Equatable](self, value: T) -> None:
-    //     self.pop(self.index(value))
     void remove(::tpy::param_val_or_ref_t<T> value)
-      requires ::tpystd::tpy::Equatable<T> {
-        this->pop(this->index(value));
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // def reverse(self) -> None:
-    //     if self._size == 0:
-    //         return
-    //     lo = uint32(0)
-    //     hi = self._size - 1
-    //     while lo < hi:
-    //         a = self._storage.take(lo)
-    //         b = self._storage.take(hi)
-    //         self._storage.init(lo, b)
-    //         self._storage.init(hi, a)
-    //         lo += 1
-    //         hi -= 1
-    void reverse() {
-        if ((this->_size == 0)) {
-            return;
-        }
-        uint32_t lo = 0;
-        uint32_t hi = (::tpy::sub_check<uint32_t>(this->_size, 1));
-        while ((lo < hi)) {
-            T a = this->_storage.take(lo);
-            T b = this->_storage.take(hi);
-            this->_storage.init(lo, std::move(b));
-            this->_storage.init(hi, std::move(a));
-            lo = ::tpy::add_check<uint32_t>(lo, 1);
-            hi = ::tpy::sub_check<uint32_t>(hi, 1);
-        }
-    }
+    void reverse();
 
     // def swap(self, i: int32, j: int32) -> None:
-    //     ui = uint32.trunc(i)
-    //     uj = uint32.trunc(j)
-    //     assert ui < self._size
-    //     assert uj < self._size
-    //     if ui == uj:
-    //         return
-    //     a = self._storage.take(ui)
-    //     b = self._storage.take(uj)
-    //     self._storage.init(ui, b)
-    //     self._storage.init(uj, a)
-    void swap(int32_t i, int32_t j) {
-        uint32_t ui = static_cast<uint32_t>(i);
-        uint32_t uj = static_cast<uint32_t>(j);
-        if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-        if (!((uj < this->_size))) ::tpy::raise_assertion_error();
-        if ((ui == uj)) {
-            return;
-        }
-        T a = this->_storage.take(ui);
-        T b = this->_storage.take(uj);
-        this->_storage.init(ui, std::move(b));
-        this->_storage.init(uj, std::move(a));
-    }
+    void swap(int32_t i, int32_t j);
 
     // def sort[T: Comparable](self) -> None:
-    //     self.__span__().sort()
     void sort()
-      requires ::tpystd::tpy::Comparable<T> {
-        ::tpy::sort_in_place(this->__span__());
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def truncate(self, new_len: int32) -> None:
-    //     assert new_len >= 0
-    //     u_new_len = uint32.trunc(new_len)
-    //     if u_new_len < self._size:
-    //         self._storage.drop_n(u_new_len, self._size - u_new_len)
-    //         self._size = u_new_len
-    void truncate(int32_t new_len) {
-        if (!((new_len >= 0))) ::tpy::raise_assertion_error();
-        uint32_t u_new_len = static_cast<uint32_t>(new_len);
-        if ((u_new_len < this->_size)) {
-            this->_storage.drop_n(u_new_len, (::tpy::sub_check<uint32_t>(this->_size, u_new_len)));
-            this->_size = u_new_len;
-        }
-    }
+    void truncate(int32_t new_len);
 
     // def __len__(self) -> int32:
-    //     return int32.trunc(self._size)
-    int32_t __len__() const {
-        return static_cast<int32_t>(this->_size);
-    }
+    int32_t __len__() const;
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: int32) -> auto_readonly[T]:
-    //     ui = uint32.trunc(index)
-    //     assert ui < self._size
-    //     return self._storage.load(ui)
-    ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        uint32_t ui = static_cast<uint32_t>(index);
-        if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-        return this->_storage.load(ui);
-    }
+    ::tpy::val_or_ref_t<T> __getitem__(int32_t index);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: int32) -> auto_readonly[T]:
-    //     ui = uint32.trunc(index)
-    //     assert ui < self._size
-    //     return self._storage.load(ui)
-    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        uint32_t ui = static_cast<uint32_t>(index);
-        if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-        return this->_storage.load(ui);
-    }
+    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const;
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
-    //     return self.__span__()[index]
-    std::span<T> __getitem__(::tpy::BasicSlice index) {
-        return ::tpy::list_slice(this->__span__(), index);
-    }
+    std::span<T> __getitem__(::tpy::BasicSlice index);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
-    //     return self.__span__()[index]
-    std::span<const T> __getitem__(::tpy::BasicSlice index) const {
-        return ::tpy::list_slice(this->__span__(), index);
-    }
+    std::span<const T> __getitem__(::tpy::BasicSlice index) const;
 
     // def __setitem__(self, index: int32, value: Own[T]) -> None:
-    //     ui = uint32.trunc(index)
-    //     assert ui < self._size
-    //     self._storage.drop(ui)
-    //     self._storage.init(ui, value)
-    void __setitem__(int32_t index, ::tpy::own_param_t<T> value) {
-        uint32_t ui = static_cast<uint32_t>(index);
-        if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-        this->_storage.drop(ui);
-        this->_storage.init(ui, std::move(value));
-    }
+    void __setitem__(int32_t index, ::tpy::own_param_t<T> value);
 
     // def __delitem__(self, index: int32) -> None:
-    //     ui = uint32.trunc(index)
-    //     assert ui < self._size
-    //     self._storage.drop(ui)
-    //     self._storage.shift(ui + 1, ui, self._size - ui - 1)
-    //     self._size -= 1
-    void __delitem__(int32_t index) {
-        uint32_t ui = static_cast<uint32_t>(index);
-        if (!((ui < this->_size))) ::tpy::raise_assertion_error();
-        this->_storage.drop(ui);
-        this->_storage.shift((::tpy::add_check<uint32_t>(ui, 1)), ui, (::tpy::sub_check<uint32_t>((::tpy::sub_check<uint32_t>(this->_size, ui)), 1)));
-        this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
-    }
+    void __delitem__(int32_t index);
 
     // def __contains__[T: Equatable](self, value: T) -> bool:
-    //     for ui in range(self._size):
-    //         if self._storage.load(ui) == value:
-    //             return True
-    //     return False
     bool __contains__(::tpy::readonly_form_t<T> value) const
-      requires ::tpystd::tpy::Equatable<T> {
-        uint32_t __stop_0 = this->_size;
-        for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            if (::tpy::eq(this->_storage.load(ui), value)) {
-                return true;
-            }
-        }
-        return false;
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // def __eq__[T: Equatable](self, other: ArrayList[T, N]) -> bool:
-    //     if self._size != other._size:
-    //         return False
-    //     for ui in range(self._size):
-    //         if self._storage.load(ui) != other._storage.load(ui):
-    //             return False
-    //     return True
     bool __eq__(const ArrayList<T, N>& other) const
-      requires ::tpystd::tpy::Equatable<T> {
-        if ((this->_size != other._size)) {
-            return false;
-        }
-        uint32_t __stop_0 = this->_size;
-        for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            if ((!::tpy::eq(this->_storage.load(ui), other._storage.load(ui)))) {
-                return false;
-            }
-        }
-        return true;
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
-    //     return self._storage.ptr().span(int32.trunc(self._size))
-    std::span<T> __span__() {
-        return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
-    }
+    std::span<T> __span__();
 
     // @auto_readonly
     // def __span__(self) -> Span[auto_readonly[T]]:
-    //     return self._storage.ptr().span(int32.trunc(self._size))
-    std::span<const T> __span__() const {
-        return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
-    }
+    std::span<const T> __span__() const;
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[T]]:
-    //     return SpanIter(self.__span__())
-    ::tpy::SpanIter<T> __iter__() {
-        return ::tpy::SpanIter<T>(this->__span__());
-    }
+    ::tpy::SpanIter<T> __iter__();
 
     // @auto_readonly
     // def __iter__(self) -> SpanIter[auto_readonly[T]]:
-    //     return SpanIter(self.__span__())
-    ::tpy::SpanIter<const T> __iter__() const {
-        return ::tpy::SpanIter<const T>(this->__span__());
-    }
+    ::tpy::SpanIter<const T> __iter__() const;
 
     // def extend(self, items: Spannable[T] | Iterable[Own[T]]) -> None:
-    //     # TODO: warn for Spannable path too (also copies elements)
-    //     if isinstance(items, Spannable):
-    //         items_span = span(items)
-    //         u_size = uint32.trunc(len(items_span))
-    //         assert self._size + u_size <= self._storage.capacity()
-    //         self._storage.init_from_span(self._size, items_span)
-    //         self._size += u_size
-    //     elif isinstance(items, Iterable):
-    //         for item in items:
-    //             self.append(item)
     template<typename T_items>
   requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
-    void extend(T_items& items) {
-        if constexpr (::tpystd::tpy::Spannable<T_items, T>) {
-            std::span<const T> items_span = ::tpy::as_span(items);
-            uint32_t u_size = static_cast<uint32_t>(::tpy::__len__(items_span));
-            if (!(((::tpy::add_check<uint32_t>(this->_size, u_size)) <= this->_storage.capacity()))) ::tpy::raise_assertion_error();
-            this->_storage.init_from_span(this->_size, items_span);
-            this->_size = ::tpy::add_check<uint32_t>(this->_size, u_size);
-        } else if constexpr (::tpystd::typing::Iterable<T_items, T>) {
-            auto& __src_0 = items;
-            auto&& __itr_0 = ::tpy::__iter__(__src_0);
-            for (;;) {
-                auto __r_1 = __itr_0.__next__();
-                if (!__r_1.has_value()) break;
-                auto&& item = ::tpy::own_bind(*__r_1);
-                this->append(std::move(item));
-            }
-        }
-    }
+    void extend(T_items& items);
 
     // def clear(self) -> None:
-    //     self._storage.drop_n(uint32(0), self._size)
-    //     self._size = uint32(0)
-    void clear() {
-        this->_storage.drop_n(0, this->_size);
-        this->_size = 0;
-    }
+    void clear();
 
     // def __repr__(self) -> str:
-    //     s = "["
-    //     sep = False
-    //     for item in self:
-    //         if sep:
-    //             s += ", "
-    //         else:
-    //             sep = True
-    //         s += repr(item)
-    //     s += "]"
-    //     return s
-    std::string __repr__() const {
-        std::string s = "[";
-        bool sep = false;
-        auto& __src_0 = (*this);
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            const auto& item = ::tpy::unwrap_ref(*__r_1);
-            if (sep) {
-                s += ", ";
-            } else {
-                sep = true;
-            }
-            s += ::tpy::repr_of(item);
-        }
-        s += "]";
-        return s;
-    }
+    std::string __repr__() const;
 
     // def __str__(self) -> str:
-    //     return repr(self)
-    std::string __str__() const {
-        return ::tpy::repr_of((*this));
-    }
+    std::string __str__() const;
 
-    ::tpy::val_or_cref_t<T> operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    ::tpy::val_or_cref_t<T> operator[](int32_t index) const;
 
-    ::tpy::val_or_ref_t<T> operator[](int32_t index) {
-        return __getitem__(index);
-    }
+    ::tpy::val_or_ref_t<T> operator[](int32_t index);
 
-    std::span<const T> operator[](::tpy::BasicSlice index) const {
-        return __getitem__(index);
-    }
+    std::span<const T> operator[](::tpy::BasicSlice index) const;
 
-    std::span<T> operator[](::tpy::BasicSlice index) {
-        return __getitem__(index);
-    }
+    std::span<T> operator[](::tpy::BasicSlice index);
 
-    friend bool operator==(const ArrayList& lhs, const ArrayList<T, N>& other) {
+    friend decltype(auto) operator==(const ArrayList& lhs, const ArrayList<T, N>& other) {
         return lhs.__eq__(other);
     }
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.array_list.ArrayList";
 };
 
@@ -504,6 +167,519 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const ArrayList<T, N>& obj) {
     os << obj.__str__();
     return os;
+}
+
+
+template<typename T, std::size_t N>
+inline ArrayList<T, N>::ArrayList() : ArrayList(static_cast<std::nullptr_t*>(nullptr)) {}
+
+// def __init__(self, items: Spannable[T] | Iterable[Own[T]] | None = None) -> None:
+//     self._storage = UninitArrayStorage[T, N]()
+//     self._size = uint32(0)
+//     if items is not None:
+//         self.extend(items)
+template<typename T, std::size_t N>
+template<typename T_items>
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
+inline ArrayList<T, N>::ArrayList(const T_items* items)
+    : _storage(::tpy::UninitArrayStorage<T, N>()),
+      _size(0) {
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        this->extend((*items));
+    }
+}
+
+template<typename T, std::size_t N>
+inline ArrayList<T, N>::ArrayList(const ArrayList& other) : ArrayList(other.__copy__()) {}
+template<typename T, std::size_t N>
+inline ArrayList<T, N>& ArrayList<T, N>::operator=(const ArrayList& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
+
+template<typename T, std::size_t N>
+inline ArrayList<T, N>::ArrayList(ArrayList&& other) noexcept
+    : _storage(),
+      _size() {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    this->_storage.relocate_from(other._storage, other._size);
+    this->_size = other._size;
+    other.__tpy_owned_ = false;
+}
+template<typename T, std::size_t N>
+inline ArrayList<T, N>& ArrayList<T, N>::operator=(ArrayList&& other) noexcept {
+    if (this != &other) {
+        this->~ArrayList();
+        new (this) ArrayList(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     self._storage.drop_n(uint32(0), self._size)
+template<typename T, std::size_t N>
+inline ArrayList<T, N>::~ArrayList() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    this->_storage.drop_n(0, this->_size);
+}
+
+// def __copy__(self) -> Own[ArrayList[T, N]]:
+//     result = ArrayList[T, N]()
+//     for ui in range(self._size):
+//         result.append(copy(self._storage.load(ui)))
+//     return result
+template<typename T, std::size_t N>
+inline ArrayList<T, N> ArrayList<T, N>::__copy__() const {
+    ArrayList<T, N> result = ArrayList<T, N>();
+    uint32_t __stop_0 = this->_size;
+    for (uint32_t ui = 0; ui < __stop_0; ++ui) {
+        result.append(T(this->_storage.load(ui)));
+    }
+    return result;
+}
+
+// def append(self, value: Own[T]) -> None:
+//     assert self._size < self._storage.capacity()
+//     self._storage.init(self._size, value)
+//     self._size += 1
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::append(::tpy::own_param_t<T> value) {
+    if (!((this->_size < this->_storage.capacity()))) ::tpy::raise_assertion_error();
+    this->_storage.init(this->_size, std::move(value));
+    this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
+}
+
+// def append_default[T: Default](self) -> None:
+//     self.append(make_default())
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::append_default()
+  requires ::std::default_initializable<T> {
+    this->append(T{});
+}
+
+// def pop(self, index: int32 | None = None) -> Own[T]:
+//     assert self._size > 0
+//     if index is None:
+//         self._size -= 1
+//         return self._storage.take(self._size)
+//     ui = uint32.trunc(index)
+//     assert ui < self._size
+//     result = self._storage.take(ui)
+//     self._storage.shift(ui + 1, ui, self._size - ui - 1)
+//     self._size -= 1
+//     return result
+template<typename T, std::size_t N>
+inline ::tpy::own_return_t<T> ArrayList<T, N>::pop(std::optional<int32_t> index) {
+    if (!((this->_size > 0))) ::tpy::raise_assertion_error();
+    if ((!index.has_value())) {
+        this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
+        return this->_storage.take(this->_size);
+    }
+    uint32_t ui = static_cast<uint32_t>((*index));
+    if (!((ui < this->_size))) ::tpy::raise_assertion_error();
+    T result = this->_storage.take(ui);
+    this->_storage.shift((::tpy::add_check<uint32_t>(ui, 1)), ui, (::tpy::sub_check<uint32_t>((::tpy::sub_check<uint32_t>(this->_size, ui)), 1)));
+    this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
+    return result;
+}
+
+// def insert(self, index: int32, value: Own[T]) -> None:
+//     assert self._size < self._storage.capacity()
+//     ui = uint32.trunc(index)
+//     assert ui <= self._size
+//     self._storage.shift(ui, ui + 1, self._size - ui)
+//     self._storage.init(ui, value)
+//     self._size += 1
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::insert(int32_t index, ::tpy::own_param_t<T> value) {
+    if (!((this->_size < this->_storage.capacity()))) ::tpy::raise_assertion_error();
+    uint32_t ui = static_cast<uint32_t>(index);
+    if (!((ui <= this->_size))) ::tpy::raise_assertion_error();
+    this->_storage.shift(ui, (::tpy::add_check<uint32_t>(ui, 1)), (::tpy::sub_check<uint32_t>(this->_size, ui)));
+    this->_storage.init(ui, std::move(value));
+    this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
+}
+
+// def index[T: Equatable](self, value: T) -> int32:
+//     for ui in range(self._size):
+//         if self._storage.load(ui) == value:
+//             return int32.trunc(ui)
+//     assert False, "list.index(x): x not in list"
+template<typename T, std::size_t N>
+inline int32_t ArrayList<T, N>::index(::tpy::readonly_form_t<T> value) const
+  requires ::tpystd::tpy::Equatable<T> {
+    uint32_t __stop_0 = this->_size;
+    for (uint32_t ui = 0; ui < __stop_0; ++ui) {
+        if (::tpy::eq(this->_storage.load(ui), value)) {
+            return static_cast<int32_t>(ui);
+        }
+    }
+    ::tpy::raise_assertion_error("list.index(x): x not in list");
+}
+
+// def count[T: Equatable](self, value: T) -> int32:
+//     n: int32 = 0
+//     for ui in range(self._size):
+//         if self._storage.load(ui) == value:
+//             n += 1
+//     return n
+template<typename T, std::size_t N>
+inline int32_t ArrayList<T, N>::count(::tpy::readonly_form_t<T> value) const
+  requires ::tpystd::tpy::Equatable<T> {
+    int32_t n = 0;
+    uint32_t __stop_0 = this->_size;
+    for (uint32_t ui = 0; ui < __stop_0; ++ui) {
+        if (::tpy::eq(this->_storage.load(ui), value)) {
+            n = ::tpy::add_check<int32_t>(n, 1);
+        }
+    }
+    return n;
+}
+
+// def remove[T: Equatable](self, value: T) -> None:
+//     self.pop(self.index(value))
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::remove(::tpy::param_val_or_ref_t<T> value)
+  requires ::tpystd::tpy::Equatable<T> {
+    this->pop(this->index(value));
+}
+
+// def reverse(self) -> None:
+//     if self._size == 0:
+//         return
+//     lo = uint32(0)
+//     hi = self._size - 1
+//     while lo < hi:
+//         a = self._storage.take(lo)
+//         b = self._storage.take(hi)
+//         self._storage.init(lo, b)
+//         self._storage.init(hi, a)
+//         lo += 1
+//         hi -= 1
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::reverse() {
+    if ((this->_size == 0)) {
+        return;
+    }
+    uint32_t lo = 0;
+    uint32_t hi = (::tpy::sub_check<uint32_t>(this->_size, 1));
+    while ((lo < hi)) {
+        T a = this->_storage.take(lo);
+        T b = this->_storage.take(hi);
+        this->_storage.init(lo, std::move(b));
+        this->_storage.init(hi, std::move(a));
+        lo = ::tpy::add_check<uint32_t>(lo, 1);
+        hi = ::tpy::sub_check<uint32_t>(hi, 1);
+    }
+}
+
+// def swap(self, i: int32, j: int32) -> None:
+//     ui = uint32.trunc(i)
+//     uj = uint32.trunc(j)
+//     assert ui < self._size
+//     assert uj < self._size
+//     if ui == uj:
+//         return
+//     a = self._storage.take(ui)
+//     b = self._storage.take(uj)
+//     self._storage.init(ui, b)
+//     self._storage.init(uj, a)
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::swap(int32_t i, int32_t j) {
+    uint32_t ui = static_cast<uint32_t>(i);
+    uint32_t uj = static_cast<uint32_t>(j);
+    if (!((ui < this->_size))) ::tpy::raise_assertion_error();
+    if (!((uj < this->_size))) ::tpy::raise_assertion_error();
+    if ((ui == uj)) {
+        return;
+    }
+    T a = this->_storage.take(ui);
+    T b = this->_storage.take(uj);
+    this->_storage.init(ui, std::move(b));
+    this->_storage.init(uj, std::move(a));
+}
+
+// def sort[T: Comparable](self) -> None:
+//     self.__span__().sort()
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::sort()
+  requires ::tpystd::tpy::Comparable<T> {
+    ::tpy::sort_in_place(this->__span__());
+}
+
+// def truncate(self, new_len: int32) -> None:
+//     assert new_len >= 0
+//     u_new_len = uint32.trunc(new_len)
+//     if u_new_len < self._size:
+//         self._storage.drop_n(u_new_len, self._size - u_new_len)
+//         self._size = u_new_len
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::truncate(int32_t new_len) {
+    if (!((new_len >= 0))) ::tpy::raise_assertion_error();
+    uint32_t u_new_len = static_cast<uint32_t>(new_len);
+    if ((u_new_len < this->_size)) {
+        this->_storage.drop_n(u_new_len, (::tpy::sub_check<uint32_t>(this->_size, u_new_len)));
+        this->_size = u_new_len;
+    }
+}
+
+// def __len__(self) -> int32:
+//     return int32.trunc(self._size)
+template<typename T, std::size_t N>
+inline int32_t ArrayList<T, N>::__len__() const {
+    return static_cast<int32_t>(this->_size);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: int32) -> auto_readonly[T]:
+//     ui = uint32.trunc(index)
+//     assert ui < self._size
+//     return self._storage.load(ui)
+template<typename T, std::size_t N>
+inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::__getitem__(int32_t index) {
+    uint32_t ui = static_cast<uint32_t>(index);
+    if (!((ui < this->_size))) ::tpy::raise_assertion_error();
+    return this->_storage.load(ui);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: int32) -> auto_readonly[T]:
+//     ui = uint32.trunc(index)
+//     assert ui < self._size
+//     return self._storage.load(ui)
+template<typename T, std::size_t N>
+inline ::tpy::val_or_cref_t<T> ArrayList<T, N>::__getitem__(int32_t index) const {
+    uint32_t ui = static_cast<uint32_t>(index);
+    if (!((ui < this->_size))) ::tpy::raise_assertion_error();
+    return this->_storage.load(ui);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
+//     return self.__span__()[index]
+template<typename T, std::size_t N>
+inline std::span<T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) {
+    return ::tpy::list_slice(this->__span__(), index);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: basic_slice) -> Span[auto_readonly[T]]:
+//     return self.__span__()[index]
+template<typename T, std::size_t N>
+inline std::span<const T> ArrayList<T, N>::__getitem__(::tpy::BasicSlice index) const {
+    return ::tpy::list_slice(this->__span__(), index);
+}
+
+// def __setitem__(self, index: int32, value: Own[T]) -> None:
+//     ui = uint32.trunc(index)
+//     assert ui < self._size
+//     self._storage.drop(ui)
+//     self._storage.init(ui, value)
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::__setitem__(int32_t index, ::tpy::own_param_t<T> value) {
+    uint32_t ui = static_cast<uint32_t>(index);
+    if (!((ui < this->_size))) ::tpy::raise_assertion_error();
+    this->_storage.drop(ui);
+    this->_storage.init(ui, std::move(value));
+}
+
+// def __delitem__(self, index: int32) -> None:
+//     ui = uint32.trunc(index)
+//     assert ui < self._size
+//     self._storage.drop(ui)
+//     self._storage.shift(ui + 1, ui, self._size - ui - 1)
+//     self._size -= 1
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::__delitem__(int32_t index) {
+    uint32_t ui = static_cast<uint32_t>(index);
+    if (!((ui < this->_size))) ::tpy::raise_assertion_error();
+    this->_storage.drop(ui);
+    this->_storage.shift((::tpy::add_check<uint32_t>(ui, 1)), ui, (::tpy::sub_check<uint32_t>((::tpy::sub_check<uint32_t>(this->_size, ui)), 1)));
+    this->_size = ::tpy::sub_check<uint32_t>(this->_size, 1);
+}
+
+// def __contains__[T: Equatable](self, value: T) -> bool:
+//     for ui in range(self._size):
+//         if self._storage.load(ui) == value:
+//             return True
+//     return False
+template<typename T, std::size_t N>
+inline bool ArrayList<T, N>::__contains__(::tpy::readonly_form_t<T> value) const
+  requires ::tpystd::tpy::Equatable<T> {
+    uint32_t __stop_0 = this->_size;
+    for (uint32_t ui = 0; ui < __stop_0; ++ui) {
+        if (::tpy::eq(this->_storage.load(ui), value)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// def __eq__[T: Equatable](self, other: ArrayList[T, N]) -> bool:
+//     if self._size != other._size:
+//         return False
+//     for ui in range(self._size):
+//         if self._storage.load(ui) != other._storage.load(ui):
+//             return False
+//     return True
+template<typename T, std::size_t N>
+inline bool ArrayList<T, N>::__eq__(const ArrayList<T, N>& other) const
+  requires ::tpystd::tpy::Equatable<T> {
+    if ((this->_size != other._size)) {
+        return false;
+    }
+    uint32_t __stop_0 = this->_size;
+    for (uint32_t ui = 0; ui < __stop_0; ++ui) {
+        if ((!::tpy::eq(this->_storage.load(ui), other._storage.load(ui)))) {
+            return false;
+        }
+    }
+    return true;
+}
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[T]]:
+//     return self._storage.ptr().span(int32.trunc(self._size))
+template<typename T, std::size_t N>
+inline std::span<T> ArrayList<T, N>::__span__() {
+    return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
+}
+
+// @auto_readonly
+// def __span__(self) -> Span[auto_readonly[T]]:
+//     return self._storage.ptr().span(int32.trunc(self._size))
+template<typename T, std::size_t N>
+inline std::span<const T> ArrayList<T, N>::__span__() const {
+    return std::span(this->_storage.ptr(), static_cast<size_t>(static_cast<int32_t>(this->_size)));
+}
+
+// @auto_readonly
+// def __iter__(self) -> SpanIter[auto_readonly[T]]:
+//     return SpanIter(self.__span__())
+template<typename T, std::size_t N>
+inline ::tpy::SpanIter<T> ArrayList<T, N>::__iter__() {
+    return ::tpy::SpanIter<T>(this->__span__());
+}
+
+// @auto_readonly
+// def __iter__(self) -> SpanIter[auto_readonly[T]]:
+//     return SpanIter(self.__span__())
+template<typename T, std::size_t N>
+inline ::tpy::SpanIter<const T> ArrayList<T, N>::__iter__() const {
+    return ::tpy::SpanIter<const T>(this->__span__());
+}
+
+// def extend(self, items: Spannable[T] | Iterable[Own[T]]) -> None:
+//     # TODO: warn for Spannable path too (also copies elements)
+//     if isinstance(items, Spannable):
+//         items_span = span(items)
+//         u_size = uint32.trunc(len(items_span))
+//         assert self._size + u_size <= self._storage.capacity()
+//         self._storage.init_from_span(self._size, items_span)
+//         self._size += u_size
+//     elif isinstance(items, Iterable):
+//         for item in items:
+//             self.append(item)
+template<typename T, std::size_t N>
+template<typename T_items>
+  requires (::tpystd::typing::Iterable<T_items, T> || ::tpystd::tpy::Spannable<T_items, T>)
+inline void ArrayList<T, N>::extend(T_items& items) {
+    if constexpr (::tpystd::tpy::Spannable<T_items, T>) {
+        std::span<const T> items_span = ::tpy::as_span(items);
+        uint32_t u_size = static_cast<uint32_t>(::tpy::__len__(items_span));
+        if (!(((::tpy::add_check<uint32_t>(this->_size, u_size)) <= this->_storage.capacity()))) ::tpy::raise_assertion_error();
+        this->_storage.init_from_span(this->_size, items_span);
+        this->_size = ::tpy::add_check<uint32_t>(this->_size, u_size);
+    } else if constexpr (::tpystd::typing::Iterable<T_items, T>) {
+        auto& __src_0 = items;
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            auto&& item = ::tpy::own_bind(*__r_1);
+            this->append(std::move(item));
+        }
+    }
+}
+
+// def clear(self) -> None:
+//     self._storage.drop_n(uint32(0), self._size)
+//     self._size = uint32(0)
+template<typename T, std::size_t N>
+inline void ArrayList<T, N>::clear() {
+    this->_storage.drop_n(0, this->_size);
+    this->_size = 0;
+}
+
+// def __repr__(self) -> str:
+//     s = "["
+//     sep = False
+//     for item in self:
+//         if sep:
+//             s += ", "
+//         else:
+//             sep = True
+//         s += repr(item)
+//     s += "]"
+//     return s
+template<typename T, std::size_t N>
+inline std::string ArrayList<T, N>::__repr__() const {
+    std::string s = "[";
+    bool sep = false;
+    auto& __src_0 = (*this);
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        const auto& item = ::tpy::unwrap_ref(*__r_1);
+        if (sep) {
+            s += ", ";
+        } else {
+            sep = true;
+        }
+        s += ::tpy::repr_of(item);
+    }
+    s += "]";
+    return s;
+}
+
+// def __str__(self) -> str:
+//     return repr(self)
+template<typename T, std::size_t N>
+inline std::string ArrayList<T, N>::__str__() const {
+    return ::tpy::repr_of((*this));
+}
+
+template<typename T, std::size_t N>
+inline ::tpy::val_or_cref_t<T> ArrayList<T, N>::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+template<typename T, std::size_t N>
+inline ::tpy::val_or_ref_t<T> ArrayList<T, N>::operator[](int32_t index) {
+    return __getitem__(index);
+}
+
+template<typename T, std::size_t N>
+inline std::span<const T> ArrayList<T, N>::operator[](::tpy::BasicSlice index) const {
+    return __getitem__(index);
+}
+
+template<typename T, std::size_t N>
+inline std::span<T> ArrayList<T, N>::operator[](::tpy::BasicSlice index) {
+    return __getitem__(index);
+}
+
+template<typename T, std::size_t N>
+inline size_t ArrayList<T, N>::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 
 void __tpy_init();

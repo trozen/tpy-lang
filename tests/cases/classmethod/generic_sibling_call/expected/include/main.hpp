@@ -20,16 +20,8 @@ struct Util {
 
     // @staticmethod
     // def pick[T](a: T, b: T) -> T:
-    //     if a > b:
-    //         return a
-    //     return b
     template<typename T>
-    static ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-        if ((a > b)) {
-            return ::tpy::param_to_return<T>(a);
-        }
-        return ::tpy::param_to_return<T>(b);
-    }
+    static ::tpy::val_or_ref_t<T> pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
 
     // @classmethod
     // def larger(cls, a: int32, b: int32) -> int32:
@@ -60,5 +52,19 @@ inline int32_t Util::larger(int32_t a, int32_t b) {
 inline double Util::larger_float(double a, double b) {
     return Util::pick<double>(a, b);
 }
+
+// @staticmethod
+// def pick[T](a: T, b: T) -> T:
+//     if a > b:
+//         return a
+//     return b
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Util::pick(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
+    if ((a > b)) {
+        return ::tpy::param_to_return<T>(a);
+    }
+    return ::tpy::param_to_return<T>(b);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

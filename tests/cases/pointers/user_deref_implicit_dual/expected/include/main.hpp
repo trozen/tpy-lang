@@ -50,13 +50,9 @@ struct Ref {
     // def __deref__(self) -> Point:
     const Point& __deref__() const;
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ref";
 };
 
@@ -93,6 +89,14 @@ inline Point& Ref::__deref__() {
 //     return self._target
 inline const Point& Ref::__deref__() const {
     return this->_target;
+}
+
+inline auto Ref::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+inline auto Ref::operator*() const -> decltype(__deref__()) {
+    return __deref__();
 }
 void __tpy_init();
 } // namespace tpyapp::main

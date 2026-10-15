@@ -51,25 +51,7 @@ struct Peeker {
 
 
     // def peek(self, xs: list[T], v: readonly[T]) -> bool:
-    //     # a `readonly[T]` METHOD slot renders `readonly_form_t<T>` -- the same
-    //     # parameter form, const-qualified only where it is a mutable reference,
-    //     # so a view binds here as bare as at the plain `T` slot
-    //     for x in xs:
-    //         if x == v:
-    //             return True
-    //     return False
-    bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v) const {
-        auto& __obj_0 = xs;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& x = *__beg_0;
-            if (::tpy::eq(x, v)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    bool peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Peeker";
 };
 
@@ -77,6 +59,29 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Peeker<T>& obj) {
     ::tpy::print_object_default(os, "Peeker", obj);
     return os;
+}
+
+
+// def peek(self, xs: list[T], v: readonly[T]) -> bool:
+//     # a `readonly[T]` METHOD slot renders `readonly_form_t<T>` -- the same
+//     # parameter form, const-qualified only where it is a mutable reference,
+//     # so a view binds here as bare as at the plain `T` slot
+//     for x in xs:
+//         if x == v:
+//             return True
+//     return False
+template<typename T>
+inline bool Peeker<T>::peek(const std::vector<T>& xs, ::tpy::readonly_form_t<T> v) const {
+    auto& __obj_0 = xs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& x = *__beg_0;
+        if (::tpy::eq(x, v)) {
+            return true;
+        }
+    }
+    return false;
 }
 
 // def has_item[T](xs: list[T], v: T) -> bool:

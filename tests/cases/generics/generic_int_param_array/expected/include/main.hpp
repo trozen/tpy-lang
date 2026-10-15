@@ -21,21 +21,13 @@ struct Buffer {
     std::array<T, N> data;
 
     // def __init__(self) -> None:
-    //     pass
-    Buffer() {
-    }
+    Buffer();
 
     // def set(self, idx: int32, val: T) -> None:
-    //     self.data[idx] = val
-    void set(int32_t idx, ::tpy::param_val_or_ref_t<T> val) {
-        ::tpy::__setitem__(this->data, idx, val);
-    }
+    void set(int32_t idx, ::tpy::param_val_or_ref_t<T> val);
 
     // def get(self, idx: int32) -> T:
-    //     return self.data[idx]
-    ::tpy::val_or_ref_t<T> get(int32_t idx) {
-        return ::tpy::__getitem__(this->data, idx);
-    }
+    ::tpy::val_or_ref_t<T> get(int32_t idx);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
@@ -43,6 +35,27 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
     ::tpy::print_object_default(os, "Buffer", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T, std::size_t N>
+inline Buffer<T, N>::Buffer() {
+}
+
+// def set(self, idx: int32, val: T) -> None:
+//     self.data[idx] = val
+template<typename T, std::size_t N>
+inline void Buffer<T, N>::set(int32_t idx, ::tpy::param_val_or_ref_t<T> val) {
+    ::tpy::__setitem__(this->data, idx, val);
+}
+
+// def get(self, idx: int32) -> T:
+//     return self.data[idx]
+template<typename T, std::size_t N>
+inline ::tpy::val_or_ref_t<T> Buffer<T, N>::get(int32_t idx) {
+    return ::tpy::__getitem__(this->data, idx);
 }
 
 void __tpy_init();

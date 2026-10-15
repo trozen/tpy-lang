@@ -24,9 +24,8 @@ struct Shared {
     T* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
-    //     self.p = p
     Shared() = default;
-    explicit Shared(T* p) : p(p) {}
+    explicit Shared(T* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shared";
 };
 
@@ -44,9 +43,8 @@ struct SendCell {
     T* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
-    //     self.p = p
     SendCell() = default;
-    explicit SendCell(T* p) : p(p) {}
+    explicit SendCell(T* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SendCell";
 };
 
@@ -55,6 +53,17 @@ inline std::ostream& operator<<(std::ostream& os, const SendCell<T>& obj) {
     ::tpy::print_object_default(os, "SendCell", obj);
     return os;
 }
+
+
+// def __init__(self, p: Ptr[T]) -> None:
+//     self.p = p
+template<typename T>
+inline Shared<T>::Shared(T* p) : p(p) {}
+
+// def __init__(self, p: Ptr[T]) -> None:
+//     self.p = p
+template<typename T>
+inline SendCell<T>::SendCell(T* p) : p(p) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,12 +21,8 @@ struct Pair {
     B second;
 
     // def __init__(self, first: A, second: B) -> None:
-    //     self.first = first
-    //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second)
-        : first(first),
-          second(second) {}
+    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -35,6 +31,15 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
+
+
+// def __init__(self, first: A, second: B) -> None:
+//     self.first = first
+//     self.second = second
+template<typename A, typename B>
+inline Pair<A, B>::Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second)
+    : first(first),
+      second(second) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

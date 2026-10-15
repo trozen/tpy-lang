@@ -1549,12 +1549,10 @@ class CodeGenContext:
     # machine; every seam site (leaf stmts, Branch conds, emplace args, the
     # async-return value) consults it. None outside a frame emission.
     thir_resumable_leaf: "ResumableLeafEmitter | None" = None
-    # The module's C++ cycle: its import SCC's regular (non-native)
-    # members, which include each other's headers. When a `<peer>.hpp`
-    # would be included from this module's header (vs cpp file), the
-    # codegen swaps it for `<peer>_fwd.hpp` to break the cyclic
-    # complete-type include. Empty outside a C++ cycle.
-    cycle_peers: frozenset[str] = field(default_factory=frozenset)
+    # Every C++ cycle member of the program -> its C++ cycle: the import
+    # SCC's regular (non-native) members, which include each other's
+    # headers. A native module generates no header, so it is never one.
+    module_cycles: Mapping[str, frozenset[str]] = field(default_factory=dict)
 
     # --- Scope tracking ---
     indent_level: int = 0
@@ -1979,6 +1977,14 @@ class CodeGenContext:
     # TODO: replace with dict[str, NativeGlobalInfo] holding c_name, linkage, var_type
     # instead of a flat name->name mapping (the TpyVarDecl nodes already carry this)
     native_global_names: dict[str, str] = field(default_factory=dict)
+
+    @property
+    def cycle_peers(self) -> frozenset[str]:
+        """The modules of this module's C++ cycle, itself included. When a
+        `<peer>.hpp` would be included from this module's header (vs cpp
+        file), the codegen swaps it for `<peer>_fwd.hpp` to break the cyclic
+        complete-type include. Empty for non-cycle modules."""
+        return self.module_cycles.get(self.module_name, frozenset())
 
     def iter_imported_recursive_unions(self) -> 'Iterator[RecursiveUnionInfo]':
         """Yield each cross-module recursive alias once.

@@ -66,15 +66,9 @@ struct _Environ {
     // def copy(self) -> Own[dict[str, str]]:
     ::tpy::ordered_map<std::string, std::string> copy() const;
 
-    std::string operator[](std::string_view key) const {
-        return __getitem__(key);
-    }
+    std::string operator[](std::string_view key) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "os._environ._Environ";
 };
 
@@ -314,6 +308,16 @@ inline ::tpy::ordered_map<std::string, std::string> _Environ::copy() const {
         ::tpy::__setitem__(out, k, ::tpy::__getitem__(this->_data, k));
     }
     return out;
+}
+
+inline std::string _Environ::operator[](std::string_view key) const {
+    return __getitem__(key);
+}
+
+inline size_t _Environ::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpystd::os::_environ

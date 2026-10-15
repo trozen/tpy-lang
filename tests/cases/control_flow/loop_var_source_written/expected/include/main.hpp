@@ -594,13 +594,9 @@ struct Rows {
     // def __getitem__(self, i: int) -> list[int]:
     const std::vector<::tpy::BigInt>& __getitem__(const ::tpy::BigInt& i) const;
 
-    const std::vector<::tpy::BigInt>& operator[](const ::tpy::BigInt& i) const {
-        return __getitem__(i);
-    }
+    const std::vector<::tpy::BigInt>& operator[](const ::tpy::BigInt& i) const;
 
-    std::vector<::tpy::BigInt>& operator[](const ::tpy::BigInt& i) {
-        return __getitem__(i);
-    }
+    std::vector<::tpy::BigInt>& operator[](const ::tpy::BigInt& i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rows";
 };
 
@@ -1007,6 +1003,14 @@ inline std::vector<::tpy::BigInt>& Rows::__getitem__(const ::tpy::BigInt& i) {
 inline const std::vector<::tpy::BigInt>& Rows::__getitem__(const ::tpy::BigInt& i) const {
     ::tpy::__setitem__((*G5), 0, LONG_B);
     return ::tpy::__getitem__(this->rows, i.to_fixed_check<int32_t>());
+}
+
+inline const std::vector<::tpy::BigInt>& Rows::operator[](const ::tpy::BigInt& i) const {
+    return __getitem__(i);
+}
+
+inline std::vector<::tpy::BigInt>& Rows::operator[](const ::tpy::BigInt& i) {
+    return __getitem__(i);
 }
 // def generic_touch[T](a: list[T], touch: Callable[[T], None]) -> None:
 //     for y in a:

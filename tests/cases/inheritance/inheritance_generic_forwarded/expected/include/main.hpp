@@ -20,15 +20,11 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value);
 
     // def get_value(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get_value() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get_value();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -45,18 +41,11 @@ struct Wrapper : Container<T> {
     int32_t extra;
 
     // def __init__(self, value: T, extra: int32) -> None:
-    //     super().__init__(value)
-    //     self.extra = extra
     Wrapper() = default;
-    explicit Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra)
-        : Container<T>(value),
-          extra(extra) {}
+    explicit Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra);
 
     // def get_extra(self) -> int32:
-    //     return self.extra
-    int32_t get_extra() const {
-        return this->extra;
-    }
+    int32_t get_extra() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -64,6 +53,34 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get_value(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get_value() {
+    return this->value;
+}
+
+// def __init__(self, value: T, extra: int32) -> None:
+//     super().__init__(value)
+//     self.extra = extra
+template<typename T>
+inline Wrapper<T>::Wrapper(::tpy::param_val_or_ref_t<T> value, int32_t extra)
+    : Container<T>(value),
+      extra(extra) {}
+
+// def get_extra(self) -> int32:
+//     return self.extra
+template<typename T>
+inline int32_t Wrapper<T>::get_extra() const {
+    return this->extra;
 }
 
 void __tpy_init();

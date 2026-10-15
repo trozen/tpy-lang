@@ -23,29 +23,14 @@ struct Box {
     bool _has;
 
     // def __init__(self, value: T) -> None:
-    //     self._value = value
-    //     self._has = True
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value)
-        : _value(value),
-          _has(true) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T | None:
-    //     if self._has:
-    //         return self._value
-    //     return None
-    std::optional<T> get() const {
-        if (this->_has) {
-            return this->_value;
-        }
-        return std::nullopt;
-    }
+    std::optional<T> get() const;
 
     // def clear(self) -> None:
-    //     self._has = False
-    void clear() {
-        this->_has = false;
-    }
+    void clear();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -53,6 +38,34 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self._value = value
+//     self._has = True
+template<::tpy::ValueType T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value)
+    : _value(value),
+      _has(true) {}
+
+// def get(self) -> T | None:
+//     if self._has:
+//         return self._value
+//     return None
+template<::tpy::ValueType T>
+inline std::optional<T> Box<T>::get() const {
+    if (this->_has) {
+        return this->_value;
+    }
+    return std::nullopt;
+}
+
+// def clear(self) -> None:
+//     self._has = False
+template<::tpy::ValueType T>
+inline void Box<T>::clear() {
+    this->_has = false;
 }
 
 void __tpy_init();

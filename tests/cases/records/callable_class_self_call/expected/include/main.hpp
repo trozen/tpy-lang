@@ -22,9 +22,7 @@ struct Recursive {
     // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
-    int32_t operator()(int32_t x) const {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Recursive";
 };
 
@@ -40,9 +38,7 @@ struct Fibonacci {
     // def __call__(self, n: int32) -> int32:
     int32_t __call__(int32_t n) const;
 
-    int32_t operator()(int32_t n) const {
-        return __call__(n);
-    }
+    int32_t operator()(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Fibonacci";
 };
 
@@ -63,6 +59,10 @@ inline int32_t Recursive::__call__(int32_t x) const {
     return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(x, 1))), 1));
 }
 
+inline int32_t Recursive::operator()(int32_t x) const {
+    return __call__(x);
+}
+
 // def __call__(self, n: int32) -> int32:
 //     if n <= 1:
 //         return n
@@ -72,6 +72,10 @@ inline int32_t Fibonacci::__call__(int32_t n) const {
         return n;
     }
     return (::tpy::add_check<int32_t>(this->__call__((::tpy::sub_check<int32_t>(n, 1))), this->__call__((::tpy::sub_check<int32_t>(n, 2)))));
+}
+
+inline int32_t Fibonacci::operator()(int32_t n) const {
+    return __call__(n);
 }
 void __tpy_init();
 } // namespace tpyapp::main

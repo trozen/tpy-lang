@@ -26,9 +26,8 @@ struct Pool {
     ::tpystd::tplib::array_list::ArrayList<T, 8> _items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
-    //     self._items = ArrayList[T, 8](items)
     Pool() = default;
-    explicit Pool(std::vector<T>&& items) : _items(::tpystd::tplib::array_list::ArrayList<T, 8>(&(items))) {}
+    explicit Pool(std::vector<T>&& items);
 
     auto begin() { return this->__span__().begin(); }
     auto end() { return this->__span__().end(); }
@@ -36,10 +35,7 @@ struct Pool {
     auto end() const { return this->__span__().end(); }
 
     // def __span__(self) -> Span[readonly[T]]:
-    //     return span(self._items)
-    std::span<const T> __span__() const {
-        return ::tpy::as_span(this->_items);
-    }
+    std::span<const T> __span__() const;
     static constexpr std::string_view __tpy_class_name__ = "pool.Pool";
 };
 
@@ -47,6 +43,19 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pool<T>& obj) {
     ::tpy::print_object_default(os, "Pool", obj);
     return os;
+}
+
+
+// def __init__(self, items: Own[list[T]]) -> None:
+//     self._items = ArrayList[T, 8](items)
+template<typename T>
+inline Pool<T>::Pool(std::vector<T>&& items) : _items(::tpystd::tplib::array_list::ArrayList<T, 8>(&(items))) {}
+
+// def __span__(self) -> Span[readonly[T]]:
+//     return span(self._items)
+template<typename T>
+inline std::span<const T> Pool<T>::__span__() const {
+    return ::tpy::as_span(this->_items);
 }
 
 // def make_pool[T](items: Own[list[T]]) -> Own[Pool[T]]:

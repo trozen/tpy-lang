@@ -421,10 +421,12 @@ declaration-only.
 The C++ back-end emits `<mod>_fwd.hpp` per C++ cycle peer with
 forward declarations of the module's records / enums / `@dynamic`
 protocol bases; cycle peers `#include` the fwd header in their
-`.hpp` and the full header in their `.cpp`. Method bodies on C++ cycle
-peers always emit out-of-line in `.cpp` so a small body's
+`.hpp` and the full header in their `.cpp`. Non-template method
+bodies on C++ cycle peers emit out-of-line in `.cpp` so a small body's
 inline-in-header optimization doesn't reach into a peer's complete
-type from the .hpp. A small non-template generator's `__next__` (at
+type from the .hpp; a template member's body (a generic class's
+method, a member template) stays in the `.hpp`, as every template
+does. A small non-template generator's `__next__` (at
 most 40 rendered lines) is the one body that still emits `inline`, in
 `<mod>_inl.hpp` -- a file nothing includes from a header, only from a
 `.cpp` whose headers are all complete (see docs/ASYNC_DESIGN.md "Body

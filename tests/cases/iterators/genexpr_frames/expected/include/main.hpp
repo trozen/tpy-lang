@@ -227,16 +227,11 @@ struct Bag {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
-    //     self.items = items
     Bag() = default;
-    explicit Bag(std::vector<T>&& items) : items(std::move(items)) {}
+    explicit Bag(std::vector<T>&& items);
 
     // def count(self) -> int32:
-    //     # a method of a GENERIC class: the frame takes the class's type params.
-    //     return sum(1 for v in self.items)  # tpyc: ok
-    int32_t count() const {
-        return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_count_5<T>(this->items));
-    }
+    int32_t count() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -896,6 +891,20 @@ inline std::vector<int32_t> Acc::make() const {
 inline Shelf::Box::Box()
     : items(std::vector<int32_t>{1, 2, 3}),
       scale(2) {}
+
+// def __init__(self, items: Own[list[T]]) -> None:
+//     self.items = items
+template<typename T>
+inline Bag<T>::Bag(std::vector<T>&& items) : items(std::move(items)) {}
+
+// def count(self) -> int32:
+//     # a method of a GENERIC class: the frame takes the class's type params.
+//     return sum(1 for v in self.items)  # tpyc: ok
+template<typename T>
+inline int32_t Bag<T>::count() const {
+    return ::tpy::builtin_sum<int32_t>(::tpyapp::main::__genexpr_count_5<T>(this->items));
+}
+
 // def total(it: Iterable[int32]) -> int32:
 //     s = 0
 //     for v in it:

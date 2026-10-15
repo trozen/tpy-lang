@@ -9,13 +9,14 @@ from typing import Literal, TextIO, TYPE_CHECKING
 from io import StringIO
 
 # Method body placement when emitting from `gen_method_def` and friends.
-# - "inline": signature + body, indented, inside the struct definition (the
-#   default; required for templates and methods that emit a C++ template
-#   header).
+# - "inline": signature + body, indented, inside the struct definition (a
+#   member whose return C++ deduces, which needs its body before first use).
 # - "decl": signature + ``;``, indented, inside the struct.
 # - "def_hpp": ``inline ReturnType ClassName::method(...) { body }`` at
 #   namespace scope in the .hpp, after every struct decl is complete. Used
-#   for trivial methods so the call site can inline without LTO.
+#   for trivial methods so the call site can inline without LTO, and for
+#   every template member (class head + own head, ``Box<T>::``), which the
+#   header defines at its end.
 # - "def_cpp": ``ReturnType ClassName::method(...) { body }`` at namespace
 #   scope in the .cpp. No ``inline`` keyword (single TU owns the symbol).
 #   Used for non-trivial method bodies; consistent with how free functions
@@ -27,11 +28,11 @@ from ..typesys import (
     default_emittable_at, none_default_cpp_spelling,
     TpyType, NominalType, OwnType, ReadonlyType, OptionalType, PendingListType, IntLiteralType, is_fn_type, CallableType,
     UnionType, VoidType, NoneType, NONE,
-    BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, is_dyn_protocol, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
+    BIGINT, BOOL, STR, is_protocol_type, is_protocol_union, FunctionInfo, TypeParamRef, unwrap_readonly, is_constexpr_eligible,
     PtrType, LiteralType, LiteralValue, LiteralTag, is_any_str_type,
     is_primitive_type,
     resolve_int_literals, CONST_PARAMS_METHODS,
-    error_return_to_cpp, error_return_uses_borrow_slot, unwrap_ref_type,
+    error_return_to_cpp, unwrap_ref_type,
     property_getter_returns_storage_ref,
     bare_name, TupleGlobalLayout, global_tuple_layout,
     body_function_info, body_method_info,
@@ -51,6 +52,10 @@ from .type_resolution import (resolve_global_binding_type,
                               resolve_stmt_type_cascade)
 from .int_literals import render_int_literal_value
 from ..sema.literal_utils import literal_value_from_expr
+from .protocols import (
+    ReturnSlot, group_is_template, protocol_return, return_is_deduced,
+    return_slot_kind,
+)
 
 if TYPE_CHECKING:
     from .context import CodeGenContext
@@ -651,17 +656,10 @@ class FunctionGenerator:
         If error_return is set, wraps the return type in std::expected<T, E>.
         """
         cpp_error = error_return_to_cpp(error_return, self.ctx.analyzer.ctx.module_name, self.ctx.analyzer.registry) if error_return else None
-        unwrapped = unwrap_readonly(unwrap_ref_type(return_type))
-        # Unwrap Own[Protocol] so consuming __iter__ returning Own[Iterator[T]]
-        # gets `auto` in C++. Abstract @dynamic P must stay wrapped -- Own[P]
-        # lowers to std::unique_ptr<P> via OwnType.to_cpp(); the protocol path
-        # below would emit `P&` to a temporary.
-        if (isinstance(unwrapped, OwnType) and is_protocol_type(unwrapped.wrapped)
-                and not is_dyn_protocol(unwrapped.wrapped)):
-            unwrapped = unwrapped.wrapped
-        if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
-            pi = protocol_info_of(unwrapped)
-            if pi and pi.is_dynamic:
+        slot = return_slot_kind(return_type, error_return=cpp_error is not None)
+        if slot is ReturnSlot.PROTOCOL:
+            unwrapped = protocol_return(return_type)
+            if not return_is_deduced(return_type):
                 base = self.protocols.get_dynamic_base_name(unwrapped)
                 if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
                     ret = f"const {base}&"
@@ -674,28 +672,23 @@ class FunctionGenerator:
                         inner = f"::tpy::val_or_ref<{base}>"
                     return f"std::expected<{inner}, {cpp_error}>"
                 return ret
-            # Non-dynamic protocol return (e.g. Iterator[T] from __iter__):
-            # use auto, C++ deduces the type from the return expression.
             return "auto"
-        unwrapped_return = unwrap_ref_type(unwrap_readonly(return_type))
-        if const:
-            ret = return_type.to_cpp_return_const()
-        else:
-            ret = return_type.to_cpp_return()
-        if cpp_error:
-            # std::expected can't hold references. For reference-returned types
-            # (where ret is T&) -- including recursive-union wrappers -- use
-            # val_or_ref<T> which stores by pointer. A const / readonly return
-            # keeps the const through the stored pointer (val_or_ref<const T>),
-            # mirroring the @dynamic-protocol branch above.
-            inner = unwrapped_return.to_cpp()
-            if error_return_uses_borrow_slot(return_type):
-                if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
-                    inner = f"::tpy::val_or_ref<const {inner}>"
-                else:
-                    inner = f"::tpy::val_or_ref<{inner}>"
-            return f"std::expected<{inner}, {cpp_error}>"
-        return ret
+        if slot is ReturnSlot.PLAIN:
+            if const:
+                return return_type.to_cpp_return_const()
+            return return_type.to_cpp_return()
+        # std::expected can't hold references. For reference-returned types
+        # (where the plain return is T&) -- including recursive-union wrappers
+        # -- use val_or_ref<T> which stores by pointer. A const / readonly
+        # return keeps the const through the stored pointer
+        # (val_or_ref<const T>), mirroring the @dynamic-protocol branch above.
+        inner = unwrap_ref_type(unwrap_readonly(return_type)).to_cpp()
+        if slot is ReturnSlot.EXPECTED_BORROW:
+            if const or isinstance(unwrap_ref_type(return_type), ReadonlyType):
+                inner = f"::tpy::val_or_ref<const {inner}>"
+            else:
+                inner = f"::tpy::val_or_ref<{inner}>"
+        return f"std::expected<{inner}, {cpp_error}>"
 
     @staticmethod
     def _emit_param_with_decision(
@@ -838,35 +831,12 @@ class FunctionGenerator:
                     return True
         return False
 
-    def _signature_is_template(self, func: TpyFunction) -> bool:
-        """Per-signature template test -- the building block of the group-aware
-        is_template_function, which also folds in an @overload group's stubs.
-        THIR's per-stub admission mirrors only the PARAM half of this
-        analyzer-purely (`_stub_has_template_param`, thir/lower/functions.py):
-        declared type params are signature, which this path still prints, so
-        THIR lowers those specializations' bodies."""
-        if func.type_params:
-            return True
-        if self.protocols.get_all_protocol_params(func.params):
-            return True
-        if any(is_fn_type(pt) for _, pt in func.params):
-            return True
-        return False
-
     def is_template_function(self, func: TpyFunction) -> bool:
-        """Check if a function emits any C++ template definition.
-
-        For an @overload implementation the group is header-only if ANY stub is
-        a template, even when the impl signature is not: a template stub must be
-        emitted (and stay instantiable) in the header, else a cross-module call
-        finds no instantiation. The header-vs-.cpp routing keys on this, so it
-        must reflect the whole group, not just the impl signature."""
-        if self._signature_is_template(func):
-            return True
-        stubs = self.ctx.analyzer.overload_groups.get(func)
-        if stubs and any(self._signature_is_template(s) for s in stubs):
-            return True
-        return False
+        """Does `func` emit a C++ template definition (header-only): its
+        signature, or for an @overload implementation any stub's
+        (`group_is_template`)."""
+        return group_is_template(
+            func, self.ctx.analyzer.overload_groups.get(func) or [])
 
     def gen_function_forward_decl(self, out: TextIO, func: TpyFunction) -> bool:
         """Generate a function forward declaration (signature only, no body).
@@ -1531,26 +1501,20 @@ class FunctionGenerator:
                                       record_type_param_bounds=record_type_param_bounds,
                                       mode=mode)
 
-    def _gen_method_overload(
-        self, out: TextIO, method: TpyFunction, record_name: str,
-        cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
-        override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
-        mode: MethodEmitMode = "inline",
-    ) -> None:
-        """Emit a single method overload. See ``MethodEmitMode`` for the
-        contract of ``mode``.
-        """
-        # ``def_*`` modes emit at namespace scope -- the class scope only
-        # opens after the qualified method name, so the return type and
-        # method-name parts must use the fully-qualified form
-        # (``Outer::Inner``). In-class emission uses the short name.
-        is_def_mode = mode in ("def_hpp", "def_cpp")
-        cpp_record_qualified = escape_cpp_name(record_name.replace(".", "::"))
-        rec_short = bare_name(record_name)
+    def method_return_cpp(self, method: TpyFunction, record_name: str,
+                          cpp_return_type: TpyType | None = None, *,
+                          const: bool, override: bool,
+                          def_mode: bool) -> str:
+        """A method's rendered C++ return type. ``def_mode``: rendered at
+        namespace scope, before the class scope opens, so the record is
+        spelled qualified (``Box<T>``)."""
+        if cpp_return_type is None:
+            cpp_return_type = method.return_type
         # Inplace dunders return T& (reference to self) in C++.
         is_inplace_dunder = method.name in CONST_PARAMS_METHODS
         if is_inplace_dunder:
-            ret_type_class = cpp_record_qualified if is_def_mode else escape_cpp_name(rec_short)
+            ret_type_class = (self.protocols.record_cpp_qualifier(record_name) if def_mode
+                              else escape_cpp_name(bare_name(record_name)))
             ret_type = f"{ret_type_class}&"
         elif method.is_property_getter:
             # A property getter returns a reference to the field. Which shapes
@@ -1577,6 +1541,21 @@ class FunctionGenerator:
         else:
             ret_type = self._resolve_return_type(cpp_return_type,
                                                   error_return=method.error_return)
+        return ret_type
+
+    def _gen_method_overload(
+        self, out: TextIO, method: TpyFunction, record_name: str,
+        cpp_name: str, cpp_return_type: TpyType, *, const: bool, static: bool = False,
+        override: bool = False, record_type_param_bounds: dict[str, TpyType] | None = None,
+        mode: MethodEmitMode = "inline",
+    ) -> None:
+        """Emit a single method overload. See ``MethodEmitMode`` for the
+        contract of ``mode``.
+        """
+        is_def_mode = mode in ("def_hpp", "def_cpp")
+        ret_type = self.method_return_cpp(method, record_name, cpp_return_type,
+                                          const=const, override=override,
+                                          def_mode=is_def_mode)
         dfl = method.defaults if method.defaults else None
 
         proto_params = self.protocols.get_all_protocol_params(method.params)
@@ -1659,10 +1638,8 @@ class FunctionGenerator:
         body_indent_level = 1 if is_def_mode else 2
         body_indent = INDENT * body_indent_level
 
-        # Build requires clause for per-method bounds on class type params
-        # (only fires for templated records, which are blocked from out-of-line
-        # by `_method_can_be_out_of_line` -- so `sig_indent` is always INDENT
-        # here, but keep the binding so future loosening doesn't misalign).
+        # Per-method bounds on class type params: a trailing requires clause,
+        # repeated on an out-of-line definition.
         requires_clause = ""
         if class_param_bounds:
             req_parts = []
@@ -1676,7 +1653,7 @@ class FunctionGenerator:
             requires_clause = f"\n{sig_indent}  requires {' && '.join(req_parts)}"
         if is_def_mode:
             inline_prefix = "inline " if mode == "def_hpp" else ""
-            qualified_name = f"{cpp_record_qualified}::{cpp_name}"
+            qualified_name = f"{self.protocols.record_cpp_qualifier(record_name)}::{cpp_name}"
             sig_static_prefix = ""
             sig_override_suffix = ""
         else:
@@ -1690,6 +1667,10 @@ class FunctionGenerator:
             self.ctx.emit_declaration_echo(out, method.loc, sig_indent)
         else:
             self.ctx.emit_definition_echo(out, method.loc, sig_indent)
+        if is_def_mode:
+            # A member of a class template defined out of class: the class's
+            # head first, then the member's own (nested, never merged).
+            out.write(self.protocols.record_template_head(record_name))
         fn_params = self._collect_fn_params(method.params)
         if proto_params or new_method_params or fn_params:
             # Bounds for new method type params only (class param bounds go on the requires clause)
@@ -1700,6 +1681,7 @@ class FunctionGenerator:
             )
             base_header = self.protocols.gen_combined_template_header(
                 new_method_params, proto_params, bounds_for_header,
+                emit_defaults=emit_defaults,
             )
             if fn_params:
                 fn_tpl_parts, fn_req_parts = self._gen_fn_template_parts(fn_params)

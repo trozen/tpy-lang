@@ -282,9 +282,7 @@ struct Escaping {
     // def __getitem__(self, i: int32) -> Counter:
     Counter& __getitem__(int32_t i);
 
-    Counter& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Counter& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Escaping";
 };
 
@@ -722,6 +720,10 @@ inline void Escaping::set_value(int32_t v) {
 inline Counter& Escaping::__getitem__(int32_t i) {
     ::tpy::deref_check(this->k).save(this->c);
     return this->c;
+}
+
+inline Counter& Escaping::operator[](int32_t i) {
+    return __getitem__(i);
 }
 
 // def __init__(self, x: int32) -> None:

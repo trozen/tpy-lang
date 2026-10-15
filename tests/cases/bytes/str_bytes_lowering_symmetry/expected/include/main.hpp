@@ -86,9 +86,7 @@ struct StrMap {
     // def __setitem__(self, k: str, v: str) -> None:
     void __setitem__(std::string_view k, std::string_view v);
 
-    std::string operator[](std::string_view k) const {
-        return __getitem__(k);
-    }
+    std::string operator[](std::string_view k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.StrMap";
 };
 
@@ -111,9 +109,7 @@ struct BytesMap {
     // def __setitem__(self, k: bytes, v: bytes) -> None:
     void __setitem__(::tpy::BytesView k, ::tpy::BytesView v);
 
-    ::tpy::Bytes operator[](::tpy::BytesView k) const {
-        return __getitem__(k);
-    }
+    ::tpy::Bytes operator[](::tpy::BytesView k) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.BytesMap";
 };
 
@@ -148,6 +144,10 @@ inline void StrMap::__setitem__(std::string_view k, std::string_view v) {
     ::tpy::__setitem__(this->d, k, std::string(v));
 }
 
+inline std::string StrMap::operator[](std::string_view k) const {
+    return __getitem__(k);
+}
+
 // def __init__(self) -> None:
 //     self.d = {}
 inline BytesMap::BytesMap() : d(::tpy::ordered_map<::tpy::Bytes, ::tpy::Bytes>()) {}
@@ -162,6 +162,10 @@ inline ::tpy::Bytes BytesMap::__getitem__(::tpy::BytesView k) const {
 //     self.d[k] = v
 inline void BytesMap::__setitem__(::tpy::BytesView k, ::tpy::BytesView v) {
     ::tpy::__setitem__(this->d, k, ::tpy::Bytes(v));
+}
+
+inline ::tpy::Bytes BytesMap::operator[](::tpy::BytesView k) const {
+    return __getitem__(k);
 }
 // def second[T](p: tuple[T, str]) -> str:
 //     return p[1]  # tpyc: ok

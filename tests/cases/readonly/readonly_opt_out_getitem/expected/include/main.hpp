@@ -26,9 +26,7 @@ struct CachedList {
     // def __getitem__(self, idx: int32) -> int32:
     int32_t __getitem__(int32_t idx);
 
-    int32_t operator[](int32_t idx) {
-        return __getitem__(idx);
-    }
+    int32_t operator[](int32_t idx);
     static constexpr std::string_view __tpy_class_name__ = "__main__.CachedList";
 };
 
@@ -52,6 +50,10 @@ inline CachedList::CachedList()
 inline int32_t CachedList::__getitem__(int32_t idx) {
     this->_hits = (::tpy::add_check<int32_t>(this->_hits, 1));
     return ::tpy::__getitem__(this->_data, idx);
+}
+
+inline int32_t CachedList::operator[](int32_t idx) {
+    return __getitem__(idx);
 }
 void __tpy_init();
 } // namespace tpyapp::main

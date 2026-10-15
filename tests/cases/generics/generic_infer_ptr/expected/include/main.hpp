@@ -26,9 +26,8 @@ struct PtrHolder {
     T* ptr;
 
     // def __init__(self, ptr: Ptr[T]) -> None:
-    //     self.ptr = ptr
     PtrHolder() = default;
-    explicit PtrHolder(T* ptr) : ptr(ptr) {}
+    explicit PtrHolder(T* ptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.PtrHolder";
 };
 
@@ -45,9 +44,8 @@ struct ReadOnlyPtrHolder {
     const T* ptr;
 
     // def __init__(self, ptr: Ptr[readonly[T]]) -> None:
-    //     self.ptr = ptr
     ReadOnlyPtrHolder() = default;
-    explicit ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
+    explicit ReadOnlyPtrHolder(const T* ptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.ReadOnlyPtrHolder";
 };
 
@@ -71,6 +69,17 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
     return os;
 }
+
+
+// def __init__(self, ptr: Ptr[T]) -> None:
+//     self.ptr = ptr
+template<typename T>
+inline PtrHolder<T>::PtrHolder(T* ptr) : ptr(ptr) {}
+
+// def __init__(self, ptr: Ptr[readonly[T]]) -> None:
+//     self.ptr = ptr
+template<typename T>
+inline ReadOnlyPtrHolder<T>::ReadOnlyPtrHolder(const T* ptr) : ptr(ptr) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

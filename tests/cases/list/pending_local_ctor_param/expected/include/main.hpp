@@ -41,9 +41,8 @@ struct Wrap {
     std::vector<T> xs;
 
     // def __init__(self, xs: Own[list[T]]):
-    //     self.xs = xs
     Wrap() = default;
-    explicit Wrap(std::vector<T>&& xs) : xs(std::move(xs)) {}
+    explicit Wrap(std::vector<T>&& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
 };
 
@@ -124,5 +123,11 @@ inline SetHolder::SetHolder(::tpy::ordered_set<int32_t>&& s) : s(std::move(s)) {
 inline DataError::DataError(const std::vector<int32_t>& xs)
     : ::tpy::Exception(),
       n(::tpy::__len__(xs)) {}
+
+// def __init__(self, xs: Own[list[T]]):
+//     self.xs = xs
+template<typename T>
+inline Wrap<T>::Wrap(std::vector<T>&& xs) : xs(std::move(xs)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,26 +21,16 @@ struct Stack {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = list[T]()
-    Stack() : items(std::vector<T>()) {}
+    Stack();
 
     // def push(self, value: T) -> None:
-    //     self.items.append(value)
-    void push(::tpy::param_val_or_ref_t<T> value) {
-        this->items.push_back(::tpy::param_to_storage<T>(value));
-    }
+    void push(::tpy::param_val_or_ref_t<T> value);
 
     // def pop(self) -> T:
-    //     return self.items.pop()
-    ::tpy::val_or_ref_t<T> pop() {
-        return ::tpy::pop_back(this->items);
-    }
+    ::tpy::val_or_ref_t<T> pop();
 
     // def is_empty(self) -> bool:
-    //     return len(self.items) == 0
-    bool is_empty() const {
-        return (::tpy::__len__(this->items) == 0);
-    }
+    bool is_empty() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
@@ -48,6 +38,33 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Stack<T>& obj) {
     ::tpy::print_object_default(os, "Stack", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     self.items = list[T]()
+template<typename T>
+inline Stack<T>::Stack() : items(std::vector<T>()) {}
+
+// def push(self, value: T) -> None:
+//     self.items.append(value)
+template<typename T>
+inline void Stack<T>::push(::tpy::param_val_or_ref_t<T> value) {
+    this->items.push_back(::tpy::param_to_storage<T>(value));
+}
+
+// def pop(self) -> T:
+//     return self.items.pop()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Stack<T>::pop() {
+    return ::tpy::pop_back(this->items);
+}
+
+// def is_empty(self) -> bool:
+//     return len(self.items) == 0
+template<typename T>
+inline bool Stack<T>::is_empty() const {
+    return (::tpy::__len__(this->items) == 0);
 }
 
 void __tpy_init();

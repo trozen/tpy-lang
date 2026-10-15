@@ -301,35 +301,19 @@ struct PBox {
     T* p;
 
     // def __init__(self, p: Ptr[T]) -> None:
-    //     self.p = p
     PBox() = default;
-    explicit PBox(T* p) : p(p) {}
+    explicit PBox(T* p);
 
     // def get(self) -> T:
-    //     q = self.p
-    //     return q
-    ::tpy::val_or_ref_t<T> get() const {
-        T* q = this->p;
-        return ::tpy::deref_check(q);
-    }
+    ::tpy::val_or_ref_t<T> get() const;
 
     // @auto_readonly
     // def ga(self) -> auto_readonly[T]:
-    //     q = self.p
-    //     return q
-    ::tpy::val_or_ref_t<T> ga() {
-        T* q = this->p;
-        return ::tpy::deref_check(q);
-    }
+    ::tpy::val_or_ref_t<T> ga();
 
     // @auto_readonly
     // def ga(self) -> auto_readonly[T]:
-    //     q = self.p
-    //     return q
-    ::tpy::val_or_cref_t<T> ga() const {
-        T* q = this->p;
-        return ::tpy::deref_check(q);
-    }
+    ::tpy::val_or_cref_t<T> ga() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.PBox";
 };
 
@@ -346,17 +330,11 @@ struct PHold {
     PBox<T> b;
 
     // def __init__(self, p: Ptr[T]) -> None:
-    //     self.b = PBox[T](p)
     PHold() = default;
-    explicit PHold(T* p) : b(PBox<T>(p)) {}
+    explicit PHold(T* p);
 
     // def touch(self) -> int32:
-    //     x = self.b.ga()  # tpyc: ok
-    //     return 1
-    int32_t touch() const {
-        ::tpy::val_or_cref_t<T> x = this->b.ga();
-        return 1;
-    }
+    int32_t touch() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.PHold";
 };
 
@@ -501,32 +479,22 @@ struct GV {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = copy(v)
     GV() = default;
-    explicit GV(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit GV(::tpy::readonly_form_t<T> v);
 
     // def __add__(self, o: int32) -> T:
-    //     return self.v
-    ::tpy::val_or_cref_t<T> __add__(int32_t o) const {
-        return this->v;
-    }
+    ::tpy::val_or_cref_t<T> __add__(int32_t o) const;
 
     __coro_GV_aread<T> aread();
 
     // @pure
     // def get(self) -> T:
-    //     return self.v
-    ::tpy::val_or_cref_t<T> get() const {
-        return this->v;
-    }
+    ::tpy::val_or_cref_t<T> get() const;
 
     // def rget(self) -> readonly[T]:
-    //     return self.v
-    ::tpy::val_or_cref_t<T> rget() {
-        return this->v;
-    }
+    ::tpy::val_or_cref_t<T> rget();
 
-    friend ::tpy::val_or_cref_t<T> operator+(const GV& lhs, int32_t o) {
+    friend decltype(auto) operator+(const GV& lhs, int32_t o) {
         return lhs.__add__(o);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.GV";
@@ -582,9 +550,7 @@ struct Sh {
         return rhs.__rmul__(o);
     }
 
-    std::tuple<A*, int32_t> operator()(int32_t o) {
-        return __call__(o);
-    }
+    std::tuple<A*, int32_t> operator()(int32_t o);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sh";
 };
 
@@ -754,9 +720,8 @@ struct RBox {
     T val;
 
     // def __init__(self, v: T) -> None:
-    //     self.val = copy(v)
     RBox() = default;
-    explicit RBox(::tpy::readonly_form_t<T> v) : val(v) {}
+    explicit RBox(::tpy::readonly_form_t<T> v);
 
     __coro_RBox_peek<T> peek() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.RBox";
@@ -1337,6 +1302,10 @@ inline std::tuple<A*, int32_t> Sh::__call__(int32_t o) {
     return std::tuple<A*, int32_t>{&(this->a), o};
 }
 
+inline std::tuple<A*, int32_t> Sh::operator()(int32_t o) {
+    return __call__(o);
+}
+
 // def __init__(self) -> None:
 //     self.a = A(1)
 inline G::G() : a(A(1)) {}
@@ -1437,6 +1406,87 @@ inline Stored::Stored(int32_t v) : s(::tpy::UninitStorage<A>()) {
 inline A& Stored::get() {
     return this->s.get();
 }
+
+// def __init__(self, p: Ptr[T]) -> None:
+//     self.p = p
+template<typename T>
+inline PBox<T>::PBox(T* p) : p(p) {}
+
+// def get(self) -> T:
+//     q = self.p
+//     return q
+template<typename T>
+inline ::tpy::val_or_ref_t<T> PBox<T>::get() const {
+    T* q = this->p;
+    return ::tpy::deref_check(q);
+}
+
+// @auto_readonly
+// def ga(self) -> auto_readonly[T]:
+//     q = self.p
+//     return q
+template<typename T>
+inline ::tpy::val_or_ref_t<T> PBox<T>::ga() {
+    T* q = this->p;
+    return ::tpy::deref_check(q);
+}
+
+// @auto_readonly
+// def ga(self) -> auto_readonly[T]:
+//     q = self.p
+//     return q
+template<typename T>
+inline ::tpy::val_or_cref_t<T> PBox<T>::ga() const {
+    T* q = this->p;
+    return ::tpy::deref_check(q);
+}
+
+// def __init__(self, p: Ptr[T]) -> None:
+//     self.b = PBox[T](p)
+template<typename T>
+inline PHold<T>::PHold(T* p) : b(PBox<T>(p)) {}
+
+// def touch(self) -> int32:
+//     x = self.b.ga()  # tpyc: ok
+//     return 1
+template<typename T>
+inline int32_t PHold<T>::touch() const {
+    ::tpy::val_or_cref_t<T> x = this->b.ga();
+    return 1;
+}
+
+// def __init__(self, v: T) -> None:
+//     self.v = copy(v)
+template<typename T>
+inline GV<T>::GV(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// def __add__(self, o: int32) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> GV<T>::__add__(int32_t o) const {
+    return this->v;
+}
+
+// @pure
+// def get(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> GV<T>::get() const {
+    return this->v;
+}
+
+// def rget(self) -> readonly[T]:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> GV<T>::rget() {
+    return this->v;
+}
+
+// def __init__(self, v: T) -> None:
+//     self.val = copy(v)
+template<typename T>
+inline RBox<T>::RBox(::tpy::readonly_form_t<T> v) : val(v) {}
+
 // def value_proto(p: Getter[int32]) -> int32:
 //     x = p.get()
 //     y = p.get()

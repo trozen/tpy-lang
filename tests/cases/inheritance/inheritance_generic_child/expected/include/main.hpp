@@ -39,15 +39,11 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -64,18 +60,11 @@ struct Box : Animal {
     T value;
 
     // def __init__(self, name: str, value: T) -> None:
-    //     super().__init__(name)
-    //     self.value = value
     Box() = default;
-    explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value)
-        : Animal(name),
-          value(value) {}
+    explicit Box(std::string_view name, ::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -92,12 +81,8 @@ struct Wrapper : Container<int32_t> {
     U extra;
 
     // def __init__(self, value: int32, extra: U) -> None:
-    //     super().__init__(value)
-    //     self.extra = extra
     Wrapper() = default;
-    explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra)
-        : Container<int32_t>(value),
-          extra(extra) {}
+    explicit Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -111,5 +96,41 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<U>& obj) {
 // def __init__(self, name: str) -> None:
 //     self.name = name
 inline Animal::Animal(std::string_view name) : name(name) {}
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get() {
+    return this->value;
+}
+
+// def __init__(self, name: str, value: T) -> None:
+//     super().__init__(name)
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(std::string_view name, ::tpy::readonly_form_t<T> value)
+    : Animal(name),
+      value(value) {}
+
+// def get(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::get() {
+    return this->value;
+}
+
+// def __init__(self, value: int32, extra: U) -> None:
+//     super().__init__(value)
+//     self.extra = extra
+template<typename U>
+inline Wrapper<U>::Wrapper(int32_t value, ::tpy::readonly_form_t<U> extra)
+    : Container<int32_t>(value),
+      extra(extra) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

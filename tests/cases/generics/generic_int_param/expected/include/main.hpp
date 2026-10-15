@@ -21,9 +21,8 @@ struct Container {
     T value;
 
     // def __init__(self, v: T) -> None:
-    //     self.value = v
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> v) : value(v) {}
+    explicit Container(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -32,6 +31,12 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
 }
+
+
+// def __init__(self, v: T) -> None:
+//     self.value = v
+template<typename T, std::size_t N>
+inline Container<T, N>::Container(::tpy::readonly_form_t<T> v) : value(v) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

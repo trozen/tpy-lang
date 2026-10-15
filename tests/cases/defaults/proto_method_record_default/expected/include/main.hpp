@@ -72,22 +72,9 @@ struct Holder {
     Holder() = default;
     explicit Holder(int64_t base);
 
-    // # The protocol param routes this signature through the protocol emit path;
-    // # `Vec | None` is value-form over a record, the shape whose default is
-    // # suppressed on a FREE function. As a member it must keep its C++ default.
     // def method(self, d: Drawable, v: Vec | None = None) -> int64:
-    //     got = self.base + d.draw()
-    //     if v is None:
-    //         return got
-    //     return got + v.x
     template<Drawable T_d>
-    int64_t method(const T_d& d, std::optional<Vec> v = std::nullopt) const {
-        int64_t got = (::tpy::add_check<int64_t>(this->base, d.draw()));
-        if ((!v.has_value())) {
-            return got;
-        }
-        return (::tpy::add_check<int64_t>(got, (*v).x));
-    }
+    int64_t method(const T_d& d, std::optional<Vec> v = std::nullopt) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -114,5 +101,23 @@ inline int64_t Circle::draw() const {
 // def __init__(self, base: int64) -> None:
 //     self.base = base
 inline Holder::Holder(int64_t base) : base(base) {}
+
+// # The protocol param routes this signature through the protocol emit path;
+// # `Vec | None` is value-form over a record, the shape whose default is
+// # suppressed on a FREE function. As a member it must keep its C++ default.
+// def method(self, d: Drawable, v: Vec | None = None) -> int64:
+//     got = self.base + d.draw()
+//     if v is None:
+//         return got
+//     return got + v.x
+template<Drawable T_d>
+inline int64_t Holder::method(const T_d& d, std::optional<Vec> v) const {
+    int64_t got = (::tpy::add_check<int64_t>(this->base, d.draw()));
+    if ((!v.has_value())) {
+        return got;
+    }
+    return (::tpy::add_check<int64_t>(got, (*v).x));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

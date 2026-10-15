@@ -35,9 +35,8 @@ struct Bare {
     U x;
 
     // def __init__(self, x: U) -> None:
-    //     self.x = x
     Bare() = default;
-    explicit Bare(::tpy::readonly_form_t<U> x) : x(x) {}
+    explicit Bare(::tpy::readonly_form_t<U> x);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bare";
 };
 
@@ -54,9 +53,8 @@ struct Owned {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.v = v
     Owned() = default;
-    explicit Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+    explicit Owned(::tpy::own_param_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owned";
 };
 
@@ -73,9 +71,8 @@ struct Pair {
     std::tuple<A, B> p;
 
     // def __init__(self, p: Own[tuple[A, B]]) -> None:
-    //     self.p = p
     Pair() = default;
-    explicit Pair(std::tuple<A, B> p) : p(std::move(p)) {}
+    explicit Pair(std::tuple<A, B> p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -84,6 +81,22 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
+
+
+// def __init__(self, x: U) -> None:
+//     self.x = x
+template<typename U>
+inline Bare<U>::Bare(::tpy::readonly_form_t<U> x) : x(x) {}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline Owned<T>::Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
+// def __init__(self, p: Own[tuple[A, B]]) -> None:
+//     self.p = p
+template<typename A, typename B>
+inline Pair<A, B>::Pair(std::tuple<A, B> p) : p(std::move(p)) {}
 
 // def use_bare[T](src: list[T]) -> Own[Bare[T]]:
 //     b = Bare(src[0])  # tpyc: type(/Bare\[T\]/)

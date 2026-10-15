@@ -73,15 +73,11 @@ struct Wrapper {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> value);
 
     // def get_result(self) -> Own[Result]:
-    //     return self.value.to_result()
-    Result get_result() {
-        return this->value.to_result();
-    }
+    Result get_result();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -112,15 +108,11 @@ struct Container {
     T factory;
 
     // def __init__(self, factory: T) -> None:
-    //     self.factory = factory
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> factory) : factory(factory) {}
+    explicit Container(::tpy::readonly_form_t<T> factory);
 
     // def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
-    //     return self.factory.make(text)
-    Wrapper<Message> create_wrapper(std::string_view text) {
-        return this->factory.make(text);
-    }
+    Wrapper<Message> create_wrapper(std::string_view text);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -150,5 +142,30 @@ inline Result Message::to_result() const {
 inline Wrapper<Message> DefaultWrapperMaker::make(std::string_view text) const {
     return Wrapper<Message>(Message(text));
 }
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<Convertible T>
+inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get_result(self) -> Own[Result]:
+//     return self.value.to_result()
+template<Convertible T>
+inline Result Wrapper<T>::get_result() {
+    return this->value.to_result();
+}
+
+// def __init__(self, factory: T) -> None:
+//     self.factory = factory
+template<WrapperMaker T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> factory) : factory(factory) {}
+
+// def create_wrapper(self, text: str) -> Own[Wrapper[Message]]:
+//     return self.factory.make(text)
+template<WrapperMaker T>
+inline Wrapper<Message> Container<T>::create_wrapper(std::string_view text) {
+    return this->factory.make(text);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

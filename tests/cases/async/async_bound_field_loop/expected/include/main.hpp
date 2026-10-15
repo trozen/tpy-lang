@@ -27,9 +27,8 @@ struct Summer {
     T items;
 
     // def __init__(self, items: Own[T]) -> None:
-    //     self.items = items
     Summer() = default;
-    explicit Summer(::tpy::own_param_t<T> items) : items(std::move(items)) {}
+    explicit Summer(::tpy::own_param_t<T> items);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";
 };
 
@@ -64,6 +63,12 @@ struct __coro_total {
         return os << "<coroutine total>";
     }
 };
+
+
+// def __init__(self, items: Own[T]) -> None:
+//     self.items = items
+template<::tpystd::typing::Iterable<int32_t> T>
+inline Summer<T>::Summer(::tpy::own_param_t<T> items) : items(std::move(items)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,15 +21,10 @@ struct Bounded {
     static constexpr int32_t LIMIT = 7;
 
     // def __init__(self) -> None:
-    //     pass
-    Bounded() {
-    }
+    Bounded();
 
     // def at_limit(self, n: int32) -> bool:
-    //     return n >= self.LIMIT
-    bool at_limit(int32_t n) const {
-        return (n >= Bounded<T>::LIMIT);
-    }
+    bool at_limit(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bounded";
 };
 
@@ -37,6 +32,20 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Bounded<T>& obj) {
     ::tpy::print_object_default(os, "Bounded", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Bounded<T>::Bounded() {
+}
+
+// def at_limit(self, n: int32) -> bool:
+//     return n >= self.LIMIT
+template<typename T>
+inline bool Bounded<T>::at_limit(int32_t n) const {
+    return (n >= Bounded<T>::LIMIT);
 }
 
 void __tpy_init();

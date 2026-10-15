@@ -219,9 +219,7 @@ struct Hook {
     // def __getitem__(self, i: int32) -> int32:
     int32_t __getitem__(int32_t i) const;
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Hook";
 };
 
@@ -423,6 +421,10 @@ inline int32_t Hook::value() const {
 //     return self.f() + i
 inline int32_t Hook::__getitem__(int32_t i) const {
     return (::tpy::add_check<int32_t>((*this).f(), i));
+}
+
+inline int32_t Hook::operator[](int32_t i) const {
+    return __getitem__(i);
 }
 // def apply(f: Fn[[int32], int32], v: int32) -> int32:
 //     return f(v)

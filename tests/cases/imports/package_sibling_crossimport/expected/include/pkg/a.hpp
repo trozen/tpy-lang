@@ -44,15 +44,11 @@ struct Container {
     T item;
 
     // def __init__(self, item: T) -> None:
-    //     self.item = item
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> item) : item(item) {}
+    explicit Container(::tpy::readonly_form_t<T> item);
 
     // def get(self) -> T:
-    //     return self.item
-    ::tpy::val_or_ref_t<T> get() {
-        return this->item;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "pkg.a.Container";
 };
 
@@ -72,5 +68,18 @@ inline A::A() : b(::tpyapp::pkg::b::B()) {}
 inline int32_t A::value() const {
     return this->b.value();
 }
+
+// def __init__(self, item: T) -> None:
+//     self.item = item
+template<typename T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> item) : item(item) {}
+
+// def get(self) -> T:
+//     return self.item
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get() {
+    return this->item;
+}
+
 void __tpy_init();
 } // namespace tpyapp::pkg::a

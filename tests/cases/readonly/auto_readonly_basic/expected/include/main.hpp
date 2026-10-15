@@ -35,9 +35,7 @@ struct Buffer {
     // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index) const;
 
-    int32_t operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    int32_t operator[](int32_t index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
@@ -70,6 +68,10 @@ inline std::span<const int32_t> Buffer::as_span() const {
 //     return self._data[index]
 inline int32_t Buffer::__getitem__(int32_t index) const {
     return ::tpy::__getitem__(this->_data, index);
+}
+
+inline int32_t Buffer::operator[](int32_t index) const {
+    return __getitem__(index);
 }
 void __tpy_init();
 } // namespace tpyapp::main

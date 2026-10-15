@@ -35,15 +35,11 @@ struct Box {
     T val;
 
     // def __init__(self, val: T) -> None:
-    //     self.val = val
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Box(::tpy::readonly_form_t<T> val);
 
     // def get(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -62,12 +58,8 @@ struct Pair {
     U b;
 
     // def __init__(self, a: T, b: U) -> None:
-    //     self.a = a
-    //     self.b = b
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<U> b)
-        : a(a),
-          b(b) {}
+    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<U> b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -84,21 +76,13 @@ struct Container {
     T val;
 
     // def __init__(self) -> None:
-    //     pass
-    Container() {
-    }
+    Container();
 
     // def set(self, val: T) -> None:
-    //     self.val = val
-    void set(::tpy::param_val_or_ref_t<T> val) {
-        this->val = ::tpy::param_to_storage<T>(val);
-    }
+    void set(::tpy::param_val_or_ref_t<T> val);
 
     // def get(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -115,16 +99,12 @@ struct Mapper {
     T val;
 
     // def __init__(self, val: T) -> None:
-    //     self.val = val
     Mapper() = default;
-    explicit Mapper(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Mapper(::tpy::readonly_form_t<T> val);
 
     // def transform[U, V](self, u: U, v: V) -> V:
-    //     return v
     template<typename U, typename V>
-    ::tpy::val_or_ref_t<V> transform(::tpy::readonly_form_t<U> u, ::tpy::param_val_or_ref_t<V> v) const {
-        return ::tpy::param_to_return<V>(v);
-    }
+    ::tpy::val_or_ref_t<V> transform(::tpy::readonly_form_t<U> u, ::tpy::param_val_or_ref_t<V> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Mapper";
 };
 
@@ -132,6 +112,60 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Mapper<T>& obj) {
     ::tpy::print_object_default(os, "Mapper", obj);
     return os;
+}
+
+
+// def __init__(self, val: T) -> None:
+//     self.val = val
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def get(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::get() {
+    return this->val;
+}
+
+// def __init__(self, a: T, b: U) -> None:
+//     self.a = a
+//     self.b = b
+template<typename T, typename U>
+inline Pair<T, U>::Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<U> b)
+    : a(a),
+      b(b) {}
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Container<T>::Container() {
+}
+
+// def set(self, val: T) -> None:
+//     self.val = val
+template<typename T>
+inline void Container<T>::set(::tpy::param_val_or_ref_t<T> val) {
+    this->val = ::tpy::param_to_storage<T>(val);
+}
+
+// def get(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get() {
+    return this->val;
+}
+
+// def __init__(self, val: T) -> None:
+//     self.val = val
+template<typename T>
+inline Mapper<T>::Mapper(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def transform[U, V](self, u: U, v: V) -> V:
+//     return v
+template<typename T>
+template<typename U, typename V>
+inline ::tpy::val_or_ref_t<V> Mapper<T>::transform(::tpy::readonly_form_t<U> u, ::tpy::param_val_or_ref_t<V> v) const {
+    return ::tpy::param_to_return<V>(v);
 }
 
 // def identity[T](x: T) -> T:

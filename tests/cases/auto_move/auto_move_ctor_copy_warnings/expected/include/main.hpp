@@ -83,15 +83,11 @@ struct GenericHolder {
     T item;
 
     // def __init__(self, item: Own[T]):
-    //     self.item = item  # tpyc: ok (generic ctor, last use -- std::move)
     GenericHolder() = default;
-    explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit GenericHolder(::tpy::own_param_t<T> item);
 
     // def set_item(self, item: Own[T]) -> None:
-    //     self.item = item  # tpyc: ok (generic method, last use -- std::move)
-    void set_item(::tpy::own_param_t<T> item) {
-        this->item = std::move(item);
-    }
+    void set_item(::tpy::own_param_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
 };
 
@@ -110,12 +106,8 @@ struct GenericNotLastUse {
     T spare;
 
     // def __init__(self, item: Own[T]):
-    //     self.item = item  # tpyc: warning(/may copy T into field/)
-    //     self.spare = item
     GenericNotLastUse() = default;
-    explicit GenericNotLastUse(::tpy::own_param_t<T> item)
-        : item(item),
-          spare(std::move(item)) {}
+    explicit GenericNotLastUse(::tpy::own_param_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericNotLastUse";
 };
 
@@ -188,5 +180,26 @@ inline void OptHolder::set_not_last(Inner&& inner) {
     this->inner = inner;
     std::cout << inner.value << "\n" << ::tpy::check_signals;
 }
+
+// def __init__(self, item: Own[T]):
+//     self.item = item  # tpyc: ok (generic ctor, last use -- std::move)
+template<typename T>
+inline GenericHolder<T>::GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
+// def set_item(self, item: Own[T]) -> None:
+//     self.item = item  # tpyc: ok (generic method, last use -- std::move)
+template<typename T>
+inline void GenericHolder<T>::set_item(::tpy::own_param_t<T> item) {
+    this->item = std::move(item);
+}
+
+// def __init__(self, item: Own[T]):
+//     self.item = item  # tpyc: warning(/may copy T into field/)
+//     self.spare = item
+template<typename T>
+inline GenericNotLastUse<T>::GenericNotLastUse(::tpy::own_param_t<T> item)
+    : item(item),
+      spare(std::move(item)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -22,15 +22,11 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -47,21 +43,14 @@ struct Container {
     Box<T> inner;
 
     // def __init__(self, value: T) -> None:
-    //     self.inner = Box[T](value)
     Container() = default;
-    explicit Container(::tpy::param_val_or_ref_t<T> value) : inner(Box<T>(value)) {}
+    explicit Container(::tpy::param_val_or_ref_t<T> value);
 
     // def get_inner(self) -> Box[T]:
-    //     return self.inner
-    Box<T>& get_inner() {
-        return this->inner;
-    }
+    Box<T>& get_inner();
 
     // def get_value(self) -> T:
-    //     return self.inner.get()
-    ::tpy::val_or_ref_t<T> get_value() {
-        return this->inner.get();
-    }
+    ::tpy::val_or_ref_t<T> get_value();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -69,6 +58,38 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::get() {
+    return this->value;
+}
+
+// def __init__(self, value: T) -> None:
+//     self.inner = Box[T](value)
+template<typename T>
+inline Container<T>::Container(::tpy::param_val_or_ref_t<T> value) : inner(Box<T>(value)) {}
+
+// def get_inner(self) -> Box[T]:
+//     return self.inner
+template<typename T>
+inline Box<T>& Container<T>::get_inner() {
+    return this->inner;
+}
+
+// def get_value(self) -> T:
+//     return self.inner.get()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get_value() {
+    return this->inner.get();
 }
 
 void __tpy_init();

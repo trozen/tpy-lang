@@ -25,9 +25,8 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
-    //     self.val = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -41,6 +40,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
+
+
+// def __init__(self, v: T) -> None:
+//     self.val = v
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : val(v) {}
 
 // def take_all[T](*boxes: Box[T]) -> int32:
 //     n: int32 = 0

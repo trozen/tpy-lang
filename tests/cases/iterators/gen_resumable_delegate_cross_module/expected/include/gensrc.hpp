@@ -81,9 +81,8 @@ struct Box {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
-    //     self.items = items
     Box() = default;
-    explicit Box(std::vector<T>&& items) : items(std::move(items)) {}
+    explicit Box(std::vector<T>&& items);
 
     __gen_Box_two<T> two();
     static constexpr std::string_view __tpy_class_name__ = "gensrc.Box";
@@ -383,5 +382,11 @@ inline Bag::Bag() : n(0) {}
 inline void Bag::bump() {
     this->n = ::tpy::add_check<int32_t>(this->n, 5);
 }
+
+// def __init__(self, items: Own[list[T]]) -> None:
+//     self.items = items
+template<typename T>
+inline Box<T>::Box(std::vector<T>&& items) : items(std::move(items)) {}
+
 void __tpy_init();
 } // namespace tpyapp::gensrc

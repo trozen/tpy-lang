@@ -31,10 +31,7 @@ struct Container {
 
 
     // def __repr__(self) -> str:
-    //     return f"Container(val={self.val!r})"
-    std::string __repr__() const {
-        return std::format("Container(val={})", ::tpy::repr_of(this->val));
-    }
+    std::string __repr__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -53,15 +50,11 @@ struct Pair {
     B second;
 
     // def __init__(self, a: A) -> None:
-    //     self.first = a
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> a) : first(a) {}
+    explicit Pair(::tpy::readonly_form_t<A> a);
 
     // def __repr__(self) -> str:
-    //     return f"Pair(first={self.first!r}, second={self.second!r})"
-    std::string __repr__() const {
-        return std::format("Pair(first={}, second={})", ::tpy::repr_of(this->first), ::tpy::repr_of(this->second));
-    }
+    std::string __repr__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -69,6 +62,26 @@ template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     os << obj.__repr__();
     return os;
+}
+
+
+// def __repr__(self) -> str:
+//     return f"Container(val={self.val!r})"
+template<typename T>
+inline std::string Container<T>::__repr__() const {
+    return std::format("Container(val={})", ::tpy::repr_of(this->val));
+}
+
+// def __init__(self, a: A) -> None:
+//     self.first = a
+template<typename A, typename B>
+inline Pair<A, B>::Pair(::tpy::readonly_form_t<A> a) : first(a) {}
+
+// def __repr__(self) -> str:
+//     return f"Pair(first={self.first!r}, second={self.second!r})"
+template<typename A, typename B>
+inline std::string Pair<A, B>::__repr__() const {
+    return std::format("Pair(first={}, second={})", ::tpy::repr_of(this->first), ::tpy::repr_of(this->second));
 }
 
 // def make_box[T]() -> Own[Container[T]]:

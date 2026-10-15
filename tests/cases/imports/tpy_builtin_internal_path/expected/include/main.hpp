@@ -48,21 +48,14 @@ struct Holder {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Holder(::tpy::readonly_form_t<T> value);
 
     // def dup(self) -> T:
-    //     return copy(self.value)  # tpyc: ok
-    ::tpy::val_or_ref_t<T> dup() const {
-        return T(this->value);
-    }
+    ::tpy::val_or_ref_t<T> dup() const;
 
     // def dup_via_module(self) -> T:
-    //     return t.copy(self.value)  # tpyc: ok
-    ::tpy::val_or_ref_t<T> dup_via_module() const {
-        return T(this->value);
-    }
+    ::tpy::val_or_ref_t<T> dup_via_module() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -70,6 +63,26 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Holder<T>::Holder(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def dup(self) -> T:
+//     return copy(self.value)  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Holder<T>::dup() const {
+    return T(this->value);
+}
+
+// def dup_via_module(self) -> T:
+//     return t.copy(self.value)  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Holder<T>::dup_via_module() const {
+    return T(this->value);
 }
 
 void __tpy_init();

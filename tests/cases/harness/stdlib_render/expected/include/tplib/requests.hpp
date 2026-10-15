@@ -295,19 +295,13 @@ struct CaseInsensitiveDict {
     // def __eq__(self, other: CaseInsensitiveDict) -> bool:
     bool __eq__(const CaseInsensitiveDict& other) const;
 
-    std::string operator[](std::string_view key) const {
-        return __getitem__(key);
-    }
+    std::string operator[](std::string_view key) const;
 
     friend bool operator==(const CaseInsensitiveDict& lhs, const CaseInsensitiveDict& other) {
         return lhs.__eq__(other);
     }
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.requests.CaseInsensitiveDict";
 };
 
@@ -407,15 +401,9 @@ struct CookieJar {
     //             now: float) -> None:
     void _ingest(std::string_view raw, std::string_view req_host, std::string_view req_path, double now);
 
-    std::string operator[](std::string_view name) const {
-        return __getitem__(name);
-    }
+    std::string operator[](std::string_view name) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.requests.CookieJar";
 };
 
@@ -1026,6 +1014,16 @@ inline void CaseInsensitiveDict::clear() {
     this->_store.clear();
 }
 
+inline std::string CaseInsensitiveDict::operator[](std::string_view key) const {
+    return __getitem__(key);
+}
+
+inline size_t CaseInsensitiveDict::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
+}
+
 // def __init__(self, name: str, value: str, domain: str, path: str,
 //              secure: bool, deleted: bool, expires_at: float) -> None:
 //     self.name = name
@@ -1223,6 +1221,16 @@ inline std::string CookieJar::header_for(std::string_view host, std::string_view
         }
     }
     return ::tpy::str_join("; ", parts);
+}
+
+inline std::string CookieJar::operator[](std::string_view name) const {
+    return __getitem__(name);
+}
+
+inline size_t CookieJar::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 
 // @property

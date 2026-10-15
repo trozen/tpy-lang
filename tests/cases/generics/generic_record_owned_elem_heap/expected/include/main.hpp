@@ -27,20 +27,13 @@ struct Entry {
     ::tpy::BigInt idx;
 
     // def __init__(self, val: Own[T], idx: int) -> None:
-    //     self.val = val
-    //     self.idx = idx
     Entry() = default;
-    explicit Entry(::tpy::own_param_t<T> val, const ::tpy::BigInt& idx)
-        : val(std::move(val)),
-          idx(idx) {}
+    explicit Entry(::tpy::own_param_t<T> val, const ::tpy::BigInt& idx);
 
     // def __lt__(self, other: "Entry[T]") -> bool:
-    //     return self.val < other.val
-    bool __lt__(const Entry<T>& other) const {
-        return (this->val < other.val);
-    }
+    bool __lt__(const Entry<T>& other) const;
 
-    friend bool operator<(const Entry& lhs, const Entry<T>& other) {
+    friend decltype(auto) operator<(const Entry& lhs, const Entry<T>& other) {
         return lhs.__lt__(other);
     }
     static constexpr std::string_view __tpy_class_name__ = "__main__.Entry";
@@ -50,6 +43,22 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Entry<T>& obj) {
     ::tpy::print_object_default(os, "Entry", obj);
     return os;
+}
+
+
+// def __init__(self, val: Own[T], idx: int) -> None:
+//     self.val = val
+//     self.idx = idx
+template<::tpystd::tpy::Comparable T>
+inline Entry<T>::Entry(::tpy::own_param_t<T> val, const ::tpy::BigInt& idx)
+    : val(std::move(val)),
+      idx(idx) {}
+
+// def __lt__(self, other: "Entry[T]") -> bool:
+//     return self.val < other.val
+template<::tpystd::tpy::Comparable T>
+inline bool Entry<T>::__lt__(const Entry<T>& other) const {
+    return (this->val < other.val);
 }
 
 // def heap_sort[T: Comparable](src: list[T]) -> Own[list[T]]:

@@ -31,24 +31,15 @@ struct Adder {
 
     // @overload
     // def __call__(self, x: int32) -> int32: ...
-    int32_t __call__(int32_t x) {
-        int32_t y = 0;
-        return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
-    }
+    int32_t __call__(int32_t x);
 
     // @overload
     // def __call__(self, x: int32, y: int32) -> int32: ...
-    int32_t __call__(int32_t x, int32_t y) {
-        return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
-    }
+    int32_t __call__(int32_t x, int32_t y);
 
-    int32_t operator()(int32_t x) {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x);
 
-    int32_t operator()(int32_t x, int32_t y) {
-        return __call__(x, y);
-    }
+    int32_t operator()(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
 };
 
@@ -61,6 +52,27 @@ inline std::ostream& operator<<(std::ostream& os, const Adder& obj) {
 // def __init__(self, base: int32) -> None:
 //     self.base = base
 inline Adder::Adder(int32_t base) : base(base) {}
+
+// @overload
+// def __call__(self, x: int32) -> int32: ...
+inline int32_t Adder::__call__(int32_t x) {
+    int32_t y = 0;
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
+}
+
+// @overload
+// def __call__(self, x: int32, y: int32) -> int32: ...
+inline int32_t Adder::__call__(int32_t x, int32_t y) {
+    return (::tpy::add_check<int32_t>((::tpy::add_check<int32_t>(this->base, x)), y));
+}
+
+inline int32_t Adder::operator()(int32_t x) {
+    return __call__(x);
+}
+
+inline int32_t Adder::operator()(int32_t x, int32_t y) {
+    return __call__(x, y);
+}
 // def use(f: Fn[[int32], int32]) -> None:
 //     print(f(5))
 template<typename __F0>

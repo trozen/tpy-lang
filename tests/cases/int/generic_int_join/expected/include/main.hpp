@@ -67,11 +67,8 @@ struct Meter {
     explicit Meter(int64_t base);
 
     // def either[T](self, x: T, y: T) -> T:
-    //     return y
     template<typename T>
-    ::tpy::val_or_ref_t<T> either(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> y) const {
-        return ::tpy::param_to_return<T>(y);
-    }
+    ::tpy::val_or_ref_t<T> either(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> y) const;
 
     // def top(self, v: int32) -> int64:
     int64_t top(int32_t v) const;
@@ -148,6 +145,14 @@ inline Meter::Meter(int64_t base) : base(base) {}
 inline int64_t Meter::top(int32_t v) const {
     return (::tpy::mul_check<int64_t>((::tpy::mul_check<int64_t>(this->base, ::std::max<int64_t>(this->base, static_cast<int64_t>(v)))), static_cast<int64_t>(v)));
 }
+
+// def either[T](self, x: T, y: T) -> T:
+//     return y
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Meter::either(::tpy::readonly_form_t<T> x, ::tpy::param_val_or_ref_t<T> y) const {
+    return ::tpy::param_to_return<T>(y);
+}
+
 // def pick[T](x: T, y: T) -> T:
 //     return y
 template<typename T>

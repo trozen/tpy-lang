@@ -63,87 +63,27 @@ struct _Buf {
     bool __tpy_owned_ = true;
 
     // def __init__(self, capacity: uint32) -> None:
-    //     self._buf = UninitHeapStorage[T](capacity)
-    //     self._cap = capacity
-    //     self._head = 0
-    //     self._count = 0
-    //     self._closed = False
-    //     self._senders = 1
-    explicit _Buf(uint32_t capacity)
-        : _buf(::tpy::UninitHeapStorage<T>(capacity)),
-          _cap(capacity),
-          _head(0),
-          _count(0),
-          _closed(false),
-          _senders(1) {}
+    explicit _Buf(uint32_t capacity);
     // non-copyable (@nocopy)
     _Buf(const _Buf&) = delete;
     _Buf& operator=(const _Buf&) = delete;
-    _Buf(_Buf&& other) noexcept
-        : _buf(std::move(other._buf)),
-          _cap(std::move(other._cap)),
-          _head(std::move(other._head)),
-          _count(std::move(other._count)),
-          _closed(std::move(other._closed)),
-          _senders(std::move(other._senders)) {
-        other.__tpy_owned_ = false;
-    }
-    _Buf& operator=(_Buf&& other) noexcept {
-        if (this != &other) {
-            this->~_Buf();
-            new (this) _Buf(std::move(other));
-        }
-        return *this;
-    }
+    _Buf(_Buf&& other) noexcept;
+    _Buf& operator=(_Buf&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     # UninitHeapStorage is uninitialized storage and won't drop live
-    //     # slots itself -- drain the buffered elements or they leak.
-    //     i: uint32 = 0
-    //     while i < self._count:
-    //         self._buf.take((self._head + i) % self._cap)
-    //         i += 1
-    ~_Buf() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        uint32_t i = 0;
-        while ((i < this->_count)) {
-            this->_buf.take((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, i)), this->_cap)));
-            i = ::tpy::add_check<uint32_t>(i, 1);
-        }
-    }
+    ~_Buf();
 
     // def _is_full(self) -> bool:
-    //     return self._count >= self._cap
-    bool _is_full() const {
-        return (this->_count >= this->_cap);
-    }
+    bool _is_full() const;
 
     // def _is_empty(self) -> bool:
-    //     return self._count == 0
-    bool _is_empty() const {
-        return (this->_count == 0);
-    }
+    bool _is_empty() const;
 
     // def _push(self, value: Own[T]) -> None:
-    //     self._buf.init((self._head + self._count) % self._cap, value)
-    //     self._count += 1
-    void _push(::tpy::own_param_t<T> value) {
-        this->_buf.init((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, this->_count)), this->_cap)), std::move(value));
-        this->_count = ::tpy::add_check<uint32_t>(this->_count, 1);
-    }
+    void _push(::tpy::own_param_t<T> value);
 
     // def _pop(self) -> Own[T]:
-    //     value = self._buf.take(self._head)
-    //     self._head = (self._head + 1) % self._cap
-    //     self._count -= 1
-    //     return value
-    ::tpy::own_return_t<T> _pop() {
-        T value = this->_buf.take(this->_head);
-        this->_head = (::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, 1)), this->_cap));
-        this->_count = ::tpy::sub_check<uint32_t>(this->_count, 1);
-        return value;
-    }
+    ::tpy::own_return_t<T> _pop();
     static constexpr std::string_view __tpy_class_name__ = "tplib.channel._Buf";
 };
 
@@ -165,14 +105,8 @@ struct _Chan {
     ::tpystd::tpy::sync::Condvar _not_empty;
 
     // def __init__(self, capacity: uint32) -> None:
-    //     self._buf = Mutex.new(_Buf[T](capacity))
-    //     self._not_full = Condvar()
-    //     self._not_empty = Condvar()
     _Chan() = default;
-    explicit _Chan(uint32_t capacity)
-        : _buf(::tpystd::tpy::sync::Mutex<_Buf<T>>::new_(_Buf<T>(capacity))),
-          _not_full(::tpystd::tpy::sync::Condvar()),
-          _not_empty(::tpystd::tpy::sync::Condvar()) {}
+    explicit _Chan(uint32_t capacity);
     // non-copyable (@nocopy)
     _Chan(const _Chan&) = delete;
     _Chan& operator=(const _Chan&) = delete;
@@ -196,153 +130,24 @@ struct Sender {
     bool __tpy_owned_ = true;
 
     // def __init__(self, chan: Own[Arc[_Chan[T]]]) -> None:
-    //     self._chan = chan
-    explicit Sender(::tpystd::tplib::arc::Arc<_Chan<T>>&& chan) : _chan(std::move(chan)) {}
+    explicit Sender(::tpystd::tplib::arc::Arc<_Chan<T>>&& chan);
     // non-copyable (@nocopy)
     Sender(const Sender&) = delete;
     Sender& operator=(const Sender&) = delete;
-    Sender(Sender&& other) noexcept : _chan(std::move(other._chan)) {
-        other.__tpy_owned_ = false;
-    }
-    Sender& operator=(Sender&& other) noexcept {
-        if (this != &other) {
-            this->~Sender();
-            new (this) Sender(std::move(other));
-        }
-        return *this;
-    }
+    Sender(Sender&& other) noexcept;
+    Sender& operator=(Sender&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     # This producer is done. Drop the sender count under the lock; the
-    //     # last one closes the channel so the receiver's blocking recv wakes
-    //     # and drains to completion instead of parking forever.
-    //     c = self._chan.get()
-    //     closed_now = False
-    //     with c._buf.lock() as g:
-    //         g.get()._senders -= 1
-    //         if g.get()._senders == 0:
-    //             g.get()._closed = True
-    //             closed_now = True
-    //     if closed_now:
-    //         c._not_empty.notify_all()
-    ~Sender() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        try {
-            _Chan<T>& c = this->_chan.get();
-            bool closed_now = false;
-            auto __ctx_1 = c._buf.lock();
-            auto& g = __ctx_1.__enter__();
-            try {
-                g.get()._senders = ::tpy::sub_check<uint32_t>(g.get()._senders, 1);
-                if ((g.get()._senders == 0)) {
-                    g.get()._closed = true;
-                    closed_now = true;
-                }
-                goto __with_exit_1;
-            } catch (::tpy::BaseException& __exc_1) {
-                __ctx_1.__exit__({}, &__exc_1, {});
-                throw;
-            } catch (...) {
-                __ctx_1.__exit__({}, nullptr, {});
-                throw;
-            }
-            __with_exit_1:
-            __ctx_1.__exit__({}, nullptr, {});
-            if (closed_now) {
-                c._not_empty.notify_all();
-            }
-        } catch (const std::exception& __del_exc) {
-            ::tpy::report_del_exception(__del_exc);
-        } catch (...) {
-            ::tpy::report_del_exception();
-        }
-    }
+    ~Sender();
 
     // def clone(self) -> Own[Sender[T]]:
-    //     c = self._chan.get()
-    //     with c._buf.lock() as g:
-    //         g.get()._senders += 1
-    //     return Sender[T](self._chan.clone())
-    Sender<T> clone() {
-        _Chan<T>& c = this->_chan.get();
-        auto __ctx_2 = c._buf.lock();
-        auto& g = __ctx_2.__enter__();
-        try {
-            g.get()._senders = ::tpy::add_check<uint32_t>(g.get()._senders, 1);
-            goto __with_exit_2;
-        } catch (::tpy::BaseException& __exc_2) {
-            __ctx_2.__exit__({}, &__exc_2, {});
-            throw;
-        } catch (...) {
-            __ctx_2.__exit__({}, nullptr, {});
-            throw;
-        }
-        __with_exit_2:
-        __ctx_2.__exit__({}, nullptr, {});
-        return Sender<T>(this->_chan.clone());
-    }
+    Sender<T> clone();
 
     // def send(self, value: Own[T]) -> None:
-    //     c = self._chan.get()
-    //     with c._buf.lock() as g:
-    //         while g.get()._is_full() and not g.get()._closed:
-    //             c._not_full.wait(g)
-    //         if g.get()._closed:
-    //             raise ChannelClosed("send on closed channel")
-    //         g.get()._push(value)
-    //     c._not_empty.notify_one()
-    void send(::tpy::own_param_t<T> value) const {
-        const _Chan<T>& c = this->_chan.get();
-        auto __ctx_3 = c._buf.lock();
-        auto& g = __ctx_3.__enter__();
-        try {
-            while ((g.get()._is_full() && (!(g.get()._closed)))) {
-                c._not_full.wait(g);
-            }
-            if (g.get()._closed) {
-                throw ChannelClosed("send on closed channel");
-            }
-            g.get()._push(std::move(value));
-            goto __with_exit_3;
-        } catch (::tpy::BaseException& __exc_3) {
-            __ctx_3.__exit__({}, &__exc_3, {});
-            throw;
-        } catch (...) {
-            __ctx_3.__exit__({}, nullptr, {});
-            throw;
-        }
-        __with_exit_3:
-        __ctx_3.__exit__({}, nullptr, {});
-        c._not_empty.notify_one();
-    }
+    void send(::tpy::own_param_t<T> value) const;
 
     // def close(self) -> None:
-    //     c = self._chan.get()
-    //     with c._buf.lock() as g:
-    //         g.get()._closed = True
-    //     # Wake every parked side so blocked sends/recvs observe the close.
-    //     c._not_empty.notify_all()
-    //     c._not_full.notify_all()
-    void close() const {
-        const _Chan<T>& c = this->_chan.get();
-        auto __ctx_4 = c._buf.lock();
-        auto& g = __ctx_4.__enter__();
-        try {
-            g.get()._closed = true;
-            goto __with_exit_4;
-        } catch (::tpy::BaseException& __exc_4) {
-            __ctx_4.__exit__({}, &__exc_4, {});
-            throw;
-        } catch (...) {
-            __ctx_4.__exit__({}, nullptr, {});
-            throw;
-        }
-        __with_exit_4:
-        __ctx_4.__exit__({}, nullptr, {});
-        c._not_empty.notify_all();
-        c._not_full.notify_all();
-    }
+    void close() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.channel.Sender";
 };
 
@@ -361,92 +166,18 @@ struct Receiver {
     bool __tpy_owned_ = true;
 
     // def __init__(self, chan: Own[Arc[_Chan[T]]]) -> None:
-    //     self._chan = chan
-    explicit Receiver(::tpystd::tplib::arc::Arc<_Chan<T>>&& chan) : _chan(std::move(chan)) {}
+    explicit Receiver(::tpystd::tplib::arc::Arc<_Chan<T>>&& chan);
     // non-copyable (@nocopy)
     Receiver(const Receiver&) = delete;
     Receiver& operator=(const Receiver&) = delete;
-    Receiver(Receiver&& other) noexcept : _chan(std::move(other._chan)) {
-        other.__tpy_owned_ = false;
-    }
-    Receiver& operator=(Receiver&& other) noexcept {
-        if (this != &other) {
-            this->~Receiver();
-            new (this) Receiver(std::move(other));
-        }
-        return *this;
-    }
+    Receiver(Receiver&& other) noexcept;
+    Receiver& operator=(Receiver&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     # Consumer gone -> close so parked producers wake, see the close, and
-    //     # raise ChannelClosed instead of blocking on a full buffer forever.
-    //     c = self._chan.get()
-    //     with c._buf.lock() as g:
-    //         g.get()._closed = True
-    //     c._not_full.notify_all()
-    ~Receiver() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        try {
-            _Chan<T>& c = this->_chan.get();
-            auto __ctx_5 = c._buf.lock();
-            auto& g = __ctx_5.__enter__();
-            try {
-                g.get()._closed = true;
-                goto __with_exit_5;
-            } catch (::tpy::BaseException& __exc_5) {
-                __ctx_5.__exit__({}, &__exc_5, {});
-                throw;
-            } catch (...) {
-                __ctx_5.__exit__({}, nullptr, {});
-                throw;
-            }
-            __with_exit_5:
-            __ctx_5.__exit__({}, nullptr, {});
-            c._not_full.notify_all();
-        } catch (const std::exception& __del_exc) {
-            ::tpy::report_del_exception(__del_exc);
-        } catch (...) {
-            ::tpy::report_del_exception();
-        }
-    }
+    ~Receiver();
 
     // def recv(self) -> Own[T]:
-    //     c = self._chan.get()
-    //     with c._buf.lock() as g:
-    //         while g.get()._is_empty() and not g.get()._closed:
-    //             c._not_empty.wait(g)
-    //         if g.get()._is_empty():
-    //             raise ChannelClosed("recv on closed channel")
-    //         value = g.get()._pop()
-    //     c._not_full.notify_one()
-    //     return value
-    ::tpy::own_return_t<T> recv() const {
-        const _Chan<T>& c = this->_chan.get();
-        std::optional<T> value;
-        auto __ctx_6 = c._buf.lock();
-        auto& g = __ctx_6.__enter__();
-        try {
-            while ((g.get()._is_empty() && (!(g.get()._closed)))) {
-                c._not_empty.wait(g);
-            }
-            if (g.get()._is_empty()) {
-                throw ChannelClosed("recv on closed channel");
-            }
-            value = g.get()._pop();
-            goto __with_exit_6;
-        } catch (::tpy::BaseException& __exc_6) {
-            __ctx_6.__exit__({}, &__exc_6, {});
-            throw;
-        } catch (...) {
-            __ctx_6.__exit__({}, nullptr, {});
-            throw;
-        }
-        __with_exit_6:
-        __ctx_6.__exit__({}, nullptr, {});
-        c._not_full.notify_one();
-        return std::move((*value));
-    }
+    ::tpy::own_return_t<T> recv() const;
 
     __gen_Receiver___iter__<T> __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "tplib.channel.Receiver";
@@ -528,6 +259,351 @@ std::expected<T, ::tpy::StopIteration> __gen_Receiver___iter__<T>::__next__() {
 template <typename T>
 inline __gen_Receiver___iter__<T> Receiver<T>::__iter__() const {
     return __gen_Receiver___iter__<T>(*this);
+}
+
+
+// def __init__(self, capacity: uint32) -> None:
+//     self._buf = UninitHeapStorage[T](capacity)
+//     self._cap = capacity
+//     self._head = 0
+//     self._count = 0
+//     self._closed = False
+//     self._senders = 1
+template<typename T>
+inline _Buf<T>::_Buf(uint32_t capacity)
+    : _buf(::tpy::UninitHeapStorage<T>(capacity)),
+      _cap(capacity),
+      _head(0),
+      _count(0),
+      _closed(false),
+      _senders(1) {}
+
+template<typename T>
+inline _Buf<T>::_Buf(_Buf&& other) noexcept
+    : _buf(std::move(other._buf)),
+      _cap(std::move(other._cap)),
+      _head(std::move(other._head)),
+      _count(std::move(other._count)),
+      _closed(std::move(other._closed)),
+      _senders(std::move(other._senders)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline _Buf<T>& _Buf<T>::operator=(_Buf&& other) noexcept {
+    if (this != &other) {
+        this->~_Buf();
+        new (this) _Buf(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     # UninitHeapStorage is uninitialized storage and won't drop live
+//     # slots itself -- drain the buffered elements or they leak.
+//     i: uint32 = 0
+//     while i < self._count:
+//         self._buf.take((self._head + i) % self._cap)
+//         i += 1
+template<typename T>
+inline _Buf<T>::~_Buf() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    uint32_t i = 0;
+    while ((i < this->_count)) {
+        this->_buf.take((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, i)), this->_cap)));
+        i = ::tpy::add_check<uint32_t>(i, 1);
+    }
+}
+
+// def _is_full(self) -> bool:
+//     return self._count >= self._cap
+template<typename T>
+inline bool _Buf<T>::_is_full() const {
+    return (this->_count >= this->_cap);
+}
+
+// def _is_empty(self) -> bool:
+//     return self._count == 0
+template<typename T>
+inline bool _Buf<T>::_is_empty() const {
+    return (this->_count == 0);
+}
+
+// def _push(self, value: Own[T]) -> None:
+//     self._buf.init((self._head + self._count) % self._cap, value)
+//     self._count += 1
+template<typename T>
+inline void _Buf<T>::_push(::tpy::own_param_t<T> value) {
+    this->_buf.init((::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, this->_count)), this->_cap)), std::move(value));
+    this->_count = ::tpy::add_check<uint32_t>(this->_count, 1);
+}
+
+// def _pop(self) -> Own[T]:
+//     value = self._buf.take(self._head)
+//     self._head = (self._head + 1) % self._cap
+//     self._count -= 1
+//     return value
+template<typename T>
+inline ::tpy::own_return_t<T> _Buf<T>::_pop() {
+    T value = this->_buf.take(this->_head);
+    this->_head = (::tpy::mod_check<uint32_t>((::tpy::add_check<uint32_t>(this->_head, 1)), this->_cap));
+    this->_count = ::tpy::sub_check<uint32_t>(this->_count, 1);
+    return value;
+}
+
+// def __init__(self, capacity: uint32) -> None:
+//     self._buf = Mutex.new(_Buf[T](capacity))
+//     self._not_full = Condvar()
+//     self._not_empty = Condvar()
+template<typename T>
+inline _Chan<T>::_Chan(uint32_t capacity)
+    : _buf(::tpystd::tpy::sync::Mutex<_Buf<T>>::new_(_Buf<T>(capacity))),
+      _not_full(::tpystd::tpy::sync::Condvar()),
+      _not_empty(::tpystd::tpy::sync::Condvar()) {}
+
+// def __init__(self, chan: Own[Arc[_Chan[T]]]) -> None:
+//     self._chan = chan
+template<typename T>
+inline Sender<T>::Sender(::tpystd::tplib::arc::Arc<_Chan<T>>&& chan) : _chan(std::move(chan)) {}
+
+template<typename T>
+inline Sender<T>::Sender(Sender&& other) noexcept : _chan(std::move(other._chan)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Sender<T>& Sender<T>::operator=(Sender&& other) noexcept {
+    if (this != &other) {
+        this->~Sender();
+        new (this) Sender(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     # This producer is done. Drop the sender count under the lock; the
+//     # last one closes the channel so the receiver's blocking recv wakes
+//     # and drains to completion instead of parking forever.
+//     c = self._chan.get()
+//     closed_now = False
+//     with c._buf.lock() as g:
+//         g.get()._senders -= 1
+//         if g.get()._senders == 0:
+//             g.get()._closed = True
+//             closed_now = True
+//     if closed_now:
+//         c._not_empty.notify_all()
+template<typename T>
+inline Sender<T>::~Sender() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    try {
+        _Chan<T>& c = this->_chan.get();
+        bool closed_now = false;
+        auto __ctx_1 = c._buf.lock();
+        auto& g = __ctx_1.__enter__();
+        try {
+            g.get()._senders = ::tpy::sub_check<uint32_t>(g.get()._senders, 1);
+            if ((g.get()._senders == 0)) {
+                g.get()._closed = true;
+                closed_now = true;
+            }
+            goto __with_exit_1;
+        } catch (::tpy::BaseException& __exc_1) {
+            __ctx_1.__exit__({}, &__exc_1, {});
+            throw;
+        } catch (...) {
+            __ctx_1.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_1:
+        __ctx_1.__exit__({}, nullptr, {});
+        if (closed_now) {
+            c._not_empty.notify_all();
+        }
+    } catch (const std::exception& __del_exc) {
+        ::tpy::report_del_exception(__del_exc);
+    } catch (...) {
+        ::tpy::report_del_exception();
+    }
+}
+
+// def clone(self) -> Own[Sender[T]]:
+//     c = self._chan.get()
+//     with c._buf.lock() as g:
+//         g.get()._senders += 1
+//     return Sender[T](self._chan.clone())
+template<typename T>
+inline Sender<T> Sender<T>::clone() {
+    _Chan<T>& c = this->_chan.get();
+    auto __ctx_2 = c._buf.lock();
+    auto& g = __ctx_2.__enter__();
+    try {
+        g.get()._senders = ::tpy::add_check<uint32_t>(g.get()._senders, 1);
+        goto __with_exit_2;
+    } catch (::tpy::BaseException& __exc_2) {
+        __ctx_2.__exit__({}, &__exc_2, {});
+        throw;
+    } catch (...) {
+        __ctx_2.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_2:
+    __ctx_2.__exit__({}, nullptr, {});
+    return Sender<T>(this->_chan.clone());
+}
+
+// def send(self, value: Own[T]) -> None:
+//     c = self._chan.get()
+//     with c._buf.lock() as g:
+//         while g.get()._is_full() and not g.get()._closed:
+//             c._not_full.wait(g)
+//         if g.get()._closed:
+//             raise ChannelClosed("send on closed channel")
+//         g.get()._push(value)
+//     c._not_empty.notify_one()
+template<typename T>
+inline void Sender<T>::send(::tpy::own_param_t<T> value) const {
+    const _Chan<T>& c = this->_chan.get();
+    auto __ctx_3 = c._buf.lock();
+    auto& g = __ctx_3.__enter__();
+    try {
+        while ((g.get()._is_full() && (!(g.get()._closed)))) {
+            c._not_full.wait(g);
+        }
+        if (g.get()._closed) {
+            throw ChannelClosed("send on closed channel");
+        }
+        g.get()._push(std::move(value));
+        goto __with_exit_3;
+    } catch (::tpy::BaseException& __exc_3) {
+        __ctx_3.__exit__({}, &__exc_3, {});
+        throw;
+    } catch (...) {
+        __ctx_3.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_3:
+    __ctx_3.__exit__({}, nullptr, {});
+    c._not_empty.notify_one();
+}
+
+// def close(self) -> None:
+//     c = self._chan.get()
+//     with c._buf.lock() as g:
+//         g.get()._closed = True
+//     # Wake every parked side so blocked sends/recvs observe the close.
+//     c._not_empty.notify_all()
+//     c._not_full.notify_all()
+template<typename T>
+inline void Sender<T>::close() const {
+    const _Chan<T>& c = this->_chan.get();
+    auto __ctx_4 = c._buf.lock();
+    auto& g = __ctx_4.__enter__();
+    try {
+        g.get()._closed = true;
+        goto __with_exit_4;
+    } catch (::tpy::BaseException& __exc_4) {
+        __ctx_4.__exit__({}, &__exc_4, {});
+        throw;
+    } catch (...) {
+        __ctx_4.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_4:
+    __ctx_4.__exit__({}, nullptr, {});
+    c._not_empty.notify_all();
+    c._not_full.notify_all();
+}
+
+// def __init__(self, chan: Own[Arc[_Chan[T]]]) -> None:
+//     self._chan = chan
+template<typename T>
+inline Receiver<T>::Receiver(::tpystd::tplib::arc::Arc<_Chan<T>>&& chan) : _chan(std::move(chan)) {}
+
+template<typename T>
+inline Receiver<T>::Receiver(Receiver&& other) noexcept : _chan(std::move(other._chan)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Receiver<T>& Receiver<T>::operator=(Receiver&& other) noexcept {
+    if (this != &other) {
+        this->~Receiver();
+        new (this) Receiver(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     # Consumer gone -> close so parked producers wake, see the close, and
+//     # raise ChannelClosed instead of blocking on a full buffer forever.
+//     c = self._chan.get()
+//     with c._buf.lock() as g:
+//         g.get()._closed = True
+//     c._not_full.notify_all()
+template<typename T>
+inline Receiver<T>::~Receiver() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    try {
+        _Chan<T>& c = this->_chan.get();
+        auto __ctx_5 = c._buf.lock();
+        auto& g = __ctx_5.__enter__();
+        try {
+            g.get()._closed = true;
+            goto __with_exit_5;
+        } catch (::tpy::BaseException& __exc_5) {
+            __ctx_5.__exit__({}, &__exc_5, {});
+            throw;
+        } catch (...) {
+            __ctx_5.__exit__({}, nullptr, {});
+            throw;
+        }
+        __with_exit_5:
+        __ctx_5.__exit__({}, nullptr, {});
+        c._not_full.notify_all();
+    } catch (const std::exception& __del_exc) {
+        ::tpy::report_del_exception(__del_exc);
+    } catch (...) {
+        ::tpy::report_del_exception();
+    }
+}
+
+// def recv(self) -> Own[T]:
+//     c = self._chan.get()
+//     with c._buf.lock() as g:
+//         while g.get()._is_empty() and not g.get()._closed:
+//             c._not_empty.wait(g)
+//         if g.get()._is_empty():
+//             raise ChannelClosed("recv on closed channel")
+//         value = g.get()._pop()
+//     c._not_full.notify_one()
+//     return value
+template<typename T>
+inline ::tpy::own_return_t<T> Receiver<T>::recv() const {
+    const _Chan<T>& c = this->_chan.get();
+    std::optional<T> value;
+    auto __ctx_6 = c._buf.lock();
+    auto& g = __ctx_6.__enter__();
+    try {
+        while ((g.get()._is_empty() && (!(g.get()._closed)))) {
+            c._not_empty.wait(g);
+        }
+        if (g.get()._is_empty()) {
+            throw ChannelClosed("recv on closed channel");
+        }
+        value = g.get()._pop();
+        goto __with_exit_6;
+    } catch (::tpy::BaseException& __exc_6) {
+        __ctx_6.__exit__({}, &__exc_6, {});
+        throw;
+    } catch (...) {
+        __ctx_6.__exit__({}, nullptr, {});
+        throw;
+    }
+    __with_exit_6:
+    __ctx_6.__exit__({}, nullptr, {});
+    c._not_full.notify_one();
+    return std::move((*value));
 }
 
 // def channel[T: Send](capacity: int32) -> tuple[Own[Sender[T]], Own[Receiver[T]]]:

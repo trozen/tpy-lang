@@ -49,21 +49,11 @@ template<typename U>
 struct Container : Box<U>, Label {
 
     // def __init__(self, v: U, label: str) -> None:
-    //     Box.value = v
-    //     Label.value = label
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<U> v, std::string_view label)
-        : Box<U>(),
-          Label() {
-        this->Box<U>::value = ::tpy::param_to_storage<U>(v);
-        this->Label::value = label;
-    }
+    explicit Container(::tpy::readonly_form_t<U> v, std::string_view label);
 
     // def tagged(self) -> str:
-    //     return Label.value + "=" + str(Box.value)
-    std::string tagged() const {
-        return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), std::string(::tpy::__str__(this->Box<U>::value))));
-    }
+    std::string tagged() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -71,6 +61,25 @@ template<typename U>
 inline std::ostream& operator<<(std::ostream& os, const Container<U>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self, v: U, label: str) -> None:
+//     Box.value = v
+//     Label.value = label
+template<typename U>
+inline Container<U>::Container(::tpy::readonly_form_t<U> v, std::string_view label)
+    : Box<U>(),
+      Label() {
+    this->Box<U>::value = ::tpy::param_to_storage<U>(v);
+    this->Label::value = label;
+}
+
+// def tagged(self) -> str:
+//     return Label.value + "=" + str(Box.value)
+template<typename U>
+inline std::string Container<U>::tagged() const {
+    return (::tpy::str_concat((::tpy::str_concat(this->Label::value, "=")), std::string(::tpy::__str__(this->Box<U>::value))));
 }
 
 void __tpy_init();

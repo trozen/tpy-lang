@@ -23,24 +23,14 @@ struct Pair {
     B second;
 
     // def __init__(self, first: A, second: B) -> None:
-    //     self.first = first
-    //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second)
-        : first(first),
-          second(second) {}
+    explicit Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second);
 
     // def get_first(self) -> A:
-    //     return self.first
-    ::tpy::val_or_ref_t<A> get_first() {
-        return this->first;
-    }
+    ::tpy::val_or_ref_t<A> get_first();
 
     // def get_second(self) -> B:
-    //     return self.second
-    ::tpy::val_or_ref_t<B> get_second() {
-        return this->second;
-    }
+    ::tpy::val_or_ref_t<B> get_second();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -48,6 +38,29 @@ template<typename A, typename B>
 inline std::ostream& operator<<(std::ostream& os, const Pair<A, B>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
+}
+
+
+// def __init__(self, first: A, second: B) -> None:
+//     self.first = first
+//     self.second = second
+template<typename A, typename B>
+inline Pair<A, B>::Pair(::tpy::readonly_form_t<A> first, ::tpy::readonly_form_t<B> second)
+    : first(first),
+      second(second) {}
+
+// def get_first(self) -> A:
+//     return self.first
+template<typename A, typename B>
+inline ::tpy::val_or_ref_t<A> Pair<A, B>::get_first() {
+    return this->first;
+}
+
+// def get_second(self) -> B:
+//     return self.second
+template<typename A, typename B>
+inline ::tpy::val_or_ref_t<B> Pair<A, B>::get_second() {
+    return this->second;
 }
 
 void __tpy_init();

@@ -6,7 +6,7 @@ Main orchestrator for generating C++ code from TurboPython AST.
 
 from __future__ import annotations
 from dataclasses import dataclass, field
-from typing import Callable, TextIO, TYPE_CHECKING
+from typing import Callable, Mapping, TextIO, TYPE_CHECKING
 import contextlib
 import heapq
 import io
@@ -22,7 +22,7 @@ from .resumable_cfg import (
     ResumableShape, recursive_delegation_error, resumable_state,
 )
 
-from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, escape_cpp_name, cpp_string_literal_expr, enum_cpp_name
+from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, cpp_string_literal_expr, enum_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
 from .records import RecordGenerator
@@ -169,7 +169,7 @@ class CodeGenerator:
                  actual_user_modules: set[str],
                  user_module_imports: set[str],
                  implicit_stdlib_modules: set[str],
-                 cycle_peers: 'frozenset[str] | None' = None,
+                 module_cycles: 'Mapping[str, frozenset[str]] | None' = None,
                  inl_modules: 'list[str] | None' = None,
                  emits_inl: bool = False) -> tuple[str, str]:
         """Generate C++ header and source files.
@@ -200,7 +200,7 @@ class CodeGenerator:
         self._inl_modules = list(inl_modules or ())
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
-        self.ctx.cycle_peers = cycle_peers or frozenset()
+        self.ctx.module_cycles = module_cycles or {}
         self.ctx.user_module_imports = user_module_imports
         self.ctx.all_user_modules = actual_user_modules
         self.ctx.implicit_stdlib_modules = implicit_stdlib_modules
@@ -952,9 +952,7 @@ class CodeGenerator:
         record = self._method_records.get(root)
         if record is None:
             return self._function_body_in_source(root)
-        if root is record.init_method:
-            return self.records.ctor_def_mode(record) == "def_cpp"
-        return self.records.method_def_mode(root, record) == "def_cpp"
+        return self.records.member_def_mode(root, record) == "def_cpp"
 
     def _emit_source_genexprs(
             self, cpp: TextIO, module: TpyModule,
@@ -1268,12 +1266,7 @@ class CodeGenerator:
                 # correctly).
                 struct_name = self.gen_async._struct_name_templated(
                     func, record_name)
-                cpp_record = escape_cpp_name(record_name.replace(".", "::"))
-                # Qualify with class template args for out-of-class member
-                # definitions of a class template (e.g. `Box<T>::items`).
-                record_tps = self.gen_async._record_template_args(record_name)
-                if record_tps:
-                    cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+                cpp_record = self.protocols.record_cpp_qualifier(record_name)
                 # No defaults here: the in-class declaration carries them and
                 # C++ rejects the same default on both declarations.
                 params = self.gen_async._emit_method_params_decl(
@@ -1320,12 +1313,7 @@ class CodeGenerator:
         # Inline out-of-class factory definition (the struct's poll body for a
         # non-templated method goes in the .cpp pass).
         struct_name = self.gen_async._struct_name_templated(func, record_name)
-        cpp_record = escape_cpp_name(record_name.replace(".", "::"))
-        # Out-of-class definition of a member of a class template qualifies the
-        # class name with its template args (`Box<T>::get()`, not `Box::get()`).
-        record_tps = self.gen_async._record_template_args(record_name)
-        if record_tps:
-            cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+        cpp_record = self.protocols.record_cpp_qualifier(record_name)
         # No defaults here: the in-class declaration carries them and C++
         # rejects the same default on both declarations.
         params = self.gen_async._emit_method_params_decl(func, record_name)
@@ -1857,8 +1845,8 @@ class CodeGenerator:
         if emitted_gen_fwd:
             hpp.write("\n")
 
-        # Function forward declarations (before records, so inline
-        # constructor/method bodies can call free functions).
+        # Function forward declarations (before records, so member bodies
+        # kept in a struct -- a deduced return -- can call free functions).
         # A prototype naming something inside a class is deferred until the
         # records it names are complete (placed in the record loop below).
         registry = self.analyzer.registry
@@ -1897,7 +1885,8 @@ class CodeGenerator:
                     and record.name not in deps.bound_protocol_records)
 
         # A deferred prototype follows the last record it needs complete, so
-        # an inline (template) body of a later record can call it. One it
+        # a body kept in a later record's struct (a deduced return) can call
+        # it. One it
         # needs from another module, or from a record defined early, is
         # complete already.
         loop_qnames: dict[str, str] = {}
@@ -2026,6 +2015,20 @@ class CodeGenerator:
             emitted_alias = True
         if emitted_alias:
             hpp.write("\n")
+
+        # Template member definitions (members of a class template, member
+        # templates, a generic class's `operator[]` / `operator()` / `size()`
+        # shims; its friend operators stay in the struct): visible to every
+        # instantiation, and placed after every record, prototype, frame and
+        # wrapper so a body may use anything the module declares. A deduced
+        # return stays in the struct (the plan's "inline").
+        template_defs = io.StringIO()
+        for record in sorted_records:
+            self.records.gen_record_template_defs(template_defs, record)
+        if template_defs.getvalue():
+            hpp.write(template_defs.getvalue())
+            hpp.write("\n")
+
         # Register module-local union aliases AFTER emitting the using
         # declaration (to avoid circular `using Shape = Shape;`) but
         # BEFORE function definitions (so signatures use the alias name).
@@ -2815,6 +2818,14 @@ class CodeGenerator:
                 return
             # Non-native: emit the hpp; preprocessor handles its transitive deps.
             emit_non_native(mod_name)
+            # A cycle member's header declares against its peers' forward
+            # declarations (`<peer>_fwd.hpp`), so a module outside the cycle
+            # includes the peers' full headers for what those name: an
+            # operator or overload candidate's by-value parameter.
+            peers = self.ctx.module_cycles.get(mod_name, frozenset())
+            if self.ctx.module_name not in peers:
+                for peer in sorted(peers):
+                    visit(peer)
 
         seed = set(self.ctx.user_module_imports)
         seed.update(self.analyzer.ctx.reached)

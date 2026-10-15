@@ -28,21 +28,13 @@ struct Container {
     T val;
 
     // def __init__(self) -> None:
-    //     pass
-    Container() {
-    }
+    Container();
 
     // def set(self, val: T) -> None:
-    //     self.val = val
-    void set(::tpy::param_val_or_ref_t<T> val) {
-        this->val = ::tpy::param_to_storage<T>(val);
-    }
+    void set(::tpy::param_val_or_ref_t<T> val);
 
     // def get(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -61,21 +53,13 @@ struct Pair {
     U b;
 
     // def __init__(self) -> None:
-    //     pass
-    Pair() {
-    }
+    Pair();
 
     // def get_a(self) -> T:
-    //     return self.a
-    ::tpy::val_or_ref_t<T> get_a() {
-        return this->a;
-    }
+    ::tpy::val_or_ref_t<T> get_a();
 
     // def get_b(self) -> U:
-    //     return self.b
-    ::tpy::val_or_ref_t<U> get_b() {
-        return this->b;
-    }
+    ::tpy::val_or_ref_t<U> get_b();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -83,6 +67,47 @@ template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Container<T>::Container() {
+}
+
+// def set(self, val: T) -> None:
+//     self.val = val
+template<typename T>
+inline void Container<T>::set(::tpy::param_val_or_ref_t<T> val) {
+    this->val = ::tpy::param_to_storage<T>(val);
+}
+
+// def get(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get() {
+    return this->val;
+}
+
+// def __init__(self) -> None:
+//     pass
+template<typename T, typename U>
+inline Pair<T, U>::Pair() {
+}
+
+// def get_a(self) -> T:
+//     return self.a
+template<typename T, typename U>
+inline ::tpy::val_or_ref_t<T> Pair<T, U>::get_a() {
+    return this->a;
+}
+
+// def get_b(self) -> U:
+//     return self.b
+template<typename T, typename U>
+inline ::tpy::val_or_ref_t<U> Pair<T, U>::get_b() {
+    return this->b;
 }
 
 void __tpy_init();

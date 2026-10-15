@@ -38,9 +38,7 @@ struct Env {
     // def __iter__(self) -> Iterator[str]:
     auto __iter__() const;
 
-    std::string operator[](std::string_view key) const {
-        return __getitem__(key);
-    }
+    std::string operator[](std::string_view key) const;
     static constexpr std::string_view __tpy_class_name__ = "store.Env";
 };
 
@@ -76,6 +74,10 @@ inline void Env::__delitem__(std::string_view key) {
 //     return iter(self.data)
 inline auto Env::__iter__() const {
     return ::tpy::__iter__(this->data);
+}
+
+inline std::string Env::operator[](std::string_view key) const {
+    return __getitem__(key);
 }
 void __tpy_init();
 } // namespace tpyapp::store

@@ -83,15 +83,11 @@ struct Box {
     T item;
 
     // def __init__(self, item: Own[T]) -> None:
-    //     self.item = item
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit Box(::tpy::own_param_t<T> item);
 
     // def __contains__(self, needle: T) -> bool:
-    //     return needle == self.item  # tpyc: ok
-    bool __contains__(::tpy::readonly_form_t<T> needle) const {
-        return ::tpy::eq(needle, this->item);
-    }
+    bool __contains__(::tpy::readonly_form_t<T> needle) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -169,6 +165,19 @@ inline bool Entry::__contains__(::tpy::BytesView tag) const {
 inline bool Bag::__contains__(::tpy::Bytes value) const {
     return (::tpy::__len__(value) == 3);
 }
+
+// def __init__(self, item: Own[T]) -> None:
+//     self.item = item
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
+// def __contains__(self, needle: T) -> bool:
+//     return needle == self.item  # tpyc: ok
+template<typename T>
+inline bool Box<T>::__contains__(::tpy::readonly_form_t<T> needle) const {
+    return ::tpy::eq(needle, this->item);
+}
+
 // # generic: an open-T compare and ordering instantiated at bytes, where the
 // # parameter form (the view) meets the element's storage form (the owner)
 // def first_is[T: Comparable](xs: list[T], v: T) -> bool:

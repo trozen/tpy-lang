@@ -20,15 +20,11 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -61,5 +57,18 @@ inline std::ostream& operator<<(std::ostream& os, const IntContainer& obj) {
 inline IntContainer::IntContainer(int32_t value, int32_t extra)
     : Container<int32_t>(value),
       extra(extra) {}
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get() {
+    return this->value;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

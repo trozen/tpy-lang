@@ -61,15 +61,11 @@ struct GHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.val = v
     GHolder() = default;
-    explicit GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+    explicit GHolder(::tpy::own_param_t<T> v);
 
     // def borrow(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> borrow() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> borrow();
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
 };
 
@@ -105,14 +101,10 @@ struct GRelay {
     std::vector<T> kept;
 
     // def __init__(self) -> None:
-    //     self.kept = []
-    GRelay() : kept(std::vector<T>{}) {}
+    GRelay();
 
     // def take(self, h: GHolder[T]) -> None:
-    //     self.kept.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
-    void take(GHolder<T>& h) {
-        this->kept.push_back(h.borrow());
-    }
+    void take(GHolder<T>& h);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GRelay";
 };
 
@@ -129,38 +121,20 @@ struct GBox {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.val = v
     GBox() = default;
-    explicit GBox(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+    explicit GBox(::tpy::own_param_t<T> v);
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self.val
-    ::tpy::val_or_cref_t<T> get() const {
-        return this->val;
-    }
+    ::tpy::val_or_cref_t<T> get() const;
 
-    // # An owning CTOR slot filled from a borrow-returning call -- tplib's
-    // # Box.clone before it spelled copy(). The argument is hoisted into a temp
-    // # and moved in, and this section is the only thing in the corpus that
-    // # reaches that render. No monomorphic twin sits beside it because none
-    // # compiles: the same body with `Cell` spelled directly is refused at
-    // # lowering (`method.ret_type`), the second witness of the twin asymmetry
-    // # in BUGS.md#generic-own-slot-borrow-call-unwarned.
     // @readonly
     // def dup(self) -> Own[GBox[T]]:
-    //     return GBox(self.get())  # tpyc: warning(/may copy readonly\[T\] into owned storage/)
-    GBox<T> dup() const {
-        T __tmp_1 = this->get();
-        return GBox<T>(std::move(__tmp_1));
-    }
+    GBox<T> dup() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
 };
 
@@ -184,6 +158,68 @@ inline Twin::Twin(Cell&& v) : val(std::move(v)) {}
 inline Cell& Twin::borrow() {
     return this->val;
 }
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.val = v
+template<typename T>
+inline GHolder<T>::GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+
+// def borrow(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> GHolder<T>::borrow() {
+    return this->val;
+}
+
+// def __init__(self) -> None:
+//     self.kept = []
+template<typename T>
+inline GRelay<T>::GRelay() : kept(std::vector<T>{}) {}
+
+// def take(self, h: GHolder[T]) -> None:
+//     self.kept.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)
+template<typename T>
+inline void GRelay<T>::take(GHolder<T>& h) {
+    this->kept.push_back(h.borrow());
+}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.val = v
+template<typename T>
+inline GBox<T>::GBox(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> GBox<T>::get() {
+    return this->val;
+}
+
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_cref_t<T> GBox<T>::get() const {
+    return this->val;
+}
+
+// # An owning CTOR slot filled from a borrow-returning call -- tplib's
+// # Box.clone before it spelled copy(). The argument is hoisted into a temp
+// # and moved in, and this section is the only thing in the corpus that
+// # reaches that render. No monomorphic twin sits beside it because none
+// # compiles: the same body with `Cell` spelled directly is refused at
+// # lowering (`method.ret_type`), the second witness of the twin asymmetry
+// # in BUGS.md#generic-own-slot-borrow-call-unwarned.
+// @readonly
+// def dup(self) -> Own[GBox[T]]:
+//     return GBox(self.get())  # tpyc: warning(/may copy readonly\[T\] into owned storage/)
+template<typename T>
+inline GBox<T> GBox<T>::dup() const {
+    T __tmp_1 = this->get();
+    return GBox<T>(std::move(__tmp_1));
+}
+
 // # generic free function: the payload is still an open T at this slot.
 // def collect_generic[T](h: GHolder[T], xs: list[T]) -> None:
 //     xs.append(h.borrow())  # tpyc: warning(/copy T into owned storage/)

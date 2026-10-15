@@ -24,9 +24,8 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
 
     __gen_Box_items<T> items();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -92,6 +91,12 @@ template <typename T>
 inline __gen_Box_items<T> Box<T>::items() {
     return __gen_Box_items<T>(*this);
 }
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

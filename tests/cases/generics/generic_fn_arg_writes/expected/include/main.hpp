@@ -123,34 +123,21 @@ struct Runner {
     std::vector<std::function<void(::tpy::param_val_or_ref_t<T>)>> cbs;
 
     // def __init__(self, cb: Callable[[T], None]) -> None:
-    //     self.cb = cb
-    //     self.cbs = [cb]
     Runner() = default;
-    explicit Runner(std::function<void(::tpy::param_val_or_ref_t<T>)> cb)
-        : cb(cb),
-          cbs(std::vector<std::function<void(::tpy::param_val_or_ref_t<T>)>>{cb}) {}
+    explicit Runner(std::function<void(::tpy::param_val_or_ref_t<T>)> cb);
 
     // def run(self, f: Fn[[T], None], xs: list[T]) -> None:
-    //     f(xs[0])
     template<typename __F0>
       requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
           __fn(__a0);
       }
-    void run(__F0&& f, std::vector<T>& xs) const {
-        f(::tpy::__getitem__(xs, 0));
-    }
+    void run(__F0&& f, std::vector<T>& xs) const;
 
     // def invoke(self, x: T) -> None:
-    //     self.cb(x)
-    void invoke(::tpy::param_val_or_ref_t<T> x) const {
-        (*this).cb(x);
-    }
+    void invoke(::tpy::param_val_or_ref_t<T> x) const;
 
     // def invoke_at(self, x: T) -> None:
-    //     self.cbs[0](x)
-    void invoke_at(::tpy::param_val_or_ref_t<T> x) const {
-        (::tpy::__getitem__(this->cbs, 0))(x);
-    }
+    void invoke_at(::tpy::param_val_or_ref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Runner";
 };
 
@@ -234,6 +221,40 @@ inline R::R(int32_t n) : n(n) {}
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline P::P(int32_t x) : x(x) {}
+
+// def __init__(self, cb: Callable[[T], None]) -> None:
+//     self.cb = cb
+//     self.cbs = [cb]
+template<typename T>
+inline Runner<T>::Runner(std::function<void(::tpy::param_val_or_ref_t<T>)> cb)
+    : cb(cb),
+      cbs(std::vector<std::function<void(::tpy::param_val_or_ref_t<T>)>>{cb}) {}
+
+// def run(self, f: Fn[[T], None], xs: list[T]) -> None:
+//     f(xs[0])
+template<typename T>
+template<typename __F0>
+  requires requires(__F0& __fn, ::tpy::param_val_or_ref_t<T> __a0) {
+      __fn(__a0);
+  }
+inline void Runner<T>::run(__F0&& f, std::vector<T>& xs) const {
+    f(::tpy::__getitem__(xs, 0));
+}
+
+// def invoke(self, x: T) -> None:
+//     self.cb(x)
+template<typename T>
+inline void Runner<T>::invoke(::tpy::param_val_or_ref_t<T> x) const {
+    (*this).cb(x);
+}
+
+// def invoke_at(self, x: T) -> None:
+//     self.cbs[0](x)
+template<typename T>
+inline void Runner<T>::invoke_at(::tpy::param_val_or_ref_t<T> x) const {
+    (::tpy::__getitem__(this->cbs, 0))(x);
+}
+
 // def red[T](func: Fn[[T, T], T], a: list[T]) -> Own[T]:
 //     acc = copy(a[0])
 //     for i in range(1, len(a)):

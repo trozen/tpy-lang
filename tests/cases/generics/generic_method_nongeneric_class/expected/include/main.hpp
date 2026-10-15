@@ -21,11 +21,8 @@ struct Converter {
     Converter();
 
     // def identity[U](self, val: U) -> U:
-    //     return val
     template<typename U>
-    ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> val) const {
-        return ::tpy::param_to_return<U>(val);
-    }
+    ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> val) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Converter";
 };
 
@@ -39,5 +36,13 @@ inline std::ostream& operator<<(std::ostream& os, const Converter& obj) {
 //     pass
 inline Converter::Converter() {
 }
+
+// def identity[U](self, val: U) -> U:
+//     return val
+template<typename U>
+inline ::tpy::val_or_ref_t<U> Converter::identity(::tpy::param_val_or_ref_t<U> val) const {
+    return ::tpy::param_to_return<U>(val);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

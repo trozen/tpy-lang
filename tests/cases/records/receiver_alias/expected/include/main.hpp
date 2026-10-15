@@ -66,16 +66,8 @@ struct Cell {
     void nested();
 
     // def generic[T](self, value: T) -> T:
-    //     # Generic method and its concrete twin keep a receiver reference.
-    //     me = self  # tpyc: ok
-    //     me.n += 1
-    //     return value
     template<typename T>
-    ::tpy::val_or_ref_t<T> generic(::tpy::param_val_or_ref_t<T> value) {
-        Cell& me = (*this);
-        me.n = ::tpy::add_check<int32_t>(me.n, 1);
-        return ::tpy::param_to_return<T>(value);
-    }
+    ::tpy::val_or_ref_t<T> generic(::tpy::param_val_or_ref_t<T> value);
 
     // def concrete(self, value: int32) -> int32:
     int32_t concrete(int32_t value);
@@ -431,5 +423,18 @@ inline void Base::narrowed() {
 inline Derived::Derived(int32_t n)
     : Base(),
       n(n) {}
+
+// def generic[T](self, value: T) -> T:
+//     # Generic method and its concrete twin keep a receiver reference.
+//     me = self  # tpyc: ok
+//     me.n += 1
+//     return value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell::generic(::tpy::param_val_or_ref_t<T> value) {
+    Cell& me = (*this);
+    me.n = ::tpy::add_check<int32_t>(me.n, 1);
+    return ::tpy::param_to_return<T>(value);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

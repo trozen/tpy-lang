@@ -26,12 +26,8 @@ struct Pair {
     V v;
 
     // def __init__(self, k: K, v: V) -> None:
-    //     self.k = k
-    //     self.v = v
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
-        : k(k),
-          v(v) {}
+    explicit Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v);
 
     __gen_Pair_stream<K, V> stream(::tpy::BigInt n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
@@ -109,6 +105,15 @@ template <typename K, typename V>
 inline __gen_Pair_stream<K, V> Pair<K, V>::stream(::tpy::BigInt n) {
     return __gen_Pair_stream<K, V>(*this, n);
 }
+
+
+// def __init__(self, k: K, v: V) -> None:
+//     self.k = k
+//     self.v = v
+template<typename K, typename V>
+inline Pair<K, V>::Pair(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
+    : k(k),
+      v(v) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

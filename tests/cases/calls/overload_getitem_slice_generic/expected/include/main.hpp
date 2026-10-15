@@ -21,50 +21,30 @@ struct Container {
     std::vector<T> _data;
 
     // def __init__(self) -> None:
-    //     self._data = []
-    Container() : _data(std::vector<T>{}) {}
+    Container();
 
     // def add(self, item: T) -> None:
-    //     self._data.append(item)
-    void add(::tpy::param_val_or_ref_t<T> item) {
-        this->_data.push_back(::tpy::param_to_storage<T>(item));
-    }
+    void add(::tpy::param_val_or_ref_t<T> item);
 
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
-    ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        return ::tpy::__getitem__(this->_data, index);
-    }
+    ::tpy::val_or_ref_t<T> __getitem__(int32_t index);
 
     // @overload
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
-    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        return ::tpy::__getitem__(this->_data, index);
-    }
+    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const;
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
-    std::span<const T> __getitem__(::tpy::Slice index) const {
-        std::optional<int32_t> s_start = index.start;
-        std::optional<int32_t> s_stop = index.stop;
-        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
-    }
+    std::span<const T> __getitem__(::tpy::Slice index) const;
 
-    ::tpy::val_or_cref_t<T> operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    ::tpy::val_or_cref_t<T> operator[](int32_t index) const;
 
-    ::tpy::val_or_ref_t<T> operator[](int32_t index) {
-        return __getitem__(index);
-    }
+    ::tpy::val_or_ref_t<T> operator[](int32_t index);
 
-    std::span<const T> operator[](::tpy::Slice index) const {
-        return __getitem__(index);
-    }
+    std::span<const T> operator[](::tpy::Slice index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -72,6 +52,61 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     self._data = []
+template<typename T>
+inline Container<T>::Container() : _data(std::vector<T>{}) {}
+
+// def add(self, item: T) -> None:
+//     self._data.append(item)
+template<typename T>
+inline void Container<T>::add(::tpy::param_val_or_ref_t<T> item) {
+    this->_data.push_back(::tpy::param_to_storage<T>(item));
+}
+
+// @overload
+// @auto_readonly
+// def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::__getitem__(int32_t index) {
+    return ::tpy::__getitem__(this->_data, index);
+}
+
+// @overload
+// @auto_readonly
+// def __getitem__(self, index: int32) -> T: ...  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Container<T>::__getitem__(int32_t index) const {
+    return ::tpy::__getitem__(this->_data, index);
+}
+
+// @overload
+// def __getitem__(self, index: slice) -> Span[readonly[T]]: ...  # tpyc: ok
+template<typename T>
+inline std::span<const T> Container<T>::__getitem__(::tpy::Slice index) const {
+    std::optional<int32_t> s_start = index.start;
+    std::optional<int32_t> s_stop = index.stop;
+    int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+    int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+}
+
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Container<T>::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::operator[](int32_t index) {
+    return __getitem__(index);
+}
+
+template<typename T>
+inline std::span<const T> Container<T>::operator[](::tpy::Slice index) const {
+    return __getitem__(index);
 }
 
 void __tpy_init();

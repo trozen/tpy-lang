@@ -70,10 +70,8 @@ struct Holder {
     U item;
 
     // def __init__(self, item: U) -> None:
-    //     # The copy is unobservable here: every caller passes a fresh literal.
-    //     self.item = item  # tpyc: warning(/may copy U into field/)
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<U> item) : item(item) {}
+    explicit Holder(::tpy::readonly_form_t<U> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -319,5 +317,12 @@ inline ViaName::ViaName(std::vector<int32_t>& xs) : ListHolder<int32_t>(xs) {}
 //     # the named class is `__init__`-less itself: TaggedBox runs Box's too
 //     IntBox.__init__(self, n + 2)  # tpyc: ok
 inline NamedMid::NamedMid(int32_t n) : TaggedBox((::tpy::add_check<int32_t>(n, 2))) {}
+
+// def __init__(self, item: U) -> None:
+//     # The copy is unobservable here: every caller passes a fresh literal.
+//     self.item = item  # tpyc: warning(/may copy U into field/)
+template<typename U>
+inline Holder<U>::Holder(::tpy::readonly_form_t<U> item) : item(item) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

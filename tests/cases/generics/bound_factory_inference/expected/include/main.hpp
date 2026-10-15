@@ -81,41 +81,22 @@ struct PetBox {
     bool __tpy_owned_ = true;
 
     // def __init__(self, payload: Ptr[T]) -> None:
-    //     self._payload = payload
-    explicit PetBox(T* payload) : _payload(payload) {}
+    explicit PetBox(T* payload);
     PetBox(const PetBox&) = delete;
     PetBox& operator=(const PetBox&) = delete;
-    PetBox(PetBox&& other) noexcept : _payload(std::move(other._payload)) {
-        other.__tpy_owned_ = false;
-    }
-    PetBox& operator=(PetBox&& other) noexcept {
-        if (this != &other) {
-            this->~PetBox();
-            new (this) PetBox(std::move(other));
-        }
-        return *this;
-    }
+    PetBox(PetBox&& other) noexcept;
+    PetBox& operator=(PetBox&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     unsafe_release(self._payload)
-    ~PetBox() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::heap_release(this->_payload);
-    }
+    ~PetBox();
 
     // def get(self) -> T:
-    //     return self._payload
-    ::tpy::val_or_ref_t<T> get() const {
-        return ::tpy::deref_check(this->_payload);
-    }
+    ::tpy::val_or_ref_t<T> get() const;
 
     // @staticmethod
     // def make[U: T](value: Own[U]) -> Own[PetBox[T]]:
-    //     return PetBox[T](unsafe_take(value))
     template<typename U>
-    static PetBox<T> make(::tpy::own_param_t<U> value) {
-        return PetBox<T>(::tpy::heap_take(std::move(value)));
-    }
+    static PetBox<T> make(::tpy::own_param_t<U> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.PetBox";
 };
 
@@ -164,5 +145,48 @@ inline Dog::Dog(std::string_view label) : label(label) {}
 inline std::string Dog::name() {
     return (::tpy::str_concat("dog:", this->label));
 }
+
+// def __init__(self, payload: Ptr[T]) -> None:
+//     self._payload = payload
+template<typename T>
+inline PetBox<T>::PetBox(T* payload) : _payload(payload) {}
+
+template<typename T>
+inline PetBox<T>::PetBox(PetBox&& other) noexcept : _payload(std::move(other._payload)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline PetBox<T>& PetBox<T>::operator=(PetBox&& other) noexcept {
+    if (this != &other) {
+        this->~PetBox();
+        new (this) PetBox(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     unsafe_release(self._payload)
+template<typename T>
+inline PetBox<T>::~PetBox() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::heap_release(this->_payload);
+}
+
+// def get(self) -> T:
+//     return self._payload
+template<typename T>
+inline ::tpy::val_or_ref_t<T> PetBox<T>::get() const {
+    return ::tpy::deref_check(this->_payload);
+}
+
+// @staticmethod
+// def make[U: T](value: Own[U]) -> Own[PetBox[T]]:
+//     return PetBox[T](unsafe_take(value))
+template<typename T>
+template<typename U>
+inline PetBox<T> PetBox<T>::make(::tpy::own_param_t<U> value) {
+    return PetBox<T>(::tpy::heap_take(std::move(value)));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

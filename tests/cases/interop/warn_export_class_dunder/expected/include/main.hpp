@@ -24,9 +24,7 @@ struct C {
     // def __call__(self) -> int64:  # tpyc: warning(/'__call__' is not exposed to CPython/)
     int64_t __call__() const;
 
-    int64_t operator()() const {
-        return __call__();
-    }
+    int64_t operator()() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -44,6 +42,10 @@ inline C::C(int64_t a) : a(a) {}
 //     return self.a
 inline int64_t C::__call__() const {
     return this->a;
+}
+
+inline int64_t C::operator()() const {
+    return __call__();
 }
 void __tpy_init();
 } // namespace tpyapp::main

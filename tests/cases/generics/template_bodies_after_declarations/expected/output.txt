@@ -1,0 +1,31 @@
+a 15
+b 11
+c 101 6
+d 5 4
+e copy a+copy! 1
+e del a+copy!
+e orig a2
+e del a2
+f 8
+g 6
+h 6 3 4
+inverse 14
+i 905
+j 7 12
+k 7
+l 9 9 9
+m 7
+n 21
+cycle 43 10 15
+cycle-iter 8 4
+cycle-groups 8 28
+cycle-ops 307 3007 -2 2 -3 1 False
+cycle-passing 9 9 16
+cycle-holder empty set
+cycle-generic 2 5 True 4
+cycle-user 6 8 14
+o 11 4
+p True True False
+p False True
+q 3 6 12 9
+r 6

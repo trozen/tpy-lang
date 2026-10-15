@@ -34,22 +34,8 @@ struct SortedPair {
     T second;
 
     // def __init__(self, a: T, b: T) -> None:
-    //     if a < b:
-    //         self.first = a
-    //         self.second = b
-    //     else:
-    //         self.first = b
-    //         self.second = a
     SortedPair() = default;
-    explicit SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) {
-        if ((a < b)) {
-            this->first = ::tpy::param_to_storage<T>(a);
-            this->second = ::tpy::param_to_storage<T>(b);
-        } else {
-            this->first = ::tpy::param_to_storage<T>(b);
-            this->second = ::tpy::param_to_storage<T>(a);
-        }
-    }
+    explicit SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b);
     static constexpr std::string_view __tpy_class_name__ = "__main__.SortedPair";
 };
 
@@ -79,6 +65,25 @@ inline std::ostream& operator<<(std::ostream& os, const DefaultPairFactory& obj)
 inline SortedPair<int32_t> DefaultPairFactory::make_pair(int32_t a, int32_t b) const {
     return SortedPair<int32_t>(a, b);
 }
+
+// def __init__(self, a: T, b: T) -> None:
+//     if a < b:
+//         self.first = a
+//         self.second = b
+//     else:
+//         self.first = b
+//         self.second = a
+template<::tpystd::tpy::Comparable T>
+inline SortedPair<T>::SortedPair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b) {
+    if ((a < b)) {
+        this->first = ::tpy::param_to_storage<T>(a);
+        this->second = ::tpy::param_to_storage<T>(b);
+    } else {
+        this->first = ::tpy::param_to_storage<T>(b);
+        this->second = ::tpy::param_to_storage<T>(a);
+    }
+}
+
 // def create_pair[T: PairFactory](factory: T, a: int32, b: int32) -> Own[SortedPair[int32]]:
 //     return factory.make_pair(a, b)
 template<PairFactory T>

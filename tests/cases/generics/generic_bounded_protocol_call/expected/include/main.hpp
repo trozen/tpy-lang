@@ -67,11 +67,7 @@ struct Printer {
 
 
     // def get_str(self, item: T) -> str:
-    //     # Call protocol method on bounded type parameter inside generic class method
-    //     return item.to_str()
-    std::string get_str(::tpy::param_val_or_ref_t<T> item) const {
-        return item.to_str();
-    }
+    std::string get_str(::tpy::param_val_or_ref_t<T> item) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Printer";
 };
 
@@ -96,11 +92,7 @@ struct MyValue {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyValue";
 };
 
@@ -190,6 +182,12 @@ inline int32_t MyValue::__len__() const {
     return this->val;
 }
 
+inline size_t MyValue::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
+}
+
 // def __init__(self, x: int32, y: int32) -> None:
 //     self.x = x
 //     self.y = y
@@ -231,6 +229,15 @@ inline Box::Box(int32_t v) : value(v) {}
 inline Box Box::clone() const {
     return Box(this->value);
 }
+
+// def get_str(self, item: T) -> str:
+//     # Call protocol method on bounded type parameter inside generic class method
+//     return item.to_str()
+template<Stringable T>
+inline std::string Printer<T>::get_str(::tpy::param_val_or_ref_t<T> item) const {
+    return item.to_str();
+}
+
 // # Test 1: Builtin protocol (Sized) method call inside generic function
 // def get_length[T: Sized](item: T) -> int32:
 //     return len(item)

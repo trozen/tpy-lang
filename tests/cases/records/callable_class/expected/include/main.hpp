@@ -22,9 +22,7 @@ struct Doubler {
     // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
-    int32_t operator()(int32_t x) const {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Doubler";
 };
 
@@ -45,9 +43,7 @@ struct Adder {
     // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
-    int32_t operator()(int32_t x) const {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
 };
 
@@ -63,6 +59,10 @@ inline int32_t Doubler::__call__(int32_t x) const {
     return (::tpy::mul_check<int32_t>(x, 2));
 }
 
+inline int32_t Doubler::operator()(int32_t x) const {
+    return __call__(x);
+}
+
 // def __init__(self, offset: int32):
 //     self.offset = offset
 inline Adder::Adder(int32_t offset) : offset(offset) {}
@@ -71,6 +71,10 @@ inline Adder::Adder(int32_t offset) : offset(offset) {}
 //     return x + self.offset
 inline int32_t Adder::__call__(int32_t x) const {
     return (::tpy::add_check<int32_t>(x, this->offset));
+}
+
+inline int32_t Adder::operator()(int32_t x) const {
+    return __call__(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

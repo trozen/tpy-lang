@@ -33,16 +33,11 @@ struct Counter {
     T n;
 
     // def __init__(self, n: T) -> None:
-    //     self.n = n  # tpyc: warning(/may copy T into field/)
     Counter() = default;
-    explicit Counter(::tpy::readonly_form_t<T> n) : n(n) {}
+    explicit Counter(::tpy::readonly_form_t<T> n);
 
-    // # method: the same conversion off a T-typed FIELD read.
     // def as_int32(self) -> int32:
-    //     return int32(self.n)  # tpyc: ok
-    int32_t as_int32() const {
-        return ::tpy::int_cast_check<int32_t>(this->n);
-    }
+    int32_t as_int32() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -50,6 +45,20 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Counter<T>& obj) {
     ::tpy::print_object_default(os, "Counter", obj);
     return os;
+}
+
+
+// def __init__(self, n: T) -> None:
+//     self.n = n  # tpyc: warning(/may copy T into field/)
+template<::tpy::AnyFixedInt T>
+inline Counter<T>::Counter(::tpy::readonly_form_t<T> n) : n(n) {}
+
+// # method: the same conversion off a T-typed FIELD read.
+// def as_int32(self) -> int32:
+//     return int32(self.n)  # tpyc: ok
+template<::tpy::AnyFixedInt T>
+inline int32_t Counter<T>::as_int32() const {
+    return ::tpy::int_cast_check<int32_t>(this->n);
 }
 
 // # free function: narrowing the type param to a fixed width.

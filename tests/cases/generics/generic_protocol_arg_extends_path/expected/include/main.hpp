@@ -30,29 +30,13 @@ struct MyIter {
     int32_t pos;
 
     // def __init__(self, items: list[T]) -> None:
-    //     self.items = items
-    //     self.pos = 0
     MyIter() = default;
-    explicit MyIter(const std::vector<T>& items)
-        : items(items),
-          pos(0) {}
+    explicit MyIter(const std::vector<T>& items);
 
     auto& __iter__() { return *this; }
 
     // def __next__(self) -> T:
-    //     if self.pos >= len(self.items):
-    //         raise StopIteration
-    //     v = self.items[self.pos]
-    //     self.pos += 1
-    //     return v
-    std::expected<::tpy::val_or_ref<T>, ::tpy::StopIteration> __next__() {
-        if ((this->pos >= ::tpy::__len__(this->items))) {
-            return ::tpy::make_unexpected(::tpy::StopIteration{});
-        }
-        T& v = ::tpy::__getitem__(this->items, this->pos);
-        this->pos = ::tpy::add_check<int32_t>(this->pos, 1);
-        return v;
-    }
+    std::expected<::tpy::val_or_ref<T>, ::tpy::StopIteration> __next__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyIter";
 };
 
@@ -69,20 +53,13 @@ struct MyList {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    MyList() : items(std::vector<T>{}) {}
+    MyList();
 
     // def add(self, x: T) -> None:
-    //     self.items.append(x)
-    void add(::tpy::param_val_or_ref_t<T> x) {
-        this->items.push_back(::tpy::param_to_storage<T>(x));
-    }
+    void add(::tpy::param_val_or_ref_t<T> x);
 
     // def __iter__(self) -> Own[MyIter[T]]:
-    //     return MyIter[T](self.items)
-    MyIter<T> __iter__() const {
-        return MyIter<T>(this->items);
-    }
+    MyIter<T> __iter__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyList";
 };
 
@@ -90,6 +67,50 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyList<T>& obj) {
     ::tpy::print_object_default(os, "MyList", obj);
     return os;
+}
+
+
+// def __init__(self, items: list[T]) -> None:
+//     self.items = items
+//     self.pos = 0
+template<typename T>
+inline MyIter<T>::MyIter(const std::vector<T>& items)
+    : items(items),
+      pos(0) {}
+
+// def __next__(self) -> T:
+//     if self.pos >= len(self.items):
+//         raise StopIteration
+//     v = self.items[self.pos]
+//     self.pos += 1
+//     return v
+template<typename T>
+inline std::expected<::tpy::val_or_ref<T>, ::tpy::StopIteration> MyIter<T>::__next__() {
+    if ((this->pos >= ::tpy::__len__(this->items))) {
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    T& v = ::tpy::__getitem__(this->items, this->pos);
+    this->pos = ::tpy::add_check<int32_t>(this->pos, 1);
+    return v;
+}
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T>
+inline MyList<T>::MyList() : items(std::vector<T>{}) {}
+
+// def add(self, x: T) -> None:
+//     self.items.append(x)
+template<typename T>
+inline void MyList<T>::add(::tpy::param_val_or_ref_t<T> x) {
+    this->items.push_back(::tpy::param_to_storage<T>(x));
+}
+
+// def __iter__(self) -> Own[MyIter[T]]:
+//     return MyIter[T](self.items)
+template<typename T>
+inline MyIter<T> MyList<T>::__iter__() const {
+    return MyIter<T>(this->items);
 }
 
 // def length[T](xs: Iterable[T]) -> int32:

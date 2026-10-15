@@ -20,22 +20,13 @@ struct Container {
 
 
     // def get_double(self) -> int32:
-    //     return int32(N * 2)
-    int32_t get_double() const {
-        return (::tpy::mul_check<int32_t>(N, 2));
-    }
+    int32_t get_double() const;
 
     // def get_plus_one(self) -> int32:
-    //     return int32(N + 1)
-    int32_t get_plus_one() const {
-        return (::tpy::add_check<int32_t>(N, 1));
-    }
+    int32_t get_plus_one() const;
 
     // def get_minus_five(self) -> int32:
-    //     return int32(N - 5)
-    int32_t get_minus_five() const {
-        return (::tpy::sub_check<int32_t>(N, 5));
-    }
+    int32_t get_minus_five() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -43,6 +34,28 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def get_double(self) -> int32:
+//     return int32(N * 2)
+template<typename T, std::size_t N>
+inline int32_t Container<T, N>::get_double() const {
+    return (::tpy::mul_check<int32_t>(N, 2));
+}
+
+// def get_plus_one(self) -> int32:
+//     return int32(N + 1)
+template<typename T, std::size_t N>
+inline int32_t Container<T, N>::get_plus_one() const {
+    return (::tpy::add_check<int32_t>(N, 1));
+}
+
+// def get_minus_five(self) -> int32:
+//     return int32(N - 5)
+template<typename T, std::size_t N>
+inline int32_t Container<T, N>::get_minus_five() const {
+    return (::tpy::sub_check<int32_t>(N, 5));
 }
 
 void __tpy_init();

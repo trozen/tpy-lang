@@ -13,8 +13,24 @@
 
 TurboPython compiles each `.py` module to a `.hpp`/`.cpp` pair. Currently,
 a module's `.hpp` contains everything: forward declarations, full record
-definitions (including template records with all method bodies inline),
-function declarations, and template function definitions.
+definitions (members declared in the struct), function declarations, small
+non-template member definitions, and -- at the end -- every template
+definition (template functions and the members of template records). Bodies
+that stay in the struct: a template member or `@overload` variant whose
+return is deduced (`auto`, needed before its first use; any other deduced
+member is defined in the header right after the structs, or in the `.cpp` of
+an import-cycle member), the friend operators (`operator+` forwarding to
+`__add__`, reflected and unary ones): hidden friends, which only
+argument-dependent lookup finds -- one visible to ordinary lookup would let a
+class's `!=` turn off C++20's reversed `==` -- and the synthesized members
+whose bodies read only the record itself -- the iterator / span shims
+(`__iter__` returning `*this`, `begin`/`end`), the exception
+`clone`/`__raise__`/`what` overrides, a return exception's `__str__`, and a
+covariant generic's converting constructor. A delegating member (`operator[]`,
+`operator()`, `operator*`, `size()`) is placed as a one-line body of the
+member it forwards to: declared in the struct and defined `inline` after the
+structs, in the `.cpp` with its member in an import-cycle member, at the end
+of the header for a template.
 
 When module A imports module B, it includes B's entire `.hpp` -- even if A
 only uses a single non-generic function. At scale (~100kloc, hundreds of
@@ -278,9 +294,9 @@ definition:
 - `_impl.hpp` contains out-of-line method **definitions** using
   `ClassName<T>::method()` syntax
 
-For **non-template records**, methods remain inline in the struct definition
-in `module.hpp` (the current behavior). Moving large non-template methods to
-`.cpp` is a potential future optimization but not part of this design.
+For **non-template records**, methods are declared in the struct; small
+bodies are defined `inline` in `module.hpp` after every struct, larger ones in
+`.cpp` (the current behavior).
 
 ## Single-Header Mode for Testing
 

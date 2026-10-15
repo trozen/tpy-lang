@@ -29,11 +29,7 @@ struct MyContainer {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyContainer";
 };
 
@@ -51,6 +47,12 @@ inline MyContainer::MyContainer(const std::vector<int32_t>& items) : data(items)
 //     return len(self.data)
 inline int32_t MyContainer::__len__() const {
     return ::tpy::__len__(this->data);
+}
+
+inline size_t MyContainer::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 // def get_length[T: Sized](item: T) -> int32:
 //     # Note: Can't call len(item) here yet - returning fixed value

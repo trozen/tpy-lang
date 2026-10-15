@@ -44,23 +44,16 @@ struct TaggedValue {
     int32_t data;
 
     // def __init__(self, data: int32):
-    //     self.data = data
     TaggedValue() = default;
-    explicit TaggedValue(int32_t data) : data(data) {}
+    explicit TaggedValue(int32_t data);
     // copyable via __copy__
-    TaggedValue(const TaggedValue& other) : TaggedValue(other.__copy__()) {}
-    TaggedValue& operator=(const TaggedValue& other) {
-        if (this != &other) { *this = other.__copy__(); }
-        return *this;
-    }
+    TaggedValue(const TaggedValue& other);
+    TaggedValue& operator=(const TaggedValue& other);
     TaggedValue(TaggedValue&&) = default;
     TaggedValue& operator=(TaggedValue&&) = default;
 
     // def __copy__(self) -> Own[TaggedValue[T]]:
-    //     return TaggedValue[T](self.data)
-    TaggedValue<T> __copy__() const {
-        return TaggedValue<T>(this->data);
-    }
+    TaggedValue<T> __copy__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.TaggedValue";
 };
 
@@ -74,5 +67,26 @@ inline std::ostream& operator<<(std::ostream& os, const TaggedValue<T>& obj) {
 // def __init__(self, fd: int32):
 //     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
+
+// def __init__(self, data: int32):
+//     self.data = data
+template<typename T>
+inline TaggedValue<T>::TaggedValue(int32_t data) : data(data) {}
+
+template<typename T>
+inline TaggedValue<T>::TaggedValue(const TaggedValue& other) : TaggedValue(other.__copy__()) {}
+template<typename T>
+inline TaggedValue<T>& TaggedValue<T>::operator=(const TaggedValue& other) {
+    if (this != &other) { *this = other.__copy__(); }
+    return *this;
+}
+
+// def __copy__(self) -> Own[TaggedValue[T]]:
+//     return TaggedValue[T](self.data)
+template<typename T>
+inline TaggedValue<T> TaggedValue<T>::__copy__() const {
+    return TaggedValue<T>(this->data);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

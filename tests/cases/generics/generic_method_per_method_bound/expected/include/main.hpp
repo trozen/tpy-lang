@@ -21,33 +21,14 @@ struct Container {
     std::vector<T> items;
 
     // def __init__(self):
-    //     self.items = []
-    Container() : items(std::vector<T>{}) {}
+    Container();
 
     // def add(self, item: T) -> None:
-    //     self.items.append(item)
-    void add(::tpy::param_val_or_ref_t<T> item) {
-        this->items.push_back(::tpy::param_to_storage<T>(item));
-    }
+    void add(::tpy::param_val_or_ref_t<T> item);
 
     // def is_sorted[T: Comparable](self) -> bool:
-    //     i: int32 = int32(1)
-    //     while i < int32(len(self.items)):
-    //         if self.items[i] < self.items[i - int32(1)]:
-    //             return False
-    //         i = i + int32(1)
-    //     return True
     bool is_sorted() const
-      requires ::tpystd::tpy::Comparable<T> {
-        int32_t i = 1;
-        while ((i < ::tpy::__len__(this->items))) {
-            if ((::tpy::__getitem__(this->items, i) < ::tpy::__getitem__(this->items, (::tpy::sub_check<int32_t>(i, 1))))) {
-                return false;
-            }
-            i = (::tpy::add_check<int32_t>(i, 1));
-        }
-        return true;
-    }
+      requires ::tpystd::tpy::Comparable<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -55,6 +36,39 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self):
+//     self.items = []
+template<typename T>
+inline Container<T>::Container() : items(std::vector<T>{}) {}
+
+// def add(self, item: T) -> None:
+//     self.items.append(item)
+template<typename T>
+inline void Container<T>::add(::tpy::param_val_or_ref_t<T> item) {
+    this->items.push_back(::tpy::param_to_storage<T>(item));
+}
+
+// def is_sorted[T: Comparable](self) -> bool:
+//     i: int32 = int32(1)
+//     while i < int32(len(self.items)):
+//         if self.items[i] < self.items[i - int32(1)]:
+//             return False
+//         i = i + int32(1)
+//     return True
+template<typename T>
+inline bool Container<T>::is_sorted() const
+  requires ::tpystd::tpy::Comparable<T> {
+    int32_t i = 1;
+    while ((i < ::tpy::__len__(this->items))) {
+        if ((::tpy::__getitem__(this->items, i) < ::tpy::__getitem__(this->items, (::tpy::sub_check<int32_t>(i, 1))))) {
+            return false;
+        }
+        i = (::tpy::add_check<int32_t>(i, 1));
+    }
+    return true;
 }
 
 void __tpy_init();

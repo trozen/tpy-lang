@@ -47,9 +47,8 @@ struct Holder {
     ::tpystd::tplib::box::Box<Tree<T>> data;
 
     // def __init__(self, data: Own[Box[Tree[T]]]) -> None:
-    //     self.data = data
     Holder() = default;
-    explicit Holder(::tpystd::tplib::box::Box<Tree<T>>&& data) : data(std::move(data)) {}
+    explicit Holder(::tpystd::tplib::box::Box<Tree<T>>&& data);
     // non-copyable (field 'data')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -63,6 +62,12 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
 }
+
+
+// def __init__(self, data: Own[Box[Tree[T]]]) -> None:
+//     self.data = data
+template<typename T>
+inline Holder<T>::Holder(::tpystd::tplib::box::Box<Tree<T>>&& data) : data(std::move(data)) {}
 
 // def leaf_count[T](t: Tree[T]) -> int32:
 //     match t:

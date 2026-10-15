@@ -113,32 +113,20 @@ struct GHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.val = v
     GHolder() = default;
-    explicit GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+    explicit GHolder(::tpy::own_param_t<T> v);
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self.val
-    ::tpy::val_or_cref_t<T> get() const {
-        return this->val;
-    }
+    ::tpy::val_or_cref_t<T> get() const;
 
-    // # generic body: the Box.clone shape -- copy() over a readonly[T] borrow
-    // # return into an Own[T] constructor slot.
     // @readonly
     // def cloned(self) -> Own[GHolder[T]]:
-    //     return GHolder(copy(self.get()))  # tpyc: ok
-    GHolder<T> cloned() const {
-        return GHolder<T>(T(this->get()));
-    }
+    GHolder<T> cloned() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
 };
 
@@ -278,5 +266,37 @@ inline void Guard::__enter__() const {
 //     pass
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
 }
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.val = v
+template<typename T>
+inline GHolder<T>::GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> GHolder<T>::get() {
+    return this->val;
+}
+
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_cref_t<T> GHolder<T>::get() const {
+    return this->val;
+}
+
+// # generic body: the Box.clone shape -- copy() over a readonly[T] borrow
+// # return into an Own[T] constructor slot.
+// @readonly
+// def cloned(self) -> Own[GHolder[T]]:
+//     return GHolder(copy(self.get()))  # tpyc: ok
+template<typename T>
+inline GHolder<T> GHolder<T>::cloned() const {
+    return GHolder<T>(T(this->get()));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -66,12 +66,7 @@ struct GHolder {
 
     // @staticmethod
     // def take_list(xs: list[int32]) -> int32:
-    //     xs.append(99)
-    //     return len(xs)
-    static int32_t take_list(std::vector<int32_t>& xs) {
-        xs.push_back(99);
-        return ::tpy::__len__(xs);
-    }
+    static int32_t take_list(std::vector<int32_t>& xs);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
 };
 
@@ -121,5 +116,16 @@ inline int32_t Holder::take_recs(std::vector<Rec>& rs) {
     rs.push_back(Rec(99));
     return ::tpy::__len__(rs);
 }
+
+// @staticmethod
+// def take_list(xs: list[int32]) -> int32:
+//     xs.append(99)
+//     return len(xs)
+template<typename T>
+inline int32_t GHolder<T>::take_list(std::vector<int32_t>& xs) {
+    xs.push_back(99);
+    return ::tpy::__len__(xs);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

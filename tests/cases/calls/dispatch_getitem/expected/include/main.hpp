@@ -41,78 +41,38 @@ struct Store {
     std::vector<T> _data;
 
     // def __init__(self) -> None:
-    //     self._data = []
-    Store() : _data(std::vector<T>{}) {}
+    Store();
 
     // def add(self, item: Own[T]) -> None:
-    //     self._data.append(item)
-    void add(::tpy::own_param_t<T> item) {
-        this->_data.push_back(std::move(item));
-    }
+    void add(::tpy::own_param_t<T> item);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T:  # tpyc: ok
-    //     return self._data[index]
-    ::tpy::val_or_ref_t<T> __getitem__(int32_t index) {
-        return ::tpy::__getitem__(this->_data, index);
-    }
+    ::tpy::val_or_ref_t<T> __getitem__(int32_t index);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: int32) -> T:  # tpyc: ok
-    //     return self._data[index]
-    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const {
-        return ::tpy::__getitem__(this->_data, index);
-    }
+    ::tpy::val_or_cref_t<T> __getitem__(int32_t index) const;
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]:
-    //     s_start = index.start
-    //     s_stop = index.stop
-    //     start: int32 = s_start if s_start is not None else int32(0)
-    //     stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
-    //     return self._data[start:stop]
-    std::span<T> __getitem__(::tpy::Slice index) {
-        std::optional<int32_t> s_start = index.start;
-        std::optional<int32_t> s_stop = index.stop;
-        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
-    }
+    std::span<T> __getitem__(::tpy::Slice index);
 
     // @dispatch
     // @auto_readonly
     // def __getitem__(self, index: slice) -> Span[auto_readonly[T]]:
-    //     s_start = index.start
-    //     s_stop = index.stop
-    //     start: int32 = s_start if s_start is not None else int32(0)
-    //     stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
-    //     return self._data[start:stop]
-    std::span<const T> __getitem__(::tpy::Slice index) const {
-        std::optional<int32_t> s_start = index.start;
-        std::optional<int32_t> s_stop = index.stop;
-        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
-    }
+    std::span<const T> __getitem__(::tpy::Slice index) const;
 
-    ::tpy::val_or_cref_t<T> operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    ::tpy::val_or_cref_t<T> operator[](int32_t index) const;
 
-    ::tpy::val_or_ref_t<T> operator[](int32_t index) {
-        return __getitem__(index);
-    }
+    ::tpy::val_or_ref_t<T> operator[](int32_t index);
 
-    std::span<const T> operator[](::tpy::Slice index) const {
-        return __getitem__(index);
-    }
+    std::span<const T> operator[](::tpy::Slice index) const;
 
-    std::span<T> operator[](::tpy::Slice index) {
-        return __getitem__(index);
-    }
+    std::span<T> operator[](::tpy::Slice index);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
 };
 
@@ -140,13 +100,9 @@ struct Digits {
     // def __getitem__(self, index: slice) -> Span[readonly[int32]]:
     std::span<const int32_t> __getitem__(::tpy::Slice index) const;
 
-    int32_t operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    int32_t operator[](int32_t index) const;
 
-    std::span<const int32_t> operator[](::tpy::Slice index) const {
-        return __getitem__(index);
-    }
+    std::span<const int32_t> operator[](::tpy::Slice index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Digits";
 };
 
@@ -187,5 +143,98 @@ inline std::span<const int32_t> Digits::__getitem__(::tpy::Slice index) const {
     int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->xs)));
     return ::tpy::list_slice(this->xs, ::tpy::BasicSlice{start, stop});
 }
+
+inline int32_t Digits::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+inline std::span<const int32_t> Digits::operator[](::tpy::Slice index) const {
+    return __getitem__(index);
+}
+
+// def __init__(self) -> None:
+//     self._data = []
+template<typename T>
+inline Store<T>::Store() : _data(std::vector<T>{}) {}
+
+// def add(self, item: Own[T]) -> None:
+//     self._data.append(item)
+template<typename T>
+inline void Store<T>::add(::tpy::own_param_t<T> item) {
+    this->_data.push_back(std::move(item));
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: int32) -> T:  # tpyc: ok
+//     return self._data[index]
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Store<T>::__getitem__(int32_t index) {
+    return ::tpy::__getitem__(this->_data, index);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: int32) -> T:  # tpyc: ok
+//     return self._data[index]
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Store<T>::__getitem__(int32_t index) const {
+    return ::tpy::__getitem__(this->_data, index);
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: slice) -> Span[auto_readonly[T]]:
+//     s_start = index.start
+//     s_stop = index.stop
+//     start: int32 = s_start if s_start is not None else int32(0)
+//     stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
+//     return self._data[start:stop]
+template<typename T>
+inline std::span<T> Store<T>::__getitem__(::tpy::Slice index) {
+    std::optional<int32_t> s_start = index.start;
+    std::optional<int32_t> s_stop = index.stop;
+    int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+    int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+}
+
+// @dispatch
+// @auto_readonly
+// def __getitem__(self, index: slice) -> Span[auto_readonly[T]]:
+//     s_start = index.start
+//     s_stop = index.stop
+//     start: int32 = s_start if s_start is not None else int32(0)
+//     stop: int32 = s_stop if s_stop is not None else int32(len(self._data))
+//     return self._data[start:stop]
+template<typename T>
+inline std::span<const T> Store<T>::__getitem__(::tpy::Slice index) const {
+    std::optional<int32_t> s_start = index.start;
+    std::optional<int32_t> s_stop = index.stop;
+    int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+    int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+}
+
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Store<T>::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Store<T>::operator[](int32_t index) {
+    return __getitem__(index);
+}
+
+template<typename T>
+inline std::span<const T> Store<T>::operator[](::tpy::Slice index) const {
+    return __getitem__(index);
+}
+
+template<typename T>
+inline std::span<T> Store<T>::operator[](::tpy::Slice index) {
+    return __getitem__(index);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

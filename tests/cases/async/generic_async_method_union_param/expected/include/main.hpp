@@ -67,9 +67,8 @@ struct Holder {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.v = v
     Holder() = default;
-    explicit Holder(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+    explicit Holder(::tpy::own_param_t<T> v);
 
     __coro_Holder_show<T> show(::tpy::Union<const A*, const B*> u) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -272,5 +271,11 @@ inline B::B() : y(2) {}
 // def __init__(self, v: int32) -> None:
 //     self.v = v
 inline PlainHolder::PlainHolder(int32_t v) : v(v) {}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline Holder<T>::Holder(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

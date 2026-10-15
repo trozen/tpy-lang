@@ -68,25 +68,18 @@ struct Container {
     ::tpy::BigInt count;
 
     // def __init__(self, items: HasLength) -> None:
-    //     self.count = items.length()
     Container() = default;
     template<HasLength T_items>
-    explicit Container(const T_items& items) : count(items.length()) {}
+    explicit Container(const T_items& items);
 
     // def update(self, items: HasLength) -> None:
-    //     self.count = items.length()
     template<HasLength T_items>
-    void update(const T_items& items) {
-        this->count = items.length();
-    }
+    void update(const T_items& items);
 
     // @readonly
     // def combined_len(self, other: HasLength) -> int:
-    //     return self.count + other.length()
     template<HasLength T_other>
-    ::tpy::BigInt combined_len(const T_other& other) const {
-        return ((this->count) + (other.length()));
-    }
+    ::tpy::BigInt combined_len(const T_other& other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -117,5 +110,26 @@ inline Numbers::Numbers(const std::vector<::tpy::BigInt>& items) : items(items) 
 inline ::tpy::BigInt Numbers::length() const {
     return ::tpy::BigInt(::tpy::__len__(this->items));
 }
+
+// def __init__(self, items: HasLength) -> None:
+//     self.count = items.length()
+template<HasLength T_items>
+inline Container::Container(const T_items& items) : count(items.length()) {}
+
+// def update(self, items: HasLength) -> None:
+//     self.count = items.length()
+template<HasLength T_items>
+inline void Container::update(const T_items& items) {
+    this->count = items.length();
+}
+
+// @readonly
+// def combined_len(self, other: HasLength) -> int:
+//     return self.count + other.length()
+template<HasLength T_other>
+inline ::tpy::BigInt Container::combined_len(const T_other& other) const {
+    return ((this->count) + (other.length()));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

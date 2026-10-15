@@ -56,10 +56,8 @@ struct Outer {
         T value;
 
         // def __init__(self, value: T) -> None:
-        //     # Unconstrained T may require a copy into inline field storage.
-        //     self.value = value  # tpyc: warning(/may copy T into field/)
         Box() = default;
-        explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
+        explicit Box(::tpy::readonly_form_t<T> value);
 
         __coro_2_5_Outer_3_Box_3_get<T> get();
         static constexpr std::string_view __tpy_class_name__ = "__main__.Outer.Box";
@@ -908,5 +906,12 @@ inline Outer::Inner::Inner(const ::tpy::BigInt& value) : value(value) {}
 // def __init__(self) -> None:
 //     self.value = 0
 inline Outer::Gate::Gate() : value(::tpy::BigInt(0)) {}
+
+// def __init__(self, value: T) -> None:
+//     # Unconstrained T may require a copy into inline field storage.
+//     self.value = value  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Outer::Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

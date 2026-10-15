@@ -350,14 +350,8 @@ struct Acc {
     int32_t fill_map(std::string_view d) const;
 
     // def push[T](self, xs: list[T], v: T) -> T:
-    //     # Honest for any T: at a reference type the list holds a copy of `v`.
-    //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    //     return v
     template<typename T>
-    ::tpy::val_or_ref_t<T> push(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) const {
-        xs.push_back(::tpy::param_to_storage<T>(v));
-        return ::tpy::param_to_return<T>(v);
-    }
+    ::tpy::val_or_ref_t<T> push(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) const;
 
     // @dispatch
     // def __add__(self, o: list[int64]) -> int32:
@@ -392,15 +386,8 @@ struct Holder {
     T first;
 
     // def __init__(self, xs: list[T], v: T) -> None:
-    //     # Honest for any T: at a reference type the list holds a copy of
-    //     # `v`, and the field a copy of the list's first element.
-    //     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    //     self.first = xs[0]  # tpyc: warning(/may copy T into field/)
     Holder() = default;
-    explicit Holder(std::vector<T>& xs, ::tpy::readonly_form_t<T> v) {
-        xs.push_back(::tpy::param_to_storage<T>(v));
-        this->first = ::tpy::__getitem__(xs, 0);
-    }
+    explicit Holder(std::vector<T>& xs, ::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -532,6 +519,28 @@ inline void Acc::in_method() const {
     std::vector<int64_t> ms = {1, 2};
     std::cout << "method:" << " " << ::tpyapp::main::f_list__list_int64(ms) << " " << ::tpy::__getitem__(ms, 2) << "\n" << ::tpy::check_signals;
 }
+
+// def push[T](self, xs: list[T], v: T) -> T:
+//     # Honest for any T: at a reference type the list holds a copy of `v`.
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     return v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Acc::push(std::vector<T>& xs, ::tpy::param_val_or_ref_t<T> v) const {
+    xs.push_back(::tpy::param_to_storage<T>(v));
+    return ::tpy::param_to_return<T>(v);
+}
+
+// def __init__(self, xs: list[T], v: T) -> None:
+//     # Honest for any T: at a reference type the list holds a copy of
+//     # `v`, and the field a copy of the list's first element.
+//     xs.append(v)  # tpyc: warning(/may copy T into owned storage/)
+//     self.first = xs[0]  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Holder<T>::Holder(std::vector<T>& xs, ::tpy::readonly_form_t<T> v) {
+    xs.push_back(::tpy::param_to_storage<T>(v));
+    this->first = ::tpy::__getitem__(xs, 0);
+}
+
 // @dispatch
 // def gen_or_str[T](xs: list[T], v: T) -> T:
 //     # Honest for any T: at a reference type the list holds a copy of `v`.

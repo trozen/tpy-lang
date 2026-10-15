@@ -123,8 +123,7 @@ struct Poll {
     ::tpy::UninitStorage<T> _slot;
 
     // def __init__(self) -> None:
-    //     self._slot = _UninitStorage[T]()
-    Poll() : _slot(::tpy::UninitStorage<T>()) {}
+    Poll();
     // non-copyable (@nocopy)
     Poll(const Poll&) = delete;
     Poll& operator=(const Poll&) = delete;
@@ -133,43 +132,22 @@ struct Poll {
 
     // @staticmethod
     // def pending() -> Own["Poll[T]"]:
-    //     return Poll[T]()
-    static Poll<T> pending() {
-        return Poll<T>();
-    }
+    static Poll<T> pending();
 
     // @staticmethod
     // def ready(value: Own[T]) -> Own["Poll[T]"]:
-    //     p = Poll[T]()
-    //     p._slot.construct(value)
-    //     return p
-    static Poll<T> ready(::tpy::own_param_t<T> value) {
-        Poll<T> p = Poll<T>();
-        p._slot.construct(std::move(value));
-        return p;
-    }
+    static Poll<T> ready(::tpy::own_param_t<T> value);
 
     // @readonly
     // def is_ready(self) -> bool:
-    //     return self._slot.has()
-    bool is_ready() const {
-        return this->_slot.has();
-    }
+    bool is_ready() const;
 
     // @readonly
     // def is_pending(self) -> bool:
-    //     return not self._slot.has()
-    bool is_pending() const {
-        return (!(this->_slot.has()));
-    }
+    bool is_pending() const;
 
     // def value(self: Own[Self]) -> Own[T]:
-    //     # `Own[Self]` makes the borrow checker reject a second call --
-    //     # the slot is emptied after the first take().
-    //     return self._slot.take()
-    ::tpy::own_return_t<T> value() && {
-        return this->_slot.take();
-    }
+    ::tpy::own_return_t<T> value() &&;
     static constexpr std::string_view __tpy_class_name__ = "tpy._core._types.Poll";
 };
 
@@ -183,6 +161,57 @@ inline std::ostream& operator<<(std::ostream& os, const Poll<T>& obj) {
 
 
 namespace tpystd::tpy {
+
+
+// def __init__(self) -> None:
+//     self._slot = _UninitStorage[T]()
+template<typename T>
+inline Poll<T>::Poll() : _slot(::tpy::UninitStorage<T>()) {}
+
+// @staticmethod
+// def pending() -> Own["Poll[T]"]:
+//     return Poll[T]()
+template<typename T>
+inline Poll<T> Poll<T>::pending() {
+    return Poll<T>();
+}
+
+// @staticmethod
+// def ready(value: Own[T]) -> Own["Poll[T]"]:
+//     p = Poll[T]()
+//     p._slot.construct(value)
+//     return p
+template<typename T>
+inline Poll<T> Poll<T>::ready(::tpy::own_param_t<T> value) {
+    Poll<T> p = Poll<T>();
+    p._slot.construct(std::move(value));
+    return p;
+}
+
+// @readonly
+// def is_ready(self) -> bool:
+//     return self._slot.has()
+template<typename T>
+inline bool Poll<T>::is_ready() const {
+    return this->_slot.has();
+}
+
+// @readonly
+// def is_pending(self) -> bool:
+//     return not self._slot.has()
+template<typename T>
+inline bool Poll<T>::is_pending() const {
+    return (!(this->_slot.has()));
+}
+
+// def value(self: Own[Self]) -> Own[T]:
+//     # `Own[Self]` makes the borrow checker reject a second call --
+//     # the slot is emptied after the first take().
+//     return self._slot.take()
+template<typename T>
+inline ::tpy::own_return_t<T> Poll<T>::value() && {
+    return this->_slot.take();
+}
 
 void __tpy_init();
 } // namespace tpystd::tpy

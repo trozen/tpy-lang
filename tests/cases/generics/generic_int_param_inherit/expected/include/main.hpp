@@ -23,9 +23,8 @@ struct Base {
     T value;
 
     // def __init__(self, v: T) -> None:
-    //     self.value = v
     Base() = default;
-    explicit Base(::tpy::readonly_form_t<T> v) : value(v) {}
+    explicit Base(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -42,12 +41,8 @@ struct Child : Base<T, N> {
     int32_t extra;
 
     // def __init__(self, v: T, e: int32) -> None:
-    //     super().__init__(v)
-    //     self.extra = e
     Child() = default;
-    explicit Child(::tpy::param_val_or_ref_t<T> v, int32_t e)
-        : Base<T, N>(v),
-          extra(e) {}
+    explicit Child(::tpy::param_val_or_ref_t<T> v, int32_t e);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -64,12 +59,8 @@ struct GrandChild : Child<T, N> {
     std::string name;
 
     // def __init__(self, v: T, e: int32, n: str) -> None:
-    //     super().__init__(v, e)
-    //     self.name = n
     GrandChild() = default;
-    explicit GrandChild(::tpy::param_val_or_ref_t<T> v, int32_t e, std::string_view n)
-        : Child<T, N>(v, e),
-          name(n) {}
+    explicit GrandChild(::tpy::param_val_or_ref_t<T> v, int32_t e, std::string_view n);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GrandChild";
 };
 
@@ -78,6 +69,28 @@ inline std::ostream& operator<<(std::ostream& os, const GrandChild<T, N>& obj) {
     ::tpy::print_object_default(os, "GrandChild", obj);
     return os;
 }
+
+
+// def __init__(self, v: T) -> None:
+//     self.value = v
+template<typename T, std::size_t N>
+inline Base<T, N>::Base(::tpy::readonly_form_t<T> v) : value(v) {}
+
+// def __init__(self, v: T, e: int32) -> None:
+//     super().__init__(v)
+//     self.extra = e
+template<typename T, std::size_t N>
+inline Child<T, N>::Child(::tpy::param_val_or_ref_t<T> v, int32_t e)
+    : Base<T, N>(v),
+      extra(e) {}
+
+// def __init__(self, v: T, e: int32, n: str) -> None:
+//     super().__init__(v, e)
+//     self.name = n
+template<typename T, std::size_t N>
+inline GrandChild<T, N>::GrandChild(::tpy::param_val_or_ref_t<T> v, int32_t e, std::string_view n)
+    : Child<T, N>(v, e),
+      name(n) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

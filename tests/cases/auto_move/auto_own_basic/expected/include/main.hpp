@@ -42,24 +42,14 @@ struct Pair {
     T second_val;
 
     // def __init__(self, a: T, b: T) -> None:
-    //     self.first_val = copy(a)
-    //     self.second_val = copy(b)
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b)
-        : first_val(a),
-          second_val(b) {}
+    explicit Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b);
 
     // def first(self: auto_own[Self]) -> auto_own[T]:
-    //     return self.first_val
-    ::tpy::val_or_ref_t<T> first() & {
-        return this->first_val;
-    }
+    ::tpy::val_or_ref_t<T> first() &;
 
     // def first(self: auto_own[Self]) -> auto_own[T]:
-    //     return self.first_val
-    ::tpy::own_return_t<T> first() && {
-        return std::move(this->first_val);
-    }
+    ::tpy::own_return_t<T> first() &&;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -73,5 +63,28 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
 // def __init__(self, val: int32) -> None:
 //     self.val = val
 inline Node::Node(int32_t val) : val(val) {}
+
+// def __init__(self, a: T, b: T) -> None:
+//     self.first_val = copy(a)
+//     self.second_val = copy(b)
+template<typename T>
+inline Pair<T>::Pair(::tpy::readonly_form_t<T> a, ::tpy::readonly_form_t<T> b)
+    : first_val(a),
+      second_val(b) {}
+
+// def first(self: auto_own[Self]) -> auto_own[T]:
+//     return self.first_val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Pair<T>::first() & {
+    return this->first_val;
+}
+
+// def first(self: auto_own[Self]) -> auto_own[T]:
+//     return self.first_val
+template<typename T>
+inline ::tpy::own_return_t<T> Pair<T>::first() && {
+    return std::move(this->first_val);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

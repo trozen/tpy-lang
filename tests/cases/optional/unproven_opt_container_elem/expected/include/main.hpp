@@ -149,13 +149,9 @@ struct Bag {
     // def __getitem__(self, i: int32) -> P:
     const P& __getitem__(int32_t i) const;
 
-    const P& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const P& operator[](int32_t i) const;
 
-    P& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    P& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -319,6 +315,14 @@ inline P& Bag::__getitem__(int32_t i) {
 //     return self.items[i]
 inline const P& Bag::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->items, i);
+}
+
+inline const P& Bag::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline P& Bag::operator[](int32_t i) {
+    return __getitem__(i);
 }
 
 // def __init__(self) -> None:

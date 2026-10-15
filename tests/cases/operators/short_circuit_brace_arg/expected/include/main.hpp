@@ -134,13 +134,8 @@ struct Boxed {
     int64_t n;
 
     // def __init__(self, o: list[int64]) -> None:
-    //     o.append(4)
-    //     self.n = o[0]
     Boxed() = default;
-    explicit Boxed(std::vector<int64_t>& o) {
-        o.push_back(4);
-        this->n = ::tpy::__getitem__(o, 0);
-    }
+    explicit Boxed(std::vector<int64_t>& o);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
 };
 
@@ -245,6 +240,16 @@ inline Holder::Holder(std::vector<int64_t>& o) {
 // def __init__(self) -> None:
 //     self.tag = 0
 inline Bx::Bx() : tag(0) {}
+
+// def __init__(self, o: list[int64]) -> None:
+//     o.append(4)
+//     self.n = o[0]
+template<typename T>
+inline Boxed<T>::Boxed(std::vector<int64_t>& o) {
+    o.push_back(4);
+    this->n = ::tpy::__getitem__(o, 0);
+}
+
 // def take_any[T](o: T) -> int64:
 //     return 1
 template<typename T>

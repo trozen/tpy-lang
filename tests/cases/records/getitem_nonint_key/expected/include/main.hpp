@@ -29,9 +29,7 @@ struct Scores {
     // def __getitem__(self, key: str) -> int32:
     int32_t __getitem__(std::string_view key) const;
 
-    int32_t operator[](std::string_view key) const {
-        return __getitem__(key);
-    }
+    int32_t operator[](std::string_view key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Scores";
 };
 
@@ -57,6 +55,10 @@ inline int32_t Scores::__getitem__(std::string_view key) const {
         return this->_a;
     }
     return this->_b;
+}
+
+inline int32_t Scores::operator[](std::string_view key) const {
+    return __getitem__(key);
 }
 void __tpy_init();
 } // namespace tpyapp::main

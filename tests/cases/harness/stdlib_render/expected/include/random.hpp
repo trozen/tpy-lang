@@ -132,43 +132,13 @@ struct Random {
     // def randbytes(self, n: int32) -> bytes:
     ::tpy::Bytes randbytes(int32_t n);
 
-    // # ---------- Sequence helpers ----------
     // def choice[T](self, seq: list[T]) -> T:
-    //     n: int32 = int32(len(seq))
-    //     if n == 0:
-    //         raise IndexError("Cannot choose from an empty sequence")
-    //     return copy(seq[int32(self._randbelow(uint32(n)))])
     template<typename T>
-    ::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq) {
-        int32_t n = ::tpy::__len__(seq);
-        if ((n == 0)) {
-            throw ::tpy::IndexError("Cannot choose from an empty sequence");
-        }
-        return T(::tpy::__getitem__(seq, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(n)))));
-    }
+    ::tpy::val_or_ref_t<T> choice(const std::vector<T>& seq);
 
     // def shuffle[T](self, seq: list[T]) -> None:
-    //     # Fisher-Yates / Durstenfeld in place. Matches CPython's
-    //     # random.shuffle MT call sequence (one _randbelow(i+1) per step,
-    //     # i from len-1 down to 1).
-    //     i: int32 = int32(len(seq)) - 1
-    //     while i > 0:
-    //         j: int32 = int32(self._randbelow(uint32(i + 1)))
-    //         tmp: T = copy(seq[i])
-    //         seq[i] = copy(seq[j])
-    //         seq[j] = tmp
-    //         i -= 1
     template<typename T>
-    void shuffle(std::vector<T>& seq) {
-        int32_t i = (::tpy::sub_check<int32_t>(::tpy::__len__(seq), 1));
-        while ((i > 0)) {
-            int32_t j = ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>((::tpy::add_check<int32_t>(i, 1)))));
-            T tmp = T(::tpy::__getitem__(seq, i));
-            ::tpy::__setitem__(seq, i, T(::tpy::__getitem__(seq, j)));
-            ::tpy::__setitem__(seq, j, std::move(tmp));
-            i = ::tpy::sub_check<int32_t>(i, 1);
-        }
-    }
+    void shuffle(std::vector<T>& seq);
 
     // def uniform(self, a: float, b: float) -> float:
     double uniform(double a, double b);
@@ -388,6 +358,45 @@ inline double Random::betavariate(double alpha, double beta) {
     }
     return (::tpy::truediv(y, ((y) + (this->gammavariate(beta, 1.0)))));
 }
+
+// # ---------- Sequence helpers ----------
+// def choice[T](self, seq: list[T]) -> T:
+//     n: int32 = int32(len(seq))
+//     if n == 0:
+//         raise IndexError("Cannot choose from an empty sequence")
+//     return copy(seq[int32(self._randbelow(uint32(n)))])
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Random::choice(const std::vector<T>& seq) {
+    int32_t n = ::tpy::__len__(seq);
+    if ((n == 0)) {
+        throw ::tpy::IndexError("Cannot choose from an empty sequence");
+    }
+    return T(::tpy::__getitem__(seq, ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>(n)))));
+}
+
+// def shuffle[T](self, seq: list[T]) -> None:
+//     # Fisher-Yates / Durstenfeld in place. Matches CPython's
+//     # random.shuffle MT call sequence (one _randbelow(i+1) per step,
+//     # i from len-1 down to 1).
+//     i: int32 = int32(len(seq)) - 1
+//     while i > 0:
+//         j: int32 = int32(self._randbelow(uint32(i + 1)))
+//         tmp: T = copy(seq[i])
+//         seq[i] = copy(seq[j])
+//         seq[j] = tmp
+//         i -= 1
+template<typename T>
+inline void Random::shuffle(std::vector<T>& seq) {
+    int32_t i = (::tpy::sub_check<int32_t>(::tpy::__len__(seq), 1));
+    while ((i > 0)) {
+        int32_t j = ::tpy::int_cast_check<int32_t>(this->_randbelow(::tpy::int_cast_check<uint32_t>((::tpy::add_check<int32_t>(i, 1)))));
+        T tmp = T(::tpy::__getitem__(seq, i));
+        ::tpy::__setitem__(seq, i, T(::tpy::__getitem__(seq, j)));
+        ::tpy::__setitem__(seq, j, std::move(tmp));
+        i = ::tpy::sub_check<int32_t>(i, 1);
+    }
+}
+
 // def choice[T](seq: list[T]) -> T:
 //     return _inst.choice(seq)
 template<typename T>

@@ -272,9 +272,8 @@ struct Box {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
-    //     self.items = items
     Box() = default;
-    explicit Box(std::vector<T>&& items) : items(std::move(items)) {}
+    explicit Box(std::vector<T>&& items);
 
     // def __iter__(self) -> Iterator[T]:
     //     return iter(self.items)
@@ -780,6 +779,12 @@ inline std::vector<std::string> Letters::upper() const {
 inline std::vector<std::string> Letters::listed() const {
     return ::tpy::construct<std::vector<std::string>>((*this));
 }
+
+// def __init__(self, items: Own[list[T]]) -> None:
+//     self.items = items
+template<typename T>
+inline Box<T>::Box(std::vector<T>&& items) : items(std::move(items)) {}
+
 // def show(xs: Iterable[str]) -> None:
 //     # an Iterable param handed to list()
 //     print("show", list(xs))

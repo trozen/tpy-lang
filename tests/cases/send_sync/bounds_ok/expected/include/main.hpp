@@ -24,9 +24,8 @@ struct Channel {
     T item;
 
     // def __init__(self, item: T) -> None:
-    //     self.item = item
     Channel() = default;
-    explicit Channel(::tpy::readonly_form_t<T> item) : item(item) {}
+    explicit Channel(::tpy::readonly_form_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Channel";
 };
 
@@ -35,6 +34,12 @@ inline std::ostream& operator<<(std::ostream& os, const Channel<T>& obj) {
     ::tpy::print_object_default(os, "Channel", obj);
     return os;
 }
+
+
+// def __init__(self, item: T) -> None:
+//     self.item = item
+template<typename T>
+inline Channel<T>::Channel(::tpy::readonly_form_t<T> item) : item(item) {}
 
 // def use[T: Send](x: T) -> int32:
 //     return 1

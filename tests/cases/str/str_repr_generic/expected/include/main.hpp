@@ -43,21 +43,14 @@ struct Wrapper {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> value);
 
     // def __str__(self) -> str:
-    //     return f"Wrapper({self.value})"
-    std::string __str__() const {
-        return std::format("Wrapper({})", ::tpy::__str__(this->value));
-    }
+    std::string __str__() const;
 
     // def __repr__(self) -> str:
-    //     return f"Wrapper(value={self.value})"
-    std::string __repr__() const {
-        return std::format("Wrapper(value={})", ::tpy::__str__(this->value));
-    }
+    std::string __repr__() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -80,5 +73,25 @@ inline Pair::Pair(int32_t x, int32_t y)
 inline std::string Pair::__str__() const {
     return std::format("({}, {})", this->x, this->y);
 }
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<::tpystd::tpy::Stringable T>
+inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def __str__(self) -> str:
+//     return f"Wrapper({self.value})"
+template<::tpystd::tpy::Stringable T>
+inline std::string Wrapper<T>::__str__() const {
+    return std::format("Wrapper({})", ::tpy::__str__(this->value));
+}
+
+// def __repr__(self) -> str:
+//     return f"Wrapper(value={self.value})"
+template<::tpystd::tpy::Stringable T>
+inline std::string Wrapper<T>::__repr__() const {
+    return std::format("Wrapper(value={})", ::tpy::__str__(this->value));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

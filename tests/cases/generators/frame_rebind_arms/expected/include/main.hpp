@@ -214,20 +214,14 @@ struct GCtx {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.v = v
     GCtx() = default;
-    explicit GCtx(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+    explicit GCtx(::tpy::own_param_t<T> v);
 
     // def __enter__(self) -> T:
-    //     return self.v
-    ::tpy::val_or_ref_t<T> __enter__() {
-        return this->v;
-    }
+    ::tpy::val_or_ref_t<T> __enter__();
 
     // def __exit__(self, kind, value, tb) -> None:
-    //     pass
-    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
-    }
+    void __exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GCtx";
 };
 
@@ -1582,5 +1576,24 @@ inline Cl& ClCtx::__enter__() {
 //     pass
 inline void ClCtx::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
 }
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline GCtx<T>::GCtx(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
+// def __enter__(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> GCtx<T>::__enter__() {
+    return this->v;
+}
+
+// def __exit__(self, kind, value, tb) -> None:
+//     pass
+template<typename T>
+inline void GCtx<T>::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

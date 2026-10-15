@@ -79,15 +79,11 @@ struct GR {
     T t;
 
     // def __init__(self, t: Own[T]) -> None:
-    //     self.t = t
     GR() = default;
-    explicit GR(::tpy::own_param_t<T> t) : t(std::move(t)) {}
+    explicit GR(::tpy::own_param_t<T> t);
 
     // def absorb(self, xs: list[int32]) -> None:
-    //     xs.append(7)
-    void absorb(std::vector<int32_t>& xs) const {
-        xs.push_back(7);
-    }
+    void absorb(std::vector<int32_t>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GR";
 };
 
@@ -122,6 +118,19 @@ inline Filler::Filler(std::vector<int32_t>& xs) {
     xs.push_back(4);
     this->n = ::tpy::__len__(xs);
 }
+
+// def __init__(self, t: Own[T]) -> None:
+//     self.t = t
+template<typename T>
+inline GR<T>::GR(::tpy::own_param_t<T> t) : t(std::move(t)) {}
+
+// def absorb(self, xs: list[int32]) -> None:
+//     xs.append(7)
+template<typename T>
+inline void GR<T>::absorb(std::vector<int32_t>& xs) const {
+    xs.push_back(7);
+}
+
 // def gen_take[T](x: T, xs: list[int32]) -> None:
 //     print(x)
 //     xs.append(6)

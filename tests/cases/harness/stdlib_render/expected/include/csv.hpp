@@ -82,39 +82,14 @@ struct _Writer {
     //     doublequote: bool,
     //     lineterminator: str,
     // ) -> None:
-    //     self._fp = fp
-    //     self._delimiter = delimiter
-    //     self._quotechar = quotechar
-    //     self._doublequote = doublequote
-    //     self._lineterminator = lineterminator
     _Writer() = default;
-    explicit _Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator)
-        : _fp(&fp),
-          _delimiter(delimiter),
-          _quotechar(quotechar),
-          _doublequote(doublequote),
-          _lineterminator(lineterminator) {}
+    explicit _Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator);
 
     // def writerow(self, row: list[str]) -> None:
-    //     self._fp.write(_format_row(
-    //         row, self._delimiter, self._quotechar,
-    //         self._doublequote, self._lineterminator))
-    void writerow(const std::vector<std::string>& row) const {
-        ::tpy::deref_check(this->_fp).write(::tpystd::csv::_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
-    }
+    void writerow(const std::vector<std::string>& row) const;
 
     // def writerows(self, rows: list[list[str]]) -> None:
-    //     for row in rows:
-    //         self.writerow(row)
-    void writerows(const std::vector<std::vector<std::string>>& rows) const {
-        auto& __obj_0 = rows;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& row = *__beg_0;
-            this->writerow(row);
-        }
-    }
+    void writerows(const std::vector<std::vector<std::string>>& rows) const;
     static constexpr std::string_view __tpy_class_name__ = "csv._Writer";
 };
 
@@ -150,28 +125,8 @@ struct DictReader {
     //     doublequote: bool = True,
     //     skipinitialspace: bool = False,
     // ) -> None:
-    //     self._fp = fp
-    //     self._delimiter = delimiter
-    //     self._quotechar = quotechar
-    //     self._doublequote = doublequote
-    //     self._skipinitialspace = skipinitialspace
-    //     # Initialize unconditionally (empty means "derive from header") so the
-    //     # field is seen as set before the ctor body; override if given.
-    //     self.fieldnames = []
-    //     if fieldnames is not None:
-    //         self.fieldnames = fieldnames
     DictReader() = default;
-    explicit DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<std::vector<std::string>> fieldnames = std::nullopt, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, bool skipinitialspace = false)
-        : _fp(&fp),
-          _delimiter(delimiter),
-          _quotechar(quotechar),
-          _doublequote(doublequote),
-          _skipinitialspace(skipinitialspace),
-          fieldnames(std::vector<std::string>{}) {
-        if ((fieldnames.has_value())) {
-            this->fieldnames = std::move((*fieldnames));
-        }
-    }
+    explicit DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<std::vector<std::string>> fieldnames = std::nullopt, std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, bool skipinitialspace = false);
 
     __gen_DictReader___iter__<W> __iter__();
     static constexpr std::string_view __tpy_class_name__ = "csv.DictReader";
@@ -204,74 +159,17 @@ struct DictWriter {
     //     doublequote: bool = True,
     //     lineterminator: str = "\r\n",
     // ) -> None:
-    //     self._w = _Writer(fp, delimiter, quotechar, doublequote, lineterminator)
-    //     self.fieldnames = fieldnames
-    //     self._restval = restval
     DictWriter() = default;
-    explicit DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval = "", std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, std::string_view lineterminator = "\r\n")
-        : _w(_Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator)),
-          fieldnames(std::move(fieldnames)),
-          _restval(restval) {}
+    explicit DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval = "", std::string_view delimiter = ",", std::string_view quotechar = "\"", bool doublequote = true, std::string_view lineterminator = "\r\n");
 
     // def writeheader(self) -> None:
-    //     self._w.writerow(self.fieldnames)
-    void writeheader() const {
-        this->_w.writerow(this->fieldnames);
-    }
+    void writeheader() const;
 
     // def writerow(self, row: dict[str, str]) -> None:
-    //     # CPython's DictWriter defaults: extrasaction='raise' (a key not in
-    //     # fieldnames is a ValueError) and restval='' (a missing field is
-    //     # written as restval). extrasaction='ignore' is not configurable yet.
-    //     #
-    //     # Index loop, not `for name in self.fieldnames`: the for-loop var binds
-    //     # the element as a string_view, which dict.__contains__/get reject (they
-    //     # take const str&); the subscript `self.fieldnames[i]` binds a str&.
-    //     ordered: list[str] = []
-    //     matched: int32 = 0
-    //     i: int32 = 0
-    //     m: int32 = len(self.fieldnames)
-    //     while i < m:
-    //         name = self.fieldnames[i]
-    //         if name in row:
-    //             matched += 1
-    //         ordered.append(row.get(name, self._restval))
-    //         i += 1
-    //     # row carries a key not in fieldnames (assuming unique fieldnames).
-    //     if matched < len(row):
-    //         raise ValueError("dict contains fields not in fieldnames")
-    //     self._w.writerow(ordered)
-    void writerow(const ::tpy::ordered_map<std::string, std::string>& row) const {
-        std::vector<std::string> ordered = std::vector<std::string>{};
-        int32_t matched = 0;
-        int32_t i = 0;
-        int32_t m = ::tpy::__len__(this->fieldnames);
-        while ((i < m)) {
-            std::string name = ::tpy::__getitem__(this->fieldnames, i);
-            if ((row.contains(name))) {
-                matched = ::tpy::add_check<int32_t>(matched, 1);
-            }
-            ordered.push_back(::tpy::dict_get_default(row, name, this->_restval));
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        if ((matched < ::tpy::__len__(row))) {
-            throw ::tpy::ValueError("dict contains fields not in fieldnames");
-        }
-        this->_w.writerow(ordered);
-    }
+    void writerow(const ::tpy::ordered_map<std::string, std::string>& row) const;
 
     // def writerows(self, rows: list[dict[str, str]]) -> None:
-    //     for row in rows:
-    //         self.writerow(row)
-    void writerows(const std::vector<::tpy::ordered_map<std::string, std::string>>& rows) const {
-        auto& __obj_0 = rows;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& row = *__beg_0;
-            this->writerow(row);
-        }
-    }
+    void writerows(const std::vector<::tpy::ordered_map<std::string, std::string>>& rows) const;
     static constexpr std::string_view __tpy_class_name__ = "csv.DictWriter";
 };
 
@@ -875,6 +773,167 @@ std::expected<::tpy::ordered_map<std::string, std::string>, ::tpy::StopIteration
 template <::tpystd::tpy::Readable W>
 inline __gen_DictReader___iter__<W> DictReader<W>::__iter__() {
     return __gen_DictReader___iter__<W>(*this);
+}
+
+
+// def __init__(
+//     self,
+//     fp: W,
+//     delimiter: str,
+//     quotechar: str,
+//     doublequote: bool,
+//     lineterminator: str,
+// ) -> None:
+//     self._fp = fp
+//     self._delimiter = delimiter
+//     self._quotechar = quotechar
+//     self._doublequote = doublequote
+//     self._lineterminator = lineterminator
+template<::tpystd::tpy::Writable W>
+inline _Writer<W>::_Writer(::tpy::param_val_or_ref_t<W> fp, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator)
+    : _fp(&fp),
+      _delimiter(delimiter),
+      _quotechar(quotechar),
+      _doublequote(doublequote),
+      _lineterminator(lineterminator) {}
+
+// def writerow(self, row: list[str]) -> None:
+//     self._fp.write(_format_row(
+//         row, self._delimiter, self._quotechar,
+//         self._doublequote, self._lineterminator))
+template<::tpystd::tpy::Writable W>
+inline void _Writer<W>::writerow(const std::vector<std::string>& row) const {
+    ::tpy::deref_check(this->_fp).write(::tpystd::csv::_format_row(row, this->_delimiter, this->_quotechar, this->_doublequote, this->_lineterminator));
+}
+
+// def writerows(self, rows: list[list[str]]) -> None:
+//     for row in rows:
+//         self.writerow(row)
+template<::tpystd::tpy::Writable W>
+inline void _Writer<W>::writerows(const std::vector<std::vector<std::string>>& rows) const {
+    auto& __obj_0 = rows;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& row = *__beg_0;
+        this->writerow(row);
+    }
+}
+
+// def __init__(
+//     self,
+//     fp: W,
+//     fieldnames: Own[list[str]] | None = None,
+//     *,
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     skipinitialspace: bool = False,
+// ) -> None:
+//     self._fp = fp
+//     self._delimiter = delimiter
+//     self._quotechar = quotechar
+//     self._doublequote = doublequote
+//     self._skipinitialspace = skipinitialspace
+//     # Initialize unconditionally (empty means "derive from header") so the
+//     # field is seen as set before the ctor body; override if given.
+//     self.fieldnames = []
+//     if fieldnames is not None:
+//         self.fieldnames = fieldnames
+template<::tpystd::tpy::Readable W>
+inline DictReader<W>::DictReader(::tpy::param_val_or_ref_t<W> fp, std::optional<std::vector<std::string>> fieldnames, std::string_view delimiter, std::string_view quotechar, bool doublequote, bool skipinitialspace)
+    : _fp(&fp),
+      _delimiter(delimiter),
+      _quotechar(quotechar),
+      _doublequote(doublequote),
+      _skipinitialspace(skipinitialspace),
+      fieldnames(std::vector<std::string>{}) {
+    if ((fieldnames.has_value())) {
+        this->fieldnames = std::move((*fieldnames));
+    }
+}
+
+// def __init__(
+//     self,
+//     fp: W,
+//     fieldnames: Own[list[str]],
+//     *,
+//     restval: str = "",
+//     delimiter: str = ",",
+//     quotechar: str = '"',
+//     doublequote: bool = True,
+//     lineterminator: str = "\r\n",
+// ) -> None:
+//     self._w = _Writer(fp, delimiter, quotechar, doublequote, lineterminator)
+//     self.fieldnames = fieldnames
+//     self._restval = restval
+template<::tpystd::tpy::Writable W>
+inline DictWriter<W>::DictWriter(::tpy::param_val_or_ref_t<W> fp, std::vector<std::string>&& fieldnames, std::string_view restval, std::string_view delimiter, std::string_view quotechar, bool doublequote, std::string_view lineterminator)
+    : _w(_Writer<W>(fp, delimiter, quotechar, doublequote, lineterminator)),
+      fieldnames(std::move(fieldnames)),
+      _restval(restval) {}
+
+// def writeheader(self) -> None:
+//     self._w.writerow(self.fieldnames)
+template<::tpystd::tpy::Writable W>
+inline void DictWriter<W>::writeheader() const {
+    this->_w.writerow(this->fieldnames);
+}
+
+// def writerow(self, row: dict[str, str]) -> None:
+//     # CPython's DictWriter defaults: extrasaction='raise' (a key not in
+//     # fieldnames is a ValueError) and restval='' (a missing field is
+//     # written as restval). extrasaction='ignore' is not configurable yet.
+//     #
+//     # Index loop, not `for name in self.fieldnames`: the for-loop var binds
+//     # the element as a string_view, which dict.__contains__/get reject (they
+//     # take const str&); the subscript `self.fieldnames[i]` binds a str&.
+//     ordered: list[str] = []
+//     matched: int32 = 0
+//     i: int32 = 0
+//     m: int32 = len(self.fieldnames)
+//     while i < m:
+//         name = self.fieldnames[i]
+//         if name in row:
+//             matched += 1
+//         ordered.append(row.get(name, self._restval))
+//         i += 1
+//     # row carries a key not in fieldnames (assuming unique fieldnames).
+//     if matched < len(row):
+//         raise ValueError("dict contains fields not in fieldnames")
+//     self._w.writerow(ordered)
+template<::tpystd::tpy::Writable W>
+inline void DictWriter<W>::writerow(const ::tpy::ordered_map<std::string, std::string>& row) const {
+    std::vector<std::string> ordered = std::vector<std::string>{};
+    int32_t matched = 0;
+    int32_t i = 0;
+    int32_t m = ::tpy::__len__(this->fieldnames);
+    while ((i < m)) {
+        std::string name = ::tpy::__getitem__(this->fieldnames, i);
+        if ((row.contains(name))) {
+            matched = ::tpy::add_check<int32_t>(matched, 1);
+        }
+        ordered.push_back(::tpy::dict_get_default(row, name, this->_restval));
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    if ((matched < ::tpy::__len__(row))) {
+        throw ::tpy::ValueError("dict contains fields not in fieldnames");
+    }
+    this->_w.writerow(ordered);
+}
+
+// def writerows(self, rows: list[dict[str, str]]) -> None:
+//     for row in rows:
+//         self.writerow(row)
+template<::tpystd::tpy::Writable W>
+inline void DictWriter<W>::writerows(const std::vector<::tpy::ordered_map<std::string, std::string>>& rows) const {
+    auto& __obj_0 = rows;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& row = *__beg_0;
+        this->writerow(row);
+    }
 }
 
 // def writer[W: Writable](

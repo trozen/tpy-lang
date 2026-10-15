@@ -244,14 +244,10 @@ struct Bag {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    Bag() : items(std::vector<T>{}) {}
+    Bag();
 
     // def put(self, v: Own[T]) -> None:
-    //     self.items.append(v)
-    void put(::tpy::own_param_t<T> v) {
-        this->items.push_back(std::move(v));
-    }
+    void put(::tpy::own_param_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -320,11 +316,8 @@ struct ElemReader {
     ElemReader();
 
     // def take(self, p: Pinger) -> int32:
-    //     return p.ping()
     template<Pinger T_p>
-    int32_t take(const T_p& p) const {
-        return p.ping();
-    }
+    int32_t take(const T_p& p) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ElemReader";
 };
 
@@ -521,6 +514,26 @@ inline int32_t Elem::ping() const {
 //     pass
 inline ElemReader::ElemReader() {
 }
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T>
+inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+
+// def put(self, v: Own[T]) -> None:
+//     self.items.append(v)
+template<typename T>
+inline void Bag<T>::put(::tpy::own_param_t<T> v) {
+    this->items.push_back(std::move(v));
+}
+
+// def take(self, p: Pinger) -> int32:
+//     return p.ping()
+template<Pinger T_p>
+inline int32_t ElemReader::take(const T_p& p) const {
+    return p.ping();
+}
+
 // def via_proto(tag: str, sk: Sink, pv: list[int32],
 //               opt: Optional[list[int32]]) -> None:
 //     # Structural protocol receiver.

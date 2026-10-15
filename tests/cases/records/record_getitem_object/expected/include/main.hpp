@@ -53,19 +53,11 @@ struct PointList {
     // def __getitem__(self, index: int32) -> Point:
     const Point& __getitem__(int32_t index) const;
 
-    const Point& operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    const Point& operator[](int32_t index) const;
 
-    Point& operator[](int32_t index) {
-        return __getitem__(index);
-    }
+    Point& operator[](int32_t index);
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.PointList";
 };
 
@@ -104,6 +96,20 @@ inline Point& PointList::__getitem__(int32_t index) {
 //     return self.data[index]
 inline const Point& PointList::__getitem__(int32_t index) const {
     return ::tpy::__getitem__(this->data, index);
+}
+
+inline const Point& PointList::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+inline Point& PointList::operator[](int32_t index) {
+    return __getitem__(index);
+}
+
+inline size_t PointList::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::main

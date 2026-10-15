@@ -59,11 +59,7 @@ struct Bag {
     // def __len__(self) -> int:
     ::tpy::BigInt __len__() const;
 
-    size_t size() const {
-        size_t __sz;
-        if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return __sz;
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -107,6 +103,12 @@ inline Bag::Bag(const ::tpy::BigInt& n) : n(n) {}
 //     return self.n
 inline ::tpy::BigInt Bag::__len__() const {
     return this->n;
+}
+
+inline size_t Bag::size() const {
+    size_t __sz;
+    if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return __sz;
 }
 
 // def __init__(self, v: int):

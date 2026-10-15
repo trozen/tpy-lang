@@ -21,21 +21,14 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // def take(self) -> Own[T]:
-    //     return copy(self.value)
-    ::tpy::own_return_t<T> take() const {
-        return T(this->value);
-    }
+    ::tpy::own_return_t<T> take() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -43,6 +36,26 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::get() {
+    return this->value;
+}
+
+// def take(self) -> Own[T]:
+//     return copy(self.value)
+template<typename T>
+inline ::tpy::own_return_t<T> Box<T>::take() const {
+    return T(this->value);
 }
 
 void __tpy_init();

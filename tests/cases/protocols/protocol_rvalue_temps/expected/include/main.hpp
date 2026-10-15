@@ -59,13 +59,9 @@ struct BoxContainer {
     // def __getitem__(self, i: int32) -> IntBox:
     const IntBox& __getitem__(int32_t i) const;
 
-    const IntBox& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const IntBox& operator[](int32_t i) const;
 
-    IntBox& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    IntBox& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.BoxContainer";
 };
 
@@ -101,6 +97,14 @@ inline IntBox& BoxContainer::__getitem__(int32_t i) {
 //     return self.items[i]
 inline const IntBox& BoxContainer::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->items, i);
+}
+
+inline const IntBox& BoxContainer::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline IntBox& BoxContainer::operator[](int32_t i) {
+    return __getitem__(i);
 }
 // def show(h: HasValue) -> None:
 //     print(h.get())

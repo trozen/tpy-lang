@@ -26,9 +26,8 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
-    //     self.val = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
 
     template <typename U>
     __coro_Box_with_label<T, U> with_label(::tpy::param_val_or_ref_t<U> label) const;
@@ -91,6 +90,12 @@ template <typename U>
 inline __coro_Box_with_label<T, U> Box<T>::with_label(::tpy::param_val_or_ref_t<U> label) const {
     return __coro_Box_with_label<T, U>(*this, label);
 }
+
+
+// def __init__(self, v: T) -> None:
+//     self.val = v
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : val(v) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

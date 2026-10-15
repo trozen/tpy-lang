@@ -61,27 +61,15 @@ struct Stack {
     std::string label;
 
     // def __init__(self, label: str) -> None:
-    //     self.items = []
-    //     self.label = label
     Stack() = default;
-    explicit Stack(std::string_view label)
-        : items(std::vector<T>{}),
-          label(label) {}
+    explicit Stack(std::string_view label);
 
     // def push(self, item: T) -> Self:
-    //     self.items.append(item)
-    //     return self
-    Stack<T>& push(::tpy::param_val_or_ref_t<T> item) {
-        this->items.push_back(::tpy::param_to_storage<T>(item));
-        return (*this);
-    }
+    Stack<T>& push(::tpy::param_val_or_ref_t<T> item);
 
     // @readonly
     // def describe(self) -> str:
-    //     return self.label
-    std::string describe() const {
-        return this->label;
-    }
+    std::string describe() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Stack";
 };
 
@@ -144,5 +132,31 @@ inline const Builder* Builder::find_match(int32_t target) const {
     }
     return nullptr;
 }
+
+// def __init__(self, label: str) -> None:
+//     self.items = []
+//     self.label = label
+template<typename T>
+inline Stack<T>::Stack(std::string_view label)
+    : items(std::vector<T>{}),
+      label(label) {}
+
+// def push(self, item: T) -> Self:
+//     self.items.append(item)
+//     return self
+template<typename T>
+inline Stack<T>& Stack<T>::push(::tpy::param_val_or_ref_t<T> item) {
+    this->items.push_back(::tpy::param_to_storage<T>(item));
+    return (*this);
+}
+
+// @readonly
+// def describe(self) -> str:
+//     return self.label
+template<typename T>
+inline std::string Stack<T>::describe() const {
+    return this->label;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

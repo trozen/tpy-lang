@@ -33,15 +33,9 @@ struct Box {
 
     std::expected<int32_t, ::tpy::StopIteration> __next__();
 
-    int64_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int64_t operator[](int32_t i) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -65,15 +59,9 @@ struct Slot {
 
     void __delitem__(int32_t i);
 
-    int64_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int64_t operator[](int32_t i) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slot";
 };
 
@@ -130,6 +118,16 @@ inline std::expected<int32_t, ::tpy::StopIteration> Box::__next__() {
     return ::tpy::make_unexpected(::tpy::StopIteration{});
 }
 
+inline int64_t Box::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline size_t Box::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
+}
+
 inline Slot::Slot(int64_t value)
     : value(value),
       filled(true) {}
@@ -152,6 +150,16 @@ inline void Slot::__setitem__(int32_t i, int64_t value) {
 
 inline void Slot::__delitem__(int32_t i) {
     this->filled = false;
+}
+
+inline int64_t Slot::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline size_t Slot::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::class_container

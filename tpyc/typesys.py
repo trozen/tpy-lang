@@ -18,7 +18,7 @@ from typing import Any, Callable, Collection, Iterable, Iterator, NamedTuple, Op
 
 from .module_names import public_module_name
 from .compilation_context import get_current_compiler, require_current_compiler
-from .identity_map import IdentityMap
+from .identity_map import IdentityMap, IdentitySet
 from .symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 
 if TYPE_CHECKING:
@@ -477,6 +477,20 @@ class ValueForm(Enum):
                                #   union wrapper): storage `T`, borrow `T&`.
 
 
+class ReturnPassing(Enum):
+    """How a type is returned in the generated C++ -- the convention
+    `to_cpp_return` / `to_cpp_return_const` spell, as a fact a consumer can
+    read without parsing the spelling (`ParamPassing`'s sibling)."""
+    VALUE = "value"          # by value in the type's storage form (`to_cpp`)
+    REFERENCE = "reference"  # `T&` / `const T&`
+    POINTER = "pointer"      # a borrow pointer (`T*`, `Union<A*, B*>`)
+    ELEMENTS = "elements"    # a `std::tuple` (or an optional one) of each
+                             #   inner type's return form, a reference as a
+                             #   pointer
+    VIEW = "view"            # a distinct view (`std::string_view`)
+    TRAIT = "trait"          # a template-dependent form (`val_or_ref_t<T>`)
+
+
 @dataclass(frozen=True)
 class TpyType:
     """Base class for all TurboPython types."""
@@ -664,9 +678,9 @@ class TpyType:
         Object types return by reference (T&) to avoid hidden copies.
         Use Own[T] when returning newly constructed objects by value.
         """
-        if self.is_value_type():
-            return self.to_cpp()
-        return f"{self.to_cpp()}&"
+        if self.return_passing() is ReturnPassing.REFERENCE:
+            return f"{self.to_cpp()}&"
+        return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
         """Return the C++ representation for const method return types.
@@ -675,9 +689,17 @@ class TpyType:
         Object types return by const reference (const T&) since the method
         cannot return a mutable reference to a member of a const object.
         """
+        if self.return_passing() is ReturnPassing.REFERENCE:
+            return f"const {self.to_cpp()}&"
+        return self.to_cpp()
+
+    def return_passing(self) -> ReturnPassing:
+        """The passing convention of this type's return form -- the fact
+        `to_cpp_return` and `to_cpp_return_const` spell. Every class
+        overriding the return render overrides this beside it."""
         if self.is_value_type():
-            return self.to_cpp()
-        return f"const {self.to_cpp()}&"
+            return ReturnPassing.VALUE
+        return ReturnPassing.REFERENCE
 
     def to_cpp_param_type(self) -> str:
         """Return just the C++ parameter type (no variable name).
@@ -704,6 +726,19 @@ class TpyType:
         if self.is_value_type():
             return ParamPassing.VALUE
         return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
+
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        """The parts this type's storage form (`to_cpp`) holds BY VALUE --
+        what a definition holding that form needs complete; `self` among them
+        is this type's own C++ class. `types_held_by_value` follows the parts
+        down. Base: a class holds itself and its type arguments, a borrowing
+        view (`Span`, `StrView`, ...) none of what it views. A class whose
+        storage form holds its inner types otherwise -- through a pointer, or
+        without a C++ class of its own -- overrides this."""
+        if _is_borrowing_view_type(self):
+            return (self,)
+        return (self,) + tuple(arg for arg in self.type_args
+                               if isinstance(arg, TpyType))
 
     def to_cpp_param(self, name: str) -> str:
         """Return the C++ mutable-context parameter declaration for this type.
@@ -828,6 +863,9 @@ class VoidType(TpyType):
     def to_cpp_return_const(self) -> str:
         return "void"
 
+    def return_passing(self) -> ReturnPassing:
+        return ReturnPassing.VALUE
+
 
 @dataclass(frozen=True)
 class IntLiteralType(TpyType):
@@ -949,14 +987,19 @@ class LiteralType(TpyType):
         value-type bases (int, bool) the base's own return form is already
         right (returned by value).
         """
-        if self.is_str_base():
+        if self.return_passing() is ReturnPassing.VIEW:
             return self.base_type.to_cpp_param_type()  # std::string_view
         return self.base_type.to_cpp_return()
 
     def to_cpp_return_const(self) -> str:
-        if self.is_str_base():
+        if self.return_passing() is ReturnPassing.VIEW:
             return self.base_type.to_cpp_param_type()
         return self.base_type.to_cpp_return_const()
+
+    def return_passing(self) -> ReturnPassing:
+        if self.is_str_base():
+            return ReturnPassing.VIEW
+        return self.base_type.return_passing()
 
     def param_needs_copy_for_reassign(self) -> bool:
         return self.base_type.param_needs_copy_for_reassign()
@@ -1105,7 +1148,7 @@ class TypeParamRef(TpyType):
     def to_cpp_return(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
-        if self.is_value_type():
+        if self.return_passing() is ReturnPassing.VALUE:
             # The trait's value arm, spelled out: a value-bounded T returns T.
             return self.name
         # Use trait-based return type: T for value types, T& for object types
@@ -1114,10 +1157,15 @@ class TypeParamRef(TpyType):
     def to_cpp_return_const(self) -> str:
         if self.kind == TypeParamKind.INT:
             return "std::size_t"
-        if self.is_value_type():
+        if self.return_passing() is ReturnPassing.VALUE:
             return self.name
         # Use trait-based return type: T for value types, const T& for object types
         return f"::tpy::val_or_cref_t<{self.name}>"
+
+    def return_passing(self) -> ReturnPassing:
+        if self.kind == TypeParamKind.INT or self.is_value_type():
+            return ReturnPassing.VALUE
+        return ReturnPassing.TRAIT
 
 
 def is_native_template(td: Optional["TypeDef"]) -> bool:
@@ -1245,6 +1293,21 @@ class NominalType(TpyType):
     def to_cpp_base_name(self) -> str:
         """Return the C++ name without type arguments."""
         return self._cpp_base_name()
+
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        # A structural protocol is a template parameter constrained by its
+        # concept, which must be complete wherever the signature is spelled.
+        if self.is_protocol and not self.is_dynamic_protocol:
+            return (self,)
+        # A generic class TPy emits holds what its fields and bases hold under
+        # the arguments: `Handle[T]` storing a `Ptr[T]` holds no `T`.
+        if self.type_args and self.is_user_record:
+            from tpyc.type_def_registry import type_def_of
+            rec = type_def_of(self).record
+            if not rec.is_native:
+                return (self,) + tuple(
+                    _fields_and_parents_under_args(rec, self.type_args))
+        return super().held_by_value()
 
     def to_cpp(self) -> str:
         if self.is_protocol and not self.is_dynamic_protocol:
@@ -1831,6 +1894,12 @@ class PtrType(TpyType):
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
         return ParamPassing.POINTER
 
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        return ()
+
+    def return_passing(self) -> ReturnPassing:
+        return ReturnPassing.POINTER
+
     def to_cpp(self) -> str:
         # Ptr[None] -> void* (and Ptr[readonly[None]] -> const void*).
         # `void*` is the canonical opaque-pointer idiom in C/C++ and is
@@ -1977,6 +2046,12 @@ class OwnType(TpyType):
             return ParamPassing.TRAIT
         return ParamPassing.OWN
 
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        # `unique_ptr<P>` for a @dynamic P.
+        if is_dyn_protocol(self.wrapped):
+            return ()
+        return (self.wrapped,)
+
     def to_cpp_param(self, name: str) -> str:
         if is_dyn_protocol(self.wrapped):
             return f"std::unique_ptr<{self.wrapped.to_cpp()}> {name}"
@@ -1994,9 +2069,14 @@ class OwnType(TpyType):
         # Lazy dispatch via own_return_t<T>: T for concrete, unique_ptr<T>
         # for abstract @dynamic. Direct `T` would be ill-formed when T
         # monomorphizes to an abstract base.
-        if isinstance(self.wrapped, TypeParamRef):
+        if self.return_passing() is ReturnPassing.TRAIT:
             return f"::tpy::own_return_t<{self.wrapped.to_cpp()}>"
         return self.to_cpp()
+
+    def return_passing(self) -> ReturnPassing:
+        if isinstance(self.wrapped, TypeParamRef):
+            return ReturnPassing.TRAIT
+        return ReturnPassing.VALUE
 
     def get_element_type(self) -> Optional['TpyType']:
         # Forward to wrapped type for Own[list[T]] etc.
@@ -2051,6 +2131,9 @@ class ReadonlyType(TpyType):
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
         return self.wrapped.param_passing(True)
 
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
     def to_cpp_param(self, name: str) -> str:
         return self.wrapped.to_cpp_const_param(name)
 
@@ -2062,6 +2145,9 @@ class ReadonlyType(TpyType):
 
     def to_cpp_return_const(self) -> str:
         return self.wrapped.to_cpp_return_const()
+
+    def return_passing(self) -> ReturnPassing:
+        return self.wrapped.return_passing()
 
     def to_cpp_stored(self) -> str:
         """Readonly non-value types need val_or_ref<const T> for storage
@@ -2322,6 +2408,62 @@ def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
+    """Every class whose complete definition the storage form of `typ`
+    needs: the parts `held_by_value` names, followed down to the classes
+    held themselves."""
+    seen = IdentitySet()
+    # A generic record's parts are built anew under its arguments, so a
+    # self-referential one (`children: list[Tree[T]]`) recurs by value.
+    seen_classes: set['NominalType'] = set()
+
+    def walk(t: 'TpyType') -> Iterator['TpyType']:
+        if isinstance(t, NominalType):
+            if t in seen_classes:
+                return
+            seen_classes.add(t)
+        elif t in seen:
+            return
+        else:
+            seen.add(t)
+        for part in t.held_by_value():
+            if part is t:
+                yield t
+            else:
+                yield from walk(part)
+
+    return walk(typ)
+
+
+def param_types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
+    """Every class whose complete definition a parameter of `typ` needs: its
+    storage parts when it is passed by value in its storage form; a view, a
+    reference, a pointer or a trait holds none."""
+    if typ.param_passing() is ParamPassing.VALUE:
+        yield from types_held_by_value(typ)
+
+
+def borrow_slot_types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
+    """Every class whose complete definition a borrow slot over `typ` needs
+    (`val_or_ref<S>`, S the storage form; `error_return_uses_borrow_slot`):
+    over a type returned by reference it points at that class; over one
+    returned otherwise (a `| None` or a union of classes, a pointer form) S
+    is not that form, and the slot's constructor from S instantiates S."""
+    if typ.return_passing() is not ReturnPassing.REFERENCE:
+        yield from types_held_by_value(typ)
+
+
+def return_types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
+    """Every class whose complete definition `to_cpp_return`'s form of `typ`
+    needs, read from the `return_passing` it spells."""
+    passing = typ.return_passing()
+    if passing is ReturnPassing.VALUE:
+        yield from types_held_by_value(typ)
+    elif passing is ReturnPassing.ELEMENTS:
+        for part in typ.inner_types():
+            yield from return_types_held_by_value(part)
+
+
 def repr_shape(typ: 'TpyType') -> 'TpyType':
     """The representation shape under every access and ownership wrapper
     (`Ref`, `readonly`, `Own`, `Send` / `Sync`), peeled in whatever order
@@ -2413,6 +2555,9 @@ class _MarkerType(TpyType):
     def param_passing(self, signature_const: bool = False) -> 'ParamPassing':
         return self.wrapped.param_passing(signature_const)
 
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        return (self.wrapped,)
+
     def to_cpp_param(self, name: str) -> str:
         return self.wrapped.to_cpp_param(name)
 
@@ -2424,6 +2569,9 @@ class _MarkerType(TpyType):
 
     def to_cpp_return_const(self) -> str:
         return self.wrapped.to_cpp_return_const()
+
+    def return_passing(self) -> ReturnPassing:
+        return self.wrapped.return_passing()
 
     def to_cpp_stored(self) -> str:
         return self.wrapped.to_cpp_stored()
@@ -2635,12 +2783,20 @@ class RefType(TpyType):
         return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return(self) -> str:
-        return self.to_cpp()
+        if self.return_passing() is not ReturnPassing.REFERENCE:
+            return self.wrapped.to_cpp_return()
+        return f"{self.wrapped.to_cpp()}&"
 
     def to_cpp_return_const(self) -> str:
-        if isinstance(self.wrapped, TypeParamRef):
+        if self.return_passing() is not ReturnPassing.REFERENCE:
             return self.wrapped.to_cpp_return_const()
         return f"const {self.wrapped.to_cpp()}&"
+
+    def return_passing(self) -> ReturnPassing:
+        # `to_cpp`'s form: a generic `T` keeps its own return trait.
+        if isinstance(self.wrapped, TypeParamRef):
+            return self.wrapped.return_passing()
+        return ReturnPassing.REFERENCE
 
     def to_cpp_param_type(self) -> str:
         if isinstance(self.wrapped, TypeParamRef):
@@ -2651,6 +2807,10 @@ class RefType(TpyType):
         if isinstance(self.wrapped, TypeParamRef):
             return ParamPassing.TRAIT
         return ParamPassing.CONST_REF if signature_const else ParamPassing.MUT_REF
+
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        # `val_or_ref<T>` in storage.
+        return ()
 
     def to_cpp_param(self, name: str) -> str:
         return f"{self.to_cpp_param_type()} {name}"
@@ -4384,22 +4544,30 @@ class OptionalType(TpyType):
         return ValueForm.PTR_OPTIONAL if self.uses_pointer_repr() else ValueForm.VALUE
 
     def to_cpp_return(self) -> str:
-        if self.uses_pointer_repr():
+        passing = self.return_passing()
+        if passing is ReturnPassing.POINTER:
             return f"{self.inner.to_cpp()}*"
-        tup = self._returned_tuple()
-        if tup is not None:
+        if passing is ReturnPassing.ELEMENTS:
+            tup = self._returned_tuple()
             return (f"std::optional<{tup.to_cpp_return_const()}>"
                     if isinstance(self.inner, ReadonlyType)
                     else f"std::optional<{tup.to_cpp_return()}>")
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
-        if self.uses_pointer_repr():
+        passing = self.return_passing()
+        if passing is ReturnPassing.POINTER:
             return f"const {self.inner.to_cpp()}*"
-        tup = self._returned_tuple()
-        if tup is not None:
-            return f"std::optional<{tup.to_cpp_return_const()}>"
+        if passing is ReturnPassing.ELEMENTS:
+            return f"std::optional<{self._returned_tuple().to_cpp_return_const()}>"
         return self.to_cpp()
+
+    def return_passing(self) -> ReturnPassing:
+        if self.uses_pointer_repr():
+            return ReturnPassing.POINTER
+        if self._returned_tuple() is not None:
+            return ReturnPassing.ELEMENTS
+        return ReturnPassing.VALUE
 
     def _returned_tuple(self) -> 'TupleType | None':
         """The borrowing tuple a nullable tuple return holds: the Optional is
@@ -4430,6 +4598,9 @@ class OptionalType(TpyType):
         if view_family_for_type(self.inner) is not None:
             return ParamPassing.VIEW
         return ParamPassing.VALUE
+
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        return (self.inner,)
 
     def to_cpp_param(self, name: str) -> str:
         if self.uses_generic_param_trait():
@@ -4862,6 +5033,11 @@ class UnionType(TpyType):
             return ParamPassing.POINTER
         return ParamPassing.CONST_REF
 
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        # Every member (in the storage form, or in the recursive alias's
+        # wrapper around it); `None` has no C++ class.
+        return tuple(m for m in self.members if not is_void_like_type(m))
+
     def to_cpp_param(self, name: str) -> str:
         if self.needs_wrapper():
             return f"{self.to_cpp()}& {name}"
@@ -4884,18 +5060,27 @@ class UnionType(TpyType):
         # A recursive-alias wrapper is a single nominal struct (not a
         # pointer-variant); it follows the reference-type return convention
         # (`X&`), with Own[X] required for fresh values.
-        if self.needs_wrapper():
+        passing = self.return_passing()
+        if passing is ReturnPassing.REFERENCE:
             return f"{self.to_cpp()}&"
-        if self.uses_pointer_repr():
+        if passing is ReturnPassing.POINTER:
             return self.to_cpp_ptr_variant()
         return self.to_cpp()
 
     def to_cpp_return_const(self) -> str:
-        if self.needs_wrapper():
+        passing = self.return_passing()
+        if passing is ReturnPassing.REFERENCE:
             return f"const {self.to_cpp()}&"
-        if self.uses_pointer_repr():
+        if passing is ReturnPassing.POINTER:
             return self.to_cpp_const_ptr_variant()
         return self.to_cpp()
+
+    def return_passing(self) -> ReturnPassing:
+        if self.needs_wrapper():
+            return ReturnPassing.REFERENCE
+        if self.uses_pointer_repr():
+            return ReturnPassing.POINTER
+        return ReturnPassing.VALUE
 
     def is_ref_param(self) -> bool:
         if self.uses_pointer_repr():
@@ -4992,6 +5177,9 @@ class TupleType(TpyType):
     def to_cpp_return_const(self) -> str:
         args = ", ".join(self._element_to_cpp_param(t, const=True) for t in self.element_types)
         return f"std::tuple<{args}>"
+
+    def return_passing(self) -> ReturnPassing:
+        return ReturnPassing.ELEMENTS
 
     def element_forms(self) -> tuple['ValueForm', ...]:
         """Per-element C++ value-category classification (see `ValueForm`)."""
@@ -5237,6 +5425,9 @@ class TupleType(TpyType):
         if param_takes_ownership(self):
             return ParamPassing.OWN
         return ParamPassing.CONST_REF
+
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        return self.element_types
 
     def to_cpp_param(self, name: str) -> str:
         return f"{self._param_spelling(const=False)} {name}"

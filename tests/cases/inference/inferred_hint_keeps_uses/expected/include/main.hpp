@@ -150,13 +150,8 @@ struct Maker {
 
 
     // def make_list[T](self, n: int32) -> Own[list[T]]:
-    //     out: list[T] = []
-    //     return out
     template<typename T>
-    std::vector<T> make_list(int32_t n) const {
-        std::vector<T> out = std::vector<T>{};
-        return out;
-    }
+    std::vector<T> make_list(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Maker";
 };
 
@@ -172,8 +167,7 @@ struct Bag {
     std::vector<T> xs;
 
     // def __init__(self) -> None:
-    //     self.xs = []
-    Bag() : xs(std::vector<T>{}) {}
+    Bag();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -340,6 +334,21 @@ inline void PackUser::run() const {
     kn = ::tpy::__len__(::tpyapp::main::pack(::tpy::varargs<const ::tpy::BigInt>(__tmp_1)));
     std::cout << "pack_arg" << " " << kn << "\n" << ::tpy::check_signals;
 }
+
+// def make_list[T](self, n: int32) -> Own[list[T]]:
+//     out: list[T] = []
+//     return out
+template<typename T>
+inline std::vector<T> Maker::make_list(int32_t n) const {
+    std::vector<T> out = std::vector<T>{};
+    return out;
+}
+
+// def __init__(self) -> None:
+//     self.xs = []
+template<typename T>
+inline Bag<T>::Bag() : xs(std::vector<T>{}) {}
+
 // def empty_list[T](n: int32) -> Own[list[T]]:
 //     out: list[T] = []
 //     return out

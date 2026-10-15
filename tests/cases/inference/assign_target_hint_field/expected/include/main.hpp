@@ -24,8 +24,7 @@ struct WithArray {
     std::array<T, N> data;
 
     // def __init__(self):
-    //     self.data = Array()  # tpyc: ok -- infer Array[T, N]
-    WithArray() : data(std::array<T, N>()) {}
+    WithArray();
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithArray";
 };
 
@@ -42,8 +41,7 @@ struct WithList {
     std::vector<T> items;
 
     // def __init__(self):
-    //     self.items = list()  # tpyc: ok -- infer list[T]
-    WithList() : items(std::vector<T>()) {}
+    WithList();
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithList";
 };
 
@@ -60,8 +58,7 @@ struct WithDict {
     ::tpy::ordered_map<K, V> data;
 
     // def __init__(self):
-    //     self.data = dict()  # tpyc: ok -- infer dict[K, V]
-    WithDict() : data(::tpy::ordered_map<K, V>()) {}
+    WithDict();
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithDict";
 };
 
@@ -79,38 +76,18 @@ struct WithHeapStorage {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T]):
-    //     self._storage = UninitHeapStorage(1)  # tpyc: ok -- infer UninitHeapStorage[T]
-    //     self._storage.init0(val)
-    explicit WithHeapStorage(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        this->_storage.init0(std::move(val));
-    }
+    explicit WithHeapStorage(::tpy::own_param_t<T> val);
     // non-copyable (field '_storage')
     WithHeapStorage(const WithHeapStorage&) = delete;
     WithHeapStorage& operator=(const WithHeapStorage&) = delete;
-    WithHeapStorage(WithHeapStorage&& other) noexcept : _storage(std::move(other._storage)) {
-        other.__tpy_owned_ = false;
-    }
-    WithHeapStorage& operator=(WithHeapStorage&& other) noexcept {
-        if (this != &other) {
-            this->~WithHeapStorage();
-            new (this) WithHeapStorage(std::move(other));
-        }
-        return *this;
-    }
+    WithHeapStorage(WithHeapStorage&& other) noexcept;
+    WithHeapStorage& operator=(WithHeapStorage&& other) noexcept;
 
     // def __del__(self):
-    //     self._storage.drop0()
-    ~WithHeapStorage() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        this->_storage.drop0();
-    }
+    ~WithHeapStorage();
 
     // def get(self) -> T:
-    //     return self._storage.load0()
-    ::tpy::val_or_ref_t<T> get() {
-        return this->_storage.load0();
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.WithHeapStorage";
 };
 
@@ -118,6 +95,59 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const WithHeapStorage<T>& obj) {
     ::tpy::print_object_default(os, "WithHeapStorage", obj);
     return os;
+}
+
+
+// def __init__(self):
+//     self.data = Array()  # tpyc: ok -- infer Array[T, N]
+template<typename T, std::size_t N>
+inline WithArray<T, N>::WithArray() : data(std::array<T, N>()) {}
+
+// def __init__(self):
+//     self.items = list()  # tpyc: ok -- infer list[T]
+template<typename T>
+inline WithList<T>::WithList() : items(std::vector<T>()) {}
+
+// def __init__(self):
+//     self.data = dict()  # tpyc: ok -- infer dict[K, V]
+template<typename K, typename V>
+inline WithDict<K, V>::WithDict() : data(::tpy::ordered_map<K, V>()) {}
+
+// def __init__(self, val: Own[T]):
+//     self._storage = UninitHeapStorage(1)  # tpyc: ok -- infer UninitHeapStorage[T]
+//     self._storage.init0(val)
+template<typename T>
+inline WithHeapStorage<T>::WithHeapStorage(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+    this->_storage.init0(std::move(val));
+}
+
+template<typename T>
+inline WithHeapStorage<T>::WithHeapStorage(WithHeapStorage&& other) noexcept : _storage(std::move(other._storage)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline WithHeapStorage<T>& WithHeapStorage<T>::operator=(WithHeapStorage&& other) noexcept {
+    if (this != &other) {
+        this->~WithHeapStorage();
+        new (this) WithHeapStorage(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+//     self._storage.drop0()
+template<typename T>
+inline WithHeapStorage<T>::~WithHeapStorage() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    this->_storage.drop0();
+}
+
+// def get(self) -> T:
+//     return self._storage.load0()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> WithHeapStorage<T>::get() {
+    return this->_storage.load0();
 }
 
 void __tpy_init();

@@ -194,14 +194,10 @@ struct Relay {
     ::tpy::BigInt k;
 
     // def __init__(self) -> None:
-    //     self.k = 0
-    Relay() : k(::tpy::BigInt(0)) {}
+    Relay();
 
     // def via(self, xs: list[T]) -> None:
-    //     drop_last(xs)
-    void via(std::vector<T>& xs) const {
-        ::tpyapp::main::drop_last<T>(xs);
-    }
+    void via(std::vector<T>& xs) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Relay";
 };
 
@@ -257,14 +253,10 @@ struct Bag {
     std::string name;
 
     // def __init__(self) -> None:
-    //     self.name = "a long enough name to live on the heap"
-    Bag() : name("a long enough name to live on the heap") {}
+    Bag();
 
     // def tag(self) -> StrView:
-    //     return self.name
-    std::string_view tag() const {
-        return this->name;
-    }
+    std::string_view tag() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -400,6 +392,31 @@ inline const std::vector<::tpy::BigInt>& Viewer::view(std::vector<::tpy::BigInt>
 // def __init__(self, bag: Own[Bag[int]]) -> None:
 //     self.bag = bag
 inline Keeper::Keeper(Bag<::tpy::BigInt>&& bag) : bag(std::move(bag)) {}
+
+// def __init__(self) -> None:
+//     self.k = 0
+template<typename T>
+inline Relay<T>::Relay() : k(::tpy::BigInt(0)) {}
+
+// def via(self, xs: list[T]) -> None:
+//     drop_last(xs)
+template<typename T>
+inline void Relay<T>::via(std::vector<T>& xs) const {
+    ::tpyapp::main::drop_last<T>(xs);
+}
+
+// def __init__(self) -> None:
+//     self.name = "a long enough name to live on the heap"
+template<typename T>
+inline Bag<T>::Bag() : name("a long enough name to live on the heap") {}
+
+// def tag(self) -> StrView:
+//     return self.name
+template<typename T>
+inline std::string_view Bag<T>::tag() const {
+    return this->name;
+}
+
 // def drop_last[T](xs: list[T]) -> None:
 //     xs.pop()
 template<typename T>

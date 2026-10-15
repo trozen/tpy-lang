@@ -49,15 +49,11 @@ struct Adder {
     W* _sink;
 
     // def __init__(self, sink: W) -> None:
-    //     self._sink = sink
     Adder() = default;
-    explicit Adder(::tpy::param_val_or_ref_t<W> sink) : _sink(&sink) {}
+    explicit Adder(::tpy::param_val_or_ref_t<W> sink);
 
     // def push(self, n: int32) -> None:
-    //     self._sink.add(n)
-    void push(int32_t n) const {
-        ::tpy::deref_check(this->_sink).add(n);
-    }
+    void push(int32_t n) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Adder";
 };
 
@@ -77,6 +73,19 @@ inline Sink::Sink() : total(0) {}
 inline void Sink::add(int32_t n) {
     this->total = ::tpy::add_check<int32_t>(this->total, n);
 }
+
+// def __init__(self, sink: W) -> None:
+//     self._sink = sink
+template<Adds W>
+inline Adder<W>::Adder(::tpy::param_val_or_ref_t<W> sink) : _sink(&sink) {}
+
+// def push(self, n: int32) -> None:
+//     self._sink.add(n)
+template<Adds W>
+inline void Adder<W>::push(int32_t n) const {
+    ::tpy::deref_check(this->_sink).add(n);
+}
+
 // def make_adder[W: Adds](sink: W) -> Own[Adder[W]]:
 //     p: Ptr[W] = sink
 //     p.add(0)

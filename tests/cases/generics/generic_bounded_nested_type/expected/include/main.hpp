@@ -47,15 +47,11 @@ struct Wrapper {
     V holder;
 
     // def __init__(self, holder: V) -> None:
-    //     self.holder = holder
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<V> holder) : holder(holder) {}
+    explicit Wrapper(::tpy::readonly_form_t<V> holder);
 
     // def get_holder(self) -> V:
-    //     return self.holder
-    ::tpy::val_or_ref_t<V> get_holder() {
-        return this->holder;
-    }
+    ::tpy::val_or_ref_t<V> get_holder();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -75,5 +71,18 @@ inline IntListHolder::IntListHolder(const std::vector<int32_t>& data) : data(dat
 inline std::vector<int32_t>& IntListHolder::items() {
     return this->data;
 }
+
+// def __init__(self, holder: V) -> None:
+//     self.holder = holder
+template<ItemsProvider<int32_t> V>
+inline Wrapper<V>::Wrapper(::tpy::readonly_form_t<V> holder) : holder(holder) {}
+
+// def get_holder(self) -> V:
+//     return self.holder
+template<ItemsProvider<int32_t> V>
+inline ::tpy::val_or_ref_t<V> Wrapper<V>::get_holder() {
+    return this->holder;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -30,32 +30,19 @@ struct Cell {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     # unavoidable on a generic field store: T may be a reference type, so
-    //     # the store is a copy the compiler cannot prove away
-    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Cell(::tpy::readonly_form_t<T> v);
 
     // @property
     // def payload(self) -> T:
-    //     return self.v
-    ::tpy::val_or_ref_t<T> payload() {
-        return this->v;
-    }
+    ::tpy::val_or_ref_t<T> payload();
 
     // @property
     // def payload(self) -> T:
-    //     return self.v
-    ::tpy::val_or_cref_t<T> payload() const {
-        return this->v;
-    }
+    ::tpy::val_or_cref_t<T> payload() const;
 
-    // # the spelled twin at the same instantiation
     // def payload_m(self) -> T:
-    //     return self.v
-    ::tpy::val_or_ref_t<T> payload_m() {
-        return this->v;
-    }
+    ::tpy::val_or_ref_t<T> payload_m();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -124,6 +111,38 @@ struct __gen_chars_m : public ::tpy::next_iter_mixin<__gen_chars_m, int32_t> {
         return os << "<generator chars_m>";
     }
 };
+
+
+// def __init__(self, v: T) -> None:
+//     # unavoidable on a generic field store: T may be a reference type, so
+//     # the store is a copy the compiler cannot prove away
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// @property
+// def payload(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::payload() {
+    return this->v;
+}
+
+// @property
+// def payload(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Cell<T>::payload() const {
+    return this->v;
+}
+
+// # the spelled twin at the same instantiation
+// def payload_m(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::payload_m() {
+    return this->v;
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -26,9 +26,7 @@ struct Counter {
     // def __call__(self, inc: int32) -> int32:
     int32_t __call__(int32_t inc);
 
-    int32_t operator()(int32_t inc) {
-        return __call__(inc);
-    }
+    int32_t operator()(int32_t inc);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
 };
 
@@ -49,9 +47,7 @@ struct Accumulator {
     // def __call__(self, value: float) -> float:
     double __call__(double value);
 
-    double operator()(double value) {
-        return __call__(value);
-    }
+    double operator()(double value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Accumulator";
 };
 
@@ -73,6 +69,10 @@ inline int32_t Counter::__call__(int32_t inc) {
     return this->count;
 }
 
+inline int32_t Counter::operator()(int32_t inc) {
+    return __call__(inc);
+}
+
 // def __init__(self, initial: float):
 //     self.total = initial
 inline Accumulator::Accumulator(double initial) : total(initial) {}
@@ -83,6 +83,10 @@ inline Accumulator::Accumulator(double initial) : total(initial) {}
 inline double Accumulator::__call__(double value) {
     this->total = (this->total) + (value);
     return this->total;
+}
+
+inline double Accumulator::operator()(double value) {
+    return __call__(value);
 }
 void __tpy_init();
 } // namespace tpyapp::main

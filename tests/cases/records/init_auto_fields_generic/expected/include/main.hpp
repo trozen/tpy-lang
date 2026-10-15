@@ -33,11 +33,8 @@ struct Box : Holder {
     T v;
 
     // def __init__(self, v: T):
-    //     self.v = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v)
-        : Holder(),
-          v(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -46,6 +43,14 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
+
+
+// def __init__(self, v: T):
+//     self.v = v
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v)
+    : Holder(),
+      v(v) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

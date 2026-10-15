@@ -25,16 +25,11 @@ struct Calculator {
 
     // @overload
     // def scale(self, x: int) -> int: ...  # tpyc: ok
-    ::tpy::BigInt scale(const ::tpy::BigInt& x) {
-        ::tpy::BigInt factor = ::tpy::BigInt(1);
-        return ((((x) * (factor))) + (this->offset));
-    }
+    ::tpy::BigInt scale(const ::tpy::BigInt& x);
 
     // @overload
     // def scale(self, x: int, factor: int) -> int: ...  # tpyc: ok
-    ::tpy::BigInt scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor) {
-        return ((((x) * (factor))) + (this->offset));
-    }
+    ::tpy::BigInt scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Calculator";
 };
 
@@ -47,5 +42,18 @@ inline std::ostream& operator<<(std::ostream& os, const Calculator& obj) {
 // def __init__(self, offset: int) -> None:
 //     self.offset = offset
 inline Calculator::Calculator(const ::tpy::BigInt& offset) : offset(offset) {}
+
+// @overload
+// def scale(self, x: int) -> int: ...  # tpyc: ok
+inline ::tpy::BigInt Calculator::scale(const ::tpy::BigInt& x) {
+    ::tpy::BigInt factor = ::tpy::BigInt(1);
+    return ((((x) * (factor))) + (this->offset));
+}
+
+// @overload
+// def scale(self, x: int, factor: int) -> int: ...  # tpyc: ok
+inline ::tpy::BigInt Calculator::scale(const ::tpy::BigInt& x, const ::tpy::BigInt& factor) {
+    return ((((x) * (factor))) + (this->offset));
+}
 void __tpy_init();
 } // namespace tpyapp::main

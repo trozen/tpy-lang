@@ -64,23 +64,15 @@ template<typename T>
 struct Wrapper {
 
     // def __init__(self) -> None:
-    //     pass
-    Wrapper() {
-    }
+    Wrapper();
 
     // @dispatch
     // def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
-    //     return Rc.new(x)
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x) const {
-        return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
-    }
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> wrap(::tpystd::tplib::box::Box<T>&& x) const;
 
     // @dispatch
     // def wrap(self, x: str) -> Own[Rc[Box[str]]]:
-    //     return Rc.new(Box(x))
-    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) const {
-        return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::string(x)));
-    }
+    ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> wrap(std::string_view x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -119,5 +111,28 @@ inline Dog::Dog(std::string_view label) : label(label) {}
 inline std::string_view Dog::name() const {
     return this->label;
 }
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Wrapper<T>::Wrapper() {
+}
+
+// @dispatch
+// def wrap(self, x: Own[Box[T]]) -> Own[Rc[Box[T]]]:
+//     return Rc.new(x)
+template<typename T>
+inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<T>> Wrapper<T>::wrap(::tpystd::tplib::box::Box<T>&& x) const {
+    return Rc<::tpystd::tplib::box::Box<T>>::template new_<::tpystd::tplib::box::Box<T>>(std::move(x));
+}
+
+// @dispatch
+// def wrap(self, x: str) -> Own[Rc[Box[str]]]:
+//     return Rc.new(Box(x))
+template<typename T>
+inline ::tpystd::tplib::rc::Rc<::tpystd::tplib::box::Box<std::string>> Wrapper<T>::wrap(std::string_view x) const {
+    return Rc<::tpystd::tplib::box::Box<std::string>>::new_<::tpystd::tplib::box::Box<std::string>>(::tpystd::tplib::box::Box<std::string>(std::string(x)));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

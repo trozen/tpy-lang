@@ -75,12 +75,8 @@ struct Pair {
     T second;
 
     // def __init__(self, first: T, second: T) -> None:
-    //     self.first = first
-    //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
-        : first(first),
-          second(second) {}
+    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -105,5 +101,14 @@ inline Bag::Bag() : items(std::vector<int32_t>{}) {}
 // def __init__(self, cb: Callable[[int32], None]) -> None:
 //     self.cb = cb
 inline Handler::Handler(std::function<void(int32_t)> cb) : cb(cb) {}
+
+// def __init__(self, first: T, second: T) -> None:
+//     self.first = first
+//     self.second = second
+template<typename T>
+inline Pair<T>::Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
+    : first(first),
+      second(second) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

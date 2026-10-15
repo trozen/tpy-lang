@@ -35,15 +35,9 @@ struct IntWrapper {
     // def __getitem__(self, index: int32) -> int32:
     int32_t __getitem__(int32_t index) const;
 
-    int32_t operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    int32_t operator[](int32_t index) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntWrapper";
 };
 
@@ -67,6 +61,16 @@ inline int32_t IntWrapper::__len__() const {
 //     return self.data[index]
 inline int32_t IntWrapper::__getitem__(int32_t index) const {
     return ::tpy::__getitem__(this->data, index);
+}
+
+inline int32_t IntWrapper::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+inline size_t IntWrapper::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 // def sum_seq(s: Sequence[int32]) -> int32:
 //     total: int32 = 0

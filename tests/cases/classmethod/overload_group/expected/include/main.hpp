@@ -28,17 +28,12 @@ struct Point {
     // @overload
     // @classmethod
     // def make(cls, x: int32) -> Own[Self]: ...
-    static Point make(int32_t x) {
-        int32_t y = 0;
-        return Point(x, y);
-    }
+    static Point make(int32_t x);
 
     // @overload
     // @classmethod
     // def make(cls, x: int32, y: int32) -> Own[Self]: ...
-    static Point make(int32_t x, int32_t y) {
-        return Point(x, y);
-    }
+    static Point make(int32_t x, int32_t y);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
 };
 
@@ -54,5 +49,20 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 inline Point::Point(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// @overload
+// @classmethod
+// def make(cls, x: int32) -> Own[Self]: ...
+inline Point Point::make(int32_t x) {
+    int32_t y = 0;
+    return Point(x, y);
+}
+
+// @overload
+// @classmethod
+// def make(cls, x: int32, y: int32) -> Own[Self]: ...
+inline Point Point::make(int32_t x, int32_t y) {
+    return Point(x, y);
+}
 void __tpy_init();
 } // namespace tpyapp::main

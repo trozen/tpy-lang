@@ -5,6 +5,8 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "a.hpp"
+#include "b.hpp"
+#include "c.hpp"
 
 namespace tpyapp::main {
 

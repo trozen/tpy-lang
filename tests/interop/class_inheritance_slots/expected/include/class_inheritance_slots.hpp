@@ -37,9 +37,7 @@ struct Gate {
 
     int64_t __radd__(int64_t other) const;
 
-    int64_t operator[](std::string_view key) const {
-        return __getitem__(key);
-    }
+    int64_t operator[](std::string_view key) const;
 
     friend bool operator==(const Gate& lhs, const Gate& other) {
         return lhs.__eq__(other);
@@ -205,6 +203,10 @@ inline int64_t Gate::__add__(int64_t other) const {
 
 inline int64_t Gate::__radd__(int64_t other) const {
     return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(other, 10)), ::tpy::int_cast_check<int64_t>(::tpy::__len__(this->code))));
+}
+
+inline int64_t Gate::operator[](std::string_view key) const {
+    return __getitem__(key);
 }
 
 inline Node::Node(int64_t v) : v(v) {}

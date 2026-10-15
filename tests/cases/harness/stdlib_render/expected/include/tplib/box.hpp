@@ -20,28 +20,15 @@ struct Box {
     bool __tpy_owned_ = true;
 
     // def __init__(self, value: Own[T]):
-    //     self._ptr = unsafe_take(value)
-    explicit Box(::tpy::own_param_t<T> value) : _ptr(::tpy::heap_take(std::move(value))) {}
+    explicit Box(::tpy::own_param_t<T> value);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
-    Box(Box&& other) noexcept : _ptr(std::move(other._ptr)) {
-        other.__tpy_owned_ = false;
-    }
-    Box& operator=(Box&& other) noexcept {
-        if (this != &other) {
-            this->~Box();
-            new (this) Box(std::move(other));
-        }
-        return *this;
-    }
+    Box(Box&& other) noexcept;
+    Box& operator=(Box&& other) noexcept;
 
     // def __del__(self):
-    //     unsafe_release(self._ptr)
-    ~Box() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::heap_release(this->_ptr);
-    }
+    ~Box();
 
     template<typename __CovU_T>
         requires (std::is_base_of_v<T, __CovU_T>)
@@ -50,142 +37,84 @@ struct Box {
     }
     template<typename> friend struct Box;
 
-    // # __deref__ implicitly gets dual mutable/const overloads via
-    // # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly
-    // # needed.
     // def __deref__(self) -> T:
-    //     return self.get()
-    ::tpy::val_or_ref_t<T> __deref__() {
-        return this->get();
-    }
+    ::tpy::val_or_ref_t<T> __deref__();
 
-    // # __deref__ implicitly gets dual mutable/const overloads via
-    // # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly
-    // # needed.
     // def __deref__(self) -> T:
-    //     return self.get()
-    ::tpy::val_or_cref_t<T> __deref__() const {
-        return this->get();
-    }
+    ::tpy::val_or_cref_t<T> __deref__() const;
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self._ptr
-    ::tpy::val_or_ref_t<T> get() {
-        return ::tpy::deref_check(this->_ptr);
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // @auto_readonly
     // def get(self) -> auto_readonly[T]:
-    //     return self._ptr
-    ::tpy::val_or_cref_t<T> get() const {
-        return ::tpy::deref_check(this->_ptr);
-    }
+    ::tpy::val_or_cref_t<T> get() const;
 
     // def set(self, value: Own[T]) -> None:
-    //     self._ptr = unsafe_replace(self._ptr, value)
-    void set(::tpy::own_param_t<T> value) {
-        this->_ptr = ::tpy::heap_replace(this->_ptr, std::move(value));
-    }
+    void set(::tpy::own_param_t<T> value);
 
     // @readonly
     // def clone[T: Copyable](self) -> Own[Box[T]]:
-    //     # copy(): the new Box owns its own payload, so the duplication is
-    //     # spelled rather than left implicit at the owning slot.
-    //     return Box(copy(self.get()))
     Box<T> clone() const
-      requires ::tpy::Copyable<T> {
-        return Box<T>(T(this->get()));
-    }
+      requires ::tpy::Copyable<T>;
 
     // def take(self: Own[Self]) -> Own[T]:
-    //     return unsafe_transfer_ownership(self._ptr)
-    ::tpy::own_return_t<T> take() && {
-        this->__tpy_owned_ = false;
-        return ::tpy::transfer_ownership(this->_ptr);
-    }
+    ::tpy::own_return_t<T> take() &&;
 
     // def __str__(self) -> str:
-    //     return f"Box({self.get()})"
-    std::string __str__() const {
-        return std::format("Box({})", ::tpy::__str__(this->get()));
-    }
+    std::string __str__() const;
 
     // def __repr__(self) -> str:
-    //     return f"Box({self.get()!r})"
-    std::string __repr__() const {
-        return std::format("Box({})", ::tpy::repr_of(this->get()));
-    }
+    std::string __repr__() const;
 
     // def __eq__[T: Equatable](self, other: Box[T]) -> bool:
-    //     return self.get() == other.get()
     bool __eq__(const Box<T>& other) const
-      requires ::tpystd::tpy::Equatable<T> {
-        return ::tpy::eq(this->get(), other.get());
-    }
+      requires ::tpystd::tpy::Equatable<T>;
 
     // def __lt__[T: Comparable](self, other: Box[T]) -> bool:
-    //     return self.get() < other.get()
     bool __lt__(const Box<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (this->get() < other.get());
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __le__[T: Comparable](self, other: Box[T]) -> bool:
-    //     return not other.get() < self.get()
     bool __le__(const Box<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (!((other.get() < this->get())));
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __gt__[T: Comparable](self, other: Box[T]) -> bool:
-    //     return other.get() < self.get()
     bool __gt__(const Box<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (other.get() < this->get());
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __ge__[T: Comparable](self, other: Box[T]) -> bool:
-    //     return not self.get() < other.get()
     bool __ge__(const Box<T>& other) const
-      requires ::tpystd::tpy::Comparable<T> {
-        return (!((this->get() < other.get())));
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def __hash__[T: Hashable](self) -> uint64:
-    //     return hash(self.get())
     uint64_t __hash__() const
-      requires ::tpystd::tpy::Hashable<T> {
-        return ::tpy::__hash__(this->get());
-    }
+      requires ::tpystd::tpy::Hashable<T>;
 
-    friend bool operator==(const Box& lhs, const Box<T>& other) {
+    friend decltype(auto) operator==(const Box& lhs, const Box<T>& other) {
         return lhs.__eq__(other);
     }
 
-    friend bool operator<(const Box& lhs, const Box<T>& other) {
+    friend decltype(auto) operator<(const Box& lhs, const Box<T>& other) {
         return lhs.__lt__(other);
     }
 
-    friend bool operator<=(const Box& lhs, const Box<T>& other) {
+    friend decltype(auto) operator<=(const Box& lhs, const Box<T>& other) {
         return lhs.__le__(other);
     }
 
-    friend bool operator>(const Box& lhs, const Box<T>& other) {
+    friend decltype(auto) operator>(const Box& lhs, const Box<T>& other) {
         return lhs.__gt__(other);
     }
 
-    friend bool operator>=(const Box& lhs, const Box<T>& other) {
+    friend decltype(auto) operator>=(const Box& lhs, const Box<T>& other) {
         return lhs.__ge__(other);
     }
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "tplib.box.Box";
 };
 
@@ -193,6 +122,167 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     os << obj.__str__();
     return os;
+}
+
+
+// def __init__(self, value: Own[T]):
+//     self._ptr = unsafe_take(value)
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> value) : _ptr(::tpy::heap_take(std::move(value))) {}
+
+template<typename T>
+inline Box<T>::Box(Box&& other) noexcept : _ptr(std::move(other._ptr)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Box<T>& Box<T>::operator=(Box&& other) noexcept {
+    if (this != &other) {
+        this->~Box();
+        new (this) Box(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+//     unsafe_release(self._ptr)
+template<typename T>
+inline Box<T>::~Box() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::heap_release(this->_ptr);
+}
+
+// # __deref__ implicitly gets dual mutable/const overloads via
+// # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly
+// # needed.
+// def __deref__(self) -> T:
+//     return self.get()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::__deref__() {
+    return this->get();
+}
+
+// # __deref__ implicitly gets dual mutable/const overloads via
+// # IMPLICIT_AUTO_READONLY_METHODS in typesys; no explicit @auto_readonly
+// # needed.
+// def __deref__(self) -> T:
+//     return self.get()
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::__deref__() const {
+    return this->get();
+}
+
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self._ptr
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::get() {
+    return ::tpy::deref_check(this->_ptr);
+}
+
+// @auto_readonly
+// def get(self) -> auto_readonly[T]:
+//     return self._ptr
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::get() const {
+    return ::tpy::deref_check(this->_ptr);
+}
+
+// def set(self, value: Own[T]) -> None:
+//     self._ptr = unsafe_replace(self._ptr, value)
+template<typename T>
+inline void Box<T>::set(::tpy::own_param_t<T> value) {
+    this->_ptr = ::tpy::heap_replace(this->_ptr, std::move(value));
+}
+
+// @readonly
+// def clone[T: Copyable](self) -> Own[Box[T]]:
+//     # copy(): the new Box owns its own payload, so the duplication is
+//     # spelled rather than left implicit at the owning slot.
+//     return Box(copy(self.get()))
+template<typename T>
+inline Box<T> Box<T>::clone() const
+  requires ::tpy::Copyable<T> {
+    return Box<T>(T(this->get()));
+}
+
+// def take(self: Own[Self]) -> Own[T]:
+//     return unsafe_transfer_ownership(self._ptr)
+template<typename T>
+inline ::tpy::own_return_t<T> Box<T>::take() && {
+    this->__tpy_owned_ = false;
+    return ::tpy::transfer_ownership(this->_ptr);
+}
+
+// def __str__(self) -> str:
+//     return f"Box({self.get()})"
+template<typename T>
+inline std::string Box<T>::__str__() const {
+    return std::format("Box({})", ::tpy::__str__(this->get()));
+}
+
+// def __repr__(self) -> str:
+//     return f"Box({self.get()!r})"
+template<typename T>
+inline std::string Box<T>::__repr__() const {
+    return std::format("Box({})", ::tpy::repr_of(this->get()));
+}
+
+// def __eq__[T: Equatable](self, other: Box[T]) -> bool:
+//     return self.get() == other.get()
+template<typename T>
+inline bool Box<T>::__eq__(const Box<T>& other) const
+  requires ::tpystd::tpy::Equatable<T> {
+    return ::tpy::eq(this->get(), other.get());
+}
+
+// def __lt__[T: Comparable](self, other: Box[T]) -> bool:
+//     return self.get() < other.get()
+template<typename T>
+inline bool Box<T>::__lt__(const Box<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (this->get() < other.get());
+}
+
+// def __le__[T: Comparable](self, other: Box[T]) -> bool:
+//     return not other.get() < self.get()
+template<typename T>
+inline bool Box<T>::__le__(const Box<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (!((other.get() < this->get())));
+}
+
+// def __gt__[T: Comparable](self, other: Box[T]) -> bool:
+//     return other.get() < self.get()
+template<typename T>
+inline bool Box<T>::__gt__(const Box<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (other.get() < this->get());
+}
+
+// def __ge__[T: Comparable](self, other: Box[T]) -> bool:
+//     return not self.get() < other.get()
+template<typename T>
+inline bool Box<T>::__ge__(const Box<T>& other) const
+  requires ::tpystd::tpy::Comparable<T> {
+    return (!((this->get() < other.get())));
+}
+
+// def __hash__[T: Hashable](self) -> uint64:
+//     return hash(self.get())
+template<typename T>
+inline uint64_t Box<T>::__hash__() const
+  requires ::tpystd::tpy::Hashable<T> {
+    return ::tpy::__hash__(this->get());
+}
+
+template<typename T>
+inline auto Box<T>::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+template<typename T>
+inline auto Box<T>::operator*() const -> decltype(__deref__()) {
+    return __deref__();
 }
 
 void __tpy_init();

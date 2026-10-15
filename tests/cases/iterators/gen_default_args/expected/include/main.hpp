@@ -107,9 +107,8 @@ struct Box2 {
     std::vector<T> items;
 
     // def __init__(self, items: Own[list[T]]) -> None:
-    //     self.items = items
     Box2() = default;
-    explicit Box2(std::vector<T>&& items) : items(std::move(items)) {}
+    explicit Box2(std::vector<T>&& items);
 
     __gen_Box2_take<T> take(int32_t n = 2);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box2";
@@ -496,5 +495,11 @@ inline Rec::Rec(int32_t v) : v(v) {}
 // def __init__(self) -> None:
 //     self.base = 0
 inline Box::Box() : base(0) {}
+
+// def __init__(self, items: Own[list[T]]) -> None:
+//     self.items = items
+template<typename T>
+inline Box2<T>::Box2(std::vector<T>&& items) : items(std::move(items)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

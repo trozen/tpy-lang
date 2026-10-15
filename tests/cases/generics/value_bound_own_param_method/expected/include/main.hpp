@@ -21,17 +21,11 @@ struct Cell {
     T item;
 
     // def __init__(self, item: Own[T]) -> None:
-    //     self.item = item  # tpyc: ok
     Cell() = default;
-    explicit Cell(T item) : item(std::move(item)) {}
+    explicit Cell(T item);
 
     // def replace(self, item: Own[T]) -> int32:
-    //     self.item = item  # tpyc: ok
-    //     return 1
-    int32_t replace(T item) {
-        this->item = item;
-        return 1;
-    }
+    int32_t replace(T item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -39,6 +33,21 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
     ::tpy::print_object_default(os, "Cell", obj);
     return os;
+}
+
+
+// def __init__(self, item: Own[T]) -> None:
+//     self.item = item  # tpyc: ok
+template<::tpy::ValueType T>
+inline Cell<T>::Cell(T item) : item(std::move(item)) {}
+
+// def replace(self, item: Own[T]) -> int32:
+//     self.item = item  # tpyc: ok
+//     return 1
+template<::tpy::ValueType T>
+inline int32_t Cell<T>::replace(T item) {
+    this->item = item;
+    return 1;
 }
 
 void __tpy_init();

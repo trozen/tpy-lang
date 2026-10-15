@@ -59,15 +59,11 @@ struct Box {
     std::vector<T> _items;
 
     // def __init__(self, items: list[T]) -> None:
-    //     self._items = items
     Box() = default;
-    explicit Box(const std::vector<T>& items) : _items(items) {}
+    explicit Box(const std::vector<T>& items);
 
     // def first(self) -> T:
-    //     return self._items[0]  # borrows from self
-    ::tpy::val_or_ref_t<T> first() {
-        return ::tpy::__getitem__(this->_items, 0);
-    }
+    ::tpy::val_or_ref_t<T> first();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -84,6 +80,19 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 inline Point::Point(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// def __init__(self, items: list[T]) -> None:
+//     self._items = items
+template<typename T>
+inline Box<T>::Box(const std::vector<T>& items) : _items(items) {}
+
+// def first(self) -> T:
+//     return self._items[0]  # borrows from self
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::first() {
+    return ::tpy::__getitem__(this->_items, 0);
+}
+
 // def first[T](items: list[T]) -> T:
 //     return items[0]
 template<typename T>

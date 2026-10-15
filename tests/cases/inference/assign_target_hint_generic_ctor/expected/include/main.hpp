@@ -22,39 +22,18 @@ struct Wrapper {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T]):
-    //     # T inferred from self._storage: UninitHeapStorage[T]
-    //     self._storage = UninitHeapStorage(1)  # tpyc: ok
-    //     self._storage.init0(val)
-    explicit Wrapper(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        this->_storage.init0(std::move(val));
-    }
+    explicit Wrapper(::tpy::own_param_t<T> val);
     // non-copyable (field '_storage')
     Wrapper(const Wrapper&) = delete;
     Wrapper& operator=(const Wrapper&) = delete;
-    Wrapper(Wrapper&& other) noexcept : _storage(std::move(other._storage)) {
-        other.__tpy_owned_ = false;
-    }
-    Wrapper& operator=(Wrapper&& other) noexcept {
-        if (this != &other) {
-            this->~Wrapper();
-            new (this) Wrapper(std::move(other));
-        }
-        return *this;
-    }
+    Wrapper(Wrapper&& other) noexcept;
+    Wrapper& operator=(Wrapper&& other) noexcept;
 
     // def __del__(self):
-    //     self._storage.drop0()
-    ~Wrapper() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        this->_storage.drop0();
-    }
+    ~Wrapper();
 
     // def get(self) -> T:
-    //     return self._storage.load0()
-    ::tpy::val_or_ref_t<T> get() {
-        return this->_storage.load0();
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -62,6 +41,45 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
+}
+
+
+// def __init__(self, val: Own[T]):
+//     # T inferred from self._storage: UninitHeapStorage[T]
+//     self._storage = UninitHeapStorage(1)  # tpyc: ok
+//     self._storage.init0(val)
+template<typename T>
+inline Wrapper<T>::Wrapper(::tpy::own_param_t<T> val) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+    this->_storage.init0(std::move(val));
+}
+
+template<typename T>
+inline Wrapper<T>::Wrapper(Wrapper&& other) noexcept : _storage(std::move(other._storage)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Wrapper<T>& Wrapper<T>::operator=(Wrapper&& other) noexcept {
+    if (this != &other) {
+        this->~Wrapper();
+        new (this) Wrapper(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self):
+//     self._storage.drop0()
+template<typename T>
+inline Wrapper<T>::~Wrapper() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    this->_storage.drop0();
+}
+
+// def get(self) -> T:
+//     return self._storage.load0()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Wrapper<T>::get() {
+    return this->_storage.load0();
 }
 
 void __tpy_init();

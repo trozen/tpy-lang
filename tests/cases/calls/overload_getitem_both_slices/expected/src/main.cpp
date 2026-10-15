@@ -31,6 +31,25 @@ void main() {
     std::span<const int32_t> sp3 = w.__getitem__(::tpy::Slice{0, 5, -1});
 }
 
+
+// @overload
+// def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+std::span<const int32_t> Window::__getitem__(::tpy::BasicSlice index) const {
+    std::optional<int32_t> s_start = index.start;
+    std::optional<int32_t> s_stop = index.stop;
+    int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
+    int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
+    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
+}
+
+// @overload
+// def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
+std::span<const int32_t> Window::__getitem__(::tpy::Slice index) const {
+    std::optional<int32_t> s_step = index.step;
+    int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
+    std::cout << step << "\n" << ::tpy::check_signals;
+    return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{0, ::tpy::__len__(this->_data)});
+}
 // main()
 void __tpy_init() {
     static bool initialized = false;

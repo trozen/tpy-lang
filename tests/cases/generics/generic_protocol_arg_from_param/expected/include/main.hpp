@@ -33,10 +33,7 @@ struct MyTask {
 
 
     // def __poll__(self, w: Waker) -> Own[Poll[T]]:
-    //     return poll_pending()
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) const {
-        return ::tpystd::coro::poll_pending<T>();
-    }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.MyTask";
 };
 
@@ -44,6 +41,14 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const MyTask<T>& obj) {
     ::tpy::print_object_default(os, "MyTask", obj);
     return os;
+}
+
+
+// def __poll__(self, w: Waker) -> Own[Poll[T]]:
+//     return poll_pending()
+template<typename T>
+inline ::tpystd::tpy::Poll<T> MyTask<T>::__poll__(::tpystd::coro::Waker w) const {
+    return ::tpystd::coro::poll_pending<T>();
 }
 
 // def drive_implicit[T](aw: Awaitable[T]) -> Own[Poll[T]]:

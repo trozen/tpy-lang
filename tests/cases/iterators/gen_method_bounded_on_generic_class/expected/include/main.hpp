@@ -70,9 +70,8 @@ struct Summer {
     T items;
 
     // def __init__(self, items: T) -> None:
-    //     self.items = items
     Summer() = default;
-    explicit Summer(::tpy::readonly_form_t<T> items) : items(items) {}
+    explicit Summer(::tpy::readonly_form_t<T> items);
 
     __gen_Summer_each_doubled<T> each_doubled() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Summer";
@@ -188,5 +187,11 @@ inline MyRange::MyRange(int32_t start, int32_t limit)
 inline RangeIter MyRange::__iter__() const {
     return RangeIter(this->start, this->limit);
 }
+
+// def __init__(self, items: T) -> None:
+//     self.items = items
+template<::tpystd::typing::Iterable<int32_t> T>
+inline Summer<T>::Summer(::tpy::readonly_form_t<T> items) : items(items) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

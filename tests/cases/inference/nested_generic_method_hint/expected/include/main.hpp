@@ -64,11 +64,8 @@ struct Wrapper {
 
 
     // def wrap[T](self, value: Own[T]) -> Own[Rc[T]]:
-    //     return Rc.new(value)
     template<typename T>
-    ::tpystd::tplib::rc::Rc<T> wrap(::tpy::own_param_t<T> value) const {
-        return Rc<T>::template new_<T>(std::move(value));
-    }
+    ::tpystd::tplib::rc::Rc<T> wrap(::tpy::own_param_t<T> value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -106,5 +103,13 @@ inline Frog::Frog(std::string_view name) : name(name) {}
 inline std::string Frog::greet() const {
     return this->name;
 }
+
+// def wrap[T](self, value: Own[T]) -> Own[Rc[T]]:
+//     return Rc.new(value)
+template<typename T>
+inline ::tpystd::tplib::rc::Rc<T> Wrapper::wrap(::tpy::own_param_t<T> value) const {
+    return Rc<T>::template new_<T>(std::move(value));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -52,11 +52,8 @@ struct C {
     C();
 
     // def pick[T](self, xs: list[T]) -> T:
-    //     return xs[0]
     template<typename T>
-    ::tpy::val_or_ref_t<T> pick(std::vector<T>& xs) const {
-        return ::tpy::__getitem__(xs, 0);
-    }
+    ::tpy::val_or_ref_t<T> pick(std::vector<T>& xs) const;
 
     // def body(self) -> float:
     double body() const;
@@ -75,16 +72,10 @@ struct Bag {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    Bag() : items(std::vector<T>{}) {}
+    Bag();
 
     // def add(self, v: T) -> None:
-    //     # right: at a reference-type T the list stores a copy where CPython
-    //     # stores the caller's object
-    //     self.items.append(v)  # tpyc: warning(/may copy T into owned storage/)
-    void add(::tpy::param_val_or_ref_t<T> v) {
-        this->items.push_back(::tpy::param_to_storage<T>(v));
-    }
+    void add(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -149,6 +140,28 @@ inline double C::body() const {
     std::vector<double> __tmp_1 = {1.5, 2.5};
     return ((::tpyapp::main::first_of<double>(__tmp_1)) + (this->base));
 }
+
+// def pick[T](self, xs: list[T]) -> T:
+//     return xs[0]
+template<typename T>
+inline ::tpy::val_or_ref_t<T> C::pick(std::vector<T>& xs) const {
+    return ::tpy::__getitem__(xs, 0);
+}
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T>
+inline Bag<T>::Bag() : items(std::vector<T>{}) {}
+
+// def add(self, v: T) -> None:
+//     # right: at a reference-type T the list stores a copy where CPython
+//     # stores the caller's object
+//     self.items.append(v)  # tpyc: warning(/may copy T into owned storage/)
+template<typename T>
+inline void Bag<T>::add(::tpy::param_val_or_ref_t<T> v) {
+    this->items.push_back(::tpy::param_to_storage<T>(v));
+}
+
 // def first_of[T](xs: list[T]) -> T:
 //     return xs[0]
 template<typename T>

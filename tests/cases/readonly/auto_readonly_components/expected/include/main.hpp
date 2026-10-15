@@ -205,13 +205,9 @@ struct Rows {
     // def at(self, i: int32) -> Ptr[auto_readonly[Item]]:
     const Item* at(int32_t i) const;
 
-    const Item* operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const Item* operator[](int32_t i) const;
 
-    Item* operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Item* operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rows";
 };
 
@@ -386,6 +382,14 @@ inline Item* Rows::at(int32_t i) {
 //     return self.ps[i]
 inline const Item* Rows::at(int32_t i) const {
     return ::tpy::__getitem__(this->ps, i);
+}
+
+inline const Item* Rows::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Item* Rows::operator[](int32_t i) {
+    return __getitem__(i);
 }
 
 // def __init__(self, it: Ptr[Item]) -> None:

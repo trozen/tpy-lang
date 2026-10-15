@@ -42,15 +42,9 @@ struct Doubler {
     // def __getitem__(self, i: int32) -> int32:
     int32_t __getitem__(int32_t i) const;
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Doubler";
 };
 
@@ -74,6 +68,16 @@ inline int32_t Doubler::__len__() const {
 //     return i * 2
 inline int32_t Doubler::__getitem__(int32_t i) const {
     return (::tpy::mul_check<int32_t>(i, 2));
+}
+
+inline int32_t Doubler::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline size_t Doubler::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::main

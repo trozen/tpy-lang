@@ -25,21 +25,14 @@ struct Box {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value  # tpyc: ok
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T:
-    //     return self.value
-    T get() const {
-        return this->value;
-    }
+    T get() const;
 
     // def set(self, value: T) -> None:
-    //     self.value = value  # tpyc: ok
-    void set(::tpy::param_val_or_ref_t<T> value) {
-        this->value = ::tpy::param_to_storage<T>(value);
-    }
+    void set(::tpy::param_val_or_ref_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -58,36 +51,17 @@ struct Ring {
     int32_t size;
 
     // def __init__(self, fill: T) -> None:
-    //     self.data = [fill, fill, fill, fill]
-    //     self.size = 0
     Ring() = default;
-    explicit Ring(::tpy::readonly_form_t<T> fill)
-        : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}),
-          size(0) {}
+    explicit Ring(::tpy::readonly_form_t<T> fill);
 
     // def put(self, v: T) -> None:
-    //     self.data[self.size] = v  # tpyc: ok
-    //     self.size += 1
-    void put(::tpy::param_val_or_ref_t<T> v) {
-        ::tpy::__setitem__(this->data, this->size, v);
-        this->size = ::tpy::add_check<int32_t>(this->size, 1);
-    }
+    void put(::tpy::param_val_or_ref_t<T> v);
 
     // def get(self, i: int32) -> T:
-    //     return self.data[i]
-    T get(int32_t i) const {
-        return ::tpy::__getitem__(this->data, i);
-    }
+    T get(int32_t i) const;
 
-    // # A mutating method: its T return spells plain `T` on the non-const
-    // # path too, not the val_or_ref trait.
     // def pop(self) -> T:
-    //     self.size -= 1
-    //     return self.data[self.size]
-    T pop() {
-        this->size = ::tpy::sub_check<int32_t>(this->size, 1);
-        return ::tpy::__getitem__(this->data, this->size);
-    }
+    T pop();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Ring";
 };
 
@@ -95,6 +69,61 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Ring<T>& obj) {
     ::tpy::print_object_default(os, "Ring", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value  # tpyc: ok
+template<::tpy::ValueType T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def get(self) -> T:
+//     return self.value
+template<::tpy::ValueType T>
+inline T Box<T>::get() const {
+    return this->value;
+}
+
+// def set(self, value: T) -> None:
+//     self.value = value  # tpyc: ok
+template<::tpy::ValueType T>
+inline void Box<T>::set(::tpy::param_val_or_ref_t<T> value) {
+    this->value = ::tpy::param_to_storage<T>(value);
+}
+
+// def __init__(self, fill: T) -> None:
+//     self.data = [fill, fill, fill, fill]
+//     self.size = 0
+template<::tpy::ValueType T>
+inline Ring<T>::Ring(::tpy::readonly_form_t<T> fill)
+    : data(std::array<T, 4>{::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill), ::tpy::param_to_storage<T>(fill)}),
+      size(0) {}
+
+// def put(self, v: T) -> None:
+//     self.data[self.size] = v  # tpyc: ok
+//     self.size += 1
+template<::tpy::ValueType T>
+inline void Ring<T>::put(::tpy::param_val_or_ref_t<T> v) {
+    ::tpy::__setitem__(this->data, this->size, v);
+    this->size = ::tpy::add_check<int32_t>(this->size, 1);
+}
+
+// def get(self, i: int32) -> T:
+//     return self.data[i]
+template<::tpy::ValueType T>
+inline T Ring<T>::get(int32_t i) const {
+    return ::tpy::__getitem__(this->data, i);
+}
+
+// # A mutating method: its T return spells plain `T` on the non-const
+// # path too, not the val_or_ref trait.
+// def pop(self) -> T:
+//     self.size -= 1
+//     return self.data[self.size]
+template<::tpy::ValueType T>
+inline T Ring<T>::pop() {
+    this->size = ::tpy::sub_check<int32_t>(this->size, 1);
+    return ::tpy::__getitem__(this->data, this->size);
 }
 
 // def identity[T: ValueType](v: T) -> T:

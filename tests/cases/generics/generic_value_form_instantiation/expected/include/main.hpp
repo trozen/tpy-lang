@@ -75,26 +75,14 @@ struct Cell {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Cell(::tpy::readonly_form_t<T> v);
 
     // def get(self) -> T:
-    //     return self.v
-    ::tpy::val_or_ref_t<T> get() {
-        return this->v;
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // def find(self, v: T) -> T | None:
-    //     if self.v == v:
-    //         return self.v
-    //     return None
-    T* find(::tpy::param_val_or_ref_t<T> v) {
-        if (::tpy::eq(this->v, v)) {
-            return &(this->v);
-        }
-        return nullptr;
-    }
+    T* find(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -250,6 +238,31 @@ std::expected<::tpy::yield_slot_t<T>, ::tpy::StopIteration> __gen_hold<T>::__nex
 template <typename T>
 __gen_hold<T> hold(::tpy::param_val_or_ref_t<T> x) {
     return __gen_hold<T>(x);
+}
+
+
+// def __init__(self, v: T) -> None:
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// def get(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::get() {
+    return this->v;
+}
+
+// def find(self, v: T) -> T | None:
+//     if self.v == v:
+//         return self.v
+//     return None
+template<typename T>
+inline T* Cell<T>::find(::tpy::param_val_or_ref_t<T> v) {
+    if (::tpy::eq(this->v, v)) {
+        return &(this->v);
+    }
+    return nullptr;
 }
 
 // def echo[T](v: T) -> T:

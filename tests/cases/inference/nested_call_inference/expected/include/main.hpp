@@ -28,9 +28,8 @@ struct Box {
     T val;
 
     // def __init__(self, val: Own[T]) -> None:
-    //     self.val = val
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
+    explicit Box(::tpy::own_param_t<T> val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -39,6 +38,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
+
+
+// def __init__(self, val: Own[T]) -> None:
+//     self.val = val
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
 
 // def wrap[T](v: T) -> Own[Box[T]]:
 //     return Box[T](v)

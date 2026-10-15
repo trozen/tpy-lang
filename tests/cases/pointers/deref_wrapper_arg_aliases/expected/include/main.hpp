@@ -89,13 +89,9 @@ struct R {
     // def bump_self(self) -> None:
     void bump_self();
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.R";
 };
 
@@ -144,13 +140,9 @@ struct RQ {
     // def __deref__(self) -> Q:
     const Q& __deref__() const;
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.RQ";
 };
 
@@ -171,9 +163,7 @@ struct RO {
     // def __deref__(self) -> readonly[P]:
     const P& __deref__() const;
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.RO";
 };
 
@@ -309,6 +299,14 @@ inline void R::bump_self() {
     ::tpyapp::main::bump(this->__deref__());
 }
 
+inline auto R::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+inline auto R::operator*() const -> decltype(__deref__()) {
+    return __deref__();
+}
+
 // def __init__(self) -> None:
 //     self.n = 0
 inline Q::Q() : n(0) {}
@@ -329,6 +327,14 @@ inline const Q& RQ::__deref__() const {
     return this->_q;
 }
 
+inline auto RQ::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+inline auto RQ::operator*() const -> decltype(__deref__()) {
+    return __deref__();
+}
+
 // def __init__(self) -> None:
 //     self._p = P(3)
 inline RO::RO() : _p(P(3)) {}
@@ -338,6 +344,10 @@ inline RO::RO() : _p(P(3)) {}
 //     return self._p
 inline const P& RO::__deref__() const {
     return this->_p;
+}
+
+inline auto RO::operator*() -> decltype(__deref__()) {
+    return __deref__();
 }
 
 // def __init__(self) -> None:

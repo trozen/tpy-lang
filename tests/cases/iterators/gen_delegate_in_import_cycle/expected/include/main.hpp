@@ -5,6 +5,7 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "moda.hpp"
+#include "modb.hpp"
 
 namespace tpyapp::main {
 

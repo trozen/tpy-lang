@@ -67,13 +67,9 @@ struct Store {
     // def first(self) -> auto_readonly[Cell]:
     const Cell& first() const;
 
-    const Cell* operator[](int32_t k) const {
-        return __getitem__(k);
-    }
+    const Cell* operator[](int32_t k) const;
 
-    Cell* operator[](int32_t k) {
-        return __getitem__(k);
-    }
+    Cell* operator[](int32_t k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
 };
 
@@ -176,6 +172,14 @@ inline Cell& Store::first() {
 //     return self._cell
 inline const Cell& Store::first() const {
     return this->_cell;
+}
+
+inline const Cell* Store::operator[](int32_t k) const {
+    return __getitem__(k);
+}
+
+inline Cell* Store::operator[](int32_t k) {
+    return __getitem__(k);
 }
 
 // def __init__(self):

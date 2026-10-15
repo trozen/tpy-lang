@@ -18,9 +18,8 @@ struct Box {
     T value;
 
     // def __init__(self, value: T):
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "container.Box";
 };
 
@@ -29,6 +28,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
+
+
+// def __init__(self, value: T):
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value) : value(value) {}
 
 void __tpy_init();
 } // namespace tpyapp::container

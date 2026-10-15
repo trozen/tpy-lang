@@ -1,0 +1,12 @@
+from tpy import int32
+import a
+
+
+class Item:
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+
+class Other:
+    def __init__(self, n: int32) -> None:
+        self.n = n

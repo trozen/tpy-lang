@@ -106,15 +106,11 @@ struct Generic {
     std::vector<std::function<T(::tpy::param_val_or_ref_t<T>)>> callbacks;
 
     // def __init__(self, fn: Callable[[T], T]):
-    //     self.callbacks = [fn]
     Generic() = default;
-    explicit Generic(std::function<T(::tpy::param_val_or_ref_t<T>)> fn) : callbacks(std::vector<std::function<T(::tpy::param_val_or_ref_t<T>)>>{fn}) {}
+    explicit Generic(std::function<T(::tpy::param_val_or_ref_t<T>)> fn);
 
     // def invoke(self, x: T) -> T:
-    //     return self.callbacks[0](x)  # tpyc: ok
-    ::tpy::val_or_ref_t<T> invoke(::tpy::param_val_or_ref_t<T> x) const {
-        return (::tpy::__getitem__(this->callbacks, 0))(x);
-    }
+    ::tpy::val_or_ref_t<T> invoke(::tpy::param_val_or_ref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Generic";
 };
 
@@ -240,5 +236,18 @@ inline const std::vector<std::function<int32_t(int32_t)>>& App::selected() const
 // def __init__(self):
 //     self.app = App()
 inline Holder::Holder() : app(App()) {}
+
+// def __init__(self, fn: Callable[[T], T]):
+//     self.callbacks = [fn]
+template<typename T>
+inline Generic<T>::Generic(std::function<T(::tpy::param_val_or_ref_t<T>)> fn) : callbacks(std::vector<std::function<T(::tpy::param_val_or_ref_t<T>)>>{fn}) {}
+
+// def invoke(self, x: T) -> T:
+//     return self.callbacks[0](x)  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Generic<T>::invoke(::tpy::param_val_or_ref_t<T> x) const {
+    return (::tpy::__getitem__(this->callbacks, 0))(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

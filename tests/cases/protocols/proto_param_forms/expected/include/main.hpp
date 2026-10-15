@@ -178,13 +178,9 @@ struct Caller {
     // def __init__(self) -> None:
     Caller();
 
-    // # the same call from a METHOD position
     // def drive(self, s: Shapes, r: Rec) -> None:
-    //     self.seen = s.bump(r)
     template<Shapes T_s>
-    void drive(T_s& s, Rec& r) {
-        this->seen = s.bump(r);
-    }
+    void drive(T_s& s, Rec& r);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Caller";
 };
 
@@ -320,6 +316,15 @@ inline int32_t DynImpl::tag() const {
 // def __init__(self) -> None:
 //     self.seen = 0
 inline Caller::Caller() : seen(0) {}
+
+// # the same call from a METHOD position
+// def drive(self, s: Shapes, r: Rec) -> None:
+//     self.seen = s.bump(r)
+template<Shapes T_s>
+inline void Caller::drive(T_s& s, Rec& r) {
+    this->seen = s.bump(r);
+}
+
 // def free_bump(s: Shapes, r: Rec) -> int32:
 //     return s.bump(r)
 template<Shapes T_s>

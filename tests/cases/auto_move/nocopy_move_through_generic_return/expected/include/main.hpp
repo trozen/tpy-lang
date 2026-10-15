@@ -46,9 +46,8 @@ struct Holder {
     T item;
 
     // def __init__(self, item: Own[T]):
-    //     self.item = item
     Holder() = default;
-    explicit Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit Holder(::tpy::own_param_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -62,5 +61,11 @@ inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
 // def __init__(self, fd: int32):
 //     self.fd = fd
 inline Handle::Handle(int32_t fd) : fd(fd) {}
+
+// def __init__(self, item: Own[T]):
+//     self.item = item
+template<typename T>
+inline Holder<T>::Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

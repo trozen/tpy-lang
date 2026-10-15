@@ -80,9 +80,8 @@ struct Boxed {
     T v;
 
     // def __init__(self, value: T) -> None:
-    //     self.v = value  # tpyc: warning(/may copy T into field/)
     Boxed() = default;
-    explicit Boxed(::tpy::readonly_form_t<T> value) : v(value) {}
+    explicit Boxed(::tpy::readonly_form_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
 };
 
@@ -99,16 +98,11 @@ struct OwnBoxed {
     T v;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     # An Own[T] source MOVES into the field, so no copy warning here.
-    //     self.v = value  # tpyc: ok
     OwnBoxed() = default;
-    explicit OwnBoxed(::tpy::own_param_t<T> value) : v(std::move(value)) {}
+    explicit OwnBoxed(::tpy::own_param_t<T> value);
 
     // def put(self, value: Own[T]) -> None:
-    //     self.v = value  # tpyc: ok
-    void put(::tpy::own_param_t<T> value) {
-        this->v = std::move(value);
-    }
+    void put(::tpy::own_param_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.OwnBoxed";
 };
 
@@ -171,27 +165,11 @@ struct Labels {
     std::vector<T> items;
 
     // def __init__(self, first: T) -> None:
-    //     self.items = [first]  # tpyc: warning(/may copy T into owned storage/)
     Labels() = default;
-    explicit Labels(::tpy::readonly_form_t<T> first) : items(std::vector<T>{::tpy::param_to_storage<T>(first)}) {}
+    explicit Labels(::tpy::readonly_form_t<T> first);
 
     // def has(self, value: T) -> bool:
-    //     for it in self.items:
-    //         if it == value:
-    //             return True
-    //     return False
-    bool has(::tpy::readonly_form_t<T> value) const {
-        auto& __obj_0 = this->items;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& it = *__beg_0;
-            if (::tpy::eq(it, value)) {
-                return true;
-            }
-        }
-        return false;
-    }
+    bool has(::tpy::readonly_form_t<T> value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Labels";
 };
 
@@ -275,6 +253,49 @@ inline void Holder::method(std::string_view k) const {
     const std::vector<std::string>& xs = this->labels;
     std::cout << "method" << " " << ::tpy::print_bool(::tpyapp::main::has_item<std::string>(xs, k)) << " " << ::tpy::print_bool(::tpyapp::main::has_item_str(xs, k)) << "\n" << ::tpy::check_signals;
 }
+
+// def __init__(self, value: T) -> None:
+//     self.v = value  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Boxed<T>::Boxed(::tpy::readonly_form_t<T> value) : v(value) {}
+
+// def __init__(self, value: Own[T]) -> None:
+//     # An Own[T] source MOVES into the field, so no copy warning here.
+//     self.v = value  # tpyc: ok
+template<typename T>
+inline OwnBoxed<T>::OwnBoxed(::tpy::own_param_t<T> value) : v(std::move(value)) {}
+
+// def put(self, value: Own[T]) -> None:
+//     self.v = value  # tpyc: ok
+template<typename T>
+inline void OwnBoxed<T>::put(::tpy::own_param_t<T> value) {
+    this->v = std::move(value);
+}
+
+// def __init__(self, first: T) -> None:
+//     self.items = [first]  # tpyc: warning(/may copy T into owned storage/)
+template<typename T>
+inline Labels<T>::Labels(::tpy::readonly_form_t<T> first) : items(std::vector<T>{::tpy::param_to_storage<T>(first)}) {}
+
+// def has(self, value: T) -> bool:
+//     for it in self.items:
+//         if it == value:
+//             return True
+//     return False
+template<typename T>
+inline bool Labels<T>::has(::tpy::readonly_form_t<T> value) const {
+    auto& __obj_0 = this->items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& it = *__beg_0;
+        if (::tpy::eq(it, value)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 // def has_item[T: Equatable](xs: list[T], v: T) -> bool:
 //     for x in xs:
 //         if x == v:

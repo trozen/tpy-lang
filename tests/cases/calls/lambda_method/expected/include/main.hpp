@@ -24,24 +24,18 @@ struct Processor {
     explicit Processor(int32_t value);
 
     // def apply(self, f: Fn[[int32], int32]) -> int32:
-    //     return f(self.value)
     template<typename __F0>
       requires requires(__F0& __fn, int32_t __a0) {
           { __fn(__a0) } -> std::convertible_to<int32_t>;
       }
-    int32_t apply(__F0&& f) const {
-        return f(this->value);
-    }
+    int32_t apply(__F0&& f) const;
 
     // def apply_binary(self, other: int32, f: Fn[[int32, int32], int32]) -> int32:
-    //     return f(self.value, other)
     template<typename __F0>
       requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
           { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
       }
-    int32_t apply_binary(int32_t other, __F0&& f) const {
-        return f(this->value, other);
-    }
+    int32_t apply_binary(int32_t other, __F0&& f) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Processor";
 };
 
@@ -54,5 +48,26 @@ inline std::ostream& operator<<(std::ostream& os, const Processor& obj) {
 // def __init__(self, value: int32) -> None:
 //     self.value = value
 inline Processor::Processor(int32_t value) : value(value) {}
+
+// def apply(self, f: Fn[[int32], int32]) -> int32:
+//     return f(self.value)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0) {
+      { __fn(__a0) } -> std::convertible_to<int32_t>;
+  }
+inline int32_t Processor::apply(__F0&& f) const {
+    return f(this->value);
+}
+
+// def apply_binary(self, other: int32, f: Fn[[int32, int32], int32]) -> int32:
+//     return f(self.value, other)
+template<typename __F0>
+  requires requires(__F0& __fn, int32_t __a0, int32_t __a1) {
+      { __fn(__a0, __a1) } -> std::convertible_to<int32_t>;
+  }
+inline int32_t Processor::apply_binary(int32_t other, __F0&& f) const {
+    return f(this->value, other);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

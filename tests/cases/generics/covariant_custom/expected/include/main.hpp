@@ -89,42 +89,14 @@ struct Tagged {
     bool __tpy_owned_ = true;
 
     // def __init__(self, val: Own[T], tag: N) -> None:
-    //     self._ptr = unsafe_alloc[T]()
-    //     unsafe_init(self._ptr, val)
-    //     self._tag = tag
-    //     self._owned = True
-    explicit Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
-        ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
-        this->_tag = ::tpy::param_to_storage<N>(tag);
-        this->_owned = true;
-    }
+    explicit Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag);
     Tagged(const Tagged&) = delete;
     Tagged& operator=(const Tagged&) = delete;
-    Tagged(Tagged&& other) noexcept
-        : _ptr(std::move(other._ptr)),
-          _tag(std::move(other._tag)),
-          _owned(std::move(other._owned)) {
-        other.__tpy_owned_ = false;
-    }
-    Tagged& operator=(Tagged&& other) noexcept {
-        if (this != &other) {
-            this->~Tagged();
-            new (this) Tagged(std::move(other));
-        }
-        return *this;
-    }
+    Tagged(Tagged&& other) noexcept;
+    Tagged& operator=(Tagged&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     if self._owned:
-    //         unsafe_drop(self._ptr)
-    //         unsafe_free(self._ptr)
-    ~Tagged() {
-        if (!this->__tpy_owned_) return;
-        if (this->_owned) {
-            ::tpy::destroy_at(this->_ptr);
-            ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
-        }
-    }
+    ~Tagged();
 
     template<typename __CovU_T, typename __CovU_N>
         requires (std::is_base_of_v<T, __CovU_T> && std::is_same_v<N, __CovU_N>)
@@ -137,16 +109,10 @@ struct Tagged {
     template<typename, typename> friend struct Tagged;
 
     // def get(self) -> T:
-    //     return self._ptr
-    ::tpy::val_or_ref_t<T> get() const {
-        return ::tpy::deref_check(this->_ptr);
-    }
+    ::tpy::val_or_ref_t<T> get() const;
 
     // def tag(self) -> N:
-    //     return self._tag
-    ::tpy::val_or_ref_t<N> tag() {
-        return this->_tag;
-    }
+    ::tpy::val_or_ref_t<N> tag();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -195,5 +161,61 @@ inline Cat::Cat(std::string_view n) : _name(n) {}
 inline std::string Cat::name() {
     return this->_name;
 }
+
+// def __init__(self, val: Own[T], tag: N) -> None:
+//     self._ptr = unsafe_alloc[T]()
+//     unsafe_init(self._ptr, val)
+//     self._tag = tag
+//     self._owned = True
+template<typename T, typename N>
+inline Tagged<T, N>::Tagged(::tpy::own_param_t<T> val, ::tpy::readonly_form_t<N> tag) : _ptr(static_cast<T*>(::operator new(sizeof(T), std::align_val_t(alignof(T))))) {
+    ::new(static_cast<void*>(this->_ptr)) T(std::move(val));
+    this->_tag = ::tpy::param_to_storage<N>(tag);
+    this->_owned = true;
+}
+
+template<typename T, typename N>
+inline Tagged<T, N>::Tagged(Tagged&& other) noexcept
+    : _ptr(std::move(other._ptr)),
+      _tag(std::move(other._tag)),
+      _owned(std::move(other._owned)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T, typename N>
+inline Tagged<T, N>& Tagged<T, N>::operator=(Tagged&& other) noexcept {
+    if (this != &other) {
+        this->~Tagged();
+        new (this) Tagged(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     if self._owned:
+//         unsafe_drop(self._ptr)
+//         unsafe_free(self._ptr)
+template<typename T, typename N>
+inline Tagged<T, N>::~Tagged() {
+    if (!this->__tpy_owned_) return;
+    if (this->_owned) {
+        ::tpy::destroy_at(this->_ptr);
+        ::operator delete(this->_ptr, std::align_val_t(alignof(T)));
+    }
+}
+
+// def get(self) -> T:
+//     return self._ptr
+template<typename T, typename N>
+inline ::tpy::val_or_ref_t<T> Tagged<T, N>::get() const {
+    return ::tpy::deref_check(this->_ptr);
+}
+
+// def tag(self) -> N:
+//     return self._tag
+template<typename T, typename N>
+inline ::tpy::val_or_ref_t<N> Tagged<T, N>::tag() {
+    return this->_tag;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

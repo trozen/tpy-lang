@@ -23,21 +23,14 @@ struct Container {
     std::optional<T> _val;
 
     // def __init__(self, val: T | None):
-    //     self._val = val
     Container() = default;
-    explicit Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
+    explicit Container(::tpy::opt_cparam_t<T> val);
 
     // def get(self) -> T | None:
-    //     return self._val
-    T* get() {
-        return ::tpy::optional_to_ptr(this->_val);
-    }
+    T* get();
 
     // def set(self, val: T | None) -> None:
-    //     self._val = val
-    void set(::tpy::opt_cparam_t<T> val) {
-        this->_val = ::tpy::to_opt_storage<std::optional<T>>(val);
-    }
+    void set(::tpy::opt_cparam_t<T> val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -45,6 +38,26 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self, val: T | None):
+//     self._val = val
+template<typename T>
+inline Container<T>::Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
+
+// def get(self) -> T | None:
+//     return self._val
+template<typename T>
+inline T* Container<T>::get() {
+    return ::tpy::optional_to_ptr(this->_val);
+}
+
+// def set(self, val: T | None) -> None:
+//     self._val = val
+template<typename T>
+inline void Container<T>::set(::tpy::opt_cparam_t<T> val) {
+    this->_val = ::tpy::to_opt_storage<std::optional<T>>(val);
 }
 
 void __tpy_init();

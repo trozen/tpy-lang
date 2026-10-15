@@ -29,15 +29,11 @@ struct Frac {
 
     // @overload
     // def __truediv__(self, other: Frac) -> float: ...
-    double __truediv__(Frac other) const {
-        return (::tpy::truediv(((this->num) * (other.den)), ((this->den) * (other.num))));
-    }
+    double __truediv__(Frac other) const;
 
     // @overload
     // def __truediv__(self, other: int) -> Frac: ...
-    Frac __truediv__(const ::tpy::BigInt& other) const {
-        return Frac(this->num, ((this->den) * (other)));
-    }
+    Frac __truediv__(const ::tpy::BigInt& other) const;
 
     // def __str__(self) -> str:
     std::string __str__() const;
@@ -143,6 +139,18 @@ namespace tpyapp::main {
 inline Frac::Frac(const ::tpy::BigInt& num, const ::tpy::BigInt& den)
     : num(num),
       den(den) {}
+
+// @overload
+// def __truediv__(self, other: Frac) -> float: ...
+inline double Frac::__truediv__(Frac other) const {
+    return (::tpy::truediv(((this->num) * (other.den)), ((this->den) * (other.num))));
+}
+
+// @overload
+// def __truediv__(self, other: int) -> Frac: ...
+inline Frac Frac::__truediv__(const ::tpy::BigInt& other) const {
+    return Frac(this->num, ((this->den) * (other)));
+}
 
 // def __str__(self) -> str:
 //     return str(self.num) + "/" + str(self.den)

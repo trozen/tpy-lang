@@ -32,9 +32,8 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+    explicit Box(::tpy::own_param_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -109,5 +108,11 @@ inline Outer::Outer(::tpy::Union<const Box<int32_t>*, const Box<std::string>*> i
 inline Tagged::Tagged(std::string_view label, const ::tpy::Union<int32_t, std::string>& inner)
     : label(label),
       inner(inner) {}
+
+// def __init__(self, value: Own[T]) -> None:
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

@@ -132,15 +132,11 @@ struct Wrapper {
     T inner;
 
     // def __init__(self, val: T):
-    //     self.inner = val
     Wrapper() = default;
-    explicit Wrapper(::tpy::readonly_form_t<T> val) : inner(val) {}
+    explicit Wrapper(::tpy::readonly_form_t<T> val);
 
     // def get_inner_value(self) -> int32:
-    //     return self.inner.value
-    int32_t get_inner_value() const {
-        return this->inner.value;
-    }
+    int32_t get_inner_value() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -175,6 +171,19 @@ inline bool Box::is_empty() const {
 // def __init__(self, v: int32):
 //     self.item = v
 inline IntHolder::IntHolder(int32_t v) : item(v) {}
+
+// def __init__(self, val: T):
+//     self.inner = val
+template<HasValue T>
+inline Wrapper<T>::Wrapper(::tpy::readonly_form_t<T> val) : inner(val) {}
+
+// def get_inner_value(self) -> int32:
+//     return self.inner.value
+template<HasValue T>
+inline int32_t Wrapper<T>::get_inner_value() const {
+    return this->inner.value;
+}
+
 // # Function using protocol field
 // def get_value[T: HasValue](item: T) -> int32:
 //     return item.value

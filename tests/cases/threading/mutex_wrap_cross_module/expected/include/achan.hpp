@@ -33,12 +33,8 @@ struct Cell {
     uint32_t _cap;
 
     // def __init__(self, cap: uint32) -> None:
-    //     self._buf = UninitHeapStorage[T](cap)
-    //     self._cap = cap
     Cell() = default;
-    explicit Cell(uint32_t cap)
-        : _buf(::tpy::UninitHeapStorage<T>(cap)),
-          _cap(cap) {}
+    explicit Cell(uint32_t cap);
     // non-copyable (@nocopy)
     Cell(const Cell&) = delete;
     Cell& operator=(const Cell&) = delete;
@@ -63,11 +59,7 @@ struct Chan {
     ::tpystd::tpy::sync::Condvar cv;
 
     // def __init__(self) -> None:
-    //     self.m = Mutex.new(Cell[T](uint32(4)))
-    //     self.cv = Condvar()
-    Chan()
-        : m(::tpystd::tpy::sync::Mutex<Cell<T>>::new_(Cell<T>(4))),
-          cv(::tpystd::tpy::sync::Condvar()) {}
+    Chan();
     // non-copyable (@nocopy)
     Chan(const Chan&) = delete;
     Chan& operator=(const Chan&) = delete;
@@ -90,9 +82,8 @@ struct Producer {
     ::tpystd::tplib::arc::Arc<Chan<T>> c;
 
     // def __init__(self, c: Own[Arc[Chan[T]]]) -> None:
-    //     self.c = c
     Producer() = default;
-    explicit Producer(::tpystd::tplib::arc::Arc<Chan<T>>&& c) : c(std::move(c)) {}
+    explicit Producer(::tpystd::tplib::arc::Arc<Chan<T>>&& c);
     // non-copyable (@nocopy)
     Producer(const Producer&) = delete;
     Producer& operator=(const Producer&) = delete;
@@ -100,29 +91,7 @@ struct Producer {
     Producer& operator=(Producer&&) = default;
 
     // def capacity(self) -> uint32:
-    //     chan = self.c.get()
-    //     with chan.m.lock() as g:
-    //         return g.get()._cap
-    uint32_t capacity() const {
-        const Chan<T>& chan = this->c.get();
-        auto __ctx_1 = chan.m.lock();
-        auto& g = __ctx_1.__enter__();
-        bool __fin_ran_1 = false;
-        try {
-            uint32_t __tpy_ret_0 = g.get()._cap;
-            __fin_ran_1 = true;
-            __ctx_1.__exit__({}, nullptr, {});
-            return __tpy_ret_0;
-        } catch (::tpy::BaseException& __exc_1) {
-            if (__fin_ran_1) throw;
-            __ctx_1.__exit__({}, &__exc_1, {});
-            throw;
-        } catch (...) {
-            if (__fin_ran_1) throw;
-            __ctx_1.__exit__({}, nullptr, {});
-            throw;
-        }
-    }
+    uint32_t capacity() const;
     static constexpr std::string_view __tpy_class_name__ = "achan.Producer";
 };
 
@@ -130,6 +99,54 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Producer<T>& obj) {
     ::tpy::print_object_default(os, "Producer", obj);
     return os;
+}
+
+
+// def __init__(self, cap: uint32) -> None:
+//     self._buf = UninitHeapStorage[T](cap)
+//     self._cap = cap
+template<typename T>
+inline Cell<T>::Cell(uint32_t cap)
+    : _buf(::tpy::UninitHeapStorage<T>(cap)),
+      _cap(cap) {}
+
+// def __init__(self) -> None:
+//     self.m = Mutex.new(Cell[T](uint32(4)))
+//     self.cv = Condvar()
+template<typename T>
+inline Chan<T>::Chan()
+    : m(::tpystd::tpy::sync::Mutex<Cell<T>>::new_(Cell<T>(4))),
+      cv(::tpystd::tpy::sync::Condvar()) {}
+
+// def __init__(self, c: Own[Arc[Chan[T]]]) -> None:
+//     self.c = c
+template<typename T>
+inline Producer<T>::Producer(::tpystd::tplib::arc::Arc<Chan<T>>&& c) : c(std::move(c)) {}
+
+// def capacity(self) -> uint32:
+//     chan = self.c.get()
+//     with chan.m.lock() as g:
+//         return g.get()._cap
+template<typename T>
+inline uint32_t Producer<T>::capacity() const {
+    const Chan<T>& chan = this->c.get();
+    auto __ctx_1 = chan.m.lock();
+    auto& g = __ctx_1.__enter__();
+    bool __fin_ran_1 = false;
+    try {
+        uint32_t __tpy_ret_0 = g.get()._cap;
+        __fin_ran_1 = true;
+        __ctx_1.__exit__({}, nullptr, {});
+        return __tpy_ret_0;
+    } catch (::tpy::BaseException& __exc_1) {
+        if (__fin_ran_1) throw;
+        __ctx_1.__exit__({}, &__exc_1, {});
+        throw;
+    } catch (...) {
+        if (__fin_ran_1) throw;
+        __ctx_1.__exit__({}, nullptr, {});
+        throw;
+    }
 }
 
 // def make_producer[T: Send]() -> Own[Producer[T]]:

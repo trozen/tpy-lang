@@ -34,9 +34,7 @@ struct Store {
     // def __delitem__(self, key: str) -> None:
     void __delitem__(std::string_view key);
 
-    int32_t operator[](std::string_view key) const {
-        return __getitem__(key);
-    }
+    int32_t operator[](std::string_view key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
 };
 
@@ -62,9 +60,7 @@ struct IntBox {
     // def __delitem__(self, i: int32) -> None:
     void __delitem__(int32_t i);
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.IntBox";
 };
 
@@ -118,6 +114,10 @@ inline void Store::__delitem__(std::string_view key) {
     }
 }
 
+inline int32_t Store::operator[](std::string_view key) const {
+    return __getitem__(key);
+}
+
 // def __init__(self) -> None:
 //     self.v = 0
 inline IntBox::IntBox() : v(0) {}
@@ -138,6 +138,10 @@ inline void IntBox::__setitem__(int32_t i, int32_t value) {
 //     self.v = -i
 inline void IntBox::__delitem__(int32_t i) {
     this->v = ::tpy::neg_check<int32_t>(i);
+}
+
+inline int32_t IntBox::operator[](int32_t i) const {
+    return __getitem__(i);
 }
 void __tpy_init();
 } // namespace tpyapp::main

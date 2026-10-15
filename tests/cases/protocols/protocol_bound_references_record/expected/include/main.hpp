@@ -66,15 +66,11 @@ struct Bar {
     T factory;
 
     // def __init__(self, factory: T) -> None:
-    //     self.factory = factory
     Bar() = default;
-    explicit Bar(::tpy::readonly_form_t<T> factory) : factory(factory) {}
+    explicit Bar(::tpy::readonly_form_t<T> factory);
 
     // def create_foo(self) -> Own[Foo]:
-    //     return self.factory.make()
-    Foo create_foo() {
-        return this->factory.make();
-    }
+    Foo create_foo();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bar";
 };
 
@@ -94,5 +90,18 @@ inline Foo::Foo(int32_t value) : value(value) {}
 inline Foo DefaultFooMaker::make() const {
     return Foo(42);
 }
+
+// def __init__(self, factory: T) -> None:
+//     self.factory = factory
+template<FooMaker T>
+inline Bar<T>::Bar(::tpy::readonly_form_t<T> factory) : factory(factory) {}
+
+// def create_foo(self) -> Own[Foo]:
+//     return self.factory.make()
+template<FooMaker T>
+inline Foo Bar<T>::create_foo() {
+    return this->factory.make();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

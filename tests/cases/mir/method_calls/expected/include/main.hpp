@@ -353,15 +353,11 @@ struct Cell {
     T val;
 
     // def __init__(self, val: Own[T]) -> None:
-    //     self.val = val
     Cell() = default;
-    explicit Cell(::tpy::own_param_t<T> val) : val(std::move(val)) {}
+    explicit Cell(::tpy::own_param_t<T> val);
 
     // def get(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> get() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -381,11 +377,8 @@ struct Scaler {
     explicit Scaler(int32_t k);
 
     // def same[T](self, x: T) -> T:
-    //     return x
     template<typename T>
-    ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> x) const {
-        return ::tpy::param_to_return<T>(x);
-    }
+    ::tpy::val_or_ref_t<T> same(::tpy::param_val_or_ref_t<T> x) const;
 
     // def finish(self: Own[Self]) -> int32:
     int32_t finish() &&;
@@ -806,5 +799,25 @@ inline void Sub::grow() {
 // def __init__(self) -> None:
 //     super().__init__(4)
 inline Dog::Dog() : Animal(4) {}
+
+// def __init__(self, val: Own[T]) -> None:
+//     self.val = val
+template<typename T>
+inline Cell<T>::Cell(::tpy::own_param_t<T> val) : val(std::move(val)) {}
+
+// def get(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::get() {
+    return this->val;
+}
+
+// def same[T](self, x: T) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Scaler::same(::tpy::param_val_or_ref_t<T> x) const {
+    return ::tpy::param_to_return<T>(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

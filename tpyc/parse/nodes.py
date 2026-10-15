@@ -1904,7 +1904,6 @@ class TpyFunction:
     # when calling `ClassInfo.add_method(..., macro_origin=...)`. Used by
     # diagnostics to name the responsible decorator in user-facing messages.
     macro_origin: str | None = None
-    skip_codegen: bool = False  # Set by sema: @inline function, body inlined at call sites
     # Preserves the self annotation for methods (e.g. OwnType(SelfType),
     # AutoOwnType(SelfType), AutoReadonlyType(SelfType)).  Between parse
     # and the post-parse resolve_refs pass this may hold a
@@ -1969,6 +1968,12 @@ class TpyFunction:
     @property
     def is_overload_stub(self) -> bool:
         return self.overload_form is not None
+
+    @property
+    def skip_codegen(self) -> bool:
+        """An `@inline` def: its body is cloned into each call site and
+        never emitted (nor analyzed) on its own."""
+        return self.is_inline and not self.is_stub
 
     @property
     def is_lifecycle_hook(self) -> bool:

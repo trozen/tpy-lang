@@ -26,9 +26,8 @@ struct Box {
     T value;
 
     // def __init__(self, v: T) -> None:
-    //     self.value = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : value(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
 
     __coro_Box_take<T> take();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -87,6 +86,12 @@ template <typename T>
 inline __coro_Box_take<T> Box<T>::take() {
     return __coro_Box_take<T>(*this);
 }
+
+
+// def __init__(self, v: T) -> None:
+//     self.value = v
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : value(v) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

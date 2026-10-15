@@ -28,24 +28,10 @@ struct Holder {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
-    //     self.count = 0
-    //     if items is not None:
-    //         if isinstance(items, Sized):
-    //             self.count = len(items)
-    //         else:
-    //             self.count = -1
     Holder();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
-    explicit Holder(const T_items* items = nullptr) : count(::tpy::BigInt(0)) {
-        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            if constexpr (::tpystd::typing::Sized<T_items>) {
-                this->count = ::tpy::BigInt(::tpy::__len__((*items)));
-            } else {
-                this->count = ::tpy::BigInt(-1);
-            }
-        }
-    }
+    explicit Holder(const T_items* items = nullptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -56,6 +42,26 @@ inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
 
 
 inline Holder::Holder() : Holder(static_cast<std::nullptr_t*>(nullptr)) {}
+
+// def __init__(self, items: Sized | Sequence[int] | None = None) -> None:
+//     self.count = 0
+//     if items is not None:
+//         if isinstance(items, Sized):
+//             self.count = len(items)
+//         else:
+//             self.count = -1
+template<typename T_items>
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sequence<T_items, ::tpy::BigInt> || ::tpystd::typing::Sized<T_items>)
+inline Holder::Holder(const T_items* items) : count(::tpy::BigInt(0)) {
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        if constexpr (::tpystd::typing::Sized<T_items>) {
+            this->count = ::tpy::BigInt(::tpy::__len__((*items)));
+        } else {
+            this->count = ::tpy::BigInt(-1);
+        }
+    }
+}
+
 // def process(items: Sized | Sequence[int] | None = None) -> int:
 //     if items is not None:
 //         if isinstance(items, Sequence):

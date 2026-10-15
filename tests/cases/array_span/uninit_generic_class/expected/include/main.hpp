@@ -20,12 +20,8 @@ struct Holder {
     ::tpy::UninitHeapStorage<T> _storage;
 
     // def __init__(self, value: T):
-    //     self._storage = UninitHeapStorage[T](1)
-    //     self._storage.init0(value)
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
-        this->_storage.init0(::tpy::param_to_storage<T>(value));
-    }
+    explicit Holder(::tpy::readonly_form_t<T> value);
     // non-copyable (field '_storage')
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -33,24 +29,13 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // def get(self) -> T:
-    //     return self._storage.load0()
-    ::tpy::val_or_ref_t<T> get() {
-        return this->_storage.load0();
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // def set(self, value: T) -> None:
-    //     self._storage.drop0()
-    //     self._storage.init0(value)
-    void set(::tpy::param_val_or_ref_t<T> value) {
-        this->_storage.drop0();
-        this->_storage.init0(::tpy::param_to_storage<T>(value));
-    }
+    void set(::tpy::param_val_or_ref_t<T> value);
 
     // def take(self) -> Own[T]:
-    //     return self._storage.take0()
-    ::tpy::own_return_t<T> take() {
-        return this->_storage.take0();
-    }
+    ::tpy::own_return_t<T> take();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -58,6 +43,38 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
+}
+
+
+// def __init__(self, value: T):
+//     self._storage = UninitHeapStorage[T](1)
+//     self._storage.init0(value)
+template<typename T>
+inline Holder<T>::Holder(::tpy::readonly_form_t<T> value) : _storage(::tpy::UninitHeapStorage<T>(1)) {
+    this->_storage.init0(::tpy::param_to_storage<T>(value));
+}
+
+// def get(self) -> T:
+//     return self._storage.load0()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Holder<T>::get() {
+    return this->_storage.load0();
+}
+
+// def set(self, value: T) -> None:
+//     self._storage.drop0()
+//     self._storage.init0(value)
+template<typename T>
+inline void Holder<T>::set(::tpy::param_val_or_ref_t<T> value) {
+    this->_storage.drop0();
+    this->_storage.init0(::tpy::param_to_storage<T>(value));
+}
+
+// def take(self) -> Own[T]:
+//     return self._storage.take0()
+template<typename T>
+inline ::tpy::own_return_t<T> Holder<T>::take() {
+    return this->_storage.take0();
 }
 
 void __tpy_init();

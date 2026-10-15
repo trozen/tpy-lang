@@ -121,13 +121,9 @@ struct Store {
     // def __getitem__(self, i: int32) -> Holder:
     const Holder& __getitem__(int32_t i) const;
 
-    const Holder& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const Holder& operator[](int32_t i) const;
 
-    Holder& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Holder& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Store";
 };
 
@@ -229,6 +225,14 @@ inline Holder& Store::__getitem__(int32_t i) {
 //     return self.items[i]
 inline const Holder& Store::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->items, i);
+}
+
+inline const Holder& Store::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Holder& Store::operator[](int32_t i) {
+    return __getitem__(i);
 }
 
 // def __init__(self, n: int32) -> None:

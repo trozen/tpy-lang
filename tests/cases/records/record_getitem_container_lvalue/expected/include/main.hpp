@@ -51,47 +51,22 @@ struct DefaultDict {
     ::tpy::ordered_map<K, V> _data;
 
     // def __init__(self, factory: Callable[[], V]) -> None:
-    //     self.factory = factory
-    //     self._data = {}
     DefaultDict() = default;
-    explicit DefaultDict(std::function<V()> factory)
-        : factory(factory),
-          _data(::tpy::ordered_map<K, V>()) {}
+    explicit DefaultDict(std::function<V()> factory);
 
-    // # Inserts on a miss, so it mutates the receiver.
     // @readonly(False)
     // def __getitem__(self, key: K) -> V:
-    //     if key not in self._data:
-    //         self._data[copy(key)] = self.factory()
-    //     return self._data[key]
-    ::tpy::val_or_ref_t<V> __getitem__(::tpy::param_val_or_ref_t<K> key) {
-        if ((!(this->_data.contains(key)))) {
-            ::tpy::__setitem__(this->_data, K(key), (*this).factory());
-        }
-        return ::tpy::__getitem__(this->_data, key);
-    }
+    ::tpy::val_or_ref_t<V> __getitem__(::tpy::param_val_or_ref_t<K> key);
 
     // def __setitem__(self, key: K, value: Own[V]) -> None:
-    //     self._data[key] = value
-    void __setitem__(::tpy::param_val_or_ref_t<K> key, ::tpy::own_param_t<V> value) {
-        ::tpy::__setitem__(this->_data, key, std::move(value));
-    }
+    void __setitem__(::tpy::param_val_or_ref_t<K> key, ::tpy::own_param_t<V> value);
 
     // def __len__(self) -> int32:
-    //     return len(self._data)
-    int32_t __len__() const {
-        return ::tpy::__len__(this->_data);
-    }
+    int32_t __len__() const;
 
-    ::tpy::val_or_ref_t<V> operator[](::tpy::param_val_or_ref_t<K> key) {
-        return __getitem__(key);
-    }
+    ::tpy::val_or_ref_t<V> operator[](::tpy::param_val_or_ref_t<K> key);
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultDict";
 };
 
@@ -115,13 +90,9 @@ struct Rows {
     // def __getitem__(self, i: int32) -> list[int32]:
     const std::vector<int32_t>& __getitem__(int32_t i) const;
 
-    const std::vector<int32_t>& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const std::vector<int32_t>& operator[](int32_t i) const;
 
-    std::vector<int32_t>& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    std::vector<int32_t>& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rows";
 };
 
@@ -137,34 +108,20 @@ struct Box {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    Box() : items(std::vector<T>{}) {}
+    Box();
 
     // def add(self, v: Own[T]) -> None:
-    //     self.items.append(v)
-    void add(::tpy::own_param_t<T> v) {
-        this->items.push_back(std::move(v));
-    }
+    void add(::tpy::own_param_t<T> v);
 
     // def __getitem__(self, i: int32) -> T:
-    //     return self.items[i]
-    ::tpy::val_or_ref_t<T> __getitem__(int32_t i) {
-        return ::tpy::__getitem__(this->items, i);
-    }
+    ::tpy::val_or_ref_t<T> __getitem__(int32_t i);
 
     // def __getitem__(self, i: int32) -> T:
-    //     return self.items[i]
-    ::tpy::val_or_cref_t<T> __getitem__(int32_t i) const {
-        return ::tpy::__getitem__(this->items, i);
-    }
+    ::tpy::val_or_cref_t<T> __getitem__(int32_t i) const;
 
-    ::tpy::val_or_cref_t<T> operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    ::tpy::val_or_cref_t<T> operator[](int32_t i) const;
 
-    ::tpy::val_or_ref_t<T> operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    ::tpy::val_or_ref_t<T> operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -204,13 +161,9 @@ struct Pts {
     // def __getitem__(self, i: int32) -> Pt:
     const Pt& __getitem__(int32_t i) const;
 
-    const Pt& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const Pt& operator[](int32_t i) const;
 
-    Pt& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Pt& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pts";
 };
 
@@ -247,21 +200,10 @@ struct Holder {
     Box<std::vector<T>> box;
 
     // def __init__(self) -> None:
-    //     self.box = Box()
-    Holder() : box(Box<std::vector<T>>()) {}
+    Holder();
 
-    // # Generic class method: the element is `list[T]`.
     // def first(self, v: T) -> int32:
-    //     self.box.add([v])
-    //     row = self.box[0]  # tpyc: ok
-    //     row.append(v)
-    //     return len(self.box[0])  # tpyc: ok
-    int32_t first(::tpy::param_val_or_ref_t<T> v) {
-        this->box.add(std::vector<T>{::tpy::param_to_storage<T>(v)});
-        std::vector<T>& row = this->box[0];
-        row.push_back(::tpy::param_to_storage<T>(v));
-        return ::tpy::__len__(this->box[0]);
-    }
+    int32_t first(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -316,6 +258,14 @@ inline const std::vector<int32_t>& Rows::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->rows, i);
 }
 
+inline const std::vector<int32_t>& Rows::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline std::vector<int32_t>& Rows::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline Pt::Pt(int32_t x) : x(x) {}
@@ -336,6 +286,14 @@ inline const Pt& Pts::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->ps, i);
 }
 
+inline const Pt& Pts::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Pt& Pts::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self) -> None:
 //     self.rows = Rows()
 inline Grouper::Grouper() : rows(Rows()) {}
@@ -352,5 +310,109 @@ inline void Grouper::add(int32_t i, int32_t v) {
 inline int32_t Grouper::size(int32_t i) const {
     return ::tpy::__len__(this->rows[i]);
 }
+
+// def __init__(self, factory: Callable[[], V]) -> None:
+//     self.factory = factory
+//     self._data = {}
+template<::tpystd::tpy::Hashable K, typename V>
+inline DefaultDict<K, V>::DefaultDict(std::function<V()> factory)
+    : factory(factory),
+      _data(::tpy::ordered_map<K, V>()) {}
+
+// # Inserts on a miss, so it mutates the receiver.
+// @readonly(False)
+// def __getitem__(self, key: K) -> V:
+//     if key not in self._data:
+//         self._data[copy(key)] = self.factory()
+//     return self._data[key]
+template<::tpystd::tpy::Hashable K, typename V>
+inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::__getitem__(::tpy::param_val_or_ref_t<K> key) {
+    if ((!(this->_data.contains(key)))) {
+        ::tpy::__setitem__(this->_data, K(key), (*this).factory());
+    }
+    return ::tpy::__getitem__(this->_data, key);
+}
+
+// def __setitem__(self, key: K, value: Own[V]) -> None:
+//     self._data[key] = value
+template<::tpystd::tpy::Hashable K, typename V>
+inline void DefaultDict<K, V>::__setitem__(::tpy::param_val_or_ref_t<K> key, ::tpy::own_param_t<V> value) {
+    ::tpy::__setitem__(this->_data, key, std::move(value));
+}
+
+// def __len__(self) -> int32:
+//     return len(self._data)
+template<::tpystd::tpy::Hashable K, typename V>
+inline int32_t DefaultDict<K, V>::__len__() const {
+    return ::tpy::__len__(this->_data);
+}
+
+template<::tpystd::tpy::Hashable K, typename V>
+inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::operator[](::tpy::param_val_or_ref_t<K> key) {
+    return __getitem__(key);
+}
+
+template<::tpystd::tpy::Hashable K, typename V>
+inline size_t DefaultDict<K, V>::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
+}
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T>
+inline Box<T>::Box() : items(std::vector<T>{}) {}
+
+// def add(self, v: Own[T]) -> None:
+//     self.items.append(v)
+template<typename T>
+inline void Box<T>::add(::tpy::own_param_t<T> v) {
+    this->items.push_back(std::move(v));
+}
+
+// def __getitem__(self, i: int32) -> T:
+//     return self.items[i]
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::__getitem__(int32_t i) {
+    return ::tpy::__getitem__(this->items, i);
+}
+
+// def __getitem__(self, i: int32) -> T:
+//     return self.items[i]
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::__getitem__(int32_t i) const {
+    return ::tpy::__getitem__(this->items, i);
+}
+
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
+// def __init__(self) -> None:
+//     self.box = Box()
+template<::tpy::ValueType T>
+inline Holder<T>::Holder() : box(Box<std::vector<T>>()) {}
+
+// # Generic class method: the element is `list[T]`.
+// def first(self, v: T) -> int32:
+//     self.box.add([v])
+//     row = self.box[0]  # tpyc: ok
+//     row.append(v)
+//     return len(self.box[0])  # tpyc: ok
+template<::tpy::ValueType T>
+inline int32_t Holder<T>::first(::tpy::param_val_or_ref_t<T> v) {
+    this->box.add(std::vector<T>{::tpy::param_to_storage<T>(v)});
+    std::vector<T>& row = this->box[0];
+    row.push_back(::tpy::param_to_storage<T>(v));
+    return ::tpy::__len__(this->box[0]);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

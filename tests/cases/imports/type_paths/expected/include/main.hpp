@@ -425,17 +425,11 @@ struct Wrap {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.v = v
     Wrap() = default;
-    explicit Wrap(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+    explicit Wrap(::tpy::own_param_t<T> v);
 
-    // # a generic class's inline body calls both functions above: their
-    // # prototypes must precede this class, after Outer
     // def call(self) -> str:
-    //     return f"{local_defaults()} {local_inner(Outer.Inner(5))}"  # tpyc: ok
-    std::string call() const {
-        return std::format("{} {}", ::tpyapp::main::local_defaults(), (::tpyapp::main::local_inner(Outer::Inner(::tpy::BigInt(5)))).to_string());
-    }
+    std::string call() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
 };
 
@@ -942,6 +936,21 @@ inline ::tpy::BigInt Cfg::make() {
 inline ::tpy::BigInt Shade::Cfg::make() {
     return ::tpy::BigInt(60);
 }
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline Wrap<T>::Wrap(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
+// # a generic class's inline body calls both functions above: their
+// # prototypes must precede this class, after Outer
+// def call(self) -> str:
+//     return f"{local_defaults()} {local_inner(Outer.Inner(5))}"  # tpyc: ok
+template<typename T>
+inline std::string Wrap<T>::call() const {
+    return std::format("{} {}", ::tpyapp::main::local_defaults(), (::tpyapp::main::local_inner(Outer::Inner(::tpy::BigInt(5)))).to_string());
+}
+
 // def total[T: m.HasV](x: T) -> int:  # tpyc: ok
 //     return x.get_v()
 template<::tpyapp::m::HasV T>

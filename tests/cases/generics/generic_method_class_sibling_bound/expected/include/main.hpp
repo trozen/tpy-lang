@@ -46,11 +46,8 @@ struct Runner {
 
 
     // def pick[T: Container[R]](self, x: T) -> R:
-    //     return x.get()
     template<Container<R> T>
-    ::tpy::val_or_ref_t<R> pick(::tpy::param_val_or_ref_t<T> x) const {
-        return x.get();
-    }
+    ::tpy::val_or_ref_t<R> pick(::tpy::param_val_or_ref_t<T> x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Runner";
 };
 
@@ -70,5 +67,14 @@ inline IntBox::IntBox(int32_t v) : v(v) {}
 inline int32_t IntBox::get() const {
     return this->v;
 }
+
+// def pick[T: Container[R]](self, x: T) -> R:
+//     return x.get()
+template<typename R>
+template<Container<R> T>
+inline ::tpy::val_or_ref_t<R> Runner<R>::pick(::tpy::param_val_or_ref_t<T> x) const {
+    return x.get();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

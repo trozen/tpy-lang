@@ -47,58 +47,31 @@ struct Holder {
     V _v;
 
     // def __init__(self, k: K, v: V):
-    //     self._k = k
-    //     self._v = v
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
-        : _k(k),
-          _v(v) {}
+    explicit Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v);
 
     // @property
     // def key(self) -> K:
-    //     return self._k
-    ::tpy::val_or_ref_t<K> key() {
-        return this->_k;
-    }
+    ::tpy::val_or_ref_t<K> key();
 
     // @property
     // def key(self) -> K:
-    //     return self._k
-    ::tpy::val_or_cref_t<K> key() const {
-        return this->_k;
-    }
+    ::tpy::val_or_cref_t<K> key() const;
 
     // @key.setter
     // def key(self, value: K) -> None:
-    //     self._k = value
-    void set_key(::tpy::own_param_t<K> value) {
-        this->_k = std::move(value);
-    }
+    void set_key(::tpy::own_param_t<K> value);
 
     // @property
     // def val(self) -> V:
-    //     return self._v
-    ::tpy::val_or_ref_t<V> val() {
-        return this->_v;
-    }
+    ::tpy::val_or_ref_t<V> val();
 
     // @property
     // def val(self) -> V:
-    //     return self._v
-    ::tpy::val_or_cref_t<V> val() const {
-        return this->_v;
-    }
+    ::tpy::val_or_cref_t<V> val() const;
 
     // def find(self, want: int32) -> V | None:
-    //     if want > 0:
-    //         return self._v
-    //     return None
-    V* find(int32_t want) {
-        if ((want > 0)) {
-            return &(this->_v);
-        }
-        return nullptr;
-    }
+    V* find(int32_t want);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -152,5 +125,66 @@ struct __gen_bump_gen : public ::tpy::next_iter_mixin<__gen_bump_gen, int32_t> {
 // def __init__(self, x: int32):
 //     self.x = x
 inline Rec::Rec(int32_t x) : x(x) {}
+
+// def __init__(self, k: K, v: V):
+//     self._k = k
+//     self._v = v
+template<typename K, typename V>
+inline Holder<K, V>::Holder(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
+    : _k(k),
+      _v(v) {}
+
+// @property
+// def key(self) -> K:
+//     return self._k
+template<typename K, typename V>
+inline ::tpy::val_or_ref_t<K> Holder<K, V>::key() {
+    return this->_k;
+}
+
+// @property
+// def key(self) -> K:
+//     return self._k
+template<typename K, typename V>
+inline ::tpy::val_or_cref_t<K> Holder<K, V>::key() const {
+    return this->_k;
+}
+
+// @key.setter
+// def key(self, value: K) -> None:
+//     self._k = value
+template<typename K, typename V>
+inline void Holder<K, V>::set_key(::tpy::own_param_t<K> value) {
+    this->_k = std::move(value);
+}
+
+// @property
+// def val(self) -> V:
+//     return self._v
+template<typename K, typename V>
+inline ::tpy::val_or_ref_t<V> Holder<K, V>::val() {
+    return this->_v;
+}
+
+// @property
+// def val(self) -> V:
+//     return self._v
+template<typename K, typename V>
+inline ::tpy::val_or_cref_t<V> Holder<K, V>::val() const {
+    return this->_v;
+}
+
+// def find(self, want: int32) -> V | None:
+//     if want > 0:
+//         return self._v
+//     return None
+template<typename K, typename V>
+inline V* Holder<K, V>::find(int32_t want) {
+    if ((want > 0)) {
+        return &(this->_v);
+    }
+    return nullptr;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

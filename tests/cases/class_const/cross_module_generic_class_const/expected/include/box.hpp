@@ -18,9 +18,7 @@ struct Box {
     static constexpr int32_t CAPACITY = 16;
 
     // def __init__(self) -> None:
-    //     pass
-    Box() {
-    }
+    Box();
     static constexpr std::string_view __tpy_class_name__ = "box.Box";
 };
 
@@ -28,6 +26,13 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline Box<T>::Box() {
 }
 
 void __tpy_init();

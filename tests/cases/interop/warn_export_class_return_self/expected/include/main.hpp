@@ -95,13 +95,9 @@ struct Box {
     // def __next__(self) -> int64:
     std::expected<int64_t, ::tpy::StopIteration> __next__();
 
-    const Box& operator[](int64_t i) const {
-        return __getitem__(i);
-    }
+    const Box& operator[](int64_t i) const;
 
-    Box& operator[](int64_t i) {
-        return __getitem__(i);
-    }
+    Box& operator[](int64_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -150,13 +146,9 @@ struct Rebound {
     // def __setitem__(self, i: int64, v: int64) -> Inner:
     Inner& __setitem__(int64_t i, int64_t v);
 
-    const Inner& operator[](int64_t i) const {
-        return __getitem__(i);
-    }
+    const Inner& operator[](int64_t i) const;
 
-    Inner& operator[](int64_t i) {
-        return __getitem__(i);
-    }
+    Inner& operator[](int64_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rebound";
 };
 
@@ -181,9 +173,7 @@ struct Flat {
     // def __getitem__(self, i: int64) -> "readonly[Flat]":
     Flat __getitem__(int64_t i) const;
 
-    Flat operator[](int64_t i) const {
-        return __getitem__(i);
-    }
+    Flat operator[](int64_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Flat";
 };
 
@@ -302,6 +292,14 @@ inline std::expected<int64_t, ::tpy::StopIteration> Box::__next__() {
     return this->v;
 }
 
+inline const Box& Box::operator[](int64_t i) const {
+    return __getitem__(i);
+}
+
+inline Box& Box::operator[](int64_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self):
 //     self._b = Box(0)
 inline FieldIter::FieldIter() : _b(Box(0)) {}
@@ -350,6 +348,14 @@ inline Inner& Rebound::__setitem__(int64_t i, int64_t v) {
     return this->_alt;
 }
 
+inline const Inner& Rebound::operator[](int64_t i) const {
+    return __getitem__(i);
+}
+
+inline Inner& Rebound::operator[](int64_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self, n: int64):
 //     self.n = n
 inline Flat::Flat(int64_t n) : n(n) {}
@@ -367,6 +373,10 @@ inline Flat Flat::itself() const {
 //     return self  # tpyc: ok
 inline Flat Flat::__getitem__(int64_t i) const {
     return (*this);
+}
+
+inline Flat Flat::operator[](int64_t i) const {
+    return __getitem__(i);
 }
 void __tpy_init();
 } // namespace tpyapp::main

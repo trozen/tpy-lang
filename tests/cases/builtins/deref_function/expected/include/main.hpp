@@ -29,9 +29,7 @@ struct Box {
     // def __deref__(self) -> int32:
     int32_t __deref__() const;
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -49,6 +47,10 @@ inline Box::Box(int32_t v) : _val(v) {}
 //     return self._val
 inline int32_t Box::__deref__() const {
     return this->_val;
+}
+
+inline auto Box::operator*() -> decltype(__deref__()) {
+    return __deref__();
 }
 // def deref_protocol(p: Deref[int32]) -> int32:
 //     return deref(p)

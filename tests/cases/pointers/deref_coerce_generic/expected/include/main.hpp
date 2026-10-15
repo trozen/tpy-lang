@@ -42,31 +42,20 @@ struct Box {
     T _value;
 
     // def __init__(self, value: T) -> None:
-    //     self._value = copy(value)
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> value) : _value(value) {}
+    explicit Box(::tpy::readonly_form_t<T> value);
 
     // @auto_readonly
     // def __deref__(self) -> T:
-    //     return self._value
-    ::tpy::val_or_ref_t<T> __deref__() {
-        return this->_value;
-    }
+    ::tpy::val_or_ref_t<T> __deref__();
 
     // @auto_readonly
     // def __deref__(self) -> T:
-    //     return self._value
-    ::tpy::val_or_cref_t<T> __deref__() const {
-        return this->_value;
-    }
+    ::tpy::val_or_cref_t<T> __deref__() const;
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -83,5 +72,37 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
 inline Point::Point(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// def __init__(self, value: T) -> None:
+//     self._value = copy(value)
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> value) : _value(value) {}
+
+// @auto_readonly
+// def __deref__(self) -> T:
+//     return self._value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Box<T>::__deref__() {
+    return this->_value;
+}
+
+// @auto_readonly
+// def __deref__(self) -> T:
+//     return self._value
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Box<T>::__deref__() const {
+    return this->_value;
+}
+
+template<typename T>
+inline auto Box<T>::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+template<typename T>
+inline auto Box<T>::operator*() const -> decltype(__deref__()) {
+    return __deref__();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

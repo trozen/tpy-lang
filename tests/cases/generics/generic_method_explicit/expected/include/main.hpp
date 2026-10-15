@@ -21,16 +21,12 @@ struct Box {
     T val;
 
     // def __init__(self, val: T):
-    //     self.val = val
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Box(::tpy::readonly_form_t<T> val);
 
     // def transform[U](self, other: U) -> U:
-    //     return other
     template<typename U>
-    ::tpy::val_or_ref_t<U> transform(::tpy::param_val_or_ref_t<U> other) const {
-        return ::tpy::param_to_return<U>(other);
-    }
+    ::tpy::val_or_ref_t<U> transform(::tpy::param_val_or_ref_t<U> other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -38,6 +34,20 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Box<T>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
+}
+
+
+// def __init__(self, val: T):
+//     self.val = val
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def transform[U](self, other: U) -> U:
+//     return other
+template<typename T>
+template<typename U>
+inline ::tpy::val_or_ref_t<U> Box<T>::transform(::tpy::param_val_or_ref_t<U> other) const {
+    return ::tpy::param_to_return<U>(other);
 }
 
 void __tpy_init();

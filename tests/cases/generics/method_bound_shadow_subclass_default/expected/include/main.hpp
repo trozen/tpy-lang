@@ -22,35 +22,17 @@ struct Bag {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    Bag() : items(std::vector<T>{}) {}
+    Bag();
 
     // def add(self, value: T) -> None:
-    //     self.items.append(value)
-    void add(::tpy::param_val_or_ref_t<T> value) {
-        this->items.push_back(::tpy::param_to_storage<T>(value));
-    }
+    void add(::tpy::param_val_or_ref_t<T> value);
 
     // def resize[T: Default](self, n: int32) -> None:
-    //     while len(self.items) > n:
-    //         self.items.pop()
-    //     while len(self.items) < n:
-    //         self.items.append(make_default())
     void resize(int32_t n)
-      requires ::std::default_initializable<T> {
-        while ((::tpy::__len__(this->items) > n)) {
-            ::tpy::pop_back(this->items);
-        }
-        while ((::tpy::__len__(this->items) < n)) {
-            this->items.push_back(T{});
-        }
-    }
+      requires ::std::default_initializable<T>;
 
     // def get(self, i: int32) -> T:
-    //     return self.items[i]
-    ::tpy::val_or_ref_t<T> get(int32_t i) {
-        return ::tpy::__getitem__(this->items, i);
-    }
+    ::tpy::val_or_ref_t<T> get(int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -70,6 +52,42 @@ struct IntBag : Bag<int32_t, 4> {
 inline std::ostream& operator<<(std::ostream& os, const IntBag& obj) {
     ::tpy::print_object_default(os, "IntBag", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T, std::size_t N>
+inline Bag<T, N>::Bag() : items(std::vector<T>{}) {}
+
+// def add(self, value: T) -> None:
+//     self.items.append(value)
+template<typename T, std::size_t N>
+inline void Bag<T, N>::add(::tpy::param_val_or_ref_t<T> value) {
+    this->items.push_back(::tpy::param_to_storage<T>(value));
+}
+
+// def resize[T: Default](self, n: int32) -> None:
+//     while len(self.items) > n:
+//         self.items.pop()
+//     while len(self.items) < n:
+//         self.items.append(make_default())
+template<typename T, std::size_t N>
+inline void Bag<T, N>::resize(int32_t n)
+  requires ::std::default_initializable<T> {
+    while ((::tpy::__len__(this->items) > n)) {
+        ::tpy::pop_back(this->items);
+    }
+    while ((::tpy::__len__(this->items) < n)) {
+        this->items.push_back(T{});
+    }
+}
+
+// def get(self, i: int32) -> T:
+//     return self.items[i]
+template<typename T, std::size_t N>
+inline ::tpy::val_or_ref_t<T> Bag<T, N>::get(int32_t i) {
+    return ::tpy::__getitem__(this->items, i);
 }
 
 void __tpy_init();

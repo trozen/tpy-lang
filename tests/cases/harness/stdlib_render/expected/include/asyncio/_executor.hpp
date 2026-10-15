@@ -125,274 +125,30 @@ struct TaskState {
     bool __tpy_owned_ = true;
 
     // def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
-    //     self.frame = frame
-    //     self.result = UninitStorage[T]()
-    //     self.exc = None
-    //     self.awaiter = Waker()
-    //     self.done = False
-    //     self.executor_owned = False
-    //     self.polling = False
-    //     self.must_cancel = False
-    explicit TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame)
-        : frame(std::move(frame)),
-          result(::tpy::UninitStorage<T>()),
-          exc(std::nullopt),
-          awaiter(::tpystd::coro::Waker()),
-          done(false),
-          executor_owned(false),
-          polling(false),
-          must_cancel(false) {}
+    explicit TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame);
     // non-copyable (@nocopy)
     TaskState(const TaskState&) = delete;
     TaskState& operator=(const TaskState&) = delete;
-    TaskState(TaskState&& other) noexcept
-        : frame(std::move(other.frame)),
-          result(std::move(other.result)),
-          exc(std::move(other.exc)),
-          awaiter(std::move(other.awaiter)),
-          done(std::move(other.done)),
-          executor_owned(std::move(other.executor_owned)),
-          polling(std::move(other.polling)),
-          must_cancel(std::move(other.must_cancel)) {
-        other.__tpy_owned_ = false;
-    }
-    TaskState& operator=(TaskState&& other) noexcept {
-        if (this != &other) {
-            this->~TaskState();
-            new (this) TaskState(std::move(other));
-        }
-        return *this;
-    }
+    TaskState(TaskState&& other) noexcept;
+    TaskState& operator=(TaskState&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     # Redundant with the slot's own RAII drop -- left until removing this
-    //     # __del__ is verified not to change the type's move/value-class codegen
-    //     # (TODO). A no-op when the result was already consumed.
-    //     if self.result.has():
-    //         self.result.reset()
-    ~TaskState() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        if (this->result.has()) {
-            this->result.reset();
-        }
-    }
+    ~TaskState();
 
-    // # User-facing poll. Drives the frame for non-executor-owned tasks;
-    // # for executor-owned tasks, parks (the executor's poll_any drives).
     // def __poll__(self, w: Waker) -> Own[Poll[T]]:
-    //     if self.done:
-    //         exc = self.exc
-    //         if exc is not None:
-    //             raise exc
-    //         if not self.result.has():
-    //             raise RuntimeError(
-    //                 "Task: __poll__ after Ready was already consumed")
-    //         return poll_ready(self.result.take())
-    //     if self.executor_owned:
-    //         self.awaiter = w
-    //         return poll_pending()
-    //     # Non-executor-owned: drive the frame directly.
-    //     frame = self.frame
-    //     if frame is None:
-    //         raise RuntimeError("Task: __poll__ on empty TaskState")
-    //     try:
-    //         self.polling = True
-    //         p = frame.get().__poll__(w)
-    //         self.polling = False
-    //         if self._take_must_cancel(p.is_ready(), w):
-    //             return poll_pending()
-    //         if p.is_ready():
-    //             self.done = True
-    //         return p
-    //     except BaseException as e:
-    //         self._end_poll()
-    //         self.done = True
-    //         self.exc = Box(e.clone())
-    //         raise
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) {
-        if (this->done) {
-            ::tpystd::tplib::box::Box<::tpy::Throwable>* exc = ::tpy::optional_to_ptr(this->exc);
-            if ((exc != nullptr)) {
-                (*exc).__deref__().__raise__();
-            }
-            if ((!(this->result.has()))) {
-                throw ::tpy::RuntimeError("Task: __poll__ after Ready was already consumed");
-            }
-            return ::tpystd::coro::poll_ready<T>(this->result.take());
-        }
-        if (this->executor_owned) {
-            this->awaiter = w;
-            return ::tpystd::coro::poll_pending<T>();
-        }
-        ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        if ((frame == nullptr)) {
-            throw ::tpy::RuntimeError("Task: __poll__ on empty TaskState");
-        }
-        std::optional<::tpystd::tpy::Poll<T>> p;
-        {
-            try {
-                this->polling = true;
-                p = frame->get().__poll__(w);
-                this->polling = false;
-                if (this->_take_must_cancel(p->is_ready(), w)) {
-                    return ::tpystd::coro::poll_pending<T>();
-                }
-                if (p->is_ready()) {
-                    this->done = true;
-                }
-                return std::move((*p));
-            } catch (const ::tpy::BaseException& e) {
-                this->_end_poll();
-                this->done = true;
-                this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                throw;
-            }
-        }
-    }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w);
 
-    // # Applies a cancel requested during the poll that just returned (see
-    // # `polling`). Pending: the cancel goes to the frame, and the task is
-    // # woken so the next poll delivers it at the suspension. Ready: the
-    // # task is cancelled instead of completing (CPython's Task.__step); the
-    // # value is dropped. Returns True when the task is still pending.
     // def _take_must_cancel(self, ready: bool, w: Waker) -> bool:
-    //     if not self.must_cancel:
-    //         return False
-    //     self.must_cancel = False
-    //     if ready:
-    //         raise CancelledError()
-    //     frame = self.frame
-    //     if frame is not None:
-    //         frame.get().cancel()
-    //     w.wake()
-    //     return True
-    bool _take_must_cancel(bool ready, ::tpystd::coro::Waker w) {
-        if ((!(this->must_cancel))) {
-            return false;
-        }
-        this->must_cancel = false;
-        if (ready) {
-            throw ::tpy::CancelledError{};
-        }
-        ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        if ((frame != nullptr)) {
-            frame->get().cancel();
-        }
-        w.wake();
-        return true;
-    }
+    bool _take_must_cancel(bool ready, ::tpystd::coro::Waker w);
 
     // def _end_poll(self) -> None:
-    //     self.polling = False
-    //     self.must_cancel = False
-    void _end_poll() {
-        this->polling = false;
-        this->must_cancel = false;
-    }
+    void _end_poll();
 
-    // # AnyTask interface: drives the frame and caches result/exc. Used
-    // # by the executor's slot table via the TaskStateView adapter.
     // def poll_any(self, w: Waker) -> bool:
-    //     if self.done:
-    //         return True
-    //     frame = self.frame
-    //     if frame is None:
-    //         return True
-    //     try:
-    //         self.polling = True
-    //         p = frame.get().__poll__(w)
-    //         self.polling = False
-    //         if self._take_must_cancel(p.is_ready(), w):
-    //             return False
-    //         if p.is_ready():
-    //             self.done = True
-    //             self.result.construct(p.value())
-    //             self.awaiter.wake()
-    //             return True
-    //         return False
-    //     except (SystemExit, KeyboardInterrupt) as e:
-    //         # Stored like any outcome, then raised out of the run, as
-    //         # CPython's Task.__step does: these end the program, not the task.
-    //         self._end_poll()
-    //         self.done = True
-    //         self.exc = Box(e.clone())
-    //         self.awaiter.wake()
-    //         raise
-    //     except BaseException as e:
-    //         self._end_poll()
-    //         self.done = True
-    //         self.exc = Box(e.clone())
-    //         self.awaiter.wake()
-    //         return True
-    bool poll_any(::tpystd::coro::Waker w) {
-        if (this->done) {
-            return true;
-        }
-        ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        if ((frame == nullptr)) {
-            return true;
-        }
-        std::optional<::tpystd::tpy::Poll<T>> p;
-        {
-            try {
-                this->polling = true;
-                p = frame->get().__poll__(w);
-                this->polling = false;
-                if (this->_take_must_cancel(p->is_ready(), w)) {
-                    return false;
-                }
-                if (p->is_ready()) {
-                    this->done = true;
-                    this->result.construct(std::move(*p).value());
-                    this->awaiter.wake();
-                    return true;
-                }
-                return false;
-            } catch (const ::tpy::SystemExit& e) {
-                this->_end_poll();
-                this->done = true;
-                this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                this->awaiter.wake();
-                throw;
-            } catch (const ::tpy::KeyboardInterrupt& e) {
-                this->_end_poll();
-                this->done = true;
-                this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                this->awaiter.wake();
-                throw;
-            } catch (const ::tpy::BaseException& e) {
-                this->_end_poll();
-                this->done = true;
-                this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                this->awaiter.wake();
-                return true;
-            }
-        }
-    }
+    bool poll_any(::tpystd::coro::Waker w);
 
     // def cancel_any(self) -> None:
-    //     if self.done:
-    //         return
-    //     if self.polling:
-    //         self.must_cancel = True
-    //         return
-    //     frame = self.frame
-    //     if frame is not None:
-    //         frame.get().cancel()
-    void cancel_any() {
-        if (this->done) {
-            return;
-        }
-        if (this->polling) {
-            this->must_cancel = true;
-            return;
-        }
-        ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
-        if ((frame != nullptr)) {
-            frame->get().cancel();
-        }
-    }
+    void cancel_any();
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.TaskState";
 };
 
@@ -410,9 +166,8 @@ struct TaskStateView {
     ::tpystd::tplib::rc::Rc<TaskState<T>> state;
 
     // def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
-    //     self.state = state
     TaskStateView() = default;
-    explicit TaskStateView(::tpystd::tplib::rc::Rc<TaskState<T>>&& state) : state(std::move(state)) {}
+    explicit TaskStateView(::tpystd::tplib::rc::Rc<TaskState<T>>&& state);
     // non-copyable (@nocopy)
     TaskStateView(const TaskStateView&) = delete;
     TaskStateView& operator=(const TaskStateView&) = delete;
@@ -420,16 +175,10 @@ struct TaskStateView {
     TaskStateView& operator=(TaskStateView&&) = default;
 
     // def poll_any(self, w: Waker) -> bool:
-    //     return self.state.get().poll_any(w)
-    bool poll_any(::tpystd::coro::Waker w) {
-        return this->state.get().poll_any(w);
-    }
+    bool poll_any(::tpystd::coro::Waker w);
 
     // def cancel_any(self) -> None:
-    //     self.state.get().cancel_any()
-    void cancel_any() {
-        this->state.get().cancel_any();
-    }
+    void cancel_any();
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.TaskStateView";
 };
 
@@ -449,12 +198,8 @@ struct Task {
     ::tpystd::coro::Waker _waker;
 
     // def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
-    //     self._state = state
-    //     self._waker = Waker()
     Task() = default;
-    explicit Task(::tpystd::tplib::rc::Rc<TaskState<T>>&& state)
-        : _state(std::move(state)),
-          _waker(::tpystd::coro::Waker()) {}
+    explicit Task(::tpystd::tplib::rc::Rc<TaskState<T>>&& state);
     // non-copyable (@nocopy)
     Task(const Task&) = delete;
     Task& operator=(const Task&) = delete;
@@ -462,54 +207,13 @@ struct Task {
     Task& operator=(Task&&) = default;
 
     // def __poll__(self, w: Waker) -> Own[Poll[T]]:
-    //     return self._state.get().__poll__(w)
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w) {
-        return this->_state.get().__poll__(w);
-    }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker w);
 
     // def cancel(self) -> None:
-    //     self._state.get().cancel_any()
-    //     # Wake routes through the @dynamic Awaker vtable to the
-    //     # executor's mark_runnable. The generation guard there filters
-    //     # late wakes against a completed slot, so this is safe even
-    //     # after the underlying task has already finished.
-    //     self._waker.wake()
-    void cancel() {
-        this->_state.get().cancel_any();
-        this->_waker.wake();
-    }
+    void cancel();
 
-    // # Cheap duplication: Task is an Rc handle into the shared TaskState,
-    // # so clone() just bumps the refcount. Used by asyncio.gather and
-    // # asyncio.gather_list to take owned task handles without consuming
-    // # the caller's list/varargs.
-    // #
-    // # WARNING (v1.5): the clone aliases the SAME TaskState as `self`.
-    // # TaskState is single-awaiter (one `awaiter: Waker` slot, one cached
-    // # result slot consumed on first __poll__ that observes Ready). Two
-    // # live handles must not be awaited concurrently and must not both
-    // # consume the result -- only one consumer survives, the other's
-    // # poll panics or its waker is overwritten. Likewise `cancel()` on
-    // # either handle propagates through the shared TaskState to BOTH;
-    // # the clone ALSO inherits the parent's stamped `_waker` (see field
-    // # comment above), so cancel-via-clone marks the same executor slot
-    // # runnable -- load-bearing for `_GatherFuture._propagate_cancel`,
-    // # which cancels its Rc-cloned tasks and relies on the wake landing
-    // # on the user's original spawn slot. `gather` and `gather_list` are
-    // # the only safe internal users today: each drives its clones
-    // # exclusively, and the user is expected to drop their original
-    // # `tasks[i]` (gather_list) or stop using each positional Task arg
-    // # (gather) once they've handed off to either entrypoint. A multi-
-    // # awaiter TaskState is filed in TODO.md.
     // def clone(self) -> Own[Task[T]]:
-    //     t = Task[T](self._state.clone())
-    //     t._waker = self._waker
-    //     return t
-    Task<T> clone() {
-        Task<T> t = Task<T>(this->_state.clone());
-        t._waker = this->_waker;
-        return t;
-    }
+    Task<T> clone();
     static constexpr std::string_view __tpy_class_name__ = "asyncio._executor.Task";
 };
 
@@ -1195,6 +899,364 @@ inline _ExecutorScope::~_ExecutorScope() {
     ::tpy::DeferSignals __tpy_defer_signals;
     ::tpystd::asyncio::_executor::_clear_current_executor();
 }
+
+// def __init__(self, frame: Own[Box[Cancellable[T]]]) -> None:
+//     self.frame = frame
+//     self.result = UninitStorage[T]()
+//     self.exc = None
+//     self.awaiter = Waker()
+//     self.done = False
+//     self.executor_owned = False
+//     self.polling = False
+//     self.must_cancel = False
+template<typename T>
+inline TaskState<T>::TaskState(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>&& frame)
+    : frame(std::move(frame)),
+      result(::tpy::UninitStorage<T>()),
+      exc(std::nullopt),
+      awaiter(::tpystd::coro::Waker()),
+      done(false),
+      executor_owned(false),
+      polling(false),
+      must_cancel(false) {}
+
+template<typename T>
+inline TaskState<T>::TaskState(TaskState&& other) noexcept
+    : frame(std::move(other.frame)),
+      result(std::move(other.result)),
+      exc(std::move(other.exc)),
+      awaiter(std::move(other.awaiter)),
+      done(std::move(other.done)),
+      executor_owned(std::move(other.executor_owned)),
+      polling(std::move(other.polling)),
+      must_cancel(std::move(other.must_cancel)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline TaskState<T>& TaskState<T>::operator=(TaskState&& other) noexcept {
+    if (this != &other) {
+        this->~TaskState();
+        new (this) TaskState(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     # Redundant with the slot's own RAII drop -- left until removing this
+//     # __del__ is verified not to change the type's move/value-class codegen
+//     # (TODO). A no-op when the result was already consumed.
+//     if self.result.has():
+//         self.result.reset()
+template<typename T>
+inline TaskState<T>::~TaskState() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    if (this->result.has()) {
+        this->result.reset();
+    }
+}
+
+// # User-facing poll. Drives the frame for non-executor-owned tasks;
+// # for executor-owned tasks, parks (the executor's poll_any drives).
+// def __poll__(self, w: Waker) -> Own[Poll[T]]:
+//     if self.done:
+//         exc = self.exc
+//         if exc is not None:
+//             raise exc
+//         if not self.result.has():
+//             raise RuntimeError(
+//                 "Task: __poll__ after Ready was already consumed")
+//         return poll_ready(self.result.take())
+//     if self.executor_owned:
+//         self.awaiter = w
+//         return poll_pending()
+//     # Non-executor-owned: drive the frame directly.
+//     frame = self.frame
+//     if frame is None:
+//         raise RuntimeError("Task: __poll__ on empty TaskState")
+//     try:
+//         self.polling = True
+//         p = frame.get().__poll__(w)
+//         self.polling = False
+//         if self._take_must_cancel(p.is_ready(), w):
+//             return poll_pending()
+//         if p.is_ready():
+//             self.done = True
+//         return p
+//     except BaseException as e:
+//         self._end_poll()
+//         self.done = True
+//         self.exc = Box(e.clone())
+//         raise
+template<typename T>
+inline ::tpystd::tpy::Poll<T> TaskState<T>::__poll__(::tpystd::coro::Waker w) {
+    if (this->done) {
+        ::tpystd::tplib::box::Box<::tpy::Throwable>* exc = ::tpy::optional_to_ptr(this->exc);
+        if ((exc != nullptr)) {
+            (*exc).__deref__().__raise__();
+        }
+        if ((!(this->result.has()))) {
+            throw ::tpy::RuntimeError("Task: __poll__ after Ready was already consumed");
+        }
+        return ::tpystd::coro::poll_ready<T>(this->result.take());
+    }
+    if (this->executor_owned) {
+        this->awaiter = w;
+        return ::tpystd::coro::poll_pending<T>();
+    }
+    ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
+    if ((frame == nullptr)) {
+        throw ::tpy::RuntimeError("Task: __poll__ on empty TaskState");
+    }
+    std::optional<::tpystd::tpy::Poll<T>> p;
+    {
+        try {
+            this->polling = true;
+            p = frame->get().__poll__(w);
+            this->polling = false;
+            if (this->_take_must_cancel(p->is_ready(), w)) {
+                return ::tpystd::coro::poll_pending<T>();
+            }
+            if (p->is_ready()) {
+                this->done = true;
+            }
+            return std::move((*p));
+        } catch (const ::tpy::BaseException& e) {
+            this->_end_poll();
+            this->done = true;
+            this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+            throw;
+        }
+    }
+}
+
+// # Applies a cancel requested during the poll that just returned (see
+// # `polling`). Pending: the cancel goes to the frame, and the task is
+// # woken so the next poll delivers it at the suspension. Ready: the
+// # task is cancelled instead of completing (CPython's Task.__step); the
+// # value is dropped. Returns True when the task is still pending.
+// def _take_must_cancel(self, ready: bool, w: Waker) -> bool:
+//     if not self.must_cancel:
+//         return False
+//     self.must_cancel = False
+//     if ready:
+//         raise CancelledError()
+//     frame = self.frame
+//     if frame is not None:
+//         frame.get().cancel()
+//     w.wake()
+//     return True
+template<typename T>
+inline bool TaskState<T>::_take_must_cancel(bool ready, ::tpystd::coro::Waker w) {
+    if ((!(this->must_cancel))) {
+        return false;
+    }
+    this->must_cancel = false;
+    if (ready) {
+        throw ::tpy::CancelledError{};
+    }
+    ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
+    if ((frame != nullptr)) {
+        frame->get().cancel();
+    }
+    w.wake();
+    return true;
+}
+
+// def _end_poll(self) -> None:
+//     self.polling = False
+//     self.must_cancel = False
+template<typename T>
+inline void TaskState<T>::_end_poll() {
+    this->polling = false;
+    this->must_cancel = false;
+}
+
+// # AnyTask interface: drives the frame and caches result/exc. Used
+// # by the executor's slot table via the TaskStateView adapter.
+// def poll_any(self, w: Waker) -> bool:
+//     if self.done:
+//         return True
+//     frame = self.frame
+//     if frame is None:
+//         return True
+//     try:
+//         self.polling = True
+//         p = frame.get().__poll__(w)
+//         self.polling = False
+//         if self._take_must_cancel(p.is_ready(), w):
+//             return False
+//         if p.is_ready():
+//             self.done = True
+//             self.result.construct(p.value())
+//             self.awaiter.wake()
+//             return True
+//         return False
+//     except (SystemExit, KeyboardInterrupt) as e:
+//         # Stored like any outcome, then raised out of the run, as
+//         # CPython's Task.__step does: these end the program, not the task.
+//         self._end_poll()
+//         self.done = True
+//         self.exc = Box(e.clone())
+//         self.awaiter.wake()
+//         raise
+//     except BaseException as e:
+//         self._end_poll()
+//         self.done = True
+//         self.exc = Box(e.clone())
+//         self.awaiter.wake()
+//         return True
+template<typename T>
+inline bool TaskState<T>::poll_any(::tpystd::coro::Waker w) {
+    if (this->done) {
+        return true;
+    }
+    ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
+    if ((frame == nullptr)) {
+        return true;
+    }
+    std::optional<::tpystd::tpy::Poll<T>> p;
+    {
+        try {
+            this->polling = true;
+            p = frame->get().__poll__(w);
+            this->polling = false;
+            if (this->_take_must_cancel(p->is_ready(), w)) {
+                return false;
+            }
+            if (p->is_ready()) {
+                this->done = true;
+                this->result.construct(std::move(*p).value());
+                this->awaiter.wake();
+                return true;
+            }
+            return false;
+        } catch (const ::tpy::SystemExit& e) {
+            this->_end_poll();
+            this->done = true;
+            this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+            this->awaiter.wake();
+            throw;
+        } catch (const ::tpy::KeyboardInterrupt& e) {
+            this->_end_poll();
+            this->done = true;
+            this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+            this->awaiter.wake();
+            throw;
+        } catch (const ::tpy::BaseException& e) {
+            this->_end_poll();
+            this->done = true;
+            this->exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+            this->awaiter.wake();
+            return true;
+        }
+    }
+}
+
+// def cancel_any(self) -> None:
+//     if self.done:
+//         return
+//     if self.polling:
+//         self.must_cancel = True
+//         return
+//     frame = self.frame
+//     if frame is not None:
+//         frame.get().cancel()
+template<typename T>
+inline void TaskState<T>::cancel_any() {
+    if (this->done) {
+        return;
+    }
+    if (this->polling) {
+        this->must_cancel = true;
+        return;
+    }
+    ::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>* frame = ::tpy::optional_to_ptr(this->frame);
+    if ((frame != nullptr)) {
+        frame->get().cancel();
+    }
+}
+
+// def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
+//     self.state = state
+template<typename T>
+inline TaskStateView<T>::TaskStateView(::tpystd::tplib::rc::Rc<TaskState<T>>&& state) : state(std::move(state)) {}
+
+// def poll_any(self, w: Waker) -> bool:
+//     return self.state.get().poll_any(w)
+template<typename T>
+inline bool TaskStateView<T>::poll_any(::tpystd::coro::Waker w) {
+    return this->state.get().poll_any(w);
+}
+
+// def cancel_any(self) -> None:
+//     self.state.get().cancel_any()
+template<typename T>
+inline void TaskStateView<T>::cancel_any() {
+    this->state.get().cancel_any();
+}
+
+// def __init__(self, state: Own[Rc[TaskState[T]]]) -> None:
+//     self._state = state
+//     self._waker = Waker()
+template<typename T>
+inline Task<T>::Task(::tpystd::tplib::rc::Rc<TaskState<T>>&& state)
+    : _state(std::move(state)),
+      _waker(::tpystd::coro::Waker()) {}
+
+// def __poll__(self, w: Waker) -> Own[Poll[T]]:
+//     return self._state.get().__poll__(w)
+template<typename T>
+inline ::tpystd::tpy::Poll<T> Task<T>::__poll__(::tpystd::coro::Waker w) {
+    return this->_state.get().__poll__(w);
+}
+
+// def cancel(self) -> None:
+//     self._state.get().cancel_any()
+//     # Wake routes through the @dynamic Awaker vtable to the
+//     # executor's mark_runnable. The generation guard there filters
+//     # late wakes against a completed slot, so this is safe even
+//     # after the underlying task has already finished.
+//     self._waker.wake()
+template<typename T>
+inline void Task<T>::cancel() {
+    this->_state.get().cancel_any();
+    this->_waker.wake();
+}
+
+// # Cheap duplication: Task is an Rc handle into the shared TaskState,
+// # so clone() just bumps the refcount. Used by asyncio.gather and
+// # asyncio.gather_list to take owned task handles without consuming
+// # the caller's list/varargs.
+// #
+// # WARNING (v1.5): the clone aliases the SAME TaskState as `self`.
+// # TaskState is single-awaiter (one `awaiter: Waker` slot, one cached
+// # result slot consumed on first __poll__ that observes Ready). Two
+// # live handles must not be awaited concurrently and must not both
+// # consume the result -- only one consumer survives, the other's
+// # poll panics or its waker is overwritten. Likewise `cancel()` on
+// # either handle propagates through the shared TaskState to BOTH;
+// # the clone ALSO inherits the parent's stamped `_waker` (see field
+// # comment above), so cancel-via-clone marks the same executor slot
+// # runnable -- load-bearing for `_GatherFuture._propagate_cancel`,
+// # which cancels its Rc-cloned tasks and relies on the wake landing
+// # on the user's original spawn slot. `gather` and `gather_list` are
+// # the only safe internal users today: each drives its clones
+// # exclusively, and the user is expected to drop their original
+// # `tasks[i]` (gather_list) or stop using each positional Task arg
+// # (gather) once they've handed off to either entrypoint. A multi-
+// # awaiter TaskState is filed in TODO.md.
+// def clone(self) -> Own[Task[T]]:
+//     t = Task[T](self._state.clone())
+//     t._waker = self._waker
+//     return t
+template<typename T>
+inline Task<T> Task<T>::clone() {
+    Task<T> t = Task<T>(this->_state.clone());
+    t._waker = this->_waker;
+    return t;
+}
+
 // def task_from_coro[T](coro: Own[Cancellable[T]]) -> Own[Task[T]]:
 //     """Box an awaitable into a heap-allocated Task[T] without
 //     registering with an executor (no `asyncio.run` required).

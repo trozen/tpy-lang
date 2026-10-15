@@ -98,11 +98,8 @@ template<typename T>
 struct Cell {
 
     // def __init__(self, v: T) -> None:
-    //     print("  cell", v)
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v) {
-        std::cout << "  cell" << " " << ::tpy::ValuePrinter(v) << "\n" << ::tpy::check_signals;
-    }
+    explicit Cell(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -311,5 +308,13 @@ inline void Holder::method() const {
         (void)(Tick(n));
     }
 }
+
+// def __init__(self, v: T) -> None:
+//     print("  cell", v)
+template<typename T>
+inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) {
+    std::cout << "  cell" << " " << ::tpy::ValuePrinter(v) << "\n" << ::tpy::check_signals;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

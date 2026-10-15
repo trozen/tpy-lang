@@ -61,11 +61,7 @@ struct Message {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Message";
 };
 
@@ -81,17 +77,11 @@ struct Container {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Container(::tpy::readonly_form_t<T> value);
 
     // def describe(self) -> None:
-    //     print(self.value.to_str())
-    //     print(len(self.value))
-    void describe() {
-        std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
-        std::cout << ::tpy::__len__(this->value) << "\n" << ::tpy::check_signals;
-    }
+    void describe();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -117,6 +107,27 @@ inline std::string Message::to_str() const {
 inline int32_t Message::__len__() const {
     return 5;
 }
+
+inline size_t Message::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
+}
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<PrintableAndSized T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def describe(self) -> None:
+//     print(self.value.to_str())
+//     print(len(self.value))
+template<PrintableAndSized T>
+inline void Container<T>::describe() {
+    std::cout << this->value.to_str() << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(this->value) << "\n" << ::tpy::check_signals;
+}
+
 // # a member-less protocol is the intersection of its parents: each parent,
 // # a marker included, decides by its own rule
 // def top[T: OrdVal](xs: list[T]) -> T:  # tpyc: ok

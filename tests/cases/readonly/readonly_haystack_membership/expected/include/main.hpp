@@ -41,31 +41,16 @@ struct Bag {
     ::tpy::ordered_map<K, V> _data;
 
     // def __init__(self) -> None:
-    //     self._data = {}
-    Bag() : _data(::tpy::ordered_map<K, V>()) {}
+    Bag();
 
-    // # Method: `__contains__` is readonly, so `self._data` is a readonly dict.
     // def __contains__(self, key: K) -> bool:
-    //     return key in self._data  # tpyc: ok
-    bool __contains__(::tpy::readonly_form_t<K> key) const {
-        return (this->_data.contains(key));
-    }
+    bool __contains__(::tpy::readonly_form_t<K> key) const;
 
-    // # Generic class method, inferred readonly: the same lookup.
     // def has(self, key: K) -> bool:
-    //     return key in self._data  # tpyc: ok
-    bool has(::tpy::readonly_form_t<K> key) const {
-        return (this->_data.contains(key));
-    }
+    bool has(::tpy::readonly_form_t<K> key) const;
 
     // def add(self, key: K, v: V) -> None:
-    //     if key not in self._data:
-    //         self._data[key] = copy(v)
-    void add(::tpy::param_val_or_ref_t<K> key, ::tpy::param_val_or_ref_t<V> v) {
-        if ((!(this->_data.contains(key)))) {
-            ::tpy::__setitem__(this->_data, key, V(v));
-        }
-    }
+    void add(::tpy::param_val_or_ref_t<K> key, ::tpy::param_val_or_ref_t<V> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -126,6 +111,38 @@ struct __gen_each : public ::tpy::next_iter_mixin<__gen_each, bool> {
 inline bool Pos::__contains__(int32_t k) const {
     return (k > 0);
 }
+
+// def __init__(self) -> None:
+//     self._data = {}
+template<::tpystd::tpy::Hashable K, typename V>
+inline Bag<K, V>::Bag() : _data(::tpy::ordered_map<K, V>()) {}
+
+// # Method: `__contains__` is readonly, so `self._data` is a readonly dict.
+// def __contains__(self, key: K) -> bool:
+//     return key in self._data  # tpyc: ok
+template<::tpystd::tpy::Hashable K, typename V>
+inline bool Bag<K, V>::__contains__(::tpy::readonly_form_t<K> key) const {
+    return (this->_data.contains(key));
+}
+
+// # Generic class method, inferred readonly: the same lookup.
+// def has(self, key: K) -> bool:
+//     return key in self._data  # tpyc: ok
+template<::tpystd::tpy::Hashable K, typename V>
+inline bool Bag<K, V>::has(::tpy::readonly_form_t<K> key) const {
+    return (this->_data.contains(key));
+}
+
+// def add(self, key: K, v: V) -> None:
+//     if key not in self._data:
+//         self._data[key] = copy(v)
+template<::tpystd::tpy::Hashable K, typename V>
+inline void Bag<K, V>::add(::tpy::param_val_or_ref_t<K> key, ::tpy::param_val_or_ref_t<V> v) {
+    if ((!(this->_data.contains(key)))) {
+        ::tpy::__setitem__(this->_data, key, V(v));
+    }
+}
+
 // # Free generic function: an open-T needle into the hashed lookup.
 // def gfind[T: Hashable](s: readonly[set[T]], v: T) -> bool:
 //     return v in s  # tpyc: ok

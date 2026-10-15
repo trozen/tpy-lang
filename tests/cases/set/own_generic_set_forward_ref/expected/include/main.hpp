@@ -23,9 +23,8 @@ struct Container {
     T item;
 
     // def __init__(self, item: Own[T]) -> None:
-    //     self.item = item
     Container() = default;
-    explicit Container(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit Container(::tpy::own_param_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -106,5 +105,11 @@ inline bool Point::__eq__(const Point& other) const {
 // def __init__(self) -> None:
 //     self.c = Container(set())
 inline Holder::Holder() : c(Container<::tpy::ordered_set<Point>>(::tpy::ordered_set<Point>())) {}
+
+// def __init__(self, item: Own[T]) -> None:
+//     self.item = item
+template<typename T>
+inline Container<T>::Container(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

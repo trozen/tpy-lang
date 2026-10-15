@@ -22,15 +22,11 @@ struct Inner {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Inner() = default;
-    explicit Inner(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Inner(::tpy::readonly_form_t<T> v);
 
     // def put(self, value: T) -> None:
-    //     self.v = value  # tpyc: warning(/may copy T into field/)
-    void put(::tpy::param_val_or_ref_t<T> value) {
-        this->v = ::tpy::param_to_storage<T>(value);
-    }
+    void put(::tpy::param_val_or_ref_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Inner";
 };
 
@@ -47,15 +43,11 @@ struct Outer {
     Inner<T> _in;
 
     // def __init__(self, v: T) -> None:
-    //     self._in = Inner[T](v)
     Outer() = default;
-    explicit Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(v)) {}
+    explicit Outer(::tpy::param_val_or_ref_t<T> v);
 
     // def put(self, value: T) -> None:
-    //     self._in.put(value)  # tpyc: ok -- both sides spell the same open T
-    void put(::tpy::param_val_or_ref_t<T> value) {
-        this->_in.put(value);
-    }
+    void put(::tpy::param_val_or_ref_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Outer";
 };
 
@@ -63,6 +55,31 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Outer<T>& obj) {
     ::tpy::print_object_default(os, "Outer", obj);
     return os;
+}
+
+
+// def __init__(self, v: T) -> None:
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Inner<T>::Inner(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// def put(self, value: T) -> None:
+//     self.v = value  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline void Inner<T>::put(::tpy::param_val_or_ref_t<T> value) {
+    this->v = ::tpy::param_to_storage<T>(value);
+}
+
+// def __init__(self, v: T) -> None:
+//     self._in = Inner[T](v)
+template<typename T>
+inline Outer<T>::Outer(::tpy::param_val_or_ref_t<T> v) : _in(Inner<T>(v)) {}
+
+// def put(self, value: T) -> None:
+//     self._in.put(value)  # tpyc: ok -- both sides spell the same open T
+template<typename T>
+inline void Outer<T>::put(::tpy::param_val_or_ref_t<T> value) {
+    this->_in.put(value);
 }
 
 void __tpy_init();

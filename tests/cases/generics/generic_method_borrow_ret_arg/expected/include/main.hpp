@@ -73,10 +73,7 @@ struct Bumper {
 
 
     // def bump_it(self, v: T) -> None:
-    //     v.bump()
-    void bump_it(::tpy::param_val_or_ref_t<T> v) const {
-        v.bump();
-    }
+    void bump_it(::tpy::param_val_or_ref_t<T> v) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bumper";
 };
 
@@ -138,5 +135,13 @@ inline void Owner::run() {
     b.bump_it(this->h.borrow());
     std::cout << "method" << " " << this->h.c.n << "\n" << ::tpy::check_signals;
 }
+
+// def bump_it(self, v: T) -> None:
+//     v.bump()
+template<Bump T>
+inline void Bumper<T>::bump_it(::tpy::param_val_or_ref_t<T> v) const {
+    v.bump();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

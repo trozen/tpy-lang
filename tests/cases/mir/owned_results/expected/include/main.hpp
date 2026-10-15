@@ -173,9 +173,8 @@ struct Box {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -260,5 +259,11 @@ inline Holder::Holder() : p(Point(0, 0)) {}
 inline void Holder::put(int32_t n) {
     this->p = ::tpyapp::main::make(n);
 }
+
+// def __init__(self, v: T) -> None:
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

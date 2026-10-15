@@ -36,9 +36,8 @@ struct Atomic {
     ::tpy::MovableAtomic<T> _raw;
 
     // def __init__(self, value: T) -> None:
-    //     self._raw = _RawAtomic[T](value)
     Atomic() = default;
-    explicit Atomic(::tpy::param_val_or_ref_t<T> value) : _raw(::tpy::MovableAtomic<T>(value)) {}
+    explicit Atomic(::tpy::param_val_or_ref_t<T> value);
     // non-copyable (@nocopy)
     Atomic(const Atomic&) = delete;
     Atomic& operator=(const Atomic&) = delete;
@@ -47,129 +46,59 @@ struct Atomic {
 
     // @readonly
     // def load(self, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.load(order)
-    ::tpy::val_or_ref_t<T> load(::std::memory_order order = ::std::memory_order::seq_cst) const {
-        return this->_raw.load(order);
-    }
+    ::tpy::val_or_ref_t<T> load(::std::memory_order order = ::std::memory_order::seq_cst) const;
 
     // def store(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> None:
-    //     self._raw.store(value, order)
-    void store(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        this->_raw.store(value, order);
-    }
+    void store(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
     // def exchange(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.exchange(value, order)
-    ::tpy::val_or_ref_t<T> exchange(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        return this->_raw.exchange(value, order);
-    }
+    ::tpy::val_or_ref_t<T> exchange(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
     // def fetch_add(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.fetch_add(value, order)
-    ::tpy::val_or_ref_t<T> fetch_add(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        return this->_raw.fetch_add(value, order);
-    }
+    ::tpy::val_or_ref_t<T> fetch_add(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
     // def fetch_sub(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.fetch_sub(value, order)
-    ::tpy::val_or_ref_t<T> fetch_sub(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        return this->_raw.fetch_sub(value, order);
-    }
+    ::tpy::val_or_ref_t<T> fetch_sub(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
     // def fetch_and(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.fetch_and(value, order)
-    ::tpy::val_or_ref_t<T> fetch_and(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        return this->_raw.fetch_and(value, order);
-    }
+    ::tpy::val_or_ref_t<T> fetch_and(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
     // def fetch_or(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.fetch_or(value, order)
-    ::tpy::val_or_ref_t<T> fetch_or(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        return this->_raw.fetch_or(value, order);
-    }
+    ::tpy::val_or_ref_t<T> fetch_or(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
     // def fetch_xor(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
-    //     return self._raw.fetch_xor(value, order)
-    ::tpy::val_or_ref_t<T> fetch_xor(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst) {
-        return this->_raw.fetch_xor(value, order);
-    }
+    ::tpy::val_or_ref_t<T> fetch_xor(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order = ::std::memory_order::seq_cst);
 
-    // # Returns (succeeded, observed): on success `observed` is the swapped-from
-    // # value; on failure the current value, so a CAS loop retries without a
-    // # separate re-load. The plain form is deterministic; the `weak` form may fail
-    // # spuriously (use it in a loop) for cheaper codegen on LL/SC architectures.
     // def compare_exchange(self, expected: T, desired: T,
     //                      success: MemoryOrder = MemoryOrder.SEQ_CST,
     //                      failure: MemoryOrder = MemoryOrder.SEQ_CST) -> tuple[bool, T]:
-    //     return self._raw.compare_exchange(expected, desired, success, failure)
-    std::tuple<bool, ::tpy::val_or_ptr_t<T>> compare_exchange(::tpy::param_val_or_ref_t<T> expected, ::tpy::param_val_or_ref_t<T> desired, ::std::memory_order success = ::std::memory_order::seq_cst, ::std::memory_order failure = ::std::memory_order::seq_cst) {
-        return ::tpy::atomic_cas(this->_raw, expected, desired, success, failure);
-    }
+    std::tuple<bool, ::tpy::val_or_ptr_t<T>> compare_exchange(::tpy::param_val_or_ref_t<T> expected, ::tpy::param_val_or_ref_t<T> desired, ::std::memory_order success = ::std::memory_order::seq_cst, ::std::memory_order failure = ::std::memory_order::seq_cst);
 
     // def compare_exchange_weak(self, expected: T, desired: T,
     //                           success: MemoryOrder = MemoryOrder.SEQ_CST,
     //                           failure: MemoryOrder = MemoryOrder.SEQ_CST) -> tuple[bool, T]:
-    //     return self._raw.compare_exchange_weak(expected, desired, success, failure)
-    std::tuple<bool, ::tpy::val_or_ptr_t<T>> compare_exchange_weak(::tpy::param_val_or_ref_t<T> expected, ::tpy::param_val_or_ref_t<T> desired, ::std::memory_order success = ::std::memory_order::seq_cst, ::std::memory_order failure = ::std::memory_order::seq_cst) {
-        return ::tpy::atomic_cas_weak(this->_raw, expected, desired, success, failure);
-    }
+    std::tuple<bool, ::tpy::val_or_ptr_t<T>> compare_exchange_weak(::tpy::param_val_or_ref_t<T> expected, ::tpy::param_val_or_ref_t<T> desired, ::std::memory_order success = ::std::memory_order::seq_cst, ::std::memory_order failure = ::std::memory_order::seq_cst);
 
-    // # Ergonomic in-place operators: atomic RMW at seq_cst, so `counter += 1` is a
-    // # single atomic op. Binary operators (`+`, `-`, ...) and implicit `int()` are
-    // # deliberately NOT provided -- they would make the non-atomic `a = a + 1` (a
-    // # load/store race) look valid. Read explicitly via `load()`.
     // def __iadd__(self, other: T) -> Atomic[T]:
-    //     self._raw.fetch_add(other, MemoryOrder.SEQ_CST)
-    //     return self
-    Atomic& __iadd__(::tpy::param_val_or_ref_t<T> other) {
-        this->_raw.fetch_add(other, ::std::memory_order::seq_cst);
-        return (*this);
-    }
+    Atomic& __iadd__(::tpy::param_val_or_ref_t<T> other);
 
     // def __isub__(self, other: T) -> Atomic[T]:
-    //     self._raw.fetch_sub(other, MemoryOrder.SEQ_CST)
-    //     return self
-    Atomic& __isub__(::tpy::param_val_or_ref_t<T> other) {
-        this->_raw.fetch_sub(other, ::std::memory_order::seq_cst);
-        return (*this);
-    }
+    Atomic& __isub__(::tpy::param_val_or_ref_t<T> other);
 
     // def __iand__(self, other: T) -> Atomic[T]:
-    //     self._raw.fetch_and(other, MemoryOrder.SEQ_CST)
-    //     return self
-    Atomic& __iand__(::tpy::param_val_or_ref_t<T> other) {
-        this->_raw.fetch_and(other, ::std::memory_order::seq_cst);
-        return (*this);
-    }
+    Atomic& __iand__(::tpy::param_val_or_ref_t<T> other);
 
     // def __ior__(self, other: T) -> Atomic[T]:
-    //     self._raw.fetch_or(other, MemoryOrder.SEQ_CST)
-    //     return self
-    Atomic& __ior__(::tpy::param_val_or_ref_t<T> other) {
-        this->_raw.fetch_or(other, ::std::memory_order::seq_cst);
-        return (*this);
-    }
+    Atomic& __ior__(::tpy::param_val_or_ref_t<T> other);
 
     // def __ixor__(self, other: T) -> Atomic[T]:
-    //     self._raw.fetch_xor(other, MemoryOrder.SEQ_CST)
-    //     return self
-    Atomic& __ixor__(::tpy::param_val_or_ref_t<T> other) {
-        this->_raw.fetch_xor(other, ::std::memory_order::seq_cst);
-        return (*this);
-    }
+    Atomic& __ixor__(::tpy::param_val_or_ref_t<T> other);
 
-    // # Snapshot print (relaxed load), mirroring Rust's Debug for atomics.
     // def __str__(self) -> str:
-    //     return f"Atomic({self._raw.load(MemoryOrder.RELAXED)})"
-    std::string __str__() const {
-        return std::format("Atomic({})", ::tpy::__str__(this->_raw.load(::std::memory_order::relaxed)));
-    }
+    std::string __str__() const;
 
     // def __repr__(self) -> str:
-    //     return f"Atomic({self._raw.load(MemoryOrder.RELAXED)})"
-    std::string __repr__() const {
-        return std::format("Atomic({})", ::tpy::__str__(this->_raw.load(::std::memory_order::relaxed)));
-    }
+    std::string __repr__() const;
     static constexpr std::string_view __tpy_class_name__ = "tpy.atomic.Atomic";
 };
 
@@ -177,6 +106,155 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Atomic<T>& obj) {
     os << obj.__str__();
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self._raw = _RawAtomic[T](value)
+template<::tpy::AnyFixedInt T>
+inline Atomic<T>::Atomic(::tpy::param_val_or_ref_t<T> value) : _raw(::tpy::MovableAtomic<T>(value)) {}
+
+// @readonly
+// def load(self, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.load(order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::load(::std::memory_order order) const {
+    return this->_raw.load(order);
+}
+
+// def store(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> None:
+//     self._raw.store(value, order)
+template<::tpy::AnyFixedInt T>
+inline void Atomic<T>::store(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    this->_raw.store(value, order);
+}
+
+// def exchange(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.exchange(value, order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::exchange(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    return this->_raw.exchange(value, order);
+}
+
+// def fetch_add(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.fetch_add(value, order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::fetch_add(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    return this->_raw.fetch_add(value, order);
+}
+
+// def fetch_sub(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.fetch_sub(value, order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::fetch_sub(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    return this->_raw.fetch_sub(value, order);
+}
+
+// def fetch_and(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.fetch_and(value, order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::fetch_and(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    return this->_raw.fetch_and(value, order);
+}
+
+// def fetch_or(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.fetch_or(value, order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::fetch_or(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    return this->_raw.fetch_or(value, order);
+}
+
+// def fetch_xor(self, value: T, order: MemoryOrder = MemoryOrder.SEQ_CST) -> T:
+//     return self._raw.fetch_xor(value, order)
+template<::tpy::AnyFixedInt T>
+inline ::tpy::val_or_ref_t<T> Atomic<T>::fetch_xor(::tpy::param_val_or_ref_t<T> value, ::std::memory_order order) {
+    return this->_raw.fetch_xor(value, order);
+}
+
+// # Returns (succeeded, observed): on success `observed` is the swapped-from
+// # value; on failure the current value, so a CAS loop retries without a
+// # separate re-load. The plain form is deterministic; the `weak` form may fail
+// # spuriously (use it in a loop) for cheaper codegen on LL/SC architectures.
+// def compare_exchange(self, expected: T, desired: T,
+//                      success: MemoryOrder = MemoryOrder.SEQ_CST,
+//                      failure: MemoryOrder = MemoryOrder.SEQ_CST) -> tuple[bool, T]:
+//     return self._raw.compare_exchange(expected, desired, success, failure)
+template<::tpy::AnyFixedInt T>
+inline std::tuple<bool, ::tpy::val_or_ptr_t<T>> Atomic<T>::compare_exchange(::tpy::param_val_or_ref_t<T> expected, ::tpy::param_val_or_ref_t<T> desired, ::std::memory_order success, ::std::memory_order failure) {
+    return ::tpy::atomic_cas(this->_raw, expected, desired, success, failure);
+}
+
+// def compare_exchange_weak(self, expected: T, desired: T,
+//                           success: MemoryOrder = MemoryOrder.SEQ_CST,
+//                           failure: MemoryOrder = MemoryOrder.SEQ_CST) -> tuple[bool, T]:
+//     return self._raw.compare_exchange_weak(expected, desired, success, failure)
+template<::tpy::AnyFixedInt T>
+inline std::tuple<bool, ::tpy::val_or_ptr_t<T>> Atomic<T>::compare_exchange_weak(::tpy::param_val_or_ref_t<T> expected, ::tpy::param_val_or_ref_t<T> desired, ::std::memory_order success, ::std::memory_order failure) {
+    return ::tpy::atomic_cas_weak(this->_raw, expected, desired, success, failure);
+}
+
+// # Ergonomic in-place operators: atomic RMW at seq_cst, so `counter += 1` is a
+// # single atomic op. Binary operators (`+`, `-`, ...) and implicit `int()` are
+// # deliberately NOT provided -- they would make the non-atomic `a = a + 1` (a
+// # load/store race) look valid. Read explicitly via `load()`.
+// def __iadd__(self, other: T) -> Atomic[T]:
+//     self._raw.fetch_add(other, MemoryOrder.SEQ_CST)
+//     return self
+template<::tpy::AnyFixedInt T>
+inline Atomic<T>& Atomic<T>::__iadd__(::tpy::param_val_or_ref_t<T> other) {
+    this->_raw.fetch_add(other, ::std::memory_order::seq_cst);
+    return (*this);
+}
+
+// def __isub__(self, other: T) -> Atomic[T]:
+//     self._raw.fetch_sub(other, MemoryOrder.SEQ_CST)
+//     return self
+template<::tpy::AnyFixedInt T>
+inline Atomic<T>& Atomic<T>::__isub__(::tpy::param_val_or_ref_t<T> other) {
+    this->_raw.fetch_sub(other, ::std::memory_order::seq_cst);
+    return (*this);
+}
+
+// def __iand__(self, other: T) -> Atomic[T]:
+//     self._raw.fetch_and(other, MemoryOrder.SEQ_CST)
+//     return self
+template<::tpy::AnyFixedInt T>
+inline Atomic<T>& Atomic<T>::__iand__(::tpy::param_val_or_ref_t<T> other) {
+    this->_raw.fetch_and(other, ::std::memory_order::seq_cst);
+    return (*this);
+}
+
+// def __ior__(self, other: T) -> Atomic[T]:
+//     self._raw.fetch_or(other, MemoryOrder.SEQ_CST)
+//     return self
+template<::tpy::AnyFixedInt T>
+inline Atomic<T>& Atomic<T>::__ior__(::tpy::param_val_or_ref_t<T> other) {
+    this->_raw.fetch_or(other, ::std::memory_order::seq_cst);
+    return (*this);
+}
+
+// def __ixor__(self, other: T) -> Atomic[T]:
+//     self._raw.fetch_xor(other, MemoryOrder.SEQ_CST)
+//     return self
+template<::tpy::AnyFixedInt T>
+inline Atomic<T>& Atomic<T>::__ixor__(::tpy::param_val_or_ref_t<T> other) {
+    this->_raw.fetch_xor(other, ::std::memory_order::seq_cst);
+    return (*this);
+}
+
+// # Snapshot print (relaxed load), mirroring Rust's Debug for atomics.
+// def __str__(self) -> str:
+//     return f"Atomic({self._raw.load(MemoryOrder.RELAXED)})"
+template<::tpy::AnyFixedInt T>
+inline std::string Atomic<T>::__str__() const {
+    return std::format("Atomic({})", ::tpy::__str__(this->_raw.load(::std::memory_order::relaxed)));
+}
+
+// def __repr__(self) -> str:
+//     return f"Atomic({self._raw.load(MemoryOrder.RELAXED)})"
+template<::tpy::AnyFixedInt T>
+inline std::string Atomic<T>::__repr__() const {
+    return std::format("Atomic({})", ::tpy::__str__(this->_raw.load(::std::memory_order::relaxed)));
 }
 
 void __tpy_init();

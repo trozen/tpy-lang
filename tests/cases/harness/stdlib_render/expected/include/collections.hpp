@@ -18,133 +18,38 @@ struct Counter {
     ::tpy::ordered_map<T, ::tpy::BigInt> _data;
 
     // def __init__(self, items: Iterable[T] | None = None) -> None:
-    //     self._data = {}
-    //     if items is not None:
-    //         for x in items:
-    //             self._data[x] = self._data.get(x, 0) + 1
-    Counter() : Counter(static_cast<std::nullptr_t*>(nullptr)) {}
+    Counter();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T>)
-    explicit Counter(const T_items* items = nullptr) : _data(::tpy::ordered_map<T, ::tpy::BigInt>()) {
-        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            auto& __src_0 = (*items);
-            auto&& __itr_0 = ::tpy::__iter__(__src_0);
-            for (;;) {
-                auto __r_1 = __itr_0.__next__();
-                if (!__r_1.has_value()) break;
-                const auto& x = ::tpy::unwrap_ref(*__r_1);
-                ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, x, ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
-            }
-        }
-    }
+    explicit Counter(const T_items* items = nullptr);
 
     // def __getitem__(self, key: T) -> int:
-    //     # Missing key returns 0 without inserting (unlike defaultdict).
-    //     return self._data.get(key, 0)
-    ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const {
-        return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
-    }
+    ::tpy::BigInt __getitem__(::tpy::readonly_form_t<T> key) const;
 
     // def __setitem__(self, key: T, count: int) -> None:
-    //     self._data[key] = count
-    void __setitem__(::tpy::param_val_or_ref_t<T> key, const ::tpy::BigInt& count) {
-        ::tpy::__setitem__(this->_data, key, count);
-    }
+    void __setitem__(::tpy::param_val_or_ref_t<T> key, const ::tpy::BigInt& count);
 
     // def __len__(self) -> int32:
-    //     return len(self._data)
-    int32_t __len__() const {
-        return ::tpy::__len__(this->_data);
-    }
+    int32_t __len__() const;
 
     // def __contains__(self, key: T) -> bool:
-    //     return key in self._data
-    bool __contains__(::tpy::readonly_form_t<T> key) const {
-        return (this->_data.contains(key));
-    }
+    bool __contains__(::tpy::readonly_form_t<T> key) const;
 
     // def total(self) -> int:
-    //     s = 0
-    //     for k in self._data:
-    //         s = s + self._data[k]
-    //     return s
-    ::tpy::BigInt total() const {
-        ::tpy::BigInt s = ::tpy::BigInt(0);
-        auto& __obj_0 = this->_data;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& k = *__beg_0;
-            s = ((s) + (::tpy::__getitem__(this->_data, k)));
-        }
-        return s;
-    }
+    ::tpy::BigInt total() const;
 
     // def most_common(self, n: int32) -> Own[list[tuple[T, int]]]:
-    //     pairs: list[tuple[T, int]] = []
-    //     for k in self._data:
-    //         pairs.append((copy(k), self._data[k]))
-    //     ranked = sorted(pairs, key=lambda kv: -kv[1])
-    //     out: list[tuple[T, int]] = []
-    //     i = 0
-    //     while i < n and i < len(ranked):
-    //         out.append(ranked[i])
-    //         i += 1
-    //     return out
-    std::vector<std::tuple<T, ::tpy::BigInt>> most_common(int32_t n) const {
-        std::vector<std::tuple<T, ::tpy::BigInt>> pairs = std::vector<std::tuple<T, ::tpy::BigInt>>{};
-        auto& __obj_0 = this->_data;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& k = *__beg_0;
-            pairs.push_back(std::tuple<T, ::tpy::BigInt>{T(k), ::tpy::__getitem__(this->_data, k)});
-        }
-        std::vector<std::tuple<T, ::tpy::BigInt>> ranked = ::tpy::builtin_sorted_key<std::tuple<T, ::tpy::BigInt>>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>& kv) -> ::tpy::BigInt { return -(std::get<1>(kv)); });
-        std::vector<std::tuple<T, ::tpy::BigInt>> out = std::vector<std::tuple<T, ::tpy::BigInt>>{};
-        int32_t i = 0;
-        while (((i < n) && (i < ::tpy::__len__(ranked)))) {
-            out.push_back(ranked[static_cast<std::size_t>(i)]);
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        return out;
-    }
+    std::vector<std::tuple<T, ::tpy::BigInt>> most_common(int32_t n) const;
 
     // def update(self, other: Counter[T]) -> None:
-    //     for k in other._data:
-    //         self._data[copy(k)] = self._data.get(k, 0) + other._data[k]
-    void update(const Counter<T>& other) {
-        auto& __obj_0 = other._data;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& k = *__beg_0;
-            ::tpy::__setitem__(this->_data, T(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) + (::tpy::__getitem__(other._data, k))));
-        }
-    }
+    void update(const Counter<T>& other);
 
     // def subtract(self, other: Counter[T]) -> None:
-    //     for k in other._data:
-    //         self._data[copy(k)] = self._data.get(k, 0) - other._data[k]
-    void subtract(const Counter<T>& other) {
-        auto& __obj_0 = other._data;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& k = *__beg_0;
-            ::tpy::__setitem__(this->_data, T(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) - (::tpy::__getitem__(other._data, k))));
-        }
-    }
+    void subtract(const Counter<T>& other);
 
-    ::tpy::BigInt operator[](::tpy::readonly_form_t<T> key) const {
-        return __getitem__(key);
-    }
+    ::tpy::BigInt operator[](::tpy::readonly_form_t<T> key) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "collections.Counter";
 };
 
@@ -152,6 +57,149 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Counter<T>& obj) {
     ::tpy::print_object_default(os, "Counter", obj);
     return os;
+}
+
+
+template<::tpystd::tpy::Hashable T>
+inline Counter<T>::Counter() : Counter(static_cast<std::nullptr_t*>(nullptr)) {}
+
+// def __init__(self, items: Iterable[T] | None = None) -> None:
+//     self._data = {}
+//     if items is not None:
+//         for x in items:
+//             self._data[x] = self._data.get(x, 0) + 1
+template<::tpystd::tpy::Hashable T>
+template<typename T_items>
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Iterable<T_items, T>)
+inline Counter<T>::Counter(const T_items* items) : _data(::tpy::ordered_map<T, ::tpy::BigInt>()) {
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        auto& __src_0 = (*items);
+        auto&& __itr_0 = ::tpy::__iter__(__src_0);
+        for (;;) {
+            auto __r_1 = __itr_0.__next__();
+            if (!__r_1.has_value()) break;
+            const auto& x = ::tpy::unwrap_ref(*__r_1);
+            ::tpy::__setitem__(this->_data, x, ((::tpy::dict_get_default(this->_data, x, ::tpy::BigInt(0))) + (::tpy::BigInt(1))));
+        }
+    }
+}
+
+// def __getitem__(self, key: T) -> int:
+//     # Missing key returns 0 without inserting (unlike defaultdict).
+//     return self._data.get(key, 0)
+template<::tpystd::tpy::Hashable T>
+inline ::tpy::BigInt Counter<T>::__getitem__(::tpy::readonly_form_t<T> key) const {
+    return ::tpy::dict_get_default(this->_data, key, ::tpy::BigInt(0));
+}
+
+// def __setitem__(self, key: T, count: int) -> None:
+//     self._data[key] = count
+template<::tpystd::tpy::Hashable T>
+inline void Counter<T>::__setitem__(::tpy::param_val_or_ref_t<T> key, const ::tpy::BigInt& count) {
+    ::tpy::__setitem__(this->_data, key, count);
+}
+
+// def __len__(self) -> int32:
+//     return len(self._data)
+template<::tpystd::tpy::Hashable T>
+inline int32_t Counter<T>::__len__() const {
+    return ::tpy::__len__(this->_data);
+}
+
+// def __contains__(self, key: T) -> bool:
+//     return key in self._data
+template<::tpystd::tpy::Hashable T>
+inline bool Counter<T>::__contains__(::tpy::readonly_form_t<T> key) const {
+    return (this->_data.contains(key));
+}
+
+// def total(self) -> int:
+//     s = 0
+//     for k in self._data:
+//         s = s + self._data[k]
+//     return s
+template<::tpystd::tpy::Hashable T>
+inline ::tpy::BigInt Counter<T>::total() const {
+    ::tpy::BigInt s = ::tpy::BigInt(0);
+    auto& __obj_0 = this->_data;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& k = *__beg_0;
+        s = ((s) + (::tpy::__getitem__(this->_data, k)));
+    }
+    return s;
+}
+
+// def most_common(self, n: int32) -> Own[list[tuple[T, int]]]:
+//     pairs: list[tuple[T, int]] = []
+//     for k in self._data:
+//         pairs.append((copy(k), self._data[k]))
+//     ranked = sorted(pairs, key=lambda kv: -kv[1])
+//     out: list[tuple[T, int]] = []
+//     i = 0
+//     while i < n and i < len(ranked):
+//         out.append(ranked[i])
+//         i += 1
+//     return out
+template<::tpystd::tpy::Hashable T>
+inline std::vector<std::tuple<T, ::tpy::BigInt>> Counter<T>::most_common(int32_t n) const {
+    std::vector<std::tuple<T, ::tpy::BigInt>> pairs = std::vector<std::tuple<T, ::tpy::BigInt>>{};
+    auto& __obj_0 = this->_data;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& k = *__beg_0;
+        pairs.push_back(std::tuple<T, ::tpy::BigInt>{T(k), ::tpy::__getitem__(this->_data, k)});
+    }
+    std::vector<std::tuple<T, ::tpy::BigInt>> ranked = ::tpy::builtin_sorted_key<std::tuple<T, ::tpy::BigInt>>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>& kv) -> ::tpy::BigInt { return -(std::get<1>(kv)); });
+    std::vector<std::tuple<T, ::tpy::BigInt>> out = std::vector<std::tuple<T, ::tpy::BigInt>>{};
+    int32_t i = 0;
+    while (((i < n) && (i < ::tpy::__len__(ranked)))) {
+        out.push_back(ranked[static_cast<std::size_t>(i)]);
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    return out;
+}
+
+// def update(self, other: Counter[T]) -> None:
+//     for k in other._data:
+//         self._data[copy(k)] = self._data.get(k, 0) + other._data[k]
+template<::tpystd::tpy::Hashable T>
+inline void Counter<T>::update(const Counter<T>& other) {
+    auto& __obj_0 = other._data;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& k = *__beg_0;
+        ::tpy::__setitem__(this->_data, T(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) + (::tpy::__getitem__(other._data, k))));
+    }
+}
+
+// def subtract(self, other: Counter[T]) -> None:
+//     for k in other._data:
+//         self._data[copy(k)] = self._data.get(k, 0) - other._data[k]
+template<::tpystd::tpy::Hashable T>
+inline void Counter<T>::subtract(const Counter<T>& other) {
+    auto& __obj_0 = other._data;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& k = *__beg_0;
+        ::tpy::__setitem__(this->_data, T(k), ((::tpy::dict_get_default(this->_data, k, ::tpy::BigInt(0))) - (::tpy::__getitem__(other._data, k))));
+    }
+}
+
+template<::tpystd::tpy::Hashable T>
+inline ::tpy::BigInt Counter<T>::operator[](::tpy::readonly_form_t<T> key) const {
+    return __getitem__(key);
+}
+
+template<::tpystd::tpy::Hashable T>
+inline size_t Counter<T>::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 
 void __tpy_init();

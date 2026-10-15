@@ -28,9 +28,8 @@ struct Box {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     self.value = value
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+    explicit Box(::tpy::own_param_t<T> value);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -49,12 +48,8 @@ struct Pair {
     std::string second;
 
     // def __init__(self, first: Own[T], second: str) -> None:
-    //     self.first = first
-    //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::own_param_t<T> first, std::string_view second)
-        : first(std::move(first)),
-          second(second) {}
+    explicit Pair(::tpy::own_param_t<T> first, std::string_view second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -63,6 +58,20 @@ inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
 }
+
+
+// def __init__(self, value: Own[T]) -> None:
+//     self.value = value
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+
+// def __init__(self, first: Own[T], second: str) -> None:
+//     self.first = first
+//     self.second = second
+template<typename T>
+inline Pair<T>::Pair(::tpy::own_param_t<T> first, std::string_view second)
+    : first(std::move(first)),
+      second(second) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

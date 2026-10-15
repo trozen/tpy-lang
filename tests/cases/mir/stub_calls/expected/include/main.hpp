@@ -57,11 +57,7 @@ struct Rec {
     // def label_len(self, s: str) -> int32:  # tpyc: mir(covered)
     int32_t label_len(std::string_view s) const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
 };
 
@@ -87,6 +83,12 @@ inline int32_t Rec::__len__() const {
 //     return len(s)
 inline int32_t Rec::label_len(std::string_view s) const {
     return ::tpy::__len__(s);
+}
+
+inline size_t Rec::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::main

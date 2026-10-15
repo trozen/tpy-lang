@@ -1,9 +1,9 @@
 # Regression guard for the group-aware header-routing predicate: an @overload
 # group whose Iterable[Own[int32]] stub is a C++ template (protocol param) while
 # the impl (a union param) is not is still header-emitted, so a by-value cycle
-# peer in the RETURN type must trip the completeness gate. Without the stub-index
-# in _is_template_emitted_in_header the impl is not gated and the error is missed
-# (the header-emitted template returns B, whose layout is only forward-declared).
+# peer in the RETURN type must trip the completeness gate. Without the group
+# rule (`group_is_template`) the impl is not gated and the error is missed (the
+# header-emitted template returns B, whose layout is only forward-declared).
 from b import B
 from tpy import int32, Own
 from typing import Iterable, overload

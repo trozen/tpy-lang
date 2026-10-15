@@ -80,12 +80,7 @@ struct Holder {
 
 
     // def set_value(self, v: T) -> None:
-    //     self.value = v            # tpyc: warning(/may copy T into field/)
-    //     self.value = copy(v)      # tpyc: ok
-    void set_value(::tpy::param_val_or_ref_t<T> v) {
-        this->value = ::tpy::param_to_storage<T>(v);
-        this->value = T(v);
-    }
+    void set_value(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -151,5 +146,15 @@ inline void OptHolder::set_value(const Point* p) {
     this->value = ::tpy::ptr_to_optional(p);
     this->value = ::tpy::ptr_to_optional(p);
 }
+
+// def set_value(self, v: T) -> None:
+//     self.value = v            # tpyc: warning(/may copy T into field/)
+//     self.value = copy(v)      # tpyc: ok
+template<typename T>
+inline void Holder<T>::set_value(::tpy::param_val_or_ref_t<T> v) {
+    this->value = ::tpy::param_to_storage<T>(v);
+    this->value = T(v);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

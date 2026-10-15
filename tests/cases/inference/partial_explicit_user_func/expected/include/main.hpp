@@ -25,9 +25,8 @@ struct Box {
     T val;
 
     // def __init__(self, val: Own[T]) -> None:
-    //     self.val = val
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
+    explicit Box(::tpy::own_param_t<T> val);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -46,12 +45,8 @@ struct Wrapper {
     B tag;
 
     // def __init__(self, inner: Own[A], tag: Own[B]) -> None:
-    //     self.inner = inner
-    //     self.tag = tag
     Wrapper() = default;
-    explicit Wrapper(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag)
-        : inner(std::move(inner)),
-          tag(std::move(tag)) {}
+    explicit Wrapper(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -60,6 +55,20 @@ inline std::ostream& operator<<(std::ostream& os, const Wrapper<A, B>& obj) {
     ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
 }
+
+
+// def __init__(self, val: Own[T]) -> None:
+//     self.val = val
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> val) : val(std::move(val)) {}
+
+// def __init__(self, inner: Own[A], tag: Own[B]) -> None:
+//     self.inner = inner
+//     self.tag = tag
+template<typename A, typename B>
+inline Wrapper<A, B>::Wrapper(::tpy::own_param_t<A> inner, ::tpy::own_param_t<B> tag)
+    : inner(std::move(inner)),
+      tag(std::move(tag)) {}
 
 // def wrap_with_tag[A, B](inner: Own[A], tag: Own[B]) -> Own[Wrapper[A, B]]:
 //     return Wrapper[A, B](inner, tag)

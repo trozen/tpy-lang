@@ -54,9 +54,8 @@ struct Holder {
     T item;
 
     // def __init__(self, item: Send[Own[T]]) -> None:
-    //     self.item = item   # tpyc: ok -- Send[Own[T]] param moved into the field
     Holder() = default;
-    explicit Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit Holder(::tpy::own_param_t<T> item);
     // non-copyable (@nocopy)
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
@@ -64,10 +63,7 @@ struct Holder {
     Holder& operator=(Holder&&) = default;
 
     // def value(self) -> int32:
-    //     return self.item.value()
-    int32_t value() {
-        return this->item.value();
-    }
+    int32_t value();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -87,5 +83,18 @@ inline Token::Token(int32_t n) : n(n) {}
 inline int32_t Token::value() const {
     return this->n;
 }
+
+// def __init__(self, item: Send[Own[T]]) -> None:
+//     self.item = item   # tpyc: ok -- Send[Own[T]] param moved into the field
+template<Counted T>
+inline Holder<T>::Holder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
+// def value(self) -> int32:
+//     return self.item.value()
+template<Counted T>
+inline int32_t Holder<T>::value() {
+    return this->item.value();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

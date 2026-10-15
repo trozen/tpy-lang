@@ -22,22 +22,15 @@ struct Holder {
     T val;
 
     // def __init__(self, val: T) -> None:
-    //     self.val = val
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Holder(::tpy::readonly_form_t<T> val);
 
     // def identity[U](self, key: U) -> U:
-    //     return key
     template<typename U>
-    ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> key) const {
-        return ::tpy::param_to_return<U>(key);
-    }
+    ::tpy::val_or_ref_t<U> identity(::tpy::param_val_or_ref_t<U> key) const;
 
     // def lookup(self, x: int32) -> int32:
-    //     return self.identity(x)
-    int32_t lookup(int32_t x) const {
-        return this->identity<int32_t>(x);
-    }
+    int32_t lookup(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -52,15 +45,11 @@ template<typename T>
 struct SubHolder : Holder<T> {
 
     // def __init__(self, val: T) -> None:
-    //     super().__init__(val)
     SubHolder() = default;
-    explicit SubHolder(::tpy::param_val_or_ref_t<T> val) : Holder<T>(val) {}
+    explicit SubHolder(::tpy::param_val_or_ref_t<T> val);
 
     // def super_lookup(self, x: int32) -> int32:
-    //     return super().identity(x)
-    int32_t super_lookup(int32_t x) const {
-        return this->Holder<T>::template identity<int32_t>(x);
-    }
+    int32_t super_lookup(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.SubHolder";
 };
 
@@ -68,6 +57,39 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const SubHolder<T>& obj) {
     ::tpy::print_object_default(os, "SubHolder", obj);
     return os;
+}
+
+
+// def __init__(self, val: T) -> None:
+//     self.val = val
+template<typename T>
+inline Holder<T>::Holder(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def identity[U](self, key: U) -> U:
+//     return key
+template<typename T>
+template<typename U>
+inline ::tpy::val_or_ref_t<U> Holder<T>::identity(::tpy::param_val_or_ref_t<U> key) const {
+    return ::tpy::param_to_return<U>(key);
+}
+
+// def lookup(self, x: int32) -> int32:
+//     return self.identity(x)
+template<typename T>
+inline int32_t Holder<T>::lookup(int32_t x) const {
+    return this->identity<int32_t>(x);
+}
+
+// def __init__(self, val: T) -> None:
+//     super().__init__(val)
+template<typename T>
+inline SubHolder<T>::SubHolder(::tpy::param_val_or_ref_t<T> val) : Holder<T>(val) {}
+
+// def super_lookup(self, x: int32) -> int32:
+//     return super().identity(x)
+template<typename T>
+inline int32_t SubHolder<T>::super_lookup(int32_t x) const {
+    return this->Holder<T>::template identity<int32_t>(x);
 }
 
 void __tpy_init();

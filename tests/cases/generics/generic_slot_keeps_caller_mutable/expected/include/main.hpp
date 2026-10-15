@@ -90,9 +90,8 @@ struct Holder {
     T item;
 
     // def __init__(self, v: T) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T into field/)
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> v) : item(v) {}
+    explicit Holder(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -247,6 +246,12 @@ inline int32_t Driver::via_self() {
 // def __init__(self, v: Pt) -> None:
 //     super().__init__(v)
 inline Wrap::Wrap(Pt& v) : Holder<Pt>(v) {}
+
+// def __init__(self, v: T) -> None:
+//     self.item = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Holder<T>::Holder(::tpy::readonly_form_t<T> v) : item(v) {}
+
 // # The subject: a generic body that only READS still needs a mutable borrow,
 // # because `param_val_or_ref_t<T>` has no const form.
 // def take[T](v: T) -> int32:

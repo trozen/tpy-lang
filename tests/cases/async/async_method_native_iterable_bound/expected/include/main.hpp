@@ -26,9 +26,8 @@ struct Wrap {
     T items;
 
     // def __init__(self, items: T) -> None:
-    //     self.items = items
     Wrap() = default;
-    explicit Wrap(::tpy::readonly_form_t<T> items) : items(items) {}
+    explicit Wrap(::tpy::readonly_form_t<T> items);
 
     __coro_Wrap_total<T> total() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrap";
@@ -100,6 +99,12 @@ template <::tpy::NativeIterable<int32_t> T>
 inline __coro_Wrap_total<T> Wrap<T>::total() const {
     return __coro_Wrap_total<T>(*this);
 }
+
+
+// def __init__(self, items: T) -> None:
+//     self.items = items
+template<::tpy::NativeIterable<int32_t> T>
+inline Wrap<T>::Wrap(::tpy::readonly_form_t<T> items) : items(items) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,15 +21,11 @@ struct Container {
     T item;
 
     // def __init__(self, item: T):
-    //     self.item = item
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> item) : item(item) {}
+    explicit Container(::tpy::readonly_form_t<T> item);
 
     // def get_item(self) -> T:
-    //     return self.item
-    ::tpy::val_or_ref_t<T> get_item() {
-        return this->item;
-    }
+    ::tpy::val_or_ref_t<T> get_item();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -37,6 +33,19 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self, item: T):
+//     self.item = item
+template<::tpystd::typing::Sized T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> item) : item(item) {}
+
+// def get_item(self) -> T:
+//     return self.item
+template<::tpystd::typing::Sized T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get_item() {
+    return this->item;
 }
 
 void __tpy_init();

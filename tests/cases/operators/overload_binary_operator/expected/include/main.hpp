@@ -53,18 +53,13 @@ struct Day {
     Day() = default;
     explicit Day(const ::tpy::BigInt& ordinal);
 
-    // # Operand-polymorphic: Day - Day -> Delta, Day - Delta -> Day.
     // @overload
     // def __sub__(self, other: Day) -> Delta: ...
-    Delta __sub__(Day other) const {
-        return Delta(((this->ordinal) - (other.ordinal)));
-    }
+    Delta __sub__(Day other) const;
 
     // @overload
     // def __sub__(self, other: Delta) -> Day: ...
-    Day __sub__(Delta other) const {
-        return Day(((this->ordinal) - (other.n)));
-    }
+    Day __sub__(Delta other) const;
 
     // def __add__(self, other: Delta) -> Day:   # monomorphic operator coexists with the overloaded one
     Day __add__(Delta other) const;
@@ -108,6 +103,19 @@ inline Delta Delta::__add__(Delta other) const {
 // def __init__(self, ordinal: int) -> None:
 //     self.ordinal = ordinal
 inline Day::Day(const ::tpy::BigInt& ordinal) : ordinal(ordinal) {}
+
+// # Operand-polymorphic: Day - Day -> Delta, Day - Delta -> Day.
+// @overload
+// def __sub__(self, other: Day) -> Delta: ...
+inline Delta Day::__sub__(Day other) const {
+    return Delta(((this->ordinal) - (other.ordinal)));
+}
+
+// @overload
+// def __sub__(self, other: Delta) -> Day: ...
+inline Day Day::__sub__(Delta other) const {
+    return Day(((this->ordinal) - (other.n)));
+}
 
 // def __add__(self, other: Delta) -> Day:   # monomorphic operator coexists with the overloaded one
 //     return Day(self.ordinal + other.n)

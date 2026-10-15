@@ -83,15 +83,11 @@ struct GHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.val = v
     GHolder() = default;
-    explicit GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+    explicit GHolder(::tpy::own_param_t<T> v);
 
     // def borrow(self) -> T:
-    //     return self.val
-    ::tpy::val_or_ref_t<T> borrow() {
-        return this->val;
-    }
+    ::tpy::val_or_ref_t<T> borrow();
     static constexpr std::string_view __tpy_class_name__ = "__main__.GHolder";
 };
 
@@ -108,15 +104,11 @@ struct VHolder {
     T val;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.val = v
     VHolder() = default;
-    explicit VHolder(T v) : val(std::move(v)) {}
+    explicit VHolder(T v);
 
     // def borrow(self) -> T:
-    //     return self.val
-    T borrow() const {
-        return this->val;
-    }
+    T borrow() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.VHolder";
 };
 
@@ -159,6 +151,31 @@ inline IntHolder::IntHolder(int32_t v) : val(v) {}
 inline int32_t IntHolder::borrow() const {
     return this->val;
 }
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.val = v
+template<typename T>
+inline GHolder<T>::GHolder(::tpy::own_param_t<T> v) : val(std::move(v)) {}
+
+// def borrow(self) -> T:
+//     return self.val
+template<typename T>
+inline ::tpy::val_or_ref_t<T> GHolder<T>::borrow() {
+    return this->val;
+}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.val = v
+template<::tpy::ValueType T>
+inline VHolder<T>::VHolder(T v) : val(std::move(v)) {}
+
+// def borrow(self) -> T:
+//     return self.val
+template<::tpy::ValueType T>
+inline T VHolder<T>::borrow() const {
+    return this->val;
+}
+
 // # copy() spelled at the owning slot: the duplication is intended, no warning.
 // def collect_ack[T](h: GHolder[T], xs: list[T]) -> None:
 //     xs.append(copy(h.borrow()))  # tpyc: ok

@@ -27,9 +27,7 @@ struct Doubler {
     // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
-    int32_t operator()(int32_t x) const {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Doubler";
 };
 
@@ -43,6 +41,10 @@ inline std::ostream& operator<<(std::ostream& os, const Doubler& obj) {
 //     return x * 2
 inline int32_t Doubler::__call__(int32_t x) const {
     return (::tpy::mul_check<int32_t>(x, 2));
+}
+
+inline int32_t Doubler::operator()(int32_t x) const {
+    return __call__(x);
 }
 // def apply_and_discard(f: Fn[[int32], None], x: int32) -> None:
 //     f(x)

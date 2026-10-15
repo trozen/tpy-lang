@@ -27,9 +27,8 @@ struct W {
     T direct;
 
     // def __init__(self, t: int32) -> None:
-    //     self.tag = t
     W() = default;
-    explicit W(int32_t t) : tag(t) {}
+    explicit W(int32_t t);
     static constexpr std::string_view __tpy_class_name__ = "__main__.W";
 };
 
@@ -38,6 +37,12 @@ inline std::ostream& operator<<(std::ostream& os, const W<T>& obj) {
     ::tpy::print_object_default(os, "W", obj);
     return os;
 }
+
+
+// def __init__(self, t: int32) -> None:
+//     self.tag = t
+template<typename T>
+inline W<T>::W(int32_t t) : tag(t) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

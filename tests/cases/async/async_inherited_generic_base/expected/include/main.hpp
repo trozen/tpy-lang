@@ -41,15 +41,11 @@ struct Box {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
 
     // def put(self, v: T) -> None:
-    //     self.v = v
-    void put(::tpy::param_val_or_ref_t<T> v) {
-        this->v = ::tpy::param_to_storage<T>(v);
-    }
+    void put(::tpy::param_val_or_ref_t<T> v);
 
     __coro_Box_fetch<T> fetch();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
@@ -70,12 +66,8 @@ struct Guard {
     int32_t entered;
 
     // def __init__(self, val: T) -> None:
-    //     self.val = val
-    //     self.entered = 0
     Guard() = default;
-    explicit Guard(::tpy::readonly_form_t<T> val)
-        : val(val),
-          entered(0) {}
+    explicit Guard(::tpy::readonly_form_t<T> val);
 
     __coro_Guard___aenter__<T> __aenter__();
 
@@ -100,20 +92,11 @@ struct Counter {
     T seed;
 
     // def __init__(self, limit: int32, seed: T) -> None:
-    //     self.cur = 0
-    //     self.limit = limit
-    //     self.seed = seed
     Counter() = default;
-    explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed)
-        : cur(0),
-          limit(limit),
-          seed(seed) {}
+    explicit Counter(int32_t limit, ::tpy::readonly_form_t<T> seed);
 
     // def __aiter__(self) -> "Counter[T]":
-    //     return self
-    Counter<T>& __aiter__() {
-        return (*this);
-    }
+    Counter<T>& __aiter__();
 
     __coro_Counter___anext__<T> __anext__();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counter";
@@ -476,5 +459,43 @@ inline IntGuard::IntGuard(int32_t val) : Guard<int32_t>(val) {}
 // def __init__(self, limit: int32, seed: int32) -> None:
 //     super().__init__(limit, seed)
 inline IntCounter::IntCounter(int32_t limit, int32_t seed) : Counter<int32_t>(limit, seed) {}
+
+// def __init__(self, v: T) -> None:
+//     self.v = v
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// def put(self, v: T) -> None:
+//     self.v = v
+template<typename T>
+inline void Box<T>::put(::tpy::param_val_or_ref_t<T> v) {
+    this->v = ::tpy::param_to_storage<T>(v);
+}
+
+// def __init__(self, val: T) -> None:
+//     self.val = val
+//     self.entered = 0
+template<typename T>
+inline Guard<T>::Guard(::tpy::readonly_form_t<T> val)
+    : val(val),
+      entered(0) {}
+
+// def __init__(self, limit: int32, seed: T) -> None:
+//     self.cur = 0
+//     self.limit = limit
+//     self.seed = seed
+template<typename T>
+inline Counter<T>::Counter(int32_t limit, ::tpy::readonly_form_t<T> seed)
+    : cur(0),
+      limit(limit),
+      seed(seed) {}
+
+// def __aiter__(self) -> "Counter[T]":
+//     return self
+template<typename T>
+inline Counter<T>& Counter<T>::__aiter__() {
+    return (*this);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

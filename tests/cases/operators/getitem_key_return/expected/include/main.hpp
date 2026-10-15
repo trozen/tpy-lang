@@ -43,13 +43,9 @@ struct KeyEcho {
     // def __getitem__(self, k: Node) -> Node:
     const Node& __getitem__(const Node& k) const;
 
-    const Node& operator[](const Node& k) const {
-        return __getitem__(k);
-    }
+    const Node& operator[](const Node& k) const;
 
-    Node& operator[](Node& k) {
-        return __getitem__(k);
-    }
+    Node& operator[](Node& k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.KeyEcho";
 };
 
@@ -78,6 +74,14 @@ inline Node& KeyEcho::__getitem__(Node& k) {
 //     return k
 inline const Node& KeyEcho::__getitem__(const Node& k) const {
     return k;
+}
+
+inline const Node& KeyEcho::operator[](const Node& k) const {
+    return __getitem__(k);
+}
+
+inline Node& KeyEcho::operator[](Node& k) {
+    return __getitem__(k);
 }
 void __tpy_init();
 } // namespace tpyapp::main

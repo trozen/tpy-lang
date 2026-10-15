@@ -41,9 +41,8 @@ struct Tagged {
     int32_t tag;
 
     // def __init__(self, tag: int32):
-    //     self.tag = tag
     Tagged() = default;
-    explicit Tagged(int32_t tag) : tag(tag) {}
+    explicit Tagged(int32_t tag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tagged";
 };
 
@@ -92,5 +91,11 @@ namespace tpyapp::main {
 // def __init__(self, item: Own[Tagged[Greeter]]):
 //     self.item = item
 inline Owner::Owner(Tagged<Greeter>&& item) : item(std::move(item)) {}
+
+// def __init__(self, tag: int32):
+//     self.tag = tag
+template<typename T>
+inline Tagged<T>::Tagged(int32_t tag) : tag(tag) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

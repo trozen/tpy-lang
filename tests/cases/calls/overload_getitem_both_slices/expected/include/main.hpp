@@ -24,30 +24,15 @@ struct Window {
 
     // @overload
     // def __getitem__(self, index: basic_slice) -> Span[readonly[int32]]: ...  # tpyc: ok
-    std::span<const int32_t> __getitem__(::tpy::BasicSlice index) const {
-        std::optional<int32_t> s_start = index.start;
-        std::optional<int32_t> s_stop = index.stop;
-        int32_t start = (((s_start.has_value())) ? ((*s_start)) : (0));
-        int32_t stop = (((s_stop.has_value())) ? ((*s_stop)) : (::tpy::__len__(this->_data)));
-        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{start, stop});
-    }
+    std::span<const int32_t> __getitem__(::tpy::BasicSlice index) const;
 
     // @overload
     // def __getitem__(self, index: slice) -> Span[readonly[int32]]: ...  # tpyc: ok
-    std::span<const int32_t> __getitem__(::tpy::Slice index) const {
-        std::optional<int32_t> s_step = index.step;
-        int32_t step = (((s_step.has_value())) ? ((*s_step)) : (1));
-        std::cout << step << "\n" << ::tpy::check_signals;
-        return ::tpy::list_slice(this->_data, ::tpy::BasicSlice{0, ::tpy::__len__(this->_data)});
-    }
+    std::span<const int32_t> __getitem__(::tpy::Slice index) const;
 
-    std::span<const int32_t> operator[](::tpy::BasicSlice index) const {
-        return __getitem__(index);
-    }
+    std::span<const int32_t> operator[](::tpy::BasicSlice index) const;
 
-    std::span<const int32_t> operator[](::tpy::Slice index) const {
-        return __getitem__(index);
-    }
+    std::span<const int32_t> operator[](::tpy::Slice index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Window";
 };
 
@@ -60,5 +45,13 @@ inline std::ostream& operator<<(std::ostream& os, const Window& obj) {
 // def __init__(self) -> None:
 //     self._data = [10, 20, 30, 40, 50]
 inline Window::Window() : _data(std::vector<int32_t>{10, 20, 30, 40, 50}) {}
+
+inline std::span<const int32_t> Window::operator[](::tpy::BasicSlice index) const {
+    return __getitem__(index);
+}
+
+inline std::span<const int32_t> Window::operator[](::tpy::Slice index) const {
+    return __getitem__(index);
+}
 void __tpy_init();
 } // namespace tpyapp::main

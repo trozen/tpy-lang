@@ -84,9 +84,6 @@ class _OwnedMatchData:
 
 
 # ---------- re.error exception ----------
-# Must be defined BEFORE _OwnedCode because its _compile staticmethod is
-# emitted inline in the generated header and throws `error`, which
-# requires a complete type at the throw site (not just a forward decl).
 class error(Exception):
     """Raised when PCRE2 rejects a pattern at compile time, or hits a
     match-time error (rare). Catchable as a normal exception, either via

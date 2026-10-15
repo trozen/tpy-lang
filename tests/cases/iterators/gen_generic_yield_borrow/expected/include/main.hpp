@@ -213,10 +213,8 @@ struct Holder {
     std::vector<T> items;
 
     // def __init__(self, items: list[T]) -> None:
-    //     # the generic owning-slot copy contract, hedged at the declaration
-    //     self.items = items  # tpyc: warning(/may copy list\[T\] into field/)
     Holder() = default;
-    explicit Holder(const std::vector<T>& items) : items(items) {}
+    explicit Holder(const std::vector<T>& items);
 
     __gen_Holder_walk<T> walk();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
@@ -235,25 +233,16 @@ struct Cell {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     # the generic owning-slot copy contract again, at a scalar field: at a
-    //     # reference instantiation this stores a copy, which the warning hedges
-    //     self.v = v  # tpyc: warning(/may copy T into field/)
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Cell(::tpy::readonly_form_t<T> v);
 
     // @property
     // def val(self) -> T:
-    //     return self.v
-    ::tpy::val_or_ref_t<T> val() {
-        return this->v;
-    }
+    ::tpy::val_or_ref_t<T> val();
 
     // @property
     // def val(self) -> T:
-    //     return self.v
-    ::tpy::val_or_cref_t<T> val() const {
-        return this->v;
-    }
+    ::tpy::val_or_cref_t<T> val() const;
 
     __gen_Cell_twice<T> twice();
 
@@ -1661,6 +1650,36 @@ inline void Bin::append(int32_t v) {
 inline int32_t Bin::size() const {
     return this->total;
 }
+
+// def __init__(self, items: list[T]) -> None:
+//     # the generic owning-slot copy contract, hedged at the declaration
+//     self.items = items  # tpyc: warning(/may copy list\[T\] into field/)
+template<typename T>
+inline Holder<T>::Holder(const std::vector<T>& items) : items(items) {}
+
+// def __init__(self, v: T) -> None:
+//     # the generic owning-slot copy contract again, at a scalar field: at a
+//     # reference instantiation this stores a copy, which the warning hedges
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Cell<T>::Cell(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// @property
+// def val(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::val() {
+    return this->v;
+}
+
+// @property
+// def val(self) -> T:
+//     return self.v
+template<typename T>
+inline ::tpy::val_or_cref_t<T> Cell<T>::val() const {
+    return this->v;
+}
+
 // # an overload set over an `Fn` param: a lambda argument makes the call take the
 // # Regime-C path, which analyzes the lambda body in a rolled-back TRIAL
 // @dispatch

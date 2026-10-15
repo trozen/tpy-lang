@@ -24,11 +24,7 @@ struct NegBig {
     // def __len__(self) -> int:
     ::tpy::BigInt __len__() const;
 
-    size_t size() const {
-        size_t __sz;
-        if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return __sz;
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.NegBig";
 };
 
@@ -44,11 +40,7 @@ struct NegI32 {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.NegI32";
 };
 
@@ -64,11 +56,7 @@ struct Empty {
     // def __len__(self) -> int:
     ::tpy::BigInt __len__() const;
 
-    size_t size() const {
-        size_t __sz;
-        if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return __sz;
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Empty";
 };
 
@@ -84,11 +72,7 @@ struct Full {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Full";
 };
 
@@ -104,10 +88,22 @@ inline ::tpy::BigInt NegBig::__len__() const {
     return ::tpy::BigInt(-1);
 }
 
+inline size_t NegBig::size() const {
+    size_t __sz;
+    if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return __sz;
+}
+
 // def __len__(self) -> int32:
 //     return -1
 inline int32_t NegI32::__len__() const {
     return -1;
+}
+
+inline size_t NegI32::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 
 // def __len__(self) -> int:
@@ -116,10 +112,22 @@ inline ::tpy::BigInt Empty::__len__() const {
     return ::tpy::BigInt(0);
 }
 
+inline size_t Empty::size() const {
+    size_t __sz;
+    if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return __sz;
+}
+
 // def __len__(self) -> int32:
 //     return 3
 inline int32_t Full::__len__() const {
     return 3;
+}
+
+inline size_t Full::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::main

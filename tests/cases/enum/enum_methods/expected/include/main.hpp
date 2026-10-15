@@ -145,13 +145,9 @@ struct __enum_Color {
     // def fns(self) -> list[Callable[[], int32]]:
     std::vector<std::function<int32_t()>>& fns();
 
-    // # generic method: called on `self`, a list passes through by reference
     // def tag[T](self, x: T) -> T:
-    //     return x
     template<typename T>
-    ::tpy::val_or_ref_t<T> tag(::tpy::param_val_or_ref_t<T> x) const {
-        return ::tpy::param_to_return<T>(x);
-    }
+    ::tpy::val_or_ref_t<T> tag(::tpy::param_val_or_ref_t<T> x) const;
 
     // def pass_on(self, ys: list[int32]) -> list[int32]:
     std::vector<int32_t>& pass_on(std::vector<int32_t>& ys) const;
@@ -617,5 +613,14 @@ inline void Guard::__enter__() const {
 //     pass
 inline void Guard::__exit__(std::monostate kind, const ::tpy::BaseException* value, std::monostate tb) const {
 }
+
+// # generic method: called on `self`, a list passes through by reference
+// def tag[T](self, x: T) -> T:
+//     return x
+template<typename T>
+inline ::tpy::val_or_ref_t<T> __enum_Color::tag(::tpy::param_val_or_ref_t<T> x) const {
+    return ::tpy::param_to_return<T>(x);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

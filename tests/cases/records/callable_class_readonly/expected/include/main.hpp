@@ -23,9 +23,7 @@ struct Negate {
     // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
-    int32_t operator()(int32_t x) const {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Negate";
 };
 
@@ -47,9 +45,7 @@ struct ScaleBy {
     // def __call__(self, x: int32) -> int32:
     int32_t __call__(int32_t x) const;
 
-    int32_t operator()(int32_t x) const {
-        return __call__(x);
-    }
+    int32_t operator()(int32_t x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ScaleBy";
 };
 
@@ -66,6 +62,10 @@ inline int32_t Negate::__call__(int32_t x) const {
     return ::tpy::neg_check<int32_t>(x);
 }
 
+inline int32_t Negate::operator()(int32_t x) const {
+    return __call__(x);
+}
+
 // def __init__(self, factor: int32):
 //     self.factor = factor
 inline ScaleBy::ScaleBy(int32_t factor) : factor(factor) {}
@@ -75,6 +75,10 @@ inline ScaleBy::ScaleBy(int32_t factor) : factor(factor) {}
 //     return x * self.factor
 inline int32_t ScaleBy::__call__(int32_t x) const {
     return (::tpy::mul_check<int32_t>(x, this->factor));
+}
+
+inline int32_t ScaleBy::operator()(int32_t x) const {
+    return __call__(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

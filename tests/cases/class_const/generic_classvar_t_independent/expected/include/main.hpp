@@ -21,9 +21,7 @@ struct C {
     static inline int32_t counter = 0;
 
     // def __init__(self) -> None:
-    //     pass
-    C() {
-    }
+    C();
     static constexpr std::string_view __tpy_class_name__ = "__main__.C";
 };
 
@@ -31,6 +29,13 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const C<T>& obj) {
     ::tpy::print_object_default(os, "C", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T>
+inline C<T>::C() {
 }
 
 void __tpy_init();

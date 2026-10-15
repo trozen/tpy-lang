@@ -58,17 +58,11 @@ struct Vet {
 
     // @overload
     // def treat(self, animal: Dog) -> str: ...
-    std::string treat(Dog& animal) {
-        this->count = ((this->count) + (::tpy::BigInt(1)));
-        return (::tpy::str_concat("Treated dog: ", animal.name));
-    }
+    std::string treat(Dog& animal);
 
     // @overload
     // def treat(self, animal: Cat) -> str: ...
-    std::string treat(Cat& animal) {
-        this->count = ((this->count) + (::tpy::BigInt(1)));
-        return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
-    }
+    std::string treat(Cat& animal);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Vet";
 };
 
@@ -89,5 +83,19 @@ inline Cat::Cat(const ::tpy::BigInt& lives) : lives(lives) {}
 // def __init__(self) -> None:
 //     self.count = 0
 inline Vet::Vet() : count(::tpy::BigInt(0)) {}
+
+// @overload
+// def treat(self, animal: Dog) -> str: ...
+inline std::string Vet::treat(Dog& animal) {
+    this->count = ((this->count) + (::tpy::BigInt(1)));
+    return (::tpy::str_concat("Treated dog: ", animal.name));
+}
+
+// @overload
+// def treat(self, animal: Cat) -> str: ...
+inline std::string Vet::treat(Cat& animal) {
+    this->count = ((this->count) + (::tpy::BigInt(1)));
+    return (::tpy::str_concat((::tpy::str_concat("Treated cat with ", (animal.lives).to_string())), " lives"));
+}
 void __tpy_init();
 } // namespace tpyapp::main

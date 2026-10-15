@@ -22,16 +22,12 @@ struct Base {
     T val;
 
     // def __init__(self, val: T):
-    //     self.val = val
     Base() = default;
-    explicit Base(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Base(::tpy::readonly_form_t<T> val);
 
     // def transform[U](self, other: U) -> U:
-    //     return other
     template<typename U>
-    ::tpy::val_or_ref_t<U> transform(::tpy::param_val_or_ref_t<U> other) const {
-        return ::tpy::param_to_return<U>(other);
-    }
+    ::tpy::val_or_ref_t<U> transform(::tpy::param_val_or_ref_t<U> other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -46,16 +42,12 @@ template<typename T>
 struct Child : Base<T> {
 
     // def __init__(self, val: T):
-    //     super().__init__(val)
     Child() = default;
-    explicit Child(::tpy::param_val_or_ref_t<T> val) : Base<T>(val) {}
+    explicit Child(::tpy::param_val_or_ref_t<T> val);
 
     // def wrap[U](self, other: U) -> U:
-    //     return super().transform(other)
     template<typename U>
-    ::tpy::val_or_ref_t<U> wrap(::tpy::param_val_or_ref_t<U> other) const {
-        return this->Base<T>::template transform<U>(other);
-    }
+    ::tpy::val_or_ref_t<U> wrap(::tpy::param_val_or_ref_t<U> other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Child";
 };
 
@@ -63,6 +55,33 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Child<T>& obj) {
     ::tpy::print_object_default(os, "Child", obj);
     return os;
+}
+
+
+// def __init__(self, val: T):
+//     self.val = val
+template<typename T>
+inline Base<T>::Base(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def transform[U](self, other: U) -> U:
+//     return other
+template<typename T>
+template<typename U>
+inline ::tpy::val_or_ref_t<U> Base<T>::transform(::tpy::param_val_or_ref_t<U> other) const {
+    return ::tpy::param_to_return<U>(other);
+}
+
+// def __init__(self, val: T):
+//     super().__init__(val)
+template<typename T>
+inline Child<T>::Child(::tpy::param_val_or_ref_t<T> val) : Base<T>(val) {}
+
+// def wrap[U](self, other: U) -> U:
+//     return super().transform(other)
+template<typename T>
+template<typename U>
+inline ::tpy::val_or_ref_t<U> Child<T>::wrap(::tpy::param_val_or_ref_t<U> other) const {
+    return this->Base<T>::template transform<U>(other);
 }
 
 void __tpy_init();

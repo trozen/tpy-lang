@@ -21,15 +21,11 @@ struct Container {
     T val;
 
     // def __init__(self, val: T) -> None:
-    //     self.val = copy(val)
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> val) : val(val) {}
+    explicit Container(::tpy::readonly_form_t<T> val);
 
     // def get_or_default(self, fallback: T = T()) -> T:
-    //     return fallback
-    ::tpy::val_or_ref_t<T> get_or_default(::tpy::param_val_or_ref_t<T> fallback = T{}) const {
-        return ::tpy::param_to_return<T>(fallback);
-    }
+    ::tpy::val_or_ref_t<T> get_or_default(::tpy::param_val_or_ref_t<T> fallback = T{}) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -37,6 +33,19 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def __init__(self, val: T) -> None:
+//     self.val = copy(val)
+template<typename T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> val) : val(val) {}
+
+// def get_or_default(self, fallback: T = T()) -> T:
+//     return fallback
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::get_or_default(::tpy::param_val_or_ref_t<T> fallback) const {
+    return ::tpy::param_to_return<T>(fallback);
 }
 
 void __tpy_init();

@@ -288,9 +288,7 @@ struct Lookup {
     // def __contains__(self, i: int32) -> bool:
     bool __contains__(int32_t i) const;
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Lookup";
 };
 
@@ -1306,6 +1304,10 @@ inline int32_t Lookup::__getitem__(int32_t i) const {
 //     return i < self.base
 inline bool Lookup::__contains__(int32_t i) const {
     return (i < this->base);
+}
+
+inline int32_t Lookup::operator[](int32_t i) const {
+    return __getitem__(i);
 }
 
 // def __init__(self) -> None:

@@ -49,15 +49,11 @@ struct RWView {
     const W* _src;
 
     // def __init__(self, src: W) -> None:
-    //     self._src = src
     RWView() = default;
-    explicit RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
+    explicit RWView(::tpy::readonly_form_t<W> src);
 
     // def read(self) -> int32:
-    //     return self._src.value()
-    int32_t read() const {
-        return ::tpy::deref_check(this->_src).value();
-    }
+    int32_t read() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.RWView";
 };
 
@@ -74,15 +70,11 @@ struct ROView {
     const W* _src;
 
     // def __init__(self, src: readonly[W]) -> None:
-    //     self._src = src
     ROView() = default;
-    explicit ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
+    explicit ROView(::tpy::readonly_form_t<W> src);
 
     // def read(self) -> int32:
-    //     return self._src.value()
-    int32_t read() const {
-        return ::tpy::deref_check(this->_src).value();
-    }
+    int32_t read() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.ROView";
 };
 
@@ -103,5 +95,30 @@ inline Counter::Counter(int32_t n) : n(n) {}
 inline int32_t Counter::value() const {
     return this->n;
 }
+
+// def __init__(self, src: W) -> None:
+//     self._src = src
+template<Reads W>
+inline RWView<W>::RWView(::tpy::readonly_form_t<W> src) : _src(&src) {}
+
+// def read(self) -> int32:
+//     return self._src.value()
+template<Reads W>
+inline int32_t RWView<W>::read() const {
+    return ::tpy::deref_check(this->_src).value();
+}
+
+// def __init__(self, src: readonly[W]) -> None:
+//     self._src = src
+template<Reads W>
+inline ROView<W>::ROView(::tpy::readonly_form_t<W> src) : _src(&src) {}
+
+// def read(self) -> int32:
+//     return self._src.value()
+template<Reads W>
+inline int32_t ROView<W>::read() const {
+    return ::tpy::deref_check(this->_src).value();
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

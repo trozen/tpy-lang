@@ -47,15 +47,11 @@ struct Holder {
     V item;
 
     // def __init__(self, item: V) -> None:
-    //     self.item = item
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<V> item) : item(item) {}
+    explicit Holder(::tpy::readonly_form_t<V> item);
 
     // def get_item(self) -> V:
-    //     return self.item
-    ::tpy::val_or_ref_t<V> get_item() {
-        return this->item;
-    }
+    ::tpy::val_or_ref_t<V> get_item();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -75,5 +71,18 @@ inline IntBox::IntBox(int32_t v) : value(v) {}
 inline int32_t IntBox::get() const {
     return this->value;
 }
+
+// def __init__(self, item: V) -> None:
+//     self.item = item
+template<Container<int32_t> V>
+inline Holder<V>::Holder(::tpy::readonly_form_t<V> item) : item(item) {}
+
+// def get_item(self) -> V:
+//     return self.item
+template<Container<int32_t> V>
+inline ::tpy::val_or_ref_t<V> Holder<V>::get_item() {
+    return this->item;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

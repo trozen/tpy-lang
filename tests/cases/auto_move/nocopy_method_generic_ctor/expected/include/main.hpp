@@ -65,15 +65,11 @@ struct GenericHolder {
     T item;
 
     // def __init__(self, item: Own[T]):
-    //     self.item = item
     GenericHolder() = default;
-    explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit GenericHolder(::tpy::own_param_t<T> item);
 
     // def replace(self, item: Own[T]) -> None:
-    //     self.item = item
-    void replace(::tpy::own_param_t<T> item) {
-        this->item = std::move(item);
-    }
+    void replace(::tpy::own_param_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
 };
 
@@ -89,5 +85,18 @@ inline std::ostream& operator<<(std::ostream& os, const GenericHolder<T>& obj) {
 inline void Holder::take(Handle&& h) {
     this->h = std::move(h);
 }
+
+// def __init__(self, item: Own[T]):
+//     self.item = item
+template<typename T>
+inline GenericHolder<T>::GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
+// def replace(self, item: Own[T]) -> None:
+//     self.item = item
+template<typename T>
+inline void GenericHolder<T>::replace(::tpy::own_param_t<T> item) {
+    this->item = std::move(item);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

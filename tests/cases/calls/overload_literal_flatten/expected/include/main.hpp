@@ -33,24 +33,15 @@ struct Record {
 
     // @overload
     // def get(self, key: Literal["age"]) -> int32: ...
-    int32_t get__lit_age(std::string_view key) const {
-        return this->data_age;
-    }
+    int32_t get__lit_age(std::string_view key) const;
 
     // @overload
     // def get(self, key: Literal["name"]) -> str: ...
-    std::string get__lit_name(std::string_view key) const {
-        return this->data_name;
-    }
+    std::string get__lit_name(std::string_view key) const;
 
     // @overload
     // def get(self, key: str) -> int32 | str: ...
-    ::tpy::Union<int32_t, std::string> get(std::string_view key) const {
-        if ((key == "age")) {
-            return this->data_age;
-        }
-        return this->data_name;
-    }
+    ::tpy::Union<int32_t, std::string> get(std::string_view key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Record";
 };
 
@@ -66,5 +57,26 @@ inline std::ostream& operator<<(std::ostream& os, const Record& obj) {
 inline Record::Record(int32_t age, std::string_view name)
     : data_age(age),
       data_name(name) {}
+
+// @overload
+// def get(self, key: Literal["age"]) -> int32: ...
+inline int32_t Record::get__lit_age(std::string_view key) const {
+    return this->data_age;
+}
+
+// @overload
+// def get(self, key: Literal["name"]) -> str: ...
+inline std::string Record::get__lit_name(std::string_view key) const {
+    return this->data_name;
+}
+
+// @overload
+// def get(self, key: str) -> int32 | str: ...
+inline ::tpy::Union<int32_t, std::string> Record::get(std::string_view key) const {
+    if ((key == "age")) {
+        return this->data_age;
+    }
+    return this->data_name;
+}
 void __tpy_init();
 } // namespace tpyapp::main

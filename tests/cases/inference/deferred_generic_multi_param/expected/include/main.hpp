@@ -23,41 +23,22 @@ struct Pair {
     U b;
 
     // def __init__(self) -> None:
-    //     pass
-    Pair() {
-    }
+    Pair();
 
     // def set_a(self, val: T) -> None:
-    //     self.a = val
-    void set_a(::tpy::param_val_or_ref_t<T> val) {
-        this->a = ::tpy::param_to_storage<T>(val);
-    }
+    void set_a(::tpy::param_val_or_ref_t<T> val);
 
     // def set_b(self, val: U) -> None:
-    //     self.b = val
-    void set_b(::tpy::param_val_or_ref_t<U> val) {
-        this->b = ::tpy::param_to_storage<U>(val);
-    }
+    void set_b(::tpy::param_val_or_ref_t<U> val);
 
     // def set_both(self, a: T, b: U) -> None:
-    //     self.a = a
-    //     self.b = b
-    void set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
-        this->a = ::tpy::param_to_storage<T>(a);
-        this->b = ::tpy::param_to_storage<U>(b);
-    }
+    void set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b);
 
     // def get_a(self) -> T:
-    //     return self.a
-    ::tpy::val_or_ref_t<T> get_a() {
-        return this->a;
-    }
+    ::tpy::val_or_ref_t<T> get_a();
 
     // def get_b(self) -> U:
-    //     return self.b
-    ::tpy::val_or_ref_t<U> get_b() {
-        return this->b;
-    }
+    ::tpy::val_or_ref_t<U> get_b();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -65,6 +46,50 @@ template<typename T, typename U>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T, U>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T, typename U>
+inline Pair<T, U>::Pair() {
+}
+
+// def set_a(self, val: T) -> None:
+//     self.a = val
+template<typename T, typename U>
+inline void Pair<T, U>::set_a(::tpy::param_val_or_ref_t<T> val) {
+    this->a = ::tpy::param_to_storage<T>(val);
+}
+
+// def set_b(self, val: U) -> None:
+//     self.b = val
+template<typename T, typename U>
+inline void Pair<T, U>::set_b(::tpy::param_val_or_ref_t<U> val) {
+    this->b = ::tpy::param_to_storage<U>(val);
+}
+
+// def set_both(self, a: T, b: U) -> None:
+//     self.a = a
+//     self.b = b
+template<typename T, typename U>
+inline void Pair<T, U>::set_both(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<U> b) {
+    this->a = ::tpy::param_to_storage<T>(a);
+    this->b = ::tpy::param_to_storage<U>(b);
+}
+
+// def get_a(self) -> T:
+//     return self.a
+template<typename T, typename U>
+inline ::tpy::val_or_ref_t<T> Pair<T, U>::get_a() {
+    return this->a;
+}
+
+// def get_b(self) -> U:
+//     return self.b
+template<typename T, typename U>
+inline ::tpy::val_or_ref_t<U> Pair<T, U>::get_b() {
+    return this->b;
 }
 
 void __tpy_init();

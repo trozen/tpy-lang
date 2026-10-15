@@ -112,9 +112,8 @@ struct Box {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.v = v
     Box() = default;
-    explicit Box(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+    explicit Box(::tpy::own_param_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "m.Box";
 };
 
@@ -224,5 +223,11 @@ inline B::B(const ::tpy::BigInt& v) : v(v) {}
 inline Err::Err(const ::tpy::BigInt& code)
     : ::tpy::Exception("err"),
       code(code) {}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline Box<T>::Box(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
 void __tpy_init();
 } // namespace tpyapp::m

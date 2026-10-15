@@ -52,13 +52,9 @@ struct Slots {
     // def __getitem__(self, index: int32) -> Data:
     const Data& __getitem__(int32_t index) const;
 
-    const Data& operator[](int32_t index) const {
-        return __getitem__(index);
-    }
+    const Data& operator[](int32_t index) const;
 
-    Data& operator[](int32_t index) {
-        return __getitem__(index);
-    }
+    Data& operator[](int32_t index);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slots";
 };
 
@@ -112,6 +108,14 @@ inline const Data& Slots::__getitem__(int32_t index) const {
         return this->a;
     }
     return this->b;
+}
+
+inline const Data& Slots::operator[](int32_t index) const {
+    return __getitem__(index);
+}
+
+inline Data& Slots::operator[](int32_t index) {
+    return __getitem__(index);
 }
 void __tpy_init();
 } // namespace tpyapp::main

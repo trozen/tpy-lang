@@ -382,108 +382,19 @@ struct _WaitForFuture {
     bool _cancel_pending;
 
     // def __init__(self, coro: Own[Cancellable[T]], timeout: float) -> None:
-    //     self._inner = Box[Cancellable[T]](coro)
-    //     self._timeout = timeout
-    //     self._deadline = 0.0
-    //     self._registered = False
-    //     self._cleanup = False
-    //     self._timed_out = False
-    //     self._cancel_pending = False
     _WaitForFuture() = default;
-    explicit _WaitForFuture(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout)
-        : _inner(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>(std::move(coro))),
-          _timeout(timeout),
-          _deadline(0.0),
-          _registered(false),
-          _cleanup(false),
-          _timed_out(false),
-          _cancel_pending(false) {}
+    explicit _WaitForFuture(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout);
     // non-copyable (@nocopy)
     _WaitForFuture(const _WaitForFuture&) = delete;
     _WaitForFuture& operator=(const _WaitForFuture&) = delete;
     _WaitForFuture(_WaitForFuture&&) = default;
     _WaitForFuture& operator=(_WaitForFuture&&) = default;
 
-    // # Required for `@dynamic Cancellable[T]` conformance. Flips the
-    // # cancel flag; the next __poll__ propagates to the inner. Matches
-    // # the SleepFuture / Future / Event pattern.
     // def cancel(self) -> None:
-    //     self._cancel_pending = True
-    void cancel() {
-        this->_cancel_pending = true;
-    }
+    void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[T]]:
-    //     # Consume the cancel signal up front so a re-cancel arriving
-    //     # after `_cleanup=True` doesn't accumulate (cleanup is already
-    //     # in flight; the second cancel adds nothing). Mirrors the
-    //     # "consumed each poll" invariant SleepFuture maintains.
-    //     was_canceling = self._cancel_pending
-    //     self._cancel_pending = False
-    //
-    //     # Outer cancel wins over a pending timeout. Mark cleanup so
-    //     # an in-flight inner cancel observed below re-raises as
-    //     # CancelledError, not TimeoutError.
-    //     if was_canceling and not self._cleanup:
-    //         self._cleanup = True
-    //         self._inner.get().cancel()
-    //
-    //     expired = self._timeout <= 0.0
-    //     if not self._registered:
-    //         self._registered = True
-    //         self._deadline = monotonic() + self._timeout
-    //         if not expired:
-    //             _register_timer_at(self._deadline, waker)
-    //     elif not expired:
-    //         expired = monotonic() >= self._deadline
-    //
-    //     # Deadline elapsed and we have not started cleanup yet:
-    //     # propagate cancel to the inner and pump it until it returns.
-    //     # A non-positive timeout takes this branch on the first poll.
-    //     if not self._cleanup and expired:
-    //         self._cleanup = True
-    //         self._timed_out = True
-    //         self._inner.get().cancel()
-    //
-    //     try:
-    //         return self._inner.get().__poll__(waker)
-    //     except CancelledError:
-    //         if self._timed_out:
-    //             raise TimeoutError()
-    //         raise
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) {
-        bool was_canceling = this->_cancel_pending;
-        this->_cancel_pending = false;
-        if ((was_canceling && (!(this->_cleanup)))) {
-            this->_cleanup = true;
-            this->_inner.get().cancel();
-        }
-        bool expired = (this->_timeout <= 0.0);
-        if ((!(this->_registered))) {
-            this->_registered = true;
-            this->_deadline = ((::tpy::stdlib::time::monotonic()) + (this->_timeout));
-            if ((!(expired))) {
-                ::tpystd::asyncio::_register_timer_at(this->_deadline, waker);
-            }
-        } else if ((!(expired))) {
-            expired = (::tpy::stdlib::time::monotonic() >= this->_deadline);
-        }
-        if (((!(this->_cleanup)) && expired)) {
-            this->_cleanup = true;
-            this->_timed_out = true;
-            this->_inner.get().cancel();
-        }
-        {
-            try {
-                return this->_inner.get().__poll__(waker);
-            } catch (const ::tpy::CancelledError&) {
-                if (this->_timed_out) {
-                    throw ::tpy::TimeoutError{};
-                }
-                throw;
-            }
-        }
-    }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._WaitForFuture";
 };
 
@@ -515,229 +426,22 @@ struct _GatherFuture {
     bool _cancel_pending;
 
     // def __init__(self, tasks: list[Task[T]]) -> None:
-    //     # tasks is borrowed from the caller. Rc-clone each Task into
-    //     # our owned list so the future is self-contained -- avoids the
-    //     # codegen gap on passing a named-local Own[list[T]] arg into a
-    //     # sub-coro emplace (cheap: each clone is one refcount bump on
-    //     # the underlying TaskState).
-    //     self._tasks = []
-    //     self._completion_indices = []
-    //     self._completion_boxes = []
-    //     self._settled = []
-    //     self._exc = None
-    //     self._completed = 0
-    //     self._cleanup = False
-    //     self._cancel_pending = False
-    //     for t in tasks:
-    //         self._tasks.append(t.clone())
-    //         self._settled.append(False)
     _GatherFuture() = default;
-    explicit _GatherFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
-        : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}),
-          _completion_indices(std::vector<int32_t>{}),
-          _completion_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}),
-          _settled(std::vector<bool>{}),
-          _exc(std::nullopt),
-          _completed(0),
-          _cleanup(false),
-          _cancel_pending(false) {
-        auto& __obj_0 = tasks;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& t = *__beg_0;
-            this->_tasks.push_back(t.clone());
-            this->_settled.push_back(false);
-        }
-    }
+    explicit _GatherFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks);
     // non-copyable (@nocopy)
     _GatherFuture(const _GatherFuture&) = delete;
     _GatherFuture& operator=(const _GatherFuture&) = delete;
     _GatherFuture(_GatherFuture&&) = default;
     _GatherFuture& operator=(_GatherFuture&&) = default;
 
-    // # Required for structural conformance to `@dynamic Cancellable[T]`.
-    // # Mirrors the SleepFuture / _WaitForFuture pattern: just flips the
-    // # signal; the next __poll__ propagates to sub-tasks.
     // def cancel(self) -> None:
-    //     self._cancel_pending = True
-    void cancel() {
-        this->_cancel_pending = true;
-    }
+    void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[list[T]]]:
-    //     # Empty gather is trivially complete on every poll, including
-    //     # the first one after an outer cancel. Matches CPython's
-    //     # "gather() with no args returns []".
-    //     n = len(self._tasks)
-    //     if n == 0:
-    //         empty: list[T] = []
-    //         return poll_ready(empty)
-    //
-    //     # Consume cancel signal up front so a re-cancel arriving after
-    //     # cleanup is already in flight doesn't accumulate (mirrors
-    //     # _WaitForFuture). Propagate cancel into sub-tasks now; defer
-    //     # claiming `_exc` until AFTER the per-task loop so a freshly
-    //     # observable inner exception this cycle wins over the cancel
-    //     # (avoids silently dropping a real failure under racing-cancel).
-    //     was_canceling = self._cancel_pending
-    //     self._cancel_pending = False
-    //     if was_canceling and not self._cleanup:
-    //         self._cleanup = True
-    //         self._propagate_cancel()
-    //
-    //     # Poll every unsettled task with the shared waker. Multiple
-    //     # wakes between polls coalesce at the executor (one runnable
-    //     # flag per slot), so the O(N) re-poll per cycle is bounded.
-    //     i: int32 = 0
-    //     while i < n:
-    //         if not self._settled[i]:
-    //             try:
-    //                 p = self._tasks[i].__poll__(waker)
-    //                 if p.is_ready():
-    //                     self._settled[i] = True
-    //                     self._completed += 1
-    //                     if self._cleanup:
-    //                         # Cleanup mode: discard value; `p` drops
-    //                         # at end of block and the destructor
-    //                         # disposes the contained T.
-    //                         pass
-    //                     else:
-    //                         self._completion_indices.append(i)
-    //                         self._completion_boxes.append(Box(p.value()))
-    //             except (SystemExit, KeyboardInterrupt):
-    //                 # These end the program, not the sub-task: never a
-    //                 # gather outcome (CPython raises them out of the loop).
-    //                 raise
-    //             except BaseException as e:
-    //                 self._settled[i] = True
-    //                 self._completed += 1
-    //                 if self._exc is None:
-    //                     self._exc = Box(e.clone())
-    //                 if not self._cleanup:
-    //                     self._cleanup = True
-    //                     self._propagate_cancel()
-    //         i += 1
-    //
-    //     # Outer-cancel fallback: only claim `_exc` for CancelledError
-    //     # if nothing real fired this cycle (or any prior one).
-    //     if was_canceling and self._exc is None:
-    //         self._exc = Box(CancelledError())
-    //
-    //     if self._completed < n:
-    //         return poll_pending()
-    //
-    //     if self._exc is not None:
-    //         raise self._exc
-    //
-    //     # All sub-tasks succeeded. Reorder completions into input
-    //     # order. O(n^2) walk -- n is typically small (handful of
-    //     # concurrent operations); fine for v1.5.
-    //     result: list[T] = []
-    //     orig_i: int32 = 0
-    //     while orig_i < n:
-    //         k: int32 = 0
-    //         kn = len(self._completion_indices)
-    //         while k < kn:
-    //             if self._completion_indices[k] == orig_i:
-    //                 box = self._completion_boxes.pop(k)
-    //                 self._completion_indices.pop(k)
-    //                 result.append(box.take())
-    //                 break
-    //             k += 1
-    //         orig_i += 1
-    //     return poll_ready(result)
-    ::tpystd::tpy::Poll<std::vector<T>> __poll__(::tpystd::coro::Waker waker) {
-        int32_t n = ::tpy::__len__(this->_tasks);
-        if ((n == 0)) {
-            std::vector<T> empty = std::vector<T>{};
-            return ::tpystd::coro::poll_ready<std::vector<T>>(std::move(empty));
-        }
-        bool was_canceling = this->_cancel_pending;
-        this->_cancel_pending = false;
-        if ((was_canceling && (!(this->_cleanup)))) {
-            this->_cleanup = true;
-            this->_propagate_cancel();
-        }
-        int32_t i = 0;
-        while ((i < n)) {
-            if ((!(::tpy::__getitem__(this->_settled, i)))) {
-                {
-                    try {
-                        ::tpystd::tpy::Poll<T> p = ::tpy::__getitem__(this->_tasks, i).__poll__(waker);
-                        if (p.is_ready()) {
-                            ::tpy::__setitem__(this->_settled, i, true);
-                            this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
-                            if (this->_cleanup) {
-                            } else {
-                                this->_completion_indices.push_back(i);
-                                this->_completion_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
-                            }
-                        }
-                    } catch (const ::tpy::SystemExit&) {
-                        throw;
-                    } catch (const ::tpy::KeyboardInterrupt&) {
-                        throw;
-                    } catch (const ::tpy::BaseException& e) {
-                        ::tpy::__setitem__(this->_settled, i, true);
-                        this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
-                        if ((!this->_exc.has_value())) {
-                            this->_exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
-                        }
-                        if ((!(this->_cleanup))) {
-                            this->_cleanup = true;
-                            this->_propagate_cancel();
-                        }
-                    }
-                }
-            }
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        if ((was_canceling && (!this->_exc.has_value()))) {
-            this->_exc = ::tpystd::tplib::box::Box<::tpy::CancelledError>(::tpy::CancelledError());
-        }
-        if ((this->_completed < n)) {
-            return ::tpystd::coro::poll_pending<std::vector<T>>();
-        }
-        if ((this->_exc.has_value())) {
-            (*this->_exc).__deref__().__raise__();
-        }
-        std::vector<T> result = std::vector<T>{};
-        int32_t orig_i = 0;
-        while ((orig_i < n)) {
-            int32_t k = 0;
-            int32_t kn = ::tpy::__len__(this->_completion_indices);
-            while ((k < kn)) {
-                if ((::tpy::__getitem__(this->_completion_indices, k) == orig_i)) {
-                    ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_completion_boxes, k);
-                    ::tpy::list_pop_at(this->_completion_indices, k);
-                    result.push_back(std::move(box).take());
-                    break;
-                }
-                k = ::tpy::add_check<int32_t>(k, 1);
-            }
-            orig_i = ::tpy::add_check<int32_t>(orig_i, 1);
-        }
-        return ::tpystd::coro::poll_ready<std::vector<T>>(std::move(result));
-    }
+    ::tpystd::tpy::Poll<std::vector<T>> __poll__(::tpystd::coro::Waker waker);
 
     // def _propagate_cancel(self) -> None:
-    //     i: int32 = 0
-    //     n = len(self._tasks)
-    //     while i < n:
-    //         if not self._settled[i]:
-    //             self._tasks[i].cancel()
-    //         i += 1
-    void _propagate_cancel() {
-        int32_t i = 0;
-        int32_t n = ::tpy::__len__(this->_tasks);
-        while ((i < n)) {
-            if ((!(::tpy::__getitem__(this->_settled, i)))) {
-                ::tpy::__getitem__(this->_tasks, i).cancel();
-            }
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-    }
+    void _propagate_cancel();
     static constexpr std::string_view __tpy_class_name__ = "asyncio._GatherFuture";
 };
 
@@ -756,15 +460,8 @@ struct Settled {
     // exception: Box[Throwable] | None
     std::optional<::tpystd::tplib::box::Box<::tpy::Throwable>> exception;
 
-    // # Users normally don't construct Settled directly --
-    // # `gather_list_settled` is the only producer and assigns the
-    // # `value` / `exception` fields directly post-init.
     // def __init__(self) -> None:
-    //     self.value = None
-    //     self.exception = None
-    Settled()
-        : value(std::nullopt),
-          exception(std::nullopt) {}
+    Settled();
     // non-copyable (@nocopy)
     Settled(const Settled&) = delete;
     Settled& operator=(const Settled&) = delete;
@@ -801,215 +498,19 @@ struct _GatherSettledFuture {
     bool _cancel_pending;
 
     // def __init__(self, tasks: list[Task[T]]) -> None:
-    //     # `tasks` is borrowed from the caller -- Rc-clone each entry as
-    //     # in `_GatherFuture` (avoids the named-local Own[list[T]] arg
-    //     # codegen gap; each clone is one refcount bump on TaskState).
-    //     self._tasks = []
-    //     self._settled = []
-    //     self._result_indices = []
-    //     self._result_boxes = []
-    //     self._exc_indices = []
-    //     self._exc_boxes = []
-    //     self._completed = 0
-    //     self._cancel_pending = False
-    //     for t in tasks:
-    //         self._tasks.append(t.clone())
-    //         self._settled.append(False)
     _GatherSettledFuture() = default;
-    explicit _GatherSettledFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
-        : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}),
-          _settled(std::vector<bool>{}),
-          _result_indices(std::vector<int32_t>{}),
-          _result_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}),
-          _exc_indices(std::vector<int32_t>{}),
-          _exc_boxes(std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>>{}),
-          _completed(0),
-          _cancel_pending(false) {
-        auto& __obj_0 = tasks;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            auto&& t = *__beg_0;
-            this->_tasks.push_back(t.clone());
-            this->_settled.push_back(false);
-        }
-    }
+    explicit _GatherSettledFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks);
     // non-copyable (@nocopy)
     _GatherSettledFuture(const _GatherSettledFuture&) = delete;
     _GatherSettledFuture& operator=(const _GatherSettledFuture&) = delete;
     _GatherSettledFuture(_GatherSettledFuture&&) = default;
     _GatherSettledFuture& operator=(_GatherSettledFuture&&) = default;
 
-    // # Required for structural conformance to `@dynamic Cancellable[T]`.
     // def cancel(self) -> None:
-    //     self._cancel_pending = True
-    void cancel() {
-        this->_cancel_pending = true;
-    }
+    void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[list[Settled[T]]]]:
-    //     n = len(self._tasks)
-    //     if n == 0:
-    //         empty: list[Settled[T]] = []
-    //         return poll_ready(empty)
-    //
-    //     # Outer cancel: mark every unsettled sub-task's slot runnable
-    //     # via Task.cancel. Subs will raise CancelledError at their
-    //     # next suspension; we collect it as an entry rather than
-    //     # bubbling it out (CPython's return_exceptions semantics).
-    //     was_canceling = self._cancel_pending
-    //     self._cancel_pending = False
-    //     i: int32 = 0
-    //     if was_canceling:
-    //         while i < n:
-    //             if not self._settled[i]:
-    //                 self._tasks[i].cancel()
-    //             i += 1
-    //
-    //     i = 0
-    //     while i < n:
-    //         if not self._settled[i]:
-    //             try:
-    //                 p = self._tasks[i].__poll__(waker)
-    //                 if p.is_ready():
-    //                     self._settled[i] = True
-    //                     self._completed += 1
-    //                     self._result_indices.append(i)
-    //                     self._result_boxes.append(Box(p.value()))
-    //             except (SystemExit, KeyboardInterrupt):
-    //                 # Not a settled outcome: these end the program.
-    //                 raise
-    //             except BaseException as e:
-    //                 self._settled[i] = True
-    //                 self._completed += 1
-    //                 self._exc_indices.append(i)
-    //                 self._exc_boxes.append(Box(e.clone()))
-    //         i += 1
-    //
-    //     if self._completed < n:
-    //         return poll_pending()
-    //
-    //     # Assemble in input order. For each input slot, scan the
-    //     # arrival-order arrays for a matching index, then `pop` to
-    //     # transfer ownership of the Box out of the list. O(n^2)
-    //     # walk -- N is typically small (handful of concurrent
-    //     # operations); fine for v1.5.
-    //     result: list[Settled[T]] = []
-    //     orig_i: int32 = 0
-    //     while orig_i < n:
-    //         settled_via_value = False
-    //         k: int32 = 0
-    //         kn = len(self._result_indices)
-    //         while k < kn:
-    //             if self._result_indices[k] == orig_i:
-    //                 self._result_indices.pop(k)
-    //                 box = self._result_boxes.pop(k)
-    //                 entry = Settled[T]()
-    //                 entry.value = box
-    //                 result.append(entry)
-    //                 settled_via_value = True
-    //                 break
-    //             k += 1
-    //         if not settled_via_value:
-    //             k = 0
-    //             kn = len(self._exc_indices)
-    //             while k < kn:
-    //                 if self._exc_indices[k] == orig_i:
-    //                     self._exc_indices.pop(k)
-    //                     ebox = self._exc_boxes.pop(k)
-    //                     entry = Settled[T]()
-    //                     entry.exception = ebox
-    //                     result.append(entry)
-    //                     break
-    //                 k += 1
-    //         orig_i += 1
-    //     return poll_ready(result)
-    ::tpystd::tpy::Poll<std::vector<Settled<T>>> __poll__(::tpystd::coro::Waker waker) {
-        int32_t n = ::tpy::__len__(this->_tasks);
-        if ((n == 0)) {
-            std::vector<Settled<T>> empty = std::vector<Settled<T>>{};
-            return ::tpystd::coro::poll_ready<std::vector<Settled<T>>>(std::move(empty));
-        }
-        bool was_canceling = this->_cancel_pending;
-        this->_cancel_pending = false;
-        int32_t i = 0;
-        if (was_canceling) {
-            while ((i < n)) {
-                if ((!(::tpy::__getitem__(this->_settled, i)))) {
-                    ::tpy::__getitem__(this->_tasks, i).cancel();
-                }
-                i = ::tpy::add_check<int32_t>(i, 1);
-            }
-        }
-        i = 0;
-        while ((i < n)) {
-            if ((!(::tpy::__getitem__(this->_settled, i)))) {
-                {
-                    try {
-                        ::tpystd::tpy::Poll<T> p = ::tpy::__getitem__(this->_tasks, i).__poll__(waker);
-                        if (p.is_ready()) {
-                            ::tpy::__setitem__(this->_settled, i, true);
-                            this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
-                            this->_result_indices.push_back(i);
-                            this->_result_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
-                        }
-                    } catch (const ::tpy::SystemExit&) {
-                        throw;
-                    } catch (const ::tpy::KeyboardInterrupt&) {
-                        throw;
-                    } catch (const ::tpy::BaseException& e) {
-                        ::tpy::__setitem__(this->_settled, i, true);
-                        this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
-                        this->_exc_indices.push_back(i);
-                        this->_exc_boxes.push_back(::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone()));
-                    }
-                }
-            }
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        if ((this->_completed < n)) {
-            return ::tpystd::coro::poll_pending<std::vector<Settled<T>>>();
-        }
-        std::vector<Settled<T>> result = std::vector<Settled<T>>{};
-        int32_t orig_i = 0;
-        std::optional<Settled<T>> __slot_1;
-        std::optional<Settled<T>> __slot_2;
-        while ((orig_i < n)) {
-            bool settled_via_value = false;
-            int32_t k = 0;
-            int32_t kn = ::tpy::__len__(this->_result_indices);
-            Settled<T>* entry;
-            while ((k < kn)) {
-                if ((::tpy::__getitem__(this->_result_indices, k) == orig_i)) {
-                    ::tpy::list_pop_at(this->_result_indices, k);
-                    ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_result_boxes, k);
-                    entry = &*(__slot_1 = Settled<T>());
-                    entry->value = std::move(box);
-                    result.push_back(std::move((*entry)));
-                    settled_via_value = true;
-                    break;
-                }
-                k = ::tpy::add_check<int32_t>(k, 1);
-            }
-            if ((!(settled_via_value))) {
-                k = 0;
-                kn = ::tpy::__len__(this->_exc_indices);
-                while ((k < kn)) {
-                    if ((::tpy::__getitem__(this->_exc_indices, k) == orig_i)) {
-                        ::tpy::list_pop_at(this->_exc_indices, k);
-                        ::tpystd::tplib::box::Box<::tpy::Throwable> ebox = ::tpy::list_pop_at(this->_exc_boxes, k);
-                        entry = &*(__slot_2 = Settled<T>());
-                        entry->exception = std::move(ebox);
-                        result.push_back(std::move((*entry)));
-                        break;
-                    }
-                    k = ::tpy::add_check<int32_t>(k, 1);
-                }
-            }
-            orig_i = ::tpy::add_check<int32_t>(orig_i, 1);
-        }
-        return ::tpystd::coro::poll_ready<std::vector<Settled<T>>>(std::move(result));
-    }
+    ::tpystd::tpy::Poll<std::vector<Settled<T>>> __poll__(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._GatherSettledFuture";
 };
 
@@ -1053,164 +554,30 @@ struct Future {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
-    //     self._done = False
-    //     self._cancelled = False
-    //     self._has_waiter = False
-    //     self._exception = None
-    //     self._waiter = Waker()
-    //     self._result = UninitStorage[T]()
-    Future()
-        : _done(false),
-          _cancelled(false),
-          _has_waiter(false),
-          _exception(std::nullopt),
-          _waiter(::tpystd::coro::Waker()),
-          _result(::tpy::UninitStorage<T>()) {}
+    Future();
     // non-copyable (field '_exception')
     Future(const Future&) = delete;
     Future& operator=(const Future&) = delete;
-    Future(Future&& other) noexcept
-        : _done(std::move(other._done)),
-          _cancelled(std::move(other._cancelled)),
-          _has_waiter(std::move(other._has_waiter)),
-          _exception(std::move(other._exception)),
-          _waiter(std::move(other._waiter)),
-          _result(std::move(other._result)) {
-        other.__tpy_owned_ = false;
-    }
-    Future& operator=(Future&& other) noexcept {
-        if (this != &other) {
-            this->~Future();
-            new (this) Future(std::move(other));
-        }
-        return *this;
-    }
+    Future(Future&& other) noexcept;
+    Future& operator=(Future&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     if self._result.has():
-    //         self._result.reset()
-    ~Future() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        if (this->_result.has()) {
-            this->_result.reset();
-        }
-    }
+    ~Future();
 
     // def done(self) -> bool:
-    //     return self._done
-    bool done() const {
-        return this->_done;
-    }
+    bool done() const;
 
     // def set_result(self, value: Own[T]) -> None:
-    //     # Takes ownership of `value` so nocopy types work without a
-    //     # `__copy__` opt-in. Callers passing a named local must use
-    //     # `tpy.copy(x)` explicitly to keep their reference alive.
-    //     if self._done:
-    //         raise InvalidStateError("invalid state")
-    //     self._result.construct(value)
-    //     self._done = True
-    //     if self._has_waiter:
-    //         self._waiter.wake()
-    //         self._has_waiter = False
-    void set_result(::tpy::own_param_t<T> value) {
-        if (this->_done) {
-            throw InvalidStateError("invalid state");
-        }
-        this->_result.construct(std::move(value));
-        this->_done = true;
-        if (this->_has_waiter) {
-            this->_waiter.wake();
-            this->_has_waiter = false;
-        }
-    }
+    void set_result(::tpy::own_param_t<T> value);
 
     // def set_exception(self, exc: Own[Throwable]) -> None:
-    //     if self._done:
-    //         raise InvalidStateError("invalid state")
-    //     self._exception = Box(exc)
-    //     self._done = True
-    //     if self._has_waiter:
-    //         self._waiter.wake()
-    //         self._has_waiter = False
-    void set_exception(std::unique_ptr<::tpy::Throwable> exc) {
-        if (this->_done) {
-            throw InvalidStateError("invalid state");
-        }
-        this->_exception = ::tpystd::tplib::box::Box<::tpy::Throwable>(std::move(exc));
-        this->_done = true;
-        if (this->_has_waiter) {
-            this->_waiter.wake();
-            this->_has_waiter = false;
-        }
-    }
+    void set_exception(std::unique_ptr<::tpy::Throwable> exc);
 
-    // # Cancels the Future, as CPython's Future.cancel: it is done, its
-    // # awaiter is woken to raise CancelledError, and set_result /
-    // # set_exception refuse it. Cancelling the task that awaits it lands
-    // # here too (CPython's Task.cancel cancels the future it waits on). A
-    // # Future already done is left as is.
     // def cancel(self) -> None:
-    //     if self._done:
-    //         return
-    //     self._done = True
-    //     self._cancelled = True
-    //     if self._has_waiter:
-    //         self._has_waiter = False
-    //         self._waiter.wake()
-    void cancel() {
-        if (this->_done) {
-            return;
-        }
-        this->_done = true;
-        this->_cancelled = true;
-        if (this->_has_waiter) {
-            this->_has_waiter = false;
-            this->_waiter.wake();
-        }
-    }
+    void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[T]]:
-    //     if self._done:
-    //         if self._cancelled:
-    //             raise CancelledError()
-    //         if self._exception is not None:
-    //             raise self._exception
-    //         if not self._result.has():
-    //             raise ValueError(
-    //                 "Future done with no result and no exception")
-    //         # take() returns Own[T] -- pass directly as rvalue so
-    //         # nocopy types (T with __del__ but no __copy__) flow through
-    //         # without requiring a copy ctor.
-    //         return poll_ready(self._result.take())
-    //     # A re-poll by the parked task (a spurious wake) keeps its place.
-    //     if self._has_waiter and not same_task(self._waiter, waker):
-    //         raise ValueError(
-    //             "Future already has a waiter (single-awaiter v1)")
-    //     self._waiter = waker
-    //     self._has_waiter = True
-    //     return poll_pending()
-    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker) {
-        if (this->_done) {
-            if (this->_cancelled) {
-                throw ::tpy::CancelledError{};
-            }
-            if ((this->_exception.has_value())) {
-                (*this->_exception).__deref__().__raise__();
-            }
-            if ((!(this->_result.has()))) {
-                throw ::tpy::ValueError("Future done with no result and no exception");
-            }
-            return ::tpystd::coro::poll_ready<T>(this->_result.take());
-        }
-        if ((this->_has_waiter && (!(::tpystd::coro::same_task(this->_waiter, waker))))) {
-            throw ::tpy::ValueError("Future already has a waiter (single-awaiter v1)");
-        }
-        this->_waiter = waker;
-        this->_has_waiter = true;
-        return ::tpystd::coro::poll_pending<T>();
-    }
+    ::tpystd::tpy::Poll<T> __poll__(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio.Future";
 };
 
@@ -1296,11 +663,7 @@ struct _WaitQueue {
     // def remove(self, ticket: uint64) -> bool:
     bool remove(uint64_t ticket);
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "asyncio._WaitQueue";
 };
 
@@ -1326,18 +689,8 @@ struct _PrimitiveWait {
 
     // def __init__(self, owner: Ptr[P], kind: int32,
     //              queue: Ptr[_WaitQueue]) -> None:
-    //     self._owner = owner
-    //     self._kind = kind
-    //     self._queue = queue
-    //     self._ticket = 0
-    //     self._cancelled = False
     _PrimitiveWait() = default;
-    explicit _PrimitiveWait(P* owner, int32_t kind, _WaitQueue* queue)
-        : _owner(owner),
-          _kind(kind),
-          _queue(queue),
-          _ticket(0),
-          _cancelled(false) {}
+    explicit _PrimitiveWait(P* owner, int32_t kind, _WaitQueue* queue);
     // non-copyable (@nocopy)
     _PrimitiveWait(const _PrimitiveWait&) = delete;
     _PrimitiveWait& operator=(const _PrimitiveWait&) = delete;
@@ -1345,58 +698,10 @@ struct _PrimitiveWait {
     _PrimitiveWait& operator=(_PrimitiveWait&&) = default;
 
     // def cancel(self) -> None:
-    //     if self._cancelled:
-    //         return
-    //     self._cancelled = True
-    //     if self._ticket == 0:
-    //         return
-    //     if (not self._queue.remove(self._ticket)
-    //             and self._owner._ready(self._kind)):
-    //         self._queue.wake_one()
-    //     self._ticket = 0
-    void cancel() {
-        if (this->_cancelled) {
-            return;
-        }
-        this->_cancelled = true;
-        if ((this->_ticket == 0)) {
-            return;
-        }
-        if (((!(::tpy::deref_check(this->_queue).remove(this->_ticket))) && ::tpy::deref_check(this->_owner)._ready(this->_kind))) {
-            ::tpy::deref_check(this->_queue).wake_one();
-        }
-        this->_ticket = 0;
-    }
+    void cancel();
 
     // def __poll__(self, waker: Waker) -> Own[Poll[None]]:
-    //     if self._cancelled:
-    //         raise CancelledError()
-    //     if self._ticket != 0:
-    //         if self._queue.parked(self._ticket):
-    //             return poll_pending()
-    //         self._ticket = 0
-    //     if self._owner._ready(self._kind):
-    //         self._owner._take(self._kind)
-    //         return poll_ready_none()
-    //     self._ticket = self._queue.park(waker)
-    //     return poll_pending()
-    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker) {
-        if (this->_cancelled) {
-            throw ::tpy::CancelledError{};
-        }
-        if ((this->_ticket != 0)) {
-            if (::tpy::deref_check(this->_queue).parked(this->_ticket)) {
-                return ::tpystd::coro::poll_pending<std::monostate>();
-            }
-            this->_ticket = 0;
-        }
-        if (::tpy::deref_check(this->_owner)._ready(this->_kind)) {
-            ::tpy::deref_check(this->_owner)._take(this->_kind);
-            return ::tpystd::coro::poll_ready_none();
-        }
-        this->_ticket = ::tpy::deref_check(this->_queue).park(waker);
-        return ::tpystd::coro::poll_pending<std::monostate>();
-    }
+    ::tpystd::tpy::Poll<std::monostate> __poll__(::tpystd::coro::Waker waker);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._PrimitiveWait";
 };
 
@@ -1540,19 +845,7 @@ struct Queue {
     int32_t _unfinished;
 
     // def __init__(self, maxsize: int32 = 0) -> None:
-    //     self._items = []
-    //     self.maxsize = maxsize
-    //     self._getters = _WaitQueue()
-    //     self._putters = _WaitQueue()
-    //     self._joiners = _WaitQueue()
-    //     self._unfinished = 0
-    explicit Queue(int32_t maxsize = 0)
-        : _items(std::vector<T>{}),
-          maxsize(maxsize),
-          _getters(_WaitQueue()),
-          _putters(_WaitQueue()),
-          _joiners(_WaitQueue()),
-          _unfinished(0) {}
+    explicit Queue(int32_t maxsize = 0);
     // non-copyable (@nocopy)
     Queue(const Queue&) = delete;
     Queue& operator=(const Queue&) = delete;
@@ -1560,97 +853,34 @@ struct Queue {
     Queue& operator=(Queue&&) = default;
 
     // def qsize(self) -> int32:
-    //     return len(self._items)
-    int32_t qsize() const {
-        return ::tpy::__len__(this->_items);
-    }
+    int32_t qsize() const;
 
     // def empty(self) -> bool:
-    //     return len(self._items) == 0
-    bool empty() const {
-        return (::tpy::__len__(this->_items) == 0);
-    }
+    bool empty() const;
 
     // def full(self) -> bool:
-    //     return self.maxsize > 0 and len(self._items) >= self.maxsize
-    bool full() const {
-        return ((this->maxsize > 0) && (::tpy::__len__(this->_items) >= this->maxsize));
-    }
+    bool full() const;
 
     // def put_nowait(self, item: Own[T]) -> None:
-    //     if self.full():
-    //         raise QueueFull("Queue full")
-    //     self._items.append(item)
-    //     self._unfinished += 1
-    //     self._getters.wake_one()
-    void put_nowait(::tpy::own_param_t<T> item) {
-        if (this->full()) {
-            throw QueueFull("Queue full");
-        }
-        this->_items.push_back(std::move(item));
-        this->_unfinished = ::tpy::add_check<int32_t>(this->_unfinished, 1);
-        this->_getters.wake_one();
-    }
+    void put_nowait(::tpy::own_param_t<T> item);
 
     // def get_nowait(self) -> Own[T]:
-    //     if self.empty():
-    //         raise QueueEmpty("Queue empty")
-    //     # A slot is about to free; wake a parked putter before the pop (it
-    //     # re-polls later, by which point this synchronous pop has run).
-    //     self._putters.wake_one()
-    //     return self._items.pop(0)
-    ::tpy::own_return_t<T> get_nowait() {
-        if (this->empty()) {
-            throw QueueEmpty("Queue empty");
-        }
-        this->_putters.wake_one();
-        return ::tpy::list_pop_at(this->_items, 0);
-    }
+    ::tpy::own_return_t<T> get_nowait();
 
     __coro_Queue_put<T> put(T item);
 
     __coro_Queue_get<T> get();
 
     // def task_done(self) -> None:
-    //     if self._unfinished <= 0:
-    //         raise ValueError("task_done() called too many times")
-    //     self._unfinished -= 1
-    //     if self._unfinished == 0:
-    //         self._joiners.wake_all()
-    void task_done() {
-        if ((this->_unfinished <= 0)) {
-            throw ::tpy::ValueError("task_done() called too many times");
-        }
-        this->_unfinished = ::tpy::sub_check<int32_t>(this->_unfinished, 1);
-        if ((this->_unfinished == 0)) {
-            this->_joiners.wake_all();
-        }
-    }
+    void task_done();
 
     __coro_Queue_join<T> join();
 
-    // # `_Parking`, for `_PrimitiveWait`. Waiting is all a queue condition
-    // # does: `get` / `put` take the item / slot after the wait.
     // def _ready(self, kind: int32) -> bool:
-    //     if kind == _QUEUE_GET:
-    //         return len(self._items) > 0
-    //     if kind == _QUEUE_PUT:
-    //         return not self.full()
-    //     return self._unfinished == 0
-    bool _ready(int32_t kind) const {
-        if ((kind == _QUEUE_GET)) {
-            return (::tpy::__len__(this->_items) > 0);
-        }
-        if ((kind == _QUEUE_PUT)) {
-            return (!(this->full()));
-        }
-        return (this->_unfinished == 0);
-    }
+    bool _ready(int32_t kind) const;
 
     // def _take(self, kind: int32) -> None:
-    //     pass
-    void _take(int32_t kind) const {
-    }
+    void _take(int32_t kind) const;
     static constexpr std::string_view __tpy_class_name__ = "asyncio.Queue";
 };
 
@@ -1810,13 +1040,9 @@ struct _ServerSockets {
     // def __getitem__(self, i: int32) -> auto_readonly[socket]:
     const ::tpystd::socket::socket& __getitem__(int32_t i) const;
 
-    const ::tpystd::socket::socket& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const ::tpystd::socket::socket& operator[](int32_t i) const;
 
-    ::tpystd::socket::socket& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    ::tpystd::socket::socket& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "asyncio._ServerSockets";
 };
 
@@ -3206,6 +2432,12 @@ inline void _WaitQueue::wake_all() {
     this->_wakers.clear();
 }
 
+inline size_t _WaitQueue::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
+}
+
 // def __init__(self) -> None:
 //     self._locked = False
 //     self._waiters = _WaitQueue()
@@ -3419,6 +2651,14 @@ inline const ::tpystd::socket::socket& _ServerSockets::__getitem__(int32_t i) co
     return this->_sock.get();
 }
 
+inline const ::tpystd::socket::socket& _ServerSockets::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline ::tpystd::socket::socket& _ServerSockets::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self, listener: Own[Rc[socket]],
 //              task: Own[Task[None]]) -> None:
 //     # Build the sockets view first (cloning the Rc is allowed here, in a
@@ -3445,6 +2685,899 @@ inline void Server::close() {
 inline BoundedSemaphore::BoundedSemaphore(int32_t value) : Semaphore(value) {
     this->_bound = value;
 }
+
+// def __init__(self, coro: Own[Cancellable[T]], timeout: float) -> None:
+//     self._inner = Box[Cancellable[T]](coro)
+//     self._timeout = timeout
+//     self._deadline = 0.0
+//     self._registered = False
+//     self._cleanup = False
+//     self._timed_out = False
+//     self._cancel_pending = False
+template<typename T>
+inline _WaitForFuture<T>::_WaitForFuture(std::unique_ptr<::tpystd::coro::Cancellable<T>> coro, double timeout)
+    : _inner(::tpystd::tplib::box::Box<::tpystd::coro::Cancellable<T>>(std::move(coro))),
+      _timeout(timeout),
+      _deadline(0.0),
+      _registered(false),
+      _cleanup(false),
+      _timed_out(false),
+      _cancel_pending(false) {}
+
+// # Required for `@dynamic Cancellable[T]` conformance. Flips the
+// # cancel flag; the next __poll__ propagates to the inner. Matches
+// # the SleepFuture / Future / Event pattern.
+// def cancel(self) -> None:
+//     self._cancel_pending = True
+template<typename T>
+inline void _WaitForFuture<T>::cancel() {
+    this->_cancel_pending = true;
+}
+
+// def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+//     # Consume the cancel signal up front so a re-cancel arriving
+//     # after `_cleanup=True` doesn't accumulate (cleanup is already
+//     # in flight; the second cancel adds nothing). Mirrors the
+//     # "consumed each poll" invariant SleepFuture maintains.
+//     was_canceling = self._cancel_pending
+//     self._cancel_pending = False
+//
+//     # Outer cancel wins over a pending timeout. Mark cleanup so
+//     # an in-flight inner cancel observed below re-raises as
+//     # CancelledError, not TimeoutError.
+//     if was_canceling and not self._cleanup:
+//         self._cleanup = True
+//         self._inner.get().cancel()
+//
+//     expired = self._timeout <= 0.0
+//     if not self._registered:
+//         self._registered = True
+//         self._deadline = monotonic() + self._timeout
+//         if not expired:
+//             _register_timer_at(self._deadline, waker)
+//     elif not expired:
+//         expired = monotonic() >= self._deadline
+//
+//     # Deadline elapsed and we have not started cleanup yet:
+//     # propagate cancel to the inner and pump it until it returns.
+//     # A non-positive timeout takes this branch on the first poll.
+//     if not self._cleanup and expired:
+//         self._cleanup = True
+//         self._timed_out = True
+//         self._inner.get().cancel()
+//
+//     try:
+//         return self._inner.get().__poll__(waker)
+//     except CancelledError:
+//         if self._timed_out:
+//             raise TimeoutError()
+//         raise
+template<typename T>
+inline ::tpystd::tpy::Poll<T> _WaitForFuture<T>::__poll__(::tpystd::coro::Waker waker) {
+    bool was_canceling = this->_cancel_pending;
+    this->_cancel_pending = false;
+    if ((was_canceling && (!(this->_cleanup)))) {
+        this->_cleanup = true;
+        this->_inner.get().cancel();
+    }
+    bool expired = (this->_timeout <= 0.0);
+    if ((!(this->_registered))) {
+        this->_registered = true;
+        this->_deadline = ((::tpy::stdlib::time::monotonic()) + (this->_timeout));
+        if ((!(expired))) {
+            ::tpystd::asyncio::_register_timer_at(this->_deadline, waker);
+        }
+    } else if ((!(expired))) {
+        expired = (::tpy::stdlib::time::monotonic() >= this->_deadline);
+    }
+    if (((!(this->_cleanup)) && expired)) {
+        this->_cleanup = true;
+        this->_timed_out = true;
+        this->_inner.get().cancel();
+    }
+    {
+        try {
+            return this->_inner.get().__poll__(waker);
+        } catch (const ::tpy::CancelledError&) {
+            if (this->_timed_out) {
+                throw ::tpy::TimeoutError{};
+            }
+            throw;
+        }
+    }
+}
+
+// def __init__(self, tasks: list[Task[T]]) -> None:
+//     # tasks is borrowed from the caller. Rc-clone each Task into
+//     # our owned list so the future is self-contained -- avoids the
+//     # codegen gap on passing a named-local Own[list[T]] arg into a
+//     # sub-coro emplace (cheap: each clone is one refcount bump on
+//     # the underlying TaskState).
+//     self._tasks = []
+//     self._completion_indices = []
+//     self._completion_boxes = []
+//     self._settled = []
+//     self._exc = None
+//     self._completed = 0
+//     self._cleanup = False
+//     self._cancel_pending = False
+//     for t in tasks:
+//         self._tasks.append(t.clone())
+//         self._settled.append(False)
+template<typename T>
+inline _GatherFuture<T>::_GatherFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
+    : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}),
+      _completion_indices(std::vector<int32_t>{}),
+      _completion_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}),
+      _settled(std::vector<bool>{}),
+      _exc(std::nullopt),
+      _completed(0),
+      _cleanup(false),
+      _cancel_pending(false) {
+    auto& __obj_0 = tasks;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& t = *__beg_0;
+        this->_tasks.push_back(t.clone());
+        this->_settled.push_back(false);
+    }
+}
+
+// # Required for structural conformance to `@dynamic Cancellable[T]`.
+// # Mirrors the SleepFuture / _WaitForFuture pattern: just flips the
+// # signal; the next __poll__ propagates to sub-tasks.
+// def cancel(self) -> None:
+//     self._cancel_pending = True
+template<typename T>
+inline void _GatherFuture<T>::cancel() {
+    this->_cancel_pending = true;
+}
+
+// def __poll__(self, waker: Waker) -> Own[Poll[list[T]]]:
+//     # Empty gather is trivially complete on every poll, including
+//     # the first one after an outer cancel. Matches CPython's
+//     # "gather() with no args returns []".
+//     n = len(self._tasks)
+//     if n == 0:
+//         empty: list[T] = []
+//         return poll_ready(empty)
+//
+//     # Consume cancel signal up front so a re-cancel arriving after
+//     # cleanup is already in flight doesn't accumulate (mirrors
+//     # _WaitForFuture). Propagate cancel into sub-tasks now; defer
+//     # claiming `_exc` until AFTER the per-task loop so a freshly
+//     # observable inner exception this cycle wins over the cancel
+//     # (avoids silently dropping a real failure under racing-cancel).
+//     was_canceling = self._cancel_pending
+//     self._cancel_pending = False
+//     if was_canceling and not self._cleanup:
+//         self._cleanup = True
+//         self._propagate_cancel()
+//
+//     # Poll every unsettled task with the shared waker. Multiple
+//     # wakes between polls coalesce at the executor (one runnable
+//     # flag per slot), so the O(N) re-poll per cycle is bounded.
+//     i: int32 = 0
+//     while i < n:
+//         if not self._settled[i]:
+//             try:
+//                 p = self._tasks[i].__poll__(waker)
+//                 if p.is_ready():
+//                     self._settled[i] = True
+//                     self._completed += 1
+//                     if self._cleanup:
+//                         # Cleanup mode: discard value; `p` drops
+//                         # at end of block and the destructor
+//                         # disposes the contained T.
+//                         pass
+//                     else:
+//                         self._completion_indices.append(i)
+//                         self._completion_boxes.append(Box(p.value()))
+//             except (SystemExit, KeyboardInterrupt):
+//                 # These end the program, not the sub-task: never a
+//                 # gather outcome (CPython raises them out of the loop).
+//                 raise
+//             except BaseException as e:
+//                 self._settled[i] = True
+//                 self._completed += 1
+//                 if self._exc is None:
+//                     self._exc = Box(e.clone())
+//                 if not self._cleanup:
+//                     self._cleanup = True
+//                     self._propagate_cancel()
+//         i += 1
+//
+//     # Outer-cancel fallback: only claim `_exc` for CancelledError
+//     # if nothing real fired this cycle (or any prior one).
+//     if was_canceling and self._exc is None:
+//         self._exc = Box(CancelledError())
+//
+//     if self._completed < n:
+//         return poll_pending()
+//
+//     if self._exc is not None:
+//         raise self._exc
+//
+//     # All sub-tasks succeeded. Reorder completions into input
+//     # order. O(n^2) walk -- n is typically small (handful of
+//     # concurrent operations); fine for v1.5.
+//     result: list[T] = []
+//     orig_i: int32 = 0
+//     while orig_i < n:
+//         k: int32 = 0
+//         kn = len(self._completion_indices)
+//         while k < kn:
+//             if self._completion_indices[k] == orig_i:
+//                 box = self._completion_boxes.pop(k)
+//                 self._completion_indices.pop(k)
+//                 result.append(box.take())
+//                 break
+//             k += 1
+//         orig_i += 1
+//     return poll_ready(result)
+template<typename T>
+inline ::tpystd::tpy::Poll<std::vector<T>> _GatherFuture<T>::__poll__(::tpystd::coro::Waker waker) {
+    int32_t n = ::tpy::__len__(this->_tasks);
+    if ((n == 0)) {
+        std::vector<T> empty = std::vector<T>{};
+        return ::tpystd::coro::poll_ready<std::vector<T>>(std::move(empty));
+    }
+    bool was_canceling = this->_cancel_pending;
+    this->_cancel_pending = false;
+    if ((was_canceling && (!(this->_cleanup)))) {
+        this->_cleanup = true;
+        this->_propagate_cancel();
+    }
+    int32_t i = 0;
+    while ((i < n)) {
+        if ((!(::tpy::__getitem__(this->_settled, i)))) {
+            {
+                try {
+                    ::tpystd::tpy::Poll<T> p = ::tpy::__getitem__(this->_tasks, i).__poll__(waker);
+                    if (p.is_ready()) {
+                        ::tpy::__setitem__(this->_settled, i, true);
+                        this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
+                        if (this->_cleanup) {
+                        } else {
+                            this->_completion_indices.push_back(i);
+                            this->_completion_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
+                        }
+                    }
+                } catch (const ::tpy::SystemExit&) {
+                    throw;
+                } catch (const ::tpy::KeyboardInterrupt&) {
+                    throw;
+                } catch (const ::tpy::BaseException& e) {
+                    ::tpy::__setitem__(this->_settled, i, true);
+                    this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
+                    if ((!this->_exc.has_value())) {
+                        this->_exc = ::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone());
+                    }
+                    if ((!(this->_cleanup))) {
+                        this->_cleanup = true;
+                        this->_propagate_cancel();
+                    }
+                }
+            }
+        }
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    if ((was_canceling && (!this->_exc.has_value()))) {
+        this->_exc = ::tpystd::tplib::box::Box<::tpy::CancelledError>(::tpy::CancelledError());
+    }
+    if ((this->_completed < n)) {
+        return ::tpystd::coro::poll_pending<std::vector<T>>();
+    }
+    if ((this->_exc.has_value())) {
+        (*this->_exc).__deref__().__raise__();
+    }
+    std::vector<T> result = std::vector<T>{};
+    int32_t orig_i = 0;
+    while ((orig_i < n)) {
+        int32_t k = 0;
+        int32_t kn = ::tpy::__len__(this->_completion_indices);
+        while ((k < kn)) {
+            if ((::tpy::__getitem__(this->_completion_indices, k) == orig_i)) {
+                ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_completion_boxes, k);
+                ::tpy::list_pop_at(this->_completion_indices, k);
+                result.push_back(std::move(box).take());
+                break;
+            }
+            k = ::tpy::add_check<int32_t>(k, 1);
+        }
+        orig_i = ::tpy::add_check<int32_t>(orig_i, 1);
+    }
+    return ::tpystd::coro::poll_ready<std::vector<T>>(std::move(result));
+}
+
+// def _propagate_cancel(self) -> None:
+//     i: int32 = 0
+//     n = len(self._tasks)
+//     while i < n:
+//         if not self._settled[i]:
+//             self._tasks[i].cancel()
+//         i += 1
+template<typename T>
+inline void _GatherFuture<T>::_propagate_cancel() {
+    int32_t i = 0;
+    int32_t n = ::tpy::__len__(this->_tasks);
+    while ((i < n)) {
+        if ((!(::tpy::__getitem__(this->_settled, i)))) {
+            ::tpy::__getitem__(this->_tasks, i).cancel();
+        }
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+}
+
+// # Users normally don't construct Settled directly --
+// # `gather_list_settled` is the only producer and assigns the
+// # `value` / `exception` fields directly post-init.
+// def __init__(self) -> None:
+//     self.value = None
+//     self.exception = None
+template<typename T>
+inline Settled<T>::Settled()
+    : value(std::nullopt),
+      exception(std::nullopt) {}
+
+// def __init__(self, tasks: list[Task[T]]) -> None:
+//     # `tasks` is borrowed from the caller -- Rc-clone each entry as
+//     # in `_GatherFuture` (avoids the named-local Own[list[T]] arg
+//     # codegen gap; each clone is one refcount bump on TaskState).
+//     self._tasks = []
+//     self._settled = []
+//     self._result_indices = []
+//     self._result_boxes = []
+//     self._exc_indices = []
+//     self._exc_boxes = []
+//     self._completed = 0
+//     self._cancel_pending = False
+//     for t in tasks:
+//         self._tasks.append(t.clone())
+//         self._settled.append(False)
+template<typename T>
+inline _GatherSettledFuture<T>::_GatherSettledFuture(std::vector<::tpystd::asyncio::_executor::Task<T>>& tasks)
+    : _tasks(std::vector<::tpystd::asyncio::_executor::Task<T>>{}),
+      _settled(std::vector<bool>{}),
+      _result_indices(std::vector<int32_t>{}),
+      _result_boxes(std::vector<::tpystd::tplib::box::Box<T>>{}),
+      _exc_indices(std::vector<int32_t>{}),
+      _exc_boxes(std::vector<::tpystd::tplib::box::Box<::tpy::Throwable>>{}),
+      _completed(0),
+      _cancel_pending(false) {
+    auto& __obj_0 = tasks;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& t = *__beg_0;
+        this->_tasks.push_back(t.clone());
+        this->_settled.push_back(false);
+    }
+}
+
+// # Required for structural conformance to `@dynamic Cancellable[T]`.
+// def cancel(self) -> None:
+//     self._cancel_pending = True
+template<typename T>
+inline void _GatherSettledFuture<T>::cancel() {
+    this->_cancel_pending = true;
+}
+
+// def __poll__(self, waker: Waker) -> Own[Poll[list[Settled[T]]]]:
+//     n = len(self._tasks)
+//     if n == 0:
+//         empty: list[Settled[T]] = []
+//         return poll_ready(empty)
+//
+//     # Outer cancel: mark every unsettled sub-task's slot runnable
+//     # via Task.cancel. Subs will raise CancelledError at their
+//     # next suspension; we collect it as an entry rather than
+//     # bubbling it out (CPython's return_exceptions semantics).
+//     was_canceling = self._cancel_pending
+//     self._cancel_pending = False
+//     i: int32 = 0
+//     if was_canceling:
+//         while i < n:
+//             if not self._settled[i]:
+//                 self._tasks[i].cancel()
+//             i += 1
+//
+//     i = 0
+//     while i < n:
+//         if not self._settled[i]:
+//             try:
+//                 p = self._tasks[i].__poll__(waker)
+//                 if p.is_ready():
+//                     self._settled[i] = True
+//                     self._completed += 1
+//                     self._result_indices.append(i)
+//                     self._result_boxes.append(Box(p.value()))
+//             except (SystemExit, KeyboardInterrupt):
+//                 # Not a settled outcome: these end the program.
+//                 raise
+//             except BaseException as e:
+//                 self._settled[i] = True
+//                 self._completed += 1
+//                 self._exc_indices.append(i)
+//                 self._exc_boxes.append(Box(e.clone()))
+//         i += 1
+//
+//     if self._completed < n:
+//         return poll_pending()
+//
+//     # Assemble in input order. For each input slot, scan the
+//     # arrival-order arrays for a matching index, then `pop` to
+//     # transfer ownership of the Box out of the list. O(n^2)
+//     # walk -- N is typically small (handful of concurrent
+//     # operations); fine for v1.5.
+//     result: list[Settled[T]] = []
+//     orig_i: int32 = 0
+//     while orig_i < n:
+//         settled_via_value = False
+//         k: int32 = 0
+//         kn = len(self._result_indices)
+//         while k < kn:
+//             if self._result_indices[k] == orig_i:
+//                 self._result_indices.pop(k)
+//                 box = self._result_boxes.pop(k)
+//                 entry = Settled[T]()
+//                 entry.value = box
+//                 result.append(entry)
+//                 settled_via_value = True
+//                 break
+//             k += 1
+//         if not settled_via_value:
+//             k = 0
+//             kn = len(self._exc_indices)
+//             while k < kn:
+//                 if self._exc_indices[k] == orig_i:
+//                     self._exc_indices.pop(k)
+//                     ebox = self._exc_boxes.pop(k)
+//                     entry = Settled[T]()
+//                     entry.exception = ebox
+//                     result.append(entry)
+//                     break
+//                 k += 1
+//         orig_i += 1
+//     return poll_ready(result)
+template<typename T>
+inline ::tpystd::tpy::Poll<std::vector<Settled<T>>> _GatherSettledFuture<T>::__poll__(::tpystd::coro::Waker waker) {
+    int32_t n = ::tpy::__len__(this->_tasks);
+    if ((n == 0)) {
+        std::vector<Settled<T>> empty = std::vector<Settled<T>>{};
+        return ::tpystd::coro::poll_ready<std::vector<Settled<T>>>(std::move(empty));
+    }
+    bool was_canceling = this->_cancel_pending;
+    this->_cancel_pending = false;
+    int32_t i = 0;
+    if (was_canceling) {
+        while ((i < n)) {
+            if ((!(::tpy::__getitem__(this->_settled, i)))) {
+                ::tpy::__getitem__(this->_tasks, i).cancel();
+            }
+            i = ::tpy::add_check<int32_t>(i, 1);
+        }
+    }
+    i = 0;
+    while ((i < n)) {
+        if ((!(::tpy::__getitem__(this->_settled, i)))) {
+            {
+                try {
+                    ::tpystd::tpy::Poll<T> p = ::tpy::__getitem__(this->_tasks, i).__poll__(waker);
+                    if (p.is_ready()) {
+                        ::tpy::__setitem__(this->_settled, i, true);
+                        this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
+                        this->_result_indices.push_back(i);
+                        this->_result_boxes.push_back(::tpystd::tplib::box::Box<T>(std::move(p).value()));
+                    }
+                } catch (const ::tpy::SystemExit&) {
+                    throw;
+                } catch (const ::tpy::KeyboardInterrupt&) {
+                    throw;
+                } catch (const ::tpy::BaseException& e) {
+                    ::tpy::__setitem__(this->_settled, i, true);
+                    this->_completed = ::tpy::add_check<int32_t>(this->_completed, 1);
+                    this->_exc_indices.push_back(i);
+                    this->_exc_boxes.push_back(::tpystd::tplib::box::Box<::tpy::Throwable>(e.clone()));
+                }
+            }
+        }
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    if ((this->_completed < n)) {
+        return ::tpystd::coro::poll_pending<std::vector<Settled<T>>>();
+    }
+    std::vector<Settled<T>> result = std::vector<Settled<T>>{};
+    int32_t orig_i = 0;
+    std::optional<Settled<T>> __slot_1;
+    std::optional<Settled<T>> __slot_2;
+    while ((orig_i < n)) {
+        bool settled_via_value = false;
+        int32_t k = 0;
+        int32_t kn = ::tpy::__len__(this->_result_indices);
+        Settled<T>* entry;
+        while ((k < kn)) {
+            if ((::tpy::__getitem__(this->_result_indices, k) == orig_i)) {
+                ::tpy::list_pop_at(this->_result_indices, k);
+                ::tpystd::tplib::box::Box<T> box = ::tpy::list_pop_at(this->_result_boxes, k);
+                entry = &*(__slot_1 = Settled<T>());
+                entry->value = std::move(box);
+                result.push_back(std::move((*entry)));
+                settled_via_value = true;
+                break;
+            }
+            k = ::tpy::add_check<int32_t>(k, 1);
+        }
+        if ((!(settled_via_value))) {
+            k = 0;
+            kn = ::tpy::__len__(this->_exc_indices);
+            while ((k < kn)) {
+                if ((::tpy::__getitem__(this->_exc_indices, k) == orig_i)) {
+                    ::tpy::list_pop_at(this->_exc_indices, k);
+                    ::tpystd::tplib::box::Box<::tpy::Throwable> ebox = ::tpy::list_pop_at(this->_exc_boxes, k);
+                    entry = &*(__slot_2 = Settled<T>());
+                    entry->exception = std::move(ebox);
+                    result.push_back(std::move((*entry)));
+                    break;
+                }
+                k = ::tpy::add_check<int32_t>(k, 1);
+            }
+        }
+        orig_i = ::tpy::add_check<int32_t>(orig_i, 1);
+    }
+    return ::tpystd::coro::poll_ready<std::vector<Settled<T>>>(std::move(result));
+}
+
+// def __init__(self) -> None:
+//     self._done = False
+//     self._cancelled = False
+//     self._has_waiter = False
+//     self._exception = None
+//     self._waiter = Waker()
+//     self._result = UninitStorage[T]()
+template<typename T>
+inline Future<T>::Future()
+    : _done(false),
+      _cancelled(false),
+      _has_waiter(false),
+      _exception(std::nullopt),
+      _waiter(::tpystd::coro::Waker()),
+      _result(::tpy::UninitStorage<T>()) {}
+
+template<typename T>
+inline Future<T>::Future(Future&& other) noexcept
+    : _done(std::move(other._done)),
+      _cancelled(std::move(other._cancelled)),
+      _has_waiter(std::move(other._has_waiter)),
+      _exception(std::move(other._exception)),
+      _waiter(std::move(other._waiter)),
+      _result(std::move(other._result)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Future<T>& Future<T>::operator=(Future&& other) noexcept {
+    if (this != &other) {
+        this->~Future();
+        new (this) Future(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     if self._result.has():
+//         self._result.reset()
+template<typename T>
+inline Future<T>::~Future() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    if (this->_result.has()) {
+        this->_result.reset();
+    }
+}
+
+// def done(self) -> bool:
+//     return self._done
+template<typename T>
+inline bool Future<T>::done() const {
+    return this->_done;
+}
+
+// def set_result(self, value: Own[T]) -> None:
+//     # Takes ownership of `value` so nocopy types work without a
+//     # `__copy__` opt-in. Callers passing a named local must use
+//     # `tpy.copy(x)` explicitly to keep their reference alive.
+//     if self._done:
+//         raise InvalidStateError("invalid state")
+//     self._result.construct(value)
+//     self._done = True
+//     if self._has_waiter:
+//         self._waiter.wake()
+//         self._has_waiter = False
+template<typename T>
+inline void Future<T>::set_result(::tpy::own_param_t<T> value) {
+    if (this->_done) {
+        throw InvalidStateError("invalid state");
+    }
+    this->_result.construct(std::move(value));
+    this->_done = true;
+    if (this->_has_waiter) {
+        this->_waiter.wake();
+        this->_has_waiter = false;
+    }
+}
+
+// def set_exception(self, exc: Own[Throwable]) -> None:
+//     if self._done:
+//         raise InvalidStateError("invalid state")
+//     self._exception = Box(exc)
+//     self._done = True
+//     if self._has_waiter:
+//         self._waiter.wake()
+//         self._has_waiter = False
+template<typename T>
+inline void Future<T>::set_exception(std::unique_ptr<::tpy::Throwable> exc) {
+    if (this->_done) {
+        throw InvalidStateError("invalid state");
+    }
+    this->_exception = ::tpystd::tplib::box::Box<::tpy::Throwable>(std::move(exc));
+    this->_done = true;
+    if (this->_has_waiter) {
+        this->_waiter.wake();
+        this->_has_waiter = false;
+    }
+}
+
+// # Cancels the Future, as CPython's Future.cancel: it is done, its
+// # awaiter is woken to raise CancelledError, and set_result /
+// # set_exception refuse it. Cancelling the task that awaits it lands
+// # here too (CPython's Task.cancel cancels the future it waits on). A
+// # Future already done is left as is.
+// def cancel(self) -> None:
+//     if self._done:
+//         return
+//     self._done = True
+//     self._cancelled = True
+//     if self._has_waiter:
+//         self._has_waiter = False
+//         self._waiter.wake()
+template<typename T>
+inline void Future<T>::cancel() {
+    if (this->_done) {
+        return;
+    }
+    this->_done = true;
+    this->_cancelled = true;
+    if (this->_has_waiter) {
+        this->_has_waiter = false;
+        this->_waiter.wake();
+    }
+}
+
+// def __poll__(self, waker: Waker) -> Own[Poll[T]]:
+//     if self._done:
+//         if self._cancelled:
+//             raise CancelledError()
+//         if self._exception is not None:
+//             raise self._exception
+//         if not self._result.has():
+//             raise ValueError(
+//                 "Future done with no result and no exception")
+//         # take() returns Own[T] -- pass directly as rvalue so
+//         # nocopy types (T with __del__ but no __copy__) flow through
+//         # without requiring a copy ctor.
+//         return poll_ready(self._result.take())
+//     # A re-poll by the parked task (a spurious wake) keeps its place.
+//     if self._has_waiter and not same_task(self._waiter, waker):
+//         raise ValueError(
+//             "Future already has a waiter (single-awaiter v1)")
+//     self._waiter = waker
+//     self._has_waiter = True
+//     return poll_pending()
+template<typename T>
+inline ::tpystd::tpy::Poll<T> Future<T>::__poll__(::tpystd::coro::Waker waker) {
+    if (this->_done) {
+        if (this->_cancelled) {
+            throw ::tpy::CancelledError{};
+        }
+        if ((this->_exception.has_value())) {
+            (*this->_exception).__deref__().__raise__();
+        }
+        if ((!(this->_result.has()))) {
+            throw ::tpy::ValueError("Future done with no result and no exception");
+        }
+        return ::tpystd::coro::poll_ready<T>(this->_result.take());
+    }
+    if ((this->_has_waiter && (!(::tpystd::coro::same_task(this->_waiter, waker))))) {
+        throw ::tpy::ValueError("Future already has a waiter (single-awaiter v1)");
+    }
+    this->_waiter = waker;
+    this->_has_waiter = true;
+    return ::tpystd::coro::poll_pending<T>();
+}
+
+// def __init__(self, owner: Ptr[P], kind: int32,
+//              queue: Ptr[_WaitQueue]) -> None:
+//     self._owner = owner
+//     self._kind = kind
+//     self._queue = queue
+//     self._ticket = 0
+//     self._cancelled = False
+template<::tpystd::asyncio::_Parking P>
+inline _PrimitiveWait<P>::_PrimitiveWait(P* owner, int32_t kind, _WaitQueue* queue)
+    : _owner(owner),
+      _kind(kind),
+      _queue(queue),
+      _ticket(0),
+      _cancelled(false) {}
+
+// def cancel(self) -> None:
+//     if self._cancelled:
+//         return
+//     self._cancelled = True
+//     if self._ticket == 0:
+//         return
+//     if (not self._queue.remove(self._ticket)
+//             and self._owner._ready(self._kind)):
+//         self._queue.wake_one()
+//     self._ticket = 0
+template<::tpystd::asyncio::_Parking P>
+inline void _PrimitiveWait<P>::cancel() {
+    if (this->_cancelled) {
+        return;
+    }
+    this->_cancelled = true;
+    if ((this->_ticket == 0)) {
+        return;
+    }
+    if (((!(::tpy::deref_check(this->_queue).remove(this->_ticket))) && ::tpy::deref_check(this->_owner)._ready(this->_kind))) {
+        ::tpy::deref_check(this->_queue).wake_one();
+    }
+    this->_ticket = 0;
+}
+
+// def __poll__(self, waker: Waker) -> Own[Poll[None]]:
+//     if self._cancelled:
+//         raise CancelledError()
+//     if self._ticket != 0:
+//         if self._queue.parked(self._ticket):
+//             return poll_pending()
+//         self._ticket = 0
+//     if self._owner._ready(self._kind):
+//         self._owner._take(self._kind)
+//         return poll_ready_none()
+//     self._ticket = self._queue.park(waker)
+//     return poll_pending()
+template<::tpystd::asyncio::_Parking P>
+inline ::tpystd::tpy::Poll<std::monostate> _PrimitiveWait<P>::__poll__(::tpystd::coro::Waker waker) {
+    if (this->_cancelled) {
+        throw ::tpy::CancelledError{};
+    }
+    if ((this->_ticket != 0)) {
+        if (::tpy::deref_check(this->_queue).parked(this->_ticket)) {
+            return ::tpystd::coro::poll_pending<std::monostate>();
+        }
+        this->_ticket = 0;
+    }
+    if (::tpy::deref_check(this->_owner)._ready(this->_kind)) {
+        ::tpy::deref_check(this->_owner)._take(this->_kind);
+        return ::tpystd::coro::poll_ready_none();
+    }
+    this->_ticket = ::tpy::deref_check(this->_queue).park(waker);
+    return ::tpystd::coro::poll_pending<std::monostate>();
+}
+
+// def __init__(self, maxsize: int32 = 0) -> None:
+//     self._items = []
+//     self.maxsize = maxsize
+//     self._getters = _WaitQueue()
+//     self._putters = _WaitQueue()
+//     self._joiners = _WaitQueue()
+//     self._unfinished = 0
+template<typename T>
+inline Queue<T>::Queue(int32_t maxsize)
+    : _items(std::vector<T>{}),
+      maxsize(maxsize),
+      _getters(_WaitQueue()),
+      _putters(_WaitQueue()),
+      _joiners(_WaitQueue()),
+      _unfinished(0) {}
+
+// def qsize(self) -> int32:
+//     return len(self._items)
+template<typename T>
+inline int32_t Queue<T>::qsize() const {
+    return ::tpy::__len__(this->_items);
+}
+
+// def empty(self) -> bool:
+//     return len(self._items) == 0
+template<typename T>
+inline bool Queue<T>::empty() const {
+    return (::tpy::__len__(this->_items) == 0);
+}
+
+// def full(self) -> bool:
+//     return self.maxsize > 0 and len(self._items) >= self.maxsize
+template<typename T>
+inline bool Queue<T>::full() const {
+    return ((this->maxsize > 0) && (::tpy::__len__(this->_items) >= this->maxsize));
+}
+
+// def put_nowait(self, item: Own[T]) -> None:
+//     if self.full():
+//         raise QueueFull("Queue full")
+//     self._items.append(item)
+//     self._unfinished += 1
+//     self._getters.wake_one()
+template<typename T>
+inline void Queue<T>::put_nowait(::tpy::own_param_t<T> item) {
+    if (this->full()) {
+        throw QueueFull("Queue full");
+    }
+    this->_items.push_back(std::move(item));
+    this->_unfinished = ::tpy::add_check<int32_t>(this->_unfinished, 1);
+    this->_getters.wake_one();
+}
+
+// def get_nowait(self) -> Own[T]:
+//     if self.empty():
+//         raise QueueEmpty("Queue empty")
+//     # A slot is about to free; wake a parked putter before the pop (it
+//     # re-polls later, by which point this synchronous pop has run).
+//     self._putters.wake_one()
+//     return self._items.pop(0)
+template<typename T>
+inline ::tpy::own_return_t<T> Queue<T>::get_nowait() {
+    if (this->empty()) {
+        throw QueueEmpty("Queue empty");
+    }
+    this->_putters.wake_one();
+    return ::tpy::list_pop_at(this->_items, 0);
+}
+
+// def task_done(self) -> None:
+//     if self._unfinished <= 0:
+//         raise ValueError("task_done() called too many times")
+//     self._unfinished -= 1
+//     if self._unfinished == 0:
+//         self._joiners.wake_all()
+template<typename T>
+inline void Queue<T>::task_done() {
+    if ((this->_unfinished <= 0)) {
+        throw ::tpy::ValueError("task_done() called too many times");
+    }
+    this->_unfinished = ::tpy::sub_check<int32_t>(this->_unfinished, 1);
+    if ((this->_unfinished == 0)) {
+        this->_joiners.wake_all();
+    }
+}
+
+// # `_Parking`, for `_PrimitiveWait`. Waiting is all a queue condition
+// # does: `get` / `put` take the item / slot after the wait.
+// def _ready(self, kind: int32) -> bool:
+//     if kind == _QUEUE_GET:
+//         return len(self._items) > 0
+//     if kind == _QUEUE_PUT:
+//         return not self.full()
+//     return self._unfinished == 0
+template<typename T>
+inline bool Queue<T>::_ready(int32_t kind) const {
+    if ((kind == _QUEUE_GET)) {
+        return (::tpy::__len__(this->_items) > 0);
+    }
+    if ((kind == _QUEUE_PUT)) {
+        return (!(this->full()));
+    }
+    return (this->_unfinished == 0);
+}
+
+// def _take(self, kind: int32) -> None:
+//     pass
+template<typename T>
+inline void Queue<T>::_take(int32_t kind) const {
+}
+
 // # `-> Own[T]`: the result is moved out of the task's owned result slot.
 // # A bare `-> T` would render the generic borrow convention
 // # (val_or_ref_t<T> = T& for object T), which cannot bind the slot's

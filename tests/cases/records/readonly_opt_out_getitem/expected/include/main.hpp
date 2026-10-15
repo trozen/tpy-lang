@@ -32,15 +32,9 @@ struct CachingContainer {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    int32_t operator[](int32_t index) {
-        return __getitem__(index);
-    }
+    int32_t operator[](int32_t index);
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.CachingContainer";
 };
 
@@ -70,6 +64,16 @@ inline int32_t CachingContainer::__getitem__(int32_t index) {
 //     return 1
 inline int32_t CachingContainer::__len__() const {
     return 1;
+}
+
+inline int32_t CachingContainer::operator[](int32_t index) {
+    return __getitem__(index);
+}
+
+inline size_t CachingContainer::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::main

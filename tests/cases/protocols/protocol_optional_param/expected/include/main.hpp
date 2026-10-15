@@ -34,33 +34,15 @@ struct Container {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Optional[Sized] = None) -> None:
-    //     if items is not None:
-    //         self.count = len(items)
-    //     else:
-    //         self.count = 0
     Container();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
-    explicit Container(const T_items* items = nullptr) {
-        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            this->count = ::tpy::BigInt(::tpy::__len__((*items)));
-        } else {
-            this->count = ::tpy::BigInt(0);
-        }
-    }
+    explicit Container(const T_items* items = nullptr);
 
     // def update(self, items: Sized, extra: Optional[Sized] = None) -> None:
-    //     self.count = len(items)
-    //     if extra is not None:
-    //         self.count = self.count + len(extra)
     template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
-    void update(const T_items& items, const T_extra* extra = nullptr) {
-        this->count = ::tpy::BigInt(::tpy::__len__(items));
-        if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-            this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
-        }
-    }
+    void update(const T_items& items, const T_extra* extra = nullptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -75,17 +57,10 @@ struct MixedContainer {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Sized, extra: Optional[Sized] = None) -> None:
-    //     self.count = len(items)
-    //     if extra is not None:
-    //         self.count = self.count + len(extra)
     MixedContainer() = default;
     template<::tpystd::typing::Sized T_items, typename T_extra = std::nullptr_t>
   requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
-    explicit MixedContainer(const T_items& items, const T_extra* extra = nullptr) : count(::tpy::BigInt(::tpy::__len__(items))) {
-        if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
-            this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
-        }
-    }
+    explicit MixedContainer(const T_items& items, const T_extra* extra = nullptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.MixedContainer";
 };
 
@@ -101,20 +76,10 @@ struct GenericContainer {
     ::tpy::BigInt count;
 
     // def __init__(self, items: Optional[Sized] = None) -> None:
-    //     if items is not None:
-    //         self.count = len(items)
-    //     else:
-    //         self.count = 0
-    GenericContainer() : GenericContainer(static_cast<std::nullptr_t*>(nullptr)) {}
+    GenericContainer();
     template<typename T_items = std::nullptr_t>
   requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
-    explicit GenericContainer(const T_items* items = nullptr) {
-        if constexpr (!std::same_as<T_items, std::nullptr_t>) {
-            this->count = ::tpy::BigInt(::tpy::__len__((*items)));
-        } else {
-            this->count = ::tpy::BigInt(0);
-        }
-    }
+    explicit GenericContainer(const T_items* items = nullptr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericContainer";
 };
 
@@ -126,6 +91,66 @@ inline std::ostream& operator<<(std::ostream& os, const GenericContainer<T>& obj
 
 
 inline Container::Container() : Container(static_cast<std::nullptr_t*>(nullptr)) {}
+
+// def __init__(self, items: Optional[Sized] = None) -> None:
+//     if items is not None:
+//         self.count = len(items)
+//     else:
+//         self.count = 0
+template<typename T_items>
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
+inline Container::Container(const T_items* items) {
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        this->count = ::tpy::BigInt(::tpy::__len__((*items)));
+    } else {
+        this->count = ::tpy::BigInt(0);
+    }
+}
+
+// def update(self, items: Sized, extra: Optional[Sized] = None) -> None:
+//     self.count = len(items)
+//     if extra is not None:
+//         self.count = self.count + len(extra)
+template<::tpystd::typing::Sized T_items, typename T_extra>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
+inline void Container::update(const T_items& items, const T_extra* extra) {
+    this->count = ::tpy::BigInt(::tpy::__len__(items));
+    if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
+        this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
+    }
+}
+
+// def __init__(self, items: Sized, extra: Optional[Sized] = None) -> None:
+//     self.count = len(items)
+//     if extra is not None:
+//         self.count = self.count + len(extra)
+template<::tpystd::typing::Sized T_items, typename T_extra>
+  requires (std::same_as<T_extra, std::nullptr_t> || ::tpystd::typing::Sized<T_extra>)
+inline MixedContainer::MixedContainer(const T_items& items, const T_extra* extra) : count(::tpy::BigInt(::tpy::__len__(items))) {
+    if constexpr (!std::same_as<T_extra, std::nullptr_t>) {
+        this->count = ((this->count) + (::tpy::BigInt(::tpy::__len__((*extra)))));
+    }
+}
+
+template<typename T>
+inline GenericContainer<T>::GenericContainer() : GenericContainer(static_cast<std::nullptr_t*>(nullptr)) {}
+
+// def __init__(self, items: Optional[Sized] = None) -> None:
+//     if items is not None:
+//         self.count = len(items)
+//     else:
+//         self.count = 0
+template<typename T>
+template<typename T_items>
+  requires (std::same_as<T_items, std::nullptr_t> || ::tpystd::typing::Sized<T_items>)
+inline GenericContainer<T>::GenericContainer(const T_items* items) {
+    if constexpr (!std::same_as<T_items, std::nullptr_t>) {
+        this->count = ::tpy::BigInt(::tpy::__len__((*items)));
+    } else {
+        this->count = ::tpy::BigInt(0);
+    }
+}
+
 // def count_items(items: Sized, extra: Optional[Sized] = None) -> int:
 //     result: int = len(items)
 //     if extra is not None:

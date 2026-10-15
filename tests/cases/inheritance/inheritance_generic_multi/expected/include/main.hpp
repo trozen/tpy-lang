@@ -23,30 +23,17 @@ struct Base {
     U second;
 
     // def __init__(self, first: T, second: U) -> None:
-    //     self.first = first
-    //     self.second = second
     Base() = default;
-    explicit Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second)
-        : first(first),
-          second(second) {}
+    explicit Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second);
 
     // def set_first(self, v: T) -> None:
-    //     self.first = v
-    void set_first(::tpy::param_val_or_ref_t<T> v) {
-        this->first = ::tpy::param_to_storage<T>(v);
-    }
+    void set_first(::tpy::param_val_or_ref_t<T> v);
 
     // def get_first(self) -> T:
-    //     return self.first
-    ::tpy::val_or_ref_t<T> get_first() {
-        return this->first;
-    }
+    ::tpy::val_or_ref_t<T> get_first();
 
     // def get_second(self) -> U:
-    //     return self.second
-    ::tpy::val_or_ref_t<U> get_second() {
-        return this->second;
-    }
+    ::tpy::val_or_ref_t<U> get_second();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Base";
 };
 
@@ -61,9 +48,8 @@ template<typename T>
 struct Middle : Base<T, int32_t> {
 
     // def __init__(self, first: T, second: int32) -> None:
-    //     super().__init__(first, second)
     Middle() = default;
-    explicit Middle(::tpy::param_val_or_ref_t<T> first, int32_t second) : Base<T, int32_t>(first, second) {}
+    explicit Middle(::tpy::param_val_or_ref_t<T> first, int32_t second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Middle";
 };
 
@@ -80,18 +66,11 @@ struct Leaf : Middle<T> {
     std::string extra;
 
     // def __init__(self, first: T, second: int32, extra: str) -> None:
-    //     super().__init__(first, second)
-    //     self.extra = extra
     Leaf() = default;
-    explicit Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra)
-        : Middle<T>(first, second),
-          extra(extra) {}
+    explicit Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra);
 
     // def get_extra(self) -> str:
-    //     return self.extra
-    std::string get_extra() const {
-        return this->extra;
-    }
+    std::string get_extra() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Leaf";
 };
 
@@ -99,6 +78,56 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Leaf<T>& obj) {
     ::tpy::print_object_default(os, "Leaf", obj);
     return os;
+}
+
+
+// def __init__(self, first: T, second: U) -> None:
+//     self.first = first
+//     self.second = second
+template<typename T, typename U>
+inline Base<T, U>::Base(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<U> second)
+    : first(first),
+      second(second) {}
+
+// def set_first(self, v: T) -> None:
+//     self.first = v
+template<typename T, typename U>
+inline void Base<T, U>::set_first(::tpy::param_val_or_ref_t<T> v) {
+    this->first = ::tpy::param_to_storage<T>(v);
+}
+
+// def get_first(self) -> T:
+//     return self.first
+template<typename T, typename U>
+inline ::tpy::val_or_ref_t<T> Base<T, U>::get_first() {
+    return this->first;
+}
+
+// def get_second(self) -> U:
+//     return self.second
+template<typename T, typename U>
+inline ::tpy::val_or_ref_t<U> Base<T, U>::get_second() {
+    return this->second;
+}
+
+// def __init__(self, first: T, second: int32) -> None:
+//     super().__init__(first, second)
+template<typename T>
+inline Middle<T>::Middle(::tpy::param_val_or_ref_t<T> first, int32_t second) : Base<T, int32_t>(first, second) {}
+
+// def __init__(self, first: T, second: int32, extra: str) -> None:
+//     super().__init__(first, second)
+//     self.extra = extra
+template<typename T>
+inline Leaf<T>::Leaf(::tpy::param_val_or_ref_t<T> first, int32_t second, std::string_view extra)
+    : Middle<T>(first, second),
+      extra(extra) {}
+
+// def get_extra(self) -> str:
+//     return self.extra
+template<typename T>
+inline std::string Leaf<T>::get_extra() const {
+    return this->extra;
 }
 
 void __tpy_init();

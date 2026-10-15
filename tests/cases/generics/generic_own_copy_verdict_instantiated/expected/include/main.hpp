@@ -183,15 +183,11 @@ struct Holder {
     T item;
 
     // def __init__(self, v: T) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T into field/)
     Holder() = default;
-    explicit Holder(::tpy::readonly_form_t<T> v) : item(v) {}
+    explicit Holder(::tpy::readonly_form_t<T> v);
 
     // def store(self, v: T) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T into field/)
-    void store(::tpy::param_val_or_ref_t<T> v) {
-        this->item = ::tpy::param_to_storage<T>(v);
-    }
+    void store(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -244,9 +240,8 @@ struct GenBase {
     T item;
 
     // def __init__(self, v: T) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T into field/)
     GenBase() = default;
-    explicit GenBase(::tpy::readonly_form_t<T> v) : item(v) {}
+    explicit GenBase(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenBase";
 };
 
@@ -263,14 +258,10 @@ struct OptHolder {
     std::optional<T> item;
 
     // def __init__(self) -> None:
-    //     self.item = None
-    OptHolder() : item(std::nullopt) {}
+    OptHolder();
 
     // def store(self, v: T | None) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T \| None into field/)
-    void store(::tpy::opt_cparam_t<T> v) {
-        this->item = ::tpy::to_opt_storage<std::optional<T>>(v);
-    }
+    void store(::tpy::opt_cparam_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.OptHolder";
 };
 
@@ -287,9 +278,8 @@ struct GBox {
     T item;
 
     // def __init__(self, v: T) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T into field/)
     GBox() = default;
-    explicit GBox(::tpy::readonly_form_t<T> v) : item(v) {}
+    explicit GBox(::tpy::readonly_form_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
 };
 
@@ -306,20 +296,12 @@ struct Shadowed {
     T item;
 
     // def __init__(self, v: T) -> None:
-    //     self.item = v  # tpyc: warning(/may copy T into field/)
     Shadowed() = default;
-    explicit Shadowed(::tpy::readonly_form_t<T> v) : item(v) {}
+    explicit Shadowed(::tpy::readonly_form_t<T> v);
 
     // def keep[T: ValueType](self, v: T) -> int32:
-    //     xs: list[T] = []
-    //     xs.append(v)  # tpyc: ok
-    //     return len(xs)
     int32_t keep(::tpy::readonly_form_t<T> v) const
-      requires ::tpy::ValueType<T> {
-        std::vector<T> xs = std::vector<T>{};
-        xs.push_back(::tpy::param_to_storage<T>(v));
-        return ::tpy::__len__(xs);
-    }
+      requires ::tpy::ValueType<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Shadowed";
 };
 
@@ -334,9 +316,8 @@ template<typename T>
 struct GenMid : GenBase<T> {
 
     // def __init__(self, v: T) -> None:
-    //     super().__init__(v)  # tpyc: ok
     GenMid() = default;
-    explicit GenMid(::tpy::param_val_or_ref_t<T> v) : GenBase<T>(v) {}
+    explicit GenMid(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenMid";
 };
 
@@ -532,6 +513,63 @@ inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException*
 // def __init__(self, v: Cell) -> None:
 //     super().__init__(v)  # tpyc: ok
 inline GenLeaf::GenLeaf(Cell& v) : GenMid<Cell>(v) {}
+
+// def __init__(self, v: T) -> None:
+//     self.item = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline Holder<T>::Holder(::tpy::readonly_form_t<T> v) : item(v) {}
+
+// def store(self, v: T) -> None:
+//     self.item = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline void Holder<T>::store(::tpy::param_val_or_ref_t<T> v) {
+    this->item = ::tpy::param_to_storage<T>(v);
+}
+
+// def __init__(self, v: T) -> None:
+//     self.item = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline GenBase<T>::GenBase(::tpy::readonly_form_t<T> v) : item(v) {}
+
+// def __init__(self) -> None:
+//     self.item = None
+template<typename T>
+inline OptHolder<T>::OptHolder() : item(std::nullopt) {}
+
+// def store(self, v: T | None) -> None:
+//     self.item = v  # tpyc: warning(/may copy T \| None into field/)
+template<typename T>
+inline void OptHolder<T>::store(::tpy::opt_cparam_t<T> v) {
+    this->item = ::tpy::to_opt_storage<std::optional<T>>(v);
+}
+
+// def __init__(self, v: T) -> None:
+//     self.item = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline GBox<T>::GBox(::tpy::readonly_form_t<T> v) : item(v) {}
+
+// def __init__(self, v: T) -> None:
+//     self.item = v  # tpyc: warning(/may copy T into field/)
+template<::tpy::Copyable T>
+inline Shadowed<T>::Shadowed(::tpy::readonly_form_t<T> v) : item(v) {}
+
+// def keep[T: ValueType](self, v: T) -> int32:
+//     xs: list[T] = []
+//     xs.append(v)  # tpyc: ok
+//     return len(xs)
+template<::tpy::Copyable T>
+inline int32_t Shadowed<T>::keep(::tpy::readonly_form_t<T> v) const
+  requires ::tpy::ValueType<T> {
+    std::vector<T> xs = std::vector<T>{};
+    xs.push_back(::tpy::param_to_storage<T>(v));
+    return ::tpy::__len__(xs);
+}
+
+// def __init__(self, v: T) -> None:
+//     super().__init__(v)  # tpyc: ok
+template<typename T>
+inline GenMid<T>::GenMid(::tpy::param_val_or_ref_t<T> v) : GenBase<T>(v) {}
+
 // # free function, container-element slot. `diag.txt` is the subject of every
 // # section: nothing for the value instantiation, `copies X into <sink>` for the
 // # reference one, on the BODY line rather than at the call that decided it.

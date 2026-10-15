@@ -139,21 +139,8 @@ struct Sink {
     Sink();
 
     // def absorb(self, source: Iterable[Own[list[int32]]]) -> int32:
-    //     for x in source:
-    //         self.rows.append(x)  # method: moves the loop variable's own copy
-    //     return len(self.rows)
     template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
-    int32_t absorb(T_source&& source) {
-        auto& __src_0 = source;
-        auto&& __itr_0 = ::tpy::__iter__(__src_0);
-        for (;;) {
-            auto __r_1 = __itr_0.__next__();
-            if (!__r_1.has_value()) break;
-            auto&& x = ::tpy::own_bind(*__r_1);
-            this->rows.push_back(std::move(x));
-        }
-        return ::tpy::__len__(this->rows);
-    }
+    int32_t absorb(T_source&& source);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Sink";
 };
 
@@ -525,6 +512,24 @@ inline ::tpy::BigInt Key::__hash__() const {
 inline bool Key::__eq__(const Key& o) const {
     return (this->name == o.name);
 }
+
+// def absorb(self, source: Iterable[Own[list[int32]]]) -> int32:
+//     for x in source:
+//         self.rows.append(x)  # method: moves the loop variable's own copy
+//     return len(self.rows)
+template<::tpystd::typing::Iterable<std::vector<int32_t>> T_source>
+inline int32_t Sink::absorb(T_source&& source) {
+    auto& __src_0 = source;
+    auto&& __itr_0 = ::tpy::__iter__(__src_0);
+    for (;;) {
+        auto __r_1 = __itr_0.__next__();
+        if (!__r_1.has_value()) break;
+        auto&& x = ::tpy::own_bind(*__r_1);
+        this->rows.push_back(std::move(x));
+    }
+    return ::tpy::__len__(this->rows);
+}
+
 // def collect(source: Iterable[Own[list[int32]]]) -> Own[list[list[int32]]]:
 //     out: list[list[int32]] = []
 //     for x in source:

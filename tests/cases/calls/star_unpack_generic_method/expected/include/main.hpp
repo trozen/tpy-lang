@@ -23,9 +23,8 @@ struct Box {
     T val;
 
     // def __init__(self, v: T) -> None:
-    //     self.val = v
     Box() = default;
-    explicit Box(::tpy::readonly_form_t<T> v) : val(v) {}
+    explicit Box(::tpy::readonly_form_t<T> v);
     // non-copyable (@nocopy)
     Box(const Box&) = delete;
     Box& operator=(const Box&) = delete;
@@ -45,28 +44,38 @@ struct Pile {
 
 
     // def total[T](self, *boxes: Box[T]) -> int32:
-    //     n: int32 = 0
-    //     for b in boxes:
-    //         n += 1
-    //     return n
     template<typename T>
-    int32_t total(::tpy::varargs<const Box<T>> boxes) const {
-        int32_t n = 0;
-        auto& __obj_0 = boxes;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& b = *__beg_0;
-            n = ::tpy::add_check<int32_t>(n, 1);
-        }
-        return n;
-    }
+    int32_t total(::tpy::varargs<const Box<T>> boxes) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pile";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Pile& obj) {
     ::tpy::print_object_default(os, "Pile", obj);
     return os;
+}
+
+
+// def __init__(self, v: T) -> None:
+//     self.val = v
+template<typename T>
+inline Box<T>::Box(::tpy::readonly_form_t<T> v) : val(v) {}
+
+// def total[T](self, *boxes: Box[T]) -> int32:
+//     n: int32 = 0
+//     for b in boxes:
+//         n += 1
+//     return n
+template<typename T>
+inline int32_t Pile::total(::tpy::varargs<const Box<T>> boxes) const {
+    int32_t n = 0;
+    auto& __obj_0 = boxes;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& b = *__beg_0;
+        n = ::tpy::add_check<int32_t>(n, 1);
+    }
+    return n;
 }
 
 void __tpy_init();

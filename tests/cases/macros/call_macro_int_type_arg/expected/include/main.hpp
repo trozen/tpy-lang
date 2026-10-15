@@ -21,8 +21,7 @@ struct Box {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    Box() : items(std::vector<T>{}) {}
+    Box();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -31,6 +30,12 @@ inline std::ostream& operator<<(std::ostream& os, const Box<T, N>& obj) {
     ::tpy::print_object_default(os, "Box", obj);
     return os;
 }
+
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T, std::size_t N>
+inline Box<T, N>::Box() : items(std::vector<T>{}) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

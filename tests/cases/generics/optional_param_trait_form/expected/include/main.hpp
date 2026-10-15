@@ -131,24 +131,14 @@ struct Container {
     std::optional<T> _val;
 
     // def __init__(self, val: T | None) -> None:
-    //     # ctor position: the slot lifts into the optional field. The lift is a
-    //     # copy at a reference T -- warned, and identically for the twin below.
-    //     self._val = val  # tpyc: warning(/may copy T \| None into field/)
     Container() = default;
-    explicit Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
+    explicit Container(::tpy::opt_cparam_t<T> val);
 
     // def probe(self, val: T | None) -> bool:
-    //     # method position: the method mutates nothing, so the const spelling.
-    //     return val is not None  # tpyc: ok
-    bool probe(::tpy::opt_cparam_t<T> val) const {
-        return (::tpy::opt_has_value(val));
-    }
+    bool probe(::tpy::opt_cparam_t<T> val) const;
 
     // def held(self) -> bool:
-    //     return self._val is not None
-    bool held() const {
-        return (this->_val.has_value());
-    }
+    bool held() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -426,6 +416,29 @@ inline CellBox::CellBox(const Cell* val) : _val(::tpy::ptr_to_optional(val)) {}
 inline bool CellBox::held() const {
     return (this->_val.has_value());
 }
+
+// def __init__(self, val: T | None) -> None:
+//     # ctor position: the slot lifts into the optional field. The lift is a
+//     # copy at a reference T -- warned, and identically for the twin below.
+//     self._val = val  # tpyc: warning(/may copy T \| None into field/)
+template<typename T>
+inline Container<T>::Container(::tpy::opt_cparam_t<T> val) : _val(::tpy::to_opt_storage<std::optional<T>>(val)) {}
+
+// def probe(self, val: T | None) -> bool:
+//     # method position: the method mutates nothing, so the const spelling.
+//     return val is not None  # tpyc: ok
+template<typename T>
+inline bool Container<T>::probe(::tpy::opt_cparam_t<T> val) const {
+    return (::tpy::opt_has_value(val));
+}
+
+// def held(self) -> bool:
+//     return self._val is not None
+template<typename T>
+inline bool Container<T>::held() const {
+    return (this->_val.has_value());
+}
+
 // def probe_gen[T](val: T | None) -> bool:
 //     # free function, the subject slot: the None test reads either form.
 //     return val is not None  # tpyc: ok

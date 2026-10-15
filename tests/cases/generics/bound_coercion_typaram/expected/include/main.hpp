@@ -21,17 +21,13 @@ struct Holder {
     T* _p;
 
     // def __init__(self, p: Ptr[T]) -> None:
-    //     self._p = p
     Holder() = default;
-    explicit Holder(T* p) : _p(p) {}
+    explicit Holder(T* p);
 
     // @staticmethod
     // def make[U: T](p: Ptr[U]) -> Own[Holder[T]]:
-    //     return Holder[T](p)  # tpyc: ok
     template<typename U>
-    static Holder<T> make(U* p) {
-        return Holder<T>(p);
-    }
+    static Holder<T> make(U* p);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -39,6 +35,21 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Holder<T>& obj) {
     ::tpy::print_object_default(os, "Holder", obj);
     return os;
+}
+
+
+// def __init__(self, p: Ptr[T]) -> None:
+//     self._p = p
+template<typename T>
+inline Holder<T>::Holder(T* p) : _p(p) {}
+
+// @staticmethod
+// def make[U: T](p: Ptr[U]) -> Own[Holder[T]]:
+//     return Holder[T](p)  # tpyc: ok
+template<typename T>
+template<typename U>
+inline Holder<T> Holder<T>::make(U* p) {
+    return Holder<T>(p);
 }
 
 void __tpy_init();

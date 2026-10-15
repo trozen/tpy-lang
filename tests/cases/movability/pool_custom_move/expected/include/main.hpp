@@ -44,55 +44,22 @@ struct Pool {
     bool __tpy_owned_ = true;
 
     // def __init__(self) -> None:
-    //     self._storage = UninitArrayStorage[T, N]()
-    //     self._size = uint32(0)
-    Pool()
-        : _storage(::tpy::UninitArrayStorage<T, N>()),
-          _size(0) {}
+    Pool();
     // non-copyable (field '_storage')
     Pool(const Pool&) = delete;
     Pool& operator=(const Pool&) = delete;
-    Pool(Pool&& other) noexcept
-        : _storage(),
-          _size() {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        uint32_t __stop_0 = other._size;
-        for (uint32_t ui = 0; ui < __stop_0; ++ui) {
-            this->_storage.init(ui, other._storage.take(ui));
-        }
-        this->_size = other._size;
-        other.__tpy_owned_ = false;
-    }
-    Pool& operator=(Pool&& other) noexcept {
-        if (this != &other) {
-            this->~Pool();
-            new (this) Pool(std::move(other));
-        }
-        return *this;
-    }
+    Pool(Pool&& other) noexcept;
+    Pool& operator=(Pool&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     self._storage.drop_n(uint32(0), self._size)
-    ~Pool() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::DeferSignals __tpy_defer_signals;
-        this->_storage.drop_n(0, this->_size);
-    }
+    ~Pool();
 
     // def push(self, value: Own[T]) -> None:
-    //     self._storage.init(self._size, value)
-    //     self._size += 1
-    void push(::tpy::own_param_t<T> value) {
-        this->_storage.init(this->_size, std::move(value));
-        this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
-    }
+    void push(::tpy::own_param_t<T> value);
 
     // @readonly
     // def get(self, i: int32) -> readonly[T]:
-    //     return self._storage.load(uint32.trunc(i))
-    ::tpy::val_or_cref_t<T> get(int32_t i) const {
-        return this->_storage.load(static_cast<uint32_t>(i));
-    }
+    ::tpy::val_or_cref_t<T> get(int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pool";
 };
 
@@ -157,5 +124,61 @@ inline Tagged& Tagged::operator=(Tagged&& other) noexcept {
 inline Tagged::~Tagged() {
     if (!this->__tpy_owned_) return;
 }
+
+// def __init__(self) -> None:
+//     self._storage = UninitArrayStorage[T, N]()
+//     self._size = uint32(0)
+template<typename T, std::size_t N>
+inline Pool<T, N>::Pool()
+    : _storage(::tpy::UninitArrayStorage<T, N>()),
+      _size(0) {}
+
+template<typename T, std::size_t N>
+inline Pool<T, N>::Pool(Pool&& other) noexcept
+    : _storage(),
+      _size() {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    uint32_t __stop_0 = other._size;
+    for (uint32_t ui = 0; ui < __stop_0; ++ui) {
+        this->_storage.init(ui, other._storage.take(ui));
+    }
+    this->_size = other._size;
+    other.__tpy_owned_ = false;
+}
+template<typename T, std::size_t N>
+inline Pool<T, N>& Pool<T, N>::operator=(Pool&& other) noexcept {
+    if (this != &other) {
+        this->~Pool();
+        new (this) Pool(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     self._storage.drop_n(uint32(0), self._size)
+template<typename T, std::size_t N>
+inline Pool<T, N>::~Pool() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::DeferSignals __tpy_defer_signals;
+    this->_storage.drop_n(0, this->_size);
+}
+
+// def push(self, value: Own[T]) -> None:
+//     self._storage.init(self._size, value)
+//     self._size += 1
+template<typename T, std::size_t N>
+inline void Pool<T, N>::push(::tpy::own_param_t<T> value) {
+    this->_storage.init(this->_size, std::move(value));
+    this->_size = ::tpy::add_check<uint32_t>(this->_size, 1);
+}
+
+// @readonly
+// def get(self, i: int32) -> readonly[T]:
+//     return self._storage.load(uint32.trunc(i))
+template<typename T, std::size_t N>
+inline ::tpy::val_or_cref_t<T> Pool<T, N>::get(int32_t i) const {
+    return this->_storage.load(static_cast<uint32_t>(i));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

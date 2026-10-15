@@ -5581,26 +5581,46 @@ print(box.get())  # Returns int32
 print(pair.first) # Type is str
 ```
 
-Generated C++ (template structs):
+Generated C++ (template structs; the struct declares the members, their
+definitions go at the end of the header):
 ```cpp
 template<typename T>
 struct Box {
   T value;
-  explicit Box(const T& value) : value(value) {}
-  T get() const { return this->value; }
+  explicit Box(const T& value);
+  T get() const;
 };
 
 template<typename A, typename B>
 struct Pair {
   A first;
   B second;
-  explicit Pair(const A& first, const B& second) : first(first), second(second) {}
+  explicit Pair(const A& first, const B& second);
 };
+
+// ... every other class, function prototype and frame of the module ...
+
+template<typename T>
+inline Box<T>::Box(const T& value) : value(value) {}
+template<typename T>
+inline T Box<T>::get() const { return this->value; }
 
 // Instantiation
 Box<int32_t> box{42};
 Pair<std::string, int32_t> pair{"hello", 100};
 ```
+
+**Working**: A method body of a generic class -- like a member template of any
+class (`def m[U](self, x: U)`, a protocol or `Fn` parameter) and an
+`@overload` method -- may use classes and functions defined later in the module:
+its definition follows every declaration of the module. A method whose return
+type C++ deduces (a `-> Iterator[T]` returning `iter(...)`) keeps its body in
+the class when it is a template member (of a generic class, or with its own
+type parameters) or an `@overload` variant, so an earlier class can iterate it
+but the classes and function prototypes its body uses must precede the class;
+any other one is defined in the header after the classes (in the `.cpp` for an
+import-cycle member), so its body may build a later class but an earlier class
+cannot iterate it (BUGS.md#deduced-return-member-body-uses-later-declaration).
 
 **Type Inference**:
 - Type arguments can be inferred from constructor arguments: `Box(42)` -> `Box[int]`
@@ -6729,7 +6749,7 @@ Each module initializes only once (double-init guard prevents diamond dependency
 
 Importing a module runs the modules it imports, in its import order -- for a dotted import (`import pkg.sub`, `from pkg.sub import X`) each parent package first. Native modules (`"mod": "native"`) are no exception: a native module generates no header, but importing it runs its imports -- a native module whose imports do work gets a generated .cpp holding only its init -- so a module reached only through a native module (a re-exported class, a bare `import c` in the native module, a native package `__init__` as a parent, a chain of native modules) runs its module-level code where CPython runs it. A module whose init does nothing -- its own top-level statements are only imports, bare declarations, `Final` constants, `native_global` bindings, docstrings or `pass`, and none of the modules it imports does anything -- is not called: its importers emit no `__tpy_init()` call for it. Its `__tpy_init()` is still defined, empty and without the run-once guard, for the callers that do not know the fact (a CPython extension's `PyInit_`, a `--no-main` host).
 
-**Circular imports:** Cyclic imports between user modules are accepted, including the `from b import bar` / `from b import B` / `from b import P` (protocol) / `from b import E` (enum) shapes where cycle members directly bind names from each other. Workspace-wide skeletal pre-registration mints `RecordInfo` / `FunctionInfo` / `ProtocolInfo` shells (and matching enum `NominalType` + `TypeDef.protocol` entries) from each module's parsed AST before any module's full sema runs; peer `bind_imports` finds stable references that the registration paths later mutate in place. Class macros (`@dataclass`, etc.) on cycle members work. The C++ back-end emits a per-module `<mod>_fwd.hpp` for cycle members; `<peer>.hpp` includes of cycle peers in the `.hpp` are swapped for the fwd version (the `.cpp` pulls in the full header for body-sema completeness), and cycle-member method bodies always emit out-of-line in `.cpp` so trivial inline-in-header bodies don't reach into a peer's complete type. Cycle members must contain only imports, bare type declarations, docstrings and `pass` at top level (no executable statements). A native module (`"mod": "native"`) in an import cycle is no C++ cycle peer: it generates no header, so the C++ cycle is the import cycle's regular members, and a regular module whose only cycle peers are native gets no `_fwd.hpp`, keeps its inline method bodies and may take or hold the native peer's types by value. The executable-statement rule still holds over the whole import cycle; a native module satisfies it by construction, since it is declaration-only. Package `__init__.py` and native-module re-export facades may now participate in cycles too (the cycle-facade reject gate was lifted by the per-module attribute table refactor); cycle-aware `using` suppression in codegen drops re-export `using` lines for symbols not forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). By-value cross-module references between cycle peers (concrete inheritance from a peer record, by-value field of peer record, peer record inside a container / tuple / value-variant union) get a structured sema diagnostic naming the offending field and the workaround (`Ptr[T]` or moving the value-stored field out of the cycle).
+**Circular imports:** Cyclic imports between user modules are accepted, including the `from b import bar` / `from b import B` / `from b import P` (protocol) / `from b import E` (enum) shapes where cycle members directly bind names from each other. Workspace-wide skeletal pre-registration mints `RecordInfo` / `FunctionInfo` / `ProtocolInfo` shells (and matching enum `NominalType` + `TypeDef.protocol` entries) from each module's parsed AST before any module's full sema runs; peer `bind_imports` finds stable references that the registration paths later mutate in place. Class macros (`@dataclass`, etc.) on cycle members work. The C++ back-end emits a per-module `<mod>_fwd.hpp` for cycle members; `<peer>.hpp` includes of cycle peers in the `.hpp` are swapped for the fwd version (the `.cpp` pulls in the full header for body-sema completeness), and cycle-member method bodies emit out-of-line in `.cpp` so trivial inline-in-header bodies don't reach into a peer's complete type (a template member's body -- a generic class's method, a member template -- stays in the `.hpp`, where every instantiation sees it, as does an `@overload` variant whose return C++ deduces, `-> Iterator[T]`; the `operator[]` / `operator()` / `operator*` a `__getitem__` / `__call__` / `__deref__` defines is placed with its method). So a non-template `__init__`, `__del__`, `@overload`, `@dispatch`, `__getitem__`, `__call__` or `__deref__` method of a cycle member may take or return a peer's class by value; a function or method whose body is in the `.hpp` may not (a structured diagnostic names the parameter or return). An operator method (`__add__`, `__radd__`, `__eq__`, `__neg__`, ...) defines its C++ operator inside the class, so it may not take or return a peer's class by value (the same diagnostic; TODO.md "Friend operators of a cycle member through a generated CRTP base"): rejected are a peer `ValueType` parameter (also `Own[...]` of one, or `| None` over one), a peer `ValueType` return, an `Own[...]` return of any peer class (also `Own[B | None]` or `Own[B | C]`), a returned `| None`, union or tuple that holds a peer class by value (`tuple[b.Val, int32]`), an `@error_return` result that holds a peer class by value (`tuple[b.Item, int32]`, `b.Item | None`), and an `@error_return` error type from a peer. It may take a peer's reference type (passed by reference, also as `Own[...]`), `| None` or a union over reference types (passed as pointers), a `Ptr[...]` or a `Span[...]` of a peer's class, a union or tuple parameter (passed by reference), and return a peer's reference type (also from an `@error_return` method), `| None` over one, a `Ptr[...]`, or a tuple holding one (borrowed); such an operator compiles, but calling one that takes a `Ptr[...]` or returns a `| None` or a `Ptr[...]` is not supported yet (BUGS.md#optional-operator-result-use-rejects). A module outside the cycle that imports one member gets the other members' headers too, so it can use such methods and overload sets. Cycle members must contain only imports, bare type declarations, docstrings and `pass` at top level (no executable statements). A native module (`"mod": "native"`) in an import cycle is no C++ cycle peer: it generates no header, so the C++ cycle is the import cycle's regular members, and a regular module whose only cycle peers are native gets no `_fwd.hpp`, keeps its inline method bodies and may take or hold the native peer's types by value. The executable-statement rule still holds over the whole import cycle; a native module satisfies it by construction, since it is declaration-only. Package `__init__.py` and native-module re-export facades may now participate in cycles too (the cycle-facade reject gate was lifted by the per-module attribute table refactor); cycle-aware `using` suppression in codegen drops re-export `using` lines for symbols not forward-declared in `<peer>_fwd.hpp` (functions, variables, static-protocol concepts). By-value cross-module references between cycle peers (concrete inheritance from a peer record, by-value field of peer record, peer record inside a container / tuple / value-variant union) get a structured sema diagnostic naming the offending field and the workaround (`Ptr[T]` or moving the value-stored field out of the cycle).
 
 **Shadowing builtin modules:** User modules can shadow builtin modules (none currently -- `math`, `time`, `sys` moved to lib/tpy/). If you create `math.py` in your project, `from math import ...` will use your module instead of the builtin. A warning is emitted:
 ```

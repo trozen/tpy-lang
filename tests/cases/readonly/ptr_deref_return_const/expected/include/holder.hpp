@@ -68,15 +68,11 @@ struct Holder {
     T* _payload;
 
     // def __init__(self, payload: Ptr[T]) -> None:
-    //     self._payload = payload
     Holder() = default;
-    explicit Holder(T* payload) : _payload(payload) {}
+    explicit Holder(T* payload);
 
     // def get(self) -> T:
-    //     return self._payload  # tpyc: ok
-    ::tpy::val_or_ref_t<T> get() const {
-        return ::tpy::deref_check(this->_payload);
-    }
+    ::tpy::val_or_ref_t<T> get() const;
     static constexpr std::string_view __tpy_class_name__ = "holder.Holder";
 };
 
@@ -127,5 +123,18 @@ inline A& M::via_local() const {
 inline A& M::mine() {
     return this->own;
 }
+
+// def __init__(self, payload: Ptr[T]) -> None:
+//     self._payload = payload
+template<typename T>
+inline Holder<T>::Holder(T* payload) : _payload(payload) {}
+
+// def get(self) -> T:
+//     return self._payload  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Holder<T>::get() const {
+    return ::tpy::deref_check(this->_payload);
+}
+
 void __tpy_init();
 } // namespace tpyapp::holder

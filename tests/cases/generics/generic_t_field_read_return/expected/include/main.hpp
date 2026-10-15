@@ -23,36 +23,20 @@ struct Cell {
     T other;
 
     // def __init__(self, v: Own[T], o: Own[T]) -> None:
-    //     self.value = v
-    //     self.other = o
     Cell() = default;
-    explicit Cell(::tpy::own_param_t<T> v, ::tpy::own_param_t<T> o)
-        : value(std::move(v)),
-          other(std::move(o)) {}
+    explicit Cell(::tpy::own_param_t<T> v, ::tpy::own_param_t<T> o);
 
     // def get(self) -> T:
-    //     return self.value
-    ::tpy::val_or_ref_t<T> get() {
-        return this->value;
-    }
+    ::tpy::val_or_ref_t<T> get();
 
     // def pick(self) -> T:
-    //     return self.other
-    ::tpy::val_or_ref_t<T> pick() {
-        return this->other;
-    }
+    ::tpy::val_or_ref_t<T> pick();
 
     // def echo(self, v: T) -> T:
-    //     return v
-    ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) const {
-        return ::tpy::param_to_return<T>(v);
-    }
+    ::tpy::val_or_ref_t<T> echo(::tpy::param_val_or_ref_t<T> v) const;
 
     // def store(self, v: T) -> None:
-    //     self.value = v
-    void store(::tpy::param_val_or_ref_t<T> v) {
-        this->value = ::tpy::param_to_storage<T>(v);
-    }
+    void store(::tpy::param_val_or_ref_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -60,6 +44,43 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
     ::tpy::print_object_default(os, "Cell", obj);
     return os;
+}
+
+
+// def __init__(self, v: Own[T], o: Own[T]) -> None:
+//     self.value = v
+//     self.other = o
+template<typename T>
+inline Cell<T>::Cell(::tpy::own_param_t<T> v, ::tpy::own_param_t<T> o)
+    : value(std::move(v)),
+      other(std::move(o)) {}
+
+// def get(self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::get() {
+    return this->value;
+}
+
+// def pick(self) -> T:
+//     return self.other
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::pick() {
+    return this->other;
+}
+
+// def echo(self, v: T) -> T:
+//     return v
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::echo(::tpy::param_val_or_ref_t<T> v) const {
+    return ::tpy::param_to_return<T>(v);
+}
+
+// def store(self, v: T) -> None:
+//     self.value = v
+template<typename T>
+inline void Cell<T>::store(::tpy::param_val_or_ref_t<T> v) {
+    this->value = ::tpy::param_to_storage<T>(v);
 }
 
 void __tpy_init();

@@ -33,13 +33,9 @@ struct WRef {
     // def __deref__(self) -> Widget:
     const ::x::Widget& __deref__() const;
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.WRef";
 };
 
@@ -65,6 +61,14 @@ inline ::x::Widget& WRef::__deref__() {
 //     return self._target
 inline const ::x::Widget& WRef::__deref__() const {
     return this->_target;
+}
+
+inline auto WRef::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+inline auto WRef::operator*() const -> decltype(__deref__()) {
+    return __deref__();
 }
 void __tpy_init();
 } // namespace tpyapp::main

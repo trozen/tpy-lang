@@ -53,17 +53,11 @@ struct GenericHolder {
     T item;
 
     // def __init__(self, item: Own[T]):
-    //     self.item = item
     GenericHolder() = default;
-    explicit GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+    explicit GenericHolder(::tpy::own_param_t<T> item);
 
     // def replace_with_flag(self, item: Own[T], flag: int32) -> int32:
-    //     self.item = item
-    //     return flag
-    int32_t replace_with_flag(::tpy::own_param_t<T> item, int32_t flag) {
-        this->item = std::move(item);
-        return flag;
-    }
+    int32_t replace_with_flag(::tpy::own_param_t<T> item, int32_t flag);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericHolder";
 };
 
@@ -80,9 +74,8 @@ struct GenericBox {
     T item;
 
     // def __init__(self, item: T):
-    //     self.item = item
     GenericBox() = default;
-    explicit GenericBox(::tpy::readonly_form_t<T> item) : item(item) {}
+    explicit GenericBox(::tpy::readonly_form_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenericBox";
 };
 
@@ -100,5 +93,25 @@ inline void Holder::set_with_tag(Inner&& inner, int32_t tag) {
     this->inner = std::move(inner);
     this->inner.value = (::tpy::add_check<int32_t>(this->inner.value, tag));
 }
+
+// def __init__(self, item: Own[T]):
+//     self.item = item
+template<typename T>
+inline GenericHolder<T>::GenericHolder(::tpy::own_param_t<T> item) : item(std::move(item)) {}
+
+// def replace_with_flag(self, item: Own[T], flag: int32) -> int32:
+//     self.item = item
+//     return flag
+template<typename T>
+inline int32_t GenericHolder<T>::replace_with_flag(::tpy::own_param_t<T> item, int32_t flag) {
+    this->item = std::move(item);
+    return flag;
+}
+
+// def __init__(self, item: T):
+//     self.item = item
+template<typename T>
+inline GenericBox<T>::GenericBox(::tpy::readonly_form_t<T> item) : item(item) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

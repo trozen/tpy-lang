@@ -66,21 +66,12 @@ struct Container {
     T payload;
 
     // def __init__(self, val: Own[T]) -> None:
-    //     self.payload = val
     Container() = default;
-    explicit Container(::tpy::own_param_t<T> val) : payload(std::move(val)) {}
+    explicit Container(::tpy::own_param_t<T> val);
 
-    // # Method introduces its own type param U; the receiver's T (int32 below)
-    // # is irrelevant to U's binding. LHS hint Rc[Box[Greeter]] should seed
-    // # U=Box[Greeter] and propagate Box[Greeter] as the inner Box(Cat(...))
-    // # hint, so Box's record-construction LHS-hint preference flips its
-    // # internal T from Cat to Greeter.
     // def wrap[U](self, value: Own[U]) -> Own[Rc[U]]:
-    //     return Rc.new(value)
     template<typename U>
-    ::tpystd::tplib::rc::Rc<U> wrap(::tpy::own_param_t<U> value) const {
-        return Rc<U>::template new_<U>(std::move(value));
-    }
+    ::tpystd::tplib::rc::Rc<U> wrap(::tpy::own_param_t<U> value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -119,5 +110,24 @@ inline Cat::Cat(std::string_view name) : name(name) {}
 inline std::string Cat::greet() const {
     return this->name;
 }
+
+// def __init__(self, val: Own[T]) -> None:
+//     self.payload = val
+template<typename T>
+inline Container<T>::Container(::tpy::own_param_t<T> val) : payload(std::move(val)) {}
+
+// # Method introduces its own type param U; the receiver's T (int32 below)
+// # is irrelevant to U's binding. LHS hint Rc[Box[Greeter]] should seed
+// # U=Box[Greeter] and propagate Box[Greeter] as the inner Box(Cat(...))
+// # hint, so Box's record-construction LHS-hint preference flips its
+// # internal T from Cat to Greeter.
+// def wrap[U](self, value: Own[U]) -> Own[Rc[U]]:
+//     return Rc.new(value)
+template<typename T>
+template<typename U>
+inline ::tpystd::tplib::rc::Rc<U> Container<T>::wrap(::tpy::own_param_t<U> value) const {
+    return Rc<U>::template new_<U>(std::move(value));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

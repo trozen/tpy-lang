@@ -41,13 +41,9 @@ struct Grid {
 
     Node& cell();
 
-    const Node& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const Node& operator[](int32_t i) const;
 
-    Node& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Node& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
 };
 
@@ -65,13 +61,9 @@ struct Echo {
 
     const Echo& __getitem__(int32_t i) const;
 
-    const Echo& operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    const Echo& operator[](int32_t i) const;
 
-    Echo& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Echo& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Echo";
 };
 
@@ -88,13 +80,9 @@ struct KeyEcho {
 
     const Node& __getitem__(const Node& k) const;
 
-    const Node& operator[](const Node& k) const {
-        return __getitem__(k);
-    }
+    const Node& operator[](const Node& k) const;
 
-    Node& operator[](Node& k) {
-        return __getitem__(k);
-    }
+    Node& operator[](Node& k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.KeyEcho";
 };
 
@@ -175,6 +163,14 @@ inline Node& Grid::cell() {
     return this->_cell;
 }
 
+inline const Node& Grid::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Node& Grid::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 inline Echo::Echo() : n(0) {}
 
 inline Echo& Echo::__getitem__(int32_t i) {
@@ -183,6 +179,14 @@ inline Echo& Echo::__getitem__(int32_t i) {
 
 inline const Echo& Echo::__getitem__(int32_t i) const {
     return (*this);
+}
+
+inline const Echo& Echo::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Echo& Echo::operator[](int32_t i) {
+    return __getitem__(i);
 }
 
 inline KeyEcho::KeyEcho() {
@@ -194,6 +198,14 @@ inline Node& KeyEcho::__getitem__(Node& k) {
 
 inline const Node& KeyEcho::__getitem__(const Node& k) const {
     return k;
+}
+
+inline const Node& KeyEcho::operator[](const Node& k) const {
+    return __getitem__(k);
+}
+
+inline Node& KeyEcho::operator[](Node& k) {
+    return __getitem__(k);
 }
 
 inline Acc::Acc(int32_t n) : n(n) {}

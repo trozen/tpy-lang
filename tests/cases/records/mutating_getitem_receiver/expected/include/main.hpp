@@ -101,9 +101,7 @@ struct Counts {
     // def peek_self(self, k: str) -> int32:
     int32_t peek_self(std::string_view k);
 
-    int32_t operator[](std::string_view k) {
-        return __getitem__(k);
-    }
+    int32_t operator[](std::string_view k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Counts";
 };
 
@@ -121,29 +119,14 @@ struct DefaultDict {
     ::tpy::ordered_map<K, V> data;
 
     // def __init__(self, factory: Callable[[], V]) -> None:
-    //     self.factory = factory
-    //     self.data = {}
     DefaultDict() = default;
-    explicit DefaultDict(std::function<V()> factory)
-        : factory(factory),
-          data(::tpy::ordered_map<K, V>()) {}
+    explicit DefaultDict(std::function<V()> factory);
 
-    // # Node-based storage: the insert never moves an existing value.
     // @readonly(False)
     // def __getitem__(self, key: K) -> V:
-    //     if key not in self.data:
-    //         self.data[copy(key)] = self.factory()
-    //     return self.data[key]
-    ::tpy::val_or_ref_t<V> __getitem__(::tpy::param_val_or_ref_t<K> key) {
-        if ((!(this->data.contains(key)))) {
-            ::tpy::__setitem__(this->data, K(key), (*this).factory());
-        }
-        return ::tpy::__getitem__(this->data, key);
-    }
+    ::tpy::val_or_ref_t<V> __getitem__(::tpy::param_val_or_ref_t<K> key);
 
-    ::tpy::val_or_ref_t<V> operator[](::tpy::param_val_or_ref_t<K> key) {
-        return __getitem__(key);
-    }
+    ::tpy::val_or_ref_t<V> operator[](::tpy::param_val_or_ref_t<K> key);
     static constexpr std::string_view __tpy_class_name__ = "__main__.DefaultDict";
 };
 
@@ -180,9 +163,7 @@ struct Slots {
     // def __getitem__(self, i: int32) -> Pt | None:
     Pt* __getitem__(int32_t i);
 
-    Pt* operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Pt* operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Slots";
 };
 
@@ -203,9 +184,7 @@ struct PtRows {
     // def __getitem__(self, i: int32) -> Pt:
     Pt& __getitem__(int32_t i);
 
-    Pt& operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    Pt& operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.PtRows";
 };
 
@@ -225,9 +204,7 @@ struct Plain {
     // def __getitem__(self, i: int32) -> int32:
     int32_t __getitem__(int32_t i) const;
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Plain";
 };
 
@@ -248,9 +225,7 @@ struct Tally {
     // def __getitem__(self, i: int32) -> int32:
     int32_t __getitem__(int32_t i);
 
-    int32_t operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
 
@@ -278,13 +253,9 @@ struct Two {
     // def __getitem__(self, k: str) -> int32:
     int32_t __getitem__(std::string_view k);
 
-    int32_t operator[](int32_t i) const {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i) const;
 
-    int32_t operator[](std::string_view k) {
-        return __getitem__(k);
-    }
+    int32_t operator[](std::string_view k);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Two";
 };
 
@@ -300,34 +271,20 @@ struct KeyBase {
     std::vector<int32_t> xs;
 
     // def __init__(self) -> None:
-    //     self.xs = [5]
-    KeyBase() : xs(std::vector<int32_t>{5}) {}
+    KeyBase();
 
     // @dispatch
     // def __getitem__(self, k: T) -> int32:
-    //     return self.xs[0]
-    int32_t __getitem__(::tpy::readonly_form_t<T> k) const {
-        return ::tpy::__getitem__(this->xs, 0);
-    }
+    int32_t __getitem__(::tpy::readonly_form_t<T> k) const;
 
-    // # Only the int32-keyed overload mutates.
     // @dispatch
     // @readonly(False)
     // def __getitem__(self, i: int32) -> int32:
-    //     self.xs.append(1)
-    //     return self.xs[0]
-    int32_t __getitem__(int32_t i) {
-        this->xs.push_back(1);
-        return ::tpy::__getitem__(this->xs, 0);
-    }
+    int32_t __getitem__(int32_t i);
 
-    int32_t operator[](::tpy::readonly_form_t<T> k) const {
-        return __getitem__(k);
-    }
+    int32_t operator[](::tpy::readonly_form_t<T> k) const;
 
-    int32_t operator[](int32_t i) {
-        return __getitem__(i);
-    }
+    int32_t operator[](int32_t i);
     static constexpr std::string_view __tpy_class_name__ = "__main__.KeyBase";
 };
 
@@ -404,8 +361,7 @@ template<typename U>
 struct KeyGen : KeyBase<U> {
 
     // def __init__(self) -> None:
-    //     super().__init__()
-    KeyGen() : KeyBase<U>() {}
+    KeyGen();
     static constexpr std::string_view __tpy_class_name__ = "__main__.KeyGen";
 };
 
@@ -520,6 +476,10 @@ inline int32_t Counts::peek_self(std::string_view k) {
     return (*this)[k];
 }
 
+inline int32_t Counts::operator[](std::string_view k) {
+    return __getitem__(k);
+}
+
 // def __init__(self) -> None:
 //     self.x = 0
 inline Pt::Pt() : x(0) {}
@@ -546,6 +506,10 @@ inline Pt* Slots::__getitem__(int32_t i) {
     return &(::tpy::__getitem__(this->ps, i));
 }
 
+inline Pt* Slots::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self) -> None:
 //     self.ps = []
 inline PtRows::PtRows() : ps(std::vector<Pt>{}) {}
@@ -562,6 +526,10 @@ inline Pt& PtRows::__getitem__(int32_t i) {
     return ::tpy::__getitem__(this->ps, i);
 }
 
+inline Pt& PtRows::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
 // def __init__(self) -> None:
 //     self.xs = [7]
 inline Plain::Plain() : xs(std::vector<int32_t>{7}) {}
@@ -570,6 +538,10 @@ inline Plain::Plain() : xs(std::vector<int32_t>{7}) {}
 //     return self.xs[i]
 inline int32_t Plain::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->xs, i);
+}
+
+inline int32_t Plain::operator[](int32_t i) const {
+    return __getitem__(i);
 }
 
 // def __init__(self) -> None:
@@ -586,6 +558,10 @@ inline int32_t Tally::__getitem__(int32_t i) {
         this->xs.push_back(0);
     }
     return ::tpy::__getitem__(this->xs, i);
+}
+
+inline int32_t Tally::operator[](int32_t i) {
+    return __getitem__(i);
 }
 
 // def __init__(self) -> None:
@@ -615,6 +591,14 @@ inline int32_t Two::__getitem__(std::string_view k) {
         ::tpy::__setitem__(this->d, k, 0);
     }
     return ::tpy::__getitem__(this->d, k);
+}
+
+inline int32_t Two::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline int32_t Two::operator[](std::string_view k) {
+    return __getitem__(k);
 }
 
 // def __init__(self) -> None:
@@ -686,6 +670,74 @@ inline int32_t Holder::look_alias(std::string_view k) {
 // def __init__(self) -> None:
 //     super().__init__()
 inline KeyMono::KeyMono() : KeyBase<int64_t>() {}
+
+// def __init__(self, factory: Callable[[], V]) -> None:
+//     self.factory = factory
+//     self.data = {}
+template<::tpystd::tpy::Hashable K, typename V>
+inline DefaultDict<K, V>::DefaultDict(std::function<V()> factory)
+    : factory(factory),
+      data(::tpy::ordered_map<K, V>()) {}
+
+// # Node-based storage: the insert never moves an existing value.
+// @readonly(False)
+// def __getitem__(self, key: K) -> V:
+//     if key not in self.data:
+//         self.data[copy(key)] = self.factory()
+//     return self.data[key]
+template<::tpystd::tpy::Hashable K, typename V>
+inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::__getitem__(::tpy::param_val_or_ref_t<K> key) {
+    if ((!(this->data.contains(key)))) {
+        ::tpy::__setitem__(this->data, K(key), (*this).factory());
+    }
+    return ::tpy::__getitem__(this->data, key);
+}
+
+template<::tpystd::tpy::Hashable K, typename V>
+inline ::tpy::val_or_ref_t<V> DefaultDict<K, V>::operator[](::tpy::param_val_or_ref_t<K> key) {
+    return __getitem__(key);
+}
+
+// def __init__(self) -> None:
+//     self.xs = [5]
+template<typename T>
+inline KeyBase<T>::KeyBase() : xs(std::vector<int32_t>{5}) {}
+
+// @dispatch
+// def __getitem__(self, k: T) -> int32:
+//     return self.xs[0]
+template<typename T>
+inline int32_t KeyBase<T>::__getitem__(::tpy::readonly_form_t<T> k) const {
+    return ::tpy::__getitem__(this->xs, 0);
+}
+
+// # Only the int32-keyed overload mutates.
+// @dispatch
+// @readonly(False)
+// def __getitem__(self, i: int32) -> int32:
+//     self.xs.append(1)
+//     return self.xs[0]
+template<typename T>
+inline int32_t KeyBase<T>::__getitem__(int32_t i) {
+    this->xs.push_back(1);
+    return ::tpy::__getitem__(this->xs, 0);
+}
+
+template<typename T>
+inline int32_t KeyBase<T>::operator[](::tpy::readonly_form_t<T> k) const {
+    return __getitem__(k);
+}
+
+template<typename T>
+inline int32_t KeyBase<T>::operator[](int32_t i) {
+    return __getitem__(i);
+}
+
+// def __init__(self) -> None:
+//     super().__init__()
+template<typename U>
+inline KeyGen<U>::KeyGen() : KeyBase<U>() {}
+
 // def protocol_param(p: Lookup, i: int32) -> int32:
 //     # Protocol param whose `__getitem__` is declared mutating.
 //     return p[i]  # tpyc: ok

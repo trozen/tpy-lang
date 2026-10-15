@@ -47,23 +47,11 @@ struct Container {
     bool _has;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     self._value = value
-    //     self._has = True
     Container() = default;
-    explicit Container(::tpy::own_param_t<T> value)
-        : _value(std::move(value)),
-          _has(true) {}
+    explicit Container(::tpy::own_param_t<T> value);
 
     // def get(self) -> T | None:
-    //     if self._has:
-    //         return self._value
-    //     return None
-    T* get() {
-        if (this->_has) {
-            return &(this->_value);
-        }
-        return nullptr;
-    }
+    T* get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -86,5 +74,26 @@ inline Point::Point(const ::tpy::BigInt& x, const ::tpy::BigInt& y)
 inline ::tpy::BigInt Point::sum() const {
     return ((this->x) + (this->y));
 }
+
+// def __init__(self, value: Own[T]) -> None:
+//     self._value = value
+//     self._has = True
+template<typename T>
+inline Container<T>::Container(::tpy::own_param_t<T> value)
+    : _value(std::move(value)),
+      _has(true) {}
+
+// def get(self) -> T | None:
+//     if self._has:
+//         return self._value
+//     return None
+template<typename T>
+inline T* Container<T>::get() {
+    if (this->_has) {
+        return &(this->_value);
+    }
+    return nullptr;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

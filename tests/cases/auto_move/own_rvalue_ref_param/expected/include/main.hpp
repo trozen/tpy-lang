@@ -42,14 +42,10 @@ struct Container {
     std::vector<T> items;
 
     // def __init__(self) -> None:
-    //     self.items = []
-    Container() : items(std::vector<T>{}) {}
+    Container();
 
     // def push(self, item: Own[T]) -> None:
-    //     self.items.append(item)
-    void push(::tpy::own_param_t<T> item) {
-        this->items.push_back(std::move(item));
-    }
+    void push(::tpy::own_param_t<T> item);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -63,5 +59,18 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 // def __init__(self, value: int32) -> None:
 //     self.value = value
 inline Box::Box(int32_t value) : value(value) {}
+
+// def __init__(self) -> None:
+//     self.items = []
+template<typename T>
+inline Container<T>::Container() : items(std::vector<T>{}) {}
+
+// def push(self, item: Own[T]) -> None:
+//     self.items.append(item)
+template<typename T>
+inline void Container<T>::push(::tpy::own_param_t<T> item) {
+    this->items.push_back(std::move(item));
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

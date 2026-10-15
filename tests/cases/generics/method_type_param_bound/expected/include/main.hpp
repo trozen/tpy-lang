@@ -23,31 +23,16 @@ struct Pair {
     T b;
 
     // def __init__(self, a: Own[T], b: Own[T]) -> None:
-    //     self.a = a
-    //     self.b = b
     Pair() = default;
-    explicit Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b)
-        : a(std::move(a)),
-          b(std::move(b)) {}
+    explicit Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b);
 
     // def min_val[T: Comparable](self) -> T:
-    //     if self.a < self.b:
-    //         return self.a
-    //     return self.b
     ::tpy::val_or_ref_t<T> min_val()
-      requires ::tpystd::tpy::Comparable<T> {
-        if ((this->a < this->b)) {
-            return this->a;
-        }
-        return this->b;
-    }
+      requires ::tpystd::tpy::Comparable<T>;
 
     // def with_default[T: Default](self) -> T:
-    //     return make_default()
     ::tpy::val_or_ref_t<T> with_default() const
-      requires ::std::default_initializable<T> {
-        return T{};
-    }
+      requires ::std::default_initializable<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -55,6 +40,36 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Pair<T>& obj) {
     ::tpy::print_object_default(os, "Pair", obj);
     return os;
+}
+
+
+// def __init__(self, a: Own[T], b: Own[T]) -> None:
+//     self.a = a
+//     self.b = b
+template<typename T>
+inline Pair<T>::Pair(::tpy::own_param_t<T> a, ::tpy::own_param_t<T> b)
+    : a(std::move(a)),
+      b(std::move(b)) {}
+
+// def min_val[T: Comparable](self) -> T:
+//     if self.a < self.b:
+//         return self.a
+//     return self.b
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Pair<T>::min_val()
+  requires ::tpystd::tpy::Comparable<T> {
+    if ((this->a < this->b)) {
+        return this->a;
+    }
+    return this->b;
+}
+
+// def with_default[T: Default](self) -> T:
+//     return make_default()
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Pair<T>::with_default() const
+  requires ::std::default_initializable<T> {
+    return T{};
 }
 
 void __tpy_init();

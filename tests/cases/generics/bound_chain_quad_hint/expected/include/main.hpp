@@ -45,33 +45,17 @@ struct Holder {
     bool __tpy_owned_ = true;
 
     // def __init__(self, payload: Ptr[T]) -> None:
-    //     self._payload = payload
-    explicit Holder(T* payload) : _payload(payload) {}
+    explicit Holder(T* payload);
     Holder(const Holder&) = delete;
     Holder& operator=(const Holder&) = delete;
-    Holder(Holder&& other) noexcept : _payload(std::move(other._payload)) {
-        other.__tpy_owned_ = false;
-    }
-    Holder& operator=(Holder&& other) noexcept {
-        if (this != &other) {
-            this->~Holder();
-            new (this) Holder(std::move(other));
-        }
-        return *this;
-    }
+    Holder(Holder&& other) noexcept;
+    Holder& operator=(Holder&& other) noexcept;
 
     // def __del__(self) -> None:
-    //     unsafe_release(self._payload)
-    ~Holder() {
-        if (!this->__tpy_owned_) return;
-        ::tpy::heap_release(this->_payload);
-    }
+    ~Holder();
 
     // def get(self) -> T:
-    //     return self._payload
-    ::tpy::val_or_ref_t<T> get() const {
-        return ::tpy::deref_check(this->_payload);
-    }
+    ::tpy::val_or_ref_t<T> get() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -91,6 +75,40 @@ inline Leaf::Leaf(std::string_view label) : label(label) {}
 inline std::string Leaf::kind() const {
     return (::tpy::str_concat("Leaf:", this->label));
 }
+
+// def __init__(self, payload: Ptr[T]) -> None:
+//     self._payload = payload
+template<typename T>
+inline Holder<T>::Holder(T* payload) : _payload(payload) {}
+
+template<typename T>
+inline Holder<T>::Holder(Holder&& other) noexcept : _payload(std::move(other._payload)) {
+    other.__tpy_owned_ = false;
+}
+template<typename T>
+inline Holder<T>& Holder<T>::operator=(Holder&& other) noexcept {
+    if (this != &other) {
+        this->~Holder();
+        new (this) Holder(std::move(other));
+    }
+    return *this;
+}
+
+// def __del__(self) -> None:
+//     unsafe_release(self._payload)
+template<typename T>
+inline Holder<T>::~Holder() {
+    if (!this->__tpy_owned_) return;
+    ::tpy::heap_release(this->_payload);
+}
+
+// def get(self) -> T:
+//     return self._payload
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Holder<T>::get() const {
+    return ::tpy::deref_check(this->_payload);
+}
+
 // def make[T, U: T, V: U, W: V](value: Own[W]) -> Own[Holder[T]]:
 //     return Holder[T](unsafe_take(value))
 template<typename T, typename U, typename V, typename W>

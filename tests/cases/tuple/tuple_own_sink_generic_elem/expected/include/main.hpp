@@ -38,42 +38,16 @@ struct Tally {
     std::vector<T> _items;
 
     // def __init__(self) -> None:
-    //     self._items = []
-    Tally() : _items(std::vector<T>{}) {}
+    Tally();
 
     // def add(self, x: Own[T]) -> None:
-    //     self._items.append(x)
-    void add(::tpy::own_param_t<T> x) {
-        this->_items.push_back(std::move(x));
-    }
+    void add(::tpy::own_param_t<T> x);
 
     // def get(self, i: int32) -> T:
-    //     return self._items[i]
-    ::tpy::val_or_ref_t<T> get(int32_t i) {
-        return ::tpy::__getitem__(this->_items, i);
-    }
+    ::tpy::val_or_ref_t<T> get(int32_t i);
 
     // def pairs(self) -> Own[list[tuple[T, int32]]]:
-    //     out: list[tuple[T, int32]] = []
-    //     i = 0
-    //     for it in self._items:
-    //         # Subject: the tuple literal at append's Own[tuple[T, int32]] slot.
-    //         out.append((copy(it), i))
-    //         i += 1
-    //     return out
-    std::vector<std::tuple<T, int32_t>> pairs() const {
-        std::vector<std::tuple<T, int32_t>> out = std::vector<std::tuple<T, int32_t>>{};
-        int32_t i = 0;
-        auto& __obj_0 = this->_items;
-        auto __beg_0 = __obj_0.begin();
-        auto __end_0 = __obj_0.end();
-        for (; __beg_0 != __end_0; ++__beg_0) {
-            const auto& it = *__beg_0;
-            out.push_back(std::tuple<T, int32_t>{T(it), i});
-            i = ::tpy::add_check<int32_t>(i, 1);
-        }
-        return out;
-    }
+    std::vector<std::tuple<T, int32_t>> pairs() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Tally";
 };
 
@@ -87,5 +61,48 @@ inline std::ostream& operator<<(std::ostream& os, const Tally<T>& obj) {
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Item::Item(int32_t n) : n(n) {}
+
+// def __init__(self) -> None:
+//     self._items = []
+template<typename T>
+inline Tally<T>::Tally() : _items(std::vector<T>{}) {}
+
+// def add(self, x: Own[T]) -> None:
+//     self._items.append(x)
+template<typename T>
+inline void Tally<T>::add(::tpy::own_param_t<T> x) {
+    this->_items.push_back(std::move(x));
+}
+
+// def get(self, i: int32) -> T:
+//     return self._items[i]
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Tally<T>::get(int32_t i) {
+    return ::tpy::__getitem__(this->_items, i);
+}
+
+// def pairs(self) -> Own[list[tuple[T, int32]]]:
+//     out: list[tuple[T, int32]] = []
+//     i = 0
+//     for it in self._items:
+//         # Subject: the tuple literal at append's Own[tuple[T, int32]] slot.
+//         out.append((copy(it), i))
+//         i += 1
+//     return out
+template<typename T>
+inline std::vector<std::tuple<T, int32_t>> Tally<T>::pairs() const {
+    std::vector<std::tuple<T, int32_t>> out = std::vector<std::tuple<T, int32_t>>{};
+    int32_t i = 0;
+    auto& __obj_0 = this->_items;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        const auto& it = *__beg_0;
+        out.push_back(std::tuple<T, int32_t>{T(it), i});
+        i = ::tpy::add_check<int32_t>(i, 1);
+    }
+    return out;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

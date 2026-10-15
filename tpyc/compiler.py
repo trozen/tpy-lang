@@ -40,6 +40,10 @@ from .type_def_registry import (
 )
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import ThirRejectError
+from .codegen_cpp.protocols import (
+    MemberKind, ReturnSlot, group_is_template, member_def,
+    record_emitted_members, return_slot_kind,
+)
 from .codegen_cpp.context import (
     cpp_module_path, default_module_namespace, get_include_path,
     import_init_targets, module_init_candidates, module_to_include_path,
@@ -51,10 +55,11 @@ from .typesys import (
     RecordInfo, FunctionInfo, ProtocolInfo, TypeAliasInfo,
     OwnType, OptionalType, UnionType, TupleType, PtrType, RefType, ReadonlyType,
     RecursiveUnionInfo, declares_whole_result_following, receiver_neutral_return,
-    is_fn_type, unwrap_ref_type, is_protocol_type, is_protocol_union,
+    unwrap_ref_type, types_held_by_value, param_types_held_by_value,
+    return_types_held_by_value, borrow_slot_types_held_by_value,
     accessor_role, clear_all_compilation_state, BUILTIN_RETURN_EXCEPTIONS,
 )
-from .type_def_registry import protocol_info_of, enum_info_of
+from .type_def_registry import enum_info_of
 from .module_names import module_from_qname, public_module_name
 from .macro_loader import MacroImportSettingsError, MacroRegistry
 from .build_cache import capture_input
@@ -86,59 +91,6 @@ if TYPE_CHECKING:
     from .typesys import ModuleInfo, ModuleVarInfo
 
 
-def _has_static_protocol_param(params) -> bool:
-    """Mirror codegen's static-protocol-param detection (see
-    `tpyc.codegen_cpp.protocols.ProtocolGenerator.get_all_protocol_params`)
-    using sema-level type predicates only. A static protocol param
-    forces the function to be emitted as a C++ template; a @dynamic
-    protocol param does not. Used by the completeness-graph reject
-    gate to recognize the same set of "in-header-bodied" functions
-    as codegen.
-    """
-    for _, ptype in params:
-        unwrapped = ptype
-        if isinstance(unwrapped, RefType):
-            unwrapped = unwrapped.wrapped
-        if isinstance(unwrapped, ReadonlyType):
-            unwrapped = unwrapped.wrapped
-        if isinstance(unwrapped, OwnType):
-            unwrapped = unwrapped.wrapped
-        if isinstance(unwrapped, OptionalType):
-            inner = unwrapped.inner
-            if is_protocol_type(inner) and isinstance(inner, NominalType):
-                pi = protocol_info_of(inner)
-                if pi is None or not pi.is_dynamic:
-                    return True
-            continue
-        if isinstance(unwrapped, UnionType) and is_protocol_union(unwrapped):
-            for m in unwrapped.members:
-                if isinstance(m, NominalType) and is_protocol_type(m):
-                    pi = protocol_info_of(m)
-                    if pi is None or not pi.is_dynamic:
-                        return True
-            continue
-        if is_protocol_type(unwrapped) and isinstance(unwrapped, NominalType):
-            pi = protocol_info_of(unwrapped)
-            if pi is None or not pi.is_dynamic:
-                return True
-    return False
-
-
-def _is_template_emitted_in_header(func) -> bool:
-    """True when codegen will emit the function's *definition* in the
-    .hpp rather than .cpp -- the gate-relevant predicate for
-    cycle-member functions and methods. Mirrors
-    `FunctionGenerator.is_template_function` plus @cpp_template stubs.
-    """
-    if func.type_params:
-        return True
-    if getattr(func, "cpp_template", None) is not None:
-        return True
-    if any(is_fn_type(unwrap_ref_type(p[1])) for p in func.params):
-        return True
-    if _has_static_protocol_param(func.params):
-        return True
-    return False
 
 
 def parse_default_int_type(name: str) -> TpyType:
@@ -1343,6 +1295,9 @@ class Compiler:
                                     implicit_stdlib_modules=self._expand_implicit_prefixes(visible),
                                     inl_modules=self._inl_modules_for(mod_name),
                                     emits_inl=self._module_emits_inl(mod_name),
+                                    # Without them a cycle member's sources
+                                    # lack the peer includes its bodies need.
+                                    module_cycles=self._cycle_peers,
                                     **kwargs)
         except ThirRejectError as err:
             if (err.filename is None and compiled.path is not None
@@ -2250,6 +2205,22 @@ class Compiler:
                             return found
             return None
 
+        def _first_held_peer(
+            held: Iterable[TpyType], current_module: str,
+        ) -> tuple[str, str] | None:
+            """(peer_module, type_name) of the first cycle-peer class (or
+            static protocol) among `held`, the classes a C++ form holds by
+            value, or None."""
+            for t in held:
+                if not (isinstance(t, NominalType)
+                        and (t.is_user_record
+                             or (t.is_protocol and not t.is_dynamic_protocol))):
+                    continue
+                module = _scc_peer_module(t._module_qname, current_module)
+                if module is not None:
+                    return (module, t.name)
+            return None
+
         for member in sorted(scc):
             compiled = self.modules.get(member)
             if compiled is None or compiled.analyzer is None:
@@ -2300,30 +2271,18 @@ class Compiler:
                             member, compiled.path, lineno=lineno_n,
                         )
 
-            # In-header-bodied functions: codegen emits the function
-            # *definition* in the .hpp when any of these holds:
-            # generic (type_params), @cpp_template stub, any Fn-typed
-            # param, or any static (non-@dynamic) protocol param. For
-            # cycle members, the .hpp only includes peer fwd headers,
-            # so any by-value cross-cycle peer in those signatures
-            # fails at C++ instantiation time. Reject at sema with a
-            # structured diagnostic. Mirrors
-            # `FunctionGenerator.is_template_function` so the gate's
-            # set of "templated" functions matches what codegen
-            # actually emits inline.
-            # An @overload group is header-emitted when ANY stub is a template,
-            # even if the impl signature is not -- mirror codegen's group-aware
-            # routing so the impl's signature (the union covering every stub) is
-            # still gated. Index template stubs by name (the impl shares it).
-            template_stub_fn_names = {
-                f.name for f in compiled.ast.functions
-                if f.is_overload_stub and _is_template_emitted_in_header(f)
-            }
+            # A body codegen defines in the .hpp sees the peer only through
+            # `<peer>_fwd.hpp`, so a by-value peer in its signature cannot
+            # compile; every other body of a cycle member is in the .cpp.
+            # Codegen's own placement decides which bodies, read from
+            # signatures and the overload groups registration collected.
+            overload_groups = compiled.analyzer.overload_groups
             for func in compiled.ast.functions:
                 if func.is_overload_stub:
                     continue
-                if not (_is_template_emitted_in_header(func)
-                        or func.name in template_stub_fn_names):
+                if not (func.cpp_template is not None
+                        or group_is_template(
+                            func, overload_groups.get(func) or [])):
                     continue
                 self._check_signature_for_cross_cycle_by_value(
                     func, member, import_component, compiled,
@@ -2332,56 +2291,46 @@ class Compiler:
                     finder=_find_complete_required_peer,
                 )
 
-            # Methods on cycle-member records: a non-generic record
-            # emits non-templated methods to .cpp, but generic records
-            # emit *all* methods inline in the header, and any
-            # individual method that is itself templated (type_params,
-            # Fn-typed param, static protocol param) emits its body
-            # inline regardless of the record. Walk both.
-            ast_records_by_name = {
-                r.name: r for r in compiled.ast.all_records()
-            }
-            for record_name, record_info in registry.records.items():
-                if record_info.defining_module != member:
+            for ast_record in compiled.ast.all_records():
+                record_info = registry.get_record(ast_record.name)
+                if (record_info is None or record_info.is_native
+                        or record_info.defining_module != member):
                     continue
-                record_is_generic = bool(record_info.type_params)
-                ast_record = ast_records_by_name.get(record_name)
-                if ast_record is None:
-                    continue
-                # Method overload groups -- `analyzer.overload_groups`
-                # is populated for methods only during body sema (in
-                # `_analyze_record_methods`), which has not run yet
-                # when this gate fires. Build the index locally from
-                # the AST instead. Codegen
-                # (`records.py:_method_can_be_out_of_line`) keeps any
-                # overload-dispatched impl inline-in-struct because
-                # each specialization is emitted under a different
-                # mangled name in the struct body, so the .hpp needs
-                # the peer's complete layout.
-                overload_dispatched_names = {
-                    m.name for m in ast_record.methods if m.is_overload_stub
-                }
-                for method in ast_record.methods:
-                    if method.is_overload_stub:
-                        continue
-                    method_inline = (
-                        record_is_generic
-                        or _is_template_emitted_in_header(method)
-                        # __init__/__del__ are always emitted inline
-                        # in the struct (codegen excludes them from
-                        # out-of-line emission), so their body needs
-                        # the peer's complete layout in the .hpp.
-                        or method.name in ("__init__", "__del__")
-                        or method.name in overload_dispatched_names
-                    )
-                    if not method_inline:
+                # Every member the record's C++ declares, as codegen places
+                # it; a member shim (`operator[]`, ...) is placed with its
+                # member.
+                emission = record_emitted_members(
+                    ast_record, overload_groups,
+                    compiled.analyzer.overload_twins)
+                for entry in emission.members:
+                    placed = member_def(entry.sig, cycle_member=True,
+                                        variant=entry.variant)
+                    if not (entry.kind is MemberKind.EXPANDED
+                            or placed.mode != "def_cpp"):
                         continue
                     self._check_signature_for_cross_cycle_by_value(
-                        method, member, import_component, compiled,
-                        name_label=f"'{record_name}.{method.name}'",
+                        entry.func, member, import_component, compiled,
+                        name_label=f"'{ast_record.name}.{entry.func.name}'",
                         where_label="method",
                         finder=_find_complete_required_peer,
                     )
+                # A plain class's friend operator is defined in the class, in
+                # the header, so what it holds by value must be complete
+                # there. A class template's friends are instantiated where
+                # used, with its member bodies (checked above).
+                if ast_record.type_params:
+                    continue
+                for shim in emission.shims:
+                    if shim.kind.friend:
+                        self._check_signature_for_cross_cycle_by_value(
+                            shim.targets[0].func, member, import_component, compiled,
+                            name_label=(f"'{ast_record.name}."
+                                        f"{shim.targets[0].func.name}'"),
+                            where_label="method",
+                            finder=_find_complete_required_peer,
+                            operator_finder=_first_held_peer,
+                            error_peer=_scc_peer_module,
+                        )
 
             # Recursive type aliases that reference cycle peers by-value
             # in their body. TPy synthesizes a wrapper struct for these,
@@ -2415,40 +2364,93 @@ class Compiler:
     def _check_signature_for_cross_cycle_by_value(
         self, func, member: str, import_component, compiled, *,
         name_label: str, where_label: str, finder,
+        operator_finder: Callable[[Iterable[TpyType], str],
+                                  tuple[str, str] | None] | None = None,
+        error_peer: Callable[[str | None, str], str | None] | None = None,
     ) -> None:
         """Walk a function/method signature for by-value cross-cycle
         peer references and raise a structured diagnostic if found.
 
         `finder` is the SCC-bound `_find_complete_required_peer`
         closure from the caller; it descends through containers /
-        unions / tuples / generic records. `import_component` is the
-        import cycle the diagnostic names.
+        unions / tuples / generic records. With ``operator_finder`` the
+        signature is that of the friend operator a plain class defines in
+        its struct, which needs complete only the classes its C++ parameter
+        and return forms hold by value, and the `@error_return` error type
+        (``error_peer`` maps its name to a peer module).
+        `import_component` is the import cycle the diagnostic names.
         """
-        positions: list[tuple[str, TpyType]] = [("return type", func.return_type)]
-        for pname, ptype in func.params:
-            positions.append((f"parameter '{pname}'", ptype))
-        for pos_label, pos_type in positions:
-            found = finder(unwrap_ref_type(pos_type), member)
-            if found is None:
-                continue
-            peer_mod, peer_name = found
-            cycle_repr = " <-> ".join(sorted(import_component))
-            lineno_n = func.loc.line if func.loc else None
-            raise CompileError(
-                f"Cyclic import: {pos_label} of {name_label} in "
-                f"'{member}' is '{peer_name}' from '{peer_mod}' by "
-                f"value. Generic, `Fn`-typed, static-protocol-typed, "
-                f"and `@cpp_template` {where_label}s (and methods on "
-                f"generic records, `__init__`/`__del__`, and "
-                f"overload-dispatched methods) are monomorphized at "
-                f"every call site, so their parameter and return "
-                f"types must be fully visible to callers -- which is "
-                f"not allowed across an import cycle. Pass the peer "
-                f"through a `Ptr[T]`, reference, or `@dynamic` "
-                f"protocol position, or move the {where_label} out "
-                f"of the cycle. Cycle: {cycle_repr}",
-                member, compiled.path, lineno=lineno_n,
-            )
+        found_at: tuple[str, tuple[str, str]] | None = None
+        if operator_finder is None:
+            positions = [("return type", func.return_type)]
+            positions.extend((f"parameter '{pname}'", ptype)
+                             for pname, ptype in func.params)
+            for pos_label, pos_type in positions:
+                found = finder(unwrap_ref_type(pos_type), member)
+                if found is not None:
+                    found_at = (pos_label, found)
+                    break
+        else:
+            held: list[tuple[str, Iterable[TpyType]]] = []
+            slot = return_slot_kind(func.return_type,
+                                    error_return=func.error_return is not None)
+            if slot is ReturnSlot.PLAIN:
+                held.append(("return type",
+                             return_types_held_by_value(func.return_type)))
+            elif slot is ReturnSlot.EXPECTED:
+                held.append(("return type",
+                             types_held_by_value(func.return_type)))
+            elif slot is ReturnSlot.EXPECTED_BORROW:
+                held.append(("return type",
+                             borrow_slot_types_held_by_value(
+                                 func.return_type)))
+            held.extend((f"parameter '{pname}'",
+                         param_types_held_by_value(ptype))
+                        for pname, ptype in func.params)
+            for pos_label, types in held:
+                found = operator_finder(types, member)
+                if found is not None:
+                    found_at = (pos_label, found)
+                    break
+            if (found_at is None and func.error_return
+                    and error_peer is not None):
+                peer_mod = error_peer(func.error_return, member)
+                if peer_mod is not None:
+                    found_at = ("error type",
+                                (peer_mod,
+                                 func.error_return.rsplit(".", 1)[-1]))
+        if found_at is None:
+            return
+        pos_label, (peer_mod, peer_name) = found_at
+        cycle_repr = " <-> ".join(sorted(import_component))
+        lineno_n = func.loc.line if func.loc else None
+        if operator_finder is not None:
+            why = ("An operator method of a class in an import cycle "
+                   "cannot take or return a class of another module in the "
+                   "cycle by value. A parameter can take a plain class (not "
+                   "a `ValueType`), a `Ptr[T]` or a `@dynamic` protocol "
+                   "instead, and a result that is one of the arguments can "
+                   "be returned as that plain class (not wrapped in "
+                   "`Own[...]`); for a newly built result, move one of the "
+                   "classes out of the cycle.")
+        else:
+            why = (f"The bodies of generic, `Fn`-typed, "
+                   f"static-protocol-typed and `@cpp_template` "
+                   f"{where_label}s (and of members of generic classes and "
+                   f"`@overload` variants returning a protocol such as "
+                   f"`Iterator[T]`) are compiled into every module that "
+                   f"uses them, so their parameter and return types must be "
+                   f"fully visible there -- which is not allowed across an "
+                   f"import cycle. Pass the peer through a `Ptr[T]`, "
+                   f"reference, or `@dynamic` "
+                   f"protocol position, or move the {where_label} out "
+                   f"of the cycle.")
+        raise CompileError(
+            f"Cyclic import: {pos_label} of {name_label} in "
+            f"'{member}' is '{peer_name}' from '{peer_mod}' by "
+            f"value. {why} Cycle: {cycle_repr}",
+            member, compiled.path, lineno=lineno_n,
+        )
 
     @staticmethod
     def _first_cycle_import_line(
@@ -4060,12 +4062,7 @@ class Compiler:
             self._check_no_errors(compiled)
             assert compiled.analyzer is not None
             codegen = self._make_codegen(compiled, options)
-            sources = self._run_codegen(
-                codegen, compiled, compiled.name,
-                # Without them a cycle member's sources lack the peer
-                # includes its bodies need.
-                cycle_peers=self._cycle_peers.get(compiled.name, frozenset()),
-            )
+            sources = self._run_codegen(codegen, compiled, compiled.name)
             return sources, codegen
 
     def generate_code_to_strings(self, compiled: CompiledModule,

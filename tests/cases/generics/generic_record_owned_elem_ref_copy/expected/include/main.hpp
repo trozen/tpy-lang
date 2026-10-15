@@ -41,9 +41,8 @@ struct Owned {
     T v;
 
     // def __init__(self, v: Own[T]) -> None:
-    //     self.v = v
     Owned() = default;
-    explicit Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+    explicit Owned(::tpy::own_param_t<T> v);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Owned";
 };
 
@@ -57,6 +56,12 @@ inline std::ostream& operator<<(std::ostream& os, const Owned<T>& obj) {
 // def __init__(self, n: int) -> None:
 //     self.n = n
 inline R::R(const ::tpy::BigInt& n) : n(n) {}
+
+// def __init__(self, v: Own[T]) -> None:
+//     self.v = v
+template<typename T>
+inline Owned<T>::Owned(::tpy::own_param_t<T> v) : v(std::move(v)) {}
+
 // def grab[T](src: list[T]) -> Own[Owned[T]]:
 //     o = Owned(copy(src[0]))  # tpyc: type(/Owned\[T\]/)
 //     return o

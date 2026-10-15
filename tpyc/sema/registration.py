@@ -47,7 +47,7 @@ from ..typesys import (
     attach_type_param_bounds,
     has_auto_readonly, has_auto_own,
     qualify_exception_name, ensure_qualified,
-    OptionalType,
+    OptionalType, UnionType, LiteralType, is_integer_type,
     C3LinearizationError,
     same_base_type,
     bare_name,
@@ -1475,6 +1475,8 @@ class TypeRegistrar:
                 )
             seen_method_names.add(method.name)
 
+        self._collect_method_overload_groups(record)
+
         # Extract native_field() renames on @native classes. The call is not a
         # real default -- it's stripped here so the const validation below
         # doesn't see it. Class-constant fields are handled separately in
@@ -1863,7 +1865,7 @@ class TypeRegistrar:
                 func_info.following_components = frozenset({RESULT_ROOT})
             # @inline: store the body expression for call-site inlining.
             # Body must be a single call statement. Cloned and substituted at call sites.
-            if method.is_inline and not method.is_stub:
+            if method.skip_codegen:
                 non_doc = [s for s in method.body
                            if not (isinstance(s, TpyExprStmt)
                                    and isinstance(s.expr, TpyStrLiteral))]
@@ -1898,22 +1900,24 @@ class TypeRegistrar:
                 # Accumulate overload stubs for this method name
                 methods.setdefault(method.name, []).append(func_info)
                 method_nodes.setdefault(method.name, []).append(method)
+            elif (self.ctx.overload_groups.get(method)
+                  or method in self.ctx.overload_twins):
+                # Implementation following stubs (or its clone twin): stubs
+                # are the callable overloads. Don't add the implementation to
+                # the method list -- callers resolve against stubs only.
+                pass
             elif (method.name in methods
-                  and method.name not in overload_names
                   and any(m.is_readonly != func_info.is_readonly
                           or m.is_consuming != func_info.is_consuming
                           for m in methods[method.name])):
                 # auto_readonly or auto_own clone: add the complementary overload
                 methods[method.name].append(func_info)
                 method_nodes[method.name].append(method)
-            elif method.name in methods:
-                # Implementation following stubs: stubs are the callable
-                # overloads. Don't add the implementation to the method list --
-                # callers resolve against stubs only.
-                pass
             else:
                 methods[method.name] = [func_info]
                 method_nodes[method.name] = [method]
+
+        self._validate_method_overload_groups(record)
 
         # Per-method same-param-diff-return check. Mirrors the free-function
         # check in register_overload_group, with the auto_readonly /
@@ -4083,7 +4087,7 @@ class TypeRegistrar:
         )
         self._stamp_result_borrows(func, info)
         # @inline: store body for call-site inlining
-        if func.is_inline and not func.is_stub:
+        if func.skip_codegen:
             non_doc = [s for s in func.body
                        if not (isinstance(s, TpyExprStmt)
                                and isinstance(s.expr, TpyStrLiteral))]
@@ -4174,6 +4178,268 @@ class TypeRegistrar:
         # user records) with qname-bearing types the codegen expects.
         func.params = list(resolved_params)
         func.return_type = resolved_return
+
+    def pair_overload_stubs(
+        self, defs: list[TpyFunction], prefix: str = "",
+    ) -> tuple[list[tuple[TpyFunction, list[TpyFunction]]],
+               dict[str, list[TpyFunction]]]:
+        """Pair a def list's `@overload` stubs with their implementations
+        (free functions or a record's methods): every non-stub def in
+        source order with the stubs it implements -- a name's pending stubs
+        go to the FIRST following non-stub, an `@auto_readonly`
+        implementation's mutable clone; [] for none -- and the `@dispatch`
+        sets, which have no implementation. Checks each group's decorator
+        form; ``prefix`` qualifies the names in its diagnostics."""
+        pending_stubs: dict[str, list[TpyFunction]] = {}
+        paired: list[tuple[TpyFunction, list[TpyFunction]]] = []
+        for func in defs:
+            if func.is_overload_stub:
+                pending_stubs.setdefault(func.name, []).append(func)
+                continue
+            stubs = pending_stubs.pop(func.name, None) or []
+            if stubs:
+                self.require_overload_form(stubs, prefix + func.name,
+                                           impl=func)
+            paired.append((func, stubs))
+        for name, stubs in pending_stubs.items():
+            self.require_overload_form(stubs, prefix + name, impl=None)
+        return paired, pending_stubs
+
+    def _collect_method_overload_groups(self, record: TpyRecord) -> None:
+        """Pair a record's overload groups, filling `ctx.overload_groups`
+        (implementation -> its stubs) and `ctx.overload_twins` (an
+        implementation's `@auto_readonly` / `@auto_own` clone twin -> the
+        implementation) before any reader runs. A
+        `@dispatch` set has no implementation and no entry. The stubs are
+        validated against the implementation once `Self` is substituted
+        (`_validate_method_overload_groups`)."""
+        paired, _ = self.pair_overload_stubs(record.methods,
+                                             f"{record.name}.")
+        impls: dict[str, TpyFunction] = {}
+        for method, stubs in paired:
+            if stubs:
+                self.ctx.overload_groups[method] = stubs
+                impls.setdefault(method.name, method)
+        # Any other def of an implementation's name: its clone twin (a
+        # further def of the name is not emitted either).
+        for method, stubs in paired:
+            impl = impls.get(method.name)
+            if impl is not None and not stubs:
+                self.ctx.overload_twins[method] = impl
+
+    def _validate_method_overload_groups(self, record: TpyRecord) -> None:
+        saved_type_params = self.ctx.record_ctx.type_params
+        # Resolved as body sema resolves them, under the record's type params.
+        self.ctx.record_ctx.type_params = record.type_params or None
+        try:
+            for method in record.methods:
+                stubs = self.ctx.overload_groups.get(method)
+                if stubs:
+                    self.validate_overload_signatures(
+                        method, stubs, f"{record.name}.{method.name}")
+        finally:
+            self.ctx.record_ctx.type_params = saved_type_params
+
+    def validate_overload_signatures(
+        self, impl: TpyFunction, stubs: list[TpyFunction], display_name: str,
+    ) -> None:
+        """Shared @overload stub validation (functions + methods).
+
+        Rules:
+        - Stub arity must be <= impl arity. When shorter, every missing trailing
+          impl param must have a default.
+        - Stub params must prefix-match impl params by name; stub types must be
+          compatible with impl types at each shared position (exact match or
+          LiteralType over the impl base for non-unions; subset of members for
+          unions).
+        - When any stub has fewer params than the impl, the impl may not use
+          keyword-only params, *args, or **kwargs.
+        - Union-typed impl params: stubs that include the param must only
+          reference members of the union; when every stub includes the param,
+          all members must be covered.
+        """
+        impl_defaults = impl.defaults if impl.defaults else []
+        has_short_arity = any(len(s.params) < len(impl.params) for s in stubs)
+        if has_short_arity:
+            if impl.keyword_only_start is not None:
+                raise SemanticError(
+                    f"@overload implementation '{display_name}' cannot have "
+                    f"keyword-only parameters when stubs have different arities",
+                    impl.loc,
+                )
+            if impl.vararg_name is not None:
+                raise SemanticError(
+                    f"@overload implementation '{display_name}' cannot have "
+                    f"*args when stubs have different arities",
+                    impl.loc,
+                )
+            if impl.kwarg_name is not None:
+                raise SemanticError(
+                    f"@overload implementation '{display_name}' cannot have "
+                    f"**kwargs when stubs have different arities",
+                    impl.loc,
+                )
+
+        for stub in stubs:
+            if len(stub.params) > len(impl.params):
+                raise SemanticError(
+                    f"@overload stub for '{display_name}' has "
+                    f"{len(stub.params)} parameter(s), more than the "
+                    f"implementation's {len(impl.params)}",
+                    stub.loc,
+                )
+            if len(stub.params) < len(impl.params):
+                for i in range(len(stub.params), len(impl.params)):
+                    impl_pname = impl.params[i][0]
+                    has_default = (i < len(impl_defaults)
+                                   and impl_defaults[i] is not None)
+                    if not has_default:
+                        raise SemanticError(
+                            f"@overload stub for '{display_name}' omits "
+                            f"parameter '{impl_pname}', but the implementation "
+                            f"has no default value for it",
+                            stub.loc,
+                        )
+            for (impl_pname, _), (stub_pname, _) in zip(impl.params, stub.params):
+                if impl_pname != stub_pname:
+                    raise SemanticError(
+                        f"@overload stub parameter '{stub_pname}' does not match "
+                        f"implementation parameter '{impl_pname}'",
+                        stub.loc,
+                    )
+
+        for param_idx, (pname, ptype) in enumerate(impl.params):
+            resolved = self.type_ops.resolve_type(ptype)
+            param_stubs = [s for s in stubs if param_idx < len(s.params)]
+            if not param_stubs:
+                # Every stub skips this param; impl default covers all call sites.
+                continue
+            if isinstance(resolved, OptionalType):
+                inner_covered = False
+                none_covered = False
+                for stub in param_stubs:
+                    stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                    if stub_ptype == resolved:
+                        inner_covered = True
+                        none_covered = True
+                        continue
+                    if stub_ptype == resolved.inner:
+                        inner_covered = True
+                        continue
+                    if is_void_like_type(stub_ptype):
+                        # `None` as a type annotation parses to VoidType; a
+                        # `None` literal's type is NoneType -- both mean "None".
+                        none_covered = True
+                        continue
+                    if isinstance(stub_ptype, LiteralType):
+                        if stub_ptype.base_type == resolved.inner:
+                            inner_covered = True
+                            continue
+                        if stub_ptype.is_int_base() and is_integer_type(resolved.inner):
+                            inner_covered = True
+                            continue
+                    raise SemanticError(
+                        f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
+                        f"is not compatible with implementation type '{resolved}'",
+                        stub.loc,
+                    )
+                # Exhaustiveness only when every stub includes this param; when
+                # some stubs skip it the impl default covers the missing path.
+                if len(param_stubs) == len(stubs):
+                    missing_parts = []
+                    if not inner_covered:
+                        missing_parts.append(str(resolved.inner))
+                    if not none_covered:
+                        missing_parts.append("None")
+                    if missing_parts:
+                        raise SemanticError(
+                            f"@overload stubs for '{display_name}' don't cover "
+                            f"all variants of parameter '{pname}': missing "
+                            f"{', '.join(missing_parts)}",
+                            impl.loc,
+                        )
+                continue
+            if not isinstance(resolved, UnionType):
+                for stub in param_stubs:
+                    stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                    if stub_ptype != resolved:
+                        # LiteralType is compatible with its base type family
+                        if isinstance(stub_ptype, LiteralType):
+                            if stub_ptype.base_type == resolved:
+                                continue
+                            if stub_ptype.is_int_base() and is_integer_type(resolved):
+                                continue
+                        raise SemanticError(
+                            f"@overload stub type '{stub_ptype}' for parameter '{pname}' "
+                            f"does not match implementation type '{resolved}'",
+                            stub.loc,
+                        )
+                continue
+            covered: set[TpyType] = set()
+            for stub in param_stubs:
+                stub_ptype = self.type_ops.resolve_type(stub.params[param_idx][1])
+                if isinstance(stub_ptype, UnionType):
+                    stub_members = set(stub_ptype.members)
+                else:
+                    stub_members = {stub_ptype}
+                extra = [m for m in stub_members if m not in resolved.members]
+                if extra:
+                    extra_names = ", ".join(str(m) for m in extra)
+                    raise SemanticError(
+                        f"@overload stub type for parameter '{pname}' includes "
+                        f"{extra_names} which is not in the implementation's "
+                        f"union type '{resolved}'",
+                        stub.loc,
+                    )
+                covered.update(stub_members)
+            # Only require full union coverage when every stub includes the param.
+            # If some stubs skip it, the impl default handles those call sites.
+            if len(param_stubs) == len(stubs):
+                missing = [m for m in resolved.members if m not in covered]
+                if missing:
+                    missing_names = ", ".join(str(m) for m in missing)
+                    raise SemanticError(
+                        f"@overload stubs for '{display_name}' don't cover all "
+                        f"variants of parameter '{pname}': missing {missing_names}",
+                        impl.loc,
+                    )
+
+    @staticmethod
+    def require_overload_form(
+        stubs: list[TpyFunction], display_name: str, impl: TpyFunction | None,
+    ) -> None:
+        """Check a same-named group against its decorator's contract.
+
+        The parser already validated each def alone (a @overload stub is
+        bodyless, a @dispatch variant is self-contained); the group-level
+        half is that the two decorators never mix under one name, that a
+        @overload set ends in an implementation, and that a @dispatch set
+        does not.
+        """
+        form = stubs[0].overload_form
+        for stub in stubs[1:]:
+            if stub.overload_form is not form:
+                raise SemanticError(
+                    f"'{display_name}' mixes @overload and @dispatch; a name "
+                    f"is either a set of @overload stubs with one trailing "
+                    f"implementation or a set of @dispatch variants",
+                    stub.loc,
+                )
+        if form is OverloadForm.OVERLOAD and impl is None:
+            raise SemanticError(
+                f"@overload stubs for '{display_name}' have no implementation; "
+                f"add a trailing `def {stubs[0].name}` without @overload, or "
+                f"use @dispatch for variants that are their own implementation",
+                stubs[0].loc,
+            )
+        if form is OverloadForm.DISPATCH and impl is not None:
+            raise SemanticError(
+                f"@dispatch variants of '{display_name}' cannot be followed by "
+                f"a trailing implementation: each variant is its own "
+                f"implementation; use @overload stubs if one implementation "
+                f"serves every signature",
+                impl.loc,
+            )
 
     def register_overload_group(self, stubs: list[TpyFunction],
                                 impl: TpyFunction | None,

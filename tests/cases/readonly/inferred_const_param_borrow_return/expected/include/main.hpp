@@ -86,15 +86,9 @@ struct K {
     // def second(self, first: B, other: B) -> Rec:
     Rec& second(B& first, B& other) const;
 
-    // # the method's OWN type parameter: the inferred-const signature picks
-    // # `val_or_ref_t<U>` / `param_val_or_ref_t<U>` over the const forms, which
-    // # only a REFERENCE instantiation mutated through the result can tell apart
     // def echo[U](self, v: U) -> U:
-    //     return v
     template<typename U>
-    ::tpy::val_or_ref_t<U> echo(::tpy::param_val_or_ref_t<U> v) const {
-        return ::tpy::param_to_return<U>(v);
-    }
+    ::tpy::val_or_ref_t<U> echo(::tpy::param_val_or_ref_t<U> v) const;
 
     // @readonly
     // def peek(self, other: B) -> readonly[Rec]:
@@ -114,17 +108,11 @@ struct G {
     T tag;
 
     // def __init__(self, tag: T) -> None:
-    //     # the field owns its value, and a reference-typed T would be copied in
-    //     self.tag = tag  # tpyc: warning(/may copy T into field/)
     G() = default;
-    explicit G(::tpy::readonly_form_t<T> tag) : tag(tag) {}
+    explicit G(::tpy::readonly_form_t<T> tag);
 
-    // # method of a generic record
     // def rec(self, other: B) -> Rec:
-    //     return other.m
-    Rec& rec(B& other) const {
-        return other.m;
-    }
+    Rec& rec(B& other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.G";
 };
 
@@ -207,5 +195,30 @@ inline Rec& K::second(B& first, B& other) const {
 inline const Rec& K::peek(const B& other) const {
     return other.m;
 }
+
+// # the method's OWN type parameter: the inferred-const signature picks
+// # `val_or_ref_t<U>` / `param_val_or_ref_t<U>` over the const forms, which
+// # only a REFERENCE instantiation mutated through the result can tell apart
+// def echo[U](self, v: U) -> U:
+//     return v
+template<typename U>
+inline ::tpy::val_or_ref_t<U> K::echo(::tpy::param_val_or_ref_t<U> v) const {
+    return ::tpy::param_to_return<U>(v);
+}
+
+// def __init__(self, tag: T) -> None:
+//     # the field owns its value, and a reference-typed T would be copied in
+//     self.tag = tag  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline G<T>::G(::tpy::readonly_form_t<T> tag) : tag(tag) {}
+
+// # method of a generic record
+// def rec(self, other: B) -> Rec:
+//     return other.m
+template<typename T>
+inline Rec& G<T>::rec(B& other) const {
+    return other.m;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

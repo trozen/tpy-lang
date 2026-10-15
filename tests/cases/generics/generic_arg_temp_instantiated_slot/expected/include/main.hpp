@@ -109,15 +109,11 @@ struct Boxed {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = copy(v)
     Boxed() = default;
-    explicit Boxed(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit Boxed(::tpy::readonly_form_t<T> v);
 
     // def holds(self, other: T) -> bool:  # tpyc: ok
-    //     return True
-    bool holds(::tpy::readonly_form_t<T> other) const {
-        return true;
-    }
+    bool holds(::tpy::readonly_form_t<T> other) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Boxed";
 };
 
@@ -345,6 +341,19 @@ inline std::string Guard::__enter__() const {
 inline void Guard::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
     std::cout << "with_body_exit" << "\n" << ::tpy::check_signals;
 }
+
+// def __init__(self, v: T) -> None:
+//     self.v = copy(v)
+template<typename T>
+inline Boxed<T>::Boxed(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// def holds(self, other: T) -> bool:  # tpyc: ok
+//     return True
+template<typename T>
+inline bool Boxed<T>::holds(::tpy::readonly_form_t<T> other) const {
+    return true;
+}
+
 // def anyslot[T](name: str, v: T) -> bool:
 //     return name != ""
 template<typename T>

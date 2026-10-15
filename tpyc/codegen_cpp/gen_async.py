@@ -84,7 +84,7 @@ from . import emit_prims
 from .context import (INDENT, escape_cpp_name, CodeGenError, FinallyContext,
                       FrameSourceUnnameable, qualified_cpp_name,
                       ternary_iterable_lends_storage)
-from .protocols import protocol_param_template_name, fn_param_template_name
+from .protocols import protocol_param_template_name, fn_param_template_name, signature_is_template
 from .functions import default_to_cpp, default_emittable
 from . import resumable_cfg as rcfg
 from .frame_fields import FrameField, order_frame_fields
@@ -613,16 +613,9 @@ class AsyncCoroCodegen:
         _const_ref, _deep_const = self._frame_capture_const_names(
             func, record_name)
         if record_name:
-            # Match the factory-site spelling (generator.py:1177, :1252):
-            # convert dotted nested-class names to C++ scope syntax (`Outer.Inner`
-            # -> `Outer::Inner`) before escaping, then template-qualify for a
-            # generic class (`Box[T]` -> `Box<T>&`) -- the bare class name in
-            # a type position outside the class body is ill-formed for
-            # templates.
-            cpp_record = escape_cpp_name(record_name.replace(".", "::"))
-            record_tps = self._record_template_args(record_name)
-            if record_tps:
-                cpp_record = f"{cpp_record}<{', '.join(record_tps)}>"
+            # The bare class name of a generic class in a type position
+            # outside the class body is ill-formed: spell `Box<T>`.
+            cpp_record = self.functions.protocols.record_cpp_qualifier(record_name)
             const_prefix = "const " if func.is_readonly else ""
             recv_type = f"{const_prefix}{cpp_record}"
             out.append(_CoroParam(
@@ -911,36 +904,6 @@ class AsyncCoroCodegen:
                 if func.is_capture(pname)
                 or is_fn_type(unwrap_readonly(unwrap_ref_type(ptype)))]
 
-    def _record_template_args(self, record_name: str | None) -> tuple[str, ...]:
-        """Type params of the enclosing record for a method, or () for a free
-        function / method on a non-generic class. A method on `class Box[T]`
-        contributes T to the coro struct's template header so the struct can
-        reference `Box<T>` in the self-capture field."""
-        if not record_name:
-            return ()
-        info = self.ctx.analyzer.registry.get_record(record_name)
-        if info is None or not info.type_params:
-            return ()
-        return tuple(info.type_params)
-
-    def _record_template_parts(self, record_name: str | None) -> list[str]:
-        """Rendered template-header parts for the enclosing record's type
-        params, mirroring `protocols.gen_record_template_parts` so out-of-class
-        member-def headers spell the same constrained form as the class
-        declaration (`Iterable<int32_t> T`, not bare `typename T`). Without
-        this, an out-of-class definition's parameter-list is non-equivalent to
-        the in-class declaration's and C++ rejects with a constraint
-        mismatch."""
-        if not record_name:
-            return []
-        info = self.ctx.analyzer.registry.get_record(record_name)
-        if info is None or not info.type_params:
-            return []
-        return self.functions.protocols.gen_record_template_parts(
-            list(info.type_params),
-            info.type_param_bounds or {},
-            info.type_param_kinds)
-
     def _is_templated_coro(self, func: TpyFunction,
                             record_name: str | None = None) -> bool:
         """True iff the coro/generator struct is a C++ template -- because
@@ -954,17 +917,16 @@ class AsyncCoroCodegen:
         `CodeGenerator._emit_generator_next` moves to `<mod>_inl.hpp` when the
         module emits one (`Compiler._module_emits_inl` decides that from the
         AST)."""
-        return (bool(func.type_params)
-                or bool(self._protocol_template_parts(func))
-                or bool(self._fn_template_parts(func))
-                or bool(self._record_template_parts(record_name)))
+        return (bool(self.functions.protocols.record_template_args(record_name))
+                or signature_is_template(func)
+                or bool(self._fn_template_parts(func)))
 
     def _emit_template_header(self, out: "TextIO", func: TpyFunction,
                                 *, indent: str = "",
                                 record_name: str | None = None) -> bool:
         proto_parts = self._protocol_template_parts(func)
         fn_parts = self._fn_template_parts(func)
-        record_parts = self._record_template_parts(record_name)
+        record_parts = self.functions.protocols.record_template_parts(record_name)
         if (not func.type_params and not proto_parts and not fn_parts
                 and not record_parts):
             return False
@@ -997,7 +959,7 @@ class AsyncCoroCodegen:
         template of a class template"; the flat form `_emit_template_header`
         produces declares a different entity and triggers
         no-declaration-matches at the in-class declaration."""
-        record_parts = self._record_template_parts(record_name)
+        record_parts = self.functions.protocols.record_template_parts(record_name)
         if record_parts:
             out.write(f"{indent}template <{', '.join(record_parts)}>\n")
         proto_parts = self._protocol_template_parts(func)
@@ -1029,7 +991,7 @@ class AsyncCoroCodegen:
                   if p.kind is _CoroParamKind.STATIC_PROTOCOL]
         extras += [p.field_type for p in cparams
                    if p.kind in (_CoroParamKind.FN, _CoroParamKind.CAPTURE)]
-        all_args = (list(self._record_template_args(record_name))
+        all_args = (list(self.functions.protocols.record_template_args(record_name))
                     + list(func.type_params) + extras)
         if not all_args:
             return bare

@@ -105,11 +105,7 @@ struct Bag {
     // def __len__(self) -> int32:
     int32_t __len__() const;
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -131,6 +127,12 @@ inline Bag::Bag(int32_t n) : n(n) {}
 //     return self.n
 inline int32_t Bag::__len__() const {
     return this->n;
+}
+
+inline size_t Bag::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 void __tpy_init();
 } // namespace tpyapp::main

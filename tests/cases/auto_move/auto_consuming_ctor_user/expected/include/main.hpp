@@ -20,10 +20,9 @@ struct Bag {
     std::vector<int32_t> items;
 
     // def __init__(self, src: Iterable[Own[int32]]) -> None:
-    //     self.items = list(src)
     Bag() = default;
     template<::tpystd::typing::Iterable<int32_t> T_src>
-    explicit Bag(T_src&& src) : items(::tpy::construct<std::vector<int32_t>>(src)) {}
+    explicit Bag(T_src&& src);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bag";
 };
 
@@ -31,6 +30,12 @@ inline std::ostream& operator<<(std::ostream& os, const Bag& obj) {
     ::tpy::print_object_default(os, "Bag", obj);
     return os;
 }
+
+
+// def __init__(self, src: Iterable[Own[int32]]) -> None:
+//     self.items = list(src)
+template<::tpystd::typing::Iterable<int32_t> T_src>
+inline Bag::Bag(T_src&& src) : items(::tpy::construct<std::vector<int32_t>>(src)) {}
 
 void __tpy_init();
 } // namespace tpyapp::main

@@ -21,21 +21,14 @@ struct Grid {
     T _value;
 
     // def __init__(self, value: T) -> None:
-    //     self._value = value
     Grid() = default;
-    explicit Grid(::tpy::readonly_form_t<T> value) : _value(value) {}
+    explicit Grid(::tpy::readonly_form_t<T> value);
 
     // def copy(self) -> Own[Grid[T, N]]:
-    //     return Grid[T, N](self._value)
-    Grid<T, N> copy() {
-        return Grid<T, N>(this->_value);
-    }
+    Grid<T, N> copy();
 
     // def with_value(self, value: T) -> Own[Grid[T, N]]:
-    //     return Grid[T, N](value)
-    Grid<T, N> with_value(::tpy::param_val_or_ref_t<T> value) const {
-        return Grid<T, N>(value);
-    }
+    Grid<T, N> with_value(::tpy::param_val_or_ref_t<T> value) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Grid";
 };
 
@@ -43,6 +36,26 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Grid<T, N>& obj) {
     ::tpy::print_object_default(os, "Grid", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self._value = value
+template<typename T, std::size_t N>
+inline Grid<T, N>::Grid(::tpy::readonly_form_t<T> value) : _value(value) {}
+
+// def copy(self) -> Own[Grid[T, N]]:
+//     return Grid[T, N](self._value)
+template<typename T, std::size_t N>
+inline Grid<T, N> Grid<T, N>::copy() {
+    return Grid<T, N>(this->_value);
+}
+
+// def with_value(self, value: T) -> Own[Grid[T, N]]:
+//     return Grid[T, N](value)
+template<typename T, std::size_t N>
+inline Grid<T, N> Grid<T, N>::with_value(::tpy::param_val_or_ref_t<T> value) const {
+    return Grid<T, N>(value);
 }
 
 void __tpy_init();

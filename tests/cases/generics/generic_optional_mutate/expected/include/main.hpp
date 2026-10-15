@@ -42,23 +42,11 @@ struct Container {
     bool _has;
 
     // def __init__(self, value: T) -> None:
-    //     self._value = value
-    //     self._has = True
     Container() = default;
-    explicit Container(::tpy::readonly_form_t<T> value)
-        : _value(value),
-          _has(true) {}
+    explicit Container(::tpy::readonly_form_t<T> value);
 
     // def get(self) -> T | None:
-    //     if self._has:
-    //         return self._value
-    //     return None
-    T* get() {
-        if (this->_has) {
-            return &(this->_value);
-        }
-        return nullptr;
-    }
+    T* get();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -75,5 +63,26 @@ inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
 inline Point::Point(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// def __init__(self, value: T) -> None:
+//     self._value = value
+//     self._has = True
+template<typename T>
+inline Container<T>::Container(::tpy::readonly_form_t<T> value)
+    : _value(value),
+      _has(true) {}
+
+// def get(self) -> T | None:
+//     if self._has:
+//         return self._value
+//     return None
+template<typename T>
+inline T* Container<T>::get() {
+    if (this->_has) {
+        return &(this->_value);
+    }
+    return nullptr;
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

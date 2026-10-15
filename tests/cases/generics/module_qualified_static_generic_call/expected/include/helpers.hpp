@@ -17,17 +17,23 @@ struct Util {
 
     // @staticmethod
     // def second[T](a: T, b: T) -> T:
-    //     return b
     template<typename T>
-    static ::tpy::val_or_ref_t<T> second(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
-        return ::tpy::param_to_return<T>(b);
-    }
+    static ::tpy::val_or_ref_t<T> second(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b);
     static constexpr std::string_view __tpy_class_name__ = "helpers.Util";
 };
 
 inline std::ostream& operator<<(std::ostream& os, const Util& obj) {
     ::tpy::print_object_default(os, "Util", obj);
     return os;
+}
+
+
+// @staticmethod
+// def second[T](a: T, b: T) -> T:
+//     return b
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Util::second(::tpy::param_val_or_ref_t<T> a, ::tpy::param_val_or_ref_t<T> b) {
+    return ::tpy::param_to_return<T>(b);
 }
 
 void __tpy_init();

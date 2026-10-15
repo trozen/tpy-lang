@@ -20,10 +20,7 @@ struct Container {
 
 
     // def get_size_as_bigint(self) -> int:
-    //     return N  # N coerces to BigInt
-    ::tpy::BigInt get_size_as_bigint() const {
-        return ::tpy::BigInt(static_cast<int64_t>(N));
-    }
+    ::tpy::BigInt get_size_as_bigint() const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -31,6 +28,14 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Container<T, N>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def get_size_as_bigint(self) -> int:
+//     return N  # N coerces to BigInt
+template<typename T, std::size_t N>
+inline ::tpy::BigInt Container<T, N>::get_size_as_bigint() const {
+    return ::tpy::BigInt(static_cast<int64_t>(N));
 }
 
 void __tpy_init();

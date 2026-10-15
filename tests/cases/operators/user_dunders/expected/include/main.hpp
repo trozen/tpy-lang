@@ -104,11 +104,7 @@ struct Vec2 {
         return lhs.__eq__(other);
     }
 
-    size_t size() const {
-        auto len = __len__();
-        if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
-        return static_cast<size_t>(len);
-    }
+    size_t size() const;
 
     friend Vec2 operator-(const Vec2& operand) {
         return operand.__neg__();
@@ -333,6 +329,12 @@ inline Vec2& Vec2::__isub__(const Vec2& other) {
     this->x = ::tpy::sub_check<int32_t>(this->x, other.x);
     this->y = ::tpy::sub_check<int32_t>(this->y, other.y);
     return (*this);
+}
+
+inline size_t Vec2::size() const {
+    auto len = __len__();
+    if (len < 0) ::tpy::raise<::tpy::ValueError>("__len__() should return >= 0");
+    return static_cast<size_t>(len);
 }
 
 // def __init__(self, value: int32) -> None:

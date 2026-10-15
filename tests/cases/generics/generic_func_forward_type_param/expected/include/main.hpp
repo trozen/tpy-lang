@@ -51,10 +51,7 @@ struct Container {
 
 
     // def forward_val(self) -> T:
-    //     return identity[T](self.val)  # tpyc: ok
-    ::tpy::val_or_ref_t<T> forward_val() {
-        return ::tpyapp::main::identity<T>(this->val);
-    }
+    ::tpy::val_or_ref_t<T> forward_val();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Container";
 };
 
@@ -62,6 +59,14 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Container<T>& obj) {
     ::tpy::print_object_default(os, "Container", obj);
     return os;
+}
+
+
+// def forward_val(self) -> T:
+//     return identity[T](self.val)  # tpyc: ok
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Container<T>::forward_val() {
+    return ::tpyapp::main::identity<T>(this->val);
 }
 
 // def sink[T](x: Own[T]) -> None:

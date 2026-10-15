@@ -2868,6 +2868,14 @@ class SemanticContext:
     # --- Record context ---
     record_ctx: RecordContext = field(default_factory=RecordContext)
 
+    # @overload groups: implementation -> its stubs, in source order. Filled
+    # at registration, for free functions and methods alike.
+    overload_groups: IdentityMap = field(default_factory=IdentityMap)
+    # Every other def of a method `@overload` implementation's name -> that
+    # implementation: its `@auto_readonly` / `@auto_own` clone twin, never
+    # emitted nor called (the stubs' specializations carry both halves).
+    overload_twins: IdentityMap = field(default_factory=IdentityMap)
+
     # --- Type cache ---
     expr_types: IdentityMap = field(default_factory=IdentityMap)
     var_types: IdentityMap = field(default_factory=IdentityMap)

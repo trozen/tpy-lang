@@ -50,13 +50,9 @@ struct Box {
     // def __getitem__(self, want: int32) -> Rec | None:
     const Rec* __getitem__(int32_t want) const;
 
-    const Rec* operator[](int32_t want) const {
-        return __getitem__(want);
-    }
+    const Rec* operator[](int32_t want) const;
 
-    Rec* operator[](int32_t want) {
-        return __getitem__(want);
-    }
+    Rec* operator[](int32_t want);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -74,42 +70,18 @@ struct GenBox {
     V _v;
 
     // def __init__(self, k: K, v: V):
-    //     self._k = k
-    //     self._v = v
     GenBox() = default;
-    explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
-        : _k(k),
-          _v(v) {}
+    explicit GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v);
 
     // def __getitem__(self, want: int32) -> V | None:
-    //     if want > 0:
-    //         return self._v
-    //     return None
-    V* __getitem__(int32_t want) {
-        if ((want > 0)) {
-            return &(this->_v);
-        }
-        return nullptr;
-    }
+    V* __getitem__(int32_t want);
 
     // def __getitem__(self, want: int32) -> V | None:
-    //     if want > 0:
-    //         return self._v
-    //     return None
-    const V* __getitem__(int32_t want) const {
-        if ((want > 0)) {
-            return &(this->_v);
-        }
-        return nullptr;
-    }
+    const V* __getitem__(int32_t want) const;
 
-    const V* operator[](int32_t want) const {
-        return __getitem__(want);
-    }
+    const V* operator[](int32_t want) const;
 
-    V* operator[](int32_t want) {
-        return __getitem__(want);
-    }
+    V* operator[](int32_t want);
     static constexpr std::string_view __tpy_class_name__ = "__main__.GenBox";
 };
 
@@ -161,5 +133,56 @@ inline const Rec* Box::__getitem__(int32_t want) const {
     }
     return nullptr;
 }
+
+inline const Rec* Box::operator[](int32_t want) const {
+    return __getitem__(want);
+}
+
+inline Rec* Box::operator[](int32_t want) {
+    return __getitem__(want);
+}
+
+// def __init__(self, k: K, v: V):
+//     self._k = k
+//     self._v = v
+template<typename K, typename V>
+inline GenBox<K, V>::GenBox(::tpy::readonly_form_t<K> k, ::tpy::readonly_form_t<V> v)
+    : _k(k),
+      _v(v) {}
+
+// def __getitem__(self, want: int32) -> V | None:
+//     if want > 0:
+//         return self._v
+//     return None
+template<typename K, typename V>
+inline V* GenBox<K, V>::__getitem__(int32_t want) {
+    if ((want > 0)) {
+        return &(this->_v);
+    }
+    return nullptr;
+}
+
+// def __getitem__(self, want: int32) -> V | None:
+//     if want > 0:
+//         return self._v
+//     return None
+template<typename K, typename V>
+inline const V* GenBox<K, V>::__getitem__(int32_t want) const {
+    if ((want > 0)) {
+        return &(this->_v);
+    }
+    return nullptr;
+}
+
+template<typename K, typename V>
+inline const V* GenBox<K, V>::operator[](int32_t want) const {
+    return __getitem__(want);
+}
+
+template<typename K, typename V>
+inline V* GenBox<K, V>::operator[](int32_t want) {
+    return __getitem__(want);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

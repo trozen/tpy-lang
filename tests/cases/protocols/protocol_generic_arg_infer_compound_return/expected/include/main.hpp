@@ -34,21 +34,14 @@ struct Cell {
     T value;
 
     // def __init__(self, value: T) -> None:
-    //     self.value = value
     Cell() = default;
-    explicit Cell(::tpy::readonly_form_t<T> value) : value(value) {}
+    explicit Cell(::tpy::readonly_form_t<T> value);
 
     // def pair(self) -> tuple[T, int32]:
-    //     return (self.value, int32(1))
-    std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair() {
-        return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), 1};
-    }
+    std::tuple<::tpy::val_or_ptr_t<T>, int32_t> pair();
 
     // def consume(self, p: tuple[T, int32]) -> int32:
-    //     return p[1]
-    int32_t consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& p) const {
-        return std::get<1>(p);
-    }
+    int32_t consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& p) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -56,6 +49,26 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
     ::tpy::print_object_default(os, "Cell", obj);
     return os;
+}
+
+
+// def __init__(self, value: T) -> None:
+//     self.value = value
+template<typename T>
+inline Cell<T>::Cell(::tpy::readonly_form_t<T> value) : value(value) {}
+
+// def pair(self) -> tuple[T, int32]:
+//     return (self.value, int32(1))
+template<typename T>
+inline std::tuple<::tpy::val_or_ptr_t<T>, int32_t> Cell<T>::pair() {
+    return std::tuple<::tpy::val_or_ptr_t<T>, int32_t>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), 1};
+}
+
+// def consume(self, p: tuple[T, int32]) -> int32:
+//     return p[1]
+template<typename T>
+inline int32_t Cell<T>::consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_t>& p) const {
+    return std::get<1>(p);
 }
 
 // # Return position: T inferred from `pair()`'s tuple[T, int32] return.

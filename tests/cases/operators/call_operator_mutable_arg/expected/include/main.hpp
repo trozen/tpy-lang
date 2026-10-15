@@ -40,9 +40,7 @@ struct Bumper {
     // def __call__(self, x: Node) -> int32:
     int32_t __call__(Node& x) const;
 
-    int32_t operator()(Node& x) const {
-        return __call__(x);
-    }
+    int32_t operator()(Node& x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Bumper";
 };
 
@@ -67,6 +65,10 @@ inline Bumper::Bumper() {
 inline int32_t Bumper::__call__(Node& x) const {
     x.v = ::tpy::add_check<int32_t>(x.v, 1);
     return x.v;
+}
+
+inline int32_t Bumper::operator()(Node& x) const {
+    return __call__(x);
 }
 void __tpy_init();
 } // namespace tpyapp::main

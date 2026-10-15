@@ -1040,13 +1040,9 @@ struct OpRight {
         return rhs.__radd__(x);
     }
 
-    auto operator*() -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() -> decltype(__deref__());
 
-    auto operator*() const -> decltype(__deref__()) {
-        return __deref__();
-    }
+    auto operator*() const -> decltype(__deref__());
     static constexpr std::string_view __tpy_class_name__ = "__main__.OpRight";
 };
 
@@ -1562,6 +1558,14 @@ inline const OpPoint& OpRight::__deref__() const {
 //     return 30
 inline int32_t OpRight::__radd__(const OpLeft& x) const {
     return 30;
+}
+
+inline auto OpRight::operator*() -> decltype(__deref__()) {
+    return __deref__();
+}
+
+inline auto OpRight::operator*() const -> decltype(__deref__()) {
+    return __deref__();
 }
 
 // def __init__(self) -> None:

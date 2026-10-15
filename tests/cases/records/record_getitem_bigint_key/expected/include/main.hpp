@@ -28,9 +28,7 @@ struct SparseCounter {
     // def __setitem__(self, key: int, value: int32) -> None:
     void __setitem__(const ::tpy::BigInt& key, int32_t value);
 
-    int32_t operator[](const ::tpy::BigInt& key) const {
-        return __getitem__(key);
-    }
+    int32_t operator[](const ::tpy::BigInt& key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.SparseCounter";
 };
 
@@ -54,6 +52,10 @@ inline int32_t SparseCounter::__getitem__(const ::tpy::BigInt& key) const {
 //     self.data[key] = value
 inline void SparseCounter::__setitem__(const ::tpy::BigInt& key, int32_t value) {
     ::tpy::__setitem__(this->data, key, value);
+}
+
+inline int32_t SparseCounter::operator[](const ::tpy::BigInt& key) const {
+    return __getitem__(key);
 }
 void __tpy_init();
 } // namespace tpyapp::main

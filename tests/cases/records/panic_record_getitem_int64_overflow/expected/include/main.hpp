@@ -28,9 +28,7 @@ struct WidePages {
     // def __setitem__(self, key: int64, value: int32) -> None:
     void __setitem__(int64_t key, int32_t value);
 
-    int32_t operator[](int64_t key) const {
-        return __getitem__(key);
-    }
+    int32_t operator[](int64_t key) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.WidePages";
 };
 
@@ -54,6 +52,10 @@ inline int32_t WidePages::__getitem__(int64_t key) const {
 //     self.data[key] = value
 inline void WidePages::__setitem__(int64_t key, int32_t value) {
     ::tpy::__setitem__(this->data, key, value);
+}
+
+inline int32_t WidePages::operator[](int64_t key) const {
+    return __getitem__(key);
 }
 void __tpy_init();
 } // namespace tpyapp::main

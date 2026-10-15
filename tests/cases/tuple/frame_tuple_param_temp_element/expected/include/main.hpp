@@ -233,15 +233,11 @@ struct Holder {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     self.value = value
     Holder() = default;
-    explicit Holder(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+    explicit Holder(::tpy::own_param_t<T> value);
 
     // def pair(self) -> tuple[T, int]:
-    //     return (self.value, 1)
-    std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt> pair() {
-        return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), ::tpy::BigInt(1)};
-    }
+    std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt> pair();
     static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
 };
 
@@ -683,6 +679,19 @@ inline ::tpy::BigInt U::bump(A& a, std::string_view s) const {
     x.v = (x.v) + (::tpy::BigInt(1));
     return a.v;
 }
+
+// def __init__(self, value: Own[T]) -> None:
+//     self.value = value
+template<typename T>
+inline Holder<T>::Holder(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+
+// def pair(self) -> tuple[T, int]:
+//     return (self.value, 1)
+template<typename T>
+inline std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt> Holder<T>::pair() {
+    return std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>{::tpy::to_val_or_ptr<::tpy::val_or_ptr_t<T>>(this->value), ::tpy::BigInt(1)};
+}
+
 // def peek[T](p: tuple[T, int]) -> int:
 //     return p[1]
 template<typename T>

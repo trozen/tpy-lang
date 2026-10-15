@@ -26,21 +26,13 @@ struct Buffer {
     std::array<T, N> data;
 
     // def __init__(self) -> None:
-    //     pass
-    Buffer() {
-    }
+    Buffer();
 
     // def get_data(self) -> Array[T, N]:
-    //     return self.data
-    std::array<T, N>& get_data() {
-        return this->data;
-    }
+    std::array<T, N>& get_data();
 
     // def set_data(self, arr: Array[T, N]) -> None:
-    //     self.data = arr
-    void set_data(const std::array<T, N>& arr) {
-        this->data = arr;
-    }
+    void set_data(const std::array<T, N>& arr);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Buffer";
 };
 
@@ -48,6 +40,27 @@ template<typename T, std::size_t N>
 inline std::ostream& operator<<(std::ostream& os, const Buffer<T, N>& obj) {
     ::tpy::print_object_default(os, "Buffer", obj);
     return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+template<typename T, std::size_t N>
+inline Buffer<T, N>::Buffer() {
+}
+
+// def get_data(self) -> Array[T, N]:
+//     return self.data
+template<typename T, std::size_t N>
+inline std::array<T, N>& Buffer<T, N>::get_data() {
+    return this->data;
+}
+
+// def set_data(self, arr: Array[T, N]) -> None:
+//     self.data = arr
+template<typename T, std::size_t N>
+inline void Buffer<T, N>::set_data(const std::array<T, N>& arr) {
+    this->data = arr;
 }
 
 void __tpy_init();

@@ -67,23 +67,16 @@ struct GBox {
     T v;
 
     // def __init__(self, v: T) -> None:
-    //     self.v = v  # tpyc: warning(/may copy T into field/)
     GBox() = default;
-    explicit GBox(::tpy::readonly_form_t<T> v) : v(v) {}
+    explicit GBox(::tpy::readonly_form_t<T> v);
 
     // @dispatch
     // def ov(self, x: str) -> int:
-    //     return len(x)
-    ::tpy::BigInt ov(std::string_view x) const {
-        return ::tpy::BigInt(::tpy::__len__(x));
-    }
+    ::tpy::BigInt ov(std::string_view x) const;
 
     // @dispatch
     // def ov(self, x: bool) -> int:
-    //     return 7
-    ::tpy::BigInt ov(bool x) const {
-        return ::tpy::BigInt(7);
-    }
+    ::tpy::BigInt ov(bool x) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.GBox";
 };
 
@@ -195,5 +188,27 @@ inline ::tpy::BigInt Sub::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::
     ::tpyapp::pets::Dog __tmp_1 = ::tpyapp::pets::Dog(::tpy::BigInt(4));
     return ((this->Base::code(::tpy::Union<const ::tpyapp::pets::Cat*, const ::tpyapp::pets::Dog*>{&__tmp_1})) + (::tpy::BigInt(100)));
 }
+
+// def __init__(self, v: T) -> None:
+//     self.v = v  # tpyc: warning(/may copy T into field/)
+template<typename T>
+inline GBox<T>::GBox(::tpy::readonly_form_t<T> v) : v(v) {}
+
+// @dispatch
+// def ov(self, x: str) -> int:
+//     return len(x)
+template<typename T>
+inline ::tpy::BigInt GBox<T>::ov(std::string_view x) const {
+    return ::tpy::BigInt(::tpy::__len__(x));
+}
+
+// @dispatch
+// def ov(self, x: bool) -> int:
+//     return 7
+template<typename T>
+inline ::tpy::BigInt GBox<T>::ov(bool x) const {
+    return ::tpy::BigInt(7);
+}
+
 void __tpy_init();
 } // namespace tpyapp::main

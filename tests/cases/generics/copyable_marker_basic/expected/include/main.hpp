@@ -21,16 +21,12 @@ struct Cell {
     T value;
 
     // def __init__(self, value: Own[T]) -> None:
-    //     self.value = value
     Cell() = default;
-    explicit Cell(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+    explicit Cell(::tpy::own_param_t<T> value);
 
     // def duplicate[T: Copyable](self) -> T:
-    //     return self.value
     ::tpy::val_or_ref_t<T> duplicate()
-      requires ::tpy::Copyable<T> {
-        return this->value;
-    }
+      requires ::tpy::Copyable<T>;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Cell";
 };
 
@@ -38,6 +34,20 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Cell<T>& obj) {
     ::tpy::print_object_default(os, "Cell", obj);
     return os;
+}
+
+
+// def __init__(self, value: Own[T]) -> None:
+//     self.value = value
+template<typename T>
+inline Cell<T>::Cell(::tpy::own_param_t<T> value) : value(std::move(value)) {}
+
+// def duplicate[T: Copyable](self) -> T:
+//     return self.value
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Cell<T>::duplicate()
+  requires ::tpy::Copyable<T> {
+    return this->value;
 }
 
 void __tpy_init();

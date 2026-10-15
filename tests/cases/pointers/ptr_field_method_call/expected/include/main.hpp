@@ -21,15 +21,11 @@ struct Wrapper {
     ::tpy::UninitHeapStorage<T>* _storage;
 
     // def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
-    //     self._storage = storage
     Wrapper() = default;
-    explicit Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(storage) {}
+    explicit Wrapper(::tpy::UninitHeapStorage<T>* storage);
 
     // def load_at(self, index: uint32) -> T:
-    //     return self._storage.load(index)
-    ::tpy::val_or_ref_t<T> load_at(uint32_t index) const {
-        return ::tpy::deref_check(this->_storage).load(index);
-    }
+    ::tpy::val_or_ref_t<T> load_at(uint32_t index) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Wrapper";
 };
 
@@ -37,6 +33,19 @@ template<typename T>
 inline std::ostream& operator<<(std::ostream& os, const Wrapper<T>& obj) {
     ::tpy::print_object_default(os, "Wrapper", obj);
     return os;
+}
+
+
+// def __init__(self, storage: Ptr[UninitHeapStorage[T]]) -> None:
+//     self._storage = storage
+template<typename T>
+inline Wrapper<T>::Wrapper(::tpy::UninitHeapStorage<T>* storage) : _storage(storage) {}
+
+// def load_at(self, index: uint32) -> T:
+//     return self._storage.load(index)
+template<typename T>
+inline ::tpy::val_or_ref_t<T> Wrapper<T>::load_at(uint32_t index) const {
+    return ::tpy::deref_check(this->_storage).load(index);
 }
 
 void __tpy_init();

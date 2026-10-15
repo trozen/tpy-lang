@@ -363,9 +363,8 @@ struct PV {
     T a;
 
     // def __init__(self, a: Own[T]) -> None:
-    //     self.a = a
     PV() = default;
-    explicit PV(::tpy::own_param_t<T> a) : a(std::move(a)) {}
+    explicit PV(::tpy::own_param_t<T> a);
     static constexpr std::string_view __tpy_class_name__ = "__main__.PV";
 };
 
@@ -2414,5 +2413,11 @@ inline int32_t Setter::value() const {
 inline void Setter::set_value(int32_t v) {
     ::tpy::deref_check(this->k).save(this->b);
 }
+
+// def __init__(self, a: Own[T]) -> None:
+//     self.a = a
+template<typename T>
+inline PV<T>::PV(::tpy::own_param_t<T> a) : a(std::move(a)) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

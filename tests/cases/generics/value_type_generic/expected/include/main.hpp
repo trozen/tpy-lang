@@ -50,12 +50,8 @@ struct Pair {
     T second;
 
     // def __init__(self, first: T, second: T) -> None:
-    //     self.first = first
-    //     self.second = second
     Pair() = default;
-    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
-        : first(first),
-          second(second) {}
+    explicit Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Pair";
 };
 
@@ -78,5 +74,14 @@ namespace tpyapp::main {
 inline Vec2::Vec2(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// def __init__(self, first: T, second: T) -> None:
+//     self.first = first
+//     self.second = second
+template<::tpy::ValueType T>
+inline Pair<T>::Pair(::tpy::readonly_form_t<T> first, ::tpy::readonly_form_t<T> second)
+    : first(first),
+      second(second) {}
+
 void __tpy_init();
 } // namespace tpyapp::main

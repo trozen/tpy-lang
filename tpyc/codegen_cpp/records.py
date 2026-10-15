@@ -6,14 +6,14 @@ Generates C++ structs from TurboPython records.
 
 from __future__ import annotations
 import io
-from collections import defaultdict
-from typing import TextIO, TYPE_CHECKING
+from dataclasses import dataclass
+from typing import Sequence, TextIO, TYPE_CHECKING
 
 from ..typesys import (
     TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
     AutoReadonlyType, AutoOwnType, FinalType, ClassVarType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
-    unwrap_readonly, unwrap_optional_own, unwrap_send_sync, unwrap_qualifiers,
+    unwrap_readonly, unwrap_optional_own, unwrap_send_sync,
     get_covariant_params, PtrType,
     bare_name, qualify_shadowed_nominals,
     emits_default_ctor, init_is_default_ctor,
@@ -34,10 +34,13 @@ from ..sema.registration import build_record_self_type, receiver_self_type
 from .. import qnames
 from . import emit_prims
 from .context import (
-    INDENT, DUNDER_TO_BINARY_OP, DUNDER_TO_REVERSE_BINARY_OP, CodeGenError,
-    escape_cpp_name, enum_member_cpp, forward_param)
+    INDENT, CodeGenError, escape_cpp_name, enum_member_cpp, forward_param)
 from ..parse import TpyNoneLiteral
 from .functions import NULL_PROTOCOL_ARG_CPP, factory_default_to_cpp, type_member_default_cpp
+from .protocols import (
+    EmittedMember, MemberDef, MemberKind, MemberSignature, Shim, ShimKind,
+    has_method_or_field, member_def, record_emitted_members,
+)
 from .int_literals import render_int_literal_value
 from .resumable_cfg import ResumableShape
 from ..sema.literal_utils import fixed_int_literal_value_from_expr
@@ -56,6 +59,32 @@ if TYPE_CHECKING:
     from .gen_async import AsyncCoroCodegen
     from .gen_generators import GeneratorCodegen
     from .protocols import ProtocolGenerator
+
+
+@dataclass
+class _RecordDefPlan:
+    """`RecordGenerator._member_def` applied to every member of one record
+    (`record_emitted_members`, kept in ``members`` keyed on the def owning
+    each signature, and its delegating ``shims``). An overload group's
+    implementation(s) map to the group's partition; each variant has its
+    own entry in ``variants``, keyed on its stub. A member forwarder
+    (`operator[]`, `operator()`, `operator*`, `size()`) is placed from its
+    target's entry (`_shim_mode`); a friend operator is always defined in
+    the struct. Not in the plan, their bodies always in the struct: the
+    synthesized members that read only the record itself (`__iter__`
+    returning `*this`, `begin`/`end` over `__span__`, the exception
+    overrides, a return exception's `__str__`, the covariant converting
+    ctor)."""
+    members: IdentityMap[TpyFunction, EmittedMember]
+    shims: list[Shim]
+    methods: IdentityMap[TpyFunction, MemberDef]
+    variants: IdentityMap[TpyFunction, MemberDef]
+    ctor: MemberDef | None
+    # `G() : G(nullptr)`: the default ctor delegating to a ctor whose
+    # protocol params are all optional.
+    default_ctor: MemberDef | None
+    copy_ops: MemberDef | None
+    move_dtor: MemberDef | None
 
 
 def _body_has_literal_throw(stmts: list[TpyStmt]) -> bool:
@@ -78,31 +107,18 @@ def _body_has_literal_throw(stmts: list[TpyStmt]) -> bool:
     return False
 
 
-def _overload_impl_names(record: TpyRecord) -> set[str]:
-    """Names whose callable signatures are the members of an overload set.
-
-    A def of such a name that is not itself a member is the trailing
-    implementation (or an @auto_readonly clone of it): its body lives in the
-    members' specializations and it is never emitted as-is, so no operator
-    driver may delegate to it. One rule for operator[], the friend operators
-    and operator(), so the three cannot drift.
+def _split_readonly_clone_pair(
+    targets: Sequence[EmittedMember],
+) -> tuple[EmittedMember, EmittedMember] | None:
+    """Return (const_clone, mutable_clone) when `targets` (the members one
+    shim forwards to) are exactly an @auto_readonly clone pair, otherwise
+    None. Used by operator[] and operator*() emission to decide between
+    dual-overload and single-overload paths.
     """
-    return {m.name for m in record.methods if m.is_overload_stub}
-
-
-def _split_readonly_clone_pair(methods: list) -> tuple | None:
-    """Return (const_clone, mutable_clone) when `methods` is exactly an
-    @auto_readonly clone pair, otherwise None.
-
-    `methods` may be any list of TpyFunction-like objects with `is_readonly`
-    (e.g. the impls of a single dunder name, or a group of @overload stubs
-    sharing a parameter type). Used by operator[] and operator*() emission
-    to decide between dual-overload and single-overload paths.
-    """
-    if len(methods) != 2:
+    if len(targets) != 2:
         return None
-    const = next((m for m in methods if m.is_readonly), None)
-    mutable = next((m for m in methods if not m.is_readonly), None)
+    const = next((t for t in targets if t.func.is_readonly), None)
+    mutable = next((t for t in targets if not t.func.is_readonly), None)
     if const is None or mutable is None:
         return None
     return const, mutable
@@ -124,7 +140,7 @@ class RecordGenerator:
         self.functions = functions
         self.gen_generators: GeneratorCodegen  # Set by CodeGenerator after init
         self.gen_async: AsyncCoroCodegen  # Set by CodeGenerator after init
-        self._def_modes: IdentityMap[TpyRecord, IdentityMap[TpyFunction, MethodEmitMode]] = IdentityMap()
+        self._def_plans: IdentityMap[TpyRecord, _RecordDefPlan] = IdentityMap()
 
     def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
         """Sort records so parent classes come before children.
@@ -452,35 +468,22 @@ class RecordGenerator:
 
         out.write("\n")
 
-        # Determine constructor generation strategy
+        plan = self._def_plan(record)
+        assert plan is not None
+        # Constructor: declared here, defined at namespace scope (the plan's
+        # partition) -- an in-struct MIL/body that references a
+        # mutually-recursive sibling record would need its complete type
+        # before any struct order can provide it.
         if record.init_method:
             has_params = bool(record.init_method.params)
-            # Plain records get the ctor definition at namespace scope (the
-            # def_hpp/def_cpp passes), like out-of-line methods: an in-struct
-            # MIL/body that references a mutually-recursive sibling record
-            # needs its complete type before any struct order can provide it.
-            # Only the declaration is emitted here in that case.
-            ctor_out_of_line = self._ctor_can_be_out_of_line(record)
-
-            if ctor_out_of_line:
-                self.ctx.emit_declaration_echo(out, record.init_method.loc, INDENT)
-            else:
-                self.ctx.emit_definition_echo(out, record.init_method.loc, INDENT)
+            self.ctx.emit_declaration_echo(out, record.init_method.loc, INDENT)
             if has_params:
                 # Default constructor: delegate to the template ctor with
                 # nullptr so the `__init__` body executes (else branch runs
                 # via if constexpr); an `__init__` that is not the default
                 # ctor leaves `= default` to the record's fact.
-                if self._ctor_all_protocols_optional(record):
-                    if record.type_params:
-                        # Templated: the delegated-to template ctor only
-                        # instantiates on use, so inline is safe here.
-                        out.write(f"{INDENT}{cpp_rec_name}() : {cpp_rec_name}({NULL_PROTOCOL_ARG_CPP}) {{}}\n")
-                    else:
-                        # Plain record: the delegation instantiates the
-                        # template ctor's MIL eagerly -- define it after
-                        # all structs, next to the out-of-line ctors.
-                        out.write(f"{INDENT}{cpp_rec_name}();\n")
+                if plan.default_ctor is not None:
+                    out.write(f"{INDENT}{cpp_rec_name}();\n")
                 elif (record_info is not None
                       and not init_is_default_ctor(record_info)
                       and emits_default_ctor(record_info)):
@@ -489,19 +492,9 @@ class RecordGenerator:
                     record, emit_defaults=True)
                 if template_header:
                     out.write(f"{INDENT}{template_header}")
-                if ctor_out_of_line:
-                    out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params});\n")
-                else:
-                    out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params})")
+                out.write(f"{INDENT}explicit {cpp_rec_name}({cpp_params});\n")
             else:
-                # No params: generate default constructor with body
-                if ctor_out_of_line:
-                    out.write(f"{INDENT}{cpp_rec_name}();\n")
-                else:
-                    out.write(f"{INDENT}{cpp_rec_name}()")
-
-            if not ctor_out_of_line:
-                self._emit_ctor_tail(out, record, body_indent_level=2)
+                out.write(f"{INDENT}{cpp_rec_name}();\n")
         else:
             # No __init__: plain records stay C++ aggregates (no ctor declared).
             # Records with __del__/@nocopy/__copy__ get user-declared copy/move
@@ -524,12 +517,10 @@ class RecordGenerator:
                 if emits_default_ctor(record_info):
                     out.write(f"{INDENT}{cpp_rec_name}() = default;\n")
 
-        # Copy/move ops for @nocopy, __del__, or __copy__ classes. Plain
-        # records declare here and define at namespace scope (see
-        # `_ctor_can_be_out_of_line` for why); templated records stay inline.
-        special_mode: MethodEmitMode = "inline" if record.type_params else "decl"
+        # Copy/move ops for @nocopy, __del__, or __copy__ classes: declared
+        # here, defined at namespace scope like the constructor.
         if record_info and record_info.has_copy:
-            self._gen_copy_ops(out, record, mode=special_mode)
+            self._gen_copy_ops(out, record, mode="decl")
         elif record_info and (record_info.is_nocopy or record_info.has_del):
             if record_info.is_nocopy:
                 out.write(f"{INDENT}// non-copyable")
@@ -546,7 +537,7 @@ class RecordGenerator:
                 out.write(f"{INDENT}{cpp_rec_name}& operator=({cpp_rec_name}&&) = default;\n")
 
         # Generate destructor if __del__ is defined
-        self._gen_move_and_destructor(out, record, mode=special_mode)
+        self._gen_move_and_destructor(out, record, mode="decl")
 
         # Generate converting move constructor for covariant generics
         self._gen_covariant_converting_ctor(out, record)
@@ -572,8 +563,8 @@ class RecordGenerator:
         #
         # Must appear before user methods so concept constraints see a
         # consistent declaration state when evaluated inside method bodies.
-        has_begin = self._has_method_or_field(record, "begin")
-        has_end = self._has_method_or_field(record, "end")
+        has_begin = has_method_or_field(record, "begin")
+        has_end = has_method_or_field(record, "end")
         if not has_begin and not has_end:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
             if record_info and "__span__" in record_info.methods:
@@ -594,98 +585,8 @@ class RecordGenerator:
                         out.write(f"{INDENT}auto begin() const {{ return this->__span__().begin(); }}\n")
                         out.write(f"{INDENT}auto end() const {{ return this->__span__().end(); }}\n")
 
-        # Methods qualifying for out-of-line emission go through ``mode="decl"``
-        # here; their bodies land in `gen_record_method_defs` at namespace scope.
-        dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
-        # Track names already dispatched via @overload so the const clone of a
-        # @auto_readonly @overload impl is not emitted as a plain method (the
-        # mutable clone emits specialized methods for all stubs including const).
-        overload_dispatched: set[str] = set()
-        for method in record.methods:
-            if self._skip_method_emission(method):
-                continue
-            if method.is_generator:
-                # Declaration only -- body defined after generator struct.
-                # Use the resumable emitter's templated struct name so a
-                # method on a generic class spells the return type as
-                # `__gen_Box_items<T>`, not the bare name.
-                with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
-                    struct_name = self.gen_async._struct_name_templated(
-                        method, record.name)
-                params = self.gen_async._emit_method_params_decl(
-                    method, record.name, emit_defaults=True)
-                const_suffix = " const" if method.is_readonly else ""
-                out.write("\n")
-                # In-class method declaration: do NOT pass record_name --
-                # the enclosing class template's `[T1, ...]` are already
-                # in scope here, so emit only the method's own type
-                # params / proto-typed-param template args (or nothing).
-                self.gen_async._emit_template_header(out, method, indent=INDENT)
-                out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
-                continue
-            # Async methods: declaration-only inside the struct; the factory
-            # body and the coro struct land in `generator.py`'s post-struct
-            # emit pass, parallel to generator methods above.
-            if method.is_async:
-                struct_name = self.gen_async._struct_name_templated(method, record.name)
-                params = self.gen_async._emit_method_params_decl(
-                    method, record.name, emit_defaults=True)
-                const_suffix = " const" if method.is_readonly else ""
-                out.write("\n")
-                # In-class method declaration: do NOT pass record_name --
-                # the enclosing class template's `[T1, ...]` are already in
-                # scope here, so emit only the method's own type params /
-                # proto-typed-param template args (or nothing).
-                self.gen_async._emit_template_header(out, method, indent=INDENT)
-                out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
-                continue
-            # @overload-dispatched methods stay inline-in-struct regardless of
-            # body size -- the specialized-method emitters take a `mode` param
-            # but it's always "inline" here (small/large split for those would
-            # need partition-aware overload dispatch; not worth the wiring yet).
-            overload_stubs = self.ctx.analyzer.overload_groups.get(method)
-            if overload_stubs:
-                overload_dispatched.add(method.name)
-                if self.functions._overload_stubs_are_literal_only(overload_stubs, method):
-                    for stub in overload_stubs:
-                        self.functions._gen_literal_specialized_method(
-                            out, method, stub, record.name,
-                            record_type_param_bounds=record.type_param_bounds or None,
-                            dynamic_overrides=dynamic_overrides,
-                        )
-                else:
-                    for stub in overload_stubs:
-                        self.functions._gen_overload_specialized_method(
-                            out, method, stub, record.name,
-                            record_type_param_bounds=record.type_param_bounds or None,
-                            dynamic_overrides=dynamic_overrides,
-                        )
-            elif method.name in overload_dispatched:
-                # Const clone of a @auto_readonly @overload impl -- already emitted above.
-                pass
-            else:
-                method_mode = "decl" if self._method_can_be_out_of_line(method, record) else "inline"
-                self.functions.gen_method_def(out, method, record.name, dynamic_overrides,
-                                                record_type_param_bounds=record.type_param_bounds or None,
-                                                mode=method_mode)
-
-        # Generate const operator[] for subscript read syntax (obj[i])
-        self._gen_subscript_operators(out, record)
-
-        # Generate binary operators from dunder methods (enables protocol conformance)
-        self._gen_binary_operators(out, record)
-
-        # Generate operator*() for types with __deref__ (C++ interop)
-        self._gen_deref_operators(out, record)
-
-        # Generate size() from __len__ for STL compatibility
-        self._gen_size_method(out, record)
-
-        # Generate operator() from __call__ (callable objects)
-        self._gen_call_operator(out, record)
-
-        # Generate unary operators from dunder methods
-        self._gen_unary_operators(out, record)
+        self._gen_record_methods(out, record, None)
+        self._gen_shims(out, record, None)
 
         # Tag consumed by:
         #   * the default-repr runtime template in dunder.hpp (only fires
@@ -801,72 +702,6 @@ class RecordGenerator:
             self._gen_record_ostream(out, nested_rec)
             self._gen_nested_ostream_operators(out, nested_rec)
 
-    @staticmethod
-    def _skip_method_emission(method: TpyFunction) -> bool:
-        """True for methods that don't get C++ emitted as a struct member.
-
-        Shared by ``gen_record_decl`` and ``gen_record_method_defs`` so the
-        in-class decl pass and the out-of-line def pass agree on what is
-        a method (drift here would link-error or double-emit).
-
-        - ``__init__`` / ``__del__`` / ``__move__``: handled by dedicated code
-          paths (constructor / destructor / move constructor body).
-        - Bodyless ``@overload`` stubs: the trailing impl emits all
-          overloads. Bodied ``@dispatch`` variants self-emit and so
-          aren't filtered here.
-        - ``skip_codegen``: ``@inline`` methods get inlined at call sites.
-        """
-        if method.name in ("__init__", "__del__", "__move__"):
-            return True
-        if method.is_overload_stub and method.is_stub:
-            return True
-        if method.skip_codegen:
-            return True
-        return False
-
-    def _method_can_be_out_of_line(self, method: TpyFunction, record: TpyRecord) -> bool:
-        """Return True iff this method should have its body emitted at namespace
-        scope (after every struct decl) instead of inline inside the struct.
-
-        Out-of-line emission is the default for plain non-template methods so
-        that body-references between records don't impose ordering constraints
-        on struct decls. Anything that produces a C++ template header has to
-        stay inline because the body must be visible at every instantiation.
-        Dynamic protocol params lower to ``Base&`` (no template header), so
-        they're fine to move out-of-line.
-        """
-        if record.type_params:
-            return False
-        if method.type_params:
-            return False
-        if self.functions.protocols.get_all_protocol_params(method.params):
-            return False
-        if self.functions._collect_fn_params(method.params):
-            return False
-        return True
-
-    def _ctor_can_be_out_of_line(self, record: TpyRecord) -> bool:
-        """`_method_can_be_out_of_line` for the __init__ constructor. Out-of-line
-        is required, not just preferred: an in-struct ctor definition odr-uses
-        the member dtors, so a MIL referencing a mutually-recursive sibling
-        record (`A.bs: list[B]`, `B.as_: list[A]`) would need a complete type
-        no struct order can provide. Template-header ctors stay inline like
-        template methods -- their bodies instantiate at (complete-type) use
-        sites, which also makes them immune.
-        """
-        init = record.init_method
-        if init is None:
-            return False
-        if record.type_params:
-            return False
-        if init.type_params:
-            return False
-        if self.functions.protocols.get_all_protocol_params(init.params):
-            return False
-        if self.functions._collect_fn_params(init.params):
-            return False
-        return True
-
     def _ctor_all_protocols_optional(self, record: TpyRecord) -> bool:
         """True when the __init__ ctor's default constructor delegates to the
         template ctor with nullptr: the `__init__` is the default ctor (the
@@ -916,6 +751,7 @@ class RecordGenerator:
                 template_header = self.functions.protocols.gen_combined_template_header(
                     init.type_params or [], proto_params,
                     record.type_param_bounds or None,
+                    emit_defaults=emit_defaults,
                 )
             return template_header, cpp_params
         init_ae = self.functions._get_method_addr_escapes(init, record.name)
@@ -959,72 +795,68 @@ class RecordGenerator:
                     self.ctx, "finally_guard_counter"),
                 body_indent_level=body_indent_level)
 
+    def _def_prefix(self, record: TpyRecord,
+                    mode: MethodEmitMode) -> tuple[str, str]:
+        """What opens an out-of-class member definition of `record`: the
+        class template's head ("" for a plain class), and `inline ` in the
+        header partition. Apart, so a member's own template head can go
+        between them."""
+        return (self.protocols.record_template_head(record.name),
+                "inline " if mode == "def_hpp" else "")
+
     def _gen_ctor_def(self, out: TextIO, record: TpyRecord,
-                      *, mode: MethodEmitMode) -> None:
-        """Emit the out-of-line ctor definition(s) for ``record`` at namespace
-        scope -- the def-side counterpart of the in-struct declarations that
-        `_gen_record_decl` emits for plain records."""
+                      *, want: MemberDef) -> None:
+        """Emit the out-of-line ctor definition(s) for ``record`` whose plan
+        entry is ``want`` -- the def-side counterpart of the in-struct
+        declarations that `_gen_record_decl` emits."""
         init = record.init_method
-        if init is None or record.type_params:
+        plan = self._def_plan(record)
+        if init is None or plan is None:
             return
-        inline_prefix = "inline " if mode == "def_hpp" else ""
-        q = escape_cpp_name(record.name.replace(".", "::"))
+        head, inline = self._def_prefix(record, want.mode)
+        q = self.protocols.record_cpp_qualifier(record.name)
         n = escape_cpp_name(bare_name(record.name))
-        # The delegating default ctor (all-optional protocol params) is a
-        # trivial one-liner: header partition unless cycle members force .cpp.
-        trivial_mode = "def_cpp" if self.ctx.cycle_peers else "def_hpp"
-        if self._ctor_all_protocols_optional(record) and mode == trivial_mode:
-            out.write(f"\n{inline_prefix}{q}::{n}() : {n}({NULL_PROTOCOL_ARG_CPP}) {{}}\n")
-        if self.ctor_def_mode(record) != mode:
+        if plan.default_ctor == want:
+            out.write(f"\n{head}{inline}{q}::{n}() : {n}({NULL_PROTOCOL_ARG_CPP}) {{}}\n")
+        if plan.ctor != want:
             return
         out.write("\n")
         self.ctx.emit_definition_echo(out, init.loc)
         if init.params:
-            _, cpp_params = self._ctor_cpp_params(record, emit_defaults=False)
-            out.write(f"{inline_prefix}{q}::{n}({cpp_params})")
+            template_header, cpp_params = self._ctor_cpp_params(
+                record, emit_defaults=False)
+            # The class head, then the ctor's own (nested, never merged).
+            out.write(f"{head}{template_header}{inline}{q}::{n}({cpp_params})")
         else:
-            out.write(f"{inline_prefix}{q}::{n}()")
+            out.write(f"{head}{inline}{q}::{n}()")
         self._emit_ctor_tail(out, record, body_indent_level=1)
 
     def _gen_copy_ops(self, out: TextIO, record: TpyRecord,
                       *, mode: MethodEmitMode) -> None:
         """Copy ctor/assign delegating to __copy__ (plus defaulted moves when
-        there is no __del__). The delegation constructs and destroys a
-        temporary, so plain records declare in-struct and define at namespace
-        scope (see `_ctor_can_be_out_of_line`); templated records stay inline.
-        """
+        there is no __del__): declared in the struct (``mode="decl"``), defined
+        at namespace scope -- the delegation constructs and destroys a
+        temporary, which needs the members' complete types."""
         record_info = self.ctx.analyzer.registry.get_record(record.name)
         if not record_info or not record_info.has_copy:
             return
         n = escape_cpp_name(bare_name(record.name))
-        is_def_mode = mode in ("def_hpp", "def_cpp")
-        if is_def_mode:
-            # Trivial one-liners: header partition unless cycle members
-            # force .cpp.
-            if mode != ("def_cpp" if self.ctx.cycle_peers else "def_hpp"):
-                return
-        else:
+        if mode == "decl":
             out.write(f"{INDENT}// copyable via __copy__\n")
-            if mode == "decl":
-                out.write(f"{INDENT}{n}(const {n}& other);\n")
-                out.write(f"{INDENT}{n}& operator=(const {n}& other);\n")
-        if mode != "decl":
-            q = escape_cpp_name(record.name.replace(".", "::"))
-            sig_pre = ("inline " if mode == "def_hpp" else "") if is_def_mode else INDENT
-            ctor_name = f"{q}::{n}" if is_def_mode else n
-            assign_sig = f"{q}& {q}::operator=" if is_def_mode else f"{n}& operator="
-            ind = "" if is_def_mode else INDENT
-            bind = ind + INDENT
-            if is_def_mode:
-                out.write("\n")
-            out.write(f"{sig_pre}{ctor_name}(const {n}& other) : {n}(other.__copy__()) {{}}\n")
-            out.write(f"{sig_pre}{assign_sig}(const {n}& other) {{\n")
-            out.write(f"{bind}if (this != &other) {{ *this = other.__copy__(); }}\n")
-            out.write(f"{bind}return *this;\n")
-            out.write(f"{ind}}}\n")
-        if not is_def_mode and not record_info.has_del:
-            out.write(f"{INDENT}{n}({n}&&) = default;\n")
-            out.write(f"{INDENT}{n}& operator=({n}&&) = default;\n")
+            out.write(f"{INDENT}{n}(const {n}& other);\n")
+            out.write(f"{INDENT}{n}& operator=(const {n}& other);\n")
+            if not record_info.has_del:
+                out.write(f"{INDENT}{n}({n}&&) = default;\n")
+                out.write(f"{INDENT}{n}& operator=({n}&&) = default;\n")
+            return
+        prefix = "".join(self._def_prefix(record, mode))
+        q = self.protocols.record_cpp_qualifier(record.name)
+        out.write("\n")
+        out.write(f"{prefix}{q}::{n}(const {n}& other) : {n}(other.__copy__()) {{}}\n")
+        out.write(f"{prefix}{q}& {q}::operator=(const {n}& other) {{\n")
+        out.write(f"{INDENT}if (this != &other) {{ *this = other.__copy__(); }}\n")
+        out.write(f"{INDENT}return *this;\n")
+        out.write("}\n")
 
     # Picked by hand to match the spirit of GCC's ``max-inline-insns-auto``
     # default (30 insns) -- bodies above this go to .cpp; smaller bodies
@@ -1052,107 +884,222 @@ class RecordGenerator:
         start = 1 if body and is_docstring(body[0]) else 0
         return cls._stmt_count(body[start:]) <= cls._SMALL_METHOD_STMT_THRESHOLD
 
-    def _body_def_mode(self, body_owner: TpyFunction) -> MethodEmitMode:
-        # Cycle members skip the def_hpp partition entirely (the .hpp can only
-        # see <peer>_fwd.hpp; inline bodies that touch a peer's complete type
-        # would fail to compile), so every out-of-line body goes to the .cpp.
-        if self.ctx.cycle_peers or not self._method_body_is_small(body_owner):
-            return "def_cpp"
-        return "def_hpp"
+    def _member_def(self, sig: MemberSignature, *, small: bool = True,
+                    variant: bool = False) -> MemberDef:
+        return member_def(sig, cycle_member=bool(self.ctx.cycle_peers),
+                          small=small, variant=variant)
 
-    def ctor_def_mode(self, record: TpyRecord) -> MethodEmitMode | None:
-        """The partition `record`'s out-of-line constructor definition lands
-        in, or None when it is defined inside the struct."""
-        init = record.init_method
-        if (init is None or record.type_params or self._is_native(record)
-                or not self._ctor_can_be_out_of_line(record)):
+    def _def_plan(self, record: TpyRecord) -> _RecordDefPlan | None:
+        """Where each of `record`'s member bodies is defined; None for a
+        native record. Every decl site, def site and `_genexpr_in_source`
+        reads it."""
+        if self._is_native(record):
             return None
-        return self._body_def_mode(init)
+        plan = self._def_plans.get(record)
+        if plan is None:
+            plan = self._def_plans[record] = self._record_def_plan(record)
+        return plan
 
-    def method_def_mode(self, method: TpyFunction,
-                        record: TpyRecord) -> MethodEmitMode | None:
-        """The partition `method`'s out-of-line definition lands in, or None
-        when no out-of-line definition is emitted for it (it is defined inside
-        the struct, or emits itself some other way)."""
-        modes = self._def_modes.get(record)
-        if modes is None:
-            modes = self._def_modes[record] = self._record_def_modes(record)
-        return modes.get(method)
-
-    def _record_def_modes(
-            self, record: TpyRecord) -> IdentityMap[TpyFunction, MethodEmitMode]:
-        modes: IdentityMap[TpyFunction, MethodEmitMode] = IdentityMap()
-        # A templated class keeps its methods inline in the struct.
-        if self._is_native(record) or record.type_params:
-            return modes
-        overload_dispatched: set[str] = set()
+    def _record_def_plan(self, record: TpyRecord) -> _RecordDefPlan:
+        generic = bool(record.type_params)
+        # The synthesized members' signature: the class's template head only.
+        class_sig = MemberSignature(template=generic, deduced=False)
+        members: IdentityMap[TpyFunction, EmittedMember] = IdentityMap()
+        methods: IdentityMap[TpyFunction, MemberDef] = IdentityMap()
+        variants: IdentityMap[TpyFunction, MemberDef] = IdentityMap()
+        # An overload group has one partition, keyed on its implementation;
+        # the implementation's clone twin shares it.
+        ctor = None
+        destructor_small: bool | None = None
+        twins = self.ctx.analyzer.overload_twins
+        emission = record_emitted_members(
+            record, self.ctx.analyzer.overload_groups, twins)
+        for entry in emission.members:
+            members[entry.func] = entry
+            small = self._method_body_is_small(entry.body)
+            if entry.kind is MemberKind.VARIANT:
+                if entry.body not in methods:
+                    methods[entry.body] = (
+                        self._member_def(
+                            MemberSignature(template=entry.sig.template,
+                                            deduced=False),
+                            small=small))
+                variants[entry.func] = self._member_def(
+                    entry.sig, small=small, variant=True)
+            elif entry.kind in (MemberKind.METHOD, MemberKind.EXPANDED):
+                methods[entry.func] = self._member_def(entry.sig, small=small)
+            elif entry.kind is MemberKind.CTOR:
+                ctor = self._member_def(entry.sig, small=small)
+            elif entry.kind is MemberKind.DESTRUCTOR:
+                # One partition for the family so it stays together.
+                destructor_small = small and destructor_small is not False
+            # A RESUMABLE member is defined with its frame
+            # (`_emit_resumable_structs`).
+        # A twin follows its implementation, which an `@inline` one is not
+        # emitted at all.
         for method in record.methods:
-            if self._skip_method_emission(method):
-                continue
-            # Generators / async methods self-emit through GeneratorCodegen /
-            # AsyncCoroCodegen elsewhere (their factory bodies are inline
-            # methods that return the coro/generator struct, emitted next to
-            # the struct definition).
-            if method.is_generator or method.is_async:
-                continue
-            # Overload-dispatched methods emit specialized methods inline (one
-            # per stub) inside the struct -- not handled here. Track them so
-            # the const clone of an `@auto_readonly @overload` impl, which
-            # immediately follows the mutable impl in `record.methods`, also
-            # gets skipped (the mutable clone already emitted both stubs).
-            if self.ctx.analyzer.overload_groups.get(method):
-                overload_dispatched.add(method.name)
-                continue
-            if method.name in overload_dispatched:
-                continue
-            if not self._method_can_be_out_of_line(method, record):
-                continue
-            modes[method] = self._body_def_mode(method)
-        return modes
+            impl = twins.get(method)
+            if impl is not None and impl in methods:
+                methods[method] = methods[impl]
+        default_ctor = None
+        if ctor is not None and self._ctor_all_protocols_optional(record):
+            default_ctor = self._member_def(class_sig)
+        record_info = self.ctx.analyzer.registry.get_record(record.name)
+        copy_ops = None
+        if record_info is not None and record_info.has_copy:
+            copy_ops = self._member_def(class_sig)
+        move_dtor = (None if destructor_small is None
+                     else self._member_def(class_sig, small=destructor_small))
+        return _RecordDefPlan(members=members, shims=emission.shims,
+                              methods=methods,
+                              variants=variants, ctor=ctor,
+                              default_ctor=default_ctor, copy_ops=copy_ops,
+                              move_dtor=move_dtor)
+
+    def member_def_mode(self, member: TpyFunction,
+                        record: TpyRecord) -> MethodEmitMode | None:
+        """The partition `member`'s out-of-line definition lands in, or None
+        when its body is in the struct or emits itself some other way.
+        `member` is a method, the `__init__` or the `__del__` / `__move__`."""
+        plan = self._def_plan(record)
+        if plan is None:
+            return None
+        if member is record.init_method:
+            entry = plan.ctor
+        elif member is record.del_method or member is record.move_method:
+            entry = plan.move_dtor
+        else:
+            stubs = self.ctx.analyzer.overload_groups.get(member)
+            if stubs:
+                # The group's partition only while no variant body is in
+                # the struct.
+                if any(plan.variants[s].mode == "inline" for s in stubs):
+                    return None
+            entry = plan.methods.get(member)
+        if entry is None or entry.mode == "inline":
+            return None
+        return entry.mode
 
     def gen_record_method_defs(self, out: TextIO, record: TpyRecord,
-                                *, mode: MethodEmitMode) -> None:
+                                *, mode: MethodEmitMode,
+                                template: bool = False) -> None:
         if not self._is_native(record) and self._record_shadows_local_type(record):
             with qualify_shadowed_nominals():
-                self._gen_record_method_defs(out, record, mode=mode)
+                self._gen_record_method_defs(out, record, mode=mode,
+                                             template=template)
         else:
-            self._gen_record_method_defs(out, record, mode=mode)
+            self._gen_record_method_defs(out, record, mode=mode,
+                                         template=template)
+
+    def gen_record_template_defs(self, out: TextIO, record: TpyRecord) -> None:
+        """The out-of-class definitions of `record`'s template members, for
+        the end of the header."""
+        self.gen_record_method_defs(out, record, mode="def_hpp", template=True)
 
     def _gen_record_method_defs(self, out: TextIO, record: TpyRecord,
-                                *, mode: MethodEmitMode) -> None:
-        """Emit out-of-line method definitions for ``record`` at namespace
-        scope. ``mode`` selects the partition: ``"def_hpp"`` emits the small
-        bodies as ``inline`` in the header, ``"def_cpp"`` emits the larger
-        bodies without ``inline`` in the source. The same skip set
-        (``__init__``/``__del__``, generators, overload-dispatched,
-        templated) applies to both.
+                                *, mode: MethodEmitMode, template: bool) -> None:
+        """Emit the out-of-line member definitions of ``record`` at namespace
+        scope whose plan entry is ``(mode, template)``: ``"def_hpp"`` bodies
+        are ``inline`` in the header, ``"def_cpp"`` ones are in the source;
+        ``template`` selects the template members (the end-of-header pass)
+        over the rest.
         """
-        if self._is_native(record):
+        plan = self._def_plan(record)
+        if plan is None:
             return
         # Recurse into nested records first so a nested method's def sits next
         # to its outer container's defs in the file (matches struct emission
         # order).
         for nested in record.nested_records:
-            self.gen_record_method_defs(out, nested, mode=mode)
-        if record.type_params:
-            # Templated class: methods stay inline-in-struct; nothing to emit
-            # here. (`_method_can_be_out_of_line` already returned False.)
-            return
+            self.gen_record_method_defs(out, nested, mode=mode, template=template)
+        want = MemberDef(mode, template)
         # Out-of-line ctor + special-member definitions (declared in-struct by
         # gen_record_decl) come before the record's method defs, mirroring the
         # in-struct declaration order.
-        self._gen_ctor_def(out, record, mode=mode)
-        self._gen_copy_ops(out, record, mode=mode)
-        self._gen_move_and_destructor(out, record, mode=mode)
+        self._gen_ctor_def(out, record, want=want)
+        if plan.copy_ops == want:
+            self._gen_copy_ops(out, record, mode=mode)
+        if plan.move_dtor == want:
+            self._gen_move_and_destructor(out, record, mode=mode)
+        self._gen_record_methods(out, record, want)
+        self._gen_shims(out, record, want)
+
+    def _gen_resumable_method_decl(self, out: TextIO, method: TpyFunction,
+                                   record: TpyRecord) -> None:
+        """In-struct declaration of a generator / async method; the factory
+        body and the frame struct land in `generator.py`'s post-struct emit
+        pass."""
+        if method.is_generator:
+            # The resumable emitter's templated struct name, so a method on a
+            # generic class spells the return type `__gen_Box_items<T>`.
+            with self.gen_async._resumable_shape(ResumableShape.GENERATOR):
+                struct_name = self.gen_async._struct_name_templated(
+                    method, record.name)
+        else:
+            struct_name = self.gen_async._struct_name_templated(method, record.name)
+        params = self.gen_async._emit_method_params_decl(
+            method, record.name, emit_defaults=True)
+        const_suffix = " const" if method.is_readonly else ""
+        out.write("\n")
+        # No record_name: the enclosing class template's `[T1, ...]` are in
+        # scope here, so emit only the method's own type params /
+        # proto-typed-param template args (or nothing).
+        self.gen_async._emit_template_header(out, method, indent=INDENT)
+        out.write(f"{INDENT}{struct_name} {method.name}({params}){const_suffix};\n")
+
+    def _gen_record_methods(self, out: TextIO, record: TpyRecord,
+                            want: MemberDef | None) -> None:
+        """Emit the methods of `record`: with ``want`` None, the in-struct
+        pass (a declaration, or the body of a member the plan keeps in the
+        struct); else the definitions whose plan entry is ``want``."""
+        plan = self._def_plan(record)
+        assert plan is not None
         dynamic_overrides = self.functions._get_dynamic_override_info(record.name)
         for method in record.methods:
-            if self.method_def_mode(method, record) != mode:
+            member = plan.members.get(method)
+            if (want is None and member is not None
+                    and member.kind is MemberKind.RESUMABLE):
+                self._gen_resumable_method_decl(out, method, record)
                 continue
-            self.functions.gen_method_def(
-                out, method, record.name, dynamic_overrides,
-                record_type_param_bounds=record.type_param_bounds or None,
-                mode=mode,
-            )
+            entry = plan.methods.get(method)
+            if entry is None:
+                continue
+            stubs = self.ctx.analyzer.overload_groups.get(method)
+            if stubs:
+                literal_only = self.functions._overload_stubs_are_literal_only(
+                    stubs, method)
+                emit_variant = (self.functions._gen_literal_specialized_method
+                                if literal_only else
+                                self.functions._gen_overload_specialized_method)
+                for stub in stubs:
+                    mode = self._emit_mode(plan.variants[stub], want)
+                    if mode is not None:
+                        emit_variant(
+                            out, method, stub, record.name,
+                            record_type_param_bounds=(
+                                record.type_param_bounds or None),
+                            dynamic_overrides=dynamic_overrides, mode=mode)
+            elif method in self.ctx.analyzer.overload_twins:
+                # Const clone of an @auto_readonly @overload impl: the mutable
+                # clone emitted every stub's specialization, const ones included.
+                continue
+            else:
+                mode = self._emit_mode(entry, want)
+                if mode is not None:
+                    self.functions.gen_method_def(
+                        out, method, record.name, dynamic_overrides,
+                        record_type_param_bounds=(
+                            record.type_param_bounds or None),
+                        mode=mode)
+
+    @staticmethod
+    def _emit_mode(entry: MemberDef,
+                   want: MemberDef | None) -> MethodEmitMode | None:
+        """How the pass selected by ``want`` (None: the in-struct pass) emits
+        a member placed at ``entry``; None when another pass emits it."""
+        if want is None:
+            return "inline" if entry.mode == "inline" else "decl"
+        return entry.mode if entry == want else None
 
     def _gen_nested_enum_decl(self, out: TextIO, enum: TpyEnum) -> None:
         """Generate an enum class declaration inside a parent struct."""
@@ -1198,8 +1145,7 @@ class RecordGenerator:
         """Generate operator<< overload for printing a record. ``has_str_repr``
         may be passed by callers that already computed the (has_str, has_repr)
         pair to avoid a second ancestor walk."""
-        # Use :: for nested types (e.g., Outer::Inner)
-        name = escape_cpp_name(record.name.replace(".", "::"))
+        name = self.protocols.record_cpp_qualifier(record.name)
 
         if has_str_repr is None:
             record_info = self.ctx.analyzer.registry.get_record(record.name)
@@ -1220,11 +1166,10 @@ class RecordGenerator:
                 else:
                     params_parts.append(f"typename {p}")
             params = ", ".join(params_parts)
-            type_args = ", ".join(record.type_params)
             out.write(f"\ntemplate<{params}>\n")
-            out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}<{type_args}>& obj) {{\n")
         else:
-            out.write(f"\ninline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
+            out.write("\n")
+        out.write(f"inline std::ostream& operator<<(std::ostream& os, const {name}& obj) {{\n")
 
         if has_str:
             out.write(f"{INDENT}os << obj.__str__();\n")
@@ -1237,7 +1182,7 @@ class RecordGenerator:
         out.write("}\n")
 
     def _gen_move_and_destructor(self, out: TextIO, record: TpyRecord,
-                                 *, mode: MethodEmitMode = "inline") -> None:
+                                 *, mode: MethodEmitMode) -> None:
         """Generate a C++ destructor with drop-flag protection from a __del__ method.
 
         Emits:
@@ -1249,11 +1194,9 @@ class RecordGenerator:
         super().__del__() calls are dropped -- parent destructors are called
         automatically by C++ after the child destructor body runs.
 
-        ``mode`` follows the method decl/def split: plain records declare these
-        members in-struct (``decl``) and define them at namespace scope
-        (``def_hpp``/``def_cpp``) where mutually-recursive sibling member types
-        are complete (see `_ctor_can_be_out_of_line`); templated records stay
-        ``inline``. The whole family shares one partition so it stays together.
+        ``mode`` follows the method decl/def split: declared in the struct
+        (``decl``), defined at namespace scope (the plan's ``move_dtor``
+        partition) where mutually-recursive sibling member types are complete.
         """
         del_method = record.del_method
         if del_method is None:
@@ -1266,20 +1209,9 @@ class RecordGenerator:
         nonmovable = (record_info is not None and not record.type_params
                       and not record_info.is_movable)
 
-        is_def_mode = mode in ("def_hpp", "def_cpp")
-        if is_def_mode:
-            family_small = (self._method_body_is_small(del_method)
-                            and (move_method is None
-                                 or self._method_body_is_small(move_method)))
-            want = ("def_cpp" if self.ctx.cycle_peers or not family_small
-                    else "def_hpp")
-            if mode != want:
-                return
-        inline_prefix = "inline " if mode == "def_hpp" else ""
-        q = escape_cpp_name(name.replace(".", "::"))
-        ind = "" if is_def_mode else INDENT
-        body_lvl = 1 if is_def_mode else 2
-        bind = INDENT * body_lvl
+        is_def_mode = mode != "decl"
+        prefix = "".join(self._def_prefix(record, mode)) if is_def_mode else ""
+        q = self.protocols.record_cpp_qualifier(name)
 
         # Filter out super().__del__() calls -- they're automatic in C++
         body_stmts = [s for s in del_method.body if not is_super_del_call(s)]
@@ -1302,22 +1234,19 @@ class RecordGenerator:
                         vinit_parts.append(f"{record_base_cpp(record_info, p)}()")
                 for fld in record.fields:
                     vinit_parts.append(f"{escape_cpp_name(fld.name)}()")
-                vinit_list = emit_prims.member_init_list(vinit_parts, ind)
-                if is_def_mode:
-                    out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
-                else:
-                    out.write(f"{INDENT}{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
+                vinit_list = emit_prims.member_init_list(vinit_parts, "")
+                out.write(f"\n{prefix}{q}::{cpp_name}({cpp_name}&& {cpp_src}) noexcept{vinit_list} {{\n")
                 # A scope cannot open before the member value-inits above, so
                 # a check point a field's default constructor reaches is not
                 # deferred (BUGS.md#move-member-init-check-point-fatal).
                 defer = emit_prims.defer_signals_cpp(
                     record_info.get_method("__move__") if record_info else None)
                 if defer is not None:
-                    out.write(f"{bind}{defer}\n")
+                    out.write(f"{INDENT}{defer}\n")
                 self.functions.gen_body(out, move_method,
-                                        indent_level=body_lvl)
-                out.write(f"{bind}{cpp_src}.__tpy_owned_ = false;\n")
-                out.write(f"{ind}}}\n")
+                                        indent_level=1)
+                out.write(f"{INDENT}{cpp_src}.__tpy_owned_ = false;\n")
+                out.write("}\n")
         elif nonmovable:
             # Non-generic class with a non-movable member and no __move__: a
             # member-wise move ctor would be ill-formed (it would move the
@@ -1339,14 +1268,11 @@ class RecordGenerator:
                 cpp_fld = escape_cpp_name(fld.name)
                 init_parts.append(f"{cpp_fld}(std::move(other.{cpp_fld}))")
 
-            init_list = emit_prims.member_init_list(init_parts, ind)
+            init_list = emit_prims.member_init_list(init_parts, "")
 
-            if is_def_mode:
-                out.write(f"\n{inline_prefix}{q}::{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
-            else:
-                out.write(f"{INDENT}{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
-            out.write(f"{bind}other.__tpy_owned_ = false;\n")
-            out.write(f"{ind}}}\n")
+            out.write(f"\n{prefix}{q}::{cpp_name}({cpp_name}&& other) noexcept{init_list} {{\n")
+            out.write(f"{INDENT}other.__tpy_owned_ = false;\n")
+            out.write("}\n")
 
         # --- Custom move assignment (destroy-and-reconstruct) ---
         # The nonmovable branch already emitted a deleted move-assign above.
@@ -1354,31 +1280,23 @@ class RecordGenerator:
             if mode == "decl":
                 out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept;\n")
             else:
-                if is_def_mode:
-                    out.write(f"{inline_prefix}{q}& {q}::operator=({cpp_name}&& other) noexcept {{\n")
-                else:
-                    out.write(f"{INDENT}{cpp_name}& operator=({cpp_name}&& other) noexcept {{\n")
-                out.write(f"{bind}if (this != &other) {{\n")
-                out.write(f"{bind}{INDENT}this->~{cpp_name}();\n")
-                out.write(f"{bind}{INDENT}new (this) {cpp_name}(std::move(other));\n")
-                out.write(f"{bind}}}\n")
-                out.write(f"{bind}return *this;\n")
-                out.write(f"{ind}}}\n")
+                out.write(f"{prefix}{q}& {q}::operator=({cpp_name}&& other) noexcept {{\n")
+                out.write(f"{INDENT}if (this != &other) {{\n")
+                out.write(f"{INDENT}{INDENT}this->~{cpp_name}();\n")
+                out.write(f"{INDENT}{INDENT}new (this) {cpp_name}(std::move(other));\n")
+                out.write(f"{INDENT}}}\n")
+                out.write(f"{INDENT}return *this;\n")
+                out.write("}\n")
 
         # --- Destructor with drop-flag guard ---
         out.write("\n")
         if mode == "decl":
-            self.ctx.emit_declaration_echo(out, del_method.loc, ind)
-        else:
-            self.ctx.emit_definition_echo(out, del_method.loc, ind)
-        if mode == "decl":
+            self.ctx.emit_declaration_echo(out, del_method.loc, INDENT)
             out.write(f"{INDENT}~{cpp_name}();\n")
             return
-        if is_def_mode:
-            out.write(f"{inline_prefix}{q}::~{cpp_name}() {{\n")
-        else:
-            out.write(f"{INDENT}~{cpp_name}() {{\n")
-        out.write(f"{bind}if (!this->__tpy_owned_) return;\n")
+        self.ctx.emit_definition_echo(out, del_method.loc)
+        out.write(f"{prefix}{q}::~{cpp_name}() {{\n")
+        out.write(f"{INDENT}if (!this->__tpy_owned_) return;\n")
         if body_stmts:
             # A C++ destructor is noexcept: a `with`/`try`/`raise` in the body
             # emits a literal `throw` that would std::terminate (a
@@ -1393,19 +1311,19 @@ class RecordGenerator:
             defer = emit_prims.defer_signals_cpp(
                 record_info.get_method("__del__") if record_info else None)
             if defer is not None:
-                out.write(f"{bind}{defer}\n")
+                out.write(f"{INDENT}{defer}\n")
             if wrap:
-                out.write(f"{bind}try {{\n")
+                out.write(f"{INDENT}try {{\n")
             self.functions.gen_body(
                 out, del_method,
-                indent_level=body_lvl + 1 if wrap else body_lvl)
+                indent_level=2 if wrap else 1)
             if wrap:
-                out.write(f"{bind}}} catch (const std::exception& __del_exc) {{\n")
-                out.write(f"{bind}{INDENT}::tpy::report_del_exception(__del_exc);\n")
-                out.write(f"{bind}}} catch (...) {{\n")
-                out.write(f"{bind}{INDENT}::tpy::report_del_exception();\n")
-                out.write(f"{bind}}}\n")
-        out.write(f"{ind}}}\n")
+                out.write(f"{INDENT}}} catch (const std::exception& __del_exc) {{\n")
+                out.write(f"{INDENT}{INDENT}::tpy::report_del_exception(__del_exc);\n")
+                out.write(f"{INDENT}}} catch (...) {{\n")
+                out.write(f"{INDENT}{INDENT}::tpy::report_del_exception();\n")
+                out.write(f"{INDENT}}}\n")
+        out.write("}\n")
 
     def _gen_covariant_converting_ctor(self, out: TextIO, record: TpyRecord) -> None:
         """Generate converting move constructor for covariant generic types.
@@ -1479,234 +1397,218 @@ class RecordGenerator:
             return None
         return type_member_default_cpp(self.ctx.analyzer, expr)
 
-    def _gen_subscript_operators(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate operator[] for subscript read syntax.
-
-        The callable signatures are the members of an overload set when the
-        record has one (`@overload` stubs, each specialized off the trailing
-        implementation, or self-contained `@dispatch` variants) and the plain
-        `__getitem__` defs otherwise; the trailing implementation and its
-        clones never get an operator, their bodies live in the members.
-        Every candidate then goes through the same grouping: per index type,
-        an @auto_readonly clone pair emits const first then mutable, a single
-        def emits by its own const-ness. Writes go through ::tpy::__setitem__.
-        """
-        impl_names = _overload_impl_names(record)
-        candidates = [
-            m for m in record.methods
-            if m.name == "__getitem__"
-            and (m.is_overload_stub or m.name not in impl_names)
-        ]
-        if not candidates:
-            return
-        # Group by the index type to detect @auto_readonly clone pairs: the
-        # clones carry the key projected per side (readonly[T] on the const
-        # clone, Ref[T] on a mutable clone whose key escapes through the
-        # return), so key on the bare type.
-        by_param: dict[str, list] = defaultdict(list)
-        for stub in candidates:
-            if stub.params:
-                key = str(unwrap_qualifiers(stub.params[0][1]))
-                by_param[key].append(stub)
+    def _gen_shims(self, out: TextIO, record: TpyRecord,
+                   want: MemberDef | None) -> None:
+        """The plan's delegating shims in their struct order: with ``want``
+        None, the in-struct pass (a declaration, or the body of a shim kept
+        in the struct); else the definitions placed at ``want``."""
+        plan = self._def_plan(record)
+        assert plan is not None
+        for shim in plan.shims:
+            if shim.kind.friend:
+                # A hidden friend is defined in the struct.
+                if want is None:
+                    self._gen_friend_operator(out, record, shim)
+            elif shim.kind is ShimKind.SUBSCRIPT:
+                self._gen_subscript_operators(out, record, shim, want)
+            elif shim.kind is ShimKind.DEREF:
+                self._gen_deref_operators(out, record, shim, want)
+            elif shim.kind is ShimKind.SIZE:
+                self._gen_size_method(out, record, shim.targets[0], want)
             else:
-                self._gen_single_subscript_operator(out, stub, record.name)
-        record_name = record.name
+                self._gen_call_operator(out, record, shim.targets[0], want)
 
-        for param_type_str, group in by_param.items():
-            pair = _split_readonly_clone_pair(group)
-            if pair is not None:
-                const_stub, mutable_stub = pair
-                # Clone pair: const operator first, then mutable -- a pair's
-                # results differ by the receiver's access wherever it marks
-                # one (a `Ptr[auto_readonly[T]]` pointee included).
-                self._gen_const_subscript_operator(out, const_stub, record_name)
-                self._gen_mutable_subscript_operator(out, mutable_stub, record_name)
-                continue
-            # No clone pair: emit each stub via the standard logic.
-            for stub in group:
-                self._gen_single_subscript_operator(out, stub, record_name)
+    def _shim_mode(self, target: EmittedMember,
+                   want: MemberDef | None) -> MethodEmitMode | None:
+        """How the pass ``want`` emits a member shim forwarding to
+        ``target``: placed where the target would be as a one-line body."""
+        return self._emit_mode(
+            self._member_def(target.sig, variant=target.variant), want)
 
-    def _gen_single_subscript_operator(self, out: TextIO, method: 'TpyFunction',
-                                       record_name: str) -> None:
-        """Generate a single operator[] overload delegating to __getitem__."""
-        if not method.params:
+    def _gen_subscript_operators(self, out: TextIO, record: TpyRecord,
+                                 shim: Shim, want: MemberDef | None) -> None:
+        """operator[] over the `__getitem__` defs sharing one index type
+        (`@overload` stubs, `@dispatch` variants or plain defs): an
+        @auto_readonly clone pair emits const first then mutable, a single
+        def emits by its own const-ness. Writes go through
+        ::tpy::__setitem__."""
+        pair = _split_readonly_clone_pair(shim.targets)
+        if pair is not None:
+            const_target, mutable_target = pair
+            # Clone pair: const operator first, then mutable -- a pair's
+            # results differ by the receiver's access wherever it marks
+            # one (a `Ptr[auto_readonly[T]]` pointee included).
+            self._gen_subscript_operator(out, record, const_target, want,
+                                         const=True)
+            self._gen_subscript_operator(out, record, mutable_target, want,
+                                         const=False)
             return
-        if method.is_readonly:
-            self._gen_const_subscript_operator(out, method, record_name)
-            # Non-const overload only when return could be a reference
-            needs_dual = not method.return_type.is_value_type() or isinstance(method.return_type, TypeParamRef)
-            if needs_dual:
-                self._gen_mutable_subscript_operator(out, method, record_name)
-        else:
-            self._gen_mutable_subscript_operator(out, method, record_name)
+        for target in shim.targets:
+            method = target.func
+            if method.is_readonly:
+                self._gen_subscript_operator(out, record, target, want,
+                                             const=True)
+                # Non-const overload only when return could be a reference
+                needs_dual = (not method.return_type.is_value_type()
+                              or isinstance(method.return_type, TypeParamRef))
+                if needs_dual:
+                    self._gen_subscript_operator(out, record, target, want,
+                                                 const=False)
+            else:
+                self._gen_subscript_operator(out, record, target, want,
+                                             const=False)
 
-    def _gen_const_subscript_operator(self, out: TextIO, method: 'TpyFunction',
-                                      record_name: str) -> None:
-        """Generate a const operator[] overload (read-only subscript)."""
-        if not method.params:
+    def _gen_subscript_operator(self, out: TextIO, record: TpyRecord,
+                                target: EmittedMember,
+                                want: MemberDef | None, *,
+                                const: bool) -> None:
+        """One operator[] overload delegating to __getitem__. The non-const
+        one's target is the mutable clone of an auto_readonly pair, a
+        genuinely mutable single __getitem__, or -- for the single-readonly
+        dual -- the readonly method itself, whose return the delegation hands
+        back."""
+        mode = self._shim_mode(target, want)
+        if mode is None:
             return
+        method = target.func
         index_param_name, index_type = method.params[0]
         # Mirror __getitem__'s emitted key param (borrow form + the method's
         # inferred const-ness), like the call operator -- not the storage form.
-        index_cpp = self.functions.gen_shim_params(method, record_name)
+        index_cpp = self.functions.gen_shim_params(method, record.name)
         ret_cpp = self.functions.shim_return_cpp(method)
         index_arg = forward_param(escape_cpp_name(index_param_name), index_type)
-        out.write(f"\n{INDENT}{ret_cpp} operator[]({index_cpp}) const {{\n")
-        out.write(f"{INDENT}{INDENT}return __getitem__({index_arg});\n")
-        out.write(f"{INDENT}}}\n")
+        self._emit_forwarder(out, record, mode, ret_cpp, "operator[]",
+                             f"({index_cpp}){' const' if const else ''}",
+                             [f"return __getitem__({index_arg});"])
 
-    def _gen_mutable_subscript_operator(self, out: TextIO, method: 'TpyFunction',
-                                        record_name: str) -> None:
-        """Generate a mutable (non-const) operator[] overload.
-
-        `method` is the mutable clone of an auto_readonly pair, a genuinely
-        mutable single __getitem__, or -- for the single-readonly dual -- the
-        readonly method itself, whose return the delegation hands back.
-        """
-        if not method.params:
+    def _emit_forwarder(self, out: TextIO, record: TpyRecord,
+                        mode: MethodEmitMode, ret: str, name: str, tail: str,
+                        body: list[str], *, one_line: bool = False) -> None:
+        """One delegating member: its body in the struct ("inline"), its
+        declaration there ("decl"), or its out-of-class definition
+        ("def_hpp" / "def_cpp"). ``tail`` is the params and qualifiers after
+        the name."""
+        if mode == "decl":
+            out.write(f"\n{INDENT}{ret} {name}{tail};\n")
             return
-        index_param_name, index_type = method.params[0]
-        index_cpp = self.functions.gen_shim_params(method, record_name)
-        ret_cpp = self.functions.shim_return_cpp(method)
-        index_arg = forward_param(escape_cpp_name(index_param_name), index_type)
-        out.write(f"\n{INDENT}{ret_cpp} operator[]({index_cpp}) {{\n")
-        out.write(f"{INDENT}{INDENT}return __getitem__({index_arg});\n")
+        if mode == "inline":
+            out.write(f"\n{INDENT}{ret} {name}{tail}")
+            ind = INDENT
+        else:
+            head, inline = self._def_prefix(record, mode)
+            q = self.protocols.record_cpp_qualifier(record.name)
+            out.write(f"\n{head}{inline}{ret} {q}::{name}{tail}")
+            ind = ""
+        if one_line:
+            out.write(f" {{ {body[0]} }}\n")
+            return
+        out.write(" {\n")
+        for line in body:
+            out.write(f"{ind}{INDENT}{line}\n")
+        out.write(f"{ind}}}\n")
+
+    def _gen_friend_operator(self, out: TextIO, record: TpyRecord,
+                             shim: Shim) -> None:
+        """A hidden friend operator delegating to its dunder (binary,
+        reflected or unary): it lets user records conform to C++ concepts
+        written with operator syntax (`t + other`, `t < other`). Defined in
+        the struct, where only argument-dependent lookup finds it -- an
+        operator visible to ordinary lookup would make a class's `!=` turn
+        off C++20's reversed `==`."""
+        method = shim.targets[0].func
+        ret_cpp = self._friend_return_cpp(method, record)
+        operand = f"const {escape_cpp_name(bare_name(record.name))}&"
+        if shim.kind is ShimKind.UNARY:
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{shim.op}({operand} operand) {{\n")
+            out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")
+            out.write(f"{INDENT}}}\n")
+            return
+        param_name, param_type = method.params[0]
+        # The method's own param spelling (its const verdict), which the
+        # delegation must bind.
+        param_cpp = self.functions.gen_shim_params(method, record.name)
+        arg = forward_param(escape_cpp_name(param_name), param_type)
+        if shim.kind is ShimKind.BINARY:
+            # `record OP other`: the record on the left.
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{shim.op}({operand} lhs, {param_cpp}) {{\n")
+            out.write(f"{INDENT}{INDENT}return lhs.{method.name}({arg});\n")
+        else:
+            # `other OP record`: the record on the RIGHT, delegating to
+            # __rOP__. Matches DUNDER_CPP_TEMPLATES' reverse entries
+            # (`({0}) OP ({self})`), which sema emits when it resolves a
+            # binop to the reverse method.
+            out.write(f"\n{INDENT}friend {ret_cpp} operator{shim.op}({param_cpp}, {operand} rhs) {{\n")
+            out.write(f"{INDENT}{INDENT}return rhs.{method.name}({arg});\n")
         out.write(f"{INDENT}}}\n")
 
-    def _gen_binary_operators(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate C++ operators from dunder methods (arithmetic and comparison).
+    def _friend_return_cpp(self, method: TpyFunction, record: TpyRecord) -> str:
+        """A hidden friend operator's return. The friend's body stays in the
+        class; in a class template a spelled return naming a class declared
+        later would need it complete there, while `decltype(auto)` is
+        dependent and keeps a reference result a reference."""
+        if record.type_params:
+            return "decltype(auto)"
+        return self.functions.shim_return_cpp(method)
 
-        This enables user records to conform to C++ concepts that use operator syntax
-        (e.g., `t + other`, `t < other`) rather than method calls (e.g., `t.__add__(other)`).
-        """
-        impl_names = _overload_impl_names(record)
-        for method in record.methods:
-            if not method.params:
-                continue  # Binary operators need at least one parameter
+    def _gen_call_operator(self, out: TextIO, record: TpyRecord,
+                           target: EmittedMember,
+                           want: MemberDef | None) -> None:
+        """operator() delegating to __call__ (callable objects): enables
+        obj(args) syntax and std::invocable concept conformance."""
+        mode = self._shim_mode(target, want)
+        if mode is None:
+            return
+        method = target.func
+        # Mirror the method emit for both axes: its return and the
+        # inferred param const-ness (a mutated param stays T& in the
+        # method; a const shim param wouldn't bind to it).
+        ret_cpp = self.functions.shim_return_cpp(method)
+        const_suffix = " const" if method.is_readonly else ""
+        params_cpp = self.functions.gen_shim_params(method, record.name)
+        arg_names = ", ".join(forward_param(escape_cpp_name(p_name), p_type)
+                              for p_name, p_type in method.params)
+        self._emit_forwarder(out, record, mode, ret_cpp, "operator()",
+                             f"({params_cpp}){const_suffix}",
+                             [f"return __call__({arg_names});"])
 
-            forward_op = DUNDER_TO_BINARY_OP.get(method.name)
-            reverse_op = DUNDER_TO_REVERSE_BINARY_OP.get(method.name)
-            # Skip non-operator methods before rendering the param type: a
-            # non-operator first param may be an Fn/Callable (template) or FStr
-            # type whose to_cpp_const_param would crash.
-            if forward_op is None and reverse_op is None:
-                continue
-
-            # C++ has no floor-division operator: `__floordiv__` maps to `/`,
-            # which would collide with `__truediv__`'s `operator/` (a type
-            # implementing both -- e.g. timedelta -- would emit two `operator/`
-            # with the same operand type). TPy call sites dispatch `//` through a
-            # `__floordiv__` method call, so no
-            # friend operator is needed; emitting one is both a collision and
-            # semantically wrong (external C++ `a / b` would floor-divide).
-            if method.name in ("__floordiv__", "__rfloordiv__"):
-                continue
-
-            # The trailing implementation of an overload set is not emitted
-            # as-is (its param is the operand union, specialized away into the
-            # members), so it gets no friend operator; the members' cover
-            # every emitted signature.
-            if method.name in impl_names and not method.is_overload_stub:
-                continue
-
-            param_name, param_type = method.params[0]
-            # The method's own param spelling (its const verdict), which the
-            # delegation must bind.
-            param_cpp = self.functions.gen_shim_params(method, record.name)
-            ret_cpp = self.functions.shim_return_cpp(method)
-            rec_short = bare_name(record.name)
-            rec_cpp = escape_cpp_name(rec_short)
-            arg = forward_param(escape_cpp_name(param_name), param_type)
-
-            # Forward dunder: `record OP other` -> friend with the record on the
-            # left. Using a friend function allows symmetric operand handling.
-            if forward_op is not None:
-                out.write(f"\n{INDENT}friend {ret_cpp} operator{forward_op}(const {rec_cpp}& lhs, {param_cpp}) {{\n")
-                out.write(f"{INDENT}{INDENT}return lhs.{method.name}({arg});\n")
-                out.write(f"{INDENT}}}\n")
-            # Reflected dunder: `other OP record` -> friend with the record on
-            # the RIGHT, delegating to __rOP__. Matches DUNDER_CPP_TEMPLATES'
-            # reverse entries (`({0}) OP ({self})`), which sema emits when it
-            # resolves a binop to the reverse method.
-            else:
-                out.write(f"\n{INDENT}friend {ret_cpp} operator{reverse_op}({param_cpp}, const {rec_cpp}& rhs) {{\n")
-                out.write(f"{INDENT}{INDENT}return rhs.{method.name}({arg});\n")
-                out.write(f"{INDENT}}}\n")
-
-    def _gen_call_operator(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate operator() delegating to __call__ (callable objects).
-
-        Enables obj(args) syntax and std::invocable concept conformance.
-        """
-        impl_names = _overload_impl_names(record)
-        for method in record.methods:
-            if method.name != "__call__":
-                continue
-            # The trailing implementation of an overload set is not emitted
-            # as-is, so it gets no operator(); the members' delegations cover
-            # every emitted __call__ signature, with matching const-ness.
-            if method.name in impl_names and not method.is_overload_stub:
-                continue
-            # Mirror the method emit for both axes: its return and the
-            # inferred param const-ness (a mutated param stays T& in the
-            # method; a const shim param wouldn't bind to it).
-            ret_cpp = self.functions.shim_return_cpp(method)
-            const_suffix = " const" if method.is_readonly else ""
-            params_cpp = self.functions.gen_shim_params(method, record.name)
-            arg_names = ", ".join(forward_param(escape_cpp_name(p_name), p_type)
-                                  for p_name, p_type in method.params)
-            out.write(f"\n{INDENT}{ret_cpp} operator()({params_cpp}){const_suffix} {{\n")
-            out.write(f"{INDENT}{INDENT}return __call__({arg_names});\n")
-            out.write(f"{INDENT}}}\n")
-
-    def _gen_deref_operators(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate operator*() for types with __deref__().
-
-        Enables C++ interop: *box instead of box.__deref__().
-        Only for user-defined types -- Ptr[T] and Ptr[readonly[T]] map to raw T*
-        which already support *ptr natively.
+    def _gen_deref_operators(self, out: TextIO, record: TpyRecord,
+                             shim: Shim, want: MemberDef | None) -> None:
+        """operator*() for types with __deref__ (C++ interop: *box instead
+        of box.__deref__()); Ptr[T] maps to a raw T*, which has it already.
 
         Mirrors the __getitem__ dual-overload pattern: an @auto_readonly
         __deref__ clone pair (mutable + const) gets both operator*() and
         operator*() const so const receivers can dereference. A single
         __deref__ keeps the single overload.
         """
-        deref_impls = [m for m in record.methods if m.name == "__deref__"]
-        if not deref_impls:
+        pair = _split_readonly_clone_pair(shim.targets)
+        if pair is not None:
+            const_target, mutable_target = pair
+            self._emit_operator_star(out, record, mutable_target, want)
+            self._emit_operator_star(out, record, const_target, want,
+                                     qual=" const")
             return
+        self._emit_operator_star(out, record, shim.targets[0], want)
 
-        if _split_readonly_clone_pair(deref_impls) is not None:
-            self._emit_operator_star(out)
-            self._emit_operator_star(out, qual=" const")
+    def _emit_operator_star(self, out: TextIO, record: TpyRecord,
+                            target: EmittedMember, want: MemberDef | None,
+                            qual: str = "") -> None:
+        mode = self._shim_mode(target, want)
+        if mode is None:
             return
+        self._emit_forwarder(out, record, mode, "auto", "operator*",
+                             f"(){qual} -> decltype(__deref__())",
+                             ["return __deref__();"])
 
-        self._emit_operator_star(out)
-
-    def _emit_operator_star(self, out: TextIO, qual: str = "") -> None:
-        out.write(f"\n{INDENT}auto operator*(){qual} -> decltype(__deref__()) {{\n")
-        out.write(f"{INDENT}{INDENT}return __deref__();\n")
-        out.write(f"{INDENT}}}\n")
-
-    def _has_method_or_field(self, record: TpyRecord, name: str) -> bool:
-        """Check if a record has a method or field with the given name."""
-        return (any(m.name == name for m in record.methods)
-                or any(f.name == name for f in record.fields))
-
-    def _gen_size_method(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate size() from __len__ for STL compatibility.
-
-        Enables user types with __len__ to work with C++ algorithms and
-        container concepts that expect a size() method.
-        """
-        len_method = None
-        for m in record.methods:
-            if m.name == "__len__":
-                len_method = m
-                break
-        if len_method is None:
+    def _gen_size_method(self, out: TextIO, record: TpyRecord,
+                         target: EmittedMember,
+                         want: MemberDef | None) -> None:
+        """size() from __len__ for STL compatibility: user types with
+        __len__ work with C++ algorithms and container concepts."""
+        mode = self._shim_mode(target, want)
+        if mode is None:
             return
-        if self._has_method_or_field(record, "size"):
-            return
+        len_method = target.func
         ret_cpp = len_method.return_type.to_cpp()
         ret_type = len_method.return_type
         ret_int_tr = int_traits_of(ret_type)
@@ -1714,38 +1616,23 @@ class RecordGenerator:
         # signed fixed-width ints (which static_cast<size_t> handles directly).
         is_signed = ret_int_tr is not None and ret_int_tr.signed
         if ret_cpp == "size_t":
-            out.write(f"\n{INDENT}size_t size() const {{ return __len__(); }}\n")
+            body, one_line = ["return __len__();"], True
         elif is_big_int_type(ret_type):
             # BigInt has no size_t cast operator (only checked extractors), so
             # a plain static_cast<size_t> would fail to compile; to_size_checked
             # also rejects a negative / out-of-size_t result.
-            out.write(f"\n{INDENT}size_t size() const {{\n")
-            out.write(f"{INDENT}{INDENT}size_t __sz;\n")
-            out.write(f"{INDENT}{INDENT}if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>(\"__len__() should return >= 0\");\n")
-            out.write(f"{INDENT}{INDENT}return __sz;\n")
-            out.write(f"{INDENT}}}\n")
+            body, one_line = [
+                "size_t __sz;",
+                "if (!__len__().to_size_checked(__sz)) ::tpy::raise<::tpy::ValueError>(\"__len__() should return >= 0\");",
+                "return __sz;",
+            ], False
         elif is_signed:
-            out.write(f"\n{INDENT}size_t size() const {{\n")
-            out.write(f"{INDENT}{INDENT}auto len = __len__();\n")
-            out.write(f"{INDENT}{INDENT}if (len < 0) ::tpy::raise<::tpy::ValueError>(\"__len__() should return >= 0\");\n")
-            out.write(f"{INDENT}{INDENT}return static_cast<size_t>(len);\n")
-            out.write(f"{INDENT}}}\n")
+            body, one_line = [
+                "auto len = __len__();",
+                "if (len < 0) ::tpy::raise<::tpy::ValueError>(\"__len__() should return >= 0\");",
+                "return static_cast<size_t>(len);",
+            ], False
         else:
-            out.write(f"\n{INDENT}size_t size() const {{ return static_cast<size_t>(__len__()); }}\n")
-
-    def _gen_unary_operators(self, out: TextIO, record: TpyRecord) -> None:
-        """Generate C++ unary operators from dunder methods."""
-        DUNDER_TO_UNARY_OP = {
-            "__neg__": "-", "__pos__": "+", "__invert__": "~",
-        }
-        for method in record.methods:
-            if method.name not in DUNDER_TO_UNARY_OP:
-                continue
-            if method.params:
-                continue  # Unary operators take no params
-            cpp_op = DUNDER_TO_UNARY_OP[method.name]
-            ret_cpp = self.functions.shim_return_cpp(method)
-            rec_short = bare_name(record.name)
-            out.write(f"\n{INDENT}friend {ret_cpp} operator{cpp_op}(const {escape_cpp_name(rec_short)}& operand) {{\n")
-            out.write(f"{INDENT}{INDENT}return operand.{method.name}();\n")
-            out.write(f"{INDENT}}}\n")
+            body, one_line = ["return static_cast<size_t>(__len__());"], True
+        self._emit_forwarder(out, record, mode, "size_t", "size", "() const",
+                             body, one_line=one_line)

@@ -1,0 +1,2 @@
+a.py:8: warning: Import statement should be at the top of the file
+b.py:12: error: Cyclic import: error type of 'Neg.__neg__' in 'b' is 'E' from 'a' by value. An operator method of a class in an import cycle cannot take or return a class of another module in the cycle by value. A parameter can take a plain class (not a `ValueType`), a `Ptr[T]` or a `@dynamic` protocol instead, and a result that is one of the arguments can be returned as that plain class (not wrapped in `Own[...]`); for a newly built result, move one of the classes out of the cycle. Cycle: a <-> b
