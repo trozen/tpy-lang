@@ -21,11 +21,13 @@ from .dump import dump_function
 from .liveness import MIRPoint
 from .lower import lower_function
 from .nodes import (
+    MIRHolding,
     MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstant, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRPlace, MIRReturn, MIRSlot, MIRSlotKind, MIRValueKind,
+    MIRPlace, MIRReturn, MIRSlot, MIRSlotKind,
 )
 from .storage_evidence import MIRStorageConflictKind, analyze_return_escapes
 from .validate import MIRValidationError, validate_function
+from .testutil import reslot
 
 SOURCE = """\
 from tpy import StrView, String, BytesView, int32, pure
@@ -207,8 +209,8 @@ def test_view_holders_are_readonly_borrows_typed_by_the_view(active) -> None:
     fn = _fn(active, "view_param")
     for name in ("v", "w"):
         slot = _slot(fn, name)
-        assert (slot.type, slot.value_kind, slot.readonly, slot.kind) == (
-            STRVIEW, MIRValueKind.BORROWED, True, MIRSlotKind.LOCAL)
+        assert (slot.type, slot.shape.holding, slot.readonly, slot.kind) == (
+            STRVIEW, MIRHolding.POINTER, True, MIRSlotKind.LOCAL)
     lines = _lines(fn)
     assert "%1 = borrow (*%0)" in lines and "%2 = alias %1" in lines
     assert _at_return(active, "view_param")["w"] == _external(fn, "s")
@@ -251,8 +253,8 @@ def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> Non
     # A view parameter is the caller's loan passed by value; returning it returns that loan.
     explicit = _fn(active, "explicit_view_param")
     slot = _slot(explicit, "v")
-    assert (slot.kind, slot.value_kind, slot.readonly, slot.passing.name) == (
-        MIRSlotKind.PARAMETER, MIRValueKind.BORROWED, True, "VALUE")
+    assert (slot.kind, slot.shape.holding, slot.readonly, slot.passing.name) == (
+        MIRSlotKind.PARAMETER, MIRHolding.POINTER, True, "VALUE")
     assert active.verdicts["explicit_view_param"].summary.summary.returns == frozenset({MIRReturnOrigin(0)})
 
 
@@ -278,7 +280,7 @@ def test_a_view_is_lent_where_a_str_view_parameter_takes_it(active) -> None:
 def test_a_reassigned_str_parameter_is_viewed_through_its_copy(active) -> None:
     fn = _fn(active, "reassigned_param")
     param, local = (s for s in fn.slots if s.name == "s")
-    assert param.kind is MIRSlotKind.PARAMETER and local.value_kind is MIRValueKind.OWNED
+    assert param.kind is MIRSlotKind.PARAMETER and local.shape.is_storage
     assert _at_return(active, "reassigned_param")["v"] == frozenset({MIRReferent(MIRPlace(local.id))})
 
 
@@ -400,7 +402,7 @@ def _replace_first(fn: MIRFunction, match, change) -> MIRFunction:
 def _retype(fn: MIRFunction, sid, typ, layouts: MIRFunction) -> MIRFunction:
     """`fn` with slot `sid` retyped, and `layouts`' opaque layout of `typ` added."""
     layout, = (r for r in layouts.records if r.type == typ)
-    return replace(fn, slots=tuple(replace(s, type=typ) if s.id == sid else s for s in fn.slots),
+    return replace(fn, slots=tuple(reslot(s, type=typ) if s.id == sid else s for s in fn.slots),
                    records=(*fn.records, layout))
 
 
@@ -420,7 +422,7 @@ def test_validator_rejects_damaged_view_facts(active) -> None:
     # A view holder that could write through its loan.
     with pytest.raises(MIRValidationError, match="unsupported reference slot type or form"):
         validate_function(replace(fn, slots=tuple(
-            replace(s, readonly=False) if s.id == view else s for s in fn.slots)))
+            reslot(s, readonly=False) if s.id == view else s for s in fn.slots)))
     # A field projected through a view.
     projected = _replace_first(fn, is_copy, lambda s: replace(s, value=replace(s.value, source=MIRPlace(
         view, (MIRDeref(), MIRField(MIRFieldId(STRVIEW, "size"), INT32))))))

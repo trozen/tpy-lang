@@ -337,7 +337,7 @@ def test_void_call_requires_assigned_arguments_and_void_signature(artifacts: Art
 def test_missing_origins_are_not_empty_effects(artifacts: Artifacts) -> None:
     fn = body(artifacts, "standalone")
     _, call = calls(fn)[0]
-    assert resolve_call_writes(call, {}, {s.id: s for s in fn.slots}) is None
+    assert resolve_call_writes(call, {}, {s.id: s for s in fn.slots}, {r.type: r for r in fn.records}) is None
     deps = analyze_dependencies(fn, analyze_liveness(fn))
     point, _ = calls(fn)[0]
     broken = replace(deps, referents={point: {}})

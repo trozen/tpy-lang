@@ -6,17 +6,17 @@ from dataclasses import dataclass
 from enum import Enum, auto
 from types import MappingProxyType
 
-from .coverage import owned_tuple, scalar_wrapper
 from .dependencies import MIRDependencies, MIRReferent, _dependencies
 from .dump import _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRBlockId, MIREdge, MIRFunction,
-    MIRNotCovered, MIROptionalLayout, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
+    MIRNotCovered, MIROptionalPayload, MIRPayloadWrite, MIRPlace,
     MIRRecordWrite, MIRRegionId, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRUnionPayload, MIRValueKind, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRTupleInitialization, place_layout, statement_target,
+    MIRUnionPayload, MIRPoint, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRTupleInitialization, statement_target,
 )
+from ..thir.scalar_leaves import MIRClass
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .retention import may_overlap
@@ -52,12 +52,11 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
         raise MIRValidationError("selection facts belong to a different MIR function")
     if not fn.regions:
         return MIRNotCovered(fn.id, "scope ends", "missing emitted storage regions")
-    roots = {s.id: s for s in fn.slots if s.value_kind is MIRValueKind.OWNED
-             or owned_tuple(s) or s.kind is MIRSlotKind.LOCAL and scalar_wrapper(s)}
+    roots = {s.id: s for s in fn.slots if s.shape.is_storage
+             or s.shape.owned_tuple or s.kind is MIRSlotKind.LOCAL and s.shape.scalar_wrapper}
     for slot in roots.values():
         if slot.storage_duration is None:
             return MIRNotCovered(fn.id, "scope ends", f"missing storage placement for %{slot.id.index}")
-    slots = {s.id: s for s in fn.slots}
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
     initialized: dict[MIRBlockId, set[MIRSlotId]] = {}
@@ -72,8 +71,8 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
                 continue
             # The fact follows the destination's storage, not the operation filling it.
             root = roots[stmt.target.root]
-            expected = (MIRTupleInitialization if owned_tuple(root)
-                        else MIRRecordWrite if root.value_kind is MIRValueKind.OWNED else MIRPayloadWrite)
+            expected = (MIRTupleInitialization if root.shape.owned_tuple
+                        else MIRRecordWrite if root.shape.is_storage else MIRPayloadWrite)
             if not isinstance(stmt.storage_write, expected):
                 return MIRNotCovered(fn.id, "scope ends", "missing storage initialization/write fact", stmt.loc)
             initialized[block.id].add(stmt.target.root)
@@ -115,16 +114,16 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
                 if owner != rid:
                     continue
                 payloads: set[MIRPlace] = set()
-                if scalar_wrapper(slot):
+                if slot.shape.scalar_wrapper:
                     wrapper = MIRPlace(sid)
                     selected = facts.get(wrapper, presence.domains[wrapper])
-                    layout = place_layout(wrapper, slots)
-                    if isinstance(layout, MIROptionalLayout):
+                    layout = slot.shape
+                    if layout.cls is MIRClass.OPTIONAL:
                         if 1 in selected:
                             payloads.add(MIRPlace(sid, (*wrapper.projections, MIROptionalPayload())))
                     else:
                         payloads.update(MIRPlace(sid, (*wrapper.projections, MIRUnionPayload(i))) for i in selected
-                                        if layout.elements[i] is not None)
+                                        if layout.alternatives[i] is not None)
                 if slot.record_storage is MIRRecordStorageKind.OPTIONAL:
                     events.append(MIRScopeEnd(rid, MIRPlace(sid), kind=MIRScopeEndKind.RECORD_WRAPPER))
                     if MIREngagement.ENGAGED not in dict(presence.edge_engagement[edge]).get(sid, frozenset()):
@@ -206,7 +205,7 @@ def _scope_conflicts(prepared: MIRPrepared, liveness: MIRLiveness,
         for event in events:
             if event.kind is MIRScopeEndKind.RECORD_WRAPPER:
                 continue
-            places = event.payloads if scalar_wrapper(slots[event.storage.root]) else (event.storage,)
+            places = event.payloads if slots[event.storage.root].shape.scalar_wrapper else (event.storage,)
             for ended in sorted(places, key=_place):
                 for holder, refs in retained_holders:
                     for retained in sorted(refs, key=lambda r: (r.external, _place(r.place))):

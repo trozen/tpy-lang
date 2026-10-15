@@ -1,11 +1,13 @@
 """The scalar leaves and records THIR storage facts and MIR model."""
 
+from enum import Enum, auto
+
 from ..type_def_registry import (
     NativeMembers, float_traits_of, int_traits_of, is_borrowing_view_type, type_def_of, zero_value_of,
 )
 from ..typesys import (
-    Loan, NominalType, OptionalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TypeParamRef,
-    TypeRegistry,
+    Loan, NominalType, OptionalType, OwnType, ReadonlyType, RecordInfo, Representation, TpyType, TupleType,
+    TypeParamRef, TypeRegistry, UnionType,
     is_inert_leaf, loan_class, is_owned_leaf, is_primitive_owned_leaf, record_owner, unwrap_readonly, unwrap_ref_type,
     view_family_of, view_owned_leaf,
 )
@@ -347,23 +349,6 @@ def inline_member_type(typ: object) -> TpyType:
     return optional_record_field(typ) or unwrap_readonly(typ)
 
 
-def modeled_leaf_field(typ: object) -> bool:
-    """Whether a record member of declared type `typ` is a place MIR models
-    with no record directly inside it: a scalar leaf, an owned leaf, a view
-    of an owned leaf (`view_leaf`, a stored loan), a native container, or an
-    Optional of a plain loan-free record (`optional_record_field`), whose
-    payload MIR reaches through the field's own layout."""
-    return (storage_leaf(typ) or owned_leaf(typ) or view_leaf(typ) or native_container_type(unwrap_readonly(typ))
-            or optional_record_field(typ) is not None)
-
-
-def modeled_field(typ: object) -> bool:
-    """Whether a record member of declared type `typ` has a shape MIR
-    models: a leaf place (`modeled_leaf_field`) or a record (`record_type`)
-    stored inline. The shape question only: whether that record's
-    definition verifies is `MIRDefinitions`'s answer, never this
-    predicate's."""
-    return modeled_leaf_field(typ) or record_type(unwrap_readonly(typ))
 
 
 def converted_literal(typ: object, value: object) -> object | None:
@@ -380,4 +365,64 @@ def converted_literal(typ: object, value: object) -> object | None:
     if (floats is not None and type(value) is int and type(zero_value_of(typ)) is float
             and abs(value) <= 2 ** floats.significand_bits):
         return float(value)
+    return None
+
+
+class MIRClass(Enum):
+    """The class of value MIR models a type as (`value_class`); how a
+    position holds the value is the position's (`MIRHolding`)."""
+    LEAF = auto()
+    OWNED_LEAF = auto()
+    VIEW = auto()
+    RECORD = auto()
+    CONTAINER = auto()
+    CONTAINER_VIEW = auto()
+    TUPLE = auto()
+    OPTIONAL = auto()
+    UNION = auto()
+
+
+def modeled_field(typ: object) -> bool:
+    """Whether a record member of declared type `typ` has a shape MIR
+    models: its class is one a field holds, a scalar leaf, an owned leaf
+    or a view of one declared bare (a `readonly[...]` leaf member is no
+    place MIR models), a native container or a record stored inline, or an
+    Optional of a plain loan-free record (`optional_record_field`), whose
+    payload MIR reaches through the field's own layout. The shape question
+    only: whether a record's definition verifies is `MIRDefinitions`'s
+    answer, never this predicate's."""
+    match value_class(typ):
+        case MIRClass.LEAF | MIRClass.OWNED_LEAF | MIRClass.VIEW:
+            return not isinstance(typ, ReadonlyType)
+        case MIRClass.OPTIONAL:
+            return optional_record_field(typ) is not None
+        case MIRClass.CONTAINER | MIRClass.RECORD:
+            return True
+    return False
+
+
+def value_class(typ: object, representation: Representation = Representation.STORAGE) -> MIRClass | None:
+    """The class of value MIR models `typ` as at `representation`, its
+    access wrapper unwrapped; None for a type MIR does not model. An inert
+    leaf is one only where the loan classifier proves it inert at that
+    representation (`storage_leaf`)."""
+    bare = unwrap_readonly(typ)
+    if storage_leaf(bare, representation):
+        return MIRClass.LEAF
+    if owned_leaf(bare):
+        return MIRClass.OWNED_LEAF
+    if view_leaf(bare):
+        return MIRClass.VIEW
+    if container_view(bare):
+        return MIRClass.CONTAINER_VIEW
+    if native_container_type(bare):
+        return MIRClass.CONTAINER
+    if isinstance(bare, TupleType):
+        return MIRClass.TUPLE
+    if isinstance(bare, OptionalType):
+        return MIRClass.OPTIONAL
+    if isinstance(bare, UnionType):
+        return MIRClass.UNION
+    if record_type(bare):
+        return MIRClass.RECORD
     return None

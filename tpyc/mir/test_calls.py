@@ -24,13 +24,14 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRConstant,
-    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, MIRValueKind, statement_call,
+    MIRCopy, MIRFunction, MIRNotCovered, MIRPoint, MIRRead, MIRSlotKind, statement_call,
 )
 from .lower import lower_function
 from .presence import _analyze_presence
 from .validate import MIRValidationError, validate_function
 from .scope_lifetime import inspect_scope_lifetimes
 from .region_flow import outgoing_edges
+from .testutil import reslot
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -315,10 +316,10 @@ def test_standalone_validation_requires_the_published_contract(artifacts: Artifa
         elif damage == "arity":
             call = replace(call, arguments=())
         elif damage == "result":
-            body = replace(body, slots=tuple(replace(s, type=BOOL) if s.id == stmt.target.root else s
+            body = replace(body, slots=tuple(reslot(s, type=BOOL) if s.id == stmt.target.root else s
                                              for s in body.slots))
         else:
-            storage = next(s.id for s in body.slots if s.value_kind is MIRValueKind.OWNED)
+            storage = next(s.id for s in body.slots if s.shape.is_storage)
             call = replace(call, arguments=(storage,))
         body = replace(body, blocks=tuple(
             replace(block, statements=tuple(replace(s, value=call) if i == point.index else s
@@ -430,6 +431,7 @@ def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artif
     _, workspace, _, _, _ = artifacts
     body = body_named(workspace, "absent_write")
     slots = {s.id: s for s in body.slots}
+    records = {r.type: r for r in body.records}
     _, _, call = _call_statement(body)
     value = th.THIRFieldIdentity("main", "value", call.summary.parameters[0].type)
     into_absent = MIRLoanTransfer(0, (value,), MIR_STATIC)
@@ -438,11 +440,11 @@ def test_an_absent_argument_holds_and_lends_no_transferred_loan(artifacts: Artif
     assert forged.absent == frozenset({0})
     assert forged.present_effects.transfers == frozenset()
     state: dict = {}
-    apply_transfers(forged, state, slots)
+    apply_transfers(forged, state, slots, records)
     assert state == {}
     # Present, the same transfer is applied: the empty Optional holds no object to store into.
     with pytest.raises(MIRUnseededLoan, match="call transfer into no object"):
-        apply_transfers(replace(forged, absent=frozenset()), {}, slots)
+        apply_transfers(replace(forged, absent=frozenset()), {}, slots, records)
 
 
 def test_global_reads_union_through_consumed_summaries(artifacts: Artifacts) -> None:

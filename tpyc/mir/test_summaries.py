@@ -13,7 +13,7 @@ from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWriteMode,
-    MIRStorageDuration, MIRValueKind,
+    MIRStorageDuration,
 )
 from .summaries import summarize_function
 from .validate import MIRValidationError
@@ -162,7 +162,7 @@ def test_cyclic_bodies_summarize_through_the_fixpoints(artifacts: Artifacts, nam
 def test_repeated_owned_activation_is_private_storage(artifacts: Artifacts) -> None:
     body = artifacts[1]["big_loop"]
     local, = (s for s in body.slots if s.name == "t")
-    assert local.value_kind is MIRValueKind.OWNED and local.storage_duration != MIRStorageDuration.BODY
+    assert local.shape.is_storage and local.storage_duration != MIRStorageDuration.BODY
     writes = [stmt.storage_write.mode for block in body.blocks for stmt in block.statements
               if isinstance(stmt, MIRAssign) and stmt.target.root == local.id]
     assert writes == [MIRRecordWriteMode.INITIALIZE_REGION]

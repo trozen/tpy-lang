@@ -3,22 +3,23 @@
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from ..thir.scalar_leaves import owned_leaf, record_type
-from ..typesys import TpyType, unwrap_readonly
+from ..thir.scalar_leaves import MIRClass, value_class
+from ..typesys import TpyType
 
 from .call_contract import MIRAliasObligation, MIRParameterWrite
-from .coverage import call_place, container_holder, summary_path, whole_wrapper_field
+from .coverage import call_place, summary_path, whole_wrapper_field
 from .dependencies import (
-    MIRDependencies, MIRReferent, _referent, analyze_dependencies, origin_type, resolve_referents,
+    MIRDependencies, MIRReferent, _referent, analyze_dependencies, origin_shape, resolve_referents,
 )
 from .dump import _location, _place, _write_step, obligation_text
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness
 from .nodes import (
     MIRContainerElements, MIRContainerStructure, MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordWriteMode, MIRSlot, MIRSlotId, MIRSlotKind, statement_call,
+    MIRRecordLayout, MIRRecordWriteMode, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, statement_call,
 )
 from .storage import MIRStorageEvents, analyze_storage, owned_field
 from .presence import MIREngagement
+from .shapes import walk_to
 from .validate import MIRValidationError, _validated_function
 
 
@@ -72,7 +73,8 @@ def may_overlap(left: MIRReferent, right: MIRReferent) -> bool:
 
 
 def _replaced_leaf(place: MIRPlace) -> bool:
-    return bool(place.projections) and isinstance(field := place.projections[-1], MIRField) and owned_leaf(field.type)
+    return (bool(place.projections) and isinstance(field := place.projections[-1], MIRField)
+            and value_class(field.type) is MIRClass.OWNED_LEAF)
 
 
 def _reach(written: MIRPlace) -> tuple[tuple[object, ...], bool] | None:
@@ -97,17 +99,16 @@ def _reach(written: MIRPlace) -> tuple[tuple[object, ...], bool] | None:
 def _whole_container(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """A referent naming a container object itself (a borrowed container
     parameter's own origin), which no container holds as an element."""
-    return not ref.place.projections and container_holder(slots[ref.place.root])
+    return not ref.place.projections and slots[ref.place.root].shape.whole_container
 
 
-def _referent_type(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> TpyType | None:
-    """The type of the object a referent names, when its path is fields only."""
-    typ = origin_type(slots[ref.place.root])
-    for projection in ref.place.projections:
-        if not isinstance(projection, MIRField):
-            return None
-        typ = unwrap_readonly(projection.type)
-    return typ
+def _referent_shape(ref: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot],
+                    records: Mapping[TpyType, MIRRecordLayout]) -> MIRShape | None:
+    """The object a referent names, when its path is fields only: stepped
+    from its origin's object."""
+    if not all(isinstance(projection, MIRField) for projection in ref.place.projections):
+        return None
+    return walk_to(origin_shape(slots[ref.place.root]), ref.place.projections, records)
 
 
 def static_referent(ref: MIRReferent) -> bool:
@@ -115,7 +116,8 @@ def static_referent(ref: MIRReferent) -> bool:
     return ref.static
 
 
-def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
+def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotId, MIRSlot],
+            records: Mapping[TpyType, MIRRecordLayout]) -> bool:
     """Whether replacing `written` reaches what a holder of `retained` holds.
     A literal's static storage is never written, so no replacement reaches
     it. Replacing an owned-leaf, container or record member field replaces
@@ -150,8 +152,8 @@ def affects(written: MIRReferent, retained: MIRReferent, slots: Mapping[MIRSlotI
         # or elements write spares one.
         region = isinstance(written.place.projections[-1], (MIRContainerStructure, MIRContainerElements))
         return not (region and _whole_container(retained, slots))
-    typ = _referent_type(retained, slots)
-    return typ is None or not (record_type(typ) or _whole_container(retained, slots))
+    shape = _referent_shape(retained, slots, records)
+    return shape is None or not (shape.cls is MIRClass.RECORD or _whole_container(retained, slots))
 
 
 def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
@@ -168,6 +170,7 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         if isinstance(result, MIRNotCovered):
             return MIRNotCovered(fn.id, "retention", f"{result.node_kind}: {result.reason}", result.loc)
     slots = {slot.id: slot for slot in fn.slots}
+    records = fn.record_layouts
     conflicts: list[MIRRetentionConflict] = []
     # Replacement events, each at its statement's point: assignments to
     # owned storage, the places a call's summary may write, and owned
@@ -194,7 +197,7 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
         after = MIRPoint(point.block, point.index + 1)
         outgoing = dependencies.referents[after]
         live_after = liveness.points[after]
-        affected = resolve_referents(target, incoming, slots)
+        affected = resolve_referents(target, incoming, slots, records)
         # The statement may install a loan into the storage it replaces --
         # a callee's transfer, or the record it fills -- so the holders of
         # the state it leaves count too, and the filled object's own loans
@@ -210,7 +213,7 @@ def analyze_retention(fn: MIRFunction, liveness: MIRLiveness,
                 continue
             for written in sorted(affected, key=_referent_key):
                 for retained in sorted(refs, key=_referent_key):
-                    if affects(written, retained, slots):
+                    if affects(written, retained, slots, records):
                         conflicts.append(MIRRetentionConflict(point, written, holder, retained))
     conflicts.extend(_call_obligation_conflicts(fn, dependencies, slots))
     # Stable: the replacement events keep their order within a statement.
@@ -245,6 +248,7 @@ def _call_obligation_conflicts(fn: MIRFunction, dependencies: MIRDependencies,
     call keeps it -- so the write the callee makes through another argument
     is checked against what that argument lends at the call point."""
     found: list[MIRRetentionConflict] = []
+    records = fn.record_layouts
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
             call = statement_call(stmt)
@@ -254,12 +258,14 @@ def _call_obligation_conflicts(fn: MIRFunction, dependencies: MIRDependencies,
                 continue
             for obligation in sorted(call.present_effects.obligations, key=_obligation_key):
                 write = obligation.written
-                affected = resolve_referents(call_place(call, write.parameter, write.path, slots), state, slots)
+                affected = resolve_referents(call_place(call, write.parameter, write.path, slots), state, slots,
+                                             records)
                 holder = MIRPlace(call.arguments[obligation.parameter])
-                lent = resolve_referents(call_place(call, obligation.parameter, obligation.path, slots), state, slots)
+                lent = resolve_referents(call_place(call, obligation.parameter, obligation.path, slots), state, slots,
+                                         records)
                 for written in sorted(affected, key=_referent_key):
                     for retained in sorted(lent, key=_referent_key):
-                        if affects(written, retained, slots):
+                        if affects(written, retained, slots, records):
                             found.append(MIRRetentionConflict(point, written, holder, retained, obligation))
     return found
 

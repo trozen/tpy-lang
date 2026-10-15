@@ -15,13 +15,13 @@ from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRDeref, MIRField, MIRFieldId,
-    MIRFunction, MIROptionalConstruct, MIROptionalLayout,
-    MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement,
-    MIRUnionConstruct, MIRUnionLayout, MIRUnionPayload, MIRValueKind,
+    MIRFunction, MIROptionalConstruct,
+    MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRUnionConstruct, MIRUnionPayload,
 )
 from .retention import analyze_retention
 from .storage import analyze_storage
-from .testutil import Heap, OptionalValue, Reference, UnionValue, execute
+from .testutil import Heap, OptionalValue, Reference, UnionValue, borrowed_shape, execute, optional_shape, reslot, union_shape
 from .validate import MIRPresenceError, MIRValidationError, validate_function
 
 
@@ -224,8 +224,7 @@ def test_wrapper_roots_keep_selection_proofs(artifacts: Artifacts) -> None:
     assert execute(lower(functions["optional_root"]), OptionalValue(Reference(1)), heap=heap) == 20
     fn = lower(functions["union_root"])
     outer = functions["direct"].params[0].borrowed_record.type
-    layout = fn.slots[0].union_layout
-    alternative = next(i for i, member in enumerate(layout.elements) if member.type == outer)
+    alternative = next(i for i, member in enumerate(fn.slots[0].shape.alternatives) if member.type == outer)
     assert execute(fn, UnionValue(alternative, Reference(1)), heap=heap) == 21
 
 
@@ -242,7 +241,7 @@ def test_field_borrow_requires_current_wrapper_proof(artifacts: Artifacts, name:
     if name == "union_root":
         param = fn.slots[0]
         outer = functions["direct"].params[0].borrowed_record.type
-        alternative = next(i for i, member in enumerate(param.union_layout.elements) if member.type == outer)
+        alternative = next(i for i, member in enumerate(param.shape.alternatives) if member.type == outer)
         source = MIRPlace(param.id, (MIRUnionPayload(alternative), *source.projections))
     borrow = replace(store, target=MIRPlace(holder.id), value=MIRBorrow(source))
     guarded = replace(fn, slots=(*fn.slots, holder), blocks=tuple(
@@ -262,16 +261,14 @@ def test_captured_field_survives_wrapper_replacement(artifacts: Artifacts, union
     param = fn.slots[0]
     wrapper_id = MIRSlotId(fn.id, len(fn.slots))
     if union:
-        wrapper = MIRSlot(wrapper_id, UnionType((NoneType(), param.type)), MIRSlotKind.LOCAL,
-                          value_kind=MIRValueKind.UNION,
-                          union_layout=MIRUnionLayout((None, MIRTupleElement(
-                              param.type, MIRValueKind.BORROWED))))
+        wrapper = MIRSlot(wrapper_id,
+                          union_shape(UnionType((NoneType(), param.type)), (None, borrowed_shape(param.type))),
+                          MIRSlotKind.LOCAL)
         construct, clear = MIRUnionConstruct(1, MIRPlace(param.id)), MIRUnionConstruct(0)
         payload = MIRUnionPayload(1)
     else:
-        wrapper = MIRSlot(wrapper_id, OptionalType(param.type), MIRSlotKind.LOCAL,
-                          value_kind=MIRValueKind.OPTIONAL,
-                          optional_layout=MIROptionalLayout(param.type, MIRValueKind.BORROWED))
+        wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(param.type), borrowed_shape(param.type)),
+                          MIRSlotKind.LOCAL)
         construct, clear = MIROptionalConstruct(MIRPlace(param.id)), MIROptionalConstruct()
         payload = MIROptionalPayload()
     block = fn.blocks[0]
@@ -338,7 +335,7 @@ def test_declared_readonly_field_restricts_captured_access(artifacts: Artifacts)
     fn = lower(functions["readonly_field"])
     holder = next(slot for slot in fn.slots if slot.name == "saved")
     assert holder.readonly
-    bad = replace(fn, slots=tuple(replace(slot, readonly=False) if slot == holder else slot
+    bad = replace(fn, slots=tuple(reslot(slot, readonly=False) if slot == holder else slot
                                  for slot in fn.slots))
     with pytest.raises(MIRValidationError, match="borrow increases access"):
         validate_function(bad)
@@ -406,7 +403,7 @@ def test_malformed_storage_borrows_are_rejected(artifacts: Artifacts, change: st
         source = replace(source, projections=(*source.projections,
                          MIRField(MIRFieldId(scalar.owner, scalar.name), scalar.type)))
     else:
-        fn = replace(fn, slots=tuple(replace(slot, readonly=True) if slot.id == source.root else slot
+        fn = replace(fn, slots=tuple(reslot(slot, readonly=True) if slot.id == source.root else slot
                                     for slot in fn.slots))
     changed = replace(stmt, value=MIRBorrow(source))
     fn = replace(fn, blocks=(replace(block, statements=(changed, *block.statements[1:])), *fn.blocks[1:]))

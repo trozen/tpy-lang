@@ -4,35 +4,32 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, OptionalType
+from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
     MIRFunction, MIRGoto, MIRIsPresent, MIRNot, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalLayout, MIROptionalPayload, MIRPlace,
-    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
+    MIROptionalCopy, MIROptionalPayload, MIRPlace,
+    MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .testutil import OptionalValue, execute
+from .testutil import OptionalValue, execute, leaf_shape, optional_shape, owned_shape, reslot
 from .validate import MIRPresenceError, MIRValidationError, validate_function
 from .presence import _State, _transfer
 
 BODY = MIRBodyId("optional_validation", "example")
 PARAM, CURRENT, SAVED, GUARD, COPY, VALUE, RESULT, FLAG = (MIRSlotId(BODY, i) for i in range(8))
 ENTRY, YES, NO, JOIN, LOOP = (MIRBlockId(BODY, i) for i in range(5))
-LAYOUT = MIROptionalLayout(INT32)
+LAYOUT = leaf_shape(INT32)
 SLOTS = (
-    MIRSlot(PARAM, OptionalType(INT32), MIRSlotKind.PARAMETER,
-            value_kind=MIRValueKind.OPTIONAL, optional_layout=LAYOUT),
-    MIRSlot(CURRENT, OptionalType(INT32), MIRSlotKind.LOCAL,
-            value_kind=MIRValueKind.OPTIONAL, optional_layout=LAYOUT),
-    MIRSlot(SAVED, OptionalType(INT32), MIRSlotKind.LOCAL,
-            value_kind=MIRValueKind.OPTIONAL, optional_layout=LAYOUT),
-    MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(COPY, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-    MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(PARAM, optional_shape(OptionalType(INT32), LAYOUT), MIRSlotKind.PARAMETER),
+    MIRSlot(CURRENT, optional_shape(OptionalType(INT32), LAYOUT), MIRSlotKind.LOCAL),
+    MIRSlot(SAVED, optional_shape(OptionalType(INT32), LAYOUT), MIRSlotKind.LOCAL),
+    MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL),
+    MIRSlot(COPY, leaf_shape(BOOL), MIRSlotKind.LOCAL),
+    MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )
 CAPTURE = MIRAssign(MIRPlace(CURRENT), MIROptionalCopy(MIRPlace(PARAM)))
 TEST = MIRAssign(MIRPlace(GUARD), MIRIsPresent(MIRPlace(CURRENT)))
@@ -118,17 +115,26 @@ def test_unconditional_payload_access_is_rejected() -> None:
 
 
 @pytest.mark.parametrize("bad", [
-    replace(SLOTS[0], optional_layout=None),
-    replace(SLOTS[0], optional_layout=MIROptionalLayout(BOOL)),
-    replace(SLOTS[0], optional_layout=MIROptionalLayout(INT32, readonly=True)),
-    replace(SLOTS[0], optional_layout=MIROptionalLayout(INT32, MIRValueKind.OWNED)),
-    replace(SLOTS[0], type=OptionalType(INT32, force_pointer_repr=True)),
-    replace(SLOTS[0], form=Form.BORROW),
+    reslot(SLOTS[0], members=()),
+    reslot(SLOTS[0], members=(leaf_shape(BOOL),)),
+    reslot(SLOTS[0], members=(leaf_shape(INT32, True),)),
+    reslot(SLOTS[0], type=OptionalType(INT32, force_pointer_repr=True)),
+    reslot(SLOTS[0], holding=MIRHolding.POINTER),
 ])
 def test_malformed_optional_layout_is_rejected(bad: MIRSlot) -> None:
     fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
     with pytest.raises(MIRValidationError):
         validate_function(replace(fn, slots=(bad, *fn.slots[1:])))
+
+
+def test_a_slot_payload_is_never_inline_storage() -> None:
+    # A slot's payload is an inert leaf or a pointer at a record; a record
+    # stored inline is an Optional field's, never a slot's.
+    cell = NominalType("Cell", _module_qname="optional_validation.Cell")
+    inline = reslot(SLOTS[0], type=OptionalType(cell), members=(owned_shape(cell),))
+    fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
+    with pytest.raises(MIRValidationError, match="unsupported optional reference"):
+        validate_function(replace(fn, slots=(inline, *fn.slots[1:])))
 
 
 @pytest.mark.parametrize("stmt", [
@@ -173,3 +179,17 @@ def test_unrelated_boolean_results_do_not_duplicate_holder_facts() -> None:
     for holder in holders:
         state = _transfer(state, MIRAssign(MIRPlace(holder), MIROptionalConstruct()), booleans)
     assert state.present == frozenset((MIRPlace(holder), frozenset({0})) for holder in holders)
+
+
+def test_a_member_type_is_bare_its_access_is_the_member_flag() -> None:
+    wrapped = reslot(SLOTS[0], members=(leaf_shape(ReadonlyType(INT32)),))
+    fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
+    with pytest.raises(MIRValidationError, match="readonly-wrapped value type"):
+        validate_function(replace(fn, slots=(wrapped, *fn.slots[1:])))
+
+
+def test_members_belong_to_wrappers_and_containers_at_every_depth() -> None:
+    nested = reslot(SLOTS[0], members=(replace(leaf_shape(INT32), members=(leaf_shape(INT32),)),))
+    fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
+    with pytest.raises(MIRValidationError, match="members on a memberless value"):
+        validate_function(replace(fn, slots=(nested, *fn.slots[1:])))

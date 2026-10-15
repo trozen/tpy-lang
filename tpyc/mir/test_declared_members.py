@@ -16,8 +16,10 @@ from ..typesys import INT32, STR, NominalType, ReadonlyType, unwrap_readonly, un
 from .call_contract import MIRSummaryState
 from .collect import MIRVerdictStatus, enumerate_bodies, line_facts
 from .coverage import MIRUnsupported
-from .nodes import MIRContainerLayout, MIRTupleElement, MIRValueKind
-from .validate import MIRValidationError, expected_container_layout, validate_function
+from .shapes import expected_container_members
+from .validate import MIRValidationError, validate_function
+from .testutil import leaf_shape, owned_shape, reslot
+from .nodes import MIRHolding
 
 SOURCE = """\
 from typing import Iterator
@@ -324,27 +326,24 @@ def test_refusals(program, name, reason) -> None:
 
 # --- layouts -----------------------------------------------------------------------
 
-def _layout(program, typ) -> MIRContainerLayout:
-    return program[3].container(None, _bare(typ)).layout
+def _layout(program, typ) -> tuple:
+    return program[3].container(None, _bare(typ)).members
 
 
 def test_layouts_are_the_declared_members_at_the_type_arguments(active) -> None:
     point = _bare(_param(active, "keyed", "p").type)
-    owned_str = MIRTupleElement(STR, MIRValueKind.OWNED, False)
-    assert _layout(active, _param(active, "first_x").type) == MIRContainerLayout(
-        MIRTupleElement(point, MIRValueKind.BORROWED, False))
+    owned_str = owned_shape(STR)
+    assert _layout(active, _param(active, "first_x").type) == (owned_shape(point),)
     # Views: keys walk the key, values the value, an items view keeps both.
-    assert _layout(active, _param(active, "keys_param").type) == MIRContainerLayout(owned_str)
-    assert _layout(active, _nominal("builtins.dict_values", STR, INT32)) == MIRContainerLayout(MIRTupleElement(INT32))
-    assert _layout(active, _nominal("builtins.dict_values", STR, STR)) == MIRContainerLayout(owned_str)
-    assert _layout(active, _nominal("builtins.dict_items", STR, INT32)) == MIRContainerLayout(
-        owned_str, MIRTupleElement(INT32))
+    assert _layout(active, _param(active, "keys_param").type) == (owned_str,)
+    assert _layout(active, _nominal("builtins.dict_values", STR, INT32)) == (leaf_shape(INT32),)
+    assert _layout(active, _nominal("builtins.dict_values", STR, STR)) == (owned_str,)
+    assert _layout(active, _nominal("builtins.dict_items", STR, INT32)) == (owned_str, leaf_shape(INT32))
     # Two members of one type are two positions.
-    assert _layout(active, _nominal("builtins.dict", STR, STR)) == MIRContainerLayout(owned_str, owned_str)
-    assert _layout(active, _nominal("tpy.varargs", INT32)) == MIRContainerLayout(MIRTupleElement(INT32))
+    assert _layout(active, _nominal("builtins.dict", STR, STR)) == (owned_str, owned_str)
+    assert _layout(active, _nominal("tpy.varargs", INT32)) == (leaf_shape(INT32),)
     # A keyed subscript is refused where it is read, not where the layout is built.
-    assert _layout(active, _param(active, "keyed").type) == MIRContainerLayout(
-        MIRTupleElement(point, MIRValueKind.BORROWED, False))
+    assert _layout(active, _param(active, "keyed").type) == (owned_shape(point),)
 
 
 def test_layout_refusals(active) -> None:
@@ -359,9 +358,8 @@ def test_layout_refusals(active) -> None:
             definitions.container(None, typ)
     # The validator re-derives the same refusal: no layout for a record value member.
     records = {point: definitions.get(None, point).layout}
-    assert expected_container_layout(_nominal("builtins.dict", STR, point), False, records) is None
-    assert expected_container_layout(_nominal("builtins.list", point), False, records) == MIRContainerLayout(
-        MIRTupleElement(point, MIRValueKind.BORROWED, False))
+    assert expected_container_members(_nominal("builtins.dict", STR, point), False, records) is None
+    assert expected_container_members(_nominal("builtins.list", point), False, records) == (owned_shape(point),)
 
 
 # --- THIR validator ----------------------------------------------------------------
@@ -437,12 +435,12 @@ def _mir_rejects(fn, message: str) -> None:
 def test_mir_validator_rejects_a_cursor_over_a_view_that_binds_none(active) -> None:
     fn = active[1]["values_total"].function
     validate_function(fn)
-    cursor = next(s for s in fn.slots if s.value_kind is MIRValueKind.NATIVE_ITERATOR)
+    cursor = next(s for s in fn.slots if s.shape.holding is MIRHolding.CURSOR)
     items = _nominal("builtins.dict_items", STR, INT32)
-    layout = MIRContainerLayout(MIRTupleElement(STR, MIRValueKind.OWNED, cursor.readonly), MIRTupleElement(INT32))
+    layout = (owned_shape(STR, cursor.readonly), leaf_shape(INT32))
     # The layout is the items view's own: only the missing cursor is wrong.
-    assert expected_container_layout(items, cursor.readonly, {r.type: r for r in fn.records}) == layout
-    damaged = replace(fn, slots=tuple(replace(s, type=items, container_layout=layout) if s is cursor else s
+    assert expected_container_members(items, cursor.readonly, {r.type: r for r in fn.records}) == layout
+    damaged = replace(fn, slots=tuple(reslot(s, type=items, members=layout) if s is cursor else s
                                       for s in fn.slots))
     _mir_rejects(damaged, "unsupported native element")
 
@@ -454,8 +452,8 @@ def test_mir_validator_reads_a_view_holder_access_from_its_own_element(active) -
     assert not holder.readonly
     # A values view whose element argument (its second) is readonly lends readonly access only.
     readonly_values = _nominal("builtins.dict_values", STR, ReadonlyType(INT32))
-    layout = MIRContainerLayout(MIRTupleElement(INT32))
-    assert expected_container_layout(readonly_values, False, {}) == layout
-    damaged = replace(fn, slots=tuple(replace(s, type=readonly_values, container_layout=layout) if s is holder else s
+    layout = (leaf_shape(INT32),)
+    assert expected_container_members(readonly_values, False, {}) == layout
+    damaged = replace(fn, slots=tuple(reslot(s, type=readonly_values, members=layout) if s is holder else s
                                       for s in fn.slots))
     _mir_rejects(damaged, "invalid container view holder")

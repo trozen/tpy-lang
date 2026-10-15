@@ -23,6 +23,7 @@ from .test_payload_lifetime import CURRENT, FLAG
 from .test_retention import AGAIN, END, LOOP, SITE, loop_function
 from .test_scope_lifetime import Artifacts, artifacts
 from .validate import MIRPresenceError, MIRValidationError, _prepare_function, validate_function
+from .testutil import leaf_shape
 
 
 def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction, MIRPlace]:
@@ -140,7 +141,8 @@ def test_skipped_union_construction_keeps_old_payload_alias(read_inside: bool) -
     fn = stale_scalar_alias()
     entry, initialize, after = fn.blocks
     guard, skipped, end = (MIRBlockId(fn.id, i) for i in (3, 4, 5))
-    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
+    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(BOOL), MIRSlotKind.PARAMETER,
+                   passing=ParamPassing.VALUE)
     fn = replace(fn, slots=(*fn.slots, skip), blocks=(
         replace(entry, terminator=MIRGoto(guard)),
         replace(initialize, statements=(*initialize.statements, READ) if read_inside else initialize.statements),
@@ -220,7 +222,8 @@ def test_skipped_construction_preserves_old_holder_dependencies(shape: str, rese
     fn, observed = scoped_loop(shape, reseat_first=reseat_first)
     entry, loop, again, end = fn.blocks
     guard = MIRBlockId(fn.id, 4)
-    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
+    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(BOOL), MIRSlotKind.PARAMETER,
+                   passing=ParamPassing.VALUE)
     # Read the saved alias before this activation decides whether to construct.
     reads = () if reseat_first else (loop.statements[3],)
     statements = loop.statements if reseat_first else (*loop.statements[:3], loop.statements[4])

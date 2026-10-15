@@ -9,7 +9,6 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL, INT32, TpyType
-from .coverage import owned_tuple
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
@@ -99,7 +98,7 @@ def artifacts() -> Artifacts:
             bodies["Runner"] = lower_constructor(ctor, MIRBodyId("owned_tuple", "Runner"), definitions=definitions)
     for name, body in bodies.items():
         assert isinstance(body, MIRFunction), (name, body)
-        assert any(owned_tuple(slot) for slot in body.slots)
+        assert any(slot.shape.owned_tuple for slot in body.slots)
     return functions, bodies, definitions, cpp
 
 
@@ -130,7 +129,7 @@ def test_positive_producer_facts_and_inline_placement(artifacts: Artifacts) -> N
         events = analyze_storage(body)
         assert len(events.member_initializations) == 1, name
         if name in ("repeat", "branch", "late", "method", "Runner"):
-            backing, = [s for s in body.slots if owned_tuple(s)]
+            backing, = [s for s in body.slots if s.shape.owned_tuple]
             assert isinstance(backing.storage_duration, MIRRegionId)
         assert analyze_scope_ends(body).ends
         assert not inspect_scope_lifetimes(body).conflicts

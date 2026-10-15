@@ -16,7 +16,7 @@ from .nodes import (
     MIRBodyId, MIRConstant, MIRFieldId, MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRNotCovered,
     MIRSlotId, MIRSlotKind,
 )
-from .testutil import Reference, execute
+from .testutil import Reference, execute, reslot
 from .validate import MIRValidationError, validate_function
 
 
@@ -163,7 +163,7 @@ def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Ar
         validate_function(replace(fn, receiver_init=replace(fn.receiver_init,
             fields=(MIRMemberInit(local.id), MIRMemberInit(MIRConstant(0)), MIRMemberInit(MIRConstant(False))))))
     with pytest.raises(MIRValidationError, match="constructor receiver"):
-        validate_function(replace(fn, slots=(replace(fn.slots[0], readonly=True), *fn.slots[1:])))
+        validate_function(replace(fn, slots=(reslot(fn.slots[0], readonly=True), *fn.slots[1:])))
     with pytest.raises(MIRValidationError, match="constructor receiver"):
         validate_function(replace(fn, receiver_init=replace(fn.receiver_init, receiver=fn.slots[1].id)))
     with pytest.raises(MIRValidationError, match="constructor entry mismatch"):

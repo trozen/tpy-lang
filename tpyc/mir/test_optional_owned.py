@@ -18,8 +18,9 @@ from .nodes import (
     MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRecordWriteMode,
 )
 from .storage import MIRStorageEvents, analyze_storage
-from .testutil import Heap, Reference, execute
+from .testutil import Heap, Reference, execute, reslot
 from .validate import MIRPresenceError, MIRValidationError, validate_function
+from ..thir.scalar_leaves import MIRClass
 
 
 SOURCE = """\
@@ -281,8 +282,8 @@ def test_in_place_requires_current_presence(artifacts: Artifacts) -> None:
 def test_in_place_cannot_mutate_readonly_payload(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["in_place"], artifacts[1])
     assert isinstance(fn, MIRFunction), fn
-    slots = tuple(replace(s, optional_layout=replace(s.optional_layout, readonly=True))
-                  if s.optional_layout is not None else s for s in fn.slots)
+    slots = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
+                  if s.shape.cls is MIRClass.OPTIONAL else s for s in fn.slots)
     with pytest.raises(MIRValidationError, match="readonly"):
         validate_function(replace(fn, slots=slots))
 
@@ -290,7 +291,7 @@ def test_in_place_cannot_mutate_readonly_payload(artifacts: Artifacts) -> None:
 def test_readonly_holder_copy_retains_owned_referent(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["retained"], artifacts[1])
     assert isinstance(fn, MIRFunction), fn
-    slots = tuple(replace(s, optional_layout=replace(s.optional_layout, readonly=True))
+    slots = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
                   if s.name == "saved" else s for s in fn.slots)
     fn = replace(fn, slots=slots)
     validate_function(fn)

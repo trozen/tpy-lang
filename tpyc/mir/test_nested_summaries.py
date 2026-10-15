@@ -21,10 +21,12 @@ from .dump import _write_step
 from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstruct, MIRContainerElements, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRMove, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
+    MIRMove, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .summaries import _member_chain, _private_records, summarize_function
 from .validate import validate_function
+from .testutil import borrowed_shape, leaf_shape
+from ..thir.scalar_leaves import MIRClass
 
 SOURCE = """\
 from tpy import int32, Own, copy, readonly
@@ -304,7 +306,7 @@ def _construct_operands(fn: MIRFunction) -> list[MIRSlot]:
     """The owned record temporaries constructs take as operands."""
     return [fn.slots[f.index] for b in fn.blocks for s in b.statements
             if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) for f in s.value.fields
-            if fn.slots[f.index].value_kind is MIRValueKind.OWNED and fn.slots[f.index].container_layout is None]
+            if fn.slots[f.index].shape.is_storage and fn.slots[f.index].shape.cls is not MIRClass.CONTAINER]
 
 
 # --- reads, writes and member holders through field chains --------------------------
@@ -456,9 +458,10 @@ def _adopt_with_member_holder(program: _Program, *, read_after: bool) -> MIRFunc
     point = next(s.type for s in _lowered(program, "leak").slots if s.type.name == "Point")
     a = MIRField(MIRFieldId(fn.slots[storage.index].type, "a"), point)
     x = MIRField(MIRFieldId(point, "x"), INT32)
-    held = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), a.type, MIRSlotKind.LOCAL, "held", form=th.Form.BORROW,
-                   value_kind=MIRValueKind.BORROWED, residence=block.region)
-    out = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), INT32, MIRSlotKind.TEMPORARY, residence=block.region)
+    held = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(a.type), MIRSlotKind.LOCAL, "held",
+                   residence=block.region)
+    out = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), leaf_shape(INT32), MIRSlotKind.TEMPORARY,
+                  residence=block.region)
     borrow = MIRAssign(MIRPlace(held.id), MIRBorrow(MIRPlace(ln, (MIRDeref(), a))))
     read = MIRAssign(MIRPlace(out.id), MIRRead(MIRPlace(held.id, (MIRDeref(), x))))
     index = block.statements.index(move)
@@ -545,11 +548,11 @@ def test_a_temporary_lent_to_a_construct_is_kept_private(active) -> None:
     # through its holder (a `const Point&` member copies it), the second
     # moved in; with the line itself every record storage is the body's own.
     fn = _lowered(active, "local_member")
-    lent = [s for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.type.name == "Point"
+    lent = [s for s in fn.slots if s.shape.is_storage and s.type.name == "Point"
             and s not in _construct_operands(fn)]
     assert lent and any(isinstance(st.value, MIRBorrow) and st.value.source == MIRPlace(lent[0].id)
                         for b in fn.blocks for st in b.statements if isinstance(st, MIRAssign))
-    owned = {s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.container_layout is None}
+    owned = {s.id for s in fn.slots if s.shape.is_storage and s.shape.cls is not MIRClass.CONTAINER}
     assert len(owned) == 3 and _private(fn) == owned
 
 
@@ -575,7 +578,8 @@ def test_a_temporary_read_beside_the_construct_stays_foreign(active) -> None:
     fn = _lowered(active, "build")
     (temporary,) = _construct_operands(fn)
     point = temporary.type
-    value = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), INT32, MIRSlotKind.TEMPORARY, residence=temporary.residence)
+    value = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(INT32), MIRSlotKind.TEMPORARY,
+                    residence=temporary.residence)
     read = MIRAssign(MIRPlace(value.id), MIRRead(MIRPlace(temporary.id, (MIRField(MIRFieldId(point, "x"), INT32),))))
     damaged = replace(_with_after_construct(fn, temporary, read), slots=(*fn.slots, value))
     assert temporary.id not in _private(damaged, fn)
@@ -587,9 +591,9 @@ def test_a_holder_live_at_the_construct_keeps_the_temporary_out(active) -> None:
     fn = _lowered(active, "build")
     (temporary,) = _construct_operands(fn)
     point = temporary.type
-    holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), point, MIRSlotKind.TEMPORARY, form=th.Form.BORROW,
-                     value_kind=MIRValueKind.BORROWED, residence=temporary.residence)
-    value = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), INT32, MIRSlotKind.TEMPORARY,
+    holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(point), MIRSlotKind.TEMPORARY,
+                     residence=temporary.residence)
+    value = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), leaf_shape(INT32), MIRSlotKind.TEMPORARY,
                     residence=temporary.residence)
     borrow = MIRAssign(MIRPlace(holder.id), MIRBorrow(MIRPlace(temporary.id)))
     read = MIRAssign(MIRPlace(value.id), MIRRead(MIRPlace(holder.id, (

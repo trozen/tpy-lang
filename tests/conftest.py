@@ -72,8 +72,10 @@ from tpyc.build.third_party import (
     resolve_build_plan, ThirdPartyMode, THIRD_PARTY_MODES, known_lib_names,
 )
 from tpyc.thir.faces import THIR_FACES
-from tpyc.mir.collect import MIRBodyVerdict, MIRLineFacts, MIRVerdictStatus, enumerate_bodies, line_facts
-from tpyc.mir.nodes import MIRBodyId, MIRValueKind
+from tpyc.mir.collect import (
+    MIRBodyVerdict, MIRLineFacts, MIRVerdictStatus, MIRWriteKind, enumerate_bodies, line_facts,
+)
+from tpyc.mir.nodes import MIRBodyId
 import fork_compile
 
 # Default options for tests: emit source comments for easier debugging
@@ -3601,7 +3603,7 @@ def _mir_fact_problem(ann: MirFactAnnotation, facts: MIRLineFacts) -> str | None
                 return f"no MIR statement on line {line} writes {name}"
             if ann.family == "mir_copy":
                 return None if any(w.copy for w in writes) else f"no write of {name} on line {line} is a copy"
-            want = MIRValueKind.OWNED if ann.family == "mir_owned" else MIRValueKind.BORROWED
+            want = MIRWriteKind.OWNED if ann.family == "mir_owned" else MIRWriteKind.BORROWED
             kinds = sorted({w.kind.name.lower() if w.kind is not None else "no value kind" for w in writes})
             return None if all(w.kind is want for w in writes) else f"MIR writes {name} as {', '.join(kinds)}"
         case "mir_write":

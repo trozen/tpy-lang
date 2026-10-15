@@ -3,16 +3,17 @@
 
 from ..parse import SourceLocation
 from ..thir.nodes import THIRStubCallee
+from ..thir.scalar_leaves import MIRClass
 from .call_contract import MIRAliasObligation, MIRResultHolder, MIRStaticLoan
 from .nodes import (
     MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
-    MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRValueKind,
+    MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRHolding, MIRShape,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode, MIRMemberInits,
     MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
-    MIRContainerStructure, MIRContainerElements, MIRContainerLayout, MIRTupleElement,
+    MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
     MIRRangeAdvance, MIRSlotId,
 )
@@ -74,11 +75,20 @@ def _write_step(step: object) -> str:
     return f".{step.name}"
 
 
-def _layout(layout: MIRContainerLayout) -> str:
-    """A container's members: `element=T:kind`, a dict's `value=` too."""
-    def member(name: str, m: MIRTupleElement) -> str:
-        return f" {name}={m.type}:{m.kind.name.lower()}" + (":readonly" if m.readonly else "")
+def _layout(layout: MIRShape) -> str:
+    """A container's members: `element=T:class`, a dict's `value=` too."""
+    def member(name: str, m: MIRShape) -> str:
+        return f" {name}={m.type}:{m.cls.name.lower()}" + (":readonly" if m.readonly else "")
     return member("element", layout.element) + ("" if layout.value is None else member("value", layout.value))
+
+
+def _member_access(member: MIRShape | None) -> str:
+    """How a wrapper holds a member: a reference with its access, or a value."""
+    if member is None:
+        return "absent"
+    if member.is_pointer:
+        return "readonly-ref" if member.readonly else "mutable-ref"
+    return "value"
 
 
 def _member_init(member: MIRMemberInit, borrowed: set[MIRSlotId]) -> str:
@@ -143,34 +153,28 @@ def dump_function(fn: MIRFunction) -> str:
         name = f" {slot.name}" if slot.name is not None else ""
         if slot.global_id is not None:
             name = f" {slot.global_id.module}::{slot.global_id.name}"
-        match slot.value_kind:
-            case MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR:
-                access = (" native-iterator" if slot.value_kind is MIRValueKind.NATIVE_ITERATOR else " container-ref")
+        shape = slot.shape
+        match shape.holding, shape.cls:
+            case (MIRHolding.CURSOR, _) | (MIRHolding.REGION, MIRClass.CONTAINER):
+                access = " native-iterator" if shape.holding is MIRHolding.CURSOR else " container-ref"
                 access += " readonly" if slot.readonly else " mutable"
-                access += _layout(slot.container_layout)
-            case MIRValueKind.BORROWED:
+                access += _layout(shape)
+            case (MIRHolding.POINTER | MIRHolding.REGION, _):
                 access = " readonly-ref" if slot.readonly else " mutable-ref"
-                if slot.container_layout is not None:
-                    access += _layout(slot.container_layout)
-            case MIRValueKind.OWNED if slot.container_layout is not None:
-                access = " owned" + _layout(slot.container_layout)
-            case MIRValueKind.OWNED:
-                access = " owned-storage"
-            case MIRValueKind.TUPLE:
-                access = " payload(" + ", ".join(
-                    ("readonly-ref" if e.readonly else "mutable-ref")
-                    if e.kind is MIRValueKind.BORROWED else "value"
-                    for e in slot.tuple_layout.elements) + ")"
-            case MIRValueKind.OPTIONAL:
-                member = slot.optional_layout
-                access = " optional(" + (("readonly-ref" if member.readonly else "mutable-ref")
-                                          if member.kind is MIRValueKind.BORROWED else "value") + ")"
-            case MIRValueKind.UNION:
-                access = " union(" + ", ".join("absent" if m is None else
-                    ("readonly-ref" if m.readonly else "mutable-ref")
-                    if m.kind is MIRValueKind.BORROWED else "value" for m in slot.union_layout.elements) + ")"
-            case MIRValueKind.PAYLOAD_ALIAS:
+                if shape.members:
+                    access += _layout(shape)
+            case (MIRHolding.ALIAS, _):
                 access = f" payload-alias({_place(slot.alias_source)})"
+            case (_, MIRClass.CONTAINER):
+                access = " owned" + _layout(shape)
+            case (_, MIRClass.OWNED_LEAF | MIRClass.RECORD):
+                access = " owned-storage"
+            case (_, MIRClass.TUPLE):
+                access = " payload(" + ", ".join(map(_member_access, shape.elements)) + ")"
+            case (_, MIRClass.OPTIONAL):
+                access = " optional(" + _member_access(shape.payload) + ")"
+            case (_, MIRClass.UNION):
+                access = " union(" + ", ".join(map(_member_access, shape.alternatives)) + ")"
             case _:
                 access = " readonly" if slot.global_id is not None and slot.readonly else ""
         duration = (f" duration=r{slot.storage_duration.index}" if isinstance(slot.storage_duration, MIRRegionId)
@@ -182,7 +186,7 @@ def dump_function(fn: MIRFunction) -> str:
         lines.append(f"  %{slot.id.index}: {slot.type}{access} {slot.kind.name.lower()}{name}{duration}")
     if fn.receiver_init is not None:
         init = fn.receiver_init
-        borrowed = {s.id for s in fn.slots if s.value_kind is MIRValueKind.BORROWED}
+        borrowed = {s.id for s in fn.slots if s.shape.is_pointer}
         values = ", ".join(_member_init(member, borrowed) for member in init.fields)
         lines.append(f"initialize-receiver %{init.receiver.index} ({values})")
     for region in fn.regions:

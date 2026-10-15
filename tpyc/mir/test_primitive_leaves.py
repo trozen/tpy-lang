@@ -13,18 +13,19 @@ from ..typesys import (
 )
 from .call_contract import MIRSummaryState
 from .coverage import slot_representation
-from .dependencies import _leaves
 from .lower import lower_constructor, lower_function
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRConstant, MIRFunction, MIRNotCovered, MIROp,
-    MIRPrint, MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRUnionLayout, MIRValueKind,
+    MIRPrint, MIRSlotKind, MIRStorageDuration,
 )
 from .payload_lifetime import inspect_payload_lifetimes
 from .test_payload_inspection import EXTRACT, READ, alias_function
 from .test_payload_lifetime import write
-from .testutil import execute
+from .testutil import execute, leaf_shape, reslot
 from .validate import MIRValidationError, validate_function
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..thir.scalar_leaves import MIRClass
 
 SOURCE = """\
 from enum import Enum
@@ -253,8 +254,7 @@ def test_every_primitive_leaf_position_is_covered(artifacts) -> None:
 def test_enum_values_are_inert_leaves(artifacts) -> None:
     fn = artifacts[1]["enums"]
     assert isinstance(fn, MIRFunction)
-    assert {s.name: s.value_kind for s in fn.slots if s.name in ("c", "d")} == {
-        "c": MIRValueKind.SCALAR, "d": MIRValueKind.SCALAR}
+    assert {s.name: s.shape.is_scalar for s in fn.slots if s.name in ("c", "d")} == {"c": True, "d": True}
 
 
 def test_all_six_int32_comparisons_stay_covered(artifacts) -> None:
@@ -271,7 +271,7 @@ def test_leaves_keep_their_own_types(artifacts) -> None:
     fn = artifacts[1]["leaves"]
     types = {s.name: str(s.type) for s in fn.slots if s.kind is MIRSlotKind.PARAMETER}
     assert types == {"a": "int64", "b": "float", "c": "char", "d": "bool", "u": "uint8", "f": "float32"}
-    assert all(s.value_kind is MIRValueKind.SCALAR for s in fn.slots if s.kind is MIRSlotKind.PARAMETER)
+    assert all(s.shape.is_scalar for s in fn.slots if s.kind is MIRSlotKind.PARAMETER)
     assert execute(fn, 1, 1.25, "q", True, 9, 1.5) == 1.25
     assert execute(fn, 7, 1.25, "q", True, 9, 1.5) == 0.5
 
@@ -296,17 +296,17 @@ def test_primitive_operations_lower_to_raising_ops(artifacts) -> None:
 def test_aggregate_parameters_keep_their_models(artifacts) -> None:
     bodies = artifacts[1]
     tuple_param = next(s for s in bodies["tuples"].slots if s.name == "t")
-    assert tuple_param.value_kind is MIRValueKind.TUPLE
-    assert [m.type for m in tuple_param.tuple_layout.elements] == [FLOAT, tuple_param.type.element_types[1]]
+    assert tuple_param.shape.cls is MIRClass.TUPLE
+    assert [m.type for m in tuple_param.shape.elements] == [FLOAT, tuple_param.type.element_types[1]]
     union_param = next(s for s in bodies["union"].slots if s.name == "u")
-    assert union_param.value_kind is MIRValueKind.UNION
+    assert union_param.shape.cls is MIRClass.UNION
     assert union_param.storage_duration is MIRStorageDuration.CALLER
     optional_param = next(s for s in bodies["optional"].slots if s.name == "o")
-    assert optional_param.value_kind is MIRValueKind.OPTIONAL and optional_param.optional_layout.type == FLOAT
+    assert optional_param.shape.cls is MIRClass.OPTIONAL and optional_param.shape.payload.type == FLOAT
     point = bodies["Point"]
     assert [f.type for r in point.records for f in r.fields] == [FLOAT, bodies["tuples"].return_type]
     container = next(s for s in bodies["container"].slots if s.name == "xs")
-    assert container.container_layout.element == MIRTupleElement(FLOAT)
+    assert container.shape.element == leaf_shape(FLOAT)
     assert any(s.kind is MIRSlotKind.GLOBAL and s.type == FLOAT for s in bodies["reads_global"].slots)
 
 
@@ -412,17 +412,15 @@ def test_literal_ranges_are_per_type() -> None:
 def test_validator_rechecks_each_leaf_class(artifacts) -> None:
     fn = artifacts[1]["leaves"]
     slot = next(s for s in fn.slots if s.name == "b")
-    broken = replace(fn, slots=tuple(replace(s, type=STR) if s is slot else s for s in fn.slots))
-    with pytest.raises(MIRValidationError):
+    broken = replace(fn, slots=tuple(reslot(s, type=STR) if s is slot else s for s in fn.slots))
+    # A leaf's class is its type's: a str claiming to be an inert leaf is refused.
+    with pytest.raises(MIRValidationError, match="value class mismatch"):
         validate_function(broken)
-    with pytest.raises(MIRValidationError, match="not an inert leaf"):
-        broken_slot = replace(slot, type=STR)
-        _leaves(broken_slot, {broken_slot.id: broken_slot})
-    union = next(s for s in artifacts[1]["union"].slots if s.name == "u")
-    member = replace(union, type=UnionType((STR, BOOL)),
-                     union_layout=MIRUnionLayout((MIRTupleElement(STR), MIRTupleElement(BOOL))))
-    with pytest.raises(MIRValidationError, match="not an inert leaf"):
-        _leaves(member, {member.id: member})
+    union_fn = artifacts[1]["union"]
+    union = next(s for s in union_fn.slots if s.name == "u")
+    member = reslot(union, type=UnionType((STR, BOOL)), members=(leaf_shape(STR), leaf_shape(BOOL)))
+    with pytest.raises(MIRValidationError, match="value class mismatch"):
+        validate_function(replace(union_fn, slots=tuple(member if s is union else s for s in union_fn.slots)))
     constant = next((b, i) for b in fn.blocks for i, s in enumerate(b.statements)
                     if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstant))
     block, index = constant
@@ -445,8 +443,7 @@ def _as_float(fn: MIRFunction) -> MIRFunction:
     def member(m):
         return None if m is None else replace(m, type=retype(m.type))
 
-    slots = tuple(replace(s, type=retype(s.type), union_layout=None if s.union_layout is None else
-                          MIRUnionLayout(tuple(member(m) for m in s.union_layout.elements)))
+    slots = tuple(reslot(s, type=retype(s.type), members=tuple(member(m) for m in s.shape.members))
                   for s in fn.slots)
     return replace(fn, slots=slots, return_type=retype(fn.return_type))
 
@@ -522,15 +519,15 @@ def test_ambiguous_union_literal_is_not_covered(excluded) -> None:
 def test_native_container_of_float_records(artifacts) -> None:
     fn = artifacts[1]["points"]
     param = next(s for s in fn.slots if s.name == "ps")
-    assert param.value_kind is MIRValueKind.BORROWED_CONTAINER
-    element = param.container_layout.element
-    assert element.kind is MIRValueKind.BORROWED and element.type.name == "Point"
+    assert param.shape.holding is MIRHolding.REGION
+    element = param.shape.element
+    assert element.cls is MIRClass.RECORD and element.type.name == "Point"
     point, = (r for r in fn.records if r.type == element.type)
     assert [f.type for f in point.fields] == [FLOAT, INT64]
 
 
 def _retype(fn: MIRFunction, old, new) -> MIRFunction:
-    slots = tuple(replace(s, type=new) if s.type == old else s for s in fn.slots)
+    slots = tuple(reslot(s, type=new) if s.type == old else s for s in fn.slots)
     return replace(fn, slots=slots, return_type=new if fn.return_type == old else fn.return_type)
 
 

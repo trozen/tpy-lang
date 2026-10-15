@@ -21,7 +21,7 @@ from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField,
     MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordWriteMode, MIRValueKind,
+    MIRRecordWriteMode,
 )
 from .retention import MIRRetention, affects, analyze_retention, may_overlap
 from .storage import analyze_storage, dump_storage
@@ -361,7 +361,7 @@ def test_a_declaration_owns_its_constructor_argument_temporaries(active) -> None
     lines = _lines(fn)
     assert "%2 = call main::make(%3) [reader, may-raise] [initialize_region]" in lines
     assert "%4 = borrow %2" in lines and "%1 = construct (%4, %5) may-raise [initialize_once]" in lines
-    storage = frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
     assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
@@ -385,7 +385,7 @@ def test_a_caller_construct_copies_through_a_view_argument(active) -> None:
         lines = _lines(fn)
         assert lent in lines and construct in lines, name
         assert _retention(fn).conflicts == ()
-        storage = frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+        storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
         assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
     assert "%2: StrView readonly-ref temporary residence=r0" in _lines(_body(active, "ctor_from_string"))
 
@@ -427,7 +427,7 @@ def test_a_local_record_field_write_keeps_its_storage_certified(active) -> None:
     assert "(*%4).__main__.Rec::name = copy (*%0) may-raise [in_place]" in lines
     assert "%6 = borrow (*%4).__main__.Rec::name" in lines
     assert _retention(fn).conflicts == ()
-    storage = frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
     assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
@@ -438,7 +438,7 @@ def test_a_field_write_never_reaches_a_static_literal(active) -> None:
     lines = _lines(fn)
     assert "%1 = 'lit'" in lines and "(*%0).__main__.Rec::name = 'x' [in_place]" in lines
     assert _retention(fn).conflicts == ()
-    storage = frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    storage = frozenset(s.id for s in fn.slots if s.shape.is_storage)
     assert certify_storage_origins(fn, storage, active.definitions).verdict is MIRStorageVerdict.CERTIFIED
 
 
@@ -531,7 +531,7 @@ def test_distinct_external_roots_may_alias(active) -> None:
 
 def test_a_call_write_into_private_storage_is_a_replacement_conflict(active) -> None:
     fn = _borrow_before_call(_body(active, "local_after_rename"))
-    storage = frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.type == active.record)
+    storage = frozenset(s.id for s in fn.slots if s.shape.is_storage and s.type == active.record)
     evidence = certify_storage_origins(fn, storage, active.definitions)
     assert evidence.verdict is MIRStorageVerdict.CONFLICT
     conflict, = evidence.conflicts
@@ -543,19 +543,20 @@ def test_a_field_replacement_reaches_only_holders_at_or_under_it(active) -> None
     name, n = _name_field(active), MIRField(MIRFieldId(active.record, "n"), INT32)
     fn = _body(active, "name_after_other")
     slots = {s.id: s for s in fn.slots}
+    records = {r.type: r for r in fn.records}
     p, q, s = (MIRPlace(slot.id) for slot in fn.slots[:3])
     field = MIRReferent(MIRPlace(p.root, (name,)), True)
     # Under one origin: the field itself, never the record around it or a sibling.
-    assert affects(field, field, slots)
-    assert not affects(field, MIRReferent(p, True), slots)
+    assert affects(field, field, slots, records)
+    assert not affects(field, MIRReferent(p, True), slots, records)
     assert may_overlap(field, MIRReferent(p, True))
-    assert not affects(field, MIRReferent(MIRPlace(p.root, (n,)), True), slots)
+    assert not affects(field, MIRReferent(MIRPlace(p.root, (n,)), True), slots, records)
     # Across external roots that may alias: any owned-leaf holder, never a record.
-    assert affects(field, MIRReferent(MIRPlace(q.root, (name,)), True), slots)
-    assert affects(field, MIRReferent(s, True), slots)
-    assert not affects(field, MIRReferent(q, True), slots)
+    assert affects(field, MIRReferent(MIRPlace(q.root, (name,)), True), slots, records)
+    assert affects(field, MIRReferent(s, True), slots, records)
+    assert not affects(field, MIRReferent(q, True), slots, records)
     # A whole-storage replacement keeps the symmetric prefix rule.
-    assert affects(MIRReferent(p, True), field, slots)
+    assert affects(MIRReferent(p, True), field, slots, records)
 
 
 # --- validator ------------------------------------------------------------------------

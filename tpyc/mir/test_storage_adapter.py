@@ -15,7 +15,7 @@ from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstruct, MIRGoto,
-    MIRPlace, MIRRecordWriteMode, MIRRegionId, MIRReturn, MIRTupleIndex, MIRUnionPayload, MIRValueKind,
+    MIRPlace, MIRRecordWriteMode, MIRRegionId, MIRReturn, MIRTupleIndex, MIRUnionPayload,
     function_body_kind,
 )
 from .region_flow import MIRRegionFlow
@@ -212,7 +212,7 @@ def test_full_expression_backings_keep_their_actual_region(
         place = result.backings[backing.node]
         slot = slots[place.root]
         block, write = writes[place]
-        assert not place.projections and slot.value_kind is MIRValueKind.OWNED
+        assert not place.projections and slot.shape.is_storage
         assert isinstance(slot.storage_duration, MIRRegionId) and slot.storage_duration.index != 0
         assert slot.storage_duration == slot.residence == block.region
         assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
@@ -534,7 +534,7 @@ def test_selected_and_payload_aliases_retain_exact_origins(artifacts: Artifacts,
         places = {MIRPlace(slots["pair"].id, (MIRTupleIndex(0),))}
     else:
         owner = slots["owner"]
-        alternative = next(i for i, member in enumerate(owner.union_layout.elements) if member.type.name == "Cell")
+        alternative = next(i for i, member in enumerate(owner.shape.alternatives) if member.type.name == "Cell")
         places = {MIRPlace(owner.id, (MIRUnionPayload(alternative),))}
     expected = frozenset(MIRReferent(place, external=True) for place in places)
     assert result.verdict is MIRStorageVerdict.CERTIFIED
@@ -552,7 +552,7 @@ def test_local_alias_requires_ordinary_storage_root(artifacts: Artifacts, name: 
     assert result.certifies(request, source, result.function)
     assert not result.backings and not result.evidence.explicit_roots
     root, = result.evidence.required
-    assert next(slot for slot in result.function.slots if slot.id == root).value_kind is MIRValueKind.OWNED
+    assert next(slot for slot in result.function.slots if slot.id == root).shape.is_storage
     assert all(not origin.external and origin.place.root == root
                for origins in result.evidence.origins.values() for origin in origins)
     obligation, = source.storage_facts.obligations

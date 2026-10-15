@@ -27,7 +27,7 @@ from types import MappingProxyType
 
 from ..parse import SourceLocation
 from .call_effects import analyze_call_effects
-from .coverage import MIRUnsupported, owned_tuple, scalar_wrapper
+from .coverage import MIRUnsupported
 from .definitions import MIRDefinitions
 from .dump import _location, _place
 from .dependencies import (
@@ -37,7 +37,7 @@ from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRAssign, MIRBodyKind, MIREdge, MIRField, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
     MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
-    MIRUnionPayload, MIRValueKind,
+    MIRUnionPayload,
 )
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .presence import MIRPresenceIssueKind
@@ -121,8 +121,8 @@ def _place_key(place: MIRPlace) -> tuple[int, int]:
 
 
 def _storage_root(slot: MIRSlot) -> bool:
-    return (slot.value_kind is MIRValueKind.OWNED or owned_tuple(slot)
-            or slot.kind is MIRSlotKind.LOCAL and scalar_wrapper(slot))
+    return (slot.shape.is_storage or slot.shape.owned_tuple
+            or slot.kind is MIRSlotKind.LOCAL and slot.shape.scalar_wrapper)
 
 
 def certify_storage_origins(fn: MIRFunction, required: frozenset[MIRSlotId],
@@ -157,6 +157,7 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
     if not operations:
         raise MIRValidationError("borrow evidence needs demanded operations")
     slots = {s.id: s for s in fn.slots}
+    records = fn.record_layouts
     blocks = {b.id: b for b in fn.blocks}
     origins: dict[MIRPoint, frozenset[MIRReferent]] = {}
     required = set(explicit_roots)
@@ -175,7 +176,7 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
         operation = block.statements[point.index] if point.index < len(block.statements) else block.terminator
         match operation:
             case MIRAssign(target=target) if (not target.projections
-                    and slots[target.root].value_kind is MIRValueKind.BORROWED):
+                    and slots[target.root].shape.borrowed):
                 holder = target
                 state_point = MIRPoint(point.block, point.index + 1)
             case MIRReturn(value=value) if (fn.borrowed_result is not None
@@ -194,7 +195,7 @@ def _borrow_evidence(prepared: MIRPrepared, liveness: MIRLiveness,
         if state is None:
             gap("demanded borrow operation has no dependency facts", operation.loc)
             continue
-        refs = resolve_referents(holder, state, slots)
+        refs = resolve_referents(holder, state, slots, records)
         if not refs:
             gap("demanded borrow operation has unknown origins", operation.loc)
             continue
@@ -256,9 +257,9 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
         return block.statements[point.index].loc if point.index < len(block.statements) else block.terminator.loc
 
     for slot in fn.slots:
-        members = ((slot.type,) if slot.value_kind is MIRValueKind.OWNED else
-                   tuple(m.type for m in slot.tuple_layout.elements if m.kind is MIRValueKind.OWNED)
-                   if owned_tuple(slot) else ())
+        members = ((slot.type,) if slot.shape.is_storage else
+                   tuple(m.type for m in slot.shape.elements if m.is_storage)
+                   if slot.shape.owned_tuple else ())
         for typ in members:
             try:
                 definition = definitions.get(slot, typ)
@@ -267,7 +268,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                 continue
             # Owned container storage answers its container layout (whose
             # record elements its definition verified); records their layout.
-            if (definition.layout != slot.container_layout if slot.container_layout is not None
+            if (definition.members != slot.shape.members if slot.shape.container_storage
                     else definition.layout not in fn.records):
                 gap("storage record layout differs from its definition")
 
@@ -398,13 +399,14 @@ def _return_escapes(prepared: MIRPrepared, dependencies: MIRDependencies
     caller's attribution."""
     fn = prepared.function
     slots = {s.id: s for s in fn.slots}
+    records = fn.record_layouts
     escapes: list[MIRStorageConflict] = []
     unknown: list[SourceLocation | None] = []
     # Function exit has no successor, so liveness says nothing about a result.
     if fn.borrowed_result is None:
         return (), ()
     for point, term, state in feasible_returns(prepared, dependencies):
-        origins = resolve_referents(MIRPlace(term.value), state, slots)
+        origins = resolve_referents(MIRPlace(term.value), state, slots, records)
         if not origins:
             unknown.append(term.loc)
         for origin in sorted(origins, key=lambda r: (r.place.root.index, len(r.place.projections))):

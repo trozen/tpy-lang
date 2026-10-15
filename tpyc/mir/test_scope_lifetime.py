@@ -14,12 +14,13 @@ from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
     MIRConstant, MIREdge, MIRFunction, MIRGoto, MIRNotCovered,
     MIRIsPresent,
-    MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
+    MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRRegion, MIRRegionId,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRValueKind,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
 from .validate import MIRValidationError, validate_function
+from .testutil import leaf_shape, optional_shape
 
 
 SOURCE = """\
@@ -179,7 +180,7 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
     assert body.index("if (") < body.index("Cell local = Cell(1);")
     fn = bodies["own"]
     assert isinstance(fn, MIRFunction)
-    roots = {s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED}
+    roots = {s.id for s in fn.slots if s.shape.is_storage}
     assert all(s.storage_duration is MIRStorageDuration.BODY for s in fn.slots if s.id in roots)
     ends = analyze_scope_ends(fn)
     blocks = {b.id: b for b in fn.blocks}
@@ -191,7 +192,7 @@ def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifa
 def test_loop_transfers_end_iteration_and_else_separately(artifacts: Artifacts) -> None:
     fn = artifacts[1]["loop"]
     result = analyze_scope_ends(fn)
-    roots = [s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED]
+    roots = [s.id for s in fn.slots if s.shape.is_storage]
     counts = {sid: sum(any(e.storage.root == sid for e in events) for events in result.ends.values()) for sid in roots}
     # Body fallthrough, break and continue each destroy the per-iteration local.
     assert sorted(counts.values()) == [1, 3]
@@ -230,9 +231,10 @@ def region_fixture() -> MIRFunction:
     init = MIRAssign(MIRPlace(local), MIROptionalConstruct(MIRPlace(value)),
                      storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
     return MIRFunction(body, INT32, (
-        MIRSlot(value, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(local, OptionalType(INT32), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                optional_layout=MIROptionalLayout(INT32), storage_duration=child, residence=child)), (
+        MIRSlot(value, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(flag, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(local, optional_shape(OptionalType(INT32), leaf_shape(INT32)), MIRSlotKind.LOCAL,
+                storage_duration=child, residence=child)), (
         MIRBlock(entry, (), MIRBranch(flag, iteration, after), root),
         MIRBlock(iteration, (init,), MIRGoto(entry), child),
         MIRBlock(after, (), MIRReturn(value), root)), entry,
@@ -303,9 +305,8 @@ def test_skipped_region_and_absent_payload_are_distinct() -> None:
 def test_edge_selection_survives_equal_branch_destinations() -> None:
     fn = region_fixture()
     entry, iteration, after = fn.blocks
-    parameter = replace(fn.slots[0], type=OptionalType(INT32), value_kind=MIRValueKind.OPTIONAL,
-                        optional_layout=MIROptionalLayout(INT32))
-    guard = MIRSlot(MIRSlotId(fn.id, 3), BOOL, MIRSlotKind.TEMPORARY, residence=iteration.region)
+    parameter = replace(fn.slots[0], shape=optional_shape(OptionalType(INT32), leaf_shape(INT32)))
+    guard = MIRSlot(MIRSlotId(fn.id, 3), leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=iteration.region)
     from_source = replace(iteration.statements[0], value=MIROptionalCopy(MIRPlace(parameter.id)))
     fn = replace(fn, return_type=BOOL, slots=(parameter, *fn.slots[1:], guard), blocks=(
         entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsPresent(MIRPlace(fn.slots[2].id)))),

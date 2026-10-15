@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies, MIRReferent
@@ -13,16 +12,16 @@ from .liveness import analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant,
     MIRConstruct, MIRDeref, MIREdge, MIRField, MIRFieldId, MIRFunction, MIRGoto,
-    MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIRPlace, MIRPoint,
+    MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRPoint,
     MIRRead, MIRRecordLayout, MIRRegion, MIRRegionId, MIRReturn, MIRSlot,
     MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
-    MIRTupleElement, MIRTupleIndex, MIRTupleInitialization, MIRTupleLayout,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionLayout, MIRValueKind,
+    MIRTupleIndex, MIRTupleInitialization,
+    MIRUnionConstruct, MIRUnionCopy,
 )
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
-from .testutil import Reference, execute
+from .testutil import Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape, union_shape
 from .validate import MIRValidationError, validate_function
 
 
@@ -32,9 +31,9 @@ FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 PAIR, EXTERNAL, VALUE, FLAG, SAVED, RESULT = (MIRSlotId(BODY, i) for i in range(6))
 ENTRY, INNER, EXIT = (MIRBlockId(BODY, i) for i in range(3))
 ROOT, CHILD = (MIRRegionId(BODY, i) for i in range(2))
-OWNED = MIRTupleElement(CELL, MIRValueKind.OWNED)
-BORROWED = MIRTupleElement(CELL, MIRValueKind.BORROWED)
-LAYOUT = MIRTupleLayout((OWNED, OWNED, BORROWED, MIRTupleElement(INT32)))
+OWNED = owned_shape(CELL)
+BORROWED = borrowed_shape(CELL)
+LAYOUT = (OWNED, OWNED, BORROWED, leaf_shape(INT32))
 TUPLE = TupleType((CELL, CELL, CELL, INT32))
 INIT = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((MIRConstruct((VALUE,)), MIRConstruct((VALUE,)),
                                                  EXTERNAL, VALUE)), storage_write=MIRTupleInitialization())
@@ -46,15 +45,13 @@ def member(index: int) -> MIRPlace:
 
 def function(*statements: MIRAssign) -> MIRFunction:
     slots = (
-        MIRSlot(PAIR, TUPLE, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.TUPLE,
-                tuple_layout=LAYOUT, storage_duration=MIRStorageDuration.BODY, residence=ROOT),
-        MIRSlot(EXTERNAL, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(SAVED, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED, residence=ROOT),
-        MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL, residence=ROOT),
+        MIRSlot(PAIR, tuple_shape(TUPLE, LAYOUT), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
+                residence=ROOT),
+        MIRSlot(EXTERNAL, borrowed_shape(CELL), MIRSlotKind.PARAMETER),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(SAVED, borrowed_shape(CELL), MIRSlotKind.LOCAL, residence=ROOT),
+        MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT),
     )
     return MIRFunction(BODY, INT32, slots, (MIRBlock(ENTRY, statements, MIRReturn(VALUE), ROOT),), ENTRY,
                        records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
@@ -113,22 +110,17 @@ def test_aggregate_holders_retain_inline_member_after_tuple_ends(kind: str) -> N
     holder, copied = MIRSlotId(BODY, 6), MIRSlotId(BODY, 7)
     match kind:
         case "tuple":
-            typ = TupleType((CELL,))
-            options = dict(value_kind=MIRValueKind.TUPLE, tuple_layout=MIRTupleLayout((BORROWED,)))
+            shape = tuple_shape(TupleType((CELL,)), (BORROWED,))
             capture, copy = MIRTupleConstruct((SAVED,)), MIRTupleCopy(holder)
         case "optional":
-            typ = OptionalType(CELL)
-            options = dict(value_kind=MIRValueKind.OPTIONAL,
-                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
+            shape = optional_shape(OptionalType(CELL), borrowed_shape(CELL))
             capture, copy = MIROptionalConstruct(MIRPlace(SAVED)), MIROptionalCopy(MIRPlace(holder))
         case _:
             other = NominalType("Other", _module_qname="tuple_storage.Other")
-            typ = UnionType((CELL, other))
-            options = dict(value_kind=MIRValueKind.UNION,
-                           union_layout=MIRUnionLayout((BORROWED, MIRTupleElement(other, MIRValueKind.BORROWED))))
+            shape = union_shape(UnionType((CELL, other)), (BORROWED, borrowed_shape(other)))
             capture, copy = MIRUnionConstruct(0, MIRPlace(SAVED)), MIRUnionCopy(MIRPlace(holder))
     fn = function()
-    fn = replace(fn, slots=(*fn.slots, *(MIRSlot(s, typ, MIRSlotKind.LOCAL, residence=ROOT, **options)
+    fn = replace(fn, slots=(*fn.slots, *(MIRSlot(s, shape, MIRSlotKind.LOCAL, residence=ROOT)
                                        for s in (holder, copied))))
     fn = scoped(fn, (INIT, MIRAssign(MIRPlace(SAVED), MIRBorrow(member(0))),
                      MIRAssign(MIRPlace(holder), capture)), (MIRAssign(MIRPlace(copied), copy),))
@@ -187,8 +179,8 @@ def test_same_activation_backedge_is_not_fresh_initialization() -> None:
 def test_borrow_tuple_copy_cannot_copy_an_owned_source() -> None:
     copy = MIRSlotId(BODY, 6)
     fn = function(INIT, MIRAssign(MIRPlace(copy), MIRTupleCopy(PAIR)))
-    slot = MIRSlot(copy, TUPLE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE, residence=ROOT,
-                   tuple_layout=MIRTupleLayout((BORROWED, BORROWED, BORROWED, MIRTupleElement(INT32))))
+    slot = MIRSlot(copy, tuple_shape(TUPLE, (BORROWED, BORROWED, BORROWED, leaf_shape(INT32))), MIRSlotKind.LOCAL,
+                   residence=ROOT)
     fn = replace(fn, slots=(*fn.slots, slot))
     with pytest.raises(MIRValidationError, match="owning tuple copy"):
         validate_function(fn)
@@ -196,11 +188,11 @@ def test_borrow_tuple_copy_cannot_copy_an_owned_source() -> None:
 
 def test_readonly_owned_member_does_not_grant_mutable_borrow() -> None:
     fn = function(INIT, MIRAssign(MIRPlace(SAVED), MIRBorrow(member(0))))
-    layout = replace(LAYOUT, elements=(replace(OWNED, readonly=True), *LAYOUT.elements[1:]))
-    fn = replace(fn, slots=(replace(fn.slots[0], tuple_layout=layout), *fn.slots[1:]))
+    layout = (replace(OWNED, readonly=True), *LAYOUT[1:])
+    fn = replace(fn, slots=(reslot(fn.slots[0], members=layout), *fn.slots[1:]))
     with pytest.raises(MIRValidationError, match="borrow increases access"):
         validate_function(fn)
-    fn = replace(fn, slots=(*fn.slots[:4], replace(fn.slots[4], readonly=True), fn.slots[5]))
+    fn = replace(fn, slots=(*fn.slots[:4], reslot(fn.slots[4], readonly=True), fn.slots[5]))
     validate_function(fn)
 
 

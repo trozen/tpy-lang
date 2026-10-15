@@ -13,11 +13,12 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionTy
 from . import lower as lowering
 from .definitions import MIRDefinitions
 from .nodes import (
+    MIRShape,
     MIRAssign, MIRBorrow, MIRConstant, MIRConstruct,
-    MIROptionalConstruct, MIROptionalLayout, MIROptionalPayload, MIRPlace, MIRRead, MIRRecordStorageInit,
+    MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRead, MIRRecordStorageInit,
     MIRRecordStorageKind, MIRRecordWriteMode, MIRRegionId, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRTupleConstruct, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRUnionConstruct,
-    MIRUnionLayout, MIRUnionPayload, MIRValueKind,
+    MIRTupleConstruct, MIRTupleIndex, MIRUnionConstruct,
+    MIRUnionPayload,
 )
 from .region_flow import MIRRegionFlow
 from .storage_adapter import certify_thir_storage
@@ -26,7 +27,7 @@ from .storage_evidence import (
 )
 from .test_borrowed_argument_storage import Artifacts, _compile_workspace, _thir
 from .test_storage_adapter import _request, _with_body
-from .testutil import Reference, execute
+from .testutil import Reference, borrowed_shape, execute, leaf_shape, optional_shape, tuple_shape, union_shape
 
 
 SOURCE = '''from tpy import int32, readonly, nocopy
@@ -378,7 +379,7 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
     if shape == "record":
         path = MIRPlace(holder.id)
     else:
-        borrowed = MIRTupleElement(holder.type, MIRValueKind.BORROWED)
+        borrowed = borrowed_shape(holder.type)
         wrapper_id = MIRSlotId(function.id, max(slots, key=lambda sid: sid.index).index + 1)
         capture = []
         extra_slots = []
@@ -386,30 +387,25 @@ def test_retained_holders_track_the_actual_select_root(artifacts: Artifacts, sha
             members, values = (borrowed,), (holder.id,)
             if shape == "mixed_tuple":
                 scalar = MIRSlotId(function.id, wrapper_id.index + 1)
-                extra_slots.append(MIRSlot(scalar, INT32, MIRSlotKind.TEMPORARY, residence=holder.residence))
+                extra_slots.append(MIRSlot(scalar, leaf_shape(INT32), MIRSlotKind.TEMPORARY,
+                                           residence=holder.residence))
                 capture.append(MIRAssign(MIRPlace(scalar), MIRConstant(7)))
                 members, values = (INT32, borrowed), (scalar, holder.id)
-            wrapper = MIRSlot(wrapper_id, TupleType(tuple(m.type if isinstance(m, MIRTupleElement) else m
-                                                         for m in members)), MIRSlotKind.LOCAL,
-                              value_kind=MIRValueKind.TUPLE,
-                              tuple_layout=MIRTupleLayout(tuple(m if isinstance(m, MIRTupleElement)
-                                                               else MIRTupleElement(m, MIRValueKind.SCALAR)
-                                                               for m in members)), residence=holder.residence)
+            shapes = tuple(m if isinstance(m, MIRShape) else leaf_shape(m) for m in members)
+            wrapper = MIRSlot(wrapper_id, tuple_shape(TupleType(tuple(m.type for m in shapes)), shapes),
+                              MIRSlotKind.LOCAL, residence=holder.residence)
             capture.append(MIRAssign(MIRPlace(wrapper_id), MIRTupleConstruct(values)))
             path = MIRPlace(wrapper_id, (MIRTupleIndex(len(members) - 1),))
         elif shape == "optional":
-            wrapper = MIRSlot(wrapper_id, OptionalType(holder.type), MIRSlotKind.LOCAL,
-                              value_kind=MIRValueKind.OPTIONAL,
-                              optional_layout=MIROptionalLayout(holder.type, MIRValueKind.BORROWED),
-                              residence=holder.residence)
+            wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(holder.type), borrowed_shape(holder.type)),
+                              MIRSlotKind.LOCAL, residence=holder.residence)
             capture.append(MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder.id))))
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
         else:
             other = NominalType("Other", _module_qname="select.Other")
-            wrapper = MIRSlot(wrapper_id, UnionType((holder.type, other)), MIRSlotKind.LOCAL,
-                              value_kind=MIRValueKind.UNION,
-                              union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED))),
-                              residence=holder.residence)
+            wrapper = MIRSlot(wrapper_id,
+                              union_shape(UnionType((holder.type, other)), (borrowed, borrowed_shape(other))),
+                              MIRSlotKind.LOCAL, residence=holder.residence)
             capture.append(MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, MIRPlace(holder.id))))
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
         blocks = []

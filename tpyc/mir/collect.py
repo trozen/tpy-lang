@@ -14,7 +14,7 @@ from ..sema.analyzer import SemanticAnalyzer
 from ..thir.lower import iter_module_callables, iter_module_constructors
 from ..thir.nodes import THIRConstructor, THIRFunction, THIRFunctionIdentity
 from ..thir.reject import is_bodyless_binding
-from ..thir.scalar_leaves import optional_record_field, owned_leaf, record_type, storage_leaf
+from ..thir.scalar_leaves import MIRClass
 from ..typesys import TpyType, unwrap_readonly
 from .call_contract import MIRAliasObligation, MIRSummaryResult, MIRSummaryState
 from .call_effects import MIRCallEffects, analyze_call_effects, dump_call_effects
@@ -29,8 +29,8 @@ from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
     MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
-    MIROptionalLayout, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRTupleLayout, MIRUnionPayload, MIRValueKind,
-    function_body_kind, place_layout, statement_target,
+    MIRRecordLayout, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRUnionPayload,
+    function_body_kind, statement_target,
 )
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
@@ -40,7 +40,8 @@ from .retention import (
     dump_retention, static_referent,
 )
 from .scope_lifetime import MIRScopeInspection, dump_scope_ends, dump_scope_inspection, inspect_scope_lifetimes
-from .storage import MIRStorageEvents, dump_storage
+from .shapes import place_shape
+from .storage import MIRStorageEvents, dump_storage, owned_field
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import (
     MIRStorageConflict, MIRStorageVerdict, analyze_return_escapes, analyze_store_escapes, dump_escapes,
@@ -435,14 +436,22 @@ def enumerate_bodies(module: TpyModule, analyzer: SemanticAnalyzer, ctx: CodeGen
 _SELECTORS = {MIRSlotKind.PARAMETER: "param", MIRSlotKind.LOCAL: "local", MIRSlotKind.GLOBAL: "global"}
 
 
+class MIRWriteKind(Enum):
+    """What a write lands in, as the `mir_owned` / `mir_borrowed`
+    annotations read it: owned storage, a borrowed holder, an inert leaf."""
+    OWNED = auto()
+    BORROWED = auto()
+    SCALAR = auto()
+
+
 @dataclass(frozen=True)
 class MIRLineWrite:
     """One statement on a source line writing a named place."""
     block: int
-    # The written place's value kind: a slot's own, a wrapper member's, OWNED
+    # What the written place is: a slot's or a wrapper member's value, OWNED
     # for record or owned-leaf storage (a field, or what a holder points at),
-    # SCALAR for an inert-leaf field; None for a place with neither.
-    kind: MIRValueKind | None
+    # SCALAR for an inert-leaf field; None for a place that is none of them.
+    kind: MIRWriteKind | None
     copy: bool  # the written value is a `MIRCopy`
 
 
@@ -555,28 +564,30 @@ class _Spelling:
         return text
 
 
-def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRValueKind | None:
-    slot = slots[place.root]
-    wrapper = place_layout(MIRPlace(place.root, place.projections[:-1]), slots) if place.projections else None
+def _value_write(shape: MIRShape) -> MIRWriteKind | None:
+    """What a write of a value of `shape` lands in: owned storage, a holder
+    of storage elsewhere (a pointer, a container view), an inert leaf."""
+    if shape.is_storage:
+        return MIRWriteKind.OWNED
+    if shape.borrowed:
+        return MIRWriteKind.BORROWED
+    return MIRWriteKind.SCALAR if shape.is_scalar else None
+
+
+def _written_kind(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
+                  records: Mapping[TpyType, MIRRecordLayout]) -> MIRWriteKind | None:
     match place.projections:
-        case ():
-            return slot.value_kind
-        case (*_, MIRTupleIndex(index=index)) if isinstance(wrapper, MIRTupleLayout):
-            return wrapper.elements[index].kind
-        case (*_, MIROptionalPayload()) if isinstance(wrapper, MIROptionalLayout):
-            return wrapper.kind
+        case () | (*_, MIRTupleIndex() | MIROptionalPayload()) | (MIRContainerElements(),):
+            # A slot's own value, a wrapper's member, a container element.
+            return _value_write(place_shape(place, slots, records))
         case (*_, MIRDeref()):
             # Whole storage a holder points at: storage_destination's replacement.
-            return MIRValueKind.OWNED
-        case (MIRContainerElements(),) if slot.container_layout is not None:
-            # An element is the container's own storage unless it is an inert leaf.
-            scalar = slot.container_layout.subscript.kind is MIRValueKind.SCALAR
-            return MIRValueKind.SCALAR if scalar else MIRValueKind.OWNED
-        case (*_, MIRField(type=field_type)):
-            typ = unwrap_readonly(field_type)
-            if owned_leaf(typ) or record_type(typ) or optional_record_field(typ) is not None:
-                return MIRValueKind.OWNED
-            return MIRValueKind.SCALAR if storage_leaf(typ) else None
+            return MIRWriteKind.OWNED
+        case (*_, MIRField() as field):
+            # A field the record owns is its storage (`owned_field`); any
+            # other is the value its shape says: a scalar leaf, a view
+            # member's loan.
+            return MIRWriteKind.OWNED if owned_field(field) else _value_write(place_shape(place, slots, records))
     return None
 
 
@@ -588,6 +599,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
     if fn is None or analyses is None:
         return None
     slots = {slot.id: slot for slot in fn.slots}
+    records = fn.record_layouts
     _spell = _Spelling(fn)
     by_name: dict[str, dict[str, list[MIRSlotId]]] = {}
     for slot in fn.slots:
@@ -638,7 +650,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             if (spelled := _spell(target, named)) is not None:
                 copy = isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCopy)
                 writes.setdefault((line, spelled), []).append(
-                    MIRLineWrite(block.id.index, _written_kind(target, slots), copy))
+                    MIRLineWrite(block.id.index, _written_kind(target, slots, records), copy))
             mode = modes.get(MIRPoint(block.id, index))
             if mode is not None and mode not in INITIALIZING_WRITES and (spelled := _spell(target, storage)) is not None:
                 replaced.setdefault((line, spelled), []).append(mode.name.lower())
@@ -657,7 +669,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
             spelled = {_spell(place, storage)} - {None}
             if not spelled and not isinstance(dependencies, MIRNotCovered) and point in dependencies.referents:
                 spelled = {_spell(ref.place, storage) for ref in
-                           resolve_referents(place, dependencies.referents[point], slots)} - {None}
+                           resolve_referents(place, dependencies.referents[point], slots, records)} - {None}
             for text in spelled:
                 replaced.setdefault((loc.line, text), []).append(kind)
 
@@ -672,9 +684,9 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                     continue
                 lines.add(member.loc.line)
                 spelled = _spell(MIRPlace(receiver.id, (MIRDeref(), field)), named)
-                kind = (MIRValueKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR
-                        else MIRValueKind.BORROWED if member.mode is MIRMemberInitMode.BORROW
-                        else MIRValueKind.OWNED)
+                kind = (MIRWriteKind.SCALAR if member.mode is MIRMemberInitMode.SCALAR
+                        else MIRWriteKind.BORROWED if member.mode is MIRMemberInitMode.BORROW
+                        else MIRWriteKind.OWNED)
                 writes.setdefault((member.loc.line, spelled), []).append(
                     MIRLineWrite(fn.entry.index, kind, member.mode is MIRMemberInitMode.COPY))
 
@@ -685,7 +697,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
     members: dict[str, MIRPlace] = {}
     borrows: dict[tuple[int, str], list[MIRLineReferents]] = {}
     if not isinstance(dependencies, MIRNotCovered):
-        layouts = {record.type: record for record in fn.records}
+        layouts = fn.record_layouts
         for slot in fn.slots:
             if slot.id not in named:
                 continue
@@ -693,7 +705,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 leaves.setdefault(named[slot.id], []).append(leaf)
                 if leaf.projections:
                     leaves.setdefault(_spell(leaf, named), []).append(leaf)
-            if slot.value_kind is MIRValueKind.BORROWED and record_type(slot.type):
+            if slot.shape.is_pointer and slot.shape.cls is MIRClass.RECORD:
                 for member in view_members(layouts.get(slot.type)):
                     place = MIRPlace(slot.id, (MIRDeref(), member))
                     members[_spell(place, named)] = place
@@ -706,7 +718,7 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
                 borrows.setdefault((line, spelled), []).append(MIRLineReferents(block_id.index, refs))
             for spelled, place in members.items():
                 try:
-                    loans = resolve_referents(place, state, slots) if state.get(MIRPlace(place.root)) else ()
+                    loans = resolve_referents(place, state, slots, layouts) if state.get(MIRPlace(place.root)) else ()
                 except MIRUnseededLoan:
                     loans = ()
                 borrows.setdefault((line, spelled), []).append(

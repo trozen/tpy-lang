@@ -15,13 +15,13 @@ from .nodes import (
     MIRAssign, MIRBlock, MIRBodyId, MIRBranch, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove,
     MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot,
-    MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRValueKind,
+    MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .presence import MIREngagement, _analyze_presence
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import INITIAL, analyze, loop_function
-from .testutil import execute
+from .testutil import execute, owned_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 
@@ -44,9 +44,8 @@ def test_reused_site_keeps_previous_holder_dependencies(move: bool, shape: str, 
 
 def optional_transfers(fn: MIRFunction, move: bool) -> MIRFunction:
     source = MIRSlotId(fn.id, max(s.id.index for s in fn.slots) + 1)
-    slot = MIRSlot(source, optional.CELL, MIRSlotKind.LOCAL, form=th.Form.STORAGE,
-                   value_kind=MIRValueKind.OWNED,
-                   storage_duration=MIRStorageDuration.BODY, residence=optional.ROOT)
+    slot = MIRSlot(source, owned_shape(optional.CELL), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
+                   residence=optional.ROOT)
     init = MIRAssign(MIRPlace(source), MIRConstruct((optional.VALUE,)),
                      storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
     blocks = tuple(replace(block, statements=tuple(
@@ -119,7 +118,7 @@ def test_indirect_overlap_reads_before_replacement(move: bool, live_alias: bool,
         optional.INIT, optional.WRITE, optional.BIND, optional.SAVE, write, read),
         MIRReturn(optional.RESULT), optional.ROOT))
     if readonly_alias:
-        fn = replace(fn, slots=tuple(replace(s, readonly=True) if s.id == optional.SAVED else s for s in fn.slots))
+        fn = replace(fn, slots=tuple(reslot(s, readonly=True) if s.id == optional.SAVED else s for s in fn.slots))
     assert execute(fn, 7, False) == 7
     # A move empties BACKING, which CURRENT itself points at: reading
     # through CURRENT afterwards reads moved-from storage.
@@ -155,7 +154,7 @@ def test_optional_transfer_keeps_source_eligibility(move: bool, fault: str) -> N
         fn = replace(fn, blocks=(replace(fn.blocks[0], statements=fn.blocks[0].statements[1:]),))
         reason = "read before definite assignment"
     elif fault == "readonly":
-        fn = replace(fn, slots=(*fn.slots[:-1], replace(fn.slots[-1], readonly=True)))
+        fn = replace(fn, slots=(*fn.slots[:-1], reslot(fn.slots[-1], readonly=True)))
         if not move:
             validate_function(fn)
             return

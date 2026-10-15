@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, NoneType, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies
@@ -16,16 +15,16 @@ from .nodes import (
     MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordLayout, MIRRecordStorageInit,
     MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion,
     MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRValueKind, MIROptionalConstruct, MIROptionalLayout, MIROptionalPayload,
-    MIRTupleConstruct, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
-    MIRUnionConstruct, MIRUnionLayout, MIRUnionPayload, MIRStatement,
+    MIROptionalConstruct, MIROptionalPayload,
+    MIRTupleConstruct, MIRTupleIndex,
+    MIRUnionConstruct, MIRUnionPayload, MIRStatement,
 )
 from .payload_lifetime import analyze_payload_ends
 from .presence import MIREngagement, _analyze_presence
 from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import execute
+from .testutil import borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape
 from .validate import MIRDefiniteAssignmentError, MIRValidationError, validate_function
 
 
@@ -46,16 +45,13 @@ READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD)))
 
 def function(*blocks: MIRBlock) -> MIRFunction:
     slots = (
-        MIRSlot(BACKING, CELL, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
-                storage_duration=MIRStorageDuration.BODY, residence=ROOT,
-                record_storage=MIRRecordStorageKind.OPTIONAL),
-        MIRSlot(CURRENT, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED, residence=ROOT),
-        MIRSlot(SAVED, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                value_kind=MIRValueKind.BORROWED, residence=ROOT),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL, residence=ROOT),
+        MIRSlot(BACKING, owned_shape(CELL), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
+                residence=ROOT, record_storage=MIRRecordStorageKind.OPTIONAL),
+        MIRSlot(CURRENT, borrowed_shape(CELL), MIRSlotKind.LOCAL, residence=ROOT),
+        MIRSlot(SAVED, borrowed_shape(CELL), MIRSlotKind.LOCAL, residence=ROOT),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT),
     )
     return MIRFunction(BODY, INT32, slots, blocks, ENTRY,
                        records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
@@ -175,22 +171,23 @@ def test_empty_inner_activation_has_only_wrapper_end() -> None:
 @pytest.mark.parametrize("shape", ["tuple_one", "tuple_two", "optional", "union"])
 def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -> None:
     holder = MIRSlotId(BODY, 6)
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
+    member = borrowed_shape(CELL)
     if shape.startswith("tuple"):
         two = shape == "tuple_two"
-        slot = MIRSlot(holder, TupleType((CELL, INT32) if two else (CELL,)), MIRSlotKind.LOCAL,
-                       value_kind=MIRValueKind.TUPLE, residence=ROOT,
-                       tuple_layout=MIRTupleLayout((member, MIRTupleElement(INT32)) if two else (member,)))
+        slot = MIRSlot(holder,
+                       tuple_shape(TupleType((CELL, INT32) if two else (CELL,)),
+                                   (member, leaf_shape(INT32)) if two else (member,)),
+                       MIRSlotKind.LOCAL, residence=ROOT)
         bind = MIRAssign(MIRPlace(holder), MIRTupleConstruct((CURRENT, VALUE) if two else (CURRENT,)))
         payload = MIRPlace(holder, (MIRTupleIndex(0), MIRDeref()))
     elif shape == "optional":
-        slot = MIRSlot(holder, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                       residence=ROOT, optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
+        slot = MIRSlot(holder, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL,
+                       residence=ROOT)
         bind = MIRAssign(MIRPlace(holder), MIROptionalConstruct(MIRPlace(CURRENT)))
         payload = MIRPlace(holder, (MIROptionalPayload(), MIRDeref()))
     else:
-        slot = MIRSlot(holder, UnionType((CELL, NoneType())), MIRSlotKind.LOCAL,
-                       value_kind=MIRValueKind.UNION, residence=ROOT, union_layout=MIRUnionLayout((member, None)))
+        slot = MIRSlot(holder, union_shape(UnionType((CELL, NoneType())), (member, None)), MIRSlotKind.LOCAL,
+                       residence=ROOT)
         bind = MIRAssign(MIRPlace(holder), MIRUnionConstruct(0, MIRPlace(CURRENT)))
         payload = MIRPlace(holder, (MIRUnionPayload(0), MIRDeref()))
     read_holder = MIRAssign(MIRPlace(SAVED), MIRBorrow(payload))
@@ -257,8 +254,7 @@ def test_possible_engagement_with_retained_alias_reports_overwrite() -> None:
         MIRBlock(YES, (WRITE, BIND, SAVE), MIRGoto(JOIN), ROOT),
         MIRBlock(NO, (), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (MIRAssign(MIRPlace(VALUE), MIRConstant(9)), WRITE, BIND, READ), MIRReturn(RESULT), ROOT))
-    fn = replace(fn, slots=(*fn.slots, MIRSlot(external, CELL, MIRSlotKind.PARAMETER,
-                 form=Form.BORROW, value_kind=MIRValueKind.BORROWED)))
+    fn = replace(fn, slots=(*fn.slots, MIRSlot(external, borrowed_shape(CELL), MIRSlotKind.PARAMETER)))
     assert dict(_analyze_presence(fn).engagement[MIRPoint(JOIN, 1)])[BACKING] == frozenset(MIREngagement)
     live = analyze_liveness(fn)
     conflicts = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn)).conflicts

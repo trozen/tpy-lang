@@ -27,7 +27,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .summaries import summarize_function
 from .validate import MIRValidationError, validate_function
-from .testutil import Reference, execute
+from .testutil import Reference, execute, reslot
 from .test_scope_inspection import scoped_loop
 from .test_retention import CELL, SAVED
 
@@ -269,7 +269,7 @@ def test_return_access_is_validated_without_thir(artifacts: Artifacts) -> None:
         validate_function(replace(body, borrowed_result=replace(body.borrowed_result, readonly=False)))
     body = bodies["identity"]
     returned = next(block.terminator.value for block in body.blocks if isinstance(block.terminator, MIRReturn))
-    slots = tuple(replace(slot, readonly=True) if slot.id == returned else slot for slot in body.slots)
+    slots = tuple(reslot(slot, readonly=True) if slot.id == returned else slot for slot in body.slots)
     with pytest.raises(MIRValidationError, match="^borrowed return type or access mismatch$"):
         validate_function(replace(body, slots=slots))
 
@@ -460,7 +460,7 @@ def test_call_result_target_is_validated(workspace: MIRCallWorkspace, damage: st
                               for index, stmt in enumerate(block.statements)
                               if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
     if damage == "readonly":
-        changed = replace(body, slots=tuple(replace(s, readonly=False) if s.id == stmt.target.root else s
+        changed = replace(body, slots=tuple(reslot(s, readonly=False) if s.id == stmt.target.root else s
                                             for s in body.slots))
         message = "call result type or access mismatch"
     else:
@@ -482,7 +482,7 @@ def test_missing_actual_origin_is_not_an_empty_result(workspace: MIRCallWorkspac
     body = workspace.bodies[MIRBodyId("main", "binding")]
     call = next(stmt.value for block in body.blocks for stmt in block.statements
                 if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
-    assert resolve_call_returns(call, {}, {s.id: s for s in body.slots}) is None
+    assert resolve_call_returns(call, {}, {s.id: s for s in body.slots}, {r.type: r for r in body.records}) is None
 
 
 def test_scalar_summary_cannot_claim_borrowed_origins(workspace: MIRCallWorkspace) -> None:

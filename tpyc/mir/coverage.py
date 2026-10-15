@@ -7,19 +7,17 @@ from ..thir.metadata import unsupported_metadata
 # `view_compatible` is the one predicate between a view holder and what it
 # borrows: a TypeDef family pairing, a leaf fact rather than a MIR rule.
 from ..thir.scalar_leaves import (  # noqa: F401
-    container_view, owned_leaf, primitive_leaf, primitive_owned_leaf, record_type, storage_leaf, view_compatible,
-    view_leaf,
+    MIRClass, primitive_leaf, primitive_owned_leaf, storage_leaf, view_compatible,
 )
 from ..typesys import (
-    FLOAT, INT32, FloatLiteralType, IntLiteralType, NominalType, Representation, TpyType, passing_representation,
-    through_view, unwrap_readonly,
+    FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
 )
-from ..type_def_registry import ParamPassing
 from .call_contract import MIRContainerElements, MIRContainerStructure
 from .nodes import (
-    MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalLayout, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRTupleElement, MIRTupleLayout, MIRValueKind,
+    MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalPayload, MIRPlace,
+    MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .shapes import holding_representation
 
 
 def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyType:
@@ -43,45 +41,11 @@ def scalar_param(p: th.THIRParam) -> bool:
 
 def slot_representation(slot: MIRSlot) -> Representation:
     """The representation a slot's value has: a parameter's passing
-    convention (unknown when unpublished), else its form (a value and owned
-    storage are their own storage, a holder points elsewhere)."""
+    convention (unknown when unpublished), else its holding's (a value and
+    owned storage are their own storage, a holder points elsewhere)."""
     if slot.kind is MIRSlotKind.PARAMETER:
         return Representation.TRAIT if slot.passing is None else passing_representation(slot.passing)
-    return (Representation.STORAGE if slot.value_kind in (MIRValueKind.SCALAR, MIRValueKind.OWNED)
-            else Representation.REFERENCE)
-
-
-def owned_storage(slot: MIRSlot) -> bool:
-    """An OWNED slot of an owned leaf: storage the body holds by value."""
-    return slot.value_kind is MIRValueKind.OWNED and owned_leaf(slot.type)
-
-
-def handed_record(slot: MIRSlot) -> bool:
-    """An `Own[R]` parameter's record storage: handed over at OWN, mutable,
-    the body's own from entry to exit (the caller materialized it)."""
-    return (slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.OWNED
-            and record_type(slot.type) and slot.container_layout is None
-            and slot.passing is ParamPassing.OWN and not slot.readonly
-            and slot.storage_duration is MIRStorageDuration.BODY)
-
-
-def owned_borrow(slot: MIRSlot) -> bool:
-    """A readonly BORROWED holder of an owned leaf's storage."""
-    return slot.value_kind is MIRValueKind.BORROWED and slot.readonly and owned_leaf(slot.type)
-
-
-def view_holder(slot: MIRSlot) -> bool:
-    """A readonly BORROWED holder typed by a view over an owned leaf
-    (`view_leaf`): its referents are the owned-leaf storage it views."""
-    return (slot.value_kind is MIRValueKind.BORROWED and slot.readonly and slot.form is th.Form.BORROW
-            and view_leaf(slot.type))
-
-
-def view_member(place: MIRPlace) -> MIRField | None:
-    """The view member a place ends at -- the loan a record object stores,
-    read or rebound whole -- or None."""
-    last = place.projections[-1] if place.projections else None
-    return last if isinstance(last, MIRField) and view_leaf(unwrap_readonly(last.type)) else None
+    return holding_representation(slot.shape.holding)
 
 
 def path_step(item: object) -> MIRField | MIRContainerStructure | MIRContainerElements:
@@ -118,11 +82,11 @@ def call_place(call: MIRCall, parameter: int, path: tuple[object, ...],
     record a borrowed record argument points at, or directly under a
     container argument (owned, borrowed, or a view)."""
     argument = slots[call.arguments[parameter]]
-    through = argument.value_kind is MIRValueKind.BORROWED and not container_view_holder(argument)
-    if argument.value_kind is MIRValueKind.OPTIONAL:
+    through = argument.shape.is_pointer
+    if argument.shape.cls is MIRClass.OPTIONAL:
         # An Optional argument lends the record its payload points at; a
         # scalar payload is the callee's own copy, under which no path lies.
-        if not optional_record_holder(argument):
+        if not argument.shape.record_payload:
             raise MIRValidationError("call path under an Optional argument with no borrowed payload")
         return MIRPlace(argument.id, PAYLOAD_RECORD + tuple(map(path_step, path)))
     return MIRPlace(argument.id, ((MIRDeref(),) if through else ()) + tuple(map(path_step, path)))
@@ -139,48 +103,6 @@ def call_write_places(call: MIRCall, slots: Mapping[MIRSlotId, MIRSlot]) -> tupl
                  for write in sorted(call.present_effects.writes, key=lambda w: (w.parameter, _path_key(w.path))))
 
 
-def container_view_holder(slot: MIRSlot) -> bool:
-    """A BORROWED holder typed by a container view (`container_view`: a
-    Span, a dict view): it IS the elements region of the container it
-    views, so its referents are `[elements]` places and a container
-    projection applied to it is absorbed."""
-    return (slot.value_kind is MIRValueKind.BORROWED and slot.form is th.Form.BORROW
-            and container_view(slot.type))
-
-
-def owned_container(slot: MIRSlot) -> bool:
-    """An OWNED slot of a native container: storage the body holds by value."""
-    return slot.value_kind is MIRValueKind.OWNED and slot.container_layout is not None
-
-
-def container_holder(slot: MIRSlot) -> bool:
-    """A slot whose value is a whole container object: a borrowed container
-    or owned container storage (an iterator is a cursor, not the object)."""
-    return (slot.value_kind is MIRValueKind.BORROWED_CONTAINER and slot.container_layout is not None
-            or owned_container(slot))
-
-
-def region_holder(slot: MIRSlot) -> bool:
-    """A slot whose `[elements]` region a place reaches directly: owned
-    container storage, a borrowed container, or a view of one."""
-    return (slot.value_kind is MIRValueKind.BORROWED_CONTAINER or owned_container(slot)
-            or container_view_holder(slot))
-
-
-def moved_storage(slot: MIRSlot) -> bool:
-    """Owned storage a move empties while the slot lives on: an owned leaf's
-    buffer, a container's, or a record's -- a holder of the record or of
-    any member inside it then reads moved-from storage."""
-    return owned_container(slot) or slot.value_kind is MIRValueKind.OWNED and (
-        owned_leaf(slot.type) or record_type(slot.type))
-
-
-def leaf_borrow(slot: MIRSlot) -> bool:
-    """A holder an operation reads an owned leaf through: an owned leaf's
-    own borrow or a view of one."""
-    return owned_borrow(slot) or view_holder(slot)
-
-
 def read_leaf(slot: MIRSlot) -> TpyType:
     """The leaf type an operation reading `slot` sees: a view holder reads
     its family's owned leaf."""
@@ -191,33 +113,9 @@ def primitive_operand(slot: MIRSlot) -> bool:
     """An operand a certified primitive operation reads: an inert leaf by
     value, or an owned leaf through a borrowed holder or a view, whose
     TypeDef carries the primitive-operation contract."""
-    if leaf_borrow(slot):
+    if slot.shape.leaf_borrow:
         return primitive_owned_leaf(read_leaf(slot))
-    return scalar_slot(slot) and primitive_leaf(slot.type)
-
-
-def scalar_slot(slot: MIRSlot) -> bool:
-    """A SCALAR slot whose type is re-verified an inert leaf at its
-    representation, so no loan can start, pass through or end at it."""
-    return slot.value_kind is MIRValueKind.SCALAR and storage_leaf(slot.type, slot_representation(slot))
-
-
-def scalar_member(member: MIRTupleElement | MIROptionalLayout | None) -> bool:
-    """A wrapper or container member holding an inert leaf by value."""
-    return (member is not None and member.kind is MIRValueKind.SCALAR
-            and not member.readonly and storage_leaf(member.type))
-
-def owned_tuple(slot: MIRSlot) -> bool:
-    return (slot.value_kind is MIRValueKind.TUPLE and isinstance(slot.tuple_layout, MIRTupleLayout)
-            and any(isinstance(m, MIRTupleElement) and m.kind is MIRValueKind.OWNED
-                    for m in slot.tuple_layout.elements))
-
-
-def optional_record_holder(slot: MIRSlot) -> bool:
-    """An Optional holder whose payload is a borrowed record: a pointer at
-    the record a parameter or a lent argument names."""
-    return (slot.value_kind is MIRValueKind.OPTIONAL and slot.optional_layout is not None
-            and slot.optional_layout.kind is MIRValueKind.BORROWED)
+    return slot.shape.is_scalar and primitive_leaf(slot.type)
 
 
 # The steps from an Optional record holder to the record its payload points at.
@@ -227,19 +125,9 @@ PAYLOAD_RECORD = (MIROptionalPayload(), MIRDeref())
 def payload_record_path(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[object, ...] | None:
     """The projections under the record an Optional record holder's payload
     points at (`payload, deref, ...`), or None for any other place."""
-    if optional_record_holder(slots[place.root]) and place.projections[:2] == PAYLOAD_RECORD:
+    if slots[place.root].shape.record_payload and place.projections[:2] == PAYLOAD_RECORD:
         return place.projections[2:]
     return None
-
-
-def scalar_wrapper(slot: MIRSlot) -> bool:
-    match slot.value_kind:
-        case MIRValueKind.OPTIONAL:
-            return scalar_member(slot.optional_layout)
-        case MIRValueKind.UNION:
-            return all(m is None or scalar_member(m) for m in slot.union_layout.elements)
-        case _:
-            return False
 
 
 class MIRUnsupported(Exception):

@@ -23,10 +23,11 @@ from .dump import _call as _dump_call, dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRCall, MIRContainerLayout, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRValueKind,
+    MIRAssign, MIRBodyId, MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
+    MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .summaries import summarize_function
+from .testutil import borrowed_shape, leaf_shape, region_shape
 
 
 SOURCE = '''\
@@ -556,22 +557,23 @@ def test_call_return_problem_checks_the_endpoint_type(program: _Program) -> None
     point = next(MIRPoint(b.id, i) for b in fn.blocks for i, s in enumerate(b.statements) if s is stmt)
     state = deps.referents[point]
     holder = slots[stmt.target.root]
-    assert call_return_problem(stmt.value, holder, state, slots) is None
+    records = {r.type: r for r in fn.records}
+    assert call_return_problem(stmt.value, holder, state, slots, records) is None
     n = _field(program, "n", INT32)
     scalar = replace(stmt.value, summary=replace(stmt.value.summary, returns=frozenset({MIRReturnOrigin(0, (n,))})))
-    assert call_return_problem(scalar, holder, state, slots) == "container result of a non-container place"
+    assert call_return_problem(scalar, holder, state, slots, records) == "container result of a non-container place"
     whole = replace(stmt.value, summary=replace(stmt.value.summary, returns=frozenset({MIRReturnOrigin(0)})))
-    assert call_return_problem(whole, holder, state, slots) == "container result of a non-container argument"
+    assert call_return_problem(whole, holder, state, slots, records) == "container result of a non-container argument"
 
 
-def _call_site(program: _Program, name: str) -> tuple[MIRAssign, MIRSlot, dict, dict]:
+def _call_site(program: _Program, name: str) -> tuple[MIRAssign, MIRSlot, dict, dict, dict]:
     """The first call assigned to a holder in `name`, its holder, and the referents before it."""
     fn = _lowered(program, name)
     slots = {s.id: s for s in fn.slots}
     point, stmt = next((MIRPoint(b.id, i), s) for b in fn.blocks for i, s in enumerate(b.statements)
                        if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall) and s.value.summary.returns)
     state = analyze_dependencies(fn, analyze_liveness(fn)).referents[point]
-    return stmt, slots[stmt.target.root], state, slots
+    return stmt, slots[stmt.target.root], state, slots, {r.type: r for r in fn.records}
 
 
 def _returning(call: MIRCall, *path: th.THIRFieldIdentity | MIRContainerStructure | MIRContainerElements) -> MIRCall:
@@ -581,15 +583,16 @@ def _returning(call: MIRCall, *path: th.THIRFieldIdentity | MIRContainerStructur
 def test_call_return_problem_checks_record_and_view_endpoints(program: _Program) -> None:
     """Hand-built origins: `summary_problem` refuses each before any caller sees it."""
     items, n = _field(program, "items", INTS), _field(program, "n", INT32)
-    view, holder, state, slots = _call_site(program, "view_across")
-    assert call_return_problem(view.value, holder, state, slots) is None
-    assert call_return_problem(_returning(view.value, items), holder, state, slots) == (
+    view, holder, state, slots, records = _call_site(program, "view_across")
+    assert call_return_problem(view.value, holder, state, slots, records) is None
+    assert call_return_problem(_returning(view.value, items), holder, state, slots, records) == (
         "view result of a non-leaf place")
-    assert call_return_problem(_returning(view.value, items, MIRContainerElements()), holder, state, slots) == (
+    assert call_return_problem(_returning(view.value, items, MIRContainerElements()), holder, state, slots,
+                               records) == (
         "call result of a container region")
-    record, holder, state, slots = _call_site(program, "write_through_me")
-    assert call_return_problem(record.value, holder, state, slots) is None
-    assert call_return_problem(_returning(record.value, n), holder, state, slots) == (
+    record, holder, state, slots, records = _call_site(program, "write_through_me")
+    assert call_return_problem(record.value, holder, state, slots, records) is None
+    assert call_return_problem(_returning(record.value, n), holder, state, slots, records) == (
         "call result of a mismatched place")
 
 
@@ -619,11 +622,10 @@ def test_a_container_result_may_be_more_readonly_than_its_type(program: _Program
 
 def test_a_whole_container_rooted_in_an_elements_region_is_refused() -> None:
     body = MIRBodyId("main", "region")
-    layout = MIRContainerLayout(MIRTupleElement(INT32))
-    xs = MIRSlot(MIRSlotId(body, 0), INTS, MIRSlotKind.PARAMETER, "xs", form=th.Form.BORROW,
-                 value_kind=MIRValueKind.BORROWED_CONTAINER, container_layout=layout, passing=ParamPassing.MUT_REF)
-    ys = MIRSlot(MIRSlotId(body, 1), INTS, MIRSlotKind.LOCAL, "ys", form=th.Form.BORROW,
-                 value_kind=MIRValueKind.BORROWED_CONTAINER, container_layout=layout)
+    layout = (leaf_shape(INT32),)
+    xs = MIRSlot(MIRSlotId(body, 0), region_shape(INTS, members=layout), MIRSlotKind.PARAMETER, "xs",
+                 passing=ParamPassing.MUT_REF)
+    ys = MIRSlot(MIRSlotId(body, 1), region_shape(INTS, members=layout), MIRSlotKind.LOCAL, "ys")
     signature = th.THIRCallableSignature((INTS,), INTS, None, (ParamPassing.MUT_REF,))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "ident"), signature)
     summary = MIRCallSummary(callee, (MIRParameterBinding(INTS, ParamPassing.MUT_REF, False),), frozenset({0}),
@@ -631,9 +633,9 @@ def test_a_whole_container_rooted_in_an_elements_region_is_refused() -> None:
     call = MIRCall(summary, (xs.id,), False)
     slots = {xs.id: xs, ys.id: ys}
     whole = {MIRPlace(xs.id): frozenset({MIRReferent(MIRPlace(xs.id), True)})}
-    assert call_return_problem(call, ys, whole, slots) is None
+    assert call_return_problem(call, ys, whole, slots, {}) is None
     region = {MIRPlace(xs.id): frozenset({MIRReferent(MIRPlace(xs.id, (MIRContainerElements(),)), True)})}
-    assert call_return_problem(call, ys, region, slots) == "container result rooted in an elements region"
+    assert call_return_problem(call, ys, region, slots, {}) == "container result rooted in an elements region"
 
 
 def test_a_span_argument_is_projected_once() -> None:
@@ -641,11 +643,9 @@ def test_a_span_argument_is_projected_once() -> None:
     # region; resolving the origin's place never projects it again.
     span = NominalType("Span", (INT32,), _module_qname="tpy.Span")
     body = MIRBodyId("main", "chain")
-    layout = MIRContainerLayout(MIRTupleElement(INT32))
-    t = MIRSlot(MIRSlotId(body, 0), span, MIRSlotKind.LOCAL, "t", form=th.Form.BORROW,
-                value_kind=MIRValueKind.BORROWED, container_layout=layout)
-    u = MIRSlot(MIRSlotId(body, 1), span, MIRSlotKind.LOCAL, "u", form=th.Form.BORROW,
-                value_kind=MIRValueKind.BORROWED, container_layout=layout)
+    layout = (leaf_shape(INT32),)
+    t = MIRSlot(MIRSlotId(body, 0), borrowed_shape(span, members=layout), MIRSlotKind.LOCAL, "t")
+    u = MIRSlot(MIRSlotId(body, 1), borrowed_shape(span, members=layout), MIRSlotKind.LOCAL, "u")
     signature = th.THIRCallableSignature((span,), span, None, (ParamPassing.VALUE,))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "ident"), signature)
     xs_elements = MIRReferent(MIRPlace(MIRSlotId(MIRBodyId("main", "caller"), 0), (MIRContainerElements(),)), True)
@@ -654,7 +654,7 @@ def test_a_span_argument_is_projected_once() -> None:
     for path in ((), (MIRContainerElements(),)):
         summary = MIRCallSummary(callee, (MIRParameterBinding(span, ParamPassing.VALUE, True),), frozenset({0}),
                                  frozenset(), frozenset(), frozenset({MIRReturnOrigin(0, path)}), frozenset(), True)
-        assert resolve_call_returns(MIRCall(summary, (t.id,), False), state, slots, u) == {xs_elements}
+        assert resolve_call_returns(MIRCall(summary, (t.id,), False), state, slots, {}, u) == {xs_elements}
 
 
 def test_dump_spells_return_paths(program: _Program) -> None:
@@ -720,7 +720,7 @@ def test_a_twin_result_is_bound_at_the_receiver_binding(program: _Program, name:
     assert _free(program, name).resolved_callee.signature.passings[0] is receiver
     verdict = program.verdicts[name]
     assert verdict.status in (MIRVerdictStatus.COVERED, MIRVerdictStatus.CERTIFIED), verdict.reason
-    _, holder, _, _ = _call_site(program, name)
+    _, holder, _, _, _ = _call_site(program, name)
     assert holder.readonly is readonly
 
 

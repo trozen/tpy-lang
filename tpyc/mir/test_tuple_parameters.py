@@ -11,7 +11,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
 from .lower import lower_function
 from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered
-from .testutil import Reference, TupleValue, execute
+from .testutil import Reference, TupleValue, execute, reslot
 from .validate import MIRValidationError, validate_function
 
 
@@ -105,7 +105,7 @@ def lower(fn: th.THIRFunction) -> MIRFunction:
 def test_capture_preserves_shared_identity(artifacts: Artifacts, same: bool) -> None:
     functions, _ = artifacts
     fn = lower(functions["mutable"])
-    cell = fn.slots[0].tuple_layout.elements[0].type
+    cell = fn.slots[0].shape.elements[0].type
     value = MIRFieldId(cell, "value")
     heap = {1: {value: 1}, 2: {value: 2}}
     assert execute(fn, TupleValue((Reference(1),)), Reference(1 if same else 2), heap=heap) == 18
@@ -116,7 +116,7 @@ def test_capture_preserves_shared_identity(artifacts: Artifacts, same: bool) -> 
 def test_readonly_capture_observes_another_writer(artifacts: Artifacts, name: str, written: int) -> None:
     functions, _ = artifacts
     fn = lower(functions[name])
-    value = MIRFieldId(fn.slots[0].tuple_layout.elements[0].type, "value")
+    value = MIRFieldId(fn.slots[0].shape.elements[0].type, "value")
     assert next(slot for slot in fn.slots if slot.name == "saved").readonly
     assert execute(fn, TupleValue((Reference(1),)), Reference(1), heap={1: {value: 1}}) == written
 
@@ -124,7 +124,7 @@ def test_readonly_capture_observes_another_writer(artifacts: Artifacts, name: st
 def test_mixed_scalar_snapshots_and_negative_index(artifacts: Artifacts) -> None:
     functions, _ = artifacts
     fn = lower(functions["mixed"])
-    value = MIRFieldId(fn.slots[0].tuple_layout.elements[-1].type, "value")
+    value = MIRFieldId(fn.slots[0].shape.elements[-1].type, "value")
     assert functions["mixed"].body[0].init.tuple_index == 2
     heap = {1: {value: 1}}
     assert execute(fn, TupleValue((5, True, Reference(1))), heap=heap) == 5
@@ -136,7 +136,7 @@ def test_mixed_scalar_snapshots_and_negative_index(artifacts: Artifacts) -> None
 def test_duplicate_and_mixed_access_referents(artifacts: Artifacts, name: str, written: int, same: bool) -> None:
     functions, _ = artifacts
     fn = lower(functions[name])
-    value = MIRFieldId(fn.slots[0].tuple_layout.elements[0].type, "value")
+    value = MIRFieldId(fn.slots[0].shape.elements[0].type, "value")
     heap = {1: {value: 1}, 2: {value: 2}}
     assert execute(fn, TupleValue((Reference(1), Reference(1 if same else 2))), heap=heap) == (
         written if same else 1)
@@ -145,12 +145,12 @@ def test_duplicate_and_mixed_access_referents(artifacts: Artifacts, name: str, w
 def test_parameter_tuple_copies_and_nested_paths(artifacts: Artifacts) -> None:
     functions, _ = artifacts
     fn = lower(functions["copy_tuple"])
-    value = MIRFieldId(fn.slots[0].tuple_layout.elements[0].type, "value")
+    value = MIRFieldId(fn.slots[0].shape.elements[0].type, "value")
     assert execute(fn, TupleValue((Reference(1), 1)), Reference(1), heap={1: {value: 1}}) == 26
     assert execute(fn, TupleValue((Reference(1), 1)), Reference(2), heap={1: {value: 1}, 2: {value: 2}}) == 24
     assert execute(lower(functions["scalar_copy"]), TupleValue((24, True))) == 24
     nested = lower(functions["nested"])
-    outer = nested.slots[0].tuple_layout.elements[0].type
+    outer = nested.slots[0].shape.elements[0].type
     assert execute(nested, TupleValue((Reference(1),)), heap={1: {MIRFieldId(outer, "inner"): {value: 1}}}) == 25
 
 
@@ -189,7 +189,7 @@ def test_capture_representation_and_readonly_are_verified(artifacts: Artifacts) 
     mir = lower(fn)
     holder = next(slot for slot in mir.slots if slot.name == "saved")
     with pytest.raises(MIRValidationError, match="borrow increases access"):
-        validate_function(replace(mir, slots=tuple(replace(s, readonly=False) if s == holder else s for s in mir.slots)))
+        validate_function(replace(mir, slots=tuple(reslot(s, readonly=False) if s == holder else s for s in mir.slots)))
 
 
 def test_parameter_layout_is_required_and_cannot_increase_access(artifacts: Artifacts) -> None:

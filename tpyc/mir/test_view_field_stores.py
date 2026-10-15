@@ -28,13 +28,14 @@ from .dependencies import (
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIRDeref, MIREdge, MIRField, MIRFunction,
-    MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRTupleIndex, MIRValueKind,
+    MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRTupleIndex,
 )
 from .retention import analyze_retention
 from .storage import analyze_storage, owned_field
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
 from .summaries import summarize_function
 from .validate import MIRValidationError, validate_function
+from .testutil import reslot
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -278,7 +279,7 @@ def _named(fn: MIRFunction, name: str) -> MIRPlace:
 
 
 def _owned(fn: MIRFunction) -> list:
-    return [s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.type.name == "Tok"]
+    return [s.id for s in fn.slots if s.shape.is_storage and s.type.name == "Tok"]
 
 
 # --- the write ----------------------------------------------------------------------------
@@ -334,7 +335,7 @@ def test_a_view_member_write_needs_mutable_access(program: _Program) -> None:
     fn = _lowered(program, "literal")
     receiver = fn.slots[0]
     with pytest.raises(MIRValidationError, match="store through readonly reference"):
-        validate_function(replace(fn, slots=(replace(receiver, readonly=True), *fn.slots[1:])))
+        validate_function(replace(fn, slots=(reslot(receiver, readonly=True), *fn.slots[1:])))
 
 
 def test_a_view_member_write_needs_a_view_holder(program: _Program) -> None:
@@ -595,12 +596,13 @@ def test_a_loan_holding_write_no_entry_keys_refuses(program: _Program) -> None:
     # entry keys (a tuple member here) refuses rather than storing nothing.
     fn = _lowered(program, "member")
     slots = {s.id: s for s in fn.slots}
+    records = {r.type: r for r in fn.records}
     o = _named(fn, "o")
     inner, buf = _field(program, "Holder", "inner"), _field(program, "R", "buf")
-    assert written_record(MIRPlace(o.root, (inner,)), slots) == inner.type
-    assert written_record(MIRPlace(o.root, (inner, buf)), slots) is None
+    assert written_record(MIRPlace(o.root, (MIRDeref(), inner)), slots, records) == inner.type
+    assert written_record(MIRPlace(o.root, (MIRDeref(), inner, buf)), slots, records) is None
     with pytest.raises(_DependencyRefusal, match="loan-holding write under an unmodeled place"):
-        written_record(MIRPlace(o.root, (MIRTupleIndex(0),)), slots)
+        written_record(MIRPlace(o.root, (MIRTupleIndex(0),)), slots, records)
     # A value naming no stored loan refuses the fill, whatever the statement.
     layouts = {r.type: r for r in fn.records}
     with pytest.raises(MIRUnseededLoan, match="record storage filled with no stored loan"):

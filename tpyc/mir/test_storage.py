@@ -15,8 +15,8 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
+    MIRHolding,
     MIRAlias, MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered,
-    MIRValueKind,
 )
 from .testutil import Heap, Reference, execute
 
@@ -245,7 +245,7 @@ def test_alias_producer_paths_and_dump(functions: dict[str, th.THIRFunction]) ->
         fn = lower(functions[name])
         assert any(isinstance(stmt.value, MIRAlias) for block in fn.blocks for stmt in block.statements)
         assert all(slot.type not in (BOOL, INT32) for slot in fn.slots
-                   if slot.value_kind is MIRValueKind.BORROWED)
+                   if slot.shape.holding is MIRHolding.POINTER)
     text = dump_function(lower(functions["reseat"]))
     assert " = alias %" in text and "::value" in text
     assert "mutable-ref" in text

@@ -1914,6 +1914,24 @@ match the current TPy safety needs well:
 
 This is a good first step even if the compiler later grows exact per-element reasoning.
 
+#### Values at places
+
+Every slot, wrapper or container member and record field carries one value
+description (`MIRShape`, `tpyc/mir/nodes.py`): its type, its class --
+`value_class` of the type (inert leaf, owned leaf, view, record, container,
+container view, tuple, Optional, union), the one classifier over the leaf
+predicates -- how its position holds it (by value, a pointer a `Deref`
+follows, a region whose `Elements` is reached directly, an iterator's
+cursor, a payload alias), its access, and its members. Holding is positional,
+never derived from the type: a tuple's record member is owned or borrowed by
+the tuple's form, an Optional record payload is a pointer at a slot and
+inline at a field. A record stores every field inline except a view member,
+the loan the record holds (`shapes.loan_field`): the one rule the field's
+shape (`shapes.field_shape`), the storage events (`storage.owned_field`),
+the line facts and the dependency state read. One stepping table
+(`shapes.step`) answers what each projection reaches from a value; every
+reader of a place walks it.
+
 #### Statements
 
 ```

@@ -7,20 +7,21 @@ from enum import Enum, auto
 from types import MappingProxyType
 
 from ..thir.scalar_leaves import (
-    container_view, declared_members, inline_member_type, owned_leaf, record_type, storage_leaf, view_leaf,
+    MIRClass, inline_member_type, value_class,
 )
 from ..typesys import BOOL, OptionalType, TpyType, TupleType, UnionType, is_void_like_type, unwrap_readonly
 from .coverage import call_write_places
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
-    statement_call, statement_target, MIRContainerElements, MIRDeref, MIRField, MIRFieldId, MIRRecordLayout,
-    MIRSlot, MIROptionalLayout, MIRTupleIndex, MIRTupleLayout,
+    statement_call, statement_target, MIRContainerStructure, MIRDeref, MIRField, MIRFieldId, MIRRecordLayout,
+    MIRHolding, MIRSlot,
     MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIRValueKind,
+    MIRPlace, MIRPoint, MIRRead, MIRSlotId,
     MIREdge, MIRReturn, MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRRecordWrite, MIRRecordWriteMode,
-    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionLayout, MIRUnionPayload, MIRUnionExtract,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, place_layout,
+    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
+from .shapes import place_shape
 from .region_flow import MIRRegionFlow
 
 # Keyed by the wrapper's place (an iterator's by its slot's place).
@@ -126,29 +127,17 @@ def _join(states: list[_State]) -> _State:
     return _State(present, conditions, frozenset.intersection(*(s.valid_aliases for s in states)), joined)
 
 
-def _place_type(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> TpyType | None:
-    """The type of the value at a place, None where a projection names no
-    one type MIR models."""
-    typ: TpyType | None = slots[place.root].type
-    for depth, projection in enumerate(place.projections):
-        layout = place_layout(MIRPlace(place.root, place.projections[:depth]), slots)
-        match projection:
-            case MIRDeref():
-                pass
-            case MIRField():
-                typ = unwrap_readonly(projection.type)
-            case MIROptionalPayload() if isinstance(layout, MIROptionalLayout):
-                typ = layout.type
-            case MIRTupleIndex() if isinstance(layout, MIRTupleLayout):
-                typ = layout.elements[projection.index].type
-            case MIRUnionPayload() if isinstance(layout, MIRUnionLayout):
-                member = layout.elements[projection.alternative]
-                typ = member.type if member is not None else None
-            case MIRContainerElements() if typ is not None and (members := declared_members(typ)) is not None:
-                typ = unwrap_readonly(members[1] if members[1] is not None else members[0])
-            case _:
-                return None
-    return typ
+def _place_type(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
+                layouts: Mapping[TpyType, MIRRecordLayout]) -> TpyType | None:
+    """The type of the value at a place, None at a container's structure
+    region, which holds no one type MIR models."""
+    if place.projections[-1:] == (MIRContainerStructure(),):
+        return None
+    return place_shape(place, slots, layouts).type
+
+
+# Values that store no record: a scalar leaf, an owned leaf, a view of either kind.
+_HOLDS_NO_RECORD = frozenset({MIRClass.LEAF, MIRClass.OWNED_LEAF, MIRClass.VIEW, MIRClass.CONTAINER_VIEW})
 
 
 def _may_hold(typ: TpyType | None, member: MIRFieldId, layouts: Mapping[TpyType, MIRRecordLayout]) -> bool:
@@ -166,7 +155,7 @@ def _may_hold(typ: TpyType | None, member: MIRFieldId, layouts: Mapping[TpyType,
         if current is None:
             return True
         current = unwrap_readonly(current)
-        if storage_leaf(current) or owned_leaf(current) or view_leaf(current) or container_view(current):
+        if value_class(current) in _HOLDS_NO_RECORD:
             continue
         if current in seen:
             continue
@@ -181,7 +170,7 @@ def _may_hold(typ: TpyType | None, member: MIRFieldId, layouts: Mapping[TpyType,
             case UnionType():
                 pending.extend(m for m in current.members if not is_void_like_type(m))
                 continue
-        layout = layouts.get(current) if record_type(current) else None
+        layout = layouts.get(current) if value_class(current) is MIRClass.RECORD else None
         if layout is None:
             return True
         for f in layout.fields:
@@ -191,16 +180,12 @@ def _may_hold(typ: TpyType | None, member: MIRFieldId, layouts: Mapping[TpyType,
     return False
 
 
-# Slots whose root write points the slot elsewhere without writing storage
-# another place can reach.
-_REBINDING_KINDS = frozenset({MIRValueKind.BORROWED, MIRValueKind.BORROWED_CONTAINER,
-                              MIRValueKind.PAYLOAD_ALIAS, MIRValueKind.NATIVE_ITERATOR})
 
 
 def _private(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> bool:
     """A place in the body's own record storage, reached through no holder:
     two such places under different roots are distinct storage."""
-    return slots[place.root].value_kind is MIRValueKind.OWNED and MIRDeref() not in place.projections
+    return slots[place.root].shape.is_storage and MIRDeref() not in place.projections
 
 
 def _reaches(written: MIRPlace, wrapper: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
@@ -219,7 +204,9 @@ def _reaches(written: MIRPlace, wrapper: MIRPlace, slots: Mapping[MIRSlotId, MIR
         return written.projections[:common] == wrapper.projections[:common]
     if _private(written, slots) and _private(wrapper, slots):
         return False
-    if not written.projections and slots[written.root].value_kind in _REBINDING_KINDS:
+    # A root write of any holder but one stored in place points the slot
+    # elsewhere without writing storage another place can reach.
+    if not written.projections and slots[written.root].shape.holding is not MIRHolding.VALUE:
         return False
     member = wrapper.projections[-1]
     if not isinstance(member, MIRField):
@@ -227,7 +214,7 @@ def _reaches(written: MIRPlace, wrapper: MIRPlace, slots: Mapping[MIRSlotId, MIR
     last = written.projections[-1] if written.projections else None
     if isinstance(last, MIRField) and last.id == member.id:
         return True
-    return _may_hold(_place_type(written, slots), member.id, layouts)
+    return _may_hold(_place_type(written, slots, layouts), member.id, layouts)
 
 
 def _kill_field_facts(state: _State, stmt: MIRStatement, slots: Mapping[MIRSlotId, MIRSlot],
@@ -270,7 +257,8 @@ def _transfer(state: _State, stmt: MIRStatement, booleans: set[MIRSlotId],
     if place.projections:
         # A wrapper field written whole selects what its value selects.
         if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, (MIROptionalConstruct, MIROptionalCopy))
-                and slots is not None and isinstance(place_layout(place, slots), MIROptionalLayout)):
+                and slots is not None
+                and place_shape(place, slots, layouts or {}).cls is MIRClass.OPTIONAL):
             known = (frozenset({int(stmt.value.source is not None)}) if isinstance(stmt.value, MIROptionalConstruct)
                      else dict(state.present).get(stmt.value.source))
             if known is not None:
@@ -363,17 +351,15 @@ def _analyze_presence(fn: MIRFunction) -> MIRPresence:
     edge_facts: dict[MIREdge, Facts] = {}
     edge_engagement: dict[MIREdge, EngagementFacts] = {}
     optional_records = {s.id for s in fn.slots if s.record_storage is MIRRecordStorageKind.OPTIONAL}
-    booleans = {s.id for s in fn.slots if s.type == BOOL and s.value_kind is MIRValueKind.SCALAR}
+    booleans = {s.id for s in fn.slots if s.type == BOOL and s.shape.is_scalar}
     slots = {s.id: s for s in fn.slots}
     domains: dict[MIRPlace, frozenset[int]] = {}
     for s in fn.slots:
-        if s.value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION, MIRValueKind.NATIVE_ITERATOR):
-            place = MIRPlace(s.id)
-            layout = place_layout(place, slots)
-            domains[place] = (frozenset(range(len(layout.elements))) if isinstance(layout, MIRUnionLayout)
-                              else frozenset({0, 1}))
-    layouts = {r.type: r for r in fn.records}
-    alias_slots = {s.id for s in fn.slots if s.value_kind is MIRValueKind.PAYLOAD_ALIAS}
+        if s.shape.cls in (MIRClass.OPTIONAL, MIRClass.UNION) or s.shape.holding is MIRHolding.CURSOR:
+            domains[MIRPlace(s.id)] = (frozenset(range(len(s.shape.members))) if s.shape.cls is MIRClass.UNION
+                                       else frozenset({0, 1}))
+    layouts = fn.record_layouts
+    alias_slots = {s.id for s in fn.slots if s.shape.holding is MIRHolding.ALIAS}
     aliases_by_wrapper: dict[MIRPlace, set[MIRSlotId]] = {}
     for slot in fn.slots:
         if slot.alias_source is not None:

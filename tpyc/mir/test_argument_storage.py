@@ -22,13 +22,14 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRCall,
     MIRConstruct, MIRCopy, MIRFunction, MIRGoto, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRNotCovered, MIRRecordStorageInit, MIRRecordStorageKind, MIRReturn,
-    MIRStorageDuration, MIRValueKind, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId,
-    MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleLayout,
-    MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIRUnionConstruct, MIRUnionCopy, MIRUnionLayout,
+    MIRStorageDuration, MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId,
+    MIRTupleConstruct, MIRTupleCopy,
+    MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy,
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .validate import validate_function
+from .testutil import borrowed_shape, leaf_shape, optional_shape, tuple_shape, union_shape
 
 
 SOURCE = '''from tpy import int32, nocopy
@@ -155,7 +156,7 @@ def _body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def _storage(body: MIRFunction) -> list[MIRSlot]:
-    return [slot for slot in body.slots if slot.value_kind is MIRValueKind.OWNED]
+    return [slot for slot in body.slots if slot.shape.is_storage]
 
 
 @pytest.mark.parametrize("name", ["eager", "lazy", "multiple", "branches", "loop", "lazy_loop",
@@ -418,38 +419,30 @@ def test_retained_holders_observe_named_backing_scope_end(
     root, child = MIRRegionId(fn.id, 0), MIRRegionId(fn.id, 1)
     entry, inside, after = (MIRBlockId(fn.id, i) for i in range(3))
     holder, copied = (MIRSlotId(fn.id, len(fn.slots) + i) for i in range(2))
-    member = MIRTupleElement(storage.type, MIRValueKind.BORROWED, readonly=True)
+    member = borrowed_shape(storage.type, True)
     match shape:
         case "scalar":
-            typ, form = storage.type, th.Form.BORROW
-            options = dict(value_kind=MIRValueKind.BORROWED, readonly=True)
+            shape = borrowed_shape(storage.type, True)
             capture, copy = MIRAlias(source), MIRAlias(holder)
         case "tuple" | "mixed_tuple":
             scalar = next(slot for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER)
             types = (storage.type,) if shape == "tuple" else (storage.type, scalar.type)
-            members = (member,) if shape == "tuple" else (member, MIRTupleElement(scalar.type))
+            members = (member,) if shape == "tuple" else (member, leaf_shape(scalar.type))
             values = (source,) if shape == "tuple" else (source, scalar.id)
-            typ, form = TupleType(types), th.Form.VALUE
-            options = dict(value_kind=MIRValueKind.TUPLE, tuple_layout=MIRTupleLayout(members))
+            shape = tuple_shape(TupleType(types), members)
             capture, copy = MIRTupleConstruct(values), MIRTupleCopy(holder)
         case "optional":
-            typ, form = OptionalType(storage.type), th.Form.VALUE
-            options = dict(value_kind=MIRValueKind.OPTIONAL,
-                           optional_layout=MIROptionalLayout(storage.type, MIRValueKind.BORROWED, True))
+            shape = optional_shape(OptionalType(storage.type), borrowed_shape(storage.type, True))
             capture, copy = MIROptionalConstruct(MIRPlace(source)), MIROptionalCopy(MIRPlace(holder))
         case _:
             other = NominalType("Other", _module_qname="main.Other")
-            typ, form = UnionType((storage.type, other)), th.Form.VALUE
-            options = dict(value_kind=MIRValueKind.UNION,
-                           union_layout=MIRUnionLayout((member, MIRTupleElement(
-                               other, MIRValueKind.BORROWED, readonly=True))))
+            shape = union_shape(UnionType((storage.type, other)), (member, borrowed_shape(other, True)))
             capture, copy = MIRUnionConstruct(0, MIRPlace(source)), MIRUnionCopy(MIRPlace(holder))
     slots = tuple(replace(slot, storage_duration=child, residence=child,
                           record_storage=MIRRecordStorageKind.OPTIONAL if optional_backing
                           else MIRRecordStorageKind.DIRECT) if slot.id == storage.id
                   else replace(slot, residence=child) if slot.id == borrowed.id else slot for slot in fn.slots)
-    slots += tuple(MIRSlot(sid, typ, MIRSlotKind.LOCAL, form=form, residence=root, **options)
-                   for sid in (holder, copied))
+    slots += tuple(MIRSlot(sid, shape, MIRSlotKind.LOCAL, residence=root) for sid in (holder, copied))
     statements = tuple(replace(stmt, storage_write=MIRRecordWrite(
         MIRRecordWriteMode.OPTIONAL_ASSIGN if optional_backing else MIRRecordWriteMode.INITIALIZE_REGION))
         if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRConstruct) else stmt

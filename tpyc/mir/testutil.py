@@ -1,26 +1,93 @@
 """A bounded MIR interpreter with explicit shared object identities."""
 
 import copy
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 import operator
 
 from ..type_def_registry import int_traits_of
 from ..typesys import INT32_MIN, INT32_MAX
 
 from .nodes import (
+    MIRShape, MIRSlot,
     MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRValueKind, MIRSlotId,
+    MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRHolding, MIRSlotId,
     MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge,
     MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
     MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements, place_layout,
+    MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements,
 )
 from .region_flow import MIRRegionFlow
-from .coverage import PAYLOAD_RECORD, container_view_holder, owned_container, owned_tuple
+from ..thir.scalar_leaves import MIRClass, value_class
+from ..typesys import TpyType
+from .shapes import place_shape
+from .coverage import PAYLOAD_RECORD
 from .validate import statement_reads
+
+# Shapes for hand-built slots and members, one per holding: the class is
+# the type's (`value_class`), unless a probe of an ill-classed value names it.
+def _class(typ: TpyType, cls: MIRClass | None) -> MIRClass:
+    found = cls if cls is not None else value_class(typ)
+    return found if found is not None else MIRClass.RECORD
+
+
+_SHAPE_FIELDS = frozenset({"type", "cls", "holding", "readonly", "members"})
+
+
+def reslot(slot: MIRSlot, **changes: object) -> MIRSlot:
+    """`replace` for a slot, the fields of its shape (type, class, holding,
+    access, members) included."""
+    shape = {k: changes.pop(k) for k in list(changes) if k in _SHAPE_FIELDS}
+    return replace(slot, shape=replace(slot.shape, **shape), **changes)
+
+
+def leaf_shape(typ: TpyType, readonly: bool = False) -> MIRShape:
+    """An inert leaf held by value."""
+    return MIRShape(typ, MIRClass.LEAF, MIRHolding.VALUE, readonly)
+
+
+def owned_shape(typ: TpyType, readonly: bool = False, members: tuple | None = (),
+                cls: MIRClass | None = None) -> MIRShape:
+    """Storage held here: an owned leaf, a record, a container with its members."""
+    return MIRShape(typ, _class(typ, cls), MIRHolding.VALUE, readonly, members or ())
+
+
+def borrowed_shape(typ: TpyType, readonly: bool = False, members: tuple | None = (),
+                   cls: MIRClass | None = None) -> MIRShape:
+    """A holder of storage elsewhere: a pointer, or a container view's region."""
+    found = _class(typ, cls)
+    holding = MIRHolding.REGION if found is MIRClass.CONTAINER_VIEW else MIRHolding.POINTER
+    return MIRShape(typ, found, holding, readonly, members or ())
+
+
+def region_shape(typ: TpyType, readonly: bool = False, members: tuple | None = ()) -> MIRShape:
+    """A borrowed container: its elements region, reached directly."""
+    return MIRShape(typ, MIRClass.CONTAINER, MIRHolding.REGION, readonly, members or ())
+
+
+def cursor_shape(typ: TpyType, readonly: bool = False, members: tuple | None = ()) -> MIRShape:
+    """A native iterator over a container or a view of one."""
+    return MIRShape(typ, _class(typ, None), MIRHolding.CURSOR, readonly, members or ())
+
+
+def tuple_shape(typ: TpyType, members: tuple, readonly: bool = False) -> MIRShape:
+    return MIRShape(typ, MIRClass.TUPLE, MIRHolding.VALUE, readonly, members)
+
+
+def optional_shape(typ: TpyType, payload: MIRShape, readonly: bool = False) -> MIRShape:
+    return MIRShape(typ, MIRClass.OPTIONAL, MIRHolding.VALUE, readonly, (payload,))
+
+
+def union_shape(typ: TpyType, members: tuple, readonly: bool = False) -> MIRShape:
+    return MIRShape(typ, MIRClass.UNION, MIRHolding.VALUE, readonly, members)
+
+
+def alias_shape(typ: TpyType, readonly: bool = False) -> MIRShape:
+    """A narrowed alias of an inert-leaf payload."""
+    return MIRShape(typ, MIRClass.LEAF, MIRHolding.ALIAS, readonly)
+
 
 # The structural writes the interpreter runs for a native method stub, by
 # method name: a test oracle for the source meaning, not a contract.
@@ -99,12 +166,12 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
     slots = {s.id: s for s in fn.slots}
     physical: dict[MIRSlotId, Value] = {
         sid: value for sid, value in values.items()
-        if slots[sid].value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION)}
+        if slots[sid].shape.cls in (MIRClass.OPTIONAL, MIRClass.UNION)}
     global_values = global_state if global_state is not None else {}
     for slot in fn.slots:
         if slot.global_id is not None:
             assert slot.global_id in global_values, "global storage must be initialized by caller"
-    records = {r.type: r for r in fn.records}
+    records = fn.record_layouts
     if fn.receiver_init is not None:
         init = fn.receiver_init
         reference = values[init.receiver]
@@ -208,7 +275,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 values.pop(stmt.target.root, None)
                 continue
             if isinstance(stmt, MIRStorageInit):
-                physical[stmt.target.root] = (OptionalValue() if slots[stmt.target.root].value_kind is MIRValueKind.OPTIONAL
+                physical[stmt.target.root] = (OptionalValue() if slots[stmt.target.root].shape.cls is MIRClass.OPTIONAL
                                               else UnionValue(stmt.alternative, stmt.value.value))
                 values.pop(stmt.target.root, None)
                 continue
@@ -244,7 +311,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                 case MIRAlias():
                     value = values[rhs.source]
                     assert isinstance(value, (Reference, ContainerValue))
-                case MIRBorrow() if container_view_holder(slots[stmt.target.root]):
+                case MIRBorrow() if slots[stmt.target.root].shape.container_view_holder:
                     # A Span views the whole region of its source.
                     value = read(MIRPlace(rhs.source.root, rhs.source.projections[:-1]))
                     assert isinstance(value, ContainerValue)
@@ -257,12 +324,12 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     backing: Record = {}
                     for i, src in enumerate(rhs.elements):
                         if isinstance(src, MIRConstruct):
-                            layout = records[place_layout(stmt.target, slots).elements[i].type]
+                            layout = records[place_shape(stmt.target, slots, records).elements[i].type]
                             backing[MIRTupleIndex(i)] = {f.id: values[s] for f, s in zip(layout.fields, src.fields)}
                             elements.append(Reference(next_identity, (MIRTupleIndex(i),)))
                         else:
                             elements.append(values[src])
-                    if owned_tuple(target):
+                    if target.shape.owned_tuple:
                         objects[next_identity] = backing
                         next_identity += 1
                     value = TupleValue(tuple(elements))
@@ -291,15 +358,15 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     assert isinstance(source, UnionValue)
                     value = source.alternative in rhs.alternatives
                 case MIRUnionExtract():
-                    value = (PayloadAlias(rhs.source) if slots[stmt.target.root].value_kind is MIRValueKind.PAYLOAD_ALIAS
+                    value = (PayloadAlias(rhs.source) if slots[stmt.target.root].shape.holding is MIRHolding.ALIAS
                              else read(rhs.source))
-                case MIRConstruct() if owned_container(slots[stmt.target.root]):
+                case MIRConstruct() if slots[stmt.target.root].shape.container_storage:
                     value = ContainerValue([values[src] for src in rhs.fields])
                 case MIRConstruct():
                     target = slots[stmt.target.root]
-                    typ = (place_layout(MIRPlace(stmt.target.root), slots).type
+                    typ = (target.shape.payload.type
                            if stmt.target.projections == PAYLOAD_RECORD
-                           else target.container_layout.subscript.type
+                           else target.shape.subscript.type
                            if stmt.target.projections == (MIRContainerElements(),) else target.type)
                     layout = records[typ]
                     value = {f.id: values[src] for f, src in zip(layout.fields, rhs.fields)}
@@ -324,7 +391,7 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     reference = read(stmt.target)
                     assert isinstance(reference, Reference)
                 else:
-                    assert slots[stmt.target.root].value_kind is MIRValueKind.OWNED
+                    assert slots[stmt.target.root].shape.is_storage
                     if stmt.target.root in values:
                         # Validation admits repeated root writes only for reusable backing.
                         reference = values[stmt.target.root]
@@ -354,10 +421,10 @@ def execute(fn: MIRFunction, *args: Value, heap: Heap | None = None,
                     global_values[identity] = value
                 else:
                     values[stmt.target.root] = value
-                    if slots[stmt.target.root].value_kind in (MIRValueKind.OPTIONAL, MIRValueKind.UNION):
+                    if slots[stmt.target.root].shape.cls in (MIRClass.OPTIONAL, MIRClass.UNION):
                         physical[stmt.target.root] = value
                     if (slots[stmt.target.root].kind is MIRSlotKind.TEMPORARY and type(value) is int
-                            and slots[stmt.target.root].value_kind is MIRValueKind.SCALAR):
+                            and slots[stmt.target.root].shape.is_scalar):
                         last_index[0] = value
         term = block.terminator
         match term:

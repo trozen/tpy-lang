@@ -11,8 +11,9 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
+    MIRHolding,
     MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWrite,
-    MIRRecordWriteMode, MIRReturn, MIRStorageDuration, MIRValueKind,
+    MIRRecordWriteMode, MIRReturn, MIRStorageDuration,
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_retention import analyze
@@ -315,7 +316,7 @@ def test_record_backing_has_body_duration_but_holder_keeps_lexical_residence(hoi
         blocks = {b.id: b for b in fn.blocks}
         assert all(isinstance(blocks[edge.source].terminator, MIRReturn) for edge in inspection.ends.ends)
     local = next(s for s in bodies["escaped_loop"].slots if s.name == "local")
-    assert local.value_kind is MIRValueKind.BORROWED and local.residence.index != 0
+    assert local.shape.holding is MIRHolding.POINTER and local.residence.index != 0
     assert "Cell* value;" in cpp and "std::optional<Cell>" in cpp
 
 

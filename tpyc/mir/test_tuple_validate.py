@@ -4,16 +4,15 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, TupleType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
     MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRPlace, MIRRead,
     MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleConstruct, MIRTupleCopy,
-    MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRValueKind,
+    MIRTupleIndex,
 )
-from .testutil import Reference, execute
+from .testutil import Reference, borrowed_shape, execute, leaf_shape, owned_shape, reslot, tuple_shape
 from .validate import MIRValidationError, validate_function
 
 B = MIRBodyId("test", "tuples")
@@ -21,18 +20,16 @@ CELL = NominalType("Cell", _module_qname="test.Cell")
 TUPLE = TupleType((CELL, INT32))
 A, R, X, PAIR, SAVED, RESULT, FLAG = (MIRSlotId(B, i) for i in range(7))
 ENTRY, YES, NO, JOIN = (MIRBlockId(B, i) for i in range(4))
-LAYOUT = MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.BORROWED, True),
-                         MIRTupleElement(INT32)))
+LAYOUT = (borrowed_shape(CELL, True), leaf_shape(INT32))
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 SLOTS = (
-    MIRSlot(A, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
-    MIRSlot(R, CELL, MIRSlotKind.PARAMETER, form=Form.BORROW,
-            value_kind=MIRValueKind.BORROWED, readonly=True),
-    MIRSlot(X, INT32, MIRSlotKind.TEMPORARY),
-    MIRSlot(PAIR, TUPLE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE, tuple_layout=LAYOUT),
-    MIRSlot(SAVED, TUPLE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE, tuple_layout=LAYOUT),
-    MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(A, borrowed_shape(CELL), MIRSlotKind.PARAMETER),
+    MIRSlot(R, borrowed_shape(CELL, readonly=True), MIRSlotKind.PARAMETER),
+    MIRSlot(X, leaf_shape(INT32), MIRSlotKind.TEMPORARY),
+    MIRSlot(PAIR, tuple_shape(TUPLE, LAYOUT), MIRSlotKind.LOCAL),
+    MIRSlot(SAVED, tuple_shape(TUPLE, LAYOUT), MIRSlotKind.LOCAL),
+    MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )
 INIT = MIRAssign(MIRPlace(X), MIRConstant(1))
 MAKE = MIRAssign(MIRPlace(PAIR), MIRTupleConstruct((R, X)))
@@ -62,9 +59,9 @@ def test_readonly_payload_preserves_shared_mutation() -> None:
 
 def test_empty_tuple_payloads_construct_and_copy() -> None:
     # The parser rejects (), so this is deliberately an internal IR contract.
-    layout = MIRTupleLayout(())
-    slots = (replace(SLOTS[3], type=TupleType(()), tuple_layout=layout),
-             replace(SLOTS[4], type=TupleType(()), tuple_layout=layout), SLOTS[2])
+    layout = ()
+    slots = (reslot(SLOTS[3], type=TupleType(()), members=layout),
+             reslot(SLOTS[4], type=TupleType(()), members=layout), SLOTS[2])
     fn = MIRFunction(B, INT32, slots, (MIRBlock(ENTRY, (
         MIRAssign(MIRPlace(PAIR), MIRTupleConstruct(())), COPY, INIT), MIRReturn(X)),), ENTRY)
     validate_function(fn)
@@ -105,22 +102,21 @@ def test_projection_chain_is_typed(projections: tuple, reason: str) -> None:
 
 
 def test_readonly_cannot_be_lost_on_capture_or_copy() -> None:
-    mutable = MIRTupleLayout((replace(LAYOUT.elements[0], readonly=False), LAYOUT.elements[1]))
+    mutable = (replace(LAYOUT[0], readonly=False), LAYOUT[1])
     for index in (3, 4):
         slots = list(SLOTS)
-        slots[index] = replace(slots[index], tuple_layout=mutable)
+        slots[index] = reslot(slots[index], members=mutable)
         invalid(replace(GOOD, slots=tuple(slots)), "payload type or access")
 
 
 def test_tuple_layout_validation() -> None:
     for layout, reason in (
-        (None, "tuple slot"),
-        (MIRTupleLayout(()), "tuple layout arity"),
-        (MIRTupleLayout((MIRTupleElement(BOOL), MIRTupleElement(INT32))), "tuple scalar"),
-        (MIRTupleLayout((MIRTupleElement(CELL, MIRValueKind.OWNED), MIRTupleElement(INT32))),
-         "tuple slot"),
+        ((), "tuple layout arity"),
+        ((leaf_shape(BOOL), leaf_shape(INT32)), "tuple scalar"),
+        # An owning layout makes the tuple storage, which needs its placement.
+        ((owned_shape(CELL), leaf_shape(INT32)), "owned tuple needs local backing placement"),
     ):
-        invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], tuple_layout=layout), *SLOTS[4:])), reason)
+        invalid(replace(GOOD, slots=(*SLOTS[:3], reslot(SLOTS[3], members=layout), *SLOTS[4:])), reason)
     invalid(replace(GOOD, slots=(*SLOTS[:3], replace(SLOTS[3], kind=MIRSlotKind.PARAMETER), *SLOTS[4:])),
             "tuple operation needs tuple destination")
 
@@ -133,7 +129,7 @@ def test_payloads_must_be_initialized_on_every_incoming_path() -> None:
     validate_function(replace(GOOD, blocks=(blocks[0], blocks[1], replace(blocks[2], statements=(MAKE,)),
                                            blocks[3])))
     # A projected store reads the tuple; it cannot initialize the payload.
-    mutable = MIRTupleLayout((replace(LAYOUT.elements[0], readonly=False), LAYOUT.elements[1]))
-    slots = (*SLOTS[:4], replace(SLOTS[4], tuple_layout=mutable), *SLOTS[5:])
+    mutable = (replace(LAYOUT[0], readonly=False), LAYOUT[1])
+    slots = (*SLOTS[:4], reslot(SLOTS[4], members=mutable), *SLOTS[5:])
     invalid(replace(GOOD, slots=slots, blocks=(MIRBlock(ENTRY, (
         MIRAssign(PROJECT, MIRConstant(7)), READ), MIRReturn(RESULT)),)), "read before definite assignment")

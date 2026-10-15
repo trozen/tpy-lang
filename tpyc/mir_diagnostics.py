@@ -70,10 +70,11 @@ def _relation(call: MIRCall, retained: int, written: int, written_place: MIRPlac
     each argument's own place (its referent with the written one's root)
     against the object the write reaches."""
     slots = {slot.id: slot for slot in fn.slots}
+    records = fn.record_layouts
     target = _object(written_place)
 
     def argument(index: int) -> MIRPlace | None:
-        refs = resolve_referents(call_place(call, index, (), slots), state, slots)
+        refs = resolve_referents(call_place(call, index, (), slots), state, slots, records)
         return next((r.place for r in refs if r.place.root == target.root), None)
 
     held, passed = argument(retained), argument(written)

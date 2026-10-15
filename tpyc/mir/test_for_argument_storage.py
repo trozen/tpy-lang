@@ -18,7 +18,7 @@ from .nodes import (
     MIRAlias, MIRAssign, MIRBodyId, MIRBranch, MIRCall, MIRConstruct,
     MIRCopy, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorInit, MIRNotCovered,
     MIRPlace, MIRRangeAdvance, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import inspect_scope_lifetimes
@@ -62,7 +62,7 @@ def body(artifacts: Artifacts, name: str) -> MIRFunction:
 
 
 def storage(fn: MIRFunction) -> list[MIRSlot]:
-    return [s for s in fn.slots if s.value_kind is MIRValueKind.OWNED]
+    return [s for s in fn.slots if s.shape.is_storage]
 
 
 @pytest.mark.parametrize("name", ["ranges", "descending", "written", "native", "records",

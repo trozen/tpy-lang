@@ -16,15 +16,17 @@ from .call_contract import MIRSummaryState
 from ..parse import SourceLocation
 from ..typesys import BOOL, STR
 from .collect import (
-    MIRBodyVerdict, MIRLineFacts, MIRLineWrite, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, analyze_body,
+    MIRBodyVerdict, MIRLineFacts, MIRLineWrite, MIRStorageCheck, MIRStorageState, MIRVerdictStatus, MIRWriteKind,
+    analyze_body,
     dump_codegen_mir, enumerate_bodies, enumerate_body_sources, line_facts, verdict_of,
 )
 from .definitions import MIRDefinitions
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction,
-    MIRPlace, MIRRecordLayout, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
+    MIRPlace, MIRRecordLayout, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     function_body_kind,
 )
+from .testutil import borrowed_shape, leaf_shape
 
 
 def dump(source: str) -> str:
@@ -581,9 +583,9 @@ def test_an_unlowered_body_has_no_line_facts(facts) -> None:
 def test_owned_locals_carry_kind_copy_and_in_place_events(facts) -> None:
     owned = facts["owned"]
     assert owned is not None and owned.lines >= {16, 17, 18, 19}
-    assert owned.writes[(16, "t")] == (MIRLineWrite(0, MIRValueKind.OWNED, False),)
+    assert owned.writes[(16, "t")] == (MIRLineWrite(0, MIRWriteKind.OWNED, False),)
     # sema owns `v`: a copy of an owned local.
-    assert owned.writes[(17, "v")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
+    assert owned.writes[(17, "v")] == (MIRLineWrite(0, MIRWriteKind.OWNED, True),)
     assert owned.events == {(18, "t"): ("in_place",)}
     # A borrowed str parameter's external referent is spelled by the parameter.
     assert _borrows(owned, 16, "a") == [(0, {"a"})]
@@ -592,7 +594,7 @@ def test_owned_locals_carry_kind_copy_and_in_place_events(facts) -> None:
 
 def test_a_record_alias_borrows_the_parameter(facts) -> None:
     alias = facts["alias"]
-    assert alias.writes[(22, "q")] == (MIRLineWrite(0, MIRValueKind.BORROWED, False),)
+    assert alias.writes[(22, "q")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
     assert _borrows(alias, 22, "q") == [(0, {"p"})]
 
 
@@ -601,7 +603,7 @@ def test_a_reassigned_str_parameter_has_two_spellings(facts) -> None:
     assert rebound.names == {"s": {"param": "param(s)", "local": "local(s)"}}
     # The local's copy of the parameter is entry code with no line; the
     # reassignment appends in place to the LOCAL slot.
-    assert rebound.writes[(26, "local(s)")] == (MIRLineWrite(0, MIRValueKind.OWNED, False),)
+    assert rebound.writes[(26, "local(s)")] == (MIRLineWrite(0, MIRWriteKind.OWNED, False),)
     assert rebound.events[(26, "local(s)")] == ("in_place",)
     assert rebound.holders == {"param(s)"}
     assert _borrows(rebound, 26, "param(s)") == [(0, {"param(s)"})]
@@ -641,10 +643,10 @@ def test_a_global_and_a_field_write_are_spelled_by_name(facts) -> None:
     read_global = facts["read_global"]
     assert read_global.names["G"] == {"global": "G"}
     assert _borrows(read_global, 52, "G") == [(0, {"G"})]
-    assert read_global.writes[(52, "g")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
+    assert read_global.writes[(52, "g")] == (MIRLineWrite(0, MIRWriteKind.OWNED, True),)
     bump = facts["P.bump"]
     # A scalar field write is a write of the place, and no replacement event.
-    assert bump.writes[(9, "self.x")] == (MIRLineWrite(0, MIRValueKind.SCALAR, False),)
+    assert bump.writes[(9, "self.x")] == (MIRLineWrite(0, MIRWriteKind.SCALAR, False),)
     assert bump.events == {}
 
 
@@ -656,11 +658,9 @@ def test_a_literal_origin_is_spelled_static() -> None:
     literal, view, result = (MIRSlotId(body, i) for i in range(3))
     entry = MIRBlockId(body, 0)
     fn = MIRFunction(body, BOOL, (
-        MIRSlot(literal, STR, MIRSlotKind.TEMPORARY, form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED,
-                readonly=True, residence=region),
-        MIRSlot(view, STR, MIRSlotKind.LOCAL, "v", form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED,
-                readonly=True, residence=region),
-        MIRSlot(result, BOOL, MIRSlotKind.TEMPORARY, residence=region),
+        MIRSlot(literal, borrowed_shape(STR, readonly=True), MIRSlotKind.TEMPORARY, residence=region),
+        MIRSlot(view, borrowed_shape(STR, readonly=True), MIRSlotKind.LOCAL, "v", residence=region),
+        MIRSlot(result, leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=region),
     ), (MIRBlock(entry, (
         MIRAssign(MIRPlace(literal), MIRConstant("abc"), SourceLocation(2, 4)),
         MIRAssign(MIRPlace(view), MIRAlias(literal), SourceLocation(2, 4)),
@@ -695,9 +695,40 @@ def test_constructor_member_inits_are_line_facts() -> None:
     # The receiver's entry initialization has no CFG statement, so the member
     # inits are keyed by the constructor's field-write lines: the str field is
     # a copy of the view parameter, the int32 field a scalar.
-    assert init.writes[(5, "self.name")] == (MIRLineWrite(0, MIRValueKind.OWNED, True),)
-    assert init.writes[(6, "self.n")] == (MIRLineWrite(0, MIRValueKind.SCALAR, False),)
+    assert init.writes[(5, "self.name")] == (MIRLineWrite(0, MIRWriteKind.OWNED, True),)
+    assert init.writes[(6, "self.n")] == (MIRLineWrite(0, MIRWriteKind.SCALAR, False),)
     assert {5, 6} <= init.lines
+
+
+VIEW_FIELD_WRITE_SOURCE = """\
+from tpy import StrView, int32
+
+class Tok:
+    s: StrView
+    n: int32
+
+    def __init__(self, s: str, n: int32) -> None:
+        self.s = s
+        self.n = n
+
+def retarget(t: Tok, s: str) -> None:
+    t.s = s
+"""
+
+
+def test_a_view_member_write_is_a_borrowed_write() -> None:
+    # A view member is the loan the record holds (`shapes.loan_field`), so a
+    # write rebinding it is borrowed, as the member init storing it is.
+    compiler, modules = _compile(VIEW_FIELD_WRITE_SOURCE)
+    entry = _entry(modules)
+    ctx = compiler.collect_thir(entry, tolerate_reject=True)
+    with compiler.mir_analysis([(entry, ctx)]) as program:
+        verdicts = enumerate_bodies(entry.ast, entry.analyzer, ctx, entry.name, program.definitions,
+                                    compiler.thir_reject_by_node, program.workspace)
+        found = {v.body.declaration.split("@")[0]: line_facts(v) for v in verdicts}
+    init = next(facts for name, facts in found.items() if name.endswith("__init__"))
+    assert init.writes[(8, "self.s")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
+    assert found["retarget"].writes[(12, "t.s")] == (MIRLineWrite(0, MIRWriteKind.BORROWED, False),)
 
 
 TWINS_SOURCE = """\

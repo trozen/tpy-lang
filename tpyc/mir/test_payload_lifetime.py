@@ -12,14 +12,15 @@ from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRFunction,
     MIRGoto, MIRIsAlternative, MIRIsPresent, MIRNotCovered, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalLayout, MIROptionalPayload, MIRPayloadWrite,
+    MIROptionalCopy, MIROptionalPayload, MIRPayloadWrite,
     MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRTupleElement, MIRUnionConstruct,
-    MIRUnionCopy, MIRUnionLayout, MIRUnionPayload, MIRValueKind, MIRConstant,
+    MIRSlotKind, MIRStorageDuration, MIRUnionConstruct,
+    MIRUnionCopy, MIRUnionPayload, MIRConstant,
 )
 from .payload_lifetime import MIRPayloadEnds, analyze_payload_ends, dump_payload_ends
 from .presence import _analyze_presence
 from .validate import MIRValidationError, validate_function
+from .testutil import leaf_shape, optional_shape, union_shape
 
 
 BODY = MIRBodyId("payload_lifetime", "example")
@@ -31,16 +32,17 @@ ASSIGN = MIRPayloadWrite(MIRPayloadWriteMode.ASSIGN)
 
 def wrapper_function(optional: bool, *blocks: MIRBlock) -> MIRFunction:
     typ = OptionalType(INT32) if optional else UnionType((NoneType(), BOOL, INT32))
-    layout = {"optional_layout": MIROptionalLayout(INT32)} if optional else {
-        "union_layout": MIRUnionLayout((None, MIRTupleElement(BOOL), MIRTupleElement(INT32)))}
-    slots = tuple(MIRSlot(sid, typ, kind, value_kind=MIRValueKind.OPTIONAL if optional else MIRValueKind.UNION,
+    shape = (optional_shape(typ, leaf_shape(INT32)) if optional
+             else union_shape(typ, (None, leaf_shape(BOOL), leaf_shape(INT32))))
+    slots = tuple(MIRSlot(sid, shape, kind,
                           storage_duration=None if optional else MIRStorageDuration.CALLER if kind is MIRSlotKind.PARAMETER
-                          else MIRStorageDuration.BODY, **layout)
+                          else MIRStorageDuration.BODY)
                   for sid, kind in ((PARAM, MIRSlotKind.PARAMETER), (CURRENT, MIRSlotKind.LOCAL),
                                     (SAVED, MIRSlotKind.LOCAL)))
-    return MIRFunction(BODY, INT32, (*slots, MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-                                   MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-                                   MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL)), blocks, ENTRY)
+    return MIRFunction(BODY, INT32, (*slots, MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER,
+                                                     passing=ParamPassing.VALUE),
+                                   MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+                                   MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL)), blocks, ENTRY)
 
 
 def write(optional: bool, tag: int | MIRSlotId, *, target: MIRSlotId = CURRENT,

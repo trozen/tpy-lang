@@ -19,9 +19,9 @@ from conftest import (
 from tpyc.mir.call_contract import MIRSummaryResult
 from tpyc.mir.collect import (
     MIRBodyVerdict, MIRLineFacts, MIRLineReferents, MIRLineWrite, MIRStorageCheck, MIRStorageState,
-    MIRVerdictStatus,
+    MIRVerdictStatus, MIRWriteKind,
 )
-from tpyc.mir.nodes import MIRBodyId, MIRBodyKind, MIRValueKind
+from tpyc.mir.nodes import MIRBodyId, MIRBodyKind
 
 
 def _case(tmp_path: Path, source: str) -> Path:
@@ -224,9 +224,9 @@ def _lowered(name: str = "f", line: int = 1, declaration: str | None = None) -> 
                     declaration=declaration)
 
 
-_OWNED = MIRLineWrite(0, MIRValueKind.OWNED, False)
-_COPIED = MIRLineWrite(0, MIRValueKind.OWNED, True)
-_BORROWED = MIRLineWrite(0, MIRValueKind.BORROWED, False)
+_OWNED = MIRLineWrite(0, MIRWriteKind.OWNED, False)
+_COPIED = MIRLineWrite(0, MIRWriteKind.OWNED, True)
+_BORROWED = MIRLineWrite(0, MIRWriteKind.BORROWED, False)
 
 
 def test_mir_fact_items_parse_every_spelling():

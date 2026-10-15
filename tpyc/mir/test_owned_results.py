@@ -19,10 +19,10 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRContainerElements,
     MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite,
     MIRRecordStorageInit, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRValueKind,
 )
 from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
@@ -30,6 +30,8 @@ from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify
 from . import summaries
 from .summaries import _private_records, summarize_function
 from .validate import MIRValidationError, validate_function
+from .testutil import borrowed_shape, leaf_shape, owned_shape, reslot
+from ..thir.scalar_leaves import MIRClass
 
 
 SOURCE = '''\
@@ -321,7 +323,7 @@ def test_an_owned_record_result_is_storage_by_value(active) -> None:
     assert fn.borrowed_result is None
     (ret,) = _returns(fn)
     slot = fn.slots[ret.value.index]
-    assert slot.value_kind is MIRValueKind.OWNED and slot.type == point and not slot.readonly
+    assert slot.shape.is_storage and slot.type == point and not slot.readonly
 
 
 def test_a_fixed_local_returns_its_own_backing(active) -> None:
@@ -417,7 +419,7 @@ def test_the_validator_returns_only_mutable_movable_record_storage(active) -> No
     built = _lowered(active, "make")
     (result,) = _returns(built)
     with pytest.raises(MIRValidationError, match="owned record return needs movable owned storage"):
-        validate_function(_rebuilt(built, replace(built.slots[result.value.index], readonly=True)))
+        validate_function(_rebuilt(built, reslot(built.slots[result.value.index], readonly=True)))
     layout = next(r for r in fn.records if r.type == backing.type)
     pinned = replace(fn, records=tuple(replace(r, movable=False) if r is layout else r for r in fn.records))
     with pytest.raises(MIRValidationError, match="owned record return needs movable owned storage"):
@@ -465,7 +467,7 @@ def test_a_handed_over_result_is_the_full_expression_temporary(active) -> None:
     fn = _lowered(active, "collect")
     append = next(s for b in fn.blocks for s in b.statements if isinstance(s, MIRCallStmt))
     temporary = fn.slots[append.call.arguments[1].index]
-    assert temporary.value_kind is MIRValueKind.OWNED and temporary.kind is MIRSlotKind.TEMPORARY
+    assert temporary.shape.is_storage and temporary.kind is MIRSlotKind.TEMPORARY
     write = _initialization(fn, temporary.id)
     assert isinstance(write.value, MIRCall)
     assert write.storage_write.mode is MIRRecordWriteMode.INITIALIZE_REGION
@@ -477,7 +479,7 @@ def test_a_readonly_argument_temporary_takes_the_call_result(active) -> None:
     fn = _lowered(active, "lend_temp")
     call = next(s.value for s in _writes(fn, MIRCall) if s.value.summary.callee.identity.name == "read")
     holder = fn.slots[call.arguments[0].index]
-    assert holder.value_kind is MIRValueKind.BORROWED and holder.readonly
+    assert holder.shape.holding is MIRHolding.POINTER and holder.readonly
     borrow = next(s for s in _writes(fn, MIRBorrow) if s.target == MIRPlace(holder.id))
     assert isinstance(_initialization(fn, borrow.value.source.root).value, MIRCall)
 
@@ -486,10 +488,9 @@ def _retargeted(fn: MIRFunction, callee: str) -> MIRFunction:
     """`fn` with the `callee` call's result written into fresh record storage
     of the body's `Point` type, as an initialization."""
     stmt = next(s for s in _writes(fn, MIRCall) if s.value.summary.callee.identity.name == callee)
-    point = next(s.type for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
-    storage = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), point, MIRSlotKind.TEMPORARY, form=th.Form.STORAGE,
-                      value_kind=MIRValueKind.OWNED, storage_duration=MIRStorageDuration.BODY,
-                      residence=fn.regions[0].id)
+    point = next(s.type for s in fn.slots if s.shape.is_storage)
+    storage = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), owned_shape(point), MIRSlotKind.TEMPORARY,
+                      storage_duration=MIRStorageDuration.BODY, residence=fn.regions[0].id)
     write = replace(stmt, target=MIRPlace(storage.id),
                     storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
     blocks = tuple(replace(b, statements=tuple(write if s is stmt else s for s in b.statements)) for b in fn.blocks)
@@ -520,7 +521,7 @@ def test_storage_the_body_keeps_is_private(active, name: str) -> None:
     # Owned record storage kept to the body's end -- written through its
     # holder, reseated in place, lent, read by field -- is the body's own.
     fn = _lowered(active, name)
-    kept = {s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.container_layout is None
+    kept = {s.id for s in fn.slots if s.shape.is_storage and s.shape.cls is not MIRClass.CONTAINER
             and s.type.name in ("Point", "Named")}
     assert kept and kept <= _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn)))
     result = _summary(active, name)
@@ -543,14 +544,14 @@ def test_a_kept_record_reached_by_the_result_stays_opaque(active) -> None:
         if isinstance(stmt, th.THIRReturn) else stmt for stmt in source.body))
     fn = _relowered(active, damaged)
     assert isinstance(fn, MIRFunction), fn
-    kept, = (s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    kept, = (s.id for s in fn.slots if s.shape.is_storage)
     assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {kept}
     escaped = summarize_function(damaged, fn, active.definitions)
     assert escaped.state is MIRSummaryState.OPAQUE and escaped.reason == "summary unsupported return origin"
 
 
 def _owned_records(fn: MIRFunction) -> list[MIRSlot]:
-    return [s for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.container_layout is None]
+    return [s for s in fn.slots if s.shape.is_storage and s.shape.cls is not MIRClass.CONTAINER]
 
 
 def _private(fn: MIRFunction, facts_of: MIRFunction | None = None) -> frozenset[MIRSlotId]:
@@ -623,7 +624,7 @@ def test_a_mut_ref_lend_through_the_holder_keeps_the_slot_private(active) -> Non
     bump = next(s for b in fn.blocks for s in b.statements if isinstance(s, MIRCallStmt))
     assert bump.call.summary.parameters[0].passing is ParamPassing.MUT_REF and bump.call.summary.writes
     holder = fn.slots[bump.call.arguments[0].index]
-    assert holder.value_kind is MIRValueKind.BORROWED and storage.id in _private(fn)
+    assert holder.shape.holding is MIRHolding.POINTER and storage.id in _private(fn)
     result = _summary(active, "use_result")
     assert result.state is MIRSummaryState.KNOWN and result.summary.writes == frozenset()
 
@@ -689,9 +690,9 @@ def test_a_borrow_live_past_the_hand_over_keeps_storage_out(active) -> None:
     temporary = fn.slots[append.call.arguments[1].index]
     assert _private_records(fn, analyze_dependencies(fn, analyze_liveness(fn))) == {temporary.id}
     # A holder borrowing the temporary, read after the append moved from it.
-    holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), temporary.type, MIRSlotKind.TEMPORARY,
-                     form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED, residence=temporary.residence)
-    value = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), INT32, MIRSlotKind.TEMPORARY,
+    holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(temporary.type), MIRSlotKind.TEMPORARY,
+                     residence=temporary.residence)
+    value = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), leaf_shape(INT32), MIRSlotKind.TEMPORARY,
                     residence=temporary.residence)
     layout = next(r for r in fn.records if r.type == temporary.type)
     field = next(f for f in layout.fields if f.id.name == "y")
@@ -729,7 +730,7 @@ def test_a_call_temporary_is_storage_of_its_full_expression(active, name: str) -
     assert verdict.status is MIRVerdictStatus.CERTIFIED, verdict.reason
     fn = verdict.function
     temporary = _temporary(fn)
-    assert temporary.kind is MIRSlotKind.TEMPORARY and temporary.value_kind is MIRValueKind.OWNED
+    assert temporary.kind is MIRSlotKind.TEMPORARY and temporary.shape.is_storage
     assert temporary.storage_duration != fn.regions[0].id
     ends = analyze_scope_ends(fn).ends
     assert any(end.storage == MIRPlace(temporary.id) for group in ends.values() for end in group)
@@ -757,8 +758,8 @@ def test_a_borrow_of_the_call_temporary_kept_past_its_statement_conflicts(active
     fn = _lowered(active, "use_temp")
     temporary = _temporary(fn)
     result = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
-    holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), temporary.type, MIRSlotKind.LOCAL, form=th.Form.BORROW,
-                     value_kind=MIRValueKind.BORROWED, residence=result.region)
+    holder = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(temporary.type), MIRSlotKind.LOCAL,
+                     residence=result.region)
     member = MIRField(MIRFieldId(temporary.type, "x"), INT32)
     blocks = []
     for block in fn.blocks:

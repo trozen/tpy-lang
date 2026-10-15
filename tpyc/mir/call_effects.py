@@ -7,16 +7,19 @@ from types import MappingProxyType
 from .coverage import call_write_places
 from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
 from .dump import _place
-from .nodes import MIRCall, MIRFunction, MIRNotCovered, MIRPoint, MIRSlot, MIRSlotId, statement_call
+from ..typesys import TpyType
+from .nodes import (
+    MIRCall, MIRFunction, MIRNotCovered, MIRPoint, MIRRecordLayout, MIRSlot, MIRSlotId, statement_call,
+)
 from .validate import MIRValidationError, validate_function
 
 
-def resolve_call_writes(call: MIRCall, state: MIRReferents,
-                        slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent] | None:
+def resolve_call_writes(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+                        records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent] | None:
     """None means an effect has no proven origin, not that the call is harmless."""
     result: set[MIRReferent] = set()
     for place in call_write_places(call, slots):
-        origins = resolve_referents(place, state, slots)
+        origins = resolve_referents(place, state, slots, records)
         if not origins:
             return None
         result.update(origins)
@@ -37,6 +40,7 @@ def analyze_call_effects(fn: MIRFunction, dependencies: MIRDependencies | MIRNot
     if dependencies.function is not fn:
         raise MIRValidationError("dependencies belong to a different MIR function")
     slots = {s.id: s for s in fn.slots}
+    records = fn.record_layouts
     writes: dict[MIRPoint, frozenset[MIRReferent]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
@@ -44,7 +48,7 @@ def analyze_call_effects(fn: MIRFunction, dependencies: MIRDependencies | MIRNot
             point = MIRPoint(block.id, index)
             if call is None or point not in dependencies.referents:
                 continue
-            effects = resolve_call_writes(call, dependencies.referents[point], slots)
+            effects = resolve_call_writes(call, dependencies.referents[point], slots, records)
             if effects is None:
                 return MIRNotCovered(fn.id, "call effects", "missing call write origin", stmt.loc)
             writes[point] = effects

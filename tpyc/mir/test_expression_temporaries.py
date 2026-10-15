@@ -14,15 +14,15 @@ from .lower import lower_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRConstruct,
     MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRNotCovered,
-    MIRPlace, MIRRead, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
-    MIROptionalConstruct, MIROptionalLayout, MIROptionalPayload,
-    MIRTupleConstruct, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
-    MIRUnionConstruct, MIRUnionLayout, MIRUnionPayload,
+    MIRPlace, MIRRead, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIROptionalConstruct, MIROptionalPayload,
+    MIRTupleConstruct, MIRTupleIndex,
+    MIRUnionConstruct, MIRUnionPayload,
 )
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .testutil import execute
+from .testutil import borrowed_shape, execute, optional_shape, tuple_shape, union_shape
 from .validate import MIRValidationError, validate_function
 
 
@@ -65,7 +65,7 @@ def lower(fn: th.THIRFunction, definitions: MIRDefinitions) -> MIRFunction:
 
 
 def storage(fn: MIRFunction) -> tuple[MIRSlot, ...]:
-    return tuple(s for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    return tuple(s for s in fn.slots if s.shape.is_storage)
 
 
 def test_return_value_survives_the_full_expression(definitions: MIRDefinitions) -> None:
@@ -165,32 +165,27 @@ def test_reference_kept_after_expression_is_reported(definitions: MIRDefinitions
     holder = MIRSlotId(fn.id, max(s.id.index for s in fn.slots) + 1)
     result = next(b for b in fn.blocks if isinstance(b.terminator, MIRReturn))
     member = MIRField(MIRFieldId(owned.type, "value"), INT32)
-    reference = MIRSlot(holder, owned.type, MIRSlotKind.LOCAL, form=th.Form.BORROW,
-                        value_kind=MIRValueKind.BORROWED, residence=result.region)
-    borrowed = MIRTupleElement(owned.type, MIRValueKind.BORROWED)
+    reference = MIRSlot(holder, borrowed_shape(owned.type), MIRSlotKind.LOCAL, residence=result.region)
+    borrowed = borrowed_shape(owned.type)
     wrapper_id = MIRSlotId(fn.id, holder.index + 1)
     match shape:
         case "record":
             wrapper, capture, path = None, (), MIRPlace(holder)
         case "tuple":
-            wrapper = MIRSlot(wrapper_id, TupleType((owned.type,)), MIRSlotKind.LOCAL,
-                              value_kind=MIRValueKind.TUPLE, tuple_layout=MIRTupleLayout((borrowed,)),
+            wrapper = MIRSlot(wrapper_id, tuple_shape(TupleType((owned.type,)), (borrowed,)), MIRSlotKind.LOCAL,
                               residence=result.region)
             capture = (MIRAssign(MIRPlace(wrapper_id), MIRTupleConstruct((holder,))),)
             path = MIRPlace(wrapper_id, (MIRTupleIndex(0),))
         case "optional":
-            wrapper = MIRSlot(wrapper_id, OptionalType(owned.type), MIRSlotKind.LOCAL,
-                              value_kind=MIRValueKind.OPTIONAL,
-                              optional_layout=MIROptionalLayout(owned.type, MIRValueKind.BORROWED),
-                              residence=result.region)
+            wrapper = MIRSlot(wrapper_id, optional_shape(OptionalType(owned.type), borrowed_shape(owned.type)),
+                              MIRSlotKind.LOCAL, residence=result.region)
             capture = (MIRAssign(MIRPlace(wrapper_id), MIROptionalConstruct(MIRPlace(holder))),)
             path = MIRPlace(wrapper_id, (MIROptionalPayload(),))
         case "union":
             other = NominalType("Other", _module_qname="temporary.Other")
-            wrapper = MIRSlot(wrapper_id, UnionType((owned.type, other)), MIRSlotKind.LOCAL,
-                              value_kind=MIRValueKind.UNION,
-                              union_layout=MIRUnionLayout((borrowed, MIRTupleElement(other, MIRValueKind.BORROWED))),
-                              residence=result.region)
+            wrapper = MIRSlot(wrapper_id,
+                              union_shape(UnionType((owned.type, other)), (borrowed, borrowed_shape(other))),
+                              MIRSlotKind.LOCAL, residence=result.region)
             capture = (MIRAssign(MIRPlace(wrapper_id), MIRUnionConstruct(0, MIRPlace(holder))),)
             path = MIRPlace(wrapper_id, (MIRUnionPayload(0),))
     blocks = []

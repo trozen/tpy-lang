@@ -2010,12 +2010,13 @@ as the corpus grows).
   unpublished passing is refused. Aggregates are never leaves: tuple,
   Optional and union keep their own models (a tuple or scalar-union
   parameter is still a `const &` to the whole, a payload extraction still a
-  `PAYLOAD_ALIAS`). Records are recognized by their TypeDef
-  (`scalar_leaves.record_type`), never as "not a leaf"; a type with no
-  TypeDef still reads as a record (failing closed there is filed in
-  TODO.md, MIR entry). The validator re-checks every SCALAR slot and
-  wrapper/container member at its representation, and the dependency pass's
-  "no leaves" answer keys on that verified class, failing closed otherwise.
+  payload alias). Records are recognized by their TypeDef
+  (`scalar_leaves.record_type`, inside `value_class`), never as "not a
+  leaf"; a type with no TypeDef still reads as a record (failing closed
+  there is filed in TODO.md, MIR entry). The validator checks every slot's
+  class, and every wrapper and container member's, against `value_class`
+  at its representation, and the dependency pass's "no leaves" answer keys
+  on that verified class.
 - **Literals.** A number literal takes its context's leaf type (the other
   comparison or arithmetic operand, the slot, the parameter); alone it is the
   C++ literal it spells (`int` / `double`). Its value must fit that type
@@ -2085,8 +2086,8 @@ as the corpus grows).
   answered by `MIRDefinitions` from the TypeDef as a tagged builtin
   certificate beside the verified constructor definitions, never for any
   other missing type. A `const T&` / view parameter is a readonly
-  `BORROWED` slot with an external referent; a local, temporary,
-  by-value parameter (entry-initialized) or result is `OWNED` with
+  pointer holder with an external referent; a local, temporary,
+  by-value parameter (entry-initialized) or result is owned storage with
   a duration; every write to owned storage carries a `MIRRecordWrite`
   (storage events key on the DESTINATION, not the rvalue class); no
   `MIRField` projection exists under an opaque layout. A global of
@@ -2170,7 +2171,7 @@ as the corpus grows).
   only when no argument is lent. An unmarked stub stays opaque. Audited for
   the acceptance program: `len` (`@pure`), `time.time` (`transient=True`),
   `math.log` and `int(x: float)` (`@pure`).
-- **Views rule.** A view is a readonly `BORROWED` holder typed by its
+- **Views rule.** A view is a readonly pointer holder typed by its
   family's view type (`StrView`, `BytesView`) whose referents are a
   conservative set of POSSIBLE origins, never "exactly": the owned-leaf
   storage its source reads (a local, an owned-leaf field place, an external
@@ -2341,8 +2342,8 @@ as the corpus grows).
   receiver effect is a structural mutation, `[elements]` when it replaces
   elements in place, and nothing when it only reads. Element identity is
   never tracked: a write of one element is a write of any.
-- **Container rule.** One layout per type (`MIRDefinitions.container`):
-  `MIRContainerLayout(element, value)`, built from the members the type's
+- **Container rule.** One member tuple per type (`MIRDefinitions.container`):
+  its members `(element, value)`, built from the members the type's
   stub declares (`scalar_leaves.declared_members`, reading
   `TypeDef.native_members`, latched when the stub is registered), by
   position among its
@@ -2352,10 +2353,11 @@ as the corpus grows).
   subscript is keyed when its index parameter is the element (dict), else
   positional, and a subscript on a type whose keyedness disagrees with
   having a value member refuses ("unsupported keyed container").
-  `dict[K, K]` has two members. Each member is a
-  `MIRTupleElement` whose kind is SCALAR (inert leaf),
-  OWNED (owned leaf) or BORROWED (a plain record), `readonly` inherited from
-  the container. Admission keys on `typesys.loan_class` (a native
+  `dict[K, K]` has two members (`shapes.container_member`, shared by the
+  definitions and the validator). Each member is an `MIRShape` held by
+  value -- the container stores it -- whose class is an inert leaf, an
+  owned leaf or a plain record, its access the container's
+  (`shapes.with_access`). Admission keys on `typesys.loan_class` (a native
   container's `holds` is its element's, it is lendable) and on the
   `native_container` fact THIR publishes on `THIRParam`, `THIRVarDecl` and
   `THIRForEach.iteration`, widened to owned-leaf keys, values and elements,
@@ -2374,9 +2376,10 @@ as the corpus grows).
   ("container holds a borrow"); a container element of a container refuses
   ("unsupported native container element"). Holders: an owned container
   (a local `xs = [..]`, a field, an `Own[list[T]]` parameter, a result) is
-  an `OWNED` slot carrying `container_layout`; a `list[T]` parameter at
-  CONST_REF / MUT_REF is a `BORROWED_CONTAINER` slot with an external
-  referent, readonly from the passing. Places: `MIRContainerElements` (the
+  container storage held by value; a `list[T]` parameter at CONST_REF /
+  MUT_REF holds the container's region (a borrowed container) with an
+  external referent, readonly from the passing; an iterator is its
+  container's cursor. Places: `MIRContainerElements` (the
   "any element" place) and `MIRContainerStructure` compose after a slot
   root, a `MIRDeref` or a `MIRField` of container type
   (`(*%self).Bag::items[elements]`, `%xs[elements].Point::x`). A dict's
@@ -2443,8 +2446,8 @@ as the corpus grows).
   (`copy_into` in the case). `static` referents are never affected.
 - **View transparency.** A container view -- a `borrowing_view=True` type
   whose stub declares members: `Span`, `varargs`, the dict views, a user
-  view -- is a `BORROWED` holder typed by its view type (the `StrView`
-  template). The holder IS its
+  view -- is a holder of its source's region typed by its view type (the
+  `StrView` template). The holder IS its
   source's elements region: a container projection applied to a view
   holder resolves to the holder's referents (never `xs[elements][elements]`),
   an iterator over a view depends on the view's referents only, and a write
@@ -2625,7 +2628,7 @@ as the corpus grows).
   parameter 0 is no borrowed record of that owner ("method summary without
   its receiver"). Analysis only: no render reads the fact.
 - **Body rule** (`thir/lower/callables.method_receiver`). The receiver fact
-  -- `self` a BORROWED parameter 0 at the method's readonly verdict -- is
+  -- `self` a pointer parameter 0 at the method's readonly verdict -- is
   published for an instance method of a plain record (`borrowed_record`:
   not native, not a value type, no type parameters, every struct-base
   ancestor plain as well -- `scalar_leaves.modeled_hierarchy`, the
@@ -3220,13 +3223,13 @@ call on a call result.
   `record_value(..., call=True)` and returned; each branch builds its own
   slot (`pick`).
 - **Validation** (`validate.py`, the owned-record return branch beside the
-  owned-leaf and owned-container ones). The returned slot is OWNED record
+  owned-leaf and owned-container ones). The returned slot is owned record
   storage of the result type, no parameter, not readonly, and its layout
   movable ("owned record return needs movable owned storage"); a readonly
   or non-movable record would be copied in C++, not moved, and a holder
-  (BORROWED) is no owned result. Pinned over hand-built MIR.
+  (a pointer) is no owned result. Pinned over hand-built MIR.
 - **Summaries: private owned-record storage** (`summaries._private_records`).
-  An OWNED record slot is private to the body in two cases, and private
+  An owned record slot is private to the body in two cases, and private
   storage publishes nothing: `returns` stays empty, and a write into it is
   no parameter write.
   - HANDED OVER: its storage leaves the body only by a TRANSFER -- a
@@ -3392,11 +3395,11 @@ and setter and `getter_through_field`; `mir/method_calls`
 - **Definitions** (`mir/definitions.py`). `MIRDefinitions` verifies what a
   definition reads before the record itself (`_read_records`: struct
   bases, record fields, the record members of container fields). A field is
-  admitted by shape through one predicate, `scalar_leaves.modeled_field` (a
-  leaf place, `modeled_leaf_field`: a scalar leaf, an owned leaf, a view
-  of an owned leaf, a native container, or an Optional of a loan-free
-  record ([Optional record fields](#optional-record-fields)); or a
-  `record_type`, `readonly` removed), which the definition, the validator's
+  admitted by shape through one predicate, `scalar_leaves.modeled_field`,
+  a class in the admitted set (`value_class`, `readonly` removed): a scalar
+  leaf, an owned leaf or a view of one declared bare, a native container,
+  an Optional of a loan-free record ([Optional record fields](#optional-record-fields)),
+  or a record, which the definition, the validator's
   layouts and `place_info` read; a layout holding any other field (a union,
   tuple, scalar-Optional, `str | None`, `Ptr`, `Box` or `Rc` field, or an
   Optional whose payload holds a loan or has a record field) refuses
@@ -3458,7 +3461,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   field by its own field's rule, the member layout's movability and
   copyability and every exit fact (`test_receiver_record_member_validation`).
 - **`Own[R]` parameters.** A record handed over at OWN is the body's own
-  storage: a PARAMETER slot, OWNED, BODY duration, mutable, fixed owned,
+  storage: a PARAMETER slot, owned storage, BODY duration, mutable, fixed owned,
   reached through an unnamed holder borrowed at entry (the parameter's
   name spells the storage slot, so a line annotation needs no `param(p)` /
   `local(p)`), its definition verified (`take_hooked`: "custom record
@@ -3497,8 +3500,11 @@ and setter and `getter_through_field`; `mir/method_calls`
   movable member ("record member write needs a replacement fact", "store
   through readonly storage", "record member replacement needs movable
   record": C++ move-assigns the member). `storage.owned_field` is the one
-  "replaced in place" predicate -- every modeled field but a scalar leaf
-  or a view member, whose write rebinds a stored loan -- so `storage_destination` makes the write an event of the member place.
+  "replaced in place" predicate -- every field the record stores inline
+  but a scalar leaf; a view member is the loan the record holds
+  (`shapes.loan_field`, the one field rule `field_shape` reads too), whose
+  write rebinds that loan -- so `storage_destination` makes the write an
+  event of the member place, and the line facts call the write owned.
   `retention.affects` reaches holders at or under the member, not a
   sibling member and not the record around it: replacing `f.line` reaches
   a holder of `f.line.a`, replacing `f.line.a` spares `f.line` and
@@ -3691,7 +3697,7 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
 - **Invariant.** A view member's loan is stored in the record OBJECT: the
   dependency state keys it at the member place of the slot that names the
   object (`dependencies.object_keys`, dumped `%0.__main__.Tok::s`: for the
-  body's own OWNED record storage and for a record parameter, borrowed or
+  body's own owned record storage and for a record parameter, borrowed or
   `Own[R]`), never under a holder; an inline record member's view members
   are keyed on the full member path
   (`%0.__main__.Outer::inner.__main__.Tok::s`).
@@ -4062,7 +4068,7 @@ the constructor as `mir(covered)` with `mir_borrowed(self.v)`.
   does a view member stored straight from another record's (`a.s = b.s`
   rejects at `field.result_type`,
   `BUGS.md#view-member-from-view-member-rejects`; `v: StrView = b.s; a.s =
-  v` lowers). A whole member replaced through a BORROWED parameter
+  v` lowers). A whole member replaced through a pointer parameter
   (`member_param`: `o.inner = R(s, s)`; through `self` in a method,
   `Holder.swap`) reports a `replacement` C++ does
   not have: the weak update keeps the caller's seeded loan at
@@ -4120,22 +4126,21 @@ loan is a place of its holder, with the payload stored inline (C++
 change. Pinned by `tests/cases/mir/wrapper_fields` and
 `tpyc/mir/test_optional_fields.py`.
 
-- **Invariant.** A wrapper's layout belongs to the representation at a
-  place, never to the root slot alone: `nodes.place_layout(place, slots)`
-  answers the Optional / union / tuple layout of the value at a place (a
-  root place: its slot's own layout; a place ending in an Optional record
-  field: an OWNED `MIROptionalLayout`; any other projection: none). Every
-  payload, element and presence operation resolves the layout of the place
-  it operates on, and the wrapper rvalues (`MIROptionalConstruct`,
-  `MIROptionalCopy`, `MIRIsPresent` and the union twins) take a
-  `MIRPlace`. Root slots keep their SCALAR / BORROWED payload kinds; OWNED
-  exists only at a field place. The refactor that introduced the resolver
+- **Invariant.** A wrapper's members belong to the value at a place,
+  never to the root slot alone: `shapes.place_shape(place, slots, records)`
+  answers the value at a place (a root place: its slot's shape; a place
+  ending in an Optional record field: an Optional whose payload record is
+  stored inline). Every payload, element and presence operation resolves
+  the shape of the place it operates on, and the wrapper rvalues
+  (`MIROptionalConstruct`, `MIROptionalCopy`, `MIRIsPresent` and the union
+  twins) take a `MIRPlace`. A slot's payload is an inert leaf or a pointer
+  at a record; an inline payload exists only at a field place. The refactor that introduced the resolver
   changed no verdict (census over the full test corpus and the stdlib:
   0 of 29713 bodies).
 - **Admission.** `scalar_leaves.optional_record_field` admits an Optional
   (not pointer-represented, `readonly` removed) whose payload passes
-  `plain_record_element` and holds no loan; `modeled_leaf_field` includes
-  it, so MIR models the field. THIR publishes its field identity as it
+  `plain_record_element` and holds no loan; `modeled_field` admits it (its
+  class is OPTIONAL), so MIR models the field. THIR publishes its field identity as it
   does for every declared member (metadata; no render reads it), and
   `thir/validate.py` accepts a whole access (STORAGE form, the Optional
   type, or the payload type at an assign target inside a narrowed region)
@@ -4160,8 +4165,9 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   presence fact on a field place dies at any statement or published call
   write that may reach it, in the current state and on the outcomes stored
   on boolean temporaries (`if a.p is not None and empties(b)`). May-reach
-  is decided by allow-lists: only a root write of a BORROWED holder is a
-  rebind that writes no storage, and only scalar leaves, owned leaves and
+  is decided by allow-lists: only a root write of a holder of storage
+  elsewhere (a pointer, a region, a cursor, a payload alias) is a rebind
+  that writes no storage, and only scalar leaves, owned leaves and
   views cannot hold the member (`_may_hold`); any other type may. A read
   after a killed fact refuses ("optional payload access without current
   presence proof").
@@ -4245,13 +4251,13 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   like a borrowed record parameter's in `object_keys`), so writes under the
   payload, stored loans (`_transfers`) and alias obligations read it like a
   borrowed record parameter; the object it names is the payload record
-  (`dependencies.origin_type`), so retention types it as that record. A
+  (`dependencies.origin_shape`), so retention types it as that record. A
   store under any other non-owned root keeps the summary opaque ("summary
   store under an unmodeled holder").
 - **Summary paths** carry no payload step: a path under an Optional
   parameter is the path under its payload record, and `coverage.call_place`
-  adds the `payload, deref` prefix back at each call, for a BORROWED
-  payload layout only (a scalar payload has no place under it). Presence
+  adds the `payload, deref` prefix back at each call, for a pointer
+  payload only (a scalar payload has no place under it). Presence
   tests, Optional copies and constructs on the parameter's holder slot are
   accepted where the field forms are (`summaries._optional_place`).
 - **Callers.** Free-function, method and constructor calls bind the argument

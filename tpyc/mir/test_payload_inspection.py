@@ -6,14 +6,13 @@ from collections.abc import Callable
 
 import pytest
 
-from ..thir.nodes import Form
 from ..typesys import INT32
 from .dependencies import _dependencies, analyze_dependencies
 from .liveness import _liveness, analyze_liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBranch, MIRFunction, MIRGoto, MIRIsAlternative,
     MIRNotCovered, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRUnionExtract, MIRValueKind,
+    MIRSlotKind, MIRUnionExtract,
 )
 from .payload_lifetime import (
     MIRPayloadConflict, MIRPayloadEnds, _payload_conflicts, _payload_ends,
@@ -26,6 +25,7 @@ from .test_payload_lifetime import (
     payload, wrapper_function, write,
 )
 from .validate import MIRPresenceError, MIRValidationError, _prepare_function, validate_function
+from .testutil import alias_shape, leaf_shape
 
 
 ALIAS, RESULT = (MIRSlotId(BODY, i) for i in (6, 7))
@@ -36,9 +36,8 @@ READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(ALIAS)))
 def alias_function(*statements: MIRAssign) -> MIRFunction:
     fn = wrapper_function(False, MIRBlock(ENTRY, (write(False, 2, fact=INIT), *statements), MIRReturn(RESULT)))
     return replace(fn, slots=(*fn.slots,
-        MIRSlot(ALIAS, INT32, MIRSlotKind.LOCAL, form=Form.BORROW, readonly=True,
-                value_kind=MIRValueKind.PAYLOAD_ALIAS, alias_source=payload(False)),
-        MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL)))
+        MIRSlot(ALIAS, alias_shape(INT32, readonly=True), MIRSlotKind.LOCAL, alias_source=payload(False)),
+        MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL)))
 
 
 @pytest.mark.parametrize("tag", [0, 1, 2, PARAM, CURRENT])

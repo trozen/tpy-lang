@@ -16,7 +16,7 @@ from .nodes import (
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
-from .testutil import Reference, execute
+from .testutil import Reference, execute, leaf_shape
 from .validate import MIRValidationError, validate_function
 
 
@@ -191,7 +191,7 @@ def conditional_region() -> MIRFunction:
     fn = region_fixture()
     entry, iteration, after = fn.blocks
     initialize = MIRBlockId(fn.id, 3)
-    skip = MIRSlot(MIRSlotId(fn.id, 3), BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
+    skip = MIRSlot(MIRSlotId(fn.id, 3), leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
     return replace(fn, slots=(*fn.slots, skip), blocks=(entry,
         replace(iteration, statements=(), terminator=MIRBranch(skip.id, after.id, initialize)),
         after, replace(iteration, id=initialize)))
@@ -223,7 +223,7 @@ def test_last_activation_does_not_definitely_initialize_the_next() -> None:
 def test_optional_scalar_copy_survives_its_wrapper_end() -> None:
     fn = conditional_region()
     entry, iteration, after, initialize = fn.blocks
-    copied = MIRSlot(MIRSlotId(fn.id, 4), INT32, MIRSlotKind.LOCAL, residence=entry.region)
+    copied = MIRSlot(MIRSlotId(fn.id, 4), leaf_shape(INT32), MIRSlotKind.LOCAL, residence=entry.region)
     done = MIRBlockId(fn.id, 4)
     read = MIRAssign(MIRPlace(copied.id), MIRRead(MIRPlace(fn.slots[2].id, (MIROptionalPayload(),))))
     fn = replace(fn, slots=(*fn.slots, copied), blocks=(entry,

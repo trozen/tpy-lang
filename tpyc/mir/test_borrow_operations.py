@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
-from ..thir.nodes import Form, THIRBorrowedRecord
+from ..thir.nodes import THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, ReadonlyType, TupleType
@@ -13,10 +13,11 @@ from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, _dependencies
 from .liveness import _liveness
 from .nodes import (
+    MIRHolding,
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRBranch,
     MIRConstant, MIRConstruct, MIRDeref, MIREdge, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace, MIRPoint,
     MIRRead, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRTupleConstruct, MIRTupleElement, MIRTupleIndex, MIRTupleInitialization, MIRTupleLayout, MIRValueKind,
+    MIRTupleConstruct, MIRTupleIndex, MIRTupleInitialization,
 )
 from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageConflictKind, MIRStorageVerdict, _borrow_evidence,
@@ -27,6 +28,7 @@ from .test_storage_evidence import (
     SAVED, _cell, _ref, activation, returning, reused,
 )
 from .validate import MIRValidationError, _prepare_function
+from .testutil import leaf_shape, owned_shape, tuple_shape
 
 
 @pytest.fixture(scope="module")
@@ -52,7 +54,7 @@ def forwarding(definitions: MIRDefinitions, *, dead: bool = False) -> MIRFunctio
     return MIRFunction(BODY, INT32 if dead else ReadonlyType(cell), (
         _ref(FIRST, cell, MIRSlotKind.PARAMETER), _ref(SECOND, cell, MIRSlotKind.PARAMETER),
         _ref(CURRENT, cell, MIRSlotKind.LOCAL, ROOT), _ref(ALIAS, cell, MIRSlotKind.LOCAL, ROOT),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), (
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), (
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(CURRENT), MIRAlias(FIRST)),
                          MIRAssign(MIRPlace(ALIAS), MIRAlias(CURRENT)),
                          MIRAssign(MIRPlace(CURRENT), MIRAlias(SECOND))),
@@ -65,7 +67,7 @@ def operations(fn: MIRFunction) -> frozenset[MIRPoint]:
     slots = {s.id: s for s in fn.slots}
     writes = {MIRPoint(b.id, i) for b in fn.blocks for i, stmt in enumerate(b.statements)
               if isinstance(stmt, MIRAssign) and not stmt.target.projections
-              and slots[stmt.target.root].value_kind is MIRValueKind.BORROWED}
+              and slots[stmt.target.root].shape.holding is MIRHolding.POINTER}
     returns = {MIRPoint(b.id, len(b.statements)) for b in fn.blocks
                if fn.borrowed_result is not None and isinstance(b.terminator, MIRReturn)}
     return frozenset(writes | returns)
@@ -180,11 +182,9 @@ def test_owned_tuple_member_infers_its_local_backing(definitions: MIRDefinitions
     pair, result = MIRSlotId(BODY, 5), MIRSlotId(BODY, 6)
     member = MIRPlace(pair, (MIRTupleIndex(0),))
     fn = forwarding(definitions, dead=not escape)
-    backing = MIRSlot(pair, TupleType((cell, INT32)), MIRSlotKind.LOCAL, form=Form.STORAGE,
-                      value_kind=MIRValueKind.TUPLE, tuple_layout=MIRTupleLayout((
-                          MIRTupleElement(cell, MIRValueKind.OWNED), MIRTupleElement(INT32))),
-                      storage_duration=MIRStorageDuration.BODY, residence=ROOT)
-    fn = replace(fn, slots=(*fn.slots, backing, MIRSlot(result, INT32, MIRSlotKind.LOCAL, residence=ROOT)),
+    backing = MIRSlot(pair, tuple_shape(TupleType((cell, INT32)), (owned_shape(cell), leaf_shape(INT32))),
+                      MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY, residence=ROOT)
+    fn = replace(fn, slots=(*fn.slots, backing, MIRSlot(result, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)),
                  blocks=(MIRBlock(ENTRY, (
                      MIRAssign(MIRPlace(pair), MIRTupleConstruct((MIRConstruct((VALUE,)), VALUE)),
                                storage_write=MIRTupleInitialization()),
@@ -280,7 +280,8 @@ def test_incomplete_join_is_rejected_before_origin_union(definitions: MIRDefinit
     # first arm's origins must not turn that missing path into positive evidence.
     left, right, join = (MIRBlockId(BODY, i) for i in (1, 2, 3))
     flag = MIRSlotId(BODY, 5)
-    fn = replace(fn, slots=(*fn.slots, MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)), blocks=(
+    fn = replace(fn, slots=(*fn.slots, MIRSlot(flag, leaf_shape(BOOL), MIRSlotKind.PARAMETER,
+                                               passing=ParamPassing.VALUE)), blocks=(
         MIRBlock(ENTRY, (), MIRBranch(flag, left, right), ROOT),
         MIRBlock(left, (MIRAssign(MIRPlace(ALIAS), MIRAlias(FIRST)),), MIRGoto(join), ROOT),
         MIRBlock(right, (), MIRGoto(join), ROOT),

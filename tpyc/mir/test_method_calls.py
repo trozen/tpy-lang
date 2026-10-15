@@ -20,11 +20,12 @@ from .dependencies import MIRReferent, call_return_problem
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRBodyId, MIRCall, MIRCallStmt, MIRContainerLayout, MIRFunction, MIRNotCovered, MIRPlace, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRTupleElement, MIRValueKind,
+    MIRBodyId, MIRCall, MIRCallStmt, MIRFunction, MIRNotCovered, MIRPlace, MIRSlot, MIRSlotId,
+    MIRSlotKind,
 )
 from .summaries import summarize_function
 from .validate import MIRValidationError, validate_function
+from .testutil import borrowed_shape, leaf_shape, region_shape
 
 
 SOURCE = '''\
@@ -282,14 +283,11 @@ def test_a_container_returned_from_the_receiver_names_its_field(program: _Progra
     assert summary_problem(whole) == "unsupported return origin type or access"
     summary = whole
     body = MIRBodyId("methods", "guard")
-    receiver = MIRSlot(MIRSlotId(body, 0), _record(program, "Counter"), MIRSlotKind.PARAMETER, "self",
-                       form=th.Form.BORROW, value_kind=MIRValueKind.BORROWED)
-    result = MIRSlot(MIRSlotId(body, 1), INTS, MIRSlotKind.LOCAL, "xs", form=th.Form.BORROW,
-                     value_kind=MIRValueKind.BORROWED_CONTAINER,
-                     container_layout=MIRContainerLayout(MIRTupleElement(INT32)))
+    receiver = MIRSlot(MIRSlotId(body, 0), borrowed_shape(_record(program, "Counter")), MIRSlotKind.PARAMETER, "self")
+    result = MIRSlot(MIRSlotId(body, 1), region_shape(INTS, members=(leaf_shape(INT32),)), MIRSlotKind.LOCAL, "xs")
     slots = {slot.id: slot for slot in (receiver, result)}
     state = {MIRPlace(receiver.id): frozenset({MIRReferent(MIRPlace(receiver.id), external=True)})}
-    problem = call_return_problem(MIRCall(summary, (receiver.id,), True), result, state, slots)
+    problem = call_return_problem(MIRCall(summary, (receiver.id,), True), result, state, slots, {})
     assert problem == "container result of a non-container argument"
 
 

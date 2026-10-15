@@ -4,7 +4,6 @@ from dataclasses import dataclass, replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies
@@ -12,17 +11,18 @@ from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
     MIRConstant, MIRConstruct, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRIsPresent,
-    MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout,
+    MIRNotCovered, MIROptionalConstruct, MIROptionalCopy,
     MIROptionalPayload, MIRPlace, MIRRead, MIRRecordLayout, MIRRecordWrite,
     MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionLayout, MIRUnionPayload, MIRValueKind,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
+    MIRUnionConstruct, MIRUnionCopy, MIRUnionPayload,
 )
 from .retention import MIRRetention, MIRRetentionConflict, analyze_retention, dump_retention, may_overlap
 from .storage import MIRStorageEvents, analyze_storage
 from .test_reuse import loop_source, source_function
-from .testutil import execute
+from .testutil import borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape, union_shape
 from .validate import MIRValidationError
+from ..thir.scalar_leaves import MIRClass
 
 
 B = MIRBodyId("retention", "loop")
@@ -41,13 +41,12 @@ def analyze(fn: MIRFunction) -> MIRRetention:
 
 
 def reference(sid: MIRSlotId, *, parameter: bool = False) -> MIRSlot:
-    return MIRSlot(sid, CELL, MIRSlotKind.PARAMETER if parameter else MIRSlotKind.LOCAL,
-                   form=Form.BORROW, value_kind=MIRValueKind.BORROWED)
+    return MIRSlot(sid, borrowed_shape(CELL), MIRSlotKind.PARAMETER if parameter else MIRSlotKind.LOCAL)
 
 
 def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = False,
                   copied: bool = False) -> tuple[MIRFunction, MIRPoint, MIRPlace]:
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
+    member = borrowed_shape(CELL)
     match shape:
         case "record":
             holder = reference(SAVED)
@@ -55,32 +54,30 @@ def loop_function(shape: str, *, safe: bool = False, optional_owner: bool = Fals
             path = ()
         case "singleton" | "mixed":
             mixed = shape == "mixed"
-            layout = MIRTupleLayout((member, MIRTupleElement(INT32)) if mixed else (member,))
-            holder = MIRSlot(SAVED, TupleType(tuple(m.type for m in layout.elements)), MIRSlotKind.LOCAL,
-                             value_kind=MIRValueKind.TUPLE, tuple_layout=layout)
+            layout = (member, leaf_shape(INT32)) if mixed else (member,)
+            holder = MIRSlot(SAVED, tuple_shape(TupleType(tuple(m.type for m in layout)), layout),
+                             MIRSlotKind.LOCAL)
             wrap, copy = MIRTupleConstruct((TEMP, N) if mixed else (TEMP,)), MIRTupleCopy(SAVED)
             path = (MIRTupleIndex(0),)
         case "optional":
-            holder = MIRSlot(SAVED, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                             optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
+            holder = MIRSlot(SAVED, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
             wrap, copy = MIROptionalConstruct(MIRPlace(TEMP)), MIROptionalCopy(MIRPlace(SAVED))
             path = (MIROptionalPayload(),)
         case "union":
             other = NominalType("Other", _module_qname="retention.Other")
-            holder = MIRSlot(SAVED, UnionType((CELL, other)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION,
-                             union_layout=MIRUnionLayout((member, MIRTupleElement(other, MIRValueKind.BORROWED))))
+            holder = MIRSlot(SAVED, union_shape(UnionType((CELL, other)), (member, borrowed_shape(other))),
+                             MIRSlotKind.LOCAL)
             wrap, copy = MIRUnionConstruct(0, MIRPlace(TEMP)), MIRUnionCopy(MIRPlace(SAVED))
             path = (MIRUnionPayload(0),)
         case _:
             raise AssertionError(shape)
-    current = (MIRSlot(CURRENT, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                       optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
+    current = (MIRSlot(CURRENT, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
                if optional_owner else reference(CURRENT))
-    storage = MIRSlot(INITIAL, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
-                      value_kind=MIRValueKind.OWNED, storage_duration=MIRStorageDuration.BODY)
-    slots = (MIRSlot(N, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    storage = MIRSlot(INITIAL, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY)
+    slots = (MIRSlot(N, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+             MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
              storage, replace(storage, id=SITE), current, reference(TEMP), holder,
-             replace(holder, id=COPIED), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
+             replace(holder, id=COPIED), MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
     initial = MIRAssign(MIRPlace(INITIAL), MIRConstruct((N,)),
                         storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE))
     borrow = MIRAssign(MIRPlace(TEMP), MIRBorrow(MIRPlace(INITIAL)))
@@ -139,7 +136,8 @@ def test_real_source_detects_only_late_alias_read(safe: bool) -> None:
 
 def in_place_function(*, live_alias: bool, rhs_only: bool = False) -> MIRFunction:
     slots = (reference(CURRENT, parameter=True), reference(SAVED),
-             MIRSlot(N, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), MIRSlot(OUT, INT32, MIRSlotKind.LOCAL))
+             MIRSlot(N, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+             MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
     alias = MIRAssign(MIRPlace(SAVED), MIRAlias(CURRENT))
     read_alias = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), FIELD))))
     write = MIRAssign(MIRPlace(CURRENT, (MIRDeref(),)), MIRConstruct((OUT if rhs_only else N,)),
@@ -159,15 +157,14 @@ def test_in_place_exempts_owner_but_not_other_live_alias(live_alias: bool, rhs_o
 
 def test_readonly_alias_still_retains_the_old_object() -> None:
     fn = in_place_function(live_alias=True)
-    fn = replace(fn, slots=tuple(replace(s, readonly=True) if s.id == SAVED else s for s in fn.slots))
+    fn = replace(fn, slots=tuple(reslot(s, readonly=True) if s.id == SAVED else s for s in fn.slots))
     assert {c.holder for c in analyze(fn).conflicts} == {MIRPlace(SAVED)}
 
 
 @pytest.mark.parametrize("live_alias", [False, True])
 def test_optional_in_place_exempts_only_its_own_holder(live_alias: bool) -> None:
     fn = in_place_function(live_alias=live_alias)
-    optional = MIRSlot(CURRENT, OptionalType(CELL), MIRSlotKind.PARAMETER, value_kind=MIRValueKind.OPTIONAL,
-                        optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
+    optional = MIRSlot(CURRENT, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.PARAMETER)
     path = (MIROptionalPayload(), MIRDeref())
     alias, write, read = fn.blocks[0].statements
     alias = replace(alias, value=MIRBorrow(MIRPlace(CURRENT, path)))
@@ -175,7 +172,7 @@ def test_optional_in_place_exempts_only_its_own_holder(live_alias: bool) -> None
     if not live_alias:
         read = replace(read, value=MIRRead(MIRPlace(CURRENT, (*path, FIELD))))
     fn = replace(fn, slots=tuple(optional if s.id == CURRENT else s for s in fn.slots) + (
-        MIRSlot(FLAG, BOOL, MIRSlotKind.LOCAL),), blocks=(
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.LOCAL),), blocks=(
         MIRBlock(A, (MIRAssign(MIRPlace(FLAG), MIRIsPresent(MIRPlace(CURRENT))),), MIRBranch(FLAG, LOOP, END)),
         MIRBlock(LOOP, (alias, write, read), MIRReturn(OUT)),
         MIRBlock(END, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)),
@@ -215,7 +212,7 @@ def test_none_clear_removes_only_the_selected_optional_holder(clear_copy: bool) 
     if clear_copy:
         read_index = next(i for i, s in enumerate(statements) if s.target.root == OUT)
         statements[read_index] = MIRAssign(MIRPlace(OUT), MIRIsPresent(MIRPlace(COPIED)))
-        fn = replace(fn, return_type=BOOL, slots=tuple(replace(s, type=BOOL) if s.id == OUT else s for s in fn.slots))
+        fn = replace(fn, return_type=BOOL, slots=tuple(reslot(s, type=BOOL) if s.id == OUT else s for s in fn.slots))
     clear = MIRAssign(MIRPlace(COPIED if clear_copy else SAVED), MIROptionalConstruct())
     fn = replace(fn, blocks=(fn.blocks[0], replace(block, statements=(clear, *statements)), *fn.blocks[2:]))
     result = analyze(fn)
@@ -234,9 +231,8 @@ def test_distinct_external_parameters_may_alias() -> None:
 
 def test_two_payloads_of_one_parameter_may_alias() -> None:
     fn = in_place_function(live_alias=True)
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
-    pair = MIRSlot(TEMP, TupleType((CELL, CELL)), MIRSlotKind.PARAMETER,
-                   value_kind=MIRValueKind.TUPLE, tuple_layout=MIRTupleLayout((member, member)))
+    member = borrowed_shape(CELL)
+    pair = MIRSlot(TEMP, tuple_shape(TupleType((CELL, CELL)), (member, member)), MIRSlotKind.PARAMETER)
     prelude = tuple(MIRAssign(MIRPlace(dest), MIRBorrow(MIRPlace(TEMP, (MIRTupleIndex(i), MIRDeref()))))
                     for i, dest in enumerate((CURRENT, SAVED)))
     fn = replace(fn, slots=tuple(replace(s, kind=MIRSlotKind.LOCAL) if s.id == CURRENT else s for s in fn.slots) + (pair,),
@@ -252,7 +248,7 @@ def test_inline_siblings_are_disjoint_but_same_field_is_retained(same_field: boo
     parent = NominalType("Parent", _module_qname="retention.Parent")
     left = MIRField(MIRFieldId(parent, "left"), CELL)
     right = MIRField(MIRFieldId(parent, "right"), CELL)
-    param = replace(reference(TEMP, parameter=True), type=parent)
+    param = reslot(reference(TEMP, parameter=True), type=parent)
     prelude = (
         MIRAssign(MIRPlace(CURRENT), MIRBorrow(MIRPlace(TEMP, (MIRDeref(), left)))),
         MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(TEMP, (MIRDeref(), left if same_field else right)))),
@@ -435,7 +431,7 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
         if replaced is None:
             continue
         for root, value in before.items():
-            if slots[root].value_kind is MIRValueKind.OWNED or not used_before_overwrite(root, trace[index + 1:]):
+            if slots[root].shape.is_storage or not used_before_overwrite(root, trace[index + 1:]):
                 continue
             if isinstance(value, _Object):
                 leaves = [(MIRPlace(root), value)]
@@ -443,12 +439,12 @@ def concrete_conflicts(fn: MIRFunction, repeat: bool) -> set[tuple[MIRPoint, MIR
                 leaves = []
                 for element, item in enumerate(value):
                     if isinstance(item, _Object):
-                        match slots[root].value_kind:
-                            case MIRValueKind.TUPLE:
+                        match slots[root].shape.cls:
+                            case MIRClass.TUPLE:
                                 path = (MIRTupleIndex(element),)
-                            case MIRValueKind.OPTIONAL:
+                            case MIRClass.OPTIONAL:
                                 path = (MIROptionalPayload(),)
-                            case MIRValueKind.UNION:
+                            case MIRClass.UNION:
                                 path = (MIRUnionPayload(0),)
                             case _:
                                 raise AssertionError(root)

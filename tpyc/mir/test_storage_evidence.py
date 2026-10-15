@@ -5,7 +5,7 @@ from types import MappingProxyType
 
 import pytest
 
-from ..thir.nodes import Form, THIRBorrowedRecord
+from ..thir.nodes import THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType
@@ -18,10 +18,9 @@ from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
     MIRConstant, MIRConstruct, MIRDeref, MIREdge, MIRField, MIRFieldId, MIRFunction, MIRGoto,
-    MIRIsPresent, MIROptionalConstruct, MIROptionalLayout, MIRPlace, MIRPoint, MIRRead,
+    MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRPoint, MIRRead,
     MIRRecordLayout, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode,
     MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIRValueKind,
 )
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage_evidence import (
@@ -32,6 +31,7 @@ from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_functio
 from .test_payload_lifetime import CURRENT, payload, write
 from .test_scope_inspection import stale_scalar_alias
 from .validate import MIRPresenceError, MIRValidationError, _prepare_function
+from .testutil import borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -204,7 +204,7 @@ def artifacts() -> Artifacts:
 
 
 def _storage(fn: MIRFunction) -> frozenset[MIRSlotId]:
-    return frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    return frozenset(s.id for s in fn.slots if s.shape.is_storage)
 
 
 def _named(fn: MIRFunction, sid: MIRSlotId) -> str | None:
@@ -278,8 +278,7 @@ def _cell(definitions: MIRDefinitions, name: str = "Cell") -> tuple[NominalType,
 
 
 def _ref(sid: MIRSlotId, typ: NominalType, kind: MIRSlotKind, residence: MIRRegionId | None = None) -> MIRSlot:
-    return MIRSlot(sid, typ, kind, form=Form.BORROW, value_kind=MIRValueKind.BORROWED,
-                   readonly=True, residence=residence)
+    return MIRSlot(sid, borrowed_shape(typ, readonly=True), kind, residence=residence)
 
 
 LOOP = MIRBodyId("storage_evidence", "loop")
@@ -292,8 +291,7 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     """Each iteration constructs a fresh region activation of one static backing."""
     cell, layout = _cell(definitions)
     field = layout.fields[0]
-    backing = MIRSlot(BACKING, cell, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
-                      storage_duration=INNER, residence=INNER,
+    backing = MIRSlot(BACKING, owned_shape(cell), MIRSlotKind.LOCAL, storage_duration=INNER, residence=INNER,
                       record_storage=MIRRecordStorageKind.OPTIONAL if optional else MIRRecordStorageKind.DIRECT)
     read = MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(SAVED, (MIRDeref(), field))))
     construct = MIRAssign(MIRPlace(BACKING), MIRConstruct((VALUE,)), storage_write=MIRRecordWrite(
@@ -303,9 +301,11 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
     if not retain:
         iteration += (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)),)
     return MIRFunction(LOOP, INT32, (
-        MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), _ref(OWNER, cell, MIRSlotKind.PARAMETER),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), _ref(SAVED, cell, MIRSlotKind.LOCAL, ROOT), backing,
-        MIRSlot(OUT, INT32, MIRSlotKind.LOCAL, residence=ROOT)), (
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        _ref(OWNER, cell, MIRSlotKind.PARAMETER),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        _ref(SAVED, cell, MIRSlotKind.LOCAL, ROOT), backing,
+        MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)), (
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)), MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(VALUE)))),
                  MIRGoto(HEADER), ROOT),
         MIRBlock(HEADER, (), MIRBranch(FLAG, ITERATION, AFTER), ROOT),
@@ -444,13 +444,15 @@ R_ENTRY, R_LOCAL_ARM, R_OWNER_ARM = (MIRBlockId(RETURN, i) for i in range(3))
 def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
     cell, layout = _cell(definitions)
     region = MIRRegionId(RETURN, 0)
-    storage = MIRSlot(R_LOCAL, cell, MIRSlotKind.LOCAL, form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
-                      storage_duration=MIRStorageDuration.BODY, residence=region)
+    storage = MIRSlot(R_LOCAL, owned_shape(cell), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
+                      residence=region)
     once = MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)
     local_arm = MIRBorrow(MIRPlace(R_LOCAL)) if escape else MIRAlias(R_OWNER)
     return MIRFunction(RETURN, ReadonlyType(cell), (
-        MIRSlot(R_FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), _ref(R_OWNER, cell, MIRSlotKind.PARAMETER),
-        MIRSlot(R_VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), storage, replace(storage, id=R_SPARE),
+        MIRSlot(R_FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        _ref(R_OWNER, cell, MIRSlotKind.PARAMETER),
+        MIRSlot(R_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), storage,
+        replace(storage, id=R_SPARE),
         _ref(R_SAVED, cell, MIRSlotKind.LOCAL, region)), (
         MIRBlock(R_ENTRY, (MIRAssign(MIRPlace(R_LOCAL), MIRConstruct((R_VALUE,)), storage_write=once),
                            MIRAssign(MIRPlace(R_SPARE), MIRConstruct((R_VALUE,)), storage_write=once)),
@@ -495,10 +497,9 @@ def test_absent_payload_needs_a_positive_selection_fact(artifacts: Artifacts) ->
     maybe, guard = MIRSlotId(RETURN, 6), MIRSlotId(RETURN, 7)
     region = fn.regions[0].id
     entry = fn.blocks[0]
-    fn = replace(fn, slots=(*fn.slots, MIRSlot(
-        maybe, OptionalType(cell), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-        optional_layout=MIROptionalLayout(cell, MIRValueKind.BORROWED), residence=region),
-        MIRSlot(guard, BOOL, MIRSlotKind.LOCAL, residence=region)), blocks=(replace(entry, statements=(
+    fn = replace(fn, slots=(*fn.slots, MIRSlot(maybe, optional_shape(OptionalType(cell), borrowed_shape(cell)),
+                                               MIRSlotKind.LOCAL, residence=region),
+        MIRSlot(guard, leaf_shape(BOOL), MIRSlotKind.LOCAL, residence=region)), blocks=(replace(entry, statements=(
             *entry.statements, MIRAssign(MIRPlace(maybe), MIROptionalConstruct()),
             MIRAssign(MIRPlace(guard), MIRIsPresent(MIRPlace(maybe))))), *fn.blocks[1:]))
     assert certify_storage_origins(fn, frozenset({R_LOCAL}), definitions).verdict is MIRStorageVerdict.CERTIFIED
@@ -545,7 +546,7 @@ def test_storage_records_need_verified_hook_free_definitions(artifacts: Artifact
         _, layout = _cell(definitions)
         field = MIRField(MIRFieldId(hooked, layout.fields[0].id.name), INT32)
         fn = replace(fn, records=(*fn.records, MIRRecordLayout(hooked, (field,), True, True)),
-                     slots=tuple(replace(s, type=hooked) if s.id == BACKING else s for s in fn.slots),
+                     slots=tuple(reslot(s, type=hooked) if s.id == BACKING else s for s in fn.slots),
                      blocks=tuple(replace(b, statements=tuple(
                          replace(stmt, value=MIRAlias(OWNER)) if stmt.target == MIRPlace(SAVED)
                          and isinstance(stmt.value, MIRBorrow) else stmt for stmt in b.statements))

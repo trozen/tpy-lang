@@ -25,18 +25,21 @@ from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant,
     MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRMove, MIRNotCovered,
     MIROp,
     MIRPlace, MIRRead,
     MIRRecordLayout, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration, MIRValueKind,
+    MIRSlotKind, MIRStorageDuration,
 )
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .validate import MIRValidationError, statement_may_raise, validate_function
+from .testutil import borrowed_shape, leaf_shape, owned_shape, reslot
+from ..thir.scalar_leaves import MIRClass
 
 RECORD_SOURCE = """\
 from tpy import int32
@@ -102,14 +105,12 @@ def _layout(program: _Program, leaf: bool) -> MIRRecordLayout:
 
 def _storage(typ, duration, kind=MIRSlotKind.LOCAL, **extra) -> MIRSlot:
     residence = None if kind is MIRSlotKind.PARAMETER else duration if isinstance(duration, MIRRegionId) else R0
-    return MIRSlot(STORAGE, typ, kind, "x", form=Form.STORAGE, value_kind=MIRValueKind.OWNED,
-                   storage_duration=duration, residence=residence, **extra)
+    return MIRSlot(STORAGE, owned_shape(typ), kind, "x", storage_duration=duration, residence=residence, **extra)
 
 
 def _holder(sid: MIRSlotId, typ, *, readonly: bool = True, residence=R0,
             kind: MIRSlotKind = MIRSlotKind.LOCAL) -> MIRSlot:
-    return MIRSlot(sid, typ, kind, form=Form.BORROW, value_kind=MIRValueKind.BORROWED,
-                   readonly=readonly, residence=residence)
+    return MIRSlot(sid, borrowed_shape(typ, readonly=readonly), kind, residence=residence)
 
 
 class _Variant:
@@ -124,9 +125,9 @@ class _Variant:
 
     def extra_slots(self) -> tuple[MIRSlot, ...]:
         if self.leaf:
-            return (MIRSlot(RESULT, BOOL, MIRSlotKind.TEMPORARY, residence=R0),)
-        field_slot = MIRSlot(FIELD_VALUE, INT32, MIRSlotKind.PARAMETER, "v", passing=ParamPassing.VALUE)
-        return (MIRSlot(RESULT, INT32, MIRSlotKind.TEMPORARY, residence=R0), field_slot,
+            return (MIRSlot(RESULT, leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=R0),)
+        field_slot = MIRSlot(FIELD_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, "v", passing=ParamPassing.VALUE)
+        return (MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.TEMPORARY, residence=R0), field_slot,
                 _holder(WRITER, self.type, readonly=False))
 
     def init(self) -> MIRConstant | MIRConstruct:
@@ -154,7 +155,8 @@ def _with_exits(fn: MIRFunction) -> MIRFunction:
     """A hand-built body with the exit fact its statements imply (a str
     buffer's allocation can throw), which these probes do not test."""
     slots = {s.id: s for s in fn.slots}
-    return replace(fn, exceptional_exits=any(statement_may_raise(stmt, slots)
+    records = {r.type: r for r in fn.records}
+    return replace(fn, exceptional_exits=any(statement_may_raise(stmt, slots, records)
                                              for block in fn.blocks for stmt in block.statements))
 
 
@@ -250,8 +252,7 @@ def _leaf_body(statements, slots, *, blocks=None, regions=None, ret=RESULT, retu
 
 
 def _param_borrow(sid: MIRSlotId, typ=STR, passing=ParamPassing.VIEW) -> MIRSlot:
-    return MIRSlot(sid, typ, MIRSlotKind.PARAMETER, "p", form=Form.BORROW,
-                   value_kind=MIRValueKind.BORROWED, readonly=True, passing=passing)
+    return MIRSlot(sid, borrowed_shape(typ, readonly=True), MIRSlotKind.PARAMETER, "p", passing=passing)
 
 
 def _write(target, value, mode=MIRRecordWriteMode.INITIALIZE_ONCE) -> MIRAssign:
@@ -263,7 +264,7 @@ def _compare_holder() -> MIRAssign:
 
 
 def _result() -> MIRSlot:
-    return MIRSlot(RESULT, BOOL, MIRSlotKind.TEMPORARY, residence=R0)
+    return MIRSlot(RESULT, leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=R0)
 
 
 @pytest.mark.parametrize("producer", ["constant", "operation", "copy"])
@@ -338,7 +339,7 @@ def test_entry_owned_parameter_is_body_storage(active, replaced: bool) -> None:
 
 
 def _loop_body(mode: MIRRecordWriteMode, duration) -> MIRFunction:
-    flag = MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, "flag", passing=ParamPassing.VALUE)
+    flag = MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, "flag", passing=ParamPassing.VALUE)
     inner = R1 if isinstance(duration, MIRRegionId) else R0
     slots = [_storage(STR, duration), _holder(HOLDER, STR, residence=inner),
              replace(_result(), residence=inner), flag]
@@ -561,7 +562,7 @@ def _slot(fn: MIRFunction, name: str) -> MIRSlot:
 
 
 def _storage_roots(fn: MIRFunction) -> frozenset[MIRSlotId]:
-    return frozenset(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    return frozenset(s.id for s in fn.slots if s.shape.is_storage)
 
 
 def test_owned_leaf_analyses_complete_without_conflicts(lowered_active) -> None:
@@ -592,7 +593,7 @@ def test_owned_leaf_slots_take_the_opaque_layout(lowered_active) -> None:
     # `param_borrow` borrows all four leaf types; `append` owns its str.
     for name in ("param_borrow", "append"):
         fn = lowered_active.bodies[name]
-        leaves = [s for s in fn.slots if s.value_kind in (MIRValueKind.OWNED, MIRValueKind.BORROWED)]
+        leaves = [s for s in fn.slots if s.shape.is_storage or s.shape.holding is MIRHolding.POINTER]
         assert leaves
         for slot in leaves:
             layout, = (r for r in fn.records if r.type == slot.type)
@@ -609,13 +610,13 @@ def test_parameters_borrow_or_own_by_their_passing(lowered_active) -> None:
     for name, passing in (("s", ParamPassing.VIEW), ("n", ParamPassing.CONST_REF),
                           ("t", ParamPassing.CONST_REF), ("b", ParamPassing.VIEW)):
         slot = _slot(fn, name)
-        assert (slot.value_kind, slot.readonly, slot.form, slot.passing) == (
-            MIRValueKind.BORROWED, True, Form.BORROW, passing)
+        assert (slot.shape.holding, slot.readonly, slot.form, slot.passing) == (
+            MIRHolding.POINTER, True, Form.BORROW, passing)
     entry = analyze_dependencies(fn, analyze_liveness(fn)).entry_active
     assert all(refs == frozenset({MIRReferent(leaf, external=True)}) for leaf, refs in entry.items())
     owned = _slot(lowered_active.bodies["by_value"], "s")
-    assert (owned.value_kind, owned.storage_duration, owned.passing) == (
-        MIRValueKind.OWNED, MIRStorageDuration.BODY, ParamPassing.VALUE)
+    assert (owned.shape.is_storage, owned.storage_duration, owned.passing) == (
+        True, MIRStorageDuration.BODY, ParamPassing.VALUE)
     # The by-value parameter returns itself, with no copy.
     assert _lines(lowered_active.bodies["by_value"])[-1] == f"return %{owned.id.index}"
 
@@ -631,7 +632,7 @@ def test_locals_initialize_once_then_replace_in_place(lowered_active) -> None:
 
 def test_operand_temporaries_live_in_their_full_expression(lowered_active) -> None:
     fn = lowered_active.bodies["temporary"]
-    temporary, = (s for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    temporary, = (s for s in fn.slots if s.shape.is_storage)
     assert temporary.kind is MIRSlotKind.TEMPORARY and isinstance(temporary.storage_duration, MIRRegionId)
     region = next(r for r in fn.regions if r.id == temporary.storage_duration)
     assert region.parent is not None
@@ -648,7 +649,7 @@ def test_owned_leaf_globals_are_readonly_external_handles(lowered_active) -> Non
     fn = lowered_active.bodies["global_print"]
     handles = [s for s in fn.slots if s.kind is MIRSlotKind.GLOBAL]
     assert sorted(s.global_id.name for s in handles) == ["B", "G", "N"]
-    assert all(s.value_kind is MIRValueKind.BORROWED and s.readonly for s in handles)
+    assert all(s.shape.holding is MIRHolding.POINTER and s.readonly for s in handles)
     deps = analyze_dependencies(fn, analyze_liveness(fn))
     assert {leaf.root for leaf in deps.entry_active} <= {s.id for s in handles}
     point = MIRPoint(fn.blocks[0].id, 3)
@@ -748,9 +749,9 @@ def test_owned_leaf_arguments_are_lent_at_a_borrowing_passing(lowered_active) ->
     fn = lowered_active.bodies["lends"]
     slots = {s.id: s for s in fn.slots}
     arguments = [slots[a] for call in _calls(fn) for a in call.arguments]
-    assert [(a.type, a.value_kind, a.readonly, a.kind) for a in arguments] == [
-        (STR, MIRValueKind.BORROWED, True, MIRSlotKind.TEMPORARY),
-        (BIGINT, MIRValueKind.BORROWED, True, MIRSlotKind.TEMPORARY)]
+    assert [(a.type, a.shape.holding, a.readonly, a.kind) for a in arguments] == [
+        (STR, MIRHolding.POINTER, True, MIRSlotKind.TEMPORARY),
+        (BIGINT, MIRHolding.POINTER, True, MIRSlotKind.TEMPORARY)]
     # No copy: each holder borrows the parameter's own external storage.
     assert not any(isinstance(stmt.value, MIRCopy) for stmt in _statements(fn) if isinstance(stmt, MIRAssign))
     deps = analyze_dependencies(fn, analyze_liveness(fn))
@@ -771,7 +772,7 @@ def test_owned_leaf_arguments_are_copied_at_a_by_value_passing(lowered_active) -
     assert "%2 = copy (*%0) may-raise [initialize_region]" in lines
     assert any(line.startswith("%3 = call main::takes_own(%2)") for line in lines)
     fn = lowered_active.bodies["copies"]
-    copy, = (s for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    copy, = (s for s in fn.slots if s.shape.is_storage)
     assert copy.kind is MIRSlotKind.TEMPORARY and isinstance(copy.storage_duration, MIRRegionId)
     assert fn.call_summaries[0].parameters[0].passing is ParamPassing.VALUE
     assert not fn.call_summaries[0].parameters[0].readonly
@@ -788,7 +789,7 @@ def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
     fn = lowered_active.bodies["fresh_result"]
     call, = (stmt for stmt in _statements(fn) if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
     result = fn.slots[call.target.root.index]
-    assert result.value_kind is MIRValueKind.OWNED and result.kind is MIRSlotKind.TEMPORARY
+    assert result.shape.is_storage and result.kind is MIRSlotKind.TEMPORARY
     assert call.storage_write == MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION)
     # The result's holder names the temporary, never the argument's parameter.
     deps = analyze_dependencies(fn, analyze_liveness(fn))
@@ -797,7 +798,7 @@ def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
     assert origins == {MIRReferent(MIRPlace(result.id))}
     assert call.value.may_raise and fn.exceptional_exits  # the callee's copy may raise
     local = _slot(lowered_active.bodies["result_local"], "t")
-    assert local.value_kind is MIRValueKind.OWNED and local.kind is MIRSlotKind.LOCAL
+    assert local.shape.is_storage and local.kind is MIRSlotKind.LOCAL
     assert "%1 = call main::ret_copy(%2) [reader, may-raise] [initialize_once]" in _lines(
         lowered_active.bodies["result_local"])
     temporary = lowered_active.bodies["temporary_argument"]
@@ -865,7 +866,7 @@ def test_validator_rejects_mismatched_owned_leaf_arguments_and_results(lowered_a
     # An owned call result must be the callee's by-value owned leaf.
     fresh = lowered_active.bodies["fresh_result"]
     call_stmt = next(s for s in _statements(fresh) if isinstance(s, MIRAssign) and isinstance(s.value, MIRCall))
-    retyped = replace(fresh, slots=tuple(replace(s, type=BIGINT) if s.id == call_stmt.target.root else s
+    retyped = replace(fresh, slots=tuple(reslot(s, type=BIGINT) if s.id == call_stmt.target.root else s
                                          for s in fresh.slots),
                       records=(*fresh.records, MIRRecordLayout(BIGINT, (), True, True, opaque=True)))
     with pytest.raises(MIRValidationError, match="call owned result type mismatch"):
@@ -883,7 +884,7 @@ def test_expression_arguments_are_evaluated_before_the_call(lowered_active) -> N
 def test_print_arguments_share_one_full_expression_region(lowered_active) -> None:
     fn = lowered_active.bodies["print_call"]
     lines = _lines(fn)
-    result = next(s for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    result = next(s for s in fn.slots if s.shape.is_storage)
     # The call result lives in the region the print call opens, and ends with it.
     assert isinstance(result.storage_duration, MIRRegionId) and result.storage_duration.index != 0
     call, printed = (next(i for i, line in enumerate(lines) if marker in line)
@@ -902,7 +903,7 @@ def test_loop_temporaries_initialize_per_activation(lowered_active) -> None:
 # --- damage -----------------------------------------------------------------------
 
 def _replace_slot(fn: MIRFunction, name: str, **changes) -> MIRFunction:
-    return replace(fn, slots=tuple(replace(s, **changes) if s.name == name else s for s in fn.slots))
+    return replace(fn, slots=tuple(reslot(s, **changes) if s.name == name else s for s in fn.slots))
 
 
 def _replace_first(fn: MIRFunction, match, change) -> MIRFunction:
@@ -918,11 +919,11 @@ def test_validator_rejects_damaged_owned_leaf_facts(lowered_active) -> None:
     ret_copy = lowered_active.bodies["ret_copy"]
     validate_function(local)
     # A str slot claiming to be a scalar leaf.
-    with pytest.raises(MIRValidationError, match="unsupported slot type or form"):
-        validate_function(_replace_slot(ret_copy, "s", value_kind=MIRValueKind.SCALAR, form=Form.VALUE))
+    with pytest.raises(MIRValidationError, match="value class mismatch"):
+        validate_function(_replace_slot(ret_copy, "s", cls=MIRClass.LEAF, holding=MIRHolding.VALUE))
     # A view claiming owned storage.
     view = NominalType("StrView", (), _module_qname="tpy.StrView")
-    with pytest.raises(MIRValidationError, match="unsupported record storage type or form"):
+    with pytest.raises(MIRValidationError, match="value class mismatch"):
         validate_function(_replace_slot(local, "total", type=view))
     # A field projection under an opaque layout.
     field = MIRField(MIRFieldId(BIGINT, "digits"), INT32)

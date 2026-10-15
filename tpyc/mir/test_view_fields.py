@@ -24,12 +24,12 @@ from .dependencies import (
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
     MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction,
-    MIRMemberInitMode, MIRMove, MIRNotCovered, MIROptionalLayout, MIRPlace,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRTupleLayout,
-    MIRUnionLayout, MIRValueKind,
+    MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .retention import affects, may_overlap
 from .validate import MIRValidationError, validate_function
+from .testutil import borrowed_shape, optional_shape, tuple_shape, union_shape
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -366,7 +366,7 @@ def test_stored_loans_follow_the_object(program: _Program) -> None:
     member = _member(program, "Tok", "s")
     _, state = _state_at_return(fn)
     buf = next(s.id for s in fn.slots if s.name == "buf")
-    storage = [s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.type == _record(program, "Tok")]
+    storage = [s.id for s in fn.slots if s.shape.is_storage and s.type == _record(program, "Tok")]
     # The construct's object, its copy and the copy moved on all store the buffer's loan.
     assert len(storage) == 3
     for sid in storage:
@@ -381,7 +381,7 @@ def test_a_fill_with_no_stored_loan_to_carry_refuses(program: _Program) -> None:
     layouts = {r.type: r for r in fn.records}
     objects = {sid: object_keys(slot, layouts) for sid, slot in slots.items()}
     tok = _record(program, "Tok")
-    source, target = [s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED and s.type == tok][:2]
+    source, target = [s.id for s in fn.slots if s.shape.is_storage and s.type == tok][:2]
     # A move carries the source object's entry; with none recorded it
     # refuses rather than storing an empty set.
     with pytest.raises(MIRUnseededLoan) as moved:
@@ -401,8 +401,8 @@ def test_a_parameter_s_stored_loans_are_seeded_held(program: _Program) -> None:
     held = MIRReferent(key, external=True, held=True)
     assert dependencies.entry_active[key] == frozenset({held})
     # The view read resolves through the holder to the seeded entry.
-    assert resolve_referents(MIRPlace(fn.slots[0].id, (MIRDeref(), member)), state, {s.id: s for s in fn.slots}) == {
-        held}
+    assert resolve_referents(MIRPlace(fn.slots[0].id, (MIRDeref(), member)), state, {s.id: s for s in fn.slots},
+                             {r.type: r for r in fn.records}) == {held}
     assert "held:%0.__main__.Tok::s" in dump_dependencies(dependencies)
 
 
@@ -410,7 +410,7 @@ def test_a_literal_member_stores_static_storage(program: _Program) -> None:
     fn = _lowered(program, "literal")
     member = _member(program, "Lit", "s")
     _, state = _state_at_return(fn)
-    storage = next(s.id for s in fn.slots if s.value_kind is MIRValueKind.OWNED)
+    storage = next(s.id for s in fn.slots if s.shape.is_storage)
     loans = state[MIRPlace(storage, (member,))]
     assert len(loans) == 1 and next(iter(loans)).static
 
@@ -428,7 +428,7 @@ def test_an_object_with_no_stored_loan_entry_refuses(program: _Program) -> None:
     with pytest.raises(MIRUnseededLoan):
         resolve_referents(MIRPlace(param, (MIRDeref(), _member(program, "Tok", "s"))),
                           {MIRPlace(param): frozenset({MIRReferent(MIRPlace(param), external=True)})},
-                          {s.id: s for s in fn.slots})
+                          {s.id: s for s in fn.slots}, {r.type: r for r in fn.records})
 
 
 def test_live_holders_reach_stored_loans_through_their_objects(program: _Program) -> None:
@@ -452,6 +452,7 @@ def test_live_holders_reach_stored_loans_through_their_objects(program: _Program
 def test_a_held_loan_may_be_any_external_storage(program: _Program) -> None:
     fn = _lowered(program, "seeded")
     slots = {s.id: s for s in fn.slots}
+    records = {r.type: r for r in fn.records}
     member = _member(program, "Tok", "s")
     p, q = MIRSlotId(fn.id, 50), MIRSlotId(fn.id, 51)
     held = MIRReferent(MIRPlace(p, (member,)), external=True, held=True)
@@ -459,11 +460,11 @@ def test_a_held_loan_may_be_any_external_storage(program: _Program) -> None:
     other = MIRReferent(MIRPlace(q), external=True)
     # A sibling field of the very object, or another external object: the
     # held rule runs before origins and paths are compared.
-    assert affects(sibling, held, slots) and affects(other, held, slots)
+    assert affects(sibling, held, slots, records) and affects(other, held, slots, records)
     assert may_overlap(held, sibling) and may_overlap(other, held)
     # Private and static storage are never what an external loan views.
-    assert not affects(MIRReferent(MIRPlace(q)), held, slots)
-    assert not affects(MIRReferent(MIRPlace(q), external=True, static=True), held, slots)
+    assert not affects(MIRReferent(MIRPlace(q)), held, slots, records)
+    assert not affects(MIRReferent(MIRPlace(q), external=True, static=True), held, slots, records)
     assert not may_overlap(MIRReferent(MIRPlace(q)), held)
 
 
@@ -500,7 +501,7 @@ def test_a_view_member_place_is_read_whole(program: _Program) -> None:
 def test_a_construct_stores_a_view_operand(program: _Program) -> None:
     fn = _lowered(program, "built")
     construct = next(s for s in _assigns(fn) if isinstance(s.value, MIRConstruct))
-    count = next(f for f in construct.value.fields if fn.slots[f.index].value_kind is MIRValueKind.SCALAR)
+    count = next(f for f in construct.value.fields if fn.slots[f.index].shape.is_scalar)
     # A view member takes a lending holder, never a scalar.
     with pytest.raises(MIRValidationError, match="incomplete or mistyped record construction"):
         validate_function(_with_statement(fn, construct, value=replace(construct.value, fields=(
@@ -532,14 +533,10 @@ def test_storage_that_would_move_a_stored_loan_refuses(program: _Program) -> Non
     param = fn.slots[0].id
     # A wrapper payload or member: its selection would be needed to reach the object.
     for changes in (
-            dict(type=OptionalType(tok), value_kind=MIRValueKind.OPTIONAL, form=th.Form.VALUE, readonly=False,
-                 optional_layout=MIROptionalLayout(tok, MIRValueKind.BORROWED, True)),
-            dict(type=UnionType((tok, _record(program, "Lit"))), value_kind=MIRValueKind.UNION,
-                 form=th.Form.VALUE, readonly=False, union_layout=MIRUnionLayout((
-                     MIRTupleElement(tok, MIRValueKind.BORROWED, True),
-                     MIRTupleElement(_record(program, "Lit"), MIRValueKind.BORROWED, True)))),
-            dict(type=TupleType((tok,)), value_kind=MIRValueKind.TUPLE, form=th.Form.VALUE, readonly=False,
-                 tuple_layout=MIRTupleLayout((MIRTupleElement(tok, MIRValueKind.BORROWED, True),)))):
+            dict(shape=optional_shape(OptionalType(tok), borrowed_shape(tok, True))),
+            dict(shape=union_shape(UnionType((tok, _record(program, "Lit"))),
+                                   (borrowed_shape(tok, True), borrowed_shape(_record(program, "Lit"), True)))),
+            dict(shape=tuple_shape(TupleType((tok,)), (borrowed_shape(tok, True),)))):
         with pytest.raises(MIRValidationError, match="wrapper holds a borrow"):
             validate_function(_with_slot(fn, param, **changes))
     # A record member holding a loan keys it under the outer record, which needs the member's layout.

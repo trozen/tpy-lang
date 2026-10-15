@@ -8,7 +8,9 @@ from types import MappingProxyType
 from ..parse import SourceLocation
 from ..thir.nodes import THIRFieldIdentity
 from .call_contract import MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_record_result
-from ..thir.scalar_leaves import declared_members, holds_loan, native_container_type, record_type, view_endpoint, view_leaf
+from ..thir.scalar_leaves import (
+    MIRClass, declared_members, holds_loan, value_class, view_endpoint,
+)
 from ..typesys import NominalType, TpyType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
@@ -18,18 +20,15 @@ from .nodes import (
     MIRIsPresent, MIRMove, MIRNot, MIRNotCovered, MIROptionalConstruct,
     MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
     MIRSlotKind, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct,
-    MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRValueKind,
+    MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRHolding, MIRShape,
     MIRContainerStructure, MIRContainerElements,
     MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRReturn, MIRTupleElement, MIROptionalLayout, MIRTupleLayout, MIRUnionLayout,
-    MIRWrapperLayout, place_layout, statement_target,
+    MIRRangeAdvance, MIROp, MIRReturn, statement_target,
 )
+from .shapes import loan_field, prefix_shapes, step, view_member
 from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
-from .coverage import (
-    call_place, container_holder, container_view_holder, optional_record_holder, owned_tuple, path_step,
-    scalar_member, scalar_slot, view_holder, view_member,
-)
+from .coverage import call_place, path_step
 
 
 @dataclass(frozen=True)
@@ -121,46 +120,35 @@ class MIRDependencies:
         return live_entries(state, live, self.stored_loans, self.pinned)
 
 
-def _holds(member: MIRTupleElement | MIROptionalLayout) -> bool:
-    """Whether a wrapper member is a dependency leaf. A SCALAR member holds
-    none only because it is a verified inert leaf; anything else fails."""
-    if member.kind is MIRValueKind.SCALAR:
-        if not scalar_member(member):
-            raise MIRValidationError("scalar member is not an inert leaf")
-        return False
-    return member.kind is MIRValueKind.BORROWED
-
-
-def wrapper_leaves(place: MIRPlace, layout: MIRWrapperLayout) -> tuple[MIRPlace, ...]:
-    """The dependency leaves of a wrapper at `place`: its members that hold a loan."""
+def wrapper_leaves(place: MIRPlace, shape: MIRShape) -> tuple[MIRPlace, ...]:
+    """The dependency leaves of a wrapper at `place`: its members that are
+    holders themselves (a pointer at a record); an inert leaf or inline
+    storage holds no loan."""
     def under(projection: MIRTupleIndex | MIROptionalPayload | MIRUnionPayload) -> MIRPlace:
         return MIRPlace(place.root, (*place.projections, projection))
-    match layout:
-        case MIRTupleLayout(elements=elements):
-            return tuple(under(MIRTupleIndex(i)) for i, m in enumerate(elements) if _holds(m))
-        case MIROptionalLayout():
-            return (under(MIROptionalPayload()),) if _holds(layout) else ()
-        case MIRUnionLayout(elements=elements):
-            return tuple(under(MIRUnionPayload(i)) for i, m in enumerate(elements) if m is not None and _holds(m))
+    match shape.cls:
+        case MIRClass.TUPLE:
+            return tuple(under(MIRTupleIndex(i)) for i, m in enumerate(shape.elements) if m.is_holder)
+        case MIRClass.OPTIONAL:
+            return (under(MIROptionalPayload()),) if shape.payload.is_holder else ()
+        case MIRClass.UNION:
+            return tuple(under(MIRUnionPayload(i)) for i, m in enumerate(shape.alternatives)
+                         if m is not None and m.is_holder)
     raise MIRValidationError("unknown wrapper layout")
 
 
 def _leaves(slot: MIRSlot, slots: Mapping[MIRSlotId, MIRSlot]) -> tuple[MIRPlace, ...]:
-    match slot.value_kind:
-        case (MIRValueKind.BORROWED | MIRValueKind.PAYLOAD_ALIAS
-              | MIRValueKind.BORROWED_CONTAINER | MIRValueKind.NATIVE_ITERATOR):
-            return (MIRPlace(slot.id),)
-        case MIRValueKind.TUPLE | MIRValueKind.OPTIONAL | MIRValueKind.UNION:
-            return wrapper_leaves(MIRPlace(slot.id), place_layout(MIRPlace(slot.id), slots))
-        case MIRValueKind.SCALAR:
-            # No loan can start, pass through or end at a verified inert leaf.
-            if not scalar_slot(slot):
-                raise MIRValidationError("scalar holder is not an inert leaf")
-            return ()
-        case MIRValueKind.OWNED:
-            return ()
-        case _:
-            raise MIRValidationError("unknown dependency holder kind")
+    """A slot's dependency leaves: a holder of storage elsewhere is one
+    itself, a wrapper's are its holder members; no loan starts, passes
+    through or ends at an inert leaf or at owned storage."""
+    shape = slot.shape
+    if shape.is_holder:
+        return (MIRPlace(slot.id),)
+    if shape.cls in (MIRClass.TUPLE, MIRClass.OPTIONAL, MIRClass.UNION):
+        return wrapper_leaves(MIRPlace(slot.id), shape)
+    if shape.is_scalar or shape.is_storage:
+        return ()
+    raise MIRValidationError("unknown dependency holder kind")
 
 
 def _rebased(leaf: MIRPlace, wrapper: MIRPlace, source: MIRPlace) -> MIRPlace:
@@ -169,18 +157,18 @@ def _rebased(leaf: MIRPlace, wrapper: MIRPlace, source: MIRPlace) -> MIRPlace:
 
 
 def object_keys(slot: MIRSlot, layouts: Mapping[TpyType, MIRRecordLayout]) -> tuple[MIRPlace, ...]:
-    """The stored-loan entries of a record object a slot names: OWNED
+    """The stored-loan entries of a record object a slot names: owned
     record storage (the body's own object) or a borrowed record parameter
     (the caller's object), one per view member, keyed at the member place --
     through inline record members, whose layouts come with the record's."""
-    if slot.value_kind is MIRValueKind.OWNED and slot.container_layout is None and record_type(slot.type):
+    if slot.shape.is_storage and slot.shape.cls is MIRClass.RECORD:
         pass
     elif _optional_record_parameter(slot):
         # The payload record an Optional parameter lends, keyed like a
         # borrowed record parameter's (`external_origin`).
-        return _member_keys(MIRPlace(slot.id), layouts.get(origin_type(slot)), layouts)
-    elif not (slot.kind is MIRSlotKind.PARAMETER and slot.value_kind is MIRValueKind.BORROWED
-              and record_type(slot.type)):
+        return _member_keys(MIRPlace(slot.id), layouts.get(origin_shape(slot).type), layouts)
+    elif not (slot.kind is MIRSlotKind.PARAMETER and slot.shape.is_pointer
+              and slot.shape.cls is MIRClass.RECORD):
         return ()
     return _member_keys(MIRPlace(slot.id), layouts.get(slot.type), layouts)
 
@@ -193,9 +181,9 @@ def _member_keys(place: MIRPlace, layout: MIRRecordLayout | None,
     for f in layout.fields:
         member = MIRPlace(place.root, (*place.projections, f))
         bare = unwrap_readonly(f.type)
-        if view_leaf(f.type):
+        if loan_field(f.type):
             keys.append(member)
-        elif record_type(bare):
+        elif value_class(f.type) is MIRClass.RECORD:
             if bare not in layouts:
                 raise MIRValidationError("record field needs its layout")
             keys.extend(_member_keys(member, layouts[bare], layouts))
@@ -253,7 +241,7 @@ def caller_keys(fn: MIRFunction, objects: Mapping[MIRSlotId, tuple[MIRPlace, ...
 def _coverage(fn: MIRFunction) -> str | None:
     slots = {s.id: s for s in fn.slots}
     for slot in fn.slots:
-        root = (slot if slot.value_kind is MIRValueKind.OWNED or owned_tuple(slot) else
+        root = (slot if slot.shape.is_storage or slot.shape.owned_tuple else
                 slots[slot.alias_source.root] if slot.alias_source is not None else None)
         if root is not None and root.storage_duration is None:
             return f"missing storage duration for %{root.id.index}"
@@ -270,7 +258,8 @@ def _coverage(fn: MIRFunction) -> str | None:
     graph: dict[NominalType, set[NominalType]] = {}
     for place in places:
         for projection in place.projections:
-            if isinstance(projection, MIRField) and record_type(typ := unwrap_readonly(projection.type)):
+            if isinstance(projection, MIRField) and value_class(typ := unwrap_readonly(projection.type)) is (
+                    MIRClass.RECORD):
                 graph.setdefault(projection.id.owner, set()).add(typ)
                 graph.setdefault(typ, set())
     degree = {typ: 0 for typ in graph}
@@ -320,45 +309,44 @@ def external_origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPl
     region it views, so an element read or a write through it lands there,
     and an Optional record parameter's payload names the parameter itself
     -- the record it lends, as a borrowed record parameter's does."""
-    if not leaf.projections and container_view_holder(slots[leaf.root]):
+    if not leaf.projections and slots[leaf.root].shape.container_view_holder:
         return MIRPlace(leaf.root, (MIRContainerElements(),))
     if leaf.projections == (MIROptionalPayload(),) and _optional_record_parameter(slots[leaf.root]):
         return MIRPlace(leaf.root)
     return leaf
 
 
-def origin_type(root: MIRSlot) -> TpyType:
-    """The type of the object a referent rooted at `root` names: the slot's
-    own, except that an Optional record parameter's origin
-    (`external_origin`) is the payload record it lends."""
-    return root.optional_layout.type if _optional_record_parameter(root) else root.type
+def origin_shape(root: MIRSlot) -> MIRShape:
+    """The object a referent rooted at `root` names: the slot's own value,
+    the storage a holder of it points at, or, for an Optional record
+    parameter (`external_origin`), the payload record it lends."""
+    shape = root.shape.payload if _optional_record_parameter(root) else root.shape
+    return step(shape, MIRDeref(), {}) if shape.is_pointer else shape
 
 
 def _optional_record_parameter(slot: MIRSlot) -> bool:
-    return slot.kind is MIRSlotKind.PARAMETER and optional_record_holder(slot)
+    return slot.kind is MIRSlotKind.PARAMETER and slot.shape.record_payload
 
 
-def resolve_referents(place: MIRPlace, state: MIRReferents,
-                      slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent]:
+def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+                      records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent]:
     """Resolve a validated place against the referents at its program point."""
     empty: frozenset[MIRReferent] = frozenset()
     # Payload selectors address a holder leaf; dereference follows its value.
     leaf = MIRPlace(place.root)
     refs = (frozenset({MIRReferent(leaf)})
-            if slots[place.root].value_kind is MIRValueKind.OWNED else state.get(leaf, empty))
+            if slots[place.root].shape.is_storage else state.get(leaf, empty))
     # A container view's referents already are an elements region: a container
     # projection on the view itself names that region, never a region of it.
-    through_view = container_view_holder(slots[place.root])
-    for depth, projection in enumerate(place.projections):
+    through_view = slots[place.root].shape.container_view_holder
+    for projection, holder in prefix_shapes(place, slots, records):
         match projection:
             case MIRTupleIndex():
                 leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
-                member = place_layout(MIRPlace(place.root, place.projections[:depth]), slots).elements[projection.index]
-                refs = (frozenset({MIRReferent(leaf)}) if member.kind is MIRValueKind.OWNED
+                member = holder.elements[projection.index]
+                refs = (frozenset({MIRReferent(leaf)}) if member.is_storage
                         else state.get(leaf, empty))
-            case MIROptionalPayload() if (layout := place_layout(
-                    MIRPlace(place.root, place.projections[:depth]), slots)) is not None and (
-                    layout.kind is MIRValueKind.OWNED):
+            case MIROptionalPayload() if holder.cls is MIRClass.OPTIONAL and holder.payload.is_storage:
                 # An inline payload is storage under the record that holds it.
                 leaf = MIRPlace(leaf.root, (*leaf.projections, projection))
                 refs = _project(refs, projection)
@@ -367,7 +355,7 @@ def resolve_referents(place: MIRPlace, state: MIRReferents,
                 refs = state.get(leaf, empty)
             case MIRDeref():
                 pass
-            case MIRField() if view_leaf(projection.type):
+            case MIRField() if loan_field(projection.type):
                 # A view member is read whole (`place_info` allows nothing after it).
                 refs = _stored_loans(refs, projection, state)
             case MIRContainerStructure() | MIRContainerElements() if through_view:
@@ -388,7 +376,7 @@ def _strong_write(objects: frozenset[MIRReferent], slots: Mapping[MIRSlotId, MIR
     (TODO.md, the precision item on whole-member replacement through a
     borrowed parameter)."""
     only = next(iter(objects)) if len(objects) == 1 else None
-    return only is not None and not only.external and slots[only.place.root].value_kind is MIRValueKind.OWNED
+    return only is not None and not only.external and slots[only.place.root].shape.is_storage
 
 
 def _write_entries(objects: frozenset[MIRReferent], loans: Mapping[tuple[MIRField, ...], frozenset[MIRReferent]],
@@ -416,11 +404,11 @@ def _write_entries(objects: frozenset[MIRReferent], loans: Mapping[tuple[MIRFiel
 
 def store_loan(record: MIRPlace, member: MIRField, loans: frozenset[MIRReferent],
                state: dict[MIRPlace, frozenset[MIRReferent]], slots: Mapping[MIRSlotId, MIRSlot],
-               stored_loans: frozenset[MIRPlace]) -> None:
+               records: Mapping[TpyType, MIRRecordLayout], stored_loans: frozenset[MIRPlace]) -> None:
     """A view member of every object `record` may reach rebound to `loans`
     (`_write_entries`): the write may land on any of the objects, and an
     external one may be another's alias."""
-    objects = resolve_referents(record, state, slots)
+    objects = resolve_referents(record, state, slots, records)
     if not loans or not objects:
         raise MIRUnseededLoan(None, "view member write with no origin")
     _write_entries(objects, {(member,): loans}, state, slots, stored_loans,
@@ -460,13 +448,13 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
             filled = {}
             for key, path in keys.items():
                 operand, rest = operands[path[0]], path[1:]
-                through = (MIRDeref(),) if rest and slots[operand].value_kind is MIRValueKind.BORROWED else ()
-                filled[key] = (resolve_referents(MIRPlace(operand, (*through, *rest)), state, slots) if rest
+                through = (MIRDeref(),) if rest and slots[operand].shape.is_pointer else ()
+                filled[key] = (resolve_referents(MIRPlace(operand, (*through, *rest)), state, slots, layouts) if rest
                                else state.get(MIRPlace(operand), empty))
             return filled
         case MIRCopy(source=source):
             # A source place reaching several objects carries the union of their loans.
-            return {key: resolve_referents(MIRPlace(source.root, (*source.projections, *path)), state, slots)
+            return {key: resolve_referents(MIRPlace(source.root, (*source.projections, *path)), state, slots, layouts)
                     for key, path in keys.items()}
         case MIRMove(source=source):
             moved = {key: MIRPlace(source, path) for key, path in keys.items()}
@@ -479,7 +467,7 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
             filled: dict[MIRPlace, frozenset[MIRReferent]] = {}
             for key, path in keys.items():
                 loans = frozenset().union(*(
-                    transfer_loans(value, t, key, state, slots) for t in effects.transfers
+                    transfer_loans(value, t, key, state, slots, layouts) for t in effects.transfers
                     if isinstance(t.holder, MIRResultHolder) and tuple(map(path_step, t.path)) == path))
                 if not loans:
                     raise MIRUnseededLoan(key, "record storage filled with no stored loan")
@@ -489,7 +477,8 @@ def record_fill(place: MIRPlace, typ: NominalType, value: object, state: MIRRefe
     raise MIRUnseededLoan(None, "record storage filled with no stored loan")
 
 
-def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> NominalType | None:
+def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
+                   records: Mapping[TpyType, MIRRecordLayout]) -> NominalType | None:
     """The loan-holding record a write through `place` replaces whole --
     what a holder points at, an inline member, an optional's payload -- or
     None when no stored loan lies under the place (no type on the way holds
@@ -497,9 +486,8 @@ def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> Nomin
     holds a loan its elements need not). A loan-holding value under any
     other place (an element, a tuple member, a union payload, a wrapper
     member) refuses: no entry keys it."""
-    slot = slots[place.root]
-    typ: TpyType = slot.type
-    for depth, projection in enumerate(place.projections):
+    typ: TpyType = slots[place.root].type
+    for projection, holder in prefix_shapes(place, slots, records):
         match projection:
             case MIRContainerStructure() | MIRContainerElements():
                 members = declared_members(unwrap_readonly(typ))
@@ -515,14 +503,13 @@ def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> Nomin
                 pass
             case MIRField():
                 typ = unwrap_readonly(projection.type)
-            case MIROptionalPayload() if isinstance(
-                    layout := place_layout(MIRPlace(place.root, place.projections[:depth]), slots), MIROptionalLayout):
-                typ = layout.type
+            case MIROptionalPayload() if holder.cls is MIRClass.OPTIONAL:
+                typ = holder.payload.type
             case _:
                 raise _DependencyRefusal("loan-holding write under an unmodeled place")
     if not holds_loan(typ):
         return None
-    if not (isinstance(typ, NominalType) and record_type(typ)):
+    if value_class(typ) is not MIRClass.RECORD:
         raise _DependencyRefusal("loan-holding write under an unmodeled place")
     return typ
 
@@ -540,7 +527,7 @@ def fill_through(target: MIRPlace, typ: NominalType, value: object, state: dict[
     filled = record_fill(MIRPlace(target.root), typ, value, state, slots, layouts)
     if not filled:
         return
-    objects = resolve_referents(target, state, slots)
+    objects = resolve_referents(target, state, slots, layouts)
     if not objects:
         raise MIRUnseededLoan(None, "record write into no object")
     _write_entries(objects, {key.projections: loans for key, loans in filled.items()}, state, slots,
@@ -548,7 +535,8 @@ def fill_through(target: MIRPlace, typ: NominalType, value: object, state: dict[
 
 
 def transfer_loans(call: MIRCall, transfer: MIRLoanTransfer, key: MIRPlace, state: MIRReferents,
-                   slots: Mapping[MIRSlotId, MIRSlot]) -> frozenset[MIRReferent]:
+                   slots: Mapping[MIRSlotId, MIRSlot],
+                   records: Mapping[TpyType, MIRRecordLayout]) -> frozenset[MIRReferent]:
     """The caller's loans a transfer's source names at a call: a literal's
     static storage, or what the source argument's place (`call_place`)
     holds -- a view's or a lent owned leaf's referents, or the loan a view
@@ -556,14 +544,14 @@ def transfer_loans(call: MIRCall, transfer: MIRLoanTransfer, key: MIRPlace, stat
     `present_effects`."""
     if isinstance(transfer.source, MIRStaticLoan):
         return frozenset({MIRReferent(key, external=True, static=True)})
-    loans = resolve_referents(call_place(call, transfer.source, transfer.source_path, slots), state, slots)
+    loans = resolve_referents(call_place(call, transfer.source, transfer.source_path, slots), state, slots, records)
     if not loans:
         raise MIRUnseededLoan(None, "call transfer with no origin")
     return loans
 
 
 def apply_transfers(call: MIRCall, state: dict[MIRPlace, frozenset[MIRReferent]],
-                    slots: Mapping[MIRSlotId, MIRSlot]) -> None:
+                    slots: Mapping[MIRSlotId, MIRSlot], records: Mapping[TpyType, MIRRecordLayout]) -> None:
     """Join each loan a callee may store in an argument's object into that
     object's stored-loan entry, to a fixpoint: one transfer's source may be
     another's holder, and the arguments may be one object."""
@@ -574,11 +562,12 @@ def apply_transfers(call: MIRCall, state: dict[MIRPlace, frozenset[MIRReferent]]
         changed = False
         for transfer in transfers:
             member = path_step(transfer.path[-1])
-            objects = resolve_referents(call_place(call, transfer.holder, transfer.path[:-1], slots), state, slots)
+            objects = resolve_referents(call_place(call, transfer.holder, transfer.path[:-1], slots), state, slots,
+                                        records)
             if not objects:
                 raise MIRUnseededLoan(None, "call transfer into no object")
             for key in member_keys(objects, member, state, "call transfer into an object with no stored loan"):
-                joined = state[key] | transfer_loans(call, transfer, key, state, slots)
+                joined = state[key] | transfer_loans(call, transfer, key, state, slots, records)
                 if joined != state[key]:
                     state[key] = joined
                     changed = True
@@ -589,6 +578,7 @@ def analyze_dependencies(fn: MIRFunction, liveness: MIRLiveness) -> MIRDependenc
 
 
 def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
+                         records: Mapping[TpyType, MIRRecordLayout],
                          result: MIRSlot | None = None) -> frozenset[MIRReferent] | None:
     """The caller's origins of a call's borrowed result: each return
     origin's place (`call_place`), resolved in sequence like a direct
@@ -599,18 +589,18 @@ def resolve_call_returns(call: MIRCall, state: MIRReferents, slots: Mapping[MIRS
     origins: set[MIRReferent] = set()
     for origin in call.present_effects.returns:
         argument = slots[call.arguments[origin.parameter]]
-        refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots)
+        refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots, records)
         if not refs:
             return None
-        if (not origin.path and result is not None and not container_holder(result)
-                and container_holder(argument)):
+        if (not origin.path and result is not None and not result.shape.whole_container
+                and argument.shape.whole_container):
             refs = _project(refs, MIRContainerElements())
         origins.update(refs)
     return frozenset(origins)
 
 
 def call_return_problem(call: MIRCall, result: MIRSlot, state: MIRReferents,
-                        slots: Mapping[MIRSlotId, MIRSlot]) -> str | None:
+                        slots: Mapping[MIRSlotId, MIRSlot], records: Mapping[TpyType, MIRRecordLayout]) -> str | None:
     """Type-check each return origin's place against the holder the
     result fills: a container holder needs a whole container -- a
     container argument or a container field -- and never one rooted in an
@@ -620,13 +610,13 @@ def call_return_problem(call: MIRCall, result: MIRSlot, state: MIRReferents,
     for origin in call.present_effects.returns:
         argument = slots[call.arguments[origin.parameter]]
         endpoint = origin.path[-1] if origin.path else None
-        if container_holder(result):
-            if endpoint is None and not container_holder(argument):
+        if result.shape.whole_container:
+            if endpoint is None and not argument.shape.whole_container:
                 return "container result of a non-container argument"
             if endpoint is not None and not (isinstance(endpoint, THIRFieldIdentity)
-                                             and native_container_type(unwrap_readonly(endpoint.type))):
+                                             and value_class(endpoint.type) is MIRClass.CONTAINER):
                 return "container result of a non-container place"
-            refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots)
+            refs = resolve_referents(call_place(call, origin.parameter, origin.path, slots), state, slots, records)
             if any(r.place.projections and isinstance(r.place.projections[-1],
                                                       (MIRContainerStructure, MIRContainerElements))
                    for r in refs):
@@ -635,10 +625,11 @@ def call_return_problem(call: MIRCall, result: MIRSlot, state: MIRReferents,
             if not isinstance(endpoint, THIRFieldIdentity):
                 return "call result of a container region"
             bare = unwrap_readonly(endpoint.type)
-            if view_holder(result):
+            if result.shape.view_holder:
                 if not view_endpoint(result.type, bare):
                     return "view result of a non-leaf place"
-            elif not (result.value_kind is MIRValueKind.BORROWED and record_type(bare) and bare == result.type):
+            elif not (result.shape.is_pointer and value_class(bare) is MIRClass.RECORD
+                      and bare == result.type):
                 return "call result of a mismatched place"
     return None
 
@@ -655,18 +646,18 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     # reads them: the lowering registers the layout of every record whose
     # view member a read or a lent argument reaches; any other read refuses
     # below (`MIRUnseededLoan`).
-    layouts = {r.type: r for r in fn.records}
+    layouts = fn.record_layouts
     objects = {s.id: object_keys(s, layouts) for s in fn.slots}
     stored_loans = frozenset(key for keys in objects.values() for key in keys)
     # A whole write of record storage replaces its holder leaves and its
     # stored loans together.
-    leaves = {s.id: _leaves(s, slots) + (objects[s.id] if s.value_kind is MIRValueKind.OWNED else ())
+    leaves = {s.id: _leaves(s, slots) + (objects[s.id] if s.shape.is_storage else ())
               for s in fn.slots}
     empty: frozenset[MIRReferent] = frozenset()
 
     def transfer(stmt: MIRStatement, state: dict[MIRPlace, frozenset[MIRReferent]], final: bool) -> None:
         if isinstance(stmt, MIRCallStmt):
-            apply_transfers(stmt.call, state, slots)
+            apply_transfers(stmt.call, state, slots, layouts)
         if not isinstance(stmt, MIRAssign):
             return
         target, value = stmt.target, stmt.value
@@ -675,44 +666,44 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
             case MIRCall():
                 # What the callee stores in the arguments' objects is in place
                 # before its result is resolved or fills storage.
-                apply_transfers(value, state, slots)
+                apply_transfers(value, state, slots, layouts)
                 borrowed = value.summary.borrowed_result is not None
-                returns = (resolve_call_returns(value, state, slots, slots[target.root])
+                returns = (resolve_call_returns(value, state, slots, layouts, slots[target.root])
                            if borrowed or final else None)
                 # Only the fixpoint's states are checked: an intermediate one may still lack an origin.
                 if final and (problem := "missing call return origin" if returns is None else call_return_problem(
-                        value, slots[target.root], state, slots) if borrowed else None) is not None:
+                        value, slots[target.root], state, slots, layouts) if borrowed else None) is not None:
                     raise _DependencyRefusal(problem, stmt.loc)
                 if borrowed:
                     result[target] = returns or empty
             case MIRIteratorInit(source=source):
-                refs = resolve_referents(MIRPlace(source), state, slots)
+                refs = resolve_referents(MIRPlace(source), state, slots, layouts)
                 # A cursor over a view depends on the region the view holds;
                 # over a container, on its shape and its elements.
-                result[target] = (refs if container_view_holder(slots[source])
+                result[target] = (refs if slots[source].shape.container_view_holder
                                   else _project(refs, MIRContainerStructure(), MIRContainerElements()))
             case MIRIteratorAdvance(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRIteratorRead(source=source):
-                if slots[target.root].value_kind is MIRValueKind.BORROWED:
+                if slots[target.root].shape.is_pointer:
                     result[target] = frozenset(r for r in state.get(MIRPlace(source), empty)
                                                if r.place.projections
                                                and isinstance(r.place.projections[-1], MIRContainerElements))
             case MIRAlias(source=source):
                 result[target] = state.get(MIRPlace(source), empty)
             case MIRBorrow(source=source):
-                result[target] = resolve_referents(source, state, slots)
+                result[target] = resolve_referents(source, state, slots, layouts)
             case MIRUnionExtract(source=source):
                 result[target] = (frozenset({MIRReferent(source)})
-                                  if slots[target.root].value_kind is MIRValueKind.PAYLOAD_ALIAS
-                                  else resolve_referents(source, state, slots))
+                                  if slots[target.root].shape.holding is MIRHolding.ALIAS
+                                  else resolve_referents(source, state, slots, layouts))
             case MIRTupleCopy(source=source):
                 result = {leaf: state.get(_rebased(leaf, target, MIRPlace(source)), empty)
                           for leaf in leaves[target.root]}
             case MIROptionalCopy(source=source) | MIRUnionCopy(source=source):
                 # An inline payload source (an Optional record field) is
                 # borrowed where it lies; a holder leaf passes its loan on.
-                result = {leaf: resolve_referents(_rebased(leaf, target, source), state, slots)
+                result = {leaf: resolve_referents(_rebased(leaf, target, source), state, slots, layouts)
                           for leaf in leaves[target.root]}
             case MIRTupleConstruct(elements=elements):
                 result = {leaf: state.get(MIRPlace(elements[leaf.projections[0].index]), empty)
@@ -724,7 +715,7 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
                 leaf = MIRPlace(target.root, (*target.projections, MIRUnionPayload(alternative)))
                 if source is not None and leaf in leaves[target.root]:
                     result[leaf] = state.get(source, empty)
-            case MIRConstant() if slots[target.root].value_kind is MIRValueKind.BORROWED:
+            case MIRConstant() if slots[target.root].shape.is_pointer:
                 # A literal's static storage outlives the body and is never written:
                 # the holder's own identity names that immortal external origin.
                 result[target] = frozenset({MIRReferent(MIRPlace(target.root), external=True, static=True)})
@@ -735,9 +726,10 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
             case _:
                 raise MIRValidationError("unknown dependency operation")
         if (member := view_member(target)) is not None:
-            store_loan(MIRPlace(target.root, target.projections[:-1]), member, result[target], state, slots, stored_loans)
+            store_loan(MIRPlace(target.root, target.projections[:-1]), member, result[target], state, slots, layouts,
+                       stored_loans)
             return
-        if target.projections and (written := written_record(target, slots)) is not None:
+        if target.projections and (written := written_record(target, slots, layouts)) is not None:
             # A value that names no stored loan refuses in `record_fill`.
             fill_through(target, written, value, state, slots, layouts, stored_loans)
             return

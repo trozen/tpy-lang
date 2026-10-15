@@ -19,7 +19,7 @@ from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
     MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFieldId, MIRFunction,
-    MIRMove, MIRNotCovered, MIRRecordWriteMode, MIRValueKind,
+    MIRMove, MIRNotCovered, MIRRecordWriteMode,
 )
 from .storage import MIRStorageEvents, analyze_storage
 from .testutil import Heap, Reference, execute
@@ -222,7 +222,7 @@ def test_actual_producer_shapes_and_deterministic_dump(artifacts: Artifacts) -> 
         values = [s.value for b in fn.blocks for s in b.statements]
         assert any(isinstance(v, operation) for v in values)
         assert any(isinstance(v, MIRBorrow) for v in values)
-        assert any(s.value_kind is MIRValueKind.OWNED for s in fn.slots)
+        assert any(s.shape.is_storage for s in fn.slots)
         assert dump_function(fn) == dump_function(lower(functions[name], constructors))
     cell = next(c for c in constructors if c.record_name == "Cell")
     assert [f.name for f in cell.record_layout.fields] == ["value", "template", "flag"]

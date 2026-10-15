@@ -29,14 +29,15 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId,
     MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
     MIRRecordLayout, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRValueKind,
+    MIRStorageDuration,
 )
 from .retention import affects, analyze_retention
 from .storage import analyze_storage, storage_destination
-from .testutil import Reference, execute
+from .testutil import Reference, borrowed_shape, execute, leaf_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 SOURCE = """\
@@ -993,12 +994,12 @@ def test_record_member_initializer_capabilities(program: _Program) -> None:
 # --- `Own[R]` parameters -------------------------------------------------------------
 
 def _handed(fn: MIRFunction) -> MIRSlot:
-    slot, = (s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.value_kind is MIRValueKind.OWNED)
+    slot, = (s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and s.shape.is_storage)
     return slot
 
 
 def _with_slot(fn: MIRFunction, slot: MIRSlot, **changes) -> MIRFunction:
-    return replace(fn, slots=tuple(replace(s, **changes) if s.id == slot.id else s for s in fn.slots))
+    return replace(fn, slots=tuple(reslot(s, **changes) if s.id == slot.id else s for s in fn.slots))
 
 
 @pytest.mark.parametrize("name", ["consume", "give", "keep"])
@@ -1011,7 +1012,7 @@ def test_an_owned_record_parameter_is_body_storage(program: _Program, name: str)
     entry = fn.blocks[0].statements[0]
     assert isinstance(entry.value, MIRBorrow) and entry.value.source == MIRPlace(storage.id)
     holder = fn.slots[entry.target.root.index]
-    assert holder.value_kind is MIRValueKind.BORROWED and not holder.readonly
+    assert holder.shape.holding is MIRHolding.POINTER and not holder.readonly
 
 
 def test_an_owned_record_parameter_is_returned_as_storage(program: _Program) -> None:
@@ -1043,7 +1044,7 @@ def test_a_caller_hands_a_temporary_over(program: _Program) -> None:
     fn = _lowered(program, "hand_over")
     call, = (s.value for b in fn.blocks for s in b.statements if isinstance(getattr(s, "value", None), MIRCall))
     argument = fn.slots[call.arguments[0].index]
-    assert argument.value_kind is MIRValueKind.OWNED and argument.kind is MIRSlotKind.TEMPORARY
+    assert argument.shape.is_storage and argument.kind is MIRSlotKind.TEMPORARY
 
 
 def test_an_owned_record_parameter_needs_its_definition(program: _Program) -> None:
@@ -1089,7 +1090,7 @@ def _outer(fn: MIRFunction, typ: NominalType) -> MIRAssign:
 
 
 def _operands(fn: MIRFunction, stmt: MIRAssign) -> list[tuple[str, str]]:
-    return [(fn.slots[o.index].value_kind.name, fn.slots[o.index].kind.name) for o in stmt.value.fields]
+    return [(fn.slots[o.index].shape.holding.name, fn.slots[o.index].kind.name) for o in stmt.value.fields]
 
 
 def test_a_lent_parameter_takes_a_holder(program: _Program) -> None:
@@ -1097,7 +1098,7 @@ def test_a_lent_parameter_takes_a_holder(program: _Program) -> None:
     line = _outer(fn, _record(program, "Line"))
     # The named record is copied through its own holder; a construct handed
     # to the `Own[Point]` parameter is a temporary the member moves from.
-    assert _operands(fn, line) == [("BORROWED", "PARAMETER"), ("OWNED", "TEMPORARY")]
+    assert _operands(fn, line) == [("POINTER", "PARAMETER"), ("VALUE", "TEMPORARY")]
     # Copying Point (a str field) may raise.
     assert line.value.may_raise
 
@@ -1106,14 +1107,14 @@ def test_a_temporary_bound_to_a_lent_parameter_is_borrowed(program: _Program) ->
     fn = _lowered(program, "lent_temporary")
     line = _outer(fn, _record(program, "Line"))
     # C++ binds the temporary to `const Point&` and the member copies it.
-    assert _operands(fn, line) == [("BORROWED", "TEMPORARY"), ("OWNED", "TEMPORARY")]
+    assert _operands(fn, line) == [("POINTER", "TEMPORARY"), ("VALUE", "TEMPORARY")]
     holder = line.value.fields[0]
     borrow, = (s for s in fn.blocks[1].statements if s.target.root == holder)
     assert isinstance(borrow.value, MIRBorrow)
-    assert fn.slots[borrow.value.source.root.index].value_kind is MIRValueKind.OWNED
+    assert fn.slots[borrow.value.source.root.index].shape.is_storage
     copied = _lowered(program, "copied_argument")
     assert _operands(copied, _outer(copied, _record(program, "Line"))) == [
-        ("BORROWED", "PARAMETER"), ("OWNED", "TEMPORARY")]
+        ("POINTER", "PARAMETER"), ("VALUE", "TEMPORARY")]
 
 
 def test_a_composed_member_is_built_then_moved_in(program: _Program) -> None:
@@ -1138,7 +1139,7 @@ def test_a_member_place_is_lent_through_a_holder(program: _Program) -> None:
     line = _outer(fn, _record(program, "Line"))
     # `Line(ln.a, mk(x))`: a temporary holder borrowing the member place,
     # copied through by the member initializer.
-    assert _operands(fn, line) == [("BORROWED", "TEMPORARY"), ("OWNED", "TEMPORARY")]
+    assert _operands(fn, line) == [("POINTER", "TEMPORARY"), ("VALUE", "TEMPORARY")]
     borrow, = (s for b in fn.blocks for s in b.statements if s.target.root == line.value.fields[0])
     assert isinstance(borrow.value, MIRBorrow) and isinstance(borrow.value.source.projections[-1], MIRField)
 
@@ -1204,7 +1205,7 @@ def test_construct_record_operand_negatives(program: _Program) -> None:
     lent, handed = line.value.fields
     bad = "incomplete or mistyped record construction"
     # A lent operand of another record type.
-    other, = (s.id for s in fn.slots if s.type == line_type and s.value_kind is MIRValueKind.BORROWED)
+    other, = (s.id for s in fn.slots if s.type == line_type and s.shape.holding is MIRHolding.POINTER)
     with pytest.raises(MIRValidationError, match=bad):
         validate_function(_with_construct(fn, line, replace(line.value, fields=(other, handed))))
     # The handed-over temporary is moved from: never readonly, and movable.
@@ -1370,7 +1371,7 @@ def test_member_write_reach(program: _Program, written: tuple[str, ...], retaine
             fields.append(record[step])
             record = line if step == "line" else point
         return MIRReferent(MIRPlace(MIRSlotId(body, roots[root.rstrip("!")]), tuple(fields)), external)
-    assert affects(referent(written), referent(retained), {}) is expected
+    assert affects(referent(written), referent(retained), {}, {}) is expected
 
 
 # --- a record move empties its source ---------------------------------------------------
@@ -1386,9 +1387,9 @@ def _moved_with_member_holder(program: _Program, *, read_after: bool) -> MIRFunc
     a = _fields_of(program, "Line")["a"]
     x = _fields_of(program, "Point")["x"]
     region = fn.blocks[0].region
-    held = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), a.type, MIRSlotKind.LOCAL, "held", form=th.Form.BORROW,
-                   value_kind=MIRValueKind.BORROWED, residence=region)
-    out = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), x.type, MIRSlotKind.TEMPORARY, residence=region)
+    held = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), borrowed_shape(a.type), MIRSlotKind.LOCAL, "held",
+                   residence=region)
+    out = MIRSlot(MIRSlotId(fn.id, len(fn.slots) + 1), leaf_shape(x.type), MIRSlotKind.TEMPORARY, residence=region)
     borrow = MIRAssign(MIRPlace(held.id), MIRBorrow(MIRPlace(storage, (a,))))
     read = MIRAssign(MIRPlace(out.id), MIRRead(MIRPlace(held.id, (MIRDeref(), x))))
     block = fn.blocks[0]
@@ -1441,7 +1442,7 @@ def test_member_write_validator_negatives(program: _Program) -> None:
     # A readonly receiver, or a member declared `readonly[...]`.
     holder = fn.slots[write.target.root.index]
     with pytest.raises(MIRValidationError, match="store through readonly"):
-        validate_function(replace(fn, slots=tuple(replace(s, readonly=True) if s.id == holder.id else s
+        validate_function(replace(fn, slots=tuple(reslot(s, readonly=True) if s.id == holder.id else s
                                                   for s in fn.slots)))
     a = write.target.projections[-1]
     fixed = replace(a, type=ReadonlyType(point))
@@ -1467,8 +1468,8 @@ def test_member_write_validator_negatives(program: _Program) -> None:
         validate_function(_with_statement(copied, copy_write, value=replace(copy_write.value, may_raise=False)))
     # A global is read into a local first, never a member's operand.
     scalar = fn.slots[write.value.fields[0].index]
-    assert scalar.value_kind is MIRValueKind.SCALAR
-    global_slot = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), scalar.type, MIRSlotKind.GLOBAL, "g",
+    assert scalar.shape.is_scalar
+    global_slot = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(scalar.type), MIRSlotKind.GLOBAL, "g",
                           global_id=MIRGlobalId("main", "g"))
     with pytest.raises(MIRValidationError, match="global value needs explicit read"):
         validate_function(_with_statement(replace(fn, slots=(*fn.slots, global_slot)), write, value=replace(

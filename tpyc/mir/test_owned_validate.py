@@ -4,16 +4,15 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
 from .nodes import (
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
     MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId,
     MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRRecordLayout, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
+    MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .testutil import execute
+from .testutil import borrowed_shape, execute, leaf_shape, owned_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 B = MIRBodyId("owned", "verify")
@@ -23,13 +22,13 @@ A, C, D, E = (MIRBlockId(B, i) for i in range(4))
 MEMBER = MIRField(MIRFieldId(CELL, "value"), INT32)
 LAYOUT = MIRRecordLayout(CELL, (MEMBER,), True, True)
 SLOTS = (
-    MIRSlot(N, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(S, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE, value_kind=MIRValueKind.OWNED),
-    MIRSlot(P, CELL, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
-    MIRSlot(T, CELL, MIRSlotKind.TEMPORARY, form=Form.STORAGE, value_kind=MIRValueKind.OWNED),
-    MIRSlot(Q, CELL, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
-    MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(N, leaf_shape(INT32), MIRSlotKind.LOCAL),
+    MIRSlot(S, owned_shape(CELL), MIRSlotKind.TEMPORARY),
+    MIRSlot(P, borrowed_shape(CELL), MIRSlotKind.LOCAL),
+    MIRSlot(T, owned_shape(CELL), MIRSlotKind.TEMPORARY),
+    MIRSlot(Q, borrowed_shape(CELL), MIRSlotKind.LOCAL),
+    MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
 )
 NUMBER = MIRAssign(MIRPlace(N), MIRConstant(1))
 INIT = MIRAssign(MIRPlace(S), MIRConstruct((N,)))
@@ -93,7 +92,7 @@ def test_layout_and_eligibility_are_required() -> None:
     fn = replace(GOOD, blocks=(MIRBlock(A, (NUMBER, INIT, BORROW, moved, READ), MIRReturn(RESULT)),))
     validate_function(fn)
     invalid(replace(fn, records=(replace(LAYOUT, movable=False),)), "move source or eligibility")
-    invalid(replace(fn, slots=(SLOTS[0], replace(SLOTS[1], readonly=True), *SLOTS[2:])),
+    invalid(replace(fn, slots=(SLOTS[0], reslot(SLOTS[1], readonly=True), *SLOTS[2:])),
             "borrow increases access")
     invalid(replace(GOOD, slots=(SLOTS[0], replace(SLOTS[1], kind=MIRSlotKind.PARAMETER), *SLOTS[2:])),
             "record storage type")
@@ -113,5 +112,5 @@ def test_replacement_preserves_identity_and_reads_old_payload_first() -> None:
     heap = {}
     assert execute(fn, False, heap=heap) == 9
     assert len(heap) == 1
-    invalid(replace(fn, slots=(*SLOTS[:2], replace(SLOTS[2], readonly=True), *SLOTS[3:])),
+    invalid(replace(fn, slots=(*SLOTS[:2], reslot(SLOTS[2], readonly=True), *SLOTS[3:])),
             "alias increases access")

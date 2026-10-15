@@ -4,26 +4,26 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..typesys import BOOL, INT32, NominalType, OptionalType, UnionType, TupleType
 from .dependencies import MIRReferent, analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
+    MIRHolding,
     MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
-    MIRContainerElements, MIRContainerLayout, MIRContainerStructure, MIRDeref,
+    MIRContainerElements, MIRContainerStructure, MIRDeref,
     MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext,
     MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRRecordLayout,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRValueKind,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
     MIRRegion, MIRRegionId,
-    MIROptionalConstruct, MIROptionalLayout, MIROptionalPayload,
-    MIRUnionConstruct, MIRUnionLayout, MIRUnionPayload,
-    MIRTupleConstruct, MIRTupleLayout, MIRTupleIndex,
+    MIROptionalConstruct, MIROptionalPayload,
+    MIRUnionConstruct, MIRUnionPayload,
+    MIRTupleConstruct, MIRTupleIndex,
 )
 from .retention import may_overlap
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
-from .testutil import ContainerValue, Reference, execute
+from .testutil import ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, region_shape, reslot, tuple_shape, union_shape
 from .validate import MIRValidationError, validate_function
 
 B = MIRBodyId("iteration", "retained")
@@ -33,7 +33,7 @@ CELL = NominalType("Cell", _module_qname="iteration.Cell")
 LIST = NominalType("list", (CELL,), _module_qname="builtins.list")
 FIELD = MIRField(MIRFieldId(CELL, "value"), INT32)
 RECORD = MIRRecordLayout(CELL, (FIELD,), True, True)
-LAYOUT = MIRContainerLayout(MIRTupleElement(CELL, MIRValueKind.BORROWED))
+LAYOUT = (owned_shape(CELL),)
 
 
 def assignment(target: MIRSlotId, value) -> MIRAssign:
@@ -41,14 +41,14 @@ def assignment(target: MIRSlotId, value) -> MIRAssign:
 
 
 def fixture() -> MIRFunction:
-    container = MIRSlot(P, LIST, MIRSlotKind.PARAMETER, form=Form.BORROW,
-                        value_kind=MIRValueKind.BORROWED_CONTAINER, container_layout=LAYOUT)
-    alias = MIRSlot(FIRST, CELL, MIRSlotKind.LOCAL, form=Form.BORROW,
-                    value_kind=MIRValueKind.BORROWED)
+    container = MIRSlot(P, region_shape(LIST, members=LAYOUT), MIRSlotKind.PARAMETER)
+    alias = MIRSlot(FIRST, borrowed_shape(CELL), MIRSlotKind.LOCAL)
     slots = (container, replace(container, id=Q), replace(container, id=SOURCE, kind=MIRSlotKind.LOCAL),
-             replace(container, id=ITER, kind=MIRSlotKind.TEMPORARY, value_kind=MIRValueKind.NATIVE_ITERATOR),
-             MIRSlot(HAS, BOOL, MIRSlotKind.TEMPORARY), alias, replace(alias, id=CURRENT),
-             MIRSlot(OUT, INT32, MIRSlotKind.LOCAL), MIRSlot(SEVEN, INT32, MIRSlotKind.TEMPORARY))
+             replace(container, id=ITER, kind=MIRSlotKind.TEMPORARY,
+                     shape=replace(container.shape, holding=MIRHolding.CURSOR)),
+             MIRSlot(HAS, leaf_shape(BOOL), MIRSlotKind.TEMPORARY), alias, replace(alias, id=CURRENT),
+             MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL),
+             MIRSlot(SEVEN, leaf_shape(INT32), MIRSlotKind.TEMPORARY))
     blocks = (
         MIRBlock(ENTRY, (assignment(SOURCE, MIRAlias(P)), assignment(ITER, MIRIteratorInit(SOURCE)),
                          assignment(SOURCE, MIRAlias(Q)), assignment(HAS, MIRIteratorHasNext(ITER))),
@@ -107,21 +107,19 @@ def test_ending_iteration_target_does_not_end_caller_elements() -> None:
 def test_aggregate_holder_retains_element_after_cursor_advance(shape: str) -> None:
     fn = fixture()
     saved = MIRSlotId(B, len(fn.slots))
-    member = MIRTupleElement(CELL, MIRValueKind.BORROWED)
+    member = borrowed_shape(CELL)
     match shape:
         case "optional":
-            slot = MIRSlot(saved, OptionalType(CELL), MIRSlotKind.LOCAL, value_kind=MIRValueKind.OPTIONAL,
-                           optional_layout=MIROptionalLayout(CELL, MIRValueKind.BORROWED))
+            slot = MIRSlot(saved, optional_shape(OptionalType(CELL), borrowed_shape(CELL)), MIRSlotKind.LOCAL)
             value, projection = MIROptionalConstruct(MIRPlace(FIRST)), MIROptionalPayload()
         case "union":
             other = NominalType("Other", _module_qname="iteration.Other")
             fn = replace(fn, records=(*fn.records, MIRRecordLayout(other, (), True, True)))
-            slot = MIRSlot(saved, UnionType((CELL, other)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION,
-                           union_layout=MIRUnionLayout((member, MIRTupleElement(other, MIRValueKind.BORROWED))))
+            slot = MIRSlot(saved, union_shape(UnionType((CELL, other)), (member, borrowed_shape(other))),
+                           MIRSlotKind.LOCAL)
             value, projection = MIRUnionConstruct(0, MIRPlace(FIRST)), MIRUnionPayload(0)
         case "tuple":
-            slot = MIRSlot(saved, TupleType((CELL,)), MIRSlotKind.LOCAL, value_kind=MIRValueKind.TUPLE,
-                           tuple_layout=MIRTupleLayout((member,)))
+            slot = MIRSlot(saved, tuple_shape(TupleType((CELL,)), (member,)), MIRSlotKind.LOCAL)
             value, projection = MIRTupleConstruct((FIRST,)), MIRTupleIndex(0)
     blocks = list(fn.blocks)
     first = blocks[1]
@@ -157,15 +155,15 @@ def test_malformed_iterator_operations_fail_closed(damage: str) -> None:
         case "bad_target":
             first = replace(first, statements=(first.statements[0], assignment(SOURCE, MIRIteratorAdvance(ITER))))
         case "bad_layout":
-            slots[3] = replace(slots[3], container_layout=MIRContainerLayout(MIRTupleElement(INT32)))
+            slots[3] = reslot(slots[3], members=(leaf_shape(INT32),))
         case "const":
-            slots[3] = replace(slots[3], readonly=True)
+            slots[3] = reslot(slots[3], readonly=True)
         case "iterator_copy":
             entry = replace(entry, statements=(entry.statements[0], assignment(ITER, MIRAlias(SOURCE)),
                                                *entry.statements[2:]))
         case "layout_on_scalar":
-            slots[4] = replace(slots[4], container_layout=LAYOUT)
+            slots[4] = reslot(slots[4], members=LAYOUT)
         case "arity":
-            slots[0] = replace(slots[0], type=replace(slots[0].type, type_args=(CELL, CELL)))
+            slots[0] = reslot(slots[0], type=replace(slots[0].type, type_args=(CELL, CELL)))
     with pytest.raises(MIRValidationError):
         validate_function(replace(fn, slots=tuple(slots), blocks=(entry, first, nxt, second, done, empty)))

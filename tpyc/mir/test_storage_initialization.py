@@ -12,17 +12,17 @@ from .liveness import analyze_liveness
 from .nodes import (
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIREdge,
     MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalLayout, MIRPayloadWrite,
+    MIROptionalCopy, MIRPayloadWrite,
     MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRegion, MIRRegionId, MIRReturn,
     MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRStorageInit,
-    MIRTupleElement, MIRUnionConstruct, MIRUnionCopy, MIRUnionLayout,
-    MIRUnionPayload, MIRValueKind,
+    MIRUnionConstruct, MIRUnionCopy,
+    MIRUnionPayload,
 )
 from .payload_lifetime import analyze_payload_ends
 from .presence import _analyze_presence
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
-from .testutil import execute
+from .testutil import execute, leaf_shape, optional_shape, union_shape
 from .validate import MIRDefiniteAssignmentError, MIRValidationError, validate_function
 
 
@@ -39,15 +39,14 @@ def function(shape: str, *blocks: MIRBlock) -> MIRFunction:
     members = {"union_none": (NoneType(), BOOL, INT32), "union_bool": (BOOL, INT32),
                "union_int": (INT32, BOOL)}.get(shape)
     scalar = BOOL if shape == "optional_bool" else INT32
-    slot = MIRSlot(CURRENT, OptionalType(scalar) if optional else UnionType(members), MIRSlotKind.LOCAL,
-                   value_kind=MIRValueKind.OPTIONAL if optional else MIRValueKind.UNION,
-                   optional_layout=MIROptionalLayout(scalar) if optional else None,
-                   union_layout=None if optional else MIRUnionLayout(tuple(
-                       None if isinstance(typ, NoneType) else MIRTupleElement(typ) for typ in members)),
-                   storage_duration=MIRStorageDuration.BODY, residence=ROOT)
-    return MIRFunction(BODY, INT32, (slot, MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-                                    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-                                    MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL, residence=ROOT)),
+    shape = (optional_shape(OptionalType(scalar), leaf_shape(scalar)) if optional
+             else union_shape(UnionType(members), tuple(
+                 None if isinstance(typ, NoneType) else leaf_shape(typ) for typ in members)))
+    slot = MIRSlot(CURRENT, shape, MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY, residence=ROOT)
+    return MIRFunction(BODY, INT32, (slot, MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER,
+                                                   passing=ParamPassing.VALUE),
+                                    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+                                    MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL, residence=ROOT)),
                        blocks, ENTRY, regions=(MIRRegion(ROOT, None, ENTRY),))
 
 

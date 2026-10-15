@@ -8,7 +8,6 @@ from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import BOOL, INT32
-from .coverage import owned_tuple
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .liveness import analyze_liveness
@@ -114,7 +113,7 @@ def test_aliases_share_one_backing_initialization_and_end(artifacts: Artifacts) 
     assert saved.tuple_layout is chain.tuple_layout is None
     assert "auto&& saved = pair;" in cpp and "auto&& chain = saved;" in cpp
     for body in bodies.values():
-        backing, = [slot for slot in body.slots if owned_tuple(slot)]
+        backing, = [slot for slot in body.slots if slot.shape.owned_tuple]
         assert all(slot.name not in ("saved", "chain") for slot in body.slots)
         inventory = analyze_storage(body)
         assert len(inventory.member_initializations) == 1

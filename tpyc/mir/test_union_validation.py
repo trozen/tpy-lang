@@ -4,17 +4,17 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, NominalType, UnionType
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
     MIRFunction, MIRGoto, MIRIsAlternative, MIRNot, MIRPlace, MIRRead, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleElement, MIRUnionConstruct,
-    MIRUnionCopy, MIRUnionExtract, MIRUnionLayout, MIRUnionPayload, MIRValueKind,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct,
+    MIRUnionCopy, MIRUnionExtract, MIRUnionPayload,
     MIRDeref, MIRField, MIRFieldId, MIRRecordLayout, MIRConstruct,
 )
-from .testutil import Reference, UnionValue, execute
+from .testutil import Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, owned_shape, reslot, union_shape
 from .validate import MIRPresenceError, MIRValidationError, validate_function
 
 
@@ -22,19 +22,18 @@ BODY = MIRBodyId("union_validation", "example")
 PARAM, CURRENT, SAVED, GUARD, COPY, VALUE, RESULT, FLAG, ALIAS = (MIRSlotId(BODY, i) for i in range(9))
 ENTRY, YES, NO, JOIN, LOOP, EXIT = (MIRBlockId(BODY, i) for i in range(6))
 TYPE = UnionType((NoneType(), BOOL, INT32))
-LAYOUT = MIRUnionLayout((None, MIRTupleElement(BOOL), MIRTupleElement(INT32)))
+LAYOUT = (None, leaf_shape(BOOL), leaf_shape(INT32))
 PAYLOAD = MIRPlace(CURRENT, (MIRUnionPayload(2),))
 SLOTS = (
-    MIRSlot(PARAM, TYPE, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.UNION, union_layout=LAYOUT),
-    MIRSlot(CURRENT, TYPE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION, union_layout=LAYOUT),
-    MIRSlot(SAVED, TYPE, MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION, union_layout=LAYOUT),
-    MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(COPY, BOOL, MIRSlotKind.LOCAL),
-    MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-    MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-    MIRSlot(ALIAS, INT32, MIRSlotKind.LOCAL, form=Form.BORROW, readonly=True,
-            value_kind=MIRValueKind.PAYLOAD_ALIAS, alias_source=PAYLOAD),
+    MIRSlot(PARAM, union_shape(TYPE, LAYOUT), MIRSlotKind.PARAMETER),
+    MIRSlot(CURRENT, union_shape(TYPE, LAYOUT), MIRSlotKind.LOCAL),
+    MIRSlot(SAVED, union_shape(TYPE, LAYOUT), MIRSlotKind.LOCAL),
+    MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL),
+    MIRSlot(COPY, leaf_shape(BOOL), MIRSlotKind.LOCAL),
+    MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(ALIAS, alias_shape(INT32, readonly=True), MIRSlotKind.LOCAL, alias_source=PAYLOAD),
 )
 CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(PARAM)))
 TEST = MIRAssign(MIRPlace(GUARD), MIRIsAlternative(MIRPlace(CURRENT), (2,)))
@@ -169,8 +168,7 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
     record = NominalType("Box", _module_qname="union_validation.Box")
     storage = MIRSlotId(BODY, len(SLOTS))
     field = MIRField(MIRFieldId(record, "value"), INT32)
-    slot = MIRSlot(storage, record, MIRSlotKind.LOCAL, form=Form.STORAGE,
-                   value_kind=MIRValueKind.OWNED)
+    slot = MIRSlot(storage, owned_shape(record), MIRSlotKind.LOCAL)
     # A checked read before replacement snapshots a scalar; the alias itself
     # cannot bypass that read by appearing directly in a constructor operand.
     statements = (BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
@@ -188,9 +186,9 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
 
 
 @pytest.mark.parametrize("bad", [
-    replace(SLOTS[0], union_layout=None),
-    replace(SLOTS[0], union_layout=MIRUnionLayout((None, MIRTupleElement(INT32), MIRTupleElement(BOOL)))),
-    replace(SLOTS[0], form=Form.BORROW),
+    reslot(SLOTS[0], members=()),
+    reslot(SLOTS[0], members=(None, leaf_shape(INT32), leaf_shape(BOOL))),
+    reslot(SLOTS[0], holding=MIRHolding.POINTER),
     replace(SLOTS[8], alias_source=None),
 ])
 def test_bad_union_layouts_and_alias_slots(bad: MIRSlot) -> None:
@@ -222,18 +220,17 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
     cell = NominalType("Cell", _module_qname="union_validation.Cell")
     other = NominalType("Other", _module_qname="union_validation.Other")
     typ = UnionType((cell, other))
-    def layout(readonly: bool) -> MIRUnionLayout:
-        return MIRUnionLayout(tuple(MIRTupleElement(t, MIRValueKind.BORROWED, readonly) for t in (cell, other)))
+    def layout(readonly: bool) -> tuple:
+        return tuple(borrowed_shape(t, readonly) for t in (cell, other))
     ref_slots = (
-        MIRSlot(PARAM, typ, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.UNION, union_layout=layout(source_const)),
-        MIRSlot(CURRENT, typ, MIRSlotKind.LOCAL, value_kind=MIRValueKind.UNION, union_layout=layout(dest_const)),
-        MIRSlot(SAVED, typ, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.UNION, union_layout=layout(source_const)),
-        MIRSlot(GUARD, BOOL, MIRSlotKind.LOCAL),
-        MIRSlot(VALUE, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(RESULT, INT32, MIRSlotKind.LOCAL),
-        MIRSlot(FLAG, cell, MIRSlotKind.PARAMETER, value_kind=MIRValueKind.BORROWED, form=Form.BORROW),
-        MIRSlot(ALIAS, cell, MIRSlotKind.LOCAL, value_kind=MIRValueKind.BORROWED, form=Form.BORROW,
-                readonly=dest_const),
+        MIRSlot(PARAM, union_shape(typ, layout(source_const)), MIRSlotKind.PARAMETER),
+        MIRSlot(CURRENT, union_shape(typ, layout(dest_const)), MIRSlotKind.LOCAL),
+        MIRSlot(SAVED, union_shape(typ, layout(source_const)), MIRSlotKind.PARAMETER),
+        MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
+        MIRSlot(FLAG, borrowed_shape(cell), MIRSlotKind.PARAMETER),
+        MIRSlot(ALIAS, borrowed_shape(cell, readonly=dest_const), MIRSlotKind.LOCAL),
     )
     field = MIRField(MIRFieldId(cell, "value"), INT32)
     bind = MIRAssign(MIRPlace(ALIAS), MIRUnionExtract(MIRPlace(CURRENT, (MIRUnionPayload(0),))))
@@ -261,7 +258,7 @@ def test_reference_capture_survives_reseat_and_preserves_capability(source_const
 
 def test_readonly_extraction_cannot_create_mutable_alias() -> None:
     fn = reference_function(True, True)
-    fn = replace(fn, slots=(*fn.slots[:-1], replace(fn.slots[-1], readonly=False)))
+    fn = replace(fn, slots=(*fn.slots[:-1], reslot(fn.slots[-1], readonly=False)))
     with pytest.raises(MIRValidationError, match="increases access"):
         validate_function(fn)
 
@@ -269,12 +266,12 @@ def test_readonly_extraction_cannot_create_mutable_alias() -> None:
 @pytest.mark.parametrize("source_const,dest_const", [(False, False), (False, True), (True, True), (True, False)])
 def test_record_member_construction_preserves_capability(source_const: bool, dest_const: bool) -> None:
     fn = reference_function(False, dest_const)
-    source = replace(fn.slots[-2], readonly=source_const)
+    source = reslot(fn.slots[-2], readonly=source_const)
     # Construct directly from the record parameter, then retain the extracted
     # identity across wrapper replacement and mutate through a separate alias.
     construction = MIRAssign(MIRPlace(CURRENT), MIRUnionConstruct(0, MIRPlace(FLAG)))
     mutable = MIRSlotId(BODY, 9)
-    mutable_slot = replace(source, id=mutable, readonly=False)
+    mutable_slot = reslot(source, id=mutable, readonly=False)
     entry = replace(fn.blocks[0], statements=(construction, *fn.blocks[0].statements[1:]))
     branch = fn.blocks[1]
     write = branch.statements[2]

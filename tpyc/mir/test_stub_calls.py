@@ -28,8 +28,9 @@ from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
 from .nodes import (
+    MIRHolding,
     MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRDeref, MIRFunction, MIRNotCovered,
-    MIRPlace, MIRSlotKind, MIRValueKind,
+    MIRPlace, MIRSlotKind,
 )
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
@@ -227,7 +228,7 @@ def test_pure_stub_lends_an_owned_leaf_to_its_protocol_parameter(active) -> None
     assert binding.protocol and binding.passing is ParamPassing.CONST_REF and binding.readonly
     assert stmt.value.summary.callee.contract is th.THIRStubContract.PURE
     argument = fn.slots[stmt.value.arguments[0].index]
-    assert (argument.type, argument.value_kind, argument.readonly) == (STR, MIRValueKind.BORROWED, True)
+    assert (argument.type, argument.shape.holding, argument.readonly) == (STR, MIRHolding.POINTER, True)
     # The holder borrows the parameter's storage in place: no copy.
     param, = (s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER)
     refs = analyze_dependencies(fn, analyze_liveness(fn)).referents[_point_after(fn, stmt)]
@@ -268,7 +269,7 @@ def test_pure_constructor_result_is_fresh(active) -> None:
     assert summary.callee.identity == th.THIRStubIdentity("builtins.int.__init__", (summary.parameters[0].type,))
     assert summary.returns == frozenset() and summary.borrowed_result is None
     result = fn.slots[stmt.target.root.index]
-    assert result.value_kind is MIRValueKind.OWNED and result.type == BIGINT
+    assert result.shape.is_storage and result.type == BIGINT
     assert "%1 = call stub builtins.int.__init__[float](%2) [pure, reader, may-raise] [initialize_once]" in _lines(fn)
 
 
@@ -279,7 +280,7 @@ def test_stub_result_may_borrow_every_lent_argument(active) -> None:
     assert summary.returns == frozenset({MIRReturnOrigin(0), MIRReturnOrigin(1)})
     assert summary.borrowed_result == th.THIRBorrowedRecord(BIGINT, True)
     holder = fn.slots[stmt.target.root.index]
-    assert holder.value_kind is MIRValueKind.BORROWED and holder.readonly
+    assert holder.shape.holding is MIRHolding.POINTER and holder.readonly
     params = [s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     refs = analyze_dependencies(fn, analyze_liveness(fn)).referents[_point_after(fn, stmt)]
     assert refs[MIRPlace(holder.id)] == frozenset(MIRReferent(MIRPlace(p), external=True) for p in params)

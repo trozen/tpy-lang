@@ -16,8 +16,9 @@ from .nodes import (
     MIRAssign, MIRBlock, MIRBodyId, MIRFieldId, MIRFunction,
     MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRReturn,
 )
-from .testutil import Heap, OptionalValue, Reference, execute
+from .testutil import Heap, OptionalValue, Reference, execute, reslot
 from .validate import MIRValidationError, validate_function as validate_mir
+from ..thir.scalar_leaves import MIRClass
 
 SOURCE = """\
 from tpy import int32, readonly
@@ -150,7 +151,7 @@ def test_false_is_a_present_payload(artifacts: Artifacts, payload: bool | None) 
 @pytest.mark.parametrize("identity", [None, 1, 2])
 def test_record_copy_does_not_follow_holder_clear(artifacts: Artifacts, identity: int | None) -> None:
     fn = lower(artifacts[0]["records"])
-    member = MIRFieldId(fn.slots[0].optional_layout.type, "value")
+    member = MIRFieldId(fn.slots[0].shape.payload.type, "value")
     heap: Heap = {1: {member: 2}, 2: {member: 3}}
     payload = Reference(identity) if identity is not None else None
     assert execute(fn, OptionalValue(payload), Reference(1), heap=heap) == (9 if identity == 1 else 2)
@@ -161,7 +162,7 @@ def test_record_copy_does_not_follow_holder_clear(artifacts: Artifacts, identity
 @pytest.mark.parametrize("shared", [False, True])
 def test_readonly_alias_observes_mutation(artifacts: Artifacts, shared: bool) -> None:
     fn = lower(artifacts[0]["readonly_alias"])
-    member = MIRFieldId(fn.slots[0].optional_layout.type, "value")
+    member = MIRFieldId(fn.slots[0].shape.payload.type, "value")
     heap: Heap = {1: {member: 2}, 2: {member: 3}}
     assert execute(fn, OptionalValue(Reference(1 if shared else 2)), Reference(1), heap=heap) == (
         12 if shared else 3)
@@ -170,7 +171,7 @@ def test_readonly_alias_observes_mutation(artifacts: Artifacts, shared: bool) ->
 @pytest.mark.parametrize("present", [False, True])
 def test_loop_guard_is_retested_after_clear(artifacts: Artifacts, present: bool) -> None:
     fn = lower(artifacts[0]["loop"])
-    member = MIRFieldId(fn.slots[0].optional_layout.type, "value")
+    member = MIRFieldId(fn.slots[0].shape.payload.type, "value")
     heap: Heap = {1: {member: 2}}
     assert execute(fn, OptionalValue(Reference(1) if present else None), heap=heap) == 0
     assert heap[1][member] == (9 if present else 2)
@@ -319,8 +320,8 @@ def test_internal_record_member_assembly(artifacts: Artifacts) -> None:
 
 def test_internal_readonly_optional_store_is_rejected(artifacts: Artifacts) -> None:
     fn = lower(artifacts[0]["records"])
-    readonly = tuple(replace(s, optional_layout=replace(s.optional_layout, readonly=True))
-                     if s.optional_layout is not None else s for s in fn.slots)
+    readonly = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
+                     if s.shape.cls is MIRClass.OPTIONAL else s for s in fn.slots)
     from_fn = replace(fn, slots=readonly)
     with pytest.raises(MIRValidationError, match="readonly reference"):
         validate_mir(from_fn)
@@ -334,11 +335,9 @@ def test_optional_transfer_capabilities(artifacts: Artifacts, copy: bool,
     slots = list(fn.slots)
     source = next(s for s in slots if s.name == ("a" if copy else "other"))
     target = next(s for s in slots if s.name == "current")
-    slots[source.id.index] = (replace(source, optional_layout=replace(
-        source.optional_layout, readonly=source_readonly)) if copy
-        else replace(source, readonly=source_readonly))
-    slots[target.id.index] = replace(target, optional_layout=replace(
-        target.optional_layout, readonly=target_readonly))
+    slots[source.id.index] = (reslot(source, members=(replace(source.shape.payload, readonly=source_readonly),))
+                              if copy else reslot(source, readonly=source_readonly))
+    slots[target.id.index] = reslot(target, members=(replace(target.shape.payload, readonly=target_readonly),))
     operation = MIROptionalCopy(MIRPlace(source.id)) if copy else MIROptionalConstruct(MIRPlace(source.id))
     root = fn.blocks[0].region
     block = MIRBlock(fn.entry, (MIRAssign(MIRPlace(target.id), operation),), MIRReturn(), root)

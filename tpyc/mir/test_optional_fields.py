@@ -9,7 +9,7 @@ import pytest
 
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
-from ..thir.scalar_leaves import modeled_field, optional_record_field
+from ..thir.scalar_leaves import MIRClass, modeled_field, optional_record_field
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..typesys import INT32, NominalType, OptionalType, ReadonlyType, TupleType
@@ -17,12 +17,13 @@ from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
     MIRAssign, MIRBodyId, MIRConstant, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRIsPresent,
-    MIROptionalConstruct, MIROptionalLayout, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind, MIRValueKind,
-    place_layout,
+    MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .coverage import MIRUnsupported
 from .definitions import constructor_initialization
 from .presence import _State, _may_hold, _reaches, _transfer
+from .shapes import place_shape
+from .testutil import borrowed_shape, cursor_shape, leaf_shape, owned_shape, tuple_shape
 
 SOURCE = """\
 from tpy import int32, StrView, copy, readonly
@@ -207,8 +208,9 @@ BODY = MIRBodyId("optional_fields", "example")
 
 
 def _holder(program: _Program, index: int, kind: MIRSlotKind = MIRSlotKind.PARAMETER,
-            value_kind: MIRValueKind = MIRValueKind.BORROWED) -> MIRSlot:
-    return MIRSlot(MIRSlotId(BODY, index), program.types["H"], kind, value_kind=value_kind)
+            owned: bool = False) -> MIRSlot:
+    typ = program.types["H"]
+    return MIRSlot(MIRSlotId(BODY, index), owned_shape(typ) if owned else borrowed_shape(typ), kind)
 
 
 def _member(program: _Program, name: str) -> MIRField:
@@ -218,15 +220,21 @@ def _member(program: _Program, name: str) -> MIRField:
 
 def test_a_field_place_carries_an_owned_payload_layout(program: _Program) -> None:
     holder = _holder(program, 0)
-    slots = {holder.id: holder}
+    shapes = MIRSlot(MIRSlotId(BODY, 1), borrowed_shape(program.types["Shapes"]), MIRSlotKind.PARAMETER)
+    slots = {holder.id: holder, shapes.id: shapes}
+
+    def layout(place: MIRPlace) -> object:
+        shape = place_shape(place, slots, {})
+        return shape.payload if shape.cls is MIRClass.OPTIONAL else None
+
     field = MIRPlace(holder.id, (MIRDeref(), _member(program, "H.p")))
-    assert place_layout(field, slots) == MIROptionalLayout(program.types["P"], MIRValueKind.OWNED)
-    readonly = MIRPlace(holder.id, (MIRDeref(), _member(program, "Shapes.r")))
-    assert place_layout(readonly, slots) == MIROptionalLayout(program.types["P"], MIRValueKind.OWNED, True)
+    assert layout(field) == owned_shape(program.types["P"])
+    readonly = MIRPlace(shapes.id, (MIRDeref(), _member(program, "Shapes.r")))
+    assert layout(readonly) == owned_shape(program.types["P"], True)
     # A scalar field, the payload itself and the root holder have no wrapper layout.
-    assert place_layout(MIRPlace(holder.id, (MIRDeref(), _member(program, "H.n"))), slots) is None
-    assert place_layout(MIRPlace(field.root, (*field.projections, MIROptionalPayload())), slots) is None
-    assert place_layout(MIRPlace(holder.id), slots) is None
+    assert layout(MIRPlace(holder.id, (MIRDeref(), _member(program, "H.n")))) is None
+    assert layout(MIRPlace(field.root, (*field.projections, MIROptionalPayload()))) is None
+    assert layout(MIRPlace(holder.id)) is None
 
 
 @pytest.mark.parametrize("name,init", [
@@ -329,8 +337,8 @@ def test_a_field_selection_dies_at_a_write_that_may_reach_it(program: _Program, 
 
 def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     a, b = _holder(program, 0), _holder(program, 1)
-    own_a = _holder(program, 2, MIRSlotKind.LOCAL, MIRValueKind.OWNED)
-    own_b = _holder(program, 3, MIRSlotKind.LOCAL, MIRValueKind.OWNED)
+    own_a = _holder(program, 2, MIRSlotKind.LOCAL, owned=True)
+    own_b = _holder(program, 3, MIRSlotKind.LOCAL, owned=True)
     slots = {s.id: s for s in (a, b, own_a, own_b)}
     layouts: dict = {}
     p, n = _member(program, "H.p"), _member(program, "H.n")
@@ -349,20 +357,20 @@ def test_reaches_decides_overlap_on_places(program: _Program) -> None:
     assert not _reaches(MIRPlace(b.id), fact, slots, layouts)
     # A root write of anything but a borrowed holder may write storage: an
     # owned tuple or a generic record may hold the member, a scalar may not.
-    tup = MIRSlot(MIRSlotId(BODY, 4), TupleType((INT32, program.types["P"])), MIRSlotKind.LOCAL,
-                  value_kind=MIRValueKind.TUPLE)
-    gen = MIRSlot(MIRSlotId(BODY, 5), program.fields["Shapes.g"], MIRSlotKind.LOCAL, value_kind=MIRValueKind.OWNED)
-    num = MIRSlot(MIRSlotId(BODY, 6), INT32, MIRSlotKind.LOCAL, value_kind=MIRValueKind.SCALAR)
+    tup = MIRSlot(MIRSlotId(BODY, 4), tuple_shape(TupleType((INT32, program.types["P"])),
+                                                  (leaf_shape(INT32), owned_shape(program.types["P"]))),
+                  MIRSlotKind.LOCAL)
+    gen = MIRSlot(MIRSlotId(BODY, 5), owned_shape(program.fields["Shapes.g"]), MIRSlotKind.LOCAL)
+    num = MIRSlot(MIRSlotId(BODY, 6), leaf_shape(INT32), MIRSlotKind.LOCAL)
     slots.update({s.id: s for s in (tup, gen, num)})
     assert _reaches(MIRPlace(tup.id), fact, slots, layouts)
     assert _reaches(MIRPlace(gen.id), fact, slots, layouts)
     assert not _reaches(MIRPlace(num.id), fact, slots, layouts)
-    # Under another holder, a generic record member may hold it too.
-    assert _reaches(MIRPlace(b.id, (MIRDeref(), MIRField(MIRFieldId(program.types["Shapes"], "g"),
-                                                         program.fields["Shapes.g"]))), fact, slots, layouts)
+    # A generic record member may hold it too (a place MIR never builds:
+    # the field is unmodeled, so the question is the type's alone).
+    assert _may_hold(program.fields["Shapes.g"], p.id, layouts)
     # Rebinding an iterator's cursor writes no storage.
-    cursor = MIRSlot(MIRSlotId(BODY, 7), program.fields["Shapes.g"], MIRSlotKind.LOCAL,
-                     value_kind=MIRValueKind.NATIVE_ITERATOR)
+    cursor = MIRSlot(MIRSlotId(BODY, 7), cursor_shape(program.fields["Shapes.g"]), MIRSlotKind.LOCAL)
     slots[cursor.id] = cursor
     assert not _reaches(MIRPlace(cursor.id), fact, slots, layouts)
     # Two of the body's own objects are distinct storage.

@@ -12,8 +12,9 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
+    MIRHolding,
     MIRBodyId, MIRContainerElements, MIRFunction,
-    MIRNotCovered, MIRPlace, MIRPoint, MIRReturn, MIRValueKind,
+    MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
 )
 from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
@@ -151,7 +152,7 @@ def test_saved_element_survives_target_reset_and_cursor_advance(artifacts) -> No
     assert MIRPlace(cell) not in holders
     assert any(isinstance(p, MIRContainerElements) for ref in holders[MIRPlace(saved)] for p in ref.place.projections)
     assert not analyze_scope_ends(fn).ends
-    iterator = next(s for s in fn.slots if s.value_kind is MIRValueKind.NATIVE_ITERATOR)
+    iterator = next(s for s in fn.slots if s.shape.holding is MIRHolding.CURSOR)
     assert iterator.residence == fn.regions[0].id
     assert fn.slots[cell.index].residence != iterator.residence
 
@@ -203,9 +204,9 @@ def test_native_facts_fail_closed(artifacts, damage: str) -> None:
 
 @pytest.mark.parametrize(("typ", "line"), [
     # An owned-leaf element or key is walked through a readonly borrow of it.
-    ("list[str]", "%0: list[str] container-ref readonly element=str:owned:readonly parameter xs"),
-    ("dict[str, int32]", "%0: dict[str, int32] container-ref readonly element=str:owned:readonly "
-                         "value=int32:scalar parameter xs"),
+    ("list[str]", "%0: list[str] container-ref readonly element=str:owned_leaf:readonly parameter xs"),
+    ("dict[str, int32]", "%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly "
+                         "value=int32:leaf parameter xs"),
 ])
 def test_owned_leaf_elements_lower(typ: str, line: str) -> None:
     _, bodies, _ = compile_bodies(PREFIX + f'''def other(xs: {typ}) -> int32:
@@ -260,6 +261,6 @@ def hoisted(xs: list[Cell]) -> int32:
     growing = bodies["growing"]
     assert isinstance(growing, MIRFunction), growing
     conflicts = _retention(growing).conflicts
-    assert conflicts and all(growing.slots[c.holder.root.index].value_kind is MIRValueKind.NATIVE_ITERATOR
+    assert conflicts and all(growing.slots[c.holder.root.index].shape.holding is MIRHolding.CURSOR
                              for c in conflicts)
     assert isinstance(bodies["hoisted"], MIRNotCovered)

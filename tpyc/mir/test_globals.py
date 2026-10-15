@@ -16,7 +16,7 @@ from .nodes import (
     MIRBodyId, MIRFunction, MIRGlobalId, MIRNotCovered, MIRSlotKind,
     MIRAssign, MIRCompare, MIRNot, MIRPlace, MIRReturn,
 )
-from .testutil import Reference, execute
+from .testutil import Reference, execute, reslot
 from .validate import MIRValidationError, validate_function
 
 
@@ -141,7 +141,7 @@ def test_verifier_rejects_duplicate_identity_and_readonly_global_write(artifacts
             replace(s, global_id=globals[0].global_id) if s.id == globals[1].id else s for s in fn.slots)))
     with pytest.raises(MIRValidationError, match="readonly global"):
         validate_function(replace(fn, slots=tuple(
-            replace(s, readonly=True) if s.kind is MIRSlotKind.GLOBAL else s for s in fn.slots)))
+            reslot(s, readonly=True) if s.kind is MIRSlotKind.GLOBAL else s for s in fn.slots)))
     with pytest.raises(MIRValidationError, match="global identity on local"):
         validate_function(replace(fn, slots=(replace(fn.slots[0], global_id=globals[0].global_id), *fn.slots[1:])))
 

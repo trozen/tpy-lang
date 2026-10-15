@@ -10,8 +10,9 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..typesys import BOOL, INT32, INT32_MIN, INT32_MAX
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered, MIRValueKind
+from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRHolding, MIRNotCovered
 from .testutil import Reference, UnionValue, execute
+from ..thir.scalar_leaves import MIRClass
 
 
 SOURCE = """\
@@ -147,15 +148,14 @@ def lower(fn: th.THIRFunction) -> MIRFunction:
 
 def union_arg(fn: MIRFunction, index: int, typ: str,
               payload: int | bool | Reference | None = None) -> UnionValue:
-    layout = fn.slots[index].union_layout
-    alternative = next(i for i, m in enumerate(layout.elements)
+    alternative = next(i for i, m in enumerate(fn.slots[index].shape.alternatives)
                        if (m is None and typ == "None") or m is not None and m.type.name == typ)
     return UnionValue(alternative, payload)
 
 
 def cell_field(fn: MIRFunction) -> MIRFieldId:
-    typ = next(m.type for s in fn.slots if s.union_layout is not None
-               for m in s.union_layout.elements if m is not None and m.type.name == "Cell")
+    typ = next(m.type for s in fn.slots if s.shape.cls is MIRClass.UNION
+               for m in s.shape.alternatives if m is not None and m.type.name == "Cell")
     return MIRFieldId(typ, "value")
 
 
@@ -196,7 +196,7 @@ def test_internal_record_member_assembly(artifacts: Artifacts) -> None:
 def test_scalar_copies_snapshot_values(artifacts: Artifacts, value: int) -> None:
     fn = lower(artifacts[0]["scalar"])
     assert execute(fn, union_arg(fn, 0, "int32", value), union_arg(fn, 1, "bool", False)) == value
-    assert any(s.value_kind is MIRValueKind.PAYLOAD_ALIAS for s in fn.slots)
+    assert any(s.shape.holding is MIRHolding.ALIAS for s in fn.slots)
     constructed = lower(artifacts[0]["scalar_construct"])
     assert execute(constructed, union_arg(constructed, 0, "bool", False)) == 7
 
@@ -229,7 +229,7 @@ def test_guarded_early_compound_loop_and_none_paths(artifacts: Artifacts) -> Non
         if name == "nullable":
             assert execute(fn, union_arg(fn, 0, "None")) == 0
         if name == "multiple":
-            third = next(m.type for m in fn.slots[0].union_layout.elements if m.type.name == "Third")
+            third = next(m.type for m in fn.slots[0].shape.alternatives if m.type.name == "Third")
             assert execute(fn, union_arg(fn, 0, "Third", Reference(1)),
                            heap={1: {MIRFieldId(third, "value"): 19}}) == 19
         text = dump_function(fn)

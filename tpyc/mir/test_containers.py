@@ -19,18 +19,19 @@ from ..typesys import (
     unwrap_readonly, unwrap_ref_type,
 )
 from .call_contract import MIRCallSummary, MIRParameterBinding
-from ..thir.scalar_leaves import declared_members, native_container_type
+from ..thir.scalar_leaves import MIRClass, declared_members, native_container_type
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRContainerElements, MIRContainerLayout,
+    MIRHolding,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRContainerElements,
     MIRCopy, MIRDeref, MIRFunction, MIRIteratorInit, MIRIteratorRead, MIRMemberInit,
     MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn,
-    MIRSlot, MIRTupleElement, MIRValueKind,
+    MIRSlot,
 )
-from .testutil import ContainerValue, Reference, execute
+from .testutil import ContainerValue, Reference, execute, leaf_shape, owned_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 SOURCE = """\
@@ -358,7 +359,7 @@ def _replace_first(fn: MIRFunction, match, change) -> MIRFunction:
 
 
 def _reslot(fn: MIRFunction, name: str, **changes) -> MIRFunction:
-    return replace(fn, slots=tuple(replace(s, **changes) if s.name == name else s for s in fn.slots))
+    return replace(fn, slots=tuple(reslot(s, **changes) if s.name == name else s for s in fn.slots))
 
 
 def _rejects(fn: MIRFunction, message: str) -> None:
@@ -379,7 +380,7 @@ def _elements(place: MIRPlace) -> bool:
 def test_a_record_element_is_borrowed_from_the_region_after_its_index(active) -> None:
     fn = _fn(active, "first")
     lines = _lines(fn)
-    assert "%0: list[Point] container-ref readonly element=Point:borrowed:readonly parameter ps" in lines
+    assert "%0: list[Point] container-ref readonly element=Point:record:readonly parameter ps" in lines
     assert lines.index("%2 = 0") < lines.index("%1 = borrow %0[elements] may-raise")
     assert any(line.startswith("%1: Point readonly-ref local p") for line in lines)
     cell = next(r.fields[0].id for r in fn.records if r.type.name == "Point")
@@ -413,7 +414,7 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
     # Iteration reads an owned-leaf element through a view of it.
     walk = _fn(active, "walk_strs", readonly_iteration=True)
     s = _slot(walk, "s")
-    assert (s.type.name, s.value_kind, s.readonly) == ("StrView", MIRValueKind.BORROWED, True)
+    assert (s.type.name, s.shape.holding, s.readonly) == ("StrView", MIRHolding.POINTER, True)
     assert any(isinstance(st, MIRAssign) and isinstance(st.value, MIRIteratorRead) and st.target.root == s.id
                for b in walk.blocks for st in b.statements)
 
@@ -422,10 +423,10 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
 
 def test_an_owned_container_local_is_built_from_its_literal(active) -> None:
     lines = _lines(_fn(active, "own"))
-    assert "%0: Array[int32, 3] owned element=int32:scalar local xs" in lines
+    assert "%0: Array[int32, 3] owned element=int32:leaf local xs" in lines
     assert "%0 = construct (%1, %2, %3) may-raise [initialize_once]" in lines
     # An unstepped slice reads its bounds, then borrows the whole region.
-    assert "%4: Span[int32] mutable-ref element=int32:scalar local s" in lines
+    assert "%4: Span[int32] mutable-ref element=int32:leaf local s" in lines
     assert lines.index("%6 = 3") < lines.index("%4 = borrow %0[elements]")
     assert "%8 = read %4[elements] may-raise" in lines
     # `len` reads the container whole.
@@ -439,14 +440,14 @@ def test_a_literal_of_records_moves_built_temporaries(active) -> None:
                      if isinstance(s, MIRAssign) and isinstance(s.value, MIRConstruct) and s.target.root == ps)
     for operand in construct.value.fields:
         slot = fn.slots[operand.index]
-        assert slot.value_kind is MIRValueKind.OWNED and slot.type.name == "Point"
+        assert slot.shape.is_storage and slot.type.name == "Point"
     assert construct.value.may_raise
 
 
 def test_an_owned_container_result_returns_its_storage(active) -> None:
     fn = _fn(active, "make")
     lines = _lines(fn)
-    assert "%1: list[int32] owned element=int32:scalar local xs" in lines
+    assert "%1: list[int32] owned element=int32:leaf local xs" in lines
     assert fn.blocks[-1].terminator == MIRReturn(_slot(fn, "xs").id, fn.blocks[-1].terminator.loc)
     assert execute(fn, 4) is not None
 
@@ -455,7 +456,7 @@ def test_an_owned_container_parameter_is_the_body_storage(active) -> None:
     # The parameter's name keeps THIR's `Own[...]` wrapper and reads in storage
     # form; the fact and the slot are the bare container it owns.
     lines = _lines(_fn(active, "own_param"))
-    assert "%0: list[int32] owned element=int32:scalar parameter xs" in lines
+    assert "%0: list[int32] owned element=int32:leaf parameter xs" in lines
     assert any(line.startswith("%1 = call stub tpy._builtins._funcs.len[Sized](%0)") for line in lines)
 
 
@@ -463,13 +464,13 @@ def test_a_span_parameter_and_result_view_a_region(active) -> None:
     tail = _fn(active, "tail")
     lines = _lines(tail)
     assert "result borrowed readonly" in lines
-    assert "%1: Span[readonly[int32]] readonly-ref element=int32:scalar temporary" in lines
+    assert "%1: Span[readonly[int32]] readonly-ref element=int32:leaf temporary" in lines
     assert "%1 = borrow %0[elements]" in lines
     first = _lines(_fn(active, "span_first"))
-    assert "%0: Span[int32] mutable-ref element=int32:scalar parameter s" in first
+    assert "%0: Span[int32] mutable-ref element=int32:leaf parameter s" in first
     assert "%2 = read %0[elements] may-raise" in first
     span_sum = _fn(active, "span_sum")
-    assert "%3: Span[int32] native-iterator mutable element=int32:scalar temporary" in _lines(span_sum)
+    assert "%3: Span[int32] native-iterator mutable element=int32:leaf temporary" in _lines(span_sum)
     assert execute(span_sum, ContainerValue((1, 2, 3))) == 6
 
 
@@ -521,13 +522,13 @@ def test_a_container_field_is_a_place_of_its_record(active) -> None:
     items = _fn(active, "items_of")
     lines = _lines(items)
     assert "result borrowed mutable" in lines
-    assert "%1: list[int32] container-ref mutable element=int32:scalar temporary" in lines
+    assert "%1: list[int32] container-ref mutable element=int32:leaf temporary" in lines
     assert "%1 = borrow (*%0).__main__.Bag::items" in lines
 
 
 def test_a_local_alias_of_a_container_field_borrows_the_field(active) -> None:
     lines = _lines(_fn(active, "alias_push"))
-    assert "%2: list[int32] container-ref mutable element=int32:scalar local x" in lines
+    assert "%2: list[int32] container-ref mutable element=int32:leaf local x" in lines
     assert "%2 = borrow (*%0).__main__.Bag::items" in lines
     assert any(line.startswith("call stub builtins.list.append[list[int32], Own[int32]](%2, ") for line in lines)
 
@@ -583,18 +584,17 @@ def test_validator_rejects_damaged_container_slots(active) -> None:
     span_first = _fn(active, "span_first")
     for fn in (first, own, tail, span_first):
         validate_function(fn)
-    _rejects(_reslot(first, "ps", container_layout=MIRContainerLayout(MIRTupleElement(INT32))),
+    _rejects(_reslot(first, "ps", members=(leaf_shape(INT32),)),
              "unsupported native element")
-    _rejects(_reslot(first, "ps", type=INT32), "invalid container or iterator layout")
+    _rejects(_reslot(first, "ps", type=INT32), "value class mismatch")
     _rejects(_reslot(own, "xs", readonly=True), "unsupported container storage")
-    _rejects(_reslot(own, "xs", container_layout=MIRContainerLayout(MIRTupleElement(BOOL))),
+    _rejects(_reslot(own, "xs", members=(leaf_shape(BOOL),)),
              "unsupported container storage")
-    holder = next(s for s in tail.slots if s.value_kind is MIRValueKind.BORROWED)
-    _rejects(replace(tail, slots=tuple(replace(s, readonly=False) if s is holder else s for s in tail.slots)),
+    holder = next(s for s in tail.slots if s.shape.cls is MIRClass.CONTAINER_VIEW)
+    _rejects(replace(tail, slots=tuple(reslot(s, readonly=False) if s is holder else s for s in tail.slots)),
              "invalid container view holder")
     _rejects(_reslot(span_first, "s", passing=ParamPassing.CONST_REF), "view parameter needs a by-value passing")
-    _rejects(_reslot(first, "p", container_layout=MIRContainerLayout(MIRTupleElement(INT32))),
-             "container layout on unrelated slot")
+    _rejects(_reslot(first, "p", members=(leaf_shape(INT32),)), "members on a memberless value")
 
 
 def test_validator_rejects_damaged_element_places(active) -> None:
@@ -614,7 +614,7 @@ def test_validator_rejects_damaged_element_places(active) -> None:
     span = _slot(own, "s").id
     _rejects(_replace_first(own, lambda s: is_borrow(s) and s.target.root == span, lambda s: replace(
         s, value=replace(s.value, may_raise=True))), "container view borrow type mismatch")
-    _rejects(_reslot(own, "s", container_layout=MIRContainerLayout(MIRTupleElement(BOOL)), type=make_span(BOOL)),
+    _rejects(_reslot(own, "s", members=(leaf_shape(BOOL),), type=make_span(BOOL)),
              "container view borrow type mismatch")
     # A borrowed container holds a whole container place, not an element.
     items = _fn(active, "items_of")
@@ -710,11 +710,11 @@ def test_validator_rejects_damaged_results_and_iterators(active) -> None:
     items, tail, span_sum = _fn(active, "items_of"), _fn(active, "tail"), _fn(active, "span_sum")
     _rejects(replace(tail, borrowed_result=replace(tail.borrowed_result, readonly=False)),
              "unsupported return type or access")
-    holder = next(s for s in items.slots if s.value_kind is MIRValueKind.BORROWED_CONTAINER)
-    _rejects(replace(items, slots=tuple(replace(s, readonly=True, container_layout=s.container_layout)
+    holder = next(s for s in items.slots if s.shape.holding is MIRHolding.REGION)
+    _rejects(replace(items, slots=tuple(reslot(s, readonly=True)
                                         if s is holder else s for s in items.slots)),
              "borrowed return type or access mismatch")
-    iterator = next(s for s in span_sum.slots if s.value_kind is MIRValueKind.NATIVE_ITERATOR)
+    iterator = next(s for s in span_sum.slots if s.shape.holding is MIRHolding.CURSOR)
     t = _slot(span_sum, "t").id
     _rejects(_replace_first(span_sum, _assign(MIRIteratorInit), lambda s: replace(s, value=MIRIteratorInit(t))),
              "iterator source or access mismatch")
@@ -722,7 +722,7 @@ def test_validator_rejects_damaged_results_and_iterators(active) -> None:
     n = _slot(walk, "n").id
     _rejects(_replace_first(walk, _assign(MIRIteratorRead), lambda s: replace(s, target=MIRPlace(n))),
              "iterator element type or access mismatch")
-    assert iterator.container_layout == MIRContainerLayout(MIRTupleElement(INT32))
+    assert iterator.shape.members == (leaf_shape(INT32),)
 
 
 def test_validator_rejects_damaged_container_member_init(active) -> None:
@@ -749,13 +749,13 @@ def test_a_dict_view_loop_walks_the_member_its_iteration_declares(fresh) -> None
     lines = _lines(_fn(fresh, "keys_len"))
     # The view holds the dict's region, typed by its own declared member (the
     # key); its cursor walks the keys, viewed by the loop variable.
-    assert "%3: dict_keys[str, int32] readonly-ref element=str:owned:readonly temporary" in lines
+    assert "%3: dict_keys[str, int32] readonly-ref element=str:owned_leaf:readonly temporary" in lines
     assert "%3 = call stub builtins.dict.keys[dict[str, int32]](%0) [pure, reader, returns={param0}, may-raise]" in lines
-    assert "%4: dict_keys[str, int32] native-iterator readonly element=str:owned:readonly temporary" in lines
+    assert "%4: dict_keys[str, int32] native-iterator readonly element=str:owned_leaf:readonly temporary" in lines
     assert "%4 = iterator-init %3" in lines and "%6 = iterator-read %4" in lines
     lines = _lines(_fn(fresh, "values_total"))
     # A values view walks the values.
-    assert "%4: dict_values[str, int32] native-iterator readonly element=int32:scalar temporary" in lines
+    assert "%4: dict_values[str, int32] native-iterator readonly element=int32:leaf temporary" in lines
 
 
 def test_a_pure_stub_reads_a_dict_view_whole(active) -> None:
@@ -766,12 +766,12 @@ def test_a_pure_stub_reads_a_dict_view_whole(active) -> None:
 
 def test_validator_rejects_damaged_view_cursors(fresh) -> None:
     fn = _fn(fresh, "values_total")
-    cursor = next(s for s in fn.slots if s.value_kind is MIRValueKind.NATIVE_ITERATOR)
+    cursor = next(s for s in fn.slots if s.shape.holding is MIRHolding.CURSOR)
     holder = next(s for s in fn.slots if s.type == cursor.type and s is not cursor)
-    assert cursor.container_layout == holder.container_layout == MIRContainerLayout(MIRTupleElement(INT32))
+    assert cursor.shape.members == holder.shape.members == (leaf_shape(INT32),)
     # A cursor over a values view walks the value member, never the key.
-    key = MIRContainerLayout(MIRTupleElement(STR, MIRValueKind.OWNED, True))
-    damaged = replace(fn, slots=tuple(replace(s, container_layout=key) if s is cursor else s for s in fn.slots))
+    key = (owned_shape(STR, True),)
+    damaged = replace(fn, slots=tuple(reslot(s, members=key) if s is cursor else s for s in fn.slots))
     _rejects(damaged, "unsupported native element")
 
 
@@ -779,7 +779,7 @@ def test_only_a_pure_stub_binds_a_readonly_container_mutably(active) -> None:
     fn = _fn(active, "grow")
     # `append` writes its receiver: a readonly holder cannot be lent to it.
     _rejects(_reslot(fn, "xs", readonly=True, passing=ParamPassing.CONST_REF,
-                     container_layout=MIRContainerLayout(MIRTupleElement(INT32))),
+                     members=(leaf_shape(INT32),)),
              "call container argument mismatch")
 
 
@@ -839,9 +839,9 @@ def calls():
 
 def test_a_local_moved_into_an_own_parameter_is_replaced(calls) -> None:
     lines = calls[0]["give"]
-    assert "%0: list[int32] owned element=int32:scalar local xs" in lines
+    assert "%0: list[int32] owned element=int32:leaf local xs" in lines
     # The argument is the caller's storage moved into a temporary the callee owns.
-    assert "%4: list[int32] owned element=int32:scalar temporary" in lines
+    assert "%4: list[int32] owned element=int32:leaf temporary" in lines
     assert "%4 = move %0 [initialize_region]" in lines
     assert "%5 = call main::consume(%4) [reader, may-raise]" in lines
     # The move empties `xs`: a replacement event on the source place, with no holder of it live.
@@ -858,7 +858,7 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
     dumps, functions = calls
     for name in ("ro_values", "inferred_values"):
         lines = dumps[name]
-        assert ("%0: dict[str, int32] container-ref readonly element=str:owned:readonly value=int32:scalar "
+        assert ("%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly value=int32:leaf "
                 "parameter d") in lines, name
         assert any(line.startswith("%2 = call stub builtins.dict.values[dict[str, int32]](%0) "
                                    "[pure, reader, returns={param0}, may-raise]") for line in lines), name

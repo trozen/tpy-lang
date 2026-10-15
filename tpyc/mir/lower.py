@@ -12,10 +12,10 @@ from ..parse import ResultForm, RebindStorage, SourceLocation
 from ..thir import nodes as th
 from ..thir.temp_plan import if_chain, validate_plan
 from ..thir.scalar_leaves import (
-    binds_cursor, container_view, converted_literal, declared_members, holds_loan, inline_member_type, leaf_constant,
-    leaf_global, modeled_field, native_container_subject, native_container_type, optional_record_field,
+    MIRClass, binds_cursor, container_view, converted_literal, declared_members, holds_loan, inline_member_type,
+    leaf_constant, leaf_global, modeled_field, native_container_subject, native_container_type, optional_record_field,
     owned_constant, owned_leaf,
-    owned_value_type, primitive_leaf, primitive_owned_leaf, readonly_elements, record_type, storage_leaf,
+    owned_value_type, primitive_leaf, primitive_owned_leaf, readonly_elements, record_type, storage_leaf, value_class,
     view_compatible, view_leaf,
 )
 from ..type_def_registry import ParamPassing, int_traits_of, type_def_of, zero_value_of
@@ -30,26 +30,24 @@ from .nodes import (
     MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRGoto, MIRFunction, MIRNot, MIRNotCovered, MIRReceiverInit, MIRGlobalId,
     MIRMemberInit, MIRMemberInitMode, MIRMemberInits, member_init_operands,
     MIRDeref, MIRField, MIRFieldId, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRRvalue,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRValueKind, MIRStorageDuration,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRTerminator, MIRShape, MIRStorageDuration,
     MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRRecordStorageInit, MIRRecordStorageKind,
     MIRRecordWrite, MIRRecordWriteMode, MIRPayloadWrite, MIRPayloadWriteMode,
     MIRRecordLayout, MIRRegion, MIRRegionId, function_body_kind,
     MIRRangeAdvance, MIROp, MIRPrint,
-    MIRContainerElements, MIRContainerLayout, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRTupleConstruct, MIRTupleCopy, MIRTupleElement, MIRTupleIndex, MIRTupleLayout, MIRTupleInitialization,
-    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout, MIROptionalPayload,
-    MIRUnionLayout, MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
+    MIRContainerElements, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
+    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
+    MIRUnionPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionExtract,
     statement_target,
 )
-from .coverage import (
-    PAYLOAD_RECORD, MIRUnsupported, container_view_holder, literal_type, owned_container, plain as _plain,
-    require as _require, scalar_param, scalar_wrapper,
-)
+from .coverage import PAYLOAD_RECORD, MIRUnsupported, literal_type, plain as _plain, require as _require, scalar_param
 from .definitions import (
     MIRComposedConstruct, MIRConstructorDefinition, MIRContainerDefinition, MIRDefinitions, MIRFieldInitializer,
     MIRHeldLayout, MIROwnedLeafDefinition, constructor_initialization, layout_copy_may_raise, optional_parameter,
-    owned_parameter, owned_record_parameter, record_parameter, with_access,
+    owned_parameter, owned_record_parameter, record_parameter,
 )
+from .shapes import from_thir, place_shape, with_access
 from .call_contract import (
     BORROWING_PASSINGS, OWNING_PASSINGS, MIRCallSummary, MIRParameterBinding, MIRSummaryResult,
     MIRSummaryState, binds_at, borrowed_result_of, bound_result, container_result, optional_layout_problem,
@@ -138,13 +136,44 @@ def _container_view_fact(typ: NominalType, readonly: bool) -> th.THIRBorrowedRec
     return th.THIRBorrowedRecord(typ, readonly or readonly_elements(typ))
 
 
+class _Slots(Mapping[MIRSlotId, MIRSlot]):
+    """A builder's slots by identity: its list is indexed by slot index."""
+
+    def __init__(self, slots: list[MIRSlot]) -> None:
+        self.slots = slots
+
+    def __getitem__(self, sid: MIRSlotId) -> MIRSlot:
+        return self.slots[sid.index]
+
+    def __iter__(self) -> Iterator[MIRSlotId]:
+        return (slot.id for slot in self.slots)
+
+    def __len__(self) -> int:
+        return len(self.slots)
+
+
 @dataclass(frozen=True)
 class _ContainerPlace:
-    """A checked container place: its type, its layout under the place's
+    """A checked container place: its type, its members under the place's
     access, and that access."""
     type: NominalType
-    layout: MIRContainerLayout
+    members: tuple[MIRShape, ...]
     readonly: bool
+
+    @property
+    def element(self) -> MIRShape:
+        """What iterating the container yields: a list / set / Array element, a dict key."""
+        return self.members[0]
+
+    @property
+    def keyed(self) -> bool:
+        """A dict: a key addresses the value member."""
+        return len(self.members) > 1
+
+    @property
+    def subscript(self) -> MIRShape:
+        """The member a subscript yields: a dict's value, else the element."""
+        return self.members[-1]
 
 
 # The literal-into-slot coercions that render the inner literal directly in
@@ -197,8 +226,8 @@ class _Coverage:
         # `Own[...]` parameter), and to Span holders with their access.
         self.owned_containers: set[str] = set()
         self.container_views: dict[str, bool] = {}
-        # The mutable-access layout of every container type the body reaches.
-        self.layouts: dict[NominalType, MIRContainerLayout] = {}
+        # The mutable-access members of every container type the body reaches.
+        self.members: dict[NominalType, tuple[MIRShape, ...]] = {}
         # The checked place of each container subscript, slice and method receiver.
         self.element_places: IdentityMap[th.THIRExpr, _ContainerPlace] = IdentityMap()
         # Each Span local's access: readonly when its element or its source is.
@@ -265,8 +294,8 @@ class _Coverage:
         if result is not None and view_leaf(result.type):
             pass
         elif result is not None and native_container_type(result.type):
-            # A container returned by reference: a place of the layout its type derives.
-            self.container_layout(expr, result.type)
+            # A container returned by reference: a place of the members its type derives.
+            self.container_members(expr, result.type)
         elif result is not None:
             self.reference(expr, result, callee.signature.return_type)
             self.records[result.type] = self.definitions.get(expr, result.type)
@@ -451,10 +480,10 @@ class _Coverage:
         _require(expr, expr.form is th.Form.VALUE, "unsupported expression form")
         place = self.method_call(expr, view=True)
         result = self.calls[expr].borrowed_result
-        layout = self.container_layout(expr, result.type)
+        members = self.container_members(expr, result.type)
         readonly = result.readonly or place.readonly
         self.writes[expr] = False
-        return _ContainerPlace(result.type, with_access(layout, readonly), readonly)
+        return _ContainerPlace(result.type, with_access(members, readonly), readonly)
 
     def argument(self, arg: th.THIRExpr, binding: MIRParameterBinding) -> None:
         """One argument at its binding: an owned leaf lent or copied, else
@@ -670,7 +699,7 @@ class _Coverage:
         elif _region_view(fn.return_type):
             # A container view result views a region the caller reaches through the
             # arguments: a borrowed result, summarized by its origins.
-            self.container_layout(fn, unwrap_readonly(unwrap_ref_type(fn.return_type)))
+            self.container_members(fn, unwrap_readonly(unwrap_ref_type(fn.return_type)))
             self.result = view_result(fn.return_type)
             _require(fn, self.result is not None, "unsupported return type")
         elif native_container_type(bare := unwrap_readonly(unwrap_ref_type(fn.return_type))):
@@ -679,11 +708,11 @@ class _Coverage:
                 bound_result(signature, receiver_readonly) if signature is not None
                 and signature.result_follows_receiver else container_result(fn.return_type))
             _require(fn, self.result is not None, "unsupported return type")
-            self.container_layout(fn, bare)
+            self.container_members(fn, bare)
         elif native_container_type(bare := unwrap_own(fn.return_type)):
             # An `Own[...]` container returns the body's storage by value.
             _require(fn, return_representation(fn.return_type) is Representation.STORAGE, "unsupported return type")
-            self.container_layout(fn, bare)
+            self.container_members(fn, bare)
             self.owned_container_result = bare
         elif (bare := owned_record_result(fn.return_type)) is not None:
             # The caller destroys what it receives: the record's verified definition.
@@ -713,7 +742,7 @@ class _Coverage:
                 bare = unwrap_readonly(unwrap_ref_type(p.type))
                 _require(p, p.native_container is None or p.native_container.type == bare,
                          "invalid native container fact")
-                self.container_layout(p, bare)
+                self.container_members(p, bare)
                 self.container_views[p.name] = _container_view_fact(bare, False).readonly
                 self.bindings[p.name] = bare
             elif p.native_container is not None:
@@ -973,21 +1002,20 @@ class _Coverage:
         _plain(expr, {"elements", "values", "make_container", "elem_cpp", "typed_brace_cpp", "bare_empty"})
         _require(expr, expr.result_type == typ and expr.form in (th.Form.VALUE, th.Form.STORAGE),
                  "container initializer type mismatch")
-        layout = self.layouts[typ]
-        members = (layout.element,) if layout.value is None else (layout.element, layout.value)
+        members = self.members[typ]
         # Literal construction: the one place the compiler knows a container's length.
-        _require(expr, len(expr.values) == (0 if layout.value is None else len(expr.elements))
+        _require(expr, len(expr.values) == (0 if len(members) == 1 else len(expr.elements))
                  and (not is_array(typ) or len(expr.elements) == typ.type_args[1]),
                  "container initializer type mismatch")
-        operands = (expr.elements if layout.value is None
+        operands = (expr.elements if len(members) == 1
                     else tuple(e for pair in zip(expr.elements, expr.values) for e in pair))
         for index, operand in enumerate(operands):
             member = members[index % len(members)]
-            match member.kind:
-                case MIRValueKind.SCALAR:
+            match member.cls:
+                case MIRClass.LEAF:
                     _require(operand, self.expr(operand, member.type) == member.type,
                              "container element type mismatch")
-                case MIRValueKind.OWNED:
+                case MIRClass.OWNED_LEAF:
                     _require(operand, self.owned_value(operand, sink=False) == member.type,
                              "container element type mismatch")
                 case _:
@@ -1019,7 +1047,7 @@ class _Coverage:
 
         def check() -> TpyType:
             member = self.element_access(stmt.init)
-            _require(stmt, member.kind is MIRValueKind.BORROWED and member.type == fact.type
+            _require(stmt, member.cls is MIRClass.RECORD and member.type == fact.type
                      and stmt.init.form is th.Form.BORROW and (not member.readonly or fact.readonly),
                      "element binding type or access mismatch")
             return fact.type
@@ -1033,7 +1061,7 @@ class _Coverage:
         when its element is or when that region is."""
         typ = unwrap_readonly(unwrap_ref_type(stmt.resolved_type))
         _require(stmt, stmt.form is th.Form.VALUE and stmt.init is not None, "unsupported local type or form")
-        self.container_layout(stmt, typ)
+        self.container_members(stmt, typ)
         readonly = self.full_expression(stmt.init, check=lambda: self.span_value(stmt.init, typ))
         self.container_views[stmt.name] = self.span_holders[stmt] = _container_view_fact(typ, readonly).readonly
         self.bindings[stmt.name] = typ
@@ -1044,12 +1072,12 @@ class _Coverage:
         transfers referents and never copies: a Span is aliased, an
         unstepped slice borrows its receiver's whole element region after
         its bounds are read (Python slices clamp, so it does not raise)."""
-        element = self.container_layout(expr, holder).element.type
+        element = self.container_members(expr, holder)[0].type
         match expr:
             case th.THIRName() if expr.global_binding is None and expr.name in self.container_views:
                 _plain(expr, {"name", "is_last_use", "is_movable"})
                 source = self.bindings[expr.name]
-                _require(expr, self.layouts[source].element.type == element, "view source type mismatch")
+                _require(expr, self.members[source][0].type == element, "view source type mismatch")
                 readonly = self.container_views[expr.name]
                 writing = False
             case th.THIRCoerce():
@@ -1069,7 +1097,7 @@ class _Coverage:
                              "slice bound needs a fixed-width int")
                 place = self.container_place(expr.receiver)
                 self.element_places[expr] = place
-                _require(expr, place.layout.value is None and place.layout.element.type == element,
+                _require(expr, not place.keyed and place.element.type == element,
                          "view source type mismatch")
                 readonly = place.readonly
                 self.argument_order_rule(expr, tuple(bounds))
@@ -1147,7 +1175,7 @@ class _Coverage:
                 writing = self.call_writes(expr)
             case th.THIRSubscript() if expr.tuple_index is None and self.container_receiver(expr.receiver):
                 member = self.element_access(expr)
-                _require(expr, member.kind is MIRValueKind.OWNED and expr.form is th.Form.BORROW
+                _require(expr, member.cls is MIRClass.OWNED_LEAF and expr.form is th.Form.BORROW
                          and view_compatible(holder, member.type), "view source type mismatch")
                 writing = self.writes[expr.index]
             case th.THIRFieldAccess():
@@ -1345,7 +1373,7 @@ class _Coverage:
                 # An element place, like a field: borrowed in place as an
                 # operand, copied at a sink.
                 member = self.element_access(expr)
-                _require(expr, member.kind is MIRValueKind.OWNED and member.type == typ,
+                _require(expr, member.cls is MIRClass.OWNED_LEAF and member.type == typ,
                          "owned-leaf element type mismatch")
                 fresh = False
                 writing = self.writes[expr.index]
@@ -1694,8 +1722,8 @@ class _Coverage:
         need the wrapper's selection to reach its stored loans."""
         _require(node, not holds_loan(typ), "wrapper holds a borrow")
 
-    def container_layout(self, node: object, typ: TpyType) -> MIRContainerLayout:
-        """The mutable-access layout of a native container (or of the region a
+    def container_members(self, node: object, typ: TpyType) -> tuple[MIRShape, ...]:
+        """The mutable-access members of a native container (or of the region a
         Span views); its record members' definitions and owned-leaf members'
         layouts come along, since places of its elements reach them."""
         bare = unwrap_readonly(unwrap_ref_type(typ))
@@ -1705,11 +1733,11 @@ class _Coverage:
         _require(node, isinstance(definition, MIRContainerDefinition), "unsupported native container type")
         for record in definition.records:
             self.records[record.layout.type] = record
-        for member in (definition.layout.element, definition.layout.value):
-            if member is not None and member.kind is MIRValueKind.OWNED:
+        for member in definition.members:
+            if member.cls is MIRClass.OWNED_LEAF:
                 self.leaf_layout(node, member.type)
-        self.layouts[bare] = definition.layout
-        return definition.layout
+        self.members[bare] = definition.members
+        return definition.members
 
     def unpublished_container(self, node: object, typ: TpyType) -> None:
         """A container binding THIR published no fact for: its members'
@@ -1717,11 +1745,11 @@ class _Coverage:
         container), else the missing fact."""
         bare = native_container_subject(typ)
         if isinstance(bare, NominalType) and native_container_type(bare):
-            self.container_layout(node, bare)
+            self.container_members(node, bare)
             raise MIRUnsupported(node, "missing native container fact")
 
-    def container(self, node: object, fact: th.THIRNativeContainer, typ: TpyType) -> MIRContainerLayout:
-        """Check a container fact against its type and the layout the type
+    def container(self, node: object, fact: th.THIRNativeContainer, typ: TpyType) -> None:
+        """Check a container fact against its type and the members the type
         derives; the fact's element is the member iteration yields. An
         `Own[...]` parameter publishes the fact for the container it owns."""
         bare = native_container_subject(typ)
@@ -1730,16 +1758,15 @@ class _Coverage:
                  and (not isinstance(unwrap_ref_type(typ), ReadonlyType) or fact.readonly),
                  "invalid native container fact")
         _require(node, native_container_type(bare), "unsupported native container type")
-        layout = self.container_layout(node, bare)
-        member, expected = fact.element, layout.element
+        members = self.container_members(node, bare)
+        member, expected = fact.element, members[0]
         if isinstance(member, th.THIRBorrowedRecord):
             self.reference(node, member, member.type)
-            _require(node, expected.kind is MIRValueKind.BORROWED and member.type == expected.type
+            _require(node, expected.cls is MIRClass.RECORD and member.type == expected.type
                      and member.readonly == fact.readonly, "unsupported native record element")
         else:
-            _require(node, expected.kind is not MIRValueKind.BORROWED and member == expected.type,
+            _require(node, expected.cls is not MIRClass.RECORD and member == expected.type,
                      "unsupported native scalar element")
-        return layout
 
     def container_name(self, expr: th.THIRExpr) -> th.THIRNativeContainer:
         _require(expr, isinstance(expr, th.THIRName), "container source needs local name")
@@ -1772,12 +1799,12 @@ class _Coverage:
         return False
 
     def container_place(self, expr: th.THIRExpr) -> _ContainerPlace:
-        """Check a container place expression: its type, its layout under
+        """Check a container place expression: its type, its members under
         the access the place has, and whether that access is readonly."""
         match expr:
             case th.THIRName() if expr.name in self.containers:
                 fact = self.container_name(expr)
-                return _ContainerPlace(fact.type, with_access(self.layouts[fact.type], fact.readonly), fact.readonly)
+                return _ContainerPlace(fact.type, with_access(self.members[fact.type], fact.readonly), fact.readonly)
             case th.THIRName() if expr.name in self.owned_containers or expr.name in self.container_views:
                 _plain(expr, {"name", "is_last_use", "is_movable"})
                 typ = self.bindings[expr.name]
@@ -1788,11 +1815,11 @@ class _Coverage:
                               or expr.form is th.Form.STORAGE and expr.name in self.owned_containers),
                          "container name type mismatch")
                 readonly = self.container_views.get(expr.name, False)
-                return _ContainerPlace(typ, with_access(self.layouts[typ], readonly), readonly)
+                return _ContainerPlace(typ, with_access(self.members[typ], readonly), readonly)
             case th.THIRFieldAccess():
                 fact = self.field(expr)
                 _require(expr, isinstance(fact, th.THIRNativeContainer), "container field needs container storage")
-                return _ContainerPlace(fact.type, with_access(self.layouts[fact.type], fact.readonly), fact.readonly)
+                return _ContainerPlace(fact.type, with_access(self.members[fact.type], fact.readonly), fact.readonly)
             case th.THIRCall() | th.THIRMethodCall() if _user_call(expr) and self.container_receiver(expr):
                 return self.call_container(expr)
             case th.THIRMethodCall() if self.container_receiver(expr):
@@ -1813,7 +1840,7 @@ class _Coverage:
         # before its container, so the call must not write what they read.
         _require(expr, not self.call_writes(expr), "order-sensitive eager operands")
         self.writes[expr] = False
-        return _ContainerPlace(result.type, with_access(self.layouts[result.type], result.readonly), result.readonly)
+        return _ContainerPlace(result.type, with_access(self.members[result.type], result.readonly), result.readonly)
 
     def element_index(self, expr: th.THIRSubscript, place: _ContainerPlace) -> None:
         """Check a subscript's index or key: a fixed-width int position, or
@@ -1823,17 +1850,17 @@ class _Coverage:
         _, _, keyed = declared_members(place.type)
         # A key addresses the value member, a position the element; a type
         # keyed by its only member, or whose value member no key reaches, is not modeled.
-        _require(index, keyed is (place.layout.value is not None), "unsupported keyed container")
+        _require(index, keyed is place.keyed, "unsupported keyed container")
         if not keyed:
             _require(index, int_traits_of(self.expr(index)) is not None, "element index needs a fixed-width int")
             return
-        key = place.layout.element.type
+        key = place.element.type
         if storage_leaf(key):
             _require(index, self.expr(index, key) == key, "element key type mismatch")
         else:
             _require(index, through_view(self.lent_value(index)) == key, "element key type mismatch")
 
-    def element_access(self, expr: th.THIRSubscript) -> MIRTupleElement:
+    def element_access(self, expr: th.THIRSubscript) -> MIRShape:
         """Check a container subscript as a whole: its place, its index, and
         that the operands cannot reorder a write. Returns the member it reaches.
         The stub binding a native receiver's read renders through is
@@ -1844,7 +1871,7 @@ class _Coverage:
         self.element_index(expr, place)
         _require(expr, not self.writes[expr.index] or _literal(expr.index), "order-sensitive eager operands")
         self.element_places[expr] = place
-        return place.layout.subscript
+        return place.subscript
 
     def reference_name(self, expr: th.THIRExpr, *, qualified: bool = False) -> str:
         """The binding a record reference names. With `qualified`, the
@@ -2311,7 +2338,7 @@ class _Coverage:
             case th.THIRSubscript() if expr.receiver.tuple_index is None:
                 # A field of a record element, read in place.
                 member = self.element_access(expr.receiver)
-                _require(expr, member.kind is MIRValueKind.BORROWED and expr.receiver.form is th.Form.BORROW
+                _require(expr, member.cls is MIRClass.RECORD and expr.receiver.form is th.Form.BORROW
                          and unwrap_readonly(unwrap_ref_type(expr.receiver.result_type)) == member.type,
                          "field needs record element")
                 reference = th.THIRBorrowedRecord(member.type, member.readonly)
@@ -2360,9 +2387,8 @@ class _Coverage:
             bare = unwrap_readonly(fact.type)
             _require(expr, unwrap_readonly(unwrap_ref_type(expr.result_type)) == bare
                      and expr.form in (th.Form.STORAGE, th.Form.BORROW), "unsupported field type or form")
-            layout = self.container_layout(expr, bare)
-            element = (th.THIRBorrowedRecord(layout.element.type, readonly)
-                       if layout.element.kind is MIRValueKind.BORROWED else layout.element.type)
+            member = self.container_members(expr, bare)[0]
+            element = th.THIRBorrowedRecord(member.type, readonly) if member.cls is MIRClass.RECORD else member.type
             return th.THIRNativeContainer(bare, element, readonly)
         if view_leaf(fact.type):
             # A view member stores a loan in the record object, keyed by a
@@ -2486,7 +2512,7 @@ class _Coverage:
                 writing = self.writes.get(expr.receiver, False)
             case th.THIRSubscript() if expr.tuple_index is None and self.container_receiver(expr.receiver):
                 member = self.element_access(expr)
-                _require(expr, member.kind is MIRValueKind.SCALAR and member.type == typ,
+                _require(expr, member.cls is MIRClass.LEAF and member.type == typ,
                          "element read type mismatch")
                 writing = self.writes[expr.index]
             case th.THIRMethodCall() if expr.stub_callee is not None:
@@ -2912,10 +2938,10 @@ class _Coverage:
         def check() -> TpyType:
             member = self.element_access(target)
             _require(stmt, not self.element_places[target].readonly, "readonly element store")
-            match member.kind:
-                case MIRValueKind.SCALAR:
+            match member.cls:
+                case MIRClass.LEAF:
                     _require(stmt, self.expr(stmt.value, member.type) == member.type, "assignment type mismatch")
-                case MIRValueKind.OWNED:
+                case MIRClass.OWNED_LEAF:
                     _require(stmt, self.owned_value(stmt.value, sink=True) == member.type, "assignment type mismatch")
                 case _:
                     self.record_value(stmt.value, member.type, call=True)
@@ -3007,23 +3033,23 @@ class _Coverage:
         _require(stmt, isinstance(source, th.THIRNativeContainer), "missing or invalid native iteration facts")
         # A cursor binds the source's declared element, one at a time.
         _require(stmt, binds_cursor(place.type), "missing or invalid native iteration facts")
-        element = place.layout.element
+        element = place.element
         _require(stmt, isinstance(source, th.THIRNativeContainer) and source.type == place.type
                  and source.readonly == place.readonly
                  and source.element == (th.THIRBorrowedRecord(element.type, element.readonly)
-                                        if element.kind is MIRValueKind.BORROWED else element.type),
+                                        if element.cls is MIRClass.RECORD else element.type),
                  "native iteration source disagrees with binding")
         reference = (th.THIRBorrowedRecord(element.type, element.readonly)
-                     if element.kind is MIRValueKind.BORROWED else None)
+                     if element.cls is MIRClass.RECORD else None)
         # An owned-leaf element is read through a view of it, or a readonly borrow.
-        view = element.kind is MIRValueKind.OWNED and view_leaf(stmt.elem_type)
+        view = element.cls is MIRClass.OWNED_LEAF and view_leaf(stmt.elem_type)
         typ = stmt.elem_type if view else element.type
         _require(stmt, (view_compatible(stmt.elem_type, element.type) if view
                         else unwrap_readonly(stmt.elem_type) == typ)
                  and stmt.binding.loop_binding in (LoopBinding.VALUE, LoopBinding.ASSIGN, LoopBinding.REFERENCE,
                                                    LoopBinding.CONST_REFERENCE)
                  and (reference is None or not stmt.hoist_loop_var and stmt.const_loop_var == reference.readonly)
-                 and (element.kind is not MIRValueKind.OWNED or not stmt.hoist_loop_var and (
+                 and (element.cls is not MIRClass.OWNED_LEAF or not stmt.hoist_loop_var and (
                      view or stmt.binding.loop_binding is LoopBinding.CONST_REFERENCE)),
                  "unsupported native target binding")
         self.hoists(stmt)
@@ -3040,7 +3066,7 @@ class _Coverage:
         elif view:
             self.views.add(stmt.var)
             self.iteration_references.add(stmt.var)
-        elif element.kind is MIRValueKind.OWNED:
+        elif element.cls is MIRClass.OWNED_LEAF:
             self.owned_bindings[stmt.var] = False
             self.iteration_references.add(stmt.var)
         self.scoped(stmt.body, loops + 1)
@@ -3170,7 +3196,7 @@ class _Builder:
         self.temp_holders: dict[int, MIRSlotId] = {}
         self.backing_places: IdentityMap[th.THIRExpr, MIRPlace] = IdentityMap()
         self.borrow_operations: IdentityMap[th.THIRStmt, tuple[MIRPoint, ...]] = IdentityMap()
-        self.layouts = coverage.layouts
+        self.members = coverage.members
         self.element_places = coverage.element_places
         self.element_bindings = coverage.element_bindings
         self.span_holders = coverage.span_holders
@@ -3221,33 +3247,19 @@ class _Builder:
              storage_duration: MIRStorageDuration | MIRRegionId | None = None,
              record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT,
              passing: ParamPassing | None = None,
-             layout: MIRContainerLayout | None = None) -> MIRSlotId:
+             members: tuple[MIRShape, ...] = ()) -> MIRSlotId:
         sid = MIRSlotId(self.body, len(self.slots))
-        self.slots.append(MIRSlot(sid, container.type if container else reference.type if reference else (
+        typ = container.type if container else reference.type if reference else (
             unwrap_ref_type(unwrap_readonly(unwrap_ref_type(typ)))
-            if optional_layout is not None or union_layout is not None or tuple_layout is not None else typ), kind, name,
-                                  form=(th.Form.STORAGE if storage or tuple_layout is not None and tuple_layout.owns_records
-                                        else th.Form.BORROW if reference or alias_source or container else th.Form.VALUE),
-                                  value_kind=(MIRValueKind.NATIVE_ITERATOR if iterator else
-                                              MIRValueKind.BORROWED_CONTAINER if container else
-                                              MIRValueKind.OWNED if storage else
-                                              MIRValueKind.BORROWED if reference else
-                                              MIRValueKind.TUPLE if tuple_layout is not None else
-                                              MIRValueKind.UNION if union_layout is not None else
-                                              MIRValueKind.PAYLOAD_ALIAS if alias_source is not None else
-                                              MIRValueKind.OPTIONAL if optional_layout is not None else MIRValueKind.SCALAR),
-                                  readonly=(reference.readonly if reference else
-                                            not global_binding.writable if global_binding is not None else
-                                            container.readonly if container else alias_source is not None),
-                                  container_layout=(with_access(self.layouts[container.type], container.readonly)
-                                                    if container else layout),
-                                  tuple_layout=self.layout(tuple_layout) if tuple_layout is not None else None,
-                                  optional_layout=self.optional_layout(optional_layout)
-                                  if optional_layout is not None else None,
-                                  union_layout=MIRUnionLayout(tuple(
-                                      None if member is None else self.payload(member)
-                                      for member in union_layout.elements)) if union_layout is not None else None,
-                                  alias_source=alias_source,
+            if optional_layout is not None or union_layout is not None or tuple_layout is not None else typ)
+        readonly = (reference.readonly if reference else not global_binding.writable if global_binding is not None
+                    else container.readonly if container else alias_source is not None)
+        shape = from_thir(typ, readonly, storage=storage, reference=reference, tuple_layout=tuple_layout,
+                          optional_layout=optional_layout, union_layout=union_layout, alias=alias_source is not None,
+                          members=with_access(self.members[container.type], container.readonly)
+                          if container else members,
+                          borrowed_container=container is not None, iterator=iterator)
+        self.slots.append(MIRSlot(sid, shape, kind, name, alias_source=alias_source,
                                   global_id=MIRGlobalId(global_binding.module, global_binding.name)
                                   if global_binding is not None else None,
                                   storage_duration=storage_duration,
@@ -3257,12 +3269,6 @@ class _Builder:
                                              else self.region) if kind in (MIRSlotKind.LOCAL, MIRSlotKind.TEMPORARY)
                                   else None))
         return sid
-
-    @staticmethod
-    def optional_layout(layout: th.THIROptionalLayout) -> MIROptionalLayout:
-        member = layout.payload
-        return (MIROptionalLayout(member.type, MIRValueKind.BORROWED, member.readonly)
-                if isinstance(member, th.THIRBorrowedRecord) else MIROptionalLayout(member))
 
     def optional_value(self, expr: th.THIRExpr | None, layout: th.THIROptionalLayout) -> MIRRvalue:
         if expr is None or isinstance(expr, th.THIRLiteral) and expr.value is None:
@@ -3278,19 +3284,6 @@ class _Builder:
         if isinstance(layout.payload, th.THIRBorrowedRecord):
             return MIROptionalConstruct(MIRPlace(self.bindings[expr.name]))
         return MIROptionalConstruct(MIRPlace(self.expr(expr)))
-
-    @staticmethod
-    def payload(member: TpyType | th.THIRBorrowedRecord | th.THIROwnedRecord) -> MIRTupleElement:
-        match member:
-            case th.THIRBorrowedRecord():
-                return MIRTupleElement(member.type, MIRValueKind.BORROWED, member.readonly)
-            case th.THIROwnedRecord():
-                return MIRTupleElement(member.type, MIRValueKind.OWNED, member.readonly)
-            case _:
-                return MIRTupleElement(member)
-
-    def layout(self, layout: th.THIRTupleLayout) -> MIRTupleLayout:
-        return MIRTupleLayout(tuple(self.payload(member) for member in layout.elements))
 
     def union_value(self, expr: th.THIRExpr, layout: th.THIRUnionLayout,
                     literal: th.THIRUnionLiteral | None = None) -> MIRRvalue:
@@ -3339,7 +3332,7 @@ class _Builder:
     def payload_write(self, dest: MIRSlotId, mode: MIRPayloadWriteMode) -> MIRPayloadWrite | None:
         if mode is MIRPayloadWriteMode.INITIALIZE and self.region.index != 0:
             mode = MIRPayloadWriteMode.INITIALIZE_REGION
-        return MIRPayloadWrite(mode) if scalar_wrapper(self.slots[dest.index]) else None
+        return MIRPayloadWrite(mode) if self.slots[dest.index].shape.scalar_wrapper else None
 
     def place(self, expr: th.THIRExpr) -> MIRPlace:
         if isinstance(expr, (th.THIRName, th.THIRModuleVar)) and expr.global_binding is not None:
@@ -3370,17 +3363,17 @@ class _Builder:
                 assert isinstance(expr, th.THIRFieldAccess) and expr.field_identity is not None
                 member = expr.field_identity
                 base = self.place(expr.receiver)
-                # An element place is storage itself, like an inline member.
-                inline = isinstance(expr.receiver, th.THIRFieldAccess) or (
-                    th.record_rvalue_storage(expr.receiver) is not None) or (
-                    expr.receiver in self.element_places) or (
-                    isinstance(expr.receiver, th.THIRSubscript) and isinstance(
-                        self.tuple_exprs[expr.receiver.receiver].elements[expr.receiver.tuple_index], th.THIROwnedRecord))
-                deref = () if inline else (MIRDeref(),)
+                deref = self.storage_steps(base)
                 # A narrowed Optional field read names its inline payload.
                 payload = (MIROptionalPayload(),) if expr.narrowed_deref else ()
                 return MIRPlace(base.root, base.projections + deref + (
                     MIRField(MIRFieldId(member.owner, member.name), member.type),) + payload)
+
+    def storage_steps(self, place: MIRPlace) -> tuple[MIRDeref, ...]:
+        """The dereference from a place to the storage its value points at:
+        none for storage held in place."""
+        shape = place_shape(place, _Slots(self.slots), {t: d.layout for t, d in self.records.items()})
+        return (MIRDeref(),) if shape.is_pointer else ()
 
     def container_root(self, expr: th.THIRExpr) -> MIRPlace:
         """The place of a container: a binding's slot (owned storage, a
@@ -3399,9 +3392,9 @@ class _Builder:
         if isinstance(expr, th.THIRName):
             return self.bindings[expr.name]
         place = self.element_places[expr]
-        element = place.layout.element
+        element = place.element
         container = th.THIRNativeContainer(place.type, th.THIRBorrowedRecord(element.type, element.readonly)
-                                           if element.kind is MIRValueKind.BORROWED else element.type, place.readonly)
+                                           if element.cls is MIRClass.RECORD else element.type, place.readonly)
         if _user_call(expr):
             # The container a user call returns by reference: a holder of the call's result.
             self.initialize_temporaries(expr)
@@ -3421,7 +3414,7 @@ class _Builder:
         """Evaluate a subscript's index or key, then name the container's
         element region: any element, never one by identity."""
         place = self.element_places[expr]
-        if place.layout.value is None or storage_leaf(place.layout.element.type):
+        if not place.keyed or place.element.cls is MIRClass.LEAF:
             self.expr(expr.index)
         else:
             # An owned-leaf key is read by the lookup (its hash and its
@@ -3440,7 +3433,7 @@ class _Builder:
     def element_raises(self, expr: th.THIRSubscript) -> bool:
         """Whether an element access may raise: an index not proven in
         range, or any key (a missing key raises)."""
-        return not expr.bounds_safe or self.element_places[expr].layout.value is not None
+        return not expr.bounds_safe or self.element_places[expr].keyed
 
     def span_rvalue(self, expr: th.THIRExpr, holder: MIRSlotId) -> MIRRvalue:
         """The value a Span holder takes: an alias of a Span of its own
@@ -3464,7 +3457,7 @@ class _Builder:
     def container_view_slot(self, typ: NominalType, readonly: bool, kind: MIRSlotKind = MIRSlotKind.TEMPORARY,
                             name: str | None = None, passing: ParamPassing | None = None) -> MIRSlotId:
         fact = _container_view_fact(typ, readonly)
-        return self.slot(typ, kind, name, fact, layout=with_access(self.layouts[typ], fact.readonly), passing=passing)
+        return self.slot(typ, kind, name, fact, members=with_access(self.members[typ], fact.readonly), passing=passing)
 
     def end(self, term: MIRTerminator) -> None:
         assert self.current is not None and self.current.terminator is None
@@ -3558,7 +3551,7 @@ class _Builder:
             # Owned container storage moved into the temporary the callee takes over.
             typ = binding.type
             temporary = self.slot(typ, storage=True, storage_duration=self.region,
-                                  layout=with_access(self.layouts[typ], False))
+                                  members=self.members[typ])
             self.write(temporary, MIRMove(self.bindings[arg.value.name]), arg.loc,
                        MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
             return temporary
@@ -3686,7 +3679,7 @@ class _Builder:
             return self.place(expr)
         # A name's holder, or a narrowed Optional name's payload, points at it.
         place = self.place(expr)
-        return MIRPlace(place.root, (*place.projections, MIRDeref()))
+        return MIRPlace(place.root, (*place.projections, *self.storage_steps(place)))
 
     def record_holder(self, expr: th.THIRExpr) -> MIRSlotId:
         """A holder of a record source for an operation that reads one (a
@@ -3762,7 +3755,8 @@ class _Builder:
         # payload copies; the member copy may raise whatever its source.
         raises = False
         for init in initializers:
-            payload = optional_record_field(init.field.type)
+            payload = (unwrap_readonly(init.field.type).inner
+                       if value_class(init.field.type) is MIRClass.OPTIONAL else None)
             if payload is not None:
                 raises = raises or _copy_may_raise(self.records, payload)
                 if not isinstance(init.source, str):
@@ -3819,7 +3813,7 @@ class _Builder:
         """A view holder of `expr`'s value: a view binding itself, else a new
         holder typed by the family's view, written from `view_rvalue`."""
         if (isinstance(expr, th.THIRName) and expr.global_binding is None and expr.name in self.bindings
-                and view_leaf(self.slots[self.bindings[expr.name].index].type)):
+                and self.slots[self.bindings[expr.name].index].shape.cls is MIRClass.VIEW):
             return self.bindings[expr.name]
         typ = self.types[expr]
         view = typ if view_leaf(typ) else view_family_of(typ).view_type
@@ -3866,7 +3860,8 @@ class _Builder:
         else what the holder of the lent value reaches."""
         if isinstance(expr, (th.THIRName, th.THIRModuleVar)) and owned_leaf(self.types[expr]):
             return self.owned_place(expr)
-        return MIRPlace(self.operand(expr), (MIRDeref(),))
+        holder = MIRPlace(self.operand(expr))
+        return MIRPlace(holder.root, self.storage_steps(holder))
 
     def operation(self, expr: th.THIRBinOp | th.THIRUnaryArith) -> MIROp:
         # A primitive operation's contract admits raising.
@@ -3901,9 +3896,8 @@ class _Builder:
         if expr.global_binding is not None:
             fact = expr.global_binding
             return MIRPlace(self.globals[MIRGlobalId(fact.module, fact.name)], (MIRDeref(),))
-        sid = self.bindings[expr.name]
-        return (MIRPlace(sid, (MIRDeref(),)) if self.slots[sid.index].value_kind is MIRValueKind.BORROWED
-                else MIRPlace(sid))
+        place = MIRPlace(self.bindings[expr.name])
+        return MIRPlace(place.root, self.storage_steps(place))
 
     def owned_holder(self, typ: TpyType, value: MIRRvalue, loc: SourceLocation | None) -> MIRSlotId:
         holder = self.slot(typ, reference=th.THIRBorrowedRecord(typ, True))
@@ -4002,7 +3996,7 @@ class _Builder:
         # else is copied or built into the result.
         if isinstance(expr, th.THIRName) and expr.global_binding is None:
             sid = self.bindings[expr.name]
-            if self.slots[sid.index].value_kind is MIRValueKind.OWNED:
+            if self.slots[sid.index].shape.is_storage:
                 return sid
         dest = self.owned_storage(self.types[expr], MIRSlotKind.TEMPORARY)
         self.owned_write(dest, expr, expr.loc)
@@ -4065,7 +4059,7 @@ class _Builder:
                     typ = stmt.native_container.type
                     dest = self.slot(typ, MIRSlotKind.LOCAL, stmt.name, storage=True,
                                      storage_duration=self.region if self.region.index else MIRStorageDuration.BODY,
-                                     layout=with_access(self.layouts[typ], False))
+                                     members=self.members[typ])
                     with self.full_expression(stmt.init):
                         self.write(dest, self.container_construct(stmt.init, typ), loc, self.owned_initialization(dest))
                     self.bindings[stmt.name] = dest
@@ -4096,13 +4090,14 @@ class _Builder:
                 case th.THIRSetItem():
                     self.element_write(stmt)
                 case th.THIRAssign() if (isinstance(stmt.target, th.THIRName) and stmt.target.name in self.bindings
-                                         and owned_container(self.slots[self.bindings[stmt.target.name].index])):
+                                         and self.slots[self.bindings[stmt.target.name].index].shape.container_storage):
                     dest = self.bindings[stmt.target.name]
                     with self.full_expression(stmt.value):
                         self.write(dest, self.container_construct(stmt.value, self.slots[dest.index].type), loc,
                                    MIRRecordWrite(MIRRecordWriteMode.IN_PLACE))
                 case th.THIRAssign() if (isinstance(stmt.target, th.THIRName) and stmt.target.name in self.bindings
-                                         and container_view_holder(self.slots[self.bindings[stmt.target.name].index])):
+                                         and self.slots[self.bindings[stmt.target.name].index].shape
+                                         .container_view_holder):
                     holder = self.bindings[stmt.target.name]
                     with self.full_expression(stmt.value):
                         self.write(holder, self.span_rvalue(stmt.value, holder), loc)
@@ -4235,7 +4230,8 @@ class _Builder:
                     self.bindings[stmt.name] = dest
                 case th.THIRAssign() if (isinstance(stmt.target, th.THIRName) and stmt.target.global_binding is None
                                          and stmt.target.name in self.bindings
-                                         and view_leaf(self.slots[self.bindings[stmt.target.name].index].type)):
+                                         and self.slots[self.bindings[stmt.target.name].index].shape.cls
+                                         is MIRClass.VIEW):
                     with self.full_expression(stmt.value):
                         self.write(self.bindings[stmt.target.name], self.view_rvalue(stmt.value), loc)
                 case th.THIRVarDecl():
@@ -4301,7 +4297,7 @@ class _Builder:
                 case th.THIRReturn() if stmt.value is not None and self.owned_container_result is not None:
                     typ = self.owned_container_result
                     self.owned_return(stmt.value, loc, self.bindings, lambda duration: self.slot(
-                        typ, storage=True, layout=with_access(self.layouts[typ], False), storage_duration=duration),
+                        typ, storage=True, members=self.members[typ], storage_duration=duration),
                         lambda value: self.container_construct(value, typ))
                 case th.THIRReturn() if stmt.value is not None and self.owned_record_result is not None:
                     typ = self.owned_record_result
@@ -4398,17 +4394,16 @@ class _Builder:
         values alternating), each in its member's form -- an inert leaf by
         value, an owned leaf through a holder its slot copies, a record
         built into a temporary it moves from or copied through a holder."""
-        layout = self.layouts[typ]
-        members = (layout.element,) if layout.value is None else (layout.element, layout.value)
-        operands = (expr.elements if layout.value is None
+        members = self.members[typ]
+        operands = (expr.elements if len(members) == 1
                     else tuple(e for pair in zip(expr.elements, expr.values) for e in pair))
         fields = []
         for index, operand in enumerate(operands):
             member = members[index % len(members)]
-            match member.kind:
-                case MIRValueKind.SCALAR:
+            match member.cls:
+                case MIRClass.LEAF:
                     fields.append(self.expr(operand))
-                case MIRValueKind.OWNED:
+                case MIRClass.OWNED_LEAF:
                     fields.append(self.operand(operand))
                 case _:
                     fields.append(self.record_holder(operand.value) if isinstance(operand, th.THIRCopy)
@@ -4419,7 +4414,7 @@ class _Builder:
         """What an Optional record field takes (`_Coverage.optional_field_write`):
         empty, a copy of another Optional's payload, or a record built into
         storage of the statement and moved into the payload."""
-        payload = optional_record_field(target.field_identity.type)
+        payload = unwrap_readonly(target.field_identity.type).inner
         if isinstance(expr, th.THIRLiteral) and expr.value is None:
             return MIROptionalConstruct()
         if isinstance(expr, (th.THIRFieldAccess, th.THIRFormConvert)):
@@ -4454,11 +4449,11 @@ class _Builder:
                     summary, arguments, not summary.normal_return_only, absent=self.absent(arguments)), stmt.loc))
             return
         with self.full_expression(stmt.value):
-            member = self.element_places[target].layout.subscript
-            match member.kind:
-                case MIRValueKind.SCALAR:
+            member = self.element_places[target].subscript
+            match member.cls:
+                case MIRClass.LEAF:
                     value = MIRRead(MIRPlace(self.expr(stmt.value)))
-                case MIRValueKind.OWNED:
+                case MIRClass.OWNED_LEAF:
                     value = self.owned_rvalue(stmt.value)
                 case _:
                     value = self.record_value(stmt.value)
@@ -4579,11 +4574,11 @@ class _Builder:
         self.loops.append((advance.id, after.id))
         with self.scope(stmt, "loop"):
             if not stmt.hoist_loop_var:
-                member = self.slots[iterator.index].container_layout.element
+                member = self.slots[iterator.index].shape.element
                 reference = (fact.element if isinstance(fact.element, th.THIRBorrowedRecord)
                              # An owned-leaf element is held through a view of it or a readonly borrow.
                              else _view_holder_fact(stmt.elem_type) if view_leaf(stmt.elem_type)
-                             else th.THIRBorrowedRecord(member.type, True) if member.kind is MIRValueKind.OWNED
+                             else th.THIRBorrowedRecord(member.type, True) if member.cls is MIRClass.OWNED_LEAF
                              else None)
                 self.bindings[stmt.var] = self.slot(reference.type if reference else stmt.elem_type,
                                                     MIRSlotKind.LOCAL, stmt.var, reference)
@@ -4673,7 +4668,7 @@ class _Builder:
                 typ = p.native_container.type
                 self.bindings[p.name] = self.slot(typ, MIRSlotKind.PARAMETER, p.name, storage=True,
                                                   storage_duration=MIRStorageDuration.BODY, passing=p.passing,
-                                                  layout=with_access(self.layouts[typ], False))
+                                                  members=self.members[typ])
                 continue
             if (record := owned_record_parameter(p)) is not None:
                 # The caller materialized the record before entry; the body
@@ -4725,12 +4720,13 @@ class _Builder:
             blocks.append(MIRBlock(b.id, tuple(b.statements), b.terminator, b.region))
         kind = MIRBodyKind.CONSTRUCTOR if initialization is not None else function_body_kind(self.fn)
         slots = {s.id: s for s in self.slots}
+        records = tuple(d.layout for d in self.records.values())
         fn = MIRFunction(self.body, self.fn.return_type, self.reachable_slots(blocks, receiver_init), tuple(blocks),
-                         self.blocks[0].id, tuple(d.layout for d in self.records.values()), receiver_init, kind,
+                         self.blocks[0].id, records, receiver_init, kind,
                          tuple(r for r in self.regions if r.entry in reachable),
                          tuple({s.callee.identity: s for s in self.calls.values()}.values()),
                          self.borrowed_result,
-                         body_may_raise(blocks, slots, receiver_init))
+                         body_may_raise(blocks, slots, {r.type: r for r in records}, receiver_init))
         validate_function(fn)
         return fn
 
@@ -4860,7 +4856,7 @@ def lower_constructor_storage(ctor: th.THIRConstructor, body: MIRBodyId, *,
             if isinstance(init.source, MIRComposedConstruct):
                 pending.extend(init.source.initializers)
             elif native_container_type(init.field.type):
-                coverage.container_layout(ctor, init.field.type)
+                coverage.container_members(ctor, init.field.type)
         return _build_storage(body, fn, coverage, initialization)
     except MIRUnsupported as failure:
         return MIRNotCovered(body, type(failure.node).__name__, failure.reason,

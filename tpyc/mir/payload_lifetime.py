@@ -4,15 +4,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from .coverage import scalar_wrapper
 from .dependencies import MIRDependencies, _dependencies
 from .dump import _location, _place
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIROptionalLayout,
+    MIRAssign, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy,
     MIROptionalPayload, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionPayload, place_layout,
+    MIRUnionConstruct, MIRUnionCopy, MIRUnionPayload,
 )
+from ..thir.scalar_leaves import MIRClass
+from .shapes import place_shape
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind
 from .validate import MIRPrepared, MIRPresenceError, MIRValidationError, _prepare_function, _validated_function
 
@@ -32,6 +33,7 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
     if presence.function is not fn:
         raise MIRValidationError("selection facts belong to a different MIR function")
     slots = {s.id: s for s in fn.slots}
+    records = fn.record_layouts
     ends: dict[MIRPoint, frozenset[MIRPlace]] = {}
     for block in fn.blocks:
         for index, stmt in enumerate(block.statements):
@@ -41,7 +43,7 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
             if not isinstance(value, (MIROptionalConstruct, MIROptionalCopy, MIRUnionConstruct, MIRUnionCopy)):
                 continue
             wrapper = stmt.target
-            if not scalar_wrapper(slots[wrapper.root]):
+            if not slots[wrapper.root].shape.scalar_wrapper:
                 continue
             fact = stmt.storage_write
             if not isinstance(fact, MIRPayloadWrite):
@@ -61,15 +63,15 @@ def _payload_ends(prepared: MIRPrepared) -> MIRPayloadEnds | MIRNotCovered:
                     if source == wrapper:
                         continue
                     new = incoming.get(source, presence.domains[source])
-            layout = place_layout(wrapper, slots)
+            layout = place_shape(wrapper, slots, records)
             payloads: set[MIRPlace] = set()
             for alternative in old:
                 if not new - {alternative}:
                     continue
-                if isinstance(layout, MIROptionalLayout):
+                if layout.cls is MIRClass.OPTIONAL:
                     if alternative == 1:
                         payloads.add(MIRPlace(wrapper.root, (*wrapper.projections, MIROptionalPayload())))
-                elif layout.elements[alternative] is not None:
+                elif layout.alternatives[alternative] is not None:
                     payloads.add(MIRPlace(wrapper.root, (*wrapper.projections, MIRUnionPayload(alternative))))
             if payloads:
                 ends[point] = frozenset(payloads)

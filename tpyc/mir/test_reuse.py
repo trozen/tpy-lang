@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import pytest
 
-from ..thir.nodes import Form
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
@@ -15,10 +14,10 @@ from .nodes import (
     MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto,
     MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordLayout, MIRRecordWrite,
     MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRValueKind,
+    MIRStorageDuration,
 )
 from .storage import MIRStorageEvents, analyze_storage, dump_storage
-from .testutil import execute
+from .testutil import borrowed_shape, execute, leaf_shape, owned_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 
@@ -128,7 +127,7 @@ def test_reuse_in_methods_and_constructor_tails(optional: bool, position: str) -
 
 def test_readonly_holder_can_borrow_reused_mutable_backing() -> None:
     fn = backing_function()
-    fn = replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], readonly=True), *fn.slots[3:]))
+    fn = replace(fn, slots=(*fn.slots[:2], reslot(fn.slots[2], readonly=True), *fn.slots[3:]))
     validate_function(fn)
     assert execute(fn, 7, False) == 7
 
@@ -139,11 +138,11 @@ def backing_function() -> MIRFunction:
     a, loop, end = (MIRBlockId(body, i) for i in range(3))
     cell = NominalType("Cell", _module_qname="storage.Cell")
     field = MIRField(MIRFieldId(cell, "value"), INT32)
-    slots = (MIRSlot(n, INT32, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-             MIRSlot(store, cell, MIRSlotKind.TEMPORARY, form=Form.STORAGE,
-                     value_kind=MIRValueKind.OWNED, storage_duration=MIRStorageDuration.BODY),
-             MIRSlot(holder, cell, MIRSlotKind.LOCAL, form=Form.BORROW, value_kind=MIRValueKind.BORROWED),
-             MIRSlot(result, INT32, MIRSlotKind.LOCAL), MIRSlot(flag, BOOL, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
+    slots = (MIRSlot(n, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+             MIRSlot(store, owned_shape(cell), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY),
+             MIRSlot(holder, borrowed_shape(cell), MIRSlotKind.LOCAL),
+             MIRSlot(result, leaf_shape(INT32), MIRSlotKind.LOCAL),
+             MIRSlot(flag, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE))
     return MIRFunction(body, INT32, slots, (
         MIRBlock(a, (), MIRGoto(loop)),
         MIRBlock(loop, (
