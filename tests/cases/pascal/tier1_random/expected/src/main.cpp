@@ -19,8 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
     i = 5;
     std::cout << ::pascal_rt::runtime::builtins::succ_int(i) << "\n" << ::tpy::check_signals;

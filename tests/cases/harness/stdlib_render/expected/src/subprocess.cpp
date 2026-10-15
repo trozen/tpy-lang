@@ -298,7 +298,6 @@ void __tpy_init() {
     ::tpystd::io::__tpy_init();
     ::tpystd::os::__tpy_init();
     ::tpystd::signal::__tpy_init();
-    ::tpystd::_interrupt::__tpy_init();
 }
 
 } // namespace tpystd::subprocess

@@ -71,7 +71,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpyapp::helpers::__tpy_init();
     ::tpyapp::main::main();
 }
 

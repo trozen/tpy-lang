@@ -14,11 +14,6 @@ __gen_countdown countdown(int32_t n) {
 
 // import cyc_b
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::cyc_b::__tpy_init();
 }
 
 } // namespace tpyapp::cyc_a

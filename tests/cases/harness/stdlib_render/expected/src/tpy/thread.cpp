@@ -24,10 +24,6 @@ namespace tpystd::tpy::thread {
 // from tpy.extern import native
 // from _bindings import posix_signal
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::tpy::thread

@@ -17,11 +17,6 @@ int32_t Boosted::boost() const {
 }
 // from pkg import use_pkg
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::helper

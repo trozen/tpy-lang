@@ -32,9 +32,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::rc::__tpy_init();
-    ::tpystd::tplib::box::__tpy_init();
     ::tpyapp::main::main();
 }
 

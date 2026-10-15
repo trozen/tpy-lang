@@ -49,9 +49,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tpy::thread::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::channel::__tpy_init();
     ::tpyapp::main::main();
 }
 

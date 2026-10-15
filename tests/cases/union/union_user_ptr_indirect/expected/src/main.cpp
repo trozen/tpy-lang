@@ -49,7 +49,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::mywrap::__tpy_init();
     ::tpyapp::main::main();
 }
 

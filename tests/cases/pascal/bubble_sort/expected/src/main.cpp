@@ -28,8 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
     ::pascal_rt::runtime::builtins::__tpy_init();
     static std::array<int32_t, 8> __global_slot_1 = std::array<int32_t, 8>();
     data = &__global_slot_1;

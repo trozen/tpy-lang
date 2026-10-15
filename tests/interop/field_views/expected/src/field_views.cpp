@@ -9,10 +9,6 @@ Cell& first_of(Pack& p) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::field_views

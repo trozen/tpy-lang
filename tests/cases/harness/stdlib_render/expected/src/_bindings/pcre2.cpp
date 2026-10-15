@@ -35,10 +35,6 @@ namespace tpystd::_bindings::pcre2 {
 //
 // from tpy.extern import native
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::_bindings::pcre2

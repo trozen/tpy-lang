@@ -79,7 +79,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     std::cout << "None" << "\n" << ::tpy::check_signals;
     std::cout << 42 << "\n" << ::tpy::check_signals;
     std::cout << 7 << "\n" << ::tpy::check_signals;

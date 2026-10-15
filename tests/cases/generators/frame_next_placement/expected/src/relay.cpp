@@ -14,11 +14,6 @@ __gen_stream stream(int32_t n) {
 
 // from deep import doubles
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::deep::__tpy_init();
 }
 
 } // namespace tpyapp::relay

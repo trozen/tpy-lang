@@ -11,10 +11,6 @@ int32_t dial(std::string_view host, std::optional<double> timeout) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::dialer

@@ -22,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::agg::__tpy_init();
     ::tpyapp::main::main();
 }
 

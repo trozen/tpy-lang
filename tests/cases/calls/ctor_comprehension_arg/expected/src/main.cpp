@@ -548,7 +548,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpyapp::main::main();
     std::vector<::tpy::Bytes> __tmp_1 = ({
         std::vector<::tpy::Bytes> __result;

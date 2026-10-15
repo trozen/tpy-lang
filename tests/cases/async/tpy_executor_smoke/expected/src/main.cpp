@@ -202,7 +202,6 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     ::tpyapp::main::main();
 }
 

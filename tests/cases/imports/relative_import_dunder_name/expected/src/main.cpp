@@ -12,8 +12,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::consumer::__tpy_init();
     std::cout << ::tpyapp::pkg::consumer::compute() << "\n" << ::tpy::check_signals;
 }
 

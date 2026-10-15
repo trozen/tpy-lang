@@ -44,10 +44,6 @@ int32_t read_wrapper(const std::vector<Point>& items) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::helpers

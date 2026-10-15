@@ -1144,16 +1144,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpyapp::m::__tpy_init();
-    ::tpyapp::ma::__tpy_init();
-    ::tpyapp::mb::__tpy_init();
-    ::tpyapp::mx::__tpy_init();
-    ::tpyapp::pa::__tpy_init();
-    ::tpyapp::pc::__tpy_init();
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::sub::__tpy_init();
-    ::tpyapp::pkg::sub::mod::__tpy_init();
-    ::tpyapp::shadow_builtin::__tpy_init();
     std::cout << "module:" << " " << ::tpyapp::m::Outer::Inner(::tpy::BigInt(11)).v << " " << ::tpy::EnumUtil<::tpyapp::m::Color>::name(::tpyapp::m::Color::RED) << " " << ::tpyapp::m::Outer::LIMIT << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }

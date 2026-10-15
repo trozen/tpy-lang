@@ -14,11 +14,6 @@ int32_t bb() {
 
 // from c import cc
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::c::__tpy_init();
 }
 
 } // namespace tpyapp::b

@@ -123,7 +123,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::tpy::channel::__tpy_init();
     ::tpyapp::main::main();
 }
 

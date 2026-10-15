@@ -8,13 +8,6 @@ namespace tpyapp::achan {
 // from tpy.sync import Mutex, Condvar
 // from tplib.arc import Arc
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::tpy::sync::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::arc::__tpy_init();
 }
 
 } // namespace tpyapp::achan

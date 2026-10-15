@@ -20,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::bases::__tpy_init();
     ::tpyapp::main::main();
 }
 

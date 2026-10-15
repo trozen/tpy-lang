@@ -74,7 +74,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpyapp::main::from_list();
     ::tpyapp::main::from_array();
     ::tpyapp::main::from_span();

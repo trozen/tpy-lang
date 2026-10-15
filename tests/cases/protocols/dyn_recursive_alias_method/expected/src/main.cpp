@@ -27,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::treelib::__tpy_init();
     ::tpyapp::main::main();
 }
 

@@ -20,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::a::__tpy_init();
     std::cout << ::tpyapp::b::bee() << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::a::aye() << "\n" << ::tpy::check_signals;
 }

@@ -102,10 +102,6 @@ Color blue() {
 // # The classes and enums main reaches through `m.` / `mm.` / `MO.` paths.
 // from enum import Enum
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::m

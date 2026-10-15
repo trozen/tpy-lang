@@ -17,11 +17,6 @@ std::string Counter::hello() const {
 }
 // from b import Greeter
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::b::__tpy_init();
 }
 
 } // namespace tpyapp::a

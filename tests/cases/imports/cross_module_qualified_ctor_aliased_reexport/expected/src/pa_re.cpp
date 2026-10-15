@@ -6,11 +6,6 @@ namespace tpyapp::pa_re {
 
 // from pc_def import Box  # re-export
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pc_def::__tpy_init();
 }
 
 } // namespace tpyapp::pa_re

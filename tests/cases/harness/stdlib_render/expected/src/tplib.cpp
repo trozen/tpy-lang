@@ -18,14 +18,6 @@ namespace tpystd::tplib {
 // from tplib.array_list import ArrayList
 // from tplib.fix_str import FixStr
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::tplib::box::__tpy_init();
-    ::tpystd::tplib::rc::__tpy_init();
-    ::tpystd::tplib::array_list::__tpy_init();
-    ::tpystd::tplib::fix_str::__tpy_init();
 }
 
 } // namespace tpystd::tplib

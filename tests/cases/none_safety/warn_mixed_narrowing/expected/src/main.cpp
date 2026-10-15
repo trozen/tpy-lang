@@ -13,10 +13,6 @@ int32_t f(std::optional<int32_t> a, std::optional<int32_t> b) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

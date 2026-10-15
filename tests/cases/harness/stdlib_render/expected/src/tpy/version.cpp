@@ -21,10 +21,6 @@ const std::tuple<int32_t, int32_t, int32_t, std::string_view, int32_t> version_i
 //
 // from ._version import version as _version, version_info as _version_info
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::tpy::version

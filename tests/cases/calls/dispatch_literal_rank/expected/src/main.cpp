@@ -393,7 +393,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::math::__tpy_init();
     static V __global_slot_1 = V();
     v = &__global_slot_1;
     std::cout << "module:" << " " << v->mm(::tpy::BigInt(3)) << " " << ::tpyapp::main::num__int(::tpy::BigInt(3)) << " " << v->narrow(static_cast<int16_t>(3)) << "\n" << ::tpy::check_signals;

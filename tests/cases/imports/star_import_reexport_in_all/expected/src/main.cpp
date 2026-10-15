@@ -18,7 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::outer::__tpy_init();
     ::tpyapp::inner::shared_helper();
 }
 

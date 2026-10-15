@@ -10,12 +10,6 @@ namespace tpyapp::pkg {
 // from pkg.a import A, with_b
 // from pkg.b import B
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::a::__tpy_init();
-    ::tpyapp::pkg::b::__tpy_init();
 }
 
 } // namespace tpyapp::pkg

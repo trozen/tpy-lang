@@ -12,10 +12,6 @@ __gen_count count(::tpy::BigInt start, ::tpy::BigInt step) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::itertools

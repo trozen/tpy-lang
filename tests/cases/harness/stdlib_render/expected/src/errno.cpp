@@ -16,10 +16,6 @@ namespace tpystd::errno_mod {
 //
 // from tpy.extern import native_global
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::errno_mod

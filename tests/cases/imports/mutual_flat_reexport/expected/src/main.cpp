@@ -18,7 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::b::__tpy_init();
     static ::tpyapp::c::Cls __global_slot_1 = ::tpyapp::c::Cls(42);
     x = &__global_slot_1;
     std::cout << x->val << "\n" << ::tpy::check_signals;

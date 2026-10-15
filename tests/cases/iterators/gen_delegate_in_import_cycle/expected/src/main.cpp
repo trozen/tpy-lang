@@ -47,7 +47,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::moda::__tpy_init();
     ::tpyapp::main::main();
 }
 

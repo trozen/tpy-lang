@@ -8,10 +8,6 @@ const ::tpy::BigInt MIN_SIZE = ::tpy::BigInt(-7);
 const ::tpy::BigInt BIG = ::tpy::BigInt::from_str("123456789012345678901234567890");
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::constants

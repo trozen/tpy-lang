@@ -261,7 +261,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::io::__tpy_init();
-    ::tpystd::csv::__tpy_init();
     ::tpyapp::main::main();
 }
 

@@ -38,11 +38,6 @@ int32_t Holder::total() const {
 }
 // import rb
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::rb::__tpy_init();
 }
 
 } // namespace tpyapp::ra

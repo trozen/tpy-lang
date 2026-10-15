@@ -25,7 +25,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::lib_enum::__tpy_init();
     ::tpyapp::main::main();
 }
 

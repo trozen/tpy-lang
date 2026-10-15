@@ -33,8 +33,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::_bindings::__tpy_init();
-    ::tpyapp::_bindings::pcre2::__tpy_init();
     ::tpyapp::main::main();
 }
 

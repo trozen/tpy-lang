@@ -34,10 +34,6 @@ int64_t must_be_even(int64_t n) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::userexc

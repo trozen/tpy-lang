@@ -24,13 +24,6 @@ namespace tpystd::tpy::channel {
 // )
 // from tplib.rc import Rc
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::coro::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::rc::__tpy_init();
 }
 
 } // namespace tpystd::tpy::channel

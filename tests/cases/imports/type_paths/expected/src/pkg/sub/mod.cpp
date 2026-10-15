@@ -59,10 +59,6 @@ Outer::Kind kind_b() {
 // # Reached through the three-segment module head `pkg.sub.mod.`.
 // from enum import Enum
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::pkg::sub::mod

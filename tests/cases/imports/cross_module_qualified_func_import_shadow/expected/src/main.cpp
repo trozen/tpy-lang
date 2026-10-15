@@ -23,8 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::fa::__tpy_init();
-    ::tpyapp::fb::__tpy_init();
     ::tpyapp::main::main();
 }
 

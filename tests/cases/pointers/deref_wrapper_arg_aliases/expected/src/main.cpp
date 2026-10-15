@@ -337,8 +337,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::box::__tpy_init();
     ::tpyapp::main::main();
     static R __global_slot_1 = R();
     g = &__global_slot_1;

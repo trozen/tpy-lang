@@ -25,11 +25,6 @@ int32_t make_pair_sum(int32_t x, int32_t y) {
 
 // from a import Pair
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::a::__tpy_init();
 }
 
 } // namespace tpyapp::b

@@ -41,12 +41,6 @@ int32_t use() {
 // # bb's top-level import of it runs.
 // from bb import pick_bb  # noqa: E402  # tpyc: warning(/Import statement should be at the top/)
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::item::__tpy_init();
-    ::tpyapp::bb::__tpy_init();
 }
 
 } // namespace tpyapp::ba

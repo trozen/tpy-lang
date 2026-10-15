@@ -11,10 +11,6 @@ int32_t use_pkg() {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::pkg::user

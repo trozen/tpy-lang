@@ -8,10 +8,6 @@ namespace tpyapp::leaf {
 //
 // xs: list[int32] = native_global("tpy_test_xs")
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::leaf

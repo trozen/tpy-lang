@@ -10,11 +10,6 @@ namespace tpystd::tpy {
 // from .._bootstrap._extern import native, cpp_template, builtin_type, value_ptr_coercion
 // from ..mem import UninitStorage as _UninitStorage
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::typing::__tpy_init();
 }
 
 } // namespace tpystd::tpy

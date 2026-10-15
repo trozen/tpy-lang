@@ -12,10 +12,6 @@ __gen_doubles doubles(int32_t n) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::deep

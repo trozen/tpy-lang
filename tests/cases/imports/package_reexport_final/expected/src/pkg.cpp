@@ -6,11 +6,6 @@ namespace tpyapp::pkg {
 
 // from .constants import VERSION, LIMIT
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::constants::__tpy_init();
 }
 
 } // namespace tpyapp::pkg

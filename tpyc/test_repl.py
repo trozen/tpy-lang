@@ -13,7 +13,7 @@ from .compilation_context import activate_compiler
 from .codegen_cpp.context import module_to_include_path
 from .compiler import Compiler
 from .repl import REPLSession, _load_history, _write_history
-from .repl_backends import BackendResult, REPLBackend, ReplBuildDeps
+from .repl_backends import BackendResult, ClangReplBackend, REPLBackend, ReplBuildDeps
 
 
 def _lib_dirs():
@@ -292,3 +292,40 @@ def test_load_history_reads_editline_file_under_gnu_readline(monkeypatch, tmp_pa
 
 def test_write_history_swallows_unwritable_path(tmp_path):
     _write_history(tmp_path / "missing-dir" / ".tpyc_history")
+
+
+def test_clang_repl_scans_skip_native_module_init_decls(tmp_path):
+    # A native module's init is declared in its own namespace ahead of the
+    # module's; both scans must read the module's namespace, not that one.
+    cpp = "\n".join([
+        '#include "repl.hpp"',
+        "",
+        "namespace tpynative::n { void __tpy_init(); }",
+        "",
+        "namespace tpyapp::repl {",
+        "",
+        "void f() {",
+        "    ::tpy::print(2);",
+        "}",
+        "",
+        "void __tpy_init() {",
+        "    static bool initialized = false;",
+        "    if (initialized) return;",
+        "    initialized = true;",
+        "",
+        "    ::tpynative::n::__tpy_init();",
+        "    if (true) {",
+        "        ::tpy::print(1);",
+        "    }",
+        "}",
+        "",
+        "} // namespace tpyapp::repl",
+    ])
+    backend = ClangReplBackend("clang-repl", tmp_path, "repl")
+    assert backend._extract_init_body(cpp) == [
+        "::tpynative::n::__tpy_init();",
+        "if (true) { ::tpy::print(1); }",
+    ]
+    assert backend._extract_namespace_body(cpp) == [
+        "void f() {\n::tpy::print(2);\n}",
+    ]

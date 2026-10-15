@@ -17,10 +17,6 @@ int32_t triple(int32_t n) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::helpers

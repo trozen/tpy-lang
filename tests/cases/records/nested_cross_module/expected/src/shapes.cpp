@@ -44,10 +44,6 @@ namespace tpyapp::shapes {
 
 // from enum import Enum, auto
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::shapes

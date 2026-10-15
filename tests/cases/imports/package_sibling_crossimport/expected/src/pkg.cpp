@@ -12,12 +12,6 @@ namespace tpyapp::pkg {
 // from pkg.a import A, Container, f
 // from pkg.b import B, K, V, Greeter
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::a::__tpy_init();
-    ::tpyapp::pkg::b::__tpy_init();
 }
 
 } // namespace tpyapp::pkg

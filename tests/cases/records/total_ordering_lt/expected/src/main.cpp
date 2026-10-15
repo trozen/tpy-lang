@@ -28,7 +28,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::functools::__tpy_init();
     static Score __global_slot_1 = Score(3);
     a = &__global_slot_1;
     static Score __global_slot_2 = Score(5);

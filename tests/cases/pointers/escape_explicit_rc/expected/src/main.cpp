@@ -67,8 +67,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::rc::__tpy_init();
     ::tpyapp::main::rc_is_shared();
     ::tpyapp::main::rc_outlives_the_loop();
 }

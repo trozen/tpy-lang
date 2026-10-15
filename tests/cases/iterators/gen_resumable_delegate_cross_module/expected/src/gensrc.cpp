@@ -87,10 +87,6 @@ __gen_guarded guarded() {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::gensrc

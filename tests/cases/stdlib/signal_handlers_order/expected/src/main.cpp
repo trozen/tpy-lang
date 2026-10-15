@@ -317,7 +317,6 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::signal::__tpy_init();
-    ::tpystd::types::__tpy_init();
     ::tpyapp::main::main();
 }
 

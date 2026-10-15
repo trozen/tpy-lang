@@ -22,7 +22,7 @@ from .identity_map import IdentityMap
 from .symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 
 if TYPE_CHECKING:
-    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyExpr, TpyFunction, TpyMethodCall, TypeRefNode, TpyExceptHandler
+    from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyExpr, TpyFunction, TpyImport, TpyMethodCall, TypeRefNode, TpyExceptHandler
 
 
 # Toggled (default off) only by qualified_type_str, so diagnostics can render
@@ -8670,8 +8670,8 @@ class ModuleInfo:
     """Information about a module (builtin or user-defined)."""
     name: str
     is_builtin: bool = True  # True for hardcoded builtin modules (e.g. sys), False for user/.py modules
-    is_native_module: bool = False  # True for a "mod": "native" module (no __tpy_init, no .cpp)
-    generates_header: bool = True  # False for native_modules that produce no C++ output
+    is_native_module: bool = False  # True for a "mod": "native" module (no .hpp; a generated .cpp holding only its init when its imports do work)
+    generates_header: bool = True  # False for native_modules, which emit no header
     includes: list[tuple[str, str | None]] = field(default_factory=list)  # `__tpy__` "includes" (path, platform_filter)
     functions: dict[str, list[FunctionInfo]] = field(default_factory=dict)  # func_name -> overloads
     variables: dict[str, ModuleVarInfo] = field(default_factory=dict)  # var_name -> ModuleVarInfo
@@ -8691,6 +8691,32 @@ class ModuleInfo:
     # None for builtin/synthetic ModuleInfo objects that have no
     # CompiledModule (e.g. the `sys` module, ad-hoc test fixtures).
     module_attributes: 'dict | None' = None
+    # The module's top-level `TpyImport`s in source order, after
+    # discovery's rewrites (`from pkg import sub` -> `pkg.sub`).
+    top_level_imports: 'tuple[TpyImport, ...]' = ()
+    # Whether running the module's init does anything: one of its own
+    # top-level statements runs code, or an import it runs does. Decided
+    # once per compilation, before codegen (`Compiler._decide_init_work`);
+    # a call to an init that does nothing is not emitted. A native module
+    # has an init exactly when this holds (its imports' work); a hardcoded
+    # builtin (sys, etc.) has none. None until decided; reading it then is a
+    # compiler bug, since treating it as False would drop a needed init.
+    has_runtime_init: bool | None = None
+    # Each of `top_level_imports` with the modules whose init it runs, in
+    # order, decided with `has_runtime_init`: the module's own init reads
+    # it, a native module's included.
+    init_calls: 'tuple[tuple[TpyImport, tuple[str, ...]], ...]' = ()
+
+    def init_does_work(self) -> bool:
+        """`has_runtime_init`, read only once decided."""
+        if self.has_runtime_init is None:
+            raise AssertionError(
+                f"init work of module '{self.name}' read before it was decided")
+        return self.has_runtime_init
+
+    def init_callees(self) -> list[str]:
+        """The modules this module's init runs, in order."""
+        return [target for _, targets in self.init_calls for target in targets]
 
     def lookup_attribute(self, name: str) -> 'object | None':
         """Return the `BindingCell` for `name` or None if not bound.
@@ -8708,12 +8734,6 @@ class ModuleInfo:
         return (name in self.functions or name in self.records or
                 name in self.protocols or name in self.enums or
                 name in self.type_aliases or name in self.variables)
-
-    @property
-    def has_runtime_init(self) -> bool:
-        # Hardcoded builtins (sys, etc.) have no .cpp; native_module files
-        # compile to declarations only. Both lack a __tpy_init symbol.
-        return not self.is_builtin and not self.is_native_module
 
 
 class TypeRegistry:

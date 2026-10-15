@@ -25,10 +25,6 @@ std::string describe__Cat(const Cat& animal) {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::animals

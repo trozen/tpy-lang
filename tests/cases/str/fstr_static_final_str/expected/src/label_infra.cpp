@@ -29,10 +29,6 @@ void emit(std::string_view fmt, const std::vector<std::string>& parts) {
 // [dynamic]; emit() prints fmt plus each tagged part so output reveals which
 // parts the macro classified as static."""
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::label_infra

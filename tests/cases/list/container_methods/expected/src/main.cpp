@@ -54,7 +54,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     static ::tpystd::tplib::array_list::ArrayList<int32_t, 8> __global_slot_1 = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     al = &__global_slot_1;
     al->append(10);

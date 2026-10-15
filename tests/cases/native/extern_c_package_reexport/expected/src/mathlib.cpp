@@ -6,11 +6,6 @@ namespace tpyapp::mathlib {
 
 // from .funcs import abs, get_clock
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::mathlib::funcs::__tpy_init();
 }
 
 } // namespace tpyapp::mathlib

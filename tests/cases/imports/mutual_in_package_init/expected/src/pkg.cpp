@@ -8,12 +8,6 @@ namespace tpyapp::pkg {
 // from pkg.helper import Boosted
 // from pkg.user import use_pkg
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::helper::__tpy_init();
-    ::tpyapp::pkg::user::__tpy_init();
 }
 
 } // namespace tpyapp::pkg

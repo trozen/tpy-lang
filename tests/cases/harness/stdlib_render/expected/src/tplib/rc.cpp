@@ -7,10 +7,6 @@ namespace tpystd::tplib::rc {
 // from tpy.mem import UninitStorage
 // from tpy.unsafe import unsafe_take, unsafe_release
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::tplib::rc

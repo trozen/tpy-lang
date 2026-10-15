@@ -2306,7 +2306,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::asyncio::__tpy_init();
     ::tpyapp::main::main();
     std::optional<Flat> mf;

@@ -334,7 +334,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     static Outer __global_slot_1 = Outer();
     MODULE_OUTER = &__global_slot_1;
     MODULE_OUTER->inner.name = "mod-nested";

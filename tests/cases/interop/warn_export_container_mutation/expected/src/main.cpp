@@ -34,10 +34,6 @@ void add_one(::tpy::ordered_set<::tpy::BigInt>& s, const ::tpy::BigInt& v) {
 
 // from tpy.extern import export
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

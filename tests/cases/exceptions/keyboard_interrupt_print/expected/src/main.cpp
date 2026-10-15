@@ -387,7 +387,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::tpy::thread::__tpy_init();
     ::tpyapp::main::main();
     ::tpyapp::main::pend();
     {

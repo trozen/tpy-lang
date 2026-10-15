@@ -11,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::MyMath::__tpy_init();
     std::cout << ::tpyapp::MyMath::square(5) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::MyMath::cube(3) << "\n" << ::tpy::check_signals;
 }

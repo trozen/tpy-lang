@@ -7,11 +7,6 @@ namespace tpyapp::ma {
 // # Re-exports m's types; main reaches them through the alias head `mm.`.
 // from m import Color, Outer, make_inner
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::m::__tpy_init();
 }
 
 } // namespace tpyapp::ma

@@ -136,10 +136,6 @@ std::vector<::tpy::BigInt> byte_lengths(const std::vector<::tpy::Bytes>& chunks)
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::containers

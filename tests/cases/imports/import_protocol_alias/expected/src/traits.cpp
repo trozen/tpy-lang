@@ -5,10 +5,6 @@ namespace tpyapp::traits {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::traits

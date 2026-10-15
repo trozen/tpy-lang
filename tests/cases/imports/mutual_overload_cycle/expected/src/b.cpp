@@ -34,11 +34,6 @@ int32_t relay(int32_t n) {
 // # to close the cycle.
 // from a import use_g_int
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::a::__tpy_init();
 }
 
 } // namespace tpyapp::b

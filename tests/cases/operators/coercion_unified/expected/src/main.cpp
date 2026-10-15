@@ -336,7 +336,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpyapp::main::test_bigint_to_int32();
     ::tpyapp::main::test_record_to_ptr();
     ::tpyapp::main::test_record_to_const_ptr();

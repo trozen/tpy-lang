@@ -127,20 +127,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::ca::__tpy_init();
-    ::tpyapp::cb::__tpy_init();
-    ::tpyapp::cy::__tpy_init();
-    ::tpyapp::cz::__tpy_init();
-    ::tpyapp::ba::__tpy_init();
-    ::tpyapp::bb::__tpy_init();
-    ::tpyapp::ga::__tpy_init();
-    ::tpyapp::gb::__tpy_init();
-    ::tpyapp::gy::__tpy_init();
-    ::tpyapp::gz::__tpy_init();
-    ::tpyapp::ra::__tpy_init();
-    ::tpyapp::rb::__tpy_init();
-    ::tpyapp::ry::__tpy_init();
-    ::tpyapp::rz::__tpy_init();
     ::tpyapp::main::main();
 }
 

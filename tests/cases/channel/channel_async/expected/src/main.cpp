@@ -588,7 +588,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::tpy::channel::__tpy_init();
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::main_co()));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::cancel_co()));
     ::tpystd::asyncio::run<std::monostate>(::tpy::make_adapter<::tpystd::coro::Cancellable<std::monostate>>(::tpyapp::main::woken_co()));

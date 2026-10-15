@@ -43,10 +43,6 @@ int32_t int_leaves(const Shape& s) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::shapes

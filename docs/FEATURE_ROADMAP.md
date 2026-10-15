@@ -902,7 +902,7 @@ Per-module configuration in one dict literal after the module docstring (it
 replaced the earlier `# tpy:` comment directives):
 
 ```python
-__tpy__ = {"mod": "native",                     # declaration-only module (no .hpp/.cpp generated)
+__tpy__ = {"mod": "native",                     # declaration-only module (no .hpp; .cpp only for its init)
            "includes": ["mylib/mylib.h",          # add #include "mylib/mylib.h" to generated header
                         "<SDL2/SDL.h>"],          # add #include <SDL2/SDL.h> (angle-bracket)
            "links": ["SDL2",                      # add -lSDL2 linker flag

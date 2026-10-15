@@ -19,10 +19,6 @@ void bump(Slot& s) {
 // # Both names are defined above; the aliases must not precede them in C++.
 // from relay import Slot as RelaySlot, seven as relay_seven  # tpyc: warning(/Import statement should be at the top/)
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::owner

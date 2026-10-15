@@ -14,10 +14,6 @@ void main() {
 
 // from time import time
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

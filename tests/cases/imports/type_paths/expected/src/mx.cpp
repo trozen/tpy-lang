@@ -13,10 +13,6 @@ Outer::Inner make_inner(const ::tpy::BigInt& v) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::mx

@@ -320,7 +320,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::imported::__tpy_init();
     Inner __tmp_1 = Inner(::tpy::BigInt(7));
     static HolderDirect __global_slot_1 = HolderDirect(__tmp_1);
     G = &__global_slot_1;

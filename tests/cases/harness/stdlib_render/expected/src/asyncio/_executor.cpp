@@ -444,10 +444,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::heapq::__tpy_init();
-    ::tpystd::coro::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::rc::__tpy_init();
     _current_executor = nullptr;
 }
 

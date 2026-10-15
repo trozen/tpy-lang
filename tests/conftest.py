@@ -859,7 +859,7 @@ class CompileResult:
     cpp_path: Path | None = None
     # For multi-module compilation: list of (module_name, hpp_path, cpp_path, is_local) tuples
     # is_local=True for modules from the test's src/ dir, False for library modules
-    # hpp_path/cpp_path are None for native_module (no generated code)
+    # hpp_path is None for a native_module, cpp_path too unless its init does work
     # This is what exec builds.
     all_modules: list[tuple[str, Path | None, Path | None, bool]] = field(default_factory=list)
     # Non-local modules the case ALSO snapshots (options.json
@@ -1394,7 +1394,7 @@ def compile_case(compiler: Compiler, run: Callable[[], list[CompiledModule]],
                     options=req.codegen_options
                 )
             local_contexts.append((mod, mod_ctx))
-            # cpp_path is None for native_module (binding-only) modules
+            # A native_module emits no header; a .cpp only when its init does work
             all_modules.append((mod.name, hpp_path, cpp_path, True))
 
         thir_bodies = compiler._thir_routed_bodies

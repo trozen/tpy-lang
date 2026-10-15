@@ -31,11 +31,6 @@ int32_t Counter::get() const {
 // # rz's annotations evaluate it.
 // import rz  # noqa: E402  # tpyc: warning(/Import statement should be at the top/)
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::rz::__tpy_init();
 }
 
 } // namespace tpyapp::ry

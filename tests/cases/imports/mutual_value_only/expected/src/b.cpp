@@ -13,11 +13,6 @@ int32_t H() {
 
 // from a import K
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::a::__tpy_init();
 }
 
 } // namespace tpyapp::b

@@ -11,7 +11,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::helpers::__tpy_init();
     std::cout << ::tpyapp::helpers::double_(7) << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::helpers::triple(5) << "\n" << ::tpy::check_signals;
 }

@@ -11,10 +11,6 @@ Circle make_circle(int32_t r) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::shapes

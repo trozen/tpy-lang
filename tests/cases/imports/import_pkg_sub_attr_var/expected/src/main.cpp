@@ -24,8 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::state::__tpy_init();
     ::tpyapp::main::main();
 }
 

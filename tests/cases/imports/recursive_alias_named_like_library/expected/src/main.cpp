@@ -43,7 +43,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::json::__tpy_init();
-    ::tpyapp::shapes::__tpy_init();
     ::tpyapp::main::main();
 }
 

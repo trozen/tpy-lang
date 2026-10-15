@@ -4912,7 +4912,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpyapp::holder::__tpy_init();
     static std::vector<int32_t> __global_slot_1 = {1, 2, 3};
     gxs = &__global_slot_1;
     static std::vector<int32_t> __global_slot_2 = {10, 20, 30};

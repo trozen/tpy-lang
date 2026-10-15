@@ -26,7 +26,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::repro::pkg::constants::__tpy_init();
     ::tpyapp::main::main();
 }
 

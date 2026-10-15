@@ -807,7 +807,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::math::__tpy_init();
     G = 0.5;
     ::tpyapp::main::main();
     static ::tpy::ordered_map<std::string, float> __global_slot_1 = ::tpy::ordered_map<std::string, float>({{"a", 0.25f}});

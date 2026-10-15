@@ -1821,8 +1821,6 @@ void __tpy_init() {
     ::tpystd::os::__tpy_init();
     ::tpystd::signal::__tpy_init();
     ::tpystd::sys::__tpy_init();
-    ::tpystd::types::__tpy_init();
-    ::tpystd::tpy::thread::__tpy_init();
     hits = 0;
     ::tpyapp::main::main();
 }

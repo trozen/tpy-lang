@@ -11,11 +11,6 @@ int32_t compute() {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::utils::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::consumer

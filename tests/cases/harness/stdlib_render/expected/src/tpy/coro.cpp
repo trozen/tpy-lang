@@ -38,11 +38,6 @@ bool same_task(::tpystd::coro::Waker a, ::tpystd::coro::Waker b) {
 // from .._builtins._exceptions import CancelledError
 // from .._core import Poll, Ptr, ValueType, int32
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::typing::__tpy_init();
 }
 
 } // namespace tpystd::coro

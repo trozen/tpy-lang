@@ -1106,7 +1106,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::math::__tpy_init();
     left_count = 0;
     right_count = 0;
     global_root = ::tpy::stdlib::math::checked_sqrt(36.0);

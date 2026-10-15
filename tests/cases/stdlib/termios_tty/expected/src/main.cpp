@@ -503,7 +503,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::errno_mod::__tpy_init();
     ::tpystd::os::__tpy_init();
     ::tpystd::termios::__tpy_init();
     ::tpystd::tty::__tpy_init();

@@ -6,11 +6,6 @@ namespace tpyapp::pkg {
 
 // from .colors import Color as C
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::colors::__tpy_init();
 }
 
 } // namespace tpyapp::pkg

@@ -61,7 +61,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     static std::vector<int32_t> __global_slot_1 = std::vector<int32_t>{};
     items = &__global_slot_1;
     items->push_back(10);

@@ -19,10 +19,6 @@ int32_t Right::run() const {
 // from tpy.extern import native
 // import hub
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::right

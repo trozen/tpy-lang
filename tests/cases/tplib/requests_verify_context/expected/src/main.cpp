@@ -56,7 +56,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::ssl::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
     ::tpyapp::main::main();
 }

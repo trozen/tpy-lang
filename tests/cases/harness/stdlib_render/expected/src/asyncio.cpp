@@ -1239,12 +1239,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::coro::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::rc::__tpy_init();
     ::tpystd::socket::__tpy_init();
     ::tpystd::signal::__tpy_init();
-    ::tpystd::types::__tpy_init();
     ::tpystd::asyncio::_executor::__tpy_init();
 }
 

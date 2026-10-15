@@ -111,10 +111,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::holder::__tpy_init();
-    ::tpyapp::left::__tpy_init();
-    ::tpyapp::right::__tpy_init();
-    ::tpyapp::owner::__tpy_init();
     ::tpyapp::main::main();
 }
 

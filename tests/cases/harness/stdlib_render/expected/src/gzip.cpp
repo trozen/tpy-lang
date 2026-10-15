@@ -329,7 +329,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::errno_mod::__tpy_init();
     ::tpystd::os::__tpy_init();
     ::tpystd::io::__tpy_init();
     ::tpystd::zlib::__tpy_init();

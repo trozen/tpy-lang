@@ -33,8 +33,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::red::__tpy_init();
-    ::tpyapp::blue::__tpy_init();
     ::tpyapp::main::main();
 }
 

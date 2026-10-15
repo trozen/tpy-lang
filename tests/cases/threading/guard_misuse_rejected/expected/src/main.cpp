@@ -125,7 +125,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tpy::sync::__tpy_init();
     ::tpyapp::main::main();
 }
 

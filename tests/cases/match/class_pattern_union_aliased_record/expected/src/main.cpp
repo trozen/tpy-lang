@@ -58,7 +58,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::shapes::__tpy_init();
     ::tpyapp::main::main();
 }
 

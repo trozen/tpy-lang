@@ -14,12 +14,6 @@ int32_t a_func() {
 // from b import b_helper
 // from util import boost
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::b::__tpy_init();
-    ::tpyapp::util::__tpy_init();
 }
 
 } // namespace tpyapp::a

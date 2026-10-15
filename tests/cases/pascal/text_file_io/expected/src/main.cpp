@@ -57,10 +57,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::io::__tpy_init();
-    ::pascal_rt::runtime::strings::__tpy_init();
     static ::pascal_rt::runtime::io::TextFile __global_slot_1 = ::pascal_rt::runtime::io::TextFile();
     f = &__global_slot_1;
     static ::pascal_rt::runtime::strings::PStr<255> __global_slot_2 = ::pascal_rt::runtime::strings::PStr<255>();

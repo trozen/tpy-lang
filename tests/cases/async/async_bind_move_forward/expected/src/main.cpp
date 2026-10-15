@@ -124,7 +124,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     ::tpyapp::main::main();
 }
 

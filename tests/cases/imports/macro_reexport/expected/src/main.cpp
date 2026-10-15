@@ -21,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::utils::__tpy_init();
     static Point __global_slot_1 = Point(::tpy::BigInt(3), ::tpy::BigInt(4));
     p = &__global_slot_1;
     std::cout << p->x << " " << p->y << "\n" << ::tpy::check_signals;

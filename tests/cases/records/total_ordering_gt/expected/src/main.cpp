@@ -23,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::functools::__tpy_init();
     static Rank __global_slot_1 = Rank(7);
     a = &__global_slot_1;
     static Rank __global_slot_2 = Rank(3);

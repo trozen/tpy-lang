@@ -27,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::functools::__tpy_init();
     Outer __unpack_0_0 = Outer(1);
     Outer __unpack_0_1 = Outer(2);
     a = &(__unpack_0_0);

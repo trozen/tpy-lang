@@ -24,10 +24,6 @@ int32_t Left::run() const {
 // # Late: hub imports Note back from this module, which must exist first.
 // from hub import Hub  # tpyc: warning(/Import statement should be at the top/)
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::left

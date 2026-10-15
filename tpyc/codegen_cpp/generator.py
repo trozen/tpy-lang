@@ -167,6 +167,7 @@ class CodeGenerator:
     def generate(self, module: TpyModule, module_name: str = "generated",
                  is_entry_point: bool = True, *,
                  actual_user_modules: set[str],
+                 user_module_imports: set[str],
                  implicit_stdlib_modules: set[str],
                  cycle_peers: 'frozenset[str] | None' = None,
                  inl_modules: 'list[str] | None' = None,
@@ -179,6 +180,8 @@ class CodeGenerator:
             is_entry_point: True if this is the entry point module (generates main()).
             actual_user_modules: The compiled modules this module may consult
                                  (its import closure).
+            user_module_imports: The user modules it imports, within that
+                closure (`Compiler.init_import_scope`).
             implicit_stdlib_modules: The implicit stdlib modules among them.
             inl_modules: Modules whose `<mod>_inl.hpp` the .cpp includes after
                 its other headers (every dependency that emits one, plus this
@@ -198,8 +201,7 @@ class CodeGenerator:
         self.ctx.module_name = module_name
         self.ctx.source_lines = module.source_lines
         self.ctx.cycle_peers = cycle_peers or frozenset()
-        # Filter user_module_imports to only include actual user modules (not builtins without user files)
-        self.ctx.user_module_imports = {k: v for k, v in module.user_module_imports.items() if k in actual_user_modules}
+        self.ctx.user_module_imports = user_module_imports
         self.ctx.all_user_modules = actual_user_modules
         self.ctx.implicit_stdlib_modules = implicit_stdlib_modules
         # Filter out keyword stubs (@builtin_type classes / @builtin_decorator functions
@@ -715,10 +717,20 @@ class CodeGenerator:
         self.ctx.native_global_names = module_native_global_names(
             module.top_level_stmts)
 
+        self._init_info = self.analyzer.registry.get_module(module_name)
         if module.directives.native_module:
-            # Native modules are declaration-only -- no .hpp or .cpp generated.
-            # Their `__tpy__` "includes" are propagated to importing modules.
-            return "", ""
+            # Native modules are declaration-only -- no .hpp; their
+            # `__tpy__` "includes" are propagated to importing modules. A
+            # .cpp holds the init when its imports do work.
+            if not self._init_info.init_does_work():
+                return "", ""
+            return "", self.functions.gen_native_module_init_source(
+                self._init_info.init_callees())
+
+        self._native_init_targets = [
+            t for t in self._init_info.init_callees()
+            if (info := self.analyzer.registry.get_module(t)) is not None
+            and info.is_native_module]
 
         self._write_header_preamble(hpp, native_funcs, native_globals, directives=module.directives)
 
@@ -854,6 +866,7 @@ class CodeGenerator:
         # Top-level lowering runs HERE, not in the seeding loop above: it needs
         # `init_globals`, the generator's own global-name/type map.
         from ..thir.lower import lower_top_level as _thir_lower_top
+        from ..thir.nodes import THIRNoOpStmt
         from ..thir.reject import (begin_attempt, commit_attempt,
                                    reject_attempt)
         begin_attempt()
@@ -865,14 +878,26 @@ class CodeGenerator:
             render_type_stored=self.types.type_to_cpp_stored,
             render_resolve=self.types.resolve_type,
             render_concept=self.protocols.concept_test_cpp,
-            user_module_imports=self.ctx.user_module_imports,
-            all_user_modules=self.ctx.all_user_modules)
+            import_init_calls=self._init_info.init_calls)
         if self.ctx.thir_top_level is None:
             reject_attempt("top_level", module)
         commit_attempt()
+        # Importers skip the init of a module decided to do no work, so its
+        # lowered init must hold nothing: anything else would never run.
+        if (not self._init_info.init_does_work()
+                and self.ctx.thir_top_level is not None
+                and not all(isinstance(s, THIRNoOpStmt)
+                            for s in self.ctx.thir_top_level.body)):
+            raise CodeGenError(
+                f"internal: module '{module_name}' was decided to do no init "
+                f"work, but its module-level code lowers to statements")
         self._emit_source_genexprs(cpp, module, [None])
-        self.functions.gen_module_init(cpp, module.top_level_stmts, init_globals,
-                                       has_user_main=False, module_name=tpy_module_name)
+        # The check above makes a no-work init empty, and an empty init run
+        # twice still runs nothing, so it needs no guard.
+        self.functions.gen_module_init(
+            cpp, module.top_level_stmts, init_globals,
+            has_user_main=False, module_name=tpy_module_name,
+            guarded=self._init_info.init_does_work())
         # Only generate C++ main() for entry point module
         if is_entry_point:
             self.functions.gen_main(cpp, no_main=self.options.no_main)
@@ -890,6 +915,22 @@ class CodeGenerator:
                 f"but was not told to emit {module_name}_inl.hpp")
 
         return hpp.getvalue(), cpp.getvalue()
+
+    def _init_callee_headers(self) -> list[str]:
+        """The regular modules whose init this module's init calls and whose
+        header the .hpp does not include itself: a native submodule's
+        package is reached through no header."""
+        registry = self.analyzer.registry
+        out: list[str] = []
+        for target in self._init_info.init_callees():
+            info = registry.get_module(target)
+            if (info is None or not info.generates_header
+                    or target == self.ctx.module_name
+                    or target in self.ctx.cycle_peers
+                    or target in self._hpp_included or target in out):
+                continue
+            out.append(target)
+        return out
 
     def _function_body_in_source(self, func: TpyFunction) -> bool:
         """A free function whose one body is a plain definition in the .cpp."""
@@ -2275,7 +2316,7 @@ class CodeGenerator:
         natives, keyword stubs, or nested-name types that the
         using-decl emitter would also reject.
         """
-        cur = self.ctx.module_name
+        cur_ns_prefix = module_to_cpp_namespace(self.ctx.module_name) + "::"
         by_subpath: dict[str, list[str]] = {}
 
         def add(entry, kind: str, skip_fn: Callable[[object, str], bool]) -> None:
@@ -2286,7 +2327,12 @@ class CodeGenerator:
                 return
             if skip_fn(info, original_name):
                 return
-            subpath = source_module[len(cur) + 1:].replace(".", "::")
+            # A `cpp_namespace` setting can put the submodule outside our
+            # namespace, where a relative forward declaration cannot reach.
+            sub_ns = module_to_cpp_namespace(source_module)
+            if not sub_ns.startswith(cur_ns_prefix):
+                return
+            subpath = sub_ns[len(cur_ns_prefix):]
             if kind == "record":
                 ri = info if isinstance(info, RecordInfo) else (
                     self.analyzer.registry.get_record(original_name))
@@ -2785,6 +2831,7 @@ class CodeGenerator:
                 include_path = self._module_to_include_path(dep_mod)
                 out.write(f'#include "{include_path}"\n')
                 included.add(dep_mod)
+        self._hpp_included = included
         out.write("\n")
 
         # Native global extern declarations go before the tpyapp namespace
@@ -2889,6 +2936,8 @@ class CodeGenerator:
             if peer == self.ctx.module_name:
                 continue
             out.write(f'#include "{self._module_to_include_path(peer)}"\n')
+        for callee in self._init_callee_headers():
+            out.write(f'#include "{self._module_to_include_path(callee)}"\n')
         # Inline generator bodies, ours and our dependencies'. They come after
         # every header above, which is what they need: a body may name anything
         # those headers declare, and inside an include cycle a header is parsed
@@ -2896,6 +2945,8 @@ class CodeGenerator:
         for inl_mod in self._inl_modules:
             out.write(f'#include "{self._module_to_inl_include_path(inl_mod)}"\n')
         out.write("\n")
+        if self._native_init_targets:
+            self.functions.gen_init_decls(out, self._native_init_targets)
         # EnumUtil definitions go before user namespace (they live in namespace tpy)
         if module.all_enums():
             self._gen_enum_source_defs(out, module)

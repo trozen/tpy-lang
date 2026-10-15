@@ -22,9 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::outer::__tpy_init();
-    ::tpyapp::outer::inner::__tpy_init();
-    ::tpyapp::outer::inner::consumer::__tpy_init();
     ::tpyapp::main::main();
 }
 

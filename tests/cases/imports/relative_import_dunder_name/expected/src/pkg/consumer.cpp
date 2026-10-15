@@ -12,12 +12,6 @@ int32_t compute() {
 
 // from .my__helper import get_value
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::my__helper::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::consumer

@@ -19,11 +19,6 @@ int32_t back(const std::vector<int32_t>& xs) {
 
 // import cz
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::cz::__tpy_init();
 }
 
 } // namespace tpyapp::cy

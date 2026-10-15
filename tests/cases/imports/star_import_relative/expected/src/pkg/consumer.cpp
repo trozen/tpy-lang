@@ -14,12 +14,6 @@ int32_t compute() {
 
 // from .defs import *
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::defs::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::consumer

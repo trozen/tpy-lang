@@ -51,8 +51,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::screen::__tpy_init();
-    ::tpyapp::world::__tpy_init();
     ::tpyapp::main::main();
 }
 

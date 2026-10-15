@@ -2680,8 +2680,8 @@ class THIRPtrLocalRebind(THIRStmt):
 @dataclass(frozen=True)
 class THIRImportInit(THIRStmt):
     """A module-init import statement's `__tpy_init()` chain. `calls` holds the
-    fully-qualified callee spellings in emit order, resolved at lowering by the
-    shared `module_init_targets`; an
+    fully-qualified callee spellings in emit order, resolved before lowering
+    as `ModuleInfo.init_calls`; an
     import that chains into nothing lowers to a plain no-op instead, keeping
     only its source comment."""
     calls: tuple[str, ...] = ()

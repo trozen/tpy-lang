@@ -13,7 +13,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::mypackage::utils::__tpy_init();
     VERSION = 42;
 }
 

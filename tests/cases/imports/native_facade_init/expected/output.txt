@@ -1,0 +1,46 @@
+class: cls_c init
+function: fn_c init
+enum: en_c init
+variable: var_c init
+bare: bare_c init
+chain: chain_c init
+from_pkg: pkg_sub init
+from_pkg: pkg_sub.leaf init
+cycle: cyc_a init
+cycle: cyc_b init
+native_parent: pkg_npar.other init
+native_parent: pkg_npar.types init
+native_sub: pkg_nsub init
+native_sub: nsub_c init
+empty_leaf: pkg_empty init
+empty_native: pkg_nempty init
+pkg_imports_native: pkg_own begin
+pkg_imports_native: own_c init
+pkg_imports_native: pkg_own end
+native_cycle: nn_r2 init
+native_cycle: nn_r1 init
+native_cycle: nn_c2 init
+two_consumers: two_c init
+two_consumers: two_u1 init 1
+two_consumers: two_u2 init 2
+keyword_native: kw_a init
+keyword_native: kw_b init
+keyword_module: inline init
+local_decl: for 4294967296
+local_decl: if 4294967296
+local_decl: one-branch 4294967296
+local_decl: while 4294967296
+ns_override: pkg_ns.mod_ init
+regular_rename: type_ init
+keyword_sub: pkg_kw init
+keyword_sub: pkg_kw.delete init
+class: 3
+function: 42
+enum: 2
+variable: 2 8
+chain: 3
+keyword_module: 42
+ns_override: 4
+regular_rename: type_
+keyword_sub: erased
+done

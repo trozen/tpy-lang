@@ -12,12 +12,6 @@ int32_t f(int32_t n) {
 
 // from pkg.b import B
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::b::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::a

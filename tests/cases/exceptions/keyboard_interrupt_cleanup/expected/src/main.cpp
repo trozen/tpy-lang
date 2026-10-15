@@ -926,7 +926,6 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::sys::__tpy_init();
-    ::tpystd::coro::__tpy_init();
     ::tpyapp::main::main();
     static Loud __global_slot_1 = Loud("module");
     keeper = &__global_slot_1;

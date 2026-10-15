@@ -27,7 +27,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::counters::__tpy_init();
     ::tpyapp::main::main();
 }
 

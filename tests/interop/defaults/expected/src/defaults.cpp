@@ -84,10 +84,6 @@ std::string initial(std::string_view text, int32_t idx) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::defaults

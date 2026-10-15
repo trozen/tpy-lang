@@ -65,11 +65,6 @@ int32_t one() {
 
 // import gb
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::gb::__tpy_init();
 }
 
 } // namespace tpyapp::ga

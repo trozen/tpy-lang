@@ -20,11 +20,6 @@ int32_t one() {
 
 // import cb
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::cb::__tpy_init();
 }
 
 } // namespace tpyapp::ca

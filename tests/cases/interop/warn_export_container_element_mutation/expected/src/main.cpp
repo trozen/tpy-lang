@@ -38,10 +38,6 @@ int64_t total(const std::vector<Counter>& cs) {
 
 // from tpy.extern import export
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

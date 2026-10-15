@@ -146,7 +146,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tpy::atomic::__tpy_init();
     ::tpyapp::main::main();
 }
 

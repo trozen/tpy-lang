@@ -123,10 +123,6 @@ int64_t tag_value(const std::tuple<Color, int64_t>& t) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::container_exposed_elements

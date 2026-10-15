@@ -15,10 +15,6 @@ int32_t bad(std::optional<int32_t> x) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

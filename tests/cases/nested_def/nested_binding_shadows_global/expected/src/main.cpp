@@ -653,8 +653,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::box::__tpy_init();
     ::tpyapp::helper::__tpy_init();
     label = "global label";
     cnt = 0;

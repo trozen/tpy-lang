@@ -12,10 +12,6 @@ __gen_walk walk() {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::itersrc

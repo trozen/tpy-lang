@@ -20,11 +20,6 @@ int32_t total_countdown(int32_t n) {
 
 // import cyc_a
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::cyc_a::__tpy_init();
 }
 
 } // namespace tpyapp::cyc_b

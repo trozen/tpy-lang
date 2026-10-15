@@ -17,10 +17,6 @@ std::expected<::tpy::BigInt, ParseError> parse_int(std::string_view s) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::errors_impl

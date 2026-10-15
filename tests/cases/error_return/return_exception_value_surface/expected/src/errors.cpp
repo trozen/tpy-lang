@@ -17,10 +17,6 @@ std::expected<int32_t, Denied> check(int32_t level) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::errors

@@ -7,10 +7,6 @@ namespace tpyapp::const_mod {
 // """Module exporting a Final[str] constant -- consumer imports it to verify that
 // macro_api._is_static_str recognises Final[str] references across modules."""
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::const_mod

@@ -8,11 +8,6 @@ namespace tpyapp::mb {
 // # base, not a cycle.
 // import m
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::m::__tpy_init();
 }
 
 } // namespace tpyapp::mb

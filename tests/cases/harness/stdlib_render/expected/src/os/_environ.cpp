@@ -16,6 +16,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
+    ::tpystd::os::__tpy_init();
     static _Environ __global_slot_1 = _Environ();
     environ = &__global_slot_1;
 }

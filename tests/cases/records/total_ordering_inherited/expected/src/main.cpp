@@ -22,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::functools::__tpy_init();
     static Child __global_slot_1 = Child(3);
     a = &__global_slot_1;
     static Child __global_slot_2 = Child(5);

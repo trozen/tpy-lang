@@ -38,8 +38,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::ea::__tpy_init();
-    ::tpyapp::eb::__tpy_init();
     ::tpyapp::main::main();
 }
 

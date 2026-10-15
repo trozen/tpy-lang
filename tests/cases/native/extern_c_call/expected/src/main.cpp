@@ -25,10 +25,6 @@ extern "C" void app_init() {
 
 // from tpy.extern import export
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

@@ -11,10 +11,6 @@ int32_t double_(int32_t x) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::pkg::defs

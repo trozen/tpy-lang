@@ -2339,6 +2339,22 @@ def is_module_declaration(stmt: TpyStmt) -> bool:
             or (isinstance(stmt, TpyVarDecl) and stmt.init is None))
 
 
+def runs_no_init_code(stmt: TpyStmt) -> bool:
+    """A module-level statement the module's init runs no code for: a
+    declaration, a `Final` constant (a compile-time constant emitted at
+    namespace scope) or a `native_global(...)` binding (defined outside the
+    module). The import-cycle gate keeps the narrower
+    `is_module_declaration`: a constant there would need a peer's header to
+    carry it first. For a DIRECT module-level statement it being true
+    implies the top-level lowering emits none of the module's own code for
+    it (an import emits only the imported modules' init calls); the
+    lowering's no-op arms answer a different question -- about a position,
+    which also covers statements nested in module-level blocks."""
+    return (is_module_declaration(stmt)
+            or (isinstance(stmt, TpyVarDecl)
+                and (stmt.is_final or stmt.linkage != VarLinkage.DEFAULT)))
+
+
 def init_leading_run_end(body: list[TpyStmt]) -> int:
     """Index of the first `__init__` statement that is neither trivia nor a
     parent-initializer call. Only the calls before it keep their CPython

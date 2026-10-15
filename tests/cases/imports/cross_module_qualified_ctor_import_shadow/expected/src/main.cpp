@@ -32,8 +32,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::pa::__tpy_init();
-    ::tpyapp::pb::__tpy_init();
     ::tpyapp::main::main();
 }
 

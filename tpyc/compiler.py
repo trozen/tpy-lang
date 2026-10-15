@@ -16,7 +16,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Callable, Iterable, Iterator, NamedTuple, TYPE_CHECKING
 
-from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, is_module_declaration
+from .parse import Parser, ParseError, TpyModule, TpyImport, TpyVarDecl, RelativeImportKey, SourceLocation, is_module_declaration, runs_no_init_code
 from .parse.imports import _IMPLICIT_MODULES, _PRIVATE_MODULE_PUBLIC_NAMES, route_stdlib_name
 from .parse.module_settings import NATIVE_MODULE as _NATIVE_MODULE, read_source_settings
 from .identity_map import IdentityMap, IdentitySet
@@ -41,8 +41,9 @@ from .type_def_registry import (
 from .codegen_cpp import CodeGenerator, CodeGenOptions
 from .codegen_cpp.context import ThirRejectError
 from .codegen_cpp.context import (
-    get_include_path, module_to_include_path, module_native_global_names,
-    qualify_native_name,
+    cpp_module_path, default_module_namespace, get_include_path,
+    import_init_targets, module_init_candidates, module_to_include_path,
+    module_native_global_names, qualify_native_name,
 )
 from .compilation_context import activate_compiler
 from .typesys import (
@@ -674,7 +675,8 @@ class CompiledModule:
 @dataclass(frozen=True)
 class ModuleSources:
     """One module's generated C++, before it is written to a `BuildLayout`.
-    An empty `hpp` means the module emits no files."""
+    An empty `hpp` means the module emits no header (a native module), and
+    an empty `cpp` beside it no files at all."""
     hpp: str
     cpp: str
     fwd: str | None = None
@@ -1229,6 +1231,55 @@ class Compiler:
                     raise
 
         self._validate_ext_module_exports()
+        self._decide_init_work()
+
+    def init_import_scope(self, name: str) -> tuple[set[str], frozenset[str]]:
+        """The user modules module `name` imports and its import closure:
+        the edges its codegen follows (`CodeGenContext.user_module_imports`
+        and `all_user_modules`), its init targets included."""
+        closure = self.module_import_closure(name)
+        imported = {m for m in self.modules[name].ast.user_module_imports
+                    if m in closure}
+        return imported, closure
+
+    def _decide_init_work(self) -> None:
+        """Decide `ModuleInfo.has_runtime_init` and `init_calls` for every
+        module: its init does work when one of its own top-level statements
+        runs code (a native module's never do: it is declaration-only) or
+        when one of the modules its imports run does. The least fixpoint,
+        so a module in an import cycle does no work until a member is
+        proven to."""
+        callers: dict[str, list[str]] = {}
+        working: list[str] = []
+        scopes: dict[str, tuple[set[str], frozenset[str]]] = {}
+        for name, compiled in self.modules.items():
+            info = self._shared_modules.get(name)
+            if info is None:
+                continue
+            imported, closure = scopes[name] = self.init_import_scope(name)
+            for stmt in info.top_level_imports:
+                for target in module_init_candidates(
+                        stmt, module_name=name, user_module_imports=imported,
+                        all_user_modules=closure):
+                    callers.setdefault(target, []).append(name)
+            if not info.is_native_module and not all(
+                    runs_no_init_code(s) for s in compiled.ast.top_level_stmts):
+                working.append(name)
+        does_work: set[str] = set()
+        while working:
+            name = working.pop()
+            if name in does_work:
+                continue
+            does_work.add(name)
+            working.extend(callers.get(name, ()))
+        for name in scopes:
+            self._shared_modules[name].has_runtime_init = name in does_work
+        for name, (imported, closure) in scopes.items():
+            info = self._shared_modules[name]
+            info.init_calls = import_init_targets(
+                info.top_level_imports, modules=self._shared_modules,
+                module_name=name, user_module_imports=imported,
+                all_user_modules=closure)
 
     # Stdlib modules that are always compiled (even without explicit import).
     # These provide protocol definitions used by builtins (e.g. Sized for len()).
@@ -1283,11 +1334,12 @@ class Compiler:
 
         The module sees only its import closure: every other module the
         program compiles stays out of what codegen consults."""
-        visible = self.module_import_closure(mod_name)
+        imported, visible = self.init_import_scope(mod_name)
         try:
             return codegen.generate(compiled.ast, mod_name,
                                     is_entry_point=compiled.is_entry_point,
                                     actual_user_modules=set(visible),
+                                    user_module_imports=imported,
                                     implicit_stdlib_modules=self._expand_implicit_prefixes(visible),
                                     inl_modules=self._inl_modules_for(mod_name),
                                     emits_inl=self._module_emits_inl(mod_name),
@@ -3735,6 +3787,9 @@ class Compiler:
             enums=exports.enums,
             reached=set(exports.reached),
             module_attributes=(compiled.module_attributes if compiled else None),
+            top_level_imports=(tuple(s for s in compiled.ast.top_level_stmts
+                                     if isinstance(s, TpyImport))
+                               if compiled else ()),
         )
 
     def _reindex_builtins_post_finalize(self) -> None:
@@ -3861,7 +3916,7 @@ class Compiler:
     def generate_code(self, compiled: CompiledModule, output_dir: Path,
                       entry_module_name: str | None = None,
                       options: CodeGenOptions | None = None,
-                      flat: bool = False) -> tuple[Path, Path | None] | tuple[None, None]:
+                      flat: bool = False) -> tuple[Path | None, Path | None]:
         """Generate C++ code for a compiled module.
 
         Args:
@@ -3871,8 +3926,9 @@ class Compiler:
             options: Code generation options (optional).
 
         Returns:
-            Tuple of (hpp_path, cpp_path). cpp_path is None for native_module modules
-            (no .cpp is generated for binding-only modules).
+            Tuple of (hpp_path, cpp_path). hpp_path is None for native_module
+            modules, and cpp_path too unless the module's init does work (its
+            .cpp then holds that init alone).
         """
         with activate_compiler(self):
             hpp_path, cpp_path, _codegen = self._generate_code_impl(
@@ -3956,28 +4012,31 @@ class Compiler:
                                  ext_glue=glue_code), codegen
 
     def write_module_sources(self, sources: ModuleSources, layout: BuildLayout,
-                             mod_name: str) -> tuple[Path, Path] | tuple[None, None]:
+                             mod_name: str) -> tuple[Path | None, Path | None]:
         """The write half of `generate_code`: `sources` into `layout`, at the
         paths this compile gives `mod_name` (its include-path overrides and
-        collision renames). Returns (hpp_path, cpp_path), or (None, None)
-        when the module emits no files."""
-        if not sources.hpp:
+        collision renames). Returns (hpp_path, cpp_path), None for a file
+        the module does not emit: a native module emits no header, and a
+        .cpp only for an init that does work."""
+        if not sources.hpp and not sources.cpp:
             return None, None
         with activate_compiler(self):
-            hpp_path = layout.hpp_path(mod_name)
+            hpp_path = None
             cpp_path = layout.cpp_path(mod_name)
-            hpp_path.parent.mkdir(parents=True, exist_ok=True)
-            hpp_path.write_text(sources.hpp)
-            if sources.fwd is not None:
-                fwd_path = layout.fwd_hpp_path(mod_name)
-                fwd_path.parent.mkdir(parents=True, exist_ok=True)
-                fwd_path.write_text(sources.fwd)
-            inl_path = layout.inl_hpp_path(mod_name)
-            if sources.inl is not None:
-                inl_path.write_text(sources.inl)
-            else:
-                # A stale one would shadow nothing but still be hashed and read.
-                inl_path.unlink(missing_ok=True)
+            if sources.hpp:
+                hpp_path = layout.hpp_path(mod_name)
+                hpp_path.parent.mkdir(parents=True, exist_ok=True)
+                hpp_path.write_text(sources.hpp)
+                if sources.fwd is not None:
+                    fwd_path = layout.fwd_hpp_path(mod_name)
+                    fwd_path.parent.mkdir(parents=True, exist_ok=True)
+                    fwd_path.write_text(sources.fwd)
+                inl_path = layout.inl_hpp_path(mod_name)
+                if sources.inl is not None:
+                    inl_path.write_text(sources.inl)
+                else:
+                    # A stale one would shadow nothing but still be hashed and read.
+                    inl_path.unlink(missing_ok=True)
             cpp_path.parent.mkdir(parents=True, exist_ok=True)
             cpp_path.write_text(sources.cpp)
 
@@ -4296,14 +4355,14 @@ class Compiler:
             for i in range(len(parts) - 1, 0, -1):
                 parent = '.'.join(parts[:i])
                 if parent in package_overrides:
-                    relative = '::'.join(parts[i:])
+                    relative = cpp_module_path('.'.join(parts[i:]))
                     resolved = f"{package_overrides[parent]}::{relative}"
                     break
 
             if resolved:
                 ns_map[name] = resolved
             else:
-                ns_map[name] = f"tpyapp::{name.replace('.', '::')}"
+                ns_map[name] = default_module_namespace(name)
                 # Warn if a library module has no namespace override
                 compiled = self.modules[name]
                 if self._is_lib_module(compiled):
@@ -4356,7 +4415,7 @@ class Compiler:
                     continue
             # Derive from namespace if it differs from the default.
             ns = ns_map[name]
-            default_ns = f"tpyapp::{name.replace('.', '::')}"
+            default_ns = default_module_namespace(name)
             if ns != default_ns:
                 ip_map[name] = ns.replace('::', '/') + '.hpp'
 

@@ -27,11 +27,6 @@ int32_t use_g_str(std::string_view s) {
 // # overload resolution at a's call sites fails (or picks wrong target).
 // from b import g
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::b::__tpy_init();
 }
 
 } // namespace tpyapp::a

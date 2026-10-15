@@ -124,11 +124,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::ssl::__tpy_init();
-    ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
 }
 

@@ -25,12 +25,6 @@ int32_t B::kind() const {
 // # executable statements, and they cannot store each other by value.
 // from pkg.a import A
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::a::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::b

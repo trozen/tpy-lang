@@ -20,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::helpers::__tpy_init();
     ::tpyapp::main::ok();
     std::cout << 0 << "\n" << ::tpy::check_signals;
 }

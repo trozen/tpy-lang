@@ -422,10 +422,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::_bindings::mbedtls::__tpy_init();
     ::tpystd::socket::__tpy_init();
     ::tpystd::os::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::io::__tpy_init();
     static std::vector<std::string> __global_slot_1 = {"/etc/ssl/certs/ca-certificates.crt", "/etc/pki/tls/certs/ca-bundle.crt", "/etc/pki/ca-trust/extracted/pem/tls-ca-bundle.pem", "/etc/ssl/ca-bundle.pem", "/etc/ssl/cert.pem", "/usr/local/share/certs/ca-root-nss.crt", "/opt/homebrew/etc/ca-certificates/cert.pem", "/usr/local/etc/ca-certificates/cert.pem"};
     _ca_probe_paths = &__global_slot_1;

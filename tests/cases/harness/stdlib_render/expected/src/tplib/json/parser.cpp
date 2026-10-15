@@ -787,10 +787,6 @@ std::expected<std::string_view, JsonError> JsonReader::_read_number_raw() {
 // #   when whitespace was already consumed by the previous call
 // from enum import Enum
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::tplib::json::parser

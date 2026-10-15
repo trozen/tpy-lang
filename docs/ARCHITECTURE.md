@@ -410,8 +410,8 @@ bindings on the per-module attribute table so a cycle peer's
 re-export *from* a cycle peer is the one remaining gap (BUGS.md
 entries) -- their bodies aren't TpyType-resolved at pre-pop time.
 
-A native module (`"mod": "native"`) generates no C++, so it is never a
-C++ cycle peer: the C++ cycle is an import SCC's regular members, and
+A native module (`"mod": "native"`) generates no header (at most a .cpp
+holding its init), so it is never a C++ cycle peer: the C++ cycle is an import SCC's regular members, and
 only when at least two remain (or one imports itself). A regular module
 whose only cycle peers are native is compiled like any other module.
 The executable-statement gate still covers the whole import SCC; a

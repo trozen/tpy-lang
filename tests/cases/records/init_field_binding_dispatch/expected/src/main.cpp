@@ -110,7 +110,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::sys::__tpy_init();
-    ::tpyapp::helper::__tpy_init();
     ::tpyapp::main::main();
 }
 

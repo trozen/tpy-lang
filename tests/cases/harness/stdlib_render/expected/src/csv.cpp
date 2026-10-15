@@ -49,10 +49,6 @@ std::string _format_row(const std::vector<std::string>& row, std::string_view de
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::csv

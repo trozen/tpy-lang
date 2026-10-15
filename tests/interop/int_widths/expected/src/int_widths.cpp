@@ -37,10 +37,6 @@ uint64_t u64(uint64_t x) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::int_widths

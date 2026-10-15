@@ -20,7 +20,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::helpers::__tpy_init();
     static std::vector<int32_t> __global_slot_1 = {10, 20, 30};
     nums = &__global_slot_1;
     std::cout << ::tpyapp::helpers::first<int32_t>((*nums)) << "\n" << ::tpy::check_signals;

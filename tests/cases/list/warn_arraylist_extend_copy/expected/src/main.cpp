@@ -63,7 +63,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpyapp::main::test_extend_warns();
     ::tpyapp::main::test_extend_value_type_no_warn();
     ::tpyapp::main::test_ctor_warns();

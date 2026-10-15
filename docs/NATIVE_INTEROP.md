@@ -12,7 +12,7 @@ from tpy.extern import native, export
 
 - `@native` -- import a C/C++ entity (function, class, global) into TPy
 - `@export(binding="C")` -- export a TPy function with C linkage
-- `__tpy__ = {"mod": "native"}` -- mark a module as declaration-only (no generated code)
+- `__tpy__ = {"mod": "native"}` -- mark a module as declaration-only (no generated code beyond its init)
 
 ## Progress
 
@@ -874,7 +874,9 @@ __tpy__ = {"mod": "native",
 
 ### `"mod": "native"`
 
-Marks a module as declaration-only. No `.hpp` or `.cpp` is generated. All `@native` entities are for type-checking only. Its `"includes"` are propagated to importing modules. Module-level statements are limited to imports, bare declarations (`name: T`) and `native_global(...)` bindings (plus a docstring or `pass`); any other statement is rejected, since no generated code would run it.
+Marks a module as declaration-only. No `.hpp` is generated, and a `.cpp` only to hold its init (below). All `@native` entities are for type-checking only. Its `"includes"` are propagated to importing modules. Module-level statements are limited to imports, bare declarations (`name: T`) and `native_global(...)` bindings (plus a docstring or `pass`); any other statement is rejected, since no generated code would run it.
+
+Importing a native module still runs the modules it imports, in its import order, once, as for any module: when one of them does work, the native module gets a generated .cpp holding only its init, an ordinary function in the `tpynative::<module>` namespace (never the binding's `cpp_namespace`), and each importer declares it and calls it from its own init. Like a regular module's init it is defined once per binary, so each binary or CPython extension module keeps its own run-once guard.
 
 Each module that should be declaration-only must declare `"mod": "native"` itself -- it does not propagate from package `__init__.py` to child modules.
 

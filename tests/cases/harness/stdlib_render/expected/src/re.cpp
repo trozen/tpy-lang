@@ -559,11 +559,6 @@ std::vector<std::string> Pattern::split(std::string_view subject, int32_t maxspl
 // # sources, where a runtime narrowing check is intentional.
 // from _bindings import pcre2
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::_bindings::pcre2::__tpy_init();
 }
 
 } // namespace tpystd::re

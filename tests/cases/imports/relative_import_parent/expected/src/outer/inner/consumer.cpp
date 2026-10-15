@@ -12,12 +12,6 @@ int32_t compute() {
 
 // from ..utils import add
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::outer::__tpy_init();
-    ::tpyapp::outer::utils::__tpy_init();
 }
 
 } // namespace tpyapp::outer::inner::consumer

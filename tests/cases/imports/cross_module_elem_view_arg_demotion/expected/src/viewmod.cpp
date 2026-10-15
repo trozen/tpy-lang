@@ -29,10 +29,6 @@ int32_t peek_rec(const Outer& o) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::viewmod

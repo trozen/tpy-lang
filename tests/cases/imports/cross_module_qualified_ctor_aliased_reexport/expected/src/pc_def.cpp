@@ -5,10 +5,6 @@ namespace tpyapp::pc_def {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::pc_def

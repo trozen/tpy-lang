@@ -24,7 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::geo::__tpy_init();
     ::tpyapp::geo::hexcodec::__tpy_init();
     ::tpyapp::geo::units::__tpy_init();
     ::tpyapp::main::main();

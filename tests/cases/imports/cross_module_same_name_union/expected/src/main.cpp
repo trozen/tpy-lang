@@ -66,8 +66,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::pkg_a::__tpy_init();
-    ::tpyapp::pkg_b::__tpy_init();
     ::tpyapp::main::main();
 }
 

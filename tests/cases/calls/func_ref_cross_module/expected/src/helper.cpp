@@ -17,10 +17,6 @@ std::string shout(std::string_view s) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::helper

@@ -409,7 +409,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::_bindings::zlib::__tpy_init();
     ZLIB_VERSION = std::string(reinterpret_cast<const char*>(::tpy_zlib_header_version()));
     ZLIB_RUNTIME_VERSION = std::string(reinterpret_cast<const char*>(::tpy_zlib_runtime_version()));
     _MAX_CHUNK = ::tpy::lshift_check<int32_t>(1, 20);

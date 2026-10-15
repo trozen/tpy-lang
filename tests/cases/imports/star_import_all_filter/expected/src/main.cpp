@@ -17,7 +17,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::lib::__tpy_init();
     std::cout << ::tpyapp::lib::Public().val << "\n" << ::tpy::check_signals;
     std::cout << ::tpyapp::lib::Hidden().val << "\n" << ::tpy::check_signals;
 }

@@ -188,9 +188,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::socket::__tpy_init();
-    ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
     PAST = ::tpy::bytes_literal_owned("Thu, 01 Jan 1970 00:00:00 GMT", 29);
     FUTURE = ::tpy::bytes_literal_owned("Fri, 31 Dec 2099 23:59:59 GMT", 29);

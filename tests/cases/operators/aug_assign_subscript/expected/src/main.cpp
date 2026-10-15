@@ -79,7 +79,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpyapp::main::test_list_aug_assign();
     ::tpyapp::main::test_arraylist_aug_assign();
     ::tpyapp::main::test_negative_index_aug_assign();

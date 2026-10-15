@@ -60,10 +60,6 @@ void scale_in_place(std::span<int32_t> data, int32_t factor) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::span_numeric

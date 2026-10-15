@@ -26,8 +26,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::label_infra::__tpy_init();
-    ::tpyapp::const_mod::__tpy_init();
     ::tpyapp::main::main();
 }
 

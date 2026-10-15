@@ -21,9 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::pascal_rt::__tpy_init();
-    ::pascal_rt::runtime::__tpy_init();
-    ::pascal_rt::runtime::strings::__tpy_init();
     static point __global_slot_1 = point();
     p = &__global_slot_1;
     p->x = 0;

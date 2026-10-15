@@ -11,10 +11,6 @@ int32_t compile_pattern(std::string_view s) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::_bindings::pcre2

@@ -21,7 +21,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::a::__tpy_init();
     static ::tpyapp::a::AType __global_slot_1 = ::tpyapp::a::AType();
     a = &__global_slot_1;
     static ::tpyapp::b::BType __global_slot_2 = a->make_b();

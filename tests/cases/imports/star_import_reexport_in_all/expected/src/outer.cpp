@@ -9,11 +9,6 @@ namespace tpyapp::outer {
 // # though it is not locally defined in this module.
 // from inner import shared_helper
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::inner::__tpy_init();
 }
 
 } // namespace tpyapp::outer

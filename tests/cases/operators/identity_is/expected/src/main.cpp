@@ -773,7 +773,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
     static A __global_slot_1 = A(::tpy::BigInt(7));
     G = &__global_slot_1;
     static A __global_slot_2 = A(::tpy::BigInt(7));

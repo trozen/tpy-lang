@@ -27,11 +27,6 @@ int32_t A::twice() const {
 }
 // from b import H
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::b::__tpy_init();
 }
 
 } // namespace tpyapp::a

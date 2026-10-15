@@ -19,11 +19,6 @@ extern "C" void app_init() {
 //
 // from lib import abs, get_clock
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::lib::__tpy_init();
 }
 
 } // namespace tpyapp::main

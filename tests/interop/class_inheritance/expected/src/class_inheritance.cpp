@@ -17,10 +17,6 @@ Shape& as_shape(Circle& c) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::class_inheritance

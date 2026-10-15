@@ -601,7 +601,6 @@ void __tpy_init() {
 
     ::tpystd::os::__tpy_init();
     ::tpystd::os::_environ::__tpy_init();
-    ::tpystd::os::_types::__tpy_init();
 }
 
 } // namespace tpystd::os::path

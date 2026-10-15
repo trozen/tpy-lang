@@ -214,7 +214,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::types::__tpy_init();
     static ::tpy::ordered_map<int32_t, std::function<void(int32_t, ::tpystd::types::FrameType*)>> __global_slot_1 = ::tpy::ordered_map<int32_t, std::function<void(int32_t, ::tpystd::types::FrameType*)>>();
     _handlers = &__global_slot_1;
 }

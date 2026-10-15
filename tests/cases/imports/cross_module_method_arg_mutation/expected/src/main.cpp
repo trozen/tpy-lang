@@ -273,7 +273,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpyapp::keeper::__tpy_init();
     static ::tpyapp::keeper::Factory __global_slot_1 = ::tpyapp::keeper::Factory();
     G = &__global_slot_1;
     ::tpyapp::main::main();

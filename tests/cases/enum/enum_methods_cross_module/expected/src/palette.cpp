@@ -8,11 +8,6 @@ namespace tpyapp::palette {
 // # companion in the module that declares it.
 // from tones import Shade
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::tones::__tpy_init();
 }
 
 } // namespace tpyapp::palette

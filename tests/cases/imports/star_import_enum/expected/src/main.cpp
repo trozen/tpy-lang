@@ -19,7 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::lib::__tpy_init();
     c = ::tpyapp::lib::Color::GREEN;
     std::cout << static_cast<int32_t>(c) << "\n" << ::tpy::check_signals;
 }

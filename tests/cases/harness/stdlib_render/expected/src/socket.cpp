@@ -756,7 +756,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::_interrupt::__tpy_init();
     ::tpystd::os::__tpy_init();
     ::tpystd::io::__tpy_init();
 }

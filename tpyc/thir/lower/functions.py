@@ -26,7 +26,6 @@ from ...parse.nodes import (
     TpyFloatLiteral,
     TpyFString,
     TpyFunction,
-    TpyImport,
     TpyIntLiteral,
     TpyMatch,
     TpyMethodCall,
@@ -75,9 +74,8 @@ from ...codegen_cpp.context import (
     contains_named_expr,
     escape_cpp_name,
     imported_variable_cpp,
-    module_init_targets,
+    module_init_function,
     module_native_global_names,
-    qualified_cpp_name,
     qualify_native_name,
 )
 from ...codegen_cpp.functions import (
@@ -1980,8 +1978,7 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
                     final_types=None,
                     render_type=None, render_type_stored=None,
                     render_resolve=None, render_concept=None,
-                    user_module_imports=None,
-                    all_user_modules=frozenset()) -> 'THIRFunction | None':
+                    import_init_calls=()) -> 'THIRFunction | None':
     """Lower a module's top-level statements -- the `__tpy_init` body -- or
     None if any of them falls outside the slice.
 
@@ -2053,18 +2050,10 @@ def lower_top_level(module: TpyModule, analyzer, global_types, *,
         if name in declared:
             lc.prescan.global_write_cpp[name] = cname
             lc.prescan.global_cpp.setdefault(name, qualify_native_name(cname))
-    emitted: set[str] = set()
-    for stmt in carrier.body:
-        if isinstance(stmt, TpyImport):
-            lc.import_calls[id(stmt)] = tuple(
-                qualified_cpp_name(target, "__tpy_init")
-                for target in module_init_targets(
-                    stmt, registry=analyzer.registry,
-                    module_name=analyzer.ctx.module_name,
-                    user_module_imports=(module.user_module_imports
-                                         if user_module_imports is None
-                                         else user_module_imports),
-                    all_user_modules=all_user_modules, emitted=emitted))
+    for stmt, targets in import_init_calls:
+        lc.import_calls[id(stmt)] = tuple(
+            module_init_function(analyzer.registry, target)
+            for target in targets)
     try:
         bindings.plan_and_install(
             lc, carrier.body, declared, top_level=True,

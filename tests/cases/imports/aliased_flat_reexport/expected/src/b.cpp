@@ -6,11 +6,6 @@ namespace tpyapp::b {
 
 // from c import Original as MyCls
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::c::__tpy_init();
 }
 
 } // namespace tpyapp::b

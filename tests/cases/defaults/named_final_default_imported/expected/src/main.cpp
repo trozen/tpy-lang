@@ -26,7 +26,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::consts::__tpy_init();
     ::tpyapp::main::main();
 }
 

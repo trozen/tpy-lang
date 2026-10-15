@@ -27,11 +27,6 @@ std::string Pair::__repr__() const {
 // from dataclasses import dataclass
 // from b import sum_pair
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::b::__tpy_init();
 }
 
 } // namespace tpyapp::a

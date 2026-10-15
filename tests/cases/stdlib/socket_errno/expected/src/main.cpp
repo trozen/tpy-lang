@@ -86,7 +86,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::errno_mod::__tpy_init();
     ::tpystd::socket::__tpy_init();
     ::tpyapp::main::main();
 }

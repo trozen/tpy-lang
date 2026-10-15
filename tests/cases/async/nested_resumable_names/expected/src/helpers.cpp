@@ -24,10 +24,6 @@ namespace nested_case::helpers {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace nested_case::helpers

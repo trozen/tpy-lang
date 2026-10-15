@@ -11,10 +11,6 @@ std::string tag(std::string_view label, int32_t value) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::mypkg::helpers

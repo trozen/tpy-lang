@@ -21,10 +21,6 @@ int64_t add(int64_t a, int64_t b) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::funcs

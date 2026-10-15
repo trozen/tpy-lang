@@ -106,9 +106,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::socket::__tpy_init();
-    ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::requests::__tpy_init();
     ::tpyapp::main::main();
 }

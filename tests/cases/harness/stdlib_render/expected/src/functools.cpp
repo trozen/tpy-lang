@@ -6,10 +6,6 @@ namespace tpystd::functools {
 
 // from _functools_macros import total_ordering
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::functools

@@ -55,7 +55,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::net::__tpy_init();
     ::tpyapp::main::main();
 }
 

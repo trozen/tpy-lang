@@ -8,11 +8,6 @@ namespace tpystd::tplib::arc {
 // from tpy.atomic import Atomic, MemoryOrder, fence
 // from tpy.unsafe import unsafe_take, unsafe_release
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpystd::tpy::atomic::__tpy_init();
 }
 
 } // namespace tpystd::tplib::arc

@@ -129,10 +129,6 @@ int32_t _wait(int32_t fd, int32_t want_write, double deadline) {
 // from _bindings import posix_signal
 // import time
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::_interrupt

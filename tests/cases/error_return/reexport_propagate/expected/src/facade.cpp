@@ -7,11 +7,6 @@ namespace tpyapp::facade {
 // # Facade module: re-exports AppError (and check) from the defining module.
 // from errdef import AppError, check
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::errdef::__tpy_init();
 }
 
 } // namespace tpyapp::facade

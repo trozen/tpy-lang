@@ -38,12 +38,6 @@ int32_t use() {
 // from ba import pick_ba
 // from item import Bag, Item
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::ba::__tpy_init();
-    ::tpyapp::item::__tpy_init();
 }
 
 } // namespace tpyapp::bb

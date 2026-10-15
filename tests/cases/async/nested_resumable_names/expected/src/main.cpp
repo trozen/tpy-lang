@@ -708,7 +708,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::nested_case::helpers::__tpy_init();
     ::tpyapp::main::main();
 }
 

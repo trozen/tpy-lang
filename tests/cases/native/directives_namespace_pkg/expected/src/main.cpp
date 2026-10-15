@@ -18,8 +18,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::mypkg::__tpy_init();
-    ::mypkg::utils::__tpy_init();
     ::myapp::main();
 }
 

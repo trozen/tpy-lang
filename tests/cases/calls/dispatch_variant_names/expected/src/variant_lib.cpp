@@ -42,10 +42,6 @@ std::string grow__list_int(std::vector<::tpy::BigInt>& xs) {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::variant_lib

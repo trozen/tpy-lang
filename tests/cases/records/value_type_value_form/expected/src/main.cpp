@@ -1884,7 +1884,6 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::datetime::__tpy_init();
-    ::tpyapp::other::__tpy_init();
     G = Coord(1, 2);
     ORIGIN = Calm();
     FAR = Calm(9);

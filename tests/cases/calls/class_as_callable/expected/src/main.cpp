@@ -391,7 +391,6 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ::tpyapp::shapes::__tpy_init();
     MOD = []() -> std::vector<std::string> { return std::vector<std::string>(); };
     ::tpyapp::main::main();
 }

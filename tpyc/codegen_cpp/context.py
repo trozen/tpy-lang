@@ -10,7 +10,7 @@ import tokenize
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Callable, Iterator, TextIO, TYPE_CHECKING
+from typing import Callable, Iterator, Mapping, TextIO, TYPE_CHECKING
 
 from ..typesys import pointer_repr_optional
 from ..typesys import (
@@ -28,7 +28,7 @@ from ..parse import (
     TpyDictLiteral, TpySetLiteral, TpyDictComprehension, TpySetComprehension,
     TpyGeneratorExpression,
     TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall, TpySubscript, TpySlice, TpyCall, TpyName, TpyFieldAccess,
-    TpyIfExpr, TpyAssign, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
+    TpyIfExpr, TpyAssign, TpyImport, TpyVarDecl, TpyTupleUnpack, TpyStmt, VarLinkage,
     TpyNamedExpr, walrus_bindings,
 )
 from ..namespace import Namespace, BindingKind
@@ -358,7 +358,23 @@ def module_to_cpp_namespace(module_name: str) -> str:
     compiler = get_current_compiler()
     if compiler is not None and module_name in compiler.namespace_map:
         return compiler.namespace_map[module_name]
-    return f"tpyapp::{module_name.replace('.', '::')}"
+    return default_module_namespace(module_name)
+
+
+def cpp_module_path(module_name: str) -> str:
+    """A dotted module name (or a relative part of one) as a C++
+    namespace path. A part that is a C++ keyword or already ends in `_`
+    gains a `_`, which keeps the encoding one-to-one: `new` -> `new_`,
+    `new_` -> `new__`."""
+    return "::".join(
+        part + "_" if part in _CPP_RESERVED_WORDS or part.endswith("_")
+        else part
+        for part in module_name.split("."))
+
+
+def default_module_namespace(module_name: str) -> str:
+    """The C++ namespace of a module without a `cpp_namespace` setting."""
+    return f"tpyapp::{cpp_module_path(module_name)}"
 
 
 def module_has_cpp_namespace_override(module_name: str) -> bool:
@@ -487,78 +503,83 @@ def module_variable_cpp(registry, module: str, name: str,
         registry, module, name, SymbolKind.VARIABLE)), var_info
 
 
-def _native_facade_init_targets(registry, native_module: str) -> list[str]:
-    """Defining modules of variables re-exported by ``native_module``.
-
-    Records, functions, and protocols re-exported by the facade are pure
-    declarations; only re-exported variables involve runtime construction the
-    consumer must trigger. The attribute table's VARIABLE bindings carry the
-    chain-flattened ultimate definer in `binding.defining_module`, so a single
-    pass over the facade's table yields the set of init targets.
-    """
-    info = registry.get_module(native_module)
-    if info is None or info.module_attributes is None:
+def module_init_candidates(stmt, *, module_name: str, user_module_imports,
+                           all_user_modules: 'set[str]') -> list[str]:
+    """The modules a top-level import of `module_name` runs, in run order:
+    each parent package of the imported module first (Python semantics:
+    `import pkg.utils` runs pkg, then pkg.utils), then the module itself.
+    Whether running one does anything is `ModuleInfo.has_runtime_init`'s
+    question, not this one's."""
+    if stmt.module_name not in user_module_imports:
         return []
-    order: list[str] = []
-    seen: set[str] = set()
-    for cell in info.module_attributes.values():
-        bd = cell.binding
-        if bd.kind != SymbolKind.VARIABLE or bd.defining_module is None:
-            continue
-        ult_mod = bd.defining_module
-        if ult_mod in seen:
-            continue
-        ult_info = registry.get_module(ult_mod)
-        if ult_info is None or not ult_info.has_runtime_init:
-            continue
-        seen.add(ult_mod)
-        order.append(ult_mod)
-    return order
-
-
-def module_init_targets(stmt, *, registry, module_name: str,
-                        user_module_imports, all_user_modules: 'set[str]',
-                        emitted: 'set[str]') -> list[str]:
-    """Modules whose `__tpy_init()` a top-level import chains into, in emit
-    order -- the render behind `__tpy_init`'s import statements.
-
-    Top-level lowering resolves the call list here, at lowering time;
-    `emitted` is the caller's own once-per-module dedup set, mutated in
-    place."""
-    info = registry.get_module(stmt.module_name)
-    has_init = info is None or info.has_runtime_init
-    out: list[str] = []
-    if (info is not None and info.is_native_module
-            and stmt.module_name in user_module_imports):
-        # Native facades have no __tpy_init() of their own; chain into the
-        # non-native source modules of any re-exported variables.
-        for reached in _native_facade_init_targets(registry, stmt.module_name):
-            if reached in emitted:
-                continue
-            out.append(reached)
-            emitted.add(reached)
-    if stmt.module_name not in user_module_imports or not has_init:
-        return out
-    # Dotted imports init each parent package first (Python semantics):
-    # "pkg.utils" -> pkg, then pkg.utils.
     parts = stmt.module_name.split('.')
-    for i in range(1, len(parts)):
-        parent = '.'.join(parts[:i])
-        if (parent == module_name or parent not in all_user_modules
-                or parent in emitted):
+    out = [parent for parent in ('.'.join(parts[:i])
+                                 for i in range(1, len(parts)))
+           if parent in all_user_modules]
+    out.append(stmt.module_name)
+    return [target for target in out if target != module_name]
+
+
+def module_init_targets(stmt, *, modules: 'Mapping[str, ModuleInfo]',
+                        module_name: str, user_module_imports,
+                        all_user_modules: 'set[str]',
+                        emitted: 'set[str]') -> tuple[str, ...]:
+    """Modules whose `__tpy_init()` a top-level import chains into, in emit
+    order -- the render behind `__tpy_init`'s import statements: the
+    `module_init_candidates` whose init does work. `emitted` is the
+    caller's own once-per-module dedup set, mutated in place."""
+    out: list[str] = []
+    for target in module_init_candidates(
+            stmt, module_name=module_name,
+            user_module_imports=user_module_imports,
+            all_user_modules=all_user_modules):
+        if target in emitted:
             continue
-        parent_info = registry.get_module(parent)
-        if parent_info is not None and not parent_info.has_runtime_init:
-            # Native/builtin packages have no __tpy_init symbol; mark visited
-            # so sibling submodules don't retry.
-            emitted.add(parent)
-            continue
-        out.append(parent)
-        emitted.add(parent)
-    if stmt.module_name != module_name and stmt.module_name not in emitted:
-        out.append(stmt.module_name)
-        emitted.add(stmt.module_name)
-    return out
+        # Visited even when it does nothing, so a sibling import does not
+        # ask again.
+        emitted.add(target)
+        target_info = modules.get(target)
+        if target_info is None or target_info.init_does_work():
+            out.append(target)
+    return tuple(out)
+
+
+def import_init_targets(imports, *, modules: 'Mapping[str, ModuleInfo]',
+                        module_name: str, user_module_imports,
+                        all_user_modules: 'set[str]',
+                        ) -> 'tuple[tuple[TpyImport, tuple[str, ...]], ...]':
+    """Each of `module_name`'s top-level `imports` with the modules whose
+    init it runs (`module_init_targets`, deduplicated across the list) --
+    `ModuleInfo.init_calls`."""
+    emitted: set[str] = set()
+    return tuple((stmt, module_init_targets(
+                     stmt, modules=modules, module_name=module_name,
+                     user_module_imports=user_module_imports,
+                     all_user_modules=all_user_modules, emitted=emitted))
+                 for stmt in imports)
+
+
+# A native module's init lives in a namespace TPy owns rather than the
+# binding's `cpp_namespace`, which is the user's (and may be shared by
+# several native modules).
+NATIVE_INIT_NAMESPACE = "tpynative"
+
+
+def native_init_namespace(module_name: str) -> str:
+    return f"{NATIVE_INIT_NAMESPACE}::{cpp_module_path(module_name)}"
+
+
+def module_init_namespace(registry, module_name: str) -> str:
+    """The C++ namespace holding module `module_name`'s init function."""
+    info = registry.get_module(module_name)
+    if info is not None and info.is_native_module:
+        return native_init_namespace(module_name)
+    return module_to_cpp_namespace(module_name)
+
+
+def module_init_function(registry, module_name: str) -> str:
+    """The C++ name of module `module_name`'s init function."""
+    return f"::{module_init_namespace(registry, module_name)}::__tpy_init"
 
 
 def module_native_global_names(top_level_stmts) -> dict[str, str]:

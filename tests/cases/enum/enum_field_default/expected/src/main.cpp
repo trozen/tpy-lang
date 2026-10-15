@@ -83,7 +83,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::sidemod::__tpy_init();
     ::tpyapp::main::main();
 }
 

@@ -104,10 +104,6 @@ __gen_gen_sizes gen_sizes(::tpy::BytesView data) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::pets

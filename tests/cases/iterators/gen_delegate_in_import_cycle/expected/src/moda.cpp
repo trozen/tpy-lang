@@ -43,11 +43,6 @@ int32_t ping(int32_t n) {
 Src::Src(int32_t n) : n(n) {}
 // import modb
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::modb::__tpy_init();
 }
 
 } // namespace tpyapp::moda

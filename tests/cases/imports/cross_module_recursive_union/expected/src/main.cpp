@@ -74,7 +74,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::pkg_v::__tpy_init();
     ::tpyapp::main::main();
 }
 

@@ -77,7 +77,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::colors::__tpy_init();
     ::tpyapp::main::main();
 }
 

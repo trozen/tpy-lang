@@ -17,11 +17,6 @@ int32_t BType::use_a(const ::tpyapp::a::AType& a) const {
 }
 // from a import AType
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::a::__tpy_init();
 }
 
 } // namespace tpyapp::b

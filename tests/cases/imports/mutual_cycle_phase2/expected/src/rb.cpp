@@ -29,11 +29,6 @@ int32_t Counter::get() const {
 }
 // import ra
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::ra::__tpy_init();
 }
 
 } // namespace tpyapp::rb

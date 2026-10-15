@@ -19,7 +19,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::utils::__tpy_init();
     static Pair __global_slot_1 = Pair(3, 4);
     p = &__global_slot_1;
     std::cout << ::tpy::DictPrinter(::tpy::ordered_map<std::string, int32_t>({{"x", p->x}, {"y", p->y}})) << "\n" << ::tpy::check_signals;

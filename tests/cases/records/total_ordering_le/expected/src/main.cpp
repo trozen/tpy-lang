@@ -22,7 +22,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::functools::__tpy_init();
     static Bid __global_slot_1 = Bid(10);
     x = &__global_slot_1;
     static Bid __global_slot_2 = Bid(20);

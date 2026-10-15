@@ -15,7 +15,6 @@ void __tpy_init() {
     initialized = true;
 
     std::cout << "before first import" << "\n" << ::tpy::check_signals;
-    ::tpyapp::pkg::__tpy_init();
     ::tpyapp::pkg::first::__tpy_init();
     std::cout << "after first, before second" << "\n" << ::tpy::check_signals;
     ::tpyapp::pkg::second::__tpy_init();

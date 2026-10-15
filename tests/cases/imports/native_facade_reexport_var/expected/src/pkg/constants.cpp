@@ -5,10 +5,6 @@ namespace repro::pkg::constants {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace repro::pkg::constants

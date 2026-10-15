@@ -19,10 +19,6 @@ int64_t run(int64_t n) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::internal_fields

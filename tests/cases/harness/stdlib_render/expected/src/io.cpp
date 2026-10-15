@@ -824,11 +824,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::box::__tpy_init();
-    ::tpystd::errno_mod::__tpy_init();
     ::tpystd::os::__tpy_init();
-    ::tpystd::_interrupt::__tpy_init();
     _SEEK_SET = 0;
     _SEEK_CUR = 1;
     _SEEK_END = 2;

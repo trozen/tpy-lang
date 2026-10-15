@@ -38,10 +38,6 @@ stat_result::stat_result(int64_t mode, int64_t ino, int64_t dev, int64_t nlink, 
       st_mtime_ns(mtime_ns),
       st_ctime_ns(ctime_ns) {}
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::os::_types

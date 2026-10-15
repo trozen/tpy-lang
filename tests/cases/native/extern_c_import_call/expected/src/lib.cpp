@@ -8,10 +8,6 @@ namespace tpyapp::lib {
 
 // from tpy.extern import native
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::lib

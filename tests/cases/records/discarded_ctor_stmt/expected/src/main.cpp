@@ -387,7 +387,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::shapes::__tpy_init();
     ::tpyapp::main::main();
     g = 9;
     std::cout << "module-level:" << "\n" << ::tpy::check_signals;

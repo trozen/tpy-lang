@@ -1857,9 +1857,9 @@ class _LowerCtx:
         # `rebind_slots` lookup), a render this slice does not emit.
         self.global_slot_assigned: set[str] = set()
         # Per-import `__tpy_init()` chain, keyed by statement id and resolved
-        # up-front by `lower_top_level` (the dedup is order- and
-        # state-dependent, so it is replayed once over the whole list rather
-        # than re-derived mid-walk).
+        # once per compilation (`ModuleInfo.init_calls`, handed to
+        # `lower_top_level`): the dedup is order- and state-dependent, so it
+        # is decided over the whole list rather than re-derived mid-walk.
         self.import_calls: dict[int, tuple[str, ...]] = {}
         # Imported names this module redefines at top level: name ->
         # (decl_line, qualified import spelling). Reads BEFORE decl_line

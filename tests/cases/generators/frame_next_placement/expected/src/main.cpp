@@ -88,10 +88,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::gens::__tpy_init();
-    ::tpyapp::cyc_a::__tpy_init();
-    ::tpyapp::cyc_b::__tpy_init();
-    ::tpyapp::relay::__tpy_init();
     ::tpyapp::main::main();
 }
 

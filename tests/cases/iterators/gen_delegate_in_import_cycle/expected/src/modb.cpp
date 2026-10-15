@@ -19,11 +19,6 @@ int32_t pong(int32_t n) {
 
 // import moda
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::moda::__tpy_init();
 }
 
 } // namespace tpyapp::modb

@@ -37,6 +37,7 @@ def _fmt_ms(seconds: float) -> str:
 
 
 from . import get_runtime_dir
+from .codegen_cpp.context import NATIVE_INIT_NAMESPACE
 from .toolchain import (PCH_DIR, compile_pool, get_or_build_pch, host_os, mark_cache_entry_used,
                         pch_is_current, shared_cache_root)
 
@@ -726,9 +727,13 @@ class ClangReplBackend(REPLBackend):
         result = []
         lines = code.splitlines()
         i = 0
-        # Skip includes, pragmas, comments, blank lines before namespace
+        # Skip includes, pragmas, comments, blank lines and the native
+        # modules' init declarations before the module's namespace
         while i < len(lines):
             stripped = lines[i].strip()
+            if stripped.startswith(f"namespace {NATIVE_INIT_NAMESPACE}::"):
+                i = self._skip_braced(lines, i)
+                continue
             if stripped and not stripped.startswith(("//", "#")) and "namespace" not in stripped:
                 break
             if "namespace" in stripped:
@@ -774,6 +779,17 @@ class ClangReplBackend(REPLBackend):
 
         return result
 
+    @staticmethod
+    def _skip_braced(lines: list[str], i: int) -> int:
+        """The index past the brace-balanced block starting at line `i`."""
+        depth = 0
+        while i < len(lines):
+            depth += lines[i].count("{") - lines[i].count("}")
+            i += 1
+            if depth <= 0:
+                break
+        return i
+
     def _extract_init_body(self, cpp_code: str) -> list[str]:
         """Extract complete statements from __tpy_init() body.
 
@@ -789,7 +805,8 @@ class ClangReplBackend(REPLBackend):
         for line in lines:
             stripped = line.strip()
             if not in_init:
-                if "__tpy_init()" in stripped and "{" in stripped:
+                # The module's definition, not a native init's declaration.
+                if stripped == "void __tpy_init() {":
                     in_init = True
                     func_depth = 1
                 continue

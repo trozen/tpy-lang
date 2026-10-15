@@ -1660,12 +1660,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tpy::version::__tpy_init();
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::http::__tpy_init();
     ::tpystd::http::client::__tpy_init();
     ::tpystd::ssl::__tpy_init();
-    ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
     ::tpystd::json::__tpy_init();
     ::tpystd::datetime::__tpy_init();

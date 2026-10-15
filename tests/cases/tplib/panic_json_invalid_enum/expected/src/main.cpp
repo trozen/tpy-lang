@@ -110,10 +110,8 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpystd::tplib::json::__tpy_init();
     ::tpystd::tplib::json::writer::__tpy_init();
-    ::tpystd::tplib::json::parser::__tpy_init();
     ::tpyapp::main::main();
 }
 

@@ -700,7 +700,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::math::__tpy_init();
     _N = 624;
     _M = 397;
     _MATRIX_A = static_cast<uint32_t>(2567483615);

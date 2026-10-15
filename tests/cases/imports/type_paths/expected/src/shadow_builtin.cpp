@@ -50,11 +50,6 @@ void run() {
 // # mx's own TimeoutError, from-imported, shadows the builtin for bare names.
 // from mx import TimeoutError
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::mx::__tpy_init();
 }
 
 } // namespace tpyapp::shadow_builtin

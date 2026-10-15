@@ -23,12 +23,6 @@ int32_t A::kind() const {
 // # Python-cycle handling). Pkg/__init__.py re-exports from both.
 // from pkg.b import B
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
-    ::tpyapp::pkg::__tpy_init();
-    ::tpyapp::pkg::b::__tpy_init();
 }
 
 } // namespace tpyapp::pkg::a

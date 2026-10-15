@@ -65,7 +65,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
     ::tpyapp::main::test_list();
     ::tpyapp::main::test_array();
     ::tpyapp::main::test_span();

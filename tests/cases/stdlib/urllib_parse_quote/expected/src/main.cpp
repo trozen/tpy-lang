@@ -75,7 +75,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::urllib::__tpy_init();
     ::tpystd::urllib::parse::__tpy_init();
     ::tpyapp::main::main();
 }

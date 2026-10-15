@@ -65,10 +65,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::tplib::__tpy_init();
-    ::tpystd::tplib::arc::__tpy_init();
-    ::tpystd::tpy::thread::__tpy_init();
-    ::tpystd::tpy::sync::__tpy_init();
     ::tpyapp::main::main();
 }
 

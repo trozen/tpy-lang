@@ -337,10 +337,6 @@ bool isclose(double a, double b, double rel_tol, double abs_tol) {
 
 // from tpy.extern import native, cpp_template, type_param_default, DefaultInt
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpystd::math

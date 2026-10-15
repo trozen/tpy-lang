@@ -13,10 +13,6 @@ Counter make(int64_t value) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::classes

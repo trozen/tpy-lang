@@ -5,10 +5,6 @@ namespace repro_rec::pkg::types {
 
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace repro_rec::pkg::types

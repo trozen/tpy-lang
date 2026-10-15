@@ -24,7 +24,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::helpers::__tpy_init();
     ::tpyapp::main::main();
 }
 

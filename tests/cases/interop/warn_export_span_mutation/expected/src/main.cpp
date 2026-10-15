@@ -55,10 +55,6 @@ int32_t peek(std::span<int32_t> xs) {
 
 // from tpy.extern import export
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::main

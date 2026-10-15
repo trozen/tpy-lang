@@ -13,10 +13,6 @@ std::string label_of(int64_t value, std::string_view name) {
 }
 
 void __tpy_init() {
-    static bool initialized = false;
-    if (initialized) return;
-    initialized = true;
-
 }
 
 } // namespace tpyapp::kwargs

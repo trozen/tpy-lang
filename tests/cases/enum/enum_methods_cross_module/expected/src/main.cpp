@@ -48,9 +48,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpyapp::palette::__tpy_init();
-    ::tpyapp::shades::__tpy_init();
-    ::tpyapp::tones::__tpy_init();
     ::tpyapp::main::main();
 }
 

@@ -23,7 +23,6 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    ::tpystd::functools::__tpy_init();
     static Weight __global_slot_1 = Weight(50);
     a = &__global_slot_1;
     static Weight __global_slot_2 = Weight(30);
