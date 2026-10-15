@@ -5,7 +5,6 @@
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
 #include "cyc_b_fwd.hpp"
-#include "handle.hpp"
 
 namespace tpyapp::cyc_a {
 
@@ -26,8 +25,6 @@ struct Split;
 struct Adder;
 struct Refused;
 struct Passer;
-struct Holder;
-struct GenOps;
 struct Disp;
 struct Opt;
 struct Box;
@@ -51,10 +48,6 @@ std::string use_cycle();
 std::string use_operators();
 // def use_passing() -> str:
 std::string use_passing();
-// def use_holder() -> str:
-std::string use_holder();
-// def use_generic_ops() -> str:
-std::string use_generic_ops();
 // return sum(x.payload + v for v in self.items)
 template <typename F_x>
 __genexpr___iter___1_frame<F_x> __genexpr___iter___1(const std::vector<int32_t>& __src, F_x&& x);
@@ -333,58 +326,6 @@ struct Passer {
 
 inline std::ostream& operator<<(std::ostream& os, const Passer& obj) {
     ::tpy::print_object_default(os, "Passer", obj);
-    return os;
-}
-
-// class Holder:
-struct Holder {
-    // value: handle.Handle[cyc_b.Item] | None  # tpyc: ok
-    std::optional<::tpyapp::handle::Handle<::tpyapp::cyc_b::Item>> value;
-
-    // def __init__(self) -> None:
-    Holder();
-    static constexpr std::string_view __tpy_class_name__ = "cyc_a.Holder";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
-    ::tpy::print_object_default(os, "Holder", obj);
-    return os;
-}
-
-// class GenOps:
-struct GenOps {
-    // k: int32
-    int32_t k;
-
-    // def __init__(self, k: int32) -> None:
-    GenOps() = default;
-    explicit GenOps(int32_t k);
-
-    // def __add__(self, x: handle.W[cyc_b.Val]) -> int32:  # tpyc: ok
-    int32_t __add__(::tpyapp::handle::W<::tpyapp::cyc_b::Val> x) const;
-
-    // def __sub__(self, n: int32) -> Own[handle.Handle[cyc_b.Item]]:  # tpyc: ok
-    ::tpyapp::handle::Handle<::tpyapp::cyc_b::Item> __sub__(int32_t n) const;
-
-    // def __mul__(self, n: int32) -> Own[handle.Node[cyc_b.Val]]:  # tpyc: ok
-    ::tpyapp::handle::Node<::tpyapp::cyc_b::Val> __mul__(int32_t n) const;
-
-    friend int32_t operator+(const GenOps& lhs, ::tpyapp::handle::W<::tpyapp::cyc_b::Val> x) {
-        return lhs.__add__(x);
-    }
-
-    friend ::tpyapp::handle::Handle<::tpyapp::cyc_b::Item> operator-(const GenOps& lhs, int32_t n) {
-        return lhs.__sub__(n);
-    }
-
-    friend ::tpyapp::handle::Node<::tpyapp::cyc_b::Val> operator*(const GenOps& lhs, int32_t n) {
-        return lhs.__mul__(n);
-    }
-    static constexpr std::string_view __tpy_class_name__ = "cyc_a.GenOps";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const GenOps& obj) {
-    ::tpy::print_object_default(os, "GenOps", obj);
     return os;
 }
 

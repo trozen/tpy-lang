@@ -127,46 +127,6 @@ std::string use_passing() {
     return std::format("{} {} {}", r.n, first, ((p) / (::tpy::as_mut_span(vals))));
 }
 
-// def use_holder() -> str:
-//     hd = Holder()
-//     first = "empty"
-//     if hd.value is not None:
-//         first = "set"
-//     hd.value = handle.Handle[cyc_b.Item]()
-//     if hd.value is not None:
-//         return first + " set"
-//     return first + " empty"
-std::string use_holder() {
-    Holder hd = Holder();
-    std::string_view first = "empty";
-    if ((hd.value.has_value())) {
-        first = "set";
-    }
-    hd.value = ::tpyapp::handle::Handle<::tpyapp::cyc_b::Item>();
-    if ((hd.value.has_value())) {
-        return (::tpy::str_concat(first, " set"));
-    }
-    return (::tpy::str_concat(first, " empty"));
-}
-
-// def use_generic_ops() -> str:
-//     g = GenOps(2)
-//     first = g + handle.W[cyc_b.Val]()
-//     g.k = 5
-//     h = g - 1
-//     t = g * 3
-//     t.children.append(handle.Node[cyc_b.Val]())
-//     return f"{first} {g + handle.W[cyc_b.Val]()} {h.ptr is None} {len(t.children)}"
-std::string use_generic_ops() {
-    GenOps g = GenOps(2);
-    int32_t first = ((g) + (::tpyapp::handle::W<::tpyapp::cyc_b::Val>()));
-    g.k = 5;
-    ::tpyapp::handle::Handle<::tpyapp::cyc_b::Item> h = ((g) - (1));
-    ::tpyapp::handle::Node<::tpyapp::cyc_b::Val> t = ((g) * (3));
-    t.children.push_back(::tpyapp::handle::Node<::tpyapp::cyc_b::Val>());
-    return std::format("{} {} {} {}", first, ((g) + (::tpyapp::handle::W<::tpyapp::cyc_b::Val>())), ::tpy::bool_to_str((h.ptr == nullptr)), ::tpy::__len__(t.children));
-}
-
 
 // @overload
 // def f(self, x: int32) -> int32: ...
@@ -386,45 +346,6 @@ int32_t Passer::__truediv__(std::span<::tpyapp::cyc_b::Val> xs) const {
     return t;
 }
 
-// def __init__(self) -> None:
-//     self.value = None
-Holder::Holder() : value(std::nullopt) {}
-
-// def __init__(self, k: int32) -> None:
-//     self.k = k
-GenOps::GenOps(int32_t k) : k(k) {}
-
-// def __add__(self, x: handle.W[cyc_b.Val]) -> int32:  # tpyc: ok
-//     if x.p is None:
-//         return self.k
-//     return -self.k
-int32_t GenOps::__add__(::tpyapp::handle::W<::tpyapp::cyc_b::Val> x) const {
-    if ((x.p == nullptr)) {
-        return this->k;
-    }
-    return ::tpy::neg_check<int32_t>(this->k);
-}
-
-// def __sub__(self, n: int32) -> Own[handle.Handle[cyc_b.Item]]:  # tpyc: ok
-//     return handle.Handle[cyc_b.Item]()
-::tpyapp::handle::Handle<::tpyapp::cyc_b::Item> GenOps::__sub__(int32_t n) const {
-    return ::tpyapp::handle::Handle<::tpyapp::cyc_b::Item>();
-}
-
-// def __mul__(self, n: int32) -> Own[handle.Node[cyc_b.Val]]:  # tpyc: ok
-//     t = handle.Node[cyc_b.Val]()
-//     for i in range(n):
-//         t.children.append(handle.Node[cyc_b.Val]())
-//     return t
-::tpyapp::handle::Node<::tpyapp::cyc_b::Val> GenOps::__mul__(int32_t n) const {
-    ::tpyapp::handle::Node<::tpyapp::cyc_b::Val> t = ::tpyapp::handle::Node<::tpyapp::cyc_b::Val>();
-    int32_t __stop_0 = n;
-    for (int32_t i = 0; i < __stop_0; ++i) {
-        t.children.push_back(::tpyapp::handle::Node<::tpyapp::cyc_b::Val>());
-    }
-    return t;
-}
-
 // def __init__(self, k: int32) -> None:
 //     self.k = k
 Disp::Disp(int32_t k) : k(k) {}
@@ -486,7 +407,6 @@ int32_t Opt::operator()(std::optional<::tpyapp::cyc_b::Val> x) const {
     return __call__(x);
 }
 // import cyc_b
-// import handle
 void __tpy_init() {
 }
 

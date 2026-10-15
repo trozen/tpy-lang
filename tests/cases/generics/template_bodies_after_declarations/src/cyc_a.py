@@ -4,7 +4,6 @@
 from typing import Any, Iterable, Iterator, Protocol, overload
 from tpy import Own, Ptr, ReturnException, Span, dispatch, error_return, int32
 import cyc_b
-import handle
 
 
 class Plain:
@@ -246,60 +245,6 @@ def use_passing() -> str:
     first = p / vals
     vals[0] = cyc_b.Val(10)
     return f"{r.n} {first} {p / vals}"
-
-
-# a field `| None` over a generic class outside the cycle that holds the peer
-# through a `Ptr`: the field stores no peer by value
-class Holder:
-    value: handle.Handle[cyc_b.Item] | None  # tpyc: ok
-
-    def __init__(self) -> None:
-        self.value = None
-
-
-def use_holder() -> str:
-    hd = Holder()
-    first = "empty"
-    if hd.value is not None:
-        first = "set"
-    hd.value = handle.Handle[cyc_b.Item]()
-    if hd.value is not None:
-        return first + " set"
-    return first + " empty"
-
-
-# generic classes outside the cycle at friend operators: `W` (a `ValueType`)
-# and `Handle` reach the peer only through a `Ptr`, and the self-referential
-# `Node` holds its own children and a `Ptr`, so none stores the peer by value
-class GenOps:
-    k: int32
-
-    def __init__(self, k: int32) -> None:
-        self.k = k
-
-    def __add__(self, x: handle.W[cyc_b.Val]) -> int32:  # tpyc: ok
-        if x.p is None:
-            return self.k
-        return -self.k
-
-    def __sub__(self, n: int32) -> Own[handle.Handle[cyc_b.Item]]:  # tpyc: ok
-        return handle.Handle[cyc_b.Item]()
-
-    def __mul__(self, n: int32) -> Own[handle.Node[cyc_b.Val]]:  # tpyc: ok
-        t = handle.Node[cyc_b.Val]()
-        for i in range(n):
-            t.children.append(handle.Node[cyc_b.Val]())
-        return t
-
-
-def use_generic_ops() -> str:
-    g = GenOps(2)
-    first = g + handle.W[cyc_b.Val]()
-    g.k = 5
-    h = g - 1
-    t = g * 3
-    t.children.append(handle.Node[cyc_b.Val]())
-    return f"{first} {g + handle.W[cyc_b.Val]()} {h.ptr is None} {len(t.children)}"
 
 
 # a @dispatch group with a template sibling: the non-template variant taking

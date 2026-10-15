@@ -473,8 +473,6 @@ def main() -> None:
     print("cycle-groups", cyc_a.use_groups())
     print("cycle-ops", cyc_a.use_operators())
     print("cycle-passing", cyc_a.use_passing())
-    print("cycle-holder", cyc_a.use_holder())
-    print("cycle-generic", cyc_a.use_generic_ops())
     # overload candidates naming the peer, used from outside the cycle
     print("cycle-user", cyc_user.use())
     # (o) a plain class's deduced `__iter__` defined in another module's

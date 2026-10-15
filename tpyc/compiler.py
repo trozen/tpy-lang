@@ -2046,41 +2046,27 @@ class Compiler:
         self.compile_order = [m for c in components for m in c]
 
     def _check_workspace_completeness_cycles(self) -> None:
-        """Reject by-value cross-module cycles with a structured diagnostic.
+        """Reject header positions of an import-cycle member that need a
+        peer cycle member's class complete, with a structured diagnostic.
 
-        Walks every cycle member's records (parents, fields) and rejects
-        positions that require a peer cycle member's *complete* type --
-        positions where the cycle's `<peer>_fwd.hpp` is insufficient
-        and the C++ build would otherwise fail with a complete-type error
-        ("invalid use of incomplete type", "field has incomplete type",
-        ...). The check runs after decl finalization so RecordInfo
-        fields / parents are populated.
+        A cycle member's header sees its peers only through
+        `<peer>_fwd.hpp`, so the C++ build would otherwise fail with a
+        complete-type error ("invalid use of incomplete type", "field has
+        incomplete type", ...). The check runs after decl finalization so
+        RecordInfo fields / parents are populated. Two rules, each in one
+        place (`_reject_completeness_cycle_in_scc`):
 
-        v1 conservative gate. Detected positions:
-        - **Concrete inheritance**: `class A(Peer):` always needs `Peer`
-          complete.
-        - **By-value record field**: `field: peer_record_type` (the
-          field stores the record by value -- only matters for
-          `ValueType` records but we flag any by-value position to
-          give a useful error before C++ does).
-        - **`Own[T]` field**: `field: Own[peer_record]` -- ownership
-          transfer, value layout.
-        - **Tuple field**: `field: tuple[peer_record, ...]`.
-        - **Value-variant union field**: `field: peer_record | other`
-          where the variant is value-kind.
-        - **Container of by-value cycle peer**: `field: list[peer]`,
-          `set[peer]`, `Array[peer, N]`, etc. -- containers store
-          elements by value internally.
-
-        Forward-declarable positions (NOT flagged):
-        - `Ptr[peer]`, `peer&` (via RefType wrapping).
-        - Pointer-variant unions (the typical non-value record union).
-        - Optional with pointer rep (`OptionalType.uses_pointer_repr`).
-        - `@dynamic` protocol references (base-class fwd suffices).
-
-        Diagnostic shape names the offending field path, the cycle
-        members in the SCC, and points the user at the workaround
-        (use `Ptr[T]` / `Optional[T]` instead of by-value).
+        - **Storage**: what a field, a recursive alias's wrapper, a base
+          or a friend operator's C++ form holds by value
+          (`typesys.types_held_by_value`) may not be a peer's class or
+          static protocol. `Ptr[peer]` and a `@dynamic` protocol hold
+          none; `peer | None`, a union over peers, a tuple or container
+          of them, or a generic class storing its argument hold it.
+        - **Naming**: a generic class TPy emits over a peer's class, at
+          any depth (`h.Handle[b.Item]`, `Box[Ptr[b.Item]]`), may not be
+          named at those positions or in a header-bodied member's
+          signature, whatever it stores: its declarations may ask about
+          the argument (a constrained type parameter, a value-type trait).
         """
         if not self.compile_order:
             return
@@ -2106,6 +2092,7 @@ class Compiler:
         first offender (deterministic order over modules + record name +
         field name) and the import cycle `import_component`, which also
         holds the native modules the C++ cycle leaves out."""
+        cycle_repr = " <-> ".join(sorted(import_component))
 
         def _scc_peer_module(qname: str | None, current_module: str) -> str | None:
             """Module of an SCC peer for `qname`, or None if `qname` is
@@ -2118,91 +2105,58 @@ class Compiler:
                 return None
             return module
 
-        def _find_complete_required_peer(
+        def _signature_peer_reached_by_body(
             typ, current_module: str,
             _seen: set[int] | None = None,
         ) -> tuple[str, str] | None:
-            """Return (peer_module, type_name) for the first cycle-peer
-            record this type stores by value, or None. `_seen` is a
-            per-traversal cycle guard against recursive type aliases
-            that would otherwise loop on the NominalType / type_args
-            descent. It must NOT be shared across separate field
-            checks -- a NominalType singleton referenced by two
-            distinct fields would silently skip the second on a
-            shared set, hiding a real completeness violation.
-            """
+            """(peer_module, type_name) of the first cycle-peer class (or
+            static protocol) a header-bodied member's signature names
+            outside a pointer form, or None. A policy, not a storage fact:
+            such a body is compiled into every module that uses it, and it
+            may touch what its signature names, so a peer passed by
+            reference counts and a view's elements count (clang rejects
+            member access into an incomplete class there even where g++
+            accepts) -- BUGS.md#cycle-gate-reference-peer-overreject. A
+            generic class over a peer is the naming rule's
+            (`_generic_over_peer`). `_seen` guards one traversal against
+            recursive aliases; it is never shared across positions."""
             if _seen is None:
                 _seen = set()
             tid = id(typ)
             if tid in _seen:
                 return None
             _seen.add(tid)
-            # Strip wrappers that don't change layout.
-            if isinstance(typ, ReadonlyType):
-                return _find_complete_required_peer(typ.wrapped, current_module, _seen)
-            # Pointer / reference: forward-declarable.
+            if isinstance(typ, (ReadonlyType, OwnType)):
+                return _signature_peer_reached_by_body(
+                    typ.wrapped, current_module, _seen)
             if isinstance(typ, (PtrType, RefType)):
                 return None
-            # Own[T]: ownership transfer, value layout -> complete required.
-            if isinstance(typ, OwnType):
-                return _find_complete_required_peer(typ.wrapped, current_module, _seen)
-            # Optional with pointer repr: T*-stored, forward-declarable.
             if isinstance(typ, OptionalType):
                 if typ.uses_pointer_repr():
                     return None
-                return _find_complete_required_peer(typ.inner, current_module, _seen)
-            # Union: pointer-variant uses pointers (forward-declarable);
-            # value-variant uses std::variant (complete required).
+                return _signature_peer_reached_by_body(
+                    typ.inner, current_module, _seen)
             if isinstance(typ, UnionType):
                 if not all(m.is_value_type() for m in typ.members):
                     return None
-                for m in typ.members:
-                    found = _find_complete_required_peer(m, current_module, _seen)
-                    if found is not None:
-                        return found
-                return None
-            # Tuple: by-value, complete required for all elements.
-            if isinstance(typ, TupleType):
-                for m in typ.element_types:
-                    found = _find_complete_required_peer(m, current_module, _seen)
-                    if found is not None:
-                        return found
-                return None
-            # NominalType: user record, builtin container, or protocol.
-            if isinstance(typ, NominalType):
-                if typ.is_user_record:
+                members = typ.members
+            elif isinstance(typ, TupleType):
+                members = typ.element_types
+            elif isinstance(typ, NominalType):
+                if typ.is_user_record or (typ.is_protocol
+                                          and not typ.is_dynamic_protocol):
                     module = _scc_peer_module(typ._module_qname, current_module)
                     if module is not None:
                         return (module, typ.name)
-                    # Generic-record instantiation: a non-cycle-peer
-                    # record parameterized over a cycle-peer arg
-                    # (e.g. `Box[B]`) still needs the peer's complete
-                    # layout when the template instantiates. Descend
-                    # into type_args so we don't miss those.
-                    if typ.type_args:
-                        for arg in typ.type_args:
-                            if not hasattr(arg, "is_value_type"):
-                                continue
-                            found = _find_complete_required_peer(arg, current_module, _seen)
-                            if found is not None:
-                                return found
-                    return None
-                if typ.is_protocol and not typ.is_dynamic_protocol:
-                    # Static protocol used as a type: template constraint
-                    # needs complete concept.
-                    module = _scc_peer_module(typ._module_qname, current_module)
-                    if module is not None:
-                        return (module, typ.name)
-                    return None
-                # Builtin container (list / dict / set / Array / ...):
-                # walk args looking for cycle-peer references.
-                if typ.type_args:
-                    for arg in typ.type_args:
-                        if not hasattr(arg, "is_value_type"):
-                            continue  # int literal, string literal, etc.
-                        found = _find_complete_required_peer(arg, current_module, _seen)
-                        if found is not None:
-                            return found
+                    if typ.is_protocol or typ.is_emitted_generic_class():
+                        return None
+                members = typ.inner_types()
+            else:
+                return None
+            for m in members:
+                found = _signature_peer_reached_by_body(m, current_module, _seen)
+                if found is not None:
+                    return found
             return None
 
         def _first_held_peer(
@@ -2221,55 +2175,128 @@ class Compiler:
                     return (module, t.name)
             return None
 
+        def _named_types(typ: TpyType) -> Iterator[TpyType]:
+            """`typ` and every type it names, at any depth."""
+            seen = IdentitySet()
+            stack = [typ]
+            while stack:
+                t = stack.pop()
+                if t in seen:
+                    continue
+                seen.add(t)
+                yield t
+                stack.extend(reversed(t.inner_types()))
+
+        def _generic_over_peer(
+            typ: TpyType, current_module: str,
+        ) -> tuple[NominalType, tuple[str, str]] | None:
+            """(generic class, (peer_module, type_name)) for the first
+            generic class TPy emits that `typ` names one of whose type
+            arguments names a cycle-peer class (or static protocol) at any
+            depth -- under `Ptr`, `| None` and nested generic classes too --
+            or None. Naming the instantiation makes its declarations ask
+            about the argument (a constrained type parameter, a value-type
+            trait), which a forward declaration cannot answer."""
+            for t in _named_types(typ):
+                if not (isinstance(t, NominalType)
+                        and t.is_emitted_generic_class()):
+                    continue
+                for arg in t.inner_types():
+                    found = _first_held_peer(_named_types(arg), current_module)
+                    if found is not None:
+                        return (t, found)
+            return None
+
+        def _raise_generic_over_peer(
+            subject: str, found: tuple[NominalType, tuple[str, str]],
+            compiled: CompiledModule, member: str, lineno: int | None,
+        ) -> None:
+            generic, (peer_mod, peer_name) = found
+            raise CompileError(
+                f"Cyclic import: {subject} names '{generic}', a generic "
+                f"class over '{peer_name}' from '{peer_mod}'. A cycle "
+                f"member cannot use a generic class over a class of "
+                f"another module in the cycle (the generic class needs it "
+                f"fully defined). Use `Ptr[{peer_name}]` directly, or move "
+                f"one of the classes out of the cycle. Cycle: {cycle_repr}",
+                member, compiled.path, lineno=lineno,
+            )
+
         for member in sorted(scc):
             compiled = self.modules.get(member)
             if compiled is None or compiled.analyzer is None:
                 continue
             registry = compiled.analyzer.registry
+            class_locs = {r.name: r.loc for r in compiled.ast.all_records()}
             for record_name, record_info in registry.records.items():
                 if record_info.defining_module != member:
                     continue  # imported records flow through their owning module's check
-                # Concrete inheritance from a peer in the same SCC.
+                # A class holds its bases inside itself, like fields.
                 for parent in record_info.parents:
-                    if isinstance(parent, NominalType) and parent.is_user_record:
-                        parent_mod = _scc_peer_module(parent._module_qname, member)
-                        if parent_mod is not None:
-                            cycle_repr = " <-> ".join(sorted(import_component))
-                            # RecordInfo carries no source location; pin
-                            # to the first cross-cycle import in this
-                            # module so the diagnostic has a usable line.
-                            lineno_n = self._first_cycle_import_line(compiled, import_component)
-                            raise CompileError(
-                                f"Cyclic import: '{record_name}' in "
-                                f"'{member}' concretely inherits from "
-                                f"'{parent.name}' (defined in "
-                                f"'{parent_mod}'). Concrete inheritance "
-                                f"is not allowed across an import "
-                                f"cycle; inherit from a `@dynamic` "
-                                f"protocol or break the cycle. Cycle: "
-                                f"{cycle_repr}",
-                                member, compiled.path, lineno=lineno_n,
-                            )
-                # By-value field referencing a peer record.
-                for field in record_info.fields:
-                    found = _find_complete_required_peer(field.type, member)
+                    if not (isinstance(parent, NominalType)
+                            and parent.is_user_record):
+                        continue
+                    import_line = self._first_cycle_import_line(
+                        compiled, import_component)
+                    class_loc = class_locs.get(record_name)
+                    lineno_n = (class_loc.line if class_loc is not None
+                                else import_line)
+                    parent_mod = _scc_peer_module(parent._module_qname, member)
+                    if parent_mod is not None:
+                        raise CompileError(
+                            f"Cyclic import: '{record_name}' in "
+                            f"'{member}' concretely inherits from "
+                            f"'{parent.name}' (defined in "
+                            f"'{parent_mod}'). Concrete inheritance "
+                            f"is not allowed across an import "
+                            f"cycle; inherit from a `@dynamic` "
+                            f"protocol or break the cycle. Cycle: "
+                            f"{cycle_repr}",
+                            member, compiled.path, lineno=lineno_n,
+                        )
+                    found = _first_held_peer(types_held_by_value(parent), member)
                     if found is not None:
                         peer_mod, peer_name = found
-                        cycle_repr = " <-> ".join(sorted(import_component))
-                        lineno_n = field.loc.line if field.loc else None
+                        raise CompileError(
+                            f"Cyclic import: '{record_name}' in "
+                            f"'{member}' inherits from '{parent}', which "
+                            f"stores '{peer_name}' from '{peer_mod}' by "
+                            f"value. A class holds its base inside itself, "
+                            f"so a class of another module in the cycle "
+                            f"can be stored only through "
+                            f"`Ptr[{peer_name}]`; or move one of the "
+                            f"classes out of the cycle. Cycle: "
+                            f"{cycle_repr}",
+                            member, compiled.path, lineno=lineno_n,
+                        )
+                    generic = _generic_over_peer(parent, member)
+                    if generic is not None:
+                        _raise_generic_over_peer(
+                            f"the base class of '{record_name}' in "
+                            f"'{member}'", generic, compiled, member,
+                            lineno_n)
+                for field in record_info.fields:
+                    lineno_n = field.loc.line if field.loc else None
+                    found = _first_held_peer(
+                        types_held_by_value(unwrap_ref_type(field.type)), member)
+                    if found is not None:
+                        peer_mod, peer_name = found
                         raise CompileError(
                             f"Cyclic import: field "
                             f"'{record_name}.{field.name}' stores "
                             f"'{peer_name}' from '{peer_mod}' by value. "
-                            f"Cycle members can only reference each "
-                            f"other through `Ptr[T]`, references, "
-                            f"`Optional[T]` (when `T` is a non-value "
-                            f"type), or pointer-variant union "
-                            f"positions. Use `Ptr[{peer_name}]` or "
-                            f"move the field out of the cycle. Cycle: "
-                            f"{cycle_repr}",
+                            f"A field holds its value inside the class, so "
+                            f"a class of another module in the cycle can "
+                            f"be stored only through `Ptr[{peer_name}]`; "
+                            f"or move one of the classes out of the "
+                            f"cycle. Cycle: {cycle_repr}",
                             member, compiled.path, lineno=lineno_n,
                         )
+                    generic = _generic_over_peer(field.type, member)
+                    if generic is not None:
+                        _raise_generic_over_peer(
+                            f"field '{record_name}.{field.name}'", generic,
+                            compiled, member, lineno_n)
 
             # A body codegen defines in the .hpp sees the peer only through
             # `<peer>_fwd.hpp`, so a by-value peer in its signature cannot
@@ -2288,7 +2315,8 @@ class Compiler:
                     func, member, import_component, compiled,
                     name_label=f"'{func.name}'",
                     where_label="function",
-                    finder=_find_complete_required_peer,
+                    finder=_signature_peer_reached_by_body,
+                    generic_finder=_generic_over_peer,
                 )
 
             for ast_record in compiled.ast.all_records():
@@ -2312,7 +2340,8 @@ class Compiler:
                         entry.func, member, import_component, compiled,
                         name_label=f"'{ast_record.name}.{entry.func.name}'",
                         where_label="method",
-                        finder=_find_complete_required_peer,
+                        finder=_signature_peer_reached_by_body,
+                        generic_finder=_generic_over_peer,
                     )
                 # A plain class's friend operator is defined in the class, in
                 # the header, so what it holds by value must be complete
@@ -2327,15 +2356,14 @@ class Compiler:
                             name_label=(f"'{ast_record.name}."
                                         f"{shim.targets[0].func.name}'"),
                             where_label="method",
-                            finder=_find_complete_required_peer,
+                            finder=None,
+                            generic_finder=_generic_over_peer,
                             operator_finder=_first_held_peer,
                             error_peer=_scc_peer_module,
                         )
 
-            # Recursive type aliases that reference cycle peers by-value
-            # in their body. TPy synthesizes a wrapper struct for these,
-            # so the body needs the peer's complete layout -- same
-            # constraint as a record field.
+            # Recursive type aliases: TPy synthesizes a wrapper struct for
+            # these, which holds the body's storage like a record field.
             recursive_aliases = (
                 compiled.ast.recursive_union_names
                 if compiled.ast.recursive_union_names else set()
@@ -2344,86 +2372,106 @@ class Compiler:
                 alias_type, alias_loc = entry[0], entry[1]
                 if alias_name not in recursive_aliases:
                     continue
-                found = _find_complete_required_peer(unwrap_ref_type(alias_type), member)
-                if found is None:
-                    continue
-                peer_mod, peer_name = found
-                cycle_repr = " <-> ".join(sorted(import_component))
                 lineno_n = alias_loc.line if alias_loc else None
-                raise CompileError(
-                    f"Cyclic import: recursive type alias "
-                    f"'{alias_name}' in '{member}' references "
-                    f"'{peer_name}' from '{peer_mod}' by value. "
-                    f"Recursive aliases store their members directly, "
-                    f"which is not allowed across an import cycle. "
-                    f"Use `Ptr[{peer_name}]` or move the alias out of "
-                    f"the cycle. Cycle: {cycle_repr}",
-                    member, compiled.path, lineno=lineno_n,
-                )
+                found = _first_held_peer(
+                    types_held_by_value(unwrap_ref_type(alias_type)), member)
+                if found is not None:
+                    peer_mod, peer_name = found
+                    raise CompileError(
+                        f"Cyclic import: recursive type alias "
+                        f"'{alias_name}' in '{member}' references "
+                        f"'{peer_name}' from '{peer_mod}' by value. "
+                        f"Recursive aliases store their members directly, "
+                        f"which is not allowed across an import cycle. "
+                        f"Use `Ptr[{peer_name}]` or move the alias out of "
+                        f"the cycle. Cycle: {cycle_repr}",
+                        member, compiled.path, lineno=lineno_n,
+                    )
+                generic = _generic_over_peer(alias_type, member)
+                if generic is not None:
+                    _raise_generic_over_peer(
+                        f"recursive type alias '{alias_name}' in "
+                        f"'{member}'", generic, compiled, member, lineno_n)
 
     def _check_signature_for_cross_cycle_by_value(
         self, func, member: str, import_component, compiled, *,
-        name_label: str, where_label: str, finder,
+        name_label: str, where_label: str,
+        finder: Callable[[TpyType, str], tuple[str, str] | None] | None,
+        generic_finder: Callable[
+            [TpyType, str], tuple[NominalType, tuple[str, str]] | None],
         operator_finder: Callable[[Iterable[TpyType], str],
                                   tuple[str, str] | None] | None = None,
         error_peer: Callable[[str | None, str], str | None] | None = None,
     ) -> None:
-        """Walk a function/method signature for by-value cross-cycle
-        peer references and raise a structured diagnostic if found.
+        """Walk a function/method signature for cross-cycle peer
+        references a header-bodied signature cannot make, and raise a
+        structured diagnostic if found.
 
-        `finder` is the SCC-bound `_find_complete_required_peer`
-        closure from the caller; it descends through containers /
-        unions / tuples / generic records. With ``operator_finder`` the
-        signature is that of the friend operator a plain class defines in
-        its struct, which needs complete only the classes its C++ parameter
-        and return forms hold by value, and the `@error_return` error type
-        (``error_peer`` maps its name to a peer module).
+        Per position (return type, then each parameter), the storage
+        check comes first, then `generic_finder` (the naming rule: a
+        generic class over a peer, at any parameter passing). `finder` is
+        the storage check of a header-bodied member's signature. With
+        ``operator_finder`` the signature is instead that of the friend
+        operator a plain class defines in its struct, which needs complete
+        only the classes its C++ parameter and return forms hold by value,
+        and the `@error_return` error type (``error_peer`` maps its name to
+        a peer module; the naming rule does not apply to it).
         `import_component` is the import cycle the diagnostic names.
         """
-        found_at: tuple[str, tuple[str, str]] | None = None
+        positions: list[tuple[str, TpyType, Iterable[TpyType] | None]] = []
         if operator_finder is None:
-            positions = [("return type", func.return_type)]
-            positions.extend((f"parameter '{pname}'", ptype)
+            positions.append(("return type", func.return_type, None))
+            positions.extend((f"parameter '{pname}'", ptype, None)
                              for pname, ptype in func.params)
-            for pos_label, pos_type in positions:
-                found = finder(unwrap_ref_type(pos_type), member)
-                if found is not None:
-                    found_at = (pos_label, found)
-                    break
         else:
-            held: list[tuple[str, Iterable[TpyType]]] = []
             slot = return_slot_kind(func.return_type,
                                     error_return=func.error_return is not None)
+            held_ret: Iterable[TpyType] = ()
             if slot is ReturnSlot.PLAIN:
-                held.append(("return type",
-                             return_types_held_by_value(func.return_type)))
+                held_ret = return_types_held_by_value(func.return_type)
             elif slot is ReturnSlot.EXPECTED:
-                held.append(("return type",
-                             types_held_by_value(func.return_type)))
+                held_ret = types_held_by_value(func.return_type)
             elif slot is ReturnSlot.EXPECTED_BORROW:
-                held.append(("return type",
-                             borrow_slot_types_held_by_value(
-                                 func.return_type)))
-            held.extend((f"parameter '{pname}'",
-                         param_types_held_by_value(ptype))
-                        for pname, ptype in func.params)
-            for pos_label, types in held:
-                found = operator_finder(types, member)
-                if found is not None:
-                    found_at = (pos_label, found)
-                    break
-            if (found_at is None and func.error_return
-                    and error_peer is not None):
-                peer_mod = error_peer(func.error_return, member)
-                if peer_mod is not None:
-                    found_at = ("error type",
-                                (peer_mod,
-                                 func.error_return.rsplit(".", 1)[-1]))
+                held_ret = borrow_slot_types_held_by_value(func.return_type)
+            positions.append(("return type", func.return_type, held_ret))
+            positions.extend((f"parameter '{pname}'", ptype,
+                              param_types_held_by_value(ptype))
+                             for pname, ptype in func.params)
+        found_at: tuple[str, tuple[str, str]] | None = None
+        lineno_n = func.loc.line if func.loc else None
+        cycle_repr = " <-> ".join(sorted(import_component))
+        for pos_label, pos_type, held in positions:
+            if held is None:
+                assert finder is not None
+                found = finder(unwrap_ref_type(pos_type), member)
+            else:
+                assert operator_finder is not None
+                found = operator_finder(held, member)
+            if found is not None:
+                found_at = (pos_label, found)
+                break
+            generic = generic_finder(pos_type, member)
+            if generic is not None:
+                gen, (peer_mod, peer_name) = generic
+                raise CompileError(
+                    f"Cyclic import: {pos_label} of {name_label} in "
+                    f"'{member}' names '{gen}', a generic class over "
+                    f"'{peer_name}' from '{peer_mod}'. A cycle member "
+                    f"cannot use a generic class over a class of another "
+                    f"module in the cycle (the generic class needs it fully "
+                    f"defined). Use `Ptr[{peer_name}]` directly, or move one "
+                    f"of the classes out of the cycle. Cycle: {cycle_repr}",
+                    member, compiled.path, lineno=lineno_n,
+                )
+        if (found_at is None and operator_finder is not None
+                and func.error_return and error_peer is not None):
+            peer_mod = error_peer(func.error_return, member)
+            if peer_mod is not None:
+                found_at = ("error type",
+                            (peer_mod, func.error_return.rsplit(".", 1)[-1]))
         if found_at is None:
             return
         pos_label, (peer_mod, peer_name) = found_at
-        cycle_repr = " <-> ".join(sorted(import_component))
-        lineno_n = func.loc.line if func.loc else None
         if operator_finder is not None:
             why = ("An operator method of a class in an import cycle "
                    "cannot take or return a class of another module in the "

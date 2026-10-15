@@ -1,0 +1,1 @@
+a.py:7: error: Cyclic import: 'A' in 'a' inherits from 'Hold[Item]', which stores 'Item' from 'b' by value. A class holds its base inside itself, so a class of another module in the cycle can be stored only through `Ptr[Item]`; or move one of the classes out of the cycle. Cycle: a <-> b

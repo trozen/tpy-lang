@@ -1301,13 +1301,20 @@ class NominalType(TpyType):
             return (self,)
         # A generic class TPy emits holds what its fields and bases hold under
         # the arguments: `Handle[T]` storing a `Ptr[T]` holds no `T`.
-        if self.type_args and self.is_user_record:
+        if self.is_emitted_generic_class():
             from tpyc.type_def_registry import type_def_of
-            rec = type_def_of(self).record
-            if not rec.is_native:
-                return (self,) + tuple(
-                    _fields_and_parents_under_args(rec, self.type_args))
+            return (self,) + tuple(_fields_and_parents_under_args(
+                type_def_of(self).record, self.type_args))
         return super().held_by_value()
+
+    def is_emitted_generic_class(self) -> bool:
+        """An instantiation of a generic class TPy emits itself (a user or
+        tplib class with type arguments, not a `@native` one): its C++
+        declarations are generated, so they may ask about the arguments."""
+        if not (self.type_args and self.is_user_record):
+            return False
+        from tpyc.type_def_registry import type_def_of
+        return not type_def_of(self).record.is_native
 
     def to_cpp(self) -> str:
         if self.is_protocol and not self.is_dynamic_protocol:

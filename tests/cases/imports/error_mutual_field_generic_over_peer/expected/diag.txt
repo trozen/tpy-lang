@@ -1,0 +1,1 @@
+a.py:7: error: Cyclic import: field 'A.x' names 'Handle[Item]', a generic class over 'Item' from 'b'. A cycle member cannot use a generic class over a class of another module in the cycle (the generic class needs it fully defined). Use `Ptr[Item]` directly, or move one of the classes out of the cycle. Cycle: a <-> b

@@ -14,8 +14,6 @@ struct Split;
 struct Adder;
 struct Refused;
 struct Passer;
-struct Holder;
-struct GenOps;
 struct Disp;
 struct Opt;
 struct Box;

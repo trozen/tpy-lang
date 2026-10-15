@@ -459,7 +459,7 @@ positions and pick the implementation strategy.
 hence rejected by Phase 7 gate when crossing a completeness cycle):
 
 - By-value fields, including in containers, tuples, unions, `Own`,
-  value-variants.
+  `| None` (a field's Optional stores its value).
 - Concrete inheritance from peer record.
 - By-value function param/return where the function definition needs
   full layout.
@@ -620,15 +620,38 @@ statement analysis writes only to the *current* module's globals.
 
 The completeness-graph reject gate
 (`Compiler._reject_completeness_cycle_in_scc`) walks the resolved
-type-dependency graph for SCC members and rejects by-value
-cross-cycle peer references at:
+type-dependency graph for SCC members and applies two rules, each in
+one place:
 
-- Concrete inheritance.
-- Record fields, including descents through containers, tuples,
-  value unions, `Own`, value-variants, and generic-record `type_args`
-  (`Box[B]` where `B` is a cycle peer). The field check skips a
-  `| None` or a union over reference types, which a field stores by
-  value too (BUGS.md#cycle-field-message-advises-optional).
+- **Storage.** A field, a recursive alias's wrapper, a base and a
+  friend operator's C++ form may not hold a peer's class (or static
+  protocol) by value -- one fact, `typesys.types_held_by_value`, the
+  classes a storage form holds: `Own[T]`'s, an Optional's or a
+  union's members (a field `b.Item | None` is
+  `std::optional<b::Item>`), a tuple's elements, a container's
+  arguments, a generic class's fields and bases under its arguments.
+  `Ptr[B]`, `Ptr[B] | None` and an enum pass.
+- **Naming.** A generic class TPy emits (a user or tplib class such
+  as `Box` / `Rc`, not a `@native` one) whose type arguments name a
+  peer's class at any depth -- under `Ptr`, `| None`, unions, tuples,
+  containers, nested generic classes -- may not be named at any of
+  those positions nor in a header-bodied member's signature, whatever
+  it stores and however it is passed: naming `Handle<b::Item>` in a
+  header that sees `b` only forward-declared makes its declarations
+  ask about the argument (a constrained type parameter's concept, the
+  `is_value_type` trait of a `ValueType` argument). `h.Handle[b.Item]`
+  holding a `Ptr[T]` is rejected as a field, a base, a `| None`
+  field, and an operator parameter by reference or return. The
+  precise form (the forward header carrying the traits, a bounded
+  type parameter making its argument count) belongs with the
+  header-completeness graph below (TODO.md "Header-completeness SCC
+  gate").
+
+Positions checked:
+
+- Concrete inheritance from a peer class; a base that holds a peer
+  by value (`class A(h.Hold[b.Item])`, `Hold[T]` storing a `T`).
+- Record fields.
 - In-header-bodied function and method *signatures*: any function
   whose codegen emits its body in the `.hpp` (generic /
   `@cpp_template` / Fn-typed param / static-protocol param, or an
@@ -649,8 +672,12 @@ cross-cycle peer references at:
   `size()`) is placed with the member it forwards to, so it needs no
   row of its own. `@cpp_template` members stay rejected as a use-site
   requirement: they have no declaration and expand wherever they are
-  called. Walks return type and each parameter via the same
-  generic-aware `_find_complete_required_peer` used for fields.
+  called. Walks return type and each parameter by a policy, not the
+  storage fact (`_signature_peer_reached_by_body`): such a body may
+  touch what its signature names, so a peer class outside a pointer
+  form counts even passed by reference
+  (BUGS.md#cycle-gate-reference-peer-overreject); then the naming
+  rule.
 - A plain class's friend operators (the record's shims of a friend
   kind, `record_emitted_members`): hidden friends defined in the
   struct, so in the header whatever their method's placement. Only the
@@ -666,12 +693,11 @@ cross-cycle peer references at:
   its storage form -- the borrow slot `val_or_ref<S>` only over a type
   not returned by reference (`T | None`, a union of classes), as its
   constructor from S instantiates S -- a protocol return nothing; and
-  the `@error_return` error type. A storage form holds
-  its parts (`typesys.types_held_by_value`): `Own[T]`'s, an Optional's
-  or a union's members, a tuple's elements, a container's arguments,
-  and a generic class's fields under its arguments (`Handle[B]`
-  storing a `Ptr[T]` holds no `B`). A reference-type peer (`const B&`)
-  passes. A generic class's friends are templated entities
+  the `@error_return` error type, all by the storage fact above. A
+  reference-type peer (`const B&`) passes. Every parameter and the
+  return (not the error type) also go through the naming rule, so
+  `h.Handle[b.Item]` is rejected there even by reference. A generic
+  class's friends are templated entities
   instantiated where used, covered by the check of their members'
   template bodies.
 - A module OUTSIDE a cycle that includes a cycle member's header also
@@ -715,8 +741,7 @@ both at once.
 separate limitation: at use sites the alias gets expanded, so a
 field of type `Alias` is caught by the field walk and a parameter
 of type `Alias` to an inline function is caught by the function
-walk -- both via the existing generic-aware
-`_find_complete_required_peer`. Out-of-line consumers of an alias
+walk -- by the storage and naming rules above. Out-of-line consumers of an alias
 do not fail because the `.cpp` includes the peer's full header.)
 
 ### `_normalize_function_info_refs` is order-dependent inside SCCs (latent)

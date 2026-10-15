@@ -187,8 +187,6 @@ void section_e() {
 //     print("cycle-groups", cyc_a.use_groups())
 //     print("cycle-ops", cyc_a.use_operators())
 //     print("cycle-passing", cyc_a.use_passing())
-//     print("cycle-holder", cyc_a.use_holder())
-//     print("cycle-generic", cyc_a.use_generic_ops())
 //     # overload candidates naming the peer, used from outside the cycle
 //     print("cycle-user", cyc_user.use())
 //     # (o) a plain class's deduced `__iter__` defined in another module's
@@ -277,8 +275,6 @@ void main() {
     std::cout << "cycle-groups" << " " << ::tpyapp::cyc_a::use_groups() << "\n" << ::tpy::check_signals;
     std::cout << "cycle-ops" << " " << ::tpyapp::cyc_a::use_operators() << "\n" << ::tpy::check_signals;
     std::cout << "cycle-passing" << " " << ::tpyapp::cyc_a::use_passing() << "\n" << ::tpy::check_signals;
-    std::cout << "cycle-holder" << " " << ::tpyapp::cyc_a::use_holder() << "\n" << ::tpy::check_signals;
-    std::cout << "cycle-generic" << " " << ::tpyapp::cyc_a::use_generic_ops() << "\n" << ::tpy::check_signals;
     std::cout << "cycle-user" << " " << ::tpyapp::cyc_user::use() << "\n" << ::tpy::check_signals;
     ::tpyapp::iters::Stock st = ::tpyapp::iters::Stock();
     int32_t total = 0;

@@ -21,8 +21,6 @@ cycle-iter 8 4
 cycle-groups 8 28
 cycle-ops 307 3007 -2 2 -3 1 False
 cycle-passing 9 9 16
-cycle-holder empty set
-cycle-generic 2 5 True 4
 cycle-user 6 8 14
 o 11 4
 p True True False
