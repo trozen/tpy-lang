@@ -296,7 +296,10 @@ def test_target_platform_macro_is_decided_once(
     # host's libc from reacting to the faked target macros.
     for header in ("bit", "string_view"):
         (tmp_path / header).write_text("")
-    cleared = ["-U__linux__", "-U__gnu_linux__", "-Ulinux", "-U__unix__", "-U__unix"]
+    # Every macro target_platform.hpp tests, so the result does not depend on
+    # the host OS (a macOS host predefines __APPLE__).
+    cleared = ["-U__linux__", "-U__gnu_linux__", "-Ulinux", "-U__unix__", "-U__unix",
+               "-U__APPLE__", "-U__MACH__", "-U_WIN32", "-U__FreeBSD__", "-U__ANDROID__"]
     base = [cxx, "-std=c++23", "-E", "-x", "c++", "-nostdinc", "-nostdinc++",
             *cleared, *defines, f"-I{tmp_path}", f"-I{include}"]
     macros = subprocess.run(
