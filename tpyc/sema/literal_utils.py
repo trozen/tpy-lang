@@ -13,12 +13,26 @@ from ..type_def_registry import is_char_type
 from ..prescan import literal_constant
 from ..typesys import (
     ALL_FIXED_INTS, BOOL, BYTES, FloatLiteralType, IntLiteralType, LiteralValue,
-    LiteralTag, NONE, STR, TpyType, is_any_str_type,
+    LiteralTag, NONE, OwnType, STR, TpyType, is_any_str_type, unwrap_ref_type,
 )
 
 
 _FIXED_INT_NAMES = frozenset(str(t) for t in ALL_FIXED_INTS)
 _FIXED_INT_BY_NAME = {str(t): t for t in ALL_FIXED_INTS}
+
+
+def numeric_literal_type(t: TpyType | None) -> IntLiteralType | FloatLiteralType | None:
+    """`t` as a numeric literal's type -- what sema gives a literal, a
+    constant folded over literals, or an expression that keeps a literal's
+    type (a walrus, a conditional with equal branches) -- else None. The
+    one test of a literal operand, so the ranking and the literal pin agree
+    on which operands are literals."""
+    if t is None:
+        return None
+    t = unwrap_ref_type(t)
+    if isinstance(t, OwnType):
+        t = t.wrapped
+    return t if isinstance(t, (IntLiteralType, FloatLiteralType)) else None
 
 
 def is_char_literal_init(target: TpyType, actual: TpyType, expr: TpyExpr) -> bool:

@@ -37,9 +37,9 @@ void test_eq() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 8> b = ::tpystd::tplib::array_list::ArrayList<int32_t, 8>();
     b.append(1);
     b.append(2);
-    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
     b.append(3);
-    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_repr() -> None:

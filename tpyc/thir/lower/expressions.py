@@ -58,7 +58,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union, repr_shape
+from ...typesys import pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
     ConcreteFrameType,
     AliasRef,
@@ -4934,6 +4934,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  if e.op not in ("==", "!=") else None) or _lower_char_targeted(
             e.right, lt_a, lc, declared, use=_cmp_operand_use(e.right),
             field_owned_str_ok=isinstance(e.right, TpyFieldAccess))
+        left_pin, right_pin = _operator_literal_pins(
+            e.resolved_binop, e.left, e.right, lc, declared)
+        left = left_pin or left
+        right = right_pin or right
         # Compare operands are target-less EXCEPT opposite a record's own
         # comparison dunder: the emitted friend operator declares a real
         # param slot (`friend bool operator==(const Blob&,
@@ -4993,7 +4997,9 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 side, comp_c, lc, declared,
                 _comp_shadow_pointers(lc.names_with("pointer"), declared, analyzer))
 
-        left = _comp_operand(e.left) or _lower_unproven_opt_scalar(
+        left_pin, right_pin = _operator_literal_pins(
+            e.resolved_binop, e.left, e.right, lc, declared)
+        left = left_pin or _comp_operand(e.left) or _lower_unproven_opt_scalar(
             e.left, lc, declared)
         if left is None:
             left = _slot_literal_retype(
@@ -5001,7 +5007,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                             use=_binop_operand_use(e.left),
                             field_owned_str_ok=isinstance(e.left, TpyFieldAccess)),
                 lslot, lc)
-        right = _comp_operand(e.right) or _lower_unproven_opt_scalar(
+        right = right_pin or _comp_operand(e.right) or _lower_unproven_opt_scalar(
             e.right, lc, declared)
         if right is None:
             right = _slot_literal_retype(
@@ -14001,16 +14007,45 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
             bound.append(not emit_prims.is_duplicable_expr(all_operands[0]))
         else:
             bound.append(False)
+    right_casts = [p.right_cast for p in pairs]
+    for j in range(n - 1):
+        # A bound intermediate a pair's dunder pins (a comparison's
+        # parameter is its right operand) binds as the next pair reads it,
+        # and the pin converts the temp where this pair compares it, so the
+        # next pair compares the value as sema typed it.
+        unpinned = pairs[j + 1].left
+        _, pin = _operator_literal_pins(
+            e.pairs[j].resolved_binop, None, e.pairs[j].right, lc, declared,
+            evaluated=unpinned)
+        if pin is None:
+            continue
+        inits[j + 1] = unpinned
+        wrap = _wrap_template(pin, unpinned)
+        right_casts[j] = (wrap if right_casts[j] is None
+                          else right_casts[j].format(wrap))
     return THIRChainedCompareStmtExpr(
         result_type=rtype,
         inits=tuple(inits),
         bound=tuple(bound),
         ops=tuple(p.op for p in pairs),
         left_casts=tuple(p.left_cast for p in pairs),
-        right_casts=tuple(p.right_cast for p in pairs),
+        right_casts=tuple(right_casts),
         form=Form.VALUE,
         loc=loc,
     )
+
+
+def _wrap_template(v: 'THIRExpr', inner: 'THIRExpr') -> str:
+    """The `{0}` template the coercions `v` wraps around `inner` spell, so
+    the conversion can apply to a render of `inner` held elsewhere."""
+    template = "{0}"
+    while v is not inner:
+        if not isinstance(v, THIRCoerce):
+            raise ThirUnsupported("chained_compare.pin_shape")
+        if v.wrap is not None:
+            template = template.format(v.wrap)
+        v = v.expr
+    return template
 
 
 def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
@@ -19343,7 +19378,9 @@ def _retarget_int_literal(v: THIRLiteral, slot: TpyType,
 
 def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
                         lc: '_LowerCtx',
-                        declared: dict[str, TpyType]) -> 'THIRExpr | None':
+                        declared: dict[str, TpyType], *,
+                        evaluated: 'THIRExpr | None' = None,
+                        ) -> 'THIRExpr | None':
     """ONE literal argument of an overloaded TPy callee rendered as a value
     of its parameter's own type (`_literal_pin_slot`), or None when it takes
     no pin. Several variants of a method share one C++ name, so C++ picks
@@ -19362,7 +19399,10 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
     value loses to a plain variant's standard conversion. An argument that
     keeps a literal's type without being a constant (a walrus, an
     equal-branch conditional) renders as itself, converted to the slot's
-    type (`_pinned_literal_conversion`), so it is evaluated once."""
+    type (`_pinned_literal_conversion`), so it is evaluated once.
+    `evaluated` is `a` already lowered where it is evaluated once elsewhere
+    (a chained comparison's temp): it is converted as such an argument is,
+    never re-lowered."""
     slot = _literal_pin_slot(a, ptype, fi, lc.analyzer)
     if slot is None:
         return None
@@ -19370,21 +19410,25 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
     loc = getattr(a, "loc", None)
     lit_t = _numeric_literal_type(a, lc.analyzer)
     if lit_t is None:
-        pinned = _lower_expr(a, lc, declared)
+        pinned = evaluated or _lower_expr(a, lc, declared)
         return THIRCoerce(
             result_type=ptype, expr=pinned,
             coercion_name="literal_overload_pin",
             wrap=f"{slot.to_cpp_param_type()}({{0}})",
             form=pinned.form, loc=loc)
     payload = _pinned_literal_payload(slot)
-    value = _numeric_literal_value(a, lc.analyzer)
-    if value is None:
+    value = (None if evaluated is not None
+             else _numeric_literal_value(a, lc.analyzer))
+    if evaluated is not None:
+        pinned = evaluated
+    elif value is None:
         pinned = _lower_expr(_peel_coerce(a), lc, declared)
     elif isinstance(lit_t, IntLiteralType):
         pinned = _lower_int_literal(value, lit_t, lc, loc)
     else:
         pinned = THIRLiteral(result_type=lit_t, value=value, loc=loc)
-    if (isinstance(pinned, THIRLiteral) and isinstance(lit_t, IntLiteralType)
+    if (value is not None and isinstance(pinned, THIRLiteral)
+            and isinstance(lit_t, IntLiteralType)
             and (is_fixed_int_type(payload) or is_big_int_type(payload))):
         pinned = _retarget_int_literal(pinned, payload, lc, exact_type=True)
     else:
@@ -19495,6 +19539,30 @@ def _rb_operand_slots(rb) -> 'tuple[TpyType | None, TpyType | None]':
     param = rb.method.params[0].type if rb.method.params else None
     recv = rb.receiver_type
     return (param, recv) if rb.is_reverse else (recv, param)
+
+def _operator_literal_pins(rb: 'ResolvedBinop | None', left: 'TpyExpr | None',
+                           right: TpyExpr, lc: '_LowerCtx',
+                           declared: dict[str, TpyType], *,
+                           evaluated: 'THIRExpr | None' = None,
+                           ) -> 'tuple[THIRExpr | None, THIRExpr | None]':
+    """The (left, right) operands of a resolved operator dunder `rb` that
+    take the literal pin (`_pinned_literal_arg`): the operand at the
+    dunder's parameter -- the right one, the left one for a reflected
+    dunder -- rendered as a value of the parameter's own type when C++
+    would pick among the set's variants again, so the variant sema ranked
+    is the one that runs. `left` is None where only the parameter's operand
+    is lowered here (an in-place dunder's value); `evaluated` is that
+    operand already lowered where it is evaluated once elsewhere. None for
+    an operand that takes no pin."""
+    if rb is None or rb.method is None or not rb.method.params:
+        return (None, None)
+    operand = left if rb.is_reverse else right
+    if operand is None:
+        return (None, None)
+    pinned = _pinned_literal_arg(operand, rb.method.params[0].type,
+                                 rb.method, lc, declared, evaluated=evaluated)
+    return (pinned, None) if rb.is_reverse else (None, pinned)
+
 
 def _rb_bytes_literal_views(rb, left: THIRExpr,
                             right: THIRExpr) -> 'tuple[THIRExpr, THIRExpr]':

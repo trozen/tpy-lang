@@ -650,6 +650,7 @@ from .expressions import (
     _rb_bytes_literal_views,
     _retag_param_bytes_literal,
     _rb_operand_slots,
+    _operator_literal_pins,
     _retag_bytes_literal_view,
     _lower_slice_bound,
     _slot_literal_retype,
@@ -12712,7 +12713,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 recv = _lower_expr(
                     stmt.target, lc, declared,
                     use=_ExprUse(result=_ExprResultUse.RECEIVER))
-                val = _flush_witness(
+                _, val = _operator_literal_pins(
+                    stmt.resolved_inplace, None, stmt.value, lc, declared)
+                val = val or _flush_witness(
                     "flush.assign",
                     _lower_expr(stmt.value, lc, declared,
                                 use=_ExprUse(
@@ -12824,9 +12827,11 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                               and stmt.target.typed_dict_field is None)
                              or isinstance(stmt.target, TpyName))
                          else _ExprUse())
+        _, aug_pin = _operator_literal_pins(
+            stmt.resolved_binop, None, stmt.value, lc, declared)
         _, aug_right = _rb_bytes_literal_views(
             stmt.resolved_binop, left,
-            _slot_literal_retype(
+            aug_pin or _slot_literal_retype(
                 _lower_expr(stmt.value, lc, declared, use=aug_value_use),
                 aug_rslot, lc))
         binop = THIRBinOp(

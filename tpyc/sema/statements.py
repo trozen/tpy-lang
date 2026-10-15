@@ -8366,9 +8366,9 @@ class StatementAnalyzer:
 
         def record(elem: TpyType) -> None:
             target = with_container(target_type, elem)
-            result = operators.resolve_aug_inplace(
+            result = self.expr.decide_operator(operators.resolve_aug_inplace(
                 target, stmt.op, target if same else value_type,
-                loc_node=stmt)
+                loc_node=stmt), stmt)
             if result is not None:
                 stmt.resolved_inplace = result
 
@@ -8434,8 +8434,8 @@ class StatementAnalyzer:
         if (not seeded_target and is_fixed_int_type(target)
                 and is_big_int_type(value)):
             resolve_value = target
-        result = self.expr.operators.resolve_binop(
-            target, stmt.op, resolve_value, loc_node=stmt)
+        result = self.expr.decide_operator(self.expr.operators.resolve_binop(
+            target, stmt.op, resolve_value, loc_node=stmt), stmt)
         if result is None:
             raise self.ctx.error(
                 f"Operator '{op_spelling(stmt.op)}=' is not supported between "
@@ -8649,9 +8649,9 @@ class StatementAnalyzer:
                 )
             # Try in-place method first (e.g. __iadd__, __ior__), then binary operator
             operators = self.expr.operators
-            if result := operators.resolve_aug_inplace(
+            if result := self.expr.decide_operator(operators.resolve_aug_inplace(
                 target_type, stmt.op, value_type, loc_node=stmt,
-            ):
+            ), stmt):
                 stmt.resolved_inplace = result
                 if inplace_cell is not None and contains_pending_leaf(
                         self.pend.tree_type(inplace_cell)):
@@ -8670,7 +8670,8 @@ class StatementAnalyzer:
                     value_type, expected_param, f"'{op_spelling(stmt.op)}=' operand",
                     loc=stmt.loc, source_expr=stmt.value,
                 )
-            if result := operators.resolve_binop(target_type, stmt.op, value_type, loc_node=stmt):
+            if result := self.expr.decide_operator(operators.resolve_binop(
+                    target_type, stmt.op, value_type, loc_node=stmt), stmt):
                 # A borrow-returning fallback dunder is rejected: the emitted
                 # in-place update would COPY the returned object's fields into
                 # the target's storage, where CPython REBINDS the name to the
@@ -8717,6 +8718,6 @@ class StatementAnalyzer:
         if is_numeric_target:
             self._resolve_numeric_aug(stmt, target_type, check_value_type,
                                       seeded_target=False)
-        elif result := self.expr.operators.resolve_binop(
-                target_type, stmt.op, check_value_type, loc_node=stmt):
+        elif result := self.expr.decide_operator(self.expr.operators.resolve_binop(
+                target_type, stmt.op, check_value_type, loc_node=stmt), stmt):
             stmt.resolved_binop = result

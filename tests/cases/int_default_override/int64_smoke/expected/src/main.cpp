@@ -7,8 +7,8 @@ int64_t a{};
 int64_t b{};
 ::tpy::BigInt c;
 std::vector<int64_t>* items{};
+Widths* w{};
 
-// # int64 default: in-range literals should stay fixed-int.
 // a = 2 ** 40
 // print(a)
 //
@@ -27,6 +27,9 @@ std::vector<int64_t>* items{};
 // # List literal elements should be int64.
 // items = [10, 20, 30]
 // print(items[0])
+//
+// w = Widths()
+// print("dunder:", w + 3)  # tpyc: ok
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -44,6 +47,9 @@ void __tpy_init() {
     static std::vector<int64_t> __global_slot_1 = {10, 20, 30};
     items = &__global_slot_1;
     std::cout << ::tpy::__getitem__((*items), 0) << "\n" << ::tpy::check_signals;
+    static Widths __global_slot_2 = Widths();
+    w = &__global_slot_2;
+    std::cout << "dunder:" << " " << (((*w)) + (static_cast<int64_t>(3))) << "\n" << ::tpy::check_signals;
 }
 
 } // namespace tpyapp::main

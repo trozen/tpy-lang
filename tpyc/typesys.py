@@ -7957,6 +7957,11 @@ class FunctionInfo:
     # function reference spells it, so C++ never re-resolves sema's pick.
     # Stored on the RAW fi, read through `root` (`variant_cpp_name`).
     _variant_cpp_name: str | None = field(default=None, compare=False)
+    # The `cpp_template` is not this variant's own text but the operator
+    # spelling every variant of its set shares (a user operator dunder's
+    # `({self}) + ({0})`), so C++ picks among the set's variants by its own
+    # rules as for a method name. Set at registration; read through `root`.
+    _shares_set_spelling: bool = field(default=False, compare=False)
     # The def a variant of a free overload set was registered from (the
     # `@dispatch` body or the `typing.overload` stub): how an emitter
     # holding the def finds its FunctionInfo (`variant_cpp_name_of`).
@@ -8043,6 +8048,19 @@ class FunctionInfo:
     @property
     def variant_cpp_name(self) -> str | None:
         return self.root._variant_cpp_name
+
+    @property
+    def reresolved_by_cpp(self) -> bool:
+        """Whether C++ picks among this variant's set again: it is one of an
+        overload set (`overloaded`) whose variants share one C++ name -- a
+        method's, or the operator a user dunder's shared spelling names --
+        emitted from TPy (not generic, not a @native / @cpp_template stub,
+        whose C++ is written against its own spelling). A free function's
+        variants each have their own name (`variant_cpp_name`)."""
+        return (self.overloaded and self.variant_cpp_name is None
+                and not self.is_generic()
+                and (self.cpp_template is None or self.root._shares_set_spelling)
+                and not self.native_function and not self.native_name)
 
     @property
     def const_borrow_params(self) -> Optional[frozenset[int]]:

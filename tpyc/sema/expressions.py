@@ -101,7 +101,7 @@ from .slot_hint import (SlotHint, callable_return, element,
 from .local_deduction import (collect_pending_source_types,
                               mark_pending_list_mutated,
                               note_pending_elem_read, pending_elem_read)
-from .operators import DUNDER_CPP_TEMPLATES
+from .operators import OperatorAmbiguity
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
@@ -359,6 +359,17 @@ def _identity_object(t: TpyType) -> 'TpyType | str':
     if isinstance(shape, (NominalType, *PENDING_CONTAINER_TYPES)):
         return shape
     return "other"
+
+
+def _walrus_result_type(resolved: TpyType, value_type: TpyType) -> TpyType:
+    """The type of a walrus that binds a fresh local of type `resolved`:
+    its value's type (a literal stays a literal), except a collapsed
+    per-element-Own borrow tuple, whose `(t := ...)[i]` element access must
+    agree with the pointer-repr local."""
+    res_bare = unwrap_readonly(resolved)
+    if isinstance(res_bare, TupleType) and res_bare.has_pointer_repr_element():
+        return resolved
+    return value_type
 
 
 def _without_readonly(t: TpyType) -> TpyType:
@@ -2682,7 +2693,8 @@ class ExpressionAnalyzer:
             # Keep Python-style true division semantics for all-literal integer
             # expressions regardless of default-int setting.
             if expr.op == "div":
-                if result := self.operators.resolve_binop(BIGINT, expr.op, BIGINT, loc_node=expr):
+                if result := self.decide_operator(self.operators.resolve_binop(
+                        BIGINT, expr.op, BIGINT, loc_node=expr), expr):
                     expr.resolved_binop = result
                     return result.method.return_type
                 return FLOAT
@@ -2690,7 +2702,8 @@ class ExpressionAnalyzer:
             if literal_result is None and int_constant_too_wide(
                     expr.op, left_effective.value, right_effective.value):
                 # Too wide to fold here: an `int`, computed at run time.
-                if result := self.operators.resolve_binop(BIGINT, expr.op, BIGINT, loc_node=expr):
+                if result := self.decide_operator(self.operators.resolve_binop(
+                        BIGINT, expr.op, BIGINT, loc_node=expr), expr):
                     expr.resolved_binop = result
                 return BIGINT
             resolved_int = (
@@ -2699,7 +2712,8 @@ class ExpressionAnalyzer:
                 else self.ctx.default_int_type
             )
             # Still resolve for codegen (bitwise ops need cpp template).
-            if result := self.operators.resolve_binop(resolved_int, expr.op, resolved_int, loc_node=expr):
+            if result := self.decide_operator(self.operators.resolve_binop(
+                    resolved_int, expr.op, resolved_int, loc_node=expr), expr):
                 expr.resolved_binop = result
             return IntLiteralType(literal_result)
 
@@ -2717,7 +2731,8 @@ class ExpressionAnalyzer:
                     return return_type
 
         # Arithmetic/bitwise operators - use registry
-        if result := self.operators.resolve_binop(left_effective, expr.op, right_effective, loc_node=expr):
+        if result := self.decide_operator(self.operators.resolve_binop(
+                left_effective, expr.op, right_effective, loc_node=expr), expr):
             expr.resolved_binop = result
             if (dunder_scope is not None
                     and any(result.method.root is d.root
@@ -2741,56 +2756,6 @@ class ExpressionAnalyzer:
                 self._mark_list_concat_operands_mutated(expr, left_effective, right_effective)
             return result.method.return_type
 
-        # Record types (user-defined or module) with dunder methods
-        if isinstance(left_effective, NominalType) and left_effective.is_record:
-            method_name = builtin_modules.BINOP_TO_METHOD.get(expr.op)
-            if method_name:
-                record = self.ctx.registry.get_record_for_type(left_effective)
-                if record and (method := record.get_method(method_name)):
-                    # Check parameter count and type
-                    if len(method.params) == 1:
-                        _, param_type = method.params[0]
-                        # Substitute type params for generic types (e.g. list[T].__add__(list[T]))
-                        type_subst = self.type_ops.build_type_substitution(left_effective)
-                        if type_subst:
-                            param_type = self.type_ops.substitute_types(param_type, type_subst)
-                        if param_type == right_effective:
-                            raise_if_class_param_bound_violated(
-                                method, record.type_params, type_subst,
-                                self.protocols.type_conforms_to_protocol,
-                                self.ctx.error, expr,
-                            )
-                            ret_type = method.return_type
-                            if type_subst:
-                                ret_type = self.type_ops.substitute_types(ret_type, type_subst)
-                            # Build ResolvedBinop so codegen uses the method's
-                            # cpp_template instead of raw C++ operator syntax.
-                            cpp = method.cpp_template
-                            if not cpp and not method.native_function:
-                                cpp = DUNDER_CPP_TEMPLATES.get(method_name)
-                            resolved_method = FunctionInfo(
-                                name=method_name,
-                                params=list(method.params),
-                                return_type=ret_type,
-                                cpp_template=cpp,
-                                native_name=method.native_name,
-                                native_function=method.native_function,
-                                is_method=True,
-                                is_readonly=method.is_readonly,
-                                owning_type_qname=method.owning_type_qname,
-                                # Borrow facts (return_borrows_from) land on the
-                                # registered fi after body analysis; keep the
-                                # chain so consumers can reach them via .root.
-                                canonical_fi=method.root,
-                            )
-                            expr.resolved_binop = ResolvedBinop(
-                                method=resolved_method,
-                                left_wrapper="{expr}",
-                                right_wrapper="{expr}",
-                                receiver_type=left_effective,
-                            )
-                            return ret_type
-
         raise SemanticError(
             f"Invalid operand types for '{op_spelling(expr.op)}': "
             f"{self.compat.call_type_text(left_type)} and "
@@ -2812,16 +2777,31 @@ class ExpressionAnalyzer:
                 expr,
             )
 
+    def decide_operator(self, result: 'ResolvedBinop | OperatorAmbiguity | None',
+                        loc_node: TpyExpr | TpyStmt) -> 'ResolvedBinop | None':
+        """The operator resolver's answer where the analysis decides the
+        operator: a tie in the dunder set that answers is the call's
+        ambiguity error."""
+        if isinstance(result, OperatorAmbiguity):
+            raise self.ctx.error(self.compat.ambiguous_overload_text(
+                result.method_name, result.candidates), loc_node)
+        return result
+
     def _resolve_comparison(self, expr: TpyBinOp, left: TpyType,
                             right: TpyType) -> None:
         """The comparison method (__eq__, __lt__, etc.) codegen renders."""
-        if result := self.operators.resolve_binop(left, expr.op, right, loc_node=expr):
+        if result := self.decide_operator(self.operators.resolve_binop(
+                left, expr.op, right, loc_node=expr), expr):
             expr.resolved_binop = result
         elif expr.op == "!=":
             # No __ne__: fall back to negated __eq__ when the method
-            # can't use raw C++ != (e.g. native freestanding function).
-            if result := self.operators.resolve_binop(left, "==", right, loc_node=expr):
-                if result.method.native_function:
+            # can't use raw C++ != (a native freestanding function), or
+            # when C++ would pick among the variants of a set sharing one
+            # operator (`FunctionInfo.reresolved_by_cpp`) again.
+            if result := self.decide_operator(self.operators.resolve_binop(
+                    left, "==", right, loc_node=expr), expr):
+                if (result.method.native_function
+                        or result.method.reresolved_by_cpp):
                     expr.resolved_binop = result
 
     def _pending_binop(self, expr: TpyBinOp, left_type: TpyType,
@@ -2874,7 +2854,9 @@ class ExpressionAnalyzer:
                     if pending_left else
                     self.operators.resolve_binop(record_side, expr.op, known,
                                                  loc_node=expr))
-        if resolved is None or len(resolved.method.params) != 1:
+        # A speculative probe: a tie is raised by the ordinary analysis.
+        if (not isinstance(resolved, ResolvedBinop)
+                or len(resolved.method.params) != 1):
             return None
         param = resolved.method.params[0].type
         if not is_numeric_slot(param) or contains_type_param(param):
@@ -2900,7 +2882,8 @@ class ExpressionAnalyzer:
         resolved = self.operators.resolve_binop(
             self.pend.known_type(lt), op, self.pend.known_type(rt),
             loc_node=loc_node)
-        if resolved is None:
+        # A speculative typing: a tie is raised once the operator is chosen.
+        if not isinstance(resolved, ResolvedBinop):
             return None
         result = strip_int(resolved.method.return_type)
         pending_families = {t.is_float for t in (lt, rt)
@@ -2923,7 +2906,8 @@ class ExpressionAnalyzer:
             self._warn_mixed_sign_compare(expr, left, right)
             self._resolve_comparison(expr, left, right)
             return
-        result = self.operators.resolve_binop(left, expr.op, right, loc_node=expr)
+        result = self.decide_operator(self.operators.resolve_binop(
+            left, expr.op, right, loc_node=expr), expr)
         if result is None:
             raise self.ctx.error(
                 f"Invalid operand types for '{op_spelling(expr.op)}': "
@@ -4226,7 +4210,11 @@ class ExpressionAnalyzer:
             _, expr.value = self.compat.coerce_reassignment(
                 name, existing, value_type, expr.value, expr)
             resolved = existing
-            result_type = existing
+            # A re-analysis of the walrus that introduced the binding (a
+            # chained comparison's middle operand is analyzed by both of its
+            # pairs) is checked as a reassignment but keeps its first type.
+            result_type = (_walrus_result_type(existing, value_type)
+                           if expr in self.ctx.func.bind_kinds else existing)
         else:
             # New binding
             target_scope.define(name, resolved)
@@ -4266,16 +4254,7 @@ class ExpressionAnalyzer:
                     # Local import: statements imports this module.
                     from .statements import _register_call_result_borrow
                     _register_call_result_borrow(self.ctx, name, val_inner)
-            # For a collapsed per-element-Own borrow tuple, the walrus result
-            # must be the collapsed type so `(t := ...)[i]` element access
-            # agrees with the pointer-repr decl; other bindings keep the raw
-            # value type (preserving literal-ness etc.).
-            res_bare = unwrap_readonly(resolved)
-            if (isinstance(res_bare, TupleType)
-                    and res_bare.has_pointer_repr_element()):
-                result_type = resolved
-            else:
-                result_type = value_type
+            result_type = _walrus_result_type(resolved, value_type)
 
         self.ctx.func.definitely_assigned.add(name)
         self.ctx.func.rvalue_vars.add(name)

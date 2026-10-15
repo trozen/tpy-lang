@@ -29,6 +29,17 @@ struct D2;
 struct Twins;
 struct Walker;
 struct LitHome;
+struct OpList;
+struct OpNum;
+struct OpAcc;
+struct OpWidth;
+struct OpLitWidth;
+struct OpText;
+struct OpOptStr;
+struct OpMixed;
+struct OpPoint;
+struct OpLeft;
+struct OpRight;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -409,6 +420,26 @@ std::string lhw__float32(float x);
 std::string lhw__float(double x);
 // def literal_home() -> None:
 void literal_home();
+// @dispatch
+// def lit_base(s: String) -> str:
+std::string lit_base__String(const ::tpy::String& s);
+// @dispatch
+// def lit_base(s: str) -> str:
+std::string lit_base__str(std::string_view s);
+// @dispatch
+// def lit_cross(x: str, y: int32) -> str:
+std::string lit_cross__str__int32(std::string_view x, int32_t y);
+// @dispatch
+// def lit_cross(x: Literal["a"], y: int64) -> str:
+std::string lit_cross__lit_a(std::string_view x, int64_t y);
+// def operators() -> None:
+void operators();
+// def lit3() -> Literal[3]:
+int32_t lit3();
+// def operators_literal(one: Literal["a"], mode: Literal["r", "w"]) -> None:
+void operators_literal(std::string_view one, std::string_view mode);
+// def operators_builtin() -> None:
+void operators_builtin();
 // def main() -> None:
 void main();
 
@@ -603,6 +634,424 @@ struct LitHome {
 
 inline std::ostream& operator<<(std::ostream& os, const LitHome& obj) {
     ::tpy::print_object_default(os, "LitHome", obj);
+    return os;
+}
+
+// class OpList:
+struct OpList {
+
+    // def __init__(self) -> None:
+    OpList();
+
+    // @dispatch
+    // def __add__(self, xs: list[int64]) -> int32:
+    int32_t __add__(const std::vector<int64_t>& xs) const;
+
+    // @dispatch
+    // def __add__(self, xs: list[int32]) -> int32:
+    int32_t __add__(const std::vector<int32_t>& xs) const;
+
+    friend int32_t operator+(const OpList& lhs, const std::vector<int64_t>& xs) {
+        return lhs.__add__(xs);
+    }
+
+    friend int32_t operator+(const OpList& lhs, const std::vector<int32_t>& xs) {
+        return lhs.__add__(xs);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpList";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpList& obj) {
+    ::tpy::print_object_default(os, "OpList", obj);
+    return os;
+}
+
+// class OpNum:
+struct OpNum {
+    // hits: int32
+    int32_t hits;
+
+    // def __init__(self) -> None:
+    OpNum();
+
+    // @dispatch
+    // def __mul__(self, x: float) -> int32:
+    int32_t __mul__(double x) const;
+
+    // @dispatch
+    // def __mul__(self, x: int) -> int32:
+    int32_t __mul__(const ::tpy::BigInt& x) const;
+
+    // @dispatch
+    // def __rmul__(self, x: float) -> int32:
+    int32_t __rmul__(double x) const;
+
+    // @dispatch
+    // def __rmul__(self, x: int) -> int32:
+    int32_t __rmul__(const ::tpy::BigInt& x) const;
+
+    // @dispatch
+    // def __iadd__(self, x: float) -> "OpNum":
+    OpNum& __iadd__(double x);
+
+    // @dispatch
+    // def __iadd__(self, x: int) -> "OpNum":
+    OpNum& __iadd__(const ::tpy::BigInt& x);
+
+    // @dispatch
+    // def __lt__(self, x: float) -> bool:
+    bool __lt__(double x) const;
+
+    // @dispatch
+    // def __lt__(self, x: int) -> bool:
+    bool __lt__(const ::tpy::BigInt& x) const;
+
+    // @dispatch
+    // def __gt__(self, x: float) -> bool:
+    bool __gt__(double x) const;
+
+    // @dispatch
+    // def __gt__(self, x: int) -> bool:
+    bool __gt__(const ::tpy::BigInt& x) const;
+
+    // @dispatch
+    // def __eq__(self, x: float) -> bool:
+    bool __eq__(double x) const;
+
+    // @dispatch
+    // def __eq__(self, x: int) -> bool:
+    bool __eq__(const ::tpy::BigInt& x) const;
+
+    friend int32_t operator*(const OpNum& lhs, double x) {
+        return lhs.__mul__(x);
+    }
+
+    friend int32_t operator*(const OpNum& lhs, const ::tpy::BigInt& x) {
+        return lhs.__mul__(x);
+    }
+
+    friend int32_t operator*(double x, const OpNum& rhs) {
+        return rhs.__rmul__(x);
+    }
+
+    friend int32_t operator*(const ::tpy::BigInt& x, const OpNum& rhs) {
+        return rhs.__rmul__(x);
+    }
+
+    friend bool operator<(const OpNum& lhs, double x) {
+        return lhs.__lt__(x);
+    }
+
+    friend bool operator<(const OpNum& lhs, const ::tpy::BigInt& x) {
+        return lhs.__lt__(x);
+    }
+
+    friend bool operator>(const OpNum& lhs, double x) {
+        return lhs.__gt__(x);
+    }
+
+    friend bool operator>(const OpNum& lhs, const ::tpy::BigInt& x) {
+        return lhs.__gt__(x);
+    }
+
+    friend bool operator==(const OpNum& lhs, double x) {
+        return lhs.__eq__(x);
+    }
+
+    friend bool operator==(const OpNum& lhs, const ::tpy::BigInt& x) {
+        return lhs.__eq__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpNum";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpNum& obj) {
+    ::tpy::print_object_default(os, "OpNum", obj);
+    return os;
+}
+
+// class OpAcc:
+struct OpAcc {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    OpAcc() = default;
+    explicit OpAcc(int32_t n);
+
+    // @dispatch
+    // def __add__(self, x: float) -> Own["OpAcc"]:
+    OpAcc __add__(double x) const;
+
+    // @dispatch
+    // def __add__(self, x: int) -> Own["OpAcc"]:
+    OpAcc __add__(const ::tpy::BigInt& x) const;
+
+    friend OpAcc operator+(const OpAcc& lhs, double x) {
+        return lhs.__add__(x);
+    }
+
+    friend OpAcc operator+(const OpAcc& lhs, const ::tpy::BigInt& x) {
+        return lhs.__add__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpAcc";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpAcc& obj) {
+    ::tpy::print_object_default(os, "OpAcc", obj);
+    return os;
+}
+
+// class OpWidth:
+struct OpWidth {
+
+    // def __init__(self) -> None:
+    OpWidth();
+
+    // @dispatch
+    // def __add__(self, x: int64) -> int32:
+    int32_t __add__(int64_t x) const;
+
+    // @dispatch
+    // def __add__(self, x: int32) -> int32:
+    int32_t __add__(int32_t x) const;
+
+    // @dispatch
+    // def __sub__(self, x: int32) -> int32:
+    int32_t __sub__(int32_t x) const;
+
+    // @dispatch
+    // def __sub__(self, x: float | None) -> int32:
+    int32_t __sub__(std::optional<double> x) const;
+
+    friend int32_t operator+(const OpWidth& lhs, int64_t x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator+(const OpWidth& lhs, int32_t x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator-(const OpWidth& lhs, int32_t x) {
+        return lhs.__sub__(x);
+    }
+
+    friend int32_t operator-(const OpWidth& lhs, std::optional<double> x) {
+        return lhs.__sub__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpWidth";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpWidth& obj) {
+    ::tpy::print_object_default(os, "OpWidth", obj);
+    return os;
+}
+
+// class OpLitWidth:
+struct OpLitWidth {
+
+    // def __init__(self) -> None:
+    OpLitWidth();
+
+    // @dispatch
+    // def __add__(self, x: int) -> int32:
+    int32_t __add__(const ::tpy::BigInt& x) const;
+
+    // @dispatch
+    // def __add__(self, x: int64) -> int32:
+    int32_t __add__(int64_t x) const;
+
+    // @dispatch
+    // def __add__(self, x: int32) -> int32:
+    int32_t __add__(int32_t x) const;
+
+    friend int32_t operator+(const OpLitWidth& lhs, const ::tpy::BigInt& x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator+(const OpLitWidth& lhs, int64_t x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator+(const OpLitWidth& lhs, int32_t x) {
+        return lhs.__add__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpLitWidth";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpLitWidth& obj) {
+    ::tpy::print_object_default(os, "OpLitWidth", obj);
+    return os;
+}
+
+// class OpText:
+struct OpText {
+
+    // def __init__(self) -> None:
+    OpText();
+
+    // @dispatch
+    // def __add__(self, x: String) -> int32:
+    int32_t __add__(const ::tpy::String& x) const;
+
+    // @dispatch
+    // def __add__(self, x: str) -> int32:
+    int32_t __add__(std::string_view x) const;
+
+    friend int32_t operator+(const OpText& lhs, const ::tpy::String& x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator+(const OpText& lhs, std::string_view x) {
+        return lhs.__add__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpText";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpText& obj) {
+    ::tpy::print_object_default(os, "OpText", obj);
+    return os;
+}
+
+// class OpOptStr:
+struct OpOptStr {
+
+    // def __init__(self) -> None:
+    OpOptStr();
+
+    // @dispatch
+    // def __add__(self, x: bool) -> int32:
+    int32_t __add__(bool x) const;
+
+    // @dispatch
+    // def __add__(self, x: str | None) -> int32:
+    int32_t __add__(std::optional<std::string_view> x) const;
+
+    // @dispatch
+    // def m(self, x: bool) -> str:
+    std::string m(bool x) const;
+
+    // @dispatch
+    // def m(self, x: str | None) -> str:
+    std::string m(std::optional<std::string_view> x) const;
+
+    friend int32_t operator+(const OpOptStr& lhs, bool x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator+(const OpOptStr& lhs, std::optional<std::string_view> x) {
+        return lhs.__add__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpOptStr";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpOptStr& obj) {
+    ::tpy::print_object_default(os, "OpOptStr", obj);
+    return os;
+}
+
+// class OpMixed:
+struct OpMixed {
+    // hits: int32
+    int32_t hits;
+
+    // def __init__(self) -> None:
+    OpMixed();
+
+    // def mark(self) -> "OpMixed":
+    OpMixed& mark();
+
+    // @dispatch
+    // def __iadd__(self, x: int) -> "OpMixed":
+    OpMixed& __iadd__(const ::tpy::BigInt& x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpMixed";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpMixed& obj) {
+    ::tpy::print_object_default(os, "OpMixed", obj);
+    return os;
+}
+
+// class OpPoint:
+struct OpPoint {
+    // x: int32
+    int32_t x;
+
+    // def __init__(self, x: int32) -> None:
+    OpPoint() = default;
+    explicit OpPoint(int32_t x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpPoint";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpPoint& obj) {
+    ::tpy::print_object_default(os, "OpPoint", obj);
+    return os;
+}
+
+// class OpLeft:
+struct OpLeft {
+
+    // def __init__(self) -> None:
+    OpLeft();
+
+    // @dispatch
+    // def __add__(self, p: OpPoint) -> int32:
+    int32_t __add__(const OpPoint& p) const;
+
+    // @dispatch
+    // def __add__(self, p: OpPoint | None) -> int32:
+    int32_t __add__(const OpPoint* p) const;
+
+    friend int32_t operator+(const OpLeft& lhs, const OpPoint& p) {
+        return lhs.__add__(p);
+    }
+
+    friend int32_t operator+(const OpLeft& lhs, const OpPoint* p) {
+        return lhs.__add__(p);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpLeft";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpLeft& obj) {
+    ::tpy::print_object_default(os, "OpLeft", obj);
+    return os;
+}
+
+// class OpRight(Deref[OpPoint]):
+struct OpRight {
+    // _p: OpPoint
+    OpPoint _p;
+
+    // def __init__(self, p: Own[OpPoint]) -> None:
+    OpRight() = default;
+    explicit OpRight(OpPoint&& p);
+
+    // @auto_readonly
+    // def __deref__(self) -> OpPoint:
+    OpPoint& __deref__();
+
+    // @auto_readonly
+    // def __deref__(self) -> OpPoint:
+    const OpPoint& __deref__() const;
+
+    // def __radd__(self, x: OpLeft) -> int32:
+    int32_t __radd__(const OpLeft& x) const;
+
+    friend int32_t operator+(const OpLeft& x, const OpRight& rhs) {
+        return rhs.__radd__(x);
+    }
+
+    auto operator*() -> decltype(__deref__()) {
+        return __deref__();
+    }
+
+    auto operator*() const -> decltype(__deref__()) {
+        return __deref__();
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.OpRight";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const OpRight& obj) {
+    ::tpy::print_object_default(os, "OpRight", obj);
     return os;
 }
 
@@ -805,6 +1254,314 @@ inline std::string LitHome::opt(std::optional<double> x) const {
 //     return "intopt"
 inline std::string LitHome::opt(std::optional<::tpy::BigInt> x) const {
     return "intopt";
+}
+
+// def __init__(self) -> None:
+//     pass
+inline OpList::OpList() {
+}
+
+// @dispatch
+// def __add__(self, xs: list[int64]) -> int32:
+//     return 64
+inline int32_t OpList::__add__(const std::vector<int64_t>& xs) const {
+    return 64;
+}
+
+// @dispatch
+// def __add__(self, xs: list[int32]) -> int32:
+//     return 32
+inline int32_t OpList::__add__(const std::vector<int32_t>& xs) const {
+    return 32;
+}
+
+// def __init__(self) -> None:
+//     self.hits = 0
+inline OpNum::OpNum() : hits(0) {}
+
+// @dispatch
+// def __mul__(self, x: float) -> int32:
+//     return 1
+inline int32_t OpNum::__mul__(double x) const {
+    return 1;
+}
+
+// @dispatch
+// def __mul__(self, x: int) -> int32:
+//     return 2
+inline int32_t OpNum::__mul__(const ::tpy::BigInt& x) const {
+    return 2;
+}
+
+// @dispatch
+// def __rmul__(self, x: float) -> int32:
+//     return 10
+inline int32_t OpNum::__rmul__(double x) const {
+    return 10;
+}
+
+// @dispatch
+// def __rmul__(self, x: int) -> int32:
+//     return 20
+inline int32_t OpNum::__rmul__(const ::tpy::BigInt& x) const {
+    return 20;
+}
+
+// @dispatch
+// def __iadd__(self, x: float) -> "OpNum":
+//     self.hits += 1
+//     return self
+inline OpNum& OpNum::__iadd__(double x) {
+    this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
+    return (*this);
+}
+
+// @dispatch
+// def __iadd__(self, x: int) -> "OpNum":
+//     self.hits += 2
+//     return self
+inline OpNum& OpNum::__iadd__(const ::tpy::BigInt& x) {
+    this->hits = ::tpy::add_check<int32_t>(this->hits, 2);
+    return (*this);
+}
+
+// @dispatch
+// def __lt__(self, x: float) -> bool:
+//     return False
+inline bool OpNum::__lt__(double x) const {
+    return false;
+}
+
+// @dispatch
+// def __lt__(self, x: int) -> bool:
+//     return True
+inline bool OpNum::__lt__(const ::tpy::BigInt& x) const {
+    return true;
+}
+
+// @dispatch
+// def __gt__(self, x: float) -> bool:
+//     return False
+inline bool OpNum::__gt__(double x) const {
+    return false;
+}
+
+// @dispatch
+// def __gt__(self, x: int) -> bool:
+//     return True
+inline bool OpNum::__gt__(const ::tpy::BigInt& x) const {
+    return true;
+}
+
+// @dispatch
+// def __eq__(self, x: float) -> bool:
+//     return True
+inline bool OpNum::__eq__(double x) const {
+    return true;
+}
+
+// @dispatch
+// def __eq__(self, x: int) -> bool:
+//     return False
+inline bool OpNum::__eq__(const ::tpy::BigInt& x) const {
+    return false;
+}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline OpAcc::OpAcc(int32_t n) : n(n) {}
+
+// @dispatch
+// def __add__(self, x: float) -> Own["OpAcc"]:
+//     return OpAcc(self.n + 1)
+inline OpAcc OpAcc::__add__(double x) const {
+    return OpAcc((::tpy::add_check<int32_t>(this->n, 1)));
+}
+
+// @dispatch
+// def __add__(self, x: int) -> Own["OpAcc"]:
+//     return OpAcc(self.n + 2)
+inline OpAcc OpAcc::__add__(const ::tpy::BigInt& x) const {
+    return OpAcc((::tpy::add_check<int32_t>(this->n, 2)));
+}
+
+// def __init__(self) -> None:
+//     pass
+inline OpWidth::OpWidth() {
+}
+
+// @dispatch
+// def __add__(self, x: int64) -> int32:
+//     return 64
+inline int32_t OpWidth::__add__(int64_t x) const {
+    return 64;
+}
+
+// @dispatch
+// def __add__(self, x: int32) -> int32:
+//     return 32
+inline int32_t OpWidth::__add__(int32_t x) const {
+    return 32;
+}
+
+// @dispatch
+// def __sub__(self, x: int32) -> int32:
+//     return 32
+inline int32_t OpWidth::__sub__(int32_t x) const {
+    return 32;
+}
+
+// @dispatch
+// def __sub__(self, x: float | None) -> int32:
+//     return 1
+inline int32_t OpWidth::__sub__(std::optional<double> x) const {
+    return 1;
+}
+
+// def __init__(self) -> None:
+//     pass
+inline OpLitWidth::OpLitWidth() {
+}
+
+// @dispatch
+// def __add__(self, x: int) -> int32:
+//     return 0
+inline int32_t OpLitWidth::__add__(const ::tpy::BigInt& x) const {
+    return 0;
+}
+
+// @dispatch
+// def __add__(self, x: int64) -> int32:
+//     return 64
+inline int32_t OpLitWidth::__add__(int64_t x) const {
+    return 64;
+}
+
+// @dispatch
+// def __add__(self, x: int32) -> int32:
+//     return 32
+inline int32_t OpLitWidth::__add__(int32_t x) const {
+    return 32;
+}
+
+// def __init__(self) -> None:
+//     pass
+inline OpText::OpText() {
+}
+
+// @dispatch
+// def __add__(self, x: String) -> int32:
+//     return 2
+inline int32_t OpText::__add__(const ::tpy::String& x) const {
+    return 2;
+}
+
+// @dispatch
+// def __add__(self, x: str) -> int32:
+//     return 1
+inline int32_t OpText::__add__(std::string_view x) const {
+    return 1;
+}
+
+// def __init__(self) -> None:
+//     pass
+inline OpOptStr::OpOptStr() {
+}
+
+// @dispatch
+// def __add__(self, x: bool) -> int32:
+//     return 2
+inline int32_t OpOptStr::__add__(bool x) const {
+    return 2;
+}
+
+// @dispatch
+// def __add__(self, x: str | None) -> int32:
+//     return 1
+inline int32_t OpOptStr::__add__(std::optional<std::string_view> x) const {
+    return 1;
+}
+
+// @dispatch
+// def m(self, x: bool) -> str:
+//     return "bool"
+inline std::string OpOptStr::m(bool x) const {
+    return "bool";
+}
+
+// @dispatch
+// def m(self, x: str | None) -> str:
+//     return "opt"
+inline std::string OpOptStr::m(std::optional<std::string_view> x) const {
+    return "opt";
+}
+
+// def __init__(self) -> None:
+//     self.hits = 0
+inline OpMixed::OpMixed() : hits(0) {}
+
+// def mark(self) -> "OpMixed":
+//     self.hits += 1
+//     return self
+inline OpMixed& OpMixed::mark() {
+    this->hits = ::tpy::add_check<int32_t>(this->hits, 1);
+    return (*this);
+}
+
+// @dispatch
+// def __iadd__(self, x: int) -> "OpMixed":
+//     self.hits += 2
+//     return self
+inline OpMixed& OpMixed::__iadd__(const ::tpy::BigInt& x) {
+    this->hits = ::tpy::add_check<int32_t>(this->hits, 2);
+    return (*this);
+}
+
+// def __init__(self, x: int32) -> None:
+//     self.x = x
+inline OpPoint::OpPoint(int32_t x) : x(x) {}
+
+// def __init__(self) -> None:
+//     pass
+inline OpLeft::OpLeft() {
+}
+
+// @dispatch
+// def __add__(self, p: OpPoint) -> int32:
+//     return 10
+inline int32_t OpLeft::__add__(const OpPoint& p) const {
+    return 10;
+}
+
+// @dispatch
+// def __add__(self, p: OpPoint | None) -> int32:
+//     return 20
+inline int32_t OpLeft::__add__(const OpPoint* p) const {
+    return 20;
+}
+
+// def __init__(self, p: Own[OpPoint]) -> None:
+//     self._p = p
+inline OpRight::OpRight(OpPoint&& p) : _p(std::move(p)) {}
+
+// @auto_readonly
+// def __deref__(self) -> OpPoint:
+//     return self._p
+inline OpPoint& OpRight::__deref__() {
+    return this->_p;
+}
+
+// @auto_readonly
+// def __deref__(self) -> OpPoint:
+//     return self._p
+inline const OpPoint& OpRight::__deref__() const {
+    return this->_p;
+}
+
+// def __radd__(self, x: OpLeft) -> int32:
+//     return 30
+inline int32_t OpRight::__radd__(const OpLeft& x) const {
+    return 30;
 }
 
 // def __init__(self) -> None:

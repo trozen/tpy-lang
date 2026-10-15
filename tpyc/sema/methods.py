@@ -34,7 +34,7 @@ from ..prescan import _expr_to_narrowing_key
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type, protocol_info_of
-from .overloads import resolve_overload, OverloadAmbiguityError
+from .overloads import method_call_ranking, OverloadAmbiguityError
 from .bound_check import raise_if_class_param_bound_violated
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
@@ -510,16 +510,11 @@ class MethodAnalyzer:
                     kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
                 enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
                 try:
-                    resolved = resolve_overload(
+                    resolved = method_call_ranking(
+                        self.ctx, self.protocols, self.type_ops).resolve(
                         resolved_overloads, enriched_types,
-                        protocol_checker=self.protocols.type_conforms_to_protocol,
-                        protocol_classifier=self.protocols.classify_protocol_conformance,
-                        deref_checker=self.type_ops.get_deref_coercion_target,
-                        default_int_type=self.ctx.default_int_type,
-                        subclass_checker=self.ctx.registry.subclass_distance,
                         is_readonly_receiver=is_readonly_receiver,
                         is_consuming_receiver=is_consuming_receiver,
-                        type_ops=self.type_ops,
                         kwarg_types=kwarg_types,
                     )
                 except OverloadAmbiguityError as e:

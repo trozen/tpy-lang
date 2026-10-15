@@ -104,7 +104,7 @@ from ...typesys import (
 )
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
-from ...sema.literal_utils import fixed_int_literal_value_from_expr
+from ...sema.literal_utils import fixed_int_literal_value_from_expr, numeric_literal_type
 from ...prescan import chain_root_name, literal_constant
 from ...type_def_registry import (
     is_varargs,
@@ -4160,13 +4160,9 @@ def _literal_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
 
 def _numeric_literal_type(a: TpyExpr,
                           analyzer) -> 'IntLiteralType | FloatLiteralType | None':
-    """Sema's literal type of a numeric argument (`IntLiteralType` /
-    `FloatLiteralType`) -- a literal, a constant folded over literals, or
-    an expression that keeps a literal's type (a walrus, a conditional with
-    equal branches) -- else None. Overload ranking prices exactly these as
-    literals."""
-    t = analyzer.get_expr_type(_peel_coerce(a))
-    return t if isinstance(t, (IntLiteralType, FloatLiteralType)) else None
+    """Sema's literal type of a numeric argument (`numeric_literal_type`),
+    else None."""
+    return numeric_literal_type(analyzer.get_expr_type(_peel_coerce(a)))
 
 
 def _numeric_literal_value(a: TpyExpr, analyzer) -> 'int | float | None':
@@ -4185,15 +4181,13 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
                       fi, analyzer) -> 'TpyType | None':
     """The param slot ONE literal arg must be pinned to -- rendered as a
     value of the slot's own type, so C++ binds the variant sema picked --
-    or None when this arg takes no pin: the callee is one of an overload set
-    (`FunctionInfo.overloaded`) whose variants share one C++ name (a free
-    function's variants each have their own, `variant_cpp_name`, so its
-    call already names the one sema picked), emitted from TPy -- not
-    generic, and not a @native / @cpp_template function stub, whose C++ is
-    written against its own spelling and expands through the native arm --
-    and the arg is a str
-    literal at a `str`/`StrView` slot (a `const char[N]`'s pointer and
-    boolean conversions outrank the view one) or a numeric literal at a
+    or None when this arg takes no pin: the callee is a variant C++ picks
+    among its set again (`FunctionInfo.reresolved_by_cpp`: a method's, or a
+    user operator dunder's, whose variants share one C++ name) -- and the
+    arg is a str
+    literal at a `str`/`StrView` slot or an Optional of one (a
+    `const char[N]`'s pointer and boolean conversions outrank the view
+    one) or a numeric literal at a
     numeric slot or an Optional of one (a bare `3` converts to every
     arithmetic variant alike, and outranks the user-defined conversion to
     BigInt). Every call loop asks this with the callee it resolved,
@@ -4201,18 +4195,15 @@ def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
     is_str = isinstance(_peel_coerce(a), TpyStrLiteral)
     if not is_str and _numeric_literal_type(a, analyzer) is None:
         return None
-    if (fi is None or fi.is_generic() or not fi.overloaded
-            or fi.variant_cpp_name is not None
-            or fi.cpp_template is not None or fi.native_function
-            or fi.native_name):
+    if fi is None or not fi.reresolved_by_cpp:
         return None
     slot = (unwrap_readonly(unwrap_ref_type(ptype))
             if isinstance(ptype, TpyType) else None)
     if slot is None:
         return None
-    if is_str:
-        return slot if (is_str_type(slot) or is_str_view_type(slot)) else None
     payload = _pinned_literal_payload(slot)
+    if is_str:
+        return slot if (is_str_type(payload) or is_str_view_type(payload)) else None
     if (is_fixed_int_type(payload) or is_big_int_type(payload)
             or is_float_type(payload)):
         return slot

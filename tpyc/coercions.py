@@ -690,6 +690,16 @@ def resolve_coercion(actual: TpyType, expected: TpyType,
     return None
 
 
+def coercion_refuses_value(actual: TpyType, expected: TpyType,
+                           ctx: Optional[CoercionContext]) -> bool:
+    """Whether the row converting `actual` to `expected` refuses this
+    value: its `check_range` fails (an int literal a fixed width cannot
+    hold, a float literal float32 cannot). False when no row applies."""
+    row = resolve_coercion(actual, expected, ctx)
+    return (row is not None and row.check_range is not None
+            and not row.check_range(actual, expected))
+
+
 def context_free_wrap_template(coercion: Coercion, actual: TpyType,
                                expected: TpyType) -> Optional[str]:
     """The `{0}` render template of a `context_free_wrap` row, else None.

@@ -28,11 +28,14 @@ from ..type_def_registry import (
     is_str_type, is_bytes_type, is_str_category, is_bytes_category,
     int_traits_of,
 )
-from ..coercions import resolve_coercion, CoercionContext, int_literal_fits_fixed_int
+from ..coercions import (resolve_coercion, CoercionContext, int_literal_fits_fixed_int,
+                         coercion_refuses_value)
 from ..identity_map import IdentityMap
 from .protocols import ProtocolConformanceKind
 
 if TYPE_CHECKING:
+    from .context import SemanticContext
+    from .protocols import ProtocolChecker as ProtocolCheckerObj
     from .type_ops import TypeOperations
     ProtocolChecker = Callable[[TpyType, TpyType], bool]
     ProtocolClassifier = Callable[[TpyType, TpyType], 'ProtocolConformanceKind | None']
@@ -81,8 +84,12 @@ class OverloadAmbiguityError(Exception):
     traceback. Uncaught, the exception still carries the tied candidates so
     the default message is actionable.
     """
-    def __init__(self, candidates: tuple[FunctionInfo, ...]):
+    def __init__(self, candidates: tuple[FunctionInfo, ...],
+                 converted: bool = False):
         self.candidates = candidates
+        # The tie is in the conversion stage: no candidate takes the
+        # arguments as they are.
+        self.converted = converted
         sigs = ", ".join(
             f"{c.name}({', '.join(str(p.type) for p in c.params)})"
             for c in candidates
@@ -787,6 +794,18 @@ def _conversion_target(arg_inner: TpyType, param_type: TpyType) -> TpyType:
     return target
 
 
+def converts_literal_to_base(arg_type: TpyType, param_type: TpyType) -> bool:
+    """Whether `arg_type` is a `Literal[...]` value whose conversion to
+    `param_type` lands on the Literal's own base type (an optional
+    parameter's payload included): the one conversion of a Literal value
+    priced a step cheaper than any other (`_converted_cell`)."""
+    arg_inner = unwrap_ref_type(unwrap_readonly(arg_type))
+    if isinstance(arg_inner, OwnType):
+        arg_inner = arg_inner.wrapped
+    return (isinstance(arg_inner, LiteralType)
+            and _conversion_target(arg_inner, param_type) == arg_inner.base_type)
+
+
 class _Conversion(NamedTuple):
     """How one argument converts to its parameter (`_converted_cell`)."""
     narrowing: int
@@ -805,7 +824,8 @@ def _converted_cell(
     None when it does not: whether it narrows (a BigInt into a fixed
     width), how far a numeric scalar widens (`_scalar_widening_cost`, a
     numeric literal from its home), and its cost -- a subclass's distance
-    from its base (`_coercion_upcast_distance`). A literal its conversion row's
+    from its base (`_coercion_upcast_distance`), plus one for a `Literal[...]`
+    value converted to a type other than its base. A literal its conversion row's
     `check_range` refuses (an int literal a fixed width cannot hold, a
     float literal float32 cannot) is no conversion there: the call would
     reject it after the pick."""
@@ -813,9 +833,7 @@ def _converted_cell(
     if isinstance(arg_inner, OwnType):
         arg_inner = arg_inner.wrapped
     target = _conversion_target(arg_inner, param_type)
-    row = resolve_coercion(arg_inner, target, CoercionContext.ARG)
-    if (row is not None and row.check_range is not None
-            and not row.check_range(arg_inner, target)):
+    if coercion_refuses_value(arg_inner, target, CoercionContext.ARG):
         return None
     if not type_matches_with_coercion(arg_type, target, protocol_checker,
                                       deref_checker, subclass_checker):
@@ -826,6 +844,11 @@ def _converted_cell(
             and _numeric_scalar(arg_inner) and _numeric_scalar(target)):
         widening = _scalar_widening_cost(arg_inner, target, default_int_type)
     cost = _coercion_upcast_distance(arg_type, target, subclass_checker) or 0
+    # A `Literal[...]` value converts to its own base type a step more
+    # cheaply than to any other, so `Literal["r"]` at `str` / `String`
+    # takes `str`.
+    if isinstance(arg_inner, LiteralType):
+        cost += int(not converts_literal_to_base(arg_inner, param_type))
     return _Conversion(narrowing, widening, cost)
 
 
@@ -1068,7 +1091,7 @@ class OverloadPick(NamedTuple):
 
 
 def _pick_best(candidates: list[OverloadCandidate],
-               ranked: list[tuple[tuple, int]]) -> int:
+               ranked: list[tuple[tuple, int]], converted: bool) -> int:
     """The tie rule of every overloaded call: the best-ranked of the
     applicable `(rank, index)` pairs. Candidates with one parameter-type
     sequence match identically (a substituted generic and its concrete
@@ -1087,7 +1110,7 @@ def _pick_best(candidates: list[OverloadCandidate],
             tied.append(index)
     if len(tied) > 1:
         raise OverloadAmbiguityError(
-            tuple(candidates[i].overload for i in tied))
+            tuple(candidates[i].overload for i in tied), converted)
     return tied[0]
 
 
@@ -1137,7 +1160,8 @@ def rank_overload_candidates(
               if fit is not None and fit.converted == 0]
     if strict:
         return OverloadPick(
-            _pick_best(candidates, [(fits[i].rank(), i) for i in strict]),
+            _pick_best(candidates, [(fits[i].rank(), i) for i in strict],
+                       converted=False),
             tuple(strict))
     if fallback is not None:
         return OverloadPick(fallback)
@@ -1156,7 +1180,42 @@ def rank_overload_candidates(
             ranked.append((fit.rank(), index))
     if not ranked:
         return OverloadPick(None)
-    return OverloadPick(_pick_best(candidates, ranked))
+    return OverloadPick(_pick_best(candidates, ranked, converted=True))
+
+
+def filter_receiver_overloads(
+    overloads: list[FunctionInfo],
+    is_readonly_receiver: bool | None = None,
+    is_consuming_receiver: bool | None = None,
+) -> list[FunctionInfo]:
+    """The variants of a method set a receiver of this kind can call: a
+    consuming receiver the consuming ones, a borrowing receiver the others,
+    then a readonly receiver the readonly ones and a mutable receiver the
+    mutable ones -- each only when the set has some (an `@auto_readonly`
+    pair keeps one face per receiver). None skips that filter."""
+    # Must run BEFORE readonly filter: consuming overloads are non-readonly,
+    # so the readonly filter would drop the borrowing (readonly) overload
+    # and leave only the consuming one for mutable receivers.
+    if is_consuming_receiver is not None and any(m.is_consuming for m in overloads):
+        if is_consuming_receiver:
+            consuming = [m for m in overloads if m.is_consuming]
+            if consuming:
+                overloads = consuming
+        else:
+            borrowing = [m for m in overloads if not m.is_consuming]
+            if borrowing:
+                overloads = borrowing
+
+    if is_readonly_receiver is not None:
+        if is_readonly_receiver:
+            ro = [m for m in overloads if m.is_readonly]
+            if ro:
+                overloads = ro
+        else:
+            mut = [m for m in overloads if not m.is_readonly]
+            if mut:
+                overloads = mut
+    return overloads
 
 
 def resolve_overload(
@@ -1188,30 +1247,8 @@ def resolve_overload(
     a genuine tie at the top raises ``OverloadAmbiguityError`` rather than
     being broken by declaration order.
     """
-    # Pre-filter consuming vs borrowing overloads by receiver ownership.
-    # Must run BEFORE readonly filter: consuming overloads are non-readonly,
-    # so the readonly filter would drop the borrowing (readonly) overload
-    # and leave only the consuming one for mutable receivers.
-    if is_consuming_receiver is not None and any(m.is_consuming for m in overloads):
-        if is_consuming_receiver:
-            consuming = [m for m in overloads if m.is_consuming]
-            if consuming:
-                overloads = consuming
-        else:
-            borrowing = [m for m in overloads if not m.is_consuming]
-            if borrowing:
-                overloads = borrowing
-
-    if is_readonly_receiver is not None:
-        if is_readonly_receiver:
-            ro = [m for m in overloads if m.is_readonly]
-            if ro:
-                overloads = ro
-        else:
-            mut = [m for m in overloads if not m.is_readonly]
-            if mut:
-                overloads = mut
-
+    overloads = filter_receiver_overloads(
+        overloads, is_readonly_receiver, is_consuming_receiver)
     pick = rank_overload_candidates(
         [OverloadCandidate(ov, arg_types, kwarg_types) for ov in overloads],
         protocol_checker=protocol_checker,
@@ -1222,3 +1259,61 @@ def resolve_overload(
         type_ops=type_ops,
     )
     return overloads[pick.winner] if pick.winner is not None else None
+
+
+class MethodCallRanking(NamedTuple):
+    """The checkers a method call ranks its receiver's overload set with,
+    bound once (`method_call_ranking`), so an operator's dunder set is
+    ranked exactly as the named call to it is."""
+    protocol_checker: ProtocolChecker
+    classifier: ProtocolClassifier
+    deref_checker: DerefChecker
+    default_int_type: TpyType
+    subclass_checker: SubclassChecker
+    type_ops: 'TypeOperations'
+
+    def resolve(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
+                is_readonly_receiver: bool | None = None,
+                is_consuming_receiver: bool | None = None,
+                kwarg_types: dict[str, TpyType] | None = None,
+                ) -> FunctionInfo | None:
+        """`resolve_overload` with this ranking's checkers."""
+        return resolve_overload(
+            overloads, arg_types,
+            protocol_checker=self.protocol_checker,
+            protocol_classifier=self.classifier,
+            deref_checker=self.deref_checker,
+            default_int_type=self.default_int_type,
+            subclass_checker=self.subclass_checker,
+            is_readonly_receiver=is_readonly_receiver,
+            is_consuming_receiver=is_consuming_receiver,
+            type_ops=self.type_ops,
+            kwarg_types=kwarg_types,
+        )
+
+    def rank(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
+             ) -> OverloadPick:
+        """`rank_overload_candidates` over ``overloads`` at one argument
+        list, with this ranking's checkers: the pick with its stage."""
+        return rank_overload_candidates(
+            [OverloadCandidate(ov, arg_types) for ov in overloads],
+            protocol_checker=self.protocol_checker,
+            classifier=self.classifier,
+            deref_checker=self.deref_checker,
+            default_int_type=self.default_int_type,
+            subclass_checker=self.subclass_checker,
+            type_ops=self.type_ops,
+        )
+
+
+def method_call_ranking(ctx: 'SemanticContext', protocols: 'ProtocolCheckerObj',
+                        type_ops: 'TypeOperations') -> MethodCallRanking:
+    """The checkers of a method call's overload ranking, bound."""
+    return MethodCallRanking(
+        protocol_checker=protocols.type_conforms_to_protocol,
+        classifier=protocols.classify_protocol_conformance,
+        deref_checker=type_ops.get_deref_coercion_target,
+        default_int_type=ctx.default_int_type,
+        subclass_checker=ctx.registry.subclass_distance,
+        type_ops=type_ops,
+    )

@@ -1,7 +1,9 @@
 # Overload ranking ignores declaration order: every section declares the winner
 # after a weaker one (winner-first twin: calls/dispatch_rank_declared_shape).
 from typing import Callable, Iterable, Literal, Protocol
-from tpy import dispatch, readonly, AnyFixedInt, Own, Ptr, float32, int8, int32, int64
+from tpy import (dispatch, readonly, auto_readonly, AnyFixedInt, Deref, Own, Ptr, String,
+                 float32, int8, int32, int64)
+from tpy.extern import cpp_template
 
 
 class Named(Protocol):
@@ -928,6 +930,299 @@ def literal_home() -> None:
     print("literal_home:", h.mv(7), h.mv(True), h.opt(3), h.opt(0.5))  # tpyc: ok
 
 
+# The operators section: an operator dunder set ranks like the named call to
+# the dunder, the loser declared first (cpy twin with the winner first:
+# operators/dispatch_operator_rank).
+class OpList:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __add__(self, xs: list[int64]) -> int32:
+        return 64
+
+    @dispatch
+    def __add__(self, xs: list[int32]) -> int32:
+        return 32
+
+
+class OpNum:
+    hits: int32
+
+    def __init__(self) -> None:
+        self.hits = 0
+
+    @dispatch
+    def __mul__(self, x: float) -> int32:
+        return 1
+
+    @dispatch
+    def __mul__(self, x: int) -> int32:
+        return 2
+
+    @dispatch
+    def __rmul__(self, x: float) -> int32:
+        return 10
+
+    @dispatch
+    def __rmul__(self, x: int) -> int32:
+        return 20
+
+    @dispatch
+    def __iadd__(self, x: float) -> "OpNum":
+        self.hits += 1
+        return self
+
+    @dispatch
+    def __iadd__(self, x: int) -> "OpNum":
+        self.hits += 2
+        return self
+
+    @dispatch
+    def __lt__(self, x: float) -> bool:
+        return False
+
+    @dispatch
+    def __lt__(self, x: int) -> bool:
+        return True
+
+    @dispatch
+    def __gt__(self, x: float) -> bool:
+        return False
+
+    @dispatch
+    def __gt__(self, x: int) -> bool:
+        return True
+
+    @dispatch
+    def __eq__(self, x: float) -> bool:
+        return True
+
+    @dispatch
+    def __eq__(self, x: int) -> bool:
+        return False
+
+
+class OpAcc:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    @dispatch
+    def __add__(self, x: float) -> Own["OpAcc"]:
+        return OpAcc(self.n + 1)
+
+    @dispatch
+    def __add__(self, x: int) -> Own["OpAcc"]:
+        return OpAcc(self.n + 2)
+
+
+class OpWidth:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __add__(self, x: int64) -> int32:
+        return 64
+
+    @dispatch
+    def __add__(self, x: int32) -> int32:
+        return 32
+
+    @dispatch
+    def __sub__(self, x: int32) -> int32:
+        return 32
+
+    @dispatch
+    def __sub__(self, x: float | None) -> int32:
+        return 1
+
+
+class OpLitWidth:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __add__(self, x: int) -> int32:
+        return 0
+
+    @dispatch
+    def __add__(self, x: int64) -> int32:
+        return 64
+
+    @dispatch
+    def __add__(self, x: int32) -> int32:
+        return 32
+
+
+class OpText:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __add__(self, x: String) -> int32:
+        return 2
+
+    @dispatch
+    def __add__(self, x: str) -> int32:
+        return 1
+
+
+class OpOptStr:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __add__(self, x: bool) -> int32:
+        return 2
+
+    @dispatch
+    def __add__(self, x: str | None) -> int32:
+        return 1
+
+    @dispatch
+    def m(self, x: bool) -> str:
+        return "bool"
+
+    @dispatch
+    def m(self, x: str | None) -> str:
+        return "opt"
+
+
+class OpMixed:
+    hits: int32
+
+    def __init__(self) -> None:
+        self.hits = 0
+
+    def mark(self) -> "OpMixed":
+        self.hits += 1
+        return self
+
+    # A template-backed variant and a bodied one rank as one set.
+    @dispatch
+    @cpp_template("{self}.mark()")
+    def __iadd__(self, x: float) -> "OpMixed":
+        ...
+
+    @dispatch
+    def __iadd__(self, x: int) -> "OpMixed":
+        self.hits += 2
+        return self
+
+
+class OpPoint:
+    x: int32
+
+    def __init__(self, x: int32) -> None:
+        self.x = x
+
+
+class OpLeft:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __add__(self, p: OpPoint) -> int32:
+        return 10
+
+    @dispatch
+    def __add__(self, p: OpPoint | None) -> int32:
+        return 20
+
+
+class OpRight(Deref[OpPoint]):
+    _p: OpPoint
+
+    def __init__(self, p: Own[OpPoint]) -> None:
+        self._p = p
+
+    @auto_readonly
+    def __deref__(self) -> OpPoint:
+        return self._p
+
+    def __radd__(self, x: OpLeft) -> int32:
+        return 30
+
+
+@dispatch
+def lit_base(s: String) -> str:
+    return "String"
+
+
+@dispatch
+def lit_base(s: str) -> str:
+    return "str"
+
+
+@dispatch
+def lit_cross(x: str, y: int32) -> str:
+    return "plain"
+
+
+@dispatch
+def lit_cross(x: Literal["a"], y: int64) -> str:
+    return "literal"
+
+
+def operators() -> None:
+    v = OpList()
+    xs = [1, 2]
+    # Binary: `list[int32]` wins, so the undecided `xs` is a `list[int32]`.
+    print("operators:", v + xs)  # tpyc: ok
+    n = OpNum()
+    # Binary, reflected and explicit: the literal ranks at `int`.
+    print("operators:", n * 3, 3 * n, n.__mul__(3))  # tpyc: ok
+    # In-place: `__iadd__(int)`.
+    n += 3  # tpyc: ok
+    # Comparison, chained comparison, `!=` derived from `__eq__`.
+    lt = n < 3  # tpyc: ok
+    chained = n > 3 > 1  # tpyc: ok
+    ne = n != 3  # tpyc: ok
+    print("operators:", n.hits, lt, chained, ne)
+    acc = OpAcc(0)
+    # Augmented assignment through `__add__`.
+    acc += 3  # tpyc: ok
+    w = OpWidth()
+    # `int32` is the default int's home; a float literal takes the Optional.
+    print("operators:", acc.n, w + 3, w - 3.0)  # tpyc: ok
+    # A walrus middle operand: the pin converts its temp where `>` runs.
+    print("operators:", n > (t := 3) > 1, t)  # tpyc: ok
+    o = OpOptStr()
+    # A str literal at an Optional str slot, operator and named method.
+    print("operators:", o + "x", o.m("y"))  # tpyc: ok
+    mx = OpMixed()
+    # In-place: the bodied `__iadd__(int)` over the template's float one.
+    mx += 3  # tpyc: ok
+    left = OpLeft()
+    right = OpRight(OpPoint(1))
+    # Both `__add__` variants take `right` only by a dereference, a value
+    # conversion, so their tie leaves the operator to `__radd__`; CPython
+    # calls `__add__` (BUGS.md#operator-dunder-value-conversion-refused).
+    print("operators:", mx.hits, left + right)  # tpyc: ok
+
+
+def lit3() -> Literal[3]:
+    return 3
+
+
+def operators_literal(one: Literal["a"], mode: Literal["r", "w"]) -> None:
+    # A Literal value takes its own base type; a Literal parameter beats it.
+    print("operators_literal:", lit_base(one), lit_cross(one, 3))  # tpyc: ok
+    lw = OpLitWidth()
+    t = OpText()
+    # The same at an operator: `int32` and `str`, the bases.
+    print("operators_literal:", lw + lit3(), t + mode)  # tpyc: ok
+
+
+def operators_builtin() -> None:
+    y = float32(1.5)
+    # The int literal takes the float32 operand's type (CPython computes in
+    # double: BUGS.md#int-float-compare-rounds-bigint, float32 face).
+    print("operators_builtin:", 16777217 ** y)  # tpyc: ok
+
+
 def main() -> None:
     proto_vs_t()
     base_vs_t()
@@ -966,6 +1261,9 @@ def main() -> None:
     coerce_literal_int()
     coerce_literal_range()
     literal_home()
+    operators()
+    operators_literal("a", "r")
+    operators_builtin()
 
 
 main()

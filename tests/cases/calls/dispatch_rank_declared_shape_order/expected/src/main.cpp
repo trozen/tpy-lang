@@ -864,6 +864,125 @@ void literal_home() {
     std::cout << "literal_home:" << " " << h.mv(::tpy::BigInt(7)) << " " << h.mv(true) << " " << h.opt(std::optional<::tpy::BigInt>(::tpy::BigInt(3))) << " " << h.opt(std::optional<double>(0.5)) << "\n" << ::tpy::check_signals;
 }
 
+// @dispatch
+// def lit_base(s: String) -> str:
+//     return "String"
+std::string lit_base__String(const ::tpy::String& s) {
+    return "String";
+}
+
+// @dispatch
+// def lit_base(s: str) -> str:
+//     return "str"
+std::string lit_base__str(std::string_view s) {
+    return "str";
+}
+
+// @dispatch
+// def lit_cross(x: str, y: int32) -> str:
+//     return "plain"
+std::string lit_cross__str__int32(std::string_view x, int32_t y) {
+    return "plain";
+}
+
+// @dispatch
+// def lit_cross(x: Literal["a"], y: int64) -> str:
+//     return "literal"
+std::string lit_cross__lit_a(std::string_view x, int64_t y) {
+    return "literal";
+}
+
+// def operators() -> None:
+//     v = OpList()
+//     xs = [1, 2]
+//     # Binary: `list[int32]` wins, so the undecided `xs` is a `list[int32]`.
+//     print("operators:", v + xs)  # tpyc: ok
+//     n = OpNum()
+//     # Binary, reflected and explicit: the literal ranks at `int`.
+//     print("operators:", n * 3, 3 * n, n.__mul__(3))  # tpyc: ok
+//     # In-place: `__iadd__(int)`.
+//     n += 3  # tpyc: ok
+//     # Comparison, chained comparison, `!=` derived from `__eq__`.
+//     lt = n < 3  # tpyc: ok
+//     chained = n > 3 > 1  # tpyc: ok
+//     ne = n != 3  # tpyc: ok
+//     print("operators:", n.hits, lt, chained, ne)
+//     acc = OpAcc(0)
+//     # Augmented assignment through `__add__`.
+//     acc += 3  # tpyc: ok
+//     w = OpWidth()
+//     # `int32` is the default int's home; a float literal takes the Optional.
+//     print("operators:", acc.n, w + 3, w - 3.0)  # tpyc: ok
+//     # A walrus middle operand: the pin converts its temp where `>` runs.
+//     print("operators:", n > (t := 3) > 1, t)  # tpyc: ok
+//     o = OpOptStr()
+//     # A str literal at an Optional str slot, operator and named method.
+//     print("operators:", o + "x", o.m("y"))  # tpyc: ok
+//     mx = OpMixed()
+//     # In-place: the bodied `__iadd__(int)` over the template's float one.
+//     mx += 3  # tpyc: ok
+//     left = OpLeft()
+//     right = OpRight(OpPoint(1))
+//     # Both `__add__` variants take `right` only by a dereference, a value
+//     # conversion, so their tie leaves the operator to `__radd__`; CPython
+//     # calls `__add__` (BUGS.md#operator-dunder-value-conversion-refused).
+//     print("operators:", mx.hits, left + right)  # tpyc: ok
+void operators() {
+    OpList v = OpList();
+    std::vector<int32_t> xs = {1, 2};
+    std::cout << "operators:" << " " << ((v) + (xs)) << "\n" << ::tpy::check_signals;
+    OpNum n = OpNum();
+    std::cout << "operators:" << " " << ((n) * (::tpy::BigInt(3))) << " " << ((::tpy::BigInt(3)) * (n)) << " " << (n) * (::tpy::BigInt(3)) << "\n" << ::tpy::check_signals;
+    n.__iadd__(::tpy::BigInt(3));
+    bool lt = ((n) < (::tpy::BigInt(3)));
+    bool chained = (((n) > (::tpy::BigInt(3))) && (3 > 1));
+    bool ne = (!((n) == (::tpy::BigInt(3))));
+    std::cout << "operators:" << " " << n.hits << " " << ::tpy::print_bool(lt) << " " << ::tpy::print_bool(chained) << " " << ::tpy::print_bool(ne) << "\n" << ::tpy::check_signals;
+    OpAcc acc = OpAcc(0);
+    acc = (acc) + (::tpy::BigInt(3));
+    OpWidth w = OpWidth();
+    std::cout << "operators:" << " " << acc.n << " " << ((w) + (3)) << " " << ((w) - (std::optional<double>(3.0))) << "\n" << ::tpy::check_signals;
+    int32_t t;
+    std::cout << "operators:" << " " << ::tpy::print_bool(({ auto&& _cmp1 = (t = 3); (n > ::tpy::BigInt(_cmp1)) && (_cmp1 > 1); })) << " " << t << "\n" << ::tpy::check_signals;
+    OpOptStr o = OpOptStr();
+    std::cout << "operators:" << " " << ((o) + (std::optional<std::string_view>("x"))) << " " << o.m(std::optional<std::string_view>("y")) << "\n" << ::tpy::check_signals;
+    OpMixed mx = OpMixed();
+    mx.__iadd__(::tpy::BigInt(3));
+    OpLeft left = OpLeft();
+    OpRight right = OpRight(OpPoint(1));
+    std::cout << "operators:" << " " << mx.hits << " " << ((left) + (right)) << "\n" << ::tpy::check_signals;
+}
+
+// def lit3() -> Literal[3]:
+//     return 3
+int32_t lit3() {
+    return 3;
+}
+
+// def operators_literal(one: Literal["a"], mode: Literal["r", "w"]) -> None:
+//     # A Literal value takes its own base type; a Literal parameter beats it.
+//     print("operators_literal:", lit_base(one), lit_cross(one, 3))  # tpyc: ok
+//     lw = OpLitWidth()
+//     t = OpText()
+//     # The same at an operator: `int32` and `str`, the bases.
+//     print("operators_literal:", lw + lit3(), t + mode)  # tpyc: ok
+void operators_literal(std::string_view one, std::string_view mode) {
+    std::cout << "operators_literal:" << " " << ::tpyapp::main::lit_base__str(one) << " " << ::tpyapp::main::lit_cross__lit_a(one, 3) << "\n" << ::tpy::check_signals;
+    OpLitWidth lw = OpLitWidth();
+    OpText t = OpText();
+    std::cout << "operators_literal:" << " " << ((lw) + (::tpyapp::main::lit3())) << " " << ((t) + (mode)) << "\n" << ::tpy::check_signals;
+}
+
+// def operators_builtin() -> None:
+//     y = float32(1.5)
+//     # The int literal takes the float32 operand's type (CPython computes in
+//     # double: BUGS.md#int-float-compare-rounds-bigint, float32 face).
+//     print("operators_builtin:", 16777217 ** y)  # tpyc: ok
+void operators_builtin() {
+    float y = 1.5f;
+    std::cout << "operators_builtin:" << " " << ::tpy::print_float(static_cast<double>((std::pow(static_cast<float>(16777217), y)))) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     proto_vs_t()
 //     base_vs_t()
@@ -902,6 +1021,9 @@ void literal_home() {
 //     coerce_literal_int()
 //     coerce_literal_range()
 //     literal_home()
+//     operators()
+//     operators_literal("a", "r")
+//     operators_builtin()
 void main() {
     ::tpyapp::main::proto_vs_t();
     ::tpyapp::main::base_vs_t();
@@ -940,8 +1062,13 @@ void main() {
     ::tpyapp::main::coerce_literal_int();
     ::tpyapp::main::coerce_literal_range();
     ::tpyapp::main::literal_home();
+    ::tpyapp::main::operators();
+    ::tpyapp::main::operators_literal("a", "r");
+    ::tpyapp::main::operators_builtin();
 }
 
+// from tpy.extern import cpp_template
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;

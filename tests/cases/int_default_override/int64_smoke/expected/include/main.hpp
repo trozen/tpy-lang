@@ -7,11 +7,62 @@
 
 namespace tpyapp::main {
 
+struct Widths;
+
 extern int64_t a;
 extern int64_t b;
 extern ::tpy::BigInt c;
 extern std::vector<int64_t>* items;
+extern Widths* w;
 inline constexpr std::string_view __name__ = "__main__";
 
+// class Widths:
+struct Widths {
+
+    // def __init__(self) -> None:
+    Widths();
+
+    // @dispatch
+    // def __add__(self, x: int64) -> int32:
+    int32_t __add__(int64_t x) const;
+
+    // @dispatch
+    // def __add__(self, x: int32) -> int32:
+    int32_t __add__(int32_t x) const;
+
+    friend int32_t operator+(const Widths& lhs, int64_t x) {
+        return lhs.__add__(x);
+    }
+
+    friend int32_t operator+(const Widths& lhs, int32_t x) {
+        return lhs.__add__(x);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Widths";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Widths& obj) {
+    ::tpy::print_object_default(os, "Widths", obj);
+    return os;
+}
+
+
+// def __init__(self) -> None:
+//     pass
+inline Widths::Widths() {
+}
+
+// @dispatch
+// def __add__(self, x: int64) -> int32:
+//     return 64
+inline int32_t Widths::__add__(int64_t x) const {
+    return 64;
+}
+
+// @dispatch
+// def __add__(self, x: int32) -> int32:
+//     return 32
+inline int32_t Widths::__add__(int32_t x) const {
+    return 32;
+}
 void __tpy_init();
 } // namespace tpyapp::main

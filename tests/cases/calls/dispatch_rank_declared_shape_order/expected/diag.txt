@@ -1,3 +1,3 @@
-main.py:260: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:424: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:836: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol
+main.py:262: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:426: warning: Own[Animal] param 'x' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:838: warning: upcast narrows 'Dog' to 'Animal' -- only 'Animal' fields and methods will be accessible; keep the concrete type or make 'Animal' a @dynamic protocol

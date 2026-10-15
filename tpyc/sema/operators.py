@@ -6,19 +6,23 @@ Binary and unary operator resolution using the type registry.
 
 from __future__ import annotations
 from dataclasses import replace as dc_replace
-from typing import TYPE_CHECKING, Callable
+from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
     INT32, FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
-    unwrap_readonly, resolve_int_literals, unwrap_qualifiers,
-    substitute_type_params_simple,
+    unwrap_readonly, resolve_int_literals,
+    substitute_type_params_simple, is_any_float_type,
 )
-from .overloads import type_matches_numeric, type_matches_strict
+from ..parse import TpyAugAssign, TpyBinOp, TpyExpr
+from .overloads import (method_call_ranking, filter_receiver_overloads,
+                        OverloadAmbiguityError, converts_literal_to_base)
+from .literal_utils import numeric_literal_type
+from .receiver_calls import receiver_is_readonly
 from ..coercions import (resolve_coercion, context_free_wrap_template,
-                         int_literal_fits_fixed_int)
-from ..type_def_registry import is_fixed_int_type
+                         CoercionContext, coercion_refuses_value)
+from ..type_def_registry import is_fixed_int_type, is_big_int_type
 from tpyc import modules as builtin_modules
 
 if TYPE_CHECKING:
@@ -91,15 +95,76 @@ OPERATOR_DUNDERS: frozenset[str] = frozenset(
     + list(builtin_modules.UNARYOP_TO_METHOD.values()))
 
 
+def literal_home(t: TpyType, other: TpyType,
+                 other_effective: TpyType) -> TpyType | None:
+    """The type numeric literal operand `t` takes beside the operator's
+    other operand `other` (of effective type `other_effective`), as NumPy's
+    weak scalars do: beside a `float` / `float32` that type, always; beside
+    a fixed int an int literal the fixed type when the coercion row admits
+    its value, beside an `int` an `int`; an int literal beside a float
+    literal is a `float`. None when it has no home there and is priced at
+    its own (the default int width, `float`), as a call argument is."""
+    lit = numeric_literal_type(t)
+    if lit is None:
+        return None
+    beside = numeric_literal_type(other)
+    if isinstance(beside, FloatLiteralType):
+        return FLOAT if isinstance(lit, IntLiteralType) else None
+    if isinstance(beside, IntLiteralType):
+        return None
+    if is_any_float_type(other_effective):
+        return other_effective
+    if not isinstance(lit, IntLiteralType) or not (
+            is_fixed_int_type(other_effective) or is_big_int_type(other_effective)):
+        return None
+    if coercion_refuses_value(lit, other_effective, CoercionContext.ARG):
+        return None
+    return other_effective
+
+
 def _literal_beside(t: TpyType, effective: TpyType, other: TpyType,
                     other_effective: TpyType) -> TpyType:
-    """The effective type of operand `t` next to `other`: an int literal
-    beside a fixed int it fits is of that fixed type."""
-    t, other = unwrap_ref_type(t), unwrap_ref_type(other)
-    if (not isinstance(other, IntLiteralType)
-            and int_literal_fits_fixed_int(t, other_effective)):
-        return other_effective
-    return effective
+    """The effective type of operand `t` next to `other` for the record
+    lookup: an int literal whose home there is a fixed int is of that type
+    (`literal_home`); any other operand keeps its own."""
+    home = literal_home(t, other, other_effective)
+    return home if home is not None and is_fixed_int_type(home) else effective
+
+
+def _answers_converted(operand: TpyType, param: TpyType) -> bool:
+    """Whether a dunder set answers with a winner that converts `operand`
+    to its parameter `param`: a numeric literal (`numeric_literal_type`,
+    the operand the literal pin renders at the parameter's own type), or a
+    `Literal[...]` value converted to its own base type. Converting any
+    other value is left to the resolver's later steps."""
+    return (numeric_literal_type(operand) is not None
+            or converts_literal_to_base(operand, param))
+
+
+def _operand_exprs(loc_node: object) -> tuple[TpyExpr | None, TpyExpr | None]:
+    """The (left, right) operand expressions of the operator `loc_node`
+    spells: a binary operator's, an augmented assignment's target and
+    value; None for an operand it does not spell."""
+    if isinstance(loc_node, TpyBinOp):
+        return loc_node.left, loc_node.right
+    if isinstance(loc_node, TpyAugAssign):
+        return loc_node.target, loc_node.value
+    return None, None
+
+
+class OperatorAmbiguity(NamedTuple):
+    """A dunder set whose ranking ties at the top for the operand -- a
+    call's "Ambiguous overload" answer, returned as a value: a caller that
+    probes the resolver speculatively goes on, the one that decides the
+    operator raises it (`ExpressionAnalyzer.decide_operator`)."""
+    method_name: str
+    candidates: tuple[FunctionInfo, ...]
+
+
+def _type_entries(subst: dict[str, TpyType | int]) -> dict[str, TpyType]:
+    """The entries of a receiver substitution a type substitution applies
+    (an int-kind arg such as `N` has no type to put in its place)."""
+    return {k: v for k, v in subst.items() if isinstance(v, TpyType)}
 
 
 class OperatorResolver:
@@ -153,6 +218,15 @@ class OperatorResolver:
             return tpy_type.base_type
         return tpy_type
 
+    def _operand_arg(self, tpy_type: TpyType) -> TpyType:
+        """An operand's type as the ranking takes it: as analyzed (an
+        undecided container stays undecided, a `Literal[...]` a literal),
+        an int-kind type param read as `int32`."""
+        tpy_type = unwrap_ref_type(tpy_type)
+        if isinstance(tpy_type, TypeParamRef) and tpy_type.kind == TypeParamKind.INT:
+            return INT32
+        return tpy_type
+
     def get_effective_type_for_binop(self, tpy_type: TpyType) -> TpyType:
         """Fully resolve type for registry lookup (also resolves IntLiteralType/FloatLiteralType)."""
         tpy_type = unwrap_ref_type(tpy_type)
@@ -168,20 +242,19 @@ class OperatorResolver:
 
     def _build_type_subst(
         self, receiver_type: TpyType, arg_effective: TpyType,
-    ) -> dict[str, TpyType]:
-        """Build type param substitution from a concrete receiver type.
+    ) -> dict[str, TpyType | int]:
+        """Build type param substitution from a concrete receiver type,
+        int-kind args included (`N` of an `ArrayList[T, N]` receiver);
+        `_type_entries` is the part a type substitution applies.
 
         When the receiver has IntLiteralType element(s), adapts to the arg's
         concrete element type if available, otherwise resolves to default int.
         """
-        # Drop int-kind type args (e.g. N in Array[T, N]) --
-        # substitute_type_params_simple only acts on TypeParamRef -> TpyType.
-        subst: dict[str, TpyType] = {
-            k: v for k, v in self.type_ops.build_type_substitution(receiver_type).items()
-            if isinstance(v, TpyType)
-        }
+        full = self.type_ops.build_type_substitution(receiver_type)
+        subst: dict[str, TpyType | int] = {
+            k: v for k, v in full.items() if isinstance(v, TpyType)}
         if not subst:
-            return {}
+            return dict(full)
         arg_params = builtin_modules.extract_type_params(arg_effective)
         for name, typ in list(subst.items()):
             if isinstance(typ, (IntLiteralType, FloatLiteralType)):
@@ -192,44 +265,73 @@ class OperatorResolver:
                     subst[name] = resolve_int_literals(typ, self.ctx.default_int_for_literal)
             else:
                 subst[name] = resolve_int_literals(typ, self.ctx.default_int_for_literal)
-        return subst
+        return {**full, **subst}
 
-    def _find_matching_overload(
-        self, overloads: list[FunctionInfo], arg_type: TpyType,
-        type_subst: dict[str, TpyType],
-        protocol_checker: ProtocolChecker | None = None,
-        operand: TpyType | None = None,
+    def _rank_set(
+        self, overloads: list[FunctionInfo], operand: TpyType,
+        type_subst: dict[str, TpyType | int],
+        receiver: TpyType, receiver_expr: TpyExpr | None,
+        home: TpyType | None = None,
+    ) -> tuple[FunctionInfo, dict[str, TpyType]] | OperatorAmbiguity | None:
+        """Rank one dunder set for `operand` as the named call to it ranks
+        the set (`method_call_ranking`): the receiver's type params
+        substituted (int-kind ones included), its readonly / consuming
+        filter, the method's own type params inferred from the operand. A
+        numeric literal operand ranks at its `home` beside the other
+        operand when it has one. The set answers when the winner takes the
+        operand as it is, or converts it as `_answers_converted` admits;
+        any other conversion is left to the later steps, and so is a tie
+        fewer than two of whose candidates would answer. Returns the method
+        with the substitution to apply to it, or the tie as a value."""
+        cands = filter_receiver_overloads(
+            [m for m in overloads if len(m.params) == 1],
+            is_readonly_receiver=receiver_is_readonly(
+                self.ctx, receiver_expr, receiver),
+            is_consuming_receiver=False)
+        if not cands:
+            return None
+        arg = home if home is not None else operand
+        ranking = method_call_ranking(self.ctx, self.protocols, self.type_ops)
+        views = [self.type_ops.substitute_method_type_params(m, type_subst)
+                 if type_subst else m for m in cands]
+        try:
+            pick = ranking.rank(views, [arg])
+        except OverloadAmbiguityError as e:
+            tied = tuple(c for c in e.candidates
+                         if not e.converted
+                         or _answers_converted(operand, c.params[0].type))
+            return (OperatorAmbiguity(cands[0].name, tied)
+                    if len(tied) > 1 else None)
+        if pick.winner is None:
+            return None
+        if (pick.winner not in pick.strict
+                and not _answers_converted(operand, views[pick.winner].params[0].type)):
+            return None
+        return self._bind_winner(cands[pick.winner], arg, type_subst)
+
+    def _bind_winner(
+        self, method: FunctionInfo, arg: TpyType,
+        type_subst: dict[str, TpyType | int],
     ) -> tuple[FunctionInfo, dict[str, TpyType]] | None:
-        """Find an overload matching arg_type, substituting the receiver's
-        type params first; a type param of the method's own is bound from
-        the operand as a call binds it from its argument. `operand` is the
-        operand's type as analyzed: an undecided container is matched as
-        it is, as a call's argument is. Returns the method with the
-        substitution to apply to it."""
-        undecided = (operand is not None and isinstance(
-            unwrap_qualifiers(operand), PendingContainerType))
-        for method in overloads:
-            if len(method.params) == 1:
-                param = method.params[0]
-                param_type = unwrap_ref_type(param.type)
-                if type_subst:
-                    param_type = substitute_type_params_simple(param_type, type_subst)
-                own_params = [tp for tp in method.type_params if tp not in type_subst]
-                if own_params:
-                    view = dc_replace(method, params=[dc_replace(param, type=param_type)],
-                                      type_params=own_params)
-                    bound = self.type_ops.infer_type_params_for_function(
-                        view, [arg_type],
-                        protocol_checker or self.protocols.type_conforms_to_protocol)
-                    if bound is not None:
-                        return method, {**type_subst, **bound}
-                    continue
-                if (type_matches_strict(operand if undecided else arg_type,
-                                        param_type, protocol_checker,
-                                        type_ops=self.type_ops)
-                        or type_matches_numeric(arg_type, param_type)):
-                    return method, type_subst
-        return None
+        """The ranked winner with its substitution: the receiver's type
+        params, and a type param of the method's own bound from the operand
+        as a call binds it from its argument (a class-shadowed name stays
+        the class's)."""
+        bind = _type_entries(type_subst)
+        own_params = [tp for tp in method.type_params if tp not in type_subst]
+        if not own_params:
+            return method, bind
+        param = method.params[0]
+        param_type = unwrap_ref_type(param.type)
+        if bind:
+            param_type = substitute_type_params_simple(param_type, bind)
+        view = dc_replace(method, params=[dc_replace(param, type=param_type)],
+                          type_params=own_params)
+        bound = self.type_ops.infer_type_params_for_function(
+            view, [arg], self.protocols.type_conforms_to_protocol)
+        if bound is None:
+            return None
+        return method, {**bind, **bound}
 
     def _make_resolved(
         self, method: FunctionInfo, type_subst: dict[str, TpyType],
@@ -295,7 +397,7 @@ class OperatorResolver:
     def resolve_binop(
         self, left_type: TpyType, op: str, right_type: TpyType,
         loc_node=None,
-    ) -> ResolvedBinop | None:
+    ) -> ResolvedBinop | OperatorAmbiguity | None:
         """Resolve binary operator using registry.
 
         Handles both builtin types and user-defined types with dunder methods.
@@ -323,6 +425,9 @@ class OperatorResolver:
         # PendingListType -> ListType)
         left_effective = self.get_effective_type_for_binop(left_type)
         right_effective = self.get_effective_type_for_binop(right_type)
+        # A numeric literal ranks at its home beside the other operand.
+        left_home = literal_home(left_type, right_type, right_effective)
+        right_home = literal_home(right_type, left_type, left_effective)
         # A literal has no width of its own: beside a fixed int it is that
         # type, so the fixed side's operator applies whichever side the
         # literal is on (`1 << k` with `k: int64` shifts an int64).
@@ -336,20 +441,20 @@ class OperatorResolver:
         left_subst = self._build_type_subst(left_effective, right_effective)
         right_subst = self._build_type_subst(right_effective, left_effective)
 
-        # For overload matching, resolve structural types but preserve
-        # IntLiteralType flexibility (matches any numeric type)
-        left_arg = unwrap_ref_type(self._resolve_pending_types(left_type))
-        right_arg = unwrap_ref_type(self._resolve_pending_types(right_type))
-
-        # Lets builtin dunders take marker-protocol params (e.g. float.__add__
-        # over AnyFixedInt covers every fixed-width int in one overload).
-        pc = self.protocols.type_conforms_to_protocol
+        # Each operand is ranked as analyzed: an undecided container as it
+        # is, a `Literal[...]` as a literal.
+        left_arg = self._operand_arg(left_type)
+        right_arg = self._operand_arg(right_type)
+        left_expr, right_expr = _operand_exprs(loc_node)
 
         # 1. Try direct: left.__add__(right)
         if left_record:
             overloads = self.forward_dunders(left_effective, op)
-            if found := self._find_matching_overload(overloads, right_arg, left_subst, pc,
-                                                     right_type):
+            found = self._rank_set(overloads, right_arg, left_subst,
+                                   left_type, left_expr, right_home)
+            if isinstance(found, OperatorAmbiguity):
+                return found
+            if found:
                 return self._make_resolved(*found, left_effective, loc_node)
 
         # 2. Try promoting left to right's type via __int__
@@ -361,7 +466,11 @@ class OperatorResolver:
                 # Check if promoted type matches right's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == right_record:
                     right_overloads = right_record.get_method_overloads(method_name)
-                    if found := self._find_matching_overload(right_overloads, right_arg, right_subst, pc):
+                    found = self._rank_set(right_overloads, right_arg, right_subst,
+                                           promoted_type, None, right_home)
+                    if isinstance(found, OperatorAmbiguity):
+                        return found
+                    if found:
                         return self._make_resolved(
                             *found, right_effective, loc_node,
                             left_wrapper=int_method.cpp_template or "{expr}",
@@ -371,8 +480,11 @@ class OperatorResolver:
         # 3. Try reverse: right.__radd__(left)
         if right_record and rmethod_name:
             overloads = right_record.get_method_overloads(rmethod_name)
-            if found := self._find_matching_overload(overloads, left_arg, right_subst, pc,
-                                                     left_type):
+            found = self._rank_set(overloads, left_arg, right_subst,
+                                   right_type, right_expr, left_home)
+            if isinstance(found, OperatorAmbiguity):
+                return found
+            if found:
                 return self._make_resolved(
                     *found, right_effective, loc_node, is_reverse=True,
                 )
@@ -386,7 +498,11 @@ class OperatorResolver:
                 # Check if promoted type matches left's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == left_record:
                     left_overloads = left_record.get_method_overloads(method_name)
-                    if found := self._find_matching_overload(left_overloads, promoted_type, left_subst, pc):
+                    found = self._rank_set(left_overloads, promoted_type, left_subst,
+                                           left_type, left_expr)
+                    if isinstance(found, OperatorAmbiguity):
+                        return found
+                    if found:
                         return self._make_resolved(
                             *found, left_effective, loc_node,
                             right_wrapper=int_method.cpp_template or "{expr}",
@@ -399,14 +515,22 @@ class OperatorResolver:
         if rmethod_name and op not in ("<<", ">>"):
             if wrap := self._fixed_int_widening_wrap(right_effective, left_effective):
                 overloads = left_record.get_method_overloads(method_name) if left_record else []
-                if found := self._find_matching_overload(overloads, left_effective, left_subst, pc):
+                found = self._rank_set(overloads, left_effective, left_subst,
+                                       left_type, left_expr)
+                if isinstance(found, OperatorAmbiguity):
+                    return found
+                if found:
                     return self._make_resolved(
                         *found, left_effective, loc_node,
                         right_wrapper=wrap, widens_operand=True,
                     )
             elif wrap := self._fixed_int_widening_wrap(left_effective, right_effective):
                 overloads = right_record.get_method_overloads(method_name) if right_record else []
-                if found := self._find_matching_overload(overloads, right_effective, right_subst, pc):
+                found = self._rank_set(overloads, right_effective, right_subst,
+                                       right_type, right_expr)
+                if isinstance(found, OperatorAmbiguity):
+                    return found
+                if found:
                     return self._make_resolved(
                         *found, right_effective, loc_node,
                         left_wrapper=wrap, widens_operand=True,
@@ -429,7 +553,7 @@ class OperatorResolver:
     def resolve_aug_inplace(
         self, target_type: TpyType, op: str, value_type: TpyType,
         loc_node=None,
-    ) -> ResolvedBinop | None:
+    ) -> ResolvedBinop | OperatorAmbiguity | None:
         """Resolve in-place augmented assignment operator (e.g. __iadd__, __ior__).
 
         Returns a ResolvedBinop whose method has a void return type and a cpp
@@ -446,21 +570,15 @@ class OperatorResolver:
             return None
 
         type_subst = self._build_type_subst(target_effective, value_type)
-        value_arg = unwrap_ref_type(self._resolve_pending_types(value_type))
-        pc = self.protocols.type_conforms_to_protocol
+        value_arg = self._operand_arg(value_type)
+        home = literal_home(value_type, target_type, target_effective)
 
-        overloads = record.get_method_overloads(method_name)
-        # Try builtin methods with cpp_template first
-        builtin_overloads = [m for m in overloads if m.cpp_template]
-        if found := self._find_matching_overload(builtin_overloads, value_arg, type_subst, pc):
-            return self._make_resolved(*found, target_effective, loc_node)
-
-        # Then try user-defined methods (no cpp_template)
-        user_overloads = [m for m in overloads if not m.cpp_template]
-        if found := self._find_matching_overload(user_overloads, value_arg, type_subst, pc):
-            return self._make_resolved(*found, target_effective, loc_node)
-
-        return None
+        found = self._rank_set(record.get_method_overloads(method_name),
+                               value_arg, type_subst, target_type,
+                               _operand_exprs(loc_node)[0], home)
+        if found is None or isinstance(found, OperatorAmbiguity):
+            return found
+        return self._make_resolved(*found, target_effective, loc_node)
 
     def get_aug_inplace_param_type(
         self, target_type: TpyType, op: str,
@@ -485,7 +603,8 @@ class OperatorResolver:
         if not candidates:
             return None
 
-        type_subst = self._build_type_subst(target_effective, target_effective)
+        type_subst = _type_entries(
+            self._build_type_subst(target_effective, target_effective))
         _, param_type = candidates[0].params[0]
         if type_subst:
             param_type = substitute_type_params_simple(param_type, type_subst)
@@ -505,7 +624,8 @@ class OperatorResolver:
             overloads = record.get_method_overloads(method_name)
             if overloads and len(overloads[0].params) == 0:
                 method = overloads[0]
-                class_subst = self._build_type_subst(effective_type, effective_type)
+                class_subst = _type_entries(
+                    self._build_type_subst(effective_type, effective_type))
                 self._check_class_bounds(method, effective_type, class_subst, loc_node)
                 return ResolvedUnaryop(method=method)
 

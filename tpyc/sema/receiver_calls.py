@@ -347,14 +347,15 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
         ctx.mark_param_mutated("self")
 
 
-def receiver_is_readonly(ctx: SemanticContext, recv: TpyExpr,
+def receiver_is_readonly(ctx: SemanticContext, recv: TpyExpr | None,
                          recv_type: TpyType | None = None) -> bool:
     """Whether a call's receiver is a readonly reference: its type (the
     caller's `recv_type` when it has one, else the recorded type of each
     operand the receiver may be), or an operand NAME whose declared scope
     type is readonly (which isinstance narrowing does not strip). The one
-    test for explicit and implicit calls alike."""
-    leaves = receiver_leaves(recv)
+    test for explicit and implicit calls alike; a receiver no expression
+    spells (an operator's promoted operand) is judged by its type."""
+    leaves = receiver_leaves(recv) if recv is not None else []
     types = ([recv_type] if recv_type is not None
              else [ctx.get_expr_type(leaf) for leaf in leaves])
     if any(t is not None

@@ -1,0 +1,33 @@
+module: 32
+free_function: 32
+method: 32
+generator: 32
+comprehension: [32, 32]
+lambda: 32
+spellings: 2 20 2
+spellings: iadd 2
+spellings: lt int
+spellings: gt int
+spellings: eq int
+spellings: True True True
+spellings: gt int
+spellings: True 3
+spellings: gt int
+spellings: True
+aug_fallback: 2
+optional_pin: 1
+optional_pin: 1 opt
+timedelta: 104249 days, 23:47:34.740993 104249 days, 23:47:34.740993
+timedelta: True
+timedelta: 0:00:00.000001
+timedelta: 0:00:00.000003 0:00:00.000002 0:00:00
+builtin: 1500.0 3.0 2.25
+builtin: 4.5 3.0 3.0
+builtin: 3.0 1.1805916207174113e+21
+builtin: 10 384 13 14
+literal: text:r
+literal: 1
+literal: str
+literal: literal
+literal: 7
+literal: 32

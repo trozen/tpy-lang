@@ -1781,6 +1781,9 @@ class TypeRegistrar:
                     NONE if isinstance(method_return, VoidType) else method_return)
             else:
                 fi_method_return = method_return
+            shared_spelling = (DUNDER_CPP_TEMPLATES.get(method.name)
+                               if not (method.cpp_template or method.native_function)
+                               else None)
             func_info = FunctionInfo(
                 name=method.name,
                 body=None if method.overload_form is OverloadForm.OVERLOAD else method,
@@ -1814,8 +1817,8 @@ class TypeRegistrar:
                     returns_borrow_rooted_at_self(method)
                     if method.name == '__enter__' else True),
                 native_cpp_return_type=method.native_cpp_return_type,
-                cpp_template=method.cpp_template or (DUNDER_CPP_TEMPLATES.get(method.name)
-                             if not method.native_function else None),
+                cpp_template=method.cpp_template or shared_spelling,
+                _shares_set_spelling=shared_spelling is not None,
                 type_params=list(method.type_params),
                 type_param_bounds=method_type_param_bounds,
                 error_return_type=(qualify_exception_name(method.error_return, self.ctx.registry,

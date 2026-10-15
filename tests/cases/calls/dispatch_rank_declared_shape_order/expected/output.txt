@@ -44,3 +44,13 @@ coerce_literal_int: bases-i64 bases-i64 2
 coerce_literal_range: f64
 literal_home: int float f64
 literal_home: 3 2 intopt floatopt
+operators: 32
+operators: 2 20 2
+operators: 2 True True True
+operators: 2 32 1
+operators: True 3
+operators: 1 opt
+operators: 2 30
+operators_literal: str literal
+operators_literal: 32 1
+operators_builtin: 68719476736.0

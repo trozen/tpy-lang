@@ -134,9 +134,32 @@ and two constrained templates over unrelated protocols are unordered).
   which have no row, take a plain cast. An Optional parameter wraps the result in the
   optional type itself (`std::optional<double>(0.1)`, since a payload value
   would lose to a plain variant's standard conversion). The pin fires only
-  where the variants share one C++ name -- methods, constructors -- since a
-  free call names its variant (`variant_cpp_name`) and C++ has nothing left
-  to choose (`tpyc/thir/lower/checks.py` `_literal_pin_slot`).
+  where the variants share one C++ name -- methods, constructors, and a
+  user operator dunder set, whose variants share the operator's spelling
+  (`({self}) * ({0})`, recorded at registration) -- since a free call names
+  its variant (`variant_cpp_name`) and C++ has nothing left to choose
+  (`FunctionInfo.reresolved_by_cpp`, read by `tpyc/thir/lower/checks.py`
+  `_literal_pin_slot`). `@native` / `@cpp_template` stubs (builtin `float`,
+  `float32`, ...) take no pin. At an operator the literal operand at the
+  dunder's parameter is pinned wherever sema resolves the dunder: `v * 3` at
+  `__mul__(float)` / `__mul__(int)` renders `((v) * (::tpy::BigInt(3)))`,
+  the reflected arithmetic `3 * v`, the in-place
+  `v.__iadd__(::tpy::BigInt(3))`, the `v = v + 3` an `+=` falls back to, a
+  comparison and each link of a chained one, the explicit `v.__mul__(3)`,
+  and a `!=` derived from such a set's `__eq__`, which then renders
+  `(!((v) == (::tpy::BigInt(3))))` so the C++ operator is the pinned one
+  (`_operator_literal_pins`, `tpyc/thir/lower/expressions.py`). A chained
+  comparison's middle operand evaluated once into a temp binds the value
+  as written and takes the pin where the pinned link compares it
+  (`v > (t := 3) > 1` renders `({ auto&& _cmp1 = (t = 3);
+  (v > ::tpy::BigInt(_cmp1)) && (_cmp1 > 1); })`), so the next link
+  compares the value sema typed. A str literal at an Optional str
+  parameter takes the optional type (`std::optional<std::string_view>("x")`).
+  An operand that needs a conversion and is not a literal: arithmetic
+  refuses it (BUGS.md#operator-dunder-value-conversion-refused); a
+  comparison sema leaves unresolved -- the reflected `3 == v` included, as
+  comparisons have no reflected step -- renders the raw C++ operator, which
+  re-picks among the set (BUGS.md#operator-comparison-unresolved-repicks).
 - Not an interop API (a known limitation): the name follows the parameter
   types' spelling and, on a collision, the declaration order, so
   hand-written C++ should not call a variant -- or the set -- by name.
@@ -332,13 +355,89 @@ overload set (the `in` test's emitted call leaves the final pick to C++,
 BUGS.md#dispatch-method-variant-reresolved-by-cpp). A record subscript is typed from its FIRST `__getitem__`
 overload and C++ `operator[]` picks what runs; the ranking only credits its
 receiver effects, and swallows a tie (BUGS.md#record-getitem-overload-first-wins).
-A record's binary
-operator dunder set does not go through it yet: `a + b` takes the first
-`__add__` variant that matches (BUGS.md#operator-overload-first-match). An
-operator's literal takes its home from the other operand, not the default
-width, so ranked like a call `x * 1000` on a `float` `x` would take an
-`int` dunder; the operator sets keep the first match until the ranking has
-that home.
+Operators rank the same way ("Operators" below).
+
+#### Operators
+
+An operator is a call to a dunder, and its dunder set -- an in-place
+`__iadd__` set as one set, `@cpp_template` variants beside bodied ones --
+is ranked exactly as the named call to that dunder ranks it
+(`OperatorResolver._rank_set`,
+`tpyc/sema/operators.py`, with the method call's checkers,
+`method_call_ranking`): the receiver's type parameters substituted
+(int-kind ones such as `ArrayList[T, N]`'s `N` included), the receiver's
+readonly / consuming filter (`filter_receiver_overloads`), the method's own
+type parameters inferred from the operand (a class-shadowed name, as in
+`Rc[T].__eq__[T: Equatable]`, stays the class's). The operand is ranked as
+analyzed: at the forward arithmetic dunder an undecided list is decided by
+the winning dunder's parameter, as a call argument is (the comparison,
+in-place and reflected dunders see it decided first:
+BUGS.md#operator-dunder-container-operand), and a `Literal[...]` value
+stays a literal, so `v + x` with `x: Literal[3]` matches
+`__add__(self, x: Literal[3])`.
+
+```python
+class V:
+    @dispatch
+    def __add__(self, xs: list[int64]) -> int32: return 64
+    @dispatch
+    def __add__(self, xs: list[int32]) -> int32: return 32
+
+v = V()
+xs = [1, 2]
+v + xs      # 32: `list[int32]` costs nothing at the default int, so xs is a
+            # std::vector<int32_t>, whichever variant is declared first
+```
+
+The resolver tries the forward dunder, the left operand's `__int__`
+promotion, the reflected dunder, the right operand's `__int__` promotion
+and the mixed fixed-width step in that order (Python's `a.__add__(b)` then
+`b.__radd__(a)`), and a step's set ANSWERS when its best candidate takes
+the operand as it is, converts a numeric literal operand (the operand the
+literal pin renders) to its parameter, or converts a `Literal[...]` value
+to the Literal's own base type (`"text:" + mode` with
+`mode: Literal["r", "w"]`). Any other conversion is left to the later
+steps, so `n32 + big` (`int32` and `int`) still resolves through the
+promotion of the `int32`, and `v + k` with `k: Literal[3, 4]` (base
+`int32`) at `__add__(int)` / `__add__(float)` is refused
+(`tests/cases/operators/error_dispatch_operator_literal_value`). A top tie
+is the call's ambiguity when at least two of the tied candidates would
+answer (a tie only value conversions produce leaves the operator to the
+later steps, as in `left + right` where `right` reaches both `__add__`
+variants by a dereference and its `__radd__` runs)
+(`tests/cases/operators/error_dispatch_operator_ambiguous`):
+
+```python
+class V:
+    @dispatch
+    def __add__(self, x: int | None) -> int32: ...
+    @dispatch
+    def __add__(self, x: int) -> int32: ...
+
+V() + n     # n: int -- Ambiguous overload for '__add__': multiple candidates
+            # match equally: __add__(int | None); __add__(int)
+```
+
+**An operator literal's home is the other operand** (NumPy's weak scalars,
+NEP 50; `literal_home`, `tpyc/sema/operators.py`). Beside a `float` or
+`float32` a numeric literal ranks as that type (always: `y * 1e40` stays a
+`float32` multiplication); beside a fixed int an int literal ranks as that
+type when its coercion row admits the value; beside an `int` an int
+literal is an `int`; an int literal beside a float literal is a `float`.
+Anywhere else -- beside a record, beside another int literal -- it is priced
+from its own home, as a call argument is: `v + 3` at `__add__(int64)` /
+`__add__(int32)` picks `int32` under the default `int32` and `int64` under
+`--default-int=int64`, and `v * 3` at `__mul__(float)` / `__mul__(int)`
+picks `int`. The home feeds the ranking only; which operand's dunder
+answers is unchanged (an int literal beside a fixed int it fits is of that
+type for the lookup, so `1 << k` with `k: int64` shifts an int64). So the
+builtin numeric operators keep their picks and their C++: `x * 1000` on a
+`float` stays `((x) * (1000))`, `y * 2.0` on a `float32` stays a `float32`
+product, `1 + 2.0` and `2.0 ** 70` stay `float` operations.
+
+The C++ runs sema's pick for a literal operand: a user dunder set shares
+one C++ operator, so the literal takes the literal pin (above) wherever
+sema resolves the dunder.
 
 Under CPython, the `@dispatch` stand-in (`dispatch` in
 `lib/cpy/tpy/__init__.py`) does not rank: it runs the first variant in
@@ -495,7 +594,7 @@ or set literal takes its type from its own values at once.
 container (`PendingContainerType`: an unannotated list / dict / set local,
 a list, dict or set literal or an empty container written in the call,
 settled or still open) goes through one arm (`_undecided_container_arm`), shared by
-both passes, Regime C's manual loops and the operator matcher, at a
+both passes and Regime C's manual loops, at a
 parameter that decides it: one that is neither a protocol nor still holds
 a type parameter, or a view a generic candidate's call resolved. It asks
 the pure compatibility query (`TypeCompatibility.is_type_compatible` in
@@ -627,7 +726,14 @@ conversion row's `check_range` refuses is no conversion there (an int
 literal a fixed-width parameter cannot hold, a float literal `float32`
 cannot), so `h(10000000000, n8)` at `h(int32, int64)` / `h(str, int64)`
 has no match and `g(1e300, n8)` at `g(float32, int64)` /
-`g(float, int64)` picks `float`.
+`g(float, int64)` picks `float`. A `Literal[...]` value converts to its own
+base type one step more cheaply than to any other type (a cost of 1 on
+every other conversion of it, `_converted_cell`), so `f(mode)` with
+`mode: Literal["r", "w"]` at `f(str)` / `f(String)` picks `str`, and
+`"text:" + mode` takes `str`'s own `__add__` -- the two would otherwise tie.
+A pick that already resolves stays: a `Literal` parameter holding the value
+is a strict match and wins before any conversion, and a `Literal` value at
+a set that converts it to one type only converts it there.
 The candidates rank by the same `OverloadFit.rank()`, the converted count
 first, so the pass keeps the first pass's order once an argument converts:
 `f(Dog(), n8)` at `(Named, int64)` / `(Animal, int64)` picks `Animal`, as
@@ -755,6 +861,13 @@ operand types for '+': int32 and str") instead of a generic
   (compiler-only: the winner declared after a weaker variant), `tests/cases/calls/error_overload_pending_then_wider`,
   `tests/cases/calls/error_overload_pending_no_match`,
   `tests/cases/calls/error_overload_pending_ambiguous`.
+- Operators: `tests/cases/operators/dispatch_operator_rank` (every position
+  and spelling, the literal pin, the operator literal's home at builtin
+  operators, `Literal` values, the winner declared first so CPython agrees),
+  the `operators` sections of `tests/cases/calls/dispatch_rank_declared_shape_order`
+  (compiler-only: the loser declared first),
+  `tests/cases/int_default_override/int64_smoke` (the pin under
+  `--default-int=int64`), `tests/cases/operators/error_dispatch_operator_ambiguous`.
 - Integration tests for the key invariants: `tests/cases/calls/overload_concrete_beats_protocol`
   (concrete wins regardless of stub order), `tests/cases/calls/dispatch_rank_declared_shape_order`
   (compiler-only: each tier against a weaker one declared first: exact,

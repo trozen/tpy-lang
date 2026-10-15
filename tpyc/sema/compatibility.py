@@ -55,7 +55,7 @@ from ..parse import (
     TpyAwait, TpyGeneratorExpression, TpyVarDecl, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
-from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error
+from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value
 from ..modules import get_span_return_type
 from .context import OwnSlot, ParkedFunctionState, ParkedRebind, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
@@ -1781,9 +1781,7 @@ class TypeCompatibility:
         # value the float type cannot hold is refused as its row says.
         if isinstance(actual, FloatLiteralType):
             if is_any_float_type(expected):
-                row = resolve_coercion(actual, expected, coercion_ctx)
-                if (row is not None and row.check_range
-                        and not row.check_range(actual, expected)):
+                if coercion_refuses_value(actual, expected, coercion_ctx):
                     return CompatError(
                         f"{literal_range_error(actual, expected)} in {context}", loc)
                 return None
