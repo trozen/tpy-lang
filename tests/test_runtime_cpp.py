@@ -49,6 +49,8 @@ _SELFCHECKS = [
      "TPY_NO_SIGNALS compiles the Ctrl-C layer out of every check point"),
     ("test_print_join.cpp",
      "print(*xs) separators span every segment and each source is borrowed"),
+    ("test_str_join.cpp",
+     "str.join allocates once over stored strings and walks any other source once"),
     ("test_extreme_element.cpp",
      "element-returning min/max hand back a lending source's own element, a copy otherwise; size and storage checks"),
     ("test_min_max_key_forms.cpp",

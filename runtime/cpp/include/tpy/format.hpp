@@ -16,6 +16,7 @@
 #include <iomanip>
 #include <optional>
 #include <ranges>
+#include <span>
 #include <sstream>
 #include <string>
 #include <string_view>
@@ -284,12 +285,48 @@ inline std::vector<std::string> str_split_whitespace(std::string_view s, int32_t
     return result;
 }
 
+namespace detail {
+
+// Strings already stored in memory: a sizing pass only reads their lengths.
+// Exact element types, so no user conversion can run twice.
+template<typename Container>
+inline constexpr bool str_join_presizable =
+    std::ranges::contiguous_range<const Container> &&
+    std::ranges::sized_range<const Container> &&
+    (std::same_as<std::ranges::range_value_t<const Container>, std::string> ||
+     std::same_as<std::ranges::range_value_t<const Container>, String> ||
+     std::same_as<std::ranges::range_value_t<const Container>, std::string_view>);
+
+// A presizable source is walked through its storage, captured once, so both
+// passes leave a user range's begin() at one call.
+template<typename Container>
+    requires str_join_presizable<Container>
+inline auto str_join_pieces(const Container& items) {
+    return std::span(std::ranges::data(items), std::ranges::size(items));
+}
+
+template<typename Container>
+inline const Container& str_join_pieces(const Container& items) {
+    return items;
+}
+
+}  // namespace detail
+
 template<typename Container>
     requires std::ranges::input_range<const Container>
 inline std::string str_join(std::string_view sep, const Container& items) {
     std::string result;
+    const auto& pieces = detail::str_join_pieces(items);
+    if constexpr (detail::str_join_presizable<Container>) {
+        if (pieces.empty()) return result;
+        // A total that wraps is a result no string can hold; append throws
+        // for it whatever reserve was asked for.
+        std::size_t total = sep.size() * (pieces.size() - 1);
+        for (const auto& item : pieces) total += std::string_view(item).size();
+        result.reserve(total);
+    }
     bool first = true;
-    for (const auto& item : items) {
+    for (const auto& item : pieces) {
         if (!first) result.append(sep);
         result.append(std::string_view(item));
         first = false;
@@ -297,26 +334,13 @@ inline std::string str_join(std::string_view sep, const Container& items) {
     return result;
 }
 
+// A braced list deduces no Container; these two give it one.
 inline std::string str_join(std::string_view sep, std::initializer_list<const char*> items) {
-    std::string result;
-    bool first = true;
-    for (auto item : items) {
-        if (!first) result.append(sep);
-        result.append(item);
-        first = false;
-    }
-    return result;
+    return str_join<std::initializer_list<const char*>>(sep, items);
 }
 
 inline std::string str_join(std::string_view sep, std::initializer_list<std::string_view> items) {
-    std::string result;
-    bool first = true;
-    for (auto item : items) {
-        if (!first) result.append(sep);
-        result.append(item);
-        first = false;
-    }
-    return result;
+    return str_join<std::initializer_list<std::string_view>>(sep, items);
 }
 
 // -- str.strip / lstrip / rstrip -------------------------------------------
