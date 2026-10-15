@@ -24,7 +24,7 @@ std::string free_function(Counts& c, std::string_view k) {
 //     # `in` through a mutating `__contains__`.
 //     return k in c  # tpyc: ok
 bool membership(Counts& c, std::string_view k) {
-    return (c.__contains__(k));
+    return c.__contains__(k);
 }
 
 // def generic(g: DefaultDict[str, list[int32]], k: str) -> int32:

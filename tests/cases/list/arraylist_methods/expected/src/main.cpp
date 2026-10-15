@@ -16,8 +16,8 @@ void test_contains() {
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(a.__contains__(20)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(a.__contains__(99)) << "\n" << ::tpy::check_signals;
 }
 
 // def test_eq() -> None:

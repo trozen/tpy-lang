@@ -1,0 +1,64 @@
+comp: mark 0
+comp: contains 0
+comp: mark 1
+comp: contains 1
+comp: mark 2
+comp: contains 2
+comp: [0, 1]
+logic: mark 1
+logic: contains 1
+logic: mark 2
+logic: contains 2
+logic: False True True False
+while: mark 0
+while: contains 0
+while: mark 1
+while: contains 1
+while: mark 2
+while: contains 2
+while: 2
+gen: mark 0
+gen: contains 0
+gen: mark 1
+gen: contains 1
+gen: mark 2
+gen: contains 2
+gen: [0, 1]
+async: mark 0
+async: contains 0
+async: True
+async: mark 1
+async: contains 1
+async: True
+pending_list: True False True
+identity: True False True
+identity: False True False
+optional_record: True False
+B.i16
+method_field: True
+B.i16
+B.i16
+comprehension: 2
+optional_slot: True False False
+owned_str: True ab3
+bigint_needle: True
+record_needle: True True
+tuple_needle: True
+generic_needle: True
+B.i16
+B.i16
+value: True True
+B.i16
+negated: False
+BLit.i32
+BLit.i32
+BLit.i32
+literal: True False True
+G.i16
+generic_class: True
+G.i16
+generic_function: True
+Words.str
+strings: True True True
+B.i16
+module: True

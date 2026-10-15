@@ -59,7 +59,7 @@ void membership() {
     Grid g = Grid();
     Pt& a = g[0];
     std::cout << "in:" << " " << a.x << "\n" << ::tpy::check_signals;
-    std::cout << "in:" << " " << ::tpy::print_bool((g.__contains__(40))) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
+    std::cout << "in:" << " " << ::tpy::print_bool(g.__contains__(40)) << " " << ::tpy::__len__(g.ps) << "\n" << ::tpy::check_signals;
 }
 
 // def context_manager() -> None:

@@ -54,3 +54,5 @@ operators: 2 30
 operators_literal: str literal
 operators_literal: 32 1
 operators_builtin: 68719476736.0
+membership: True False True
+membership: True True

@@ -31,9 +31,9 @@ void test_unary() {
 //     print(int32(10) not in v)
 void test_contains() {
     Vec2 v = Vec2(10, 20);
-    std::cout << ::tpy::print_bool((v.__contains__(10))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((v.__contains__(20))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((v.__contains__(99))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(v.__contains__(10)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(v.__contains__(20)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(v.__contains__(99)) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((!(v.__contains__(99)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((!(v.__contains__(10)))) << "\n" << ::tpy::check_signals;
 }

@@ -486,7 +486,7 @@ std::string expandvars(std::string_view p) {
                 i = n;
             } else {
                 std::string_view name = ::tpy::str_slice(p, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 2)), close});
-                if (((*::tpystd::os::_environ::environ).__contains__(name))) {
+                if ((*::tpystd::os::_environ::environ).__contains__(name)) {
                     res += (*::tpystd::os::_environ::environ)[name];
                 } else {
                     res += ::tpy::str_slice(p, ::tpy::BasicSlice{i, (::tpy::add_check<int32_t>(close, 1))});
@@ -503,7 +503,7 @@ std::string expandvars(std::string_view p) {
                 i = ::tpy::add_check<int32_t>(i, 1);
             } else {
                 std::string_view name = ::tpy::str_slice(p, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(i, 1)), end});
-                if (((*::tpystd::os::_environ::environ).__contains__(name))) {
+                if ((*::tpystd::os::_environ::environ).__contains__(name)) {
                     res += (*::tpystd::os::_environ::environ)[name];
                 } else {
                     res += ::tpy::str_slice(p, ::tpy::BasicSlice{i, end});
@@ -561,7 +561,7 @@ std::string expanduser(std::string_view p) {
     int32_t i = (((rel < 0)) ? (::tpy::__len__(p)) : ((::tpy::add_check<int32_t>(rel, 1))));
     std::string userhome = "";
     if ((i == 1)) {
-        if (((*::tpystd::os::_environ::environ).__contains__("HOME"))) {
+        if ((*::tpystd::os::_environ::environ).__contains__("HOME")) {
             userhome = (*::tpystd::os::_environ::environ)["HOME"];
         } else {
             userhome = ::tpy::stdlib::os::current_home();

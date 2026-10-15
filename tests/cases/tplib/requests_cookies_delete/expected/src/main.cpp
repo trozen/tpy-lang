@@ -66,11 +66,11 @@ void main() {
     ::tpystd::tplib::requests::Session s = ::tpystd::tplib::requests::Session();
     s.headers = ::tpy::ordered_map<std::string, std::string>({{"User-Agent", "t"}});
     ::tpyapp::main::_hop(s, ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=abc\r\nSet-Cookie: keep=1; Max-Age=3600\r\nContent-Length: 0\r\n\r\n", 93));
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("sid"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("keep"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(s.cookies.__contains__("sid")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(s.cookies.__contains__("keep")) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::_hop(s, ::tpy::bytes_literal("HTTP/1.1 200 OK\r\nSet-Cookie: sid=x; Max-Age=0\r\nContent-Length: 0\r\n\r\n", 68));
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("sid"))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("keep"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(s.cookies.__contains__("sid")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(s.cookies.__contains__("keep")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(s.cookies) << "\n" << ::tpy::check_signals;
     auto __tup_1 = ::tpystd::socket::socketpair();
     ::tpystd::socket::socket a = std::move(std::get<0>(__tup_1));

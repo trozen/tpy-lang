@@ -110,12 +110,12 @@ void filtered(const std::vector<::tpy::Bytes>& names) {
 void main() {
     Entry e = Entry(::tpy::bytes_literal("x", 1));
     std::cout << "method" << " " << ::tpy::print_bool(e.is_named(::tpy::bytes_literal("x", 1))) << " " << ::tpy::print_bool(e.is_named(::tpy::bytes_literal("y", 1))) << " " << ::tpy::print_bool(e.has_tag(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(e.has_tag(::tpy::bytes_literal("c", 1))) << "\n" << ::tpy::check_signals;
-    std::cout << "contains" << " " << ::tpy::print_bool((e.__contains__(::tpy::bytes_literal("a", 1)))) << " " << ::tpy::print_bool((e.__contains__(::tpy::bytes_literal("x", 1)))) << " " << ::tpy::print_bool((!(e.__contains__(::tpy::bytes_literal("q", 1))))) << "\n" << ::tpy::check_signals;
+    std::cout << "contains" << " " << ::tpy::print_bool(e.__contains__(::tpy::bytes_literal("a", 1))) << " " << ::tpy::print_bool(e.__contains__(::tpy::bytes_literal("x", 1))) << " " << ::tpy::print_bool((!(e.__contains__(::tpy::bytes_literal("q", 1))))) << "\n" << ::tpy::check_signals;
     Bag bag = Bag();
-    std::cout << "own_slot" << " " << ::tpy::print_bool((bag.__contains__(::tpy::bytes_literal_owned("abc", 3)))) << " " << ::tpy::print_bool((bag.__contains__(::tpy::bytes_literal_owned("zz", 2)))) << "\n" << ::tpy::check_signals;
+    std::cout << "own_slot" << " " << ::tpy::print_bool(bag.__contains__(::tpy::bytes_literal_owned("abc", 3))) << " " << ::tpy::print_bool(bag.__contains__(::tpy::bytes_literal_owned("zz", 2))) << "\n" << ::tpy::check_signals;
     Box<::tpy::Bytes> box = Box<::tpy::Bytes>(::tpy::bytes_literal_owned("abc", 3));
     Box<std::string> sbox = Box<std::string>("abc");
-    std::cout << "generic_slot" << " " << ::tpy::print_bool((box.__contains__(::tpy::bytes_literal("abc", 3)))) << " " << ::tpy::print_bool((box.__contains__(::tpy::bytes_literal("zz", 2)))) << " " << ::tpy::print_bool((sbox.__contains__("abc"))) << "\n" << ::tpy::check_signals;
+    std::cout << "generic_slot" << " " << ::tpy::print_bool(box.__contains__(::tpy::bytes_literal("abc", 3))) << " " << ::tpy::print_bool(box.__contains__(::tpy::bytes_literal("zz", 2))) << " " << ::tpy::print_bool(sbox.__contains__("abc")) << "\n" << ::tpy::check_signals;
     ::tpy::ByteArray ba = ::tpy::ByteArray(::tpy::bytes_literal("a", 1));
     ::tpyapp::main::compare_pairs(::tpy::bytes_literal("a", 1), ::tpy::bytes_literal("a", 1), ba);
     std::cout << "alias" << " " << ::tpy::ByteArrayPrinter(ba) << "\n" << ::tpy::check_signals;

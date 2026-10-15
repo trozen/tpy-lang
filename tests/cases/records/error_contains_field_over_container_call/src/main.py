@@ -1,6 +1,7 @@
 # A `__contains__` receiver that is a FIELD read off a container-returning call:
-# the receiver row admits a field over an F1-record-returning call only.
-# Concretely, `"k" in boxes()[0].jar`; TPy rejects that `in` test today.
+# the method call admits a field over an F1-record-returning call only.
+# Concretely, `"k" in boxes()[0].jar`; TPy rejects that `in` test today, as it
+# rejects the explicit `boxes()[0].jar.__contains__("k")`.
 from tpy import Own
 
 
@@ -26,7 +27,7 @@ def boxes() -> Own[list[JarBox]]:
 
 
 def probe() -> None:
-    print("k" in boxes()[0].jar)  # tpyc: error(/binop.shape.in.record/)
+    print("k" in boxes()[0].jar)  # tpyc: error(/method.recv.field_chain/)
 
 
 probe()

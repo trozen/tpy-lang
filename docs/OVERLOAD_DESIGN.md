@@ -160,6 +160,15 @@ and two constrained templates over unrelated protocols are unordered).
   comparison sema leaves unresolved -- the reflected `3 == v` included, as
   comparisons have no reflected step -- renders the raw C++ operator, which
   re-picks among the set (BUGS.md#operator-comparison-unresolved-repicks).
+- A membership test `x in h` (and `not in`) over a TPy `__contains__` set
+  is the call `h.__contains__(x)` and lowers as that call (`not in` its
+  negation): the winner receives the needle as the call's argument --
+  converted at its parameter in sema, literal pin included -- so `n8 in b` at `__contains__(int16)` / `(int32)` renders
+  `b.__contains__(static_cast<int16_t>(n8))` and `3 in b`
+  `b.__contains__(static_cast<int16_t>(3))`. A native container's
+  `__contains__` (dict, set, bytes) is a lookup by value, not a call at its
+  key slot, so its needle is not converted (`2**40 in d` over
+  `dict[int32, str]` is False, not a range check).
 - Not an interop API (a known limitation): the name follows the parameter
   types' spelling and, on a collision, the declaration order, so
   hand-written C++ should not call a variant -- or the set -- by name.
@@ -351,8 +360,8 @@ result = describe(d)  # resolves to stub 1: describe(Dog) -> str
 
 The ranking below covers free-function, method and constructor calls,
 Regime C's per-candidate arguments (below) and a record's `__contains__`
-overload set (the `in` test's emitted call leaves the final pick to C++,
-BUGS.md#dispatch-method-variant-reresolved-by-cpp). A record subscript is typed from its FIRST `__getitem__`
+overload set (the `in` test converts its needle at the winner's parameter,
+above; a literal needle is ranked as the call ranks a literal argument). A record subscript is typed from its FIRST `__getitem__`
 overload and C++ `operator[]` picks what runs; the ranking only credits its
 receiver effects, and swallows a tie (BUGS.md#record-getitem-overload-first-wins).
 Operators rank the same way ("Operators" below).

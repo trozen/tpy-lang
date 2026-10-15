@@ -392,7 +392,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_user_read::__next_
         continue;
     }
     case S_RESUME_0: {  // after: yield first(g)
-        if ((t.__contains__(i))) {
+        if (t.__contains__(i)) {
             __state = S_RESUME_1;
             return t[i];
         } else {

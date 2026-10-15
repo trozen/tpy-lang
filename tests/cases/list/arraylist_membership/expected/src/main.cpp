@@ -37,8 +37,8 @@ void main() {
     a.append(10);
     a.append(20);
     a.append(30);
-    std::cout << ::tpy::print_bool((a.__contains__(20))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a.__contains__(99))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(a.__contains__(20)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(a.__contains__(99)) << "\n" << ::tpy::check_signals;
     SimpleBuffer b = SimpleBuffer();
     std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 20) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(({ auto&& __itr = ::tpy::__iter__(b); bool __found = false; for (;;) { auto __r = __itr.__next__(); if (!__r.has_value()) break; if (::tpy::unwrap_ref(*__r) == 99) { __found = true; break; } } __found; })) << "\n" << ::tpy::check_signals;

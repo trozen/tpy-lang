@@ -8558,12 +8558,20 @@ def is_bodyless_binding(fn) -> bool:
     mutation fact exists for it either: what it declares (`@readonly`) and
     what its signature says are all there is.
     """
+    return binds_runtime_symbol(fn) or (fn.is_stub and not fn.is_export)
+
+
+def binds_runtime_symbol(fn) -> bool:
+    """A call-site dispatch to a runtime symbol or template
+    (`is_bodyless_binding` without the plain `...` stubs): its C++ is
+    written against its own spelling, so it takes its arguments as that
+    spelling declares, not as a TPy parameter list would."""
     if fn.is_export:
         # An `@export(binding="C")` function carries a `native_name` for the
         # exported C symbol but has a real body the function driver emits.
         return False
-    return (fn.native_function or fn.native_name is not None
-            or fn.cpp_template is not None or fn.is_stub)
+    return bool(fn.native_function or fn.native_name is not None
+                or fn.cpp_template is not None)
 
 
 def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:

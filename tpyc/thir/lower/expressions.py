@@ -59,7 +59,7 @@ from ...parse.nodes import (
     TpyUnaryOp,
     TpyVarargPack,
 )
-from ...typesys import pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
+from ...typesys import binds_runtime_symbol, pointer_repr_optional, pointer_variant_union, repr_shape, ResolvedBinop
 from ...typesys import (
     ConcreteFrameType,
     AliasRef,
@@ -4326,35 +4326,11 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         elif (e.typed_dict_in_field is not None
                 or fi.cpp_template or fi.native_function):
             reject()
-        elif not fi.native_name:
-            # A plain USER `__contains__` (record / generic record): the
-            # member-call tail, `(recv.__contains__(needle))`. A declared
-            # record name or an admitted field-read receiver; a scalar /
-            # str-value needle renders bare (a user record is never
-            # view-keyed, so no literal target is threaded).
-            recv_ok = ((isinstance(e.right, TpyName)
-                        and e.right.name in declared)
-                       or (isinstance(e.right, TpyFieldAccess)
-                           and (_field_receiver_ok(e.right, declared,
-                                                   analyzer)
-                                # A field haystack off an F1-record-returning
-                                # CALL receiver (`"a" in one(...).cookies`):
-                                # the member call chains off the bare postfix
-                                # field read, whose inner call gates apply at
-                                # receiver lowering.
-                                or _field_over_call_ok(e.right, analyzer)
-                                # A module-var receiver's `__contains__`
-                                # (`"K" in os.environ` -> the deref read
-                                # composing the member call).
-                                or ((_in_mod := _bare_module_recv(
-                                        e.right.obj, declared, analyzer))
-                                    is not None
-                                    and _module_var_read_cpp(
-                                        _in_mod, e.right.field, analyzer)
-                                    is not None))))
-            if not (recv_ok
-                    and (_resolved_scalar(lt, analyzer)
-                         or _resolved_viewfam_value(lt, analyzer) is not None)):
+        elif not binds_runtime_symbol(fi):
+            # A plain USER `__contains__` (record / generic record): sema
+            # recorded the call `h.__contains__(x)` the test is, lowered
+            # below by the method-call arm.
+            if e.contains_call is None:
                 reject()
             user_contains = True
         elif (isinstance(e.right, (TpyName, TpySetLiteral))
@@ -4565,9 +4541,18 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             negate=e.op == "not in",
             iter_loop=True,
             loc=loc)
+    if e.op in _MEMBERSHIP_OPS and user_contains:
+        # `x in h` is the call `h.__contains__(x)`, so admission, receiver
+        # and argument all come from the method-call arm and C++ runs the
+        # variant sema picked; `not in` is its negation.
+        call = _lower_expr(e.contains_call, lc, declared,
+                           use=_ExprUse(allow_temps=temps_ok))
+        _witness("binop.user_membership")
+        if e.op == "not in":
+            return THIRUnaryNot(result_type=rtype, operand=call, loc=loc)
+        return call
     if e.op in _MEMBERSHIP_OPS:
-        _witness("binop.user_membership" if user_contains
-                 else "binop.membership")
+        _witness("binop.membership")
         # A dict-view receiver (`d.values()`) renders the bare native view call
         # via the for-loop's ITERABLE override; a name/container receiver reads
         # bare; a field-read receiver (`"sid" in s.cookies`) takes the bare
@@ -4583,54 +4568,27 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         # A native-contains CONTAINER-field haystack was admitted by the
         # bare-member-read verdict above; precheck it past the field arm's
         # result gate (the ranges arm does the same) so it renders as the
-        # bare member read. User-__contains__ receivers keep the gate.
-        recv_prechecked = (not user_contains
-                           and isinstance(e.right, TpyFieldAccess)
+        # bare member read.
+        recv_prechecked = (isinstance(e.right, TpyFieldAccess)
                            and _container_field_bare_read(e.right, declared,
                                                           analyzer))
-        # A str-family FIELD needle renders the bare member read into the
-        # contains(...) template (same owned-str-field-ok
-        # position as the compare operands above).
-        # The membership NEEDLE is compared inside the test, the haystack's
-        # own transient position one operand over.
-        needle = _lower_expr(
+        # The NEEDLE of a native container's lookup is compared inside the
+        # test, the haystack's own transient position one operand over; a
+        # str-family FIELD needle renders the bare member read. A bytes
+        # literal needle takes the static view spelling
+        # (`::tpy::bytes_literal("hello", 5)`): the container's transparent
+        # lookup reads it through `::tpy::BytesView`, so the owned render
+        # would build a buffer per lookup that nothing keeps.
+        needle = _retag_bytes_literal_span(_lower_expr(
             e.left, lc, declared,
             use=_ExprUse(pos=SinkPos.OPERAND, forms=_LEND_OK),
-            field_owned_str_ok=isinstance(e.left, TpyFieldAccess))
-        # A bytes literal needle takes the static view spelling
-        # (`::tpy::bytes_literal("hello", 5)`): the container's transparent
-        # lookup and a user `__contains__`'s `bytes` slot both read it
-        # through `::tpy::BytesView`, so the owned render would build a
-        # buffer per lookup that nothing keeps. A user slot that OWNS the
-        # argument (`Own[bytes]`, `::tpy::Bytes` by value) keeps the owned
-        # render: the view does not convert to the owner. An open `T` slot
-        # is the instantiation's parameter form, the view at `bytes`.
-        if not (user_contains and e.resolved_contains.params
-                and not (_bytes_literal_view_slot(unwrap_readonly(
-                             e.resolved_contains.params[0].type))
-                         or _is_type_param_slot(
-                             e.resolved_contains.params[0].type))):
-            needle = _retag_bytes_literal_span(needle)
-        if user_contains and e.resolved_contains.params:
-            # A runtime-BigInt needle against the user __contains__'s
-            # declared fixed-int param takes the checked call-arg narrow
-            # (an int literal stays bare -- the literal exemption).
-            pt = unwrap_readonly(e.resolved_contains.params[0].type)
-            needle_key = _narrow_key_type(e.left, declared, analyzer)
-            if (is_fixed_int_type(pt)
-                    and not isinstance(e.left, TpyIntLiteral)
-                    and _runtime_bigint(needle_key, analyzer)):
-                needle = THIRCoerce(
-                    result_type=pt, expr=needle,
-                    coercion_name=_BIGINT_NARROW,
-                    wrap=f"({{0}}).to_fixed_check<{lc.render_type(pt)}>()", loc=loc)
+            field_owned_str_ok=isinstance(e.left, TpyFieldAccess)))
         return THIRMembership(
             result_type=rtype,
             receiver=_lower_expr(e.right, lc, declared, use=recv_use,
                                  field_prechecked=recv_prechecked),
             needle=needle,
-            method_cpp=(e.resolved_contains.name if user_contains
-                        else e.resolved_contains.native_name),
+            method_cpp=e.resolved_contains.native_name,
             negate=e.op == "not in",
             loc=loc)
     if e.op in _IS_OPS:

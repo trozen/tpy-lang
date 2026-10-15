@@ -983,6 +983,25 @@ void operators_builtin() {
     std::cout << "operators_builtin:" << " " << ::tpy::print_float(static_cast<double>((std::pow(static_cast<float>(16777217), y)))) << "\n" << ::tpy::check_signals;
 }
 
+// def membership() -> None:
+//     h = InSet()
+//     w = InWords()
+//     n8: int8 = 1
+//     # int8 widens less to int16; a str literal is exact at str.
+//     print("membership:", n8 in h, n8 not in h, "x" in w)  # tpyc: ok
+//     lit = InLit()
+//     # A literal needle ranks as the call's literal argument: the default
+//     # int width int32, although int16 is declared first and holds it.
+//     print("membership:", 3 in lit, lit.__contains__(3))  # tpyc: ok
+void membership() {
+    InSet h = InSet();
+    InWords w = InWords();
+    int8_t n8 = 1;
+    std::cout << "membership:" << " " << ::tpy::print_bool(h.__contains__(static_cast<int16_t>(n8))) << " " << ::tpy::print_bool((!(h.__contains__(static_cast<int16_t>(n8))))) << " " << ::tpy::print_bool(w.__contains__(std::string_view("x"))) << "\n" << ::tpy::check_signals;
+    InLit lit = InLit();
+    std::cout << "membership:" << " " << ::tpy::print_bool(lit.__contains__(3)) << " " << ::tpy::print_bool(lit.__contains__(3)) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     proto_vs_t()
 //     base_vs_t()
@@ -1024,6 +1043,7 @@ void operators_builtin() {
 //     operators()
 //     operators_literal("a", "r")
 //     operators_builtin()
+//     membership()
 void main() {
     ::tpyapp::main::proto_vs_t();
     ::tpyapp::main::base_vs_t();
@@ -1065,6 +1085,7 @@ void main() {
     ::tpyapp::main::operators();
     ::tpyapp::main::operators_literal("a", "r");
     ::tpyapp::main::operators_builtin();
+    ::tpyapp::main::membership();
 }
 
 // from tpy.extern import cpp_template

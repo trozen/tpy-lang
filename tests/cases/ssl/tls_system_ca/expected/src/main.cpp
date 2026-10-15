@@ -193,7 +193,7 @@ bool try_verify(std::string_view cafile) {
 //     del os.environ["SSL_CERT_FILE"]
 void main() {
     ::tpyapp::main::write_fixtures();
-    if (((*::tpystd::os::_environ::environ).__contains__("SSL_CERT_FILE"))) {
+    if ((*::tpystd::os::_environ::environ).__contains__("SSL_CERT_FILE")) {
         ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
     }
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(CERT_PATH));

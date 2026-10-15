@@ -13,8 +13,8 @@ namespace tpyapp::main {
 void main() {
     Bag b = Bag();
     ::tpy::BigInt k = ::tpy::BigInt(2);
-    std::cout << ::tpy::print_bool((b.__contains__((k).to_fixed_check<int32_t>()))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((b.__contains__((((k) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>()))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(b.__contains__((k).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(b.__contains__((((k) + (::tpy::BigInt(1)))).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((!(b.__contains__(5)))) << "\n" << ::tpy::check_signals;
 }
 

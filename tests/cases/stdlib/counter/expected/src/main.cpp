@@ -39,7 +39,7 @@ void main() {
     std::vector<std::string> words = {"a", "b", "a", "c", "a", "b", "c"};
     ::tpystd::collections::Counter<std::string> c = ::tpystd::collections::Counter<std::string>(&(words));
     std::cout << c["a"] << " " << c["b"] << " " << c["z"] << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::__len__(c) << " " << ::tpy::print_bool((c.__contains__("a"))) << " " << ::tpy::print_bool((c.__contains__("z"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::__len__(c) << " " << ::tpy::print_bool(c.__contains__("a")) << " " << ::tpy::print_bool(c.__contains__("z")) << "\n" << ::tpy::check_signals;
     std::cout << c.total() << "\n" << ::tpy::check_signals;
     auto __obj_0 = c.most_common(3);
     auto __beg_0 = __obj_0.begin();

@@ -98,7 +98,7 @@ void main() {
     b.recv(65536);
     b.close();
     std::cout << r.headers["content-type"] << " " << r.headers["Content-Type"] << " " << r.headers["CONTENT-TYPE"] << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((r.headers.__contains__("x-custom-header"))) << " " << ::tpy::print_bool((r.headers.__contains__("X-CUSTOM-HEADER"))) << " " << ::tpy::print_bool((r.headers.__contains__("missing"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(r.headers.__contains__("x-custom-header")) << " " << ::tpy::print_bool(r.headers.__contains__("X-CUSTOM-HEADER")) << " " << ::tpy::print_bool(r.headers.__contains__("missing")) << "\n" << ::tpy::check_signals;
     std::optional<std::string> cl = r.headers.get("content-length");
     if ((cl.has_value())) {
         std::cout << "len:" << " " << ::tpy::print_optional_val(cl) << "\n" << ::tpy::check_signals;
@@ -127,7 +127,7 @@ void main() {
     ::tpy::__setitem__(other, "content-length", "3");
     std::cout << ::tpy::print_bool(((r.headers) == (other))) << "\n" << ::tpy::check_signals;
     ::tpy::__delitem__(other, "CONTENT-length");
-    std::cout << ::tpy::print_bool((other.__contains__("content-length"))) << " " << ::tpy::__len__(other) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(other.__contains__("content-length")) << " " << ::tpy::__len__(other) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict cid = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(cid, "Accept", "text/html");
     ::tpy::__setitem__(cid, "ACCEPT", "application/json");
@@ -140,7 +140,7 @@ void main() {
     ::tpystd::tplib::requests::CaseInsensitiveDict m = ::tpystd::tplib::requests::CaseInsensitiveDict();
     ::tpy::__setitem__(m, "Accept", "text/html");
     ::tpy::__setitem__(m, "X-N", "1");
-    std::cout << ::tpy::print_optional_val(m.pop("accept")) << " " << ::tpy::print_bool((m.__contains__("accept"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_optional_val(m.pop("accept")) << " " << ::tpy::print_bool(m.__contains__("accept")) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_optional_val(m.pop("gone", "fallback")) << "\n" << ::tpy::check_signals;
     std::cout << m.setdefault("X-N", "z") << " " << m.setdefault("X-M", "new") << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::requests::CaseInsensitiveDict dup = m.copy();

@@ -12,7 +12,7 @@ from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 
 from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
-from ..typesys import body_function_info
+from ..typesys import binds_runtime_symbol, body_function_info
 from ..typesys import (
     same_class,
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo,
@@ -2499,34 +2499,22 @@ class ExpressionAnalyzer:
             if right_record:
                 contains_overloads = right_record.get_method_overloads("__contains__")
                 if contains_overloads:
-                    # Drop int-kind type args (e.g. N in Array[T, N]) --
-                    # substitute_type_params_simple only acts on TypeParamRef -> TpyType.
+                    # Drop int-kind type args (e.g. N in Array[T, N]): no
+                    # `__contains__` parameter spells one.
                     type_subst = {
                         k: v for k, v in self.type_ops.build_type_substitution(right_type).items()
                         if isinstance(v, TpyType)
                     }
-                    # Substitute type params for generic containers
-                    subst_overloads = contains_overloads
-                    if type_subst:
-                        subst_overloads = [
-                            dc_replace(m, params=[
-                                ParamInfo(p.name, substitute_type_params_simple(p.type, type_subst))
-                                for p in m.params
-                            ]) for m in contains_overloads
-                        ]
-                    # Resolve IntLiteralType: use param type if the literal fits,
-                    # otherwise fall back to default int type
+                    # The overload set at the receiver's type args, as the
+                    # method call ranks it, so the pick is the call's winner.
+                    subst_overloads = [
+                        self.type_ops.substitute_method_type_params(m, type_subst)
+                        if type_subst else m
+                        for m in contains_overloads
+                    ]
+                    # A literal needle is ranked as the literal, as the
+                    # explicit call's argument is.
                     check_left = left_type
-                    if isinstance(check_left, IntLiteralType):
-                        for m in subst_overloads:
-                            pt = m.params[0].type
-                            pt_tr = int_traits_of(pt)
-                            if (pt_tr is not None
-                                    and pt_tr.min_value <= check_left.value <= pt_tr.max_value):
-                                check_left = pt
-                                break
-                        else:
-                            check_left = self.ctx.default_int_for_literal(check_left)
                     leaf = self._contains_leaf(right_type, expr.left,
                                                left_type)
                     try:
@@ -2571,6 +2559,26 @@ class ExpressionAnalyzer:
                             self.compat.check_type_compatible(
                                 left_type, lookup, "membership test",
                                 loc=expr.loc, source_expr=expr.left)
+                            return BOOL
+                        if binds_runtime_symbol(original_method):
+                            # A native container's lookup compares the
+                            # needle by value (an out-of-range `int` is
+                            # simply absent), so it is not converted.
+                            return BOOL
+                        # A TPy `__contains__` receives the needle as the
+                        # explicit `h.__contains__(x)` call does, so its
+                        # conversion to the parameter is the one C++ sees.
+                        needle_args = [expr.left]
+                        self.calls.receive_winner_args(
+                            None, needle_args, [left_type],
+                            matched.params[:1], original_method)
+                        expr.left = needle_args[0]
+                        expr.contains_call = TpyMethodCall(
+                            obj=expr.right, method="__contains__",
+                            args=[expr.left], resolved_function_info=matched,
+                            loc=expr.loc)
+                        self.ctx.set_expr_type(expr.contains_call,
+                                               matched.return_type)
                         return BOOL
                     # No __contains__ overload matched. Defer to
                     # check_type_compatible: it raises for genuine mismatches

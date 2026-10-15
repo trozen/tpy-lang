@@ -76,7 +76,7 @@ void cookies_arg_not_persisted() {
     s.get("http://api.test/two");
     ::tpyapp::main::_cookie_line(b2.recv(65536));
     b2.close();
-    std::cout << ::tpy::print_bool((s.cookies.__contains__("tok"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(s.cookies.__contains__("tok")) << "\n" << ::tpy::check_signals;
 }
 
 // def main() -> None:

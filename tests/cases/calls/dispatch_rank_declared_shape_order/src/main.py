@@ -2,7 +2,7 @@
 # after a weaker one (winner-first twin: calls/dispatch_rank_declared_shape).
 from typing import Callable, Iterable, Literal, Protocol
 from tpy import (dispatch, readonly, auto_readonly, AnyFixedInt, Deref, Own, Ptr, String,
-                 float32, int8, int32, int64)
+                 float32, int8, int16, int32, int64)
 from tpy.extern import cpp_template
 
 
@@ -1223,6 +1223,60 @@ def operators_builtin() -> None:
     print("operators_builtin:", 16777217 ** y)  # tpyc: ok
 
 
+# The membership section: `x in h` runs the `__contains__` winner, the loser
+# declared first (cpy twin with the winner first:
+# operators/dispatch_contains_winner).
+class InSet:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __contains__(self, x: int32) -> bool:
+        return False
+
+    @dispatch
+    def __contains__(self, x: int16) -> bool:
+        return True
+
+
+class InWords:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __contains__(self, x: bool) -> bool:
+        return False
+
+    @dispatch
+    def __contains__(self, x: str) -> bool:
+        return True
+
+
+class InLit:
+    def __init__(self) -> None:
+        pass
+
+    @dispatch
+    def __contains__(self, x: int16) -> bool:
+        return False
+
+    @dispatch
+    def __contains__(self, x: int32) -> bool:
+        return True
+
+
+def membership() -> None:
+    h = InSet()
+    w = InWords()
+    n8: int8 = 1
+    # int8 widens less to int16; a str literal is exact at str.
+    print("membership:", n8 in h, n8 not in h, "x" in w)  # tpyc: ok
+    lit = InLit()
+    # A literal needle ranks as the call's literal argument: the default
+    # int width int32, although int16 is declared first and holds it.
+    print("membership:", 3 in lit, lit.__contains__(3))  # tpyc: ok
+
+
 def main() -> None:
     proto_vs_t()
     base_vs_t()
@@ -1264,6 +1318,7 @@ def main() -> None:
     operators()
     operators_literal("a", "r")
     operators_builtin()
+    membership()
 
 
 main()

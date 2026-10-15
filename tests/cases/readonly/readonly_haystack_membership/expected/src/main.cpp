@@ -27,7 +27,7 @@ bool in_list(const std::vector<int32_t>& xs, int32_t k) {
 // def user_recv(p: readonly[Pos]) -> bool:
 //     return 3 in p  # tpyc: ok
 bool user_recv(const Pos& p) {
-    return (p.__contains__(3));
+    return p.__contains__(3);
 }
 
 
@@ -87,7 +87,7 @@ void main() {
     Bag<std::string, int32_t> b = Bag<std::string, int32_t>();
     b.add("x", 1);
     b.add("x", 2);
-    std::cout << "method:" << " " << ::tpy::print_bool((b.__contains__("x"))) << " " << ::tpy::print_bool((b.__contains__("y"))) << "\n" << ::tpy::check_signals;
+    std::cout << "method:" << " " << ::tpy::print_bool(b.__contains__("x")) << " " << ::tpy::print_bool(b.__contains__("y")) << "\n" << ::tpy::check_signals;
     std::cout << "generic method:" << " " << ::tpy::print_bool(b.has("x")) << " " << ::tpy::print_bool(b.has("y")) << "\n" << ::tpy::check_signals;
     std::cout << "user recv:" << " " << ::tpy::print_bool(::tpyapp::main::user_recv(Pos())) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<std::string, int32_t> c = ::tpy::ordered_map<std::string, int32_t>({{"a", 1}});

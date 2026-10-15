@@ -40,6 +40,9 @@ struct OpMixed;
 struct OpPoint;
 struct OpLeft;
 struct OpRight;
+struct InSet;
+struct InWords;
+struct InLit;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -440,6 +443,8 @@ int32_t lit3();
 void operators_literal(std::string_view one, std::string_view mode);
 // def operators_builtin() -> None:
 void operators_builtin();
+// def membership() -> None:
+void membership();
 // def main() -> None:
 void main();
 
@@ -1051,6 +1056,69 @@ inline std::ostream& operator<<(std::ostream& os, const OpRight& obj) {
     return os;
 }
 
+// class InSet:
+struct InSet {
+
+    // def __init__(self) -> None:
+    InSet();
+
+    // @dispatch
+    // def __contains__(self, x: int32) -> bool:
+    bool __contains__(int32_t x) const;
+
+    // @dispatch
+    // def __contains__(self, x: int16) -> bool:
+    bool __contains__(int16_t x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.InSet";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const InSet& obj) {
+    ::tpy::print_object_default(os, "InSet", obj);
+    return os;
+}
+
+// class InWords:
+struct InWords {
+
+    // def __init__(self) -> None:
+    InWords();
+
+    // @dispatch
+    // def __contains__(self, x: bool) -> bool:
+    bool __contains__(bool x) const;
+
+    // @dispatch
+    // def __contains__(self, x: str) -> bool:
+    bool __contains__(std::string_view x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.InWords";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const InWords& obj) {
+    ::tpy::print_object_default(os, "InWords", obj);
+    return os;
+}
+
+// class InLit:
+struct InLit {
+
+    // def __init__(self) -> None:
+    InLit();
+
+    // @dispatch
+    // def __contains__(self, x: int16) -> bool:
+    bool __contains__(int16_t x) const;
+
+    // @dispatch
+    // def __contains__(self, x: int32) -> bool:
+    bool __contains__(int32_t x) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.InLit";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const InLit& obj) {
+    ::tpy::print_object_default(os, "InLit", obj);
+    return os;
+}
+
 // class Dog(Animal):
 struct Dog : Animal {
 
@@ -1566,6 +1634,63 @@ inline auto OpRight::operator*() -> decltype(__deref__()) {
 
 inline auto OpRight::operator*() const -> decltype(__deref__()) {
     return __deref__();
+}
+
+// def __init__(self) -> None:
+//     pass
+inline InSet::InSet() {
+}
+
+// @dispatch
+// def __contains__(self, x: int32) -> bool:
+//     return False
+inline bool InSet::__contains__(int32_t x) const {
+    return false;
+}
+
+// @dispatch
+// def __contains__(self, x: int16) -> bool:
+//     return True
+inline bool InSet::__contains__(int16_t x) const {
+    return true;
+}
+
+// def __init__(self) -> None:
+//     pass
+inline InWords::InWords() {
+}
+
+// @dispatch
+// def __contains__(self, x: bool) -> bool:
+//     return False
+inline bool InWords::__contains__(bool x) const {
+    return false;
+}
+
+// @dispatch
+// def __contains__(self, x: str) -> bool:
+//     return True
+inline bool InWords::__contains__(std::string_view x) const {
+    return true;
+}
+
+// def __init__(self) -> None:
+//     pass
+inline InLit::InLit() {
+}
+
+// @dispatch
+// def __contains__(self, x: int16) -> bool:
+//     return False
+inline bool InLit::__contains__(int16_t x) const {
+    return false;
+}
+
+// @dispatch
+// def __contains__(self, x: int32) -> bool:
+//     return True
+inline bool InLit::__contains__(int32_t x) const {
+    return true;
 }
 
 // def __init__(self) -> None:

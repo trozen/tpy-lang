@@ -257,6 +257,11 @@ class TpyBinOp(TpyExpr):
     right: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     resolved_contains: 'FunctionInfo | None' = None  # Set by sema for 'in'/'not in' with __contains__
+    # Set by sema when the `__contains__` winner is a TPy method: the call
+    # `right.__contains__(left)` the test is, carrying the winner substituted
+    # at the receiver as an explicit call does. Not a child: its operands
+    # are this node's.
+    contains_call: 'TpyMethodCall | None' = None
     typed_dict_in_field: str | None = None  # Set by sema: "key" in TypedDict -> field presence check
     typed_dict_in_always_true: bool = False  # Set by sema: total=True field, fold to True
     optional_safe_eq: bool = False  # Set by sema: ==/!= with Optional value-type operand(s)
