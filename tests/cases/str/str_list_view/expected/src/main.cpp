@@ -39,7 +39,7 @@ void test_list_reassign_fallback() {
     std::vector<std::string>* names = &__slot_1;
     std::string x = ::tpy::__getitem__((*names), 0);
     std::optional<std::vector<std::string>> __slot_2;
-    names = &*(__slot_2 = {"dave"});
+    names = &*(__slot_2 = std::vector<std::string>{"dave"});
     std::cout << x << "\n" << ::tpy::check_signals;
 }
 

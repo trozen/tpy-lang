@@ -26,6 +26,8 @@ struct Src;
 struct Viewer;
 
 extern std::vector<std::string>* VIEW_DROPS;
+extern std::vector<std::vector<A>>* GXS;
+extern std::vector<std::vector<A>>* GYS;
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_nested_list_root;

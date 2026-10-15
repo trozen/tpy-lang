@@ -3561,20 +3561,24 @@ def plan_and_install(lc, body: list[TpyStmt], seeds: Mapping[str, TpyType],
 
 def rebind_ptr_frame_value(init: TpyExpr, vtype: TpyType, lc: '_LowerCtx',
                            declared: dict[str, TpyType], loc,
-                           reason: str) -> 'THIRExpr':
-    """The rvalue an OWN or IN_PLACE write to a REBIND_PTR frame local of
-    type `vtype` stores, at any binding site (assignment, walrus). The
-    source fills the SLOT, so it is admitted and lowered against what the
-    slot holds -- the pointee for a pointer-repr Optional local."""
+                           reason: str, *,
+                           storage: 'RebindStorage | None') -> 'THIRExpr':
+    """The rvalue a write to a REBIND_PTR frame local of type `vtype`
+    stores (`storage`: the write's rebind verdict, None for a first write),
+    at any binding site (assignment, walrus). The source fills the SLOT,
+    so it is admitted and lowered against what the slot holds -- the
+    pointee for a pointer-repr Optional local."""
     from .statements import (_lower_storage_value, _rebind_rvalue_source_ok,
-                             _rebind_rvalue_use, _rebind_slot_target)
+                             _rebind_rvalue_use, _rebind_slot_target,
+                             _slot_fill_value)
     slot_t = _rebind_slot_target(vtype, lc.analyzer)
     if not _rebind_rvalue_source_ok(init, slot_t, lc.analyzer,
                                     frame_roots_ok=True):
         note_detail("res.rebind_ptr_source")
         raise ThirUnsupported(reason)
-    return _lower_storage_value(init, slot_t, lc, declared, loc,
-                                use=_rebind_rvalue_use(init, slot_t))
+    value = _lower_storage_value(init, slot_t, lc, declared, loc,
+                                 use=_rebind_rvalue_use(init, slot_t))
+    return _slot_fill_value(value, slot_t, storage, lc)
 
 
 def rebind_ptr_frame_field(lc: '_LowerCtx', site: object,

@@ -39,7 +39,7 @@ void test_list_reassign_fallback() {
     std::vector<::tpy::Bytes>* items = &__slot_1;
     ::tpy::Bytes x = ::tpy::__getitem__((*items), 0);
     std::optional<std::vector<::tpy::Bytes>> __slot_2;
-    items = &*(__slot_2 = {::tpy::bytes_literal_owned("dave", 4)});
+    items = &*(__slot_2 = std::vector<::tpy::Bytes>{::tpy::bytes_literal_owned("dave", 4)});
     std::cout << ::tpy::BytesPrinter(x) << "\n" << ::tpy::check_signals;
 }
 

@@ -17,9 +17,9 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen::__next__() 
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         if (c) {
-            xs = &*(__ptr_slot_f0 = {1, 2});
+            xs = &*(__ptr_slot_f0 = std::vector<int32_t>{1, 2});
         } else {
-            xs = &*(__ptr_slot_f1 = {3});
+            xs = &*(__ptr_slot_f1 = std::vector<int32_t>{3});
         }
         __state = S_RESUME_0;
         return ::tpy::BigInt(::tpy::__len__((*xs)));

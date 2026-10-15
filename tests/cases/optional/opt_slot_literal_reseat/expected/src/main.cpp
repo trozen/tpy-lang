@@ -121,7 +121,7 @@ int32_t branch_hoisted(const F& f, bool c, bool d) {
     }
     std::optional<std::vector<int32_t>> __slot_2;
     if (d) {
-        xs = &*(__slot_2 = {1, 2, 3});
+        xs = &*(__slot_2 = std::vector<int32_t>{1, 2, 3});
     }
     if ((xs == nullptr)) {
         return 0;

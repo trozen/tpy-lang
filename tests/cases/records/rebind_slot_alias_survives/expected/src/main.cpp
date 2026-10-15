@@ -7,6 +7,8 @@
 namespace tpyapp::main {
 
 std::vector<std::string>* VIEW_DROPS{};
+std::vector<std::vector<A>>* GXS{};
+std::vector<std::vector<A>>* GYS{};
 
 // def pick(c: Counter) -> Counter:
 //     return c
@@ -227,6 +229,8 @@ void getitem_escape(bool c) {
 //     # nested-list-root: the holder two hops into the list keeps the old A.
 //     saved = xs[0][1]
 //     if c:
+//         # The nested literal fills the rebind's slot spelled with its type
+//         # (a bare brace there trips clang's -Wmissing-braces).
 //         xs = [[A(9), A(8)]]  # tpyc: ok
 //     saved.x += 100
 //     print("nested-list-root", saved.x, xs[0][1].x)
@@ -236,7 +240,7 @@ void nested_list_root(bool c) {
     A& saved = ::tpy::__getitem__(::tpy::__getitem__((*xs), 0), 1);
     std::optional<std::array<std::array<A, 2>, 1>> __slot_2;
     if (c) {
-        xs = &*(__slot_2 = {{{A(9), A(8)}}});
+        xs = &*(__slot_2 = std::array<std::array<A, 2>, 1>{{{A(9), A(8)}}});
     }
     saved.x = ::tpy::add_check<int32_t>(saved.x, 100);
     std::cout << "nested-list-root" << " " << saved.x << " " << ::tpy::__getitem__(::tpy::__getitem__((*xs), 0), 1).x << "\n" << ::tpy::check_signals;
@@ -264,7 +268,7 @@ void list_root(bool c) {
     A& saved = ::tpy::__getitem__(::tpy::__getitem__((*xs), 0).xs, 1);
     std::optional<std::vector<HA>> __slot_2;
     if (c) {
-        xs = &*(__slot_2 = {HA(20)});
+        xs = &*(__slot_2 = std::vector<HA>{HA(20)});
     }
     saved.x = ::tpy::add_check<int32_t>(saved.x, 75);
     std::cout << "list-root" << " " << saved.x << " " << ::tpy::__getitem__(::tpy::__getitem__((*xs), 0).xs, 1).x << "\n" << ::tpy::check_signals;
@@ -1329,6 +1333,15 @@ void main() {
 //
 // VIEW_DROPS: list[str] = []
 //
+// # global-rebind: a module-level rebind of a nested list keeps the old object
+// # for the global aliasing it; the literal fills the rebind's slot spelled
+// # with its type.
+// GXS = [[A(1), A(2)]]
+// GYS = GXS
+// GXS = [[A(9), A(8)]]  # tpyc: ok
+// GYS[0][1].x += 100
+// print("global-rebind", GYS[0][1].x, GXS[0][1].x)
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
@@ -1338,6 +1351,13 @@ void __tpy_init() {
     ::tpystd::asyncio::__tpy_init();
     static std::vector<std::string> __global_slot_1 = std::vector<std::string>{};
     VIEW_DROPS = &__global_slot_1;
+    static std::vector<std::vector<A>> __global_slot_2 = {{A(1), A(2)}};
+    GXS = &__global_slot_2;
+    GYS = GXS;
+    static std::optional<std::vector<std::vector<A>>> __global_slot_3;
+    GXS = &*(__global_slot_3 = std::vector<std::vector<A>>{{A(9), A(8)}});
+    ::tpy::__getitem__(::tpy::__getitem__((*GYS), 0), 1).x = ::tpy::add_check<int32_t>(::tpy::__getitem__(::tpy::__getitem__((*GYS), 0), 1).x, 100);
+    std::cout << "global-rebind" << " " << ::tpy::__getitem__(::tpy::__getitem__((*GYS), 0), 1).x << " " << ::tpy::__getitem__(::tpy::__getitem__((*GXS), 0), 1).x << "\n" << ::tpy::check_signals;
     ::tpyapp::main::main();
 }
 

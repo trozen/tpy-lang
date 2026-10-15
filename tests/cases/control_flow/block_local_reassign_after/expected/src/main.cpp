@@ -211,11 +211,11 @@ std::string str_local() {
     std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t>* xs;
     for (int32_t i = 0; i < 2; ++i) {
-        xs = &*(__slot_1 = {i, i});
+        xs = &*(__slot_1 = std::vector<int32_t>{i, i});
         std::cout << ::tpy::__getitem__((*xs), 0) << "\n" << ::tpy::check_signals;
     }
     std::optional<std::vector<int32_t>> __slot_2;
-    xs = &*(__slot_2 = {9, 9});
+    xs = &*(__slot_2 = std::vector<int32_t>{9, 9});
     return ::tpy::BigInt(::tpy::__getitem__((*xs), 0));
 }
 

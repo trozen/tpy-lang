@@ -39,7 +39,7 @@ std::vector<int32_t> grow_list(int32_t n) {
     std::vector<int32_t>* xs = &__slot_1;
     std::optional<std::vector<int32_t>> __slot_2;
     if ((n > 2)) {
-        xs = &*(__slot_2 = {3, 4, 5});
+        xs = &*(__slot_2 = std::vector<int32_t>{3, 4, 5});
     }
     return std::move((*xs));
 }

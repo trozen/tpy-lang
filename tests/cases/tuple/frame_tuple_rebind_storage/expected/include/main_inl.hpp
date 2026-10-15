@@ -1702,14 +1702,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_list_of_tuples_ali
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {std::tuple<Box, Box>{Box(1), Box(2)}});
+        xs = &*(__ptr_slot_f0 = std::array<std::tuple<Box, Box>, 1>{std::tuple<Box, Box>{Box(1), Box(2)}});
         saved = &(std::get<1>(::tpy::__getitem__((*xs), 0)));
         __state = S_RESUME_0;
         return saved->n;
     }
     case S_RESUME_0: {  // after: yield saved.n
         if (c) {
-            xs = &*(__ptr_slot_f1 = {std::tuple<Box, Box>{Box(9), Box(8)}});
+            xs = &*(__ptr_slot_f1 = std::array<std::tuple<Box, Box>, 1>{std::tuple<Box, Box>{Box(9), Box(8)}});
         }
         saved->n = ::tpy::add_check<int32_t>(saved->n, 100);
         __state = S_RESUME_1;

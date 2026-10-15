@@ -121,13 +121,13 @@ void free_list() {
     std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t>* v;
     for (int32_t i = 0; i < 2; ++i) {
-        v = &*(__slot_1 = {i});
+        v = &*(__slot_1 = std::vector<int32_t>{i});
         v->push_back(0);
     }
     v->push_back(1);
     std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<int32_t>> __slot_2;
-    v = &*(__slot_2 = {9});
+    v = &*(__slot_2 = std::vector<int32_t>{9});
     std::cout << "free_list" << " " << ::tpy::ListPrinter((*v)) << "\n" << ::tpy::check_signals;
 }
 
@@ -948,13 +948,13 @@ void two_loop_list_sibling(int32_t n) {
     std::vector<int32_t>* xs;
     std::vector<int32_t>* held;
     for (int32_t j = 0; j < 2; ++j) {
-        xs = &*(__slot_1 = {j});
+        xs = &*(__slot_1 = std::vector<int32_t>{j});
         held = xs;
     }
     std::optional<std::vector<int32_t>> __slot_2;
     int32_t __stop_1 = n;
     for (int32_t i = 0; i < __stop_1; ++i) {
-        xs = &*(__slot_2 = {i, i});
+        xs = &*(__slot_2 = std::vector<int32_t>{i, i});
     }
     xs->push_back(9);
     std::cout << "two_loop_list_sibling" << " " << ::tpy::ListPrinter((*xs)) << " " << ::tpy::ListPrinter((*held)) << "\n" << ::tpy::check_signals;
@@ -1152,7 +1152,7 @@ void two_loop_empty_list(int32_t n) {
     std::vector<int32_t>* held;
     int32_t __stop_1 = n;
     for (int32_t j = 0; j < __stop_1; ++j) {
-        xs = &*(__slot_2 = {1, 2});
+        xs = &*(__slot_2 = std::vector<int32_t>{1, 2});
         held = xs;
     }
     xs->push_back(9);
@@ -1169,7 +1169,7 @@ void flat_empty_list() {
     std::vector<int32_t> __slot_1 = std::vector<int32_t>{};
     std::vector<int32_t>* xs = &__slot_1;
     std::optional<std::vector<int32_t>> __slot_2;
-    xs = &*(__slot_2 = {1, 2});
+    xs = &*(__slot_2 = std::vector<int32_t>{1, 2});
     xs->push_back(9);
     std::cout << "flat_empty_list" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
 }

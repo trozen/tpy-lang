@@ -99,7 +99,7 @@ void rebind_iterated() {
     for (; __beg_0 != __end_0; ++__beg_0) {
         int32_t v = *__beg_0;
         total = ::tpy::add_check<int32_t>(total, v);
-        xs = &*(__slot_2 = {100, 200, 300});
+        xs = &*(__slot_2 = std::array<int32_t, 3>{100, 200, 300});
     }
     std::vector<Node> __slot_3 = {Node(1), Node(2)};
     std::vector<Node>* nodes = &__slot_3;
@@ -113,7 +113,7 @@ void rebind_iterated() {
         auto&& n = *__beg_1;
         n.v = ::tpy::add_check<int32_t>(n.v, 10);
         seen.push_back(n.v);
-        nodes = &*(__slot_4 = {Node(9)});
+        nodes = &*(__slot_4 = std::vector<Node>{Node(9)});
     }
     std::cout << "rebind_iterated" << " " << total << " " << ::tpy::__getitem__((*xs), 0) << " " << ::tpy::ListPrinter(seen) << " " << ::tpy::__getitem__((*nodes), 0).v << " " << ::tpy::__getitem__(keep, 0).v << " " << ::tpy::__getitem__(keep, 1).v << "\n" << ::tpy::check_signals;
 }

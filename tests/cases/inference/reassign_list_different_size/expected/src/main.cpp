@@ -13,7 +13,7 @@ void main() {
     std::vector<int32_t> __slot_1 = {1, 2, 3};
     std::vector<int32_t>* x = &__slot_1;
     std::optional<std::vector<int32_t>> __slot_2;
-    x = &*(__slot_2 = {4, 5});
+    x = &*(__slot_2 = std::vector<int32_t>{4, 5});
     std::cout << ::tpy::__len__((*x)) << "\n" << ::tpy::check_signals;
 }
 

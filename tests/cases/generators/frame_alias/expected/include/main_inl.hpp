@@ -191,10 +191,10 @@ inline std::expected<std::string, ::tpy::StopIteration> __gen_frame_order::__nex
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {"one", "two"});
+        xs = &*(__ptr_slot_f0 = std::vector<std::string>{"one", "two"});
         ys = &((*xs));
         if (c) {
-            xs = &*(__ptr_slot_f1 = {"three", "four", "five"});
+            xs = &*(__ptr_slot_f1 = std::vector<std::string>{"three", "four", "five"});
         }
         g.emplace(::tpyapp::main::reading_fin((*xs)));
         __state = S_RESUME_0;

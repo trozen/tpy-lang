@@ -221,7 +221,7 @@ void nonlocal_slot(int32_t a) {
 void nested_declared(std::vector<double>& xs, int32_t a) {
     std::vector<double>* ys = &(xs);
     std::optional<std::vector<double>> __slot_1;
-    ys = &*(__slot_1 = {::tpyapp::main::take_float(static_cast<double>(a))});
+    ys = &*(__slot_1 = std::vector<double>{::tpyapp::main::take_float(static_cast<double>(a))});
     std::cout << "nested_declared" << " " << ::tpy::print_float((::tpy::truediv(::tpy::__getitem__((*ys), 0), 2))) << "\n" << ::tpy::check_signals;
 }
 
@@ -272,7 +272,7 @@ void generic_t(std::vector<double>& xs) {
 void nested_empty(std::vector<std::vector<double>>& xss) {
     std::vector<std::vector<double>>* zs = &(xss);
     std::optional<std::vector<std::vector<double>>> __slot_1;
-    zs = &*(__slot_1 = {{}, {2.5}});
+    zs = &*(__slot_1 = std::vector<std::vector<double>>{{}, {2.5}});
     ::tpy::__getitem__((*zs), 0).push_back(1.5);
     std::cout << "nested_empty" << " " << ::tpy::ListPrinter((*zs)) << "\n" << ::tpy::check_signals;
 }

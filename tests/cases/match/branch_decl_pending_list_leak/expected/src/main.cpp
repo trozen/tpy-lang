@@ -37,9 +37,9 @@ namespace tpyapp::main {
     std::vector<int32_t>* xs;
     auto& __match_subject_1 = p;
     if (__match_subject_1.x == 0) {
-        xs = &*(__slot_1 = {1, 2});
+        xs = &*(__slot_1 = std::vector<int32_t>{1, 2});
     } else {
-        xs = &*(__slot_2 = {3});
+        xs = &*(__slot_2 = std::vector<int32_t>{3});
     }
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
 }

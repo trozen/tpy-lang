@@ -35,7 +35,7 @@ __gen_print_gen print_gen() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {1, 2});
+        xs = &*(__ptr_slot_f0 = std::array<int32_t, 2>{1, 2});
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -45,7 +45,7 @@ __gen_print_gen print_gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        xs = &*(__ptr_slot_f1 = {3, 4});
+        xs = &*(__ptr_slot_f1 = std::array<int32_t, 2>{3, 4});
         std::cout << "print co:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = ::tpy::__len__((*xs));
@@ -80,7 +80,7 @@ __gen_walrus_alias_gen walrus_alias_gen() {
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {1});
+        xs = &*(__ptr_slot_f0 = std::vector<int32_t>{1});
         __sub_0.emplace(std::move(::tpystd::asyncio::sleep(static_cast<double>(0))));
         __state = S_RESUME_0;
         continue;
@@ -90,7 +90,7 @@ __gen_walrus_alias_gen walrus_alias_gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        xs = &*(__ptr_slot_f1 = {1, 2});
+        xs = &*(__ptr_slot_f1 = std::vector<int32_t>{1, 2});
         if ((::tpy::__len__((ys = &((*xs)), *ys)) > 1)) {
             ys->push_back(9);
             std::cout << "walrus_alias co:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
@@ -309,7 +309,7 @@ __gen_walrus_first_gen walrus_first_gen() {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
         n = 0;
-        if ((::tpy::__len__((zs = &*(__ptr_slot_f0 = {5, 6, 7}), *zs)) > 2)) {
+        if ((::tpy::__len__((zs = &*(__ptr_slot_f0 = std::vector<int32_t>{5, 6, 7}), *zs)) > 2)) {
             n = ::tpy::__len__((*zs));
         }
         ys = &((*zs));
@@ -322,7 +322,7 @@ __gen_walrus_first_gen walrus_first_gen() {
         if (__r0.is_pending()) return ::tpystd::tpy::Poll<int32_t>::pending();
         (void)std::move(__r0).value();
         __sub_0.reset();
-        zs = &*(__ptr_slot_f1 = {1, 2});
+        zs = &*(__ptr_slot_f1 = std::vector<int32_t>{1, 2});
         std::cout << "walrus_first co:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter((*zs)) << "\n" << ::tpy::check_signals;
         __state = S_DONE;
         int32_t __tpy_async_ret = (::tpy::add_check<int32_t>(n, ::tpy::__len__((*zs))));

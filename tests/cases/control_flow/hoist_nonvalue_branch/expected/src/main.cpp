@@ -39,7 +39,7 @@ void test_own_list_both_branches(bool flag) {
     if (flag) {
         items = &*(__slot_1 = ::tpyapp::main::make_list());
     } else {
-        items = &*(__slot_2 = {4, 5, 6});
+        items = &*(__slot_2 = std::vector<int32_t>{4, 5, 6});
     }
     std::cout << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
 }
@@ -57,7 +57,7 @@ void test_list_reassigned_mixed(bool flag) {
     std::optional<std::vector<int32_t>> __slot_1;
     std::vector<int32_t>* items;
     if (flag) {
-        items = &*(__slot_1 = {1, 2, 3});
+        items = &*(__slot_1 = std::vector<int32_t>{1, 2, 3});
     } else {
         items = &(base);
     }

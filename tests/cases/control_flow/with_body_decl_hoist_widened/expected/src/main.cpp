@@ -76,7 +76,7 @@ int32_t nonvalue_rvalue_reassigned(int32_t n) {
     auto __ctx_3 = CM(n);
     auto c = __ctx_3.__enter__();
     try {
-        xs = &*(__slot_1 = {c});
+        xs = &*(__slot_1 = std::vector<int32_t>{c});
         goto __with_exit_3;
     } catch (::tpy::BaseException& __exc_3) {
         __ctx_3.__exit__({}, &__exc_3, {});
@@ -90,7 +90,7 @@ int32_t nonvalue_rvalue_reassigned(int32_t n) {
     xs->push_back(9);
     std::cout << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
     std::optional<std::vector<int32_t>> __slot_2;
-    xs = &*(__slot_2 = {n, n, n});
+    xs = &*(__slot_2 = std::vector<int32_t>{n, n, n});
     return ::tpy::__len__((*xs));
 }
 

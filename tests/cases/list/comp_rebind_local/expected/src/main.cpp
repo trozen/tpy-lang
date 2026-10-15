@@ -505,7 +505,7 @@ std::expected<int32_t, Fail> err_ret() {
     switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {1, 2, 3});
+        xs = &*(__ptr_slot_f0 = std::vector<int32_t>{1, 2, 3});
         xs = &*(__ptr_slot_f1 = ({
             std::vector<int32_t> __result;
             auto& __obj_0 = (*xs);

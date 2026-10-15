@@ -737,7 +737,7 @@ __coro_async_capture async_capture(Inner* o, Inner* p) {
             if (__match_subject_2.inner.n == 2) {
                 xs = &(::tpy::__getitem__(keep, 0));
             } else {
-                xs = &*(__slot_1 = {1, 2});
+                xs = &*(__slot_1 = std::vector<::tpy::BigInt>{1, 2});
             }
             xs->push_back(::tpy::BigInt(i));
             t = (t) + (((q->n) + (::tpy::BigInt(::tpy::__len__((*xs))))));

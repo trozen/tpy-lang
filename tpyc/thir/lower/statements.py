@@ -591,6 +591,7 @@ from .convert import (Effect, Plan, Refuse, borrowed_path_element_message,
                       reject_borrowed_path_elements, spelled)
 from .expressions import (
     _COPY_SRC_USE,
+    _spell_brace,
     reject_borrowed_path_element,
     stamped,
     binding_of,
@@ -3486,10 +3487,11 @@ def _lower_rebind_ptr_frame_write(stmt: TpyVarDecl, lc: '_LowerCtx',
     loc = getattr(stmt, "loc", None)
     vtype = declared[stmt.name]
     reason = stmt_reject_reason(stmt)
+    storage = _rebind_storage(stmt, stmt.name, lc)
     value = rebind_ptr_frame_value(stmt.init, vtype, lc, declared, loc,
-                                   reason)
+                                   reason, storage=storage)
     target = THIRName(result_type=vtype, name=stmt.name, loc=loc)
-    if _rebind_storage(stmt, stmt.name, lc) is RebindStorage.IN_PLACE:
+    if storage is RebindStorage.IN_PLACE:
         _witness("res.rebind_ptr_in_place")
         return THIRAssign(target=target, value=value,
                           rebind_storage=RebindStorage.IN_PLACE,
@@ -3548,7 +3550,7 @@ def _lower_opt_reseat_literal(stmt: TpyVarDecl, lc: '_LowerCtx',
         if not isinstance(lit, THIRContainerLiteral):
             note_detail("decl.opt_reseat_source")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        lit = replace(lit, typed_brace_cpp=lc.render_type(lit_pointee))
+        lit = _spell_brace(lit, lit_pointee, lc)
     return lit, lit_pointee
 
 
@@ -3577,6 +3579,19 @@ def _lower_storage_value(init: TpyExpr, slot_t: TpyType, lc: '_LowerCtx',
     if value is None:
         value = _lower_expr(init, lc, declared, use=use)
     return value
+
+
+def _slot_fill_value(value: THIRExpr, slot_t: TpyType,
+                     storage: 'RebindStorage | None',
+                     lc: '_LowerCtx') -> THIRExpr:
+    """`value` as a rebind writes it: into the `std::optional` slot of its
+    own unless it writes in place. A bare brace spells the slot type there,
+    as a field write into an optional does: `opt = {...}` hands the brace
+    to optional's converting assignment, where clang flags a nested
+    std::array's elided braces."""
+    if storage is RebindStorage.IN_PLACE:
+        return value
+    return _spell_brace(value, slot_t, lc)
 
 
 def _move_through_source(stmt: TpyVarDecl, typ: TpyType,
@@ -5096,7 +5111,7 @@ def _lower_opt_ptr_slot_decl(stmt: TpyVarDecl, vtype: 'OptionalType',
                     # `replace` TypeError escape.
                     note_detail("decl.opt_slot_source")
                     raise ThirUnsupported(stmt_reject_reason(stmt))
-                init = replace(init, typed_brace_cpp=lc.render_type(pointee))
+                init = _spell_brace(init, pointee, lc)
             _witness("decl.opt_slot_container_literal")
             return THIRPtrLocalDecl(
                 name=stmt.name, resolved_type=vtype,
@@ -5584,18 +5599,20 @@ def _lower_global_slot_write(stmt: TpyVarDecl, lc: _LowerCtx,
         lc.global_slot_assigned.add(stmt.name)
         lc.unhandled_hoists.discard(stmt.name)
         _witness("top_level.global_hoist_slot")
+        storage = (None if first_write
+                   else _rebind_storage(stmt, stmt.name, lc))
         return THIRPtrLocalRebind(
             name=stmt.name, kind=PtrSlotKind.GLOBAL_HOIST_RVALUE,
-            value=init, val_cpp=lc.render_type(slot_t),
-            rebind_storage=(None if first_write
-                            else _rebind_storage(stmt, stmt.name, lc)),
+            value=_slot_fill_value(init, slot_t, storage, lc),
+            val_cpp=lc.render_type(slot_t), rebind_storage=storage,
             rebuild=frame_object_slot(slot_t), loc=loc)
     if stmt.name in lc.global_slot_assigned:
         _witness("top_level.global_slot_reuse")
+        storage = _rebind_storage(stmt, stmt.name, lc)
         return THIRPtrLocalRebind(
-            name=stmt.name, kind=PtrSlotKind.GLOBAL_REBIND, value=init,
-            val_cpp=lc.render_type(slot_t),
-            rebind_storage=_rebind_storage(stmt, stmt.name, lc),
+            name=stmt.name, kind=PtrSlotKind.GLOBAL_REBIND,
+            value=_slot_fill_value(init, slot_t, storage, lc),
+            val_cpp=lc.render_type(slot_t), rebind_storage=storage,
             rebuild=frame_object_slot(slot_t), loc=loc)
     lc.global_slot_assigned.add(stmt.name)
     _witness("top_level.global_slot")
@@ -10522,13 +10539,15 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 note_detail("reseat.branch_rvalue_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
             _witness("reseat.branch_rvalue")
+            storage = _rebind_storage(stmt, stmt.name, lc)
             return THIRPtrLocalRebind(
                 name=stmt.name, kind=PtrSlotKind.BRANCH_RVALUE,
-                value=_lower_storage_value(
+                value=_slot_fill_value(_lower_storage_value(
                     stmt.init, slot_t, lc, declared, loc,
                     use=_rebind_rvalue_use(stmt.init, slot_t)),
+                    slot_t, storage, lc),
                 val_cpp=lc.render_type(slot_t),
-                rebind_storage=_rebind_storage(stmt, stmt.name, lc),
+                rebind_storage=storage,
                 rebuild=frame_object_slot(slot_t), loc=loc)
         # An OPT_STORAGE_CALL-declared name reseats by re-filling ITS slot
         # and re-lifting (`__slot_1 = make(43); z =
@@ -10687,13 +10706,16 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     frame_roots_ok=_frame_slot_roots_ok(stmt.name, lc)):
                 note_detail("decl.rebind_source")
                 raise ThirUnsupported(stmt_reject_reason(stmt))
+            storage = _rebind_storage(stmt, stmt.name, lc)
             return THIRAssign(
                 target=THIRName(result_type=vtype, name=stmt.name,
                                 loc=loc),
-                value=_lower_storage_value(
+                value=_slot_fill_value(_lower_storage_value(
                     stmt.init, declared[stmt.name], lc, declared, loc,
                     use=_rebind_rvalue_use(stmt.init, declared[stmt.name])),
-                rebind_storage=_rebind_storage(stmt, stmt.name, lc),
+                    _rebind_slot_target(declared[stmt.name], analyzer),
+                    storage, lc),
+                rebind_storage=storage,
                 slot_cpp=_rebind_slot_cpp(declared[stmt.name], lc),
                 rebuild=frame_object_slot(declared[stmt.name]),
                 loc=loc)

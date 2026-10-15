@@ -484,13 +484,13 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_list_of_tuples_after_r
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {std::tuple<A, A>{A(1), A(2)}});
+        xs = &*(__ptr_slot_f0 = std::array<std::tuple<A, A>, 1>{std::tuple<A, A>{A(1), A(2)}});
         __state = S_RESUME_0;
         return std::get<1>(::tpy::__getitem__((*xs), 0)).x;
     }
     case S_RESUME_0: {  // after: yield xs[0][1].x
         if (c) {
-            xs = &*(__ptr_slot_f1 = {std::tuple<A, A>{A(9), A(8)}});
+            xs = &*(__ptr_slot_f1 = std::array<std::tuple<A, A>, 1>{std::tuple<A, A>{A(9), A(8)}});
         }
         saved = &(std::get<1>(::tpy::__getitem__((*xs), 0)));
         saved->x = 5;

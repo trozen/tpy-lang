@@ -52,12 +52,12 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_print_gen::__next__() 
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {1, 2});
+        xs = &*(__ptr_slot_f0 = std::vector<int32_t>{1, 2});
         __state = S_RESUME_0;
         return 0;
     }
     case S_RESUME_0: {  // after: yield 0
-        xs = &*(__ptr_slot_f1 = {3, 4});
+        xs = &*(__ptr_slot_f1 = std::vector<int32_t>{3, 4});
         xs->push_back(5);
         std::cout << "print gen:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
         d = &*(__ptr_slot_f2 = ::tpy::ordered_map<int32_t, int32_t>({{1, 2}}));
@@ -88,12 +88,12 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walrus_alias_gen::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {1});
+        xs = &*(__ptr_slot_f0 = std::vector<int32_t>{1});
         __state = S_RESUME_0;
         return ::tpy::__len__((*xs));
     }
     case S_RESUME_0: {  // after: yield len(xs)
-        xs = &*(__ptr_slot_f1 = {1, 2});
+        xs = &*(__ptr_slot_f1 = std::vector<int32_t>{1, 2});
         if ((::tpy::__len__((ys = &((*xs)), *ys)) > 1)) {
             ys->push_back(9);
             std::cout << "walrus_alias gen:" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
@@ -247,7 +247,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walrus_first_gen::__ne
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        if ((::tpy::__len__((zs = &*(__ptr_slot_f0 = {5, 6, 7}), *zs)) > 2)) {
+        if ((::tpy::__len__((zs = &*(__ptr_slot_f0 = std::vector<int32_t>{5, 6, 7}), *zs)) > 2)) {
             __state = S_RESUME_0;
             return ::tpy::__len__((*zs));
         } else {
@@ -256,7 +256,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_walrus_first_gen::__ne
         }
     }
     case S_RESUME_1: {  // after: yield 0
-        zs = &*(__ptr_slot_f1 = {1, 2});
+        zs = &*(__ptr_slot_f1 = std::vector<int32_t>{1, 2});
         zs->push_back(3);
         std::cout << "walrus_first gen:" << " " << ::tpy::ListPrinter((*ys)) << " " << ::tpy::ListPrinter((*zs)) << "\n" << ::tpy::check_signals;
         __state = S_RESUME_2;

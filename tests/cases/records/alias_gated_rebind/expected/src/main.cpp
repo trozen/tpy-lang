@@ -105,7 +105,7 @@ void element_loan() {
     std::array<Point, 1>* xs = &__slot_1;
     Point& e = ::tpy::__getitem__((*xs), 0);
     std::optional<std::array<Point, 1>> __slot_2;
-    xs = &*(__slot_2 = {Point(50)});
+    xs = &*(__slot_2 = std::array<Point, 1>{Point(50)});
     e.bump();
     std::cout << "element_loan:" << " " << e.x << " " << ::tpy::__getitem__((*xs), 0).x << "\n" << ::tpy::check_signals;
 }

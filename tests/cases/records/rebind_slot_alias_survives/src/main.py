@@ -246,6 +246,8 @@ def nested_list_root(c: bool) -> None:
     # nested-list-root: the holder two hops into the list keeps the old A.
     saved = xs[0][1]
     if c:
+        # The nested literal fills the rebind's slot spelled with its type
+        # (a bare brace there trips clang's -Wmissing-braces).
         xs = [[A(9), A(8)]]  # tpyc: ok
     saved.x += 100
     print("nested-list-root", saved.x, xs[0][1].x)
@@ -753,6 +755,16 @@ def slot_drop_borrow_unpack(w0: Viewer) -> None:
 def slot_drop_borrow_unpack_main() -> None:
     w0 = Viewer("w0-zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz")
     slot_drop_borrow_unpack(w0)
+
+
+# global-rebind: a module-level rebind of a nested list keeps the old object
+# for the global aliasing it; the literal fills the rebind's slot spelled
+# with its type.
+GXS = [[A(1), A(2)]]
+GYS = GXS
+GXS = [[A(9), A(8)]]  # tpyc: ok
+GYS[0][1].x += 100
+print("global-rebind", GYS[0][1].x, GXS[0][1].x)
 
 
 def main() -> None:

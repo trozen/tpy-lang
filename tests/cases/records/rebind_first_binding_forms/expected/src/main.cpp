@@ -870,7 +870,7 @@ void containers() {
     int32_t k = __unpack_0_1;
     std::vector<int32_t>& ys = (*xs);
     std::optional<std::vector<int32_t>> __slot_1;
-    xs = &*(__slot_1 = {7});
+    xs = &*(__slot_1 = std::vector<int32_t>{7});
     ys.push_back(5);
     std::cout << "containers" << " " << "list_unpack" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__len__(ys) << " " << k << "\n" << ::tpy::check_signals;
     std::optional<::tpy::ordered_map<std::string, int32_t>> __slot_2;
@@ -1200,7 +1200,7 @@ void declaration_rows(const P& o) {
     std::vector<int32_t>* xs = &__slot_3;
     std::vector<int32_t>& zs = (*xs);
     std::optional<std::vector<int32_t>> __slot_4;
-    xs = &*(__slot_4 = {5});
+    xs = &*(__slot_4 = std::vector<int32_t>{5});
     zs.push_back(3);
     std::cout << "decl" << " " << "repeat_rebound" << " " << ::tpy::__len__((*xs)) << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
 }

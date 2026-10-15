@@ -68,7 +68,7 @@ void test_reassign_clears_borrows() {
     std::vector<Point>* items = &__slot_1;
     Point& v = ::tpy::__getitem__((*items), 0);
     std::optional<std::vector<Point>> __slot_2;
-    items = &*(__slot_2 = {Point(3, 4)});
+    items = &*(__slot_2 = std::vector<Point>{Point(3, 4)});
     items->push_back(Point(5, 6));
     std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
 }

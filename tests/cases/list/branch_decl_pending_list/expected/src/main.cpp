@@ -18,9 +18,9 @@ namespace tpyapp::main {
     std::optional<std::vector<int32_t>> __slot_2;
     std::vector<int32_t>* xs;
     if (c) {
-        xs = &*(__slot_1 = {1, 2});
+        xs = &*(__slot_1 = std::vector<int32_t>{1, 2});
     } else {
-        xs = &*(__slot_2 = {3});
+        xs = &*(__slot_2 = std::vector<int32_t>{3});
     }
     xs->push_back(9);
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));
@@ -79,9 +79,9 @@ namespace tpyapp::main {
             if (c) {
                 throw ::tpy::ValueError("x");
             }
-            xs = &*(__slot_1 = {1, 2});
+            xs = &*(__slot_1 = std::vector<int32_t>{1, 2});
         } catch (const ::tpy::ValueError&) {
-            xs = &*(__slot_2 = {3});
+            xs = &*(__slot_2 = std::vector<int32_t>{3});
         }
     }
     return ::tpy::BigInt((::tpy::add_check<int32_t>(::tpy::__getitem__((*xs), 0), ::tpy::__len__((*xs)))));

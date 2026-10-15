@@ -1232,7 +1232,7 @@ void kept(const std::vector<int32_t>& xs) {
         std::cout << "kept" << " " << v << "\n" << ::tpy::check_signals;
     }
     std::optional<std::vector<int32_t>> __slot_2;
-    b_list = &*(__slot_2 = {5});
+    b_list = &*(__slot_2 = std::vector<int32_t>{5});
     std::cout << "kept rebound after" << " " << ::tpy::ListPrinter((*b_list)) << "\n" << ::tpy::check_signals;
 }
 

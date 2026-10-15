@@ -23,7 +23,7 @@ void main() {
     std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
     { auto __del_sink = std::move(*items); }
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
-    items = &*(__slot_2 = {4, 5});
+    items = &*(__slot_2 = std::vector<::tpy::BigInt>{4, 5});
     std::cout << ::tpy::__len__((*items)) << "\n" << ::tpy::check_signals;
     std::string_view s = "hello";
     std::cout << s << "\n" << ::tpy::check_signals;

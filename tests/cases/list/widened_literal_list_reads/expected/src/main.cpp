@@ -210,7 +210,7 @@ void stores() {
     std::vector<::tpy::BigInt>* zs = &__slot_1;
     ::tpy::BigInt k = ::tpy::__getitem__((*zs), 0);
     std::optional<std::vector<::tpy::BigInt>> __slot_2;
-    zs = &*(__slot_2 = {static_cast<int64_t>(5000000000), 3, 4});
+    zs = &*(__slot_2 = std::vector<::tpy::BigInt>{static_cast<int64_t>(5000000000), 3, 4});
     std::vector<::tpy::BigInt> vs = {1};
     ::tpy::BigInt m = ::tpy::__getitem__(vs, 0);
     ::tpy::list_extend(vs, std::array<::tpy::BigInt, 1>{static_cast<int64_t>(5000000000)});
@@ -644,9 +644,9 @@ void with_body(bool c) {
     __ctx_1.__enter__();
     try {
         if (c) {
-            ys = &*(__slot_1 = {1});
+            ys = &*(__slot_1 = std::vector<int64_t>{1});
         } else {
-            ys = &*(__slot_2 = {2, 3});
+            ys = &*(__slot_2 = std::vector<int64_t>{2, 3});
         }
         ::tpyapp::main::big((*ys));
         std::cout << "with" << " " << ::tpy::builtin_sum<int64_t>((*ys)) << " " << ::tpy::__getitem__((*ys), 0) << "\n" << ::tpy::check_signals;

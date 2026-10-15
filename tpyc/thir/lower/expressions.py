@@ -15,6 +15,7 @@ from ..scalar_leaves import record_owner
 from ... import qnames
 from ...parse.nodes import (
     const_tuple_index,
+    RebindStorage,
     ResultForm,
     lambda_of,
     is_property_getter_read,
@@ -11789,7 +11790,8 @@ def _lower_frame_walrus(e: 'TpyNamedExpr', vtu: TpyType, lc: '_LowerCtx',
         # re-points at it, as the local's assignments do
         # (`(xs = &*(__ptr_slot_f0 = v), *xs)`).
         value = bindings.rebind_ptr_frame_value(e.value, vtu, lc, declared, loc,
-                                       "expr.walrus")
+                                                "expr.walrus",
+                                                storage=RebindStorage.OWN)
         fld = bindings.rebind_ptr_frame_field(lc, e, "expr.walrus")
         declared[e.target] = vtu
         _witness("expr.walrus_frame_rebind_ptr")

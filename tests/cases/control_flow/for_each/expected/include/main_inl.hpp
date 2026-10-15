@@ -15,7 +15,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_rebind_iterated::_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {1, 2, 3});
+        xs = &*(__ptr_slot_f0 = std::array<int32_t, 3>{1, 2, 3});
         auto& __for_obj_0 = (*xs);
         __for_it_0.emplace((__for_obj_0).begin());
         __for_end_0.emplace((__for_obj_0).end());
@@ -23,7 +23,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_rebind_iterated::_
         continue;
     }
     case S_RESUME_0: {  // after: yield v
-        xs = &*(__ptr_slot_f1 = {100, 200, 300});
+        xs = &*(__ptr_slot_f1 = std::array<int32_t, 3>{100, 200, 300});
         __state = S_JOIN_0;
         continue;
     }

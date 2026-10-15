@@ -213,7 +213,7 @@ std::vector<std::tuple<P, P>> in_finally(P& p) {
     {
         try {
             t = std::tuple<P*, P*>{&(p), &(p)};
-            ys = &*(__slot_2 = {::tpy::tuple_to_storage<std::tuple<P, P>>(t)});
+            ys = &*(__slot_2 = std::vector<std::tuple<P, P>>{::tpy::tuple_to_storage<std::tuple<P, P>>(t)});
         } catch (...) {
             std::cout << "finally" << "\n" << ::tpy::check_signals;
             throw;

@@ -19,14 +19,14 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_nested_list_root::
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {{{A(1), A(2)}}});
+        xs = &*(__ptr_slot_f0 = std::array<std::array<A, 2>, 1>{{{A(1), A(2)}}});
         saved = &(::tpy::__getitem__(::tpy::__getitem__((*xs), 0), 1));
         __state = S_RESUME_0;
         return saved->x;
     }
     case S_RESUME_0: {  // after: yield saved.x
         if (c) {
-            xs = &*(__ptr_slot_f1 = {{{A(9), A(8)}}});
+            xs = &*(__ptr_slot_f1 = std::array<std::array<A, 2>, 1>{{{A(9), A(8)}}});
         }
         saved->x = ::tpy::add_check<int32_t>(saved->x, 100);
         __state = S_RESUME_1;
@@ -60,7 +60,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_list_root::__next_
     while (true) switch (__state) {
     case S_INITIAL: {  // entry
         __state = S_DONE;  // until a yield sets where to resume
-        xs = &*(__ptr_slot_f0 = {HA(1), HA(2)});
+        xs = &*(__ptr_slot_f0 = std::vector<HA>{HA(1), HA(2)});
         xs->push_back(HA(3));
         saved = &(::tpy::__getitem__(::tpy::__getitem__((*xs), 0).xs, 1));
         __state = S_RESUME_0;
@@ -68,7 +68,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_gen_list_root::__next_
     }
     case S_RESUME_0: {  // after: yield saved.x
         if (c) {
-            xs = &*(__ptr_slot_f1 = {HA(20)});
+            xs = &*(__ptr_slot_f1 = std::vector<HA>{HA(20)});
         }
         saved->x = ::tpy::add_check<int32_t>(saved->x, 75);
         __state = S_RESUME_1;

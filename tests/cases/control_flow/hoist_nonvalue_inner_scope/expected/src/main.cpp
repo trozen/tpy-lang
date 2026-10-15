@@ -53,9 +53,9 @@ void for_list() {
     for (int32_t i = 0; i < 3; ++i) {
         std::vector<int32_t>* xs;
         if (((::tpy::mod_floor<int32_t>(i, 2)) == 0)) {
-            xs = &*(__slot_1 = {i});
+            xs = &*(__slot_1 = std::vector<int32_t>{i});
         } else {
-            xs = &*(__slot_2 = {i, i});
+            xs = &*(__slot_2 = std::vector<int32_t>{i, i});
         }
         xs->push_back(7);
         std::cout << "for_list" << " " << ::tpy::ListPrinter((*xs)) << "\n" << ::tpy::check_signals;
@@ -79,7 +79,7 @@ void for_own_call(bool flag) {
         if (flag) {
             items = &*(__slot_1 = ::tpyapp::main::make_list());
         } else {
-            items = &*(__slot_2 = {i});
+            items = &*(__slot_2 = std::vector<int32_t>{i});
         }
         items->push_back(99);
         std::cout << "for_own_call" << " " << ::tpy::ListPrinter((*items)) << "\n" << ::tpy::check_signals;
