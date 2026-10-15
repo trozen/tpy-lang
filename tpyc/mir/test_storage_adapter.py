@@ -10,7 +10,7 @@ from ..identity_map import IdentityMap
 from ..thir.storage_facts import THIRBackingKind, collect_storage_facts
 from ..thir.temp_plan import prepare_temporaries
 from ..typesys import BOOL
-from . import lower as lowering
+from . import emit, lower as lowering
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent
 from .nodes import (
@@ -453,11 +453,11 @@ def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: 
         certify_storage_origins(malformed, result.evidence.required, request.definitions)
     assert failure.value.loc is not None
 
-    # Exercise the source-lowering boundary with the exact strict-validator failure.
+    # Exercise the emit pass's boundary with the exact strict-validator failure.
     def repeated(_):
         validate_function(malformed)
 
-    monkeypatch.setattr(lowering, "validate_function", repeated)
+    monkeypatch.setattr(emit, "validate_function", repeated)
     uncovered = certify_thir_storage(request)
     assert uncovered.verdict is MIRStorageVerdict.NOT_COVERED
     assert any(g.reason == str(failure.value) and g.loc == failure.value.loc for g in uncovered.gaps)
@@ -465,7 +465,7 @@ def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: 
     def other_failure(_):
         raise MIRValidationError("unknown slot")
 
-    monkeypatch.setattr(lowering, "validate_function", other_failure)
+    monkeypatch.setattr(emit, "validate_function", other_failure)
     with pytest.raises(MIRValidationError, match="unknown slot"):
         certify_thir_storage(request)
 

@@ -1932,6 +1932,29 @@ the line facts and the dependency state read. One stepping table
 (`shapes.step`) answers what each projection reaches from a value; every
 reader of a place walks it.
 
+#### Lowering: a checked plan, then a fold
+
+A THIR body becomes MIR in two passes. The check pass (`_Coverage`,
+`tpyc/mir/lower.py`) walks the THIR once, refuses what MIR does not model,
+and returns the body's lowering plan (`tpyc/mir/plan.py`): an immutable tree
+with one node per lowering operation -- a binding with its slot's shape, a
+value of its family (scalar, owned leaf, view, record, container, wrapper),
+a statement with the temporaries and temporary-plan scopes it opens. What
+the CFG depends on is decided there once: every binding's shape and the
+shape of every slot whose shape the type's facts decide, the alternative a
+union engages, a Span's alias-or-region choice, whether a range counter is
+the target itself. The emit pass (`tpyc/mir/emit.py`) folds the plan into
+blocks, slots and regions; it reads no THIR and asks no type predicate (one
+exception: whether a record copy may raise is still read off the record
+layouts, `layout_copy_may_raise`), so a new kind is a plan node and its fold
+arm. Only a scalar result, an owned
+leaf's storage and its readonly holder, and a view's holder are shaped by
+the fold, from the plan family alone. Three refusals need the built CFG and
+stay in the emit pass: a reachable fallthrough of a non-void body, the
+validator's, and a declaration THIR placed no storage for -- the check pass
+marks it on the declaration's plan node, and the emit pass refuses it where
+the CFG reaches it (after every check-pass refusal, before the fallthrough).
+
 #### Statements
 
 ```

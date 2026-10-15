@@ -49,6 +49,9 @@ def reject(fn: th.THIRFunction, reason: str, node_kind: str | None = None) -> MI
     (th.THIRLiteral(IntLiteralType(2**31), 2**31, loc=LOC), "unsupported literal value"),
     (th.THIRLiteral(BIGINT, 1, loc=LOC), "unsupported expression type"),
     (th.THIRLiteral(STR, "s", loc=LOC), "unsupported expression type"),
+    # A non-bool `not` refuses before its operand is checked.
+    (th.THIRUnaryNot(INT32, th.THIRName(INT32, "unbound", loc=LOC), loc=LOC), "not requires bool"),
+    (th.THIRUnaryNot(BOOL, ONE, loc=LOC), "not requires bool"),
     (th.THIRLiteral(TupleType((INT32,)), (1,), loc=LOC), "unsupported expression type"),
 ])
 def test_expression_coverage(expr: th.THIRExpr, reason: str) -> None:
@@ -118,7 +121,8 @@ def test_function_metadata_and_fallthrough() -> None:
     reject(replace(fn, params=(th.THIRParam("x", BYTEARRAY, passing=ParamPassing.CONST_REF),)), "parameter type")
     unpublished = reject(replace(fn, params=(th.THIRParam("x", INT32),)), "unpublished parameter passing")
     assert unpublished.node_kind == "THIRParam"
-    reject(replace(fn, body=()), "non-void fallthrough")
+    fallthrough = reject(replace(fn, body=()), "non-void fallthrough")
+    assert (fallthrough.node_kind, fallthrough.loc) == ("THIRFunction", None)
 
 
 def test_returns_in_both_loop_exits_do_not_create_fake_fallthrough() -> None:

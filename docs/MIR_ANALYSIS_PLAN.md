@@ -53,8 +53,17 @@ control-flow edges; a body outside that subset produces no usable MIR graph.
 Use the exact THIR returned by `Compiler.generate_code_and_thir()` in integration
 tests (`tpyc/compiler.py`). This returns sources and their THIR context from one
 emission. Do not re-lower a second approximation of the same function.
-The builder itself takes a `THIRFunction` and an explicit body identity/kind;
-it does not take an analyzer or codegen context.
+Lowering takes a `THIRFunction` and an explicit body identity/kind; it does
+not take an analyzer or codegen context.
+
+Only the check pass reads that `THIRFunction` ([IR_DESIGN](IR_DESIGN.md),
+"Lowering: a checked plan, then a fold"): `_Coverage` (`tpyc/mir/lower.py`)
+refuses the body or returns its immutable lowering plan, a `PBody`
+(`tpyc/mir/plan.py`), and `PlanEmitter` (`tpyc/mir/emit.py`) folds that plan
+into the CFG without reading THIR. A refusal names the check pass's reason;
+the emit pass refuses only what needs the built CFG: a non-void
+fallthrough, the validator's, and a declaration the check pass marked as
+placed no storage by THIR, once the CFG reaches it.
 
 There is no complete standalone THIR-module pass today. Ordinary functions
 lower in `codegen_cpp/generator.py`; resumables lower during frame emission.
@@ -3198,7 +3207,7 @@ call on a call result.
   movable ("owned record result needs movable record") and hook-free (the
   caller destroys what it receives: `make_hooked` refuses "custom record
   special member").
-- **Return arm** (`lower.owned_record_source`; the builder's
+- **Return arm** (`lower.owned_record_source`; the emit pass's
   `owned_return`, shared with `Own[...]` container results). A `THIRName`
   of a FIXED owned local
   (`fixed_owned`: a STORAGE-form declaration, never replaced) returns the
@@ -3286,7 +3295,7 @@ call on a call result.
   result is no borrow ("owned result from a borrowed call") and its
   signature hands `R` over (`THIRCallableSignature.hands_over(R)`) at
   STORAGE form ("call record result mismatch"); `call()` compares the call's type against the unwrapped
-  `Own[R]`. The builder writes the `MIRCall` into the destination,
+  `Own[R]`. The emit pass writes the `MIRCall` into the destination,
   `may_raise` from the summary. The call's argument writes
   (`call_writes`) are recorded for the operand-order rule where the
   constructor paths hardcoded none: a factory writing an argument beside
@@ -3320,7 +3329,7 @@ call on a call result.
   `storage_facts` records a FULL_EXPRESSION backing, `temp_plan` and
   `thir/validate.py` accept the field ("full-expression storage disagrees
   with its record rvalue"). MIR takes the call where it takes a construct:
-  `field()` / `temporary()` check it as a record value, the builder's
+  `field()` / `temporary()` check it as a record value, the emit pass's
   `place()` materializes region storage the field is read from inline, and
   the storage adapter binds the backing. A field read of a call temporary
   passes the call's argument writes to the operand-order rule
@@ -3438,7 +3447,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   copy may raise, any container field (a new allocation), or a member
   record whose copy may, recursively; a member whose layout is unknown
   may. Every record copy reads it: the COPY member initializer, the
-  builder's `MIRCopy`, the validator's record copy (`record_copy_ok`,
+  emit pass's `MIRCopy`, the validator's record copy (`record_copy_ok`,
   shared by record destinations, element writes and member writes), the
   receiver-initialization rule and `construct_members_ok`. A copy of a
   record with a `str` or a `list` field is an exceptional exit, an
@@ -3494,7 +3503,7 @@ and setter and `getter_through_field`; `mir/method_calls`
   place, a borrowed name stored bare (C++ copies it; sema warns), a member
   read stored bare (`self.a = self.b`), an owned local stored bare (`self.b
   = t`, a copy through its holder), an `Own[R]` parameter moved at its last
-  use, or a call handing over an owned result (`Holder.put`). The builder
+  use, or a call handing over an owned result (`Holder.put`). The emit pass
   writes `MIRAssign(member place, value, MIRRecordWrite(IN_PLACE))`; the
   validator requires that fact with no rebind owner, a mutable place and a
   movable member ("record member write needs a replacement fact", "store
@@ -4261,8 +4270,8 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
   tests, Optional copies and constructs on the parameter's holder slot are
   accepted where the field forms are (`summaries._optional_place`).
 - **Callers.** Free-function, method and constructor calls bind the argument
-  through the one `optional_operand` pair (`_Coverage` / `_Builder` in
-  `lower.py`): null, `&name`, `optional_to_ptr(field)`, an argument
+  through the one `optional_operand` plan (`_Coverage.optional_operand`,
+  folded by the emit pass): null, `&name`, `optional_to_ptr(field)`, an argument
   temporary, an Optional holder, a narrowed name (a narrowed Optional name is
   a record source, `record_source`). A scalar payload is built into a
   temporary of the full expression. Passing a narrowed Optional or union

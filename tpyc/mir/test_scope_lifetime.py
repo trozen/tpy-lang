@@ -5,6 +5,7 @@ from dataclasses import replace
 import pytest
 
 from ..thir import nodes as th
+from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, OptionalType
@@ -24,7 +25,13 @@ from .testutil import leaf_shape, optional_shape
 
 
 SOURCE = """\
-from tpy import int32
+from tpy import int32, nocopy
+
+@nocopy
+class Pinned:
+    value: int32
+    def __init__(self, value: int32):
+        self.value = value
 
 class Cell:
     value: int32
@@ -114,6 +121,30 @@ def own(flag: bool) -> int32:
         flag = False
     return saved.value
 
+def planned(flag: bool, value: int32 | None, owner: Pinned) -> int32:
+    saved = owner if flag else Pinned(2)
+    result = saved.value
+    while flag:
+        local = value
+        flag = False
+    return result
+
+def planned_union(flag: bool, value: int32 | bool, owner: Pinned) -> int32:
+    saved = owner if flag else Pinned(2)
+    result = saved.value
+    while flag:
+        local = value
+        flag = False
+    return result
+
+def planned_record(flag: bool, owner: Pinned) -> int32:
+    saved = owner if flag else Pinned(2)
+    result = saved.value
+    while flag:
+        local = Cell(3)
+        flag = False
+    return result
+
 def nested_loops(outer: bool, inner: bool, stop: bool) -> int32:
     result = 0
     while outer:
@@ -138,7 +169,7 @@ def nested_loops(outer: bool, inner: bool, stop: bool) -> int32:
 """
 
 
-Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction | MIRNotCovered], str]
+Artifacts = tuple[dict[str, th.THIRFunction], dict[str, MIRFunction | MIRNotCovered], str, MIRDefinitions]
 
 
 @pytest.fixture(scope="module")
@@ -152,12 +183,12 @@ def artifacts() -> Artifacts:
     for ctor in ctx.thir_constructors.values():
         bodies[ctor.record_name] = lower_constructor(ctor, MIRBodyId("scope", ctor.record_name),
                                                      definitions=definitions)
-    return thir, bodies, cpp
+    return thir, bodies, cpp, definitions
 
 
 @pytest.mark.parametrize("name", ["branch", "loop", "wrapper", "union", "optional_record", "nested", "Observer"])
 def test_real_producers_own_scoped_storage(artifacts: Artifacts, name: str) -> None:
-    _thir, bodies, _cpp = artifacts
+    _thir, bodies, _cpp, _definitions = artifacts
     fn = bodies[name]
     assert isinstance(fn, MIRFunction), fn
     result = analyze_scope_ends(fn)
@@ -173,7 +204,7 @@ def test_real_producers_own_scoped_storage(artifacts: Artifacts, name: str) -> N
 
 
 def test_producer_and_emitter_agree_without_changing_placement(artifacts: Artifacts) -> None:
-    thir, bodies, cpp = artifacts
+    thir, bodies, cpp, _definitions = artifacts
     branch = thir["branch"].body[1]
     assert branch.then_body[0].storage_placement is th.THIRStoragePlacement.SCOPE
     body = cpp[cpp.index(" branch("):].split("\n}\n", 1)[0]
@@ -213,14 +244,105 @@ def test_inner_else_break_and_continue_end_scopes_inside_out(artifacts: Artifact
     assert sum(isinstance(blocks[target].terminator, MIRBranch) for target in targets) == 1
 
 
-def test_missing_placement_is_uncovered(artifacts: Artifacts) -> None:
-    thir, _, _ = artifacts
-    fn = thir["wrapper"]
-    loop = fn.body[1]
-    broken = replace(loop.body[0], storage_placement=None)
-    changed = replace(fn, body=(fn.body[0], replace(loop, body=(broken, *loop.body[1:])), *fn.body[2:]))
-    result = lower_function(changed, MIRBodyId("scope", "missing"))
-    assert isinstance(result, MIRNotCovered) and "placement" in result.reason
+# The bodies whose loop starts with a declaration owning scoped storage --
+# an Optional, a union, an owned record -- each with the same declaration
+# after a select whose temporary plan is in use.
+DECLARATIONS = {"wrapper": "planned", "union": "planned_union", "loop": "planned_record"}
+declarations = pytest.mark.parametrize("name", sorted(DECLARATIONS))
+
+
+def _misplaced(fn: th.THIRFunction, before: tuple[th.THIRStmt, ...] = (), after: tuple[th.THIRStmt, ...] = (),
+               *, falls_through: bool = False, placed: bool = False) -> th.THIRFunction:
+    """`fn` with its loop's first declaration given no storage placement
+    (unless `placed`), between `before` and `after`; `falls_through`
+    drops the statements after the loop."""
+    index = next(i for i, stmt in enumerate(fn.body) if isinstance(stmt, th.THIRWhile))
+    loop = fn.body[index]
+    declaration = loop.body[0] if placed else replace(loop.body[0], storage_placement=None)
+    loop = replace(loop, body=(*before, declaration, *after, *loop.body[1:]))
+    body = (*fn.body[:index], loop, *(() if falls_through else fn.body[index + 1:]))
+    return replace(fn, body=body, temp_plan=prepare_temporaries(body) if fn.temp_plan is not None else None)
+
+
+def _declaration(fn: th.THIRFunction) -> th.THIRStmt:
+    """The declaration `_misplaced` takes the placement from."""
+    return next(stmt for stmt in fn.body if isinstance(stmt, th.THIRWhile)).body[0]
+
+
+def _lower_changed(artifacts: Artifacts, fn: th.THIRFunction, name: str) -> MIRFunction | MIRNotCovered:
+    return lower_function(fn, MIRBodyId("scope", name), definitions=artifacts[3])
+
+
+def _refused_at(result: MIRFunction | MIRNotCovered, declaration: th.THIRStmt) -> None:
+    assert isinstance(result, MIRNotCovered) and result.reason == "missing direct storage placement", result
+    assert (result.node_kind, result.loc) == (type(declaration).__name__, declaration.loc)
+
+
+def _both_return(fn: th.THIRFunction) -> th.THIRIf:
+    """`if flag: return result else: return result`."""
+    loop = next(stmt for stmt in fn.body if isinstance(stmt, th.THIRWhile))
+    return th.THIRIf(loop.condition, (fn.body[-1],), (fn.body[-1],))
+
+
+@declarations
+def test_missing_placement_is_uncovered(artifacts: Artifacts, name: str) -> None:
+    fn = artifacts[0][name]
+    assert isinstance(artifacts[1][name], MIRFunction), artifacts[1][name]
+    _refused_at(_lower_changed(artifacts, _misplaced(fn), "missing"), _declaration(fn))
+
+
+@declarations
+def test_missing_placement_after_a_jump_is_not_built(artifacts: Artifacts, name: str) -> None:
+    # The refusal stands where the CFG would build the declaration's storage;
+    # after a `break` nothing in the block is built.
+    fn = artifacts[0][name]
+    result = _lower_changed(artifacts, _misplaced(fn, (th.THIRBreak(),)), "unreached")
+    assert isinstance(result, MIRFunction), result
+
+
+@declarations
+def test_missing_placement_after_a_return_is_not_built(artifacts: Artifacts, name: str) -> None:
+    fn = artifacts[0][name]
+    result = _lower_changed(artifacts, _misplaced(fn, (fn.body[-1],)), "returned")
+    assert isinstance(result, MIRFunction), result
+
+
+@declarations
+def test_missing_placement_after_an_if_whose_arms_return_is_not_built(artifacts: Artifacts, name: str) -> None:
+    # An if without a temporary plan whose arms both end leaves no block to continue in.
+    fn = artifacts[0][name]
+    result = _lower_changed(artifacts, _misplaced(fn, (_both_return(fn),)), "if-returned")
+    assert isinstance(result, MIRFunction), result
+
+
+@declarations
+def test_missing_placement_after_a_planned_if_whose_arms_return_is_refused(artifacts: Artifacts, name: str) -> None:
+    # An if under a temporary plan always continues in its join block, so the declaration is built.
+    thir, bodies, _cpp, _definitions = artifacts
+    planned = DECLARATIONS[name]
+    assert isinstance(bodies[planned], MIRFunction), bodies[planned]
+    fn = thir[planned]
+    assert fn.temp_plan is not None
+    result = _lower_changed(artifacts, _misplaced(fn, (_both_return(fn),)), "planned-returned")
+    _refused_at(result, _declaration(fn))
+
+
+@declarations
+def test_a_later_check_pass_refusal_comes_before_placement(artifacts: Artifacts, name: str) -> None:
+    # The check pass refuses the whole body before the emit pass reaches the declaration.
+    fn = artifacts[0][name]
+    result = _lower_changed(artifacts, _misplaced(fn, after=(th.THIRReturn(),)), "later")
+    assert isinstance(result, MIRNotCovered) and result.reason == "missing return value", result
+
+
+@declarations
+def test_placement_comes_before_a_non_void_fallthrough(artifacts: Artifacts, name: str) -> None:
+    fn = artifacts[0][name]
+    placed = _lower_changed(artifacts, _misplaced(fn, falls_through=True, placed=True), "placed")
+    assert isinstance(placed, MIRNotCovered) and placed.reason == "non-void fallthrough", placed
+    # The refusal names the body, which has no location of its own.
+    assert (placed.node_kind, placed.loc) == ("THIRFunction", None)
+    _refused_at(_lower_changed(artifacts, _misplaced(fn, falls_through=True), "falls"), _declaration(fn))
 
 
 def region_fixture() -> MIRFunction:

@@ -268,8 +268,10 @@ def test_a_string_bound_as_str_is_lent_or_copied(active) -> None:
     lines = _lines(_fn(active, "string_as_str_param"))
     assert "%2: StrView readonly-ref temporary residence=r0" in lines
     assert "%2 = borrow (*%0)" in lines and any(line.startswith("%1 = call main::takes(%2)") for line in lines)
-    # At an owning sink it is copied.
-    assert "%1 = copy (*%0) may-raise [initialize_once]" in _lines(_fn(active, "string_as_str_sink"))
+    # At an owning sink it is copied; the local owning the copy is moved out.
+    sink = _lines(_fn(active, "string_as_str_sink"))
+    assert "%1 = copy (*%0) may-raise [initialize_once]" in sink
+    assert sink[-1] == "return %1"
 
 
 def test_a_view_is_lent_where_a_str_view_parameter_takes_it(active) -> None:

@@ -24,6 +24,7 @@ from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
+from .plan import PFullExpression
 from .nodes import (
     MIRHolding,
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant,
@@ -619,6 +620,22 @@ def test_parameters_borrow_or_own_by_their_passing(lowered_active) -> None:
         True, MIRStorageDuration.BODY, ParamPassing.VALUE)
     # The by-value parameter returns itself, with no copy.
     assert _lines(lowered_active.bodies["by_value"])[-1] == f"return %{owned.id.index}"
+
+
+def test_an_owned_return_plans_its_full_expression_once(lowered_active, monkeypatch) -> None:
+    # The move-out is decided while the return's value is checked, not by
+    # rebuilding the checked full expression.
+    built = []
+    original = PFullExpression.__init__
+
+    def traced(self, *args, **kwargs) -> None:
+        original(self, *args, **kwargs)
+        built.append(self)
+
+    monkeypatch.setattr(PFullExpression, "__init__", traced)
+    lower_function(lowered_active.thir["by_value"], MIRBodyId("owned", "by_value"),
+                   definitions=lowered_active.definitions)
+    assert len(built) == 1
 
 
 def test_locals_initialize_once_then_replace_in_place(lowered_active) -> None:
