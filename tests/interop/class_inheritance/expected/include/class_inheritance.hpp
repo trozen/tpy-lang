@@ -14,6 +14,14 @@ struct BaseBox;
 struct MidBox;
 struct LeafBox;
 
+} // namespace tpyapp::class_inheritance
+
+template<> struct std::hash<::tpyapp::class_inheritance::Shape> {
+    size_t operator()(const ::tpyapp::class_inheritance::Shape& val) const noexcept;
+};
+
+namespace tpyapp::class_inheritance {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 void rename(Shape& s, std::string_view name);
@@ -46,11 +54,9 @@ inline std::ostream& operator<<(std::ostream& os, const Shape& obj) {
 }
 } // namespace tpyapp::class_inheritance
 
-template<> struct std::hash<::tpyapp::class_inheritance::Shape> {
-    size_t operator()(const ::tpyapp::class_inheritance::Shape& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::class_inheritance::Shape>::operator()(const ::tpyapp::class_inheritance::Shape& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::class_inheritance {
 

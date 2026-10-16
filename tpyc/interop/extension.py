@@ -162,7 +162,7 @@ class ExtensionGenerator:
             return []
         # Parent-before-child via the shared records-emit topo sort (a user exc
         # only inherits other exc classes, so every user parent is in this set).
-        ordered = self.records.sort_records_by_inheritance(exc_records)
+        ordered = self.records.sort_records_by_storage(exc_records)
         sibling_names = {r.name for r in exc_records}
         sym = escape_cpp_name(module_name)
         var_for = lambda nm: f"{sym}__exc_{escape_cpp_name(nm.replace('.', '_'))}"

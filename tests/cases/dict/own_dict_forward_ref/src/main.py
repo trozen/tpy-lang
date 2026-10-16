@@ -1,8 +1,8 @@
 # Regression: `dict[T, V]` field where T (the hashed key) is declared
 # LATER than the enclosing record. Exercises the dict-key branch of both
 # the sema flag-forwarding (the hashable gate at validate_type's NominalType
-# branch fires on dict keys too) and the codegen topo-sort's hash-element
-# edge (which walks typ.type_args[0] for dict keys via is_dict).
+# branch fires on dict keys too) and the record order's hash-key edge
+# (`_inheritance_order`, which walks typ.type_args[0] for dict keys).
 from tpy import int32, uint64
 
 

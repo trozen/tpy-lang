@@ -13,6 +13,14 @@ struct Mask;
 struct Tag;
 struct Child;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Vec2> {
+    size_t operator()(const ::tpyapp::main::Vec2& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def test_unary() -> None:
@@ -122,11 +130,9 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Vec2> {
-    size_t operator()(const ::tpyapp::main::Vec2& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Vec2>::operator()(const ::tpyapp::main::Vec2& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

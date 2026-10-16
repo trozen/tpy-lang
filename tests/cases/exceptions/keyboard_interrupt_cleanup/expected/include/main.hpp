@@ -34,6 +34,17 @@ struct Exiter;
 struct Tally;
 struct Handled;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::LoudKey> {
+    size_t operator()(const ::tpyapp::main::LoudKey& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::main::QuietKey> {
+    size_t operator()(const ::tpyapp::main::QuietKey& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 extern Loud* keeper;
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -260,12 +271,10 @@ inline std::ostream& operator<<(std::ostream& os, const LoudKey& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::LoudKey> {
-    size_t operator()(const ::tpyapp::main::LoudKey& val) const noexcept {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::LoudKey>::operator()(const ::tpyapp::main::LoudKey& val) const noexcept {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
@@ -297,11 +306,9 @@ inline std::ostream& operator<<(std::ostream& os, const QuietKey& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::QuietKey> {
-    size_t operator()(const ::tpyapp::main::QuietKey& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::QuietKey>::operator()(const ::tpyapp::main::QuietKey& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

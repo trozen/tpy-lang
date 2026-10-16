@@ -2415,17 +2415,23 @@ def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
-def types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
+def types_held_by_value(typ: 'TpyType', *,
+                        stop_at_indirecting: bool = False) -> Iterator['TpyType']:
     """Every class whose complete definition the storage form of `typ`
     needs: the parts `held_by_value` names, followed down to the classes
-    held themselves."""
+    held themselves.
+
+    `stop_at_indirecting` keeps to what a class LAYOUT needs complete: a
+    type whose binding stores its arguments on the heap (TypeDef
+    `is_indirecting`) is held, its arguments are not."""
     seen = IdentitySet()
-    # A generic record's parts are built anew under its arguments, so a
-    # self-referential one (`children: list[Tree[T]]`) recurs by value.
-    seen_classes: set['NominalType'] = set()
+    # A generic record's (or alias's) parts are built anew under its
+    # arguments, so a self-referential one (`children: list[Tree[T]]`)
+    # recurs by value.
+    seen_classes: set['TpyType'] = set()
 
     def walk(t: 'TpyType') -> Iterator['TpyType']:
-        if isinstance(t, NominalType):
+        if isinstance(t, (NominalType, RecursiveAliasInstanceType)):
             if t in seen_classes:
                 return
             seen_classes.add(t)
@@ -2433,7 +2439,16 @@ def types_held_by_value(typ: 'TpyType') -> Iterator['TpyType']:
             return
         else:
             seen.add(t)
+        if stop_at_indirecting:
+            td = t._nominal_td()
+            if td is not None and td.is_indirecting:
+                yield t
+                return
         for part in t.held_by_value():
+            # A generic class's field under its arguments is the field's
+            # declared slot (`Ref[T]`), but the layout stores the type itself.
+            if stop_at_indirecting:
+                part = unwrap_ref_type(part)
             if part is t:
                 yield t
             else:
@@ -4823,6 +4838,12 @@ class RecursiveAliasInstanceType(TpyType):
             if isinstance(a, TpyType)
         }
         return substitute_type_params_structural(info.body, subst)
+
+    def held_by_value(self) -> tuple['TpyType', ...]:
+        # The wrapper template stores exactly its body under the arguments,
+        # so an argument behind a pointer or a list inside it is not held.
+        body = self.substituted_body()
+        return () if body is self else (body,)
 
     def alternatives(self) -> tuple['TpyType', ...]:
         """The variant alternatives behind the wrapper, in the wrapper

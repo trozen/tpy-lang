@@ -61,6 +61,20 @@ struct UH;
 struct Stored;
 template<typename T> struct RBox;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Key> {
+    size_t operator()(const ::tpyapp::main::Key& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::main::Frozen> {
+    size_t operator()(const ::tpyapp::main::Frozen& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::main::FrozenPair> {
+    size_t operator()(const ::tpyapp::main::FrozenPair& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __coro_value_await;
@@ -393,11 +407,9 @@ inline std::ostream& operator<<(std::ostream& os, const Key& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Key> {
-    size_t operator()(const ::tpyapp::main::Key& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Key>::operator()(const ::tpyapp::main::Key& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
@@ -444,12 +456,10 @@ inline std::ostream& operator<<(std::ostream& os, const Frozen& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Frozen> {
-    size_t operator()(const ::tpyapp::main::Frozen& val) const noexcept {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Frozen>::operator()(const ::tpyapp::main::Frozen& val) const noexcept {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
@@ -608,12 +618,10 @@ inline std::ostream& operator<<(std::ostream& os, const FrozenPair& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::FrozenPair> {
-    size_t operator()(const ::tpyapp::main::FrozenPair& val) const noexcept {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::FrozenPair>::operator()(const ::tpyapp::main::FrozenPair& val) const noexcept {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

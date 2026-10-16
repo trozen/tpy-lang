@@ -5,14 +5,16 @@ Generates C++ structs from TurboPython records.
 """
 
 from __future__ import annotations
+import heapq
 import io
 from dataclasses import dataclass
-from typing import Sequence, TextIO, TYPE_CHECKING
+from typing import Iterator, Sequence, TextIO, TYPE_CHECKING
 
 from ..typesys import (
-    TpyType, NominalType, OptionalType, OwnType, ReadonlyType,
+    TpyType, TypeRegistry, NominalType, OptionalType, OwnType, ReadonlyType,
     AutoReadonlyType, AutoOwnType, FinalType, ClassVarType,
     TypeParamRef, TypeParamKind, RecordInfo, TupleType, UnionType,
+    types_held_by_value, unwrap_ref_type,
     unwrap_readonly, unwrap_optional_own, unwrap_send_sync,
     get_covariant_params, PtrType,
     bare_name, qualify_shadowed_nominals,
@@ -48,7 +50,7 @@ from ..type_def_registry import (
     is_span_iter,
     is_big_int_type, is_bytes_type, int_traits_of,
     has_view_param_form, view_to_owned_conv,
-    enum_info_of, protocol_info_of, record_base_cpp,
+    enum_info_of, protocol_info_of, record_base_cpp, is_enum_type,
     is_set, is_dict,
 )
 
@@ -124,6 +126,29 @@ def _split_readonly_clone_pair(
     return const, mutable
 
 
+def nested_type_qnames(typ: TpyType, registry: TypeRegistry,
+                       out: set[str]) -> None:
+    """Add to `out` the qualified name of every class or enum nested in a
+    class that `typ` names, at any depth: C++ can spell one only once its
+    owner is complete."""
+    if (isinstance(typ, NominalType) or is_enum_type(typ)) and "." in typ.name:
+        q = typ.qualified_name()
+        if q is None:
+            # A parser placeholder (no qname) names a class of this module.
+            info = registry.get_record_for_type(typ)
+            q = info.qualified_name() if info is not None else None
+        if q is not None:
+            out.add(q)
+    for inner in typ.inner_types():
+        nested_type_qnames(inner, registry, out)
+
+
+def _record_and_nested(record: TpyRecord) -> Iterator[TpyRecord]:
+    yield record
+    for nested in record.nested_records:
+        yield from _record_and_nested(nested)
+
+
 class RecordGenerator:
     """Generates C++ structs from TurboPython records."""
 
@@ -142,28 +167,67 @@ class RecordGenerator:
         self.gen_async: AsyncCoroCodegen  # Set by CodeGenerator after init
         self._def_plans: IdentityMap[TpyRecord, _RecordDefPlan] = IdentityMap()
 
-    def sort_records_by_inheritance(self, records: list[TpyRecord]) -> list[TpyRecord]:
-        """Sort records so parent classes come before children.
+    def sort_records_by_storage(
+        self, records: list[TpyRecord], *,
+        defined_early: frozenset[str] | set[str] = frozenset(),
+        nested: bool = False,
+    ) -> list[TpyRecord]:
+        """Order `records` so each follows every record its layout stores
+        inline (a field or base held by value) and the owner of every nested
+        class its declarations name -- C++ needs those complete at the
+        struct.
 
-        Uses topological sort based on inheritance relationships AND
-        hashed-container-element relationships: a record `Holder` with a
-        field `Own[set[Point]]` must emit AFTER `Point` so that
-        `std::hash<Point>` (emitted right after Point's struct def) is
-        available when `Holder`'s struct uses `ordered_set<Point>`.
+        A stable re-sort of the baseline (`_inheritance_order` for top-level
+        records; source order for the nested siblings of one owner): the
+        earliest remaining record whose needs are all emitted goes next, so an order that already satisfies every need is kept as
+        is. With none ready (a by-value cycle, which has no C++ layout), the
+        earliest remaining record goes next. `defined_early` records are
+        emitted before this order is used, so they are never waited on.
         Native records are excluded (no C++ struct generation needed).
         """
-        # Filter out native records -- they don't generate C++ structs
-        records = [r for r in records if not self._is_native(r)]
-        record_by_name = {r.name: r for r in records}
+        if not nested:
+            records = self._inheritance_order(
+                [r for r in records if not self._is_native(r)])
+        needs = self._record_order_needs(records, defined_early)
+        position = {r.name: i for i, r in enumerate(records)}
+        waiting = {r.name: len(needs[r.name]) for r in records}
+        dependents: dict[str, list[str]] = {r.name: [] for r in records}
+        for name, deps in needs.items():
+            for dep in deps:
+                dependents[dep].append(name)
+        # Kahn over baseline positions: the heap holds the ready records.
+        ready = [i for i, r in enumerate(records) if not waiting[r.name]]
+        heapq.heapify(ready)
+        emitted = [False] * len(records)
+        earliest_left = 0
+        result: list[TpyRecord] = []
+        while len(result) < len(records):
+            if ready:
+                i = heapq.heappop(ready)
+            else:
+                while emitted[earliest_left]:
+                    earliest_left += 1
+                i = earliest_left
+            emitted[i] = True
+            result.append(records[i])
+            for dependent in dependents[records[i].name]:
+                waiting[dependent] -= 1
+                if waiting[dependent] == 0 and not emitted[position[dependent]]:
+                    heapq.heappush(ready, position[dependent])
+        return result
 
-        # Build dependency graph
-        # Only consider user-defined parents (NominalType records), not builtin types
+    def _inheritance_order(self, records: list[TpyRecord]) -> list[TpyRecord]:
+        """Topological order with every base class before its derived ones
+        and every set / dict key record before its holder (Kahn); a leftover
+        cycle is appended in source order."""
+        record_by_name = {r.name: r for r in records}
         dependencies: dict[str, set[str]] = {r.name: set() for r in records}
         registry = self.ctx.analyzer.registry
         # A parent is a dependency when it IS one of these records -- a
         # foreign base sharing a local record's name is not.
-        own_name_of = {id(ri): r.name for r in records
-                       if (ri := registry.get_record(r.name)) is not None}
+        own_name_of: IdentityMap[RecordInfo, str] = IdentityMap(
+            (ri, r.name) for r in records
+            if (ri := registry.get_record(r.name)) is not None)
         for record in records:
             record_info = registry.get_record(record.name)
             if record_info is None:
@@ -171,13 +235,15 @@ class RecordGenerator:
             for p in record_info.parents:
                 if not (isinstance(p, NominalType) and p.is_user_record):
                     continue
-                parent_name = own_name_of.get(id(registry.get_record_for_type(p)))
+                parent_info = registry.get_record_for_type(p)
+                parent_name = (own_name_of.get(parent_info)
+                               if parent_info is not None else None)
                 if parent_name is not None:
                     dependencies[record.name].add(parent_name)
-            # Hashed-container element dependency: walk each field's type
-            # peeling wrappers, collect user-record key types from any
-            # nested set/dict so std::hash<K> is emitted before this
-            # record's struct uses ordered_set<K> / ordered_map<K, V>.
+            # The hash split needs no key-before-holder order, but an
+            # in-struct deduced-return body can rely on it
+            # (BUGS.md#deduced-return-member-body-uses-later-declaration);
+            # this walk goes when those bodies leave the struct.
             for fld in record_info.fields:
                 if fld.type is None:
                     continue
@@ -187,7 +253,6 @@ class RecordGenerator:
                     if dep in record_by_name and dep != record.name:
                         dependencies[record.name].add(dep)
 
-        # Topological sort (Kahn's algorithm)
         result = []
         result_names: set[str] = set()
         no_deps = [name for name, deps in dependencies.items() if not deps]
@@ -204,7 +269,6 @@ class RecordGenerator:
                     if not deps and dep_name not in result_names:
                         no_deps.append(dep_name)
 
-        # If any records are left (circular dependency), add them at the end
         for record in records:
             if record.name not in result_names:
                 result.append(record)
@@ -213,10 +277,7 @@ class RecordGenerator:
 
     def _collect_hash_key_records(self, typ: TpyType, deps: set[str]) -> None:
         """Walk a type peeling wrappers; for every `set[K]` / `dict[K, V]`
-        found, collect K's user-record name into `deps` so the topo sort
-        can emit K's struct (and its `std::hash<K>` specialization) before
-        the record using the container.
-        """
+        found, collect K's user-record name into `deps`."""
         if isinstance(typ, (OwnType, ReadonlyType, AutoReadonlyType,
                             AutoOwnType, FinalType, ClassVarType)):
             self._collect_hash_key_records(typ.wrapped, deps)
@@ -265,6 +326,69 @@ class RecordGenerator:
         if isinstance(typ, NominalType) and typ.is_user_record:
             return typ.name
         return None
+
+    def _record_order_needs(
+        self, records: list[TpyRecord], defined_early: frozenset[str] | set[str],
+    ) -> dict[str, set[str]]:
+        """For each of `records`, the others it must follow. A record emits
+        its nested records inside itself, so their needs are its own, and a
+        need of a class nested in one of `records` is a need of that one."""
+        registry = self.ctx.analyzer.registry
+        owner_of: IdentityMap[RecordInfo, str] = IdentityMap()
+        owner_of_qname: dict[str, str] = {}
+        for record in records:
+            for member in _record_and_nested(record):
+                info = registry.get_record(member.name)
+                if info is None:
+                    continue
+                owner_of[info] = record.name
+                owner_of_qname[info.qualified_name()] = record.name
+
+        needs: dict[str, set[str]] = {r.name: set() for r in records}
+        for record in records:
+            if record.name in defined_early:
+                continue
+            targets: list[str | None] = []
+            for member in _record_and_nested(record):
+                info = registry.get_record(member.name)
+                # A generic class's members are instantiated with its uses:
+                # what `G[B]` stores is a need of the record holding it.
+                if member.type_params or info is None or info.is_native:
+                    continue
+                slots = list(info.parents) + [
+                    unwrap_ref_type(f.type) for f in info.fields if f.type is not None]
+                for slot in slots:
+                    for held in types_held_by_value(slot, stop_at_indirecting=True):
+                        if (isinstance(held, NominalType)
+                                and (held_info := registry.get_record_for_type(held))
+                                is not None):
+                            targets.append(owner_of.get(held_info))
+                named: set[str] = set()
+                for typ in slots + self._declared_signature_types(member):
+                    nested_type_qnames(typ, registry, named)
+                targets.extend(owner_of_qname.get(q) for q in named)
+            needs[record.name] = {
+                t for t in targets
+                if t is not None and t != record.name and t not in defined_early}
+        return needs
+
+    def _declared_signature_types(self, record: TpyRecord) -> list[TpyType]:
+        """The types the in-struct declarations of `record`'s emitted members
+        spell: parameters, template bounds, and returns other than a deduced
+        `auto`. A `@cpp_template` member declares nothing."""
+        out: list[TpyType] = []
+        plan = self._def_plan(record)
+        if plan is None:
+            return out
+        for entry in plan.members.values():
+            if entry.kind is MemberKind.EXPANDED:
+                continue
+            method = entry.func
+            out.extend(t for _, t in method.params if t is not None)
+            out.extend(method.type_param_bounds.values())
+            if method.return_type is not None and not entry.sig.deduced:
+                out.append(method.return_type)
+        return out
 
     def _is_field_type_nocopy(self, typ: TpyType) -> bool:
         """Check if a field type is nocopy (for comment generation)."""
@@ -375,7 +499,7 @@ class RecordGenerator:
             self._gen_nested_enum_decl(out, nested_enum)
 
         # Nested records (before fields so they can be used as field types)
-        for nested_rec in record.nested_records:
+        for nested_rec in self.sort_records_by_storage(record.nested_records, nested=True):
             buf = io.StringIO()
             self.gen_record_decl(buf, nested_rec)
             for line in buf.getvalue().splitlines(True):

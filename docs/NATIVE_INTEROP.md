@@ -278,6 +278,8 @@ class Arena[T]:  # C++ stores T behind a unique_ptr / arena handle
 
 With this, `type Tree = Leaf | Arena[Tree]` compiles. Without it, the compiler treats `Arena[T]` as a by-value container and rejects the alias.
 
+The same fact orders the header's class definitions: a class is defined after every class its layout stores inline, and an `indirecting=True` binding's arguments are not stored inline, so `items: Arena[Later]` adds no order. A binding over a heap container that omits the kwarg has its arguments ordered as if stored inline, which can move a class definition past one a body in another struct relies on (BUGS.md#deduced-return-member-body-uses-later-declaration).
+
 Used in the stdlib by `list`/`dict`/`set` (see `lib/tpy/tpy/_builtins/_{list,dict,set}.py`). Don't reach for it on records whose TPy field declarations already expose a `Ptr`-typed (or other indirecting) field -- the structural walk handles those.
 
 ### Declaring a borrow handle: `borrowing_view=True`

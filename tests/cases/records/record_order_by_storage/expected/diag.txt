@@ -1,0 +1,1 @@
+main.py:396: warning: Own[PropOuter.Inner] param 'value' is never consumed (not stored in a field, forwarded to another Own[T], or returned)

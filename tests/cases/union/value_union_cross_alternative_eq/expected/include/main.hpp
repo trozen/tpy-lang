@@ -22,6 +22,17 @@ struct Zone;
 struct Tagged;
 struct Marked;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Fixed> {
+    size_t operator()(const ::tpyapp::main::Fixed& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::main::Zone> {
+    size_t operator()(const ::tpyapp::main::Zone& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 extern ::tpy::Union<double, int32_t> A;
 extern ::tpy::Union<double, int32_t> B;
 extern bool module_eq;
@@ -287,11 +298,9 @@ inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Fixed> {
-    size_t operator()(const ::tpyapp::main::Fixed& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Fixed>::operator()(const ::tpyapp::main::Fixed& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
@@ -329,11 +338,9 @@ inline std::ostream& operator<<(std::ostream& os, const Zone& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Zone> {
-    size_t operator()(const ::tpyapp::main::Zone& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Zone>::operator()(const ::tpyapp::main::Zone& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

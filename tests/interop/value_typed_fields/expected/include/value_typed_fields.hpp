@@ -10,6 +10,14 @@ namespace tpyapp::value_typed_fields {
 struct Point;
 struct Box;
 
+} // namespace tpyapp::value_typed_fields
+
+template<> struct std::hash<::tpyapp::value_typed_fields::Point> {
+    size_t operator()(const ::tpyapp::value_typed_fields::Point& val) const noexcept;
+};
+
+namespace tpyapp::value_typed_fields {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct Point {
@@ -35,11 +43,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 } // namespace tpyapp::value_typed_fields
 
-template<> struct std::hash<::tpyapp::value_typed_fields::Point> {
-    size_t operator()(const ::tpyapp::value_typed_fields::Point& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::value_typed_fields::Point>::operator()(const ::tpyapp::value_typed_fields::Point& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::value_typed_fields {
 

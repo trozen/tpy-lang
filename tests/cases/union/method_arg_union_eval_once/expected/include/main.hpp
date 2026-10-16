@@ -11,6 +11,17 @@ struct Fixed;
 struct Zone;
 struct Box;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Fixed> {
+    size_t operator()(const ::tpyapp::main::Fixed& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::main::Zone> {
+    size_t operator()(const ::tpyapp::main::Zone& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def free_eat(other: Box) -> int:
@@ -47,11 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Fixed> {
-    size_t operator()(const ::tpyapp::main::Fixed& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Fixed>::operator()(const ::tpyapp::main::Fixed& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
@@ -89,11 +98,9 @@ inline std::ostream& operator<<(std::ostream& os, const Zone& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Zone> {
-    size_t operator()(const ::tpyapp::main::Zone& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Zone>::operator()(const ::tpyapp::main::Zone& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

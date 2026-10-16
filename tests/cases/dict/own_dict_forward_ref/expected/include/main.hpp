@@ -10,6 +10,14 @@ namespace tpyapp::main {
 struct Holder;
 struct Point;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Point> {
+    size_t operator()(const ::tpyapp::main::Point& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
@@ -42,11 +50,9 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Point> {
-    size_t operator()(const ::tpyapp::main::Point& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Point>::operator()(const ::tpyapp::main::Point& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

@@ -14,6 +14,17 @@ struct MidNode;
 struct LeafNode;
 struct HashNode;
 
+} // namespace tpyapp::class_inheritance_slots
+
+template<> struct std::hash<::tpyapp::class_inheritance_slots::Node> {
+    size_t operator()(const ::tpyapp::class_inheritance_slots::Node& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::class_inheritance_slots::HashNode> {
+    size_t operator()(const ::tpyapp::class_inheritance_slots::HashNode& val) const noexcept;
+};
+
+namespace tpyapp::class_inheritance_slots {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct Gate {
@@ -84,11 +95,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 } // namespace tpyapp::class_inheritance_slots
 
-template<> struct std::hash<::tpyapp::class_inheritance_slots::Node> {
-    size_t operator()(const ::tpyapp::class_inheritance_slots::Node& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::class_inheritance_slots::Node>::operator()(const ::tpyapp::class_inheritance_slots::Node& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::class_inheritance_slots {
 
@@ -163,11 +172,9 @@ inline std::ostream& operator<<(std::ostream& os, const HashNode& obj) {
 }
 } // namespace tpyapp::class_inheritance_slots
 
-template<> struct std::hash<::tpyapp::class_inheritance_slots::HashNode> {
-    size_t operator()(const ::tpyapp::class_inheritance_slots::HashNode& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::class_inheritance_slots::HashNode>::operator()(const ::tpyapp::class_inheritance_slots::HashNode& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::class_inheritance_slots {
 

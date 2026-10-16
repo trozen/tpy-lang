@@ -37,6 +37,29 @@ struct date;
 struct time;
 struct datetime;
 
+} // namespace tpystd::datetime
+
+template<> struct std::hash<::tpystd::datetime::timedelta> {
+    size_t operator()(const ::tpystd::datetime::timedelta& val) const noexcept;
+};
+template<> struct std::hash<::tpystd::datetime::timezone> {
+    size_t operator()(const ::tpystd::datetime::timezone& val) const noexcept;
+};
+template<> struct std::hash<::tpystd::datetime::ZoneInfo> {
+    size_t operator()(const ::tpystd::datetime::ZoneInfo& val) const noexcept;
+};
+template<> struct std::hash<::tpystd::datetime::date> {
+    size_t operator()(const ::tpystd::datetime::date& val) const noexcept;
+};
+template<> struct std::hash<::tpystd::datetime::time> {
+    size_t operator()(const ::tpystd::datetime::time& val) const noexcept;
+};
+template<> struct std::hash<::tpystd::datetime::datetime> {
+    size_t operator()(const ::tpystd::datetime::datetime& val) const noexcept;
+};
+
+namespace tpystd::datetime {
+
 extern int32_t _MAXORDINAL_DAYS;
 extern timezone UTC;
 extern ::tpy::BigInt _EPOCH_ORDINAL;
@@ -230,11 +253,9 @@ inline std::ostream& operator<<(std::ostream& os, const timedelta& obj) {
 }
 } // namespace tpystd::datetime
 
-template<> struct std::hash<::tpystd::datetime::timedelta> {
-    size_t operator()(const ::tpystd::datetime::timedelta& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpystd::datetime::timedelta>::operator()(const ::tpystd::datetime::timedelta& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpystd::datetime {
 
@@ -293,11 +314,9 @@ inline std::ostream& operator<<(std::ostream& os, const timezone& obj) {
 }
 } // namespace tpystd::datetime
 
-template<> struct std::hash<::tpystd::datetime::timezone> {
-    size_t operator()(const ::tpystd::datetime::timezone& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpystd::datetime::timezone>::operator()(const ::tpystd::datetime::timezone& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpystd::datetime {
 
@@ -374,11 +393,9 @@ inline std::ostream& operator<<(std::ostream& os, const ZoneInfo& obj) {
 }
 } // namespace tpystd::datetime
 
-template<> struct std::hash<::tpystd::datetime::ZoneInfo> {
-    size_t operator()(const ::tpystd::datetime::ZoneInfo& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpystd::datetime::ZoneInfo>::operator()(const ::tpystd::datetime::ZoneInfo& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpystd::datetime {
 
@@ -515,11 +532,9 @@ inline std::ostream& operator<<(std::ostream& os, const date& obj) {
 }
 } // namespace tpystd::datetime
 
-template<> struct std::hash<::tpystd::datetime::date> {
-    size_t operator()(const ::tpystd::datetime::date& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpystd::datetime::date>::operator()(const ::tpystd::datetime::date& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpystd::datetime {
 
@@ -623,11 +638,9 @@ inline std::ostream& operator<<(std::ostream& os, const time& obj) {
 }
 } // namespace tpystd::datetime
 
-template<> struct std::hash<::tpystd::datetime::time> {
-    size_t operator()(const ::tpystd::datetime::time& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpystd::datetime::time>::operator()(const ::tpystd::datetime::time& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpystd::datetime {
 
@@ -885,12 +898,10 @@ inline std::ostream& operator<<(std::ostream& os, const datetime& obj) {
 }
 } // namespace tpystd::datetime
 
-template<> struct std::hash<::tpystd::datetime::datetime> {
-    size_t operator()(const ::tpystd::datetime::datetime& val) const noexcept {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpystd::datetime::datetime>::operator()(const ::tpystd::datetime::datetime& val) const noexcept {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpystd::datetime {
 

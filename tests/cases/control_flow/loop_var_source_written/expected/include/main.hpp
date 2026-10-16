@@ -29,6 +29,14 @@ struct Taken;
 struct Sink;
 struct Rows;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::W> {
+    size_t operator()(const ::tpyapp::main::W& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 extern std::string LONG_A;
 extern std::string LONG_B;
 extern std::vector<::tpy::BigInt>* G;
@@ -377,12 +385,10 @@ inline std::ostream& operator<<(std::ostream& os, const W& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::W> {
-    size_t operator()(const ::tpyapp::main::W& val) const noexcept {
-        ::tpy::DeferSignals __tpy_defer_signals;
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::W>::operator()(const ::tpyapp::main::W& val) const noexcept {
+    ::tpy::DeferSignals __tpy_defer_signals;
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

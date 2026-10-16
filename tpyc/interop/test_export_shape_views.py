@@ -3,9 +3,8 @@
 The classifier is the single answer BOTH ends of the identity/view contract
 consume (sema warning suppression == glue view emission), so its gates are
 pinned directly here -- notably the exact-declared-type match (an upcast
-field view would lie about the dynamic type), which currently has no
-case-level witness: a derived-typed by-value FIELD hits the emit-order
-defect filed in BUGS.md, so no buildable case can hold one.
+field view would lie about the dynamic type), which has no case-level
+witness yet (TODO.md "Pin the borrow-view upcast gate").
 """
 from tpyc.parse.nodes import TpyFieldAccess, TpyName, TpyReturn
 from tpyc.interop.export_shape import (

@@ -1,0 +1,37 @@
+plain 6
+optional 6
+derived 6
+tuple 6 1
+union 6
+generic 6
+dataclass 6
+readonly 5
+array 5 6
+nested 6
+naming True 6
+siblings 6
+keys 1 6
+self key 1 1
+list cycle 1 1
+hash cycle 1
+proto call 3
+proto 5
+param 6
+return 6
+deduced owner 6
+deduced call 3
+deduced 5
+overload 6 3
+property get 5
+property set 6
+generator 6
+async 6
+alias heap True
+nested key 2
+inline sink 7
+inline sink 8
+cpp_template 4
+inline call 3
+inline 5
+hash baseline call 3
+hash baseline 5 1

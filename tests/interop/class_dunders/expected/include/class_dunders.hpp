@@ -11,6 +11,14 @@ struct Vec2;
 struct Frac;
 struct Ordered;
 
+} // namespace tpyapp::class_dunders
+
+template<> struct std::hash<::tpyapp::class_dunders::Vec2> {
+    size_t operator()(const ::tpyapp::class_dunders::Vec2& val) const noexcept;
+};
+
+namespace tpyapp::class_dunders {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct Vec2 {
@@ -44,11 +52,9 @@ inline std::ostream& operator<<(std::ostream& os, const Vec2& obj) {
 }
 } // namespace tpyapp::class_dunders
 
-template<> struct std::hash<::tpyapp::class_dunders::Vec2> {
-    size_t operator()(const ::tpyapp::class_dunders::Vec2& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::class_dunders::Vec2>::operator()(const ::tpyapp::class_dunders::Vec2& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::class_dunders {
 

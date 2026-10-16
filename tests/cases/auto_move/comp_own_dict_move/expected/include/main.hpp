@@ -10,6 +10,14 @@ namespace tpyapp::main {
 struct Widget;
 struct Node;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Node> {
+    size_t operator()(const ::tpyapp::main::Node& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_widgets;
@@ -83,11 +91,9 @@ inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Node> {
-    size_t operator()(const ::tpyapp::main::Node& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Node>::operator()(const ::tpyapp::main::Node& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

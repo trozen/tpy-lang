@@ -298,6 +298,39 @@ For **non-template records**, methods are declared in the struct; small
 bodies are defined `inline` in `module.hpp` after every struct, larger ones in
 `.cpp` (the current behavior).
 
+## Record Order
+
+Record structs follow source order, each base before its derived classes
+and each `set` / `dict` key record before its holder
+(`RecordGenerator._inheritance_order`), except where C++ needs a later record
+complete first (`RecordGenerator.sort_records_by_storage`):
+
+- **Layout.** A struct follows every record it stores inline: its bases and
+  what its fields hold by value (`typesys.types_held_by_value` with
+  `stop_at_indirecting`) -- a field of a class, `| None`, a tuple or union
+  element, an `Array` element, and what a generic class instantiated in a
+  field stores under its arguments. A type whose binding stores its
+  arguments on the heap (`@native(..., indirecting=True)`: `list`, `set`,
+  `dict`), a pointer and a view hold none. A generic class adds nothing at
+  its own definition; its instantiations do.
+- **Naming.** A nested class cannot be forward-declared, so a struct follows
+  the owner of every nested class its field types, bases or emitted member
+  declarations name (a deduced `auto` return and an `@cpp_template` member
+  declare nothing). Nested siblings are ordered by the same two rules inside
+  their owner.
+- **Hash.** `std::hash` of each hashable record defined in the main record
+  pass is declared right after the record forward declarations and its call
+  operator defined after the struct, so `set[K]` / `dict[K, V]` needs no order
+  (a key holding its holder through a list, or a class keyed on itself,
+  builds). The key-before-holder baseline stays because an in-struct
+  deduced-return body can rely on it
+  (BUGS.md#deduced-return-member-body-uses-later-declaration). Records defined early for protocol bounds, `@native` records and
+  nested records keep the full specialization at their definition.
+
+The earliest remaining record whose needs are emitted goes next, so a module
+whose order already satisfies every need keeps it; a by-value cycle (which
+has no C++ layout) falls back to the earliest remaining record.
+
 ## Single-Header Mode for Testing
 
 The test suite uses snapshot-based expected output. Splitting every module

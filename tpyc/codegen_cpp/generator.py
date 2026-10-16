@@ -14,7 +14,7 @@ import io
 from ..typesys import TpyType, TypeRegistry, NominalType, qualify_shadowed_nominals, UnionType, OwnType, PendingListType, PtrType, NoneType, VoidType, BIGINT, RecordInfo, ProtocolInfo, clear_codegen_state, register_native_cpp_name, register_recursive_alias_cpp_name, register_union_alias, resolve_int_literals, is_void_like_type, bare_name, ConcreteFrameType, unwrap_readonly, unwrap_own, unwrap_ref_type
 from ..identity_map import IdentityMap
 from ..compilation_context import require_current_compiler
-from ..type_def_registry import type_def_of, is_enum_type, enum_info_of, protocol_info_of
+from ..type_def_registry import type_def_of, enum_info_of, protocol_info_of
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyVarDecl, VarLinkage, TpyFieldAccess
 from ..parse.nodes import TpyTupleUnpack, ModuleDirectives, TpyTry, TpyWith
 from ..toolchain import PLATFORMS
@@ -25,7 +25,7 @@ from .resumable_cfg import (
 from .context import CodeGenContext, CodeGenError, CodeGenOptions, module_native_global_names, module_to_cpp_namespace, module_has_cpp_namespace_override, qualified_cpp_name, qualify_native_name, escape_cpp_string, cpp_string_literal_expr, enum_cpp_name
 from .types import TypeResolver
 from .protocols import ProtocolGenerator
-from .records import RecordGenerator
+from .records import RecordGenerator, nested_type_qnames
 from .functions import FunctionGenerator
 from . import emit_prims
 from .type_resolution import resolve_global_binding_type, resolve_stmt_type_cascade
@@ -97,20 +97,6 @@ class _ProtocolDeps:
     records_by_name: dict[str, TpyRecord] = field(default_factory=dict)
 
 
-def _nested_type_qnames(typ: TpyType, registry: TypeRegistry,
-                        out: set[str]) -> None:
-    if (isinstance(typ, NominalType) or is_enum_type(typ)) and "." in typ.name:
-        q = typ.qualified_name()
-        if q is None:
-            # A parser placeholder (no qname) names a class of this module.
-            info = registry.get_record_for_type(typ)
-            q = info.qualified_name() if info is not None else None
-        if q is not None:
-            out.add(q)
-    for inner in typ.inner_types():
-        _nested_type_qnames(inner, registry, out)
-
-
 def _func_needed_class_qnames(func: TpyFunction, registry: TypeRegistry) -> set[str]:
     """Qualified names of what a prototype names inside a class: a nested
     signature type, a default's class-constant owner (`n = Outer.N` spells
@@ -118,8 +104,8 @@ def _func_needed_class_qnames(func: TpyFunction, registry: TypeRegistry) -> set[
     complete."""
     out: set[str] = set()
     for _, ptype in func.params:
-        _nested_type_qnames(ptype, registry, out)
-    _nested_type_qnames(func.return_type, registry, out)
+        nested_type_qnames(ptype, registry, out)
+    nested_type_qnames(func.return_type, registry, out)
     for d in func.defaults:
         if isinstance(d, TpyFieldAccess) and d.class_constant_owner is not None:
             out.add(d.class_constant_owner.qualified_name())
@@ -758,7 +744,8 @@ class CodeGenerator:
             if binding and binding.type and not binding.type.is_value_type() and not binding.type.needs_wrapper():
                 self.ctx.pointer_globals.add(name)
         # Generate protocol ordering and forward declarations
-        self._generate_protocol_ordering(hpp, module, global_decls, final_decls, seen_globals)
+        record_order = self._generate_protocol_ordering(
+            hpp, module, global_decls, final_decls, seen_globals)
 
         # Generate global definitions in source (before functions)
         for stmt in global_decls:
@@ -847,7 +834,7 @@ class CodeGenerator:
         family: dict[str, list[TpyFunction]] = {}
         for record in module.all_records():
             family.setdefault(record.name.split(".")[0], []).extend(record.methods)
-        for record in self.records.sort_records_by_inheritance(module.records):
+        for record in record_order:
             self._emit_source_genexprs(cpp, module, family.get(record.name, []))
             self.records.gen_record_method_defs(cpp, record, mode="def_cpp")
 
@@ -1328,8 +1315,9 @@ class CodeGenerator:
 
     def _generate_protocol_ordering(self, hpp: TextIO, module: TpyModule,
                                     global_decls: list, final_decls: list,
-                                    seen_globals: dict) -> None:
+                                    seen_globals: dict) -> list[TpyRecord]:
         """Generate protocols, forward declarations, and records in proper order.
+        Returns the records' emission order.
 
         C++ requires forward declarations and concepts to be defined before use.
         This method handles the complex ordering requirements.
@@ -1339,7 +1327,8 @@ class CodeGenerator:
         # names are in scope (e.g. struct member initializers using `Rc<T>`).
         self._gen_reexport_using_decls(hpp)
         self._generate_forward_decls_and_concepts(hpp, module, deps)
-        self._generate_definitions_and_reexports(hpp, module, global_decls, final_decls, seen_globals, deps)
+        return self._generate_definitions_and_reexports(
+            hpp, module, global_decls, final_decls, seen_globals, deps)
 
     def _is_native_record(self, record_name: str) -> bool:
         """Check if a record is a native import."""
@@ -1421,32 +1410,64 @@ class CodeGenerator:
 
         return deps
 
-    def _emit_hash_specialization(self, hpp: TextIO, record: TpyRecord) -> None:
-        """Emit std::hash specialization for a hashable record.
-
-        Called immediately after the record's struct definition so that
-        subsequent records can use it as a set/dict-key element type.
-        `@native`-renamed records use `record_info.native_name` as the
-        qualified target (mirrors `_emit_value_type_spec`).
-        """
+    def _hash_target_cpp(self, record: TpyRecord) -> str | None:
+        """The C++ type `std::hash` is specialized for when `record` is
+        hashable, else None. `@native`-renamed records use
+        `record_info.native_name` (mirrors `_emit_value_type_spec`)."""
         info = self.analyzer.registry.get_record(record.name)
         if not info or "__hash__" not in info.methods:
-            return
+            return None
         if record.type_params or record.builtin_type_key:
+            return None
+        return (qualify_native_name(info.native_name)
+                if info.native_name
+                else qualified_cpp_name(self.ctx.module_name, record.name))
+
+    def _emit_hash_declarations(self, hpp: TextIO, records: list[TpyRecord]) -> None:
+        """Declare `std::hash` for each of `records` (all hashable) ahead of
+        every record definition, so a struct holding `set[K]` / `dict[K, V]`
+        builds whichever of the two is emitted first; the call operator is
+        defined after K's struct (`_emit_hash_specialization(declared=True)`)."""
+        if not records:
             return
         ns = module_to_cpp_namespace(self.ctx.module_name)
-        cpp_name = (qualify_native_name(info.native_name)
-                    if info.native_name
-                    else qualified_cpp_name(self.ctx.module_name, record.name))
         hpp.write(f"}} // namespace {ns}\n\n")
-        hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
-        hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept {{\n")
+        for record in records:
+            cpp_name = self._hash_target_cpp(record)
+            hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
+            hpp.write(f"    size_t operator()(const {cpp_name}& val) const noexcept;\n")
+            hpp.write("};\n")
+        hpp.write(f"\nnamespace {ns} {{\n\n")
+
+    def _emit_hash_specialization(self, hpp: TextIO, record: TpyRecord, *,
+                                  declared: bool = False) -> None:
+        """Emit the std::hash specialization for a hashable record, right
+        after its struct definition; with `declared`, only the definition of
+        the call operator `_emit_hash_declarations` declared."""
+        cpp_name = self._hash_target_cpp(record)
+        if cpp_name is None:
+            return
+        info = self.analyzer.registry.get_record(record.name)
+        ns = module_to_cpp_namespace(self.ctx.module_name)
         defer = emit_prims.defer_signals_cpp(info.get_method("__hash__"))
-        if defer is not None:
-            hpp.write(f"        {defer}\n")
-        hpp.write(f"        return static_cast<size_t>(::tpy::__hash__(val));\n")
-        hpp.write(f"    }}\n")
-        hpp.write(f"}};\n")
+        body = ([defer] if defer is not None else []) + [
+            "return static_cast<size_t>(::tpy::__hash__(val));"]
+        hpp.write(f"}} // namespace {ns}\n\n")
+        if declared:
+            head = (f"inline size_t std::hash<{cpp_name}>::operator()"
+                    f"(const {cpp_name}& val) const noexcept {{")
+            indent = "    "
+            tail = ["}"]
+        else:
+            hpp.write(f"template<> struct std::hash<{cpp_name}> {{\n")
+            head = f"    size_t operator()(const {cpp_name}& val) const noexcept {{"
+            indent = "        "
+            tail = ["    }", "};"]
+        hpp.write(head + "\n")
+        for line in body:
+            hpp.write(f"{indent}{line}\n")
+        for line in tail:
+            hpp.write(line + "\n")
         hpp.write(f"\nnamespace {ns} {{\n\n")
 
     def _emit_nested_hash_specializations(self, hpp: TextIO, record: 'TpyRecord') -> None:
@@ -1674,10 +1695,10 @@ class CodeGenerator:
     def _generate_definitions_and_reexports(
         self, hpp: TextIO, module: TpyModule,
         global_decls: list, final_decls: list, seen_globals: dict, deps: _ProtocolDeps
-    ) -> None:
+    ) -> list[TpyRecord]:
         """Generate remaining forward decls, global externs, record definitions, functions, and re-exports."""
         # Hash + is_value_type specs for @native records. The main per-record
-        # emit path (`sort_records_by_inheritance`) filters native records out,
+        # emit path (`sort_records_by_storage`) filters native records out,
         # so without this pass `val_or_ref_t<NativeT>` lands on the false-type
         # default (T&) in generic instantiations -- wrong ABI for a value type --
         # and any TPy-declared `__hash__` on a native record loses its
@@ -1775,6 +1796,18 @@ class CodeGenerator:
         has_non_native_records = any(not self._is_native_record(r.name) for r in module.records)
         if emitted_fwd or has_non_native_records:
             hpp.write("\n")
+
+        def defined_in_loop(record: TpyRecord) -> bool:
+            return (record.name not in deps.early_definition_records
+                    and record.name not in deps.bound_protocol_records)
+
+        # Declared here; each is defined after its struct in the main loop.
+        hash_split = [
+            r for r in module.records
+            if defined_in_loop(r) and not self._is_native_record(r.name)
+            and self._hash_target_cpp(r) is not None]
+        hash_split_names = {r.name for r in hash_split}
+        self._emit_hash_declarations(hpp, hash_split)
 
         # Global extern declarations
         for stmt in global_decls:
@@ -1878,11 +1911,9 @@ class CodeGenerator:
             hpp.write("\n")
 
         # Full record definitions (skip those already defined early)
-        sorted_records = self.records.sort_records_by_inheritance(module.records)
-
-        def defined_in_loop(record: TpyRecord) -> bool:
-            return (record.name not in deps.early_definition_records
-                    and record.name not in deps.bound_protocol_records)
+        sorted_records = self.records.sort_records_by_storage(
+            module.records,
+            defined_early=deps.early_definition_records | deps.bound_protocol_records)
 
         # A deferred prototype follows the last record it needs complete, so
         # a body kept in a later record's struct (a deduced return) can call
@@ -1918,7 +1949,8 @@ class CodeGenerator:
             if not defined_in_loop(record):
                 continue
             self.records.gen_record_decl(hpp, record)
-            self._emit_hash_specialization(hpp, record)
+            self._emit_hash_specialization(
+                hpp, record, declared=record.name in hash_split_names)
             self._emit_nested_hash_specializations(hpp, record)
             # is_value_type spec MUST precede any subsequent inline method
             # body / generator struct / coro struct that template-instantiates
@@ -1984,10 +2016,6 @@ class CodeGenerator:
         if not self.ctx.cycle_peers:
             for record in sorted_records:
                 self.records.gen_record_method_defs(hpp, record, mode="def_hpp")
-
-        # std::hash specializations are emitted per-record inline (see
-        # _emit_hash_specialization), not batched here. This ensures hash
-        # specs appear before any struct that uses the type as a set/dict-key.
 
         # Module-local type alias definitions (after record definitions
         # so member types are complete for std::variant).
@@ -2059,6 +2087,7 @@ class CodeGenerator:
 
         if emitted_func_decl:
             hpp.write("\n")
+        return sorted_records
 
     def _gen_reexport_using_decls(self, hpp: TextIO) -> None:
         """Emit `using` declarations for re-exported symbols (functions /

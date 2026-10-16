@@ -20,6 +20,14 @@ struct K;
 struct W;
 struct N;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::K> {
+    size_t operator()(const ::tpyapp::main::K& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen;
@@ -220,11 +228,9 @@ inline std::ostream& operator<<(std::ostream& os, const K& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::K> {
-    size_t operator()(const ::tpyapp::main::K& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::K>::operator()(const ::tpyapp::main::K& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

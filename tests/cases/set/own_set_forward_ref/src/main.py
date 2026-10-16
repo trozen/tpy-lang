@@ -3,12 +3,11 @@
 #   1. Sema-side flag-forwarding -- pre-fix, validate_type fired the hashable
 #      gate before Point's `__hash__`/`__eq__` were registered, false-rejecting
 #      Point.
-#   2. Codegen-side class emit ordering -- pre-fix, the topo sort considered
-#      only inheritance dependencies, emitting Holder before Point (and its
-#      `std::hash<Point>` specialization) which made C++ fail with
-#      `static_assert(__is_invocable<const std::hash<Point>&, ...>)`. The
-#      hash-element dependency edge added to `sort_records_by_inheritance`
-#      now reorders Point ahead of Holder.
+#   2. Codegen -- Holder's `ordered_set<Point>` needs `std::hash<Point>`
+#      complete (`static_assert(__is_invocable<...>)`). It is declared ahead
+#      of every struct and defined after Point's; the record order still
+#      puts the key Point ahead of Holder (`_inheritance_order`'s hash-key
+#      edge).
 from tpy import int32, uint64
 
 

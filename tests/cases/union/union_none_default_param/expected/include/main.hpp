@@ -13,6 +13,17 @@ struct Dog;
 struct Cat;
 struct Holder;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Fixed> {
+    size_t operator()(const ::tpyapp::main::Fixed& val) const noexcept;
+};
+template<> struct std::hash<::tpyapp::main::Zone> {
+    size_t operator()(const ::tpyapp::main::Zone& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def pointer_arm(pet: Dog | Cat | None = None) -> str:
@@ -47,11 +58,9 @@ inline std::ostream& operator<<(std::ostream& os, const Fixed& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Fixed> {
-    size_t operator()(const ::tpyapp::main::Fixed& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Fixed>::operator()(const ::tpyapp::main::Fixed& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
@@ -89,11 +98,9 @@ inline std::ostream& operator<<(std::ostream& os, const Zone& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Zone> {
-    size_t operator()(const ::tpyapp::main::Zone& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Zone>::operator()(const ::tpyapp::main::Zone& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

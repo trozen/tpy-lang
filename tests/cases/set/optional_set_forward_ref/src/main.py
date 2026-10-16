@@ -1,7 +1,7 @@
 # Regression: `set[T] | None` field where T is declared LATER than the
 # enclosing record. Exercises the `OptionalType` branch of the wider
-# validate_type flag-forwarding fix and the codegen topo-sort's
-# hash-element edge through OptionalType. The `own_set_forward_ref`
+# validate_type flag-forwarding fix and the record order's hash-key edge
+# through OptionalType (`_inheritance_order`). The `own_set_forward_ref`
 # sibling exercises the OwnType path; this one pins OptionalType.
 from tpy import int32, uint64
 

@@ -11,6 +11,14 @@ struct F;
 struct D;
 struct E;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::F> {
+    size_t operator()(const ::tpyapp::main::F& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def pick(a: D, b: D) -> D:
@@ -58,11 +66,9 @@ inline std::ostream& operator<<(std::ostream& os, const F& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::F> {
-    size_t operator()(const ::tpyapp::main::F& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::F>::operator()(const ::tpyapp::main::F& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

@@ -9,6 +9,14 @@ namespace tpyapp::main {
 
 struct Version;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::Version> {
+    size_t operator()(const ::tpyapp::main::Version& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
@@ -69,11 +77,9 @@ inline std::ostream& operator<<(std::ostream& os, const Version& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::Version> {
-    size_t operator()(const ::tpyapp::main::Version& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::Version>::operator()(const ::tpyapp::main::Version& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 

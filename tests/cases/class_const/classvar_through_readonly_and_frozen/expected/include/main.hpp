@@ -10,6 +10,14 @@ namespace tpyapp::main {
 struct Counter;
 struct FrozenCounter;
 
+} // namespace tpyapp::main
+
+template<> struct std::hash<::tpyapp::main::FrozenCounter> {
+    size_t operator()(const ::tpyapp::main::FrozenCounter& val) const noexcept;
+};
+
+namespace tpyapp::main {
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def bump(c: readonly[Counter]) -> None:
@@ -61,11 +69,9 @@ inline std::ostream& operator<<(std::ostream& os, const FrozenCounter& obj) {
 }
 } // namespace tpyapp::main
 
-template<> struct std::hash<::tpyapp::main::FrozenCounter> {
-    size_t operator()(const ::tpyapp::main::FrozenCounter& val) const noexcept {
-        return static_cast<size_t>(::tpy::__hash__(val));
-    }
-};
+inline size_t std::hash<::tpyapp::main::FrozenCounter>::operator()(const ::tpyapp::main::FrozenCounter& val) const noexcept {
+    return static_cast<size_t>(::tpy::__hash__(val));
+}
 
 namespace tpyapp::main {
 
