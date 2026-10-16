@@ -618,37 +618,12 @@ inline String fixed_to_str(T x) {
 }
 
 /**
- * float_to_str - Convert double to a `String`.
- * Produces Python-like output (removes trailing zeros after decimal point).
+ * float_to_str - Convert double to a `String`, as Python's str(float).
  * Note: Returns an OWNING buffer. Caller must ensure the result is used
  * immediately or stored in String/std::string/auto, not std::string_view.
  */
 inline String float_to_str(double x) {
-    // Use Python's repr-like approach: shortest representation that round-trips
-    std::ostringstream oss;
-    oss << std::setprecision(15) << x;
-    std::string result = oss.str();
-
-    // If no decimal point and no exponent, add .0 for Python compatibility
-    if (result.find('.') == std::string::npos && result.find('e') == std::string::npos) {
-        result += ".0";
-    }
-
-    // Remove trailing zeros after decimal point (but keep at least one digit)
-    size_t dot = result.find('.');
-    if (dot != std::string::npos) {
-        size_t e_pos = result.find('e');
-        size_t end = (e_pos != std::string::npos) ? e_pos : result.size();
-        while (end > dot + 2 && result[end - 1] == '0') {
-            --end;
-        }
-        if (e_pos != std::string::npos) {
-            result = result.substr(0, end) + result.substr(e_pos);
-        } else {
-            result = result.substr(0, end);
-        }
-    }
-    return result;
+    return String(format_float(x));
 }
 
 /**

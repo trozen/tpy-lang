@@ -1,3 +1,11 @@
+import math
+from tpy import float32
+
+
+def show[T](x: T) -> None:
+    print("generic", x)
+
+
 def main():
     # Whole numbers should show .0
     print(1.0)
@@ -46,5 +54,20 @@ def main():
     # Numbers close to integers
     print(1.0000000001)
     print(0.9999999999)
+
+    # str(), concatenation and a bare f-string give the same shortest
+    # round-trip text as print()
+    y = 0.1 * 3
+    print("str", str(y), "a" + str(y), f"{y}")  # tpyc: ok
+    print("exp", str(123456789012345678.0), str(1e22), str(1e-05), str(-0.0), str(2.0))
+    # non-finite values keep no ".0"
+    print("nonfinite", str(math.inf), str(-math.inf), str(math.nan), "x" + str(math.inf))  # tpyc: ok
+    f = float32(0.1)
+    print("f32", str(f), f"{f}", f)
+    # generic print of a float32
+    show(f)  # tpyc: ok
+    show(y)
+    # a precision spec and repr are unchanged
+    print("spec", f"{y:.3f}", repr(y))
 
 main()

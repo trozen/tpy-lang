@@ -4,13 +4,24 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/math.hpp"
 
 namespace tpyapp::main {
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def show[T](x: T) -> None:
+template<typename T>
+void show(::tpy::param_val_or_ref_t<T> x);
 // def main():
 void main();
+
+// def show[T](x: T) -> None:
+//     print("generic", x)
+template<typename T>
+void show(::tpy::param_val_or_ref_t<T> x) {
+    std::cout << "generic" << " " << ::tpy::ValuePrinter(x) << "\n" << ::tpy::check_signals;
+}
 
 void __tpy_init();
 } // namespace tpyapp::main

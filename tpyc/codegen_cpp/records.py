@@ -240,10 +240,10 @@ class RecordGenerator:
                                if parent_info is not None else None)
                 if parent_name is not None:
                     dependencies[record.name].add(parent_name)
-            # The hash split needs no key-before-holder order, but an
-            # in-struct deduced-return body can rely on it
-            # (BUGS.md#deduced-return-member-body-uses-later-declaration);
-            # this walk goes when those bodies leave the struct.
+            # The hash split needs no key-before-holder order, but bodies
+            # kept in the struct can rely on it: a deduced-return member
+            # and a friend operator returning the key by value
+            # (BUGS.md#deduced-return-member-body-uses-later-declaration).
             for fld in record_info.fields:
                 if fld.type is None:
                     continue

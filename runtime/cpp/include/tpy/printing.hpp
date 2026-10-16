@@ -318,8 +318,8 @@ std::ostream& operator<<(std::ostream& os, const ValuePrinter<T>& p) {
         return os << p.value;
     } else if constexpr (std::is_same_v<T, bool>) {
         return os << (p.value ? "True" : "False");
-    } else if constexpr (std::is_same_v<T, double>) {
-        return os << format_float(p.value);
+    } else if constexpr (std::floating_point<T>) {
+        return os << format_float(static_cast<double>(p.value));
     } else if constexpr (std::ranges::range<T>) {
         return os << ListPrinter(p.value);
     } else {

@@ -22,9 +22,7 @@ def set_from_range() -> int32:
     return len(s)
 
 
-# free function: a str view iterates as characters. It reads only the length
-# because printing the `list[char]` itself diverges from CPython -- a char
-# element reprs unquoted (BUGS.md#char-repr-unquoted).
+# free function: a str view iterates as characters.
 def from_str(s: str) -> int32:
     cs = list(s)  # tpyc: ok
     return len(cs)

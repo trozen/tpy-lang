@@ -7,6 +7,8 @@
 
 namespace tpyapp::main {
 
+struct Rec;
+
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
@@ -14,5 +16,43 @@ void main();
 // def show_optional(s: str | None) -> None:
 void show_optional(std::optional<std::string_view> s);
 
+// @dataclass
+// class Rec:
+struct Rec {
+    // c: char
+    char c;
+    // o: char | None
+    std::optional<char> o;
+
+    Rec() = default;
+    explicit Rec(char c, std::optional<char> o);
+
+    bool __eq__(const Rec& other) const;
+
+    std::string __repr__() const;
+
+    friend bool operator==(const Rec& lhs, const Rec& other) {
+        return lhs.__eq__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Rec";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
+    os << obj.__repr__();
+    return os;
+}
+
+
+inline Rec::Rec(char c, std::optional<char> o)
+    : c(c),
+      o(o) {}
+
+inline bool Rec::__eq__(const Rec& other) const {
+    return ((this->c == other.c) && (this->o == other.o));
+}
+
+inline std::string Rec::__repr__() const {
+    return std::format("Rec(c={}, o={})", ::tpy::repr_of(this->c), ::tpy::repr_of(this->o));
+}
 void __tpy_init();
 } // namespace tpyapp::main

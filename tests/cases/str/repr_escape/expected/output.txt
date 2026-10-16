@@ -12,3 +12,9 @@
 'a\nb'
 None
 ''
+list ['a', 'b', "'", 'c', '\n', '\\']
+comp ['a', 'b', "'", 'c', '\n', '\\']
+set {"'"}
+repr "'" "'" 'a'
+rec Rec(c='b', o='a') Rec(c='b', o=None)
+plain ' ' '

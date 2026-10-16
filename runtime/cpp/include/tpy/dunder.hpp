@@ -477,6 +477,10 @@ inline std::string __repr__(const char* x) {
 inline std::string __repr__(const String& x) {
     return repr_quote_string(x);
 }
+// Python has no char type: a char is a one-character str, so it reprs quoted.
+inline std::string __repr__(char x) {
+    return repr_quote_string(std::string_view(&x, 1));
+}
 
 // Optional: None or repr(value).
 template<typename T>

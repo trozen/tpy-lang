@@ -4,11 +4,6 @@
 namespace tpyapp::main {
 
 
-// # repr() of strings produces Python-faithful escape form: outer quotes
-// # plus C-style escapes for control characters, backslash, and the active
-// # quote. Quote selection follows CPython: prefer single quotes, switch to
-// # double when the string contains `'` and no `"`. The same escaping is
-// # used by container printing (print([s]), print({s})).
 // def main() -> None:
 //     # Control characters
 //     print(repr("a\nb"))         # 'a\nb'
@@ -47,6 +42,20 @@ namespace tpyapp::main {
 //
 //     # Edge case: empty string.
 //     print(repr(""))
+//
+//     # chars as container elements repr quoted, escapes included
+//     t = "ab'c\n\\"
+//     print("list", list(t))  # tpyc: ok
+//     comp = [ch for ch in t]
+//     print("comp", comp)
+//     print("set", set(comp[2:3]))  # tpyc: ok
+//     # repr() and !r of a char
+//     c = t[2]
+//     print("repr", repr(c), f"{c!r}", repr(t[0]))  # tpyc: ok
+//     # a char field and an Optional char field in a dataclass repr
+//     print("rec", Rec(t[1], t[0]), Rec(t[1], None))  # tpyc: ok
+//     # inverse: str, print and a bare f-string of a char stay unquoted
+//     print("plain", str(c), c, f"{c}")
 void main() {
     std::cout << ::tpy::repr_of("a\nb") << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::repr_of("tab\there") << "\n" << ::tpy::check_signals;
@@ -70,6 +79,25 @@ void main() {
     ::tpyapp::main::show_optional("a\nb");
     ::tpyapp::main::show_optional(std::nullopt);
     std::cout << ::tpy::repr_of("") << "\n" << ::tpy::check_signals;
+    std::string_view t = "ab'c\n\\";
+    std::cout << "list" << " " << ::tpy::ListPrinter(::tpy::construct<std::vector<char>>(t)) << "\n" << ::tpy::check_signals;
+    std::vector<char> comp = ({
+        std::vector<char> __result;
+        auto& __obj_0 = t;
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            char ch = *__beg_0;
+            __result.push_back(ch);
+        }
+        std::move(__result);
+    });
+    std::cout << "comp" << " " << ::tpy::ListPrinter(comp) << "\n" << ::tpy::check_signals;
+    std::cout << "set" << " " << ::tpy::SetPrinter(::tpy::set_construct<char>(::tpy::list_slice(comp, ::tpy::BasicSlice{2, 3}))) << "\n" << ::tpy::check_signals;
+    char c = ::tpy::__getitem__(t, 2);
+    std::cout << "repr" << " " << ::tpy::repr_of(c) << " " << std::format("{}", ::tpy::repr_of(c)) << " " << ::tpy::repr_of(::tpy::__getitem__(t, 0)) << "\n" << ::tpy::check_signals;
+    std::cout << "rec" << " " << Rec(::tpy::__getitem__(t, 1), ::tpy::__getitem__(t, 0)) << " " << Rec(::tpy::__getitem__(t, 1), std::nullopt) << "\n" << ::tpy::check_signals;
+    std::cout << "plain" << " " << std::string(::tpy::char_to_str(c)) << " " << c << " " << std::format("{}", c) << "\n" << ::tpy::check_signals;
 }
 
 // def show_optional(s: str | None) -> None:
@@ -78,6 +106,14 @@ void show_optional(std::optional<std::string_view> s) {
     std::cout << ::tpy::repr_of(s ? std::make_optional(std::string(*s)) : std::nullopt) << "\n" << ::tpy::check_signals;
 }
 
+// # repr() of strings produces Python-faithful escape form: outer quotes
+// # plus C-style escapes for control characters, backslash, and the active
+// # quote. Quote selection follows CPython: prefer single quotes, switch to
+// # double when the string contains `'` and no `"`. The same escaping is
+// # used by container printing (print([s]), print({s})). A char reprs as a
+// # one-character str; str(), print() and a bare f-string leave it bare.
+// from dataclasses import dataclass
+//
 // main()
 void __tpy_init() {
     static bool initialized = false;
