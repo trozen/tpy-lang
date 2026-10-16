@@ -1,0 +1,1 @@
+main.py:46: error: Ambiguous overload for '__add__': multiple candidates match equally: __add__(Pt); __add__(Pt | None)

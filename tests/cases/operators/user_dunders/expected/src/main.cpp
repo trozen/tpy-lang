@@ -113,7 +113,7 @@ void test_eq() {
     Vec2 c = Vec2(3, 4);
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((a) == (c)))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_explicit_ne() -> None:
@@ -140,8 +140,8 @@ void test_inherited_eq() {
     Child a = Child(1, 2);
     Child b = Child(1, 2);
     Child c = Child(3, 4);
-    std::cout << ::tpy::print_bool((a == b)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a == c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_comparisons() -> None:

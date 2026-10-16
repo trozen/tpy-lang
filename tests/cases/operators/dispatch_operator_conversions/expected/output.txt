@@ -1,0 +1,33 @@
+arith: 1 1 2 16
+arith: 11 12
+literal: 1 11
+literal_value: 1 1 1
+inplace: IF iadd
+compare: True True False
+reflected: True False True True True True
+chained: True ['mid']
+chained_conv: True ['mid']
+chained_cast: True True ['cast', 'conv']
+chained_bytes: True True
+ne_order: False
+record_reflected: True
+timedelta: 0:00:40 0:00:40 0:00:02.500000 0:00:02.500000 0:00:25
+method: 1
+comprehension: [1, 2, 3]
+generator: [True, True]
+closure: 1
+while: 2
+reference: 11 11
+inherited: 7 True False
+inherited_iadd: 5
+inherited_unary: -3
+generic_parent: 9 True
+literal_slots: 8 12 12
+division: 1 3 5 7 2 8 9
+bitwise: 11 13 15 12 14
+shift: 17 19 18 20
+async: 1
+try_body: True
+finally: False
+match_guard: hit
+module: 1 3

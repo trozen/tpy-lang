@@ -719,15 +719,13 @@ class THIRChainedCompareStmtExpr(THIRExpr):
     statement-expression that binds each
     non-simple operand to an `auto&& _cmpI` temp so it evaluates exactly once,
     interleaving bindings with the left-folded `&&` chain (operands after a
-    failed pair never evaluate). `inits[i]` is operand i's lowered value (the
-    temp init, or the inline render when `bound[i]` is False); the n pairs carry
-    the operator and the per-side `{0}`-cast wraps (BigInt/float + IntEnum),
-    applied to the operand REPRs (`_cmpI` or inline)."""
-    inits: tuple[THIRExpr, ...]
-    bound: tuple[bool, ...]
-    ops: tuple[str, ...]
-    left_casts: tuple['str | None', ...]
-    right_casts: tuple['str | None', ...]
+    failed pair never evaluate). `inits[i]` is operand i's temp init, None
+    for an operand its pair renders inline (the first when simple, the last
+    always); `pairs[i]` is the i-th comparison as a plain one lowers, over a
+    `_cmpI` name for each bound operand, so its dunder, reflected form,
+    conversions and casts render as a plain comparison's do."""
+    inits: tuple['THIRExpr | None', ...]
+    pairs: tuple[THIRBinOp, ...]
 
 
 @dataclass(frozen=True)

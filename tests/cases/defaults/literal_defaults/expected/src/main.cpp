@@ -25,7 +25,7 @@ std::string kwonly(const ::tpy::BigInt& x, std::string_view mode) {
 // def int_neg(level: Literal[-1, 0, 9] = -1) -> int:  # tpyc: ok
 //     return level
 ::tpy::BigInt int_neg(int32_t level) {
-    return level;
+    return ::tpy::BigInt(level);
 }
 
 // # bool Literal

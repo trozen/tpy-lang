@@ -37,9 +37,6 @@ struct OpLitWidth;
 struct OpText;
 struct OpOptStr;
 struct OpMixed;
-struct OpPoint;
-struct OpLeft;
-struct OpRight;
 struct InSet;
 struct InWords;
 struct InLit;
@@ -976,86 +973,6 @@ inline std::ostream& operator<<(std::ostream& os, const OpMixed& obj) {
     return os;
 }
 
-// class OpPoint:
-struct OpPoint {
-    // x: int32
-    int32_t x;
-
-    // def __init__(self, x: int32) -> None:
-    OpPoint() = default;
-    explicit OpPoint(int32_t x);
-    static constexpr std::string_view __tpy_class_name__ = "__main__.OpPoint";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const OpPoint& obj) {
-    ::tpy::print_object_default(os, "OpPoint", obj);
-    return os;
-}
-
-// class OpLeft:
-struct OpLeft {
-
-    // def __init__(self) -> None:
-    OpLeft();
-
-    // @dispatch
-    // def __add__(self, p: OpPoint) -> int32:
-    int32_t __add__(const OpPoint& p) const;
-
-    // @dispatch
-    // def __add__(self, p: OpPoint | None) -> int32:
-    int32_t __add__(const OpPoint* p) const;
-
-    friend int32_t operator+(const OpLeft& lhs, const OpPoint& p) {
-        return lhs.__add__(p);
-    }
-
-    friend int32_t operator+(const OpLeft& lhs, const OpPoint* p) {
-        return lhs.__add__(p);
-    }
-    static constexpr std::string_view __tpy_class_name__ = "__main__.OpLeft";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const OpLeft& obj) {
-    ::tpy::print_object_default(os, "OpLeft", obj);
-    return os;
-}
-
-// class OpRight(Deref[OpPoint]):
-struct OpRight {
-    // _p: OpPoint
-    OpPoint _p;
-
-    // def __init__(self, p: Own[OpPoint]) -> None:
-    OpRight() = default;
-    explicit OpRight(OpPoint&& p);
-
-    // @auto_readonly
-    // def __deref__(self) -> OpPoint:
-    OpPoint& __deref__();
-
-    // @auto_readonly
-    // def __deref__(self) -> OpPoint:
-    const OpPoint& __deref__() const;
-
-    // def __radd__(self, x: OpLeft) -> int32:
-    int32_t __radd__(const OpLeft& x) const;
-
-    friend int32_t operator+(const OpLeft& x, const OpRight& rhs) {
-        return rhs.__radd__(x);
-    }
-
-    auto operator*() -> decltype(__deref__());
-
-    auto operator*() const -> decltype(__deref__());
-    static constexpr std::string_view __tpy_class_name__ = "__main__.OpRight";
-};
-
-inline std::ostream& operator<<(std::ostream& os, const OpRight& obj) {
-    ::tpy::print_object_default(os, "OpRight", obj);
-    return os;
-}
-
 // class InSet:
 struct InSet {
 
@@ -1579,61 +1496,6 @@ inline OpMixed& OpMixed::mark() {
 inline OpMixed& OpMixed::__iadd__(const ::tpy::BigInt& x) {
     this->hits = ::tpy::add_check<int32_t>(this->hits, 2);
     return (*this);
-}
-
-// def __init__(self, x: int32) -> None:
-//     self.x = x
-inline OpPoint::OpPoint(int32_t x) : x(x) {}
-
-// def __init__(self) -> None:
-//     pass
-inline OpLeft::OpLeft() {
-}
-
-// @dispatch
-// def __add__(self, p: OpPoint) -> int32:
-//     return 10
-inline int32_t OpLeft::__add__(const OpPoint& p) const {
-    return 10;
-}
-
-// @dispatch
-// def __add__(self, p: OpPoint | None) -> int32:
-//     return 20
-inline int32_t OpLeft::__add__(const OpPoint* p) const {
-    return 20;
-}
-
-// def __init__(self, p: Own[OpPoint]) -> None:
-//     self._p = p
-inline OpRight::OpRight(OpPoint&& p) : _p(std::move(p)) {}
-
-// @auto_readonly
-// def __deref__(self) -> OpPoint:
-//     return self._p
-inline OpPoint& OpRight::__deref__() {
-    return this->_p;
-}
-
-// @auto_readonly
-// def __deref__(self) -> OpPoint:
-//     return self._p
-inline const OpPoint& OpRight::__deref__() const {
-    return this->_p;
-}
-
-// def __radd__(self, x: OpLeft) -> int32:
-//     return 30
-inline int32_t OpRight::__radd__(const OpLeft& x) const {
-    return 30;
-}
-
-inline auto OpRight::operator*() -> decltype(__deref__()) {
-    return __deref__();
-}
-
-inline auto OpRight::operator*() const -> decltype(__deref__()) {
-    return __deref__();
 }
 
 // def __init__(self) -> None:

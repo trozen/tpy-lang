@@ -1441,12 +1441,17 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         return
     if isinstance(node, THIRChainedCompareStmtExpr):
         # Operands 0 and 1 always evaluate; every later one sits behind a
-        # passed compare, so inits[2:] are conditional-operand positions --
-        # the ternary-arm rule again (the lowering-time cond_eager check is
+        # passed compare, so inits[2:] and pairs[1:] (the last operand
+        # renders in its pair) are conditional-operand positions -- the
+        # ternary-arm rule again (the lowering-time cond_eager check is
         # the primary gate; this keeps the structural net symmetric).
         for idx, init in enumerate(node.inits):
-            _walk(owner, init, return_type, argtemp_ok=argtemp_ok,
-                  eager_only=(True if idx >= 2 else eager_only))
+            if init is not None:
+                _walk(owner, init, return_type, argtemp_ok=argtemp_ok,
+                      eager_only=(True if idx >= 2 else eager_only))
+        for idx, pair in enumerate(node.pairs):
+            _walk(owner, pair, return_type, argtemp_ok=argtemp_ok,
+                  eager_only=(True if idx >= 1 else eager_only))
         return
     if (isinstance(node, THIRBinOp) and node.resolved is None
             and node.op in ("&&", "||")):

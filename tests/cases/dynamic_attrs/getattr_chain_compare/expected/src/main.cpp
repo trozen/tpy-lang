@@ -19,7 +19,7 @@ int32_t calls{};
 void main() {
     Bag b = Bag(::tpy::BigInt(5));
     calls = 0;
-    bool in_range = ({ auto&& _cmp1 = b.__getattr__("anything"); (1 < _cmp1) && (_cmp1 < 10); });
+    bool in_range = ({ auto&& _cmp1 = b.__getattr__("anything"); (::tpy::BigInt(1) < _cmp1) && (_cmp1 < 10); });
     std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
     bool member = ({ auto&& __in_lhs = b.__getattr__("anything"); (__in_lhs == 5) || (__in_lhs == 9); });

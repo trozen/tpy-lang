@@ -10,9 +10,9 @@ from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
-    ResolvedBinop, ResolvedUnaryop, FunctionInfo, TypeParamKind,
-    INT32, FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
-    unwrap_readonly, resolve_int_literals,
+    ResolvedBinop, ResolvedUnaryop, FunctionInfo, ParamInfo, RecordInfo, TypeParamKind,
+    INT32, FLOAT, PendingContainerType, OwnType, NominalType, unwrap_ref_type,
+    unwrap_readonly, unwrap_qualifiers, resolve_int_literals,
     substitute_type_params_simple, is_any_float_type,
 )
 from ..parse import TpyAugAssign, TpyBinOp, TpyExpr
@@ -132,13 +132,23 @@ def _literal_beside(t: TpyType, effective: TpyType, other: TpyType,
 
 
 def _answers_converted(operand: TpyType, param: TpyType) -> bool:
-    """Whether a dunder set answers with a winner that converts `operand`
-    to its parameter `param`: a numeric literal (`numeric_literal_type`,
-    the operand the literal pin renders at the parameter's own type), or a
-    `Literal[...]` value converted to its own base type. Converting any
-    other value is left to the resolver's later steps."""
+    """Whether a builtin type's dunder set answers with a winner that
+    converts `operand` to its parameter `param`: a numeric literal
+    (`numeric_literal_type`, the operand the literal pin renders at the
+    parameter's own type), or a `Literal[...]` value converted to its own
+    base type. Converting any other value is left to the resolver's later
+    steps, so `n32 + big` is an `int` there, not a narrowed `int32`."""
     return (numeric_literal_type(operand) is not None
             or converts_literal_to_base(operand, param))
+
+
+def answers_as_call(receiver: TpyType) -> bool:
+    """Whether the dunder set at `receiver` answers an operator as the
+    explicit call to it does, any conversion of the operand included: a
+    record's does (the operator is that call); a builtin type's answers
+    only what `_answers_converted` admits."""
+    bare = unwrap_qualifiers(receiver)
+    return isinstance(bare, NominalType) and bare.is_user_record
 
 
 def _operand_exprs(loc_node: object) -> tuple[TpyExpr | None, TpyExpr | None]:
@@ -278,11 +288,13 @@ class OperatorResolver:
         substituted (int-kind ones included), its readonly / consuming
         filter, the method's own type params inferred from the operand. A
         numeric literal operand ranks at its `home` beside the other
-        operand when it has one. The set answers when the winner takes the
-        operand as it is, or converts it as `_answers_converted` admits;
-        any other conversion is left to the later steps, and so is a tie
-        fewer than two of whose candidates would answer. Returns the method
-        with the substitution to apply to it, or the tie as a value."""
+        operand when it has one. A record's set answers as the call does
+        (`answers_as_call`); any other answers when the winner takes the
+        operand as it is, or converts it as `_answers_converted` admits,
+        and leaves any other conversion to the later steps, as it does a
+        tie fewer than two of whose candidates would answer. Returns the
+        method with the substitution to apply to it, or the tie as a
+        value."""
         cands = filter_receiver_overloads(
             [m for m in overloads if len(m.params) == 1],
             is_readonly_receiver=receiver_is_readonly(
@@ -294,17 +306,18 @@ class OperatorResolver:
         ranking = method_call_ranking(self.ctx, self.protocols, self.type_ops)
         views = [self.type_ops.substitute_method_type_params(m, type_subst)
                  if type_subst else m for m in cands]
+        as_call = answers_as_call(receiver)
         try:
             pick = ranking.rank(views, [arg])
         except OverloadAmbiguityError as e:
             tied = tuple(c for c in e.candidates
-                         if not e.converted
+                         if as_call or not e.converted
                          or _answers_converted(operand, c.params[0].type))
             return (OperatorAmbiguity(cands[0].name, tied)
                     if len(tied) > 1 else None)
         if pick.winner is None:
             return None
-        if (pick.winner not in pick.strict
+        if (not as_call and pick.winner not in pick.strict
                 and not _answers_converted(operand, views[pick.winner].params[0].type)):
             return None
         return self._bind_winner(cands[pick.winner], arg, type_subst)
@@ -384,6 +397,43 @@ class OperatorResolver:
             widens_operand=widens_operand,
         )
 
+    def received_params(self, result: ResolvedBinop) -> list[ParamInfo]:
+        """The resolved dunder's operand parameter as its explicit call
+        receives the operand: substituted at the receiver's type args,
+        int-kind ones included (`N` of an `ArrayList[T, N]` receiver)."""
+        method = result.method
+        full = (self.type_ops.build_type_substitution(result.receiver_type)
+                if result.receiver_type is not None else {})
+        if any(not isinstance(v, TpyType) for v in full.values()):
+            method = self.type_ops.substitute_method_type_params(method, full)
+        return method.params[:1]
+
+    def dunder_overloads(self, record: RecordInfo | None,
+                         name: str) -> list[FunctionInfo]:
+        """The overloads of dunder `name` on `record` as its explicit call
+        finds them: the record's own, else the nearest parent's
+        (`ProtocolChecker.lookup_record_method_overloads`), with the
+        parent's type params substituted as the child spells them."""
+        if record is None:
+            return []
+        overloads, parent_subst = self.protocols.lookup_record_method_overloads(
+            record, name)
+        if parent_subst:
+            overloads = [self.type_ops.substitute_method_type_params(m, parent_subst)
+                         for m in overloads]
+        return overloads
+
+    def receiver_dunders(self, record: RecordInfo | None,
+                         name: str) -> list[FunctionInfo]:
+        """The overloads answering dunder `name` at one receiver: its own
+        (`dunder_overloads`), and for a `__ne__` it does not define, its
+        `__eq__`, which `object.__ne__` negates -- so `l != r` asks `l`
+        before the reflected `r.__ne__`, as Python does."""
+        overloads = self.dunder_overloads(record, name)
+        if not overloads and name == "__ne__":
+            overloads = self.dunder_overloads(record, "__eq__")
+        return overloads
+
     def forward_dunders(self, left_type: TpyType, op: str) -> list[FunctionInfo]:
         """The overloads `resolve_binop` tries first for `left op right`:
         the left operand's own dunder (`left.__add__`)."""
@@ -392,7 +442,7 @@ class OperatorResolver:
             return []
         record = self.ctx.registry.get_record_for_type(
             self.get_effective_type_for_binop(left_type))
-        return record.get_method_overloads(method_name) if record else []
+        return self.receiver_dunders(record, method_name)
 
     def resolve_binop(
         self, left_type: TpyType, op: str, right_type: TpyType,
@@ -409,7 +459,8 @@ class OperatorResolver:
         Tries in order:
         1. left.__add__(right) - direct match
         2. If left has __int__ returning right's type, promote left and use right's __add__
-        3. right.__radd__(left) - reverse operator
+        3. right.__radd__(left) - reverse operator; for a comparison, a
+           record right operand's reflected comparison (`right.__gt__(left)`)
         4. If right has __int__ returning left's type, promote right and use left's __add__
         5. Two fixed ints of different types: the operand a slot of the other's
            type would accept converts, and the wider type's operator applies
@@ -459,13 +510,13 @@ class OperatorResolver:
 
         # 2. Try promoting left to right's type via __int__
         if left_record and right_record:
-            int_overloads = left_record.get_method_overloads("__int__")
+            int_overloads = self.dunder_overloads(left_record, "__int__")
             if int_overloads:
                 int_method = int_overloads[0]
                 promoted_type = int_method.return_type
                 # Check if promoted type matches right's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == right_record:
-                    right_overloads = right_record.get_method_overloads(method_name)
+                    right_overloads = self.dunder_overloads(right_record, method_name)
                     found = self._rank_set(right_overloads, right_arg, right_subst,
                                            promoted_type, None, right_home)
                     if isinstance(found, OperatorAmbiguity):
@@ -477,9 +528,20 @@ class OperatorResolver:
                             promotion=int_method,
                         )
 
-        # 3. Try reverse: right.__radd__(left)
-        if right_record and rmethod_name:
-            overloads = right_record.get_method_overloads(rmethod_name)
+        # 3. Try reverse: right.__radd__(left). A comparison asks a record
+        # on the right for its reflected comparison (`3 < c` is
+        # `c.__gt__(3)`); a builtin type's comparison has no reflected step.
+        # A record on the left that defines the comparison would be asked
+        # first; one whose dunder refuses the operand cannot be (Python
+        # would still call it), so the reflected one does not answer.
+        reflected = rmethod_name or (
+            builtin_modules.COMPARE_TO_REFLECTED_METHOD.get(op)
+            if answers_as_call(right_effective) and not (
+                answers_as_call(left_effective)
+                and self.receiver_dunders(left_record, method_name))
+            else None)
+        if right_record and reflected:
+            overloads = self.receiver_dunders(right_record, reflected)
             found = self._rank_set(overloads, left_arg, right_subst,
                                    right_type, right_expr, left_home)
             if isinstance(found, OperatorAmbiguity):
@@ -491,13 +553,13 @@ class OperatorResolver:
 
         # 4. Try promoting right to left's type via __int__, then use left's operator
         if right_record and left_record:
-            int_overloads = right_record.get_method_overloads("__int__")
+            int_overloads = self.dunder_overloads(right_record, "__int__")
             if int_overloads:
                 int_method = int_overloads[0]
                 promoted_type = int_method.return_type
                 # Check if promoted type matches left's type
                 if self.ctx.registry.get_record_for_type(promoted_type) == left_record:
-                    left_overloads = left_record.get_method_overloads(method_name)
+                    left_overloads = self.dunder_overloads(left_record, method_name)
                     found = self._rank_set(left_overloads, promoted_type, left_subst,
                                            left_type, left_expr)
                     if isinstance(found, OperatorAmbiguity):
@@ -514,7 +576,7 @@ class OperatorResolver:
         # reflected dunder) already compare mixed widths natively.
         if rmethod_name and op not in ("<<", ">>"):
             if wrap := self._fixed_int_widening_wrap(right_effective, left_effective):
-                overloads = left_record.get_method_overloads(method_name) if left_record else []
+                overloads = self.dunder_overloads(left_record, method_name)
                 found = self._rank_set(overloads, left_effective, left_subst,
                                        left_type, left_expr)
                 if isinstance(found, OperatorAmbiguity):
@@ -525,7 +587,7 @@ class OperatorResolver:
                         right_wrapper=wrap, widens_operand=True,
                     )
             elif wrap := self._fixed_int_widening_wrap(left_effective, right_effective):
-                overloads = right_record.get_method_overloads(method_name) if right_record else []
+                overloads = self.dunder_overloads(right_record, method_name)
                 found = self._rank_set(overloads, right_effective, right_subst,
                                        right_type, right_expr)
                 if isinstance(found, OperatorAmbiguity):
@@ -573,42 +635,41 @@ class OperatorResolver:
         value_arg = self._operand_arg(value_type)
         home = literal_home(value_type, target_type, target_effective)
 
-        found = self._rank_set(record.get_method_overloads(method_name),
+        found = self._rank_set(self.dunder_overloads(record, method_name),
                                value_arg, type_subst, target_type,
                                _operand_exprs(loc_node)[0], home)
         if found is None or isinstance(found, OperatorAmbiguity):
             return found
         return self._make_resolved(*found, target_effective, loc_node)
 
-    def get_aug_inplace_param_type(
+    def get_aug_inplace_param_types(
         self, target_type: TpyType, op: str,
-    ) -> TpyType | None:
-        """Return the expected param type for an in-place operator, or None if not defined.
+    ) -> list[TpyType]:
+        """The parameter types of the in-place operator's variants, at the
+        target's type args; empty when it defines none.
 
-        Used to produce precise type mismatch errors when resolve_aug_inplace fails:
-        the caller can pass the returned type to check_type_compatible to get a
-        specific "expected X, got Y" error instead of a generic "not supported" error.
+        Used to produce precise type mismatch errors when resolve_aug_inplace
+        fails: "expected X, got Y" (or "expected X or Z") instead of a
+        generic "not supported" error.
         """
         method_name = builtin_modules.AUGOP_TO_IMETHOD.get(op)
         if not method_name:
-            return None
+            return []
 
         target_effective = self.get_effective_type_for_binop(target_type)
         record = self.ctx.registry.get_record_for_type(target_effective)
         if not record:
-            return None
-
-        overloads = record.get_method_overloads(method_name)
-        candidates = [m for m in overloads if m.params]
-        if not candidates:
-            return None
+            return []
 
         type_subst = _type_entries(
             self._build_type_subst(target_effective, target_effective))
-        _, param_type = candidates[0].params[0]
+        params = [m.params[0].type
+                  for m in self.dunder_overloads(record, method_name)
+                  if m.params]
         if type_subst:
-            param_type = substitute_type_params_simple(param_type, type_subst)
-        return param_type
+            params = [substitute_type_params_simple(p, type_subst)
+                      for p in params]
+        return params
 
     def resolve_unaryop(
         self, operand_type: TpyType, op: str, loc_node=None,
@@ -621,7 +682,7 @@ class OperatorResolver:
         effective_type = self.get_effective_type_for_binop(operand_type)
         record = self.ctx.registry.get_record_for_type(effective_type)
         if record:
-            overloads = record.get_method_overloads(method_name)
+            overloads = self.dunder_overloads(record, method_name)
             if overloads and len(overloads[0].params) == 0:
                 method = overloads[0]
                 class_subst = _type_entries(

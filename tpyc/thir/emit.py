@@ -666,44 +666,41 @@ def _emit_chained_compare_stmtexpr(e: THIRChainedCompareStmtExpr,
                                    state: _EmitState) -> str:
     # Bind each non-simple operand to an `auto&& _cmpI` temp, then interleave
     # bindings with the left-folded `&&` chain so operands after a failed pair
-    # never evaluate. Each pair renders as a bare op with per-side `{0}` casts
-    # over the operand REPRs (temp name or inline render).
-    n = len(e.ops)
-    reprs: list[str] = []
+    # never evaluate. Each pair renders as a plain comparison (`_emit_binop`)
+    # over the temps.
+    n = len(e.pairs)
     binds: list[str | None] = []
-    for i in range(n + 1):
+    for i, init in enumerate(e.inits):
+        if init is None:
+            binds.append(None)
+            continue
         # Operands 0 and 1 always run; every later one sits behind a passed
         # compare, so its deferred temps bank into a region and splice at
         # the operand.
         if i >= 2:
             with state.temps.conditional_region() as _region:
-                code = _emit_expr(e.inits[i], state)
-            prefix = _region.prefix
+                code = _emit_expr(init, state)
+            if _region.prefix:
+                code = f"({_region.prefix}{code})"
         else:
-            code = _emit_expr(e.inits[i], state)
-            prefix = ""
-        if e.bound[i]:
-            reprs.append(f"_cmp{i}")
-            init = f"({prefix}{code})" if prefix else code
-            binds.append(f"auto&& _cmp{i} = {init};")
-        else:
-            reprs.append(f"({prefix}{code})" if prefix else code)
-            binds.append(None)
+            code = _emit_expr(init, state)
+        binds.append(f"auto&& _cmp{i} = {code};")
 
-    def render_pair(i: int, left: str, right: str) -> str:
-        if e.left_casts[i] is not None:
-            left = e.left_casts[i].format(left)
-        if e.right_casts[i] is not None:
-            right = e.right_casts[i].format(right)
-        return f"({left} {e.ops[i]} {right})"
+    def render_pair(i: int) -> str:
+        if i == 0:
+            return _emit_binop(e.pairs[0], state)
+        # The last operand renders inline in its pair, behind a passed
+        # compare too.
+        with state.temps.conditional_region() as _region:
+            code = _emit_binop(e.pairs[i], state)
+        return f"({_region.prefix}{code})" if _region.prefix else code
 
-    inner = render_pair(n - 1, reprs[n - 1], reprs[n])
+    inner = render_pair(n - 1)
     for i in range(n - 2, 0, -1):
-        inner = ("({ " + binds[i + 1] + " "
-                 + render_pair(i, reprs[i], reprs[i + 1])
+        inner = ("({ " + binds[i + 1] + " " + render_pair(i)
                  + " && " + inner + "; })")
     outer_parts = [b for b in binds[:2] if b]
-    outer_parts.append(render_pair(0, reprs[0], reprs[1]) + " && " + inner + ";")
+    outer_parts.append(render_pair(0) + " && " + inner + ";")
     return "({ " + " ".join(outer_parts) + " })"
 
 

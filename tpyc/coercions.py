@@ -88,6 +88,18 @@ def int_literal_fits_fixed_int(lit: TpyType, target: TpyType) -> bool:
     return lit.value is None or (tr.min_value <= lit.value <= tr.max_value)
 
 
+def _int_literal_value(t: TpyType) -> bool:
+    return isinstance(t, LiteralType) and t.is_int_base()
+
+
+def _literal_values_fit(lit: TpyType, target: TpyType) -> bool:
+    """Every value of an int `Literal[...]` fits the fixed-int target."""
+    tr = int_traits_of(target)
+    return (tr is not None and isinstance(lit, LiteralType)
+            and all(tr.min_value <= v.value <= tr.max_value
+                    for v in lit.values))
+
+
 def float_literal_fits_float(lit: TpyType, target: TpyType) -> bool:
     """check_range for float_literal_to_float32: a known finite literal
     value must round to a finite value of the target float type; an
@@ -270,6 +282,17 @@ COERCIONS: list[Coercion] = [
         from_type=_is(IntLiteralType),
         to_type=is_fixed_int_type,
         check_range=int_literal_fits_fixed_int,
+    ),
+
+    # An int `Literal[...]` value to a fixed width narrower than its storage
+    # type: only when every value of the set fits, so the cast never truncates.
+    Coercion(
+        name="int_literal_value_to_fixed_int",
+        from_type=_int_literal_value,
+        to_type=is_fixed_int_type,
+        type_match=_literal_values_fit,
+        context_free_wrap=True,
+        codegen=lambda e, _a, b, _c: f"static_cast<{b.to_cpp()}>({e})",
     ),
 
     # Integer literal to BigInt (always valid)

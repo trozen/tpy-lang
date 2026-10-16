@@ -1,0 +1,1 @@
+main.py:21: error: Type mismatch in '+=' operand: expected int or float, got str

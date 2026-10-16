@@ -180,6 +180,7 @@ from ...sema.literal_utils import numeric_literal_truth
 from ...sema.type_ops import signature_may_return_borrow
 from ...sema.own_copy import contains_reference_type
 from ...sema.alias_rebind import alias_sources
+from ...identity_map import IdentityMap
 from ...codegen_cpp.functions import NULL_PROTOCOL_ARG_CPP
 from ...codegen_cpp.int_literals import (render_int_literal_value,
                                          target_less_int_literal_type)
@@ -4915,16 +4916,16 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         if _dun is not None and _bytes_literal_view_slot(_dun[1]):
             _dun_e = _dun[0]
             if _dun_e is e.left:
-                left = _retag_bytes_literal_span(left)
+                left = _retag_kept(e.left, left, lc)
             else:
-                right = _retag_bytes_literal_span(right)
+                right = _retag_kept(e.right, right, lc)
         if (_bytes_compare_operand(e.left, lt, analyzer)
                 and _bytes_compare_operand(e.right, rt, analyzer)):
             # A bytes-family pair compares through `::tpy::BytesView`, which
             # only reads the buffer, so a literal operand takes the same
             # static span for the same reason.
-            left = _retag_bytes_literal_span(left)
-            right = _retag_bytes_literal_span(right)
+            left = _retag_kept(e.left, left, lc)
+            right = _retag_kept(e.right, right, lc)
     else:
         lslot, rslot = _rb_operand_slots(e.resolved_binop)
 
@@ -5790,6 +5791,9 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     lowered = replace(lowered, source=stamp_source(e, lowered, lc, declared))
     if cond_eager:
         _check_cond_eager_temps(lowered)
+    capture = lc.lowered_capture
+    if capture is not None and e in capture:
+        capture[e].append(lowered)
     return lowered
 
 
@@ -13958,73 +13962,120 @@ def _lower_chained_compare_stmtexpr(e, rtype, lc: '_LowerCtx',
                                     temps_ok: bool = False):
     """The complex-intermediate arm of a chained compare (the GCC stmt-expr
     with single-eval `auto&& _cmpI` temps). Each pair lowers through the shared
-    comparison path (`_lower_expr` -> THIRBinOp), so operand targets and the
-    per-side casts are identical to a standalone comparison; the temp-vs-
-    inline binding rule: intermediates always bind, the first endpoint binds
-    iff non-simple, the last is always inlined. Operand i's init is read off
-    its owning pair (pair 0's left for i=0, pair i-1's right otherwise) so it
-    carries that pair's target."""
+    comparison path (`_lower_expr` -> THIRBinOp) and keeps that node, its
+    bound operands replaced by their temps under the conversions the pair
+    gives them, so a pair renders as the standalone comparison does. The
+    temp-vs-inline binding rule: intermediates always bind, the first
+    endpoint binds iff non-simple, the last is always inlined. A bound
+    operand's init is the value under the conversions of the first pair
+    that reads it unpinned (`_pair_pin_side`): pair i-1's right, else pair
+    i's left."""
     _witness("chained_compare.stmt_expr")
     # Pairs past the first sit behind a passed compare: comparators i>=2
     # evaluate conditionally, so their pairs carry the flush right plus the
     # cond_eager exit check (audited temps defer through the emit's i>=2
     # regions; unaudited would-defer ones reject).
     _pair_use = _ExprUse(allow_temps=temps_ok)
-    pairs = [_lower_expr(e.pairs[0], lc, declared)] + [
-        _lower_expr(p, lc, declared, use=_pair_use, cond_eager=temps_ok)
-        for p in e.pairs[1:]]
-    n = len(pairs)
-    all_operands = [e.left] + e.comparators
-    inits = [pairs[0].left]
-    for j in range(1, n + 1):
-        inits.append(pairs[j - 1].right)
-    bound = []
+    operands = [e.left] + e.comparators
+    n = len(e.pairs)
+    # What each pair lowered each of its two operands to, so a pair's
+    # conversions apply over the temp while the operand's own (a checked
+    # `cast`) stay in the init, evaluated once.
+    written: list[IdentityMap] = []
+    pairs: list[THIRExpr] = []
+    saved_capture = lc.lowered_capture
+    try:
+        for j, p in enumerate(e.pairs):
+            lc.lowered_capture = IdentityMap(
+                (o, []) for o in (operands[j], operands[j + 1]))
+            pairs.append(_lower_expr(p, lc, declared) if j == 0 else
+                         _lower_expr(p, lc, declared, use=_pair_use,
+                                     cond_eager=temps_ok))
+            written.append(lc.lowered_capture)
+    finally:
+        lc.lowered_capture = saved_capture
+    bound = [0 < i < n or (i == 0 and not emit_prims.is_duplicable_expr(operands[0]))
+             for i in range(n + 1)]
+    pin_sides = [_pair_pin_side(p, lc) for p in e.pairs]
+    # Operand i is pair i-1's right (side 1) and pair i's left (side 0).
+    readers = [[(j, s) for j, s in ((i - 1, 1), (i, 0)) if 0 <= j < n]
+               for i in range(n + 1)]
+    inits: list[THIRExpr | None] = []
+    temps: list[THIRName | None] = []
     for i in range(n + 1):
-        if 0 < i < n:
-            bound.append(True)
-        elif i == 0:
-            bound.append(not emit_prims.is_duplicable_expr(all_operands[0]))
-        else:
-            bound.append(False)
-    right_casts = [p.right_cast for p in pairs]
-    for j in range(n - 1):
-        # A bound intermediate a pair's dunder pins (a comparison's
-        # parameter is its right operand) binds as the next pair reads it,
-        # and the pin converts the temp where this pair compares it, so the
-        # next pair compares the value as sema typed it.
-        unpinned = pairs[j + 1].left
-        _, pin = _operator_literal_pins(
-            e.pairs[j].resolved_binop, None, e.pairs[j].right, lc, declared,
-            evaluated=unpinned)
-        if pin is None:
+        if not bound[i]:
+            inits.append(None)
+            temps.append(None)
             continue
-        inits[j + 1] = unpinned
-        wrap = _wrap_template(pin, unpinned)
-        right_casts[j] = (wrap if right_casts[j] is None
-                          else right_casts[j].format(wrap))
+        init = next((_written_operand((pairs[j].left, pairs[j].right)[s],
+                                      written[j][operands[i]])
+                     for j, s in readers[i] if pin_sides[j] != s), None)
+        if init is None:
+            init = _lower_expr(operands[i], lc, declared, use=_pair_use,
+                               cond_eager=temps_ok and i >= 2)
+        inits.append(init)
+        temps.append(THIRName(result_type=init.result_type, name=f"_cmp{i}",
+                              cpp=f"_cmp{i}", form=init.form, loc=loc))
+    rendered = []
+    for j, (src, low) in enumerate(zip(e.pairs, pairs)):
+        sides = [low.left, low.right]
+        for s, i in ((0, j), (1, j + 1)):
+            temp = temps[i]
+            if temp is None:
+                continue
+            if pin_sides[j] == s:
+                rb = src.resolved_binop
+                sides[s] = _pinned_literal_arg(
+                    (src.left, src.right)[s], rb.method.params[0].type,
+                    rb.method, lc, declared, evaluated=temp)
+            else:
+                sides[s] = _over_written(sides[s],
+                                         written[j][operands[i]], temp)
+        rendered.append(replace(low, left=sides[0], right=sides[1]))
     return THIRChainedCompareStmtExpr(
         result_type=rtype,
         inits=tuple(inits),
-        bound=tuple(bound),
-        ops=tuple(p.op for p in pairs),
-        left_casts=tuple(p.left_cast for p in pairs),
-        right_casts=tuple(right_casts),
+        pairs=tuple(rendered),
         form=Form.VALUE,
         loc=loc,
     )
 
 
-def _wrap_template(v: 'THIRExpr', inner: 'THIRExpr') -> str:
-    """The `{0}` template the coercions `v` wraps around `inner` spell, so
-    the conversion can apply to a render of `inner` held elsewhere."""
-    template = "{0}"
-    while v is not inner:
+def _pair_pin_side(pair: TpyBinOp, lc: '_LowerCtx') -> int | None:
+    """The operand (0 left, 1 right) of a chained comparison's pair that
+    takes the literal pin (`_pinned_literal_arg`): the one at its dunder's
+    parameter, when it is a literal C++ would re-pick the variant for."""
+    rb = pair.resolved_binop
+    side = _dunder_param_side(rb)
+    if side is None:
+        return None
+    operand = (pair.left, pair.right)[side]
+    if _literal_pin_slot(operand, rb.method.params[0].type, rb.method,
+                         lc.analyzer) is None:
+        return None
+    return side
+
+
+def _written_operand(v: THIRExpr, written: list[THIRExpr]) -> THIRExpr:
+    """The operand as written under the coercions a pair put on it in `v`:
+    the node among `written` (what the pair lowered the operand to) that
+    `v`'s coercions wrap."""
+    while not any(v is w for w in written):
         if not isinstance(v, THIRCoerce):
-            raise ThirUnsupported("chained_compare.pin_shape")
-        if v.wrap is not None:
-            template = template.format(v.wrap)
+            raise ThirUnsupported("chained_compare.operand_shape")
         v = v.expr
-    return template
+    return v
+
+
+def _over_written(v: THIRExpr, written: list[THIRExpr],
+                  core: THIRExpr) -> THIRExpr:
+    """`v` with its written operand (`_written_operand`) replaced by
+    `core`, the coercions the pair put on it kept."""
+    if any(v is w for w in written):
+        return core
+    if not isinstance(v, THIRCoerce):
+        raise ThirUnsupported("chained_compare.operand_shape")
+    return replace(v, expr=_over_written(v.expr, written, core))
 
 
 def _lower_generic_plain_call(e, callee_cpp, lc: '_LowerCtx',
@@ -17428,6 +17479,18 @@ def _constructs_value(value: THIRExpr) -> bool:
         isinstance(v, THIRCall) and v.constructs)
 
 
+def _retag_kept(src: TpyExpr, value: THIRExpr, lc: '_LowerCtx') -> THIRExpr:
+    """`_retag_bytes_literal_span` of a comparison operand, the rebuilt node
+    recorded beside `value` in a live chained-compare capture
+    (`_LowerCtx.lowered_capture`): it is the node the pair keeps."""
+    kept = _retag_bytes_literal_span(value)
+    capture = lc.lowered_capture
+    if (kept is not value and capture is not None and src in capture
+            and any(w is value for w in capture[src])):
+        capture[src].append(kept)
+    return kept
+
+
 def _retag_bytes_literal_span(value: THIRExpr) -> THIRExpr:
     """Rewrite a bytes literal to its static-storage span render (BORROW) --
     the caller has already decided the sink is view-shaped, so this only
@@ -19531,14 +19594,22 @@ def _operator_literal_pins(rb: 'ResolvedBinop | None', left: 'TpyExpr | None',
     is lowered here (an in-place dunder's value); `evaluated` is that
     operand already lowered where it is evaluated once elsewhere. None for
     an operand that takes no pin."""
-    if rb is None or rb.method is None or not rb.method.params:
-        return (None, None)
-    operand = left if rb.is_reverse else right
+    side = _dunder_param_side(rb)
+    operand = None if side is None else (left, right)[side]
     if operand is None:
         return (None, None)
     pinned = _pinned_literal_arg(operand, rb.method.params[0].type,
                                  rb.method, lc, declared, evaluated=evaluated)
-    return (pinned, None) if rb.is_reverse else (None, pinned)
+    return (pinned, None) if side == 0 else (None, pinned)
+
+
+def _dunder_param_side(rb: 'ResolvedBinop | None') -> int | None:
+    """Which operand (0 left, 1 right) of a resolved operator dunder sits at
+    its parameter -- the right one, the left one for a reflected dunder;
+    None when the dunder takes no parameter."""
+    if rb is None or rb.method is None or not rb.method.params:
+        return None
+    return 0 if rb.is_reverse else 1
 
 
 def _rb_bytes_literal_views(rb, left: THIRExpr,

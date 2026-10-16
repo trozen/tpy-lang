@@ -921,12 +921,7 @@ std::string lit_cross__lit_a(std::string_view x, int64_t y) {
 //     mx = OpMixed()
 //     # In-place: the bodied `__iadd__(int)` over the template's float one.
 //     mx += 3  # tpyc: ok
-//     left = OpLeft()
-//     right = OpRight(OpPoint(1))
-//     # Both `__add__` variants take `right` only by a dereference, a value
-//     # conversion, so their tie leaves the operator to `__radd__`; CPython
-//     # calls `__add__` (BUGS.md#operator-dunder-value-conversion-refused).
-//     print("operators:", mx.hits, left + right)  # tpyc: ok
+//     print("operators:", mx.hits)
 void operators() {
     OpList v = OpList();
     std::vector<int32_t> xs = {1, 2};
@@ -943,14 +938,12 @@ void operators() {
     OpWidth w = OpWidth();
     std::cout << "operators:" << " " << acc.n << " " << ((w) + (3)) << " " << ((w) - (std::optional<double>(3.0))) << "\n" << ::tpy::check_signals;
     int32_t t;
-    std::cout << "operators:" << " " << ::tpy::print_bool(({ auto&& _cmp1 = (t = 3); (n > ::tpy::BigInt(_cmp1)) && (_cmp1 > 1); })) << " " << t << "\n" << ::tpy::check_signals;
+    std::cout << "operators:" << " " << ::tpy::print_bool(({ auto&& _cmp1 = (t = 3); ((n) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); })) << " " << t << "\n" << ::tpy::check_signals;
     OpOptStr o = OpOptStr();
     std::cout << "operators:" << " " << ((o) + (std::optional<std::string_view>("x"))) << " " << o.m(std::optional<std::string_view>("y")) << "\n" << ::tpy::check_signals;
     OpMixed mx = OpMixed();
     mx.__iadd__(::tpy::BigInt(3));
-    OpLeft left = OpLeft();
-    OpRight right = OpRight(OpPoint(1));
-    std::cout << "operators:" << " " << mx.hits << " " << ((left) + (right)) << "\n" << ::tpy::check_signals;
+    std::cout << "operators:" << " " << mx.hits << "\n" << ::tpy::check_signals;
 }
 
 // def lit3() -> Literal[3]:

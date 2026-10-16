@@ -18,8 +18,8 @@ void test_eq() {
     ::tpystd::tplib::box::Box<int32_t> c = ::tpystd::tplib::box::Box<int32_t>(2);
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((a) == (b)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((a) == (c)))) << "\n" << ::tpy::check_signals;
 }
 
 // def test_comparisons() -> None:

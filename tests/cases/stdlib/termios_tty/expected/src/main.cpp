@@ -99,7 +99,7 @@ void free_function() {
     std::cout << "free: raw read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
     std::cout << "free: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (old))) << "\n" << ::tpy::check_signals;
-    std::cout << "free: restored differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n" << ::tpy::check_signals;
+    std::cout << "free: restored differs:" << " " << ::tpy::print_bool((!((::tpystd::termios::tcgetattr(slave)) == (old)))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::write(master, ::tpy::bytes_literal("cd", 2));
     ::tpystd::os::set_blocking(slave, false);
     {
@@ -116,7 +116,7 @@ void free_function() {
     ::tpystd::termios::TermAttributes attrs = ::tpystd::termios::tcgetattr(slave);
     ::tpystd::termios::TermAttributes& alias = attrs;
     ::tpystd::tty::cfmakecbreak(alias);
-    std::cout << "free: alias mutated original:" << " " << ::tpy::print_bool((attrs != old)) << "\n" << ::tpy::check_signals;
+    std::cout << "free: alias mutated original:" << " " << ::tpy::print_bool((!((attrs) == (old)))) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, attrs);
     std::cout << "free: applied:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (attrs))) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, old);
@@ -156,7 +156,7 @@ void method() {
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes before = ::tpystd::termios::tcgetattr(slave);
     RawSession session = RawSession(slave);
-    std::cout << "method: raw differs:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != before)) << "\n" << ::tpy::check_signals;
+    std::cout << "method: raw differs:" << " " << ::tpy::print_bool((!((::tpystd::termios::tcgetattr(slave)) == (before)))) << "\n" << ::tpy::check_signals;
     session.restore();
     std::cout << "method: restored:" << " " << ::tpy::print_bool(((::tpystd::termios::tcgetattr(slave)) == (before))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::close(master);
@@ -219,7 +219,7 @@ void context_manager() {
     try {
         ::tpystd::os::write(master, ::tpy::bytes_literal("y", 1));
         std::cout << "with: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n" << ::tpy::check_signals;
-        std::cout << "with: cbreak:" << " " << ::tpy::print_bool((::tpystd::termios::tcgetattr(slave) != old)) << "\n" << ::tpy::check_signals;
+        std::cout << "with: cbreak:" << " " << ::tpy::print_bool((!((::tpystd::termios::tcgetattr(slave)) == (old)))) << "\n" << ::tpy::check_signals;
         goto __with_exit_1;
     } catch (::tpy::BaseException& __exc_1) {
         __ctx_1.__exit__({}, &__exc_1, {});

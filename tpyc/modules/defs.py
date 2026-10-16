@@ -75,6 +75,16 @@ BINOP_TO_RMETHOD = {
     "&": "__rand__", "|": "__ror__", "^": "__rxor__",
 }
 
+# The dunder Python tries on the RIGHT operand of a comparison when the
+# left one's does not answer: comparisons reflect into each other's mirror
+# (`a < b` asks `b.__gt__(a)`), equality into itself. Not part of
+# BINOP_TO_RMETHOD, whose entries also drive the mixed-width step and the
+# exported reflected-arithmetic slots.
+COMPARE_TO_REFLECTED_METHOD = {
+    "<": "__gt__", ">": "__lt__", "<=": "__ge__", ">=": "__le__",
+    "==": "__eq__", "!=": "__ne__",
+}
+
 AUGOP_TO_IMETHOD = {
     "+": "__iadd__", "-": "__isub__", "*": "__imul__",
     "div": "__itruediv__", "//": "__ifloordiv__", "%": "__imod__",

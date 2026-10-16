@@ -33,7 +33,7 @@ void main() {
     ::tpystd::tplib::arc::Arc<int32_t> c = Arc<int32_t>::new_<int32_t>(20);
     std::cout << ::tpy::print_bool(((a) == (b))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) == (c))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != c)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((a) == (c)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) < (c))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((c) < (a))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) <= (b))) << "\n" << ::tpy::check_signals;

@@ -17,6 +17,7 @@ _LAZY_EXPORTS = {
     "ParamDef": "defs", "MethodDef": "defs",
     "DUNDER_CPP_TEMPLATES": "defs", "get_dunder_cpp_template": "defs",
     "BINOP_TO_METHOD": "defs", "BINOP_TO_RMETHOD": "defs",
+    "COMPARE_TO_REFLECTED_METHOD": "defs",
     "AUGOP_TO_IMETHOD": "defs", "UNARYOP_TO_METHOD": "defs",
     # --- Module registry ---
     "get_builtin_module_names": "registry", "get_builtin_type_obj": "registry",

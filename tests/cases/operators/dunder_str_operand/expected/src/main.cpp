@@ -44,23 +44,23 @@ void main() {
     std::string_view o = "c";
     std::cout << ::tpy::print_bool(((t) == (s))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((t) == (o))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((t != o)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((t) == (o)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((t) < (o))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((s == t)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((t) == (s))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((t) == (s)) << "\n" << ::tpy::check_signals;
     Count c = Count(2);
     std::cout << ::tpy::print_bool(((c) == (2))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((c != 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((c) == (3)))) << "\n" << ::tpy::check_signals;
     Blob b = Blob(::tpy::bytes_literal("xy", 2));
     std::cout << ::tpy::print_bool(((b) == (::tpy::bytes_literal("xy", 2)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((b != ::tpy::bytes_literal("ab", 2))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpy::bytes_literal("xy", 2) == b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((b) == (::tpy::bytes_literal("ab", 2))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((b) == (::tpy::bytes_literal("xy", 2)))) << "\n" << ::tpy::check_signals;
     Ratio r = Ratio(2.0);
-    std::cout << ::tpy::print_bool(((r) == (2))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((r != 3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((r) == (static_cast<double>(2)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((r) == (static_cast<double>(3))))) << "\n" << ::tpy::check_signals;
     Initial i = Initial(::tpy::char_from_str("a"));
     std::cout << ::tpy::print_bool(((i) == (::tpy::char_from_str("a")))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((i != ::tpy::char_from_str("b"))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((i) == (::tpy::char_from_str("b"))))) << "\n" << ::tpy::check_signals;
 }
 
 // main()

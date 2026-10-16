@@ -66,7 +66,7 @@ void main() {
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(3))))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2))) < (::tpystd::datetime::time(::tpy::BigInt(1), ::tpy::BigInt(2), ::tpy::BigInt(0), ::tpy::BigInt(1))))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(5))) == (::tpystd::datetime::time(::tpy::BigInt(5), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0))))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((::tpystd::datetime::time(::tpy::BigInt(5)) != ::tpystd::datetime::time(::tpy::BigInt(5)))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((::tpystd::datetime::time(::tpy::BigInt(5))) == (::tpystd::datetime::time(::tpy::BigInt(5)))))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(30))) >= (::tpystd::datetime::time(::tpy::BigInt(9), ::tpy::BigInt(29), ::tpy::BigInt(59), ::tpy::BigInt(999999))))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<::tpystd::datetime::time, std::string> seen = ::tpy::ordered_map<::tpystd::datetime::time, std::string>({{::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30)), "a"}});
     std::cout << ::tpy::__getitem__(seen, ::tpystd::datetime::time(::tpy::BigInt(14), ::tpy::BigInt(30))) << "\n" << ::tpy::check_signals;

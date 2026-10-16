@@ -1,7 +1,7 @@
 # Overload ranking ignores declaration order: every section declares the winner
 # after a weaker one (winner-first twin: calls/dispatch_rank_declared_shape).
 from typing import Callable, Iterable, Literal, Protocol
-from tpy import (dispatch, readonly, auto_readonly, AnyFixedInt, Deref, Own, Ptr, String,
+from tpy import (dispatch, readonly, AnyFixedInt, Own, Ptr, String,
                  float32, int8, int16, int32, int64)
 from tpy.extern import cpp_template
 
@@ -1112,40 +1112,6 @@ class OpMixed:
         return self
 
 
-class OpPoint:
-    x: int32
-
-    def __init__(self, x: int32) -> None:
-        self.x = x
-
-
-class OpLeft:
-    def __init__(self) -> None:
-        pass
-
-    @dispatch
-    def __add__(self, p: OpPoint) -> int32:
-        return 10
-
-    @dispatch
-    def __add__(self, p: OpPoint | None) -> int32:
-        return 20
-
-
-class OpRight(Deref[OpPoint]):
-    _p: OpPoint
-
-    def __init__(self, p: Own[OpPoint]) -> None:
-        self._p = p
-
-    @auto_readonly
-    def __deref__(self) -> OpPoint:
-        return self._p
-
-    def __radd__(self, x: OpLeft) -> int32:
-        return 30
-
-
 @dispatch
 def lit_base(s: String) -> str:
     return "String"
@@ -1195,12 +1161,7 @@ def operators() -> None:
     mx = OpMixed()
     # In-place: the bodied `__iadd__(int)` over the template's float one.
     mx += 3  # tpyc: ok
-    left = OpLeft()
-    right = OpRight(OpPoint(1))
-    # Both `__add__` variants take `right` only by a dereference, a value
-    # conversion, so their tie leaves the operator to `__radd__`; CPython
-    # calls `__add__` (BUGS.md#operator-dunder-value-conversion-refused).
-    print("operators:", mx.hits, left + right)  # tpyc: ok
+    print("operators:", mx.hits)
 
 
 def lit3() -> Literal[3]:

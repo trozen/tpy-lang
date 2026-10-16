@@ -129,10 +129,10 @@ void spellings() {
     bool ne = (!((v) == (::tpy::BigInt(3))));
     std::cout << "spellings:" << " " << ::tpy::print_bool(lt) << " " << ::tpy::print_bool(chained) << " " << ::tpy::print_bool(ne) << "\n" << ::tpy::check_signals;
     int32_t t;
-    bool walrus = ({ auto&& _cmp1 = (t = 3); (v > ::tpy::BigInt(_cmp1)) && (_cmp1 > 1); });
+    bool walrus = ({ auto&& _cmp1 = (t = 3); ((v) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); });
     std::cout << "spellings:" << " " << ::tpy::print_bool(walrus) << " " << t << "\n" << ::tpy::check_signals;
     bool flag = (v.hits > 0);
-    bool cond = ({ auto&& _cmp1 = ((flag) ? (3) : (3)); (v > ::tpy::BigInt(_cmp1)) && (_cmp1 > 1); });
+    bool cond = ({ auto&& _cmp1 = ((flag) ? (3) : (3)); ((v) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); });
     std::cout << "spellings:" << " " << ::tpy::print_bool(cond) << "\n" << ::tpy::check_signals;
 }
 

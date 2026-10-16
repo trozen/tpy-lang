@@ -48,10 +48,10 @@ int32_t calls{};
 void main() {
     P p = P();
     calls = 0;
-    bool in_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 10); });
+    bool in_range = ({ auto&& _cmp1 = p.mid(); (::tpy::BigInt(1) < _cmp1) && (_cmp1 < 10); });
     std::cout << "in range:" << " " << ::tpy::print_bool(in_range) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     calls = 0;
-    bool out_of_range = ({ auto&& _cmp1 = p.mid(); (1 < _cmp1) && (_cmp1 < 3); });
+    bool out_of_range = ({ auto&& _cmp1 = p.mid(); (::tpy::BigInt(1) < _cmp1) && (_cmp1 < 3); });
     std::cout << "out of range:" << " " << ::tpy::print_bool(out_of_range) << " " << "calls:" << " " << calls << "\n" << ::tpy::check_signals;
     order = ::tpy::BigInt(0);
     bool ordered = ({ auto&& _cmp0 = p.first(); auto&& _cmp1 = ::tpyapp::main::bump(::tpy::BigInt(2), ::tpy::BigInt(5)); (_cmp0 < _cmp1) && (_cmp1 < ::tpyapp::main::bump(::tpy::BigInt(3), ::tpy::BigInt(10))); });

@@ -33,7 +33,7 @@ void main() {
     std::cout << ::tpy::print_bool(((b) > (a))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) > (c))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((a) == (Point(1, 2)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((a != b)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((a) == (b)))) << "\n" << ::tpy::check_signals;
 }
 
 // # @dataclass(order=True) generates comparison operators via operator<=>

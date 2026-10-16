@@ -8,7 +8,7 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple, Sequence
 
-from ..typesys import pointer_repr_optional, pointer_variant_union
+from ..typesys import pointer_repr_optional, pointer_variant_union, ResolvedBinop
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType, make_readonly,
     is_indirection_type,
@@ -8469,6 +8469,19 @@ class StatementAnalyzer:
 
         self.pend.when_elem_known(stmt, cell, record)
 
+    def _receive_aug_operand(self, stmt: TpyAugAssign,
+                             result: ResolvedBinop,
+                             value_type: TpyType) -> bool:
+        """`receive_dunder_operand` at `target op= value`: the value,
+        converted in place. Whether it was received; a reflected dunder's
+        operand is the target, which keeps its own render."""
+        received = (None if result.is_reverse
+                    else self.expr.receive_dunder_operand(
+                        stmt.value, value_type, result))
+        if received is not None:
+            stmt.value = received
+        return received is not None
+
     def _pending_aug_assign(self, stmt: TpyAugAssign, target_type: TpyType,
                             value_type: TpyType,
                             elem_cell: PendingNumCell | None = None) -> None:
@@ -8752,6 +8765,8 @@ class StatementAnalyzer:
                         self.pend.tree_type(inplace_cell)):
                     self._resolve_inplace_later(stmt, target_type,
                                                 value_type, inplace_cell)
+                if self._receive_aug_operand(stmt, result, value_type):
+                    return
                 if result.method.params:
                     _, param_type = result.method.params[0]
                     self.compat.check_type_compatible(
@@ -8759,12 +8774,19 @@ class StatementAnalyzer:
                     )
                 return
             # Method exists but arg type mismatches -- produce a specific type error.
-            expected_param = operators.get_aug_inplace_param_type(target_type, stmt.op)
-            if expected_param is not None:
+            expected_params = operators.get_aug_inplace_param_types(target_type, stmt.op)
+            if len(expected_params) == 1:
                 self.compat.check_type_compatible(
-                    value_type, expected_param, f"'{op_spelling(stmt.op)}=' operand",
+                    value_type, expected_params[0], f"'{op_spelling(stmt.op)}=' operand",
                     loc=stmt.loc, source_expr=stmt.value,
                 )
+            elif expected_params and not any(
+                    self.compat.is_type_compatible(value_type, p)
+                    for p in expected_params):
+                expected_str = " or ".join(str(p) for p in expected_params)
+                raise self.ctx.error(
+                    f"Type mismatch in '{op_spelling(stmt.op)}=' operand: "
+                    f"expected {expected_str}, got {value_type}", stmt)
             if result := self.expr.decide_operator(operators.resolve_binop(
                     target_type, stmt.op, value_type, loc_node=stmt), stmt):
                 # A borrow-returning fallback dunder is rejected: the emitted
@@ -8786,6 +8808,7 @@ class StatementAnalyzer:
                         stmt,
                     )
                 stmt.resolved_binop = result
+                self._receive_aug_operand(stmt, result, value_type)
                 if isinstance(stmt.target, TpyName):
                     # `__add__` REBINDS the name: a pending deferred return
                     # of it must keep the object it named, so its capture

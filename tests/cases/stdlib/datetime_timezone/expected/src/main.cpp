@@ -150,7 +150,7 @@ void main() {
     std::cout << ((dt) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(2)))) << "\n" << ::tpy::check_signals;
     std::cout << ((dt) - (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(45)))) << "\n" << ::tpy::check_signals;
     ::tpystd::datetime::datetime naive = ::tpystd::datetime::datetime(::tpy::BigInt(2021), ::tpy::BigInt(3), ::tpy::BigInt(5), ::tpy::BigInt(9), ::tpy::BigInt(0), ::tpy::BigInt(15), ::tpy::BigInt(123456));
-    std::cout << ::tpy::print_bool(((naive) == (u))) << " " << ::tpy::print_bool((naive != u)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((naive) == (u))) << " " << ::tpy::print_bool((!((naive) == (u)))) << "\n" << ::tpy::check_signals;
     {
         try {
             std::cout << ::tpy::print_bool(((naive) < (u))) << "\n" << ::tpy::check_signals;

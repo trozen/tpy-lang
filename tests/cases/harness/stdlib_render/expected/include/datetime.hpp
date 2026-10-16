@@ -1157,7 +1157,7 @@ inline std::optional<timedelta> timezone::dst(std::optional<datetime> dt) const 
 //     return dt + self.utcoffset(dt)
 inline datetime timezone::fromutc(datetime dt) const {
     ::tpy::Union<std::monostate, ZoneInfo, timezone> tz = dt.tzinfo();
-    if (((!(std::holds_alternative<timezone>(tz))) || (std::get<timezone>(tz) != (*this)))) {
+    if (((!(std::holds_alternative<timezone>(tz))) || (!((std::get<timezone>(tz)) == ((*this)))))) {
         throw ::tpy::ValueError("fromutc: dt.tzinfo is not self");
     }
     auto& __tz = std::get<timezone>(tz);
@@ -1272,7 +1272,7 @@ inline std::optional<timedelta> ZoneInfo::dst(std::optional<datetime> dt) const 
 //     return datetime._from_epoch_us(dt._epoch_us(), False, self)
 inline datetime ZoneInfo::fromutc(datetime dt) const {
     ::tpy::Union<std::monostate, ZoneInfo, timezone> tz = dt.tzinfo();
-    if (((!(std::holds_alternative<ZoneInfo>(tz))) || (std::get<ZoneInfo>(tz) != (*this)))) {
+    if (((!(std::holds_alternative<ZoneInfo>(tz))) || (!((std::get<ZoneInfo>(tz)) == ((*this)))))) {
         throw ::tpy::ValueError("fromutc: dt.tzinfo is not self");
     }
     auto& __tz = std::get<ZoneInfo>(tz);

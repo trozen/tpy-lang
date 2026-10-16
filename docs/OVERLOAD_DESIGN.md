@@ -152,14 +152,13 @@ and two constrained templates over unrelated protocols are unordered).
   comparison's middle operand evaluated once into a temp binds the value
   as written and takes the pin where the pinned link compares it
   (`v > (t := 3) > 1` renders `({ auto&& _cmp1 = (t = 3);
-  (v > ::tpy::BigInt(_cmp1)) && (_cmp1 > 1); })`), so the next link
+  ((v) > (::tpy::BigInt(_cmp1))) && (_cmp1 > 1); })`), so the next link
   compares the value sema typed. A str literal at an Optional str
   parameter takes the optional type (`std::optional<std::string_view>("x")`).
-  An operand that needs a conversion and is not a literal: arithmetic
-  refuses it (BUGS.md#operator-dunder-value-conversion-refused); a
-  comparison sema leaves unresolved -- the reflected `3 == v` included, as
-  comparisons have no reflected step -- renders the raw C++ operator, which
-  re-picks among the set (BUGS.md#operator-comparison-unresolved-repicks).
+  An operand that needs a conversion and is not a literal is converted by
+  sema itself at a record's dunder ("Operators" below), so the operator's
+  C++ takes a value of the winner's parameter type (`((c) == (::tpy::BigInt(m)))`
+  for `m: int32`), as the explicit call's argument does.
 - A membership test `x in h` (and `not in`) over a TPy `__contains__` set
   is the call `h.__contains__(x)` and lowers as that call (`not in` its
   negation): the winner receives the needle as the call's argument --
@@ -401,20 +400,64 @@ v + xs      # 32: `list[int32]` costs nothing at the default int, so xs is a
 The resolver tries the forward dunder, the left operand's `__int__`
 promotion, the reflected dunder, the right operand's `__int__` promotion
 and the mixed fixed-width step in that order (Python's `a.__add__(b)` then
-`b.__radd__(a)`), and a step's set ANSWERS when its best candidate takes
-the operand as it is, converts a numeric literal operand (the operand the
-literal pin renders) to its parameter, or converts a `Literal[...]` value
-to the Literal's own base type (`"text:" + mode` with
-`mode: Literal["r", "w"]`). Any other conversion is left to the later
-steps, so `n32 + big` (`int32` and `int`) still resolves through the
-promotion of the `int32`, and `v + k` with `k: Literal[3, 4]` (base
-`int32`) at `__add__(int)` / `__add__(float)` is refused
-(`tests/cases/operators/error_dispatch_operator_literal_value`). A top tie
-is the call's ambiguity when at least two of the tied candidates would
-answer (a tie only value conversions produce leaves the operator to the
-later steps, as in `left + right` where `right` reaches both `__add__`
-variants by a dereference and its `__radd__` runs)
-(`tests/cases/operators/error_dispatch_operator_ambiguous`):
+`b.__radd__(a)`). A comparison's reflected dunder is its mirror on the
+right operand (`3 < c` asks `c.__gt__(3)`, `3 == c` asks `c.__eq__(3)`,
+`builtin_modules.COMPARE_TO_REFLECTED_METHOD`, kept apart from the
+arithmetic `BINOP_TO_RMETHOD` that also drives the mixed-width step and the
+exported reflected slots), tried only for a record on the right. A `!=`
+asks each operand in turn for its `__ne__`, or for its negated `__eq__`
+when it defines no `__ne__` (`object.__ne__`), so `l != r` with only
+`L.__eq__` and `R.__ne__` runs `L.__eq__`, as CPython does
+(`OperatorResolver.receiver_dunders`). The reflected comparison is not
+tried when the left operand is a record defining the forward dunder: Python
+would call that dunder first, which TPy cannot when its annotation refuses
+the operand, so `A(1) == B(1)` with `A.__eq__(self, o: A)` and
+`B.__eq__(self, o: A)` is rejected rather than running `B.__eq__`
+(BUGS.md#comparison-operand-unanswered-reject). Each dunder
+is looked up as its explicit call looks it up, inherited ones included
+(`OperatorResolver.dunder_overloads` over
+`ProtocolChecker.lookup_record_method_overloads`), so `a < b` runs the
+`__lt__` a class inherits, and so does `x in d` with `__contains__`.
+
+**An operator on a record answers like its explicit dunder call**
+(`answers_as_call`: the receiver is a user, library or `@native` record):
+its set answers whatever operand the call would take, conversions
+included, and sema receives the operand at the winner's parameter as the
+call receives its argument (`CallAnalyzer.receive_winner_args`, converting
+it in place), so the C++ operator runs the variant sema picked:
+
+```python
+class B:
+    @dispatch
+    def __mul__(self, x: int) -> int32: ...    # ((b) * (::tpy::BigInt(n32)))
+    @dispatch
+    def __mul__(self, x: float) -> int32: ...
+
+b * n32     # n32: int32 -- the `int` variant, as b.__mul__(n32)
+3 < c       # c.__gt__(3): ((c) > (::tpy::BigInt(3)))
+vi += n32   # vi.__iadd__(::tpy::BigInt(n32)), before any `__add__` fallback
+```
+
+A builtin type's set (`int32`, `int`, `float`, `str`, ...) answers only
+an operand it takes as it is, a numeric literal (the operand the literal
+pin renders), or a `Literal[...]` value converted to its own base type
+(`"text:" + mode` with `mode: Literal["r", "w"]`); any other conversion is
+left to the later steps, so `n32 + big` (`int32` and `int`) still resolves
+through the promotion of the `int32` and stays an `int`. A top tie is the
+call's ambiguity -- at a record's set always, at a builtin's when at least
+two of the tied candidates would answer -- so `left + right`, where
+`right` reaches both `__add__` variants only by a dereference, is
+"Ambiguous overload for '__add__'" as `left.__add__(right)` is, not a
+fallback to `right.__radd__`
+(`tests/cases/operators/error_operator_conversion_tie`,
+`tests/cases/operators/error_dispatch_operator_ambiguous`). Not covered:
+Python's `NotImplemented` and its subclass-first rule for reflected
+operators -- for arithmetic a forward annotation that refuses the operand
+acts as `NotImplemented` would, so `a + b` with `A.__add__(self, o: A)` and
+`B.__radd__(self, o: A)` runs `B.__radd__` where CPython runs `A.__add__`
+(BUGS.md#operator-annotation-refusal-acts-as-notimplemented) -- and an
+operator on a type parameter bound to a protocol, which keeps the builtin
+rule (BUGS.md#generic-receiver-operator-refuses-conversion).
 
 ```python
 class V:
@@ -873,6 +916,11 @@ operand types for '+': int32 and str") instead of a generic
 - Operators: `tests/cases/operators/dispatch_operator_rank` (every position
   and spelling, the literal pin, the operator literal's home at builtin
   operators, `Literal` values, the winner declared first so CPython agrees),
+  `tests/cases/operators/dispatch_operator_conversions` (a record operator
+  converting like its explicit call at every position, reflected
+  comparisons, inherited dunders),
+  `tests/cases/native/native_record_operator_conversion`,
+  `tests/cases/operators/error_operator_conversion_tie`,
   the `operators` sections of `tests/cases/calls/dispatch_rank_declared_shape_order`
   (compiler-only: the loser declared first),
   `tests/cases/int_default_override/int64_smoke` (the pin under

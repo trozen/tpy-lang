@@ -26,7 +26,7 @@ bool inline_chain(Counter& c, int32_t a, int32_t b) {
 //     return a < xs[0] < take(Probe(c, 2))
 bool stmtexpr_chain(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
     std::optional<Probe> __tmp_1;
-    return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && (_cmp1 < (__tmp_1.emplace(Probe(c, 2)), ::tpyapp::main::take(&((*__tmp_1))))); });
+    return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && (__tmp_1.emplace(Probe(c, 2)), (_cmp1 < ::tpyapp::main::take(&((*__tmp_1))))); });
 }
 
 // def stmtexpr_chain_long(c: Counter, a: int32, xs: list[int32]) -> bool:
@@ -34,7 +34,7 @@ bool stmtexpr_chain(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
 //     return a < xs[0] < xs[1] < take(Probe(c, 3))
 bool stmtexpr_chain_long(Counter& c, int32_t a, const std::vector<int32_t>& xs) {
     std::optional<Probe> __tmp_1;
-    return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && ({ auto&& _cmp2 = ::tpy::__getitem__(xs, 1); (_cmp1 < _cmp2) && (_cmp2 < (__tmp_1.emplace(Probe(c, 3)), ::tpyapp::main::take(&((*__tmp_1))))); }); });
+    return ({ auto&& _cmp1 = ::tpy::__getitem__(xs, 0); (a < _cmp1) && ({ auto&& _cmp2 = ::tpy::__getitem__(xs, 1); (_cmp1 < _cmp2) && (__tmp_1.emplace(Probe(c, 3)), (_cmp2 < ::tpyapp::main::take(&((*__tmp_1))))); }); });
 }
 
 // def first_pair_only(c: Counter, a: int32, b: int32) -> bool:

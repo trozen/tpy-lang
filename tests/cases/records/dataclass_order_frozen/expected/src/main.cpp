@@ -27,7 +27,7 @@ void main() {
     std::cout << ::tpy::print_bool(((v1) < (v3))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((v2) > (v3))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((v1) == (Version(1, 0, 0)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((v1 != v2)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((v1) == (v2)))) << "\n" << ::tpy::check_signals;
     ::tpy::ordered_map<Version, std::string> d = ::tpy::ordered_map<Version, std::string>({{v1, "one"}, {v2, "two"}});
     std::cout << ::tpy::__getitem__(d, v1) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__getitem__(d, v2) << "\n" << ::tpy::check_signals;

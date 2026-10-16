@@ -1693,6 +1693,8 @@ _LC_NOT_NAME_KEYED = (
     "table", "cursor", "shadow_report", "move_region",
     # Keyed by a binding's SlotKey and by a write's site identity.
     "storage_slots",
+    # Keyed by parse-node identity.
+    "lowered_capture",
 )
 _LC_INHERITED_BY_DESIGN = (
     # A lazily computed body-wide memo: a restore would discard a result
@@ -1813,7 +1815,7 @@ class _LowerCtx:
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "member_self", "_alias_taken_memo",
                  "table", "cursor", "shadow_report", "move_region",
-                 "storage_slots")
+                 "storage_slots", "lowered_capture")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -2034,6 +2036,11 @@ class _LowerCtx:
         self.shadow_report = None
         # The rebind slots the writes claim, and where each is declared.
         self.storage_slots = StorageSlots()
+        # Parse nodes whose lowered nodes `_lower_expr` records (each one
+        # it returned for the node, in order), so a caller can find a
+        # written operand inside the conversions an enclosing arm put on it;
+        # None when nothing is recorded.
+        self.lowered_capture: 'IdentityMap[object, list] | None' = None
         # The names a sink may move inside a `moves_only` region; None
         # outside one, where the binding's record decides.
         self.move_region: frozenset[str] | None = None

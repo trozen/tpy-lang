@@ -101,7 +101,7 @@ from .slot_hint import (SlotHint, callable_return, element,
 from .local_deduction import (collect_pending_source_types,
                               mark_pending_list_mutated,
                               note_pending_elem_read, pending_elem_read)
-from .operators import OperatorAmbiguity
+from .operators import OperatorAmbiguity, answers_as_call
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
@@ -2469,7 +2469,9 @@ class ExpressionAnalyzer:
             self._warn_mixed_sign_compare(expr, left_effective, right_effective)
             # Validate that user record types support the comparison
             self._validate_comparison(expr, left_effective, right_effective)
-            self._resolve_comparison(expr, left_effective, right_effective)
+            self._resolve_comparison(
+                expr, left_effective, right_effective,
+                None if warned_optional_operator else (left_type, right_type))
             return BOOL
 
         # Membership operators (in, not in) return Bool
@@ -2497,7 +2499,8 @@ class ExpressionAnalyzer:
                 raise self.ctx.error(
                     f"TypedDict '{right_type.name}' has no key '{key}'", expr.left)
             if right_record:
-                contains_overloads = right_record.get_method_overloads("__contains__")
+                contains_overloads = self.operators.dunder_overloads(
+                    right_record, "__contains__")
                 if contains_overloads:
                     # Drop int-kind type args (e.g. N in Array[T, N]): no
                     # `__contains__` parameter spells one.
@@ -2742,19 +2745,12 @@ class ExpressionAnalyzer:
         if result := self.decide_operator(self.operators.resolve_binop(
                 left_effective, expr.op, right_effective, loc_node=expr), expr):
             expr.resolved_binop = result
-            if (dunder_scope is not None
-                    and any(result.method.root is d.root
-                            for d in dunder_scope[1])
-                    and result.method.params
-                    and isinstance(unwrap_qualifiers(right_type),
-                                   PendingContainerType)):
-                # The winning dunder receives the operand as a call to it
-                # would: an undecided container is decided at its parameter.
-                operand_args = [expr.right]
-                self.calls.receive_winner_args(
-                    dunder_scope[0], operand_args, [right_type],
-                    result.method.params[:1], result.method.root)
-                expr.right = operand_args[0]
+            if not warned_optional_operator:
+                scope = (dunder_scope[0] if dunder_scope is not None
+                         and any(result.method.root is d.root
+                                 for d in dunder_scope[1]) else None)
+                self._receive_dunder_operand(expr, result, left_type,
+                                             right_type, scope)
             # Check if divisor is provably non-zero for div/mod elision
             if expr.op in ("//", "%"):
                 self._check_divisor_non_zero(expr)
@@ -2796,21 +2792,75 @@ class ExpressionAnalyzer:
         return result
 
     def _resolve_comparison(self, expr: TpyBinOp, left: TpyType,
-                            right: TpyType) -> None:
-        """The comparison method (__eq__, __lt__, etc.) codegen renders."""
-        if result := self.decide_operator(self.operators.resolve_binop(
-                left, expr.op, right, loc_node=expr), expr):
-            expr.resolved_binop = result
-        elif expr.op == "!=":
-            # No __ne__: fall back to negated __eq__ when the method
-            # can't use raw C++ != (a native freestanding function), or
-            # when C++ would pick among the variants of a set sharing one
-            # operator (`FunctionInfo.reresolved_by_cpp`) again.
-            if result := self.decide_operator(self.operators.resolve_binop(
-                    left, "==", right, loc_node=expr), expr):
-                if (result.method.native_function
-                        or result.method.reresolved_by_cpp):
-                    expr.resolved_binop = result
+                            right: TpyType,
+                            operand_types: 'tuple[TpyType, TpyType] | None' = None,
+                            ) -> None:
+        """The comparison method (__eq__, __lt__, etc.) codegen renders.
+        `operand_types` are the operands' own types where they differ from
+        the ones the method is resolved at (`left`, `right`); None where an
+        operand is read through a nullable one, which keeps the operator's
+        own render."""
+        record = operand_types is not None
+        lt, rt = operand_types or (left, right)
+        result = self.decide_operator(self.operators.resolve_binop(
+            left, expr.op, right, loc_node=expr), expr)
+        if result is None:
+            return
+        received = record and self._receive_dunder_operand(expr, result, lt, rt)
+        if expr.op == "!=" and result.method.name == "__eq__":
+            # No __ne__: `!=` is the negated __eq__. Kept when it is a
+            # record's, whose operator is the call, when the method can't
+            # use raw C++ != (a native freestanding function), or when C++
+            # would pick among the variants of a set sharing one operator
+            # (`FunctionInfo.reresolved_by_cpp`) again.
+            if not (received or result.method.native_function
+                    or result.method.reresolved_by_cpp):
+                return
+        expr.resolved_binop = result
+
+    def receive_dunder_operand(self, operand: TpyExpr, operand_type: TpyType,
+                               result: ResolvedBinop,
+                               scope: 'OpenCallArgs | None' = None,
+                               ) -> TpyExpr | None:
+        """A record's operator dunder answers as the explicit call to it
+        (`answers_as_call`): `operand`, the one at its parameter, is
+        received as that call's argument (`CallAnalyzer.receive_winner_args`,
+        with the call's open `scope` when it scored the operand), so the
+        operator's C++ takes it at the variant sema picked. The received
+        operand, or None where the operator keeps its own render (a
+        builtin's dunder, a promoted / widened operand)."""
+        method = result.method
+        if (result.promotion is not None or result.widens_operand
+                or len(method.params) != 1
+                or result.receiver_type is None
+                or not answers_as_call(result.receiver_type)):
+            return None
+        args = [operand]
+        self.calls.receive_winner_args(
+            scope, args, [operand_type],
+            self.operators.received_params(result), method.root)
+        return args[0]
+
+    def _receive_dunder_operand(self, expr: TpyBinOp, result: ResolvedBinop,
+                                left_type: TpyType, right_type: TpyType,
+                                scope: 'OpenCallArgs | None' = None) -> bool:
+        """`receive_dunder_operand` at a binary operator: the right operand,
+        the left one for a reflected dunder, converted in place. Whether it
+        was received; an operand read through a nullable one
+        (`optional_safe_eq`) keeps the operator's own render."""
+        if expr.optional_safe_eq:
+            return False
+        if result.is_reverse:
+            received = self.receive_dunder_operand(expr.left, left_type,
+                                                   result, scope)
+            if received is not None:
+                expr.left = received
+        else:
+            received = self.receive_dunder_operand(expr.right, right_type,
+                                                   result, scope)
+            if received is not None:
+                expr.right = received
+        return received is not None
 
     def _pending_binop(self, expr: TpyBinOp, left_type: TpyType,
                        right_type: TpyType,
@@ -2912,7 +2962,7 @@ class ExpressionAnalyzer:
         already took."""
         if expr.op in _COMPARE_OPS:
             self._warn_mixed_sign_compare(expr, left, right)
-            self._resolve_comparison(expr, left, right)
+            self._resolve_comparison(expr, left, right, (left, right))
             return
         result = self.decide_operator(self.operators.resolve_binop(
             left, expr.op, right, loc_node=expr), expr)
@@ -3087,43 +3137,31 @@ class ExpressionAnalyzer:
         expr.resolved_unaryop = result
         self.ctx.expr_types[expr] = result.method.return_type
 
-    def _is_user_record_type(self, typ: TpyType) -> bool:
-        """Check if a type is a user-defined record (not a builtin container)."""
-        return isinstance(typ, NominalType) and typ.is_record and typ.is_user_record
-
-    def _validate_comparison(self, expr: TpyBinOp, left_type: TpyType, right_type: TpyType) -> None:
-        """Error when comparing user record types that lack the relevant dunder."""
-        # Only check when at least one side is a user record
-        if not self._is_user_record_type(left_type) and not self._is_user_record_type(right_type):
+    def _validate_comparison(self, expr: TpyBinOp, left_type: TpyType,
+                             right_type: TpyType) -> None:
+        """Error when comparing user record types that lack the relevant
+        dunder: the left record's own, or the reflected one of a record on
+        the right (`3 < g` asks `g.__gt__`), as Python tries them."""
+        dunder = builtin_modules.BINOP_TO_METHOD.get(expr.op)
+        reflected = builtin_modules.COMPARE_TO_REFLECTED_METHOD.get(expr.op)
+        if not dunder or not reflected:
             return
-        # Determine which dunder to check
-        COMPARE_OP_TO_DUNDER = {
-            "==": "__eq__", "!=": "__ne__",
-            "<": "__lt__", "<=": "__le__",
-            ">": "__gt__", ">=": "__ge__",
-        }
-        dunder = COMPARE_OP_TO_DUNDER.get(expr.op)
-        if not dunder:
+        sides = [(t, d) for t, d in ((left_type, dunder), (right_type, reflected))
+                 if answers_as_call(t)]
+        if not sides:
             return
-        # Check the left side (operator dispatch goes left to right)
-        check_type = left_type if self._is_user_record_type(left_type) else right_type
-        record = self.ctx.registry.get_record_for_type(check_type)
-        if record:
-            # Use lookup that walks the inheritance chain
-            overloads, _ = self.protocols.lookup_record_method_overloads(record, dunder)
-            has_dunder = bool(overloads)
-            # != is valid if __eq__ is defined (C++ generates != from ==)
-            if not has_dunder and dunder == "__ne__":
-                overloads, _ = self.protocols.lookup_record_method_overloads(record, "__eq__")
-                has_dunder = bool(overloads)
-            if not has_dunder:
-                if dunder == "__ne__":
-                    msg = (f"Comparison '!=' on '{check_type}': "
-                           f"no '__ne__' or '__eq__' method defined")
-                else:
-                    msg = (f"Comparison '{op_spelling(expr.op)}' on '{check_type}': "
-                           f"no '{dunder}' method defined")
-                self.ctx.emit_error(msg, expr)
+        for check_type, name in sides:
+            record = self.ctx.registry.get_record_for_type(check_type)
+            if record is None or self.operators.receiver_dunders(record, name):
+                return
+        check_type, name = sides[0]
+        if name == "__ne__":
+            msg = (f"Comparison '!=' on '{check_type}': "
+                   f"no '__ne__' or '__eq__' method defined")
+        else:
+            msg = (f"Comparison '{op_spelling(expr.op)}' on '{check_type}': "
+                   f"no '{name}' method defined")
+        self.ctx.emit_error(msg, expr)
 
     def get_deref_target_type(self, typ: TpyType, is_readonly: bool = False) -> TpyType | None:
         """If typ has __deref__(), return resolved return type. Else None."""

@@ -83,7 +83,7 @@ bool ternary(std::vector<int32_t>& xs) {
 //     return 0 < xs.pop() < seen_n("chained", xs)  # tpyc: warning(/copies list\[int32\] into owned storage/)
 bool chained(std::vector<int32_t>& xs) {
     std::optional<std::vector<int32_t>> __tmp_1;
-    return ({ auto&& _cmp1 = ::tpy::pop_back(xs); (0 < _cmp1) && (_cmp1 < (__tmp_1.emplace(xs), ::tpyapp::main::seen_n("chained", std::move((*__tmp_1))))); });
+    return ({ auto&& _cmp1 = ::tpy::pop_back(xs); (0 < _cmp1) && (__tmp_1.emplace(xs), (_cmp1 < ::tpyapp::main::seen_n("chained", std::move((*__tmp_1))))); });
 }
 
 // def value_select(xs: list[int32]) -> int32:

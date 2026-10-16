@@ -121,7 +121,7 @@ void main() {
     std::cout << ((dt) - (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(4), ::tpy::BigInt(999999)))) << "\n" << ::tpy::check_signals;
     std::cout << ((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(12), ::tpy::BigInt(31), ::tpy::BigInt(23), ::tpy::BigInt(59), ::tpy::BigInt(59), ::tpy::BigInt(999999))) + (::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)))).isoformat() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) > (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool(((dt) <= (dt))) << " " << ::tpy::print_bool(((dt) == (dt))) << " " << ::tpy::print_bool((dt != dt)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool(((dt) <= (dt))) << " " << ::tpy::print_bool(((dt) == (dt))) << " " << ::tpy::print_bool((!((dt) == (dt)))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) >= (dt))) << " " << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(1))) >= (dt))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(5), ::tpy::BigInt(1))) > (dt))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((dt) < (::tpystd::datetime::datetime(::tpy::BigInt(2026), ::tpy::BigInt(7), ::tpy::BigInt(3), ::tpy::BigInt(14), ::tpy::BigInt(30), ::tpy::BigInt(6))))) << "\n" << ::tpy::check_signals;

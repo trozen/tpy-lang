@@ -400,16 +400,11 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, (THIRMembership, THIRStrMembership, THIRTupleMembership)):
         return _membership(e)
     if isinstance(e, THIRChainedCompareStmtExpr):
-        # Rendered as the comparison chain it collapses to; the bound flags
-        # mark which operands were hoisted to temps.
-        parts = []
-        for i, op in enumerate(e.ops):
-            lhs = _expr(e.inits[i])
-            if i < len(e.bound) and e.bound[i]:
-                lhs += " [temp]"
-            parts.append(f"{lhs} {op}")
-        tail = _expr(e.inits[-1]) if e.inits else ""
-        return f"chained_compare({' '.join(parts)} {tail})"
+        # The temps it binds, then the pairs over them.
+        binds = [f"_cmp{i} = {_expr(init)}" for i, init in enumerate(e.inits)
+                 if init is not None]
+        pairs = " && ".join(_expr(p) for p in e.pairs)
+        return f"chained_compare({'; '.join(binds + [pairs])})"
     if isinstance(e, THIRErrorReturnUnwrap):
         form = "value" if e.value_form else "ptr"
         return f"er_unwrap[{form}]({_expr(e.call)})"

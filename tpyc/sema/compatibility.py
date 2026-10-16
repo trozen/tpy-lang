@@ -110,6 +110,16 @@ _VIEW_RETURN_FAMILIES = (
 )
 
 
+def literal_conversion_source(actual: TpyType, expected: TpyType) -> TpyType:
+    """The type `actual` converts from into `expected`: an int `Literal[...]`
+    value renders as its storage type, so at an integer slot it converts as
+    that type does (`int32` -> `int` is `::tpy::BigInt(k)`)."""
+    if (isinstance(actual, LiteralType) and actual.is_int_base()
+            and is_integer_type(expected)):
+        return actual.base_type
+    return actual
+
+
 def _view_return_family(return_type: TpyType) -> tuple[str, str] | None:
     """(display name, owning alternatives) for a borrowing-view return type."""
     for pred, display, owned in _VIEW_RETURN_FAMILIES:
@@ -2063,8 +2073,18 @@ class TypeCompatibility:
                 return None
             if actual.base_type == expected:
                 return None
-            if actual.is_int_base() and is_integer_type(expected):
-                return None
+            source = literal_conversion_source(actual, expected)
+            if source is not actual:
+                coercion = resolve_coercion(source, expected, coercion_ctx,
+                                            sink_owns)
+                if coercion is None:
+                    # A narrower fixed int: the value's own row when every
+                    # value of the set fits, else checked as its storage type.
+                    coercion = resolve_coercion(actual, expected,
+                                                coercion_ctx, sink_owns)
+                if coercion is not None:
+                    return coercion
+                actual = source
         # Allow PendingBytesType compatibility during first phase (before resolution)
         if isinstance(actual, PendingBytesType):
             if is_bytes_category(expected) or isinstance(expected, PendingBytesType):
@@ -2364,6 +2384,7 @@ class TypeCompatibility:
         # constraint. Default-resolve here so the cell's typeid is stable.
         if coercion.name == "into_any":
             actual = self._resolve_pending_for_any_storage(actual)
+        actual = literal_conversion_source(actual, expected)
         coerced = TpyCoerce(
             expr=expr,
             actual_type=actual,

@@ -1301,7 +1301,7 @@ void compare_operands() {
     Ce& ka = (*a);
     a = &(oe);
     oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
-    std::cout << "compare" << " " << "unpack_eq" << " " << ::tpy::print_bool((((*a)) == (Ce(6)))) << " " << ::tpy::print_bool(((*a) != ka)) << " " << k << "\n" << ::tpy::check_signals;
+    std::cout << "compare" << " " << "unpack_eq" << " " << ::tpy::print_bool((((*a)) == (Ce(6)))) << " " << ::tpy::print_bool((!(((*a)) == (ka)))) << " " << k << "\n" << ::tpy::check_signals;
     auto __tup_2 = ::tpyapp::main::mkl(1);
     Cl __slot_2 = std::move(std::get<0>(__tup_2));
     Cl* b = &__slot_2;
@@ -1314,7 +1314,7 @@ void compare_operands() {
     if (((w = &*(__slot_3 = ::tpyapp::main::mke1(1)), *w).n > 0)) {
         w = &(oe);
         oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
-        std::cout << "compare" << " " << "walrus_eq" << " " << ::tpy::print_bool((((*w)) == (Ce(7)))) << " " << ::tpy::print_bool(((*w) != oe)) << "\n" << ::tpy::check_signals;
+        std::cout << "compare" << " " << "walrus_eq" << " " << ::tpy::print_bool((((*w)) == (Ce(7)))) << " " << ::tpy::print_bool((!(((*w)) == (oe)))) << "\n" << ::tpy::check_signals;
     }
     std::optional<Cl> __slot_4;
     Cl* v = nullptr;
@@ -1333,7 +1333,7 @@ void compare_operands() {
             Ce* p = &__own_1;
             p = &(oe);
             oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
-            std::cout << "compare" << " " << "for_own_eq" << " " << ::tpy::print_bool((((*p)) == (Ce(8)))) << " " << ::tpy::print_bool(((*p) != oe)) << "\n" << ::tpy::check_signals;
+            std::cout << "compare" << " " << "for_own_eq" << " " << ::tpy::print_bool((((*p)) == (Ce(8)))) << " " << ::tpy::print_bool((!(((*p)) == (oe)))) << "\n" << ::tpy::check_signals;
         }
     }
     {
@@ -1355,7 +1355,7 @@ void compare_operands() {
     try {
         t = &(oe);
         oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
-        std::cout << "compare" << " " << "with_eq" << " " << ::tpy::print_bool((((*t)) == (Ce(9)))) << " " << ::tpy::print_bool(((*t) != oe)) << "\n" << ::tpy::check_signals;
+        std::cout << "compare" << " " << "with_eq" << " " << ::tpy::print_bool((((*t)) == (Ce(9)))) << " " << ::tpy::print_bool((!(((*t)) == (oe)))) << "\n" << ::tpy::check_signals;
         goto __with_exit_2;
     } catch (...) {
         __ctx_2.__exit__({}, {}, {});
@@ -1380,7 +1380,7 @@ void compare_operands() {
     Ce* x = &__slot_5;
     x = &(oe);
     oe.n = ::tpy::add_check<int32_t>(oe.n, 1);
-    std::cout << "compare" << " " << "decl_eq" << " " << ::tpy::print_bool((((*x)) == (Ce(10)))) << " " << ::tpy::print_bool(((*x) != oe)) << "\n" << ::tpy::check_signals;
+    std::cout << "compare" << " " << "decl_eq" << " " << ::tpy::print_bool((((*x)) == (Ce(10)))) << " " << ::tpy::print_bool((!(((*x)) == (oe)))) << "\n" << ::tpy::check_signals;
     Cl __slot_6 = Cl(1);
     Cl* y = &__slot_6;
     y = &(ol);

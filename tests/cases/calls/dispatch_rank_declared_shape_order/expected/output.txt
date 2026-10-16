@@ -50,7 +50,7 @@ operators: 2 True True True
 operators: 2 32 1
 operators: True 3
 operators: 1 opt
-operators: 2 30
+operators: 2
 operators_literal: str literal
 operators_literal: 32 1
 operators_builtin: 68719476736.0

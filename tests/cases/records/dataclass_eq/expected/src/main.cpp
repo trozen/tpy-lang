@@ -29,7 +29,7 @@ void main() {
     Point p3 = Point(1, 3);
     std::cout << ::tpy::print_bool(((p1) == (p2))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool(((p1) == (p3))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::print_bool((p1 != p3)) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::print_bool((!((p1) == (p3)))) << "\n" << ::tpy::check_signals;
     Config c1 = Config("a", 1);
     Config c2 = Config("a", 1);
     Config c3 = Config("a", 1, "x");
