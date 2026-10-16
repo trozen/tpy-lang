@@ -1652,8 +1652,8 @@ inline int32_t Bin::size() const {
 }
 
 // def __init__(self, items: list[T]) -> None:
-//     # the generic owning-slot copy contract, hedged at the declaration
-//     self.items = items  # tpyc: warning(/may copy list\[T\] into field/)
+//     # the generic owning-slot copy contract: a list[T] copies whatever T is
+//     self.items = items  # tpyc: warning(/copies list\[T\] into field/)
 template<typename T>
 inline Holder<T>::Holder(const std::vector<T>& items) : items(items) {}
 

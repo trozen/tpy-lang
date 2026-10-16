@@ -587,12 +587,10 @@ from ..source import (BindingKind, BindingRepr, Held, NameFacts,
                       SelectResult)
 from .bindings import rebind_ptr_frame_field, rebind_ptr_frame_value
 from .convert import (Effect, Plan, Refuse, borrowed_path_element_message,
-                      convert, elementwise_tuple_storage,
-                      reject_borrowed_path_elements, spelled)
+                      convert, elementwise_tuple_storage, spelled)
 from .expressions import (
     _COPY_SRC_USE,
     _spell_brace,
-    reject_borrowed_path_element,
     stamped,
     binding_of,
     _hoisted,
@@ -12888,10 +12886,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         if not _return_carries_value(stmt, lc):
             _witness("ret.void")
             return THIRReturn(value=None, loc=loc)
-        _rt = _fn_return_type(lc)
-        if _rt is not None and isinstance(unwrap_readonly(unwrap_ref_type(
-                unwrap_send_sync(_rt))), OwnType):
-            reject_borrowed_path_element(stmt.value, lc)
         if (isinstance(stmt.value, TpyFieldAccess)
                 and stmt.value.consuming_move):
             # A consuming method's `self` is an rvalue ref (`&&`), so returning
@@ -13974,8 +13968,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                   and stmt.value.name not in pointers
                   # Defensive: a reassigned reference binding is a rebind-slot
                   # pointer (so it is in `pointers` already), but a future decl
-                  # widening must not ride this bare-name render.
-                  and stmt.value.name not in lc.prescan.reassigned):
+                  # widening must not ride this bare-name render. A rebound
+                  # parameter is assigned in place, its own storage still.
+                  and (stmt.value.name not in lc.prescan.reassigned
+                       or lc.binding(stmt.value.name).is_param)):
                 dt = declared.get(stmt.value.name)
                 dt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(dt)))
                       if dt is not None else None)
@@ -14242,9 +14238,9 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                          # std::tuple<Box*, int32_t>{&(b), 0}`) whose copy
                          # sema declared: it lifts through the storage
                          # conversion, as the same name does at an owning
-                         # argument. A rebound pointer tuple borrowing an
-                         # element on some path stays out
-                         # (BUGS.md#rebound-tuple-borrowed-path-own-return).
+                         # argument. A rebound pointer tuple stays out: it
+                         # converts element by element, as its binding owns
+                         # each one.
                          or (lc.binding(source.name).ptr_tuple is None
                              and _own_tuple_borrow_lift_arg(
                                  source, ret_vt, lc, declared))))
@@ -15777,20 +15773,27 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         _src_elems = _src_read.source.elems if _src_read is not None else None
         if _src_elems is not None:
             _moved = [i for i, b in enumerate(bind_tags) if b == "move"]
-            reject_borrowed_path_elements(_src_read, _moved)
             # A source holding an element as a pointer hands a consuming
-            # target the pointee to move out -- where the read owns it on
-            # every path reaching it; a pointer to storage the source does
-            # not own has no object to take.
+            # target the pointee to move out -- where the read owns it (sema
+            # declared no copy of it there, `own_element_copies`); a pointer
+            # to storage a binding of the source borrows has no object to
+            # take (BUGS.md#ptr-tuple-consuming-unpack-borrowed-element-rejects).
             for i in _moved:
                 if i < len(_src_elems) and _src_elems[i].pointer_held:
+                    if _src_elems[i].undeclared:
+                        note_detail("ptr_tuple.undeclared_sink")
+                        raise ThirUnsupported(stmt_reject_reason(stmt),
+                                              loc=loc)
                     if not _src_elems[i].movable:
                         note_detail("ptr_tuple.borrowed_path_sink")
                         raise ThirUnsupported(
                             stmt_reject_reason(stmt),
                             message=borrowed_path_element_message(
                                 stmt.value.name, i,
-                                arity=len(_src_elems)),
+                                arity=len(_src_elems),
+                                copies=[j for j in _moved
+                                        if j < len(_src_elems)
+                                        and not _src_elems[j].movable]),
                             loc=loc)
                     bind_tags[i] = "move_pointee"
                     _witness("stmt.tuple_unpack.ptr_tuple_pointee_move")

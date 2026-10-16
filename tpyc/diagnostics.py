@@ -68,6 +68,10 @@ CONSUMING_FIELD_MOVE_NOTE = (
 )
 CONSUMING_FIELD_COPY_CLAUSE = ", or move it in a `return`"
 
+# The remedy of an element copy out of a named container.
+ITERABLE_LVALUE_COPY_HINT = ("use copy_iter() to make this explicit "
+                             "(or copy() to copy the entire container)")
+
 
 def nocopy_container_elem_error(typ: object, kind: str) -> str:
     """Error message for `@nocopy` types used as set elements or dict keys.

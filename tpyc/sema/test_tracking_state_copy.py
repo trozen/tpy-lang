@@ -32,7 +32,7 @@ from ..typesys import (INT32, FunctionInfo, MutationCallEdge,
 from .alias_rebind import BindKind
 from .pending_num import DeferredIntOp
 from .context import (BorrowTracker, FunctionTrackingState, PendingLocal,
-                      LIVE_HANDLE_FIELDS)
+                      ReceiverMove, LIVE_HANDLE_FIELDS)
 
 
 class _Recorder:
@@ -103,6 +103,7 @@ def _populated() -> FunctionTrackingState:
         arm_decl_sites=[(N.TpyIf(N.TpyName("c"), [], []), "r",
                          N.TpyVarDecl("r", None, N.TpyName("c")))],
         borrow_tracker=tracker,
+        owning_reads=[ReceiverMove("b", N.TpyName("b"))],
         current_call_edges=[MutationCallEdge(
             callee_fi=FunctionInfo(name="callee", params=[], return_type=INT32),
             param_map={})],
@@ -144,7 +145,7 @@ _FIXTURE_FIELDS = {
     'pending_container_exprs', 'arm_decl_sites',
     'pending_num_deferred', 'pending_num_splices', 'awaiting_container',
     'after_list_resolution',
-    'borrow_tracker',
+    'borrow_tracker', 'owning_reads',
     'current_call_edges', 'current_awaited_subframes',
     'pending_generic_instances', 'current_ns', 'own_ns', 'current_scope',
 }
@@ -166,6 +167,8 @@ _LEAF_VALUE_NAMES = {
     'OwnSlot',          # a param name and an element index
     'ViewTypeFamily',   # a static descriptor of the str / bytes family
     'InPlaceWrites',    # name -> name sets only
+    'NonOwningBind',    # a line and element indices
+    'Diagnostic',       # a message, a level and a SourceLocation
 }
 _CONTAINER_NAMES = {'list', 'dict', 'set', 'frozenset', 'tuple'}
 

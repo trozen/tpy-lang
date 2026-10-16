@@ -43,7 +43,7 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import ReturnSeed, seeded_arg_hint
-from .context import PENDING_CONTAINER_TYPES
+from .context import PENDING_CONTAINER_TYPES, ReceiverMove
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls)
 from .pending_num import (ContainerCells, Entry, is_pending_num,
@@ -1035,8 +1035,33 @@ class MethodAnalyzer:
                         f"the variable is not re-bound each iteration",
                         expr,
                     )
+            self._check_consuming_receiver(expr.obj)
             # Use-after-consume is already caught by _analyze_name before we get here.
             self.ctx.func.consumed_vars.add(name)
+
+    def _check_consuming_receiver(self, recv: TpyName) -> None:
+        """A consuming call takes its receiver as an owning sink does: a
+        name that owns its value moves in; one that does not (a borrowed
+        parameter, a non-owning local) is copied in, warned like any owning
+        sink's copy. A loop variable's ownership is its iteration's."""
+        if recv.name in self.ctx.func.loop_vars:
+            return
+        t = self.ctx.get_expr_type(recv)
+        bare = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
+        if isinstance(bare, OwnType):
+            bare = unwrap_readonly(bare.wrapped)
+        if bare is None or bare.is_value_type():
+            return
+        read = ReceiverMove(recv.name, recv)
+        if self.compat.grant_name_move(recv, read=read):
+            return
+        if self.compat._is_owned_var(recv.name):
+            # No last use (a live alias, a later read): settled after the
+            # body, which a use-after-consume error at a later read of the
+            # name never reaches.
+            self.compat.record_owning_read(read)
+            return
+        self.compat.declare_receiver_copy(recv)
 
     def _analyze_type_call(self, expr: TpyMethodCall, ref: SymbolBinding) -> TpyType:
         """A call whose callee names a class or enum through a dotted path

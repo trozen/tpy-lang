@@ -1855,11 +1855,11 @@ def record_stmt_borrow_binding(ctx: 'SemanticContext', name: str,
     # A call's result is readonly exactly when its declared return says so,
     # which is the type sema gave the expression.
     const = isinstance(ctx.get_expr_type(inner), ReadonlyType)
-    record_borrow_binding(ctx, name, const=const)
+    record_borrow_binding(ctx, name, const=const, at=init_expr)
 
 
 def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
-                          const: bool) -> None:
+                          const: bool, at: 'TpyExpr | TpyStmt | None') -> None:
     """Record a borrow binding of a non-value local whose const verdict the
     caller already knows.
 
@@ -1869,6 +1869,145 @@ def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
     """
     prev = ctx.func.stmt_borrow_decls.get(name, False)
     ctx.func.stmt_borrow_decls[name] = prev or const
+    note_nonowning_bind(ctx, name, at)
+
+
+@dataclass(frozen=True, slots=True)
+class NonOwningBind:
+    """What a local's bindings to storage that already exists add up to,
+    for the whole function (`FunctionTrackingState.nonowning_binds`): the
+    line of the first one, and what they borrow -- None for the whole
+    value, else the positions of the tuple elements some binding borrows.
+    A local with no such binding is owning."""
+    line: int | None
+    elems: frozenset[int] | None
+
+
+def note_nonowning_bind(ctx: 'SemanticContext', name: str,
+                        at: 'TpyExpr | TpyStmt | None',
+                        elems: 'frozenset[int] | None' = None) -> None:
+    """The one writer of the ownership fact: a binding of local `name` that
+    makes it refer to storage that already exists, wholly (`elems` None)
+    or at those tuple elements, makes it non-owning there for the whole
+    function. A parameter's ownership is its declared type, never a
+    binding's."""
+    if ctx.is_top_level:
+        return
+    func = ctx.func.current_function
+    if not isinstance(func, TpyFunction) or any(
+            p == name for p, _ in func.params):
+        return
+    loc = getattr(at, "loc", None)
+    line = loc.line if loc is not None else None
+    prev = ctx.func.nonowning_binds.get(name)
+    if prev is not None:
+        line = prev.line if prev.line is not None else line
+        elems = (None if prev.elems is None or elems is None
+                 else prev.elems | elems)
+    ctx.func.nonowning_binds[name] = NonOwningBind(line, elems)
+
+
+@dataclass(eq=False)
+class OwningRead:
+    """A read of local `name` whose verdict waits for something the walk
+    has not reached yet: a move an owning sink made out of the local on the
+    ownership fact as it stood at the read (`settle_owning_reads` turns it
+    into a copy if a later binding makes the local non-owning), or a copy
+    warning a loop holds until its mode is known. `node` is the read (the
+    subscript for an element, the loop for a consuming `for`). Each kind of
+    read is its own subclass, carrying what its settlement needs."""
+    name: str
+    node: Any
+
+
+@dataclass(frozen=True)
+class SinkCopy:
+    """The copy an owning sink other than an `Own` slot makes of a source
+    it does not own, in that sink's own words (`own_copy.slot_message`):
+    `display` copied into `dest` (a field, a container, `Any`, a tuple
+    element of one) of payload `target`, or each element (`kind`
+    `KIND_ELEMENTS`, remedy `hint`)."""
+    display: 'TpyType'
+    target: 'TpyType'
+    dest: str
+    kind: str = own_copy.KIND_SLOT
+    hint: str = ""
+
+
+@dataclass(eq=False)
+class NameMove(OwningRead):
+    """A whole name moved into an owning slot -- `slot`, described as
+    `context` for a `return` or a `pass` (`action`); `whole_slot` False for
+    one member of a literal, whose warning names it. `sink` is the copy's
+    text where the slot is not an `Own` slot (None: the `Own` slot's), one
+    per element kind a container copies."""
+    slot: 'OwnType'
+    context: str
+    action: str
+    whole_slot: bool = True
+    sink: 'SinkCopy | tuple[SinkCopy, ...] | None' = None
+
+
+@dataclass(eq=False)
+class ElementMove(OwningRead):
+    """Element `index` of tuple local `name` read `name[index]` and moved
+    into the `Own` slot `slot` of a return (`returned`) or an argument."""
+    index: int
+    slot: 'OwnType'
+    returned: bool
+
+
+@dataclass(eq=False)
+class TupleNameMove(OwningRead):
+    """A tuple local read whole at a sink that takes its `Own` elements
+    (those of the slot `tuple_type`): all but `copied` move out of it. A
+    `warns` sink declares each copy it makes with the slot's warning; a
+    consuming unpack has no copy to make (it refuses a borrowed one)."""
+    tuple_type: 'TupleType'
+    copied: frozenset[int]
+    warns: bool = True
+
+
+@dataclass(eq=False)
+class ReceiverMove(OwningRead):
+    """The receiver of a consuming method call (`self: Own[Self]`)."""
+
+
+@dataclass(eq=False)
+class OwnIterMove(OwningRead):
+    """`own_iter(name)`, the `call`."""
+    call: Any
+
+
+@dataclass(eq=False)
+class ConsumingLoop(OwningRead):
+    """A `for` over the local that consumes its elements; `revert` turns it
+    back into borrowing iteration."""
+    revert: Callable[[], None]
+
+
+@dataclass(eq=False)
+class FinallyCapture(OwningRead):
+    """The finally-deferred capture of a returned local (`ret`, at tuple
+    member `path`; None for the whole value): the return moves it out after
+    the finally chain."""
+    ret: Any
+    path: 'tuple[int, ...] | None'
+
+
+@dataclass(eq=False)
+class UnneededCopy(OwningRead):
+    """`copy(name)` (the `call`) at an owning sink where the bare name
+    would move: the advice to drop the copy holds only for an owning
+    local."""
+    call: Any
+
+
+@dataclass(eq=False)
+class HeldLoopCopy(OwningRead):
+    """A copy warning about loop variable `name`, held until its loop's mode
+    is decided: a consuming loop moves the element it describes."""
+    diag: Diagnostic
 
 
 class _ModuleInitSentinel:
@@ -2190,7 +2329,6 @@ class FunctionTrackingState:
     # last: the loop vars a comprehension's write may lend through.
     comp_targets: list[str] = field(default_factory=list)
     consumed_loop_vars: set[str] = field(default_factory=set)
-    deferred_loop_copy_warnings: dict[str, list[int]] = field(default_factory=dict)
     # One loop var can borrow MANY sources: a `*args` pack is a single
     # argument slot holding many operands, so an iterable borrowing the pack
     # borrows every one of them.
@@ -2233,10 +2371,15 @@ class FunctionTrackingState:
     # ordering. Two members -- a match capture aliasing an lvalue subject, and a
     # `with` target (which borrows `__enter__()`'s result).
     nonstmt_borrow_bindings: set[str] = field(default_factory=set)
-    # Accumulator (survives FlowFacts like ever_owned_locals): locals
-    # reassigned from a borrow-producing source, so no longer safely movable
-    # even if they were owned earlier. Subtracted from the movable set.
-    borrow_reassigned_vars: set[str] = field(default_factory=set)
+    # The ownership fact (`note_nonowning_bind`), an accumulator like
+    # ever_owned_locals: a local named here is non-owning, wholly or at
+    # some tuple elements, for the whole function.
+    nonowning_binds: dict[str, NonOwningBind] = field(default_factory=dict)
+    # The reads whose verdict is not settled yet (`OwningRead`): the
+    # owning-sink moves out of locals, settled once the body's fact is
+    # complete (`TypeCompatibility.settle_owning_reads`), and the loop
+    # variables' copy warnings, settled when their loop's mode is decided.
+    owning_reads: list[OwningRead] = field(default_factory=list)
     move_through_vars: set[str] = field(default_factory=set)
 
     # --- Prescan / last-use ---
@@ -2333,7 +2476,6 @@ class FunctionTrackingState:
     # source __tup temp / branch-local by-ref source). Consumed at the
     # branch-predecl sites. Per-function; reset with the prescan sets.
     tuple_unpack_view_targets: set[str] = field(default_factory=set)
-    current_lvalue_reassigned: set[str] = field(default_factory=set)
     current_aug_assigned_vars: set[str] = field(default_factory=set)
     # alias -> source for locals initialized from a bare name (prescan
     # alias_sources): the whole-object borrowers last-use liveness models.
@@ -2607,14 +2749,33 @@ class FunctionTrackingState:
         return new
 
     def rebinds_keep_ownership(self, name: str) -> bool:
-        """Whether every rebind of local `name` hands it an object of its
-        own: none re-points it at an lvalue or a borrow, so a last use may
-        move out of what it holds. A hoisted local is a pointer slot no use
-        moves out of."""
-        if name in self.hoisted_vars or name in self.borrow_reassigned_vars:
-            return False
-        return not (name in self.current_reassigned_vars
-                    and name in self.current_lvalue_reassigned)
+        """Whether local `name` is owning (`owns_whole`): no binding of it
+        re-points it at existing storage, so a last use may move out of
+        what it holds. A hoisted local is a pointer slot no use moves out
+        of."""
+        return name not in self.hoisted_vars and self.owns_whole(name)
+
+    def owns_whole(self, name: str) -> bool:
+        """The ownership fact for local `name` as recorded so far: no
+        binding made it refer to existing storage as a whole (some tuple
+        elements may still be borrowed -- `nonowning_elems`)."""
+        rec = self.nonowning_binds.get(name)
+        return rec is None or rec.elems is not None
+
+    def nonowning_elems(self, name: str, arity: int) -> frozenset[int]:
+        """The elements of tuple local `name` some binding so far borrows
+        (every one when a binding borrows the whole tuple)."""
+        rec = self.nonowning_binds.get(name)
+        if rec is None:
+            return frozenset()
+        return (frozenset(range(arity)) if rec.elems is None
+                else rec.elems)
+
+    def nonowning_line(self, name: str) -> int | None:
+        """The line of the first binding that made local `name` non-owning
+        (wholly or at an element), None for an owning local."""
+        rec = self.nonowning_binds.get(name)
+        return rec.line if rec is not None else None
 
     # --- BindingProvenance accessors ---
     # Reads default-fill from an absent name; writes go through _bp_update,
@@ -2894,10 +3055,6 @@ class SemanticContext:
     # object takes. Sema records none -- every owned element takes storage
     # of its own (OWN) until MIR proves reusing the old one safe.
     tuple_elem_storage: IdentityMap = field(default_factory=IdentityMap)
-    # Each last-use read of a tuple local holding a reference element, with
-    # the elements every storage reaching it owns: what a consuming sink may
-    # move out of the read (an element some path borrows is copied).
-    tuple_owned_at_use: IdentityMap = field(default_factory=IdentityMap)
     # Per function, every name's plain bindings (`tuple_name_bindings`).
     tuple_bindings_by_func: IdentityMap = field(default_factory=IdentityMap)
     # Per function, its pointer tuples once final (`pointer_tuple_names`),
@@ -3120,16 +3277,23 @@ class SemanticContext:
     # Name reads that run more than once per evaluation of their statement
     # (a comprehension's per-item part, a lambda body): never a last use.
     repeated_reads: IdentitySet = field(default_factory=IdentitySet)
-    # Sources that COPY into an `Own` tuple-element slot, as declared by the
-    # warning: a tuple-literal member, or a tuple name some element of which
-    # arrives borrowed. The lowering builds exactly these copies -- never a
-    # move out of storage that outlives the call, never an undeclared copy.
-    own_element_copies: IdentitySet = field(default_factory=IdentitySet)
+    # Sources that COPY into an `Own` slot, as declared by the warning: a
+    # tuple-literal member, a consuming call's receiver that does not own
+    # its value, or a tuple name some element of which arrives borrowed --
+    # mapped to the elements it copies (None: every borrowed one; None too
+    # for any other source). The lowering builds exactly these copies --
+    # never a move out of storage that outlives the call, never an
+    # undeclared copy.
+    own_element_copies: IdentityMap = field(default_factory=IdentityMap)
     # The declared-copy NAMES among them whose binding also holds an element
     # by value (mixed): no whole-tuple lift may build their copy.
     own_element_mixed: IdentitySet = field(default_factory=IdentitySet)
+    # Pointer-tuple NAME reads an owning sink takes elements out of, with
+    # their copies (if any) in `own_element_copies`: the lowering moves an
+    # element out of a read only where sema declared that read here.
+    declared_tuple_reads: IdentitySet = field(default_factory=IdentitySet)
     # `t[i]` reads that MOVE owned element `i` out of a tuple the body
-    # owns, at the tuple's last use: a return (`returned_owned_element`)
+    # owns, at the tuple's last use: a return (`check_own_lvalue_into_own`)
     # or an `Own[T]` argument (`passed_owned_element`).
     element_moves: IdentitySet = field(default_factory=IdentitySet)
     # Returned NAMES a closure of the body still reads after the return
@@ -3563,10 +3727,16 @@ class SemanticContext:
                       if own_copy.type_has_type_param(t)]
         if all(self._copy_is_unobservable(t) for t in open_sides):
             return True
-        diag = Diagnostic(
-            DiagnosticLevel.WARNING,
-            own_copy.hedge_message(display, dest, kind, hint),
-            self._resolve_loc(node))
+        head = unwrap_readonly(display)
+        if (kind != own_copy.KIND_ELEMENTS and isinstance(head, NominalType)
+                and not head.is_protocol and not head.is_value_type()):
+            # A reference-type head is copied whatever its arguments are.
+            msg = own_copy.slot_message(head, head, dest, kind, hint,
+                                        non_copyable=False)[1]
+        else:
+            msg = own_copy.hedge_message(display, dest, kind, hint)
+        diag = Diagnostic(DiagnosticLevel.WARNING, msg,
+                          self._resolve_loc(node))
         self.diagnostics.append(diag)
         obligation = own_copy.OwnCopyObligation(
             display_type=display, target_type=target, dest=dest, kind=kind,
@@ -4630,11 +4800,11 @@ class SemanticContext:
     def is_last_use(self, expr: 'TpyExpr | None') -> bool:
         """Sema's last-use verdict for one name read, as sema left it: the
         liveness mark minus every retraction sema made -- at the use (a
-        hidden borrow demoting the move in `is_auto_move_use`, a live
+        hidden borrow demoting the move (`demoted_by_hidden_borrow`), a live
         closure capturing the source) or later in the body (a `finally`
         that still reads a deferred return). The read lowering takes;
-        lowering never calls `is_auto_move_use`, which asks the borrow state
-        of the moment and retracts marks."""
+        lowering never asks the move verdict itself, which reads the borrow
+        state of the moment and retracts marks."""
         return expr in self.all_last_uses
 
     # ------------------------------------------------------------------

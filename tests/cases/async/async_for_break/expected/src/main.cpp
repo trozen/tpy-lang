@@ -41,7 +41,7 @@ namespace tpyapp::main {
     }
     case S_JOIN_0: {
         __state = S_DONE;
-        ::tpy::BigInt __tpy_async_ret = result;
+        ::tpy::BigInt __tpy_async_ret = std::move(result);
         return ::tpystd::tpy::Poll<::tpy::BigInt>::ready(std::move(__tpy_async_ret));
     }
     case S_JOIN_1: {

@@ -232,8 +232,8 @@ class Holder[T]:
     items: list[T]
 
     def __init__(self, items: list[T]) -> None:
-        # the generic owning-slot copy contract, hedged at the declaration
-        self.items = items  # tpyc: warning(/may copy list\[T\] into field/)
+        # the generic owning-slot copy contract: a list[T] copies whatever T is
+        self.items = items  # tpyc: warning(/copies list\[T\] into field/)
 
     # method position on a generic record, over a field container
     def walk(self) -> Iterator[T]:  # tpyc: ok

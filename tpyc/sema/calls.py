@@ -54,7 +54,7 @@ from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
-from .context import OpenCallArgs, PENDING_CONTAINER_TYPES, field_chain_storage_key
+from .context import OpenCallArgs, OwnIterMove, PENDING_CONTAINER_TYPES, field_chain_storage_key
 from ..parse.nodes import name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
@@ -2235,7 +2235,9 @@ class CallAnalyzer:
         # the container, so using it afterwards is use-after-move.
         arg = expr.args[0]
         if isinstance(arg, TpyName):
-            if not self.compat.is_auto_move_use(arg):
+            self.compat.check_own_iter_source(arg, expr)
+            if not self.compat.grant_name_move(
+                    arg, read=OwnIterMove(arg.name, arg, expr)):
                 self.ctx.warning(
                     f"own_iter() consumes '{arg.name}' -- "
                     f"using it afterwards is undefined behavior. "
@@ -3210,7 +3212,9 @@ class CallAnalyzer:
             return
         if isinstance(arg_type, TypeParamRef):
             return
-        if self.compat.is_auto_move_use(arg):
+        # The argument coercion's `Own` arm records this move (and settles
+        # it into a copy, with the @nocopy error, if a later binding borrows).
+        if self.compat.is_last_use_move_candidate(arg):
             self.compat.check_own_consumption(arg)
             return
         if self._is_nocopy_type(arg_type):
@@ -3242,16 +3246,8 @@ class CallAnalyzer:
                 and arg.resolved_function_info
                 and arg.resolved_function_info.qualified_name == "tpy.copy"):
             return
-        inner = arg.args[0]
-        copied = self.compat.auto_move_copied_elements(inner)
-        if copied is None:
-            return
-        self.compat.check_own_consumption(arg)
-        if not copied:
-            self.ctx.warning(
-                f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
-                arg,
-            )
+        if self.compat.advise_unneeded_copy(arg) is not None:
+            self.compat.check_own_consumption(arg)
 
     def warn_cond_operand_eager_arg(self, arg: TpyExpr, arg_type: TpyType,
                                     ptype: TpyType) -> None:
@@ -3380,7 +3376,9 @@ class CallAnalyzer:
                 bare = unwrap_readonly(ptype)
                 if (isinstance(bare, TupleType) and param_takes_ownership(ptype)
                         and self.compat._is_owned_var(arg.name)
-                        and not self.compat.is_auto_move_use(arg)):
+                        # A negative use: the copy path; a move is
+                        # `check_name_borrow_into_own`'s record.
+                        and not self.compat.is_last_use_move_candidate(arg)):
                     if self.ctx.is_type_non_copyable(arg_type):
                         reason = (self.ctx.nocopy_reason(arg_type)
                                   or f"owned tuple '{arg.name}'")
@@ -3396,7 +3394,7 @@ class CallAnalyzer:
                             f"make this explicit", arg)
                         # Declared to the lowering, which builds only
                         # declared copies of a name holding a reference.
-                        self.ctx.own_element_copies.add(arg)
+                        self.ctx.own_element_copies[arg] = None
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return

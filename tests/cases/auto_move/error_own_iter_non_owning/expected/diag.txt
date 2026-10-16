@@ -1,0 +1,1 @@
+main.py:11: error: own_iter() takes ownership of 'b', which does not own its list ('b' is bound to existing storage at line 7); iterate it with a plain for-loop instead

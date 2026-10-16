@@ -3,8 +3,8 @@ main.py:405: warning: 'holder' will not keep the object it was given -- 'b' is r
 main.py:411: warning: 'kept' will not keep the object it was given -- 'w' is rebound on each iteration and both names share its storage; use copy(w) for an independent value
 main.py:417: warning: 'keep' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
 main.py:457: warning: 'keep' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
-main.py:503: warning: copies L into owned storage; use copy() to make this explicit
-main.py:514: warning: copies L into owned storage; use copy() to make this explicit
-main.py:521: warning: copies L into owned storage; use copy() to make this explicit
+main.py:503: warning: copies L into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 502)
+main.py:514: warning: copies L into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 513)
+main.py:521: warning: copies L into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 520)
 main.py:574: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement
 main.py:605: warning: Result borrows from temporary receiver object; the temporary is destroyed at end-of-statement

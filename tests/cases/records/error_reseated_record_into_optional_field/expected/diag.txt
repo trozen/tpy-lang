@@ -1,2 +1,2 @@
-main.py:24: warning: copies P into field; use copy() to make this explicit
+main.py:24: warning: copies P into field; use copy() to make this explicit ('p' is bound to existing storage at line 21)
 main.py:24: error: in function 'pick': this construct is not yet supported by C++ code generation (stmt.assign:field_write.lift.borrow)

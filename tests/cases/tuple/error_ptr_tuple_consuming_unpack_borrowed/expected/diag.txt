@@ -1,0 +1,1 @@
+main.py:29: error: in function 'first': element 0 of 'p' is borrowed from other storage by a binding of 'p', so handing it to a sink that takes ownership is not yet supported here; use (copy(p[0]), p[1]) there instead

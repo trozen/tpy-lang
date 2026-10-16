@@ -2015,15 +2015,19 @@ class SemanticAnalyzer:
                 self.ctx.func.escape_hoisted_vars.copy())
         if self.ctx.func.move_through_vars:
             self.function_move_through_vars[func] = self.ctx.func.move_through_vars.copy()
-        # Compute movable locals from ever_owned_locals (survives FlowFacts restores)
+        # The movable locals: those a binding made objects of their own
+        # (ever_owned_locals survives FlowFacts restores) that the complete
+        # ownership fact keeps owning.
         movable = set()
         for name in self.ctx.func.ever_owned_locals:
-            # A rebind to a borrow source (reference-returning call, ternary
-            # of lvalues) is one the prescan's lvalue_reassigned can't see
-            # (no type info, so it classifies them as rvalue); an auto-move
-            # at a later last use would steal from the aliased source.
             if self.ctx.func.rebinds_keep_ownership(name):
                 movable.add(name)
+        # A rebind of a parameter that takes ownership copies into the
+        # parameter's own storage: the parameter stays owning.
+        movable.update(
+            name for name, ptype in func.params
+            if name in self.ctx.func.current_rebound_params
+            and func.takes_ownership_of(name, ptype))
         if movable:
             self.function_movable_locals[func] = movable
         if self.ctx.func.ever_owned_locals:
@@ -3529,7 +3533,6 @@ class SemanticAnalyzer:
         self.ctx.finally_return_candidates |= collect_finally_return_candidates(stmts)
         self.ctx.func.current_reassigned_vars = self.top_level_scan_result.reassigned.copy()
         self.ctx.func.current_fresh_ctor_locals = set()
-        self.ctx.func.current_lvalue_reassigned = self.top_level_scan_result.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = self.top_level_scan_result.aug_assigned.copy()
         self.ctx.func.current_alias_sources = dict(self.top_level_scan_result.alias_sources)
         self.ctx.func.current_chain_alias_sources = dict(

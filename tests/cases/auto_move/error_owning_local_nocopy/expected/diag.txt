@@ -1,0 +1,1 @@
+main.py:18: error: @nocopy type 'Cell' cannot be returned as return type Own[Cell]. Only the original owner can be moved at its last use ('b' is bound to existing storage at line 15).

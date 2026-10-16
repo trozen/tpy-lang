@@ -6,7 +6,7 @@ Statement analysis including variable declarations, assignments, and control flo
 
 from __future__ import annotations
 from contextlib import contextmanager
-from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple
+from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple, Sequence
 
 from ..typesys import pointer_repr_optional, pointer_variant_union
 from ..typesys import (
@@ -68,7 +68,7 @@ from ..prescan import (
     bound_names_of, walrus_names_of, scope_bound_names, ScanResult,
     scan_reassigned_vars, collect_in_place_writes,
     parse_deref_view_key, storage_spelling,
-    FactKills, collect_fact_kills, liveness_alias_sources, is_scan_rvalue,
+    FactKills, collect_fact_kills, liveness_alias_sources,
     collect_nonlocals, closure_exports,
 )
 from ..liveness import (analyze_last_uses, closure_pinned_names,
@@ -85,7 +85,8 @@ from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_opera
                       expr_yields_non_null_ptr, LoopClauseEdges,
                       record_borrow_binding, record_stmt_borrow_binding,
                       holds_generator_object, holds_frame_object,
-                      note_owned_local,
+                      note_owned_local, note_nonowning_bind, ConsumingLoop,
+                      FinallyCapture, SinkCopy,
                       frame_binding_calls, frame_binding_fact,
                       record_frame_binding_roots,
                       frame_borrowed_operands,
@@ -93,7 +94,7 @@ from .context import (OwnSlot, PendingLocal, addr_taken_roots, call_borrow_opera
                       tuple_borrow_escape_roots)
 from .flow_facts import condition_walrus_assigned, condition_walrus_targets
 from .literal_utils import is_char_literal_init
-from ..diagnostics import SemanticError, NOCOPY_REMEDIATION_HINT
+from ..diagnostics import Diagnostic, SemanticError, NOCOPY_REMEDIATION_HINT
 from .match import MatchAnalyzer
 from .narrowing import NarrowingTracker
 from .overloads import OverloadAmbiguityError, resolve_overload
@@ -133,7 +134,7 @@ from .alias_rebind import (decide_rebind_storage, finalize_pointer_tuples,
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
-from .compatibility import TupleSink
+from .compatibility import TupleSink, owned_tuple_slots
 from .context import _root_name_of_expr, receiver_root, lent_receivers, BorrowKind, EphemeralKind, INVALIDATING_BORROW_KINDS, MODULE_INIT_CONTEXT, PENDING_CONTAINER_TYPES, _storage_key, _storage_root, element_index_key, element_loan_mutation_warning, loan_mutation_warning, _borrow_storage_root, _borrow_storage_roots, call_lend_sources, iter_borrow_storage, field_chain_storage_key, register_binding_borrow, ephemeral_borrow_root, contains_pending_leaf, holds_no_pointer, value_may_point
 from ..value_category import (
     is_rvalue_source, call_returns_cpp_ref, async_result_aliases,
@@ -1053,12 +1054,7 @@ class StatementAnalyzer:
                 and value.resolved_function_info
                 and value.resolved_function_info.qualified_name == "tpy.copy"):
             return
-        inner = value.args[0]
-        if self.compat.auto_move_copied_elements(inner) == frozenset():
-            self.ctx.warning(
-                f"unnecessary copy() -- '{inner.name}' is at its last use and would be moved automatically",
-                value,
-            )
+        self.compat.advise_unneeded_copy(value)
 
     def _warn_str_field_return_copy(self, value: TpyExpr, expected: TpyType) -> None:
         """Warn when a method returns self.field where field is str.
@@ -1180,6 +1176,12 @@ class StatementAnalyzer:
             # is the same owning slot with a const view on top, so the
             # spelling must not be a way past the check.
             own_expected = unwrap_readonly(expected)
+            # `-> Own[T] | None` takes a non-None value exactly as `-> Own[T]`
+            # does (a tuple payload is the tuple checks' below).
+            if (isinstance(own_expected, OptionalType)
+                    and isinstance(unwrap_readonly(own_expected.inner), OwnType)
+                    and own_tuple_target(own_expected.inner) is None):
+                own_expected = unwrap_readonly(own_expected.inner)
             if isinstance(own_expected, OwnType):
                 if self.compat.is_copy_call(stmt.value):
                     self._warn_unnecessary_return_copy(stmt.value)
@@ -1508,6 +1510,8 @@ class StatementAnalyzer:
         if eligible:
             self.ctx.all_last_uses.add(stmt.value)
             stmt.finally_deferred_capture = True
+            self.compat.record_owning_read(FinallyCapture(
+                stmt.value.name, stmt.value, stmt, None))
 
     def _owned_element_is_pointer(self, name: str, index: int) -> bool:
         """Whether the tuple `name` this body OWNS holds element `index` as a
@@ -1608,6 +1612,8 @@ class StatementAnalyzer:
             self.ctx.all_last_uses.add(leaves[path])
             # The deferred member is moved out after the chain: a consume.
             self.ctx.mark_own_param_consumed(leaves[path].name)
+            self.compat.record_owning_read(FinallyCapture(
+                leaves[path].name, leaves[path], stmt, path))
         stmt.finally_deferred_leaves = tuple(paths)
         stmt.finally_deferred_capture = True
 
@@ -1639,6 +1645,8 @@ class StatementAnalyzer:
         self.ctx.mark_own_param_consumed(value.name)
         stmt.finally_deferred_leaves = ((),)
         stmt.finally_deferred_capture = True
+        self.compat.record_owning_read(FinallyCapture(
+            value.name, value, stmt, ()))
         return True
 
     @staticmethod
@@ -1710,7 +1718,8 @@ class StatementAnalyzer:
             # param at its last use MOVES in (and is consumed, as the scalar
             # `self.f = q` consumes it), a borrowed one is copied.
             if is_field:
-                if self.compat.is_owned_last_use_move(elem):
+                # The member check above decided (and recorded) the move.
+                if isinstance(elem, TpyName):
                     self.compat.check_own_consumption(elem)
                 literal.elem_capture.append(V)
                 continue
@@ -1771,7 +1780,9 @@ class StatementAnalyzer:
                 continue
             if not self.compat.is_lvalue(elem):
                 literal.elem_capture.append(V)
-            elif self.compat.is_owned_last_use_move(elem):
+            elif self.compat.grant_name_move(elem, OwnType(et),
+                                             f"tuple element {i}",
+                                             whole_slot=False):
                 # An owned local/param at its last use MOVES into the slot, so
                 # the local OWNS the moved element (storage form) -- the local
                 # analog of the field auto-move (above) and the scalar Own[T]
@@ -2649,6 +2660,7 @@ class StatementAnalyzer:
                     with self.scopes.loop_var(inner_scope, stmt.var, elem_type, inner_scope.depth, is_foreach=True):
                         for s in stmt.body:
                             self.analyze_stmt(s)
+                    self._release_loop_copy_warnings(stmt.var)
                 self._finish_loop_clauses(
                     stmt, inner_scope, edges, before=before,
                     consumed_before=consumed_before_loop,
@@ -2796,7 +2808,7 @@ class StatementAnalyzer:
                         stmt, ephemeral_src, open_eph_src)
                     self.ctx.func.mutated_loop_vars.discard(stmt.var)
                     self.ctx.func.consumed_loop_vars.discard(stmt.var)
-                    self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
+                    self._release_loop_copy_warnings(stmt.var)
                     self._check_loop_var_rebind(stmt, elem_type)
                     self._record_for_loop_var_type(stmt, elem_type)
                     cid_floor = self.ctx.pending_num_counter
@@ -2853,37 +2865,45 @@ class StatementAnalyzer:
                     stmt.var in self.ctx.func.mutated_loop_vars
                     or stmt.var in self.ctx.func.consumed_loop_vars
                 )
+                # The loop variable's element-copy warnings were held back
+                # (`hold_loop_copy_warnings`) until the loop's mode is
+                # known: elements a consuming loop moves are not copied.
+                # Elements of type Own[T] (e.g. Iterable[Own[T]] params) move
+                # too, unless a rebind re-points the variable at an object it
+                # does not own (the declaration twin's copy).
+                held = self.compat.take_loop_copy_warnings(stmt.var)
+                own_elems_move = (
+                    isinstance(elem_type, OwnType)
+                    and (not first_binding_storage(
+                        "loop", elem_type,
+                        rebound=stmt.var in stmt.loop_body_rebinds,
+                        hoisted=stmt.var
+                        in self.ctx.func.escape_hoisted_vars)
+                         .pointer
+                         or self.ctx.func.rebinds_keep_ownership(
+                             stmt.var)))
+                consuming_fi = None
                 if (loop_var_needs_ownership
                         and not stmt.hoist_loop_var
                         and not unwrapped.is_value_type()
-                        and self.compat.is_auto_move_use(stmt.iterable)):
+                        and isinstance(stmt.iterable, TpyName)):
                     consuming_fi = self._find_consuming_iter(inner_iterable_type)
-                    if consuming_fi is not None:
-                        stmt.consuming_iter_fi = consuming_fi
-                        # Suppress copy warnings for the loop variable --
-                        # elements will be moved, not copied.
-                        deferred = self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
-                        if deferred:
-                            for idx in sorted(deferred, reverse=True):
-                                del self.ctx.diagnostics[idx]
-                # Also suppress copy warnings when elem_type is Own[T]
-                # (e.g. Iterable[Own[T]] params) -- elements will be moved,
-                # unless a rebind re-points the variable at an object it does
-                # not own (the declaration twin's copy).
-                if (stmt.consuming_iter_fi is None
-                        and isinstance(elem_type, OwnType)
-                        and (not first_binding_storage(
-                            "loop", elem_type,
-                            rebound=stmt.var in stmt.loop_body_rebinds,
-                            hoisted=stmt.var
-                            in self.ctx.func.escape_hoisted_vars)
-                             .pointer
-                             or self.ctx.func.rebinds_keep_ownership(
-                                 stmt.var))):
-                    deferred = self.ctx.func.deferred_loop_copy_warnings.pop(stmt.var, None)
-                    if deferred:
-                        for idx in sorted(deferred, reverse=True):
-                            del self.ctx.diagnostics[idx]
+                    loop_read = (ConsumingLoop(
+                        stmt.iterable.name, stmt,
+                        self._consuming_loop_revert(
+                            stmt, iterable_type, elem_type,
+                            () if own_elems_move else held))
+                        if consuming_fi is not None else None)
+                    if loop_read is None:
+                        self.compat.retract_hidden_borrowed_last_use(
+                            stmt.iterable)
+                    elif not self.compat.grant_name_move(stmt.iterable,
+                                                         read=loop_read):
+                        consuming_fi = None
+                if consuming_fi is not None:
+                    stmt.consuming_iter_fi = consuming_fi
+                elif not own_elems_move:
+                    self.compat.emit_held(held)
                 self._finish_loop_clauses(
                     stmt, inner_scope, edges, before=before,
                     consumed_before=consumed_before_loop,
@@ -3990,6 +4010,7 @@ class StatementAnalyzer:
                                        inner_scope.depth, is_foreach=True):
                 for s in stmt.body:
                     self.analyze_stmt(s)
+            self._release_loop_copy_warnings(stmt.var)
         self._finish_loop_clauses(
             stmt, inner_scope, edges, before=before,
             consumed_before=consumed_before_loop,
@@ -4243,8 +4264,14 @@ class StatementAnalyzer:
                     # table shared with every other borrow consumer.
                     record_borrow_binding(
                         self.ctx, item.target,
-                        const=declared_result_readonly(enter_info))
+                        const=declared_result_readonly(enter_info),
+                        at=item.context_expr)
                     self.ctx.func.nonstmt_borrow_bindings.add(item.target)
+                elif stmt.is_async and not resolved.is_value_type():
+                    # The awaited `__aenter__` result lends as the sync one
+                    # does; only its const verdict is the table's to skip.
+                    note_nonowning_bind(self.ctx, item.target,
+                                        item.context_expr)
 
             if stmt.is_async:
                 # This item's `__aenter__` awaits before the next item's
@@ -4361,7 +4388,6 @@ class StatementAnalyzer:
             func.body, self.ctx.write_summaries)
         self.ctx.func.current_fresh_ctor_locals = set()
         self.ctx.func.tuple_unpack_view_targets = set()
-        self.ctx.func.current_lvalue_reassigned = scan.lvalue_reassigned.copy()
         self.ctx.func.current_aug_assigned_vars = scan.aug_assigned.copy()
         self.ctx.func.current_alias_sources = dict(scan.alias_sources)
         self.ctx.func.current_chain_alias_sources = dict(scan.chain_alias_sources)
@@ -5345,6 +5371,25 @@ class StatementAnalyzer:
                 inner.family, inner.var_id, None,
                 roots=resolved if roots is not None else None, replace=True)
 
+    def _release_loop_copy_warnings(self, var: str) -> None:
+        """Emit the element-copy warnings held for loop variable `var` by a
+        loop whose mode cannot consume (`hold_loop_copy_warnings`)."""
+        self.compat.emit_held(self.compat.take_loop_copy_warnings(var))
+
+    def _consuming_loop_revert(self, stmt: TpyForEach, iterable_type: TpyType,
+                               elem_type: TpyType,
+                               held: 'Sequence[Diagnostic]'
+                               ) -> 'Callable[[], None]':
+        """What turns a consuming loop back into a borrowing one once the
+        ownership fact calls its iterable non-owning (`settle_owning_reads`):
+        its elements are copied after all, with the warnings the consuming
+        mode held back."""
+        def revert() -> None:
+            stmt.consuming_iter_fi = None
+            self.compat.emit_held(held)
+            self._decide_loop_copies_var(stmt, iterable_type, elem_type)
+        return revert
+
     def _decide_loop_copies_var(self, stmt: TpyForEach,
                                 iterable_type: TpyType,
                                 elem_type: TpyType) -> None:
@@ -5647,16 +5692,6 @@ class StatementAnalyzer:
                 self.deduction.mark_container_return_context(e, et)
         else:
             self.deduction.mark_container_return_context(value, elem_type)
-
-    def _bar_unscanned_lvalue_reassign(self, name: str,
-                                       value: TpyExpr) -> None:
-        """A reassign from an lvalue the prescan's untyped scan calls fresh
-        (a select, a borrow-returning call, a field of one) is invisible to
-        the alias maps the liveness walk reads, so the name is barred from
-        the movable set -- else an auto-move at its last use would steal
-        from the source it aliases."""
-        if is_scan_rvalue(value):
-            self.ctx.func.borrow_reassigned_vars.add(name)
 
     def _store_pending_num(self, cell: PendingNumCell, value_expr: TpyExpr,
                            value_type: TpyType | None, site: TpyStmt,
@@ -6551,7 +6586,8 @@ class StatementAnalyzer:
                 if isinstance(stmt.init, TpyName):
                     self.ctx.check_coro_move_unstarted(
                         stmt.init, f"into '{stmt.name}'")
-                    if not self.compat.is_auto_move_use(stmt.init):
+                    if not self.compat.grant_name_move(
+                            stmt.init, var_type, f"'{stmt.name}'"):
                         raise self.ctx.error(
                             f"binding '{stmt.name}' moves the coroutine out of "
                             f"'{stmt.init.name}' (coroutine handles are "
@@ -6813,16 +6849,21 @@ class StatementAnalyzer:
                 # Move-through: lvalue alias at last use of source promotes to rvalue.
                 # Both target and source must be non-reassigned Tier 1 locals
                 # (reassigned vars become T* pointer-locals in codegen).
-                if (isinstance(stmt.init, TpyName)
-                        and existing_type is None
-                        and stmt.name not in self.ctx.func.current_reassigned_vars
-                        and stmt.init.name not in self.ctx.func.current_reassigned_vars
-                        and self.compat.is_auto_move_use(stmt.init)
-                        and var_type is not None
-                        and not var_type.is_value_type()
-                        and pointer_repr_optional(var_type) is None
-                        and not is_protocol_union(var_type)
-                        and not holds_generator_object(var_type)):
+                hands_over = (var_type is not None
+                              and not var_type.is_value_type()
+                              and pointer_repr_optional(var_type) is None
+                              and not is_protocol_union(var_type)
+                              and not holds_generator_object(var_type))
+                plain_bind = (isinstance(stmt.init, TpyName)
+                              and existing_type is None
+                              and stmt.name not in self.ctx.func.current_reassigned_vars
+                              and stmt.init.name not in self.ctx.func.current_reassigned_vars)
+                if plain_bind and not hands_over:
+                    # A value moves through with no owning slot to record.
+                    self.compat.retract_hidden_borrowed_last_use(stmt.init)
+                if (plain_bind and hands_over
+                        and self.compat.grant_name_move(
+                            stmt.init, OwnType(var_type))):
                     self.ctx.func.rvalue_vars.add(stmt.name)
                     note_owned_local(self.ctx, stmt.name, var_type)
                     self.ctx.func.move_through_vars.add(stmt.name)
@@ -6835,8 +6876,6 @@ class StatementAnalyzer:
                     self.ctx.func.rvalue_vars.discard(stmt.name)
                     self.ctx.func.owned_locals.discard(stmt.name)
                     record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
-                    if existing_type is not None:
-                        self._bar_unscanned_lvalue_reassign(stmt.name, stmt.init)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.name)
                 # Owned only when the init genuinely creates a value (constructor,
@@ -6870,12 +6909,6 @@ class StatementAnalyzer:
                 else:
                     self.ctx.func.owned_locals.discard(stmt.name)
                     record_stmt_borrow_binding(self.ctx, stmt.name, var_type, stmt.init)
-                    # A reassignment to a borrow source makes the var an alias;
-                    # bar it from the function-wide movable set (ever_owned
-                    # would otherwise keep a once-owned local movable, and an
-                    # auto-move at its last use would steal from the source).
-                    if existing_type is not None:
-                        self.ctx.func.borrow_reassigned_vars.add(stmt.name)
         if stmt.init and _needs_provenance_tracking(var_type):
             self.init.mark_provenance(stmt.name, self.compat.is_param_derived_expr(stmt.init))
             self.init.mark_safe_to_return(
@@ -6987,18 +7020,37 @@ class StatementAnalyzer:
         # never consumed -- module-level last-use is blind to those reads;
         # the pointer-slot target aims into the tuple global's static storage
         # instead, as the scalar global `x = T` is a pointer copy.
-        source_consumed = (
-            stmt.is_loop_head
-            or not isinstance(stmt.value, TpyName)
-            or (not self.ctx.is_top_level
-                and self.compat.is_auto_move_use(stmt.value)))
-
+        # An element a binding of the source local borrows is no object of
+        # its own to hand over: its target binds it by reference, as it
+        # would were the source still read.
+        borrowed_elems = (self.ctx.func.nonowning_elems(stmt.value.name,
+                                                        len(rhs_type.element_types))
+                          if isinstance(stmt.value, TpyName)
+                          and not self.ctx.is_top_level else frozenset())
+        if stmt.is_loop_head or not isinstance(stmt.value, TpyName):
+            source_consumed = True
+        elif self.ctx.is_top_level:
+            source_consumed = False
+        else:
+            # Unpacking an owned-element tuple by NAME consumes the whole
+            # source: the targets take the elements it owns.
+            takes = any(isinstance(et, OwnType) and i not in borrowed_elems
+                        for i, et in enumerate(rhs_type.element_types))
+            if takes:
+                source_consumed = self.compat.grant_name_move(
+                    stmt.value,
+                    read=self.compat.tuple_name_move(stmt.value, rhs_type,
+                                                     warns=False))
+            else:
+                source_consumed = False
+                self.compat.retract_hidden_borrowed_last_use(stmt.value)
         # Per-element expressions for narrowing (range facts, etc.)
         has_elem_exprs = isinstance(stmt.value, TpyTupleLiteral)
         for i, name in enumerate(stmt.targets):
             elem_type = rhs_type.element_types[i]
             elem_expr = stmt.value.elements[i] if has_elem_exprs and i < len(stmt.value.elements) else None
-            owned = isinstance(elem_type, OwnType) and source_consumed
+            owned = (isinstance(elem_type, OwnType) and source_consumed
+                     and i not in borrowed_elems)
             stmt.is_owned.append(owned)
             if rhs_readonly:
                 # Asked before the Own is peeled: readonly over an owned
@@ -7010,6 +7062,11 @@ class StatementAnalyzer:
             is_ref = (not owned and not elem_type.is_value_type()
                       and not isinstance(elem_type, TypeParamRef))
             stmt.is_ref.append(is_ref)
+            if (is_ref and name is not None
+                    and not isinstance(stmt.value, TpyTupleLiteral)):
+                # The target refers to the source's element (a literal's is
+                # copied in, see below).
+                note_nonowning_bind(self.ctx, name, stmt.value)
             stmt.is_rebound.append(
                 is_ref and name is not None
                 and name in (stmt.loop_body_rebinds if stmt.is_loop_head
@@ -7268,21 +7325,22 @@ class StatementAnalyzer:
                 # rather than re-derived at the unpack's render.
                 self.ctx.mark_loop_var_mutated(src_root)
 
-        # Unpacking an owned-element tuple by NAME consumes the whole source:
-        # every owned element moves out. Mirror the scalar Own[T] consume model
-        # -- at the last use mark the source consumed (drives the unconsumed-
-        # param warning); a move-only (nocopy) source used after this point
-        # can't be moved out, so it is the same use-after-move error scalar
-        # Own raises rather than the raw deleted-copy C++ error. The source of
-        # an Own param's elements hands each owned element to its target, so
-        # the warning then asks per element whether its target was consumed.
+        # Mirror the scalar Own[T] consume model -- at the last use mark the
+        # source consumed (drives the unconsumed-param warning); a move-only
+        # (nocopy) source used after this point can't be moved out, so it is
+        # the same use-after-move error scalar Own raises rather than the raw
+        # deleted-copy C++ error. The source of an Own param's elements hands
+        # each owned element to its target, so the warning then asks per
+        # element whether its target was consumed.
         for name in stmt.targets:
             if name is not None:
                 self.ctx.func.own_consume_aliases.pop(name, None)
         if (not self.ctx.is_top_level and any(stmt.is_owned)
                 and isinstance(stmt.value, TpyName)
                 and self.compat._is_owned_var(stmt.value.name)):
-            if self.compat.is_auto_move_use(stmt.value):
+            # Consumption marks only: the unpack's move is the
+            # `grant_name_move` record taken above.
+            if self.compat.is_last_use_move_candidate(stmt.value):
                 key = self._own_consume_key(stmt.value.name)
                 if key is None or key.index is not None:
                     self.compat.check_own_consumption(stmt.value)
@@ -7583,6 +7641,7 @@ class StatementAnalyzer:
             if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
                 self.ctx.mark_param_mutated(root, through_field=True)
         copy_warning_fired = False
+        name_moved = False
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             declared_target_type = self.narrowing.declared_type_for_expr(stmt.target)
             # The element of a list literal stays its cell's: the store is
@@ -7640,36 +7699,33 @@ class StatementAnalyzer:
             target_is_any = isinstance(unwrap_qualifiers(target_type), AnyType)
             # Beyond the declared-type facts above, the shared owning-sink
             # source rule: a select or walrus naming an existing object.
-            source_copies = (
+            store_dest = ("field" if isinstance(stmt.target, TpyFieldAccess)
+                          else "container")
+            stores_reference = (
                 not unwrap_qualifiers(target_type).is_value_type()
                 and stripped_value is not None
-                and not unwrap_qualifiers(stripped_value).is_value_type()
-                and self.compat.source_copies_into_storage(
-                    stmt.value, self.compat.is_auto_move_use(stmt.value)))
+                and not unwrap_qualifiers(stripped_value).is_value_type())
+            # Whether the store moves the source name in at its last use,
+            # asked once for both copy rules below; the copy a later
+            # binding settles is the store's, in its words.
+            name_moved = (stores_reference
+                          and isinstance(stmt.value, TpyName)
+                          and self.compat.grant_name_move(
+                              stmt.value, OwnType(target_type),
+                              sink=SinkCopy(unwrap_qualifiers(value_type),
+                                            target_type, store_dest)))
+            source_copies = (
+                stores_reference and not name_moved
+                and self.compat.source_copies_into_storage(stmt.value, False))
             if ((isinstance(value_type, RefType) or is_own_lvalue
                  or is_compound_ref or source_copies)
                     and stmt.loc is not None
                     and not target_is_ptr
                     and not target_is_any
                     and not self.compat.is_copy_call(stmt.value)):
-                inner = unwrap_qualifiers(value_type)
-                dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
-                deferred = self.ctx.defer_own_copy_verdict(
-                    inner, target_type, dest, stmt)
-                if not deferred and self.ctx.is_type_non_copyable(target_type):
-                    hint = self.compat.nocopy_hint(stmt.value)
-                    if inner == target_type:
-                        msg = (f"cannot copy non-copyable type '{target_type}' into "
-                               f"{dest}{hint}")
-                    else:
-                        msg = (f"cannot copy {inner} into {dest} of type '{target_type}'; "
-                               f"target is non-copyable{hint}")
-                    raise self.ctx.error(msg, stmt)
-                if not deferred:
-                    self.ctx.warning(
-                        f"copies {self.compat.diag_type(inner, target_type)} "
-                        f"into {dest}; {self.compat.copy_remedy(stmt.value)}",
-                        stmt)
+                self.compat.declare_sink_copy(
+                    SinkCopy(unwrap_qualifiers(value_type), target_type,
+                             store_dest), stmt.value, True)
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
             # pointer-repr COPIES each such element into the owned slot
@@ -7683,6 +7739,12 @@ class StatementAnalyzer:
                 if self.compat.warn_pointer_repr_tuple_copy(
                         stmt.value, tgt_tuple, dest, stmt):
                     copy_warning_fired = True
+                if (isinstance(stmt.value, TpyName)
+                        and isinstance(tgt_tuple, TupleType)):
+                    # The store moves the elements the local owns (its
+                    # warning above names every reference element).
+                    self.compat.grant_name_move(
+                        stmt.value, OwnType(tgt_tuple), warns=False)
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)
@@ -7806,8 +7868,6 @@ class StatementAnalyzer:
                 record_stmt_borrow_binding(
                     self.ctx, stmt.target.name,
                     self.ctx.get_expr_type(stmt.value), stmt.value)
-                self._bar_unscanned_lvalue_reassign(stmt.target.name,
-                                                    stmt.value)
             else:
                 self.ctx.func.rvalue_vars.add(stmt.target.name)
                 # See the var-decl branch: owned only for a genuine value-creating
@@ -7820,12 +7880,6 @@ class StatementAnalyzer:
                     record_stmt_borrow_binding(
                         self.ctx, stmt.target.name,
                         self.ctx.get_expr_type(stmt.value), stmt.value)
-                    # Borrow-source reassignment bars the var from the movable
-                    # set. Unlike the var-decl branch this needs no
-                    # existing-var guard: a TpyAssign with a bare-name target is
-                    # always a reassignment (a first bare-name bind is a
-                    # TpyVarDecl).
-                    self.ctx.func.borrow_reassigned_vars.add(stmt.target.name)
 
         # Tuples are immutable -- reject element assignment
         if isinstance(stmt.target, TpySubscript):
@@ -7961,25 +8015,13 @@ class StatementAnalyzer:
                 self.ctx, stmt.target.name, stmt.value, target_type)
         if isinstance(stmt.target, (TpyFieldAccess, TpySubscript)):
             if stmt.loc is not None and not copy_warning_fired:
-                if self._is_non_owned_var_copy(stmt.value, target_type):
-                    dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
-                    deferred = self.ctx.defer_own_copy_verdict(
-                        value_type, target_type, dest, stmt)
-                    if not deferred and self.ctx.is_type_non_copyable(target_type):
-                        hint = self.compat.nocopy_hint(stmt.value)
-                        if value_type == target_type:
-                            msg = (f"cannot copy non-copyable type '{target_type}' into "
-                                   f"{dest}{hint}")
-                        else:
-                            msg = (f"cannot copy {value_type} into {dest} of type '{target_type}'; "
-                                   f"target is non-copyable{hint}")
-                        raise self.ctx.error(msg, stmt)
-                    if not deferred:
-                        self.ctx.warning(
-                            f"copies {self.compat.diag_type(value_type, target_type)} "
-                            f"into {dest}; "
-                            f"{self.compat.copy_remedy(stmt.value)}",
-                            stmt)
+                if self._is_non_owned_var_copy(stmt, value_type, target_type,
+                                               name_moved):
+                    self.compat.declare_sink_copy(
+                        SinkCopy(value_type, target_type,
+                                 "field" if isinstance(stmt.target,
+                                                       TpyFieldAccess)
+                                 else "container"), stmt.value, True)
 
         # Scope escape check for assignments to named variables
         if isinstance(stmt.target, TpyName) and not target_type.is_value_type():
@@ -8350,13 +8392,16 @@ class StatementAnalyzer:
             name, target_type, result_type, convert, declared=True,
             aug_op=op, aug_value=stmt.value), stmt)
 
-    def _is_non_owned_var_copy(self, expr: TpyExpr, target_type: TpyType) -> bool:
+    def _is_non_owned_var_copy(self, stmt: TpyAssign, value_type: TpyType,
+                               target_type: TpyType,
+                               name_moved: bool) -> bool:
         """Check if storing a non-OwnType variable copies into storage.
 
         Covers locals excluded from OwnType wrapping: reassigned vars,
         union types, Optional with pointer repr.  These are not caught by
-        the unified Ref/Own check.
+        the unified Ref/Own check. `name_moved` is the store's move verdict.
         """
+        expr = stmt.value
         if target_type.is_value_type():
             return False
         if self.compat._is_value_type_param(target_type):
@@ -8372,12 +8417,9 @@ class StatementAnalyzer:
             return False  # already caught by the Ref/Own check
         if scope_type is not None and scope_type.is_value_type():
             return False
-        # Skip at last-use of movable var
-        if self.compat.is_auto_move_use(expr):
-            return False
         if scope_type is None:
             return False
-        return True
+        return not name_moved
 
     def _list_aug_target(
             self, stmt: TpyAugAssign, target_type: TpyType,

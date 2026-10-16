@@ -328,8 +328,8 @@ name in `prescan.chain_alias_sources`), all with the detach-on-reassign and
 dead-alias precision above. Borrows the map cannot represent syntactically --
 call results borrowing an argument (`return_borrows_from`), generator objects
 storing their iterable by reference -- are handled at the consume site
-instead: `compat.is_auto_move_use` consults the BorrowTracker and demotes the
-move to the copy path (retracting the last-use mark so codegen agrees) when
+instead: `compat.grant_name_move` (the recording move verdict) consults the
+BorrowTracker and demotes the move to the copy path (retracting the last-use mark so codegen agrees) when
 such a borrower exists. The for-loop iterator loan (`"__for_iter"`) is one
 of them: it expires with its loop, so it gates a consume of the iterable
 inside the body on every path out, `break` and `return` included. A
@@ -353,17 +353,21 @@ import cycles, borrows hidden inside nested call arguments, loop-var
 aliases outliving their loop) are tracked in BUGS.md "Safety / borrow
 checker".
 
-A reassignment to a borrow source is a fourth, simpler barrier. A local
-owned at one binding (so it is in `ever_owned_locals`, from which the
-function-wide movable set is built) but later reassigned from a borrow --
-not only an lvalue (name/field/subscript) but a reference-returning call or
-a ternary of reference lvalues, which the prescan classifies as an rvalue
-because it has no type info -- is recorded in `borrow_reassigned_vars` and
-subtracted from the movable set. Without it, codegen would `std::move` the
-alias at the local's last use and steal the source. The set is an add-only
-accumulator (mirrors `ever_owned_locals`): a local that cycles back to owned
-stays barred, which is conservative (a copy is always sound) but pessimises
-that rare pattern.
+A binding to existing storage is a fourth, simpler barrier: the ownership
+fact. Every binding route records whether it makes the local refer to
+storage that already exists -- not only an lvalue (name/field/subscript) but
+a reference-returning call or a ternary of reference lvalues, which the
+prescan classifies as an rvalue because it has no type info
+(`note_nonowning_bind`, `FunctionTrackingState.nonowning_binds`, per tuple
+element). A local with such a binding anywhere in the body is non-owning for
+the whole function and leaves the movable set. Every owning-sink move out of
+a local granted before the fact is complete is recorded and settled once
+after the body (`settle_owning_reads`): a move whose local the complete fact
+calls non-owning becomes the slot's warned copy, never the reverse. The fact
+is an add-only accumulator (mirrors `ever_owned_locals`): a local that
+cycles back to owned stays non-owning, which is conservative (a copy is
+always sound) but pessimises that rare pattern (TODO.md "An unconditional
+rebind starts a new variable (owning again)").
 
 ### Phase 6: Box[T] as library type
 

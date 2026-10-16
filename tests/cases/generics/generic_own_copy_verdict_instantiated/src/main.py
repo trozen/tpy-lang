@@ -221,7 +221,7 @@ def value_bound_readonly[T: ValueType](v: readonly[T]) -> int32:
 
 # ... but NOT through a payload that is a reference type in its own right.
 # `GBox[T]` is a struct that gets copied whatever `T` is, so the bound settles
-# nothing and the hedge stands -- beside the twin, which says so concretely.
+# nothing and the copy is warned firmly in the body.
 class GBox[T]:
     item: T
 
@@ -231,7 +231,7 @@ class GBox[T]:
 
 def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
     xs: list[GBox[T]] = []
-    xs.append(v)  # tpyc: warning(/may copy GBox\[T\] into owned storage/)
+    xs.append(v)  # tpyc: warning(/copies GBox\[T\] into owned storage/)
     return len(xs)
 
 

@@ -4,8 +4,9 @@ A body that stores an open `T` into an owning slot MAY copy, and its author
 should read that at DECLARATION time -- a library generic has no
 instantiation to consult, and copyable is TPy's default, so no bound is
 required to write one. Each sink therefore warns at the body line, in the
-hedged form (`may copy T into <sink> if not a value type`), and the warning
-stands whatever the program instantiates. Exactly two things silence it:
+hedged form (`may copy T into <sink> if not a value type`; a reference-type
+head such as `list[T]` copies whatever `T` is and is not hedged), and the
+warning stands whatever the program instantiates. Exactly two things silence it:
 `copy()` at the slot, which is the author saying the copy is intended, and a
 `T: ValueType` bound, under which a reference-type copy cannot happen.
 `T: Copyable` does not -- copyable is TPy's default, so that bound only rules
@@ -207,21 +208,27 @@ def reference_source_params(typ: TpyType) -> 'set[str] | None':
 
 
 def slot_message(display: TpyType, target: TpyType, dest: str, kind: str,
-                 hint: str, non_copyable: bool) -> tuple[DiagnosticLevel, str]:
-    """The diagnostic the monomorphic twin reports for this copy."""
+                 hint: str, non_copyable: bool, *,
+                 remedy: str = "use copy() to make this explicit",
+                 nocopy_hint: str = NOCOPY_REMEDIATION_HINT,
+                 note: str = "") -> tuple[DiagnosticLevel, str]:
+    """The diagnostic the monomorphic twin reports for this copy. A body's
+    own sink passes the remedies its source earns (`copy_remedy`,
+    `nocopy_hint`) and, for an element copy, the source's `note`."""
     if non_copyable:
         if display == target:
             return (DiagnosticLevel.ERROR,
                     f"cannot copy non-copyable type '{target}' into "
-                    f"{dest}{NOCOPY_REMEDIATION_HINT}")
+                    f"{dest}{nocopy_hint}")
         return (DiagnosticLevel.ERROR,
                 f"cannot copy {display} into {dest} of type '{target}'; "
-                f"target is non-copyable{NOCOPY_REMEDIATION_HINT}")
+                f"target is non-copyable{nocopy_hint}")
     if kind == KIND_ELEMENTS:
-        return (DiagnosticLevel.WARNING, f"copies {display} elements; {hint}")
+        return (DiagnosticLevel.WARNING,
+                f"copies {display} elements; {hint}{note}")
     # The copy is its own mutable value, whatever access the source had.
     return (DiagnosticLevel.WARNING,
-            f"copies {unwrap_readonly(display)} into {dest}; use copy() to make this explicit")
+            f"copies {unwrap_readonly(display)} into {dest}; {remedy}")
 
 
 def warn_value_call_binding(ctx: 'SemanticContext', expr: TpyExpr,

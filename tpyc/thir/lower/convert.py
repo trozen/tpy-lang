@@ -313,64 +313,32 @@ def borrowed_path_element_message(name: str, index: int, *,
                                   arity: 'int | None' = None,
                                   copies: 'Iterable[int]' = ()) -> str:
     """The sentence for an owning sink that would take an element of a
-    pointer tuple some path reaching it binds from storage it does not own
-    (`arity`: the sink takes the whole tuple of that many elements, whose
-    remedy is a tuple copying the `copies` positions and handing the rest
-    on -- `copy()` takes no tuple): the move would take the caller's
-    object, the copy is unwarned (TODO.md "A tuple element is a name")."""
+    pointer tuple some binding of which borrows it from other storage, a
+    fact of the whole function (`arity`: the sink takes the whole tuple of
+    that many elements, whose remedy is a tuple copying the `copies`
+    positions and handing the rest on -- `copy()` takes no tuple): the move
+    would take the caller's object, and its copy has no render here yet."""
     copies = set(copies)
     what = (f"copy({name}[{index}])" if arity is None
             else "(" + ", ".join(f"copy({name}[{i}])" if i in copies
                                  else f"{name}[{i}]"
                                  for i in range(arity)) + ")")
-    return (f"element {index} of '{name}' is an object of its own on some "
-            f"paths reaching here and borrowed from other storage on others, "
-            f"so handing it to a sink that takes ownership is not yet "
-            f"supported here; use {what} there instead")
-
-
-def reject_borrowed_path_elements(expr: THIRExpr,
-                                  owning: 'Iterable[int] | None' = None
-                                  ) -> None:
-    """Refuse a pointer-tuple NAME at its last use (`movable`) whose element
-    some binding owns but some path reaching the read borrows (sema's
-    `tuple_owned_at_use`, projected on the read's `elems`) where the sink
-    takes ownership of it (`owning`: those element positions, None: every
-    one): a move would take the caller's object, and copying it there
-    would be silent. An element no binding owns is always borrowed: its
-    sink copies it, warned. The remedy copies every element the sink
-    takes ownership of -- a literal's element read is copied there even
-    where the name would have moved it -- and hands the rest on."""
-    src = expr.source
-    rec = src.binding if src is not None else None
-    if (rec is None or rec.ptr_tuple is None or not src.movable
-            or src.elems is None or not isinstance(expr, THIRName)):
-        return
-    owning = (set(range(len(src.elems))) if owning is None
-              else set(owning))
-    copies = [i for i, el in enumerate(src.elems)
-              if i in owning and el.pointer_held]
-    for i in sorted(rec.ptr_tuple_owned):
-        if i < len(src.elems) and not src.elems[i].movable and i in owning:
-            note_detail("ptr_tuple.borrowed_path_sink")
-            raise ThirUnsupported(
-                "expr.name",
-                message=borrowed_path_element_message(
-                    expr.name, i, arity=len(src.elems), copies=copies),
-                loc=expr.loc)
+    return (f"element {index} of '{name}' is borrowed from other storage "
+            f"by a binding of '{name}', so handing it to a sink that takes "
+            f"ownership is not yet supported here; use {what} there instead")
 
 
 def elementwise_tuple_storage(expr: THIRExpr, dest: TupleType, *,
                               param_form: bool = False
                               ) -> 'THIRFormConvert | None':
     """A pointer-tuple NAME at an owning tuple slot, converted element by
-    element as the scalar at each position converts: an element the name
-    owns on every path reaching its last use moves out of its object, one
-    no binding owns is copied in (or kept as a pointer where a `param_form`
-    destination borrows it), a value element moves with the name; one owned
-    on some paths only is refused (`reject_borrowed_path_elements`). None
-    for any other source -- and for a name owning nothing it can move,
-    where the whole-tuple copy is the same render."""
+    element as the scalar at each position converts: an element the read
+    owns (sema declared no copy of it, `own_element_copies`) moves out of
+    its object at the name's last use, one some binding borrows is copied
+    in (or kept as a pointer where
+    a `param_form` destination borrows it), a value element moves with the
+    name. None for any other source -- and for a name owning nothing it can
+    move, where the whole-tuple copy (`tuple_to_storage`) is the render."""
     elems = expr.source.elems if expr.source is not None else None
     if (not isinstance(expr, THIRName) or elems is None
             or len(elems) != len(dest.element_types)):
@@ -378,8 +346,12 @@ def elementwise_tuple_storage(expr: THIRExpr, dest: TupleType, *,
     keeps = [param_form and not isinstance(unwrap_readonly(dt), OwnType)
              and TupleType._element_is_pointer_repr(dt)
              for dt in dest.element_types]
-    reject_borrowed_path_elements(
-        expr, [i for i, k in enumerate(keeps) if not k])
+    if any(el.pointer_held and el.undeclared and not keeps_pointer
+           for el, keeps_pointer in zip(elems, keeps)):
+        # An owning sink sema declared no read for: neither the move nor
+        # the copy of the element is a verdict sema made.
+        note_detail("ptr_tuple.undeclared_sink")
+        raise ThirUnsupported("expr.name", loc=expr.loc)
     if not any(el.pointer_held and el.movable for el in elems):
         return None
     modes: list[str] = []

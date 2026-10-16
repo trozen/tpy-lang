@@ -1,4 +1,4 @@
-main.py:110: warning: copies list[int32] into owned storage (argument 'value' tuple element 1); use copy() to make this explicit
+main.py:110: warning: copies list[int32] into owned storage (argument 'value' tuple element 1); use copy() to make this explicit ('xs' is bound to existing storage at line 106)
 main.py:276: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:281: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)
 main.py:282: warning: copies list[int32] elements; use copy_iter() to make this explicit (or copy() to copy the entire container)

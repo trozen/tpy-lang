@@ -293,13 +293,9 @@ class BindingRepr:
     # The pointer tuple (`std::tuple<.., T*>`) a rebound tuple local is at
     # every binding when some binding owns a reference element: the
     # declared type's elements, `Own` collapsed, each owned element backed
-    # by a reference local's slot at its own site. The read ownership of
-    # an element is per use (sema's `tuple_owned_at_use`), never this.
+    # by a reference local's slot at its own site. Whether a read may move
+    # an element is the read's (`own_element_copies`).
     ptr_tuple: 'TupleType | None' = None
-    # The elements some binding of the pointer tuple owns: one a read at
-    # its last use does not own on every path reaching it is someone
-    # else's object there, which an owning sink must not take.
-    ptr_tuple_owned: frozenset[int] = frozenset()
     # A const binding: a const declaration (the decl families), a
     # parameter under its function's const verdict (the one its signature
     # spells), a read-only method's receiver. A nested scope reads an
@@ -488,3 +484,7 @@ class Source:
     # a record-like value and for a read sema declared a copy of; the sink
     # spells it.
     copy_type: TpyType | None = None
+    # A pointer element of a pointer-tuple NAME read at its last use that
+    # sema declared no owning-sink verdict for (`declared_tuple_reads`): it
+    # is not movable, and a sink that would move it refuses.
+    undeclared: bool = False

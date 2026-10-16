@@ -910,7 +910,7 @@ std::expected<::tpy::Bytes, ::tpy::StopIteration> __gen_Response_iter_content::_
         }
     }
     case S_RESUME_1: {  // after: yield data[pos:end]
-        pos = end;
+        pos = std::move(end);
         __state = S_JOIN_3;
         continue;
     }

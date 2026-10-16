@@ -68,6 +68,7 @@ from ..typesys import (
 from ..value_category import binds_owned_value, call_returns_cpp_ref
 from .context import (
     BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots,
+    note_nonowning_bind,
     _root_name_of_expr,
     addr_taken_roots, call_borrow_operands, call_contract_lend_exprs,
     call_lend_sources,
@@ -189,6 +190,21 @@ def tuple_elem_owned(ctx: 'SemanticContext', value: TpyExpr | None,
                 owned = tuple(r and isinstance(unwrap_readonly(et), OwnType)
                               for r, et in zip(ref, rt.element_types))
     return owned
+
+
+def note_tuple_elem_borrows(ctx: 'SemanticContext', name: str,
+                            value: TpyExpr | None, slot: TpyType | None,
+                            owned: tuple[bool, ...] | None) -> None:
+    """The ownership fact of a tuple binding, per element: the reference
+    elements it does not hold as objects of its own (`tuple_elem_owned`)
+    make the local non-owning there."""
+    ref = _reference_elements(slot)
+    if ref is None or owned is None:
+        return
+    borrowed = frozenset(i for i, r in enumerate(ref)
+                         if r and not (i < len(owned) and owned[i]))
+    if borrowed:
+        note_nonowning_bind(ctx, name, value, borrowed)
 
 
 def tuple_name_bindings(ctx: 'SemanticContext', func: TpyFunction,
@@ -708,6 +724,9 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
     declared-slot checks of the rebinds the final set leaves out
     (`TypeCompatibility.park_repointed_tuple_check`), and the closure
     rejects."""
+    # The ownership fact is complete once the body is: the owning-sink
+    # reads it settles may declare copies the checks below read.
+    compat.settle_owning_reads()
     if func is None:
         return
     f = ctx.func
@@ -924,6 +943,7 @@ def stamp_bind_kind(ctx: 'SemanticContext', stmt: 'TpyVarDecl | TpyAssign',
     owned = tuple_elem_owned(ctx, value, var_type)
     if owned is not None:
         ctx.tuple_elem_owned[stmt] = owned
+    note_tuple_elem_borrows(ctx, name, value, var_type, owned)
     kind = bind_kind_of(ctx, value, owned)
     ctx.func.bind_kinds[stmt] = kind
     if _note_rebind_site(ctx, stmt, name, kind, var_type, owned,
@@ -1112,8 +1132,6 @@ class _Replay:
         # finds a statement's sites by name.
         self.sites: list[_Site] = []
         self.site_of: 'IdentityMap[TpyStmt, dict[str, _Site]]' = IdentityMap()
-        # The names some binding of which holds a tuple element of its own.
-        self.tuple_names: set[str] = set()
         self.loops: list[_Loop] = []
         self.try_sinks: list[list[_State]] = []
         self.bound_here: set[str] = set()
@@ -1166,8 +1184,6 @@ class _Replay:
         for s in stmts:
             if st is None:
                 return None
-            if self.tuple_names:
-                self.note_tuple_reads(s, st)
             st = self.walk_stmt(s, st)
             if st is not None:
                 for sink in self.try_sinks:
@@ -1336,10 +1352,6 @@ class _Replay:
 
     def walk_while(self, s: TpyWhile, st: _State) -> _State | None:
         def at_head(state: _State) -> None:
-            # The condition runs again after every pass: its reads see what
-            # the back edge brings in, not only the loop's entry.
-            if self.tuple_names:
-                self.note_expr_reads([s.condition], state)
             self.expr_effects(s.condition, state, s)
 
         head, loop = self.walk_loop_body(s, st, at_head)
@@ -1440,8 +1452,6 @@ class _Replay:
                                      fresh=kind is BindKind.RVALUE,
                                      held=loans)
         st.loans[name] = loans
-        if any(self.ctx.tuple_elem_owned.get(node) or ()):
-            self.tuple_names.add(name)
         self.bind_storage(name, node if kind is BindKind.RVALUE else None, st)
 
     def bind_storage(self, name: str, owner: object | None,
@@ -1628,32 +1638,6 @@ class _Replay:
                     out.add(_Loan(root, BorrowKind.OPAQUE,
                                   self.origins_of(root, st)))
         return frozenset(out)
-
-    def note_tuple_reads(self, s: TpyStmt, st: _State) -> None:
-        """Record, at each last-use read of a tuple local in `s`, the
-        elements every storage reaching it owns -- joined over every pass
-        that reaches the read."""
-        self.note_expr_reads(s.exprs(), st)
-
-    def note_expr_reads(self, exprs: 'Iterable[TpyExpr]', st: _State) -> None:
-        uses = self.ctx.tuple_owned_at_use
-        for e in exprs:
-            stack = [e]
-            while stack:
-                n = stack.pop()
-                stack.extend(n.children())
-                if not (isinstance(n, TpyName) and n.name in self.tuple_names
-                        and self.ctx.is_last_use(n)):
-                    continue
-                origins = st.origins.get(n.name) or frozenset((FOREIGN,))
-                masks = [self.ctx.tuple_elem_owned.get(self.by_id[o]) or ()
-                         if o >= 0 else () for o in origins]
-                width = max((len(m) for m in masks), default=0)
-                owned = tuple(all(i < len(m) and m[i] for m in masks)
-                              for i in range(width))
-                prev = uses.get(n)
-                uses[n] = (owned if prev is None else tuple(
-                    a and b for a, b in zip(prev, owned)))
 
     def owned_at(self, slot: TpyType | None,
                  origins: frozenset[int]) -> set[int]:

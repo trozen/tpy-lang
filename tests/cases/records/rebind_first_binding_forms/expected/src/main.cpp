@@ -583,7 +583,7 @@ void inverse() {
 //     return p
 P own_param(P&& p) {
     p = P(8);
-    return P(p);
+    return p;
 }
 
 // def nonlocal_rebind() -> None:

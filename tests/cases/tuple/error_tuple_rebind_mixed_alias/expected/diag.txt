@@ -1,7 +1,7 @@
-main.py:45: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:45: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 42)
 main.py:45: error: 'q' is bound here to 'p', which keeps objects of its own in storage of 'f' itself, and to other storage at another of its bindings; one name holding both is not yet supported here; bind this value to a name of its own
 main.py:41: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:56: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit
+main.py:56: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('s' is bound to existing storage at line 53)
 main.py:55: error: 'q' is bound here to 'p', which keeps objects of its own in storage of 'owning_source' itself, and to other storage at another of its bindings; one name holding both is not yet supported here; bind this value to a name of its own
 main.py:68: warning: copies tuple[Box, Box] into owned storage; use copy() to make this explicit
 main.py:68: error: 'q' is bound to 'p', which keeps objects of its own in storage of 'block_root', so a binding of 'q' that owns nothing may point only into a parameter's or self's storage for now; here it points into 'w', a local of 'block_root'; bind this value to a name of its own

@@ -589,9 +589,7 @@ from .predicates import (
     _unwrap_lit_coerce,
     _value_opt_view_name,
 )
-from .convert import (borrowed_path_element_message,
-                      elementwise_tuple_storage,
-                      reject_borrowed_path_elements)
+from .convert import elementwise_tuple_storage
 from .context import (FrameLocalClass, _call_arg_forms, _ExprResultUse,
                       _ExprUse, _LowerCtx,
                       SlotConstruct,
@@ -2196,7 +2194,6 @@ def _record_ctor_arg_supported(
     same statement. The restricted family serves only flush-less nested
     slots.
     """
-    reject_owning_arg_element(arg, param_type, lc, declared)
     # fi is None for a TypedDict ctor (no synthetic constructor fi; params
     # come from the registry's init_params, which carry no mutation facts).
     mutation_unknown = fi is not None and fi.mutated_params is None
@@ -2235,7 +2232,6 @@ def _require_method_call_arg(
     # bytearray->bytes) the per-family ladders' bare-name rows cannot.
     if _own_move_source_slice(a, ptype, lc, declared):
         return
-    reject_owning_arg_element(a, ptype, lc, declared)
     if not _method_call_arg_ok(
             e, a, ptype, index, declared, lc.analyzer,
             temps_ok=temp_args, narrowed=frozenset(lc.narrow.narrowed),
@@ -6013,76 +6009,56 @@ def _tuple_layout_elems(layout: THIRTupleLayout) -> tuple[Source, ...]:
     return tuple(out)
 
 
-def reject_borrowed_path_element(e: TpyExpr, lc: '_LowerCtx') -> None:
-    """Refuse `p[i]` of a pointer tuple at a sink that takes ownership (an
-    `Own` return or argument) where the read is the tuple's last use and
-    some path reaching it binds element `i` from storage `p` does not own
-    while another owns it (sema's `tuple_owned_at_use`): the move would
-    take the caller's object, the copy is the owned path's silent copy. An
-    element owned on every path moves; one no binding owns is borrowed on
-    every path and keeps its warned copy; a read the tuple outlives copies
-    a live element, warned, as the scalar does."""
-    if not isinstance(e, TpySubscript):
-        return
-    obj = e.obj
-    while isinstance(obj, TpyCoerce):
-        obj = obj.expr
-    if not isinstance(obj, TpyName):
-        return
-    rec = lc.binding(obj.name)
-    owned = lc.analyzer.ctx.tuple_owned_at_use.get(obj)
-    if rec.ptr_tuple is None or owned is None:
-        return
-    idx = const_tuple_index(_unwrap_lit_coerce(e.index))
-    if idx is not None and 0 <= idx < len(owned) and owned[idx]:
-        return
-    if (idx is not None and idx not in rec.ptr_tuple_owned
-            and e not in lc.analyzer.ctx.element_moves):
-        return
-    note_detail("ptr_tuple.borrowed_path_sink")
-    raise ThirUnsupported(
-        "expr.subscript",
-        message=borrowed_path_element_message(
-            obj.name, idx if idx is not None else 0),
-        loc=getattr(e, "loc", None))
+def _consuming_receiver_copy_type(e: TpyMethodCall, fi: 'FunctionInfo | None',
+                                  lc: '_LowerCtx') -> 'TpyType | None':
+    """The type a consuming method call (`self: Own[Self]`) copies its NAME
+    receiver into, where sema declared that copy (`own_element_copies`: a
+    receiver that does not own its value -- a borrowed parameter, a
+    non-owning local); None where the receiver moves."""
+    if not (fi is not None and fi.is_consuming and isinstance(e.obj, TpyName)
+            and e.obj in lc.analyzer.ctx.own_element_copies):
+        return None
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+        lc.analyzer.get_expr_type(e.obj))))
+    if isinstance(t, OwnType):
+        t = unwrap_readonly(t.wrapped)
+    return None if t.is_value_type() else t
 
 
-def reject_owning_arg_element(a: TpyExpr, ptype: 'TpyType | None',
-                              lc: '_LowerCtx',
-                              declared: dict[str, TpyType]) -> None:
-    """The borrowed-on-some-path refusal at an argument whose slot owns
-    what it is handed -- an element read at an `Own` slot
-    (`reject_borrowed_path_element`), a pointer tuple at a tuple slot's
-    `Own` positions (`reject_borrowed_path_elements`) -- asked at every
-    entry of the argument sink ahead of its admission table, which has no
-    row for the element it refuses."""
-    if not isinstance(ptype, TpyType):
-        return
-    bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-    if isinstance(bare, OwnType):
-        reject_borrowed_path_element(a, lc)
-    elif (isinstance(bare, TupleType) and isinstance(a, TpyName)
-            and lc.binding(a.name).ptr_tuple is not None):
-        owning = [i for i, et in enumerate(bare.element_types)
-                  if isinstance(unwrap_readonly(et), OwnType)]
-        if owning:
-            reject_borrowed_path_elements(
-                _lower_expr(a, lc, declared, allow_unrouted_name=True),
-                owning)
+def _read_owned_elements(e: TpyName, rec: BindingRepr, lc: '_LowerCtx',
+                         arity: int) -> 'tuple[bool, ...] | None':
+    """Per element of a pointer-tuple read, whether a sink may take it out
+    of the read: every one but those sema declared copied there
+    (`own_element_copies`, the read's settled verdict) where sema declared
+    the read (`declared_tuple_reads`); None for a read it did not declare,
+    which no sink moves out of. A parameter's elements are the caller's
+    objects (its ownership is its type's, which its binding record
+    carries)."""
+    if rec.is_param:
+        return (False,) * arity
+    copies = lc.analyzer.ctx.own_element_copies
+    if e in copies:
+        copied = copies[e]
+        return tuple(copied is not None and i not in copied
+                     for i in range(arity))
+    if e in lc.analyzer.ctx.declared_tuple_reads:
+        return (True,) * arity
+    return None
 
 
-def _ptr_tuple_elems(ptt: 'TupleType', owned: 'tuple[bool, ...]',
+def _ptr_tuple_elems(ptt: 'TupleType', owned: 'tuple[bool, ...] | None',
                      movable: bool) -> 'tuple[Source, ...]':
     """The elements of a pointer-tuple local's read: each reference element
-    a pointer, movable at the read's last use only where every storage
-    reaching the read owns it (sema's `tuple_owned_at_use`); a borrowed
-    element is someone else's object."""
+    a pointer, movable at the read's last use only where the read owns it
+    (`owned`); a borrowed element is someone else's object, and one of an
+    undeclared read (`owned` None) is nobody's to move."""
     out: list[Source] = []
     for i, et in enumerate(ptt.element_types):
         if TupleType._element_is_pointer_repr(et):
             out.append(Source(held=Held.BORROWED, pointer_held=True,
-                              movable=movable and i < len(owned)
-                              and owned[i]))
+                              movable=(movable and owned is not None
+                                       and i < len(owned) and owned[i]),
+                              undeclared=movable and owned is None))
         else:
             out.append(Source(held=Held.STORAGE, movable=movable))
     return tuple(out)
@@ -6151,9 +6127,11 @@ def stamp_source(e: 'TpyExpr | None', lowered: THIRExpr, lc: '_LowerCtx',
         if rec is not None and rec.tuple_layout is not None:
             elems = _tuple_layout_elems(rec.tuple_layout)
         if rec is not None and rec.ptr_tuple is not None:
-            elems = _ptr_tuple_elems(rec.ptr_tuple,
-                                     lc.analyzer.ctx.tuple_owned_at_use
-                                     .get(e) or (), movable)
+            elems = _ptr_tuple_elems(
+                rec.ptr_tuple,
+                _read_owned_elements(e, rec, lc,
+                                     len(rec.ptr_tuple.element_types)),
+                movable)
     elif isinstance(lowered, THIRSelf):
         # Every `self` node is the enclosing method's receiver.
         const = (lc.self_receiver is not None
@@ -11251,6 +11229,16 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     result_type=recv_lowered.result_type, expr=recv_lowered,
                     coercion_name="enum_companion", wrap=enum_wrap,
                     form=recv_lowered.form, loc=getattr(e.obj, "loc", None))
+        copy_recv = _consuming_receiver_copy_type(e, fi, lc)
+        if copy_recv is not None:
+            # The copy reads the name as a value (a pointer local derefs),
+            # where the receiver read folds the deref into its arrow.
+            recv_lowered = THIRCopy(
+                result_type=copy_recv,
+                value=_lower_expr(e.obj, lc, declared,
+                                  use=_ExprUse(pos=SinkPos.CALL_ARG)),
+                cpp_type=lc.render_type(copy_recv), form=Form.STORAGE,
+                loc=getattr(e.obj, "loc", None))
         method_node = with_method_callee(with_method_stub(_self_recv_positioned(THIRMethodCall(
             result_type=rtype if rtype is not None else VoidType(),
             receiver=recv_lowered,
@@ -11261,7 +11249,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             native_function_name=binding.native_function_name,
             cpp_template=binding.cpp_template,
             method_targs_cpp=method_targs,
-            is_arrow=not deref_check and enum_wrap is None and (
+            is_arrow=(copy_recv is None and not deref_check
+                      and enum_wrap is None) and (
                 (isinstance(e.obj, TpyName)
                  and (_ptr_read_derefs(e.obj.name, lc)
                       # A poly-narrowed `self` reads through the cast
@@ -11281,7 +11270,7 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                 # is a unique_ptr, so the member access arrows.
                 or _recv_own_dyn(e.obj, declared, analyzer)),
             deref_check=deref_check,
-            move_receiver=(bool(fi.is_consuming)
+            move_receiver=(bool(fi.is_consuming) and copy_recv is None
                            and isinstance(e.obj, TpyName)
                            and _witness("method.consuming_move")),
             form=_viewfam_result_form(m_str),
@@ -14361,7 +14350,6 @@ def _lower_free_call_arg(e: TpyCall | TpyMethodCall, a: TpyExpr,
         return _lower_vararg_pack(a, ptype, lc, declared, temp_args=temp_args)
     len_call = _is_len_call(e, declared, analyzer, lc.names_with("pointer"))
     if not len_call:
-        reject_owning_arg_element(a, ptype, lc, declared)
         body_facts = _free_arg_body_facts(lc, declared)
         if kind is not None and kind[0] in ("native", "native_c", "template"):
             if _template_arg_unreferenced(kind, arg_index):
@@ -15283,7 +15271,6 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
                        if isinstance(unwrap_readonly(unwrap_ref_type(
                            unwrap_send_sync(ptype))), OwnType)
                        else _NO_FORMS)
-    reject_owning_arg_element(a, ptype, lc, declared)
     if lends_from_dying_source(lc.analyzer, a) and not _lend_ok:
         # THE argument sink, asserted at its ENTRY. Every argument -- free
         # call, method, builtin stub, ctor -- reaches this function, but it

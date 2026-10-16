@@ -181,7 +181,7 @@ __coro_pick pick(std::string_view tag, bool b) {
         return ::tpystd::tpy::Poll<::std::monostate>::ready(::std::monostate{});
     }
     case S_JOIN_0: {
-        x = __await_ternary_0;
+        x = std::move(__await_ternary_0);
         std::cout << "x" << " " << x << "\n" << ::tpy::check_signals;
         cond2 = false;
         if (cond2) {
@@ -195,14 +195,14 @@ __coro_pick pick(std::string_view tag, bool b) {
         }
     }
     case S_JOIN_1: {
-        y = __await_ternary_1;
+        y = std::move(__await_ternary_1);
         std::cout << "y" << " " << y << "\n" << ::tpy::check_signals;
         __sub_4.emplace("z-cond", false);
         __state = S_RESUME_4;
         continue;
     }
     case S_JOIN_2: {
-        z = __await_ternary_2;
+        z = std::move(__await_ternary_2);
         std::cout << "z" << " " << z << "\n" << ::tpy::check_signals;
         __sub_7.emplace("w-cond", true);
         __state = S_RESUME_7;

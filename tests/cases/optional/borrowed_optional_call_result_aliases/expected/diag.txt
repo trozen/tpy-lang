@@ -1,9 +1,9 @@
-main.py:61: warning: copies R into field; use copy() to make this explicit
-main.py:246: warning: copies R into owned storage; use copy() to make this explicit
-main.py:255: warning: copies R into owned storage; use copy() to make this explicit
-main.py:262: warning: copies R into owned storage; use copy() to make this explicit
-main.py:269: warning: copies R into owned storage; use copy() to make this explicit
-main.py:276: warning: copies R into field; use copy() to make this explicit
-main.py:283: warning: copies R into owned storage; use copy() to make this explicit
-main.py:289: warning: copies R | None into field; use copy() to make this explicit
-main.py:295: warning: copies R | None into owned storage; use copy() to make this explicit
+main.py:61: warning: copies R into field; use copy() to make this explicit ('q' is bound to existing storage at line 59)
+main.py:246: warning: copies R into owned storage; use copy() to make this explicit ('y' is bound to existing storage at line 244)
+main.py:255: warning: copies R into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 253)
+main.py:262: warning: copies R into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 260)
+main.py:269: warning: copies R into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 267)
+main.py:276: warning: copies R into field; use copy() to make this explicit ('q' is bound to existing storage at line 274)
+main.py:283: warning: copies R into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 281)
+main.py:289: warning: copies R | None into field; use copy() to make this explicit ('q' is bound to existing storage at line 288)
+main.py:295: warning: copies R | None into owned storage; use copy() to make this explicit ('q' is bound to existing storage at line 294)

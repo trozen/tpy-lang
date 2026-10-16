@@ -751,7 +751,7 @@ int32_t value_bound_readonly(::tpy::readonly_form_t<T> v) {
 }
 // def boxed_bound[T: ValueType](v: GBox[T]) -> int32:
 //     xs: list[GBox[T]] = []
-//     xs.append(v)  # tpyc: warning(/may copy GBox\[T\] into owned storage/)
+//     xs.append(v)  # tpyc: warning(/copies GBox\[T\] into owned storage/)
 //     return len(xs)
 template<::tpy::ValueType T>
 int32_t boxed_bound(const GBox<T>& v) {

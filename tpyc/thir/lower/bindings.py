@@ -877,8 +877,6 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
     ptt = ptr_tuple_form(name, inp, inp.func)
     if ptt is not None:
         f["ptr_tuple"] = ptt
-        f["ptr_tuple_owned"] = pointer_tuple_owned(
-            inp.analyzer.ctx, inp.func, name)
     return BindingRepr(name=name, site=None, type=typ, kind=K.FRAME_LAYOUT,
                        site_kind=site.kind, **f)
 
@@ -1436,8 +1434,7 @@ def _btuple_rebound_decl(site, name, typ, inp: 'PlanInputs', ctx, fn,
             loc=getattr(site.node, "loc", None))
     if ptt is not None:
         return _mk(site, name, typ, K.DECL_BTUPLE_REBOUND, effective_type=ptt,
-                   ptr_tuple=ptt, movable=movable,
-                   ptr_tuple_owned=frozenset(owned))
+                   ptr_tuple=ptt, movable=movable)
     if site.in_branch and not isinstance(init, TpyName):
         return None
     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
@@ -1807,9 +1804,7 @@ def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
         ptt = ptr_tuple_form(name, inp, ctx.func)
         if ptt is not None:
             return _mk(site, name, typ, kind, ptr_tuple=ptt,
-                       effective_type=ptt,
-                       ptr_tuple_owned=pointer_tuple_owned(
-                           ctx.analyzer.ctx, ctx.func, name))
+                       effective_type=ptt)
         # Otherwise an owning tuple-call source (a walrus's) fills a rebind
         # slot the if chain's head declares, and a mixed call's binding
         # holds its hybrid render.

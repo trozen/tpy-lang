@@ -8,7 +8,7 @@ from __future__ import annotations
 import re
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Callable, NamedTuple, Optional
+from typing import TYPE_CHECKING, Any, Callable, Iterable, NamedTuple, Optional, TypeGuard
 
 from ..typesys import pointer_repr_optional, readonly_access
 from ..typesys import (
@@ -55,13 +55,15 @@ from ..parse import (
     TpyAwait, TpyGeneratorExpression, TpyVarDecl, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
+from ..parse.nodes import program_names
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value
 from ..modules import get_span_return_type
-from .context import OwnSlot, ParkedFunctionState, ParkedRebind, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
+from .context import ConsumingLoop, ElementMove, FinallyCapture, HeldLoopCopy, NameMove, OwnIterMove, OwningRead, ReceiverMove, SinkCopy, TupleNameMove, UnneededCopy, OwnSlot, ParkedFunctionState, ParkedRebind, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
-    SemanticError, NOCOPY_REMEDIATION_HINT, NOCOPY_REPEATED_READ_HINT,
-    CONSUMING_FIELD_MOVE_NOTE, CONSUMING_FIELD_COPY_CLAUSE)
+    Diagnostic, DiagnosticLevel, SemanticError, insert_in_source_order, NOCOPY_REMEDIATION_HINT, NOCOPY_REPEATED_READ_HINT,
+    CONSUMING_FIELD_MOVE_NOTE, CONSUMING_FIELD_COPY_CLAUSE,
+    ITERABLE_LVALUE_COPY_HINT)
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
@@ -402,6 +404,14 @@ def _handle_lends_elements(t: TpyType) -> bool:
         return False
     return not (elem is not None
                 and isinstance(unwrap_readonly(elem), OwnType))
+
+
+def owned_tuple_slots(tt: TupleType) -> TupleType:
+    """`tt` at a slot that owns the whole tuple: every reference element is
+    an owned one."""
+    return TupleType(tuple(
+        et if et.is_value_type() or isinstance(et, OwnType) else OwnType(et)
+        for et in tt.element_types))
 
 
 class TypeCompatibility:
@@ -1012,7 +1022,7 @@ class TypeCompatibility:
         # A NAME feeding a slot that owns it must reach the Own[T] coercion
         # path even when the types are already equal: that path is where the
         # source's consumption is DECIDED -- the copy warning at a non-last-use
-        # and, through `is_auto_move_use`, the hidden-borrow demotion that
+        # and, through `grant_name_move`, the hidden-borrow demotion that
         # retracts a last-use mark while a call-result borrow of the local is
         # live. Skipping it hands codegen an unretracted mark and it moves the
         # storage out from under the borrow.
@@ -1210,12 +1220,12 @@ class TypeCompatibility:
             if (source_expr is not None
                     and self.is_lvalue(source_expr)
                     and not self.is_copy_call(source_expr)
-                    and not self._is_auto_moved(source_expr)
-                    and self._warns_copy_into_any(inner)):
-                self.ctx.warning(
-                    f"copies {inner} into Any; use copy() to make this explicit",
-                    source_expr,
-                )
+                    and self._warns_copy_into_any(inner)
+                    and not self.grant_name_move(
+                        source_expr, OwnType(inner),
+                        sink=SinkCopy(inner, inner, "Any"))):
+                self.declare_sink_copy(SinkCopy(inner, inner, "Any"),
+                                        source_expr, True)
             return INTO_ANY
 
         # Any -> T: runtime-checked auto-coerce. Target T must be a concrete
@@ -1436,11 +1446,26 @@ class TypeCompatibility:
                     is_lvalue_src = self.is_lvalue(source_expr)
                     # Suppress at last use: no observable semantic divergence from
                     # CPython when the source is dead after this point (Framing A).
-                    is_auto_moved = self._is_auto_moved(source_expr)
                     # A dead HANDLE moves only itself: the elements it hands
                     # out still live in the storage it lends from.
-                    lent_value = (self._dead_handle_value(source_expr)
-                                  if is_auto_moved else None)
+                    handle_lends = (self._dead_handle_value(source_expr)
+                                    if isinstance(source_expr, TpyName)
+                                    else None)
+                    # A container that moves in skips each element copy; a
+                    # later borrowing binding of the name settles the move
+                    # into those copies (a handle's or value elements'
+                    # settled copy is silent, as a read after it is).
+                    skipped = () if handle_lends is not None else tuple(
+                        SinkCopy(unwrap_ref_type(t.wrapped),
+                                 unwrap_ref_type(t.wrapped), "owned storage",
+                                 own_copy.KIND_ELEMENTS,
+                                 ITERABLE_LVALUE_COPY_HINT)
+                        for t in expected.inner_types()
+                        if isinstance(t, OwnType)
+                        and own_copy.contains_reference_type(t.wrapped))
+                    is_auto_moved = self.grant_name_move(
+                        source_expr, OwnType(expected), sink=skipped)
+                    lent_value = handle_lends if is_auto_moved else None
                     prov_src = source_expr
                     if lent_value is not None:
                         prov_src, is_lvalue_src = lent_value, False
@@ -1455,7 +1480,7 @@ class TypeCompatibility:
                             # Lvalue source (container): suggest copy_iter or copy.
                             # Rvalue (iterator): only copy_iter.
                             if is_lvalue_src:
-                                hint = "use copy_iter() to make this explicit (or copy() to copy the entire container)"
+                                hint = ITERABLE_LVALUE_COPY_HINT
                             else:
                                 hint = "use copy_iter() to make this explicit"
                             # Rvalue iterators that yield Ref elements (e.g.
@@ -1636,7 +1661,16 @@ class TypeCompatibility:
             # (returns are handled separately as errors in statements.py)
             # Skip warning when auto-move applies (last use of an owned variable).
             # Only locals and Own[T] params are movable -- regular params are borrowed.
-            is_auto_moved = self._is_auto_moved(source_expr)
+            # A return's move is the return check's to record; a hidden
+            # borrower's demotion is applied here, where the return's
+            # verdict has always been taken (a lambda's return has no other
+            # check), retracting the last-use mark the lowering reads.
+            if is_return:
+                is_auto_moved = False
+                self.retract_hidden_borrowed_last_use(source_expr)
+            else:
+                is_auto_moved = self.grant_name_move(
+                    source_expr, expected, context)
             self.check_own_consumption(source_expr)
             # Mark loop variables as consumed for auto-consuming heuristic
             if isinstance(source_expr, TpyName):
@@ -1675,14 +1709,10 @@ class TypeCompatibility:
                     # A loop var's consuming decision is post-body; defer the
                     # per-member warnings so they can be suppressed if consuming
                     # iteration moves the element (mirrors the scalar case below).
-                    if (isinstance(source_expr, TpyName)
-                            and source_expr.name in self.ctx.func.loop_vars
-                            and source_expr in self.ctx.all_last_uses):
-                        for diag_idx in range(before, len(self.ctx.diagnostics)):
-                            self.ctx.func.deferred_loop_copy_warnings.setdefault(
-                                source_expr.name, []).append(diag_idx)
+                    self.hold_loop_copy_warnings(source_expr, before)
                     warned_ptr_repr_tuple = True
                 else:
+                    before = len(self.ctx.diagnostics)
                     value_type = self.diag_type(self.ctx.get_expr_type(source_expr))
                     deferred = self.ctx.defer_own_copy_verdict(
                         value_type, expected.wrapped, "owned storage", source_expr)
@@ -1718,16 +1748,7 @@ class TypeCompatibility:
                         # An element check reached with the whole tuple NAME
                         # as its source: its warning declares that copy.
                         self.record_name_copy(source_expr, None)
-                    # For loop variables at last use, the consuming decision is
-                    # made post-body. Record the diagnostic index so it can be
-                    # suppressed if the loop activates consuming iteration
-                    # (elements at last use will be moved, not copied).
-                    if (isinstance(source_expr, TpyName)
-                            and source_expr.name in self.ctx.func.loop_vars
-                            and source_expr in self.ctx.all_last_uses):
-                        diag_idx = len(self.ctx.diagnostics) - 1
-                        self.ctx.func.deferred_loop_copy_warnings.setdefault(
-                            source_expr.name, []).append(diag_idx)
+                    self.hold_loop_copy_warnings(source_expr, before)
             if warned_ptr_repr_tuple:
                 return self._check_compat(actual, ew, context, loc,
                                           source_expr, is_return,
@@ -2742,10 +2763,6 @@ class TypeCompatibility:
         return const_place(expr, self.ctx.get_expr_type, lambda e, _stepped: isinstance(
             self.ctx.get_expr_type(e), ReadonlyType))
 
-    def _is_auto_moved(self, source_expr: 'TpyExpr | None') -> bool:
-        """Last-use of an owned local: auto-move makes the copy invisible."""
-        return self.is_auto_move_use(source_expr)
-
     def _dead_handle_value(self, name: TpyName) -> 'TpyExpr | None':
         """The value a last-use local HANDLE (an iterator or view over
         other storage) lends its elements from, or None when the local's
@@ -2859,32 +2876,298 @@ class TypeCompatibility:
             return self.pend.known_type(t)
         return t.map_inner_types(self.diag_type)
 
-    def is_auto_move_use(self, expr: 'TpyExpr | None') -> bool:
-        """Single authority for "this name read auto-moves": a last-use mark
-        on an owned local/param whose storage has no borrower that liveness
-        cannot see. Bind-based aliases (b = a, a = o.inner, n = xs[0]) are
-        in the prescan alias maps and modeled by the liveness walk itself
-        with dead-alias precision; call-result borrows (return_borrows_from)
-        and iterator borrows are not, so any such borrower demotes the move
-        to the copy path. The mark is retracted on demotion so codegen
-        (which reads all_last_uses directly) lands on the same decision.
-        """
-        if not (isinstance(expr, TpyName)
-                and expr in self.ctx.all_last_uses
-                and self._is_owned_var(expr.name)):
-            return False
-        return not self.demoted_by_hidden_borrow(expr)
+    def is_last_use_move_candidate(self, expr: 'TpyExpr | None') -> bool:
+        """Whether this name read is a last use an owning sink would move:
+        a last-use mark on an owned local/param whose storage has no
+        borrower liveness cannot see (`_has_hidden_borrower`). A question
+        only -- it never authorizes a move or suppresses a copy
+        diagnostic, and retracts no mark: a sink that acts on the answer
+        asks `grant_name_move`, which records the read and applies the
+        demotion."""
+        return (self._owned_last_use(expr)
+                and not self._has_hidden_borrower(expr))
 
-    def auto_move_copied_elements(self, expr: 'TpyExpr | None'
-                                  ) -> frozenset[int] | None:
-        """For a name read that auto-moves, the tuple elements an owning sink
-        still copies: those the binding holds by reference (a borrowed name
-        or a borrowing call's element) are pointers, and the storage lift
-        deref-copies them at the last use too. Empty when the move copies
-        nothing; None when the read does not auto-move."""
-        if not self.is_auto_move_use(expr):
+    def retract_hidden_borrowed_last_use(self,
+                                         expr: 'TpyExpr | None') -> None:
+        """The demotion `grant_name_move` applies, at a read whose move is
+        no owning sink's (a plain bind's move-through, a loop's iterable, a
+        return the return check records): a hidden borrower retracts the
+        last-use mark, so the lowering, which moves at every mark, copies."""
+        if self._owned_last_use(expr):
+            self.demoted_by_hidden_borrow(expr)
+
+    def _owned_last_use(self, expr: 'TpyExpr | None') -> TypeGuard[TpyName]:
+        """A name read carrying the last-use mark of a name that owns its
+        value (`_is_owned_var`)."""
+        return (isinstance(expr, TpyName)
+                and expr in self.ctx.all_last_uses
+                and self._is_owned_var(expr.name))
+
+    def grant_name_move(self, expr: 'TpyExpr | None',
+                        slot: 'OwnType | None' = None,
+                        context: str = "owned storage", action: str = "pass",
+                        *, whole_slot: bool = True,
+                        sink: 'SinkCopy | tuple[SinkCopy, ...] | None' = None,
+                        read: 'OwningRead | None' = None,
+                        warns: bool = True) -> bool:
+        """Whether this owning-sink read of a name moves, recording the move
+        for `settle_owning_reads` (a later binding may turn it into a copy):
+        `read` when given, else a tuple read of `slot` or a `NameMove` into
+        it in `sink`'s words. A hidden borrower demotes the move here,
+        retracting the last-use mark the lowering reads."""
+        assert slot is not None or read is not None, \
+            "a granted move leaves its record"
+        if (not self._owned_last_use(expr)
+                or self.demoted_by_hidden_borrow(expr)):
+            return False
+        if read is not None:
+            self.record_owning_read(read)
+            return True
+        assert slot is not None
+        bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+            self.ctx.get_expr_type(expr))))
+        if isinstance(unwrap_readonly(unwrap_own(bare)), TupleType):
+            # An element slot reached with the whole tuple NAME as its
+            # source is one element of a tuple sink, which declares the read.
+            slot_t = unwrap_readonly(slot.wrapped)
+            if isinstance(slot_t, TupleType):
+                self.declare_tuple_read(expr, owned_tuple_slots(slot_t),
+                                        warns=warns)
+        else:
+            self.record_owning_read(NameMove(expr.name, expr, slot, context,
+                                             action, whole_slot, sink))
+        return True
+
+    def declare_tuple_read(self, expr: TpyName, slot: TupleType, *,
+                           warns: bool = True) -> None:
+        """A tuple local read whole at a sink that moves the elements it
+        owns into the `Own` elements of `slot`: the elements a binding of it
+        borrows (or holds by reference) are copied instead -- declared to
+        the lowering now (`own_element_copies`) and, for a binding later in
+        the walk, at settlement, with the slot's warning where `warns`."""
+        self.record_owning_read(self.tuple_name_move(expr, slot, warns=warns))
+
+    def tuple_name_move(self, expr: TpyName, slot: TupleType, *,
+                        warns: bool) -> TupleNameMove:
+        """The record of tuple local `expr` read whole at a sink taking the
+        `Own` elements of `slot` (`declare_tuple_read`)."""
+        return TupleNameMove(expr.name, expr, slot,
+                             self.copy_into_own_idxs(expr.name), warns)
+
+    def hold_loop_copy_warnings(self, source_expr: 'TpyExpr | None',
+                                before: int) -> None:
+        """A loop variable's last-use copy warnings (those emitted since
+        `before`) wait for the loop's mode, decided after its body: a
+        consuming loop moves the element they describe."""
+        if not (isinstance(source_expr, TpyName)
+                and source_expr.name in self.ctx.func.loop_vars
+                and source_expr in self.ctx.all_last_uses):
+            return
+        held = self.ctx.diagnostics[before:]
+        del self.ctx.diagnostics[before:]
+        self.ctx.func.owning_reads.extend(
+            HeldLoopCopy(source_expr.name, source_expr, d) for d in held)
+
+    def take_loop_copy_warnings(self, var: str) -> list[Diagnostic]:
+        """The copy warnings held for loop variable `var`, now that its
+        loop's mode is decided."""
+        fs = self.ctx.func
+        held = [r for r in fs.owning_reads
+                if isinstance(r, HeldLoopCopy) and r.name == var]
+        if held:
+            fs.owning_reads = [r for r in fs.owning_reads
+                               if not (isinstance(r, HeldLoopCopy)
+                                       and r.name == var)]
+        return [r.diag for r in held]
+
+    def emit_held(self, diags: 'Iterable[Diagnostic]') -> None:
+        for d in diags:
+            insert_in_source_order(self.ctx.diagnostics, d)
+
+    def record_owning_read(self, read: OwningRead) -> bool:
+        """Keep a move an owning sink makes out of a LOCAL on the ownership
+        fact as it stands at the read, for `settle_owning_reads` to turn
+        into a copy if a later binding (a loop's back edge) makes the local
+        non-owning. A parameter's ownership is its type, decided here
+        (False: nothing is kept). A tuple read is declared to the lowering
+        (`declared_tuple_reads`) even when it copies nothing: elements move
+        only out of a declared read."""
+        if isinstance(read, TupleNameMove):
+            self.ctx.declared_tuple_reads.add(read.node)
+            if read.copied:
+                self.record_name_copy(read.node, read.copied)
+        fs = self.ctx.func
+        func = fs.current_function
+        if (self.ctx.is_top_level or not isinstance(func, TpyFunction)
+                or read.name == "self"
+                or any(p == read.name for p, _ in func.params)):
+            return False
+        fs.owning_reads.append(read)
+        return True
+
+    def settle_owning_reads(self) -> None:
+        """Once the body is read, the ownership fact is complete: every
+        owning-sink read that moved out of a local the fact now calls
+        non-owning (a binding later in the walk, a loop's back edge,
+        borrows it) becomes a copy, warned at the read -- or the located
+        error for a non-copyable type -- exactly as a read after that
+        binding would have been. A move never comes back from a copy, and
+        a last use the analysis retracted stays retracted."""
+        fs = self.ctx.func
+        reads, fs.owning_reads = fs.owning_reads, []
+        if not reads:
+            return
+        before = len(self.ctx.diagnostics)
+        for r in reads:
+            if isinstance(r, FinallyCapture):
+                self._settle_finally_capture(r)
+        for r in reads:
+            if isinstance(r, NameMove):
+                if (fs.owns_whole(r.name)
+                        or r.node not in self.ctx.all_last_uses):
+                    continue
+                self._check_own_borrowed_source(
+                    r.slot, r.node, r.context, r.action,
+                    whole_slot=r.whole_slot, sink=r.sink)
+            elif isinstance(r, ReceiverMove):
+                if (not fs.owns_whole(r.name)
+                        or r.node not in self.ctx.all_last_uses):
+                    self.declare_receiver_copy(r.node)
+            elif isinstance(r, OwnIterMove):
+                self.check_own_iter_source(r.node, r.call)
+            elif isinstance(r, ConsumingLoop):
+                if not fs.owns_whole(r.name):
+                    r.revert()
+            elif isinstance(r, ElementMove):
+                arity = self._tuple_arity(r.node.obj)
+                if (arity is None or r.index
+                        not in fs.nonowning_elems(r.name, arity)):
+                    continue
+                self.ctx.element_moves.discard(r.node)
+                self._check_own_borrowed_source(
+                    r.slot, r.node, f"tuple element {r.index}",
+                    "return" if r.returned else "pass",
+                    whole_slot=r.returned)
+            elif isinstance(r, TupleNameMove):
+                self._settle_tuple_name_move(r)
+            elif isinstance(r, UnneededCopy):
+                if (fs.nonowning_line(r.name) is None
+                        and r.node in self.ctx.all_last_uses):
+                    self._warn_unneeded_copy(r)
+            elif isinstance(r, HeldLoopCopy):
+                # A loop that never decided its mode copies.
+                insert_in_source_order(self.ctx.diagnostics, r.diag)
+        # A settled copy's warning belongs among the body's in source order.
+        added = self.ctx.diagnostics[before:]
+        del self.ctx.diagnostics[before:]
+        for d in added:
+            insert_in_source_order(self.ctx.diagnostics, d)
+
+    def _settle_tuple_name_move(self, r: TupleNameMove) -> None:
+        """A tuple local read whole at a sink that moves its owned elements:
+        each one a later binding borrows is copied instead, warned at the
+        read where its slot owns it, and declared to the lowering
+        (`own_element_copies`)."""
+        tt = r.tuple_type
+        final = self.ctx.func.nonowning_elems(r.name, len(tt.element_types))
+        new = sorted(
+            i for i, et in enumerate(tt.element_types)
+            if i in final and i not in r.copied and isinstance(et, OwnType)
+            and not unwrap_readonly(et.wrapped).is_value_type())
+        if not new:
+            return
+        if r.warns:
+            for i in new:
+                self._warn_name_element_copy(tt.element_types[i], i, r.node)
+        self.record_name_copy(r.node, set(r.copied) | set(new))
+
+    def _settle_finally_capture(self, r: FinallyCapture) -> None:
+        """A finally-deferred return of a local the complete fact calls
+        non-owning takes the eager capture a non-owning local's return
+        takes: the return copies before the finally chain runs. The capture
+        moves the local whole -- the returned name, or the literal member
+        at `r.path` -- so a tuple local any element of which is non-owning
+        is no deferrable move either."""
+        fs = self.ctx.func
+        if (fs.owns_whole(r.name) and not fs.nonowning_elems(
+                r.name, self._tuple_arity(r.node) or 0)):
+            return
+        ret = r.ret
+        if r.path is None or r.path == ():
+            ret.finally_deferred_capture = False
+            ret.finally_deferred_leaves = ()
+        else:
+            ret.finally_deferred_leaves = tuple(
+                p for p in ret.finally_deferred_leaves if p != r.path)
+            if not ret.finally_deferred_leaves:
+                ret.finally_deferred_capture = False
+
+    def check_own_iter_source(self, name: TpyName, call: TpyExpr) -> None:
+        """`own_iter(name)` takes the list itself, so `name` must own it: a
+        parameter that is not `Own[...]`, or a local bound to existing
+        storage, has no list of its own to give, and no copy of it renders
+        here yet (BUGS.md#own-iter-non-owning-source)."""
+        func = self.ctx.func.current_function
+        if self.ctx.is_top_level or not isinstance(func, TpyFunction):
+            return
+        ptype = next((t for p, t in func.params if p == name.name), None)
+        if ptype is not None:
+            if func.takes_ownership_of(name.name, ptype):
+                return
+            why = f"'{name.name}' is a parameter that does not take ownership"
+        else:
+            line = self.ctx.func.nonowning_line(name.name)
+            if self.ctx.func.owns_whole(name.name) or line is None:
+                return
+            why = f"'{name.name}' is bound to existing storage at line {line}"
+        raise self.ctx.error(
+            f"own_iter() takes ownership of '{name.name}', which does not "
+            f"own its list ({why}); iterate it with a plain for-loop "
+            f"instead", call)
+
+    def _tuple_arity(self, expr: TpyExpr) -> 'int | None':
+        tt = self.ctx.get_expr_type(expr)
+        tt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt)))
+              if tt is not None else None)
+        return len(tt.element_types) if isinstance(tt, TupleType) else None
+
+    def declare_receiver_copy(self, recv: TpyName) -> None:
+        """The copy a consuming call (`self: Own[Self]`) makes of a receiver
+        that does not own its value (a borrowed parameter, a non-owning
+        local): the owning slot's warning, or its error for a non-copyable
+        type, declared to the lowering (`own_element_copies`)."""
+        t = self.ctx.get_expr_type(recv)
+        t = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
+        if isinstance(t, OwnType):
+            t = unwrap_readonly(t.wrapped)
+        if t is None:
+            return
+        self.ctx.own_element_copies[recv] = None
+        self._check_own_borrowed_source(OwnType(t), recv,
+                                        "the consuming receiver", "pass")
+
+    def advise_unneeded_copy(self, call: TpyCall) -> bool | None:
+        """`copy(name)` at an owning sink: the advice to drop the copy where
+        the bare name would move out whole -- settled with the ownership
+        fact, since a later binding can make the local non-owning. None
+        when the bare name would not move; False when it would but still
+        copy the tuple elements its binding holds by reference (the storage
+        lift deref-copies those pointers); True otherwise."""
+        inner = call.args[0]
+        # A question: the advice is settled through its own record.
+        if not self.is_last_use_move_candidate(inner):
             return None
-        return self.ctx.func.bp_copy_into_own_idxs(expr.name)
+        if self.copy_into_own_idxs(inner.name):
+            return False
+        read = UnneededCopy(inner.name, inner, call)
+        if not self.record_owning_read(read):
+            self._warn_unneeded_copy(read)
+        return True
+
+    def _warn_unneeded_copy(self, r: UnneededCopy) -> None:
+        self.ctx.warning(
+            f"unnecessary copy() -- '{r.name}' is at its last use and "
+            f"would be moved automatically", r.call)
 
     def require_movable(self, expr: TpyExpr, context: str) -> None:
         """At a relocation point (the caller has confirmed `expr` auto-moves),
@@ -2912,12 +3195,20 @@ class TypeCompatibility:
         consistent) and return True. Callers check the mark themselves --
         this only decides and applies the demotion.
         """
-        known = (self.ctx.func.current_alias_sources.keys()
-                 | self.ctx.func.current_chain_alias_sources.keys())
-        if self.ctx.func.borrow_tracker.has_borrowers_outside(expr.name, known):
+        if self._has_hidden_borrower(expr):
             self.ctx.all_last_uses.discard(expr)
             return True
         return False
+
+    def _has_hidden_borrower(self, expr: TpyName) -> bool:
+        """Whether `expr`'s storage has a borrower the liveness alias maps
+        cannot see: bind-based aliases (b = a, a = o.inner, n = xs[0]) are
+        modeled by the liveness walk itself; call-result and iterator
+        borrows are not, so any such borrower bars a move."""
+        known = (self.ctx.func.current_alias_sources.keys()
+                 | self.ctx.func.current_chain_alias_sources.keys())
+        return self.ctx.func.borrow_tracker.has_borrowers_outside(
+            expr.name, known)
 
     def _warns_copy_into_any(self, inner: TpyType) -> bool:
         """Reference types whose into-Any storage silently copies.
@@ -2953,7 +3244,9 @@ class TypeCompatibility:
         - copy(): explicit copy transfers ownership of the param's value
         """
         if isinstance(expr, TpyName):
-            if self.is_auto_move_use(expr):
+            # A consumption mark for the unconsumed-`Own`-parameter warning
+            # only: the move itself is the calling sink's record.
+            if self.is_last_use_move_candidate(expr):
                 self.ctx.mark_own_param_consumed(expr.name)
             return
         if self.is_copy_call(expr) and isinstance(expr, TpyCall) and expr.args:
@@ -2992,8 +3285,13 @@ class TypeCompatibility:
             self.check_own_consumption(expr)
             return False
         if action == "return" and whole_slot:
-            moved = self.returned_owned_element(expr)
-            if moved is not None:
+            # `name[i]` returned at the tuple's last use MOVES the element
+            # the binding owns out (nothing reads the moved-from element;
+            # the others stay where they are).
+            moved = self.owned_element_read(expr)
+            if moved is not None and self.grant_name_move(
+                    expr.obj, read=ElementMove(moved[0], expr, moved[1],
+                                               own_type, returned=True)):
                 self.ctx.element_moves.add(expr)
                 self.ctx.mark_own_element_consumed(*moved)
                 return False
@@ -3002,40 +3300,43 @@ class TypeCompatibility:
         return self._check_own_borrowed_source(
             own_type, expr, context, action, whole_slot=whole_slot)
 
-    def returned_owned_element(self, expr: TpyExpr) -> 'tuple[str, int] | None':
-        """`(name, i)` for a returned `name[i]` that MOVES an owned element
-        out of a tuple this body owns: element `i` is `Own[...]` and the
-        return is the tuple's last use, so nothing reads the moved-from
-        element (the other elements stay where they are). None otherwise."""
-        read = self.owned_element_read(expr)
-        if read is None or not self.is_auto_move_use(expr.obj):
-            return None
-        return read
-
     def passed_owned_element(self, own_type: OwnType, expr: TpyExpr) -> bool:
-        """An owned element `name[i]` passed to an `Own[T]` parameter MOVES
-        out exactly where a returned one does (`returned_owned_element`: the
-        tuple's last use with no hidden borrower); otherwise the slot copies
-        it and says so, and a `@nocopy` element errors. False when `expr` is
-        no owned element read."""
-        read = self.owned_element_read(expr)
+        """A reference element `name[i]` passed to an `Own[T]` parameter: an
+        owned one MOVES out exactly where a returned one does
+        (`check_own_lvalue_into_own`: the tuple's last use with no hidden
+        borrower); otherwise -- a borrowed element, or an owned one the
+        tuple outlives -- the slot copies it and says so, as it does a
+        scalar, and a `@nocopy` element errors. False when `expr` is no
+        such element read."""
+        read = self.element_read(expr)
         if read is None:
             return False
-        if self.is_auto_move_use(expr.obj):
+        name, idx, owns = read
+        if owns and self.grant_name_move(
+                expr.obj, read=ElementMove(name, expr, idx, own_type,
+                                           returned=False)):
             self.ctx.element_moves.add(expr)
-            self.ctx.mark_own_element_consumed(*read)
+            self.ctx.mark_own_element_consumed(name, idx)
             return True
         self._check_own_borrowed_source(own_type, expr,
-                                        f"tuple element {read[1]}", "pass",
+                                        f"tuple element {idx}", "pass",
                                         whole_slot=False)
         return True
 
     def owned_element_read(self, expr: TpyExpr) -> 'tuple[str, int] | None':
         """`(name, i)` for `name[i]` with a constant index reading an element
-        the binding OWNS: an `Own[...]` element, or a reference element held
-        by value because the binding owns the whole tuple -- an `Own[tuple]`
-        parameter, or an owned local whose element `i` is not held by
-        reference (`copy_into_own_idxs`). None otherwise."""
+        the binding OWNS: an `Own[...]` element of a parameter, or a
+        reference element held by value because the binding owns the whole
+        tuple -- an `Own[tuple]` parameter, or an owned local whose element
+        `i` is not held by reference nor borrowed by any binding
+        (`copy_into_own_idxs`). None otherwise."""
+        read = self.element_read(expr)
+        return read[:2] if read is not None and read[2] else None
+
+    def element_read(self, expr: TpyExpr) -> 'tuple[str, int, bool] | None':
+        """`(name, i, owns)` for `name[i]` with a constant index reading a
+        reference element of a tuple parameter or local, `owns` as
+        `owned_element_read` says. None for any other read."""
         if not (isinstance(expr, TpySubscript) and isinstance(expr.obj, TpyName)):
             return None
         idx = const_tuple_index(expr.index)
@@ -3052,20 +3353,34 @@ class TypeCompatibility:
             return None
         name = expr.obj.name
         et = unwrap_readonly(tt.element_types[idx])
-        if isinstance(et, OwnType):
-            return name, idx
-        if unwrap_ref_type(et).is_value_type():
+        if (not isinstance(et, OwnType)
+                and unwrap_ref_type(et).is_value_type()):
             return None
         func = self.ctx.func.current_function
         ptype = (next((t for p, t in func.params if p == name), None)
                  if isinstance(func, TpyFunction) else None)
         if ptype is not None:
-            owns = (isinstance(unwrap_readonly(ptype), OwnType)
-                    and func.takes_ownership_of(name, ptype))
+            owns = isinstance(et, OwnType) or (
+                isinstance(unwrap_readonly(ptype), OwnType)
+                and func.takes_ownership_of(name, ptype))
         else:
             owns = (self._is_owned_var(name)
-                    and idx not in self.ctx.func.bp_copy_into_own_idxs(name))
-        return (name, idx) if owns else None
+                    and idx not in self.copy_into_own_idxs(name))
+        return name, idx, owns
+
+    def copy_into_own_idxs(self, name: str) -> frozenset[int]:
+        """The elements of tuple local `name` an owning sink copies rather
+        than moves: those its current binding holds by reference, and those
+        any binding of it borrows (the ownership fact, so far)."""
+        fs = self.ctx.func
+        base = fs.bp_copy_into_own_idxs(name)
+        scope = fs.current_scope
+        slot = scope.lookup(name) if scope is not None else None
+        bare = (unwrap_readonly(unwrap_ref_type(unwrap_own(
+            unwrap_send_sync(slot)))) if slot is not None else None)
+        if not isinstance(bare, TupleType):
+            return base
+        return base | fs.nonowning_elems(name, len(bare.element_types))
 
     def returned_captured_name(self, expr: TpyExpr) -> 'TpyName | None':
         """The owned NAME a `return` hands over although a closure of the
@@ -3085,12 +3400,15 @@ class TypeCompatibility:
     def _check_own_borrowed_source(
         self, own_type: OwnType, expr: TpyExpr, context: str, action: str,
         *, whole_slot: bool = True,
+        sink: 'SinkCopy | tuple[SinkCopy, ...] | None' = None,
     ) -> bool:
         """`check_own_lvalue_into_own`'s tail, once the source is known to be
         borrowed: it warns and copies -- unless the source is a value type, a
         movable Own local, or a consuming method's own field. A `@nocopy`
         payload errors, because there is no copy for the warning to
-        describe. True when the slot copies."""
+        describe. True when the slot copies. `sink` is the copy's text at a
+        sink other than an `Own` slot (a field, a container, `Any`, an
+        element copy), settled here for a move a later binding revoked."""
         # Value types are always safe -- copied, not aliased. OwnType.is_value_type
         # returns True (Own represents a moved value), so we have to peel Own
         # first to see whether the underlying T is genuinely a value type.
@@ -3111,21 +3429,38 @@ class TypeCompatibility:
                                  inner_after_own))):
                 return False
             # A WHOLE returned Own-typed name moves out (C++ moves a returned
-            # local) unless a closure captures it: that one copies, declared
+            # local) unless it is a non-owning local, whose Own type is only
+            # a branch's (`b = w; if c: b = Box(1)`), or a closure captures
+            # it: those copy, declared
             # below like any owning slot's. One ELEMENT of a tuple literal is
             # declared below too -- `return (b, b)` hands back two copies
             # where CPython hands back one object twice.
-            if action == "return" and isinstance(unwrapped, OwnType):
-                if (self.is_auto_move_use(expr) if not whole_slot
-                        else self.returned_captured_name(expr) is None):
+            if (action == "return" and isinstance(unwrapped, OwnType)
+                    and not (isinstance(inner, TpyName)
+                             and not self.ctx.func.owns_whole(inner.name))):
+                if not whole_slot:
+                    if self.grant_name_move(expr, own_type, context, action,
+                                            whole_slot=False):
+                        return False
+                elif self.returned_captured_name(expr) is None:
+                    # C++ moves the returned local whatever the verdict says;
+                    # the record only lets a later binding settle a copy.
+                    if isinstance(inner, TpyName):
+                        self.grant_name_move(inner, read=NameMove(
+                            inner.name, inner, own_type, context, action))
                     return False
         # A consuming method's field read that sema let move out of `self`.
         if isinstance(inner, TpyFieldAccess) and inner.consuming_move:
             return False
-        if self.is_auto_move_use(expr):
+        if self.grant_name_move(expr, own_type, context, action,
+                                whole_slot=whole_slot, sink=sink):
             self.require_movable(expr, context)
             self.check_own_consumption(expr)
             return False
+        if sink is not None:
+            for one in sink if isinstance(sink, tuple) else (sink,):
+                self.declare_sink_copy(one, expr, whole_slot)
+            return True
         expr_type = self.ctx.get_expr_type(expr)
         # Non-copyable, not just @nocopy: a record with `__del__` has no copy
         # constructor either, so the copy the warning below would declare
@@ -3148,7 +3483,8 @@ class TypeCompatibility:
             verb = "returned" if action == "return" else "passed"
             tail = (f": {CONSUMING_FIELD_MOVE_NOTE}"
                     if self.is_consuming_field_borrow(expr)
-                    else ". Only the original owner can be moved at its last use")
+                    else ". Only the original owner can be moved at its "
+                    f"last use{self.ownership_note(expr)}")
             raise self.ctx.error(
                 f"{reason} cannot be {verb} as "
                 f"{context} Own[{own_type.wrapped}]{tail}.",
@@ -3162,7 +3498,7 @@ class TypeCompatibility:
         # its element.
         where = "" if whole_slot else f" ({context})"
         if where:
-            self.ctx.own_element_copies.add(expr)
+            self.ctx.own_element_copies[expr] = None
         payload = own_type.wrapped
         if self._is_value_type_param(payload):
             # A `T: ValueType` bound proves the copy, so there is nothing
@@ -3179,6 +3515,29 @@ class TypeCompatibility:
                 expr
             )
         return True
+
+    def declare_sink_copy(self, sink: SinkCopy, expr: TpyExpr,
+                           whole_slot: bool) -> None:
+        """The copy a sink other than an `Own` slot makes of `expr`, in its
+        own words: the hedge of an open payload, the located error of a
+        non-copyable one, else the warning."""
+        if not whole_slot:
+            self.ctx.own_element_copies[expr] = None
+        if self._is_value_type_param(sink.target):
+            return
+        if self.ctx.defer_own_copy_verdict(sink.display, sink.target,
+                                           sink.dest, expr, kind=sink.kind,
+                                           hint=sink.hint):
+            return
+        level, msg = own_copy.slot_message(
+            self.diag_type(sink.display, sink.target), sink.target, sink.dest,
+            sink.kind, sink.hint,
+            non_copyable=self.ctx.is_type_non_copyable(sink.target),
+            remedy=self.copy_remedy(expr), nocopy_hint=self.nocopy_hint(expr),
+            note=self.ownership_note(expr))
+        if level is DiagnosticLevel.ERROR:
+            raise self.ctx.error(msg, expr)
+        self.ctx.warning(msg, expr)
 
     def _is_value_type_param(self, typ: TpyType) -> bool:
         """Check if a TypeParamRef has a ValueType bound in the current context."""
@@ -3422,12 +3781,12 @@ class TypeCompatibility:
         return False
 
     def _is_owned_var(self, name: str) -> bool:
-        """Check if a variable has owned storage (eligible for auto-move).
-
-        Uses OwnType in scope as the primary authority.  Falls back to
-        rvalue_vars for variables excluded from OwnType wrapping
-        (reassigned vars, move-through vars).
-        """
+        """Whether `name` owns its value, so its last use at an owning sink
+        moves it: a parameter that takes ownership (its declared type), or
+        an owning local -- one no binding made refer to existing storage
+        (the ownership fact, `FunctionTrackingState.owns_whole`), as far as
+        the body has been read; `settle_owning_reads` revisits a move a
+        later binding takes back."""
         # A consuming method (`self: Own[Self]`) owns its receiver: `self` is
         # this frame's value, so its last use relocates it exactly as an
         # `Own[T]` param does. Same ownership fact the `self.field` arm in
@@ -3442,28 +3801,21 @@ class TypeCompatibility:
             for pname, ptype in func.params:
                 if pname == name:
                     return func.takes_ownership_of(pname, ptype)
-            # Locals: check scope type.
-            # Exclude for-loop vars: they get Own[T] from consuming iteration
-            # element types but are not "rvalue-initialized" in the same sense
-            # as constructor calls. Their movability is handled by the
-            # consuming iteration system (consumed_loop_vars).
-            scope_type = self.ctx.func.current_scope.lookup(name) if self.ctx.func.current_scope else None
-            if scope_type and isinstance(scope_type, OwnType) and name not in self.ctx.func.loop_vars:
+            fs = self.ctx.func
+            if not fs.owns_whole(name):
+                return False
+            # A for-loop variable gets Own[T] from a consuming iteration's
+            # element type; its movability is the consuming iteration's
+            # (consumed_loop_vars), not this binding's.
+            scope_type = fs.current_scope.lookup(name) if fs.current_scope else None
+            if (scope_type and isinstance(scope_type, OwnType)
+                    and name not in fs.loop_vars):
                 return True
-            # Fallback: rvalue_vars covers move-through vars and
-            # reassigned-but-all-rvalue vars not wrapped with OwnType.
-            # Hoisted vars are not movable (T* pointer-locals). Require
-            # owned_locals too: a borrow-producing init (reference-returning
-            # call, ternary/and-or of reference lvalues) lands in rvalue_vars
-            # for hoist eligibility but is a `T&` alias -- moving out of it
-            # would corrupt the aliased source.
-            if (name in self.ctx.func.rvalue_vars
-                    and name in self.ctx.func.owned_locals
-                    and name not in self.ctx.func.hoisted_vars):
-                if name in self.ctx.func.current_reassigned_vars:
-                    return name not in self.ctx.func.current_lvalue_reassigned
-                return True
-            return False
+            # Otherwise owning when a binding made it an object of its own
+            # (`note_owned_local`) -- the set the lowering's movable locals
+            # are drawn from (`rebinds_keep_ownership`).
+            return (name in fs.ever_owned_locals
+                    and fs.rebinds_keep_ownership(name))
         # Top-level: a global bound by reference (a pointer slot, or a
         # tuple of them) points at storage it does not own, so its
         # module-level last use is no move.
@@ -4874,18 +5226,17 @@ class TypeCompatibility:
             self.check_unobserved_call_copy(
                 m, member_t, f"{dest} (tuple element {path})")
             return False
-        auto_moved = self._is_auto_moved(m)
-        if auto_moved and last_use_moves:
+        # At its last use the member moves in, or its copy is unobservable:
+        # either rests on the member owning its value.
+        where = f"{dest} (tuple element {path})"
+        sink = SinkCopy(member_t, member_t, where)
+        auto_moved = self.grant_name_move(
+            m, OwnType(member_t), f"tuple element {path}", whole_slot=False,
+            sink=sink)
+        if auto_moved and (last_use_moves
+                           or not self.ctx.is_type_non_copyable(member_t)):
             return False
-        if self.ctx.is_type_non_copyable(member_t):
-            raise self.ctx.error(
-                f"cannot copy non-copyable type '{member_t}' into {dest} "
-                f"(tuple element {path}){self.nocopy_hint(m)}", m)
-        if auto_moved:
-            return False
-        self.ctx.warning(
-            f"copies {self.diag_type(member_t)} into {dest} (tuple element "
-            f"{path}); {self.copy_remedy(m)}", m)
+        self.declare_sink_copy(sink, m, True)
         return True
 
     def check_unobserved_call_copy(self, expr: TpyExpr, slot_t: TpyType,
@@ -4926,16 +5277,55 @@ class TypeCompatibility:
         """The remedy clause of an owning slot's copy warning for `expr`."""
         clause = (CONSUMING_FIELD_COPY_CLAUSE
                   if self.is_consuming_field_borrow(expr) else "")
-        return f"use copy() to make this explicit{clause}"
+        return f"use copy() to make this explicit{clause}{self.ownership_note(expr)}"
 
-    def nocopy_hint(self, expr: 'TpyExpr | None') -> str:
-        """The parenthesized remedy of a non-copyable copy error for `expr`."""
+    def nocopy_hint(self, expr: 'TpyExpr | None',
+                    index: 'int | None' = None) -> str:
+        """The parenthesized remedy of a non-copyable copy error for `expr`
+        (for its tuple element `index`)."""
         if self.is_consuming_field_borrow(expr):
             return f" ({CONSUMING_FIELD_MOVE_NOTE})"
         inner = expr.expr if isinstance(expr, TpyCoerce) else expr
+        note = self.ownership_note(expr, index)
         if inner is not None and inner in self.ctx.repeated_reads:
-            return NOCOPY_REPEATED_READ_HINT
-        return NOCOPY_REMEDIATION_HINT
+            return NOCOPY_REPEATED_READ_HINT + note
+        return NOCOPY_REMEDIATION_HINT + note
+
+    def ownership_note(self, expr: 'TpyExpr | None',
+                       index: 'int | None' = None) -> str:
+        """Why an owning sink copies a read of a non-owning local (or of an
+        element some binding of the tuple local borrows -- `expr[i]`, or
+        the tuple name with its element `index`): the binding that made it
+        refer to existing storage. Empty for any other source."""
+        while isinstance(expr, TpyCoerce):
+            expr = expr.expr
+        if isinstance(expr, TpySubscript) and index is None:
+            index = const_tuple_index(expr.index)
+            expr = expr.obj
+            while isinstance(expr, TpyCoerce):
+                expr = expr.expr
+            if index is None:
+                return ""
+        if not isinstance(expr, TpyName):
+            return ""
+        fs = self.ctx.func
+        line = fs.nonowning_line(expr.name)
+        if line is None:
+            return ""
+        if index is not None:
+            arity = self._tuple_arity(expr)
+            if arity is None:
+                return ""
+            if index < 0:
+                index += arity
+            if index not in fs.nonowning_elems(expr.name, arity):
+                return ""
+        # A temporary of a desugar is shown as the variable it holds a
+        # value for.
+        func = fs.current_function
+        shown = ((program_names(expr.name, func.body)[0] or expr.name)
+                 if isinstance(func, TpyFunction) else expr.name)
+        return f" ('{shown}' is bound to existing storage at line {line})"
 
     def source_copies_into_storage(self, expr: 'TpyExpr | None',
                                    auto_moved: bool) -> bool:
@@ -5037,8 +5427,11 @@ class TypeCompatibility:
         if isinstance(peeled, TpyTupleLiteral):
             return self.check_tuple_literal_members(
                 peeled, tuple_type, TupleSink.CONTAINER, dest, elem_path)
-        copied = (self.auto_move_copied_elements(elem)
-                  if self.is_lvalue(elem) else None)
+        # The copy of the elements the local owns is unobservable only
+        # while the local owns them (the tuple read it declares).
+        copied = (self.copy_into_own_idxs(elem.name)
+                  if self.is_lvalue(elem) and self.grant_name_move(
+                      elem, OwnType(tuple_type)) else None)
         if copied is not None:
             # Only the elements the local holds by reference alias the
             # caller, so only they warn. The owned ones are copied at the
@@ -5087,7 +5480,7 @@ class TypeCompatibility:
                 set(self._derive_copy_into_own_hazards(inner.then_expr))
                 | set(self._derive_copy_into_own_hazards(inner.else_expr)))
         if isinstance(inner, TpyName):
-            return sorted(self.ctx.func.bp_copy_into_own_idxs(inner.name))
+            return sorted(self.copy_into_own_idxs(inner.name))
         rt = self._borrow_carrying_tuple_return(inner)
         if rt is not None:
             return [i for i, et in enumerate(rt.element_types)
@@ -5106,7 +5499,9 @@ class TypeCompatibility:
         source is `elem_is_plain_borrow`'s case; both copy and warn."""
         if self.is_copy_call(elem) or not self.is_lvalue(elem):
             return False
-        if self.is_owned_last_use_move(elem):
+        # A hazard derivation: the move it predicts is the tuple capture's
+        # record (`_annotate_tuple_elem_capture`).
+        if self.is_last_use_move_candidate(elem):
             return False
         raw = self.ctx.get_raw_expr_type(peel_value_wrappers(elem))
         if raw is None:
@@ -5119,13 +5514,6 @@ class TypeCompatibility:
         if unwrapped.is_value_type():
             return False
         return isinstance(elem, TpyName) and self._is_owned_var(elem.name)
-
-    def is_owned_last_use_move(self, elem: TpyExpr) -> bool:
-        """An owned local/param at its last use -- it MOVES into a tuple slot
-        (the local then OWNS the moved element) rather than borrowing. Mirrors
-        the scalar field/return auto-move; the local-context elem-capture and
-        the owning-storage derivation share this condition."""
-        return self.is_auto_move_use(elem)
 
     def elem_is_plain_borrow(self, elem: TpyExpr) -> bool:
         """Whether `elem` is a plain borrowed reference that would COPY (not
@@ -5142,8 +5530,9 @@ class TypeCompatibility:
         unwrapped = unwrap_ref_type(raw)
         if isinstance(unwrapped, OwnType) or unwrapped.is_value_type():
             return False
-        # Owned local at its last use moves into the slot -- not a copy.
-        if self.is_owned_last_use_move(elem):
+        # Owned local at its last use moves into the slot -- not a copy (the
+        # tuple capture records that move).
+        if self.is_last_use_move_candidate(elem):
             return False
         return True
 
@@ -5155,18 +5544,20 @@ class TypeCompatibility:
         payload = et.wrapped
         if self._is_value_type_param(payload):
             return
+        note = self.ownership_note(expr, i)
         if self.ctx.is_type_non_copyable(payload):
             raise self.ctx.error(
                 f"cannot copy non-copyable type '{payload}' into owned "
-                f"storage (tuple element {i}){self.nocopy_hint(expr)}", expr)
+                f"storage (tuple element {i}){self.nocopy_hint(expr, i)}",
+                expr)
         where = f"owned storage (tuple element {i})"
         if not self.ctx.defer_own_copy_verdict(payload, payload, where, expr):
             self.ctx.warning(
                 f"copies {payload} into {where}; use copy() to make this "
-                f"explicit", expr)
+                f"explicit{note}", expr)
 
     def record_name_copy(self, expr: TpyExpr | None,
-                         copied: 'set[int] | None') -> None:
+                         copied: 'Iterable[int] | None') -> None:
         """Declare the copy of a tuple NAME at an owning slot to the lowering,
         which builds only declared copies. `copied` holds the elements the
         warnings declared (None: every pointer-repr element). A binding that
@@ -5175,7 +5566,10 @@ class TypeCompatibility:
         that element too, undeclared, so the lowering keeps rejecting it."""
         if not isinstance(expr, TpyName):
             return
-        self.ctx.own_element_copies.add(expr)
+        prev = self.ctx.own_element_copies.get(expr, frozenset())
+        self.ctx.own_element_copies[expr] = (
+            None if copied is None or prev is None
+            else prev | frozenset(copied))
         declared = self.ctx.func.current_scope.lookup(expr.name)
         dt = (unwrap_readonly(unwrap_ref_type(declared))
               if declared is not None else None)
@@ -5205,6 +5599,11 @@ class TypeCompatibility:
         `check_tuple_literal_members`; this covers the deferred NAME path via
         the construction-time hazard fact (BindingProvenance)."""
         copied: set[int] = set()
+        # An argument the tuple outlives is copied whole, and the argument
+        # coercion's warning names each element it copies. Only the warning's
+        # text: the move is recorded below (`TupleNameMove`).
+        declared_whole = (not return_slot
+                          and not self.is_last_use_move_candidate(expr))
         for i, et in enumerate(tuple_type.element_types):
             if not isinstance(et, OwnType):
                 continue
@@ -5212,8 +5611,9 @@ class TypeCompatibility:
             # moved), copies into the Own slot -- the deferred-name analog of
             # the scalar T->Own[T] copy warning. A moved owned source is
             # storage form and carries no such hazard.
-            if i in self.ctx.func.bp_copy_into_own_idxs(name):
-                self._warn_name_element_copy(et, i, expr)
+            if i in self.copy_into_own_idxs(name):
+                if not declared_whole:
+                    self._warn_name_element_copy(et, i, expr)
                 copied.add(i)
         # A tuple PARAM, LOOP VARIABLE or module GLOBAL carries no
         # construction-time facts: its declared elements say what arrives
@@ -5245,9 +5645,11 @@ class TypeCompatibility:
         # A movable owned-tuple source at its last use MOVES into the owned
         # sink (forward as arg, or return), so it is consumed -- mark it for
         # the unconsumed-param warning. Borrowed/copied sources took the
-        # raise/warn paths above (is_auto_move_use is False for them), so they
+        # raise/warn paths above (`grant_name_move` is False for them), so they
         # are correctly left unconsumed.
-        if isinstance(expr, TpyName) and self.is_auto_move_use(expr):
+        if isinstance(expr, TpyName) and self.grant_name_move(
+                expr, read=TupleNameMove(name, expr, tuple_type,
+                                         frozenset(copied))):
             self.check_own_consumption(expr)
 
     def _is_reference_tuple_global(self, name: str) -> bool:

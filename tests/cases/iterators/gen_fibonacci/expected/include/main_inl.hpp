@@ -26,7 +26,7 @@ inline std::expected<int32_t, ::tpy::StopIteration> __gen_fibonacci::__next__() 
         continue;
     }
     case S_RESUME_0: {  // after: yield a
-        temp = a;
+        temp = std::move(a);
         a = b;
         b = (::tpy::add_check<int32_t>(temp, b));
         count = ::tpy::add_check<int32_t>(count, 1);

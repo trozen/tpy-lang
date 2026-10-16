@@ -8,7 +8,7 @@ namespace tpyapp::main {
 //     b = Box(5)
 //     pair = (b, 0)
 //     u = pair
-//     return u
+//     return u  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
 std::tuple<Box, int32_t> make() {
     Box b = Box(5);
     auto pair = std::tuple<Box, int32_t>{std::move(b), 0};

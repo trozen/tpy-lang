@@ -1326,7 +1326,7 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         if isinstance(t, TupleType):
             dest = t.to_cpp_return() if e.param_form else t.to_cpp()
             if e.elem_modes:
-                return f"{dest}{{{_tuple_elementwise(inner, e.elem_modes)}}}"
+                return f"{dest}{{{_tuple_elementwise(inner, e.elem_modes, t)}}}"
             helper = "tuple_to_storage_move" if e.move else "tuple_to_storage"
             return f"::tpy::{helper}<{dest}>({inner})"
         # S1/S6 str+bytes slices: a view-form source (string_view / span) into
@@ -1370,16 +1370,27 @@ def _emit_form_convert(e: THIRFormConvert, state: _EmitState) -> str:
         f"unhandled THIRFormConvert: {type(t).__name__} {e.value.form}->{e.form}")
 
 
-def _tuple_elementwise(name: str, modes: tuple[str, ...]) -> str:
+def _tuple_elementwise(name: str, modes: tuple[str, ...],
+                       dest: TupleType) -> str:
     """The brace-init elements of an element-wise tuple conversion
-    (`THIRFormConvert.elem_modes`) off the tuple name `name`."""
+    (`THIRFormConvert.elem_modes`) off the tuple name `name` into `dest`.
+    A nullable element's pointer lifts null-checked into its optional, as
+    `tuple_to_storage` lifts it."""
     spell = {"move_pointee": "std::move(*std::get<{i}>({n}))",
              "copy_pointee": "(*std::get<{i}>({n}))",
              "pointer": "std::get<{i}>({n})",
              "move": "std::move(std::get<{i}>({n}))",
              "copy": "std::get<{i}>({n})"}
-    return ", ".join(spell[m].format(i=i, n=name)
-                     for i, m in enumerate(modes))
+    nullable = {"move_pointee": "::tpy::ptr_to_optional_move(std::get<{i}>({n}))",
+                "copy_pointee": "::tpy::ptr_to_optional(std::get<{i}>({n}))"}
+
+    def one(i: int, m: str) -> str:
+        dt = (unwrap_qualifiers(dest.element_types[i])
+              if i < len(dest.element_types) else None)
+        if m in nullable and isinstance(dt, OptionalType):
+            return nullable[m].format(i=i, n=name)
+        return spell[m].format(i=i, n=name)
+    return ", ".join(one(i, m) for i, m in enumerate(modes))
 
 
 def _slot_decl(state: '_EmitState', slot_cpp: str) -> tuple[str, str]:

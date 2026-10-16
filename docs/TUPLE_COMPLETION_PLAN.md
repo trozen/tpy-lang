@@ -131,7 +131,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
   (`BUGS.md#walrus-local-return-under-finally-rejects`).
   - [x] the live-source owned-call unpack copy (was HIGH, entry removed) --
     DONE on `u1-tuple-silent`: sema tags an `Own` element target owned only when
-    the unpack CONSUMES its source (`is_auto_move_use`, the scalar decl's
+    the unpack CONSUMES its source (`grant_name_move`, the scalar decl's
     verdict); a live source borrows through the storage lift. Cell
     `x__unpack_live_own__T` differs -> same. Also closed the owned-tuple
     PARAM's silent copy at a non-last-use unpack (unfiled; same cause) and
@@ -449,7 +449,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
     PARAMETER holding a reference is seeded movable; an owned tuple
     ELEMENT passed to `Own[T]` (`sink(p[0])`, `p: tuple[Own[Box], ..]`)
     moves at the tuple's last use through sema's one decider
-    (`is_auto_move_use`: last use and no hidden borrower -- a loan
+    (`grant_name_move`: last use and no hidden borrower -- a loan
     `r = ident(p[0])` or a later read demotes to the warned copy, a
     `@nocopy` element errors); the `Own[tuple]` argument LITERAL spells
     the bare storage literal (`push_back(std::tuple<Box, int32_t>{b,
@@ -643,8 +643,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
       is no object of its own and a reference at an owned position are a
       located reject (`BUGS.md#ptr-tuple-literal-element-rejects`). An
       owning sink reading an element owned on some paths and borrowed on
-      others is a located reject
-      (`BUGS.md#rebound-tuple-borrowed-path-own-return`); one no binding
+      others is a located reject (lifted by step 5.4); one no binding
       owns keeps the warned copy. These are lifted by TODO.md "A tuple
       element is a name: the scalar binding decides each element". Also
       rejected (decision D5, explicit losses): an
@@ -693,9 +692,10 @@ per shape; the mixed tuple global (D2) waits on that entry.
       located reject: `p = (w, v); if c: p = mk(1, v)` then `take(p[0])`
       at `take(b: Own[Box])`, where the scalar twin `b = w; if c: b =
       Box(1); take(b)` copies under *copies Box into owned storage*
-      (`BUGS.md#rebound-tuple-borrowed-path-own-return`; the `Own`
-      return, the `Own` argument, the whole owning tuple and the
-      consuming unpack alike). Everyday code, so it heads the tuple
+      (the `Own` return, the `Own` argument, the whole owning tuple and
+      the consuming unpack alike; the unpack across a back edge that rebinds
+      the tuple to borrowed storage stays refused,
+      `BUGS.md#ptr-tuple-consuming-unpack-borrowed-element-rejects`). Everyday code, so it heads the tuple
       backlog after 5.3 (user, 2026-10-12); the first slice of TODO.md "A
       tuple element is a name: the scalar binding decides each element".
   Also owned here, after the steps: the rejects multi-hop holders still

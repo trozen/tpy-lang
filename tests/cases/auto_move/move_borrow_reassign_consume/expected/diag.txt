@@ -1,2 +1,2 @@
-main.py:24: warning: copies Bag into owned storage; use copy() to make this explicit
-main.py:35: warning: copies Bag into owned storage; use copy() to make this explicit
+main.py:24: warning: copies Bag into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 23)
+main.py:35: warning: copies Bag into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 34)

@@ -1,7 +1,7 @@
 # Regression guard: the Own[T] tuple-element escape survives an alias. The alias
-# inherits the fresh-member fact, but the boundary re-check against the declared
-# Own[] return type exempts the element (moved by value), so binding then
-# returning via an alias must NOT be false-rejected.
+# inherits the fresh-member fact, so binding then returning via an alias must NOT
+# be false-rejected; `u = pair` binds by reference, so the return copies, warned
+# (BUGS.md#tuple-name-handover-binds-reference).
 from tpy import int32, Own
 
 
@@ -15,7 +15,7 @@ def make() -> tuple[Own[Box], int32]:
     b = Box(5)
     pair = (b, 0)
     u = pair
-    return u
+    return u  # tpyc: warning(/copies Box into owned storage \(tuple element 0\)/)
 
 
 def main() -> None:

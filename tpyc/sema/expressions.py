@@ -76,7 +76,7 @@ from .context import GenexprCreation, PENDING_CONTAINER_TYPES, _root_name_of_exp
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
-from .alias_rebind import bind_kind_of, tuple_elem_owned
+from .alias_rebind import bind_kind_of, note_tuple_elem_borrows, tuple_elem_owned
 from .compatibility import TupleSink
 from .narrowing import NarrowingTracker, deref_view_narrowed, truthy_operands
 from .numeric_lattice import widen_numeric_types, join_numeric, smallest_common_int
@@ -4238,6 +4238,8 @@ class ExpressionAnalyzer:
             owned = tuple_elem_owned(self.ctx, expr.value, resolved)
             if owned is not None:
                 self.ctx.tuple_elem_owned[expr] = owned
+            note_tuple_elem_borrows(self.ctx, name, expr.value, resolved,
+                                    owned)
             self.ctx.func.bind_kinds[expr] = bind_kind_of(
                 self.ctx, expr.value, owned)
             # The walrus binds a fresh local, so its literal members take the
@@ -4838,6 +4840,10 @@ class ExpressionAnalyzer:
                     f"slot. Construct each slot instead, e.g. "
                     f"[... for _ in range(n)]",
                     expr)
+        # Each element is a list literal's element, the same owning sink.
+        if expr.loc is not None:
+            for elem, et in zip(expr.elements, elem_types):
+                self._warn_storage_element_copy(elem, et)
 
         # Global context -> ListType (no deferred resolution); a container
         # owns its elements, as the pending list below does by construction.
