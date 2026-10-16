@@ -72,6 +72,14 @@ namespace tpyapp::main {
 //     print(w.load(MemoryOrder.RELAXED))            # 0
 //     w -= 1                                        # wraps back to 4294967295
 //     print(w.load(MemoryOrder.RELAXED))            # 4294967295
+//
+//     # The element type deduced from the initial value wraps the same way.
+//     d = Atomic(uint8(255))
+//     d.fetch_add(1)
+//     print(d.load())                               # 0
+//     e = Atomic(uint8(1))
+//     e += 1
+//     print(~e.load())                              # 253: still a uint8
 //     print("done")
 void main() {
     ::tpystd::tpy::atomic::Atomic<uint32_t> a = ::tpystd::tpy::atomic::Atomic<uint32_t>(0);
@@ -131,6 +139,12 @@ void main() {
     std::cout << w.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
     w.__isub__(1);
     std::cout << w.load(::std::memory_order::relaxed) << "\n" << ::tpy::check_signals;
+    ::tpystd::tpy::atomic::Atomic<uint8_t> d = ::tpystd::tpy::atomic::Atomic<uint8_t>(255);
+    d.fetch_add(1);
+    std::cout << static_cast<int>(d.load()) << "\n" << ::tpy::check_signals;
+    ::tpystd::tpy::atomic::Atomic<uint8_t> e = ::tpystd::tpy::atomic::Atomic<uint8_t>(1);
+    e.__iadd__(1);
+    std::cout << static_cast<int>(static_cast<uint8_t>(~(e.load()))) << "\n" << ::tpy::check_signals;
     std::cout << "done" << "\n" << ::tpy::check_signals;
 }
 

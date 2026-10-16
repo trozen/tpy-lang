@@ -27,13 +27,18 @@ class Atomic(metaclass=_AtomicMeta):
     _elem_type = None
 
     # Coerce every stored value to the element type so fixed-width wrapping
-    # matches TPy's `std::atomic<T>` (the fixed-int classes wrap on construction
-    # and in arithmetic). Without this, fetch_add/etc. would run on unbounded
-    # Python ints and diverge from TPy on overflow.
+    # matches TPy's `std::atomic<T>`: the fixed-int classes wrap on
+    # construction, while their arithmetic returns a plain int. Without this,
+    # fetch_add/etc. would run on unbounded Python ints and diverge from TPy
+    # on overflow.
     def _coerce(self, value):
         return self._elem_type(value) if self._elem_type is not None else value
 
     def __init__(self, value):
+        if self._elem_type is None:
+            # `Atomic(uint8(255))` deduces its element type from the value,
+            # as the compiler does.
+            self._elem_type = getattr(type(value), "_TPY_BASE", None)
         self._v = self._coerce(value)
 
     def load(self, order=MemoryOrder.SEQ_CST):

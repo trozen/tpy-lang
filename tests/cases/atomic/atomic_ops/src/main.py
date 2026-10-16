@@ -3,7 +3,7 @@
 # compare_exchange[/_weak]) plus the Send/Sync classification the Arc cell relies
 # on. Contention across real threads is exercised by the Arc test, not here.
 from tpy.atomic import Atomic, MemoryOrder, fence
-from tpy import uint32
+from tpy import uint8, uint32
 
 
 def main() -> None:
@@ -74,6 +74,14 @@ def main() -> None:
     print(w.load(MemoryOrder.RELAXED))            # 0
     w -= 1                                        # wraps back to 4294967295
     print(w.load(MemoryOrder.RELAXED))            # 4294967295
+
+    # The element type deduced from the initial value wraps the same way.
+    d = Atomic(uint8(255))
+    d.fetch_add(1)
+    print(d.load())                               # 0
+    e = Atomic(uint8(1))
+    e += 1
+    print(~e.load())                              # 253: still a uint8
     print("done")
 
 

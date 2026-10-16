@@ -53,32 +53,15 @@ def _fixed_widens(a, b):
     return False
 
 
-def _fixed_result_class(cls, other):
-    """The fixed-int class of `cls OP other`.
-
-    Mirrors the compiler: a mixed pair computes in the operand type the other
-    one widens into (same sign to more bits, or unsigned to a strictly wider
-    signed type). A plain Python int keeps the fixed class: the stub cannot
-    tell a literal (`u8 + 1`, which the compiler computes in uint8) from an
-    `int` variable (`i32 + n`, which it computes in `int`), and the literal
-    is the everyday case. The same limit holds for a literal-seeded local
-    that stored a fixed-width value: it is a runtime value of that class
-    here, of the settled type in the compiler."""
-    other_base = getattr(type(other), "_TPY_BASE", None)
-    if other_base is None:
-        return cls
-    if other_base is cls:
-        return cls
-    if _fixed_widens(other_base, cls):
-        return cls
-    if _fixed_widens(cls, other_base):
-        return other_base
-    # A pair with no common type is a compile error in TPy.
-    return cls
-
-
 def _make_fixed_int_type(name: str, bits: int, signed: bool):
-    """Factory for fixed-width integer types with overflow wrapping."""
+    """Factory for a fixed-width integer type.
+
+    A value built through the type (`int32(x)`, a field default) is an
+    instance of it, so `~`, the shifts, the width helpers and `@dispatch`
+    see its width. Arithmetic returns a plain int: per-operation wrapping in
+    Python cost several times the program's own work, and in range the
+    result is the same; out of range compiled TPy stops with an overflow
+    error, so there is no wrapped value to reproduce."""
     if signed:
         min_val = -(2 ** (bits - 1))
         max_val = 2 ** (bits - 1) - 1
@@ -91,16 +74,14 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     def _wrap(value):
         return value if value is NotImplemented else FixedInt(value)
 
-    def _arith(value, other):
-        if value is NotImplemented:
-            return value
-        return _fixed_result_class(FixedInt, other)(value)
-
     class FixedInt(int):
         MIN = min_val
         MAX = max_val
 
         def __new__(cls, value: int = 0) -> FixedInt:
+            # A subclass may add its own __new__ further along the MRO.
+            if cls is FixedInt and type(value) is int and min_val <= value <= max_val:
+                return int.__new__(cls, value)
             value = int(value)
             if signed:
                 if value < min_val or value > max_val:
@@ -110,22 +91,9 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
                     value = value % mod
             return super().__new__(cls, value)
 
-        # Results are built from the base fixed-int class (not type(self))
-        # so that subclass arithmetic (e.g. IntEnum + int8) returns the base
-        # fixed-int type. NotImplemented propagates so mixed-type ops (e.g.
-        # int8 + float) fall back to the other operand's reflected dunder.
-        def __add__(self, other): return _arith(int.__add__(self, other), other)
-        def __radd__(self, other): return _arith(int.__radd__(self, other), other)
-        def __sub__(self, other): return _arith(int.__sub__(self, other), other)
-        def __rsub__(self, other): return _arith(int.__rsub__(self, other), other)
-        def __mul__(self, other): return _arith(int.__mul__(self, other), other)
-        def __rmul__(self, other): return _arith(int.__rmul__(self, other), other)
-        def __floordiv__(self, other): return _arith(int.__floordiv__(self, other), other)
-        def __mod__(self, other): return _arith(int.__mod__(self, other), other)
-        def __and__(self, other): return _arith(int.__and__(self, other), other)
-        def __or__(self, other): return _arith(int.__or__(self, other), other)
-        def __xor__(self, other): return _arith(int.__xor__(self, other), other)
-        # A shift's result has the left operand's type whatever the count's.
+        # A shift's result has the left operand's type whatever the count's;
+        # unlike arithmetic it stays typed, so `~` over a shifted mask sees
+        # its width.
         def __lshift__(self, other): return _wrap(int.__lshift__(self, other))
         def __rshift__(self, other): return _wrap(int.__rshift__(self, other))
         def __invert__(self): return FixedInt(int.__invert__(self))
@@ -166,10 +134,6 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     FixedInt.mul_wrap = mul_wrap
     FixedInt.shl_wrap = shl_wrap
     FixedInt.shr_wrap = shr_wrap
-
-    if signed:
-        def __neg__(self): return FixedInt(int.__neg__(self))
-        FixedInt.__neg__ = __neg__
 
     FixedInt._TPY_BASE = FixedInt
     FixedInt._TPY_BITS = bits
