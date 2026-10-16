@@ -49,6 +49,17 @@ randrange_pow2_32:
 7
 1
 17
+one_value randint: 5
+one_value randint next: 2444712010
+one_value randrange1: 0
+one_value randrange1 next: 2444712010
+one_value randrange2: 3
+one_value randrange2 next: 2444712010
+one_value randrange3: 2
+one_value randrange3 next: 2444712010
+one_value choice: only
+one_value choice next: 2444712010
+one_value instance next: 2687448230
 randbytes_multiples_of_4:
 9d79b1a37f31801cd11a6706fb40d6bd
 randbytes_1: a3

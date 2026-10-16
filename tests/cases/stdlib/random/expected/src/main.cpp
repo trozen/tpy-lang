@@ -106,6 +106,29 @@ void _p(double x) {
 //     for _ in range(3):
 //         print(random.randrange(int32(0), int32(32)))
 //
+//     # A one-value range still draws: CPython's _randbelow(1) loops on
+//     # getrandbits(1) until 0, so the next draw must agree after each one.
+//     random.seed(1)
+//     print("one_value randint:", random.randint(5, 5))  # the one-value draw under test
+//     print("one_value randint next:", random.getrandbits(32))
+//     random.seed(1)
+//     print("one_value randrange1:", random.randrange(1))  # the one-value draw under test
+//     print("one_value randrange1 next:", random.getrandbits(32))
+//     random.seed(1)
+//     print("one_value randrange2:", random.randrange(3, 4))  # the one-value draw under test
+//     print("one_value randrange2 next:", random.getrandbits(32))
+//     random.seed(1)
+//     print("one_value randrange3:", random.randrange(2, 9, 10))  # the one-value draw under test
+//     print("one_value randrange3 next:", random.getrandbits(32))
+//     random.seed(1)
+//     print("one_value choice:", random.choice(["only"]))  # the one-value draw under test
+//     print("one_value choice next:", random.getrandbits(32))
+//     # Seed 3's 1-bit draws run 0, 1, 1, 0, ...: the second call rejects twice.
+//     r = Random(3)
+//     for _ in range(4):
+//         r.randint(7, 7)  # the one-value draw under test
+//     print("one_value instance next:", r.getrandbits(32))
+//
 //     random.seed(int32(42))
 //     print("randbytes_multiples_of_4:")
 //     print(random.randbytes(int32(16)).hex())
@@ -271,6 +294,27 @@ void main() {
     for (int32_t _ = 0; _ < 3; ++_) {
         std::cout << ::tpystd::random::randrange__int32__int32(0, 32) << "\n" << ::tpy::check_signals;
     }
+    ::tpystd::random::seed__int32(1);
+    std::cout << "one_value randint:" << " " << ::tpystd::random::randint(5, 5) << "\n" << ::tpy::check_signals;
+    std::cout << "one_value randint next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
+    ::tpystd::random::seed__int32(1);
+    std::cout << "one_value randrange1:" << " " << ::tpystd::random::randrange__int32(1) << "\n" << ::tpy::check_signals;
+    std::cout << "one_value randrange1 next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
+    ::tpystd::random::seed__int32(1);
+    std::cout << "one_value randrange2:" << " " << ::tpystd::random::randrange__int32__int32(3, 4) << "\n" << ::tpy::check_signals;
+    std::cout << "one_value randrange2 next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
+    ::tpystd::random::seed__int32(1);
+    std::cout << "one_value randrange3:" << " " << ::tpystd::random::randrange__int32__int32__int32(2, 9, 10) << "\n" << ::tpy::check_signals;
+    std::cout << "one_value randrange3 next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
+    ::tpystd::random::seed__int32(1);
+    std::vector<std::string> __tmp_1 = {"only"};
+    std::cout << "one_value choice:" << " " << ::tpystd::random::choice<std::string>(__tmp_1) << "\n" << ::tpy::check_signals;
+    std::cout << "one_value choice next:" << " " << ::tpystd::random::getrandbits(32) << "\n" << ::tpy::check_signals;
+    ::tpystd::random::Random r = ::tpystd::random::Random(3);
+    for (int32_t _ = 0; _ < 4; ++_) {
+        r.randint(7, 7);
+    }
+    std::cout << "one_value instance next:" << " " << r.getrandbits(32) << "\n" << ::tpy::check_signals;
     ::tpystd::random::seed__int32(42);
     std::cout << "randbytes_multiples_of_4:" << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::bytes_hex(::tpystd::random::randbytes(16)) << "\n" << ::tpy::check_signals;

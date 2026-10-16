@@ -108,6 +108,29 @@ def main() -> None:
     for _ in range(3):
         print(random.randrange(int32(0), int32(32)))
 
+    # A one-value range still draws: CPython's _randbelow(1) loops on
+    # getrandbits(1) until 0, so the next draw must agree after each one.
+    random.seed(1)
+    print("one_value randint:", random.randint(5, 5))  # the one-value draw under test
+    print("one_value randint next:", random.getrandbits(32))
+    random.seed(1)
+    print("one_value randrange1:", random.randrange(1))  # the one-value draw under test
+    print("one_value randrange1 next:", random.getrandbits(32))
+    random.seed(1)
+    print("one_value randrange2:", random.randrange(3, 4))  # the one-value draw under test
+    print("one_value randrange2 next:", random.getrandbits(32))
+    random.seed(1)
+    print("one_value randrange3:", random.randrange(2, 9, 10))  # the one-value draw under test
+    print("one_value randrange3 next:", random.getrandbits(32))
+    random.seed(1)
+    print("one_value choice:", random.choice(["only"]))  # the one-value draw under test
+    print("one_value choice next:", random.getrandbits(32))
+    # Seed 3's 1-bit draws run 0, 1, 1, 0, ...: the second call rejects twice.
+    r = Random(3)
+    for _ in range(4):
+        r.randint(7, 7)  # the one-value draw under test
+    print("one_value instance next:", r.getrandbits(32))
+
     random.seed(int32(42))
     print("randbytes_multiples_of_4:")
     print(random.randbytes(int32(16)).hex())
