@@ -357,11 +357,10 @@ uint32_t Random::_genrand_uint32() {
 //     # slice where k = bit_length(n). Matches CPython's
 //     # _randbelow_with_getrandbits. Using bit_length(n-1) would agree
 //     # for non-power-of-2 widths but draws fewer bits per call for
-//     # powers of 2, diverging the MT stream from CPython.
+//     # powers of 2, diverging the MT stream from CPython. n == 1 still
+//     # draws (k = 1, rejecting until 0), as CPython does.
 //     if n == 0:
 //         raise ValueError("_randbelow requires positive n")
-//     if n == 1:
-//         return 0
 //     m: uint32 = n
 //     k: int32 = 0
 //     while m > 0:
@@ -374,9 +373,6 @@ uint32_t Random::_genrand_uint32() {
 uint32_t Random::_randbelow(uint32_t n) {
     if ((n == 0)) {
         throw ::tpy::ValueError("_randbelow requires positive n");
-    }
-    if ((n == 1)) {
-        return 0;
     }
     uint32_t m = n;
     int32_t k = 0;
