@@ -56,7 +56,8 @@ def _scope_ends(prepared: MIRPrepared) -> MIRScopeEnds | MIRNotCovered:
              or s.shape.owned_tuple or s.kind is MIRSlotKind.LOCAL and s.shape.scalar_wrapper}
     for slot in roots.values():
         if slot.storage_duration is None:
-            return MIRNotCovered(fn.id, "scope ends", f"missing storage placement for %{slot.id.index}")
+            return MIRNotCovered(fn.id, "scope ends", f"missing storage placement for %{slot.id.index}",
+                                 slot=slot.id)
     blocks = {b.id: b for b in fn.blocks}
     regions = MIRRegionFlow(fn)
     initialized: dict[MIRBlockId, set[MIRSlotId]] = {}

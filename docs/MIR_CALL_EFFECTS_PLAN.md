@@ -153,7 +153,7 @@ analysis caches scalar field values. A local snapshot such as `old = cell.flag`
 retains its old value; subsequent field reads observe the changed storage.
 Do not add a scalar solver or indiscriminately clear unrelated holder facts.
 
-Mark writing calls effectful in `_Coverage.writes`. Preserve existing eager
+Mark writing calls effectful in `_Lowering.writes`. Preserve existing eager
 ordering exclusions: `assign(cell, n) == read(cell)` must not gain coverage
 when the generated C++ operand order is unproven. Existing lazy CFG arms can
 sequence calls conditionally. `ordered_temporary_expression` must no longer

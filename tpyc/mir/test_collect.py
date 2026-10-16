@@ -120,7 +120,7 @@ def owned_pair() -> int32:
     return pair[0].value
 ''')
     assert re.search(r"fn .*::owned_pair@[^\n]+ ->", out)
-    assert "initialize-tuple-members %0[0], %0[1]" in out
+    assert "initialize-tuple-members %2[0], %2[1]" in out
     assert "[initialize-tuple]" in out
     assert "scope ends (possible normal storage ends" in out
 
@@ -623,7 +623,7 @@ def test_borrows_are_per_block_and_join_at_merges(facts) -> None:
     branchy = facts["branchy"]
     assert _borrows(branchy, 42, "q") == [(0, {"p"})]
     assert _borrows(branchy, 44, "q") == [(1, {"o"})]
-    assert _borrows(branchy, 45, "q") == [(3, {"o", "p"})]
+    assert _borrows(branchy, 45, "q") == [(2, {"o", "p"})]
 
 
 def test_field_and_member_referents_are_spelled_as_paths(facts) -> None:

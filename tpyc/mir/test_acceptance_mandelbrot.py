@@ -118,77 +118,77 @@ fn main::iter_to_char@25:0 -> str
 entry bb0
 exceptional exits
   %0: int readonly-ref parameter iters
-  %1: int32 readonly global main::MAX_ITER
-  %2: str readonly-ref global main::CHARS
-  %3: int readonly-ref temporary residence=r0
-  %4: int32 temporary residence=r0
-  %5: bool temporary residence=r0
-  %6: str owned-storage temporary duration=r1 residence=r1
-  %7: str readonly-ref temporary residence=r1
-  %8: int32 temporary residence=r1
-  %9: char temporary residence=r1
-  %10: float local log_val residence=r0
-  %11: float temporary residence=r0
-  %12: int readonly-ref temporary residence=r0
+  %1: int readonly-ref temporary residence=r0
+  %2: int32 temporary residence=r0
+  %3: int32 readonly global main::MAX_ITER
+  %4: bool temporary residence=r0
+  %5: str readonly-ref temporary residence=r1
+  %6: str readonly-ref global main::CHARS
+  %7: int32 temporary residence=r1
+  %8: char temporary residence=r1
+  %9: str owned-storage temporary duration=r1 residence=r1
+  %10: float temporary residence=r0
+  %11: int readonly-ref temporary residence=r0
+  %12: float temporary residence=r0
   %13: float temporary residence=r0
   %14: float temporary residence=r0
-  %15: float temporary residence=r0
-  %16: int32 temporary residence=r0
+  %15: int32 temporary residence=r0
+  %16: float temporary residence=r0
   %17: float temporary residence=r0
   %18: float temporary residence=r0
-  %19: float temporary residence=r0
-  %20: int owned-storage local char_idx duration=body residence=r0
-  %21: float temporary residence=r0
-  %22: str readonly-ref temporary residence=r0
+  %19: float local log_val residence=r0
+  %20: float temporary residence=r0
+  %21: str readonly-ref temporary residence=r0
+  %22: int32 temporary residence=r0
   %23: int32 temporary residence=r0
   %24: int32 temporary residence=r0
-  %25: int32 temporary residence=r0
-  %26: float temporary residence=r0
-  %27: str owned-storage temporary duration=body residence=r0
-  %28: str readonly-ref temporary residence=r0
-  %29: int readonly-ref temporary residence=r0
-  %30: int32 temporary residence=r0
-  %31: char temporary residence=r0
+  %25: float temporary residence=r0
+  %26: int owned-storage local char_idx duration=body residence=r0
+  %27: str readonly-ref temporary residence=r0
+  %28: int readonly-ref temporary residence=r0
+  %29: int32 temporary residence=r0
+  %30: char temporary residence=r0
+  %31: str owned-storage temporary duration=body residence=r0
 region r0 parent=body entry=bb0
 region r1 parent=r0 entry=bb1
 region r2 parent=r0 entry=bb2
 bb0:
-  %3 = borrow (*%0) @ 26:7
-  %4 = read %1 @ 26:16
-  %5 = %3 >= %4 @ 26:7
-  branch %5 -> bb1, bb2 @ 26:4
+  %1 = borrow (*%0) @ 26:7
+  %2 = read %3 @ 26:16
+  %4 = %1 >= %2 @ 26:7
+  branch %4 -> bb1, bb2 @ 26:4
 bb1:
-  %7 = borrow (*%2) @ 27:15
-  %8 = 0 @ 27:21
-  %9 = op getitem (%7, %8) may-raise @ 27:15
-  %6 = op coerce:char_to_str (%9) may-raise [initialize_region] @ 27:15
-  return %6 @ 27:8
+  %5 = borrow (*%6) @ 27:15
+  %7 = 0 @ 27:21
+  %8 = op getitem (%5, %7) may-raise @ 27:15
+  %9 = op coerce:char_to_str (%8) may-raise [initialize_region] @ 27:15
+  return %9 @ 27:8
 bb2:
   goto bb3 @ 26:4
 bb3:
-  %11 = 1.0 @ 29:23
-  %12 = borrow (*%0) @ 29:29
-  %13 = op + (%11, %12) may-raise @ 29:23
-  %14 = call stub math.log[float](%13) [pure, reader, may-raise] @ 29:14
-  %15 = 1.0 @ 29:47
-  %16 = read %1 @ 29:53
-  %17 = op + (%15, %16) may-raise @ 29:47
-  %18 = call stub math.log[float](%17) [pure, reader, may-raise] @ 29:38
-  %19 = op div (%14, %18) may-raise @ 29:14
-  %10 = read %19 @ 29:4
-  %21 = read %10 @ 30:19
-  %22 = borrow (*%2) @ 30:34
-  %23 = call stub tpy._builtins._funcs.len[Sized](%22) [pure, reader, may-raise] @ 30:30
-  %24 = 1 @ 30:43
-  %25 = op - (%23, %24) may-raise @ 30:30
-  %26 = op * (%21, %25) may-raise @ 30:19
-  %20 = call stub builtins.int.__init__[float](%26) [pure, reader, may-raise] [initialize_once] @ 30:4
-  %28 = borrow (*%2) @ 31:11
-  %29 = borrow %20 @ 31:17
-  %30 = op coerce:bigint_narrow (%29) may-raise @ 31:11
-  %31 = op getitem (%28, %30) may-raise @ 31:11
-  %27 = op coerce:char_to_str (%31) may-raise [initialize_once] @ 31:11
-  return %27 @ 31:4
+  %10 = 1.0 @ 29:23
+  %11 = borrow (*%0) @ 29:29
+  %12 = op + (%10, %11) may-raise @ 29:23
+  %13 = call stub math.log[float](%12) [pure, reader, may-raise] @ 29:14
+  %14 = 1.0 @ 29:47
+  %15 = read %3 @ 29:53
+  %16 = op + (%14, %15) may-raise @ 29:47
+  %17 = call stub math.log[float](%16) [pure, reader, may-raise] @ 29:38
+  %18 = op div (%13, %17) may-raise @ 29:14
+  %19 = read %18 @ 29:4
+  %20 = read %19 @ 30:19
+  %21 = borrow (*%6) @ 30:34
+  %22 = call stub tpy._builtins._funcs.len[Sized](%21) [pure, reader, may-raise] @ 30:30
+  %23 = 1 @ 30:43
+  %24 = op - (%22, %23) may-raise @ 30:30
+  %25 = op * (%20, %24) may-raise @ 30:19
+  %26 = call stub builtins.int.__init__[float](%25) [pure, reader, may-raise] [initialize_once] @ 30:4
+  %27 = borrow (*%6) @ 31:11
+  %28 = borrow %26 @ 31:17
+  %29 = op coerce:bigint_narrow (%28) may-raise @ 31:11
+  %30 = op getitem (%27, %29) may-raise @ 31:11
+  %31 = op coerce:char_to_str (%30) may-raise [initialize_once] @ 31:11
+  return %31 @ 31:4
 """
 
 

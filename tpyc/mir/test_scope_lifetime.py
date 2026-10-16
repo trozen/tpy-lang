@@ -328,8 +328,9 @@ def test_missing_placement_after_a_planned_if_whose_arms_return_is_refused(artif
 
 
 @declarations
-def test_a_later_check_pass_refusal_comes_before_placement(artifacts: Artifacts, name: str) -> None:
-    # The check pass refuses the whole body before the emit pass reaches the declaration.
+def test_a_later_refusal_comes_before_placement(artifacts: Artifacts, name: str) -> None:
+    # A refusal later in the body wins over the placement refusal the
+    # declaration defers until the body reaches it (`Fragment.refusal`).
     fn = artifacts[0][name]
     result = _lower_changed(artifacts, _misplaced(fn, after=(th.THIRReturn(),)), "later")
     assert isinstance(result, MIRNotCovered) and result.reason == "missing return value", result

@@ -46,7 +46,7 @@ correspondence and submits the demanded roots to `mir/storage_evidence.py`.
    checks, definitions and escape analysis. No planner, solver, source
    lowering, emitter, runtime or summary-contract extension is planned.
 
-`_Coverage.temporary` and `MIRDefinitions` continue to require complete,
+`_Lowering.temporary` and `MIRDefinitions` continue to require complete,
 hook-free scalar-field constructor facts. Select-slot backing stays uncovered.
 The work neither proves custom cleanup nor promotes storage to an outer scope.
 

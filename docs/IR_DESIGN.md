@@ -1932,28 +1932,60 @@ the line facts and the dependency state read. One stepping table
 (`shapes.step`) answers what each projection reaches from a value; every
 reader of a place walks it.
 
-#### Lowering: a checked plan, then a fold
+#### Lowering: one pass building fragments
 
-A THIR body becomes MIR in two passes. The check pass (`_Coverage`,
+A THIR body becomes MIR in one pass. The lowering (`_Lowering`,
 `tpyc/mir/lower.py`) walks the THIR once, refuses what MIR does not model,
-and returns the body's lowering plan (`tpyc/mir/plan.py`): an immutable tree
-with one node per lowering operation -- a binding with its slot's shape, a
-value of its family (scalar, owned leaf, view, record, container, wrapper),
-a statement with the temporaries and temporary-plan scopes it opens. What
-the CFG depends on is decided there once: every binding's shape and the
-shape of every slot whose shape the type's facts decide, the alternative a
-union engages, a Span's alias-or-region choice, whether a range counter is
-the target itself. The emit pass (`tpyc/mir/emit.py`) folds the plan into
-blocks, slots and regions; it reads no THIR and asks no type predicate (one
-exception: whether a record copy may raise is still read off the record
-layouts, `layout_copy_may_raise`), so a new kind is a plan node and its fold
-arm. Only a scalar result, an owned
-leaf's storage and its readonly holder, and a view's holder are shaped by
-the fold, from the plan family alone. Three refusals need the built CFG and
-stay in the emit pass: a reachable fallthrough of a non-void body, the
-validator's, and a declaration THIR placed no storage for -- the check pass
-marks it on the declaration's plan node, and the emit pass refuses it where
-the CFG reaches it (after every check-pass refusal, before the fallthrough).
+and builds the body's MIR as it goes: each expression and each statement is
+a `Fragment` (`tpyc/mir/emit.py`) -- its statements in order, the blocks a
+select, a short-circuit or a loop opens, the slots and regions it adds, the
+backings and borrow-operation points it publishes, and its value in the form
+its consumer asked for (a slot, a place or an rvalue; an owned leaf's
+consumer names the form, `_Use`). Fragments are built bottom-up and spliced
+into their parent; a statement list is spliced into the scope it runs in, and
+a statement after one with no open exit is checked but not built. A
+fragment's region is a dissolved handle whose parent is the region it is
+spliced into, so what it holds lives where it lands, and a dropped fragment
+(a dead statement's) leaves no slot, block, backing or refusal in the body.
+The body itself is the root fragment; `emit.assemble` closes it (a reachable
+end returns, a non-void body's is refused) and `_Assembly` numbers it
+canonically -- parameters in signature order, blocks depth-first from the
+entry over both arms of a constant branch, slots by first occurrence and then
+the slots no statement names by kind, name and declaration site, regions by
+their entry block -- before pruning and freezing.
+
+The lowering owns the one name -> slot map: a binding's slot is created where
+the lowering binds it, its shape built once from the declaring node's THIR
+facts (`_slot_shape`, `shapes.from_thir`), and it enters the body where the
+statement declaring it is built (`Fragment.adopt`). A read takes the
+binding's type, record, layout and access from that slot's shape; the read
+node's own facts (`optional_read`, `union_read`, a union extraction or test)
+are checked against it. A field's value is `shapes.field_shape`'s. Two
+translations of THIR's facts have one site each: a binding's access
+(`access_of`, from the record, container or view fact its declaration gives
+it) and whether a call result or a literal is built fresh or lends storage
+from elsewhere (`holding_of`: a call's from MIR's call summary, a str or
+bytes literal's from its form, any other from its `Source`). Whether a
+value is a place or an rvalue at all is the operation the node class picks.
+A record copy's raise flag is per type over the verified definitions
+(`_Lowering.copy_may_raise`). The temporary plan is in use when THIR's has
+placements; a statement's prelude fragment declares the temporaries the plan
+places in the scope the statement runs in and builds those it initializes
+there (`statement_temporaries`), and an initialization the plan anchors at an
+expression is built in front of that expression's fragment (`anchored`).
+
+The facts MIR still derives because THIR does not carry them (TODO.md, under
+"One conversion boundary for every value sink"): the record copy of a
+borrow-form name or a storage-form member, a number literal's resolved type,
+the view / container / value-type result a call lends, the `Held` refinements
+above, a body's return kind (the signature is not on every lowered
+function), and a binding's access (`access_of`, to become one effective-access
+field on THIR's binding facts).
+
+Three refusals need the built body: a declaration THIR placed no storage for
+is refused only where the body reaches it (`Fragment.refuse`: the body
+takes the first one it splices, raised after every refusal of the walk), then
+a reachable fallthrough of a non-void body, then the validator's.
 
 #### Statements
 

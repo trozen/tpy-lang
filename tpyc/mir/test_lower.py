@@ -165,6 +165,14 @@ def test_unreachable_supported_tail_is_not_executed(functions: dict[str, th.THIR
     assert execute(lower(fn), True) == 10
 
 
+def test_a_dropped_tail_leaves_no_slot_or_statement(functions: dict[str, th.THIRFunction]) -> None:
+    # The tail after an unplanned if whose arms return is checked, and its
+    # fragment built, but never placed: the body is the one without it.
+    fn = functions["early"]
+    tail = replace(fn, body=(*fn.body, th.THIRReturn(th.THIRLiteral(INT32, 99))))
+    assert dump_function(lower(tail)) == dump_function(lower(fn))
+
+
 def test_the_body_kind_is_the_functions_own(functions: dict[str, th.THIRFunction]) -> None:
     result = lower_function(functions["choose"], MIRBodyId("test", "choose"))
     assert isinstance(result, MIRFunction) and result.kind is MIRBodyKind.FREE_FUNCTION

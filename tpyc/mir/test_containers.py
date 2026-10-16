@@ -381,8 +381,8 @@ def test_a_record_element_is_borrowed_from_the_region_after_its_index(active) ->
     fn = _fn(active, "first")
     lines = _lines(fn)
     assert "%0: list[Point] container-ref readonly element=Point:record:readonly parameter ps" in lines
-    assert lines.index("%2 = 0") < lines.index("%1 = borrow %0[elements] may-raise")
-    assert any(line.startswith("%1: Point readonly-ref local p") for line in lines)
+    assert lines.index("%1 = 0") < lines.index("%2 = borrow %0[elements] may-raise")
+    assert any(line.startswith("%2: Point readonly-ref local p") for line in lines)
     cell = next(r.fields[0].id for r in fn.records if r.type.name == "Point")
     heap = {1: {cell: 3}, 2: {cell: 5}}
     assert execute(fn, ContainerValue((Reference(1), Reference(2))), heap=heap) == 3
@@ -407,8 +407,8 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
     # A view holder borrows the element (spelled StrView: sema's one view rule
     # owns an inferred element read); an owning sink copies it.
     strs = _lines(_fn(active, "strs"))
-    assert any(line.startswith("%1: StrView readonly-ref local v") for line in strs)
-    assert "%1 = borrow %0[elements] may-raise" in strs
+    assert any(line.startswith("%2: StrView readonly-ref local v") for line in strs)
+    assert "%2 = borrow %0[elements] may-raise" in strs
     copy = _lines(_fn(active, "str_copy"))
     assert any(re.fullmatch(r"%\d+ = copy %0\[elements\] may-raise \[initialize_once\]", line) for line in copy)
     # Iteration reads an owned-leaf element through a view of it.
@@ -423,14 +423,14 @@ def test_owned_and_viewed_elements_of_str(active) -> None:
 
 def test_an_owned_container_local_is_built_from_its_literal(active) -> None:
     lines = _lines(_fn(active, "own"))
-    assert "%0: Array[int32, 3] owned element=int32:leaf local xs" in lines
-    assert "%0 = construct (%1, %2, %3) may-raise [initialize_once]" in lines
+    assert "%3: Array[int32, 3] owned element=int32:leaf local xs" in lines
+    assert "%3 = construct (%0, %1, %2) may-raise [initialize_once]" in lines
     # An unstepped slice reads its bounds, then borrows the whole region.
-    assert "%4: Span[int32] mutable-ref element=int32:leaf local s" in lines
-    assert lines.index("%6 = 3") < lines.index("%4 = borrow %0[elements]")
-    assert "%8 = read %4[elements] may-raise" in lines
+    assert "%6: Span[int32] mutable-ref element=int32:leaf local s" in lines
+    assert lines.index("%5 = 3") < lines.index("%6 = borrow %3[elements]")
+    assert "%8 = read %6[elements] may-raise" in lines
     # `len` reads the container whole.
-    assert any(re.fullmatch(r"%9 = call stub tpy\._builtins\._funcs\.len\[Sized\]\(%0\) .*", line) for line in lines)
+    assert any(re.fullmatch(r"%9 = call stub tpy\._builtins\._funcs\.len\[Sized\]\(%3\) .*", line) for line in lines)
 
 
 def test_a_literal_of_records_moves_built_temporaries(active) -> None:
@@ -447,7 +447,7 @@ def test_a_literal_of_records_moves_built_temporaries(active) -> None:
 def test_an_owned_container_result_returns_its_storage(active) -> None:
     fn = _fn(active, "make")
     lines = _lines(fn)
-    assert "%1: list[int32] owned element=int32:leaf local xs" in lines
+    assert "%3: list[int32] owned element=int32:leaf local xs" in lines
     assert fn.blocks[-1].terminator == MIRReturn(_slot(fn, "xs").id, fn.blocks[-1].terminator.loc)
     assert execute(fn, 4) is not None
 
@@ -464,8 +464,8 @@ def test_a_span_parameter_and_result_view_a_region(active) -> None:
     tail = _fn(active, "tail")
     lines = _lines(tail)
     assert "result borrowed readonly" in lines
-    assert "%1: Span[readonly[int32]] readonly-ref element=int32:leaf temporary" in lines
-    assert "%1 = borrow %0[elements]" in lines
+    assert "%2: Span[readonly[int32]] readonly-ref element=int32:leaf temporary" in lines
+    assert "%2 = borrow %0[elements]" in lines
     first = _lines(_fn(active, "span_first"))
     assert "%0: Span[int32] mutable-ref element=int32:leaf parameter s" in first
     assert "%2 = read %0[elements] may-raise" in first
@@ -504,7 +504,7 @@ def test_an_element_write_without_a_reference_preserving_stub_is_the_call(active
 
 def test_an_element_write_through_a_span_or_on_an_array(active) -> None:
     lines = _lines(_fn(active, "span_set"))
-    assert "%1 = borrow %0[elements]" in lines and "%1[elements] = read %4 [in_place]" in lines
+    assert "%3 = borrow %0[elements]" in lines and "%3[elements] = read %4 [in_place]" in lines
     # The Array stub does not declare that it preserves references: the stub call, a structure write.
     array = _lines(_fn(active, "array_set"))
     assert any(line.startswith("call stub tpy.Array.__setitem__[Array[int32, 3], int32, Own[int32]](%0, ")
@@ -760,8 +760,8 @@ def test_a_dict_view_loop_walks_the_member_its_iteration_declares(fresh) -> None
 
 def test_a_pure_stub_reads_a_dict_view_whole(active) -> None:
     lines = _lines(_fn(active, "values_len"))
-    assert "%2 = call stub builtins.dict.values[dict[str, int32]](%0) [pure, reader, returns={param0}, may-raise]" in lines
-    assert "%3 = call stub tpy._builtins._funcs.len[Sized](%2) [pure, reader, may-raise]" in lines
+    assert "%1 = call stub builtins.dict.values[dict[str, int32]](%0) [pure, reader, returns={param0}, may-raise]" in lines
+    assert "%2 = call stub tpy._builtins._funcs.len[Sized](%1) [pure, reader, may-raise]" in lines
 
 
 def test_validator_rejects_damaged_view_cursors(fresh) -> None:
@@ -839,13 +839,13 @@ def calls():
 
 def test_a_local_moved_into_an_own_parameter_is_replaced(calls) -> None:
     lines = calls[0]["give"]
-    assert "%0: list[int32] owned element=int32:leaf local xs" in lines
+    assert "%2: list[int32] owned element=int32:leaf local xs" in lines
     # The argument is the caller's storage moved into a temporary the callee owns.
-    assert "%4: list[int32] owned element=int32:leaf temporary" in lines
-    assert "%4 = move %0 [initialize_region]" in lines
-    assert "%5 = call main::consume(%4) [reader, may-raise]" in lines
+    assert "%3: list[int32] owned element=int32:leaf temporary" in lines
+    assert "%3 = move %2 [initialize_region]" in lines
+    assert "%4 = call main::consume(%3) [reader, may-raise]" in lines
     # The move empties `xs`: a replacement event on the source place, with no holder of it live.
-    assert "bb1 before 0: move-out %0" in lines
+    assert "bb1 before 0: move-out %2" in lines
     assert "no conflicts in covered replacement events" in lines
 
 
@@ -860,12 +860,12 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
         lines = dumps[name]
         assert ("%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly value=int32:leaf "
                 "parameter d") in lines, name
-        assert any(line.startswith("%2 = call stub builtins.dict.values[dict[str, int32]](%0) "
+        assert any(line.startswith("%1 = call stub builtins.dict.values[dict[str, int32]](%0) "
                                    "[pure, reader, returns={param0}, may-raise]") for line in lines), name
     # The const-inferred receiver reaches the @auto_readonly mutable clone: a
     # pure stub binding its receiver mutably, which reads the readonly holder.
-    assert any(line.startswith("%2: dict_values[str, int32] readonly-ref") for line in dumps["inferred_values"])
-    assert any(line.startswith("%2: dict_values[str, readonly[int32]] readonly-ref") for line in dumps["ro_values"])
+    assert any(line.startswith("%1: dict_values[str, int32] readonly-ref") for line in dumps["inferred_values"])
+    assert any(line.startswith("%1: dict_values[str, readonly[int32]] readonly-ref") for line in dumps["ro_values"])
     clone, = (s for s in functions["inferred_values"].call_summaries if s.callee.identity.qualified_name.endswith(
         ".values"))
     assert clone.callee.contract is th.THIRStubContract.PURE and not clone.parameters[0].readonly

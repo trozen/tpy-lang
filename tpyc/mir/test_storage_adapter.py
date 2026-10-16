@@ -453,7 +453,7 @@ def test_repeated_activation_boundary_does_not_swallow_malformed_mir(artifacts: 
         certify_storage_origins(malformed, result.evidence.required, request.definitions)
     assert failure.value.loc is not None
 
-    # Exercise the emit pass's boundary with the exact strict-validator failure.
+    # Exercise assembly's validation boundary with the exact strict-validator failure.
     def repeated(_):
         validate_function(malformed)
 

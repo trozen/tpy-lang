@@ -23,8 +23,7 @@ from .dependencies import MIRReferent, analyze_dependencies
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
-from .lower import lower_function
-from .plan import PFullExpression
+from .lower import _Lowering, lower_function
 from .nodes import (
     MIRHolding,
     MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant,
@@ -626,13 +625,13 @@ def test_an_owned_return_plans_its_full_expression_once(lowered_active, monkeypa
     # The move-out is decided while the return's value is checked, not by
     # rebuilding the checked full expression.
     built = []
-    original = PFullExpression.__init__
+    original = _Lowering.full_expression
 
-    def traced(self, *args, **kwargs) -> None:
-        original(self, *args, **kwargs)
-        built.append(self)
+    def traced(self, *args, **kwargs):
+        built.append(args)
+        return original(self, *args, **kwargs)
 
-    monkeypatch.setattr(PFullExpression, "__init__", traced)
+    monkeypatch.setattr(_Lowering, "full_expression", traced)
     lower_function(lowered_active.thir["by_value"], MIRBodyId("owned", "by_value"),
                    definitions=lowered_active.definitions)
     assert len(built) == 1
@@ -715,9 +714,9 @@ def test_conversions_and_mixed_operations(lowered_active) -> None:
 
 def test_promotion_lowers_as_a_conversion_feeding_the_operator(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["promoted"])
-    assert "%4 = read %1" in lines
-    assert "%5 = op coerce:__int__ (%4) may-raise [initialize_region]" in lines
-    assert "%6 = borrow %5" in lines and "%2 = op + (%3, %6) may-raise [initialize_once]" in lines
+    assert "%3 = read %1" in lines
+    assert "%4 = op coerce:__int__ (%3) may-raise [initialize_region]" in lines
+    assert "%5 = borrow %4" in lines and "%6 = op + (%2, %5) may-raise [initialize_once]" in lines
     fn = lowered_active.bodies["promoted_compare"]
     compare, = (s.value for s in _statements(fn) if isinstance(s, MIRAssign) and isinstance(s.value, MIRCompare))
     # Both operands are BigInt holders once the promotion converted the int32.
@@ -786,8 +785,8 @@ def test_owned_leaf_arguments_are_lent_at_a_borrowing_passing(lowered_active) ->
 
 def test_owned_leaf_arguments_are_copied_at_a_by_value_passing(lowered_active) -> None:
     lines = _lines(lowered_active.bodies["copies"])
-    assert "%2 = copy (*%0) may-raise [initialize_region]" in lines
-    assert any(line.startswith("%3 = call main::takes_own(%2)") for line in lines)
+    assert "%1 = copy (*%0) may-raise [initialize_region]" in lines
+    assert any(line.startswith("%2 = call main::takes_own(%1)") for line in lines)
     fn = lowered_active.bodies["copies"]
     copy, = (s for s in fn.slots if s.shape.is_storage)
     assert copy.kind is MIRSlotKind.TEMPORARY and isinstance(copy.storage_duration, MIRRegionId)
@@ -816,7 +815,7 @@ def test_owned_leaf_results_are_fresh_owned_temporaries(lowered_active) -> None:
     assert call.value.may_raise and fn.exceptional_exits  # the callee's copy may raise
     local = _slot(lowered_active.bodies["result_local"], "t")
     assert local.shape.is_storage and local.kind is MIRSlotKind.LOCAL
-    assert "%1 = call main::ret_copy(%2) [reader, may-raise] [initialize_once]" in _lines(
+    assert "%2 = call main::ret_copy(%1) [reader, may-raise] [initialize_once]" in _lines(
         lowered_active.bodies["result_local"])
     temporary = lowered_active.bodies["temporary_argument"]
     produced, consumed = _calls(temporary)

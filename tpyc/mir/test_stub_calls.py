@@ -270,7 +270,7 @@ def test_pure_constructor_result_is_fresh(active) -> None:
     assert summary.returns == frozenset() and summary.borrowed_result is None
     result = fn.slots[stmt.target.root.index]
     assert result.shape.is_storage and result.type == BIGINT
-    assert "%1 = call stub builtins.int.__init__[float](%2) [pure, reader, may-raise] [initialize_once]" in _lines(fn)
+    assert "%2 = call stub builtins.int.__init__[float](%1) [pure, reader, may-raise] [initialize_once]" in _lines(fn)
 
 
 def test_stub_result_may_borrow_every_lent_argument(active) -> None:

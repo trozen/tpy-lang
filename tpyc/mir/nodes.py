@@ -418,7 +418,7 @@ class MIRCall:
         obligation through it names any. Every consumer of a built call's
         effects (dependencies, retention, `coverage.call_write_places`)
         reads this, never `summary`'s effect sets. Lowering's admission
-        check (`lower._Coverage`) runs before the call is built and reads
+        check (`lower._Lowering`) runs before the call is built and reads
         the raw summary, so a writing callee given a literal None still
         counts as writing for its evaluation-order rules (TODO.md)."""
         absent = self.absent
@@ -819,3 +819,12 @@ class MIRNotCovered:
     node_kind: str
     reason: str
     loc: SourceLocation | None = None
+    # The slot the reason names (`%N`), when it names one.
+    slot: 'MIRSlotId | None' = None
+
+
+def source_order(loc: SourceLocation | None) -> tuple[int, int, int]:
+    """Where a location stands in the source, a missing one last: what a
+    pick among several candidates orders by, so no slot or block number
+    decides what the user sees."""
+    return (0, loc.line, loc.column) if loc is not None else (1, 0, 0)

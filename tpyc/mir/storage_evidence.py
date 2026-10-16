@@ -37,7 +37,7 @@ from .liveness import MIRLiveness, _liveness
 from .nodes import (
     MIRAssign, MIRBodyKind, MIREdge, MIRField, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
     MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
-    MIRUnionPayload,
+    MIRUnionPayload, source_order,
 )
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .presence import MIRPresenceIssueKind
@@ -241,8 +241,8 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
     conflicts: list[MIRStorageConflict] = []
     gaps: list[MIRNotCovered] = []
 
-    def gap(reason: str, loc: SourceLocation | None = None) -> None:
-        gaps.append(MIRNotCovered(fn.id, "storage evidence", reason, loc))
+    def gap(reason: str, loc: SourceLocation | None = None, slot: MIRSlotId | None = None) -> None:
+        gaps.append(MIRNotCovered(fn.id, "storage evidence", reason, loc, slot))
 
     def attribute(kind: MIRStorageConflictKind, origin: MIRPlace, holder: MIRPlace,
                   site: MIREdge | MIRPoint, loc: SourceLocation | None) -> None:
@@ -278,7 +278,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
     # A by-value parameter's storage is materialized by the caller, before entry.
     materialized.update(s.id for s in fn.slots if s.kind is MIRSlotKind.PARAMETER and _storage_root(s))
     for root in sorted(required - materialized, key=lambda s: s.index):
-        gap(f"required origin %{root.index} is never materialized on a feasible path")
+        gap(f"required origin %{root.index} is never materialized on a feasible path", slot=root)
 
     for issue in presence.issues:
         gap(f"stale alias: {issue.message}", point_loc(issue.point))
@@ -311,7 +311,8 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                         continue
                     for key in dependencies.objects[ref.place.root]:
                         if key.projections[:len(prefix)] == prefix and not state.get(key):
-                            gap(f"live record %{ref.place.root.index} has unknown stored loans", point_loc(point))
+                            gap(f"live record %{ref.place.root.index} has unknown stored loans", point_loc(point),
+                                ref.place.root)
             for sid in sorted(liveness.points[point], key=lambda s: s.index):
                 for leaf in _leaves(slots[sid], slots):
                     wrapper = MIRPlace(leaf.root, leaf.projections[:-1])
@@ -323,7 +324,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                         case _:
                             engaged = True
                     if engaged and not state.get(leaf):
-                        gap(f"live borrowed holder %{sid.index} has unknown origins", point_loc(point))
+                        gap(f"live borrowed holder %{sid.index} has unknown origins", point_loc(point), sid)
 
     ends = _scope_ends(prepared)
     if isinstance(ends, MIRNotCovered):
@@ -334,7 +335,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
             for event in events:
                 if event.kind is MIRScopeEndKind.RECORD_WRAPPER and not engagement.get(event.storage.root):
                     gap(f"optional backing %{event.storage.root.index} ends without an engagement fact",
-                        blocks[edge.source].terminator.loc)
+                        blocks[edge.source].terminator.loc, event.storage.root)
         scoped = _scope_conflicts(prepared, liveness, dependencies, ends)
         if isinstance(scoped, MIRNotCovered):
             gaps.append(scoped)
@@ -368,7 +369,7 @@ def _check_storage(prepared: MIRPrepared, liveness: MIRLiveness,
                         and point in presence.points
                         and not dict(presence.engagement.get(point, frozenset())).get(stmt.target.root)):
                     gap(f"optional backing %{stmt.target.root.index} replaced without an engagement fact",
-                        stmt.loc)
+                        stmt.loc, stmt.target.root)
         retention = analyze_retention(fn, liveness, dependencies, events)
         if isinstance(retention, MIRNotCovered):
             gaps.append(retention)
@@ -458,7 +459,8 @@ def analyze_return_escapes(fn: MIRFunction, dependencies: MIRDependencies | MIRN
         raise MIRValidationError("return escape input belongs to a different MIR function")
     escapes, unknown = _return_escapes(prepared, dependencies)
     if unknown:
-        return MIRNotCovered(fn.id, "return escapes", "borrowed return has unknown origins", unknown[0])
+        return MIRNotCovered(fn.id, "return escapes", "borrowed return has unknown origins",
+                             min(unknown, key=source_order))
     return escapes
 
 

@@ -19,7 +19,7 @@ from .summaries import summarize_function
 from .validate import MIRValidationError
 
 
-SOURCE = '''from tpy import int32
+SOURCE = '''from tpy import int32, readonly
 
 class Cell:
     value: int32
@@ -96,6 +96,15 @@ def range_sum(n: int32) -> int32:
     for i in range(n):
         total = total + i
     return total
+
+@readonly
+def pick(left: Cell, right: Cell, flag: bool) -> int32:
+    # A `@readonly` function: its record parameters are readonly, though
+    # THIR's borrowed-record facts are mutable.
+    alias = left
+    if flag:
+        alias = right
+    return alias.value
 
 def big_loop(n: int32, k: int) -> int32:
     # An owned local initialized once per iteration's activation.
@@ -204,6 +213,28 @@ def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> No
     unpublished = replace(fn, params=(fn.params[0], replace(fn.params[1], passing=None)))
     result = summarize_function(unpublished, bodies["setter"], definitions)
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter passing unpublished"
+
+
+def test_a_readonly_function_binds_its_record_parameters_readonly(artifacts: Artifacts) -> None:
+    functions, bodies, definitions = artifacts
+    result = summarize_function(functions["pick"], bodies["pick"], definitions)
+    assert result.state is MIRSummaryState.KNOWN, result
+    left, right, flag = result.summary.parameters
+    for record in (left, right):
+        assert (record.passing, record.readonly, record.borrowed_record.readonly) == (
+            ParamPassing.CONST_REF, True, True)
+    assert summary_problem(result.summary) is None
+
+
+def test_a_slot_weaker_than_its_thir_access_is_opaque(artifacts: Artifacts) -> None:
+    # THIR says readonly, the slot is mutable: the body could write what the caller lends readonly.
+    functions, bodies, definitions = artifacts
+    fn = functions["setter"]
+    cell = fn.params[0]
+    damaged = replace(fn, params=(replace(cell, borrowed_record=replace(cell.borrowed_record, readonly=True)),
+                                  fn.params[1]))
+    result = summarize_function(damaged, bodies["setter"], definitions)
+    assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary parameter binding mismatch"
 
 
 @pytest.mark.parametrize(("name", "expected"), [

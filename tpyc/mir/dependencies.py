@@ -238,13 +238,14 @@ def caller_keys(fn: MIRFunction, objects: Mapping[MIRSlotId, tuple[MIRPlace, ...
     return frozenset(key for slot in fn.slots if slot.kind is MIRSlotKind.PARAMETER for key in objects[slot.id])
 
 
-def _coverage(fn: MIRFunction) -> str | None:
+def _coverage(fn: MIRFunction) -> tuple[str, MIRSlotId | None] | None:
+    """Why the body is not covered, and the slot the reason names."""
     slots = {s.id: s for s in fn.slots}
     for slot in fn.slots:
         root = (slot if slot.shape.is_storage or slot.shape.owned_tuple else
                 slots[slot.alias_source.root] if slot.alias_source is not None else None)
         if root is not None and root.storage_duration is None:
-            return f"missing storage duration for %{root.id.index}"
+            return f"missing storage duration for %{root.id.index}", root.id
     places = [s.alias_source for s in fn.slots if s.alias_source is not None]
     for block in fn.blocks:
         for stmt in block.statements:
@@ -275,7 +276,7 @@ def _coverage(fn: MIRFunction) -> str | None:
             degree[child] -= 1
             if degree[child] == 0:
                 pending.append(child)
-    return "recursive inline field paths" if count != len(graph) else None
+    return ("recursive inline field paths", None) if count != len(graph) else None
 
 
 def member_keys(objects: frozenset[MIRReferent], member: MIRField, state: MIRReferents,
@@ -638,9 +639,10 @@ def _dependencies(prepared: MIRPrepared, liveness: MIRLiveness) -> MIRDependenci
     fn = prepared.function
     if liveness.function is not fn:
         raise MIRValidationError("liveness belongs to a different MIR function")
-    reason = _coverage(fn)
-    if reason is not None:
-        return MIRNotCovered(fn.id, "dependencies", reason)
+    found = _coverage(fn)
+    if found is not None:
+        reason, slot = found
+        return MIRNotCovered(fn.id, "dependencies", reason, slot=slot)
     slots = {s.id: s for s in fn.slots}
     # A record object's stored loans are entries only where the body
     # reads them: the lowering registers the layout of every record whose

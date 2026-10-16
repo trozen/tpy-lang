@@ -217,21 +217,21 @@ def test_view_holders_are_readonly_borrows_typed_by_the_view(active) -> None:
 
 
 def test_unstepped_slices_borrow_the_whole_receiver_after_their_bounds(active) -> None:
-    assert "%1 = borrow (*%0)" in _lines(_fn(active, "slice_local"))
+    assert "%3 = borrow (*%0)" in _lines(_fn(active, "slice_local"))
     # A call bound runs before the borrow; it is an ordinary read.
     lines = _lines(_fn(active, "slice_bounds"))
     call = next(i for i, line in enumerate(lines) if "call main::lo()" in line)
-    assert lines.index("%2 = borrow (*%0)") > call
+    assert lines.index("%4 = borrow (*%0)") > call
     # An owned local is borrowed in place, never copied.
     fn = _fn(active, "slice_of_owned")
     t, v = _slot(fn, "t"), _slot(fn, "v")
     assert f"%{v.id.index} = borrow %{t.id.index}" in _lines(fn)
     assert _at_return(active, "slice_of_owned")["v"] == frozenset({MIRReferent(MIRPlace(t.id))})
     # A slice of a view parameter aliases it.
-    assert "%1 = alias %0" in _lines(_fn(active, "view_param_slice"))
+    assert "%2 = alias %0" in _lines(_fn(active, "view_param_slice"))
     # The bytes family follows the same rule.
     fn = _fn(active, "bytes_slice")
-    assert _slot(fn, "v").type == BYTESVIEW and "%1 = borrow (*%0)" in _lines(fn)
+    assert _slot(fn, "v").type == BYTESVIEW and "%2 = borrow (*%0)" in _lines(fn)
 
 
 def test_a_static_literal_is_its_holders_immortal_origin(active) -> None:
@@ -243,11 +243,11 @@ def test_a_static_literal_is_its_holders_immortal_origin(active) -> None:
 def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> None:
     fn = _fn(active, "view_return")
     assert fn.borrowed_result == th.THIRBorrowedRecord(STRVIEW, True)
-    assert "result borrowed readonly" in _lines(fn) and "%1 = borrow (*%0)" in _lines(fn)
+    assert "result borrowed readonly" in _lines(fn) and "%2 = borrow (*%0)" in _lines(fn)
     summary = active.verdicts["view_return"].summary
     assert summary.state is MIRSummaryState.KNOWN and summary.summary.returns == frozenset({MIRReturnOrigin(0)})
     caller = _fn(active, "view_return_caller")
-    assert any(line.startswith("%1 = call main::view_return(%2)") and "returns={param0}" in line
+    assert any(line.startswith("%2 = call main::view_return(%1)") and "returns={param0}" in line
                for line in _lines(caller))
     assert _at_return(active, "view_return_caller")["v"] == _external(caller, "s")
     # A view parameter is the caller's loan passed by value; returning it returns that loan.
@@ -260,14 +260,14 @@ def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> Non
 
 def test_owning_sinks_copy_through_the_view(active) -> None:
     lines = _lines(_fn(active, "owned_from_view"))
-    assert "%3 = copy (*%1) may-raise [initialize_once]" in lines and lines[-1] == "return %3"
+    assert "%3 = copy (*%2) may-raise [initialize_once]" in lines and lines[-1] == "return %3"
 
 
 def test_a_string_bound_as_str_is_lent_or_copied(active) -> None:
     # At a str view parameter the String is lent as a view of its storage.
     lines = _lines(_fn(active, "string_as_str_param"))
-    assert "%2: StrView readonly-ref temporary residence=r0" in lines
-    assert "%2 = borrow (*%0)" in lines and any(line.startswith("%1 = call main::takes(%2)") for line in lines)
+    assert "%1: StrView readonly-ref temporary residence=r0" in lines
+    assert "%1 = borrow (*%0)" in lines and any(line.startswith("%2 = call main::takes(%1)") for line in lines)
     # At an owning sink it is copied; the local owning the copy is moved out.
     sink = _lines(_fn(active, "string_as_str_sink"))
     assert "%1 = copy (*%0) may-raise [initialize_once]" in sink
@@ -276,7 +276,7 @@ def test_a_string_bound_as_str_is_lent_or_copied(active) -> None:
 
 def test_a_view_is_lent_where_a_str_view_parameter_takes_it(active) -> None:
     lines = _lines(_fn(active, "view_to_takes"))
-    assert any(line.startswith("%3 = call main::takes(%1)") for line in lines)
+    assert any(line.startswith("%3 = call main::takes(%2)") for line in lines)
 
 
 def test_a_reassigned_str_parameter_is_viewed_through_its_copy(active) -> None:
@@ -300,8 +300,8 @@ def test_a_view_reads_its_leaf_through_the_borrow(active) -> None:
     assert any(re.fullmatch(rf"%\d+ = %{v} < %{w}", line) for line in lines)
     assert any(re.fullmatch(rf"%\d+ = op getitem \(%{v}, %\d+\) may-raise", line) for line in lines)
     # `len` dispatches to the viewed leaf's runtime code: the stub reads the view in place.
-    assert "%1 = call stub tpy._builtins._funcs.len[Sized](%1)" not in _lines(_fn(active, "slice_local"))
-    assert any(line.startswith("%5 = call stub tpy._builtins._funcs.len[Sized](%1)")
+    assert "%3 = call stub tpy._builtins._funcs.len[Sized](%3)" not in _lines(_fn(active, "slice_local"))
+    assert any(line.startswith("%4 = call stub tpy._builtins._funcs.len[Sized](%3)")
                for line in _lines(_fn(active, "slice_local")))
 
 

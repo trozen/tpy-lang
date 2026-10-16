@@ -22,7 +22,7 @@ from ..typesys import (
 )
 
 if TYPE_CHECKING:
-    from .nodes import MIRRecordLayout
+    from .nodes import MIRRecordLayout, MIRShape
 
 # The passings at which a parameter borrows an owned leaf the caller keeps,
 # and those at which the callee receives its own copy.
@@ -285,9 +285,10 @@ def container_result(typ: TpyType) -> THIRBorrowedRecord | None:
     return THIRBorrowedRecord(bare, isinstance(unwrap_ref_type(typ), ReadonlyType))
 
 
-def reference_problem(ref: THIRBorrowedRecord, typ: TpyType) -> str | None:
-    """Check a borrowed-record fact against the type it is read at: a
-    record at a definite access, of exactly the type's record."""
+def reference_problem(ref: 'THIRBorrowedRecord | MIRShape', typ: TpyType) -> str | None:
+    """Check a borrowed-record fact (or a record holder's shape) against
+    the type it is read at: a record at a definite access, of exactly the
+    type's record."""
     if not (record_type(ref.type) and type(ref.readonly) is bool):
         return "unsupported reference fact"
     return None if unwrap_readonly(unwrap_ref_type(typ)) == ref.type else "reference type mismatch"

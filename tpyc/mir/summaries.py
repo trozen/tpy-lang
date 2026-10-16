@@ -310,15 +310,19 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                 or slot.type != (owned if owned is not None else native_container_subject(param.type))
                 or (slot.shape.is_pointer and owned is None and not view and not container
                     and (param.borrowed_record is None
-                         or slot.readonly != param.borrowed_record.readonly))):
+                         # The slot's access (`access_of`) only adds to THIR's.
+                         or param.borrowed_record.readonly and not slot.readonly))):
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
+        ref, optional = param.borrowed_record, None
+        if ref is not None and ref.readonly is not slot.readonly:
+            # A binding's record carries the binding's access (`parameter_binding_problem`).
+            ref = replace(ref, readonly=slot.readonly)
         # An owned leaf at a borrowing passing and a view are lent, read-only;
-        # a borrowed container or a Span lends with its own access, and an
-        # owned container is the callee's own.
-        readonly = (param.borrowed_record.readonly if param.borrowed_record is not None
+        # a record or a borrowed container or a Span lends with its slot's
+        # access, and an owned container is the callee's own.
+        readonly = (slot.readonly if ref is not None
                     else slot.readonly if container and not slot.shape.is_storage
                     else view or owned is not None and param.passing in BORROWING_PASSINGS)
-        ref, optional = param.borrowed_record, None
         if slot.shape.cls is MIRClass.OPTIONAL:
             # An Optional record parameter borrows its payload record at the
             # payload's access; a scalar payload is the callee's own value.

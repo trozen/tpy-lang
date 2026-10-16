@@ -125,13 +125,18 @@ def field_shape(typ: TpyType, readonly: bool, records: Records) -> MIRShape | No
     return MIRShape(bare, cls, MIRHolding.VALUE, access)
 
 
+def record_pointer(typ: TpyType, readonly: bool) -> MIRShape:
+    """A pointer holder at a record of type `typ`, at access `readonly`."""
+    return MIRShape(typ, MIRClass.RECORD, MIRHolding.POINTER, readonly)
+
+
 def thir_member(member: TpyType | th.THIRBorrowedRecord | th.THIROwnedRecord) -> MIRShape:
     """A wrapper member as THIR selected it: a borrowed record is a pointer
     at it, an owned record inline storage, any other member an inert leaf
     by value."""
     match member:
         case th.THIRBorrowedRecord():
-            return MIRShape(member.type, MIRClass.RECORD, MIRHolding.POINTER, member.readonly)
+            return record_pointer(member.type, member.readonly)
         case th.THIROwnedRecord():
             return MIRShape(member.type, MIRClass.RECORD, MIRHolding.VALUE, member.readonly)
     return MIRShape(member, MIRClass.LEAF)

@@ -24,7 +24,7 @@ from .mir.coverage import call_place
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import (
     MIRCall, MIRContainerElements, MIRContainerStructure, MIRField, MIRFunction, MIRPlace,
-    MIRSlotKind, statement_call,
+    MIRSlotKind, source_order, statement_call,
 )
 from .mir_workspace import MIRProgram, resolved_calls
 
@@ -120,23 +120,28 @@ def argument_aliases(fn: MIRFunction, analyses: MIRAnalyses) -> tuple[MIRArgumen
     if classes is None:
         return ()
     blocks = {block.id: block for block in fn.blocks}
-    found: dict[tuple[object, int, int], MIRArgumentAlias] = {}
+    found: dict[tuple[object, int, int], list[MIRArgumentAlias]] = {}
     for conflict in classes.argument_aliases:
         obligation = conflict.call
         assert obligation is not None
         key = (conflict.point, obligation.parameter, obligation.written.parameter)
-        if key in found:
-            continue
         stmt = blocks[conflict.point.block].statements[conflict.point.index]
         call = statement_call(stmt)
         assert call is not None
         fields = tuple(step.name for step in obligation.written.path if isinstance(step, th.THIRFieldIdentity))
         relation = _relation(call, obligation.parameter, obligation.written.parameter, conflict.affected.place,
                              fn, analyses.dependencies.referents[conflict.point])
-        found[key] = MIRArgumentAlias(call, call.site or stmt.loc, obligation.parameter,
-                                      obligation.written.parameter, _place_spelling(fn, conflict.affected.place),
-                                      fields, relation)
-    return tuple(found.values())
+        found.setdefault(key, []).append(MIRArgumentAlias(
+            call, call.site or stmt.loc, obligation.parameter, obligation.written.parameter,
+            _place_spelling(fn, conflict.affected.place), fields, relation))
+    # The retention conflicts come in slot-number order: the one a call
+    # reports, and the order of a line's reports, follow the source instead.
+    return tuple(sorted((min(aliases, key=_alias_order) for aliases in found.values()), key=_alias_order))
+
+
+def _alias_order(alias: MIRArgumentAlias) -> tuple[object, ...]:
+    return (source_order(alias.loc), alias.retained, alias.written, alias.storage is None, alias.storage or "",
+            alias.written_fields, alias.relation.name)
 
 
 def alias_check_bodies(modules: Iterable[tuple[TpyModule, SemanticAnalyzer, CodeGenContext, str]],

@@ -25,12 +25,13 @@ from .dependencies import (
 )
 from .dump import dump_function
 from .liveness import MIRLiveness, MIRPoint, dump_liveness
+from .emit import slot_occurrences
 from .lower import lower_constructor, lower_function
 from .nodes import (
     MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
     MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
     MIRRecordLayout, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRUnionPayload,
-    function_body_kind, statement_target,
+    function_body_kind, source_order, statement_target,
 )
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
@@ -235,6 +236,21 @@ class MIRStorageCheck:
         return f"{self.gap_kind}: {self.gap_reason}" if self.gap_kind is not None else self.gap_reason
 
 
+def _slot_orders(fn: MIRFunction) -> dict[MIRSlotId, tuple[object, ...]]:
+    """Each slot by where it first occurs -- the statement's source location,
+    then its position among the slots the statement names -- and its name:
+    an order no slot number decides."""
+    never = (source_order(None), 0)
+    first: dict[MIRSlotId, tuple[tuple[int, int, int], int]] = {}
+    for block in fn.blocks:
+        for stmt in (*block.statements, block.terminator):
+            named: list[MIRSlotId] = []
+            slot_occurrences(stmt, named)
+            for position, sid in enumerate(named):
+                first[sid] = min(first.get(sid, never), (source_order(stmt.loc), position))
+    return {s.id: (*first.get(s.id, never), s.name or "") for s in fn.slots}
+
+
 def check_storage(source: THIRFunction | THIRConstructor, body: MIRBodyId, kind: MIRBodyKind,
                   definitions: MIRDefinitions,
                   summaries: Mapping[THIRFunctionIdentity, MIRSummaryResult]) -> MIRStorageCheck:
@@ -253,10 +269,18 @@ def check_storage(source: THIRFunction | THIRConstructor, body: MIRBodyId, kind:
     if verdict is MIRStorageVerdict.CONFLICT:
         return MIRStorageCheck(MIRStorageState.CONFLICT, conflicts=tuple(sorted(
             {c.kind.name.lower() for c in bound.evidence.conflicts})))
-    gaps = list(bound.gaps) + (list(bound.evidence.gaps) if bound.evidence is not None else [])
-    if not gaps:
+    evidence = bound.evidence.gaps if bound.evidence is not None else ()
+    if not bound.gaps and not evidence:
         return MIRStorageCheck(MIRStorageState.NOT_COVERED, gap_reason="no evidence")
-    return MIRStorageCheck(MIRStorageState.NOT_COVERED, gap_kind=gaps[0].node_kind, gap_reason=gaps[0].reason)
+    # The binding's gaps come in THIR fact order; the evidence walks the
+    # body's slots and blocks, so its first gap is picked by source location,
+    # a tie by the slot it names (where it first occurs, its name), then by
+    # its reason.
+    slots = _slot_orders(bound.function) if bound.function is not None and len(evidence) > 1 else {}
+    first = bound.gaps[0] if bound.gaps else min(
+        evidence, key=lambda g: (source_order(g.loc), g.node_kind or "",
+                                 slots.get(g.slot, (source_order(None), 0, "")), g.reason))
+    return MIRStorageCheck(MIRStorageState.NOT_COVERED, gap_kind=first.node_kind, gap_reason=first.reason)
 
 
 @dataclass(frozen=True, eq=False)
@@ -610,14 +634,18 @@ def line_facts(verdict: MIRBodyVerdict) -> MIRLineFacts | None:
              for name, selectors in by_name.items()}
     named = {sid: names[name][selector]
              for name, selectors in by_name.items() for selector, ids in selectors.items() for sid in ids}
-    bindings: dict[MIRSlotId, tuple[str, int | None]] = {}
+    # Unnamed storage takes the name of the first named holder borrowing it,
+    # first in the source, never by block number.
+    candidates: dict[MIRSlotId, list[tuple[tuple[int, int, int], str, int | None]]] = {}
     for block in fn.blocks:
         for stmt in block.statements:
             if (isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRBorrow)
                     and not stmt.value.source.projections and not stmt.target.projections
-                    and stmt.target.root in named and stmt.value.source.root not in named
-                    and stmt.value.source.root not in bindings):
-                bindings[stmt.value.source.root] = (named[stmt.target.root], stmt.loc.line if stmt.loc else None)
+                    and stmt.target.root in named and stmt.value.source.root not in named):
+                candidates.setdefault(stmt.value.source.root, []).append(
+                    (source_order(stmt.loc), named[stmt.target.root], stmt.loc.line if stmt.loc else None))
+    bindings: dict[MIRSlotId, tuple[str, int | None]] = {
+        root: min(found)[1:] for root, found in candidates.items()}
     bound = [name for name, _line in bindings.values()]
     storage = dict(named)
     for root, (name, line) in bindings.items():

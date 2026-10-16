@@ -107,7 +107,7 @@ validation must agree on a new admitted combination of existing operations.
 | `thir/lower/statements.py::_lower_stmt`, `thir/lower/storage.py::optional_layout` | Already attach the nullable payload/access facts. Preserve them alongside the new ownership evidence. |
 | `THIRPtrLocalDecl.owned_storage`, `thir/validate.py` | Extend the existing fact to describe the record payload of the exact OPT_RVALUE constructor case. Validate kind, constructor result, Optional payload type and access together; do not generally unwrap wrappers to make mismatches pass. |
 | `THIRAssign.rebind_storage`, `_rebind_storage`, `thir/emit.py::_own_slot` | Consume the effective OWN/IN_PLACE verdict, including any existing readonly fallback. An OWN slot belongs to a syntactic site, not to every execution of that site. |
-| `mir/lower.py::_Coverage.record_value`, `MIRDefinitions` | Reuse complete constructor/layout verification: pure bool/int32 fields and parameters, no constructor body effects, bases or custom copy/move/destructor behavior. |
+| `mir/lower.py::_Lowering.record_value`, `MIRDefinitions` | Reuse complete constructor/layout verification: pure bool/int32 fields and parameters, no constructor body effects, bases or custom copy/move/destructor behavior. |
 | `MIRSlotId`, RECORD_STORAGE, `MIRBorrow`, `MIROptionalConstruct` | Allocate a storage slot, initialize it, borrow it into a record-reference temporary, and construct the Optional holder from that reference. No parallel storage identity, new C++ counter or universal binding rewrite. |
 | `MIROptionalPayload`, `MIRDeref`, `mir/presence.py` | IN_PLACE writes through the present payload's referent. Existing Optional construction establishes presence; validation must still reject absent/unknown payload access. |
 
