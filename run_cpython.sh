@@ -1,5 +1,6 @@
 #!/bin/bash
-# Run a TurboPython file with CPython using lib/cpy stubs
+# Run a TurboPython file with CPython in the project's venv, whose editable
+# tpy-lang install provides tpy and tplib (from lib/cpy)
 # Usage: ./run_cpython.sh path/to/program.py
 
 if [ -z "$1" ]; then
@@ -8,4 +9,4 @@ if [ -z "$1" ]; then
 fi
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-PYTHONPATH="$SCRIPT_DIR/lib/cpy" python3 "$1"
+uv run --project "$SCRIPT_DIR" python "$1"

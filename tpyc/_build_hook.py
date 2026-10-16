@@ -18,15 +18,27 @@ class BuildInfoHook(BuildHookInterface):
         # clobbering it with "unknown".
         if commit == "unknown" and shipped.exists():
             force_include[str(shipped)] = "tpyc/_buildinfo.py"
-            return
-        # Stamped OUTSIDE the source tree. A tpy/tpyc run in the same
-        # checkout fingerprints every .py under tpyc/ for its build cache, so
-        # a file that appears and disappears there mid-build makes an
-        # unchanged rerun miss the cache.
-        self._stamp_dir = tempfile.TemporaryDirectory()
-        stamp = Path(self._stamp_dir.name) / "_buildinfo.py"
-        stamp.write_text(f'GIT_COMMIT = "{commit}"\n')
-        force_include[str(stamp)] = "tpyc/_buildinfo.py"
+        else:
+            # Stamped OUTSIDE the source tree. A tpy/tpyc run in the same
+            # checkout fingerprints every .py under tpyc/ for its build cache,
+            # so a file that appears and disappears there mid-build makes an
+            # unchanged rerun miss the cache.
+            self._stamp_dir = tempfile.TemporaryDirectory()
+            stamp = Path(self._stamp_dir.name) / "_buildinfo.py"
+            stamp.write_text(f'GIT_COMMIT = "{commit}"\n')
+            force_include[str(stamp)] = "tpyc/_buildinfo.py"
+        if version == "editable":
+            # A copy of the CPython-side packages would go stale and shadow
+            # lib/cpy, which the editable path entries already expose. An
+            # unpacked sdist has no lib/cpy/tplib link (the sdist leaves it
+            # out), so there tplib still needs its copy.
+            linked = {"tpy"}
+            if (Path(self.root) / "lib" / "cpy" / "tplib").exists():
+                linked.add("tplib")
+            editable = {src: dst for src, dst in self.build_config.force_include.items()
+                        if dst.split("/", 1)[0] not in linked}
+            editable.update(force_include)
+            build_data["force_include_editable"] = editable
 
     def finalize(self, version, build_data, artifact_path):
         stamp_dir = getattr(self, "_stamp_dir", None)

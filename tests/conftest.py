@@ -822,11 +822,13 @@ def _output_tail(data: bytes | str | None) -> str:
 def run_cpython(src_file: Path) -> str:
     """Run a TurboPython file with CPython using the test harness."""
     env = os.environ.copy()
-    # Include CPython stubs (for tpy module + tplib symlink) and source dir
-    # (for multi-module imports). lib/tpy/ is NOT included -- CPython uses
-    # its own stdlib, and tpy types come from the cpy stubs.
+    # Only the source dir (for multi-module imports): `tpy` and `tplib` come
+    # from the installed tpy-lang, as for a user -- an editable install
+    # reaches lib/cpy through its path entry. CPython uses its own stdlib.
     src_dir = src_file.parent
-    env["PYTHONPATH"] = f"{CPY_LIB_DIR}{os.pathsep}{src_dir}"
+    env["PYTHONPATH"] = str(src_dir)
+    # Parity is against exact mode, whatever a developer's shell exports.
+    env.pop("TPY_CPYTHON_FAST", None)
     # Pin terminal width so CPython argparse (and any other terminal-aware
     # stdlib code) wraps at the same column we pre-render against. Without
     # this, the cpy phase is non-deterministic across developer terminals.

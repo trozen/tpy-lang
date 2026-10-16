@@ -114,9 +114,10 @@ through a first program.
   compiled with it. Dependencies are TurboPython packages, either the
   standard-library subset and `tplib` that ship with the compiler, or others
   written for it.
-- Running a file under CPython, or type-checking its `tpy` imports, needs
-  the `tpy` stub package from the source tree (`lib/cpy`) on the path; it is
-  not yet part of the installed package.
+- Most files also run under CPython (or PyPy 8, Python 3.12) with
+  `python`: the installed package ships the `tpy` and `tplib` modules a
+  program imports, and mypy reads them too. `TPY_CPYTHON_FAST=1` makes the
+  fixed-width integers plain `int`s for benchmark baselines.
 
 The ownership rule is the one deep difference. A list owns its elements, so
 appending an object that is still in use afterwards stores a copy, and the

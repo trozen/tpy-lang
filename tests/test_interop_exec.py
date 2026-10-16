@@ -272,8 +272,8 @@ def test_interop_exec(case_dir, mod_py, request):
             record_exec_pass(fingerprint, request.node.name)
 
     # ----- CPY-PARITY ---------------------------------------------------------
-    # The SAME driver over the TPy source via lib/cpy stubs must reproduce the
-    # ext-exec snapshot. run_cpython puts lib/cpy + the driver's src/ dir
+    # The SAME driver over the TPy source via the installed tpy stubs must
+    # reproduce the ext-exec snapshot. run_cpython puts the driver's src/ dir
     # (holding the source) on PYTHONPATH, so `import {mod}` binds the .py
     # here. Compares to the committed output.txt (under --no-exec the build
     # didn't refresh it). Skipped under build-only/cross for symmetry with

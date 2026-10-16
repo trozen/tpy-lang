@@ -1,9 +1,7 @@
 """CPython stub: version/implementation identification for TPy.
 
-Mirrors lib/tpy/tpy/version.py. Reads canonical values from the tpyc
-stub (lib/cpy/tpyc/__init__.py), which in turn pulls them from the
-installed distribution metadata -- so there's a single source of truth
-(tpyc/__init__.py -> dist-info -> here).
+Mirrors lib/tpy/tpy/version.py. `tpy` ships in the tpy-lang distribution next
+to the compiler, so the version comes from the real tpyc package:
 
     from tpy.version import __version__, version_info, is_compiled
 """

@@ -14,7 +14,7 @@ from pathlib import Path
 
 import pytest
 
-from conftest import CPP_CONFIG, CPY_LIB_DIR, exec_is_cross
+from conftest import CPP_CONFIG, exec_is_cross
 
 
 PROGRAM = """\
@@ -1042,7 +1042,8 @@ def test_interrupted_join_retry_under_cpython(
         pytest.skip("the CPython phase is disabled")
     prog = tmp_path / "prog.py"
     prog.write_text(INTERRUPT_PROGRAM)
-    env = {**os.environ, "PYTHONPATH": f"{CPY_LIB_DIR}{os.pathsep}{tmp_path}"}
+    env = {**os.environ, "PYTHONPATH": str(tmp_path)}
+    env.pop("TPY_CPYTHON_FAST", None)
     child = _Child([sys.executable, str(prog)], "join", env=env)
     child.wait_line("ready")
     child.interrupt()

@@ -1053,8 +1053,8 @@ under `tests/cases/interop/`. See `tests/interop/README.md`.
   driver under CPython importing it, compare stdout to `output.txt`. Gated by
   a content-addressed marker in the shared `exec-results/` cache.
 - **cpy parity** (always): run the *same* driver with
-  `PYTHONPATH=lib/cpy:<case>` so `import <mod>` loads the TPy **source**
-  interpreted by CPython; compare the same `output.txt`. The compiled
+  `PYTHONPATH=<case>` (the `tpy` stubs come from the installed tpy-lang) so
+  `import <mod>` loads the TPy **source** interpreted by CPython; compare the same `output.txt`. The compiled
   extension must behave like its source-as-Python. The `lib/cpy/tpy/extern.py`
   stub already makes `@export` an identity and `ext_module` a no-op.
 - **facade self-check** (`test_facade_selfcheck`): compile the hand-mirrored

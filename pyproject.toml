@@ -63,6 +63,9 @@ path = "tpyc/__init__.py"
 [tool.hatch.build.targets.wheel]
 packages = ["tpyc"]
 exclude = ["tpyc/_build_hook.py"]
+# An editable install reaches tpy and tplib through lib/cpy on the path, not
+# a copy (the build hook leaves them out), so edits show without a reinstall.
+dev-mode-dirs = [".", "lib/cpy"]
 
 [tool.hatch.build.targets.wheel.hooks.custom]
 path = "tpyc/_build_hook.py"
@@ -73,6 +76,10 @@ path = "tpyc/_build_hook.py"
 "docs/TPY_FOR_AGENTS.md" = "tpyc/_data/docs/TPY_FOR_AGENTS.md"
 "docs/LANGUAGE_FEATURES.md" = "tpyc/_data/docs/LANGUAGE_FEATURES.md"
 "docs/STDLIB_ROADMAP.md" = "tpyc/_data/docs/STDLIB_ROADMAP.md"
+# The CPython side, so a TPy program also runs under `python`: tplib is the
+# real TPy source (lib/cpy/tplib only links to it).
+"lib/cpy/tpy" = "tpy"
+"lib/tpy/tplib" = "tplib"
 
 # Allowlist exactly what a wheel-from-sdist build needs, so stray
 # working-tree files (untracked scratch, local tool configs) can never
@@ -87,6 +94,7 @@ only-include = [
     "tpyc",
     "runtime",
     "lib/tpy",
+    "lib/cpy/tpy",
     "docs/TPY_FOR_AGENTS.md",
     "docs/LANGUAGE_FEATURES.md",
     "docs/STDLIB_ROADMAP.md",

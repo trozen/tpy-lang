@@ -11,6 +11,7 @@ import copy as _copy_module
 import struct as _struct
 import inspect as _inspect
 import collections.abc as _collections_abc
+import os as _os
 import typing as _typing
 
 # Version/implementation identification lives in `tpy.version` submodule
@@ -18,6 +19,11 @@ import typing as _typing
 #     from tpy.version import __version__, version_info, is_compiled
 
 T = TypeVar('T')
+
+# Fast mode (TPY_CPYTHON_FAST=1) makes the fixed-width numbers the plain
+# builtins, so a benchmark's CPython/PyPy baseline pays nothing for these
+# stubs. Type checkers see that same plain form, whichever mode runs.
+_FAST = _os.environ.get("TPY_CPYTHON_FAST") == "1"
 
 
 # ---------------------------------------------------------------------------
@@ -173,14 +179,29 @@ def _make_fixed_int_type(name: str, bits: int, signed: bool):
     return FixedInt
 
 
-int8 = _make_fixed_int_type("int8", 8, True)
-int16 = _make_fixed_int_type("int16", 16, True)
-int32 = _make_fixed_int_type("int32", 32, True)
-int64 = _make_fixed_int_type("int64", 64, True)
-uint8 = _make_fixed_int_type("uint8", 8, False)
-uint16 = _make_fixed_int_type("uint16", 16, False)
-uint32 = _make_fixed_int_type("uint32", 32, False)
-uint64 = _make_fixed_int_type("uint64", 64, False)
+# Type checkers only treat a bare TYPE_CHECKING test, and one name per
+# assignment, as a type alias.
+if _typing.TYPE_CHECKING:
+    int8 = int
+    int16 = int
+    int32 = int
+    int64 = int
+    uint8 = int
+    uint16 = int
+    uint32 = int
+    uint64 = int
+elif _FAST:
+    int8 = int16 = int32 = int64 = int
+    uint8 = uint16 = uint32 = uint64 = int
+else:
+    int8 = _make_fixed_int_type("int8", 8, True)
+    int16 = _make_fixed_int_type("int16", 16, True)
+    int32 = _make_fixed_int_type("int32", 32, True)
+    int64 = _make_fixed_int_type("int64", 64, True)
+    uint8 = _make_fixed_int_type("uint8", 8, False)
+    uint16 = _make_fixed_int_type("uint16", 16, False)
+    uint32 = _make_fixed_int_type("uint32", 32, False)
+    uint64 = _make_fixed_int_type("uint64", 64, False)
 
 
 # ---------------------------------------------------------------------------
@@ -194,32 +215,35 @@ def _to_f32(value):
         return float("inf") if value > 0 else float("-inf")
 
 
-class float32(float):
-    """Single-precision float: every value and every arithmetic result is
-    rounded through IEEE binary32, as the C++ `float` is. An operand that is
-    a plain `float` is rounded too, so a literal like `f + 0.5` matches TPy,
-    where the literal takes float32; a `float`-typed VARIABLE operand yields
-    a double in TPy but a float32 here (BUGS.md#cpy-float32-double-precision).
-    repr/str stay float's, printing the widened double exactly as the C++
-    runtime does."""
+if _typing.TYPE_CHECKING:
+    float32 = float
+elif _FAST:
+    float32 = float
+else:
+    class float32(float):
+        """Single-precision float: every value and every arithmetic result is
+        rounded through IEEE binary32, as the C++ `float` is. An operand that
+        is a plain `float` is rounded too, so a literal like `f + 0.5` matches
+        TPy, where the literal takes float32; a `float`-typed VARIABLE operand
+        yields a double in TPy but a float32 here
+        (BUGS.md#cpy-float32-double-precision). repr/str stay float's,
+        printing the widened double exactly as the C++ runtime does."""
 
-    def __new__(cls, value=0.0):
-        return super().__new__(cls, _to_f32(float(value)))
+        def __new__(cls, value=0.0):
+            return super().__new__(cls, _to_f32(float(value)))
 
+    def _f32_wrap(value):
+        return value if value is NotImplemented else float32(value)
 
-def _f32_wrap(value):
-    return value if value is NotImplemented else float32(value)
-
-
-for _name in ("add", "radd", "sub", "rsub", "mul", "rmul", "truediv", "rtruediv",
-              "floordiv", "rfloordiv", "mod", "rmod", "pow", "rpow"):
-    _dunder = f"__{_name}__"
-    setattr(float32, _dunder,
-            (lambda op: lambda self, other: _f32_wrap(op(self, other)))(getattr(float, _dunder)))
-for _name in ("neg", "pos", "abs"):
-    _dunder = f"__{_name}__"
-    setattr(float32, _dunder, (lambda op: lambda self: float32(op(self)))(getattr(float, _dunder)))
-del _name, _dunder
+    for _name in ("add", "radd", "sub", "rsub", "mul", "rmul", "truediv", "rtruediv",
+                  "floordiv", "rfloordiv", "mod", "rmod", "pow", "rpow"):
+        _dunder = f"__{_name}__"
+        setattr(float32, _dunder,
+                (lambda op: lambda self, other: _f32_wrap(op(self, other)))(getattr(float, _dunder)))
+    for _name in ("neg", "pos", "abs"):
+        _dunder = f"__{_name}__"
+        setattr(float32, _dunder, (lambda op: lambda self: float32(op(self)))(getattr(float, _dunder)))
+    del _name, _dunder
 
 float64 = float
 
@@ -352,11 +376,17 @@ class _PtrMeta(type):
         return cls
 
 
-class Ptr(metaclass=_PtrMeta):
-    """Ptr[T] type - null pointer constructor only."""
+# Type checkers see a pointer as its pointee, which TPy reads through
+# implicitly (`p.x` on a `Ptr[P]` is `P.x`); the `Any` member admits the null
+# pointer (`p = None`), which TPy checks at the dereference instead.
+if _typing.TYPE_CHECKING:
+    Ptr = _typing.Union[T, _typing.Any]
+else:
+    class Ptr(metaclass=_PtrMeta):
+        """Ptr[T] type - null pointer constructor only."""
 
-    def __new__(cls):
-        return _Ptr(None)
+        def __new__(cls):
+            return _Ptr(None)
 
 
 def take_ptr(obj):
@@ -379,11 +409,14 @@ class _OwnMeta(type):
         return _as_annotation(item)
 
 
-class Own(metaclass=_OwnMeta):
-    """Own[T] - owned/moved object. In CPython, just returns the object."""
+if _typing.TYPE_CHECKING:
+    Own = _typing.Union[T]
+else:
+    class Own(metaclass=_OwnMeta):
+        """Own[T] - owned/moved object. In CPython, just returns the object."""
 
-    def __new__(cls, obj):
-        return obj
+        def __new__(cls, obj):
+            return obj
 
 
 # ---------------------------------------------------------------------------
@@ -464,65 +497,69 @@ class SpanMeta(type):
         return BoundSpan
 
 
-class Span(metaclass=SpanMeta):
-    """Non-owning mutable view: Span[T] -> std::span<T>"""
+# Type checkers see a span as the mutable sequence it views.
+if _typing.TYPE_CHECKING:
+    Span = _collections_abc.MutableSequence
+else:
+    class Span(metaclass=SpanMeta):
+        """Non-owning mutable view: Span[T] -> std::span<T>"""
 
-    _elem_type = None
+        _elem_type = None
 
-    def __init__(self, data):
-        if isinstance(data, (list, Array)):
-            if hasattr(data, '_data'):
-                self._data = data._data
+        def __init__(self, data):
+            if isinstance(data, (list, Array)):
+                if hasattr(data, '_data'):
+                    self._data = data._data
+                else:
+                    self._data = data
             else:
-                self._data = data
-        else:
-            self._data = list(data)
+                self._data = list(data)
 
-    def unchecked_get(self, index: int):
-        return self._data[index]
+        def unchecked_get(self, index: int):
+            return self._data[index]
 
-    def __getitem__(self, index):
-        if isinstance(index, slice):
-            return Span(self._data[index])
-        i = index
-        if i < 0:
-            i += len(self._data)
-        if i < 0 or i >= len(self._data):
-            raise RuntimeError(f"span index out of bounds")
-        return self._data[i]
+        def __getitem__(self, index):
+            if isinstance(index, slice):
+                return Span(self._data[index])
+            i = index
+            if i < 0:
+                i += len(self._data)
+            if i < 0 or i >= len(self._data):
+                raise RuntimeError(f"span index out of bounds")
+            return self._data[i]
 
-    def __setitem__(self, index: int, value):
-        i = index
-        if i < 0:
-            i += len(self._data)
-        if i < 0 or i >= len(self._data):
-            raise RuntimeError(f"span index out of bounds")
-        self._data[i] = value
+        def __setitem__(self, index: int, value):
+            i = index
+            if i < 0:
+                i += len(self._data)
+            if i < 0 or i >= len(self._data):
+                raise RuntimeError(f"span index out of bounds")
+            self._data[i] = value
 
-    def size(self) -> int32:
-        return int32(len(self._data))
+        def size(self) -> int32:
+            return int32(len(self._data))
 
-    def __len__(self) -> int:
-        return len(self._data)
+        def __len__(self) -> int:
+            return len(self._data)
 
-    def __iter__(self):
-        return iter(self._data)
+        def __iter__(self):
+            return iter(self._data)
 
-    def __copy__(self):
-        new_span = object.__new__(type(self))
-        new_span._data = self._data
-        return new_span
+        def __copy__(self):
+            new_span = object.__new__(type(self))
+            new_span._data = self._data
+            return new_span
 
-    def __deepcopy__(self, memo):
-        new_span = object.__new__(type(self))
-        new_span._data = self._data
-        return new_span
+        def __deepcopy__(self, memo):
+            new_span = object.__new__(type(self))
+            new_span._data = self._data
+            return new_span
 
-    def sort(self):
-        self._data.sort()
-        if hasattr(self, '_backing_slots'):
-            for i in range(self._backing_len):
-                self._backing_slots[i] = self._data[i]
+        def sort(self):
+            self._data.sort()
+            if hasattr(self, '_backing_slots'):
+                for i in range(self._backing_len):
+                    self._backing_slots[i] = self._data[i]
 
 
 def _make_span(data):
