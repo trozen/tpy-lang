@@ -1,5 +1,8 @@
-main.py:41: warning: copies Box into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 38)
-main.py:49: warning: copies Box into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 46)
-main.py:57: warning: copies Box into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 56)
-main.py:64: warning: copies Box into owned storage; use copy() to make this explicit
-main.py:75: warning: copies Box into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 72)
+main.py:45: warning: copies Box into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 42)
+main.py:53: warning: copies Box into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 50)
+main.py:61: warning: copies Box into owned storage; use copy() to make this explicit ('p' is bound to existing storage at line 60)
+main.py:68: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:79: warning: copies Box into owned storage; use copy() to make this explicit ('b' is bound to existing storage at line 76)
+main.py:85: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:94: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:99: warning: copies Box into owned storage; use copy() to make this explicit

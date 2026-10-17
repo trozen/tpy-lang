@@ -53,6 +53,7 @@ from ..parse import (
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
     TpyNestedDef, TpyIf, TpyYield, TpyTry, TpyAugAssign, TpyNonlocal,
     collect_name_refs,
+    comp_free_reads, comp_sinks,
 )
 from .. import qnames
 from ..type_def_registry import (
@@ -73,7 +74,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import CompTarget, GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -240,26 +241,9 @@ def reject_rebound_iterated_capture(ctx: SemanticContext,
 
 
 def _comp_free_names(expr: TpyExpr) -> set[str]:
-    """The names `expr` reads from the scope it is written in: a nested
-    comprehension's or lambda's own variables are not such reads (clause 0's
-    iterable of a nested comprehension is, it runs outside that scope)."""
-    if isinstance(expr, TpyName):
-        return {expr.name}
-    if isinstance(expr, TpyLambda):
-        return _comp_free_names(expr.body) - set(expr.param_names)
-    if isinstance(expr, (TpyListComprehension, TpySetComprehension,
-                         TpyDictComprehension, TpyGeneratorExpression)):
-        gens = expr.generators
-        inner: set[str] = set()
-        for e in expr.children():
-            if e is not gens[0].iterable:
-                inner |= _comp_free_names(e)
-        bound = {n for gen in gens for n in gen.targets}
-        return _comp_free_names(gens[0].iterable) | (inner - bound)
-    out: set[str] = set()
-    for child in expr.children():
-        out |= _comp_free_names(child)
-    return out
+    """The names `expr` reads from the scope it is written in
+    (`comp_free_reads`)."""
+    return {r.name for r in comp_free_reads(expr)}
 
 
 def _nested_def_free_names(func: TpyFunction,
@@ -1488,8 +1472,13 @@ class ExpressionAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
-        # Use-after-consume: variable was consumed by a consuming method call
-        if expr.name in self.ctx.func.consumed_vars:
+        binding = (self.ctx.comp_binding(expr.name)
+                   if self.ctx.in_comprehension else None)
+        if binding is not None:
+            self.ctx.comp_var_reads[expr] = binding
+        # Use-after-consume: variable was consumed by a consuming method call.
+        # A comprehension variable is not the consumed enclosing binding.
+        elif expr.name in self.ctx.func.consumed_vars:
             raise self.ctx.error(
                 f"Cannot use '{expr.name}' after it was consumed by a consuming method call",
                 expr,
@@ -3658,25 +3647,6 @@ class ExpressionAnalyzer:
                 nodes[i] = new_elem
                 types[i] = expected
 
-    def _comp_elem_moves(self, gen: TpyComprehensionGenerator, elem: TpyExpr,
-                         is_last_sink: bool = False) -> bool:
-        """Whether a comprehension sink is the consuming MOVE -- an owned-source
-        bare-loop-var sink. The LAST-evaluated sink (list/set element, dict
-        value) is structurally a last use: the loop var is rebound each
-        iteration and every earlier read (filter, dict key) is sequenced before
-        it, so it moves unconditionally. An EARLIER sink (the dict key) gates on
-        `all_last_uses` -- it may not move if a later sink reads the var
-        (`{node: node.id}` must not move the key). Codegen mirrors this exactly
-        (a bare-var last sink std::move'd directly; earlier/sub-expression sinks
-        via `_maybe_move`), so the suppress/move decisions cannot drift."""
-        inner = elem
-        while isinstance(inner, TpyCoerce):
-            inner = inner.expr
-        return (gen.owns_elements
-                and isinstance(inner, TpyName)
-                and inner.name == gen.var
-                and (is_last_sink or inner in self.ctx.all_last_uses))
-
     def _warn_storage_element_copy(self, elem: TpyExpr, elem_type: TpyType) -> None:
         """A reference-type container-literal element is stored by value (the
         container owns its elements -- storage form), so an lvalue source is
@@ -5281,8 +5251,8 @@ class ExpressionAnalyzer:
         # transfers ownership, so there is no copy to warn about. A derived sink
         # (`x.field`, `f(x)`) is not the move, so it still warns/copies.
         if (expr.element_expr.loc is not None and not isinstance(expected_elem, AnyType)
-                and not self._comp_elem_moves(expr.generators[-1], expr.element_expr,
-                                              is_last_sink=True)):
+                and not self.compat.comp_elem_moves(expr.generators[-1], expr.element_expr,
+                                                    is_last_sink=True)):
             self._warn_storage_element_copy(expr.element_expr, result_elem_type)
 
         if expected_elem is not None and result_elem_type != expected_elem:
@@ -5434,10 +5404,10 @@ class ExpressionAnalyzer:
         # sink (the one shape codegen moves) -- `{node.id: node}` moves the value
         # but still copies/warns the key.
         if (expr.key_expr.loc is not None and not isinstance(expected_key, AnyType)
-                and not self._comp_elem_moves(innermost, expr.key_expr)):
+                and not self.compat.comp_elem_moves(innermost, expr.key_expr)):
             self._warn_storage_element_copy(expr.key_expr, key_type)
         if (expr.value_expr.loc is not None and not isinstance(expected_value, AnyType)
-                and not self._comp_elem_moves(innermost, expr.value_expr, is_last_sink=True)):
+                and not self.compat.comp_elem_moves(innermost, expr.value_expr, is_last_sink=True)):
             self._warn_storage_element_copy(expr.value_expr, value_type)
 
         if expected_key is not None and key_type != expected_key:
@@ -5553,7 +5523,8 @@ class ExpressionAnalyzer:
                 stack.enter_context(
                     self.scopes.loop_var(inner_scope, name, typ,
                                          inner_scope.depth, is_foreach=True))
-            self.ctx.func.comp_targets.extend(names)
+            self.ctx.func.comp_targets.extend(
+                CompTarget(n, expr, k, inner_scope.depth) for n in names)
             try:
                 result = self._analyze_comp_body(expr, k, inner_scope, hint)
             finally:
@@ -5566,7 +5537,8 @@ class ExpressionAnalyzer:
         # borrow of an element outlives the loop
         # (BUGS.md#consuming-loop-outlived-by-loop-var-borrow).
         self.ctx.credit_iter_source_mutation(
-            names, gen.iterable, reach=self.ctx.func.comp_targets)
+            names, gen.iterable,
+            reach={t.name for t in self.ctx.func.comp_targets})
 
         # An owned-yielding source binds the element non-const (`auto&&`) so a
         # last-use sink can move it -- mirrors the consuming for-loop, which
@@ -5594,9 +5566,7 @@ class ExpressionAnalyzer:
         live: list[TpyExpr] = list(gen.conditions)
         for later in expr.generators[k + 1:]:
             live += [later.iterable, *later.conditions]
-        live += ([expr.key_expr, expr.value_expr]
-                 if isinstance(expr, TpyDictComprehension)
-                 else [expr.element_expr])
+        live += comp_sinks(expr)
         note_source_writes(self.ctx, gen, gen.iterable, comp_live_region(live),
                            elem_type)
 

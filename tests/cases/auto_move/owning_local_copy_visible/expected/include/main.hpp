@@ -12,6 +12,8 @@ struct Pair;
 
 inline constexpr std::string_view __name__ = "__main__";
 
+// def take(b: Own[Box]) -> Own[Box]:
+Box take(Box&& b);
 // def make_pair(n: int32) -> tuple[Own[Box], Own[Box]]:
 std::tuple<Box, Box> make_pair(int32_t n);
 // def head(h: Pair) -> int32:
@@ -26,6 +28,12 @@ Box elem(Pair& h, bool c);
 Box recv_lent();
 // def repeat(w: Box, c: bool) -> Own[list[Box]]:
 std::vector<Box> repeat(Box& w, bool c);
+// def comp_receiver() -> None:
+void comp_receiver();
+// def comp_bare(ws: list[Box]) -> Own[list[Box]]:
+std::vector<Box> comp_bare(const std::vector<Box>& ws);
+// def comp_arg(ws: list[Box]) -> Own[list[Box]]:
+std::vector<Box> comp_arg(const std::vector<Box>& ws);
 // def main() -> None:
 void main();
 

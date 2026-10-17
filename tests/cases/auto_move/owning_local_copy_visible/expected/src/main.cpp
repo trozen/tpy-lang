@@ -4,6 +4,12 @@
 namespace tpyapp::main {
 
 
+// def take(b: Own[Box]) -> Own[Box]:
+//     return b
+Box take(Box&& b) {
+    return b;
+}
+
 // def make_pair(n: int32) -> tuple[Own[Box], Own[Box]]:
 //     return (Box(n), Box(n + 1))
 std::tuple<Box, Box> make_pair(int32_t n) {
@@ -99,6 +105,71 @@ std::vector<Box> repeat(Box& w, bool c) {
     return ::tpy::from_range<std::vector<Box>>(::tpy::repeat_range<Box>(2, {(*b)}));
 }
 
+// # comprehension: a consuming call on the variable over a live local's list
+// def comp_receiver() -> None:
+//     ws = [Box(7)]
+//     rs = [b.finish() for b in ws]  # tpyc: warning(/copies Box into owned storage; use copy\(\) to make this explicit$/)
+//     rs[0].xs.append(9)
+//     print("comp_receiver", ws[0].xs, rs[0].xs)
+void comp_receiver() {
+    std::array<Box, 1> ws = {Box(7)};
+    std::vector<Box> rs = ({
+        std::vector<Box> __result;
+        auto& __obj_0 = ws;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            auto&& b = *__beg_0;
+            __result.push_back(Box(b).finish());
+        }
+        std::move(__result);
+    });
+    ::tpy::__getitem__(rs, 0).xs.push_back(9);
+    std::cout << "comp_receiver" << " " << ::tpy::ListPrinter(::tpy::__getitem__(ws, 0).xs) << " " << ::tpy::ListPrinter(::tpy::__getitem__(rs, 0).xs) << "\n" << ::tpy::check_signals;
+}
+
+// # comprehension: the bare variable as the element, a body local sharing its name
+// def comp_bare(ws: list[Box]) -> Own[list[Box]]:
+//     b = Box(1)
+//     print("comp_bare outer", b.xs)
+//     return [b for b in ws]  # tpyc: warning(/copies Box into owned storage; use copy\(\) to make this explicit$/)
+std::vector<Box> comp_bare(const std::vector<Box>& ws) {
+    Box b = Box(1);
+    std::cout << "comp_bare outer" << " " << ::tpy::ListPrinter(b.xs) << "\n" << ::tpy::check_signals;
+    return ({
+        std::vector<Box> __result;
+        auto& __obj_0 = ws;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& b = *__beg_0;
+            __result.push_back(std::move(b));
+        }
+        std::move(__result);
+    });
+}
+
+// # comprehension: the variable over a borrowed list passed to an `Own` parameter
+// def comp_arg(ws: list[Box]) -> Own[list[Box]]:
+//     return [take(b) for b in ws]  # tpyc: warning(/copies Box into owned storage; use copy\(\) to make this explicit$/)
+std::vector<Box> comp_arg(const std::vector<Box>& ws) {
+    return ({
+        std::vector<Box> __result;
+        auto& __obj_0 = ws;
+        __result.reserve(static_cast<std::size_t>(__obj_0.size()));
+        auto __beg_0 = __obj_0.begin();
+        auto __end_0 = __obj_0.end();
+        for (; __beg_0 != __end_0; ++__beg_0) {
+            const auto& b = *__beg_0;
+            Box __tmp_1 = b;
+            __result.push_back(::tpyapp::main::take(std::move(__tmp_1)));
+        }
+        std::move(__result);
+    });
+}
+
 // def main() -> None:
 //     w = Box(7)
 //     r = ret(w, False)
@@ -117,6 +188,15 @@ std::vector<Box> repeat(Box& w, bool c) {
 //     rp = repeat(w, False)
 //     rp[0].xs.append(9)
 //     print("repeat", w.xs, rp[0].xs)
+//     comp_receiver()
+//     ws = [Box(7)]
+//     rb = comp_bare(ws)
+//     rb[0].xs.append(9)
+//     print("comp_bare", ws[0].xs, rb[0].xs)
+//     ws = [Box(7)]
+//     ra = comp_arg(ws)
+//     ra[0].xs.append(9)
+//     print("comp_arg", ws[0].xs, ra[0].xs)
 void main() {
     Box __slot_1 = Box(7);
     Box* w = &__slot_1;
@@ -141,6 +221,17 @@ void main() {
     std::vector<Box> rp = ::tpyapp::main::repeat((*w), false);
     ::tpy::__getitem__(rp, 0).xs.push_back(9);
     std::cout << "repeat" << " " << ::tpy::ListPrinter(w->xs) << " " << ::tpy::ListPrinter(::tpy::__getitem__(rp, 0).xs) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::comp_receiver();
+    std::vector<Box> __slot_7 = {Box(7)};
+    std::vector<Box>* ws = &__slot_7;
+    std::vector<Box> rb = ::tpyapp::main::comp_bare((*ws));
+    ::tpy::__getitem__(rb, 0).xs.push_back(9);
+    std::cout << "comp_bare" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*ws), 0).xs) << " " << ::tpy::ListPrinter(::tpy::__getitem__(rb, 0).xs) << "\n" << ::tpy::check_signals;
+    std::optional<std::vector<Box>> __slot_8;
+    ws = &*(__slot_8 = std::vector<Box>{Box(7)});
+    std::vector<Box> ra = ::tpyapp::main::comp_arg((*ws));
+    ::tpy::__getitem__(ra, 0).xs.push_back(9);
+    std::cout << "comp_arg" << " " << ::tpy::ListPrinter(::tpy::__getitem__((*ws), 0).xs) << " " << ::tpy::ListPrinter(::tpy::__getitem__(ra, 0).xs) << "\n" << ::tpy::check_signals;
 }
 
 // main()

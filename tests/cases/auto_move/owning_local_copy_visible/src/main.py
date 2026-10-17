@@ -17,6 +17,10 @@ class Box:
         return self.xs
 
 
+def take(b: Own[Box]) -> Own[Box]:
+    return b
+
+
 class Pair:
     pair: tuple[Box, Box]
 
@@ -75,6 +79,26 @@ def repeat(w: Box, c: bool) -> Own[list[Box]]:
     return [b] * 2  # tpyc: warning(/copies Box into owned storage.*'b' is bound to existing storage/)
 
 
+# comprehension: a consuming call on the variable over a live local's list
+def comp_receiver() -> None:
+    ws = [Box(7)]
+    rs = [b.finish() for b in ws]  # tpyc: warning(/copies Box into owned storage; use copy\(\) to make this explicit$/)
+    rs[0].xs.append(9)
+    print("comp_receiver", ws[0].xs, rs[0].xs)
+
+
+# comprehension: the bare variable as the element, a body local sharing its name
+def comp_bare(ws: list[Box]) -> Own[list[Box]]:
+    b = Box(1)
+    print("comp_bare outer", b.xs)
+    return [b for b in ws]  # tpyc: warning(/copies Box into owned storage; use copy\(\) to make this explicit$/)
+
+
+# comprehension: the variable over a borrowed list passed to an `Own` parameter
+def comp_arg(ws: list[Box]) -> Own[list[Box]]:
+    return [take(b) for b in ws]  # tpyc: warning(/copies Box into owned storage; use copy\(\) to make this explicit$/)
+
+
 def main() -> None:
     w = Box(7)
     r = ret(w, False)
@@ -93,6 +117,15 @@ def main() -> None:
     rp = repeat(w, False)
     rp[0].xs.append(9)
     print("repeat", w.xs, rp[0].xs)
+    comp_receiver()
+    ws = [Box(7)]
+    rb = comp_bare(ws)
+    rb[0].xs.append(9)
+    print("comp_bare", ws[0].xs, rb[0].xs)
+    ws = [Box(7)]
+    ra = comp_arg(ws)
+    ra[0].xs.append(9)
+    print("comp_arg", ws[0].xs, ra[0].xs)
 
 
 main()

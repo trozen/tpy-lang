@@ -43,7 +43,7 @@ from .calls import (
     resolve_inferred_type_arg,
 )
 from .type_ops import ReturnSeed, seeded_arg_hint
-from .context import PENDING_CONTAINER_TYPES, ReceiverMove
+from .context import CompTarget, PENDING_CONTAINER_TYPES, ReceiverMove
 from .list_elem import (ContainerCall, Effect, Role, container_call,
                         container_calls)
 from .pending_num import (ContainerCells, Entry, is_pending_num,
@@ -1023,9 +1023,11 @@ class MethodAnalyzer:
                     f"pointers do not own the pointee",
                     expr,
                 )
+            binding = self.ctx.comp_var_reads.get(expr.obj)
             # Reject consuming outer variables inside a loop -- the variable
             # won't be re-bound on the next iteration, causing use-after-move.
-            if self.ctx.func.loop_depth > 0:
+            # A comprehension variable's clause decides it instead.
+            if binding is None and self.ctx.func.loop_depth > 0:
                 var_depth = self.ctx.func.var_scope_depth.get(name, 0)
                 loop_scope_depth = self.ctx.func.current_scope.depth
                 if var_depth < loop_scope_depth:
@@ -1034,22 +1036,34 @@ class MethodAnalyzer:
                         f"the variable is not re-bound each iteration",
                         expr,
                     )
-            self._check_consuming_receiver(expr.obj)
+            self._check_consuming_receiver(expr.obj, binding)
             # Use-after-consume is already caught by _analyze_name before we get here.
-            self.ctx.func.consumed_vars.add(name)
+            # A comprehension variable is rebound every iteration, and a
+            # receiver that moves it is its only read.
+            if binding is None:
+                self.ctx.func.consumed_vars.add(name)
 
-    def _check_consuming_receiver(self, recv: TpyName) -> None:
+    def _check_consuming_receiver(self, recv: TpyName,
+                                  binding: 'CompTarget | None') -> None:
         """A consuming call takes its receiver as an owning sink does: a
         name that owns its value moves in; one that does not (a borrowed
         parameter, a non-owning local) is copied in, warned like any owning
-        sink's copy. A loop variable's ownership is its iteration's."""
-        if recv.name in self.ctx.func.loop_vars:
+        sink's copy. A `for` variable's ownership is its iteration's; a
+        comprehension variable's is its clause's (`binding`,
+        `comp_elem_moves`)."""
+        if binding is None and recv.name in self.ctx.func.loop_vars:
             return
         t = self.ctx.get_expr_type(recv)
         bare = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
         if isinstance(bare, OwnType):
             bare = unwrap_readonly(bare.wrapped)
         if bare is None or bare.is_value_type():
+            return
+        if binding is not None:
+            gen = binding.comp.generators[binding.clause]
+            if not self.compat.comp_elem_moves(gen, recv, is_last_sink=True,
+                                               binding=binding):
+                self.compat.declare_receiver_copy(recv)
             return
         read = ReceiverMove(recv.name, recv)
         if self.compat.grant_name_move(recv, read=read):

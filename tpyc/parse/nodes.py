@@ -2406,6 +2406,36 @@ def collect_name_refs(expr: TpyExpr, *, into_lambdas: bool = False) -> set[str]:
     return names
 
 
+def comp_free_reads(expr: TpyExpr) -> list[TpyName]:
+    """The name reads `expr` makes of the scope it is written in: a nested
+    comprehension's or lambda's own variables are not such reads (clause 0's
+    iterable of a nested comprehension is, it runs outside that scope)."""
+    if isinstance(expr, TpyName):
+        return [expr]
+    if isinstance(expr, TpyLambda):
+        params = set(expr.param_names)
+        return [r for r in comp_free_reads(expr.body) if r.name not in params]
+    if isinstance(expr, (TpyListComprehension, TpySetComprehension,
+                         TpyDictComprehension, TpyGeneratorExpression)):
+        gens = expr.generators
+        bound = {n for gen in gens for n in gen.targets}
+        out = comp_free_reads(gens[0].iterable)
+        for e in expr.children():
+            if e is not gens[0].iterable:
+                out += [r for r in comp_free_reads(e) if r.name not in bound]
+        return out
+    return [r for child in expr.children() for r in comp_free_reads(child)]
+
+
+def comp_sinks(expr: 'TpyListComprehension | TpySetComprehension '
+                      '| TpyDictComprehension') -> list[TpyExpr]:
+    """The expression(s) a comprehension evaluates per innermost iteration
+    after its filters: the element, or the dict key and value."""
+    if isinstance(expr, TpyDictComprehension):
+        return [expr.key_expr, expr.value_expr]
+    return [expr.element_expr]
+
+
 def expr_reads_self_field(expr: TpyExpr, fields: set[str]) -> bool:
     """True if `expr` reads `self.X` for any X in `fields`, or makes any
     `self.method(...)` call while `fields` is non-empty (methods can read

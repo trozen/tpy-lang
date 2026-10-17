@@ -687,7 +687,7 @@ per shape; the mixed tuple global (D2) waits on that entry.
       (`tests/cases/generators/frame_rebind_arms`), and a frame unpack of an
       `Own[tuple[...]]` call result into a reference target is refused
       (A', `BUGS.md#frame-own-tuple-unpack-dangles`).
-    - [ ] 5.4 -- an owning sink over an element owned on some paths and
+    - [x] 5.4 (554f59acd7) -- an owning sink over an element owned on some paths and
       borrowed on others takes the scalar's warned copy instead of the
       located reject: `p = (w, v); if c: p = mk(1, v)` then `take(p[0])`
       at `take(b: Own[Box])`, where the scalar twin `b = w; if c: b =

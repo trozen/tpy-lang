@@ -3,3 +3,7 @@ receiver [7] [7, 9]
 elem 1 [7, 9]
 recv_lent 2 1
 repeat [7] [7, 9]
+comp_receiver [7] [7, 9]
+comp_bare outer [1]
+comp_bare [7] [7, 9]
+comp_arg [7] [7, 9]

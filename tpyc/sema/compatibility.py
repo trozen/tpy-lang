@@ -52,7 +52,7 @@ from ..parse import (
     TpyListRepeat, TpyCall, TpyCallLike, TpyMethodCall, TpyUnaryOp,
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr,
-    lambda_of,
+    lambda_of, comp_free_reads, comp_sinks, TpyComprehensionGenerator,
     TpyVarDecl, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
@@ -63,7 +63,7 @@ from .call_lends import (
     Lent, MayLend, ReturnLend, borrowing_ctor_arg, escaping_borrow_tuple,
 )
 from .context import (
-    ConsumingLoop, ElementMove, FinallyCapture, HeldLoopCopy, NameMove,
+    CompTarget, ConsumingLoop, ElementMove, FinallyCapture, HeldLoopCopy, NameMove,
     OwnIterMove, OwningRead, ReceiverMove, SinkCopy, TupleNameMove,
     UnneededCopy, OwnSlot, ParkedFunctionState, ParkedRebind, BorrowKind,
     BorrowTracker,
@@ -1687,15 +1687,23 @@ class TypeCompatibility:
             # borrower's demotion is applied here, where the return's
             # verdict has always been taken (a lambda's return has no other
             # check), retracting the last-use mark the lowering reads.
+            binding = self.ctx.comp_var_reads.get(source_expr)
             if is_return:
                 is_auto_moved = False
                 self.retract_hidden_borrowed_last_use(source_expr)
+            elif binding is not None:
+                # The lowering alone decides whether a comprehension
+                # variable moves into an owning slot; sema claims no move
+                # (BUGS.md#comp-var-own-arg-false-copy-warning), and the
+                # name-keyed ownership fact belongs to an outer local.
+                is_auto_moved = False
             else:
                 is_auto_moved = self.grant_name_move(
                     source_expr, expected, context)
             self.check_own_consumption(source_expr)
-            # Mark loop variables as consumed for auto-consuming heuristic
-            if isinstance(source_expr, TpyName):
+            # Mark loop variables as consumed for auto-consuming heuristic;
+            # a comprehension variable is not the enclosing `for` variable.
+            if isinstance(source_expr, TpyName) and binding is None:
                 self.ctx.mark_loop_var_consumed(source_expr.name)
             # A value-tuple with pointer-repr (reference) members copies each
             # such member into owned storage where CPython aliases, even though
@@ -3162,11 +3170,49 @@ class TypeCompatibility:
               if tt is not None else None)
         return len(tt.element_types) if isinstance(tt, TupleType) else None
 
+    def comp_elem_moves(self, gen: TpyComprehensionGenerator, elem: TpyExpr,
+                        is_last_sink: bool = False, *,
+                        binding: 'CompTarget | None' = None) -> bool:
+        """Whether a comprehension sink is the consuming MOVE -- an owned-source
+        bare-loop-var sink. The LAST-evaluated sink (list/set element, dict
+        value) is structurally a last use: the loop var is rebound each
+        iteration and every earlier read (filter, dict key) is sequenced before
+        it, so it moves unconditionally. An EARLIER sink (the dict key) gates on
+        `all_last_uses` -- it may not move if a later sink reads the var
+        (`{node: node.id}` must not move the key). Codegen mirrors this exactly
+        (a bare-var last sink std::move'd directly; earlier/sub-expression sinks
+        via `_maybe_move`), so the suppress/move decisions cannot drift.
+
+        `binding`: `elem` is a consuming receiver reading that clause's
+        variable inside the sinks; it moves only as the variable's sole
+        read there."""
+        inner = elem
+        while isinstance(inner, TpyCoerce):
+            inner = inner.expr
+        if binding is not None:
+            assert isinstance(inner, TpyName) and is_last_sink
+            gens = binding.comp.generators
+            reads = [r for sink in comp_sinks(binding.comp)
+                     for r in comp_free_reads(sink) if r.name == inner.name]
+            if not (gen.owns_elements
+                    and gen.unpack_vars is None and inner.name == gen.var
+                    and binding.clause == len(gens) - 1
+                    and self.ctx.func.current_scope is not None
+                    and binding.depth == self.ctx.func.current_scope.depth
+                    and any(r is inner for r in reads)):
+                return False
+            return len(reads) == 1
+        return (gen.owns_elements
+                and isinstance(inner, TpyName)
+                and inner.name == gen.var
+                and (is_last_sink or inner in self.ctx.all_last_uses))
+
     def declare_receiver_copy(self, recv: TpyName) -> None:
         """The copy a consuming call (`self: Own[Self]`) makes of a receiver
         that does not own its value (a borrowed parameter, a non-owning
-        local): the owning slot's warning, or its error for a non-copyable
-        type, declared to the lowering (`own_element_copies`)."""
+        local, a comprehension variable its clause does not move): the
+        owning slot's warning, or its error for a non-copyable type,
+        declared to the lowering (`own_element_copies`)."""
         t = self.ctx.get_expr_type(recv)
         t = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
         if isinstance(t, OwnType):
@@ -3439,7 +3485,9 @@ class TypeCompatibility:
         payload errors, because there is no copy for the warning to
         describe. True when the slot copies. `sink` is the copy's text at a
         sink other than an `Own` slot (a field, a container, `Any`, an
-        element copy), settled here for a move a later binding revoked."""
+        element copy), settled here for a move a later binding revoked.
+        A comprehension variable's read (`comp_var_reads`) arrives with its
+        clause's copy decided."""
         # Value types are always safe -- copied, not aliased. OwnType.is_value_type
         # returns True (Own represents a moved value), so we have to peel Own
         # first to see whether the underlying T is genuinely a value type.
@@ -3450,6 +3498,7 @@ class TypeCompatibility:
         inner = expr
         while isinstance(inner, TpyCoerce):
             inner = inner.expr
+        comp_var = inner in self.ctx.comp_var_reads
         raw_type = self.ctx.get_raw_expr_type(inner)
         if raw_type is not None:
             unwrapped = unwrap_ref_type(raw_type)
@@ -3483,8 +3532,9 @@ class TypeCompatibility:
         # A consuming method's field read that sema let move out of `self`.
         if isinstance(inner, TpyFieldAccess) and inner.consuming_move:
             return False
-        if self.grant_name_move(expr, own_type, context, action,
-                                whole_slot=whole_slot, sink=sink):
+        if not comp_var and self.grant_name_move(
+                expr, own_type, context, action,
+                whole_slot=whole_slot, sink=sink):
             self.require_movable(expr, context)
             self.check_own_consumption(expr)
             return False
@@ -3502,7 +3552,7 @@ class TypeCompatibility:
             reason = (self.ctx.nocopy_reason(expr_type)
                       if self.ctx.is_type_nocopy(expr_type)
                       else f"non-copyable type '{unwrap_readonly(expr_type)}'")
-            is_movable = (isinstance(expr, TpyName)
+            is_movable = (isinstance(expr, TpyName) and not comp_var
                           and self._is_owned_var(expr.name))
             if is_movable:
                 raise self.ctx.error(
@@ -4961,7 +5011,7 @@ class TypeCompatibility:
                 expr = expr.expr
             if index is None:
                 return ""
-        if not isinstance(expr, TpyName):
+        if not isinstance(expr, TpyName) or expr in self.ctx.comp_var_reads:
             return ""
         fs = self.ctx.func
         line = fs.nonowning_line(expr.name)

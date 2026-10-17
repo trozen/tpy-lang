@@ -1,0 +1,2 @@
+main.py:20: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:22: error: Cannot use 'b' after it was consumed by a consuming method call

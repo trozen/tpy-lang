@@ -1,0 +1,1 @@
+main.py:19: error: @nocopy type 'Cell' cannot be passed as the consuming receiver Own[Cell]. Only the original owner can be moved at its last use.

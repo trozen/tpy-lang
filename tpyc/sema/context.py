@@ -1482,6 +1482,19 @@ class PendingLocal:
         return self.head_stmt is None and not self.head_first
 
 
+@dataclass(frozen=True, slots=True)
+class CompTarget:
+    """A target a comprehension clause binds: clause `clause` of `comp`,
+    whose clauses all bind into its scope at `depth` (a depth, not the
+    `Scope`: a state snapshot copies the list, and must not clone a live
+    scope)."""
+
+    name: str
+    comp: TpyExpr
+    clause: int
+    depth: int
+
+
 @dataclass
 class LoopClauseEdges:
     """Every edge that leaves one loop's BODY clause, and their verdict.
@@ -1625,8 +1638,9 @@ class FunctionTrackingState:
     loop_vars: set[str] = field(default_factory=set)
     mutated_loop_vars: set[str] = field(default_factory=set)
     # The targets of the comprehension clauses being analyzed, innermost
-    # last: the loop vars a comprehension's write may lend through.
-    comp_targets: list[str] = field(default_factory=list)
+    # last: the loop vars a comprehension's write may lend through, and the
+    # clause a read of one belongs to (`SemanticContext.comp_binding`).
+    comp_targets: list[CompTarget] = field(default_factory=list)
     consumed_loop_vars: set[str] = field(default_factory=set)
     # One loop var can borrow MANY sources: a `*args` pack is a single
     # argument slot holding many operands, so an iterable borrowing the pack
@@ -2593,6 +2607,11 @@ class SemanticContext:
     # never a move out of storage that outlives the call, never an
     # undeclared copy.
     own_element_copies: IdentityMap = field(default_factory=IdentityMap)
+    # Name reads that resolve to a comprehension's own variable, mapped to
+    # the clause binding it (`CompTarget`): an owning sink's verdict on one
+    # is its clause's, never the function's name-keyed ownership fact,
+    # which speaks for an enclosing binding of the name.
+    comp_var_reads: IdentityMap = field(default_factory=IdentityMap)
     # The declared-copy NAMES among them whose binding also holds an element
     # by value (mixed): no whole-tuple lift may build their copy.
     own_element_mixed: IdentitySet = field(default_factory=IdentitySet)
@@ -3684,6 +3703,18 @@ class SemanticContext:
                 and (reach is None or root in reach)):
             mark_roots(self, [StorageKey.of_name(root)],
                        MarkRequest(params=False, loop_vars=True))
+
+    def comp_binding(self, name: str) -> CompTarget | None:
+        """The comprehension clause a read of `name` here resolves to, or
+        None when it resolves to anything else (a lambda parameter, a
+        binding of the function body)."""
+        scope = self.func.current_scope
+        while scope is not None and name not in scope.bindings:
+            scope = scope.parent
+        if scope is None or not scope.expression:
+            return None
+        return next((t for t in reversed(self.func.comp_targets)
+                     if t.name == name and t.depth == scope.depth), None)
 
     def mark_loop_var_consumed(self, name: str) -> None:
         """Mark a for-each loop variable as consumed (copied into owned storage).
