@@ -12,10 +12,11 @@ treat **Planned** / **Open** as non-existent.
 
 ## 1. What TurboPython is
 
-TurboPython is a Python-to-C++ compiler. Source files are ordinary Python and
-typically also run under CPython unchanged (dual-target), but are compiled to
-C++ for performance. The compiler performs static type checking and produces
-native binaries.
+TurboPython is a high-performance dialect of Python, compiled to C++. Source
+files are ordinary Python and typically also run under CPython unchanged
+(dual-target), but are compiled to C++ for performance; arbitrary Python
+programs do not compile. The compiler performs static type checking and
+produces native binaries.
 
 Why this matters for you as an agent writing code:
 

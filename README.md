@@ -1,11 +1,14 @@
-# TurboPython: a Python-to-C++ compiler
+# TurboPython: a high-performance dialect of Python, compiled to C++
 
-**TurboPython** (TPy, package `tpy-lang`) compiles statically typed Python
-through C++ to a native binary. The result has no interpreter, no garbage
-collector, no automatic reference counting and no GIL; an ownership model
-provides deterministic, compile-checked memory management. Source files
-stay valid Python, so existing editors and linters read them, but
-TurboPython is not a drop-in replacement for CPython.
+**TurboPython** (TPy, package `tpy-lang`) is a high-performance dialect of
+Python: statically typed Python source compiles through C++ to a native
+binary. The result has no interpreter, no garbage collector, no automatic
+reference counting and no GIL; an ownership model provides deterministic,
+compile-checked memory management. Source files stay valid Python, so
+existing editors and linters read them, but TurboPython does not run
+arbitrary Python: parameters and fields are annotated, it imports no
+CPython packages, and dynamic features such as `eval`/`exec` or adding
+undeclared attributes are not supported.
 
 [Website](https://tpy-lang.org) |
 [Documentation](https://tpy-lang.org/docs/) |
