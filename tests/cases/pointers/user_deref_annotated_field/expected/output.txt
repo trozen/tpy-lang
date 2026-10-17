@@ -1,0 +1,5 @@
+read: a 1 2
+write: b 10 10 20 20
+property: raised
+inferred: 30 30
+peer: 42 42 6

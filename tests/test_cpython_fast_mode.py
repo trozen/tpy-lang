@@ -54,3 +54,40 @@ def test_fast_mode_binds_the_builtins_and_keeps_in_range_output(tmp_path: Path) 
     assert fast.splitlines()[1] == "True True"
     assert exact.splitlines()[2] == "253 int"
     assert fast.splitlines()[2] == "-3 int"
+
+
+IMPORT_PROBE = """\
+import sys
+before = set(sys.modules)
+import tpy
+loaded = set(sys.modules) - before
+print("asyncio" in loaded, "inspect" in loaded, "CancelledError" in dir(tpy))
+first = tpy.CancelledError  # the first read loads asyncio
+from tpy import CancelledError
+import asyncio
+print(first is CancelledError is asyncio.CancelledError)
+"""
+
+STAR_PROBE = """\
+from tpy import *
+import asyncio
+print(CancelledError is asyncio.CancelledError)
+"""
+
+
+def test_import_leaves_asyncio_and_inspect_unloaded(tmp_path: Path) -> None:
+    # Every module `import tpy` keeps alive is walked by each later major GC.
+    for fast in (False, True):
+        env = dict(os.environ)
+        env.pop("TPY_CPYTHON_FAST", None)
+        if fast:
+            env["TPY_CPYTHON_FAST"] = "1"
+        r = subprocess.run([sys.executable, "-c", IMPORT_PROBE], env=env,
+                           cwd=tmp_path, capture_output=True, text=True,
+                           timeout=60)
+        assert r.returncode == 0, r.stderr
+        assert r.stdout.splitlines() == ["False False True", "True"], fast
+        r = subprocess.run([sys.executable, "-c", STAR_PROBE], env=env,
+                           cwd=tmp_path, capture_output=True, text=True,
+                           timeout=60)
+        assert r.stdout == "True\n", (fast, r.stderr)

@@ -475,9 +475,10 @@ void failing_close() {
 //     bw.flush()
 //     print("bufw:", os.read(r, 16))
 //     # A write larger than the buffer goes to the raw sink at once: the file
-//     # holds it before any flush.
+//     # holds it before any flush. The explicit size keeps it larger than the
+//     # buffer on every CPython, whose default size differs by version.
 //     fd = feed_file("fileio_bufw.bin", b"")
-//     big = BufferedWriter(FileIO(fd, "wb", False))
+//     big = BufferedWriter(FileIO(fd, "wb", False), 4096)
 //     print("bufw:", big.write(b"z" * 9000), os.lseek(fd, 0, os.SEEK_END))
 //     big.close()
 //     os.close(fd)
@@ -513,7 +514,7 @@ void buffered_writer() {
     bw.flush();
     std::cout << "bufw:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(r, 16)) << "\n" << ::tpy::check_signals;
     int64_t fd = ::tpyapp::main::feed_file("fileio_bufw.bin", ::tpy::BytesView{});
-    ::tpystd::io::BufferedWriter big = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(fd, "wb", false)));
+    ::tpystd::io::BufferedWriter big = ::tpystd::io::BufferedWriter(::tpy::make_adapter<::tpystd::io::RawBinaryWriter>(::tpystd::io::FileIO(fd, "wb", false)), 4096);
     std::cout << "bufw:" << " " << big.write((::tpy::bytes_repeat(::tpy::bytes_literal("z", 1), 9000))) << " " << ::tpystd::os::lseek(fd, 0, ::tpy::stdlib::os::kc_seek_end) << "\n" << ::tpy::check_signals;
     big.close();
     ::tpystd::os::close(fd);

@@ -229,9 +229,10 @@ def buffered_writer() -> None:
     bw.flush()
     print("bufw:", os.read(r, 16))
     # A write larger than the buffer goes to the raw sink at once: the file
-    # holds it before any flush.
+    # holds it before any flush. The explicit size keeps it larger than the
+    # buffer on every CPython, whose default size differs by version.
     fd = feed_file("fileio_bufw.bin", b"")
-    big = BufferedWriter(FileIO(fd, "wb", False))
+    big = BufferedWriter(FileIO(fd, "wb", False), 4096)
     print("bufw:", big.write(b"z" * 9000), os.lseek(fd, 0, os.SEEK_END))
     big.close()
     os.close(fd)

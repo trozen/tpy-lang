@@ -7,11 +7,11 @@ allowing TurboPython source files to run in CPython and enabling IDE support.
 
 from __future__ import annotations
 from typing import Generic, TypeVar, Callable, Protocol as _Protocol, runtime_checkable as _runtime_checkable
-import copy as _copy_module
 import struct as _struct
-import inspect as _inspect
 import collections.abc as _collections_abc
 import os as _os
+import sys as _sys
+import weakref as _weakref
 import typing as _typing
 
 # Version/implementation identification lives in `tpy.version` submodule
@@ -653,14 +653,15 @@ _dispatch_registry: dict[tuple[str, str], list] = {}
 
 def _arity_of(func) -> tuple[int, int]:
     """Return (min_args, max_args) for a function."""
-    sig = _inspect.signature(func)
+    import inspect
+    sig = inspect.signature(func)
     min_args = 0
     max_args = 0
     for p in sig.parameters.values():
         if p.kind in (p.VAR_POSITIONAL, p.VAR_KEYWORD):
             continue
         max_args += 1
-        if p.default is _inspect.Parameter.empty:
+        if p.default is inspect.Parameter.empty:
             min_args += 1
     return min_args, max_args
 
@@ -693,8 +694,9 @@ def _callable_arity_of_value(value) -> int | None:
     introspect it. Companion of `_callable_arity_of_annotation` for
     arity-based overload dispatch.
     """
+    import inspect
     try:
-        sig = _inspect.signature(value)
+        sig = inspect.signature(value)
     except (TypeError, ValueError):
         return None
     n = 0
@@ -762,7 +764,8 @@ def _is_int_at_float(ann, arg) -> bool:
 def _float_converted(func, args: tuple, hints: dict) -> tuple:
     """`args` with each int at a `float` slot converted, so the variant
     prints `3.0` as the compiled one does."""
-    params = list(_inspect.signature(func).parameters.keys())
+    import inspect
+    params = list(inspect.signature(func).parameters.keys())
     return tuple(hints[params[i]](arg)
                  if i < len(params) and params[i] in hints
                  and _is_int_at_float(hints[params[i]], arg) else arg
@@ -771,7 +774,8 @@ def _float_converted(func, args: tuple, hints: dict) -> tuple:
 
 def _type_matches(func, args: tuple, hints: dict) -> bool:
     """Check if positional args match the function's type annotations."""
-    params = list(_inspect.signature(func).parameters.keys())
+    import inspect
+    params = list(inspect.signature(func).parameters.keys())
     for i, arg in enumerate(args):
         if i >= len(params):
             break
@@ -965,6 +969,7 @@ def copy(obj):
         return copy(target)
     if hasattr(obj, '__copy__'):
         return obj.__copy__()
+    import copy as _copy_module
     return _copy_module.deepcopy(obj)
 
 def copy_iter(iterable):
@@ -1023,23 +1028,70 @@ class Deref(_Protocol[T]):
     """Types that can be dereferenced to yield T.
 
     Attribute access the wrapper does not define forwards to the payload,
-    mirroring the compiler's auto-deref member access (the wrapper's own
-    members always win, which is also how `__getattr__` behaves)."""
+    mirroring the compiler's auto-deref member access: the wrapper's own
+    members always win. Its own are the names its classes define or
+    annotate, plus the fields its `__init__` assigns."""
     def __deref__(self): ...
 
     def __getattr__(self, name):
-        if name.startswith("_"):
+        # Python calls this after a wrapper member raised AttributeError too;
+        # a declared member's failure is the wrapper's, not the payload's.
+        if _is_wrapper_member(type(self), name):
             raise AttributeError(name)
         return getattr(self.__deref__(), name)
 
     def __setattr__(self, name, value):
-        # A member WRITE through the wrapper lands on the payload too, unless
-        # the wrapper itself declares the name (its own state, e.g. `_ptr`).
-        if name.startswith("_") or name in type(self).__dict__ \
-                or any(name in c.__dict__ for c in type(self).__mro__[1:]):
+        if name in self.__dict__ or _in_wrapper_init(self) \
+                or _is_wrapper_member(type(self), name):
             object.__setattr__(self, name, value)
         else:
             setattr(self.__deref__(), name, value)
+
+
+# Weak keys, so a wrapper class a program drops can still be collected.
+_ANNOTATED_FIELDS: _weakref.WeakKeyDictionary = _weakref.WeakKeyDictionary()
+_WRAPPER_INITS: _weakref.WeakKeyDictionary = _weakref.WeakKeyDictionary()
+
+
+def _is_wrapper_member(cls: type, name: str) -> bool:
+    if name.startswith("__") and name.endswith("__"):
+        return True
+    if any(name in c.__dict__ for c in cls.__mro__):
+        return True
+    # Read last and once: on 3.14 reading annotations runs their expressions,
+    # even for their names alone.
+    fields = _ANNOTATED_FIELDS.get(cls)
+    if fields is None:
+        fields = _ANNOTATED_FIELDS[cls] = frozenset(
+            n for c in cls.__mro__ for n in _annotation_names(c))
+    return name in fields
+
+
+def _in_wrapper_init(obj) -> bool:
+    # `self.f = param` in `__init__` declares a field (the compiler's
+    # constructor inference), so the write stays on the wrapper.
+    cls = type(obj)
+    codes = _WRAPPER_INITS.get(cls)
+    if codes is None:
+        codes = _WRAPPER_INITS[cls] = frozenset(
+            c.__dict__["__init__"].__code__ for c in cls.__mro__
+            if hasattr(c.__dict__.get("__init__"), "__code__"))
+    frame = _sys._getframe(2)
+    code = frame.f_code
+    return code in codes and frame.f_locals.get(code.co_varnames[0]) is obj
+
+
+try:
+    import annotationlib as _annotationlib
+except ImportError:
+    _annotationlib = None
+
+
+def _annotation_names(c: type):
+    if _annotationlib is None:
+        return c.__dict__.get("__annotations__", {})
+    # STRING keeps an annotation naming a class defined later from raising.
+    return _annotationlib.get_annotations(c, format=_annotationlib.Format.STRING)
 
 
 class Covariant(_Protocol[T]):
@@ -1252,9 +1304,22 @@ basic_slice = slice
 
 # Aliased to CPython's `asyncio.CancelledError` so `raise tpy.
 # CancelledError()` and `except asyncio.CancelledError:` resolve to the
-# same class under cpy.
-import asyncio as _asyncio
-CancelledError = _asyncio.CancelledError
+# same class under cpy. Loaded on first use: asyncio pulls in ~90 modules,
+# which every later GC walks (PyPy measurably). `__all__` at the end of
+# the file lets a star import reach it.
+if _typing.TYPE_CHECKING:
+    from asyncio import CancelledError as CancelledError
+else:
+    # Runtime only, so type checkers keep rejecting unknown `tpy.` names.
+    def __getattr__(name):
+        if name == "CancelledError":
+            import asyncio
+            globals()[name] = asyncio.CancelledError
+            return asyncio.CancelledError
+        raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
+
+    def __dir__():
+        return sorted({*globals(), "CancelledError"})
 
 
 class Waker:
@@ -1326,3 +1391,8 @@ class Task(metaclass=_TaskMeta):
         self._cancelled = True
         if self._awaitable is not None:
             setattr(self._awaitable, "__cancel_pending", True)
+
+
+if not _typing.TYPE_CHECKING:
+    # The names a star import took before CancelledError went lazy, plus it.
+    __all__ = [n for n in globals() if not n.startswith("_")] + ["CancelledError"]
