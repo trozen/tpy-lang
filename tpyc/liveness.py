@@ -18,6 +18,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import NamedTuple
 
+from .holders import Holder, IterHolder
 from .identity_map import IdentityMap, IdentitySet
 from .parse import (
     TpyStmt, TpyExpr, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyAugAssign,
@@ -37,9 +38,9 @@ _Aliases = dict[str, set[str]]
 
 class _LoopTargets(NamedTuple):
     # Live after the loop statement: where a `break` lands, skipping `else`.
-    brk: frozenset[str]
+    brk: frozenset[Holder]
     # Live at the loop header: where the body's end and a `continue` land.
-    cont: frozenset[str]
+    cont: frozenset[Holder]
 
 
 _Loops = tuple[_LoopTargets, ...]
@@ -52,12 +53,12 @@ class _Exits(NamedTuple):
     # Live where a `return` statement lands: nothing, or inside a try with a
     # finally, the finally's live-in on the way out, and the names a deferred
     # `return <name>` reads after it.
-    ret: frozenset[str] = frozenset()
+    ret: frozenset[Holder] = frozenset()
     # Live where an exception or an @error_return propagation lands: the
     # handlers that may catch it, the finally it runs on the way out, the
     # code after a `with` whose `__exit__` may swallow it. Any statement may
     # raise or propagate.
-    exc: frozenset[str] = frozenset()
+    exc: frozenset[Holder] = frozenset()
 
 
 @dataclass
@@ -144,7 +145,7 @@ def analyze_last_uses(
     # escape proof: BUGS.md#closure-captured-name-moved-at-last-use.
     if pinned is None:
         pinned = closure_pinned_names(stmts)
-    live: set[str] = set(pinned)
+    live: set[Holder] = set(pinned)
     w = _Walk(IdentitySet(), source_aliases, detached_aliases,
               returned_through=_returned_names_by_try(stmts), pinned=pinned,
               captured=captured)
@@ -271,7 +272,7 @@ def _build_source_aliases(alias_sources: dict[str, str]) -> _Aliases:
 
 
 def _has_live_alias(
-    name: str, live: set[str], source_aliases: _Aliases,
+    name: str, live: set[Holder], source_aliases: _Aliases,
     detached_aliases: set[str],
 ) -> bool:
     """Check if any active T& alias of 'name' is in the live set.
@@ -453,7 +454,7 @@ def _has_loop_jump(stmts: list[TpyStmt],
 
 def _analyze_stmts_backward(
     stmts: list[TpyStmt],
-    live: set[str],
+    live: set[Holder],
     w: _Walk,
     first_reassign_pos: dict[str, int] | None = None,
 ) -> None:
@@ -478,7 +479,7 @@ def _analyze_stmts_backward(
         live |= leave
 
 
-def _analyze_stmt(stmt: TpyStmt, live: set[str], w: _Walk) -> None:
+def _analyze_stmt(stmt: TpyStmt, live: set[Holder], w: _Walk) -> None:
     """Analyze a single statement for last uses."""
 
     if isinstance(stmt, TpyIf):
@@ -601,7 +602,7 @@ def _analyze_stmt(stmt: TpyStmt, live: set[str], w: _Walk) -> None:
         _process_reads_multi(list(stmt.exprs()), live, w)
 
 
-def _jump(stmt: TpyBreak | TpyContinue, live: set[str],
+def _jump(stmt: TpyBreak | TpyContinue, live: set[Holder],
           loops: _Loops) -> None:
     """Nothing after a jump runs before its target, so the live set there is
     the target's. The parser rejects a jump outside a loop."""
@@ -611,7 +612,7 @@ def _jump(stmt: TpyBreak | TpyContinue, live: set[str],
                  else loops[-1].cont)
 
 
-def _analyze_if(stmt: TpyIf, live: set[str], w: _Walk) -> None:
+def _analyze_if(stmt: TpyIf, live: set[Holder], w: _Walk) -> None:
     """Analyze if/else with branch merging."""
     then_terminates = stmts_terminate(stmt.then_body, any_with_suppresses=True)
     else_terminates = stmts_terminate(stmt.else_body, any_with_suppresses=True)
@@ -636,7 +637,7 @@ def _analyze_if(stmt: TpyIf, live: set[str], w: _Walk) -> None:
     _process_reads(stmt.condition, live, w)
 
 
-def _analyze_match(stmt: TpyMatch, live: set[str], w: _Walk) -> None:
+def _analyze_match(stmt: TpyMatch, live: set[Holder], w: _Walk) -> None:
     """Analyze match/case: the arms are tried in order, and an arm whose
     pattern or guard fails hands over to the next one -- past the last, to the
     code after the match (sema decides exhaustiveness after this prescan, so
@@ -670,7 +671,7 @@ _LOOP_PASSES = 4
 
 
 def _loop_zero_trip_live(stmt: TpyWhile | TpyForEach,
-                         exit_live: frozenset[str]) -> frozenset[str]:
+                         exit_live: frozenset[Holder]) -> frozenset[Holder]:
     """What a loop that runs zero times keeps live: `exit_live` (the else
     clause's live-in) -- none of it after `while True:`, whose head is never
     false."""
@@ -679,20 +680,17 @@ def _loop_zero_trip_live(stmt: TpyWhile | TpyForEach,
     return exit_live
 
 
-def loop_iterator_name(loop: TpyForEach) -> str:
-    """The name the running iterator of `loop` is live under: every header
+def loop_iterator(loop: TpyForEach) -> IterHolder:
+    """The holder the running iterator of `loop` is live as: every header
     pulls from it, so it is live wherever the loop can come back to its
-    header, and nowhere a `break` or `return` leaves for. It cannot clash
-    with a program name. Keyed by the loop's position, so whatever orders
-    holders by name orders them the same on every run."""
-    loc = loop.loc
-    if loc is None:
-        return f"<iterator of loop {id(loop)}>"
-    return f"<iterator of loop at {loc.line}:{loc.column}>"
+    header, and nowhere a `break` or `return` leaves for. The alias-rebind
+    replay holds the iterator's loans under an equal holder, so a live set
+    answers for it."""
+    return IterHolder(loop)
 
 
 def _loop_header_seed(stmt: TpyWhile | TpyForEach,
-                      exit_live: frozenset[str]) -> frozenset[str]:
+                      exit_live: frozenset[Holder]) -> frozenset[Holder]:
     """The header's live set before the body is counted: the normal exit
     (none of it after `while True:`), a `while` condition's reads, which
     every iteration evaluates, and a `for` loop's iterator, which every
@@ -700,11 +698,11 @@ def _loop_header_seed(stmt: TpyWhile | TpyForEach,
     exit_live = _loop_zero_trip_live(stmt, exit_live)
     if isinstance(stmt, TpyWhile):
         return exit_live | {n.name for n in _collect_reads_expr(stmt.condition)}
-    return exit_live | {loop_iterator_name(stmt)}
+    return exit_live | {loop_iterator(stmt)}
 
 
-def _loop_header_pass(stmt: TpyWhile | TpyForEach, header: frozenset[str],
-                      after: frozenset[str], w: _Walk) -> frozenset[str]:
+def _loop_header_pass(stmt: TpyWhile | TpyForEach, header: frozenset[Holder],
+                      after: frozenset[Holder], w: _Walk) -> frozenset[Holder]:
     """One backward pass over the body with its end and every `continue`
     landing on `header`: the header live set that implies."""
     body_live = set(header)
@@ -715,8 +713,8 @@ def _loop_header_pass(stmt: TpyWhile | TpyForEach, header: frozenset[str],
     return header | body_live
 
 
-def _loop_header(stmt: TpyWhile | TpyForEach, exit_live: frozenset[str],
-                 after: frozenset[str], w: _Walk) -> frozenset[str]:
+def _loop_header(stmt: TpyWhile | TpyForEach, exit_live: frozenset[Holder],
+                 after: frozenset[Holder], w: _Walk) -> frozenset[Holder]:
     """The stabilized header live set, for the marking and live-only walks.
 
     A single pass from the seed is already the fixpoint -- every transfer is
@@ -734,8 +732,8 @@ def _loop_header(stmt: TpyWhile | TpyForEach, exit_live: frozenset[str],
             | {n.name for n in _all_read_names(stmt.body)})
 
 
-def _in_loop(ex: _Exits, after: frozenset[str],
-             header: frozenset[str]) -> _Exits:
+def _in_loop(ex: _Exits, after: frozenset[Holder],
+             header: frozenset[Holder]) -> _Exits:
     return ex._replace(loops=ex.loops + (_LoopTargets(after, header),))
 
 
@@ -751,7 +749,7 @@ def _loop_head_names(stmt: TpyForEach) -> list[str]:
     return [stmt.var]
 
 
-def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
+def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[Holder],
                   w: _Walk) -> None:
     after = frozenset(live)
     if stmt.orelse:
@@ -770,7 +768,7 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
         live.clear()
         live |= header
         if isinstance(stmt, TpyForEach):
-            live.discard(loop_iterator_name(stmt))
+            live.discard(loop_iterator(stmt))
         _process_reads(_loop_head(stmt), live, w)
         return
     saved = w.ex
@@ -784,7 +782,7 @@ def _analyze_loop(stmt: TpyWhile | TpyForEach, live: set[str],
     # Its iterator is made by the loop statement itself.
     if isinstance(stmt, TpyForEach):
         live.discard(stmt.var)
-        live.discard(loop_iterator_name(stmt))
+        live.discard(loop_iterator(stmt))
     live |= _loop_zero_trip_live(stmt, exit_live)
     _process_reads(_loop_head(stmt), live, w)
 
@@ -985,7 +983,7 @@ def _walk_finally_returns(stmts: list[TpyStmt], finally_depth: int,
                                       rebound, kept, suppressed=suppressed)
 
 
-def _analyze_with(stmt: TpyWith, live: set[str], w: _Walk) -> None:
+def _analyze_with(stmt: TpyWith, live: set[Holder], w: _Walk) -> None:
     """Analyze a with statement. `__exit__` runs after the body on every path
     and reads the context manager, so the manager's root names are live
     across the whole body -- a consume of the manager inside its own body
@@ -1036,10 +1034,10 @@ def _analyze_with(stmt: TpyWith, live: set[str], w: _Walk) -> None:
         _process_reads(item.context_expr, live, w)
 
 
-def _jump_targets(bodies: list[list[TpyStmt]], loops: _Loops) -> set[str]:
+def _jump_targets(bodies: list[list[TpyStmt]], loops: _Loops) -> set[Holder]:
     """What the `break` / `continue` statements leaving `bodies` for the
     enclosing loop keep live at their targets."""
-    out: set[str] = set()
+    out: set[Holder] = set()
     if not loops:
         return out
     if any(_has_loop_jump(b, TpyBreak) for b in bodies):
@@ -1053,7 +1051,7 @@ def _try_exit_bodies(stmt: TpyTry) -> list[list[TpyStmt]]:
     return [stmt.try_body, stmt.else_body, *(h.body for h in stmt.handlers)]
 
 
-def _finally_seed(stmt: TpyTry, live: set[str], w: _Walk) -> set[str]:
+def _finally_seed(stmt: TpyTry, live: set[Holder], w: _Walk) -> set[Holder]:
     """What is live after the finally on every way out but a return's own
     value: the fall-through, and the landings of the jumps, returns and
     exceptions that leave through it."""
@@ -1092,7 +1090,7 @@ def _returned_names_by_try(stmts: list[TpyStmt]) -> IdentityMap:
     return out
 
 
-def _through_finally(stmt: TpyTry, through: frozenset[str],
+def _through_finally(stmt: TpyTry, through: frozenset[Holder],
                      returned: frozenset[str], ex: _Exits) -> _Exits:
     """Where a jump, return or exception inside the try, a handler or the
     else lands: with a finally, on its live-in (`through`, the finally
@@ -1106,7 +1104,7 @@ def _through_finally(stmt: TpyTry, through: frozenset[str],
     return _Exits(loops, through | returned, through)
 
 
-def _analyze_try(stmt: TpyTry, live: set[str], w: _Walk) -> None:
+def _analyze_try(stmt: TpyTry, live: set[Holder], w: _Walk) -> None:
     """Analyze a try statement.
 
     finally runs last on every path; handlers run on the exception path; else
@@ -1145,7 +1143,7 @@ def _analyze_try(stmt: TpyTry, live: set[str], w: _Walk) -> None:
     saved = w.ex
     w.ex = after_handlers = _through_finally(
         stmt, frozenset(through), frozenset(deferred), w.ex)
-    handler_union: set[str] = set()
+    handler_union: set[Holder] = set()
     for h in stmt.handlers:
         h_live = normal.copy()
         _analyze_stmts_backward(h.body, h_live, w)
@@ -1171,7 +1169,7 @@ def _analyze_try(stmt: TpyTry, live: set[str], w: _Walk) -> None:
 # -- Read collection ----------------------------------------------------------
 
 def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
-                      live: set[str]) -> None:
+                      live: set[Holder]) -> None:
     """Apply a definition's kill of `name`, honouring the reads in the same
     statement: the backward transfer is (live_after - kills) | reads, so a
     self-referential definition (`g = g.next()`, `a, b = b, a`) leaves the
@@ -1188,12 +1186,12 @@ def _kill_unless_read(name: str, read_exprs: list[TpyExpr],
     live.discard(name)
 
 
-def _process_reads(expr: TpyExpr, live: set[str], w: _Walk) -> None:
+def _process_reads(expr: TpyExpr, live: set[Holder], w: _Walk) -> None:
     """Collect name reads in an expression, mark last uses, update live set."""
     _process_reads_multi([expr], live, w)
 
 
-def _process_reads_multi(exprs: list[TpyExpr], live: set[str],
+def _process_reads_multi(exprs: list[TpyExpr], live: set[Holder],
                          w: _Walk) -> None:
     """Like _process_reads, but over all of one statement's expressions at
     once. The multi-occurrence suppression below must see every read the

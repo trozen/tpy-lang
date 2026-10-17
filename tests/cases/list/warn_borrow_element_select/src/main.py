@@ -1,5 +1,7 @@
 # A select of container-element arms hands out the SAME element borrow the
 # plain `r = rs[0]` decl does, so a later structural mutation must warn too.
+from __future__ import annotations
+
 from tpy import int32, Own
 
 
@@ -67,6 +69,58 @@ def call_arm(rs: list[Rec], c: bool) -> None:
     print(rs[0].n, len(rs))
 
 
+def nested_select(xs: list[Rec], ys: list[Rec], zs: list[Rec], c: bool,
+                  d: bool) -> None:
+    """A ternary nested in an arm: its arms are flattened, the innermost one
+    included."""
+    r = xs[0] if c else (ys[0] if d else zs[0])
+    r.n += 20
+    zs.append(Rec(6))              # tpyc: warning(/Mutation of 'zs' while borrowed/)
+    print("nested_select", zs[0].n, len(zs))
+
+
+class Tree:
+    n: int32
+    kids: list[Tree]
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+        self.kids = []
+
+    def __getitem__(self, i: int32) -> Tree:
+        return self.kids[i]
+
+    def append(self, t: Own[Tree]) -> None:
+        self.kids.append(t)
+
+
+def strongest_kind(rs: Tree, c: bool) -> None:
+    """Two arms on one key, an element and the whole: the strongest kind
+    (the element) is the loan, so the append warns where `rs if c else rs`
+    would not."""
+    r = rs[0] if c else rs
+    r.n += 1
+    rs.append(Tree(5))             # tpyc: warning(/Mutation of 'rs' while borrowed/)
+    print("strongest_kind", rs.kids[0].n, len(rs.kids))
+
+
+def strongest_kind_reversed(rs: Tree, c: bool) -> None:
+    """The same arms in the other order: the element still wins."""
+    r = rs if c else rs[0]
+    r.n += 1
+    rs.append(Tree(6))             # tpyc: warning(/Mutation of 'rs' while borrowed/)
+    print("strongest_kind_reversed", rs.kids[0].n, len(rs.kids))
+
+
+def whole_arms(rs: Tree, c: bool) -> None:
+    """Both arms the whole tree: an alias, which the append does not
+    invalidate."""
+    r = rs if c else rs
+    rs.append(Tree(7))             # tpyc: ok
+    r.n += 1
+    print("whole_arms", rs.n, len(rs.kids))
+
+
 def main() -> None:
     call_arm([Rec(1)], True)
     rs = [Rec(1), Rec(2), Rec(3)]
@@ -75,6 +129,12 @@ def main() -> None:
     optional_arm(rs, True)
     alias_arms([Rec(1)], [Rec(2)], True)
     value_elements([1, 2], True)
+    nested_select([Rec(1)], [Rec(2)], [Rec(3)], False, False)
+    t = Tree(0)
+    t.append(Tree(1))
+    strongest_kind(t, True)
+    strongest_kind_reversed(t, False)
+    whole_arms(t, True)
 
 
 main()

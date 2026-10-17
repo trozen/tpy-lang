@@ -91,8 +91,8 @@ This works, but creates three concrete problems:
    borrow states conservatively at join points (union of borrows from both branches).
    This means a borrow active in either branch is assumed active in both -- so a move
    on one path can conflict with a borrow on a mutually exclusive path. The tracker
-   also uses string-based storage keys with limited field-path support (`"self.items"`),
-   and cannot split borrows by independent fields.
+   also identifies storage by NAME (`StorageKey`: a name plus its field hops; loans are
+   filed at most one hop deep, `self.items`), and cannot split borrows by independent fields.
    A CFG-based IR is the standard solution for path-sensitive safety analysis.
 
 4. **Agent boundary.** When LLM agents work on the compiler, the lack of clean phase
@@ -809,23 +809,23 @@ table (`tpyc/thir/lower/bindings.py`, `plan_bindings`): one `BindingRepr`
 record per C++ binding the body emits, in a scope chain that mirrors the
 lowering's block scoping. The lowering reads every per-name representation
 fact the table models from the record visible where it is
-(`_LowerCtx.binding`); the facts still kept outside it -- the
-borrow-tuple const bits, keyed by name rather than per slot -- are listed
-in TODO.md ("STILL OUTSIDE THE TABLE"). A NAME read's `Source.binding` is that record, and every node that
+(`_LowerCtx.binding`); the facts still kept outside it are listed in
+TODO.md ("STILL OUTSIDE THE TABLE"). A NAME read's `Source.binding` is that record, and every node that
 emits a binding (`THIRVarDecl`, `THIRPtrLocalDecl`, the loop, unpack, with,
 match and error-return binds, the frame writes) carries it as `binding`,
-stamped by `stamp_bindings`. A binding site builds the form its record's
-kind names: a first declaration (`_lower_first_decl` dispatches on
-`BindingRepr.kind`), a statement's hoist predecl (`_HOIST_BUILDERS`), an
-unpack, `with`, match capture or walrus target; a site that declares no
+stamped by `stamp_bindings`. A binding site builds the form its record
+names: a first declaration (`_lower_first_decl` dispatches on
+`BindingRepr.construct`), a statement's hoist predecl (`_HOIST_BUILDERS`,
+on `BindingRepr.form`), an unpack, `with`, match capture or walrus
+target; a site that declares no
 fresh record of its own (`fresh_record`) writes the binding in scope. A
 declaring node takes its shape and const from the record, so the validator
 has nothing to check on it, nor on a loop, whose binding is its record's
 `loop_binding`; `THIRPtrLocalDecl` and its reseat, the error-return bind,
 the frame emplace and coroutine-handle move, a consuming loop's variable
 (movable), a tuple unpack's pointer binds and frame emplace, the with
-target's pointer (`PTR_DECL` / `ASSIGN_PTR`), optional-storage
-(`ASSIGN_OPT`) and frame arms, and the match-capture frame arm are still
+target's pointer (`PTR_DECL` / `ASSIGN_PTR`) and frame arms, and the
+match-capture frame arm are still
 checked against the record's fields.
 
 #### THIRFormConvert -- the explicit conversion node
@@ -1781,10 +1781,9 @@ then both union match tiers), which motivated a full sweep of the binding facts.
   since converted to cases, and each partial mirror names its unmirrored
   producers where it is declared.
 - Not swept to the same depth, and the place to look first if this class resurfaces:
-  the borrow-tuple const bits (`const_borrow_tuple` / `const_opt_borrow_tuple`),
-  which the planner's whole-table fixpoint decides (`_plan_const`) -- its
-  name-chain rung is fenced only by the storage-tuple alias arm requiring a field
-  source.
+  a borrow tuple's element const (its record's `const`, a slot of the
+  planner's whole-table fixpoint, `_plan_const`) -- its name-chain rung is
+  fenced only by the storage-tuple alias arm requiring a field source.
 - Consequence for future cells: widening one of those gates is not a local change
   -- it un-fences a binding whose fact the table does not model yet. Add the fact
   to the record (a planner row) in the same cell.
@@ -1860,8 +1859,8 @@ or explicit handler tables, but MIR-backed codegen cannot assume "return-tier on
 
 #### Places
 
-A `Place` identifies a logical storage location. This replaces the current string-based
-storage keys in `BorrowTracker`.
+A `Place` identifies a logical storage location. This replaces the name-identified
+storage keys (`StorageKey`) in `BorrowTracker`.
 
 Important: places model ownership-relevant storage, not literal C++ object layout. For
 example, `list[T]` is backed by `std::vector<T>`, so the element storage is not inline in

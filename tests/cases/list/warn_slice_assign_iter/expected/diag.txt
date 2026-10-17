@@ -1,1 +1,1 @@
-main.py:7: warning: Mutation of 'a' while borrowed (slice assignment may invalidate references)
+main.py:7: warning: Mutation of 'a' while iterating over it (slice assignment invalidates the iterator)

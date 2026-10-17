@@ -1,0 +1,27 @@
+written_through 2 2
+written_through 55 2 2
+read_only 121 141
+meth 31 31
+ctor 32 32
+nested 32 32
+loop_var 5 1 4
+loop_var_reuse 1016 1002 10
+try 33 33
+match 33 33
+with 34 34
+error_return 35 35
+hoisted 36 36
+optional 33 0
+optional_from_field 35 35
+loop_hoisted 5 1 4
+walrus 1
+walrus 5 5
+walrus_lit_ro 1
+walrus_lit_ro 4
+async 1002 1002
+yield_field_alias 6
+capture_field_alias 17 16
+capture_self_alias 14 14 14
+capture_self_alias 14
+gen_capture_alias 9 9
+gen_capture_alias 110 109

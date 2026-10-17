@@ -2713,12 +2713,13 @@ class THIRAssign(THIRStmt):
     storage_borrow: THIRBorrowedRecord | None = field(default=None, kw_only=True)
     recv_eval: 'THIRExpr | None' = None
     recv_wrap: 'str | None' = None
-    # A borrow-tuple reseat from an OWNING tuple call (`t = make_pair(9)`):
-    # the rvalue emplaces into the binding's one owning slot (`own_slot`,
-    # holding `slot_cpp`), the borrow tuple spelling B here; a nullable
-    # one (`t: tuple[..] | None`) renders `t = std::optional<B>{
+    # A nullable borrow-tuple reseat from an OWNING tuple call
+    # (`t: tuple[..] | None`; `t = make_pair(9)`): the rvalue emplaces into
+    # the binding's one owning slot (`own_slot`, holding `slot_cpp`), the
+    # borrow tuple spelling B here, and renders `t = std::optional<B>{
     # ::tpy::tuple_to_pointer<B>(__slot_N.emplace(v))};` through
-    # `btuple_opt_cpp` -- the reseat sibling of THIRVarDecl.btuple_slot_cpp.
+    # `btuple_opt_cpp` (always set alongside B) -- the reseat sibling of
+    # THIRVarDecl.btuple_slot_cpp.
     btuple_borrow_cpp: 'str | None' = None
     btuple_opt_cpp: 'str | None' = None
     # An rvalue reseat of a pointer-local (`p = Point(2)` over `T* p`):
@@ -3404,6 +3405,64 @@ class TupleElemBind(Enum):
     VALUE = auto()
 
 
+class UnpackBind(Enum):
+    """How one target of a `THIRTupleUnpack` binds its element
+    (`std::get<i>(tup)`, `<get>` below):
+
+        VALUE        -> T name = <get>;
+        CREF         -> const T& name = <get>;          // is_const_ref
+        MOVE         -> T name = std::move(<get>);      // Own element
+        MOVE_POINTEE -> T name = std::move(*<get>);     // the same off a
+                                                        // pointer element
+        REF          -> auto&& name = unwrap_ref(tuple_elem_ref(<get>));
+        PTR          -> auto* name = &(unwrap_ref(tuple_elem_ref(<get>)));
+        OPT_PTR      -> T* name = <get>;    // pointer-repr Optional element;
+                        // the "optional_to_ptr" wrap lifts a storage element
+        PTR_VARIANT  -> ::tpy::Union<A*, B*> name = to_ptr_variant(<get>);
+                        // Own[A | B] element off the value-variant capture
+        UNWRAP_REF   -> T& name = unwrap_ref(<get>);
+                        // recursive-wrapper element (a live `X&` slot)
+        ASSIGN       -> name = <get>;        // reused target, no decl
+        GLOBAL_SLOT  -> static T __global_slot_N = std::move(<get>);
+                        name = &__global_slot_N;   // pointer-slot global
+        GLOBAL_PTR   -> name = <get>;        // the same global, a borrowed
+                        // element: the capture yields its pointer
+
+    A fresh target's bind is its record's construction
+    (`bindings.unpack_tag`); a target that writes a binding in scope, and
+    every resumable-frame target, takes the bind its arm decides. The
+    RESUMABLE-frame binds (targets are frame fields -- assigned, never
+    re-declared; the `wraps` slot carries the per-element std::move):
+
+        FRAME_ASSIGN   -> name = <wrapped get>;
+        FRAME_EMPLACE  -> name.emplace(<wrapped get>);   // frame_slot<T>
+        FRAME_OPT_PTR  -> name = optional_to_ptr(<get>);
+        FRAME_PTR_ADDR -> name = &(<get>);
+        FRAME_PTR_ELEM -> name = &(unwrap_ref(tuple_elem_ref(<get>)));
+        FRAME_REBIND_PTR -> name = &*(<slot> = <wrapped get>);
+                            // REBIND_PTR target off an owned element; the
+                            // slot is the target's `slot_fields` entry
+    """
+    VALUE = auto()
+    CREF = auto()
+    MOVE = auto()
+    MOVE_POINTEE = auto()
+    REF = auto()
+    PTR = auto()
+    OPT_PTR = auto()
+    PTR_VARIANT = auto()
+    UNWRAP_REF = auto()
+    ASSIGN = auto()
+    GLOBAL_SLOT = auto()
+    GLOBAL_PTR = auto()
+    FRAME_ASSIGN = auto()
+    FRAME_EMPLACE = auto()
+    FRAME_OPT_PTR = auto()
+    FRAME_PTR_ADDR = auto()
+    FRAME_PTR_ELEM = auto()
+    FRAME_REBIND_PTR = auto()
+
+
 @dataclass(frozen=True)
 class THIRTupleElemTarget:
     """One element of a tuple-target unpack: its index, its bind, and for an
@@ -3459,40 +3518,9 @@ class THIRTupleUnpack(THIRStmt):
     nothing. `target_cpps` carries the rendered decl types (render_type at
     lowering), None at discard slots.
 
-    `binds` (parallel to `targets`; empty = all "value") picks each target's
-    decl arm:
-
-        "value"  -> T name = std::get<i>(tup);
-        "cref"   -> const T& name = std::get<i>(tup);   // is_const_ref
-        "move"   -> T name = std::move(std::get<i>(tup)); // Own element
-        "move_pointee" -> T name = std::move(*std::get<i>(tup));
-                          // the same off a pointer element
-        "assign" -> name = std::get<i>(tup);   // reused target, no decl
-        "opt_ptr" -> T* name = std::get<i>(tup);   // ptr-repr Optional; the
-                     // "optional_to_ptr" wrap lifts a storage element
-        "ptr_variant" -> ::tpy::Union<A*, B*> name =
-                             ::tpy::to_ptr_variant(std::get<i>(tup));
-                         // Own[A | B] element off the value-variant capture
-        "unwrap_ref" -> T& name = ::tpy::unwrap_ref(std::get<i>(tup));
-                        // recursive-wrapper element (a live `X&` slot)
-        "global_slot" -> static T __global_slot_N = std::move(std::get<i>(tup));
-                         name = &__global_slot_N;   // pointer-slot global
-        "global_ptr" -> name = std::get<i>(tup);    // the same global, a
-                        // borrowed element: the capture yields its pointer
-
-    Two RESUMABLE-frame modes (targets are frame fields -- assigned, never
-    re-declared; the `wraps` slot carries the per-element unwrap_ref /
-    std::move applied before the write; sema guarantees ref and
-    owned are mutually exclusive per element):
-
-        "frame_assign"  -> name = <wrapped get>;
-        "frame_emplace" -> name.emplace(<wrapped get>);   // frame_slot<T>
-                           // (typed_brace_init is identity for a get-expr)
-        "frame_rebind_ptr" -> name = &*(<slot> = <wrapped get>);
-                           // REBIND_PTR target off an owned element; the
-                           // slot is the target's `slot_fields` entry
-
-    None at discard slots.
+    `binds` (parallel to `targets`; empty = all VALUE) picks each target's
+    arm (`UnpackBind`, each render documented there); None at discard
+    slots.
 
     `source_cpp` overrides the name-bound source's spelling (a spelled
     imported/native global -- `const auto& __tup_N = ::tpystd::m::name;` --
@@ -3517,14 +3545,14 @@ class THIRTupleUnpack(THIRStmt):
     targets: tuple[str | None, ...]
     target_cpps: tuple[str | None, ...]
     source_expr: 'THIRExpr | None' = None
-    binds: tuple[str | None, ...] = ()
+    binds: 'tuple[UnpackBind | None, ...]' = ()
     source_cpp: str | None = None
-    # Per-element pre-write wrap for the frame modes and the "assign" arm:
-    # "" / "move" (ref elements reject at lowering today); an "opt_ptr"
+    # Per-element pre-write wrap for the frame modes and the ASSIGN arm:
+    # "" / "move" (ref elements reject at lowering today); an OPT_PTR
     # target's "optional_to_ptr" marks a storage-form element
     # (`T* a = ::tpy::optional_to_ptr(std::get<i>(tup));`).
     wraps: tuple[str, ...] = ()
-    # Per-target frame field of a "frame_rebind_ptr" bind, None elsewhere
+    # Per-target frame field of a FRAME_REBIND_PTR bind, None elsewhere
     # (empty: no such bind).
     slot_fields: tuple[str | None, ...] = ()
     source_bind: TupleSourceBind = TupleSourceBind.NAME_CREF
@@ -3533,15 +3561,6 @@ class THIRTupleUnpack(THIRStmt):
     elem_targets: tuple[THIRTupleElemTarget, ...] = ()
     tuple_decl_cpp: str | None = None
 
-    _BIND_TOKENS: ClassVar[frozenset[str]] = frozenset({
-        "value", "cref", "move", "move_pointee", "assign", "ref", "ptr",
-        "opt_ptr",
-        "ptr_variant",
-        "unwrap_ref", "global_slot", "global_ptr",
-        "frame_assign", "frame_emplace", "frame_opt_ptr", "frame_ptr_addr",
-        "frame_ptr_elem", "frame_rebind_ptr",
-    })
-
     def target_slot(self, i: int) -> 'BindingRepr | None':
         """The record of target `i` when its element lands in a slot of its
         own, which the target points at (a rebound target taking over an
@@ -3549,7 +3568,8 @@ class THIRTupleUnpack(THIRStmt):
         top), else None."""
         rec = self.bindings[i] if i < len(self.bindings) else None
         if (rec is not None and rec.rebind_slot and i < len(self.binds)
-                and self.binds[i] in ("move", "move_pointee")):
+                and self.binds[i] in (UnpackBind.MOVE,
+                                      UnpackBind.MOVE_POINTEE)):
             return rec
         return None
 
@@ -3572,10 +3592,10 @@ class THIRTupleUnpack(THIRStmt):
                     "source_expr belongs to RVALUE / NAME_CREF sources only")
             if self.source_wrap_cpp is not None:
                 raise ValueError("source_wrap_cpp belongs to STORAGE_WRAP only")
-        bad = {b for b in self.binds
-               if b is not None and b not in self._BIND_TOKENS}
+        bad = [b for b in self.binds
+               if b is not None and not isinstance(b, UnpackBind)]
         if bad:
-            raise ValueError(f"unknown bind token(s): {sorted(bad)}")
+            raise ValueError(f"unknown bind(s): {bad}")
         if self.tuple_target is not None:
             if (self.source_bind is not TupleSourceBind.RVALUE
                     or self.targets or not self.elem_targets):
@@ -3726,10 +3746,7 @@ class WithTargetArm(Enum):
     """Which as-target binding arm a `with` item takes -- decided
     at lowering. The value-typed REUSE arm stays gate-rejected: it would
     assign `&(__enter__())` into a value slot -- the BUGS.md
-    ill-formed with-target-reuse family. An OPTIONAL-slot target is different:
-    when the name was hoist-predeclared (`std::optional<T> name;` by an
-    enclosing if/with branch-decl pass), the slot is assigned plainly --
-    the ASSIGN_OPT arm, keyed on optional-locals membership.
+    ill-formed with-target-reuse family.
 
       * `NONE`       -- no target: `__ctx_N.__enter__();`
       * `VALUE`      -- value enter type: `auto <name> = __ctx_N.__enter__();`
@@ -3739,9 +3756,6 @@ class WithTargetArm(Enum):
                         the F2 pointer-locals; `target_cpp` carries `T`)
       * `ASSIGN_PTR` -- reuse of a prior with's pointer-local target:
                         `<name> = &(__ctx_N.__enter__());`
-      * `ASSIGN_OPT` -- hoist-predeclared optional-storage target:
-                        `<name> = __ctx_N.__enter__();` (plain engaging
-                        assign; reads stay on the deref model)
       * `FRAME_SLOT` -- resumable frame_slot target (leaf `with`):
                         `<name>.emplace(__ctx_N.__enter__());`
       * `FRAME_FIELD` -- resumable plain frame-field target (leaf `with`):
@@ -3758,7 +3772,6 @@ class WithTargetArm(Enum):
     REF = auto()
     PTR_DECL = auto()
     ASSIGN_PTR = auto()
-    ASSIGN_OPT = auto()
     FRAME_SLOT = auto()
     FRAME_FIELD = auto()
     FRAME_POINTER = auto()

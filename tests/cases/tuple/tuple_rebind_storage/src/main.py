@@ -563,6 +563,16 @@ def field_repoint(h: HB) -> None:
     print("field-repoint", t[0].n, h.bp[0].n)
 
 
+def field_then_literal(h: HB) -> None:
+    t = h.bp
+    print("field-then-literal", t[0].n)
+    # field-then-literal: an owning literal after a field binding; nothing
+    # writes through 't' or 'h', yet the field binding takes the field's
+    # address, so 'h' stays a mutable reference.
+    t = (Box(1), Box(2))  # tpyc: ok
+    print("field-then-literal", t[0].n, h.bp[0].n)
+
+
 def written_then_field(h: HB, v: Box) -> None:
     t = make_mixed(1, v)
     t[0].n += 1
@@ -1597,6 +1607,7 @@ def main() -> None:
     va = Box(1)
     print("async", asyncio.run(frame_body(va)), va.n)
     field_repoint(HB())
+    field_then_literal(HB())
     written_then_field(HB(), Box(1))
     match_capture(Box(3))
     hoist_alias(Box(0), True)

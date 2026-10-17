@@ -1,0 +1,1 @@
+main.py:16: error: Cannot return local or temporary as reference. Reference type 'Node' is returned by reference. Use Own[Node] to return by value.

@@ -1,0 +1,1 @@
+main.py:74: warning: Mutation of 'p.sectors' while borrowed ('append' may invalidate references)

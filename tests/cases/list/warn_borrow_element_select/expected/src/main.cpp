@@ -97,6 +97,63 @@ void call_arm(std::vector<Rec>& rs, bool c) {
     std::cout << ::tpy::__getitem__(rs, 0).n << " " << ::tpy::__len__(rs) << "\n" << ::tpy::check_signals;
 }
 
+// def nested_select(xs: list[Rec], ys: list[Rec], zs: list[Rec], c: bool,
+//                   d: bool) -> None:
+//     """A ternary nested in an arm: its arms are flattened, the innermost one
+//     included."""
+//     r = xs[0] if c else (ys[0] if d else zs[0])
+//     r.n += 20
+//     zs.append(Rec(6))              # tpyc: warning(/Mutation of 'zs' while borrowed/)
+//     print("nested_select", zs[0].n, len(zs))
+void nested_select(std::vector<Rec>& xs, std::vector<Rec>& ys, std::vector<Rec>& zs, bool c, bool d) {
+    Rec& r = ((c) ? (::tpy::__getitem__(xs, 0)) : (((d) ? (::tpy::__getitem__(ys, 0)) : (::tpy::__getitem__(zs, 0)))));
+    r.n = ::tpy::add_check<int32_t>(r.n, 20);
+    zs.push_back(Rec(6));
+    std::cout << "nested_select" << " " << ::tpy::__getitem__(zs, 0).n << " " << ::tpy::__len__(zs) << "\n" << ::tpy::check_signals;
+}
+
+// def strongest_kind(rs: Tree, c: bool) -> None:
+//     """Two arms on one key, an element and the whole: the strongest kind
+//     (the element) is the loan, so the append warns where `rs if c else rs`
+//     would not."""
+//     r = rs[0] if c else rs
+//     r.n += 1
+//     rs.append(Tree(5))             # tpyc: warning(/Mutation of 'rs' while borrowed/)
+//     print("strongest_kind", rs.kids[0].n, len(rs.kids))
+void strongest_kind(Tree& rs, bool c) {
+    Tree& r = ((c) ? (rs[0]) : (rs));
+    r.n = ::tpy::add_check<int32_t>(r.n, 1);
+    rs.append(Tree(5));
+    std::cout << "strongest_kind" << " " << ::tpy::__getitem__(rs.kids, 0).n << " " << ::tpy::__len__(rs.kids) << "\n" << ::tpy::check_signals;
+}
+
+// def strongest_kind_reversed(rs: Tree, c: bool) -> None:
+//     """The same arms in the other order: the element still wins."""
+//     r = rs if c else rs[0]
+//     r.n += 1
+//     rs.append(Tree(6))             # tpyc: warning(/Mutation of 'rs' while borrowed/)
+//     print("strongest_kind_reversed", rs.kids[0].n, len(rs.kids))
+void strongest_kind_reversed(Tree& rs, bool c) {
+    Tree& r = ((c) ? (rs) : (rs[0]));
+    r.n = ::tpy::add_check<int32_t>(r.n, 1);
+    rs.append(Tree(6));
+    std::cout << "strongest_kind_reversed" << " " << ::tpy::__getitem__(rs.kids, 0).n << " " << ::tpy::__len__(rs.kids) << "\n" << ::tpy::check_signals;
+}
+
+// def whole_arms(rs: Tree, c: bool) -> None:
+//     """Both arms the whole tree: an alias, which the append does not
+//     invalidate."""
+//     r = rs if c else rs
+//     rs.append(Tree(7))             # tpyc: ok
+//     r.n += 1
+//     print("whole_arms", rs.n, len(rs.kids))
+void whole_arms(Tree& rs, bool c) {
+    Tree& r = ((c) ? (rs) : (rs));
+    rs.append(Tree(7));
+    r.n = ::tpy::add_check<int32_t>(r.n, 1);
+    std::cout << "whole_arms" << " " << rs.n << " " << ::tpy::__len__(rs.kids) << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     call_arm([Rec(1)], True)
 //     rs = [Rec(1), Rec(2), Rec(3)]
@@ -105,6 +162,12 @@ void call_arm(std::vector<Rec>& rs, bool c) {
 //     optional_arm(rs, True)
 //     alias_arms([Rec(1)], [Rec(2)], True)
 //     value_elements([1, 2], True)
+//     nested_select([Rec(1)], [Rec(2)], [Rec(3)], False, False)
+//     t = Tree(0)
+//     t.append(Tree(1))
+//     strongest_kind(t, True)
+//     strongest_kind_reversed(t, False)
+//     whole_arms(t, True)
 void main() {
     std::vector<Rec> __tmp_1 = {Rec(1)};
     ::tpyapp::main::call_arm(__tmp_1, true);
@@ -119,6 +182,15 @@ void main() {
     ::tpyapp::main::alias_arms(__tmp_4, __tmp_5, true);
     std::vector<int32_t> __tmp_6 = {1, 2};
     ::tpyapp::main::value_elements(__tmp_6, true);
+    std::vector<Rec> __tmp_7 = {Rec(1)};
+    std::vector<Rec> __tmp_8 = {Rec(2)};
+    std::vector<Rec> __tmp_9 = {Rec(3)};
+    ::tpyapp::main::nested_select(__tmp_7, __tmp_8, __tmp_9, false, false);
+    Tree t = Tree(0);
+    t.append(Tree(1));
+    ::tpyapp::main::strongest_kind(t, true);
+    ::tpyapp::main::strongest_kind_reversed(t, false);
+    ::tpyapp::main::whole_arms(t, true);
 }
 
 // main()

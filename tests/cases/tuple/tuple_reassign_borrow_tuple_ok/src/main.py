@@ -1,8 +1,8 @@
 # A REASSIGNED tuple local DECL-INITIALIZED from a borrow source aliases its
 # elements (it does not own them), so the decl-init must NOT warn "copies into
-# owned storage". Read-only: write-through of a multi-source borrow-tuple local
-# is not yet supported (const propagates from the differing sources), so only
-# the no-warning behavior is exercisable here.
+# owned storage". Read-only here: a write through a multi-source borrow-tuple
+# local compiles (each binding marks its source's root written, so the element
+# pointers are mutable) and is pinned by tuple/borrow_tuple_rebind_marks_root.
 
 
 class Box:

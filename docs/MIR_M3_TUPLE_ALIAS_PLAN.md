@@ -157,9 +157,9 @@ The broader tuple feature is not assumed correct:
   closed when frames took the rebound pointer tuple (tuple plan step 5.3),
   and `BUGS.md#frame-ptr-tuple-consuming-unpack-rejects` records the
   frame's remaining consuming-unpack gap.
-- `BUGS.md#readonly-auto-tuple-copy-fact` and
-  `BUGS.md#optional-tuple-unpack-readonly-fact` block relying on those sibling
-  metadata paths without their own checks.
+- `BUGS.md#optional-tuple-unpack-readonly-fact` blocks relying on that sibling
+  metadata path without its own check; an auto copy of a readonly tuple
+  carries its source's readonly payload.
 - `BUGS.md#consume-own-element-of-mixed-tuple` remains outside this local
   slice.
 - Synchronous owning-call tuple rebinds reuse optional backing in the emitter.

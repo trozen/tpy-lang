@@ -1,5 +1,6 @@
 main.py:573: warning: copies bytearray into field; use copy() to make this explicit
 main.py:714: warning: copies bytearray into field; use copy() to make this explicit
+main.py:183: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
 main.py:360: warning: Mutation of 'q.u' while borrowed (field assignment may invalidate references)
 main.py:361: warning: Mutation of 'q.ub' while borrowed (field assignment may invalidate references)
 main.py:631: warning: Mutation of 'q.u' while borrowed (field assignment may invalidate references)

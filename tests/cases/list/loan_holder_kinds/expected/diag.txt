@@ -1,0 +1,7 @@
+main.py:43: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:51: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:81: warning: '__escaped' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:101: warning: Mutation of 'xs' while iterating over it (slice assignment invalidates the iterator)
+main.py:104: warning: Mutation of 'b.xs' while iterating over it (field assignment invalidates the iterator)
+main.py:107: warning: Mutation of 'b.xs' while iterating over it (field assignment invalidates the iterator)
+main.py:121: warning: Mutation of 'rows' while iterating over it ('append' invalidates the iterator)

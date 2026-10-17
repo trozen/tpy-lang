@@ -83,7 +83,7 @@ from .nodes import (
     THIRSubscript, THIRTupleUnpack, THIRCoroHandleMove, THIRMatch,
     THIRMatchBinding, THIRMatchFoldBind, THIRWith, THIRWithItem,
     WithTargetArm,
-    THIRFrameSlotWrite, TupleElemBind,
+    THIRFrameSlotWrite, TupleElemBind, UnpackBind,
     THIRPtrLocalDecl, THIRPtrLocalRebind, THIRResumableBody, THIRSelf, PtrSlotKind,
     THIRUnionArgLift, THIRValueSelect, THIRVarDecl,
     THIRBorrowedRecord, THIRBorrowTupleLiteral, THIRLiteral, THIRTupleLiteral, THIRTupleLayout,
@@ -99,7 +99,7 @@ from .nodes import (
     THIRArrayComprehension, THIRComprehensionBlock, THIRCompInsert,
     hoists_declaration, record_rvalue_storage,
 )
-from .source import BindingKind
+from .source import UNBOUND
 from .temp_plan import if_chain
 
 
@@ -472,8 +472,9 @@ _LOWERED: ContextVar[bool] = ContextVar("thir_validate_lowered", default=False)
 _UNION_SLOT_KINDS = frozenset({PtrSlotKind.UNION_NONE, PtrSlotKind.UNION_RVALUE,
                                PtrSlotKind.UNION_INLINE_SLOT,
                                PtrSlotKind.UNION_ADDR})
-_POINTER_UNPACK_BINDS = frozenset({"ptr", "opt_ptr", "frame_ptr_elem",
-                                   "frame_opt_ptr", "frame_rebind_ptr"})
+_POINTER_UNPACK_BINDS = frozenset({
+    UnpackBind.PTR, UnpackBind.OPT_PTR, UnpackBind.FRAME_PTR_ELEM,
+    UnpackBind.FRAME_OPT_PTR, UnpackBind.FRAME_REBIND_PTR})
 
 
 def _contract_problem(node: object, rec) -> 'str | None':
@@ -512,8 +513,6 @@ def _contract_problem(node: object, rec) -> 'str | None':
         arm = node.target_arm
         if arm in (WithTargetArm.PTR_DECL, WithTargetArm.ASSIGN_PTR) and not rec.pointer:
             return f"a {arm} with target that is no pointer"
-        if arm is WithTargetArm.ASSIGN_OPT and not rec.optional_storage:
-            return "an optional-storage with target that is no optional storage"
         if arm is WithTargetArm.FRAME_SLOT and not rec.frame_slot:
             return "a frame-slot with target that is no frame slot"
     elif isinstance(node, THIRMatchBinding):
@@ -533,11 +532,11 @@ def _check_contract(owner: str, node: object, name: 'str | None', rec) -> None:
         if _LOWERED.get():
             _contract_fail(owner, node, f"{type(node).__name__} {name!r} carries no record")
         return
-    if rec.kind is BindingKind.UNBOUND:
+    if rec is UNBOUND:
         return
     why = _contract_problem(node, rec)
     if why is not None:
-        _contract_fail(owner, node, f"{type(node).__name__} {name!r} ({rec.kind.value}): {why}")
+        _contract_fail(owner, node, f"{type(node).__name__} {name!r} ({rec.label}): {why}")
 
 
 def _pointer_tuple_global(rec) -> bool:
@@ -545,7 +544,7 @@ def _pointer_tuple_global(rec) -> bool:
     every reference element through a pointer (`THIRBorrowedRecord`), none
     inline."""
     layout = rec.tuple_layout
-    return (rec.kind is BindingKind.GLOBAL_MODULE and not rec.refinements
+    return (rec.site_kind == "module_global" and not rec.refinements
             and layout is not None and not layout.owns_records
             and any(isinstance(m, THIRBorrowedRecord)
                     for m in layout.elements))
@@ -562,14 +561,14 @@ def _check_tuple_target_contract(owner: str, node: THIRTupleUnpack) -> None:
         if _LOWERED.get():
             _contract_fail(owner, node, f"tuple target {name!r} carries no record")
         return
-    if rec.kind is BindingKind.UNBOUND:
+    if rec is UNBOUND:
         return
     target_t = node.tuple_target.result_type
     if rec.ptr_tuple is not None:
         if target_t != rec.ptr_tuple:
-            _contract_fail(owner, node, f"tuple target {name!r} ({rec.kind.value}) is not its record's pointer tuple")
+            _contract_fail(owner, node, f"tuple target {name!r} ({rec.label}) is not its record's pointer tuple")
     elif not _pointer_tuple_global(rec) or node.tuple_decl_cpp is not None:
-        _contract_fail(owner, node, f"tuple target {name!r} ({rec.kind.value}) is no pointer tuple")
+        _contract_fail(owner, node, f"tuple target {name!r} ({rec.label}) is no pointer tuple")
     elems = target_t.element_types if isinstance(target_t, TupleType) else ()
     for t in node.elem_targets:
         if t.index >= len(elems):
@@ -600,11 +599,11 @@ def _check_binding_contracts(owner: str, node: object) -> None:
         for i, (n, rec) in enumerate(zip(node.targets, recs)):
             _check_contract(owner, node, n, rec)
             bind = node.binds[i] if i < len(node.binds) else None
-            if rec is not None and n is not None and rec.kind is not BindingKind.UNBOUND:
+            if rec is not None and n is not None and rec is not UNBOUND:
                 if bind in _POINTER_UNPACK_BINDS and not rec.pointer:
-                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.kind.value}) bound {bind} is no pointer")
-                if bind == "frame_emplace" and not rec.frame_slot:
-                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.kind.value}) emplaced is no frame slot")
+                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.label}) bound {bind} is no pointer")
+                if bind is UnpackBind.FRAME_EMPLACE and not rec.frame_slot:
+                    _contract_fail(owner, node, f"unpack target {n!r} ({rec.label}) emplaced is no frame slot")
     elif isinstance(node, THIRWith):
         for item in node.items:
             _check_contract(owner, item, item.target, item.binding)
@@ -1326,6 +1325,9 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # no argtemp exemption -- a temp reaching it is a lowering bug.
         if node.recv_eval is not None:
             _walk(owner, node.recv_eval, return_type)
+        # The borrow-tuple reseat renders only under its optional spelling.
+        if (node.btuple_borrow_cpp is None) != (node.btuple_opt_cpp is None):
+            _fail(owner, node, "borrow-tuple reseat without its optional spelling")
         _walk(owner, node.target, return_type)
         _walk(owner, node.value, return_type, argtemp_ok=True)
         return

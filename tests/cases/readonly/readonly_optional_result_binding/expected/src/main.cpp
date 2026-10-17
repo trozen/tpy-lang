@@ -24,7 +24,7 @@ const R* relay_method(const H& h) {
 
 // def relay_free(h: H) -> readonly[Optional[R]]:
 //     return fget(h)  # tpyc: ok
-const R* relay_free(H& h) {
+const R* relay_free(const H& h) {
     return ::tpyapp::main::fget(h);
 }
 

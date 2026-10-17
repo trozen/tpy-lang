@@ -63,8 +63,9 @@ Node* find(std::vector<Node>& ns, int32_t k) {
 //     # A slot-allocating write ...
 //     q = Node(7)  # tpyc: ok
 //     # ... then a borrow-returning Optional call: the `T*` passes through bare
-//     # and the slot allocated above stays untouched.
-//     q = find(pool, 5)  # tpyc: ok
+//     # and the slot allocated above stays untouched. Its warning names a loop
+//     # there is none of: BUGS.md#module-level-escape-warning-names-a-loop.
+//     q = find(pool, 5)  # tpyc: warning(/will not keep the object it was given/)
 // if q is not None:
 //     # The mutation must reach the pool element, proving the pass-through
 //     # aliased it rather than reseating a copy into the slot.
@@ -98,8 +99,8 @@ void __tpy_init() {
     static std::optional<Node> __global_slot_5;
     V = &*(__global_slot_5 = Node(4));
     std::cout << V->x << "\n" << ::tpy::check_signals;
-    static std::vector<Node> __global_slot_6 = {Node(5), Node(6)};
-    pool = &__global_slot_6;
+    static std::optional<std::vector<Node>> __global_slot_6;
+    pool = &*(__global_slot_6 = std::vector<Node>{Node(5), Node(6)});
     q = nullptr;
     if (flag) {
         static Node __global_slot_7 = Node(7);

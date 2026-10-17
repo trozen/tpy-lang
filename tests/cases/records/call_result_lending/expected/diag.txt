@@ -1,0 +1,14 @@
+main.py:442: warning: 'mod_o' will not keep the object it was given -- 'mod_h' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:456: warning: 'x_cell' will not keep the object it was given -- 'x_crate' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:132: warning: Mutation of 'self' while borrowed (field assignment may invalidate references)
+main.py:158: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+main.py:314: warning: copies list[Box] into owned storage; use copy() to make this explicit
+main.py:139: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+main.py:147: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+main.py:193: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:200: warning: Mutation of 'ys' while borrowed ('append' may invalidate references)
+main.py:209: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+main.py:250: warning: Mutation of 'h' while borrowed (field assignment may invalidate references)
+main.py:277: warning: Result borrows from temporary argument 't'; the temporary is destroyed at end-of-statement
+main.py:294: warning: copies list[Box] into owned storage; use copy() to make this explicit
+main.py:388: warning: copies list[Ticker] into owned storage; use copy() to make this explicit

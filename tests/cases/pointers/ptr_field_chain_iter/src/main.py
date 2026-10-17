@@ -1,5 +1,5 @@
-# Field access reached through several Ptr hops, and a for-each over a
-# container member of a Ptr binding -- each hop spells its own deref_check.
+# Field access reached through several Ptr hops, a for-each over a container
+# member of a Ptr binding (each hop its own deref_check), and a loan through one.
 from tpy import int32, Own, Ptr
 
 
@@ -65,6 +65,15 @@ def raise_floors(subsectors: list[Ptr[SubSector]]) -> None:
             seg.sector_front.floor_h += 1  # tpyc: ok
 
 
+def via_ptr(p: Ptr[Map]) -> None:
+    # An element borrowed through a Ptr binding's container field.
+    v = p.sectors[0]
+    v.floor_h += 100
+    # v points into the list's buffer, which append may reallocate: the loan
+    # is on the field reached through the pointer, so the append warns.
+    p.sectors.append(Sector(3))  # tpyc: warning(/Mutation of 'p.sectors'/)
+
+
 def main() -> None:
     m = Map()
     subsectors: list[Ptr[SubSector]] = []
@@ -75,6 +84,11 @@ def main() -> None:
     raise_floors(subsectors)
     # The mutation reached the sectors the pointers alias, not a copy.
     print(m.sectors[0].floor_h, m.sectors[1].floor_h)
+    via_ptr(m)
+    # The element write and the append both reached the Map behind the Ptr;
+    # read here because len(p.sectors) on the Ptr rejects
+    # (BUGS.md#call-result-container-field-read).
+    print("via_ptr", m.sectors[0].floor_h, len(m.sectors))
 
 
 main()

@@ -1,0 +1,11 @@
+yield_record_walrus: 100
+yield_record_walrus: resume 110 110
+yield_record_walrus: 101
+yield_record_walrus: resume 111 111
+branch_block_local: global 10
+branch_block_local: global 11
+branch_block_local: yield 0
+branch_block_local: fwd 7
+branch_block_local: fwd 2
+branch_block_local: yield 1
+branch_block_local: G 11

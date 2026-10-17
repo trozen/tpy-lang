@@ -156,6 +156,7 @@ from .nodes import (
     THIRTupleLiteral,
     THIRTupleUnpack,
     TupleElemBind,
+    UnpackBind,
     TupleSourceBind,
     THIRTruthy,
     THIROptViewArg,
@@ -2722,8 +2723,6 @@ def _emit_with(out: TextIO, stmt: THIRWith, indent_level: int,
                       f"&(__ctx_{n}.__enter__());\n")
         elif item.target_arm is WithTargetArm.ASSIGN_PTR:
             out.write(f"{indent}{item.target} = &(__ctx_{n}.__enter__());\n")
-        elif item.target_arm is WithTargetArm.ASSIGN_OPT:
-            out.write(f"{indent}{item.target} = __ctx_{n}.__enter__();\n")
         elif item.target_arm is WithTargetArm.FRAME_SLOT:
             out.write(f"{indent}{item.target}"
                       f".emplace(__ctx_{n}.__enter__());\n")
@@ -4151,23 +4150,17 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                       f".emplace({v});\n")
         elif (stmt.btuple_borrow_cpp is not None
                 and isinstance(stmt.target, THIRName)):
-            # Owning-call reseat of a borrow-tuple local (a nullable one, or
-            # a whole-slot one off an owning call): emplace into the
-            # binding's owning slot, alias via tuple_to_pointer -- under the
-            # optional spelling for the nullable one.
+            # Owning-call reseat of a nullable borrow-tuple local: emplace
+            # into the binding's owning slot, alias via tuple_to_pointer
+            # under the optional spelling.
             v = _emit_expr(stmt.value, state)
             state.temps.flush(out, indent)
             slot = _own_slot(state, stmt.own_slot)
-            if stmt.btuple_opt_cpp is not None:
-                out.write(
-                    f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                    f"{stmt.btuple_opt_cpp}{{::tpy::tuple_to_pointer<"
-                    f"{stmt.btuple_borrow_cpp}>"
-                    f"({slot}.emplace({v}))}};\n")
-            else:
-                out.write(f"{indent}{escape_cpp_name(stmt.target.name)} = "
-                          f"::tpy::tuple_to_pointer<{stmt.btuple_borrow_cpp}>"
-                          f"({slot}.emplace({v}));\n")
+            out.write(
+                f"{indent}{escape_cpp_name(stmt.target.name)} = "
+                f"{stmt.btuple_opt_cpp}{{::tpy::tuple_to_pointer<"
+                f"{stmt.btuple_borrow_cpp}>"
+                f"({slot}.emplace({v}))}};\n")
             _witness("btuple.reseat_emplace_emit")
         elif stmt.rebind_storage is not None:
             # Rvalue reseat of a pointer-local: sema's alias-rebind verdict
@@ -4437,13 +4430,13 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             if name is None:
                 continue
             get = f"std::get<{i}>({tmp})"
-            bind = stmt.binds[i] if stmt.binds else "value"
-            if bind == "frame_ptr_addr":
+            bind = stmt.binds[i] if stmt.binds else UnpackBind.VALUE
+            if bind is UnpackBind.FRAME_PTR_ADDR:
                 # Loop-head alias target: the element is a live value
                 # lvalue inside the container's storage tuple.
                 out.write(f"{indent}{escape_cpp_name(name)} = "
                           f"&({get});\n")
-            elif bind == "frame_ptr_elem":
+            elif bind is UnpackBind.FRAME_PTR_ELEM:
                 # Pointer-alias target: alias the LIVE element --
                 # tuple_elem_ref normalizes a `T*` borrow element (deref)
                 # or a value element (forward) to the live `T&`, and the
@@ -4451,19 +4444,19 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{escape_cpp_name(name)} = "
                           f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
                           f"({get})));\n")
-            elif bind == "frame_opt_ptr":
+            elif bind is UnpackBind.FRAME_OPT_PTR:
                 # Ptr-repr Optional frame target off a STORAGE optional
                 # element: nullptr doubles as None.
                 out.write(f"{indent}{escape_cpp_name(name)} = "
                           f"::tpy::optional_to_ptr({get});\n")
-            elif bind == "frame_rebind_ptr":
+            elif bind is UnpackBind.FRAME_REBIND_PTR:
                 # A rebound reference local's binding: the element's object
                 # moves into this site's frame field, which the pointer
                 # re-points at.
                 _rvalue_reseat(out, indent, escape_cpp_name(name),
                                f"std::move({get})", state, rebuild=False,
                                frame_slot=stmt.slot_fields[i])
-            elif bind in ("frame_assign", "frame_emplace"):
+            elif bind in (UnpackBind.FRAME_ASSIGN, UnpackBind.FRAME_EMPLACE):
                 # Resumable frame targets: assigned, never re-declared. The
                 # wrap is the per-element is_owned move (ref elements
                 # reject at lowering -- they would need an unwrap_ref wrap);
@@ -4471,19 +4464,19 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 wrap = stmt.wraps[i] if stmt.wraps else ""
                 if wrap == "move":
                     get = f"std::move({get})"
-                if bind == "frame_emplace":
+                if bind is UnpackBind.FRAME_EMPLACE:
                     out.write(f"{indent}{escape_cpp_name(name)}"
                               f".emplace({get});\n")
                 else:
                     out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
-            elif bind == "assign":
+            elif bind is UnpackBind.ASSIGN:
                 # Reused target: an already-declared name, so no decl. The
                 # wrap moves an owned element out of a holder the statement
                 # owns.
                 if stmt.wraps and stmt.wraps[i] == "move":
                     get = f"std::move({get})"
                 out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
-            elif bind == "global_slot":
+            elif bind is UnpackBind.GLOBAL_SLOT:
                 # Pointer-slot global at module init: the moved-out element
                 # needs storage that outlives `__tpy_init`, so it lands in a
                 # `static` slot the pre-declared global points at. Lowering
@@ -4492,21 +4485,21 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 out.write(f"{indent}{state.slot_static}{cpp} {slot} = "
                           f"std::move({get});\n")
                 out.write(f"{indent}{escape_cpp_name(name)} = &{slot};\n")
-            elif bind == "global_ptr":
+            elif bind is UnpackBind.GLOBAL_PTR:
                 # The borrowed element's pointer, off the pointer-lifted
                 # capture: the source is a tuple global, static storage.
                 out.write(f"{indent}{escape_cpp_name(name)} = {get};\n")
-            elif bind == "unwrap_ref":
+            elif bind is UnpackBind.UNWRAP_REF:
                 # Wrapper-reference element: the capture's slot is a live
                 # `X&`; unwrap_ref hands back that reference to alias.
                 out.write(f"{indent}{cpp}& {escape_cpp_name(name)} = "
                           f"::tpy::unwrap_ref({get});\n")
-            elif bind == "ptr_variant":
+            elif bind is UnpackBind.PTR_VARIANT:
                 # Own[A | B] element: the capture holds the VALUE variant,
                 # so the target lifts per element into the pointer variant.
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"::tpy::to_ptr_variant({get});\n")
-            elif bind == "opt_ptr":
+            elif bind is UnpackBind.OPT_PTR:
                 # A storage-form element (`std::optional<T>` in an owning
                 # call's capture) lifts to the pointer the target borrows;
                 # a borrow-form element is that pointer already.
@@ -4514,8 +4507,8 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                     get = f"::tpy::optional_to_ptr({get})"
                 out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                           f"{get};\n")
-            elif bind in ("move", "move_pointee"):
-                moved = (f"std::move({get})" if bind == "move"
+            elif bind in (UnpackBind.MOVE, UnpackBind.MOVE_POINTEE):
+                moved = (f"std::move({get})" if bind is UnpackBind.MOVE
                          else f"std::move(*{get})")
                 rec = stmt.target_slot(i)
                 if rec is not None:
@@ -4526,16 +4519,16 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
                 else:
                     out.write(f"{indent}{cpp} {escape_cpp_name(name)} = "
                               f"{moved};\n")
-            elif bind == "cref":
+            elif bind is UnpackBind.CREF:
                 out.write(f"{indent}const {cpp}& {escape_cpp_name(name)} = "
                           f"{get};\n")
-            elif bind == "ptr":
-                # The reseatable twin of "ref": `auto*` keeps the element's
+            elif bind is UnpackBind.PTR:
+                # The reseatable twin of REF: `auto*` keeps the element's
                 # const-ness exactly as the `auto&&` alias does.
                 out.write(f"{indent}auto* {escape_cpp_name(name)} = "
                           f"&(::tpy::unwrap_ref(::tpy::tuple_elem_ref"
                           f"({get})));\n")
-            elif bind == "ref":
+            elif bind is UnpackBind.REF:
                 # Borrow-tuple element: `std::get<i>(__tup)` is a `T*` (or
                 # val_or_ref); one `auto&&` reference aliases the live element
                 # in every form -- tuple_elem_ref derefs the pointer, unwrap_ref

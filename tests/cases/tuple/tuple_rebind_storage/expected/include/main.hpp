@@ -159,6 +159,8 @@ void nonlocal_write(Box& v);
 __coro_frame_body frame_body(Box& v);
 // def field_repoint(h: HB) -> None:
 void field_repoint(HB& h);
+// def field_then_literal(h: HB) -> None:
+void field_then_literal(HB& h);
 // def written_then_field(h: HB, v: Box) -> None:
 void written_then_field(HB& h, Box& v);
 // def match_capture(v: Box) -> None:

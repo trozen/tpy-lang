@@ -16,7 +16,7 @@ from ..typesys import (
     NoneType, INT32, unwrap_readonly, canonical_readonly, unwrap_optional_own, unwrap_send_sync, OwnType, OptionalType, RecordInfo, FieldInfo,
     RecursiveUnionInfo, RecursiveAliasInstanceType,
     FunctionInfo, ParamInfo, MethodSignature, is_any_str_type, BIGINT, FLOAT,
-    body_function_info, body_method_info,
+    body_function_info, body_method_info, analyzes_body,
     make_ref, unwrap_ref_type, RefType, TypeParamKind, TypeParamRef, TupleType,
     TypeAliasInfo,
     is_void_like_type,
@@ -96,6 +96,7 @@ from .. import qnames
 from .context import (
     SemanticContext, RecordContext, ParkedFunctionState, LoanInfo, OwnSlot,
     MODULE_INIT_CONTEXT, contains_pending_leaf)
+from .storage_walk import StorageKey
 from . import own_copy
 from .type_ops import TypeOperations
 from .operators import OperatorResolver
@@ -969,11 +970,9 @@ class SemanticAnalyzer:
             self._PHASE_REGISTER_SIGNATURES,
         )
 
-    def prepare_bodies(self, module: TpyModule) -> IdentitySet:
+    def prepare_bodies(self, module: TpyModule) -> None:
         """Body phase 1: class-constant initializers, function-macro and
-        builder-trace expansion. Returns the FunctionInfos whose bodies this
-        module will analyze, for `analyze_component_bodies` to install as the
-        component's pending set.
+        builder-trace expansion.
         """
         # Runs after `_analyze_top_level` so module-level Final globals are
         # in scope, and before the method bodies so they see typed constants.
@@ -984,8 +983,6 @@ class SemanticAnalyzer:
         self._expand_builder_traces(module)
         self._decide_const_withheld(module)
         self.ctx.deferred_generic_yield_settles.clear()
-        # Collected after expansion: a synthesized body is analyzed too.
-        return self._collect_pending_borrow_fact_fis(module)
 
     def analyze_body_passes(self, module: TpyModule) -> None:
         """Body phase 2: record method bodies, free function bodies, then
@@ -993,7 +990,6 @@ class SemanticAnalyzer:
         for record in module.all_records():
             self._analyze_record_methods(record)
 
-        # Skip bodyless @overload stubs and @inline functions.
         for func in module.functions:
             if self._skip_body_analysis(func):
                 continue
@@ -1009,34 +1005,6 @@ class SemanticAnalyzer:
         definition order -- across the component's modules too."""
         self._settle_deferred_generic_yields()
         self.stmts.scopes.settle_deferred_escapes()
-
-    def _collect_pending_borrow_fact_fis(self, module: TpyModule) -> IdentitySet:
-        """The FunctionInfos whose bodies the body passes will analyze,
-        mirroring their skip conditions and FI lookups -- exactly the FIs
-        whose return_borrows_from=None means "not yet", never "opaque stub".
-        Entries become inert once finalize fills the fact. Resolved through
-        this module's own registry: a peer's names are not bound here.
-        """
-        pending = IdentitySet()
-        for record in module.all_records():
-            record_info = self.ctx.registry.get_record(record.name)
-            if record_info is None:
-                continue
-            for method in record.methods:
-                if method.is_stub:
-                    continue
-                method_fi = body_method_info(record_info, method, sema=True)
-                if method_fi is not None and method_fi.return_borrows_from is None:
-                    pending.add(method_fi)
-        for func in module.functions:
-            if func.skip_codegen:
-                continue
-            if func.is_overload_stub and func.is_stub:
-                continue
-            func_info = body_function_info(self.ctx.registry, func)
-            if func_info is not None and func_info.return_borrows_from is None:
-                pending.add(func_info)
-        return pending
 
     def publish_phase2_facts(self, module: TpyModule) -> None:
         """Sub-phase 5, after the component's mutation-fact propagation and
@@ -1723,12 +1691,9 @@ class SemanticAnalyzer:
         self.ctx.deferred_generic_yield_settles.clear()
 
     def _analyze_function(self, func: TpyFunction, *,
-                          genexpr_source_loans: tuple[tuple[str, LoanInfo], ...] = ()) -> None:
+                          genexpr_source_loans: tuple[tuple[StorageKey, LoanInfo], ...] = ()
+                          ) -> None:
         """Analyze a function body."""
-        # Stub functions (extern imports with ... body) have no body to analyze
-        if func.is_stub:
-            return
-
         self.ctx.reset_function_tracking()
         self.ctx.func.genexpr_source_loans = genexpr_source_loans
         own_copy_mark = self.ctx.own_copy_mark()
@@ -3127,7 +3092,7 @@ class SemanticAnalyzer:
             # resolve against its stubs), so its facts land on the first stub's
             # and Phase 2 / const inference work through that one.
             record_info = self.ctx.registry.get_record(record.name)
-            if record_info is not None and not method.is_stub:
+            if record_info is not None and analyzes_body(method):
                 method_fi = body_method_info(record_info, method, sema=True)
                 if (method_fi is not None
                         and method_fi.direct_mutated_params is None
@@ -4051,12 +4016,11 @@ class SemanticAnalyzer:
 
     def _skip_body_analysis(self, func: TpyFunction) -> bool:
         """Functions Pass 7 does not analyze, so their expr_types stay empty:
-        bodyless @overload stubs (handled via their trailing implementation)
-        and @inline functions (inlined at call sites, not emitted standalone).
-        """
-        return (func.skip_codegen
-                or (func.is_overload_stub and func.is_stub)
-                or func.is_genexpr)
+        bodyless stubs (a @overload stub is handled via its trailing
+        implementation), @inline functions (inlined at call sites, not
+        emitted standalone) and generator expressions (analyzed where
+        written)."""
+        return not analyzes_body(func)
 
     def _drain_deferred_sema_macros(self, module: TpyModule) -> None:
         """Post-pass-7: run callbacks a macro deferred via
@@ -4353,16 +4317,9 @@ def analyze_component_bodies(
     """
     scope = errors_in or (lambda _i: nullcontext())
     analyzers = [analyzer for analyzer, _ in members]
-    pending = IdentitySet()
     for i, (analyzer, module) in enumerate(members):
         with scope(i):
-            pending |= analyzer.prepare_bodies(module)
-    # Installed once, before any body: a peer's body analyzed later in the
-    # component is as unanalyzed as a later body of the same module, so a
-    # call-result bind from it must register a conservative OPAQUE borrow
-    # rather than read its None as "borrows nothing".
-    for analyzer in analyzers:
-        analyzer.ctx.pending_borrow_fact_fis = pending
+            analyzer.prepare_bodies(module)
     for i, (analyzer, module) in enumerate(members):
         with scope(i):
             analyzer.analyze_body_passes(module)

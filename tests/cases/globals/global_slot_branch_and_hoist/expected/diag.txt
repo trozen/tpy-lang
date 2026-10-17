@@ -1,1 +1,2 @@
 main.py:48: warning: 'S' will not keep the object it was given -- 'V' is rebound on each iteration and both names share its storage; use copy(V) for an independent value
+main.py:62: warning: 'q' will not keep the object it was given -- 'pool' is rebound on each iteration and both names share its storage; use copy() on the assigned value for an independent value

@@ -9,38 +9,18 @@ from __future__ import annotations
 from contextlib import contextmanager
 from typing import TYPE_CHECKING, Iterator, NamedTuple
 
-from ..typesys import (
-    TpyType, OwnType, held_whole_borrow_sources, recorded_return_borrow_sources)
-from ..parse import (
-    TpyAwait, TpyCoerce, TpyName, TpyFieldAccess, TpySubscript, TpyIfExpr,
-    TpyVarargPack,
-    TpyStarUnpack, TpyExpr, TpyStmt, TpyFunction, is_property_getter_read,
-)
+from ..holders import IterHolder
+from ..typesys import TpyType, OwnType
+from ..parse import TpyCoerce, TpyName, TpyExpr, TpyStmt, TpyFunction
 from ..namespace import Namespace
 from ..diagnostics import Scope
-from ..value_category import call_returns_cpp_ref, property_access_returns_cpp_ref
-from .context import (
-    ITER_BORROWER, CallOperands, call_borrow_operands, call_lend_sources)
-from .type_ops import signature_may_return_borrow
+from .call_lends import MayLend
+from .storage_walk import Place, Use, storage_roots
 
 if TYPE_CHECKING:
+    from ..parse import TpyComprehensionGenerator
     from .context import SemanticContext
     from .compatibility import TypeCompatibility
-
-
-class LendRoot(NamedTuple):
-    """One name a source expression lends storage from."""
-    name: str
-    # Reached through a spelled call, not by path alone.
-    through_call: bool
-    # Reached through a callee whose body is not analyzed yet, so whether it
-    # lends this name at all is an assumption.
-    assumed: bool = False
-    # Held only as a reference to the whole object: nothing iterates it or
-    # points into it, so growing it invalidates nothing (a genexpr capture).
-    # It relaxes invalidation only -- the hold still dangles if the root
-    # dies, so escape checks keep it.
-    held_whole: bool = False
 
 
 class DeferredEscape(NamedTuple):
@@ -53,83 +33,13 @@ class DeferredEscape(NamedTuple):
     node: TpyExpr | TpyStmt | None
 
 
-def lend_roots(ctx: SemanticContext, expr: TpyExpr, through_call: bool = False,
-               assumed: bool = False, held_whole: bool = False) -> list[LendRoot]:
-    """The named storage `expr` hands out a reference INTO, in source
-    order; empty when it builds what it yields.
-
-    A name, a field or an element lends its root. A call lends whatever
-    its callee's `return_borrows_from` names -- the receiver, an argument,
-    several -- so the question is answered by the same fact the borrow
-    tracker files the binding's loans from, never by how the call is
-    spelled: a getter, a method, a free function and an operator dunder
-    that hand back a reference into `b` all point the binding at `b`.
-    """
-    if isinstance(expr, TpyCoerce):
-        return lend_roots(ctx, expr.expr, through_call, assumed, held_whole)
-    if isinstance(expr, TpyName):
-        return [LendRoot(expr.name, through_call, assumed, held_whole)]
-    if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-        return lend_roots(ctx, expr.obj, through_call, assumed, held_whole)
-    if isinstance(expr, TpyIfExpr):
-        # A mixed arm pair is a prvalue: the binding owns a copy of the
-        # chosen arm and points at neither.
-        arms = [lend_roots(ctx, expr.then_expr, through_call, assumed, held_whole),
-                lend_roots(ctx, expr.else_expr, through_call, assumed, held_whole)]
-        return arms[0] + arms[1] if all(arms) else []
-    if isinstance(expr, TpyAwait):
-        # A borrow-returning await aliases what the awaited call borrows.
-        return (lend_roots(ctx, expr.value, through_call, assumed, held_whole)
-                if expr.await_result_is_borrow else [])
-    if isinstance(expr, TpyVarargPack):
-        return [root for arg in expr.args for root in lend_roots(
-            ctx, arg.expr if isinstance(arg, TpyStarUnpack) else arg,
-            through_call, assumed, held_whole)]
-    operands = call_borrow_operands(expr)
-    if operands is None:
-        # Literals, comprehensions etc. -- fresh storage.
-        return []
-    # A `@property` read is a path hop like the field it wraps.
-    through_call = through_call or not is_property_getter_read(expr)
-    sources, facts_pending = _call_result_sources(ctx, expr, operands)
-    roots: list[LendRoot] = []
-    for source, held in sources:
-        roots.extend(lend_roots(ctx, source, through_call,
-                                assumed or facts_pending, held_whole or held))
-    return roots
-
-
-def _call_result_sources(ctx: SemanticContext, expr: TpyExpr,
-                         operands: CallOperands
-                         ) -> tuple[list[tuple[TpyExpr, bool]], bool]:
-    """The operands of one call whose storage its result may point into,
-    each with whether the result only holds it whole, and whether that
-    answer is an assumption about a pending callee."""
-    fi, obj = operands.fi, operands.obj
-    if is_property_getter_read(expr):
-        # The read's own convention is decided per INSTANTIATION (a bare
-        # type-param return) and per storage-ref shape, which the body
-        # fact cannot see.
-        return ([(obj, False)] if property_access_returns_cpp_ref(ctx, expr)
-                else []), False
-    if not signature_may_return_borrow(fi):
-        return [], False
-    # The ROOT carries the fact: a call site's resolved fi can be a
-    # specialization synthesized before the callee's body facts landed.
-    if fi.root.return_borrows_from is None:
-        if ctx.return_borrow_fact_pending(fi):
-            # Body not analyzed yet (a forward reference): assume every
-            # operand, as the borrow registration does.
-            return [(src.expr, False)
-                    for src in call_lend_sources(operands,
-                                                 expr_type=None)], True
-        # A body-less stub records no fact; its declared convention is
-        # the answer, and a reference it returns is into its receiver.
-        return ([(obj, False)] if obj is not None
-                and call_returns_cpp_ref(ctx, fi) else []), False
-    return [(src.expr, src.held_whole) for src in call_lend_sources(
-        operands, recorded_return_borrow_sources(fi),
-        held_whole_borrow_sources(fi), expr_type=None)], False
+def lend_places(ctx: SemanticContext, expr: TpyExpr) -> tuple[Place, ...]:
+    """The named storage `expr` hands out a reference INTO, in source order
+    (the HOLDER climb under MAY): a name, a field or an element lends its
+    root, a call whatever its callee's result may point into -- the same
+    fact the borrow tracker files the binding's loans from, never how the
+    call is spelled. Empty when it builds what it yields."""
+    return storage_roots(expr, Use.HOLDER, None, MayLend(ctx)).places
 
 
 class ScopeTracker:
@@ -166,19 +76,19 @@ class ScopeTracker:
             self.ctx.func.current_ns = old_ns
 
     @contextmanager
-    def loop_scope(self, body: list[TpyStmt] | None = None) -> Iterator[Scope]:
+    def loop_scope(self, body: list[TpyStmt] | None = None,
+                   iterator: IterHolder | None = None) -> Iterator[Scope]:
         """Create an inner scope for a loop body and bump loop_depth.
 
-        The implicit iterator loan a `for` registers expires here: the
-        iterator is a temporary of the statement, so the statement's own
-        scope releases it -- carried past the exit it would never expire and
-        would warn on every post-loop mutation of the iterable. Keyed by
-        holder rather than by the storage the lowering registered, because a
-        rebind in the body retargets the loan to another storage key but
-        never renames the holder. A shape that registers none (`while`, the
-        enum-iterable `for`) drops nothing of its own; an ENCLOSING loop's
-        loan is dropped along with it and comes back from the `before`
-        snapshot every caller's exit-facts merge restores.
+        The loans of the loop's running `iterator` (a `for`'s; a `while`
+        has none) expire here: the iterator is a temporary of the statement,
+        so the statement's own scope releases it -- carried past the exit it
+        would never expire and would warn on every post-loop mutation of the
+        iterable. Keyed by holder rather than by the storage the lowering
+        registered, because a rebind in the body retargets the loan to
+        another storage key but never renames the holder. An enclosing
+        loop's iterator, and a named one (a generator kept across the loop),
+        hold on.
         """
         with self.block_scope() as inner_scope:
             self.ctx.func.loop_depth += 1
@@ -186,7 +96,8 @@ class ScopeTracker:
                 yield inner_scope
             finally:
                 self.ctx.func.loop_depth -= 1
-                self.ctx.func.borrow_tracker.remove_borrower(ITER_BORROWER)
+                if iterator is not None:
+                    self.ctx.func.borrow_tracker.remove_borrower(iterator)
 
     @contextmanager
     def deferred_body(self) -> Iterator[None]:
@@ -209,15 +120,14 @@ class ScopeTracker:
             self.ctx.cond_operand_depth = saved
 
     @contextmanager
-    def comprehension_scope(self) -> Iterator[Scope]:
+    def comprehension_scope(self, clauses: list[TpyComprehensionGenerator]
+                            ) -> Iterator[Scope]:
         """Create an inner scope for a comprehension (no loop_depth bump).
 
-        The iterator loan the comprehension files expires here, as a `for`'s
-        does in `loop_scope`. Unlike a loop, nothing restores an ENCLOSING
-        loop's loan afterwards (no exit-facts merge follows an expression),
-        so the loans held on entry are put back rather than dropped.
+        The loans of the iterators of the comprehension's `clauses` expire
+        here, as a `for`'s do in `loop_scope`; an enclosing loop's or
+        comprehension's iterator holds on.
         """
-        enclosing_iter_loans = self.ctx.func.borrow_tracker.loans_held_by(ITER_BORROWER)
         inner_scope = Scope(self.ctx.func.current_scope, expression=True)
         old_scope = self.ctx.func.current_scope
         old_ns = self.ctx.func.current_ns
@@ -239,8 +149,8 @@ class ScopeTracker:
             # Re-read: a trial scope or a nested def inside the comprehension
             # restores the function state as a deep copy.
             bt = self.ctx.func.borrow_tracker
-            bt.remove_borrower(ITER_BORROWER)
-            bt.reinstate(ITER_BORROWER, enclosing_iter_loans)
+            for clause in clauses:
+                bt.remove_borrower(IterHolder(clause))
 
     @contextmanager
     def lambda_scope(self) -> Iterator[Scope]:
@@ -335,17 +245,17 @@ class ScopeTracker:
     def get_expr_scope_depth(self, expr: TpyExpr) -> int:
         """The deepest storage scope `expr` lends from; 0 for fresh storage."""
         return max((self._storage_depth(root.name)
-                    for root in lend_roots(self.ctx, expr)), default=0)
+                    for root in lend_places(self.ctx, expr)), default=0)
 
     def _escaping_roots(self, target_name: str,
-                        source_expr: TpyExpr) -> list[LendRoot]:
+                        source_expr: TpyExpr) -> list[Place]:
         """The roots `source_expr` lends from that may not outlive the target,
         one per name."""
         if self.compat.is_copy_call(source_expr):
             return []
         target_depth = self._storage_depth(target_name)
-        by_name: dict[str, LendRoot] = {}
-        for root in lend_roots(self.ctx, source_expr):
+        by_name: dict[str, Place] = {}
+        for root in lend_places(self.ctx, source_expr):
             if self._storage_depth(root.name) <= target_depth:
                 continue
             # A name lent for certain anywhere in the source is certain.
@@ -405,7 +315,7 @@ class ScopeTracker:
         self.ctx.deferred_escapes = []
         for entry in deferred:
             if any(root.name == entry.root_name
-                   for root in lend_roots(self.ctx, entry.source_expr)):
+                   for root in lend_places(self.ctx, entry.source_expr)):
                 self._warn_shared_slot(entry.target_name, entry.root_name,
                                        entry.remedy, entry.node)
 
@@ -419,7 +329,7 @@ class ScopeTracker:
             f"reference to '{source_name}' may outlive its storage; {remedy}",
             node)
 
-    def _escape_remedy(self, root: LendRoot, source_expr: TpyExpr) -> str:
+    def _escape_remedy(self, root: Place, source_expr: TpyExpr) -> str:
         # copy() is not available for a @nocopy source -- naming it there
         # sends the author into a second, unrelated rejection.
         source_type = (self.ctx.func.current_scope.lookup(root.name)

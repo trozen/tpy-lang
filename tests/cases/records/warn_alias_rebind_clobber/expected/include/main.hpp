@@ -8,6 +8,7 @@
 namespace tpyapp::main {
 
 struct Point;
+struct Named;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -52,6 +53,10 @@ void loop_two_site_read_before_section();
 std::tuple<Point, int32_t> mk_pair(int32_t i);
 // def unpack_kept_first_pass_section() -> None:
 void unpack_kept_first_pass_section();
+// def ident_view(s: StrView) -> StrView:
+std::string_view ident_view(std::string_view s);
+// def view_through_call_section() -> None:
+void view_through_call_section();
 // def main() -> None:
 void main();
 
@@ -68,6 +73,22 @@ struct Point {
 
 inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     ::tpy::print_object_default(os, "Point", obj);
+    return os;
+}
+
+// class Named:
+struct Named {
+    // s: str
+    std::string s;
+
+    // def __init__(self, s: str) -> None:
+    Named() = default;
+    explicit Named(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Named";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Named& obj) {
+    ::tpy::print_object_default(os, "Named", obj);
     return os;
 }
 
@@ -137,5 +158,9 @@ struct __gen_loop_unpack_site_gen : public ::tpy::next_iter_mixin<__gen_loop_unp
 // def __init__(self, x: int32) -> None:
 //     self.x = x
 inline Point::Point(int32_t x) : x(x) {}
+
+// def __init__(self, s: str) -> None:
+//     self.s = s
+inline Named::Named(std::string_view s) : s(s) {}
 void __tpy_init();
 } // namespace tpyapp::main

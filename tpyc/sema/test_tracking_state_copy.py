@@ -163,7 +163,8 @@ _LEAF_VALUE_NAMES = {
     'EphemeralKind',
     'LoopClauseEdges',  # sets of names only
     'LoanInfo',         # a borrow kind, a flag and an index key
-    'NestedMutationMark',  # a name and four flags
+    'NestedMutationMark',  # a storage key and four flags
+    'StorageKey',       # a name and member names
     'OwnSlot',          # a param name and an element index
     'ViewTypeFamily',   # a static descriptor of the str / bytes family
     'InPlaceWrites',    # name -> name sets only

@@ -1,6 +1,6 @@
-# A READ-ONLY binding spells const element pointers, and the const set keys the
-# whole optional-borrow-tuple family out.
-from tpy import int32, Own
+# A declared read-only field bound into an `Optional[tuple]` borrow-tuple local
+# is refused (CPython runs it): BUGS.md#readonly-field-into-opt-borrow-tuple-rejects.
+from tpy import int32, Own, readonly
 
 
 class Box:
@@ -17,7 +17,7 @@ class Holder:
         self.pair = (1, b)
 
 
-def read_only(h: Holder, flag: bool) -> int32:
+def read_only(h: readonly[Holder], flag: bool) -> int32:
     t: tuple[int32, Box] | None = None
     if flag:
         t = h.pair  # tpyc: error(/field.result_type/)

@@ -97,6 +97,12 @@ struct S {
 
     // def mutate_via_alias_chained(self) -> None:
     void mutate_via_alias_chained();
+
+    // def get_inner(self) -> Inner:
+    Inner& get_inner();
+
+    // def bump_lent(self) -> None:
+    void bump_lent();
     static constexpr std::string_view __tpy_class_name__ = "__main__.S";
 };
 
@@ -172,6 +178,19 @@ inline void S::mutate_via_alias_chained() {
     if ((frame != nullptr)) {
         frame->get().do_mutate();
     }
+}
+
+// def get_inner(self) -> Inner:
+//     return self.inner
+inline Inner& S::get_inner() {
+    return this->inner;
+}
+
+// # A call returning self's own field -- must NOT be const.
+// def bump_lent(self) -> None:
+//     self.get_inner().bump()
+inline void S::bump_lent() {
+    this->get_inner().bump();
 }
 void __tpy_init();
 } // namespace tpyapp::main

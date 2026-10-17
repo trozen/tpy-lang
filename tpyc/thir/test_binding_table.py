@@ -28,10 +28,12 @@ from .lower.bindings import (BindingTable, PlanInputs, ScopeNode,
                              plan_bindings, project_held)
 from .lower.comprehensions import _clause_bindings, _clause_route
 from .lower.context import (BindingTableError, FrameLocalClass, _LowerCtx,
-                            _LowerScope, _Prescan)
+                            _LowerScope, _Prescan, ValueOptKind)
 from .lower.statements import _admit_hoist, _Hoist, _lower_first_decl
 from .reject import ThirUnsupported, begin_stmt
-from .source import BindingKind, BindingRepr, Held
+from .source import BindingConstruct as C
+from .source import BindingForm as F
+from .source import BindingRepr, Held
 from .testutil import _compile, _entry, lower_bodies
 from ..typesys import (OwnType, PendingListType, TupleType, unwrap_readonly,
                        unwrap_ref_type)
@@ -99,6 +101,11 @@ def _plan(source: str, name: str):
 
 def _sites(table, name: str) -> list:
     return [r for r in table.records() if r.name == name]
+
+
+def _shape(rec: BindingRepr) -> tuple:
+    """A record's declaring site, form and construction."""
+    return (rec.site_kind, rec.form, rec.construct)
 
 
 def test_sibling_arms_get_a_record_per_declaration_site() -> None:
@@ -336,8 +343,7 @@ def again(u: int, w: int, o: Outer, c: Ctx) -> int:
     assert x2 is not None and x2.site is not first.cases[1]
     q = table.visible(with_stmt.body[0], "q")
     assert q is not None and q.site is not third.cases[0]
-    assert q.kind not in (BindingKind.MATCH_REF, BindingKind.MATCH_COPY,
-                          BindingKind.MATCH_SUBJECT_PTR)
+    assert q.site_kind != "match"
 
 
 def test_a_str_read_is_held_as_its_read_type_over_an_owned_record() -> None:
@@ -416,7 +422,7 @@ def test_a_lowered_declaration_carries_its_record_and_passes() -> None:
     assert decls["alias"].binding.ref_alias
     assert decls["cur"].binding.pointer
     loop, = [s for s in fn.body if isinstance(s, th.THIRForEach)]
-    assert loop.binding.name == "x" and loop.binding.kind is BindingKind.LOOP_VAR
+    assert loop.binding.name == "x" and loop.binding.site_kind == "loop"
     validate_function(fn, lowered=True)
     # Hand-built THIR (no lowering behind it) may leave the record out.
     bare = replace(fn, body=tuple(replace(s, binding=None)
@@ -582,7 +588,7 @@ def test_a_frame_emplace_into_a_non_frame_record_is_rejected(
                  if isinstance(w, th.THIRFrameSlotWrite) and w.name == "p")
     validate_stmts("frame_slot", [write], lowered=True)
     wrong = replace(write, binding=replace(write.binding, frame_class=None,
-                                           coro_frame=False))
+                                           form=F.VALUE, coro_frame=False))
     with pytest.raises(THIRValidationError, match="no frame slot"):
         validate_stmts("frame_slot", [wrong], lowered=True)
 
@@ -910,7 +916,7 @@ def parts(k: int) -> int:
 def test_two_records_of_one_name_at_a_site_are_an_error() -> None:
     site = object()
     table = BindingTable(ScopeNode(None))
-    one = BindingRepr(name="x", site=site, type=None, kind=BindingKind.DECL_PLAIN)
+    one = BindingRepr(name="x", site=site, type=None, form=F.NONE)
     table.sites[site] = (one,)
     assert table.declared_by(site, "x") is one
     assert table.declared_by(site, "y") is None
@@ -1032,9 +1038,11 @@ def pair(t: tuple[bool, P]) -> int:
         layout = tuple_layout(tt, an, borrow=True)
     assert layout is not None
     glob = BindingRepr(name="M", site=None, type=tt,
-                       kind=BindingKind.GLOBAL_MODULE, tuple_layout=layout)
+                       form=F.BORROW_TUPLE, site_kind="module_global",
+                       tuple_layout=layout)
     local = BindingRepr(name="t", site=None, type=tt,
-                        kind=BindingKind.DECL_BTUPLE_REBOUND, ptr_tuple=tt)
+                        form=F.BORROW_TUPLE, site_kind="decl",
+                        ptr_tuple=tt)
     plain = replace(local, ptr_tuple=None)
     elems = (th.THIRTupleElemTarget(index=0, elem_type=tt.element_types[0],
                                     bind=th.TupleElemBind.VALUE),
@@ -1079,7 +1087,7 @@ def pick(h: Holder, a: P, b: P) -> int:
     return t[0].v
 ''', "pick")
     rec = table.declared_by(func.body[0], "t")
-    assert rec.kind is BindingKind.DECL_BTUPLE_REBOUND
+    assert _shape(rec) == ("decl", F.BORROW_TUPLE, C.BTUPLE_REBOUND)
     assert rec.effective_type is not None
 
 
@@ -1096,7 +1104,7 @@ def pick(c: bool) -> int:
     return x
 ''', "pick")
     rec = table.declared_by(func.body[0], "x")
-    assert rec.kind is BindingKind.DECL_NO_INIT_VALUE
+    assert _shape(rec) == ("decl", F.VALUE, C.NO_INIT_VALUE)
 
 
 # The kinds whose builders refuse some or all of the shapes the planner
@@ -1147,7 +1155,7 @@ def pick(c: bool, a: P) -> int:
         return 1
     return 0
 ''', "pick", "u")
-    assert rec.kind is BindingKind.DECL_PTR_VARIANT_SLOT
+    assert _shape(rec) == ("decl", F.POINTER_UNION, C.PTR_VARIANT_SLOT)
     assert rec.rebind_slot
 
 
@@ -1162,7 +1170,7 @@ def pick(c: bool, a: P, b: P) -> int:
     v = t if c else s
     return v[0].v
 ''', "pick", "v")
-    assert rec.kind is BindingKind.DECL_BTUPLE_INLINE_ARMS
+    assert _shape(rec) == ("decl", F.BORROW_TUPLE, C.BTUPLE_INLINE_ARMS)
 
 
 def _plan_inputs(source: str, name: str, **prescan_facts):
@@ -1192,7 +1200,7 @@ def pick(n: int) -> int:
 ''', "pick", hoisted=frozenset({"d"}))
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
-    assert table.declared_by(func.body[0], "d").kind is BindingKind.DECL_DYN
+    assert _shape(table.declared_by(func.body[0], "d")) == ("decl", F.DYN, C.DYN)
 
 
 def test_an_assign_to_a_name_nothing_binds_is_an_assign_site() -> None:
@@ -1208,7 +1216,7 @@ def pick(n: int) -> int:
     with activate_compiler(compiler):
         table = plan_bindings(inp, body)
     rec = table.declared_by(body[0], "z")
-    assert (rec.site_kind, rec.kind) == ("assign", BindingKind.ASSIGN_PLAIN)
+    assert _shape(rec) == ("assign", F.NONE, None)
 
 
 def test_an_unresolved_pending_list_is_the_container_slot_kind() -> None:
@@ -1230,7 +1238,7 @@ def pick(c: bool) -> int:
             _bindings._Site("decl", node=stmt, init=stmt.init,
                             storage=_bindings.StorageVerdict(pointer=True)),
             "xs", pending, inp, lambda n: None)
-    assert rec.kind is BindingKind.DECL_CONTAINER_SLOT
+    assert _shape(rec) == ("decl", F.POINTER, C.CONTAINER_SLOT)
 
 
 def test_a_frame_slot_reaching_the_first_declaration_is_an_error(
@@ -1241,7 +1249,8 @@ def test_a_frame_slot_reaching_the_first_declaration_is_an_error(
 
     def frame_row(site, name, typ, inp, visible):
         rec = decl_row(site, name, typ, inp, visible)
-        return (replace(rec, frame_class=FrameLocalClass.FRAME_SLOT)
+        return (replace(rec, frame_class=FrameLocalClass.FRAME_SLOT,
+                        form=F.FRAME_SLOT)
                 if name == "x" else rec)
     monkeypatch.setitem(_bindings._ROWS, "decl", (frame_row,))
     func, _table, lc = _installed('''
@@ -1277,11 +1286,11 @@ def pick(a: P, b: P) -> int:
     w = r
     return u[0].v + v[0].v + w[0].v
 ''', "pick")
-    kinds = {r.name: r.kind for r in table.records()
+    kinds = {r.name: _shape(r) for r in table.records()
              if isinstance(r.site, TpyVarDecl)}
-    assert kinds["u"] is BindingKind.DECL_BTUPLE_REF_ALIAS
-    assert kinds["v"] is BindingKind.DECL_BTUPLE_REF_ALIAS
-    assert kinds["w"] is BindingKind.DECL_BTUPLE_ALIAS
+    assert kinds["u"] == ("decl", F.BORROW_TUPLE, C.BTUPLE_REF_ALIAS)
+    assert kinds["v"] == ("decl", F.BORROW_TUPLE, C.BTUPLE_REF_ALIAS)
+    assert kinds["w"] == ("decl", F.BORROW_TUPLE, C.BTUPLE_ALIAS)
 
 
 def test_an_open_t_call_local_carries_its_source_const() -> None:
@@ -1328,10 +1337,10 @@ def pick[T](y: T) -> None:
         return next(r for r in tables[body].records()
                     if r.name == var and isinstance(r.site, TpyVarDecl))
     rec = decl("PHold.touch", "x")
-    assert rec.kind is BindingKind.DECL_TPARAM_CALL
+    assert _shape(rec) == ("decl", F.VALUE, C.TPARAM_CALL)
     assert rec.const
     rec = decl("pick", "b")
-    assert rec.kind is BindingKind.DECL_TPARAM_CALL
+    assert _shape(rec) == ("decl", F.VALUE, C.TPARAM_CALL)
     assert not rec.const
 
 
@@ -1346,7 +1355,7 @@ def alias(p: tuple[Own[P], Own[P]]) -> int:
     return p[0].v
 '''
     rec = _decl_rec(source, "alias", "q")
-    assert rec.kind is BindingKind.DECL_STORAGE_TUPLE_CHAIN
+    assert _shape(rec) == ("decl", F.STORAGE_TUPLE, C.STORAGE_TUPLE_CHAIN)
     assert rec.storage_tuple
     # No program's row gives an Own-element tuple a layout, a const or a
     # pointer, so the row is forged to hold all three (a pointer slot's
@@ -1360,7 +1369,7 @@ def alias(p: tuple[Own[P], Own[P]]) -> int:
                 if name == "q" else rec)
     monkeypatch.setattr(_bindings, "_decl_value_rows", forged)
     rec = _decl_rec(source, "alias", "q")
-    assert rec.kind is BindingKind.DECL_STORAGE_TUPLE_CHAIN
+    assert _shape(rec) == ("decl", F.STORAGE_TUPLE, C.STORAGE_TUPLE_CHAIN)
     assert rec.storage_tuple
     assert rec.tuple_layout is layout and rec.pointer
 
@@ -1392,18 +1401,18 @@ def pick(c: bool, a: P, b: P) -> int:
 ''', "pick")
     if_stmt, for_stmt, try_stmt, with_stmt, _ret = func.body
     t = table.declared_by(if_stmt, "t")
-    assert t.kind is BindingKind.HOIST_BTUPLE_BRANCH and not t.rebind_slot
+    assert _shape(t) == ("hoist", F.BORROW_TUPLE, None) and not t.rebind_slot
     assert t.ptr_tuple is not None
     assert all(not isinstance(et, OwnType) for et in t.ptr_tuple.element_types)
     # The statement keys the loop variable too.
     u, = (r for r in table.sites[for_stmt]
           if r.name == "u" and r.site_kind == "hoist")
-    assert u.kind is BindingKind.HOIST_BTUPLE_LOOP and not u.rebind_slot
+    assert _shape(u) == ("hoist", F.BORROW_TUPLE, None) and not u.rebind_slot
     assert u.ptr_tuple is None
     w = table.declared_by(try_stmt, "w")
-    assert w.kind is BindingKind.HOIST_BTUPLE_BRANCH and not w.rebind_slot
+    assert _shape(w) == ("hoist", F.BORROW_TUPLE, None) and not w.rebind_slot
     assert w.ptr_tuple is None
-    assert table.declared_by(with_stmt, "z").kind is BindingKind.HOIST_PLAIN
+    assert _shape(table.declared_by(with_stmt, "z")) == ("hoist", F.NONE, None)
 
 
 def test_a_nested_match_pointer_hoist_off_const_subjects_is_const() -> None:
@@ -1421,7 +1430,7 @@ def both_const(h: Outer, g: Outer) -> int:
     return -1
 ''', "both_const")
     q = table.declared_by(func.body[0], "q")
-    assert q.kind is BindingKind.HOIST_CONST_POINTER and q.const and q.pointer
+    assert _shape(q) == ("hoist", F.POINTER, None) and q.const and q.pointer
     # The borrow-only capture both matches assign by address.
     assert q.borrowed_capture
 
@@ -1476,7 +1485,7 @@ def chain(t: tuple[P, int], other: P) -> int:
 ''', "chain")
     for i in range(1, 6):
         rec = next(r for r in _sites(table, f"d{i}") if r.site is not None)
-        assert rec.kind is BindingKind.HOIST_CONST_POINTER, rec
+        assert _shape(rec) == ("hoist", F.POINTER, None) and rec.const, rec
         assert rec.const and rec.const_source
 
 
@@ -1630,6 +1639,51 @@ def two(p: readonly[P], q: P, c: bool) -> int:
     assert later is not None and not later.const and not later.const_source
 
 
+def test_a_borrow_tuple_is_a_slot_const_when_every_source_is() -> None:
+    # A borrow tuple's element pointers are one slot: the walrus binds only
+    # a field of the unwritten `h`, so its pointers are const; the rebound
+    # tuple's every binding marks its source's root written, so neither
+    # source is const and the pointers are not.
+    func, table = _plan('''
+def walrus(h: Holder) -> int:
+    n = 0
+    if (t := h.pair)[0].v > 0:
+        n = t[1].v
+    return n
+''', "walrus")
+    (t,) = _sites(table, "t")
+    assert t.form is F.BORROW_TUPLE and t.const and t.const_source
+    func, table = _plan('''
+def rebound(h: Holder, g: Holder, c: bool) -> int:
+    t = h.pair
+    if c:
+        t = g.pair
+    return t[0].v
+''', "rebound")
+    t = table.declared_by(func.body[0], "t")
+    assert _shape(t) == ("decl", F.BORROW_TUPLE, C.BTUPLE_REBOUND)
+    assert not t.const and not t.const_source
+
+
+def test_two_records_of_a_borrow_tuple_name_keep_their_own_const() -> None:
+    # The const is per record: the walrus's tuple holds only a const
+    # source, the loop variable of the same name is a fresh C++ variable
+    # bound per element, so it does not take the walrus's const.
+    func, table = _plan('''
+def two(h: Holder, ys: list[tuple[P, P]]) -> int:
+    n = 0
+    if (t := h.pair)[0].v > 0:
+        n = t[1].v
+    for t in ys:
+        n += t[0].v
+    return n
+''', "two")
+    walrus = next(r for r in _sites(table, "t") if r.site_kind == "walrus")
+    loop = next(r for r in _sites(table, "t") if r.site_kind == "loop")
+    assert walrus.form is F.BORROW_TUPLE and walrus.const
+    assert not loop.const
+
+
 def test_the_hoist_kinds_with_no_cpp_form() -> None:
     # No program reaches these: a const borrow rebound to rvalues is the
     # const pointer at an if (and a match) and no form elsewhere; a
@@ -1675,17 +1729,17 @@ def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
         move_through=frozenset({"z"}))
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
-    kinds = {r.name: r.kind for r in table.records()}
-    assert kinds["x"] is BindingKind.HOIST_PLAIN
-    assert kinds["y"] is BindingKind.HOIST_CONST_POINTER
-    assert kinds["z"] is BindingKind.HOIST_PLAIN
+    kinds = {r.name: _shape(r) for r in table.records()}
+    assert kinds["x"] == ("hoist", F.NONE, None)
+    assert kinds["y"] == ("hoist", F.POINTER, None)
+    assert kinds["z"] == ("hoist", F.NONE, None)
     compiler, func, inp = _plan_inputs(src, "gen")
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
-    kinds = {r.name: r.kind for r in table.records()}
-    assert kinds["a"] is BindingKind.HOIST_PLAIN
-    assert kinds["b"] is BindingKind.HOIST_OPT_STORAGE
-    assert kinds["d"] is BindingKind.HOIST_PLAIN
+    kinds = {r.name: _shape(r) for r in table.records()}
+    assert kinds["a"] == ("hoist", F.NONE, None)
+    assert kinds["b"] == ("hoist", F.OWNED_SLOT, None)
+    assert kinds["d"] == ("hoist", F.NONE, None)
 
 
 def _admit_tag(compiler, stmt, ladder: str, rec: BindingRepr) -> str | None:
@@ -1752,31 +1806,31 @@ def gen(c: bool, o: Outer, m: P | None) -> Iterator[int]:
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
     try_x, if_w, if_g, while_h, _ret = func.body
-    cases = [(try_x, "try", "x", BindingKind.HOIST_PLAIN, "try.hoist"),
-             (if_w, "if", "w", BindingKind.HOIST_PLAIN, "if.hoist_type"),
-             (if_g, "if", "g", BindingKind.HOIST_PLAIN, "if.hoist_type"),
-             (while_h, "while", "h", BindingKind.HOIST_PLAIN,
+    cases = [(try_x, "try", "x", ("hoist", F.NONE, None), "try.hoist"),
+             (if_w, "if", "w", ("hoist", F.NONE, None), "if.hoist_type"),
+             (if_g, "if", "g", ("hoist", F.NONE, None), "if.hoist_type"),
+             (while_h, "while", "h", ("hoist", F.NONE, None),
               "while.hoist_type")]
     compiler_g, func_g, inp_g = _plan_inputs(src, "gen")
     with activate_compiler(compiler_g):
         table_g = plan_bindings(inp_g, func_g.body)
     if_a, if_d, if_t, while_e, for_u, _yield = func_g.body
-    cases_g = [(if_a, "if", "a", BindingKind.HOIST_PLAIN, "if.hoist_type"),
-               (if_d, "if", "d", BindingKind.HOIST_PLAIN, "if.hoist_type"),
-               (if_t, "if", "t", BindingKind.HOIST_PLAIN, "if.hoist_type"),
-               (while_e, "while", "e", BindingKind.HOIST_PLAIN,
+    cases_g = [(if_a, "if", "a", ("hoist", F.NONE, None), "if.hoist_type"),
+               (if_d, "if", "d", ("hoist", F.NONE, None), "if.hoist_type"),
+               (if_t, "if", "t", ("hoist", F.NONE, None), "if.hoist_type"),
+               (while_e, "while", "e", ("hoist", F.NONE, None),
                 "while.hoist_type")]
     for stmt, ladder, name, kind, tag in cases:
         rec = table.declared_by(stmt, name)
-        assert rec.kind is kind, name
+        assert _shape(rec) == kind, name
         assert _admit_tag(compiler, stmt, ladder, rec) == tag, name
     for stmt, ladder, name, kind, tag in cases_g:
         rec = table_g.declared_by(stmt, name)
-        assert rec.kind is kind, name
+        assert _shape(rec) == kind, name
         assert _admit_tag(compiler_g, stmt, ladder, rec) == tag, name
     u, = (r for r in table_g.sites[for_u]
           if r.name == "u" and r.site_kind == "hoist")
-    assert u.kind is BindingKind.HOIST_PLAIN
+    assert _shape(u) == ("hoist", F.NONE, None)
     assert _admit_tag(compiler_g, for_u, "foreach", u) == "foreach.hoist_type"
 
 
@@ -1890,45 +1944,45 @@ def borrow_only(o: Outer, c: bool) -> int:
     # and a match alike, rebound (the storage policy) -- the rebind slot at
     # an if and a match, none at a try.
     ("owned_then_lvalue", {}, {
-        "x": (BindingKind.HOIST_POINTER, False, True, False),
-        "y": (BindingKind.HOIST_POINTER, False, False, False),
-        "z": (BindingKind.HOIST_POINTER, False, True, False)}),
+        "x": (("hoist", F.POINTER, None), False, True, False),
+        "y": (("hoist", F.POINTER, None), False, False, False),
+        "z": (("hoist", F.POINTER, None), False, True, False)}),
     # A readonly type: the const pointer at an if and a match.
     ("readonly_rebound", {}, {
-        "x": (BindingKind.HOIST_CONST_POINTER, True, False, False),
-        "z": (BindingKind.HOIST_CONST_POINTER, True, False, False)}),
+        "x": (("hoist", F.POINTER, None), True, False, False),
+        "z": (("hoist", F.POINTER, None), True, False, False)}),
     # Inside a branch: the rebind-slot pointer at both.
     ("in_branch", {}, {
-        "x": (BindingKind.HOIST_POINTER, False, True, False),
-        "z": (BindingKind.HOIST_POINTER, False, True, False)}),
+        "x": (("hoist", F.POINTER, None), False, True, False),
+        "z": (("hoist", F.POINTER, None), False, True, False)}),
     # A const borrow: the const pointer at both; the match's is also the
     # capture it assigns by address.
     ("const_capture", {}, {
-        "x": (BindingKind.HOIST_CONST_POINTER, True, False, False),
-        "z": (BindingKind.HOIST_CONST_POINTER, True, False, True)}),
+        "x": (("hoist", F.POINTER, None), True, False, False),
+        "z": (("hoist", F.POINTER, None), True, False, True)}),
     # Rvalue-rebound: the rebind slot at an if and a match, none at a try.
     ("owned_rebound", {}, {
-        "x": (BindingKind.HOIST_POINTER, False, True, False),
-        "y": (BindingKind.HOIST_POINTER, False, False, False),
-        "z": (BindingKind.HOIST_POINTER, False, True, False)}),
+        "x": (("hoist", F.POINTER, None), False, True, False),
+        "y": (("hoist", F.POINTER, None), False, False, False),
+        "z": (("hoist", F.POINTER, None), False, True, False)}),
     # Borrow-only: the pointer local at both; the match's is the capture a
     # nested match re-seats by address. The if's, bound in both arms, is
     # rebound: its rebind slot.
     ("borrow_only", {}, {
-        "x": (BindingKind.HOIST_POINTER, False, True, False),
-        "z": (BindingKind.HOIST_POINTER, False, False, True)}),
+        "x": (("hoist", F.POINTER, None), False, True, False),
+        "z": (("hoist", F.POINTER, None), False, False, True)}),
     # Borrow-only and rebound (no program found; the fact is given): the
     # rebind slot at both.
     ("borrow_only", {"reassigned": frozenset({"x", "z"})}, {
-        "x": (BindingKind.HOIST_POINTER, False, True, False),
-        "z": (BindingKind.HOIST_POINTER, False, True, True)}),
+        "x": (("hoist", F.POINTER, None), False, True, False),
+        "z": (("hoist", F.POINTER, None), False, True, True)}),
 ])
 def test_the_one_hoist_ladder_answers_per_statement(func_name, facts,
                                                       expected) -> None:
     compiler, func, inp = _plan_inputs(_LADDER, func_name, **facts)
     with activate_compiler(compiler):
         table = plan_bindings(inp, func.body)
-    got = {r.name: (r.kind, r.const, r.rebind_slot, r.borrowed_capture)
+    got = {r.name: (_shape(r), r.const, r.rebind_slot, r.borrowed_capture)
            for r in table.records()
            if r.site_kind == "hoist" and r.name in expected}
     assert got == expected
@@ -2003,41 +2057,41 @@ def comps(pairs: list[tuple[P, int]], opts: list[tuple[P | None, int]]
     # A record target aliases its element, const off an unmutated tuple;
     # an Optional one is the element pointer, const the same way; value
     # elements copy (an expensive one is a `const T&`).
-    ("unpacks", {"a": (BindingKind.UNPACK_REF, True),
-                 "n": (BindingKind.UNPACK_CREF, False),
-                 "b": (BindingKind.UNPACK_OPT_PTR, True),
-                 "c": (BindingKind.UNPACK_CREF, False)}),
+    ("unpacks", {"a": (("unpack", F.REFERENCE, C.REF), True),
+                 "n": (("unpack", F.REFERENCE, C.CREF), False),
+                 "b": (("unpack", F.POINTER, C.OPT_PTR), True),
+                 "c": (("unpack", F.REFERENCE, C.CREF), False)}),
     # A for head's Optional target is const as the iteration source; a
     # head target naming a visible local writes it (no record of its own).
-    ("heads", {"b": (BindingKind.UNPACK_OPT_PTR, True),
-               "y": (BindingKind.UNPACK_CREF, False),
-               "q": (BindingKind.UNPACK_REF, True)}),
+    ("heads", {"b": (("unpack", F.POINTER, C.OPT_PTR), True),
+               "y": (("unpack", F.REFERENCE, C.CREF), False),
+               "q": (("unpack", F.REFERENCE, C.REF), True)}),
     # A record bound once is the reference, a reassigned one the pointer
     # the second `with` re-points; an owned enter result has no form here
     # (no program in the corpus reaches it).
-    ("withs", {"p": (BindingKind.WITH_REF, False),
-               "r": (BindingKind.WITH_POINTER, False),
-               "c": (BindingKind.WITH_PLAIN, False)}),
+    ("withs", {"p": (("with", F.REFERENCE, None), False),
+               "r": (("with", F.POINTER, None), False),
+               "c": (("with", F.NONE, None), False)}),
     # A capture aliases the field it matched, const off an unmutated
     # subject only.
-    ("captures", {"q": (BindingKind.MATCH_REF, True),
-                  "z": (BindingKind.MATCH_REF, False)}),
+    ("captures", {"q": (("match", F.REFERENCE, None), True),
+                  "z": (("match", F.REFERENCE, None), False)}),
     # A record or Optional element of a comprehension's unpack is a
     # reference, const as the clause's loop variable; a value its copy.
-    ("comps", {"a": (BindingKind.COMP_UNPACK_REF, True),
-               "n": (BindingKind.COMP_UNPACK_VALUE, False),
-               "b": (BindingKind.COMP_UNPACK_STORAGE_OPT, True)}),
+    ("comps", {"a": (("comp", F.REFERENCE, None), True),
+               "n": (("comp", F.VALUE, None), False),
+               "b": (("comp", F.STORAGE_OPT, None), True)}),
 ])
 def test_each_statement_binding_is_the_kind_its_site_declares(
         func_name, expected) -> None:
     func, table = _plan(_STATEMENT_BINDS, func_name)
-    got = {r.name: (r.kind, r.const) for r in table.records()
+    got = {r.name: (_shape(r), r.const) for r in table.records()
            if r.name in expected and r.site is not None}
     assert got == expected
     if func_name == "heads":
         # `s` is the function's local the second head assigns.
-        assert [r.kind for r in _sites(table, "s")] == [
-            BindingKind.DECL_PLAIN]
+        assert [_shape(r) for r in _sites(table, "s")] == [
+            ("decl", F.NONE, None)]
 
 
 _KIND_BINDS = '''
@@ -2140,37 +2194,38 @@ def captures(o: P | None, n: int32) -> int:
 
 @pytest.mark.parametrize("func_name, expected", [
     # A walrus's first binding: the borrow-only record's pointer, the
-    # pointer-repr Optional's, the borrow tuple,
+    # pointer-repr Optional's, the borrow tuple (const: its one source is
+    # an element of the unwritten `ps`),
     # the reassigned borrow tuple over its owning slot, the owned record's
     # deferred-init slot, the value-repr Optional, the plain value.
-    ("walruses", {"a": (BindingKind.WALRUS_PTR_ALIAS, False),
-                  "b": (BindingKind.WALRUS_OPT_PTR, False),
-                  "t": (BindingKind.WALRUS_BTUPLE, False),
-                  "u": (BindingKind.WALRUS_BTUPLE_SLOT, False),
-                  "f": (BindingKind.WALRUS_OWNED_SLOT, False),
-                  "v": (BindingKind.WALRUS_VALUE_OPT, False),
-                  "k": (BindingKind.WALRUS_VALUE, False)}),
+    ("walruses", {"a": (("walrus", F.POINTER, C.POINTER), False),
+                  "b": (("walrus", F.POINTER, C.OPT_PTR), False),
+                  "t": (("walrus", F.BORROW_TUPLE, None), True),
+                  "u": (("walrus", F.BORROW_TUPLE, C.BTUPLE_REBOUND), False),
+                  "f": (("walrus", F.OWNED_SLOT, None), False),
+                  "v": (("walrus", F.VALUE_OPT, None), False),
+                  "k": (("walrus", F.VALUE, None), False)}),
     # A resumable body's walrus of a non-scalar has no form.
-    ("gen_walrus", {"g": (BindingKind.WALRUS_PLAIN, False)}),
+    ("gen_walrus", {"g": (("walrus", F.NONE, None), False)}),
     # Unpack targets: an owned element moved out, a rebound record's
     # pointer, an `Own[A | B]` element's pointer variant, a written value
     # copied, a recursive wrapper's live reference; a `with` over a value
     # enter result copies.
-    ("binds", {"a": (BindingKind.UNPACK_MOVE, False),
-               "b": (BindingKind.UNPACK_PTR, False),
-               "c": (BindingKind.UNPACK_PTR_VARIANT, False),
-               "d": (BindingKind.UNPACK_VALUE, False),
-               "e": (BindingKind.UNPACK_UNWRAP_REF, False),
-               "x": (BindingKind.WITH_VALUE, False)}),
+    ("binds", {"a": (("unpack", F.VALUE, C.MOVE), False),
+               "b": (("unpack", F.POINTER, C.PTR), False),
+               "c": (("unpack", F.POINTER_UNION, C.PTR_VARIANT), False),
+               "d": (("unpack", F.VALUE, C.VALUE), False),
+               "e": (("unpack", F.REFERENCE, C.UNWRAP_REF), False),
+               "x": (("with", F.VALUE, None), False)}),
     # A match capture of a whole pointer subject copies the pointer (const
     # as the subject), a guarded scalar capture its value.
-    ("captures", {"z": (BindingKind.MATCH_SUBJECT_PTR, True),
-                  "y": (BindingKind.MATCH_COPY, False)}),
+    ("captures", {"z": (("match", F.POINTER, None), True),
+                  "y": (("match", F.VALUE, None), False)}),
 ])
 def test_each_binding_kind_is_the_form_its_site_builds(func_name,
                                                        expected) -> None:
     func, table = _plan(_REJECT_KINDS + _KIND_BINDS, func_name)
-    got = {r.name: (r.kind, r.const) for r in table.records()
+    got = {r.name: (_shape(r), r.const) for r in table.records()
            if r.name in expected and r.site is not None}
     assert got == expected
 
@@ -2191,7 +2246,7 @@ def gen(n: int) -> Iterator[int]:
     yield helper(1)
 ''')
     rec = tables["gen"].root.bindings["helper"]
-    assert rec.kind is BindingKind.DEF_CLOSURE_LOCAL and rec.nested_def
+    assert _shape(rec) == ("def", F.VALUE, None) and rec.nested_def
 
 
 def _module_tables(source: str, extra_lib_dirs=None
@@ -2371,7 +2426,7 @@ def test_a_loop_record_carries_the_binding_its_loop_emits() -> None:
     # An unpack clause's holder carries the clause's binding; its targets
     # are no loop variables.
     holder = [r for r in table.records()
-              if r.kind is BindingKind.COMP_UNPACK_HOLDER]
+              if r.site_kind == "comp" and r.name not in ("z", "a", "b")]
     assert [r.loop_binding for r in holder] == [LB.REFERENCE]
     assert all(r.loop_binding is None for n in ("a", "b")
                for r in _sites(table, n))
@@ -2641,3 +2696,156 @@ def test_a_nested_scope_rebinding_a_frame_member_hides_it(
     lc.cursor = (None, table.scope_at[comp])
     names = lc.frame_field_names()
     assert "ys" not in names and "t" in names
+
+
+def test_a_seeded_record_takes_its_form_from_its_facts() -> None:
+    # A parameter's and a seeded global's row decides facts, not one
+    # representation: the form reads them, the owned storage optional of
+    # an `Own[P | None]` parameter (also a pointer) first.
+    seeded = _bindings._seeded_form
+    assert seeded({"optional_storage": True, "pointer": True}) is F.OWNED_SLOT
+    assert seeded({"pointer": True}) is F.POINTER
+    assert seeded({"ptr_variant": True}) is F.POINTER_UNION
+    assert seeded({"value_opt": ValueOptKind.SCALAR}) is F.VALUE_OPT
+    assert seeded({"storage_tuple": True, "movable": True}) is F.STORAGE_TUPLE
+    assert seeded({"borrow_tuple_mixed": True}) is F.BORROW_TUPLE
+    assert seeded({"tuple_layout": object()}) is F.BORROW_TUPLE
+    assert seeded({"const": True, "movable": True}) is F.NONE
+
+
+def test_a_parameter_record_has_the_form_its_signature_passes() -> None:
+    func, table = _plan('''
+def take(o: P | None, p: P, n: int) -> int:
+    return n
+''', "take")
+    root = table.root.bindings
+    assert _shape(root["o"]) == ("param", F.POINTER, None)
+    assert _shape(root["p"]) == ("param", F.NONE, None)
+    assert _shape(root["n"]) == ("param", F.NONE, None)
+
+
+def test_a_frame_field_takes_its_form_from_its_class() -> None:
+    form = _bindings._frame_form
+    pointers = {FrameLocalClass.LOOP_PTR, FrameLocalClass.UNPACK_PTR,
+                FrameLocalClass.ALIAS_PTR, FrameLocalClass.OPT_PTR,
+                FrameLocalClass.REBIND_PTR}
+    for cls in FrameLocalClass:
+        want = (F.POINTER if cls in pointers
+                else F.FRAME_SLOT if cls.is_frame_slot
+                else F.VALUE_OPT if cls is FrameLocalClass.VALUE_OPT_RECORD
+                else F.BORROW_TUPLE if cls is FrameLocalClass.BORROW_TUPLE
+                else F.DYN if cls is FrameLocalClass.ERASED_HANDLE
+                else F.VALUE)
+        assert form(cls) is want, cls
+    assert form(None) is F.VALUE
+
+
+def test_a_loop_record_takes_its_form_from_its_loop_binding() -> None:
+    LB = LoopBinding
+    form = _bindings._loop_form
+    for lb in (LB.REFERENCE, LB.CONST_REFERENCE, LB.CONST_TYPED_REFERENCE,
+               LB.OWNED):
+        assert form(lb) is F.REFERENCE, lb
+    for lb in (LB.VALUE, LB.ASSIGN, LB.OWNED_STORAGE):
+        assert form(lb) is F.VALUE, lb
+    assert form(None) is F.NONE
+    func, table = _plan(_LOOP_BINDS, "loops")
+    forms = {r.name: r.form for r in table.records()
+             if r.site_kind == "loop"}
+    assert forms["p"] is F.REFERENCE and forms["c"] is F.VALUE
+    assert forms["h"] is F.VALUE
+    # An unpack clause's holder, as a for statement's.
+    holder, = (r for r in table.records()
+               if r.site_kind == "comp" and r.name not in ("z", "a", "b"))
+    assert holder.form is F.REFERENCE
+
+
+def test_a_site_with_no_form_gets_none_whatever_the_site() -> None:
+    func, table = _plan('''
+def pick(c: bool, xs: list[int]) -> int:
+    n = 0
+    s = 1
+    try:
+        n = xs[0]
+    except IndexError as e:
+        n = -1
+    return n + s
+''', "pick")
+    for r in table.records():
+        if r.name in ("s", "e"):
+            assert r.form is F.NONE and r.construct is None, r
+
+
+def test_a_for_head_null_pointer_hoist_is_a_pointer_the_head_repoints(
+        ) -> None:
+    func, table = _plan('''
+def scan() -> int:
+    pairs: list[tuple[int, list[int]]] = [(1, [10]), (2, [20])]
+    for n, xs in pairs:
+        pass
+    xs.append(30)
+    return n
+''', "scan")
+    loop = func.body[1]
+    xs, = (r for r in table.sites[loop]
+           if r.name == "xs" and r.site_kind == "hoist")
+    # The hoist the head re-points is a pointer like any pointer hoist; a
+    # bit says the head writes it.
+    assert _shape(xs) == ("hoist", F.POINTER, None)
+    assert xs.head_target and xs.pointer and xs.lazy_rebind_slot
+    assert all(not r.head_target for r in table.records() if r is not xs)
+
+
+_ER_BIND = '''
+from tpy import error_return, ReturnException
+
+
+class Fail(Exception, ReturnException):
+    pass
+
+
+@error_return(Fail)
+def make(v: int) -> Own[P]:
+    if v < 0:
+        raise Fail
+    return P(v)
+
+
+@error_return(Fail)
+def count(v: int) -> int:
+    if v < 0:
+        raise Fail
+    return v
+
+
+@error_return(Fail)
+def body() -> int:
+    p = make(15)
+    alias = p
+    p = make(50)
+    n = count(2)
+    return alias.v + p.v + n
+'''
+
+
+def test_an_error_return_bind_is_a_pointer_or_a_value_by_its_facts(
+        ) -> None:
+    # The one bind row gives a rebound record result a pointer and any
+    # other result the value it unwraps.
+    func, table = _plan(_ER_BIND, "body")
+    p = table.declared_by(func.body[0], "p")
+    n = table.declared_by(func.body[3], "n")
+    assert _shape(p) == ("decl", F.POINTER, C.ER_BIND) and p.pointer
+    assert _shape(n) == ("decl", F.VALUE, C.ER_BIND) and not n.pointer
+
+
+def test_a_widened_tuple_literal_is_storage_or_value_by_its_elements(
+        ) -> None:
+    func, table = _plan('''
+def pick() -> int:
+    t: tuple[int | str, int | str] = (1, "hi")
+    return 0
+''', "pick")
+    t = table.declared_by(func.body[0], "t")
+    assert _shape(t) == ("decl", F.VALUE, C.TUPLE_LITERAL_WIDE)
+    assert not t.storage_tuple

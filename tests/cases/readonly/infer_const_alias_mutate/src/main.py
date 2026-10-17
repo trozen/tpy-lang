@@ -2,6 +2,7 @@
 # local alias of a self field. Two shapes:
 #   local = self.field; local.mutating_method()
 #   local = self.field; local.get().mutating_method()
+# and the chain itself: self.lent().mutating_method().
 # If wrongly inferred const, the C++ build fails (e.g. Box.get() on const
 # self returns const Mutating&, can't dispatch the non-const protocol method).
 from typing import Optional, Protocol
@@ -58,6 +59,13 @@ class S:
         if frame is not None:
             frame.get().do_mutate()
 
+    def get_inner(self) -> Inner:
+        return self.inner
+
+    # A call returning self's own field -- must NOT be const.
+    def bump_lent(self) -> None:
+        self.get_inner().bump()
+
 
 def main() -> None:
     s = S()
@@ -65,6 +73,8 @@ def main() -> None:
     s.mutate_via_alias_chained()
     print(s.inner.counter)
     print("done")
+    s.bump_lent()
+    print("lent", s.inner.counter)
 
 
 main()

@@ -57,7 +57,7 @@ from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    literal_value_from_expr)
-from ...sema.context import expr_lends_storage
+from ...sema.call_lends import expr_lends_storage
 from ...typesys import make_readonly, pointer_repr_optional, readonly_access
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
@@ -153,7 +153,8 @@ from ...type_def_registry import (
     type_def_of,
 )
 from ...sema.numeric_lattice import widen_numeric_types
-from ...coercions import BIGINT_NARROW, CoercionContext, context_free_wrap_template
+from ...coercions import (BIGINT_NARROW, Coercion, CoercionContext,
+                          context_free_wrap_template)
 from ...value_category import (
     CONTAINER_LITERAL_NODES,
     call_hands_back_value, call_value_optional,
@@ -194,7 +195,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
-from ...prescan import chain_root_name, parse_deref_view_key
+from ...prescan import parse_deref_view_key
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..source import NameFacts
 from ..faces import witness as _witness
@@ -283,14 +284,6 @@ _FLOAT32_LIT_COERCION = "float_literal_to_float32"
 # lowering retypes the THIRLiteral so the emitter picks the ctor arms.
 _BIGINT_LIT_COERCION = "int_literal_to_bigint"
 
-# Address-taking Ptr coercions. An indirect-name inner is pre-dereferenced
-# (`&(*g)` for a pointer-slot global / pointer-local source), so the coerce
-# arm derefs names with a pointer record; the `&{0}` render itself comes from the
-# rows (they are `context_free_wrap`).
-_ADDR_PTR_COERCIONS = frozenset({
-    "record_to_ptr", "record_to_const_ptr", "value_to_ptr",
-    "upcast_to_ptr", "upcast_to_const_ptr"})
-
 # Position-independent identity coercions on the ptr/span/slice axis: both
 # sides are C++-implicitly convertible (`T*` -> `const T*`, `Slice`'s
 # BasicSlice ctor, span -> const-span), so the inner render passes through
@@ -313,13 +306,16 @@ _SPANLIKE_COERCIONS = frozenset({"spanlike_to_span", "spanlike_to_span_arg"})
 _SPAN_METHOD_COERCIONS = frozenset({"span_method_to_span",
                                     "span_method_to_span_arg"})
 
-# The coercions that pre-deref an indirect-name inner (the "need
-# dereferencing for globals" set): the addr family, the method-calling BigInt
-# cast, and the `__span__()` call above -- the coerce arm derefs un-narrowed
-# names with a pointer record, so an indirect receiver reaches its member as
-# `(*name).__span__()`.
-_INDIRECT_DEREF_COERCIONS = (_ADDR_PTR_COERCIONS | {"bigint_to_fixed_int"}
-                             | _SPAN_METHOD_COERCIONS)
+def _derefs_indirect_inner(c: Coercion) -> bool:
+    """Whether a coercion pre-derefs an indirect-name inner (the "need
+    dereferencing for globals" set): an address-taking coercion
+    (`produces_non_null_ptr`: `&(*g)` for a pointer-slot global /
+    pointer-local source -- the `&{0}` render itself comes from the rows),
+    the method-calling BigInt cast, and the `__span__()` call above -- the
+    coerce arm derefs un-narrowed names with a pointer record, so an
+    indirect receiver reaches its member as `(*name).__span__()`."""
+    return (c.produces_non_null_ptr or c.name == "bigint_to_fixed_int"
+            or c.name in _SPAN_METHOD_COERCIONS)
 
 def _coerce_wrap(e: TpyCoerce) -> 'str | None':
     """The `{0}` render template for a coercion the lowering can pre-render,
@@ -413,7 +409,7 @@ def _coerce_disposition(e: TpyCoerce, *,
     if isinstance(e.expected_type, OwnType):
         if own_slot_arg and name == "strview_to_str":
             return "materialize"
-        if (name in _ADDR_PTR_COERCIONS
+        if (e.coercion.produces_non_null_ptr
                 and isinstance(unwrap_readonly(e.expected_type.wrapped),
                                PtrType)):
             # `Own[Ptr[T]]` is a no-op spelling -- Own over a VALUE type adds
@@ -7214,7 +7210,7 @@ def _lvalue_chain_root(e: TpyExpr, declared: dict[str, TpyType], analyzer,
         if not _lvalue_chain_hop_ok(link, declared, analyzer, pointers):
             return None
         link = link.obj
-    root = chain_root_name(e)
+    root = link.name if isinstance(link, TpyName) else None
     if root is None or root not in declared:
         return None
     if resident is not None and root not in resident:
@@ -8341,9 +8337,7 @@ def _const_borrow_name(name: str, lc, *, const_locals: bool = False) -> bool:
     if rec.const_loop_var:
         return True
     # The `auto&&` storage alias of a const source keeps its const-ness in
-    # the tuple set (`const_borrow_tuple_locals` is NOT read here: that
-    # body-wide memo is inherited by a nested def whose own names may
-    # shadow the outer tuple).
+    # the tuple set; a borrow tuple's element const is its record's.
     if const_locals and (rec.const or rec.const_storage_tuple):
         return True
     # A parameter's or the receiver's verdicts, on the record of the
@@ -8445,8 +8439,8 @@ def receiver_is_const(obj: TpyExpr, lc) -> bool:
 def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
     """Whether a value bound into a name is a const borrow: the source
     expression is const on its own (`_expr_is_const_source`), it is a
-    select with a const arm, its lvalue is rooted in a const param / const
-    local, or it is a bare borrow-tuple name marked const. The one source
+    select with a const arm, or its lvalue is rooted in a const param /
+    const local (a const borrow tuple's record among them). The one source
     verdict: a declaration's, a reseat's, a walrus's, a capture's subject's
     and a tuple alias's or standalone unpack's source const is judged by
     it, a pointer slot's over all its sources (`_plan_const`). Not by it:
@@ -8461,12 +8455,6 @@ def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
                 else _walrus_src_is_const(src.expr, lc))
     if _expr_is_const_source(src, lc):
         return True
-    if isinstance(src, TpyName) and _tuple_typed(src, lc):
-        # The borrow-tuple bits are per NAME, so a nested def's own
-        # non-tuple name of the same spelling must not read them.
-        b = lc.binding(src.name)
-        if b.const_borrow_tuple or b.const_opt_borrow_tuple:
-            return True
     if isinstance(src, TpyIfExpr):
         # A select is const-rooted iff EITHER arm is: the C++ `?:` over a const
         # and a non-const pointer yields the const type. The recursion lives
@@ -8476,12 +8464,6 @@ def _walrus_src_is_const(src: TpyExpr, lc) -> bool:
         return (_walrus_src_is_const(src.then_expr, lc)
                 or _walrus_src_is_const(src.else_expr, lc))
     return _f1_const_rooted_source(src, lc)
-
-def _tuple_typed(e: TpyExpr, lc) -> bool:
-    t = lc.analyzer.get_expr_type(e)
-    t = unwrap_readonly(unwrap_ref_type(t)) if t is not None else None
-    return isinstance(t, TupleType) or (isinstance(t, OptionalType)
-                                        and t.wraps_pointer_repr_tuple())
 
 def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType | None:
     # Codegen's `get_resolved_type` for a NAME: the tracked DECLARED type of
@@ -9560,9 +9542,8 @@ def _container_rebind_call_ret(call: TpyExpr, ret: TpyType | None,
     (`r = make(3)` reseated by `r = other(7)` -> `(*r) = other(7);`, or an
     own slot where sema's verdict says so). RVALUE sources only: a borrow
     (`T&`) return reseats via
-    `&(call)`, the pointer arm's lift, not this slot. One predicate for the
-    decl-binding admission and the call-render gate so the two layers cannot
-    drift."""
+    `&(call)`, the pointer arm's lift, not this slot. The decl-binding
+    admission's gate."""
     if not is_rvalue_source(analyzer, call):
         return False
     fam = _storage_call_ret(ret, analyzer)
@@ -10719,26 +10700,6 @@ def _optional_ptr_arg_slot(ptype: TpyType | None, analyzer) -> 'OptionalType | N
         return None
     return pt
 
-def _scalar_temp_arg_value(a: TpyExpr, inner: TpyType | None, analyzer) -> bool:
-    """The value half of the optional-ptr 'scalar_temp' face: an rvalue whose
-    resolved type IS the slot's scalar pointee, so the optional-ptr arg
-    render's temporary face hoists a typed temp and lifts its address.
-
-    That hoist keys on `ctx.is_temporary_expr`, this on
-    `is_rvalue_source` -- different questions, so the callers supply only node
-    kinds where the former answer subsumes this one: a CALL, where
-    `is_temporary_expr` delegates to `is_rvalue_source` verbatim, and a
-    binop/unop, where it is unconditionally True. Shapes the two disagree on
-    (a ternary / field-of-temporary source) reach neither call site."""
-    if not _eligible_scalar(inner):
-        return False
-    at = analyzer.get_expr_type(a)
-    if not _resolved_scalar(at, analyzer):
-        return False
-    if unwrap_readonly(at) != inner:
-        return False
-    return is_rvalue_source(analyzer, a)
-
 def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
                            declared: dict[str, TpyType], analyzer) -> str | None:
     """Classify a call arg against a pointer-repr `Optional[record]` slot into
@@ -10748,9 +10709,7 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
     at LOWERING from a pointer record), 'lift' (a storage-form Optional field
     read, `::tpy::optional_to_ptr(...)`), or 'ctor' (a same-nominal
     record-ctor rvalue -- the `&(__tmp_N)` temp face, flushable positions
-    only), or 'scalar_temp' (a call/binop rvalue at a SCALAR pointee -- the
-    same typed-temp hoist, flushable positions only; the render is
-    pointee-blind, so only this classifier had to enumerate the family). A
+    only). A
     NARROWED union subject classifies 'name' (its expr type arrives
     member-stamped): the read renames to the extraction alias / inline get
     inside `_lower_expr`, wrapped in `&(...)` either way.
@@ -10830,12 +10789,6 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
             at_u = unwrap_readonly(at) if at is not None else None
             if at_u == ot and _ptr_opt_borrow_call_ret(a, at_u):
                 return 'call_pass'
-            # A resolved-SCALAR call rvalue (`c.set(int32(99))`) at a scalar
-            # pointee: the ctor face's scalar sibling -- the render is
-            # pointee-blind and hoists the same `int32_t __tmp_N = 99;` +
-            # `&(__tmp_N)`. Flushable positions only.
-            if _scalar_temp_arg_value(a, inner, analyzer):
-                return 'scalar_temp'
             # A CONTAINER-returning rvalue call at a container pointee
             # (`read(bytearray(b"abc"))` at a `bytearray | None` slot): the
             # literal face's call sibling -- the render is pointee- and
@@ -10913,12 +10866,6 @@ def _optional_ptr_arg_face(a: TpyExpr, ptype: TpyType | None,
                 and at is not None and not isinstance(at, OptionalType)):
             return 'lift'
         return None
-    if isinstance(a, (TpyBinOp, TpyUnaryOp)):
-        # The arithmetic sibling of the scalar call rvalue (`c.set(n + 1)`):
-        # `is_temporary_expr` is unconditionally True for these, so the
-        # temp hoists wherever this admits.
-        return ('scalar_temp'
-                if _scalar_temp_arg_value(a, inner, analyzer) else None)
     if not isinstance(a, TpyName) or a.name == "self":
         return None
     at = analyzer.get_expr_type(a)

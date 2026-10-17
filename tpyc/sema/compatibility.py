@@ -8,7 +8,8 @@ from __future__ import annotations
 import re
 from dataclasses import replace as dc_replace
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Callable, Iterable, NamedTuple, Optional, TypeGuard
+from typing import (TYPE_CHECKING, Callable, Iterable, NamedTuple,
+                    Optional, TypeGuard)
 
 from ..typesys import pointer_repr_optional, readonly_access
 from ..typesys import (
@@ -29,12 +30,12 @@ from ..typesys import (
     unify_literal_types,
     is_polymorphic_class_type, is_exception_type, SendType, SyncType, unwrap_send_sync, FrameType,
     unwrap_qualifiers,
-    ConcreteCoroType, recorded_return_borrow_sources,
-    GenExprType, is_open_type_param_return, PendingNumType,
+    ConcreteCoroType,
+    GenExprType, PendingNumType,
     global_binds_by_reference)
 from .. import qnames
 from ..value_category import (
-    CONTAINER_LITERAL_NODES, async_result_aliases, call_returns_cpp_ref,
+    async_result_aliases,
     is_iterator_protocol, is_rvalue_source,
     peel_value_wrappers, const_place,
     property_access_returns_cpp_ref, returns_borrow)
@@ -48,17 +49,29 @@ from ..parse import (
     const_tuple_index,
     ResultForm,
     TpyExpr, TpyName, TpyFieldAccess, TpySubscript, TpyArrayLiteral,
-    TpyDictLiteral, TpySetLiteral, TpyListRepeat, TpyCall, TpyCallLike, TpyMethodCall, TpyUnaryOp,
-    TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral, TpyStrLiteral, TpyBytesLiteral,
-    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr, TpyFString,
+    TpyListRepeat, TpyCall, TpyCallLike, TpyMethodCall, TpyUnaryOp,
+    TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral,
+    TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr,
     lambda_of,
-    TpyAwait, TpyGeneratorExpression, TpyVarDecl, SourceLocation
+    TpyVarDecl, SourceLocation
 )
 from .literal_utils import literal_value_from_expr
 from ..parse.nodes import program_names
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value
 from ..modules import get_span_return_type
-from .context import ConsumingLoop, ElementMove, FinallyCapture, HeldLoopCopy, NameMove, OwnIterMove, OwningRead, ReceiverMove, SinkCopy, TupleNameMove, UnneededCopy, OwnSlot, ParkedFunctionState, ParkedRebind, addr_taken_roots, escaping_borrow_tuple, _storage_root, BorrowKind, BorrowTracker, CallOperands, LendSource, call_borrow_operands, call_lend_sources, tuple_borrow_escape_roots
+from .call_lends import (
+    Lent, MayLend, ReturnLend, borrowing_ctor_arg, escaping_borrow_tuple,
+)
+from .context import (
+    ConsumingLoop, ElementMove, FinallyCapture, HeldLoopCopy, NameMove,
+    OwnIterMove, OwningRead, ReceiverMove, SinkCopy, TupleNameMove,
+    UnneededCopy, OwnSlot, ParkedFunctionState, ParkedRebind, BorrowKind,
+    BorrowTracker,
+)
+from ..storage_trace import StepKind
+from .storage_walk import (Leaf, LeafKind, MarkRequest, Use, leaves,
+                           mark_roots, slot_lent_roots, storage_roots,
+                           ternary_operands)
 from .numeric_lattice import fixed_int_range_contains, numeric_info
 from ..diagnostics import (
     Diagnostic, DiagnosticLevel, SemanticError, insert_in_source_order, NOCOPY_REMEDIATION_HINT, NOCOPY_REPEATED_READ_HINT,
@@ -67,8 +80,7 @@ from ..diagnostics import (
 from ..type_def_registry import (
     is_set, is_dict, is_array, is_span, is_varargs, is_span_iter, is_list,
     is_str_view_type, is_bytes_view_type, is_borrowing_view_type, int_traits_of,
-    is_big_int_type, is_str_category, is_bytes_category, is_str_type, is_string_type,
-    is_bytes_type, is_bytearray_type,
+    is_big_int_type, is_str_category, is_bytes_category,
     protocol_info_of, iter_yields_owned_elements, is_iterator_adapter,
     is_dict_view,
 )
@@ -471,10 +483,10 @@ class TypeCompatibility:
         to their source iterables -- both are storage that the address-take
         could mutate via the resulting pointer.
         """
-        for name in addr_taken_roots(expr, self.ctx.get_expr_type):
-            root = self.ctx.func.borrow_tracker.effective_storage(name)
-            self.ctx.mark_param_mutated(root)
-            self.ctx.mark_loop_var_mutated(root)
+        mark_roots(self.ctx, storage_roots(expr, Use.PLACE,
+                                           self.ctx.get_expr_type,
+                                           MayLend(self.ctx)),
+                   MarkRequest(loop_vars=True, effective_storage=True))
 
     def is_type_compatible(self, actual: TpyType, expected: TpyType,
                            coercion_ctx: CoercionContext | None = None) -> bool:
@@ -2210,11 +2222,8 @@ class TypeCompatibility:
                     f"use a read-only pointer for read-only access, or assign to a variable first",
                     loc
                 )
-            # Address-taking coercion (record -> Ptr[Record]) requires T& binding.
-            # Track so that codegen can't safely emit const T& for this param.
-            if isinstance(source_expr, TpyName):
-                root = self.ctx.func.borrow_tracker.effective_storage(source_expr.name)
-                self.ctx.mark_param_mutated(root)
+            # The address-taking coercion's T& binding is marked where the
+            # coercion is applied (`coerce_expr` -> `_mark_addr_taken`).
         elif coercion.requires_lvalue:
             if source_expr is None or not self.is_lvalue(source_expr):
                 return CompatError(
@@ -2372,7 +2381,8 @@ class TypeCompatibility:
         # emit `&expr` and require the source storage to stay mutable -- same
         # propagation the explicit `take_ptr(x)` path gets via the
         # `value_ptr_coercion` handler in calls.py and the vararg pack handler.
-        if coercion.name in ("record_to_ptr", "upcast_to_ptr"):
+        if (coercion.produces_non_null_ptr
+                and coercion.requires_mutable_lvalue):
             self._mark_addr_taken(expr)
         runtime_bigint = False
         if coercion.name == "int_literal_to_fixed_int":
@@ -3873,27 +3883,12 @@ class TypeCompatibility:
         return (f"Cannot return {display} referencing a local or temporary; "
                 + _view_keeping_hint(expr.name, display, info.stored_source))
 
-    def _view_constructor_arg(self, expr: TpyExpr) -> TpyExpr | None:
-        """If expr is a borrowing-view constructor call, return the borrowed-from arg.
-
-        StrView / BytesView / Span[T] / SpanIter[T] all borrow from their
-        first argument, so provenance/dangling predicates should recurse
-        into that argument rather than treating the constructor call as
-        an opaque value.
-        """
-        if not isinstance(expr, TpyCall) or not expr.args:
-            return None
-        if expr.call_type is not None and is_borrowing_view_type(expr.call_type):
-            return expr.args[0]
-        return None
-
     def _name_is_param_or_global(self, name: str) -> bool:
         """True if the name refers to caller-owned storage that outlives the call.
 
-        Used by is_safe_to_return_expr and is_dangling_return to keep the
-        self/param/non-shadowed-global checks in one place. is_param_derived_expr
-        intentionally diverges by omitting the self check (self is the receiver,
-        not a "parameter" for borrow-contract purposes).
+        The one name rule of the durability readers (`_place_durable`,
+        `_leaves_param_derived`): the self / param / non-shadowed-global
+        checks in one place.
 
         An `Own[T]` param is CALLEE-owned and dies at function exit, so it does
         NOT confer return-safety on borrows rooted in it; the same holds for
@@ -3932,57 +3927,6 @@ class TypeCompatibility:
         return (name in self.ctx.global_scope.bindings
                 and not self.is_local_shadow(name))
 
-    def _borrow_root_names(self, expr: TpyExpr, out: set[str]) -> None:
-        """Collect the names whose storage a borrow-form return points into.
-
-        Walks the same chain `is_param_derived_expr` certifies as durable, so
-        every root that predicate answers for is a root reported here; a local
-        bound from one of them resolves through the borrow tracker.
-        """
-        if isinstance(expr, TpyCoerce):
-            self._borrow_root_names(expr.expr, out)
-            return
-        if isinstance(expr, TpyNamedExpr):
-            self._borrow_root_names(expr.value, out)
-            return
-        if isinstance(expr, TpyName):
-            out.add(expr.name)
-            bt = self.ctx.func.borrow_tracker
-            for src in bt.storage_roots_or_self(expr.name):
-                out.add(_storage_root(src))
-            return
-        if isinstance(expr, (TpyFieldAccess, TpySubscript)):
-            self._borrow_root_names(expr.obj, out)
-            return
-        if isinstance(expr, TpyIfExpr):
-            self._borrow_root_names(expr.then_expr, out)
-            self._borrow_root_names(expr.else_expr, out)
-            return
-        if (isinstance(expr, TpyCall) and expr.call_type is not None
-                and expr.call_type.is_pointer() and expr.args):
-            self._borrow_root_names(expr.args[0], out)
-            return
-        view_arg = self._view_constructor_arg(expr)
-        if view_arg is not None:
-            self._borrow_root_names(view_arg, out)
-            return
-        for src in self._call_return_lend_sources(expr):
-            self._borrow_root_names(src.expr, out)
-
-    @staticmethod
-    def _call_return_lend_sources(expr: TpyExpr) -> 'list[LendSource]':
-        """The operands a call's result points into by its recorded
-        `return_borrows_from` (`call_lend_sources`); [] for any other
-        expression."""
-        if not isinstance(expr, (TpyCall, TpyMethodCall)):
-            return []
-        ops = call_borrow_operands(expr)
-        if ops is None:
-            return []
-        recorded = recorded_return_borrow_sources(ops.fi)
-        return (call_lend_sources(ops, recorded, expr_type=None)
-                if recorded else [])
-
     def _return_borrows_global_storage(self, name: str,
                                        return_type: TpyType) -> str | None:
         """How a borrow-form return rooted in global `name` points INTO that
@@ -4011,6 +3955,93 @@ class TypeCompatibility:
             return 'view'
         return None
 
+    def _place_durable(self, leaf: Leaf, *, view_source: bool,
+                       gen_yield: bool, strict: bool) -> bool:
+        """The name rule at a PLACE leaf of the durability climb
+        (`ReturnLend`): a parameter, `self` or a module global outlives the
+        call (`_name_is_param_or_global`); a local bound from durable
+        storage is `safe_to_return` -- unless the leaf is a view's BACKING
+        storage (`view_source`): a movable owned local is moved or destroyed
+        at the return, so a view of it dangles. Under `gen_yield` (the value
+        of a generator's `yield`) a frame-resident local is stable
+        frame-slot storage. Both flags hold only at a leaf the value reaches
+        through no call; the closed-world reading keeps `gen_yield` through
+        recorded sources, whose provenance it follows the whole way down."""
+        calls = leaf.calls
+        vs = view_source and not calls
+        gy = gen_yield and (not calls or strict and all(
+            c.how in (Lent.RECORDED, Lent.AWAITED) for c in calls))
+        name = leaf.name
+        if self._name_is_param_or_global(name):
+            return True
+        if not vs and self.ctx.func.bp_is_safe_to_return(name):
+            return True
+        return (gy and self._is_frame_resident_local(name)
+                and self._local_has_borrowable_storage(leaf.node,
+                                                       view_source=vs))
+
+    def _leaves_dangle(self, ls: list[Leaf], *, view_source: bool = False,
+                       gen_yield: bool = False, strict: bool = False) -> bool:
+        """`is_dangling_return` as a mapping of the durability leaves: a
+        temporary or an unclassified view node dangles; static storage, a
+        call result no operand names and an unplaceable node dangle only in
+        the closed-world reading; a name by the name rule
+        (`_place_durable`)."""
+        for leaf in ls:
+            kind = leaf.kind
+            if kind in (LeafKind.TEMPORARY, LeafKind.VIEWNODE):
+                return True
+            if kind is LeafKind.PLACE:
+                if not self._place_durable(leaf, view_source=view_source,
+                                           gen_yield=gen_yield,
+                                           strict=strict):
+                    return True
+            elif kind is not LeafKind.NULL and strict:
+                return True
+        return False
+
+    def _leaves_safe(self, ls: list[Leaf]) -> bool:
+        """`is_safe_to_return_expr` as a mapping of the durability leaves:
+        none dangles (open world), and none is an unplaceable node or an
+        await the value reaches through no call -- nothing proves either
+        outlives the frame."""
+        if self._leaves_dangle(ls):
+            return False
+        for leaf in ls:
+            for step in leaf.path:
+                if step.kind is StepKind.CALL:
+                    break
+                if step.kind is StepKind.AWAIT:
+                    return False
+            else:
+                if leaf.kind is LeafKind.UNPLACEABLE:
+                    return False
+        return True
+
+    def _leaves_param_derived(self, ls: list[Leaf]) -> bool:
+        """`is_param_derived_expr` as a mapping of the durability leaves:
+        every leaf is static storage or a name by the name rule or bound
+        `param_derived`, reached through recorded sources and borrowing
+        constructors only."""
+        for leaf in ls:
+            if any(c.how not in (Lent.RECORDED, Lent.CONSTRUCTOR)
+                   for c in leaf.calls):
+                return False
+            if leaf.kind is LeafKind.STATIC:
+                continue
+            if leaf.kind is not LeafKind.PLACE or not (
+                    self._name_is_param_or_global(leaf.name)
+                    or self.ctx.func.bp_is_param_derived(leaf.name)):
+                return False
+        return True
+
+    def durability_leaves(self, expr: TpyExpr, *,
+                          strict: bool = False) -> list[Leaf]:
+        """Where the storage of a returned, yielded or bound `expr` lives
+        (`leaves` under `ReturnLend`); `strict` is the closed-world
+        reading."""
+        return leaves(expr, ReturnLend(self.ctx, strict=strict), split=False)
+
     def rebound_global_borrow_root(
             self, expr: TpyExpr,
             return_type: TpyType) -> tuple[str, str, str] | None:
@@ -4025,11 +4056,18 @@ class TypeCompatibility:
         points into, and the rebind may live in a different function than
         the borrow -- which is why the fact is module-wide
         (`SemanticContext.rebound_globals`) rather than re-derived here.
+        The roots are the names the borrow's storage lives in
+        (`storage_roots` at HOLDER under `ReturnLend`) and every root a
+        local among them is bound to.
         """
         if not self.ctx.rebound_globals:
             return None
         roots: set[str] = set()
-        self._borrow_root_names(expr, roots)
+        bt = self.ctx.func.borrow_tracker
+        for name in storage_roots(expr, Use.HOLDER, None,
+                                  ReturnLend(self.ctx)).names:
+            roots.add(name)
+            roots.update(src.root for src in bt.storage_roots_or_self(name))
         for name in sorted(roots):
             owner = self.ctx.rebound_globals.get(name)
             if owner is None or not self._name_is_module_global(name):
@@ -4040,124 +4078,21 @@ class TypeCompatibility:
         return None
 
     def is_param_derived_expr(self, expr: TpyExpr) -> bool:
-        """Check if an expression's root storage derives from parameters or globals."""
-        if isinstance(expr, TpyCoerce):
-            return self.is_param_derived_expr(expr.expr)
-        # String / bytes literals live in rodata; None literal is a nullptr.
-        # All three have non-local, permanent storage -- safe to borrow from.
-        if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
-            return True
-        if isinstance(expr, TpyName):
-            # Parameters are param-derived
-            func = self.ctx.func.current_function
-            if isinstance(func, TpyFunction):
-                for pname, _ptype in func.params:
-                    if pname == expr.name:
-                        return True
-            # Globals are param-derived (live forever), but only if
-            # the name isn't shadowed by a local binding
-            if expr.name in self.ctx.global_scope.bindings:
-                if not self.is_local_shadow(expr.name):
-                    return True
-            # Variables tracked as param-derived
-            if self.ctx.func.bp_is_param_derived(expr.name):
-                return True
-            return False
-        if isinstance(expr, TpyFieldAccess):
-            return self.is_param_derived_expr(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self.is_param_derived_expr(expr.obj)
-        if isinstance(expr, TpyIfExpr):
-            return (self.is_param_derived_expr(expr.then_expr)
-                    and self.is_param_derived_expr(expr.else_expr))
-        # Pointer constructors derive provenance from their argument (address-taking)
-        if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
-            return self.is_param_derived_expr(expr.args[0])
-        view_arg = self._view_constructor_arg(expr)
-        if view_arg is not None:
-            return self.is_param_derived_expr(view_arg)
-        # Function/method calls with return_borrows_from: result is param-derived if
-        # the borrowed-from argument(s) are themselves param-derived.
-        # No recorded source (unanalyzed, or a new value) leaves the loop body
-        # unrun and falls through to return False below -- correct either way.
-        if any(self.is_param_derived_expr(src.expr)
-               for src in self._call_return_lend_sources(expr)):
-            return True
-        # Constructors, function calls, literals -- local storage
-        return False
+        """Whether an expression's storage derives from parameters, `self`
+        or globals (`_leaves_param_derived`)."""
+        return self._leaves_param_derived(self.durability_leaves(expr))
 
     def is_safe_to_return_expr(self, expr: TpyExpr) -> bool:
-        """Whether binding a local to this RHS makes the local safe to return.
+        """Whether binding a local to this RHS makes the local safe to
+        return (`_leaves_safe`). A superset of `is_param_derived_expr`,
+        which the flow-merge intersection relies on."""
+        return self._leaves_safe(self.durability_leaves(expr))
 
-        Recurses through composite forms so a per-call-site OR doesn't miss
-        ``sv = p if cond else pick(q)`` (neither arm uniformly param-derived
-        nor uniformly a trusted call). Must be a superset of
-        is_param_derived_expr to maintain the subset invariant on which
-        flow-merge intersection relies.
-        """
-        if isinstance(expr, TpyCoerce):
-            return self.is_safe_to_return_expr(expr.expr)
-        # Walrus safety follows the wrapped value (superset invariant with
-        # is_dangling_return's TpyNamedExpr case).
-        if isinstance(expr, TpyNamedExpr):
-            return self.is_safe_to_return_expr(expr.value)
-        # String / bytes / None literals live in rodata / are nullptr --
-        # permanent storage, safe to return. Mirrors is_param_derived_expr.
-        if isinstance(expr, (TpyStrLiteral, TpyBytesLiteral, TpyNoneLiteral)):
-            return True
-        if isinstance(expr, TpyName):
-            return (self._name_is_param_or_global(expr.name)
-                    or self.ctx.func.bp_is_safe_to_return(expr.name))
-        if isinstance(expr, TpyFieldAccess):
-            return self.is_safe_to_return_expr(expr.obj)
-        if isinstance(expr, TpySubscript):
-            return self.is_safe_to_return_expr(expr.obj)
-        if isinstance(expr, TpyIfExpr):
-            return (self.is_safe_to_return_expr(expr.then_expr)
-                    and self.is_safe_to_return_expr(expr.else_expr))
-        # Pointer constructors derive safety from their argument (address-taking).
-        if isinstance(expr, TpyCall) and expr.call_type is not None and expr.call_type.is_pointer() and expr.args:
-            return self.is_safe_to_return_expr(expr.args[0])
-        view_arg = self._view_constructor_arg(expr)
-        if view_arg is not None:
-            return self.is_safe_to_return_expr(view_arg)
-        # Calls with return_borrows_from are not handled explicitly here:
-        # is_dangling_return already recurses into the borrowed args, so a
-        # call whose return borrows from a param-derived (or otherwise safe)
-        # arg is non-dangling and lands in this branch as safe. If
-        # is_dangling_return is ever tightened for return_borrows_from, mirror
-        # the explicit arm from is_param_derived_expr to preserve the
-        # superset invariant.
-        if isinstance(expr, (TpyCall, TpyMethodCall)):
-            return not self.is_dangling_return(expr)
-        return False
-
-    def _call_borrow_operands_dangle(
-            self, expr: 'TpyCall | TpyMethodCall', fi: Any, *,
-            gen_yield: bool, assume_unknown_calls_safe: bool) -> bool:
-        """True if an operand the callee's return borrows from dangles -- an
-        owned element of a tuple-literal operand lives in the tuple
-        temporary, so it dangles as a scalar temporary argument does.
-
-        Index -1 is the receiver (the 8b convention). An index naming no
-        operand leaves the result's provenance unknown: only the closed-world
-        reading calls that dangling -- the open-world one keeps the historical
-        skip, where a missing index is not evidence against the callee.
-        """
-        obj = expr.obj if isinstance(expr, TpyMethodCall) else None
-        recorded = recorded_return_borrow_sources(fi)
-        ops = CallOperands(fi, obj, list(expr.args), expr.kwargs or {})
-        present = {idx for idx, _ in ops.positioned()}
-        if obj is not None:
-            present.add(-1)
-        if not assume_unknown_calls_safe and not recorded <= present:
-            return True
-        return any(
-            src.temp_backed or self.is_dangling_return(
-                src.expr, gen_yield=gen_yield,
-                assume_unknown_calls_safe=assume_unknown_calls_safe)
-            for src in call_lend_sources(ops, recorded, expr_type=None,
-                                         temp_backing=True))
+    def binding_durability(self, expr: TpyExpr) -> tuple[bool, bool]:
+        """`is_param_derived_expr` and `is_safe_to_return_expr` of a
+        binding's value, from one climb."""
+        ls = self.durability_leaves(expr)
+        return self._leaves_param_derived(ls), self._leaves_safe(ls)
 
     def is_mutable_lvalue(self, expr: TpyExpr) -> bool:
         """Check if an expression is a mutable lvalue (can get a mutable Ptr).
@@ -4225,7 +4160,8 @@ class TypeCompatibility:
     def is_dangling_return(self, expr: TpyExpr, *, view_source: bool = False,
                            gen_yield: bool = False,
                            assume_unknown_calls_safe: bool = True) -> bool:
-        """Check if returning this expression would create a dangling reference.
+        """Check if returning this expression would create a dangling reference
+        (`_leaves_dangle` over `durability_leaves`).
 
         `view_source`: the expression is the backing storage a returned *view*
         borrows from (StrView/BytesView/Span/...), not the returned value
@@ -4238,341 +4174,36 @@ class TypeCompatibility:
         borrow root -- its `tpy::frame_slot<T>` storage is stable for the
         generator's lifetime, and the consumer-side ephemeral-borrow rule
         forbids retaining the yielded borrow past the next resume. The
-        exemption fires only at the genuine root leaf (a frame-local name, or
-        a field/subscript chain bottoming out in one), never via a name inside
-        a call -- calls reach their own provenance branches above, not the
-        TpyName leaf.
+        exemption fires only at a root the value reaches through no call (the
+        closed-world reading follows recorded sources too).
 
         `assume_unknown_calls_safe`: the DIAGNOSTIC reading (the default)
         trusts a callee it cannot see through -- the callee is responsible for
         not handing back a dangling reference, and rejecting every opaque call
         would reject valid code. The generic yield-slot VERDICT reads the same
-        walk closed-world instead (False): an unproven source must fall to the
+        climb closed-world instead (False): an unproven source must fall to the
         value slot rather than lend something the callee may have
         materialized -- an erased `Fn` result carries no ownership at all (see
         `docs/CALLABLE_CONTRACT_DESIGN.md`), and a callee whose body is not
         analyzed yet has no fact to read. Closed-world, a call is non-dangling
         only where its resolved signature borrows from operands that are
-        themselves non-dangling; those operands are then walked with
-        `gen_yield` in force, because a verdict follows provenance the whole
-        way down rather than stopping at the conservative call boundary.
+        themselves non-dangling.
         """
         strict = not assume_unknown_calls_safe
-        if isinstance(expr, TpyCoerce):
-            return self.is_dangling_return(
-                expr.expr, view_source=view_source, gen_yield=gen_yield,
-                assume_unknown_calls_safe=assume_unknown_calls_safe)
-        # A walrus hands out its value: `return (t := items[0])` returns the
-        # subscript read, so provenance follows the wrapped expression.
-        if isinstance(expr, TpyNamedExpr):
-            return self.is_dangling_return(
-                expr.value, view_source=view_source, gen_yield=gen_yield,
-                assume_unknown_calls_safe=assume_unknown_calls_safe)
-        # Array/dict literal - creates temporary
-        if isinstance(expr, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral)):
-            return True
-
-        # f-string always materializes a fresh std::string temporary, so a view
-        # of it (`return f"..."` as StrView, or `f"..."[a:b]`) dangles.
-        if isinstance(expr, TpyFString):
-            return True
-
-        # List repeat - creates temporary
-        if isinstance(expr, TpyListRepeat):
-            return True
-
-        # An awaited result: an owned result is a fresh temporary
-        # materialized in the frame (dangling as a borrow). A
-        # borrow-returning await hands back a pointer whose roots are the
-        # awaited call's receiver / borrowed args (the inner coroutine's
-        # own return check gated its sources to its params/self/fields,
-        # and those bind exactly the call's operands) -- recurse into
-        # them like the sync call/method arms, so a local-rooted receiver
-        # is rejected while a param-rooted one chains. Missing borrow
-        # facts and untraceable operands (a bound handle name) fail
-        # closed.
-        if isinstance(expr, TpyAwait):
-            if not expr.await_result_is_borrow:
-                return True
-            op = expr.value
-            if isinstance(op, (TpyCall, TpyMethodCall)):
-                fi = op.resolved_function_info
-                obj = op.obj if isinstance(op, TpyMethodCall) else None
-                if fi is not None and recorded_return_borrow_sources(fi):
-                    return self._call_borrow_operands_dangle(
-                        op, fi, gen_yield=gen_yield and strict,
-                        assume_unknown_calls_safe=assume_unknown_calls_safe)
-                if strict:
-                    return True
-                roots = ([obj] if obj is not None else []) + list(op.args)
-                return any(self.is_dangling_return(r) for r in roots)
-            return True
-
-        # Constructor call - creates temporary
-        if isinstance(expr, TpyCall):
-            # A borrow-declared call sema stamped a fresh value: its reference
-            # may point into a temporary operand or an iterator's step.
-            if expr.result_form.is_fresh:
-                return True
-            # Pointer constructors: dangling depends on the argument, not the pointer itself
-            if isinstance(expr.call_type, PtrType):
-                if not expr.args:
-                    # A null pointer has no referent, so nothing it points at
-                    # can outlive anything -- it is a VALUE, not a borrow, and
-                    # the closed-world reading agrees: `Ptr[T]` is a value type,
-                    # so the generic yield slot stores this copy by value
-                    # (`val_or_ref<T>` at a value `T`) rather than lending it.
-                    return False
-                return self.is_dangling_return(
-                    expr.args[0],
-                    assume_unknown_calls_safe=assume_unknown_calls_safe)
-
-            view_arg = self._view_constructor_arg(expr)
-            if view_arg is not None:
-                return self.is_dangling_return(
-                    view_arg,
-                    assume_unknown_calls_safe=assume_unknown_calls_safe)
-
-            # @value_ptr_coercion functions (e.g. take_ptr): result borrows
-            # from the arg value, so dangling depends on the arg.
-            fi = expr.resolved_function_info
-            if fi is not None and fi.value_ptr_coercion and expr.args:
-                return self.is_dangling_return(
-                    expr.args[0],
-                    assume_unknown_calls_safe=assume_unknown_calls_safe)
-
-            # Generic type constructor creates a temporary
-            if expr.call_type is not None:
-                return True
-
-            # Expression callees (e.g. a call through a returned callable) yield a
-            # temporary we cannot prove outlives the return -- treat as dangling.
-            if not isinstance(expr.func, TpyName):
-                return True
-
-            # Record constructor
-            if expr.func_name in self.ctx.registry.records:
-                return True
-
-            # Function returning Own[T] creates a temporary (by-value return).
-            # Only check user-defined functions (builtins don't appear in
-            # registry.functions).
-            if self.ctx.registry.get_function(expr.func_name) is not None:
-                fi = expr.resolved_function_info
-                if fi and isinstance(fi.return_type, OwnType):
-                    return True
-
-            # Function whose return borrows from args (e.g. generators storing
-            # non-value params as T& references): dangles if any borrowed arg dangles
-            if fi is not None and recorded_return_borrow_sources(fi):
-                if self._call_borrow_operands_dangle(
-                        expr, fi, gen_yield=gen_yield and strict,
-                        assume_unknown_calls_safe=assume_unknown_calls_safe):
-                    return True
-            elif strict:
-                # Closed-world: no borrow fact means no proven provenance --
-                # an opaque stub, an erased callee, or a body not yet analyzed.
-                return True
-
-            # A function returning owned str/String/bytes creates a temporary
-            # that dangles if returned as a view (StrView/BytesView).
-            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)
-                                   or is_bytes_type(fi.return_type)):
-                return True
-
-            # bytearray is the lone builtin REFERENCE type whose constructor is
-            # non-generic, so it misses both the generic-constructor path
-            # (`call_type`, which catches list/dict/set) and the registry path
-            # (user records) -- and its constructor resolves to a void
-            # `__init__`, so the fi.return_type line above can't see it either.
-            # Keyed on the call's result type, this catches both the constructor
-            # and any function/method returning a fresh bytearray: returning that
-            # temporary by bare reference dangles (use Own[bytearray]).
-            if is_bytearray_type(unwrap_own(unwrap_readonly(
-                    self.ctx.get_expr_type(expr)))):
-                return True
-
-            # Regular function call - assume it returns something safe
-            # (the callee is responsible for not returning dangling refs)
-            return False
-
-        # Locals dangle unless their root or current binding is safe.
-        if isinstance(expr, TpyName):
-            if self._name_is_param_or_global(expr.name):
-                return False
-            # A movable owned local is safe to return BY VALUE, but a view
-            # borrowing from it still dangles (the storage is moved/destroyed
-            # at the return) -- so don't honor that exemption for a view source.
-            if not view_source and self.ctx.func.bp_is_safe_to_return(expr.name):
-                return False
-            # A yielded frame-resident local roots in stable frame-slot storage
-            # that outlives the suspension (see gen_yield in the docstring).
-            # Gated on the local having storage to lend: a reference-typed local
-            # always does; a value-typed one only as the owning BUFFER of a
-            # yielded view (str/bytes), since yielding the value itself as a
-            # reference is a representation-changing copy -- a fresh temporary.
-            if (gen_yield and self._is_frame_resident_local(expr.name)
-                    and self._local_has_borrowable_storage(
-                        expr, view_source=view_source)):
-                return False
-            return True
-
-        # Field access - safe only if the object itself is safe.
-        if isinstance(expr, TpyFieldAccess):
-            return self.is_dangling_return(
-                expr.obj, view_source=view_source, gen_yield=gen_yield,
-                assume_unknown_calls_safe=assume_unknown_calls_safe)
-
-        # Subscript - safe only if the container itself is safe. A user-record
-        # `__getitem__` is not routed through the method-call arm below: the
-        # node carries a resolved fi only for a pointer-repr Optional return
-        # (`_tag_record_getitem`), and that shape borrows its receiver, so the
-        # receiver recursion already gives the call arm's answer. An owned
-        # `__getitem__` return behind a view carries no fi to consult and
-        # escapes this walk (BUGS.md#record-getitem-owned-return-view-dangle).
-        if isinstance(expr, TpySubscript):
-            return self.is_dangling_return(
-                expr.obj, view_source=view_source, gen_yield=gen_yield,
-                assume_unknown_calls_safe=assume_unknown_calls_safe)
-
-        # Method call returning owned str/String creates a temporary
-        # std::string that dangles if returned as StrView.
-        if isinstance(expr, TpyMethodCall):
-            # A borrow-declared call sema stamped a fresh value: its reference
-            # may point into a temporary operand.
-            if expr.result_form.is_fresh:
-                return True
-            fi = expr.resolved_function_info
-            if fi is not None and (is_str_type(fi.return_type) or is_string_type(fi.return_type)
-                                   or is_bytes_type(fi.return_type) or is_bytearray_type(fi.return_type)):
-                return True
-            # A user method returning Own[T] creates a by-value temporary;
-            # taking its address (the Optional pointer-repr return path) would
-            # emit `&(obj.method())`. Builtin container methods (list.pop, ...)
-            # also return Own[T] but are exempt -- mirrors the free-function
-            # branch's user-function-only OwnType guard above.
-            if fi is not None and isinstance(fi.return_type, OwnType):
-                obj_type = self.ctx.get_expr_type(expr.obj)
-                if isinstance(obj_type, NominalType) and obj_type.is_user_record:
-                    return True
-            # Method whose return borrows from its receiver/args: dangles if
-            # the borrowed source dangles -- mirrors the free-function branch;
-            # index -1 is the receiver (the 8b convention).
-            if fi is not None and recorded_return_borrow_sources(fi):
-                if self._call_borrow_operands_dangle(
-                        expr, fi, gen_yield=gen_yield and strict,
-                        assume_unknown_calls_safe=assume_unknown_calls_safe):
-                    return True
-            elif strict:
-                return True
-            return False
-
-        # Ternary - dangles if either branch dangles
-        if isinstance(expr, TpyIfExpr):
-            return (self.is_dangling_return(
-                        expr.then_expr, view_source=view_source,
-                        gen_yield=gen_yield,
-                        assume_unknown_calls_safe=assume_unknown_calls_safe)
-                    or self.is_dangling_return(
-                        expr.else_expr, view_source=view_source,
-                        gen_yield=gen_yield,
-                        assume_unknown_calls_safe=assume_unknown_calls_safe))
-
-        # Unary/Binary ops - might create temporaries, be conservative
-        if isinstance(expr, (TpyUnaryOp, TpyBinOp)):
-            return True
-
-        # Fail closed: an unrecognized expression kind that produces a borrowing
-        # view (str/bytes view, span) is of unknown provenance, so treat it as
-        # dangling rather than silently safe -- otherwise the next new node kind
-        # recreates the view-lifetime hole under fresh syntax. Recognized kinds
-        # with defined provenance (names, calls, methods, subscripts, ...) return
-        # above; only genuinely-unhandled view-typed exprs reach here.
-        expr_type = self.ctx.get_expr_type(expr)
-        if expr_type is not None and is_borrowing_view_type(unwrap_readonly(expr_type)):
-            return True
-
-        # Default: assume safe -- but closed-world, an expression form with no
-        # provenance arm above has nothing proving it outlives the frame.
-        return strict
-
-    def _call_result_is_fresh(self, expr: TpyExpr, fi: Any) -> bool:
-        """The call-shaped `expr` (callee `fi`) PROVABLY hands back a fresh
-        owned value -- a constructor, an `Own[T]` return, or a reference-type
-        result the callee's convention returns by value. A callable value
-        counts only through a declared `Own[T]`: its signature is the `Fn`
-        type's, which says nothing else about ownership."""
-        if fi.is_constructor or (
-                isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
-                and expr.func_name in self.ctx.registry.records):
-            return True
-        if (isinstance(expr, TpyCallLike)
-                and expr.result_form is not ResultForm.NOT_DECLARED):
-            return expr.result_form is not ResultForm.BORROW
-        ret = unwrap_readonly(fi.return_type) if fi.return_type else None
-        if isinstance(ret, OwnType):
-            return True
-        if (fi.is_callable_value or ret is None
-                or is_open_type_param_return(fi.root.return_type)):
-            return False
-        return (isinstance(ret, NominalType) and not ret.is_value_type()
-                and not (is_protocol_type(ret) or is_dyn_protocol(ret))
-                and not call_returns_cpp_ref(self.ctx, fi))
+        return self._leaves_dangle(
+            self.durability_leaves(expr, strict=strict),
+            view_source=view_source, gen_yield=gen_yield, strict=strict)
 
     def borrow_temp_root(self, expr: TpyExpr) -> TpyExpr | None:
         """The fresh owned temporary a borrow-form `expr` PROVABLY points
-        into, or None when no root is proven one.
-
-        Follows the borrow chain the way the call-lending facts record it:
-        a field or container read borrows its object, a call borrows the
-        operands its `return_borrows_from` names (`call_lend_sources`), and
-        a conditional may hand out either arm. A callee whose borrow facts
-        are unknown proves nothing, and neither does a name -- whatever it
-        is bound to lives outside the expression."""
-        if isinstance(expr, TpyCoerce):
-            return self.borrow_temp_root(expr.expr)
-        if isinstance(expr, TpyFieldAccess):
-            if expr.hidden_call is not None:
-                return None
-            return self.borrow_temp_root(expr.obj)
-        if isinstance(expr, TpySubscript):
-            if (expr.slice_function_info is not None
-                    or expr.getitem_function_info is not None):
-                return None
-            return self.borrow_temp_root(expr.obj)
-        if isinstance(expr, TpyIfExpr):
-            return (self.borrow_temp_root(expr.then_expr)
-                    or self.borrow_temp_root(expr.else_expr))
-        if isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"):
-            return (self.borrow_temp_root(expr.left)
-                    or self.borrow_temp_root(expr.right))
-        # A generator expression is a handle: what it yields borrows the
-        # storage it iterates, not the frame.
-        if (isinstance(expr, CONTAINER_LITERAL_NODES)
-                and not isinstance(expr, TpyGeneratorExpression)):
-            return expr
-        if isinstance(expr, TpyCall) and expr.call_type is not None:
-            if (isinstance(expr.call_type, PtrType)
-                    or is_borrowing_view_type(expr.call_type)):
-                return None
-            return expr
-        if isinstance(expr, TpyCallLike) and expr.result_form.is_fresh:
-            return expr
-        ops = call_borrow_operands(expr)
-        if ops is None:
-            return None
-        if self._call_result_is_fresh(expr, ops.fi):
-            return expr
-        if ops.fi.root.return_borrows_from is None:
-            return None
-        for src in call_lend_sources(
-                ops, recorded_return_borrow_sources(ops.fi),
-                expr_type=None, temp_backing=True):
-            if src.temp_backed:
-                return src.expr
-            root = self.borrow_temp_root(src.expr)
-            if root is not None:
-                return root
+        into, or None when no root is proven one: the first TEMPORARY leaf
+        of the climb under `ReturnLend`'s proof reading. A callee whose
+        borrow facts are unknown proves nothing, and neither does a name --
+        whatever it is bound to lives outside the expression."""
+        for leaf in leaves(expr, ReturnLend(self.ctx, proof=True),
+                           split=False):
+            if leaf.kind is LeafKind.TEMPORARY:
+                return leaf.node
         return None
 
     def check_view_return_dangle(self, expr: TpyExpr, return_type: TpyType,
@@ -4702,7 +4333,7 @@ class TypeCompatibility:
         if view_msg is not None:
             self._check_rebound_global_borrow(expr, return_type, verb)
             inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-            view_arg = self._view_constructor_arg(inner)
+            view_arg = borrowing_ctor_arg(inner)
             if view_arg is not None:
                 # A view constructor / slice: its argument is the backing
                 # storage, so a movable owned local there is still a dangling
@@ -4930,16 +4561,15 @@ class TypeCompatibility:
         against its own element type (a `StrView` member is a view over the
         slot even though `StrView` itself is a value type).
         """
-        inner = peel_value_wrappers(expr)
-        # A ternary returns whichever arm is taken -- check both.
-        if isinstance(inner, TpyIfExpr):
-            self._check_tuple_elem_dangle(tuple_type, inner.then_expr, verb,
-                                          source_type, gen_yield=gen_yield)
-            self._check_tuple_elem_dangle(tuple_type, inner.else_expr, verb,
-                                          source_type, gen_yield=gen_yield)
-            return
-        if not isinstance(inner, TpyTupleLiteral):
-            return
+        # A ternary returns whichever arm is taken -- check each.
+        for inner in ternary_operands(expr):
+            if isinstance(inner, TpyTupleLiteral):
+                self._check_tuple_literal_elem_dangle(
+                    tuple_type, inner, verb, source_type, gen_yield)
+
+    def _check_tuple_literal_elem_dangle(
+            self, tuple_type: TupleType, inner: TpyTupleLiteral, verb: str,
+            source_type: TpyType | None, gen_yield: bool) -> None:
         src_elems = (source_type.element_types
                      if isinstance(source_type, TupleType)
                      and len(source_type.element_types) == len(tuple_type.element_types)
@@ -5024,7 +4654,8 @@ class TypeCompatibility:
         joins), so branch-divergent binds accumulate both arms' sources.
         """
         sources: set[str] = set()
-        for root in tuple_borrow_escape_roots(init_expr, tt, expr_type=None):
+        for root in slot_lent_roots(init_expr, tt, Use.HOLDER, None,
+                                    MayLend(self.ctx)).proven().names:
             expanded = self.ctx.func.bp_borrow_source_roots(root)
             for s in (expanded if expanded else (root,)):
                 if s != name:
@@ -5039,8 +4670,11 @@ class TypeCompatibility:
         the storage form), unlike a borrow-form tuple call result whose
         pointers the callee already proved durable.
         """
-        inner = peel_value_wrappers(expr)
-        if not isinstance(inner, (TpyCall, TpyMethodCall)):
+        # A ternary is no call: whether its arms own is each arm's fact.
+        operands = ternary_operands(expr)
+        inner = operands[0]
+        if len(operands) > 1 or not isinstance(inner, (TpyCall,
+                                                       TpyMethodCall)):
             return False
         fi = inner.resolved_function_info
         if fi is None:
@@ -5070,11 +4704,11 @@ class TypeCompatibility:
         Without this the copy still fired (codegen does recurse) while the
         warning did not, which is a silent copy.
         """
-        inner = peel_value_wrappers(expr)
-        if isinstance(inner, TpyIfExpr):
-            then_t = cls._borrow_carrying_tuple_return(inner.then_expr)
-            else_t = cls._borrow_carrying_tuple_return(inner.else_expr)
-            return then_t if (then_t is not None and else_t is not None) else None
+        operands = ternary_operands(expr)
+        if len(operands) > 1:
+            arms = [cls._borrow_carrying_tuple_return(e) for e in operands]
+            return arms[0] if all(t is not None for t in arms) else None
+        inner = operands[0]
         if not isinstance(inner, (TpyCall, TpyMethodCall)):
             return None
         fi = inner.resolved_function_info
@@ -5473,13 +5107,10 @@ class TypeCompatibility:
         fact, or a ternary with an owning arm (the result aliases either,
         so it is hazardous if either is -- matching the fresh-fact merge).
         """
-        inner = peel_value_wrappers(expr)
-        if isinstance(inner, TpyIfExpr):
-            return (self._derive_owning_storage(inner.then_expr)
-                    or self._derive_owning_storage(inner.else_expr))
-        if isinstance(inner, TpyName):
-            return self.ctx.func.bp_is_owning_storage(inner.name)
-        return self._is_owning_tuple_call(inner)
+        return any(self.ctx.func.bp_is_owning_storage(inner.name)
+                   if isinstance(inner, TpyName)
+                   else self._is_owning_tuple_call(inner)
+                   for inner in ternary_operands(expr))
 
     def _derive_copy_into_own_hazards(self, init_expr: TpyExpr) -> list[int]:
         """Indices whose element the local holds by REFERENCE -- a plain
@@ -5495,11 +5126,11 @@ class TypeCompatibility:
         reference element of its declared return (a borrow of storage the
         caller still reaches -- an `Own` element is the callee's to hand over).
         """
-        inner = init_expr.expr if isinstance(init_expr, TpyCoerce) else init_expr
-        if isinstance(inner, TpyIfExpr):
-            return sorted(
-                set(self._derive_copy_into_own_hazards(inner.then_expr))
-                | set(self._derive_copy_into_own_hazards(inner.else_expr)))
+        operands = ternary_operands(init_expr)
+        if len(operands) > 1:
+            return sorted({i for inner in operands
+                           for i in self._derive_copy_into_own_hazards(inner)})
+        inner = operands[0]
         if isinstance(inner, TpyName):
             return sorted(self.copy_into_own_idxs(inner.name))
         rt = self._borrow_carrying_tuple_return(inner)
@@ -5704,17 +5335,17 @@ class TypeCompatibility:
         durable borrow (its own fresh members are rejected at its return), and
         durable members alias safely in pointer borrow form.
         """
-        inner = expr.expr if isinstance(expr, TpyCoerce) else expr
-        if isinstance(inner, TpyIfExpr):
-            then_f = self._derive_tuple_member_hazards(tt, inner.then_expr)
-            else_f = self._derive_tuple_member_hazards(tt, inner.else_expr)
-            return then_f if then_f is not None else else_f
-        if isinstance(inner, TpyName):
-            fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
-            if fresh is not None and not self._tuple_elem_still_borrow(tt, fresh):
-                fresh = None
-            return fresh
-        return self._tuple_literal_fresh_borrow_elem(tt, inner)
+        for inner in ternary_operands(expr):
+            if isinstance(inner, TpyName):
+                fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
+                if (fresh is not None
+                        and not self._tuple_elem_still_borrow(tt, fresh)):
+                    fresh = None
+            else:
+                fresh = self._tuple_literal_fresh_borrow_elem(tt, inner)
+            if fresh is not None:
+                return fresh
+        return None
 
     def _check_tuple_member_local(self, tuple_type: TupleType,
                                   expr: TpyExpr, verb: str) -> None:
@@ -5731,14 +5362,13 @@ class TypeCompatibility:
         trips both surfaces the dangle. The two facts may flag different element
         indices; the re-check below resolves each against the boundary type.
         """
-        inner = peel_value_wrappers(expr)
-        # A ternary returns whichever arm is taken -- check both.
-        if isinstance(inner, TpyIfExpr):
-            self._check_tuple_member_local(tuple_type, inner.then_expr, verb)
-            self._check_tuple_member_local(tuple_type, inner.else_expr, verb)
-            return
-        if not isinstance(inner, TpyName):
-            return
+        # A ternary returns whichever arm is taken -- check each.
+        for inner in ternary_operands(expr):
+            if isinstance(inner, TpyName):
+                self._check_tuple_name_member_local(tuple_type, inner, verb)
+
+    def _check_tuple_name_member_local(self, tuple_type: TupleType,
+                                       inner: TpyName, verb: str) -> None:
         fresh = self.ctx.func.bp_owns_fresh_idx(inner.name)
         if fresh is not None and self._tuple_elem_still_borrow(tuple_type, fresh):
             et = tuple_type.element_types[fresh]
@@ -5769,12 +5399,12 @@ class TypeCompatibility:
         """
         if not tuple_type.has_pointer_repr_element():
             return
-        inner = peel_value_wrappers(expr)
-        # A ternary returns whichever arm is taken -- check both.
-        if isinstance(inner, TpyIfExpr):
-            self._check_tuple_storage_return_root(tuple_type, inner.then_expr)
-            self._check_tuple_storage_return_root(tuple_type, inner.else_expr)
-            return
+        # A ternary returns whichever arm is taken -- check each.
+        for inner in ternary_operands(expr):
+            self._check_tuple_operand_return_root(tuple_type, inner)
+
+    def _check_tuple_operand_return_root(self, tuple_type: TupleType,
+                                         inner: TpyExpr) -> None:
         dangles = False
         if isinstance(inner, (TpyFieldAccess, TpySubscript)):
             dangles = self.is_dangling_return(inner)
@@ -5801,9 +5431,10 @@ class TypeCompatibility:
             # slot that dies at return -- unsafe even if another path aliases
             # param storage (a branch-mixed local also carries that path's
             # FIELD borrow, which would otherwise mask the owning path here).
+            eff = bt.effective_storage(inner.name).as_name()
             if (self.ctx.func.bp_is_owning_storage(inner.name)
-                    or self.ctx.func.bp_is_owning_storage(
-                        bt.effective_storage(inner.name))):
+                    or eff is not None
+                    and self.ctx.func.bp_is_owning_storage(eff)):
                 dangles = True
             elif self._borrow_chain_enters_storage(bt, inner.name):
                 # EVERY root must be caller-owned: a re-seated name aliases a
@@ -5811,14 +5442,13 @@ class TypeCompatibility:
                 # into it, so one unsafe root dangles the tuple.
                 srcs = bt.storage_roots_or_self(inner.name)
                 dangles = not all(
-                    self._name_is_param_or_global(_storage_root(src))
-                    for src in srcs)
+                    self._name_is_param_or_global(src.root) for src in srcs)
             else:
                 its = self.ctx.func.loop_var_iterable.get(inner.name)
                 if its:
                     # Any source outside param/global storage dies at return.
-                    dangles = any(not self._name_is_param_or_global(
-                        _storage_root(it)) for it in its)
+                    dangles = any(not self._name_is_param_or_global(it.root)
+                                  for it in its)
         if dangles:
             bad = next(et for et in tuple_type.element_types
                        if tuple_type._element_is_pointer_repr(et))
@@ -5839,8 +5469,9 @@ class TypeCompatibility:
         followed transitively; chains are acyclic so the walk terminates.
         """
         seen: set[str] = set()
-        cur = name
-        while cur not in seen:
+        cur: str | None = name
+        # A member path borrows nothing: the chain ends at one.
+        while cur is not None and cur not in seen:
             seen.add(cur)
             kind = bt.borrow_kind_of(cur)
             if kind is None:
@@ -5850,7 +5481,7 @@ class TypeCompatibility:
             nxt = bt.borrow_source(cur)
             if nxt is None:
                 return False
-            cur = nxt
+            cur = nxt.as_name()
         return False
 
     def _nested_tuple_borrow_member(self, tuple_type: TupleType,

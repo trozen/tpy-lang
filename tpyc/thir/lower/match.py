@@ -39,7 +39,7 @@ from ...typesys import (
     unwrap_send_sync,
 )
 from ...type_def_registry import is_bool_type, is_fixed_int_type
-from ..source import BindingKind, BindingRepr, NameFacts
+from ..source import BindingForm, BindingRepr, NameFacts
 from ...value_category import call_returns_cpp_ref, is_rvalue_source
 from ...codegen_cpp.context import cpp_string_literal_expr, escape_cpp_name
 from ...codegen_cpp.emit_prims import (
@@ -96,6 +96,7 @@ from .predicates import (
     _value_tuple,
 )
 from .context import (
+    BindingTableError,
     FrameLocalClass,
     _ExprResultUse,
     _ExprUse,
@@ -1052,7 +1053,8 @@ def _record_arm_ok(
 class _MatchRoute:
     kind: str
     # (name, sema hoist type, record) of every name the match predeclares:
-    # its record's kind picks the predecl (`_statements._HOIST_BUILDERS`).
+    # its record's form picks the predecl (`_statements._hoist_builder`,
+    # `_HOIST_BUILDERS` keyed on the form).
     hoist_types: tuple[tuple[str, TpyType, BindingRepr], ...]
     union_route: 'str | None' = None
     # A call/ctor F1-record rvalue subject on the record capture tier:
@@ -1089,8 +1091,22 @@ def _match_expr_subject_ok(subj: TpyExpr, declared: dict[str, TpyType],
 def _nullable_match_hoist(rec: BindingRepr) -> bool:
     """A match's pointer hoist of a pointer-repr Optional capture: the
     nullable pointer over its inner."""
-    return (rec.kind is BindingKind.HOIST_POINTER
+    return (_mutable_pointer_hoist(rec)
             and pointer_repr_optional(rec.type) is not None)
+
+
+def _value_hoist(rec: BindingRepr) -> bool:
+    """A value hoist's predecl, or a resumable frame field (a value hoist
+    minus the declaration line)."""
+    return ((rec.site_kind == "hoist" and rec.form is BindingForm.VALUE)
+            or rec.site_kind == "frame")
+
+
+def _mutable_pointer_hoist(rec: BindingRepr) -> bool:
+    """A statement's pointer hoist other than the const one and a for
+    head's re-pointed one."""
+    return (rec.site_kind == "hoist" and rec.form is BindingForm.POINTER
+            and not rec.const and not rec.head_target)
 
 
 def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
@@ -1117,7 +1133,7 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         if name in declared:
             continue
         rec = _statements._hoist_record(stmt, name, lc)
-        if rec.site_kind == "frame" or rec.kind is BindingKind.HOIST_VALUE:
+        if _value_hoist(rec):
             hoist_declared.append((name, raw, rec))
             continue
         if not nonvalue_ok and name in captures:
@@ -1125,9 +1141,9 @@ def _route_hoists(stmt: TpyMatch, analyzer, declared: dict[str, TpyType],
         if _nullable_match_hoist(rec):
             hoist_declared.append((name, raw, rec))
             continue
-        if rec.kind not in (BindingKind.HOIST_POINTER,
-                            BindingKind.HOIST_CONST_POINTER,
-                            BindingKind.HOIST_OPT_STORAGE):
+        if not (rec.site_kind == "hoist" and not rec.head_target
+                and rec.form in (BindingForm.POINTER,
+                                 BindingForm.OWNED_SLOT)):
             return None
         vtype = _statements._hoist_type(rec, analyzer)
         if not (record_like(vtype, analyzer)
@@ -1349,21 +1365,31 @@ def _select_match_route(
         raise ThirUnsupported("stmt.match")
     return route
 
-# The bind mode a fresh capture's kind declares (`THIRMatchBinding.mode`).
-_CAPTURE_MODES: dict = {
-    BindingKind.MATCH_REF: "ref",
-    BindingKind.MATCH_COPY: "copy",
-    BindingKind.MATCH_SUBJECT_PTR: "copy",
-}
+_CAPTURE_COPY_FORMS = frozenset({BindingForm.VALUE, BindingForm.POINTER})
+
+
+def _capture_by_value(rec: BindingRepr) -> bool:
+    """A fresh capture's bind mode (`THIRMatchBinding.mode`): the `auto`
+    copy of a value or of the whole pointer subject, the `auto&` alias of a
+    reference; a capture record of any other form is an internal error."""
+    if rec.form is BindingForm.REFERENCE:
+        return False
+    if rec.form in _CAPTURE_COPY_FORMS:
+        return True
+    raise BindingTableError(
+        f"match capture {rec.name!r} has no bind mode for its form "
+        f"{rec.form.value!r}")
 
 
 def _capture_mode(bnode, lc: '_LowerCtx') -> str:
     """A capture's bind mode: a capture the case declares binds as its
-    record's kind says (`auto&` alias, `auto` copy); any other writes the
+    record's form says (`auto&` alias, `auto` copy); any other writes the
     binding in scope (assigned)."""
     key, _node = lc.cursor
     rec = _bindings.fresh_record(lc.table, key, bnode.name)
-    return "assign" if rec is None else _CAPTURE_MODES[rec.kind]
+    if rec is None:
+        return "assign"
+    return "copy" if _capture_by_value(rec) else "ref"
 
 
 def _match_case_label(pattern, kind: str, analyzer) -> str:
@@ -1458,8 +1484,7 @@ def _lower_match(stmt: TpyMatch, route: _MatchRoute, lc: _LowerCtx,
             "if_elif_optional_guarded", "switch_str")
             # `frame` IS a frame-field binding (no decl mechanics); every
             # other non-value hoist kind stays out of hook mode.
-            or any(rec.kind is not BindingKind.HOIST_VALUE
-                   and rec.site_kind != "frame"
+            or any(not _value_hoist(rec)
                    for _n, _t, rec in route.hoist_types)
             or (kind == "switch_union"
                 and route.union_route == "guarded_union"
@@ -2099,7 +2124,8 @@ def _lower_match_record(stmt: TpyMatch, lc: _LowerCtx,
                 mode = "assign" if subject_is_ptr else "assign_addr"
                 if not here:
                     _witness("match.bind_reuse_ptr")
-            elif here and brec.kind is BindingKind.HOIST_OPT_STORAGE:
+            elif (here and brec.site_kind == "hoist"
+                  and brec.form is BindingForm.OWNED_SLOT):
                 # The owned optional slot moves from the MATERIALIZED rvalue
                 # subject only; an lvalue subject or a guarded arm (later
                 # arms could re-read the moved-from subject) rejects.
@@ -2896,9 +2922,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
             hrec = (lc.binding(bnode.name) if bnode.name in hoisted
                     else None)
             nullable_hoist = hrec is not None and _nullable_match_hoist(hrec)
-            if hrec is not None and not (
-                    hrec.kind is BindingKind.HOIST_VALUE
-                    or hrec.site_kind == "frame") and not (
+            if hrec is not None and not _value_hoist(hrec) and not (
                     nullable_hoist and binds_full):
                 # A non-value hoisted capture on this tier is routed only as
                 # the full-Optional pointer bind; inner-binding hoisted
@@ -2911,7 +2935,7 @@ def _lower_match_optional_chain(stmt: TpyMatch, lc: _LowerCtx,
             # a pointer in scope (this match's nullable hoist, an enclosing
             # statement's, a local) assigns it.
             subject_ptr = (crec is not None
-                           and crec.kind is BindingKind.MATCH_SUBJECT_PTR)
+                           and crec.form is BindingForm.POINTER)
             prec = lc.binding(bnode.name)
             writes_ptr = (crec is None and prec.pointer
                           and pointer_repr_optional(prec.type) is not None)
@@ -3597,11 +3621,11 @@ def _lower_overload_folded_match(stmt: TpyMatch, lc, declared, loc, *,
             if frec is None or sub_pattern.name in lc.prescan.hoisted:
                 # Pre-declared/hoisted targets take the assignment forms.
                 _reject("match.overload_fold_predeclared")
-            if frec.kind is BindingKind.MATCH_SUBJECT_PTR:
+            if frec.form is BindingForm.POINTER:
                 # The fold splices field captures; a whole pointer subject
                 # has no fold render.
                 _reject("match.overload_fold_bind_mode")
-            by_value = _CAPTURE_MODES[frec.kind] == "copy"
+            by_value = _capture_by_value(frec)
             if not by_value and _statements._body_writes_name(
                     case.body, sub_pattern.name, match_binds=False):
                 # An `auto&` capture would write through to the

@@ -28,7 +28,7 @@ def _adopt_skeleton(skeleton, full):
 from .may_interrupt import binding_may_interrupt, warn_dead_interrupt_handlers
 from ..typesys import (
     ImplicitReadonly, readonly_result, readonly_protects, RESULT_ROOT,
-    mark_overload_group, name_overload_variants,
+    mark_overload_group, name_overload_variants, overload_facts_stub,
     TpyType, NominalType, TypeParamRef, SelfType, RecordInfo, InitInheritBlock, InitInheritBlocker, FieldInfo, FunctionInfo, FunctionLinkage, PropertyInfo, is_fn_type, contains_fn_type,
     TypeParamKind, OwnType, VoidType, ParamInfo, MethodSignature, ProtocolInfo, is_protocol_type, AnyType, PtrType, RefType,
     InteriorMutableType,
@@ -63,8 +63,12 @@ from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
+    TpyForEach, TpyNestedDef, TpyWith,
 )
-from ..parse.nodes import COPY_HOOK, OverloadForm, is_base_init_call, returns_borrow_rooted_at_self
+from .call_lends import NO_CALLS
+from .storage_walk import holder_root
+from ..parse.nodes import (COPY_HOOK, OverloadForm, is_base_init_call,
+                          walk_body_stmts, written_names)
 from ..identity_map import IdentitySet
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
@@ -574,6 +578,87 @@ def param_type_can_lend(ptype: TpyType, *, callables: bool = True) -> bool:
             or is_borrowing_view_type(t) or is_varargs(t)
             or (isinstance(t, TupleType) and t.has_borrowing_element())
             or (callables and (isinstance(t, CallableType) or is_fn_type(t))))
+
+
+def returns_borrow_rooted_at_self(func: 'TpyFunction') -> bool:
+    """Whether a method's returned borrow can root at `self`.
+
+    Answers "is what this hands back part of the receiver, or something that
+    merely passes through it" -- a `with` manager's `__enter__` returning `self`
+    or `self.field` lends out its own storage, while one returning a global
+    lends someone else's. Only the second is free to outlive the receiver.
+
+    A root is the one storage root holding the value (`holder_root` under
+    `NO_CALLS`): a call's result has none -- a method call's included, which
+    may hand back its receiver's storage or an argument's. A return root is
+    followed through the body's local bindings, so `tmp = self.item; return
+    tmp` reads the same as `return self.item`.
+
+    False needs PROOF, on every return: a root that is external storage (a
+    global -- never a local of this body) or a local every one of whose
+    bindings is itself external. Everything else keeps the answer True --
+    no returns at all, a root that is not a name, a name bound by a form this
+    does not model (`written_names` is the chokepoint, so a new binding form
+    lands here as unknown rather than as "external"), or a nested def, which
+    can rebind an enclosing local out of this walk's sight.
+    """
+    # name -> the roots its bindings come from; None = unreadable provenance.
+    binding_roots: dict[str, list[str | None]] = {}
+    return_roots: list[str | None] = []
+    saw_return = False
+    saw_nested_def = False
+
+    def bind(name: str, source: TpyExpr | None) -> None:
+        binding_roots.setdefault(name, []).append(
+            holder_root(source, NO_CALLS) if source is not None else None)
+
+    def on_stmt(stmt: TpyStmt) -> None:
+        nonlocal saw_return, saw_nested_def
+        modeled: set[str] = set()
+        if isinstance(stmt, TpyVarDecl):
+            bind(stmt.name, stmt.init)
+            modeled.add(stmt.name)
+        elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
+            bind(stmt.target.name, stmt.value)
+            modeled.add(stmt.target.name)
+        elif isinstance(stmt, TpyForEach):
+            bind(stmt.var, stmt.iterable)
+            modeled.add(stmt.var)
+        elif isinstance(stmt, TpyWith):
+            for item in stmt.items:
+                if item.target is not None:
+                    bind(item.target, item.context_expr)
+                    modeled.add(item.target)
+        elif isinstance(stmt, TpyNestedDef):
+            saw_nested_def = True
+        elif isinstance(stmt, TpyReturn):
+            saw_return = True
+            return_roots.append(
+                holder_root(stmt.value, NO_CALLS) if stmt.value is not None
+                else None)
+        for name in written_names(stmt) - modeled:
+            bind(name, None)
+
+    walk_body_stmts(func.body, lambda e: None, on_stmt)
+    if not saw_return or saw_nested_def:
+        return True
+
+    def is_external(root: str | None, external: set[str]) -> bool:
+        return (root is not None and root != "self"
+                and (root not in binding_roots or root in external))
+
+    external: set[str] = set()
+    changed = True
+    while changed:
+        changed = False
+        for name, sources in binding_roots.items():
+            if name in external:
+                continue
+            if all(is_external(src, external) for src in sources):
+                external.add(name)
+                changed = True
+
+    return not all(is_external(root, external) for root in return_roots)
 
 
 class TypeRegistrar:
@@ -1905,7 +1990,11 @@ class TypeRegistrar:
                 # Implementation following stubs (or its clone twin): stubs
                 # are the callable overloads. Don't add the implementation to
                 # the method list -- callers resolve against stubs only.
-                pass
+                facts_stub = overload_facts_stub(methods.get(method.name, []),
+                                                 sema_method=True)
+                if facts_stub is not None:
+                    facts_stub.facts_implementation = (
+                        self.ctx.overload_twins.get(method, method))
             elif (method.name in methods
                   and any(m.is_readonly != func_info.is_readonly
                           or m.is_consuming != func_info.is_consuming
@@ -4548,6 +4637,9 @@ class TypeRegistrar:
                     skeleton_list.clear()
                     skeleton_list.extend(infos)
                     infos = skeleton_list
+            if impl is not None and (
+                    facts_stub := overload_facts_stub(infos, sema_method=False)) is not None:
+                facts_stub.facts_implementation = impl
             self.ctx.registry.register_function_group(infos[0].name, infos)
             self.ctx.global_ns.bind(NameBinding(
                 kind=BindingKind.FUNCTION,

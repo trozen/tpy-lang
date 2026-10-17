@@ -35,7 +35,7 @@ from ..thir.scalar_leaves import MIRClass
 
 
 SOURCE = '''\
-from tpy import int32, Own, StrView, copy
+from tpy import int32, Own, copy
 from tpy.extern import native
 
 
@@ -197,15 +197,6 @@ class Named:
     def __init__(self, name: str, n: int32) -> None:
         self.name = name
         self.n = n
-
-
-def make_named(s: str) -> Own[Named]:
-    return Named(s, 1)
-
-
-def keep_named(s: str) -> int32:
-    v: StrView = make_named(s).name
-    return len(v)
 
 
 def lend_stamp(c: Counter) -> int32:
@@ -780,9 +771,6 @@ def test_a_borrow_of_the_call_temporary_kept_past_its_statement_conflicts(active
 @pytest.mark.parametrize("name, reason", [
     # The factory writes `c` beside the operand reading it.
     ("stamp_order", "order-sensitive eager operands"),
-    # A record with an owned-leaf field has no full-expression storage, so
-    # its field cannot be borrowed past the statement either.
-    ("keep_named", "reference needs local name"),
 ])
 def test_refused_call_temporaries(active, name: str, reason: str) -> None:
     verdict = active.verdicts[name]

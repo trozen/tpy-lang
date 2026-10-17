@@ -44,6 +44,8 @@ nonlocal 12 1
 async 1202 2
 field-repoint 1
 field-repoint 51 51
+field-then-literal 50
+field-then-literal 1 50
 written-then-field 2
 written-then-field 51 51
 match-capture 102 9

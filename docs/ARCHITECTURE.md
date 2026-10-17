@@ -147,8 +147,9 @@ record-element captures borrow the dereferenced parameter element, independently
 of any later wrapper replacement. Parameter/element replacement, tuple returns,
 unpacking, nested/owned elements and wrappers remain uncovered. Existing frontend
 gates still exclude standalone local-tuple captures, reseated captures and
-record-tuple parameter copies into later-reseated locals. Readonly auto-copy
-metadata mismatches also remain uncovered (`BUGS.md#readonly-auto-tuple-copy-fact`).
+record-tuple parameter copies into later-reseated locals. An auto copy of a
+readonly (declared or inferred) tuple parameter carries its readonly payload and
+is covered.
 Optional scalar leaves and nullable borrowed plain records
 have explicit absent/present construction, whole-value copies, presence tests
 and typed payload projections. THIR records the selected payload layout and
@@ -327,13 +328,21 @@ run as a second sweep, one import component (Tarjan SCC,
 `Compiler.compile_components`) at a time in dependency order. A module
 outside a cycle is a one-module component. `analyze_component_bodies`
 drives the body phases over a component: every member's bodies are
-analyzed (with the union of the members' not-yet-analyzed bodies as the
-pending borrow-fact set) before any of the component's post-body
+analyzed before any of the component's post-body
 settles -- generic yield slots, deferred escapes, one frame-close
 fixpoint -- and before its Phase 2 runs once over the union of the
 members' functions; only then does each member publish the inferred
 const-ness onto its AST. A phase-counter assertion enforces the
-ordering per analyzer. The ModuleInfo
+ordering per analyzer. No set records which bodies are still to come:
+a callee's borrow fact is pending while it is unset and sema analyzes
+a body for it (`typesys.return_borrow_fact_pending`: the def the
+FunctionInfo was registered from, or a
+`typing.overload` group's implementation on the stub its facts land
+on), judged by the same `typesys.analyzes_body` the body passes skip
+by. That covers a later body of the component and, while module
+statements run (before every body of their layer), any function of the
+module or its import component. A pending call answers with its
+callee's contract, each source flagged assumed. The ModuleInfo
 `registry.modules` dict is shared across all analyzers in a single
 compilation; per-module short-name bindings (records / functions /
 protocols / enums / type aliases) stay per-analyzer.
@@ -489,7 +498,7 @@ Const inference reads recorded return-borrow roots through
 inherently-const-view exception. Const-method parameter emission reads the
 finalized `mutated_params` whole, the same input `const_borrow_params` is
 built from: a readonly return marks no write on the root it borrows
-(`SemanticContext.escape_write_roots`), so there is nothing to subtract, and
+(`SemanticContext.escape_marks`), so there is nothing to subtract, and
 a parameter the body writes stays mutable even when it is also returned. An
 INFERRED-const method whose mutable return borrows a parameter keeps that
 parameter in the mutated set, so the parameter stays mutable and the borrow
@@ -521,7 +530,7 @@ value-shaped result handed back by value, lending nothing; lowering and
 codegen ask `value_category.call_hands_back_value` /
 `call_value_optional` of the node instead of re-deriving it) -- and
 `copy_observable`, from the allow-list
-`sema.context.proven_lend_roots` -- the one root set the lending verdict, the
+`sema.call_lends.proven_lend_roots` (the MUST call policy) -- the one root set the lending verdict, the
 loans the result files and the mutable use it makes of its operands all read
 -- and the element-source classification `sema.iter_loans.iter_element_source`
 the `for` statement shares, keyed on the declared element cursor
@@ -961,7 +970,52 @@ Top-level analyzers (one module each):
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
 `frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`,
-`storage_policy`, `pending_num`, `context`.
+`storage_policy`, `pending_num`, `call_lends`, `context`.
+`storage_walk` is the one climb from an expression to the named storage it
+references (`storage_roots`, asked as HOLDER / PLACE / POINTEE) and the one
+routine that marks those roots mutated (`mark_roots`). Its `trace` (the
+syntactic climb, in `tpyc/storage_trace.py` below sema so the pre-sema
+`prescan` reads it too, with the path roots `path_root` that need no fact)
+ends at a call the way it ends at a select: a branch per operand, which a
+projection climbs into only as far as the CALL POLICY it takes as an
+argument answers -- the policy names the operands the call's result may
+point into, or refuses (the call is then unknown). The LIFETIME loop
+(`leaves`) is the one climb asking where a value's storage lives: per
+operand the value may be, one classified `Leaf` (STATIC, NULL, CONSTANT,
+GLOBAL, PLACE, TEMPORARY, UNNAMED, VIEWNODE, UNPLACEABLE) with its path as
+steps -- a `CALL` step per call climbed into, carrying how the call lent
+(`Lent`: a recorded fact, a borrowing constructor, a stub's convention, a
+contract, an awaited call). Every lifetime question is a mapping of those
+leaves: the HOLDER roots, the view leaves, the durability readers of
+`compatibility` (`is_dangling_return`, `is_safe_to_return_expr`,
+`is_param_derived_expr`, `borrow_temp_root`, the rebound-global roots)
+under RETURN, and `view_source_is_temporary` under TEMPORARY. `call_lends`
+defines the policies: MAY (what the result may point into, the default of
+every storage question -- a borrowing constructor's first argument
+included, `borrowing_ctor_arg`), MUST (what its form proves outlives the
+statement), CONTRACT (what the callee may retain under its declaration),
+VIEW (`ViewLend`: the operands a `str` / `bytes` view result may read --
+the buffer question, where MAY asks the pointer one), RETURN (`ReturnLend`:
+MAY with the durability overlays -- a fresh result, `call_result_is_fresh`,
+is a temporary, a pending callee or a callable value is trusted), TEMPORARY
+(`TempLend`: VIEW at a view result, MAY at a reference one, a fresh or
+pointer-free result a temporary) and `NO_CALLS`. A
+generator or coroutine frame is no policy: `frame_operands` selects the
+operands its frame keeps (its method receiver and what
+`return_borrows_from` names) and each frame reader keeps its own rule per
+operand -- the binding fact a single proven root or a temporary, the
+returned-frame marks and the alias-rebind replay one loan key per operand
+(`frame_operand_keys`). `call_loans` is the loan
+projection: one record per lent leaf of each call a binding reads its
+value off, with the top-level operand and the policy's flags, which the
+binding loans, the iteration loans and the alias-rebind replay file from.
+`view_leaves` is the LIFETIME loop under VIEW, the leaves of the storage
+a view reads; the view admission, source storages, hoist roots and
+suspension staticness read it. It also owns
+`StorageKey`, the one key type of the borrow tracker and the view keyspace:
+a name plus the members hopped off it, compared with another key only (a
+plain string raises; a binding name converts through `of_name` /
+`as_name`).
 Error classes live in `tpyc/diagnostics.py` (see "Compilation pipeline").
 
 `storage_policy` holds `first_binding_storage`, the one storage verdict

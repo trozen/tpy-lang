@@ -35,7 +35,7 @@ int32_t shadowed_in_comprehension(Box& b, const std::vector<std::tuple<int32_t, 
 // def param_alias(pair: tuple[Box, int32]) -> int32:
 int32_t param_alias(const std::tuple<const Box*, int32_t>& pair);
 // def nested_shadow(rows: list[tuple[Box, int32]], b: Box) -> int32:
-int32_t nested_shadow(const std::vector<std::tuple<Box, int32_t>>& rows, Box& b);
+int32_t nested_shadow(std::vector<std::tuple<Box, int32_t>>& rows, Box& b);
 // def call_local(b: Box) -> None:
 void call_local(Box& b);
 // def mixed_local(b: Box) -> int32:

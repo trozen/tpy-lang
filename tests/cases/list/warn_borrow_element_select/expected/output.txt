@@ -4,3 +4,7 @@
 102
 2
 1
+nested_select 23 2
+strongest_kind 2 2
+strongest_kind_reversed 3 3
+whole_arms 1 4

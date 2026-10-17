@@ -1,0 +1,1 @@
+main.py:33: warning: 'cur' will not keep the object it was given -- 'cur' is rebound here and both names share its storage and 'cur' cannot be copied; bind the new value to a name of its own

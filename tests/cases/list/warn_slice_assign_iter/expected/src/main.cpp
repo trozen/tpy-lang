@@ -7,7 +7,7 @@ namespace tpyapp::main {
 // def main() -> None:
 //     a: list[int32] = [1, 2, 3, 4, 5]
 //     for x in a:
-//         a[0:1] = [99]  # tpyc: warning(/Mutation of 'a'.*while borrowed/)
+//         a[0:1] = [99]  # tpyc: warning(/Mutation of 'a' while iterating over it/)
 //         break
 void main() {
     std::vector<int32_t> a = {1, 2, 3, 4, 5};

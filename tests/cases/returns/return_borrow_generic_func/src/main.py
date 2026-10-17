@@ -3,7 +3,7 @@
 # across substitute_method_type_params), (b) return-through-local works for both
 # non-generic and generic callers (is_param_derived_expr recognizes borrow contracts),
 # (c) same for generic methods -- val_or_ref_t<T> emission and return-through-local
-# via TpyMethodCall (addr_taken_roots handles self._items[0] -> "self").
+# via TpyMethodCall (self._items[0] is rooted at "self").
 from tpy import int32
 
 
@@ -48,7 +48,7 @@ def test_return_through_local() -> None:
     print(b.x)   # 1
 
 
-# (d) Generic method: addr_taken_roots(self._items[0]) -> "self", so
+# (d) Generic method: self._items[0] is rooted at "self", so
 # return_borrows_from = {-1} (borrows from self).
 class Box[T]:
     _items: list[T]

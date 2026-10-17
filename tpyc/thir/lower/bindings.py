@@ -30,7 +30,6 @@ from ...codegen_cpp.forms import (LocalBinding, LoopBinding,
                                   is_ptr_variant_union,
                                   is_storage_tuple_alias_decl,
                                   reads_storage_form_optional)
-from ...codegen_cpp.type_resolution import resolve_stmt_binding_type
 from ...identity_map import IdentityMap, IdentitySet
 from ...modules.type_resolution import is_native_iterable
 from ...parse.nodes import (RebindStorage, ResultForm, TpyArrayLiteral,
@@ -55,7 +54,7 @@ from ...prescan import scope_bound_names
 from ...sema.alias_rebind import (final_pointer_tuple_names,
                                   pointer_tuple_owned, tuple_name_bindings)
 from ...sema.storage_policy import StorageVerdict, first_binding_storage
-from ...sema.context import receiver_root
+from ...sema.storage_walk import pointee_root
 from ...sema.own_copy import contains_reference_type
 from ...type_def_registry import (is_array, is_bytes_view_type,
                                   is_str_view_type)
@@ -71,13 +70,15 @@ from ...typesys import (ConcreteGenType, FloatLiteralType, IntLiteralType,
                         unwrap_ref_type, unwrap_send_sync, ValueForm)
 from ...value_category import (call_hands_back_value, call_returns_cpp_ref,
                                is_rvalue_source)
-from ..nodes import Form
+from ..nodes import Form, UnpackBind as UB
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..source import UNBOUND, BindingRepr, Held, SlotKey, slot_key
-from ..source import BindingKind as K
+from ..source import BindingConstruct as BC
+from ..source import BindingForm as F
 from ..source import BindingRefinement as R
 from . import checks as _checks
 from . import predicates as _p
+from ...sema.call_lends import MayLend
 from .context import (BindingTableError,
                       FrameLocalClass, ValueOptKind, _LowerCtx,
                       _without_names,
@@ -112,9 +113,9 @@ SHADOW_SINK: 'list | None' = None
 REPR_FIELDS: tuple[str, ...] = (
     "pointer", "rebind_slot", "ref_alias", "ptr_variant", "value_opt",
     "storage_opt", "const_storage_opt", "storage_tuple",
-    "const_storage_tuple", "borrow_tuple_mixed", "optional_borrow_tuple",
+    "const_storage_tuple", "borrow_tuple_mixed",
     "tuple_layout", "inline_elems", "const", "const_loop_var",
-    "const_borrow_tuple", "const_opt_borrow_tuple", "movable", "owned",
+    "movable", "owned",
     "optional_storage", "coro_frame", "opt_storage_call",
     "iterator_object",
 )
@@ -202,7 +203,7 @@ class BindingTable:
             node = ScopeNode(parent, {
                 n: BindingRepr(name=n, site=lam,
                                type=types[i] if i < len(types) else None,
-                               kind=K.LAMBDA_PLAIN, site_kind="lambda",
+                               form=F.NONE, site_kind="lambda",
                                is_param=True,
                                param_type=types[i] if i < len(types)
                                else None)
@@ -284,10 +285,7 @@ class PlanInputs:
     module_globals: frozenset[str] = frozenset()
     frame: FrameSeed | None = None
     sema_movable: frozenset[str] = frozenset()
-    # The borrow-tuple const fixpoint's (plain, nullable) names a planning
-    # round reads; empty on the first round.
-    btuple_const: tuple = (frozenset(), frozenset())
-    # The pointer slots every source bound into which is a const borrow
+    # The slots every source bound into which is a const borrow
     # (`_plan_const`), as the previous planning round left them.
     const_slots: frozenset = frozenset()
     # A constant initializer's scope (`lower_constant`): the seeds are the
@@ -714,7 +712,7 @@ def classify_binding(site: _Site, name: str, typ: TpyType | None,
             break
     else:
         rec = BindingRepr(name=name, site=site.node, type=typ,
-                          kind=K.plain(site.kind), site_kind=site.kind,
+                          form=F.NONE, site_kind=site.kind,
                           is_param=site.kind in ("param", "lambda",
                                                  "nested_param"))
     if (inp.frame is not None and name in inp.frame.const_bindings
@@ -745,8 +743,8 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
            in final_pointer_tuple_names(analyzer.ctx, func) else None)
     if ptt is not None:
         return BindingRepr(name=name, site=None, type=typ,
-                           kind=K.PARAM_SEED, site_kind=site.kind,
-                           is_param=True,
+                           form=F.BORROW_TUPLE,
+                           site_kind=site.kind, is_param=True,
                            param_type=ptype if isinstance(ptype, TpyType)
                            else None, ptr_tuple=ptt, **f)
     if _optional_ptr_borrow_wide(typ, analyzer) is not None:
@@ -789,10 +787,32 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
             and not isinstance(typ, ReadonlyType)
             and u.inner.is_expensive_copy()):
         f["movable"] = True
-    return BindingRepr(name=name, site=None, type=typ, kind=K.PARAM_SEED,
-                       site_kind=site.kind, is_param=True,
+    return BindingRepr(name=name, site=None, type=typ, form=_seeded_form(f),
+                       site_kind=site.kind,
+                       is_param=True,
                        param_type=ptype if isinstance(ptype, TpyType)
                        else None, **f)
+
+
+def _seeded_form(f: dict) -> F:
+    """The form of a parameter or a seeded global, from the facts its row
+    decided: the owned storage optional of an `Own[P | None]` parameter,
+    a pointer, a pointer union, a value-repr Optional, a storage tuple, a
+    mixed own / borrow tuple or a module tuple global's pointer-slot
+    layout; none of them the type's own C++."""
+    if f.get("optional_storage"):
+        return F.OWNED_SLOT
+    if f.get("pointer"):
+        return F.POINTER
+    if f.get("ptr_variant"):
+        return F.POINTER_UNION
+    if f.get("value_opt") is not None:
+        return F.VALUE_OPT
+    if f.get("storage_tuple"):
+        return F.STORAGE_TUPLE
+    if f.get("borrow_tuple_mixed") or f.get("tuple_layout") is not None:
+        return F.BORROW_TUPLE
+    return F.NONE
 
 
 def _receiver_row(site, name, typ, inp: PlanInputs, visible):
@@ -801,8 +821,7 @@ def _receiver_row(site, name, typ, inp: PlanInputs, visible):
     if name != inp.self_receiver and not (name == "self" and inp.readonly_self):
         return None
     return BindingRepr(
-        name=name, site=None, type=typ, kind=K.PARAM_RECEIVER,
-        site_kind=site.kind,
+        name=name, site=None, type=typ, form=F.NONE, site_kind=site.kind,
         const=inp.readonly_self,
         movable=bool(name == inp.self_receiver and inp.func.is_consuming))
 
@@ -817,7 +836,7 @@ def _global_row(site, name, typ, inp: PlanInputs, visible):
     if ((name in pre.global_seeded or name in pre.global_readonly)
             and _value_opt_scalar(typ, analyzer) is not None):
         f["value_opt"] = ValueOptKind.SCALAR
-    return BindingRepr(name=name, site=None, type=typ, kind=K.GLOBAL_SEED,
+    return BindingRepr(name=name, site=None, type=typ, form=_seeded_form(f),
                        site_kind=site.kind, **f)
 
 
@@ -839,7 +858,7 @@ def _module_global_row(site, name, typ, inp: PlanInputs, visible):
             # element is the pointer slot a reference global is, whatever
             # backing a write parks (`std::tuple<int32_t, Cell*> M`).
             f["tuple_layout"] = tuple_layout(bare, analyzer, borrow=True)
-    return BindingRepr(name=name, site=None, type=typ, kind=K.GLOBAL_MODULE,
+    return BindingRepr(name=name, site=None, type=typ, form=_seeded_form(f),
                        site_kind=site.kind, **f)
 
 
@@ -877,15 +896,37 @@ def _frame_row(site, name, typ, inp: PlanInputs, visible):
     ptt = ptr_tuple_form(name, inp, inp.func)
     if ptt is not None:
         f["ptr_tuple"] = ptt
-    return BindingRepr(name=name, site=None, type=typ, kind=K.FRAME_LAYOUT,
+    return BindingRepr(name=name, site=None, type=typ, form=_frame_form(cls),
                        site_kind=site.kind, **f)
+
+
+_FRAME_POINTER_CLASSES = frozenset({
+    FrameLocalClass.LOOP_PTR, FrameLocalClass.UNPACK_PTR,
+    FrameLocalClass.ALIAS_PTR, FrameLocalClass.OPT_PTR,
+    FrameLocalClass.REBIND_PTR})
+
+
+def _frame_form(cls: 'FrameLocalClass | None') -> F:
+    """A frame field's form, from its class: a pointer field, a frame
+    slot, the value Optional record field, the borrow tuple field, the
+    erased handle (a `@dynamic` local); any other field holds its value."""
+    if cls in _FRAME_POINTER_CLASSES:
+        return F.POINTER
+    if cls is not None and cls.is_frame_slot:
+        return F.FRAME_SLOT
+    if cls is FrameLocalClass.VALUE_OPT_RECORD:
+        return F.VALUE_OPT
+    if cls is FrameLocalClass.BORROW_TUPLE:
+        return F.BORROW_TUPLE
+    if cls is FrameLocalClass.ERASED_HANDLE:
+        return F.DYN
+    return F.VALUE
 
 
 def _declared_value_opt_kind(vtype: TpyType, analyzer
                              ) -> 'ValueOptKind | None':
-    """The value-repr Optional kind of a slot declared WITHOUT its value (a
-    hoist predecl, an annotation-only decl, a frame field): a narrowed read
-    derefs through it."""
+    """The value-repr Optional kind of a binding of `vtype` by its type
+    alone (a scalar, an owned view): a narrowed read derefs through it."""
     if _value_opt_scalar(vtype, analyzer) is not None:
         return ValueOptKind.SCALAR
     if _value_opt_owned_view(vtype, analyzer) is not None:
@@ -971,22 +1012,15 @@ class _PlanCtx:
         # The whole-body const fixpoint (`_plan_const`), as the previous
         # planning round left it; the records carry it only once planning
         # ends.
-        self.btuple_const = inp.btuple_const
         self.const_slots = inp.const_slots
 
     def binding(self, name: str) -> BindingRepr:
         rec = self._visible(name) if isinstance(name, str) else None
-        return self.with_fixpoint(UNBOUND if rec is None else rec, name)
+        return self.with_fixpoint(UNBOUND if rec is None else rec)
 
-    def with_fixpoint(self, rec: BindingRepr, name: str) -> BindingRepr:
-        """`rec` with the const fixpoint's bits for `name` and its slot, as
-        the records carry them once planning ends (`_mark_const`)."""
-        plain, nullable = self.btuple_const
-        if name in plain or name in nullable:
-            rec = replace(rec, const_borrow_tuple=(rec.const_borrow_tuple
-                                                   or name in plain),
-                          const_opt_borrow_tuple=(rec.const_opt_borrow_tuple
-                                                  or name in nullable))
+    def with_fixpoint(self, rec: BindingRepr) -> BindingRepr:
+        """`rec` with its slot's const from the fixpoint, as the records
+        carry it once planning ends (`_mark_const`)."""
         if _is_slot(rec):
             const = _slot_const(rec, self.const_slots, self.analyzer)
             if const != rec.const:
@@ -1023,50 +1057,64 @@ def _narrowed_names(exprs, visible, analyzer) -> dict:
     return out
 
 
-# The C++ local shape a first-declaration kind spells
-# (`THIRVarDecl.cpp_local_representation`).
-DECL_SHAPE: dict[K, LocalBinding] = {
-    K.DECL_REF_ALIAS: LocalBinding.REF_ALIAS,
-    K.DECL_POINTER: LocalBinding.POINTER,
-    K.DECL_REBIND_SLOT: LocalBinding.REBIND_SLOT,
-    K.DECL_OPTIONAL_TO_PTR: LocalBinding.OPTIONAL_TO_PTR,
-    K.DECL_OPT_CALL_PASSTHROUGH: LocalBinding.OPTIONAL_TO_PTR,
-    K.DECL_STORAGE_OPT_LIFT: LocalBinding.OPTIONAL_TO_PTR,
-    K.DECL_OPT_OWN_PARAM_LIFT: LocalBinding.OPTIONAL_TO_PTR,
-    K.DECL_MIXED_ELEM_PTR: LocalBinding.OPTIONAL_TO_PTR,
-    K.DECL_STORAGE_TUPLE_ALIAS: LocalBinding.STORAGE_TUPLE_ALIAS,
-    K.DECL_STORAGE_TUPLE_CHAIN: LocalBinding.STORAGE_TUPLE_ALIAS,
-    K.DECL_PTR_VARIANT: LocalBinding.PTR_VARIANT,
-}
-# The kind each borrow-local shape `_borrow_local_binding` returns declares
-# (OPT_PTR_SLOT takes its own row; OTHER declares no borrow local).
-_BORROW_LOCAL_KIND: dict[LocalBinding, K] = {
-    LocalBinding.REF_ALIAS: K.DECL_REF_ALIAS,
-    LocalBinding.POINTER: K.DECL_POINTER,
-    LocalBinding.REBIND_SLOT: K.DECL_REBIND_SLOT,
-    LocalBinding.OPTIONAL_TO_PTR: K.DECL_OPTIONAL_TO_PTR,
+# The C++ local shape a first declaration spells, by its form and how its
+# initializer constructs it.
+_DECL_SHAPE: dict[tuple[F, BC], LocalBinding] = {
+    (F.REFERENCE, BC.REF_ALIAS): LocalBinding.REF_ALIAS,
+    (F.POINTER, BC.POINTER): LocalBinding.POINTER,
+    (F.POINTER, BC.REBIND_SLOT): LocalBinding.REBIND_SLOT,
+    (F.POINTER, BC.OPTIONAL_TO_PTR): LocalBinding.OPTIONAL_TO_PTR,
+    (F.POINTER, BC.OPT_CALL_PASSTHROUGH): LocalBinding.OPTIONAL_TO_PTR,
+    (F.POINTER, BC.STORAGE_OPT_LIFT): LocalBinding.OPTIONAL_TO_PTR,
+    (F.POINTER, BC.OPT_OWN_PARAM_LIFT): LocalBinding.OPTIONAL_TO_PTR,
+    (F.POINTER, BC.MIXED_ELEM_PTR): LocalBinding.OPTIONAL_TO_PTR,
+    (F.STORAGE_TUPLE, BC.STORAGE_TUPLE_ALIAS):
+        LocalBinding.STORAGE_TUPLE_ALIAS,
+    (F.STORAGE_TUPLE, BC.STORAGE_TUPLE_CHAIN):
+        LocalBinding.STORAGE_TUPLE_ALIAS,
+    (F.POINTER_UNION, BC.PTR_VARIANT): LocalBinding.PTR_VARIANT,
 }
 
 
-def _mk(site: '_Site', name: str, typ, kind: K, **f) -> BindingRepr:
-    return BindingRepr(name=name, site=site.node, type=typ, kind=kind,
-                       site_kind=site.kind, **f)
+def decl_shape(rec: BindingRepr) -> 'LocalBinding | None':
+    """The C++ local shape a first declaration's record spells
+    (`THIRVarDecl.cpp_local_representation`)."""
+    if rec.site_kind != "decl" or rec.construct is None:
+        return None
+    return _DECL_SHAPE.get((rec.form, rec.construct))
+
+
+# The form and construction each borrow-local shape `_borrow_local_binding`
+# returns declares (OPT_PTR_SLOT takes its own row; OTHER declares no
+# borrow local).
+_BORROW_LOCAL_FORM: dict[LocalBinding, tuple[F, BC]] = {
+    LocalBinding.REF_ALIAS: (F.REFERENCE, BC.REF_ALIAS),
+    LocalBinding.POINTER: (F.POINTER, BC.POINTER),
+    LocalBinding.REBIND_SLOT: (F.POINTER, BC.REBIND_SLOT),
+    LocalBinding.OPTIONAL_TO_PTR: (F.POINTER, BC.OPTIONAL_TO_PTR),
+}
+
+
+def _mk(site: '_Site', name: str, typ, form: F, construct: 'BC | None',
+        **f) -> BindingRepr:
+    return BindingRepr(name=name, site=site.node, type=typ, form=form,
+                       construct=construct, site_kind=site.kind, **f)
 
 
 def _decl_row(site, name, typ, inp: 'PlanInputs', visible):
-    """A first VarDecl's record: the declaration ladder's kind, then whether
+    """A first VarDecl's record: the declaration ladder's form, then whether
     it is a second name for an iterator object, which it holds the same way
-    whatever kind the ladder picked."""
+    whatever form the ladder picked."""
     bind = _decl_local_binding(site, typ, inp, visible)
     rec = _decl_ladder(site, name, typ, inp, visible, bind)
     init, pre = site.init, inp.prescan
     if (isinstance(init, TpyName) and _protocol_auto_slot(typ)
             and name not in pre.reassigned and name not in pre.hoisted):
         # A structural-protocol or Self slot is never a value type, so the
-        # ladder's reference-type tail always decides a kind for it.
+        # ladder's reference-type tail always decides a form for it.
         if rec is None:
             raise BindingTableError(
-                f"protocol-typed declaration of {name!r} got no kind")
+                f"protocol-typed declaration of {name!r} got no form")
         src = visible(init.name)
         if src is not None and src.iterator_object:
             rec = replace(rec, iterator_object=True)
@@ -1090,7 +1138,7 @@ def _decl_local_binding(site, typ, inp: 'PlanInputs', visible
 
 
 def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
-    """A first VarDecl's kind -- the representation its declaration holds,
+    """A first VarDecl's form -- the representation its declaration holds,
     which `_lower_first_decl` builds -- and its facts."""
     from . import statements as _st
     an, pre = inp.analyzer, inp.prescan
@@ -1104,12 +1152,13 @@ def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
         # a pointer-repr Optional.
         if (pointer_repr_optional(vtype) is not None
                 and not _try_hoist_type_ok(vtype, an)):
-            return _mk(site, name, typ, K.DECL_NO_INIT_OPT_PTR, pointer=True,
+            return _mk(site, name, typ, F.POINTER, BC.NO_INIT_OPT_PTR,
+                       pointer=True,
                        movable=movable, rebind_slot=site.storage.pointer)
         if vtype is not None and _try_hoist_type_ok(vtype, an):
             slot_t = _st._value_slot_render_type(vtype, an)
-            rec = (_value_opt_of(site, name, typ, an, K.DECL_NO_INIT_VALUE)
-                   or _mk(site, name, typ, K.DECL_NO_INIT_VALUE))
+            rec = _mk(site, name, typ, F.VALUE, BC.NO_INIT_VALUE,
+                      value_opt=_declared_value_opt_kind(typ, an))
             return (replace(rec, effective_type=slot_t)
                     if slot_t is not vtype else rec)
         return None
@@ -1120,21 +1169,23 @@ def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
             and name in an.function_closed_frames.get(fn, ())):
         if isinstance(_p._binding_peel(unwrap_ref_type(typ)),
                       ConcreteGenType):
-            return _mk(site, name, typ, K.DECL_CLOSED_FRAME, pointer=True,
+            return _mk(site, name, typ, F.OWNED_SLOT, BC.CLOSED_FRAME,
+                       pointer=True,
                        movable=True, optional_storage=True)
     # An @error_return call's unwrap: an alias of a borrow-aliasing result,
     # else a bind; never movable.
     er_fi = _st._error_return_stmt_fi(init, an)
     if er_fi is not None:
         if call_returns_cpp_ref(an, er_fi):
-            return _mk(site, name, typ, K.DECL_ER_ALIAS, pointer=True)
+            return _mk(site, name, typ, F.POINTER, BC.ER_ALIAS, pointer=True)
         bare = (unwrap_readonly(unwrap_ref_type(er_fi.return_type))
                 if isinstance(er_fi.return_type, TpyType) else None)
         inner = bare.wrapped if isinstance(bare, OwnType) else bare
         ptr = (site.storage.pointer and _p._f1_record(inner, an)
                and is_plain_nonvalue(inner)
                and not (fn.is_generator or fn.is_async))
-        return _mk(site, name, typ, K.DECL_ER_BIND, pointer=ptr,
+        return _mk(site, name, typ, F.POINTER if ptr else F.VALUE,
+                   BC.ER_BIND, pointer=ptr,
                    rebind_slot=ptr)
     rec = _decl_value_rows(site, name, typ, inp, visible, bind, movable)
     if (isinstance(vtype, TupleType) and vtype.has_own_element()
@@ -1144,7 +1195,7 @@ def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
         # declaration builds it: reads stay storage and it moves like an
         # owned local.
         if rec is None:
-            return _mk(site, name, typ, K.DECL_OWN_ELEM_TUPLE,
+            return _mk(site, name, typ, F.STORAGE_TUPLE, BC.OWN_ELEM_TUPLE,
                        storage_tuple=True, movable=movable)
         return replace(rec, storage_tuple=True, movable=movable)
     return rec
@@ -1174,12 +1225,12 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
                  is not None
                  or (name in pre.move_through and isinstance(init, TpyName))
                  or _checks._record_rvalue_source_shape(init, an))):
-        return _mk(site, name, typ,
-                   (K.DECL_RECORD_HOISTED_SLOT if storage.hoisted
-                    else K.DECL_RECORD_SLOT), pointer=True,
+        return _mk(site, name, typ, F.POINTER,
+                   (BC.RECORD_HOISTED_SLOT if storage.hoisted
+                    else BC.RECORD_SLOT), pointer=True,
                    movable=movable, rebind_slot=storage.pointer)
     # A name-reassigned container literal: a pointer slot. An unresolved
-    # pending list is this kind too: its builder rejects it.
+    # pending list is this row too: its builder rejects it.
     vr = _p.resolve_pending_container(vtype, an) or vtype
     vru = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vr)))
     if (isinstance(init, (TpyArrayLiteral, TpyDictLiteral, TpySetLiteral,
@@ -1188,7 +1239,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
             and name not in pre.hoisted and name not in pre.move_through
             and (isinstance(vru, PendingListType)
                  or _p._f1_container_ref(vru))):
-        return _mk(site, name, typ, K.DECL_CONTAINER_SLOT, pointer=True,
+        return _mk(site, name, typ, F.POINTER, BC.CONTAINER_SLOT, pointer=True,
                    movable=movable, effective_type=vru,
                    rebind_slot=storage.pointer)
     fixed = (name not in pre.reassigned and name not in pre.hoisted
@@ -1200,7 +1251,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
             and _optional_ptr_borrow_wide(vtype, an) is not None):
         src = visible(init.name)
         if src is not None and src.storage_opt:
-            return _mk(site, name, typ, K.DECL_STORAGE_OPT_LIFT,
+            return _mk(site, name, typ, F.POINTER, BC.STORAGE_OPT_LIFT,
                        pointer=True, movable=movable)
     # The already-erased Own[dyn] call, then @dynamic protocol locals,
     # outside a branch only.
@@ -1213,7 +1264,8 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
             and not gen_or_async and name not in pre.hoisted
             and name not in pre.reassigned
             and _checks._dyn_own_forward_call_arg(init, svt, an) is not None):
-        return _mk(site, name, typ, K.DECL_DYN_OWN_ERASED, movable=movable,
+        return _mk(site, name, typ, F.VALUE, BC.DYN_OWN_ERASED,
+                   movable=movable,
                    effective_type=svt)
     if (not site.in_branch and isinstance(vtype, NominalType)
             and is_dyn_protocol(vtype)):
@@ -1221,9 +1273,9 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
             # The deferred-erasure coroutine frame local is a value
             # `std::optional<frame>`, read as a pointer local like every
             # @dynamic local.
-            return _mk(site, name, typ, K.DECL_CORO_FRAME_LOCAL,
+            return _mk(site, name, typ, F.DYN, BC.CORO_FRAME_LOCAL,
                        pointer=True, coro_frame=True)
-        return _mk(site, name, typ, K.DECL_DYN, pointer=True)
+        return _mk(site, name, typ, F.DYN, BC.DYN, pointer=True)
     # The nullable borrow tuple.
     if (not site.in_branch and _p._optional_borrow_tuple(vtype, an) is not None
             and name not in pre.hoisted and name not in pre.move_through
@@ -1231,32 +1283,31 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
         # A nullable-tuple call binds whatever its const-ness; past it a
         # const binding, and an init its builder cannot lower, take the
         # rows below.
+        opt = _mk(site, name, typ, F.OPT_BORROW_TUPLE, BC.OPT_BTUPLE)
         if (_p._nullable_borrow_tuple_call(init, an) is not None
                 and name not in pre.reassigned):
-            return _mk(site, name, typ, K.DECL_OPT_BTUPLE,
-                       optional_borrow_tuple=True)
-        if not ctx.binding(name).const_opt_borrow_tuple:
+            return opt
+        if not _slot_const(opt, ctx.const_slots, an):
             own_call = _p._btuple_owning_call_init(init, an)
             if (isinstance(init, TpyNoneLiteral) or own_call
                     or (isinstance(init, (TpyFieldAccess, TpySubscript))
                         and _st._borrow_tuple_source_ok(init, ctx))):
-                return _mk(site, name, typ, K.DECL_OPT_BTUPLE,
-                           optional_borrow_tuple=True,
-                           rebind_slot=bool(own_call) and not isinstance(
-                               init, TpyNoneLiteral))
-    # The borrow-local rows (`_decl_local_binding`): the kind that spells
-    # the row's shape.
+                return replace(opt, rebind_slot=bool(own_call)
+                               and not isinstance(init, TpyNoneLiteral))
+    # The borrow-local rows (`_decl_local_binding`): the form and the
+    # construction that spell the row's shape.
     if bind is LocalBinding.OPT_PTR_SLOT:
         return _opt_ptr_slot_decl(site, name, typ, inp, ctx, movable)
-    kind = _BORROW_LOCAL_KIND.get(bind)
-    if kind is not None:
+    shape = _BORROW_LOCAL_FORM.get(bind)
+    if shape is not None:
+        form, construct = shape
         ref = bind is LocalBinding.REF_ALIAS
         # A pointer is a slot, whose const is the fixpoint's
         # (`_slot_const`); a reference has its initializer alone.
-        return _mk(site, name, typ, kind, ref_alias=ref, pointer=not ref,
+        return _mk(site, name, typ, form, construct,
+                   ref_alias=ref, pointer=not ref,
                    movable=movable and not ref,
-                   const=ref and (_p._walrus_src_is_const(init, ctx)
-                                  or _const_btuple_element(init, ctx)),
+                   const=ref and _p._walrus_src_is_const(init, ctx),
                    rebind_slot=not ref and site.storage.pointer)
     if (not site.in_branch and isinstance(init, TpyName)
             and pointer_repr_optional(vtype) is not None
@@ -1269,7 +1320,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
         if (src is not None and src.optional_storage
                 and _p._own_storage_opt_param(
                     ctx.declared_view.get(init.name), an) == vtype):
-            return _mk(site, name, typ, K.DECL_OPT_OWN_PARAM_LIFT,
+            return _mk(site, name, typ, F.POINTER, BC.OPT_OWN_PARAM_LIFT,
                        pointer=True)
     if (not site.in_branch and pointer_repr_optional(vtype) is not None
             and fixed
@@ -1277,14 +1328,14 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
                 init, ctx.declared_view, ctx.names_with("borrow_tuple_mixed"), an)):
         # `decl.mixed_elem_ptr`: `e = p[1]` off a mixed own-borrow tuple
         # local.
-        return _mk(site, name, typ, K.DECL_MIXED_ELEM_PTR, pointer=True)
+        return _mk(site, name, typ, F.POINTER, BC.MIXED_ELEM_PTR, pointer=True)
     # The `auto&&` storage-tuple alias (and its chain).
     rec = _storage_tuple_alias(site, name, typ, inp, visible, ctx)
     if rec is not None:
         return rec
     # A comprehension local.
     if type(init) in _COMP_KINDS and not vtype.is_value_type():
-        return _mk(site, name, typ, K.DECL_COMPREHENSION, movable=movable)
+        return _mk(site, name, typ, F.VALUE, BC.COMPREHENSION, movable=movable)
     # `decl.tparam_call`: an open-T local off a T-returning call binds the
     # `val_or_ref_t` trait and is never promoted, unlike the generic tail
     # every other non-value local reaches.
@@ -1297,7 +1348,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
         if (t_fi is not None and t_fi.cpp_template is None
                 and isinstance(unwrap_ref_type(t_fi.return_type),
                                TypeParamRef)):
-            return _mk(site, name, typ, K.DECL_TPARAM_CALL,
+            return _mk(site, name, typ, F.VALUE, BC.TPARAM_CALL,
                        const=_p._walrus_src_is_const(init, ctx))
     # A pointer-variant union local (`decl.union_addr`,
     # `decl.union_slot_rvalue`).
@@ -1305,16 +1356,17 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
     if ptr_u is not None:
         if site.in_branch and site.storage.pointer:
             # A branch-first rebind slot: its builder rejects it.
-            return _mk(site, name, typ, K.DECL_PTR_VARIANT_SLOT,
+            return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT_SLOT,
                        ptr_variant=True, rebind_slot=True)
         if not isinstance(init, TpyNoneLiteral) and not _checks._ptr_union_source_ok(
                 init, ctx.declared_view, an, ptr_u,
                 allow_field=name not in pre.reassigned):
-            # The slot-hoist kinds -- a rebind slot when the name is
+            # The slot-hoist rows -- a rebind slot when the name is
             # rebound.
-            return _mk(site, name, typ, K.DECL_PTR_VARIANT_SLOT,
+            return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT_SLOT,
                        ptr_variant=True, rebind_slot=site.storage.pointer)
-        return _mk(site, name, typ, K.DECL_PTR_VARIANT, ptr_variant=True)
+        return _mk(site, name, typ, F.POINTER_UNION, BC.PTR_VARIANT,
+                   ptr_variant=True)
     # `decl.storage_call_tuple`: an owning tuple call (an Own-declared
     # return, the flat
     # per-element-Own family, or a tuple of owned tuples).
@@ -1328,7 +1380,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
                  or _p._owned_tuple_call_ret(ct, an) is not None
                  or nested_own)
             and fixed and is_rvalue_source(an, init)):
-        return _mk(site, name, ctu, K.DECL_STORAGE_CALL_TUPLE,
+        return _mk(site, name, ctu, F.STORAGE_TUPLE, BC.STORAGE_CALL_TUPLE,
                    storage_tuple=True, movable=movable)
     # `decl.iterator_object`: an iterator object off a generator call; a
     # concrete generator record the owned-record decl takes first
@@ -1340,7 +1392,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
             and not _st._owned_record_decl_ok(stmt, vtype, pre, {}, an)
             and _st._user_iterator_iterable(
                 unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vtype))), an)):
-        return _mk(site, name, typ, K.DECL_ITERATOR_OBJECT,
+        return _mk(site, name, typ, F.VALUE, BC.ITERATOR_OBJECT,
                    iterator_object=True)
     # The rebound borrow tuple asks whether a `t = t` source is a borrow
     # tuple, which is the record this site gets when the row does not
@@ -1372,7 +1424,7 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
         from .expressions import _param_declared_type
         if _p._opt_view_arg_shim(_param_declared_type(init.name, ctx),
                                  vtype, an):
-            return _mk(site, name, typ, K.DECL_OPTVIEW_SHIM,
+            return _mk(site, name, typ, F.VALUE_OPT, BC.OPTVIEW_SHIM,
                        value_opt=ValueOptKind.VIEW)
     # A tuple-literal first decl, by the literal's captures.
     if isinstance(init, TpyTupleLiteral):
@@ -1383,20 +1435,18 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
     if not fixed or not isinstance(init, (TpyCall, TpyMethodCall)):
         pass
     elif _st._own_opt_record_call_slot(stmt, vtype, ctx, an):
-        return _mk(site, name, typ, K.DECL_OPT_RECORD_CALL,
+        return _mk(site, name, typ, F.VALUE_OPT, BC.OPT_RECORD_CALL,
                    value_opt=ValueOptKind.RECORD,
                    movable=movable and not vtype.is_value_type())
-    rec = _value_opt_of(site, name, typ, an, K.DECL_VALUE_OPT)
-    if rec is not None:
-        if rec.value_opt is None and _p._value_opt_record(vtype) is not None:
-            return replace(rec, value_opt=ValueOptKind.RECORD,
-                           kind=K.DECL_OPT_VALUE_RECORD)
-        return rec
+    vo = _declared_value_opt_kind(typ, an)
+    if vo is not None:
+        return _mk(site, name, typ, F.VALUE_OPT, BC.VALUE_OPT,
+                   value_opt=vo)
     if _p._value_opt_record(vtype) is not None:
-        return _mk(site, name, typ, K.DECL_OPT_VALUE_RECORD,
+        return _mk(site, name, typ, F.VALUE_OPT, BC.OPT_VALUE_RECORD,
                    value_opt=ValueOptKind.RECORD)
     if not vtype.is_value_type():
-        return _mk(site, name, typ, K.DECL_OWNED, movable=movable)
+        return _mk(site, name, typ, F.VALUE, BC.OWNED, movable=movable)
     return None
 
 
@@ -1433,7 +1483,8 @@ def _btuple_rebound_decl(site, name, typ, inp: 'PlanInputs', ctx, fn,
             stmt_reject_reason(site.node, "decl.branch_slot_type"),
             loc=getattr(site.node, "loc", None))
     if ptt is not None:
-        return _mk(site, name, typ, K.DECL_BTUPLE_REBOUND, effective_type=ptt,
+        return _mk(site, name, typ, F.BORROW_TUPLE, BC.BTUPLE_REBOUND,
+                   effective_type=ptt,
                    ptr_tuple=ptt, movable=movable)
     if site.in_branch and not isinstance(init, TpyName):
         return None
@@ -1447,12 +1498,12 @@ def _btuple_rebound_decl(site, name, typ, inp: 'PlanInputs', ctx, fn,
                         for t in bt.inner_types())):
         return None
     srcs = _st._borrow_tuple_binding_sources(name, ctx)
-    own = (name, ctx.with_fixpoint(rest if rest is not None
-                                   else UNBOUND, name))
+    own = (name, ctx.with_fixpoint(rest if rest is not None else UNBOUND))
     if srcs is None or not all(_st._borrow_tuple_source_ok(s, ctx, own)
                                for s in srcs):
         return None
-    return _mk(site, name, typ, K.DECL_BTUPLE_REBOUND, effective_type=bt)
+    return _mk(site, name, typ, F.BORROW_TUPLE, BC.BTUPLE_REBOUND,
+               effective_type=bt)
 
 
 def _tuple_literal_decl(site, name, typ, inp: 'PlanInputs', movable
@@ -1480,7 +1531,7 @@ def _tuple_literal_decl(site, name, typ, inp: 'PlanInputs', movable
         # The elements the binding owns (sema's `tuple_elem_owned`) are
         # the ones it holds inline.
         inline = an.ctx.tuple_elem_owned.get(site.node)
-        return _mk(site, name, typ, K.DECL_BTUPLE_LITERAL,
+        return _mk(site, name, typ, F.BORROW_TUPLE, BC.BTUPLE_LITERAL,
                    effective_type=slot_bt,
                    inline_elems=(inline if inline is not None
                                  and len(inline) == len(slot_bt.element_types)
@@ -1494,14 +1545,16 @@ def _tuple_literal_decl(site, name, typ, inp: 'PlanInputs', movable
                                   unwrap_readonly(unwrap_ref_type(
                                       unwrap_send_sync(we))), an) is not None
                               for we in wide.element_types))
-            return _mk(site, name, typ, K.DECL_TUPLE_LITERAL_WIDE,
+            return _mk(site, name, typ,
+                       F.STORAGE_TUPLE if storage else F.VALUE,
+                       BC.TUPLE_LITERAL_WIDE,
                        storage_tuple=storage, movable=storage and movable,
                        effective_type=wide)
     if not storage_record:
         return None
     # The binding holds the literal's owned layout when the literal is its
     # only write.
-    return _mk(site, name, typ, K.DECL_TUPLE_LITERAL_RECORD,
+    return _mk(site, name, typ, F.STORAGE_TUPLE, BC.TUPLE_LITERAL_RECORD,
                storage_tuple=True, movable=movable, effective_type=tuple_t,
                tuple_layout=(_checks.owned_literal_layout(init, tuple_t, an)
                              if name not in inp.prescan.reassigned
@@ -1583,29 +1636,24 @@ def _btuple_alias_decl(site, name, typ, inp: 'PlanInputs', visible, ctx,
                 or any(i != inline_elems for i in inline)):
         # The alias holds the elements its source holds inline; a ternary
         # whose arms hold different ones (or a call arm) has no one alias.
-        kind = K.DECL_BTUPLE_INLINE_ARMS
+        construct = BC.BTUPLE_INLINE_ARMS
+    elif ref:
+        construct = BC.BTUPLE_REF_ALIAS
     else:
-        kind = K.DECL_BTUPLE_REF_ALIAS if ref else K.DECL_BTUPLE_ALIAS
+        construct = BC.BTUPLE_ALIAS
     # A copy of a pointer-tuple name is that pointer tuple, an alias of
     # every element as `Box& u = *t` is.
     ptt = ptr_tuple_form(name, inp, ctx.func)
-    return _mk(site, name, typ, kind,
+    return _mk(site, name, typ, F.BORROW_TUPLE, construct,
                borrow_tuple_mixed=mixed, movable=promoted and movable,
                inline_elems=inline_elems, const=const, effective_type=src_bt,
                ptr_tuple=ptt)
 
 
-def _const_btuple_element(init, ctx) -> bool:
-    """An element of a borrow tuple whose element pointers are const (the
-    whole-body fixpoint's bit): a reference to it is a const referent."""
-    return (isinstance(init, TpySubscript) and isinstance(init.obj, TpyName)
-            and ctx.binding(init.obj.name).const_borrow_tuple)
-
-
 def _opt_ptr_slot_decl(site, name, typ, inp: 'PlanInputs', ctx, movable
                        ) -> BindingRepr:
-    """The OPT_PTR_SLOT binding's three kinds -- the borrow-returning call
-    passthrough (const per its source), the storage
+    """The OPT_PTR_SLOT binding's three constructions -- the
+    borrow-returning call passthrough (const per its source), the storage
     optional call lift, the slot-hoist pointer local (a rebind slot when
     rvalue-reassigned)."""
     an, pre, init = inp.analyzer, inp.prescan, site.init
@@ -1624,15 +1672,16 @@ def _opt_ptr_slot_decl(site, name, typ, inp: 'PlanInputs', ctx, movable
             and not (isinstance(init, calls)
                      and call_hands_back_value(init))):
         # The lent `T*` is a borrow, never a move source.
-        return _mk(site, name, typ, K.DECL_OPT_CALL_PASSTHROUGH,
+        return _mk(site, name, typ, F.POINTER, BC.OPT_CALL_PASSTHROUGH,
                    pointer=True)
     if (not site.in_branch and isinstance(init, calls)
             and _p._call_storage_optional_return(init, an) is not None
             and _optional_ptr_borrow_wide(vtype, an) is not None):
-        return _mk(site, name, typ, K.DECL_OPT_STORAGE_CALL, pointer=True,
+        return _mk(site, name, typ, F.POINTER, BC.OPT_STORAGE_CALL,
+                   pointer=True,
                    movable=movable,
                    opt_storage_call=site.storage.pointer)
-    return _mk(site, name, typ, K.DECL_OPT_PTR, pointer=True,
+    return _mk(site, name, typ, F.POINTER, BC.OPT_PTR, pointer=True,
                movable=movable, rebind_slot=site.storage.pointer)
 
 
@@ -1662,14 +1711,6 @@ def _readonly_opt_pointee(t: 'TpyType | None') -> bool:
     return opt is not None and isinstance(opt.inner, ReadonlyType)
 
 
-def _value_opt_of(site, name, typ, an, kind) -> 'BindingRepr | None':
-    if _value_opt_scalar(typ, an) is not None:
-        return _mk(site, name, typ, kind, value_opt=ValueOptKind.SCALAR)
-    if _value_opt_owned_view(typ, an) is not None:
-        return _mk(site, name, typ, kind, value_opt=ValueOptKind.VIEW)
-    return None
-
-
 def _storage_tuple_alias(site, name, typ, inp, visible, ctx):
     """`decl.storage_tuple_alias*`: a pointer-repr tuple local bound `auto&&`
     to a storage
@@ -1690,11 +1731,11 @@ def _storage_tuple_alias(site, name, typ, inp, visible, ctx):
                  or _p._own_record_tuple(src_t, an) is not None)):
         return None
     if isinstance(init, TpyFieldAccess):
-        return _mk(site, name, typ, K.DECL_STORAGE_TUPLE_ALIAS,
+        return _mk(site, name, typ, F.STORAGE_TUPLE, BC.STORAGE_TUPLE_ALIAS,
                    storage_tuple=True,
                    const=_p._walrus_src_is_const(init, ctx))
     if isinstance(init, TpySubscript):
-        return _mk(site, name, typ, K.DECL_STORAGE_TUPLE_ALIAS,
+        return _mk(site, name, typ, F.STORAGE_TUPLE, BC.STORAGE_TUPLE_ALIAS,
                    storage_tuple=True,
                    const_storage_tuple=_p._walrus_src_is_const(init, ctx))
     if isinstance(init, TpyName):
@@ -1709,8 +1750,9 @@ def _storage_tuple_alias(site, name, typ, inp, visible, ctx):
                           and init.name not in pre.reassigned
                           and src_t == typ)
                       else None)
-            return _mk(site, name, typ, K.DECL_STORAGE_TUPLE_CHAIN,
-                       storage_tuple=True, tuple_layout=layout,
+            return _mk(site, name, typ, F.STORAGE_TUPLE,
+                       BC.STORAGE_TUPLE_CHAIN, storage_tuple=True,
+                       tuple_layout=layout,
                        const_storage_tuple=_p._walrus_src_is_const(init, ctx))
     return None
 
@@ -1758,12 +1800,12 @@ def _hoist_row(site, name, typ, inp: 'PlanInputs', visible):
     """A sema branch-first predecl at the head of an if / while / for /
     try / with / match (`if_branch_decls`): the representation its
     statement predeclares -- or, for a hoist the statement cannot
-    predeclare, `hoist.plain`. The hoist builders (statements.py
-    `_HOIST_BUILDERS`) read nothing else to pick the declaration."""
+    predeclare, no form. The hoist builders (statements.py
+    `_hoist_builder`) read nothing else to pick the declaration."""
     an, pre = inp.analyzer, inp.prescan
     if pre.binds_global(name):
         # The body reads the name as a module global: no local predecl.
-        return _mk(site, name, typ, K.HOIST_PLAIN)
+        return _mk(site, name, typ, F.NONE, None)
     if typ is None:
         return None
     ctx = _PlanCtx(inp, visible, site.func or inp.func)
@@ -1782,92 +1824,93 @@ def _hoist_row(site, name, typ, inp: 'PlanInputs', visible):
 def _value_hoist(site, name, typ, an) -> BindingRepr:
     """The default-constructed value predecl (`T name;`), a value-repr
     Optional by its value-opt kind."""
-    return (_value_opt_of(site, name, typ, an, K.HOIST_VALUE)
-            or _mk(site, name, typ, K.HOIST_VALUE))
+    return _mk(site, name, typ, F.VALUE, None,
+               value_opt=_declared_value_opt_kind(typ, an))
 
 
 def _nonvalue_hoist(site, name, typ, vt, inp: 'PlanInputs', ctx
                     ) -> 'BindingRepr | None':
-    """The record of a non-value hoist, by `_nonvalue_hoist_kind`. A
+    """The record of a non-value hoist, by `_nonvalue_hoist_rung`. A
     pointer an if chain's or a match's rvalue reseats re-fill has the
     statement's rebind slot; any other pointer hoist takes an rvalue reseat
     through a slot the reseat allocates at function top."""
-    kind, borrowed = _nonvalue_hoist_kind(site, name, vt, inp, ctx)
-    if kind is None:
+    rung = _nonvalue_hoist_rung(site, name, vt, inp, ctx)
+    if rung is None:
         return None
+    form = rung.form
     stmt = site.node
-    if kind in (K.HOIST_BTUPLE_BRANCH, K.HOIST_BTUPLE_LOOP):
+    if form is F.BORROW_TUPLE:
         # A pointer tuple (`ptr_tuple_form`): each binding owning an element
         # backs it at its own site; an alias of one owns none.
         from . import statements as _st
         srcs = _st._borrow_tuple_binding_sources(name, ctx) or ()
         ptt = ptr_tuple_form(name, inp, ctx.func)
         if ptt is not None:
-            return _mk(site, name, typ, kind, ptr_tuple=ptt,
+            return _mk(site, name, typ, form, None, ptr_tuple=ptt,
                        effective_type=ptt)
         # Otherwise an owning tuple-call source (a walrus's) fills a rebind
         # slot the if chain's head declares, and a mixed call's binding
         # holds its hybrid render.
-        return _mk(site, name, typ, kind,
+        return _mk(site, name, typ, form, None,
                    borrow_tuple_mixed=any(
                        _p._mixed_own_btuple_call(s, ctx.analyzer)
                        for s in srcs),
-                   rebind_slot=(kind is K.HOIST_BTUPLE_BRANCH
-                                and isinstance(stmt, TpyIf)
+                   rebind_slot=(isinstance(stmt, TpyIf)
                                 and any(_p._btuple_owning_call_init(
                                     s, ctx.analyzer) for s in srcs)))
-    if kind is K.HOIST_OPT_BTUPLE:
-        return _mk(site, name, typ, kind,
-                   optional_borrow_tuple=not site.in_branch)
-    if kind in (K.HOIST_DYN, K.HOIST_PTR_NULL):
-        return _mk(site, name, typ, kind, pointer=True,
-                   lazy_rebind_slot=kind is K.HOIST_PTR_NULL)
-    if kind in (K.HOIST_POINTER, K.HOIST_CONST_POINTER):
+    if form is F.DYN:
+        return _mk(site, name, typ, form, None, pointer=True)
+    if form is F.POINTER and rung.head_target:
+        return _mk(site, name, typ, form, None, pointer=True,
+                   lazy_rebind_slot=True, head_target=True)
+    if form is F.POINTER:
+        const = rung.const
         nullable = pointer_repr_optional(vt) is not None
-        slot = (kind is K.HOIST_POINTER
-                and isinstance(stmt, (TpyIf, TpyMatch))
+        slot = (not const and isinstance(stmt, (TpyIf, TpyMatch))
                 and site.storage.pointer and not nullable)
-        movable = kind is K.HOIST_POINTER and name in inp.sema_movable
-        return _mk(site, name, typ, kind, pointer=True,
-                   const=kind is K.HOIST_CONST_POINTER, movable=movable,
+        movable = not const and name in inp.sema_movable
+        return _mk(site, name, typ, form, None, pointer=True,
+                   const=const, movable=movable,
                    rebind_slot=slot, lazy_rebind_slot=not slot,
-                   borrowed_capture=borrowed)
-    if kind is K.HOIST_OPT_STORAGE:
-        return _mk(site, name, typ, kind, pointer=True, movable=True,
-                   optional_storage=True)
-    return _mk(site, name, typ, kind)
+                   borrowed_capture=rung.borrowed_capture)
+    if form is F.OWNED_SLOT:
+        return _mk(site, name, typ, form, None, pointer=True,
+                   movable=True, optional_storage=True)
+    return _mk(site, name, typ, form, None)
 
 
-def _nonvalue_hoist_kind(site, name: str, var_type: TpyType,
-                         inp: 'PlanInputs', ctx) -> 'tuple[K | None, bool]':
-    """How a branch-first non-value hoist predecls, for every statement:
-    an if chain's nullable borrow tuple, the borrow tuple a branch (if /
-    try) or a loop variable binds, an if chain's `@dynamic` base pointer, a
-    for head's container unpack target; a plain non-value bound once is
-    the owned slot (`std::optional<T>`); reassigned or borrow-only, or a
-    pointer-repr Optional (the nullable pointer over its inner), the
-    pointer local; a borrow-decl const bit or a readonly type the const
-    pointer, unless rvalue reseats would write through it (an if chain's
-    reseats write the owned slot's address through it). A resumable body
-    has no function-top drain for the line (a resumable loop head's plain
-    non-value takes the owned slot), and a move-through payload outside
-    the owned-slot family no form. None: no non-value hoist of this type.
-    The flag is a match's borrow-only capture, the pointer a nested match
-    re-seats by address."""
-    got = _nonvalue_hoist_rung(site, name, var_type, inp, ctx)
-    return got if isinstance(got, tuple) else (got, False)
+class _HoistRung(NamedTuple):
+    """A non-value hoist's form, and for a pointer whether it is the for
+    head's, const, and a match's borrow-only capture."""
+    form: F
+    head_target: bool = False
+    const: bool = False
+    borrowed_capture: bool = False
 
 
 def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
-                         inp: 'PlanInputs', ctx):
-    """`_nonvalue_hoist_kind`'s ladder: a kind, or a kind with its
-    borrowed-capture flag."""
+                         inp: 'PlanInputs', ctx) -> '_HoistRung | None':
+    """How a branch-first non-value hoist predecls, for every statement:
+    an if chain's nullable borrow tuple, the borrow tuple a branch (if /
+    try) or a loop variable binds, an if chain's `@dynamic` base pointer, a
+    for head's container unpack target (the pointer the head re-points); a
+    plain non-value bound once is the owned slot (`std::optional<T>`);
+    reassigned or borrow-only, or a pointer-repr Optional (the nullable
+    pointer over its inner), the pointer local; a borrow-decl const bit or
+    a readonly type the const pointer, unless rvalue reseats would write
+    through it (an if chain's reseats write the owned slot's address
+    through it). A resumable body has no function-top drain for the line
+    (a resumable loop head's plain non-value takes the owned slot), and a
+    move-through payload outside the owned-slot family no form. None: no
+    non-value hoist of this type. A pointer's facts say whether it is the
+    head's, const, and a match's borrow-only capture (the pointer a nested
+    match re-seats by address)."""
     an, pre, func = ctx.analyzer, ctx.prescan, ctx.func
     stmt = site.node
     at_if = isinstance(stmt, TpyIf)
     at_match = isinstance(stmt, TpyMatch)
     if at_if and _p._optional_borrow_tuple(var_type, an) is not None:
-        return K.HOIST_OPT_BTUPLE
+        return _HoistRung(F.OPT_BORROW_TUPLE)
     var_opt = pointer_repr_optional(var_type)
     ptr_opt = var_opt is not None and not _readonly_opt_pointee(var_type)
     btuple = (isinstance(stmt, (TpyIf, TpyTry, TpyForEach))
@@ -1877,21 +1920,22 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
            and is_dyn_protocol(var_type))
     if not (btuple or dyn) and _ptr_null_hoist(stmt, name, var_type, inp,
                                                ctx):
-        return K.HOIST_PTR_NULL
+        return _HoistRung(F.POINTER, head_target=True)
     if not (btuple or dyn or ptr_opt or is_plain_nonvalue(var_type)):
         return None
+    owned_slot = _HoistRung(F.OWNED_SLOT)
+    no_form = _HoistRung(F.NONE)
     if func.is_generator or func.is_async:
         # A loop-head variable of a resumable leaf is a leaf local in every
         # constructed shape, so its plain non-value takes the owned slot.
         if (isinstance(stmt, (TpyWhile, TpyForEach))
                 and is_plain_nonvalue(var_type)):
-            return K.HOIST_OPT_STORAGE
-        return K.HOIST_PLAIN
+            return owned_slot
+        return no_form
     if btuple:
-        return (K.HOIST_BTUPLE_LOOP if isinstance(stmt, TpyForEach)
-                else K.HOIST_BTUPLE_BRANCH)
+        return _HoistRung(F.BORROW_TUPLE)
     if dyn:
-        return K.HOIST_DYN
+        return _HoistRung(F.DYN)
     borrow_decls = an.function_stmt_borrow_decls.get(func, {})
     borrow_only = (name in borrow_decls
                    and name not in an.function_ever_owned_locals.get(
@@ -1908,19 +1952,22 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
     if name in pre.move_through:
         # Sema's ordinary move bindings consume owned, unreassigned sources.
         if _p.record_like(var_type, an):
-            return K.HOIST_CONST_POINTER if readonly else K.HOIST_OPT_STORAGE
-        return K.HOIST_PLAIN
+            return (_HoistRung(F.POINTER, const=True) if readonly
+                    else owned_slot)
+        return no_form
+    const_pointer = _HoistRung(F.POINTER, const=True,
+                               borrowed_capture=borrowed)
     if const_borrow:
         # An if chain's or a match's rvalue reseats fill a slot the const
         # pointer then points at; any other statement's would write
         # through it.
-        return (K.HOIST_PLAIN if rebound and not (at_if or at_match)
-                else (K.HOIST_CONST_POINTER, borrowed))
+        return (no_form if rebound and not (at_if or at_match)
+                else const_pointer)
     if readonly:
-        return K.HOIST_CONST_POINTER, borrowed
+        return const_pointer
     if ptr_opt or site.storage.pointer or borrow_only:
-        return K.HOIST_POINTER, borrowed
-    return K.HOIST_OPT_STORAGE
+        return _HoistRung(F.POINTER, borrowed_capture=borrowed)
+    return owned_slot
 
 
 def _ptr_null_hoist(stmt, name, vt, inp: 'PlanInputs', ctx) -> bool:
@@ -1986,6 +2033,21 @@ def _inherit_outer(f: dict, outer: 'BindingRepr | None',
     return f
 
 
+_REFERENCE_LOOP_BINDINGS = frozenset({
+    LoopBinding.REFERENCE, LoopBinding.CONST_REFERENCE,
+    LoopBinding.CONST_TYPED_REFERENCE, LoopBinding.OWNED})
+
+
+def _loop_form(loop: 'LoopBinding | None') -> F:
+    """A loop or clause variable's form, from how its loop binds it: the
+    `auto&&` / `const auto&` reference to the element (an owned step's
+    included), else the variable's own value (a copy, the hoisted slot an
+    assign writes, the owned storage materialization)."""
+    if loop is None:
+        return F.NONE
+    return F.REFERENCE if loop in _REFERENCE_LOOP_BINDINGS else F.VALUE
+
+
 def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     """A for-each loop variable (`_lower_stmt_dispatch`'s for-each arm): a
     fresh C++ binding of the body."""
@@ -2034,7 +2096,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
         f["is_param"] = True
         f["param_type"] = outer.param_type
     if stmt.is_tuple_unpack:
-        return _mk(site, name, typ, K.LOOP_UNPACK_HOLDER,
+        return _mk(site, name, typ, _loop_form(f.get("loop_binding")), None,
                    **_inherit_outer(f, outer))
     if _p._foreach_value_opt_elem(et) is not None:
         f["value_opt"] = ValueOptKind.SCALAR
@@ -2052,6 +2114,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     if ((isinstance(et, OwnType) or owns_copy)
             and not stmt.hoist_loop_var) or consuming:
         f["movable"] = True
+    form = _loop_form(f.get("loop_binding"))
     if isinstance(et, OwnType) and site.storage.pointer:
         # A rebound variable that owns its step points at it: a rebind
         # re-points it and an alias keeps the step's object (sema checked
@@ -2062,9 +2125,10 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
             raise ThirUnsupported(
                 stmt_reject_reason(stmt, "loop.rebound_own_form"),
                 loc=getattr(stmt, "loc", None))
+        form = F.POINTER
         f.update(pointer=True, rebind_slot=True,
                  movable=name in inp.sema_movable)
-    return _mk(site, name, typ, K.LOOP_VAR, **_inherit_outer(f, outer))
+    return _mk(site, name, typ, form, None, **_inherit_outer(f, outer))
 
 
 def _with_row(site, name, typ, inp: 'PlanInputs', visible):
@@ -2075,7 +2139,7 @@ def _with_row(site, name, typ, inp: 'PlanInputs', visible):
     func = site.func or inp.func
     an = inp.analyzer
     if func.is_generator or func.is_async or not isinstance(typ, TpyType):
-        return _mk(site, name, typ, K.WITH_PLAIN)
+        return _mk(site, name, typ, F.NONE, None)
     resolved = unwrap_readonly(unwrap_send_sync(typ))
     if typ.is_value_type():
         if not (_p._eligible_scalar(resolved) or _p._eligible_char(resolved)
@@ -2084,16 +2148,16 @@ def _with_row(site, name, typ, inp: 'PlanInputs', visible):
                 or _resolved_bytes_value(resolved, an) is not None
                 or _p._value_tuple(resolved, an) is not None
                 or _p._eligible_value_union(resolved) is not None):
-            return _mk(site, name, typ, K.WITH_PLAIN)
-        return _mk(site, name, typ, K.WITH_VALUE)
+            return _mk(site, name, typ, F.NONE, None)
+        return _mk(site, name, typ, F.VALUE, None)
     if not _p.record_like(resolved, an):
-        return _mk(site, name, typ, K.WITH_PLAIN)
+        return _mk(site, name, typ, F.NONE, None)
     if site.storage.pointer:
         # A rebound target re-points at each rebind; the reassign site's own
         # gates keep out the sources it cannot take.
-        return _mk(site, name, typ, K.WITH_POINTER, pointer=True,
+        return _mk(site, name, typ, F.POINTER, None, pointer=True,
                    rebind_slot=True)
-    return _mk(site, name, typ, K.WITH_REF, const=_readonly_type(typ))
+    return _mk(site, name, typ, F.REFERENCE, None, const=_readonly_type(typ))
 
 
 def walrus_value_type(w, analyzer) -> 'TpyType | None':
@@ -2119,7 +2183,7 @@ def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
     func = site.func or inp.func
     vtu = walrus_value_type(site.node, an)
     if vtu is None:
-        return _mk(site, name, typ, K.WALRUS_PLAIN)
+        return _mk(site, name, typ, F.NONE, None)
     if not (func.is_generator or func.is_async):
         rec = _walrus_sync_kind(site, name, typ, vtu, inp, visible)
         # An escape-hoisted binder has a form only as the pointer over a
@@ -2128,18 +2192,21 @@ def _walrus_row(site, name, typ, inp: 'PlanInputs', visible):
         if rec is not None and (name not in pre.hoisted or rec.rebind_slot):
             return rec
     if name in pre.hoisted:
-        return _mk(site, name, typ, K.WALRUS_PLAIN)
+        return _mk(site, name, typ, F.NONE, None)
     if ((_p._eligible_scalar(vtu) or _p._eligible_char(vtu)
          or _value_record_slot(vtu)
          or _p._eligible_enum(vtu, an) is not None)
             and not isinstance(vtu, OptionalType)):
-        return _mk(site, name, typ, K.WALRUS_VALUE)
-    return _mk(site, name, typ, K.WALRUS_PLAIN)
+        return _mk(site, name, typ, F.VALUE, None)
+    return _mk(site, name, typ, F.NONE, None)
 
 
 def _walrus_sync_kind(site, name, typ, vtu, inp: 'PlanInputs', visible
                       ) -> 'BindingRepr | None':
-    """The sync-only walrus rungs; None past the last of them."""
+    """The sync-only walrus rungs; None past the last of them. A pointer is
+    a record's (`POINTER`) or a pointer-repr Optional's (`OPT_PTR`); a
+    borrow tuple the name rebinds is held over its owning slot
+    (`BTUPLE_REBOUND`)."""
     an, pre = inp.analyzer, inp.prescan
     func = site.func or inp.func
     borrow_decls = an.function_stmt_borrow_decls.get(func, {})
@@ -2148,34 +2215,35 @@ def _walrus_sync_kind(site, name, typ, vtu, inp: 'PlanInputs', visible
             and is_plain_nonvalue(vtu)):
         if not _p.record_like(vtu, an):
             # The alias of a non-record has no form.
-            return _mk(site, name, typ, K.WALRUS_PLAIN)
-        return _mk(site, name, typ, K.WALRUS_PTR_ALIAS, pointer=True)
+            return _mk(site, name, typ, F.NONE, None)
+        return _mk(site, name, typ, F.POINTER, BC.POINTER, pointer=True)
     if _p._optional_ptr_borrow(vtu, an) is not None:
-        return _mk(site, name, typ, K.WALRUS_OPT_PTR, pointer=True)
+        return _mk(site, name, typ, F.POINTER, BC.OPT_PTR, pointer=True)
     if isinstance(vtu, TupleType) and name in pre.reassigned:
-        return _mk(site, name, typ, K.WALRUS_BTUPLE_SLOT)
+        return _mk(site, name, typ, F.BORROW_TUPLE, BC.BTUPLE_REBOUND)
     owned_tuple = (_p._owned_tuple_call_source(site.init, an)
                    and not contains_pending_leaf(vtu))
     if (isinstance(vtu, TupleType) and vtu.has_pointer_repr_element()
             and not owned_tuple):
-        return _mk(site, name, typ, K.WALRUS_BTUPLE)
+        return _mk(site, name, typ, F.BORROW_TUPLE, None)
     if is_plain_nonvalue(vtu) and name in ever_owned and _p.record_like(
             vtu, an):
         # A rebound record keeps its object in a slot of its own, which the
         # pointer re-points away from at a rebind.
         pointer = site.storage.pointer
-        return _mk(site, name, typ, K.WALRUS_OWNED_SLOT, pointer=pointer,
+        return _mk(site, name, typ, F.OWNED_SLOT, None, pointer=pointer,
                    rebind_slot=pointer)
     if owned_tuple:
-        return _mk(site, name, typ, K.WALRUS_OWNED_SLOT)
-    vo = _value_opt_of(site, name, vtu, an, K.WALRUS_VALUE_OPT)
+        return _mk(site, name, typ, F.OWNED_SLOT, None)
+    vo = _declared_value_opt_kind(vtu, an)
     if vo is not None:
-        return replace(vo, type=typ)
+        return _mk(site, name, typ, F.VALUE_OPT, None,
+                   value_opt=vo)
     s = _resolved_str_value(vtu, an)
     b = _resolved_bytes_value(vtu, an)
     if ((s is not None and not is_str_view_type(s))
             or (b is not None and not is_bytes_view_type(b))):
-        return _mk(site, name, typ, K.WALRUS_VALUE)
+        return _mk(site, name, typ, F.VALUE, None)
     return None
 
 
@@ -2210,25 +2278,62 @@ def head_target_writes_outer(stmt: TpyTupleUnpack, i: int, typ,
 
 def _unpack_row(site, name, typ, inp: 'PlanInputs', visible):
     """A fresh tuple-unpack target (`_lower_stmt_dispatch`'s TpyTupleUnpack
-    arm, the for-each arm's head): its kind, and its facts over those of
+    arm, the for-each arm's head): its form, and its facts over those of
     the same-named outer binding a loop head's fresh target shadows
     (`_inherit_outer`); the const of a head pointer or reference is the
     iteration's, never the outer name's."""
-    rec = _unpack_target(site, name, typ, inp, visible)
+    rec, bind = _unpack_target(site, name, typ, inp, visible)
     outer = visible(name)
     if not site.node.is_loop_head or outer is None:
         return rec
     own = {fld: getattr(rec, fld) for fld in REPR_FIELDS}
     scrubbed = (_HEAD_TARGET_SCRUBBED | {"const"}
-                if rec.kind in (K.UNPACK_OPT_PTR, K.UNPACK_REF)
+                if bind in (BC.OPT_PTR, BC.REF)
                 else _HEAD_TARGET_SCRUBBED)
     return replace(rec, **_inherit_outer(dict(own), outer, scrubbed))
 
 
+class _UnpackBind(NamedTuple):
+    form: F
+    tag: UB
+
+
+# A fresh unpack target's bind is its record's construction
+# (`statements.unpack_bind`), each with its form and the `THIRTupleUnpack`
+# bind that renders it (`unpack_tag`): the `unwrap_ref` alias of a
+# recursive wrapper element, the `auto&&` alias through an element
+# pointer, the `const T&` of a value element, the rebound `auto*`, the
+# nullable `T*` of a pointer-repr Optional element, the pointer union
+# lifted per element, the owned element moved out of the holder, the copy.
+# A target with no bind has no form (the unpack rejects).
+UNPACK_BINDS: 'dict[BC, _UnpackBind]' = {
+    BC.UNWRAP_REF: _UnpackBind(F.REFERENCE, UB.UNWRAP_REF),
+    BC.REF: _UnpackBind(F.REFERENCE, UB.REF),
+    BC.CREF: _UnpackBind(F.REFERENCE, UB.CREF),
+    BC.PTR: _UnpackBind(F.POINTER, UB.PTR),
+    BC.OPT_PTR: _UnpackBind(F.POINTER, UB.OPT_PTR),
+    BC.PTR_VARIANT: _UnpackBind(F.POINTER_UNION, UB.PTR_VARIANT),
+    BC.MOVE: _UnpackBind(F.VALUE, UB.MOVE),
+    BC.VALUE: _UnpackBind(F.VALUE, UB.VALUE),
+}
+
+
+def unpack_tag(bind: BC) -> UB:
+    """The `THIRTupleUnpack` bind that renders a fresh unpack target's
+    construction."""
+    return UNPACK_BINDS[bind].tag
+
+
+# The binds through an element pointer of the `tuple_to_pointer` wrap
+# (`auto&&`, `auto*`, `T*`): const as the unpack's source, which the wrap
+# spells (`statements.unpack_wrap_const`).
+ELEM_POINTER_BINDS = frozenset({BC.REF, BC.PTR, BC.OPT_PTR})
+
+
 def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
-                   ) -> BindingRepr:
-    """A fresh tuple-unpack target's kind, in the order the unpack's
-    target loop tries its binds, and its facts."""
+                   ) -> 'tuple[BindingRepr, BC | None]':
+    """A fresh tuple-unpack target's record, by the bind the unpack's
+    target loop tries first, and the bind."""
     an = inp.analyzer
     stmt = site.node
     i = stmt.targets.index(name)
@@ -2236,50 +2341,45 @@ def _unpack_target(site, name, typ, inp: 'PlanInputs', visible
     is_ref = flag(stmt.is_ref)
     tt = unwrap_ref_type(typ) if isinstance(typ, TpyType) else None
     storage = site.storage
-    kind = (_head_unpack_kind if stmt.is_loop_head
-            else _standalone_unpack_kind)(stmt, i, tt, an,
+    bind = (_head_unpack_bind if stmt.is_loop_head
+            else _standalone_unpack_bind)(stmt, i, tt, an,
                                           rebound=storage.pointer)
     f: dict = {}
     if not stmt.is_loop_head:
         f["movable"] = name in inp.sema_movable
-    elif (kind is K.UNPACK_VALUE and flag(stmt.target_copies)
+    elif (bind is BC.VALUE and flag(stmt.target_copies)
           and isinstance(tt, TpyType)
           and (_p._resolve_pending_view(tt, an) or tt).is_expensive_copy()):
         # A head target that takes its own copy each pass: its last use in
         # the pass moves it.
         f["movable"] = True
-    if kind is K.UNPACK_OPT_PTR:
+    if bind is BC.OPT_PTR:
         f["pointer"] = True
-    elif kind is K.UNPACK_PTR_VARIANT:
+    elif bind is BC.PTR_VARIANT:
         f["ptr_variant"] = True
-    elif kind is K.UNPACK_PTR:
+    elif bind is BC.PTR:
         f["pointer"] = True
         f["rebind_slot"] = storage.pointer
-    elif kind is K.UNPACK_MOVE and storage.pointer:
+    elif bind is BC.MOVE and storage.pointer:
         # A rebound target keeps the element it takes over in a slot of its
         # own, which the pointer re-points away from at a rebind.
         f.update(pointer=True, rebind_slot=True,
                  storage_hoisted=storage.hoisted)
     elif not is_ref:
-        vo = _value_opt_of(site, name, typ, an, kind)
+        vo = _declared_value_opt_kind(typ, an)
         if vo is not None:
-            f["value_opt"] = vo.value_opt
+            f["value_opt"] = vo
         elif not stmt.is_loop_head and _own_opt_storage_binding(tt):
             f["value_opt"] = ValueOptKind.RECORD
-    if kind in UNPACK_ELEM_POINTER_KINDS:
+    if bind in ELEM_POINTER_BINDS:
         f["const"] = _unpack_source_const(site, i, inp, visible)
-    return _mk(site, name, typ, kind, **f)
+    form = (F.POINTER if f.get("rebind_slot")
+            else UNPACK_BINDS[bind].form if bind in UNPACK_BINDS else F.NONE)
+    return _mk(site, name, typ, form, bind, **f), bind
 
 
-# The unpack targets bound to an element pointer of the `tuple_to_pointer`
-# wrap (`auto&&`, `auto*`, `T*`): const as the unpack's source, which the
-# wrap spells (`statements.unpack_wrap_const`).
-UNPACK_ELEM_POINTER_KINDS = frozenset({K.UNPACK_REF, K.UNPACK_PTR,
-                                       K.UNPACK_OPT_PTR})
-
-
-def _standalone_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an, *,
-                            rebound: bool) -> K:
+def _standalone_unpack_bind(stmt: TpyTupleUnpack, i: int, tt, an, *,
+                            rebound: bool) -> 'BC | None':
     """The bind a standalone unpack's fresh target `i` takes
     (`_lower_stmt_dispatch`'s TpyTupleUnpack arm); `rebound` is the
     storage policy's pointer verdict."""
@@ -2289,44 +2389,44 @@ def _standalone_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an, *,
                                 flag(stmt.is_new))
     if not is_owned and is_new and _p._wrapper_union_like(tt, an) is not None:
         # A recursive wrapper element's capture slot is a live `X&`.
-        return K.UNPACK_UNWRAP_REF
+        return BC.UNWRAP_REF
     if is_ref:
         if not is_new:
-            return K.UNPACK_PLAIN
+            return None
         if _p.record_like(tt, an):
             # A reassigned name rebinds: an alias would write the new value
             # through into the element's referent.
-            return K.UNPACK_PTR if rebound else K.UNPACK_REF
+            return BC.PTR if rebound else BC.REF
         if _p._optional_ptr_borrow(tt, an) is not None:
-            return K.UNPACK_OPT_PTR
-        return K.UNPACK_PLAIN
+            return BC.OPT_PTR
+        return None
     if not is_new:
-        return K.UNPACK_PLAIN
+        return None
     if is_owned:
         # The capture holds an `Own[P | None]` element as the storage
         # optional and an `Own[A | B]` one as the value variant; the target
         # borrows from the holder through a per-element lift. A record, a
         # recursive wrapper or a container moves out of the holder.
         if _p._optional_ptr_borrow(tt, an) is not None:
-            return K.UNPACK_OPT_PTR
+            return BC.OPT_PTR
         if _p._eligible_ptr_union(tt, an) is not None:
-            return K.UNPACK_PTR_VARIANT
+            return BC.PTR_VARIANT
         if (_p.record_like(tt, an)
                 or isinstance(unwrap_readonly(tt), RecursiveAliasInstanceType)
                 or _p._owned_container_slot(tt)):
-            return K.UNPACK_MOVE
-        return K.UNPACK_PLAIN
+            return BC.MOVE
+        return None
     # A nested value tuple and an `Own[P] | None` element (storage form)
     # copy like a scalar.
     if not (_st._scalar_or_str_unpack_elem(tt, an)
             or _p._value_tuple_global(tt, an) is not None
             or _own_opt_storage_binding(tt)):
-        return K.UNPACK_PLAIN
-    return K.UNPACK_CREF if flag(stmt.is_const_ref) else K.UNPACK_VALUE
+        return None
+    return BC.CREF if flag(stmt.is_const_ref) else BC.VALUE
 
 
-def _head_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an, *,
-                      rebound: bool) -> K:
+def _head_unpack_bind(stmt: TpyTupleUnpack, i: int, tt, an, *,
+                      rebound: bool) -> 'BC | None':
     """The bind a for head's fresh unpack target `i` takes (the for-each
     arm's head; a target writing the outer binding keys no record,
     `head_target_writes_outer`). A target sema stamps as taking its own
@@ -2334,14 +2434,14 @@ def _head_unpack_kind(stmt: TpyTupleUnpack, i: int, tt, an, *,
     holder."""
     flag = (lambda xs: bool(xs[i]) if i < len(xs) else False)
     if _p._optional_ptr_borrow(tt, an) is not None:
-        return K.UNPACK_OPT_PTR
+        return BC.OPT_PTR
     if flag(stmt.is_owned):
-        return K.UNPACK_MOVE
+        return BC.MOVE
     if flag(stmt.is_ref):
-        return K.UNPACK_PTR if rebound else K.UNPACK_REF
+        return BC.PTR if rebound else BC.REF
     if flag(stmt.is_const_ref) and not flag(stmt.target_copies):
-        return K.UNPACK_CREF
-    return K.UNPACK_VALUE
+        return BC.CREF
+    return BC.VALUE
 
 
 def _unpack_source_const(site, i: int, inp: 'PlanInputs', visible) -> bool:
@@ -2384,7 +2484,7 @@ def _comp_row(site, name, typ, inp: 'PlanInputs', visible):
     if outer is None:
         return rec
     if rec is None:
-        rec = _mk(site, name, typ, K.COMP_PLAIN)
+        rec = _mk(site, name, typ, F.NONE, None)
     own = {fld: getattr(rec, fld) for fld in REPR_FIELDS}
     return replace(rec, **_inherit_outer(own, outer, _COMP_SCRUBBED))
 
@@ -2403,7 +2503,8 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
                               copies=gen.copies_var)
             if route.et is not None else None)
     if route.unpack_types is not None and name == gen.var:
-        return _mk(site, name, typ, K.COMP_UNPACK_HOLDER, loop_binding=loop)
+        return _mk(site, name, typ, _loop_form(loop), None,
+                   loop_binding=loop)
     if route.unpack_types is not None:
         # A record element and a pointer-repr Optional element (its
         # storage optional) bind a reference into the element, const as
@@ -2411,24 +2512,24 @@ def _comp_clause_row(site, name, typ, inp: 'PlanInputs', visible):
         tt = route.unpack_types[gen.unpack_vars.index(name)]
         const = bool(gen.const_loop_var)
         if _p._optional_ptr_borrow(tt, an) is not None:
-            return _mk(site, name, typ, K.COMP_UNPACK_STORAGE_OPT,
-                       storage_opt=True, const=const)
+            return _mk(site, name, typ, F.STORAGE_OPT, None, storage_opt=True,
+                       const=const)
         if _p.record_like(unwrap_readonly(unwrap_send_sync(tt)), an):
-            return _mk(site, name, typ, K.COMP_UNPACK_REF, const=const)
-        return _mk(site, name, typ, K.COMP_UNPACK_VALUE)
+            return _mk(site, name, typ, F.REFERENCE, None, const=const)
+        return _mk(site, name, typ, F.VALUE, None)
     etp = unwrap_readonly(route.et) if route.et is not None else None
     if isinstance(etp, TupleType) and etp.has_pointer_repr_element():
-        return _mk(site, name, typ, K.COMP_STORAGE_TUPLE, storage_tuple=True,
+        return _mk(site, name, typ, F.STORAGE_TUPLE, None, storage_tuple=True,
                    loop_binding=loop)
     if _p._foreach_storage_opt_elem(route.et, an):
         ctx = _PlanCtx(inp, visible, site.func or inp.func)
         src = (gen.iterable.obj if isinstance(gen.iterable, TpyMethodCall)
                else gen.iterable)
-        return _mk(site, name, typ, K.COMP_STORAGE_OPT, storage_opt=True,
+        return _mk(site, name, typ, F.STORAGE_OPT, None, storage_opt=True,
                    const_storage_opt=_st._iteration_yields_const(src, ctx,
                                                                  an),
                    loop_binding=loop)
-    return _mk(site, name, typ, K.COMP_PLAIN, loop_binding=loop)
+    return _mk(site, name, typ, F.NONE, None, loop_binding=loop)
 
 
 @dataclass(frozen=True)
@@ -2449,11 +2550,11 @@ def _match_row(site, name, typ, inp: 'PlanInputs', visible):
     facts: _CaseFacts = site.route
     _t, value_opt, pointer = facts.captures.get(name, (None, None, False))
     if pointer:
-        return _mk(site, name, typ, K.MATCH_SUBJECT_PTR, pointer=True,
+        return _mk(site, name, typ, F.POINTER, None, pointer=True,
                    const=facts.subject_const)
     if name in facts.by_value:
-        return _mk(site, name, typ, K.MATCH_COPY, value_opt=value_opt)
-    return _mk(site, name, typ, K.MATCH_REF, value_opt=value_opt,
+        return _mk(site, name, typ, F.VALUE, None, value_opt=value_opt)
+    return _mk(site, name, typ, F.REFERENCE, None, value_opt=value_opt,
                const=facts.subject_const)
 
 
@@ -2469,8 +2570,7 @@ def _match_captures(stmt, case, an, pre) -> dict:
     def field_capture(name, ft) -> None:
         if name in out or ft is None:
             return
-        rec = _value_opt_of(_Site("match"), name, ft, an, K.MATCH_REF)
-        out[name] = (ft, rec.value_opt if rec is not None else None, False)
+        out[name] = (ft, _declared_value_opt_kind(ft, an), False)
 
     def walk(p) -> None:
         if isinstance(p, TpyAsPattern):
@@ -2525,7 +2625,7 @@ def _match_captures(stmt, case, an, pre) -> dict:
 def _def_row(site, name, typ, inp: 'PlanInputs', visible):
     """A nested def binds its name as a closure local (statements.py
     `_lower_nested_def`, resumable.py's frame member pass)."""
-    return _mk(site, name, typ, K.DEF_CLOSURE_LOCAL, nested_def=True)
+    return _mk(site, name, typ, F.VALUE, None, nested_def=True)
 
 
 _ROWS: dict[str, tuple] = {
@@ -2887,9 +2987,10 @@ class _Planner:
             vt = fr.local_types.get(n, raw)
             vt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(vt)))
                   if isinstance(vt, TpyType) else None)
-            kind = _value_opt_of(_Site("hoist"), n, vt, self.analyzer, K.HOIST_VALUE)
+            kind = (_declared_value_opt_kind(vt, self.analyzer)
+                    if vt is not None else None)
             if kind is not None:
-                out[n] = replace(prev, value_opt=kind.value_opt,
+                out[n] = replace(prev, value_opt=kind,
                                  refinements=prev.refinements + (R.FRAME_HOIST,))
                 self._key(s, out[n])
         return out
@@ -2918,8 +3019,8 @@ class _Planner:
         params = [n for n, _t in func.params]
         own = frozenset(scope_bound_names(func.body, params))
         recs = {n: BindingRepr(name=n, site=None, type=t,
-                               kind=K.NESTED_PARAM_PLAIN,
-                               site_kind="nested_param", is_param=True)
+                               form=F.NONE, site_kind="nested_param",
+                               is_param=True)
                 for n, t in func.params}
         # The nested body's prescan carries no pointer-slot globals
         # (`nested_def_prescan`): an enclosing one reads there as the
@@ -2956,7 +3057,7 @@ class _Planner:
             recs = {n: BindingRepr(
                         name=n, site=e,
                         type=types[i] if i < len(types) else None,
-                        kind=K.LAMBDA_PLAIN, site_kind="lambda",
+                        form=F.NONE, site_kind="lambda",
                         is_param=True,
                         param_type=types[i] if i < len(types) else None)
                     for i, n in enumerate(e.param_names)}
@@ -3079,83 +3180,22 @@ def plan_bindings(inp: PlanInputs, body: list[TpyStmt]) -> BindingTable:
     table = _plan_once(inp, body)
     for _round in range(_CONST_ROUNDS):
         fix = _plan_const(inp, table)
-        if (fix.btuple == inp.btuple_const
-                and fix.const_slots == inp.const_slots):
+        if fix.const_slots == inp.const_slots:
             break
-        inp = replace(inp, btuple_const=fix.btuple,
-                      const_slots=fix.const_slots)
+        inp = replace(inp, const_slots=fix.const_slots)
         table = _plan_once(inp, body)
     else:
         raise BindingTableError(
             f"const fixpoint of {inp.func.name} did not settle in "
             f"{_CONST_ROUNDS} planning rounds")
     _reject_mixed_slot(table, fix)
-    _reject_const_ptr_tuple(table, inp, fix)
-    _mark_const(table, *inp.btuple_const, fix, inp.analyzer)
+    _mark_const(table, fix, inp.analyzer)
     return table
-
-
-def _reject_const_ptr_tuple(table: BindingTable, inp: PlanInputs,
-                            fix: _ConstFix) -> None:
-    """A pointer tuple bound from a read-only source -- a `readonly[...]`
-    parameter, a read-only receiver's field: its owning binding is a
-    mutable source, so the slot is mixed and rejected at its first
-    read-only source, as the scalar's mixed pointer slot is
-    (`_reject_mixed_slot`, the same detail). A source the body could write
-    is no such source: sema marks every pointer-tuple binding's roots
-    mutated (`finalize_pointer_tuples`), as the scalar's rebind does. The
-    borrow-tuple const bit is per name and any-source (TODO.md "One home
-    per binding fact -- slices 4 and 5" unifies it with the slots')."""
-    for rec in table.records():
-        if (rec.ptr_tuple is None or rec.name not in fix.btuple[0]
-                or ptr_tuple_form(rec.name, inp, inp.func) is None):
-            continue
-        stmts = fix.btuple_sources.get(rec.name, ())
-        if not stmts:
-            continue
-        stmt = min(stmts, key=_line)
-        raise ThirUnsupported(
-            stmt_reject_reason(stmt, "decl.reseat_source"),
-            loc=getattr(stmt, "loc", None))
 
 
 # Each planning round starts from the closure of the last, so a body
 # settles in two; more means the rows and the fixpoint disagree.
 _CONST_ROUNDS = 8
-
-
-def _borrow_tuple_const_sources(func: TpyFunction, analyzer, reassigned,
-                                hoisted) -> tuple[dict, dict]:
-    """Every binding source of a reassigned / hoisted pointer-repr-tuple
-    local, with the statement it sits in: `(plain, nullable)` maps of
-    target name -> [(source, statement)], the nullable targets split by
-    their DECLARED type (`tuple[..] | None`) -- the const fixpoint's
-    input."""
-    plain: dict[str, list] = {}
-    nullable: dict[str, list] = {}
-    optional_targets: set[str] = set()
-    for tgt, src, stmt, is_walrus, _b in binding_source_sites(func.body):
-        if isinstance(stmt, TpyVarDecl) and not is_walrus:
-            tt = resolve_stmt_binding_type(stmt, analyzer,
-                                           include_global_binding=False)
-            if tt is None:
-                tt = analyzer.get_expr_type(stmt.init)
-            if tt is not None:
-                tt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(tt)))
-            if isinstance(tt, OptionalType) and tt.wraps_pointer_repr_tuple():
-                optional_targets.add(stmt.name)
-        if tgt not in reassigned and tgt not in hoisted:
-            continue
-        st = analyzer.get_expr_type(src)
-        stb = unwrap_readonly(unwrap_ref_type(st)) if st is not None else None
-        if not ((isinstance(stb, TupleType)
-                 and stb.has_pointer_repr_element())
-                or (isinstance(stb, OptionalType)
-                    and stb.wraps_pointer_repr_tuple())):
-            continue
-        (nullable if tgt in optional_targets
-         else plain).setdefault(tgt, []).append((src, stmt))
-    return plain, nullable
 
 
 # The families whose pointer record is the name's one C++ slot: a
@@ -3165,16 +3205,21 @@ _SLOT_FAMILIES = frozenset({"decl", "hoist", "walrus", "with"})
 
 
 def _slot_family(rec: BindingRepr) -> bool:
-    # Judged by the declaring site, whatever kind the record's row picks:
-    # the kind (a pointer or not) itself reads the verdict, so keying on it
+    # Judged by the declaring site, whatever form the record's row picks:
+    # the form (a pointer or not) itself reads the verdict, so keying on it
     # would not settle.
     return rec.site_kind in _SLOT_FAMILIES
 
 
+_BORROW_TUPLE_FORMS = frozenset({F.BORROW_TUPLE, F.OPT_BORROW_TUPLE})
+
+
 def _is_slot(rec: BindingRepr) -> bool:
-    # A pointer-variant union (`::tpy::Union<A*, B*>`) is a pointer slot too.
-    return ((rec.pointer or rec.ptr_variant) and not rec.optional_storage
-            and _slot_family(rec))
+    # A pointer-variant union (`::tpy::Union<A*, B*>`) is a pointer slot
+    # too, and so is a borrow tuple: its element pointers are one const.
+    return ((rec.pointer or rec.ptr_variant or rec.ptr_tuple is not None
+             or rec.form in _BORROW_TUPLE_FORMS)
+            and not rec.optional_storage and _slot_family(rec))
 
 
 def _slot_const(rec: BindingRepr, const_slots: AbstractSet, an) -> bool:
@@ -3185,10 +3230,9 @@ def _slot_const(rec: BindingRepr, const_slots: AbstractSet, an) -> bool:
 
 @dataclass(frozen=True)
 class _ConstFix:
-    """The whole-body const fixpoint: the borrow-tuple names (plain,
-    nullable), the pointer slots every source bound into which is const,
-    and per record the statements binding a const source into it."""
-    btuple: tuple
+    """The whole-body const fixpoint: the slots every source bound into
+    which is const, and per record the statements binding a const source
+    into it."""
     const_slots: frozenset
     const_sources: Mapping[SlotKey, tuple]
     # The matches capturing a const loop variable into a pointer slot:
@@ -3196,9 +3240,6 @@ class _ConstFix:
     # variable, so its const is unproven
     # (BUGS.md#match-capture-loop-var-write-not-credited).
     unproven: tuple = ()
-    # Per const borrow-tuple name, the statements binding a const source
-    # into it.
-    btuple_sources: Mapping[str, tuple] = field(default_factory=dict)
 
 
 def _answers(pred, src: TpyExpr, ctx: '_PlanCtx') -> bool:
@@ -3210,17 +3251,15 @@ def _answers(pred, src: TpyExpr, ctx: '_PlanCtx') -> bool:
 
 def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
     """The const fixpoint over the table, each source judged against the
-    records visible at its own statement. A borrow-tuple local is const
-    when some source bound into it is. A pointer slot is const when every
-    source bound into it is (a match capture's source is its subject, a
-    with target's its `__enter__` result; a None points at nothing): the
+    records visible at its own statement. A slot (a pointer, a pointer
+    union, a borrow tuple's element pointers) is const when every source
+    bound into it is (a match capture's source is its subject, a with
+    target's its `__enter__` result; a None points at nothing): the
     largest such set, so a chain or a cycle
     of slots (`d2 = d1`, `n = n.next`) rooted in const sources is const.
     The candidates are the slots some source of which is const once the
     slots it reads are."""
     func = inp.func
-    plain, nullable = _borrow_tuple_const_sources(
-        func, inp.analyzer, inp.prescan.reassigned, inp.prescan.hoisted)
     binds = []
     loop_var_captures = []
     for tgt, src, stmt, _w, _b in binding_source_sites(func.body,
@@ -3233,14 +3272,11 @@ def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
             if (isinstance(stmt, TpyMatch) and src is stmt.subject
                     and _is_slot(rec)):
                 loop_var_captures.append(stmt)
-    const_set: set[str] = set()
-    opt_set: set[str] = set()
     slots: set[SlotKey] = set()
 
     def ctx_at(stmt) -> _PlanCtx:
         node = table.scope_at.get(stmt) or table.root
         ctx = _PlanCtx(inp, node.lookup, func)
-        ctx.btuple_const = (const_set, opt_set)
         ctx.const_slots = slots
         return ctx
 
@@ -3254,12 +3290,6 @@ def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
     changed = True
     while changed:
         changed = False
-        for srcs_of, cs in ((plain, const_set), (nullable, opt_set)):
-            for name, srcs in srcs_of.items():
-                if name not in cs and any(is_const(src, stmt)
-                                          for src, stmt in srcs):
-                    cs.add(name)
-                    changed = True
         for key, slot, src, stmt in binds:
             if slot and key not in slots and is_const(src, stmt):
                 slots.add(key)
@@ -3278,23 +3308,23 @@ def _plan_const(inp: PlanInputs, table: BindingTable) -> _ConstFix:
     unproven = tuple(
         stmt for stmt in loop_var_captures
         if _rooted_in_const_loop_var(stmt.subject, ctx_at(stmt)))
-    btuple_sources = {
-        name: tuple(stmt for src, stmt in plain[name] if is_const(src, stmt))
-        for name in const_set}
-    return _ConstFix((frozenset(const_set), frozenset(opt_set)),
-                     frozenset(slots),
+    return _ConstFix(frozenset(slots),
                      {k: tuple(v) for k, v in const_sources.items()},
-                     unproven, btuple_sources)
+                     unproven)
 
 
 def _rooted_in_const_loop_var(expr: TpyExpr, ctx: _PlanCtx) -> bool:
-    root = receiver_root(expr, ctx.analyzer.get_expr_type)
+    # Asked with final facts: sema marked a loop variable a call lends
+    # writable on the same climb, widening a pending callee's guess, so a
+    # variable still const here is one no write through `expr` reaches.
+    root = pointee_root(expr, ctx.analyzer.get_expr_type,
+                        MayLend(ctx.analyzer.ctx))
     return root is not None and ctx.binding(root).const_loop_var
 
 
 def _reject_mixed_slot(table: BindingTable, fix: _ConstFix) -> None:
-    """A pointer slot holding both a const and a mutable source has no C++
-    form: `T*` cannot take the const one, and `const T*` refuses a write a
+    """A slot holding both a const and a mutable source has no C++ form:
+    `T*` cannot take the const one, and `const T*` refuses a write a
     mutable source's alias may make through it. Rejected where it binds
     the const source, or where a capture binds an unproven const loop
     variable (`_ConstFix.unproven`); the first such statement."""
@@ -3314,28 +3344,22 @@ def _line(stmt) -> int:
     return loc.line if loc is not None else 0
 
 
-def _mark_const(table: BindingTable, plain: frozenset,
-                nullable: frozenset, fix: _ConstFix, an) -> None:
-    """Write the fixpoint's bits on the records: the borrow-tuple bits on
-    every record of a marked name, a slot's const (`_slot_const`) and
-    every record's const-source bit, in every scope node and site entry
-    that holds them."""
+def _mark_const(table: BindingTable, fix: _ConstFix, an) -> None:
+    """Write the fixpoint's bits on the records: a slot's const
+    (`_slot_const`) and every record's const-source bit, in every scope
+    node and site entry that holds them."""
     new: dict[int, BindingRepr] = {}
 
     def swap(rec: BindingRepr) -> BindingRepr:
         key = slot_key(rec)
         sourced = key in fix.const_sources
         slot = _is_slot(rec)
-        if (rec.name not in plain and rec.name not in nullable
-                and not sourced and not slot):
+        if not sourced and not slot:
             return rec
         got = new.get(id(rec))
         if got is None:
             got = replace(
                 rec,
-                const_borrow_tuple=rec.const_borrow_tuple or rec.name in plain,
-                const_opt_borrow_tuple=(rec.const_opt_borrow_tuple
-                                        or rec.name in nullable),
                 const=(_slot_const(rec, fix.const_slots, an) if slot
                        else rec.const),
                 const_source=sourced)
@@ -3443,7 +3467,7 @@ def install(lc, table: BindingTable) -> None:
     sink.append(("_stat:functions", _qualname(lc), "", "", ""))
     for rec in table.records():
         sink.append(("_stat:records", "", "", "", ""))
-        sink.append(("_row:" + rec.kind.value + "".join(
+        sink.append(("_row:" + rec.label + "".join(
             "+" + r.value for r in rec.refinements), "", "", "", ""))
 
 

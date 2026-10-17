@@ -34,3 +34,6 @@ loop_capture: 11
 loop_capture_quiet: 1 1
 loop_capture_quiet: 11 11
 unpack_kept_first_pass: 102
+view_through_call_iter: n0
+view_through_call_iter: n2
+view_through_call: n2 n2

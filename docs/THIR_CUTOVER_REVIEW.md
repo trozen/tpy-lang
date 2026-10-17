@@ -428,10 +428,8 @@ intact during coexistence. Measured against that:
    remaining clusters are the same fix not yet applied.
 3. **Stringly-typed discriminators beside real enums.**
    `THIRComprehension.kind` / `.loop`, `THIRForRange.step_kind`,
-   `THIRTry.tier`, `THIRMatchBinding.mode`, `THIRTupleUnpack.binds`
-   (validated against a `_BIND_TOKENS` frozenset at construction), and
-   `THIRMatch.strategy` with fourteen string values. Each is an enum
-   written as a string.
+   `THIRTry.tier`, `THIRMatchBinding.mode`, and `THIRMatch.strategy` with
+   fourteen string values. Each is an enum written as a string.
 4. **Declared-and-never-written fields.** `THIRName.is_last_use` and
    `is_movable` (the design table's headline facts; one write site in
    `lower/`, none read), `THIRFunctionLayout`'s three sets ("the fields
@@ -653,7 +651,7 @@ Zero-churn steps, each verifiable by the corpus byte-diff alone:
   deletion commit so dangling names never exist. Size M.
 - **Z3 Types for modes.** Enums for `THIRMatch.strategy`,
   `THIRComprehension.kind` / `loop`, `THIRForRange.step_kind`,
-  `THIRTry.tier`, `THIRMatchBinding.mode`, `THIRTupleUnpack.binds`,
+  `THIRTry.tier`, `THIRMatchBinding.mode`,
   `_coerce_disposition`, `_ForEachRoute.route`; discriminators for the
   flag clusters on `THIRFieldAccess`, `THIRMethodCall`, `THIRIsNone`,
   `THIRMembership`, `THIRName`; delete the never-written fields

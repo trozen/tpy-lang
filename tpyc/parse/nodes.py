@@ -162,7 +162,9 @@ class TpyExpr:
 
 if TYPE_CHECKING:
     from ..coercions import Coercion
+    from ..holders import Holder
     from ..sema.context import LoanInfo
+    from ..sema.storage_walk import StorageKey
     from ..symbol_binding import SymbolBinding
     from ..typesys import FunctionInfo, RecordInfo, ResolvedBinop, ResolvedUnaryop
 
@@ -1071,10 +1073,10 @@ class TpyVarDecl(TpyStmt):
     stands_for: str | None = field(default=None, kw_only=True)
     # Set by sema: union assignment narrowing facts for codegen
     then_type_facts: dict[str, TpyType] = field(default_factory=dict)
-    # Stamped by liveness: names still live AFTER this statement (see
-    # analyze_last_uses). None means the liveness walk never reached this
+    # Stamped by liveness: names (and running loop iterators) still live
+    # AFTER this statement (see analyze_last_uses). None means the liveness walk never reached this
     # node, where the alias-rebind pass stays silent.
-    live_names_after: frozenset[str] | None = field(default=None, repr=False)
+    live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
     # Stamped by sema on an rvalue REBIND of a reference-typed local -- the
     # sites the alias-rebind storage pass decides (see RebindStorage); read
     # by the lowering and the frame layout.
@@ -1111,7 +1113,7 @@ class TpyTupleUnpack(TpyStmt):
     # local, since a reference alias would write the rebind through.
     is_rebound: list[bool] = field(default_factory=list)
     # Stamped by liveness -- see TpyVarDecl.live_names_after.
-    live_names_after: frozenset[str] | None = field(default=None, repr=False)
+    live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
 
     def exprs(self) -> list[TpyExpr]:
         return [self.value]
@@ -1123,7 +1125,7 @@ class TpyAssign(TpyStmt):
     target: TpyExpr
     value: TpyExpr
     # Stamped by liveness -- see TpyVarDecl.live_names_after.
-    live_names_after: frozenset[str] | None = field(default=None, repr=False)
+    live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
     # Stamped by sema for a name target -- see TpyVarDecl.rebind_storage.
     rebind_storage: RebindStorage | None = field(default=None, repr=False)
 
@@ -1610,7 +1612,7 @@ class TpyMatchCase:
     type_facts: dict[str, TpyType] = field(default_factory=dict)
     # Set by liveness: the names live right after the arm's captures bind
     # (its guard and body, and the arms a failed guard falls through to).
-    live_names_after: frozenset[str] | None = field(default=None, repr=False)
+    live_names_after: frozenset[Holder] | None = field(default=None, repr=False)
 
 
 @dataclass
@@ -1884,7 +1886,7 @@ class TpyFunction:
     # (a capture param is named as the variable it binds). Such a capture is
     # iterated across pulls like the source, not merely read afresh at each
     # one.
-    genexpr_inner_loans: 'tuple[tuple[str, LoanInfo], ...]' = ()
+    genexpr_inner_loans: 'tuple[tuple[StorageKey, LoanInfo], ...]' = ()
     generator_yield_type: 'TpyType | None' = None  # Set by sema: T from Iterator[T]
     # Set by sema for a generator whose yield type is an open `T`: does the
     # frame LEND what it yields (the `val_or_ref<T>` slot) or hand out a value?
@@ -2643,100 +2645,6 @@ def walrus_bindings(stmt: TpyStmt) -> list['TpyNamedExpr']:
     for e in stmt.exprs():
         collect(e)
     return found
-
-
-def borrow_chain_root(expr: TpyExpr) -> str | None:
-    """The name a borrow expression roots at -- peel field / element / coerce
-    wrappers until a name is left. None when it bottoms out at something that
-    is not a name (a literal, a constructor, a free call), i.e. provenance the
-    caller cannot read off the expression alone.
-
-    A method call peels to its RECEIVER, which over-approximates: what the
-    callee hands back need not come from the receiver's storage. Callers must
-    treat the result as "could root here", never as a provenance trace.
-    """
-    cur: TpyExpr | None = expr
-    while cur is not None and not isinstance(cur, TpyName):
-        cur = getattr(cur, "obj", None) or getattr(cur, "expr", None)
-    return cur.name if isinstance(cur, TpyName) else None
-
-
-def returns_borrow_rooted_at_self(func: 'TpyFunction') -> bool:
-    """Whether a method's returned borrow can root at `self`.
-
-    Answers "is what this hands back part of the receiver, or something that
-    merely passes through it" -- a `with` manager's `__enter__` returning `self`
-    or `self.field` lends out its own storage, while one returning a global
-    lends someone else's. Only the second is free to outlive the receiver.
-
-    A return root is followed through the body's local bindings, so
-    `tmp = self.item; return tmp` reads the same as `return self.item`.
-
-    False needs PROOF, on every return: a root that is external storage (a
-    global -- never a local of this body) or a local every one of whose
-    bindings is itself external. Everything else keeps the answer True --
-    no returns at all, a root that is not a name, a name bound by a form this
-    does not model (`written_names` is the chokepoint, so a new binding form
-    lands here as unknown rather than as "external"), or a nested def, which
-    can rebind an enclosing local out of this walk's sight.
-    """
-    # name -> the roots its bindings come from; None = unreadable provenance.
-    binding_roots: dict[str, list[str | None]] = {}
-    return_roots: list[str | None] = []
-    saw_return = False
-    saw_nested_def = False
-
-    def bind(name: str, source: TpyExpr | None) -> None:
-        binding_roots.setdefault(name, []).append(
-            borrow_chain_root(source) if source is not None else None)
-
-    def on_stmt(stmt: TpyStmt) -> None:
-        nonlocal saw_return, saw_nested_def
-        modeled: set[str] = set()
-        if isinstance(stmt, TpyVarDecl):
-            bind(stmt.name, stmt.init)
-            modeled.add(stmt.name)
-        elif isinstance(stmt, TpyAssign) and isinstance(stmt.target, TpyName):
-            bind(stmt.target.name, stmt.value)
-            modeled.add(stmt.target.name)
-        elif isinstance(stmt, TpyForEach):
-            bind(stmt.var, stmt.iterable)
-            modeled.add(stmt.var)
-        elif isinstance(stmt, TpyWith):
-            for item in stmt.items:
-                if item.target is not None:
-                    bind(item.target, item.context_expr)
-                    modeled.add(item.target)
-        elif isinstance(stmt, TpyNestedDef):
-            saw_nested_def = True
-        elif isinstance(stmt, TpyReturn):
-            saw_return = True
-            return_roots.append(
-                borrow_chain_root(stmt.value) if stmt.value is not None
-                else None)
-        for name in written_names(stmt) - modeled:
-            bind(name, None)
-
-    walk_body_stmts(func.body, lambda e: None, on_stmt)
-    if not saw_return or saw_nested_def:
-        return True
-
-    def is_external(root: str | None, external: set[str]) -> bool:
-        return (root is not None and root != "self"
-                and (root not in binding_roots or root in external))
-
-    external: set[str] = set()
-    changed = True
-    while changed:
-        changed = False
-        for name, sources in binding_roots.items():
-            if name in external:
-                continue
-            if all(is_external(src, external) for src in sources):
-                external.add(name)
-                changed = True
-
-    return not all(is_external(root, external) for root in return_roots)
 
 
 def body_writes_name(body: list[TpyStmt], var: str,

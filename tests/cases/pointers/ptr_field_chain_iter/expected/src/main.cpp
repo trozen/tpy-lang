@@ -66,6 +66,19 @@ void raise_floors(const std::vector<SubSector*>& subsectors) {
     }
 }
 
+// def via_ptr(p: Ptr[Map]) -> None:
+//     # An element borrowed through a Ptr binding's container field.
+//     v = p.sectors[0]
+//     v.floor_h += 100
+//     # v points into the list's buffer, which append may reallocate: the loan
+//     # is on the field reached through the pointer, so the append warns.
+//     p.sectors.append(Sector(3))  # tpyc: warning(/Mutation of 'p.sectors'/)
+void via_ptr(Map* p) {
+    Sector& v = ::tpy::__getitem__(::tpy::deref_check(p).sectors, 0);
+    v.floor_h = ::tpy::add_check<int32_t>(v.floor_h, 100);
+    p->sectors.push_back(Sector(3));
+}
+
 // def main() -> None:
 //     m = Map()
 //     subsectors: list[Ptr[SubSector]] = []
@@ -76,6 +89,11 @@ void raise_floors(const std::vector<SubSector*>& subsectors) {
 //     raise_floors(subsectors)
 //     # The mutation reached the sectors the pointers alias, not a copy.
 //     print(m.sectors[0].floor_h, m.sectors[1].floor_h)
+//     via_ptr(m)
+//     # The element write and the append both reached the Map behind the Ptr;
+//     # read here because len(p.sectors) on the Ptr rejects
+//     # (BUGS.md#call-result-container-field-read).
+//     print("via_ptr", m.sectors[0].floor_h, len(m.sectors))
 void main() {
     Map m = Map();
     std::vector<SubSector*> subsectors = std::vector<SubSector*>{};
@@ -85,6 +103,8 @@ void main() {
     std::cout << ::tpyapp::main::total(subsectors) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::raise_floors(subsectors);
     std::cout << ::tpy::__getitem__(m.sectors, 0).floor_h << " " << ::tpy::__getitem__(m.sectors, 1).floor_h << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::via_ptr(&m);
+    std::cout << "via_ptr" << " " << ::tpy::__getitem__(m.sectors, 0).floor_h << " " << ::tpy::__len__(m.sectors) << "\n" << ::tpy::check_signals;
 }
 
 // main()

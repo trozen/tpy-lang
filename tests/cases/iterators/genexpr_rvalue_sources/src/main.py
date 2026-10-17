@@ -21,6 +21,17 @@ class Node:
         self.val = v
 
 
+class Cnt:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def bump(self) -> int32:
+        self.n += 1
+        return self.n
+
+
 class Err(Exception, ReturnException):
     pass
 
@@ -150,6 +161,12 @@ def closure_pos(d: dict[int32, int32], k: int32) -> int32:
     return inner()
 
 
+def bump_values(d: dict[int32, Cnt]) -> int32:
+    # element writes through a dict-view source: the frame's call edge keeps
+    # the dict parameter mutable.
+    return sum(c.bump() for c in d.values())  # tpyc: ok
+
+
 XS: list[int32] = [1, 2, 3]
 # module level: a combinator source over a global.
 print("module", sum(x for x in reversed(XS)))  # tpyc: ok
@@ -240,6 +257,8 @@ def main() -> None:
     except Err:
         print("error_return: raised")
     print("match", by_match(1, xs))
+    cs = {1: Cnt(1), 2: Cnt(2)}
+    print("bump_values", bump_values(cs), cs[1].n)
 
 
 main()

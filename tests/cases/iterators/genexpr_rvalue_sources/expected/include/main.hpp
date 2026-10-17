@@ -11,6 +11,7 @@
 namespace tpyapp::main {
 
 struct Node;
+struct Cnt;
 struct Err;
 struct Tally;
 struct Guard;
@@ -72,6 +73,8 @@ int32_t drain(T_it& it);
 int32_t byte_sum(::tpy::BytesView data);
 // def closure_pos(d: dict[int32, int32], k: int32) -> int32:
 int32_t closure_pos(const ::tpy::ordered_map<int32_t, int32_t>& d, int32_t k);
+// def bump_values(d: dict[int32, Cnt]) -> int32:
+int32_t bump_values(::tpy::ordered_map<int32_t, Cnt>& d);
 // def main() -> None:
 void main();
 // self.total = sum(v for v in self.d.values())  # tpyc: ok
@@ -115,6 +118,25 @@ struct Node {
 
 inline std::ostream& operator<<(std::ostream& os, const Node& obj) {
     ::tpy::print_object_default(os, "Node", obj);
+    return os;
+}
+
+// class Cnt:
+struct Cnt {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Cnt() = default;
+    explicit Cnt(int32_t n);
+
+    // def bump(self) -> int32:
+    int32_t bump();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Cnt";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Cnt& obj) {
+    ::tpy::print_object_default(os, "Cnt", obj);
     return os;
 }
 
@@ -686,6 +708,18 @@ __genexpr_aio_10_frame<std::invoke_result_t<F_make>> __genexpr_aio_10(std::in_pl
 // def __init__(self, v: int32) -> None:
 //     self.val = v
 inline Node::Node(int32_t v) : val(v) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Cnt::Cnt(int32_t n) : n(n) {}
+
+// def bump(self) -> int32:
+//     self.n += 1
+//     return self.n
+inline int32_t Cnt::bump() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
+    return this->n;
+}
 
 // def __init__(self, d: Own[dict[int32, int32]]) -> None:
 //     self.d = d

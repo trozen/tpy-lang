@@ -34,25 +34,27 @@ from ..typesys import (
     FunctionInfo, GenExprType, NominalType, PendingDictType, PendingListType,
     ReadonlyType, PendingSetType, TpyType, TupleType, TypeParamRef, make_dict,
     make_list, make_set, yield_always_borrows,
-    held_whole_borrow_sources,
-    is_protocol_type, result_borrow_sources, type_param_names,
+    is_protocol_type, type_param_names,
     unwrap_own, unwrap_readonly, unwrap_ref_type,
 )
 from ..value_category import (
     call_operands, frame_factory_callee, frame_temp_arg_source,
-    iterator_source_callee,
+    is_rvalue_source, iterator_source_callee,
 )
-from .context import (
-    BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots, call_lend_sources,
-    _root_name_of_expr, _storage_root, call_borrow_operands, element_index_key,
-    iter_borrow_storage,
+from .call_lends import (
+    CalleeFact, MayLend, borrowing_ctor_arg, call_callee, call_lend_sources,
+    callee_lend_fact,
 )
+from ..holders import Holder, IterHolder
+from .context import BorrowKind, LoanInfo, element_index_key
+from .storage_walk import (LoanKey, MarkRequest, StorageKey, call_loans,
+                           loan_key, mark_roots)
 from .receiver_calls import (
     check_implicit_readonly_receiver, implicit_call_mutates_receiver,
     check_receiver_call_loans, credit_implicit_receiver_call,
 )
 from .own_copy import contains_reference_type
-from .scope_tracker import lend_roots
+from .scope_tracker import lend_places
 
 if TYPE_CHECKING:
     from .context import BorrowTracker, SemanticContext
@@ -127,7 +129,8 @@ def iter_element_source(iterable_type: 'TpyType | None',
 
 
 def _yield_elem_sources(fi: FunctionInfo,
-                        srcs_by_idx: dict[int, list[str]]) -> list[list[str]] | None:
+                        srcs_by_idx: dict[int, list[StorageKey]]
+                        ) -> list[list[StorageKey]] | None:
     """Per tuple element of an iterator-returning callee's yield, the storage
     roots it lends from -- read off the GENERIC signature: an element spelled
     by a type param comes from the parameter(s) whose type mentions that
@@ -142,7 +145,7 @@ def _yield_elem_sources(fi: FunctionInfo,
     if not args or not isinstance(args[0], TupleType):
         return None
     every = [src for srcs in srcs_by_idx.values() for src in srcs]
-    out: list[list[str]] = []
+    out: list[list[StorageKey]] = []
     named = False
     for et in args[0].element_types:
         names = type_param_names(et)
@@ -172,10 +175,10 @@ def _elem_param_indices(root: FunctionInfo, et: TpyType) -> list[int]:
 # Per element of an iteration's yield, the named storage the element is a
 # reference into: a flat root list for a whole element, or one entry per
 # element of a tuple yield.
-ElemProvenance = Union[list[str], tuple["ElemProvenance", ...]]
+ElemProvenance = Union[list[StorageKey], tuple["ElemProvenance", ...]]
 
 
-def _flat_provenance(prov: ElemProvenance) -> list[str]:
+def _flat_provenance(prov: ElemProvenance) -> list[StorageKey]:
     if isinstance(prov, tuple):
         return [root for p in prov for root in _flat_provenance(p)]
     return prov
@@ -204,7 +207,7 @@ def iteration_elem_provenance(ctx: SemanticContext,
     storage = iterated_storage(ctx, iterable)
     fi = storage.callee
     if fi is None:
-        return [_storage_root(key) for key, _ in storage.loans]
+        return [key.root_key for key, _ in storage.loans]
     by_idx = _sources_by_idx(storage.operands)
     every = [src for op in storage.operands for src in op.sources]
     root = fi.root
@@ -228,7 +231,8 @@ def iteration_elem_provenance(ctx: SemanticContext,
             op = by_idx[idxs[0]]
             # Only a nested lending call has a yield structure of its own; a
             # named operand's roots are already `sources`, deep chains included.
-            if call_borrow_operands(op.arg) is None:
+            lend = callee_lend_fact(op.arg)
+            if lend.kind is CalleeFact.UNRESOLVED or lend.fresh:
                 return op.sources
             return iteration_elem_provenance(ctx, op.arg)
         return [src for i in idxs for src in by_idx[i].sources]
@@ -240,7 +244,7 @@ def iteration_lend_pending(ctx: SemanticContext, iterable: TpyExpr) -> bool:
     """Whether what `iterable` lends still waits on a callee whose body is
     not analyzed yet (a generator defined below its use), so a provenance
     verdict taken now would depend on definition order."""
-    return any(r.assumed for r in lend_roots(ctx, iterable))
+    return any(r.assumed for r in lend_places(ctx, iterable))
 
 
 def iteration_copies_lent_reference(ctx: SemanticContext, iterable: TpyExpr,
@@ -270,13 +274,12 @@ def is_dangling_temporary_arg(expr: TpyExpr) -> bool:
     """
     if isinstance(expr, TpyCoerce):
         return is_dangling_temporary_arg(expr.expr)
-    # A view/pointer constructor borrows from its argument, so its temporariness
-    # follows the arg: StrView("lit") / Ptr(name) wrap stable storage and do not
-    # dangle, while StrView(make()) does. Mirrors is_dangling_return's
-    # view-constructor recursion.
-    if isinstance(expr, TpyCall) and expr.call_type is not None:
-        if is_borrowing_view_type(expr.call_type) or expr.call_type.is_pointer():
-            return bool(expr.args) and is_dangling_temporary_arg(expr.args[0])
+    # A borrowing constructor lends its argument, so its temporariness
+    # follows the arg: StrView("lit") / Ptr(name) wrap stable storage and do
+    # not dangle, while StrView(make()) does.
+    arg = borrowing_ctor_arg(expr)
+    if arg is not None:
+        return is_dangling_temporary_arg(arg)
     if isinstance(expr, TpyCallLike) and expr.result_form is ResultForm.BORROW:
         # Sema proved every argument it lends is existing storage.
         return False
@@ -307,7 +310,17 @@ def temp_arg_kept_alive(fi: FunctionInfo, idx: int, arg: TpyExpr,
     return frame_temp_arg_source(arg, slot, ctx) is not None
 
 
-def hold_whole(bt: 'BorrowTracker', borrower: str, roots: Iterable[str]) -> None:
+def temp_arg_spelling(fi: FunctionInfo, idx: int) -> str:
+    """How a diagnostic names argument `idx` of a call of `fi`: by its
+    parameter's name, or by position for a callable value, whose
+    parameters have no source names."""
+    if fi.root.is_callable_value:
+        return f"argument {idx + 1}"
+    return f"argument '{fi.params[idx].name}'"
+
+
+def hold_whole(bt: 'BorrowTracker', borrower: Holder,
+               roots: Iterable[StorageKey]) -> None:
     """File the loan of a result that keeps these roots only as whole
     objects: growing them leaves it valid, moving them away does not. It
     merges, so a capture that is also the source stays iterated."""
@@ -326,13 +339,13 @@ class IterationLoan(NamedTuple):
     into storage nothing guards.
     """
 
-    elem_sources: list[list[str]] | None = None
+    elem_sources: list[list[StorageKey]] | None = None
     unplaceable: bool = False
     # The ITER loans filed, by storage key.
-    loans: list[tuple[str, LoanInfo]] = []
+    loans: list[tuple[StorageKey, LoanInfo]] = []
 
     @property
-    def sources(self) -> list[str]:
+    def sources(self) -> list[StorageKey]:
         return [key for key, _ in self.loans]
 
 
@@ -343,7 +356,7 @@ class _BorrowedOperand(NamedTuple):
     slot it fills."""
     idx: int
     arg: TpyExpr
-    sources: list[str]
+    sources: list[StorageKey]
     slot: TpyType | None = None
 
 
@@ -365,8 +378,8 @@ class IteratedStorage(NamedTuple):
     whole, and -- for a call iterable -- the callee and the operands the
     loans came from. `unplaceable` is the too-deep lvalue chain of
     `register_iteration_loans`."""
-    loans: list[tuple[str, LoanInfo]]
-    held_whole: list[str]
+    loans: list[tuple[StorageKey, LoanInfo]]
+    held_whole: list[StorageKey]
     callee: FunctionInfo | None = None
     operands: list[_BorrowedOperand] = []
     unplaceable: bool = False
@@ -414,7 +427,7 @@ def iterated_storage(ctx: SemanticContext, iterable: TpyExpr) -> IteratedStorage
     element's `elem_index`, so a mutation of a sibling element is told
     apart from a mutation of the borrowed one.
 
-    A loan is keyed only where `iter_borrow_storage` spells a key: a NAME,
+    A loan is keyed only where `loan_key` spells a key: a NAME,
     a one-hop element (subscript), a one-hop FIELD. A deeper chain has no
     loan and answers `unplaceable`, so the lowering refuses the loop
     rather than iterate storage nothing guards. The flag is the key
@@ -431,17 +444,18 @@ def iterated_storage(ctx: SemanticContext, iterable: TpyExpr) -> IteratedStorage
     is_getter = is_property_getter_read(iterable)
     unplaceable = False
     if is_getter or isinstance(iterable, (TpyName, TpySubscript, TpyFieldAccess)):
-        key = iter_borrow_storage(iterable)
-        unplaceable = key is None
+        key = loan_key(iterable)
+        unplaceable = not isinstance(key, LoanKey)
         if not is_getter:
-            if key is None:
+            if not isinstance(key, LoanKey):
                 return IteratedStorage([], [], unplaceable=True)
-            # A subscript iterates an ELEMENT of the storage its key names;
-            # every other lvalue spelling iterates the storage itself.
-            on_element = isinstance(iterable, TpySubscript)
-            loan = LoanInfo(BorrowKind.ITER, on_element,
-                            element_index_key(iterable.index) if on_element else None)
-            return IteratedStorage([(key, loan)], [])
+            # A subscript iterates an ELEMENT of the storage its key names,
+            # whatever the container -- every subscript names its element
+            # here; every other lvalue spelling iterates the storage itself.
+            loan = LoanInfo(BorrowKind.ITER, key.index is not None,
+                            element_index_key(key.index.index)
+                            if key.index is not None else None)
+            return IteratedStorage([(key.key, loan)], [])
     return _provenance_storage(ctx, iterable)._replace(unplaceable=unplaceable)
 
 
@@ -450,9 +464,10 @@ def _provenance_storage(ctx: SemanticContext,
     """`iterated_storage` when the iterable is a CALL.
 
     A call result borrows whatever the callee's `return_borrows_from`
-    names, so the loan goes on those source containers: the call
-    expression itself has no storage key a mutating receiver could ever
-    be resolved to. A @property read IS such a call, which is why
+    names, so the loan goes on those source containers (`call_loans` under
+    MAY, through a nested lending call or a select argument too): the call
+    expression itself has no storage key a mutating receiver could ever be
+    resolved to. A @property read IS such a call, which is why
     `iterated_storage` hands it here rather than keying a field path.
 
     The sync for-each reaches it with a borrowing call iterable
@@ -464,63 +479,44 @@ def _provenance_storage(ctx: SemanticContext,
     for a method or a property getter). Sharing the arm is what keeps the
     row lifting those rejects from leaving the async route with no loan.
     """
-    # One leg for both spellings: a `@property` read is a TpyMethodCall
-    # from sema on, so the getter's own `return_borrows_from` (index -1 =
-    # the receiver) keys the ITER borrow here rather than through a
-    # field-access arm of its own.
-    # A generator expression is the call creating its frame.
-    operands = (call_borrow_operands(iterable) if isinstance(
-        iterable, (TpyCall, TpyMethodCall, TpyGeneratorExpression))
-        else None)
-    if operands is None:
+    if not isinstance(iterable, (TpyCall, TpyMethodCall,
+                                 TpyGeneratorExpression)):
         return IteratedStorage([], [])
-    # The iterable is a call whose return borrows from source arg(s): the
-    # ITER borrow goes directly on those source containers so that
-    # structural mutations during the loop generate conflict warnings.
-    fi_iter = operands.fi
-    # A receiver lent only by declaration (`result_borrow_sources`) is a
-    # FIELD loan, as a bound result's is: the loop variable's writes climb
-    # it, and the storage it names is not known to be the receiver's.
-    iter_sources, declared_only = result_borrow_sources(fi_iter)
-    if not iter_sources:
+    fi_iter = call_callee(iterable)
+    if fi_iter is None:
         return IteratedStorage([], [])
-    loans: list[tuple[str, LoanInfo]] = []
-    held_whole: list[str] = []
+    loans: list[tuple[StorageKey, LoanInfo]] = []
+    held_whole: list[StorageKey] = []
     borrowed: list[_BorrowedOperand] = []
-    for src in call_lend_sources(operands, iter_sources,
-                                 held_whole_borrow_sources(fi_iter),
-                                 expr_type=None):
-        if src.held_whole and src.idx >= 0:
-            held_whole.extend(_borrow_storage_roots(src.expr))
+    # Only a PROVEN root: an assumed one (a callee whose facts are pending)
+    # would file a hard ITER loan -- and its invalidation warning -- on a
+    # name the callee may never lend, by declaration order.
+    found = [loan for loan in call_loans(iterable, MayLend(ctx))
+             if not (loan.assumed or loan.temp_backed)]
+    if not found:
+        return IteratedStorage([], [])
+    for loan in found:
+        src = loan.source
+        keys = [loan.key] if isinstance(loan.key, StorageKey) else []
+        if loan.held_whole and src.idx >= 0:
+            held_whole.extend(keys)
             continue
-        srcs = _borrow_storage_roots(src.expr)
-        # An argument that is itself a lending call (a nested
-        # combinator, `zip(filter(pos, ns), xs)`) or a
-        # conditional has no storage key, but it lends: the
-        # shared walker names every root, so the loop var's
-        # element climbs to `ns` through the nesting. Only a
-        # PROVEN root: an assumed one (a callee whose facts are
-        # pending) would file a hard ITER loan -- and its
-        # invalidation warning -- on a name the callee may never
-        # lend, by declaration order.
-        if not srcs:
-            lent = [r for r in lend_roots(ctx, src.expr) if not r.assumed]
-            srcs = [r.name for r in lent if not r.held_whole]
-            held_whole.extend(r.name for r in lent if r.held_whole)
-        receiver_declared = declared_only and src.idx == -1
-        if receiver_declared and not srcs:
-            # A receiver lent only by declaration is no evidence the result
-            # lives in it, temporary or not (the body reached the result
-            # through a `Ptr` or a global).
+        # A receiver lent only by declaration is a FIELD loan, as a bound
+        # result's is: the loop variable's writes climb it, and the storage
+        # it names is not known to be the receiver's -- with no key it is no
+        # evidence the result lives in it, temporary or not (the body
+        # reached the result through a `Ptr` or a global).
+        receiver_declared = loan.declared_only and src.idx == -1
+        if receiver_declared and not keys:
             continue
-        borrowed.append(_BorrowedOperand(src.idx, src.expr, srcs, src.slot))
+        borrowed.append(_BorrowedOperand(src.idx, src.expr, keys, src.slot))
         kind = BorrowKind.FIELD if receiver_declared else BorrowKind.ITER
-        loans.extend((key, LoanInfo(kind)) for key in srcs)
+        loans.extend((key, LoanInfo(kind)) for key in keys)
     loans.extend(frame_capture_loans(iterable))
     return IteratedStorage(loans, held_whole, fi_iter, borrowed)
 
 
-def frame_capture_loans(gx: TpyExpr) -> list[tuple[str, LoanInfo]]:
+def frame_capture_loans(gx: TpyExpr) -> list[tuple[StorageKey, LoanInfo]]:
     """The places a generator expression's inner `for` clauses iterate inside
     its captures, held across pulls; an element index naming an outer
     clause's target names nothing at the creation, so it becomes unknown."""
@@ -528,7 +524,7 @@ def frame_capture_loans(gx: TpyExpr) -> list[tuple[str, LoanInfo]]:
             or gx.frame_creation is None):
         return []
     func = gx.frame_func
-    out: list[tuple[str, LoanInfo]] = []
+    out: list[tuple[StorageKey, LoanInfo]] = []
     for key, info in func.genexpr_inner_loans:
         ei = info.elem_index
         if ei is not None and ei[0] == "name" and ei[1] not in func.capture_params:
@@ -539,7 +535,7 @@ def frame_capture_loans(gx: TpyExpr) -> list[tuple[str, LoanInfo]]:
 
 def genexpr_iterated_roots(func: TpyFunction) -> set[str]:
     """The capture roots a generator expression's inner clauses iterate."""
-    return {_storage_root(key) for key, _ in func.genexpr_inner_loans}
+    return {key.root for key, _ in func.genexpr_inner_loans}
 
 
 def iter_receiver_callee(ctx: 'SemanticContext',
@@ -600,7 +596,7 @@ def _record_iter_receiver_mutation(
     # a readonly one still rejects a mutating `__iter__`. A loop variable's
     # climb cannot change that verdict: only an @auto_readonly pair lends a
     # handle, and a readonly receiver runs its const clone.
-    if _root_name_of_expr(iterable_expr) is None:
+    if is_rvalue_source(ctx, iterable_expr):
         check_implicit_readonly_receiver(ctx, iterable_expr, iter_fi,
                                          "__iter__", iterable_expr)
         return
@@ -611,12 +607,14 @@ def _record_iter_receiver_mutation(
 
 
 def register_iteration_loans(
-        ctx: SemanticContext, iterable: TpyExpr, iterable_type: TpyType,
-        extra_loans: Iterable[tuple[str, LoanInfo]] = (),
+        ctx: SemanticContext, holder: IterHolder, iterable: TpyExpr,
+        iterable_type: TpyType,
+        extra_loans: Iterable[tuple[StorageKey, LoanInfo]] = (),
         excluded_roots: Iterable[str] = ()) -> IterationLoan:
     """File the iteration's borrow of the storage it iterates
     (`iterated_storage`), plus `extra_loans` the caller knows the same
-    iteration holds.
+    iteration holds, under `holder`: the running iterator of this one loop
+    or comprehension clause.
 
     One registration serves every iterating construct. `async for` borrows
     the same storage the sync loop does: `__aiter__` is user code and
@@ -625,10 +623,9 @@ def register_iteration_loans(
     begin/end pair its own condition or element may reallocate under. So
     none of them may answer the invalidation question differently.
 
-    Every loan MERGES with what the iterator holder already has on the key:
-    an enclosing loop's loan on an element of the same storage
-    (`for v in xss[0]:` around `[w for w in xss ...]`) must survive the
-    inner iteration, not be replaced by the coarser whole-container loan.
+    Every loan MERGES with what the holder already has on the key: the
+    iterated storage and an extra loan may name the same key, and the
+    coarser loan must not replace the finer one.
 
     `excluded_roots` names storage the iterating code cannot reach by
     name: a comprehension whose target shadows its source's root.
@@ -636,12 +633,12 @@ def register_iteration_loans(
     bt = ctx.func.borrow_tracker
     storage = iterated_storage(ctx, iterable)
     excluded = set(excluded_roots)
-    hold_whole(bt, ITER_BORROWER,
-               [r for r in storage.held_whole if r not in excluded])
+    hold_whole(bt, holder,
+               [r for r in storage.held_whole if r.as_name() not in excluded])
     for key, loan in [*storage.loans, *extra_loans]:
-        if _storage_root(key) in excluded:
+        if key.root in excluded:
             continue
-        bt.add_borrow(key, ITER_BORROWER, loan.kind, on_element=loan.on_element,
+        bt.add_borrow(key, holder, loan.kind, on_element=loan.on_element,
                       elem_index=loan.elem_index, merge=True)
     if storage.callee is None:
         if isinstance(iterable, TpyName) and not storage.unplaceable:
@@ -651,7 +648,7 @@ def register_iteration_loans(
             # type gets the same verdict from the call itself.
             inner = unwrap_ref_type(unwrap_readonly(iterable_type))
             if isinstance(inner, TypeParamRef) or is_protocol_type(inner):
-                ctx.mark_param_mutated(iterable.name)
+                mark_roots(ctx, [StorageKey.of_name(iterable.name)], MarkRequest())
         return IterationLoan(unplaceable=storage.unplaceable,
                              loans=storage.loans)
     fi_iter = storage.callee
@@ -673,7 +670,7 @@ def register_iteration_loans(
             if op.idx == -1:
                 detail = "temporary receiver object"
             else:
-                detail = f"temporary argument '{fi_iter.params[op.idx].name}'"
+                detail = f"temporary {temp_arg_spelling(fi_iter, op.idx)}"
             ctx.warning(
                 f"Iterator borrows from {detail}; "
                 f"the temporary is destroyed before iteration begins",

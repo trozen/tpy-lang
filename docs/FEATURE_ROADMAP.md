@@ -2002,7 +2002,7 @@ explicit IRs between sema and codegen:
   dicts. Decouples codegen from a live `SemanticAnalyzer` instance.
 - **MIR** (mid-level IR): lower-level form used for liveness, move/copy
   lowering, and the borrow checker. Loan tracking gets precise field-path
-  storage keys instead of today's string-based `BorrowTracker`; branch-merge
+  storage keys instead of today's name-keyed `BorrowTracker`; branch-merge
   joins become precise (per-path) rather than conservative-union.
 
 ```

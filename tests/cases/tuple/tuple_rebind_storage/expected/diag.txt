@@ -1,24 +1,24 @@
 main.py:315: warning: copies Bag into owned storage (tuple element 1); use copy() to make this explicit ('p' is bound to existing storage at line 311)
 main.py:323: warning: copies Box into owned storage (tuple element 1); use copy() to make this explicit ('p' is bound to existing storage at line 319)
 main.py:377: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
-main.py:606: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:664: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
-main.py:676: warning: Mutation of 'h.b' while borrowed (field assignment may invalidate references)
-main.py:702: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit ('y' is bound to existing storage at line 698)
-main.py:904: warning: 'p' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:915: warning: 'old' will not keep the object it was given -- 'old' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:934: warning: 'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:952: warning: 'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:984: warning: 'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own
-main.py:1028: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:1058: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 1054)
-main.py:1052: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:1076: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 1071)
-main.py:1070: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:1102: warning: Own[Box] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:1144: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 1141)
-main.py:1140: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
-main.py:1152: warning: copies Box into owned storage; use copy() to make this explicit
-main.py:1148: warning: Own[Box] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
-main.py:1258: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
-main.py:1445: warning: 'saved' will not keep the object it was given -- 't' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:616: warning: owned tuple param 'p' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:674: warning: Mutation of 'xs' while borrowed ('append' may invalidate references)
+main.py:686: warning: Mutation of 'h.b' while borrowed (field assignment may invalidate references)
+main.py:712: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit ('y' is bound to existing storage at line 708)
+main.py:914: warning: 'p' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:925: warning: 'old' will not keep the object it was given -- 'old' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:944: warning: 'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:962: warning: 'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:994: warning: 'r' will not keep the object it was given -- 's' is rebound here and both names share its storage; bind the new value to a name of its own
+main.py:1038: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:1068: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 1064)
+main.py:1062: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:1086: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 1081)
+main.py:1080: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:1112: warning: Own[Box] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:1154: warning: copies tuple[Own[Box], Box] into owned storage; use copy() to make this explicit ('r' is bound to existing storage at line 1151)
+main.py:1150: warning: owned tuple param 'q' is never consumed (not moved out by an unpack, stored, forwarded, or returned)
+main.py:1162: warning: copies Box into owned storage; use copy() to make this explicit
+main.py:1158: warning: Own[Box] param 'q' is never consumed (not stored in a field, forwarded to another Own[T], or returned)
+main.py:1268: warning: copies Box into owned storage (tuple element 0); use copy() to make this explicit
+main.py:1455: warning: 'saved' will not keep the object it was given -- 't' is rebound here and both names share its storage; bind the new value to a name of its own

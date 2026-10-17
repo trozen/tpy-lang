@@ -13,7 +13,7 @@ struct Holder;
 inline constexpr std::string_view __name__ = "__main__";
 
 // def f(h: Holder, h2: Holder) -> int:
-::tpy::BigInt f(const Holder& h, const Holder& h2);
+::tpy::BigInt f(Holder& h, Holder& h2);
 // def main() -> None:
 void main();
 

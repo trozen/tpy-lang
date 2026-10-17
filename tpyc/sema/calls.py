@@ -14,7 +14,6 @@ from ..identity_map import IdentitySet
 from ..compilation_context import require_current_compiler
 
 from ..typesys import (
-    is_indirection_type,
     make_readonly,
     declares_no_writes, param_may_be_written,
     any_default_suppressed,
@@ -54,7 +53,12 @@ from ..modules import extract_type_params
 from ..namespace import BindingKind
 from ..coercions import CoercionContext, VALUE_TO_PTR
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
-from .context import OpenCallArgs, OwnIterMove, PENDING_CONTAINER_TYPES, field_chain_storage_key
+from .call_lends import (
+    LendSource, MayLend, borrow_declared_sources,
+    call_lend_sources, escaping_borrow_writes, expr_lends_storage,
+    proven_lend_roots,
+)
+from .context import OpenCallArgs, OwnIterMove, PENDING_CONTAINER_TYPES
 from ..parse.nodes import name_path
 from .literal_utils import is_char_literal_init
 from ..diagnostics import SemanticError
@@ -64,22 +68,20 @@ from ..value_category import (declared_result_is_value, frame_factory_callee,
 from .own_copy import (KIND_SLOT, contains_reference_type, copy_result_under_write,
                        lost_write_message,
                        slot_message, value_call_copy_message)
-from .iter_loans import IterElementSource, iter_element_source
+from .iter_loans import IterElementSource, iter_element_source, temp_arg_spelling
 from .overloads import (
     type_matches_numeric,
     resolve_overload, OverloadAmbiguityError,
     OverloadCandidate, rank_overload_candidates, _expand_arg_types_with_kwargs,
     _scalar_widening_cost, call_resolves_param, call_resolves_params,
 )
-from .context import (
-    CallOperands, LendSource, _root_name_of_expr,
-    receiver_leaves, value_root,
-    call_lend_sources,
-    call_borrow_operands, expr_lends_storage, proven_lend_roots,
-)
+from .context import CallOperands
+from .storage_walk import (Ask, MarkRequest, StorageKey, Use, mark_roots,
+                           path_key, pointee_root, receiver_leaves,
+                           storage_roots)
 from .receiver_calls import call_mutates_receiver, record_truth_calls
 from .narrowing import truthy_operands
-from .scope_tracker import lend_roots
+from .scope_tracker import lend_places
 from .compatibility import TupleSink
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import ReturnSeed, partial_substitute, seeded_arg_hint
@@ -836,13 +838,9 @@ class CallAnalyzer:
             if (isinstance(ptype, ReadonlyType)
                     or not param_has_mutable_borrow_surface(ptype)):
                 continue
-            # A callable value's parameters have synthesized names; the
-            # position is what the user wrote.
             callee = (call.func.name if isinstance(call, TpyCall)
                       and isinstance(call.func, TpyName) else fi.name)
-            dest = (f"argument {idx + 1} of '{callee}(...)'"
-                    if fi.is_callable_value
-                    else f"argument '{params[idx].name}' of '{callee}(...)'")
+            dest = f"{temp_arg_spelling(fi, idx)} of '{callee}(...)'"
             found = value_call_copy_message(self.ctx, inner, dest)
             if found is not None:
                 self.pending_argument_copies.append(
@@ -1207,10 +1205,9 @@ class CallAnalyzer:
                     _held_instance_copy_text(payload, expr.call_display),
                     expr)
             open_result = True
-        ops = call_borrow_operands(expr)
-        if ops is None:
+        lent = borrow_declared_sources(expr)
+        if lent is None:
             return False
-        lent = call_lend_sources(ops, sources, expr_type=None)
         verdicts = [self._lent_operand_verdict(fi, s.idx, s.expr) for s in lent]
         if open_result:
             # A generic body decides before instantiation, and a borrow of an
@@ -1252,16 +1249,15 @@ class CallAnalyzer:
         (`it = iter(ps)` marks `ps`)."""
         for src in lent:
             via_element = src.idx in fi.root.element_borrows_from
-            roots = proven_lend_roots(self.ctx, src.expr)
-            if roots is None:
-                roots = [r.name for r in lend_roots(self.ctx, src.expr)
+            names = proven_lend_roots(self.ctx, src.expr)
+            if names is None:
+                names = [r.name for r in lend_places(self.ctx, src.expr)
                          if not r.held_whole]
-            for name in roots:
-                # A field-path root (`h.ps` behind `it = iter(h.ps)`) is a
-                # write into its owner, as a write through a field is.
-                self.ctx.mark_param_mutated(name, through_field=True,
-                                            via_element=via_element)
-                self.ctx.mark_loop_var_mutated(name)
+            roots = [StorageKey.of_name(n) for n in names]
+            # A field-path root (`h.ps` behind `it = iter(h.ps)`) is a
+            # write into its owner, as a write through a field is.
+            mark_roots(self.ctx, roots, MarkRequest(
+                loop_vars=True, through_field=True, via_element=via_element))
 
     def _lent_operand_verdict(self, fi: FunctionInfo, idx: int,
                               operand: TpyExpr) -> '_LentVerdict':
@@ -3770,7 +3766,7 @@ class CallAnalyzer:
         """
         if not param_has_mutable_borrow_surface(param.type):
             return
-        arg_key = field_chain_storage_key(arg)
+        arg_key = path_key(arg)
         if arg_key is not None:
             self.ctx.mark_all_view_borrowers_mutated(arg_key)
 
@@ -3808,10 +3804,10 @@ class CallAnalyzer:
                             and not isinstance(bare_elem, TypeParamRef)):
                         for sub in arg.args:
                             sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
-                            sub_root = value_root(sub_expr, self.ctx.get_expr_type)
-                            if sub_root is not None:
-                                self.ctx.mark_param_mutated(sub_root)
-                                self.ctx.mark_loop_var_mutated(sub_root)
+                            mark_roots(self.ctx, storage_roots(
+                                sub_expr, Use.POINTEE, self.ctx.get_expr_type,
+                                MayLend(self.ctx)),
+                                MarkRequest(loop_vars=True))
                 continue
             for src in call_lend_sources(
                     CallOperands(fi, None, list(expr.args)), frozenset((i,)),
@@ -3819,17 +3815,40 @@ class CallAnalyzer:
                 if (src.slot is None or not src.grants_write
                         or unwrap_readonly(src.slot).is_value_type()):
                     continue
-                lent = src.expr
                 # A wrapper's `__deref__()` is called on the source itself, so
-                # the source binds mutable; a `Ptr` deref writes its pointee.
-                if (isinstance(lent, TpyCoerce)
-                        and lent.coercion.name == "deref_to_target"
-                        and not is_indirection_type(
-                            self.ctx.get_expr_type(lent.expr))):
-                    lent = lent.expr
-                arg_root = _root_name_of_expr(lent)
-                if arg_root is not None:
-                    self.ctx.mark_loop_var_mutated(arg_root)
+                # the source binds mutable; a `Ptr` deref writes its pointee,
+                # not the binding of the handle.
+                mark_roots(self.ctx, storage_roots(
+                    src.expr, Use.PLACE, self.ctx.get_expr_type,
+                    MayLend(self.ctx)),
+                    MarkRequest(params=False, loop_vars=True,
+                                handle_bindings=False))
+
+    def _mark_writably_lent_args(self, expr: TpyCall | TpyMethodCall,
+                                 fi: FunctionInfo) -> None:
+        """An argument the call's result lends writable is a mutable use of
+        it at the call, whether or not the result is written: the callee
+        returning its parameter through a writable slot
+        (`escaping_borrow_writes`, the rule its own return marks the
+        parameter mutated by) takes that parameter as a mutable reference.
+        Read at the call because the callee's facts may still be pending
+        here (a free function's body after the method calling it); an
+        assumed source only widens the mark."""
+        # A frame-building call's result is the frame: what its body yields
+        # is the yield slot's question, settled by the call edges. A
+        # constructor's result is a fresh object.
+        if (fi.return_type is None or fi.is_async or fi.is_constructor
+                or frame_factory_callee(fi)
+                or not escaping_borrow_writes(fi.return_type)):
+            return
+        may = MayLend(self.ctx)
+        for src in may.at_call(expr, (), Ask.WRITE) or ():
+            if src.idx < 0 or not src.grants_write or src.temp_backed:
+                continue
+            mark_roots(self.ctx, storage_roots(
+                src.expr, Use.POINTEE, self.ctx.get_expr_type, may),
+                MarkRequest(loop_vars=True, through_field=True,
+                            handle_bindings=False))
 
     def _record_mutation_call_edges(self, expr: TpyCall | TpyMethodCall) -> None:
         """Record parameter flow through calls for Phase 2 mutation propagation."""
@@ -3841,6 +3860,7 @@ class CallAnalyzer:
         # is a receiver fact and does not stand for its arguments.
         if declares_no_writes(fi):
             return
+        self._mark_writably_lent_args(expr, fi)
         # The mutable clone of an @auto_readonly accessor (dict.values/items,
         # Box.get) hands out a borrow but does not mutate its receiver
         # (`call_mutates_receiver`); an edge here would conservatively flip
@@ -3852,7 +3872,7 @@ class CallAnalyzer:
         name_to_idx = self.ctx.func.current_param_name_to_idx
         rebound = self.ctx.func.current_rebound_params
 
-        # Receivers whose mutation Phase 2 decides (`deferred_receiver_index`):
+        # Receivers whose mutation Phase 2 decides (`receiver_credits`):
         # rooted at self (self.method(), self.field.method(), loop_var.method()
         # over self.field, super().method() -- the synthetic super() proxy
         # resolves to self) or at a caller parameter through fields.
@@ -3864,9 +3884,9 @@ class CallAnalyzer:
                     receiver_idxs.append(idx)
             # A select receiver is each operand it may pick.
             for leaf in receiver_leaves(expr.obj):
-                idx = self.ctx.deferred_receiver_index(leaf)
-                if idx is not None and idx not in receiver_idxs:
-                    receiver_idxs.append(idx)
+                for _, idx in self.ctx.receiver_credits(leaf):
+                    if idx is not None and idx not in receiver_idxs:
+                        receiver_idxs.append(idx)
         receiver_idx = receiver_idxs[0] if receiver_idxs else None
 
         # Nothing to record if no params flow through and no self-call
@@ -3903,13 +3923,16 @@ class CallAnalyzer:
                 seen_callers: set[int] = set()
                 for sub in pack.args:
                     sub_expr = sub.expr if isinstance(sub, TpyStarUnpack) else sub
-                    sub_root = value_root(sub_expr, self.ctx.get_expr_type)
+                    sub_root = pointee_root(sub_expr, self.ctx.get_expr_type,
+                                            MayLend(self.ctx))
                     if sub_root is None:
                         continue
                     for resolved in self._arg_storage_roots(sub_root):
-                        if resolved not in name_to_idx or resolved in rebound:
+                        rname = resolved.as_name()
+                        if (rname is None or rname not in name_to_idx
+                                or rname in rebound):
                             continue
-                        caller_idx = name_to_idx[resolved]
+                        caller_idx = name_to_idx[rname]
                         if caller_idx in seen_callers:
                             continue
                         seen_callers.add(caller_idx)
@@ -3934,37 +3957,33 @@ class CallAnalyzer:
             # is a direct fact at the call site, not an edge.
             for src in sources:
                 if src.binds_open_param:
-                    _gr = value_root(src.expr, self.ctx.get_expr_type)
-                    if _gr is not None:
-                        self.ctx.mark_param_mutated(_gr)
+                    mark_roots(self.ctx, storage_roots(
+                        src.expr, Use.POINTEE, self.ctx.get_expr_type,
+                        MayLend(self.ctx)),
+                        MarkRequest())
             sources = [s for s in sources
                        if s.grants_write and not s.binds_open_param]
             if not sources or not param_has_mutable_borrow_surface(
                     callee_param.type):
                 continue
-            # An argument with no path root may still lend storage: a call
-            # whose result borrows its own arguments (a lazy combinator, a
-            # generator factory) or a conditional of two lvalues hands the
-            # callee a reference into every root it lends, so a mutation
-            # through the callee's param reaches each of them. An assumed
-            # root (a callee whose facts are pending) is kept: the edge only
-            # widens the mutated set, which is the safe direction.
+            # An argument read off a call lends what that call's result points
+            # into (a lazy combinator, a generator factory, a conditional of
+            # two lvalues), so a mutation through the callee's param reaches
+            # each root the climb finds -- through a frame too, whose body
+            # the callee may advance (`lent`). An assumed root (a callee
+            # whose facts are pending) is kept: the edge only widens the
+            # mutated set, which is the safe direction. A root held only
+            # whole is not written through, and a handle read out of a
+            # holder places nothing: what the callee writes is its referent.
             arg_roots: list[str] = []
             through_handle = False
             for src in sources:
-                arg_root = value_root(src.expr, self.ctx.get_expr_type)
-                if arg_root is not None:
-                    arg_roots.append(arg_root)
-                    continue
-                if _root_name_of_expr(src.expr) is not None:
-                    # A handle read out of a holder: what the callee writes
-                    # is its referent, not the holder.
-                    continue
-                roots = [r for r in lend_roots(self.ctx, src.expr)
-                         if not r.held_whole]
-                arg_roots += [r.name for r in roots]
+                placed = [p for p in storage_roots(
+                    src.expr, Use.POINTEE, self.ctx.get_expr_type,
+                    MayLend(self.ctx)).places if not p.held_whole]
+                arg_roots += list(dict.fromkeys(p.name for p in placed))
                 through_handle = through_handle or any(
-                    r.through_call for r in roots)
+                    p.through_call for p in placed)
             # Resolve alias and element borrow chains to find the original param.
             # 8a.5: the walk also follows element/field/ptr borrows so that
             # mutating a call arg that element-borrows from a param correctly
@@ -3974,9 +3993,11 @@ class CallAnalyzer:
             for arg_root in arg_roots:
                 direct = set(self._arg_storage_roots(arg_root, cross_handles=False))
                 for resolved in self._arg_storage_roots(arg_root):
-                    if resolved not in name_to_idx or resolved in rebound:
+                    rname = resolved.as_name()
+                    if (rname is None or rname not in name_to_idx
+                            or rname in rebound):
                         continue
-                    caller_idx = name_to_idx[resolved]
+                    caller_idx = name_to_idx[rname]
                     if through_handle or resolved not in direct:
                         lent.add(i)
                     if i not in param_map:
@@ -4008,7 +4029,7 @@ class CallAnalyzer:
                                  receiver_idx=extra_idx))
 
     def _arg_storage_roots(self, arg_root: str, *,
-                           cross_handles: bool = True) -> list[str]:
+                           cross_handles: bool = True) -> list[StorageKey]:
         """The caller storages an argument name can reach, for mutation
         attribution. A re-seated name has several and a mutating callee
         reaches whichever loan is live, so all of them owe an edge."""
@@ -4043,7 +4064,8 @@ class CallAnalyzer:
                 f"{kind} to {bare_pointee} expects {bare_pointee}, got {arg_type}", expr)
         # Mutable pointer to a for-each loop var prevents const-ref binding
         if not expr.call_type.is_readonly and isinstance(arg, TpyName):
-            self.ctx.mark_loop_var_mutated(arg.name)
+            mark_roots(self.ctx, [StorageKey.of_name(arg.name)],
+                       MarkRequest(params=False, loop_vars=True))
 
     def _check_ctor_type_param_bounds(
         self, expr: TpyCall, ctor: FunctionInfo, arg_types: list[TpyType],
@@ -6947,17 +6969,16 @@ class CallAnalyzer:
                 continue
             if not param_has_mutable_borrow_surface(ptype):
                 continue
-            arg_root = value_root(expr.args[i], self.ctx.get_expr_type)
-            if arg_root is None:
-                continue
             # A bare generic slot is marked too: the template is one C++
             # function for every instantiation, and at a reference-type one
             # the callable takes `T&` and may write through it. The resize
             # mark lands on the root parameter even when only an element is
             # handed over, which over-warns
             # (BUGS.md#callable-arg-structure-effect-depth).
-            self.ctx.mark_param_mutated(arg_root, through_field=True)
-            self.ctx.mark_param_structurally_mutated(arg_root)
+            mark_roots(self.ctx, storage_roots(
+                expr.args[i], Use.POINTEE, self.ctx.get_expr_type,
+                MayLend(self.ctx)),
+                MarkRequest(through_field=True, structural=True))
         return return_type
 
     # -- Call-site macro expansion --

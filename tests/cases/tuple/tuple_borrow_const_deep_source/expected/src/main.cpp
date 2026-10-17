@@ -15,10 +15,10 @@ int32_t weight_of(const std::tuple<int32_t, const Box*>& t) {
 //     if again:
 //         p = rows[1]
 //     return p[0]
-int32_t first_weight(const std::vector<std::tuple<int32_t, Box>>& rows, bool again) {
-    std::tuple<int32_t, const Box*> p = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(rows, 0));
+int32_t first_weight(std::vector<std::tuple<int32_t, Box>>& rows, bool again) {
+    std::tuple<int32_t, Box*> p = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(rows, 0));
     if (again) {
-        p = ::tpy::tuple_to_pointer<std::tuple<int32_t, const Box*>>(::tpy::__getitem__(rows, 1));
+        p = ::tpy::tuple_to_pointer<std::tuple<int32_t, Box*>>(::tpy::__getitem__(rows, 1));
     }
     return std::get<0>(p);
 }

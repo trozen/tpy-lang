@@ -86,6 +86,7 @@ from ..parse.nodes import (
     TpyTupleLiteral, is_property_getter_read, walk_body_stmts,
 )
 from ..compilation_context import get_current_compiler
+from ..holders import IterHolder
 from ..prescan import block_writes, loop_bindings_of
 from ..type_def_registry import is_free_copy_scalar
 from ..typesys import (
@@ -97,12 +98,13 @@ from ..value_category import call_returns_cpp_ref
 from .iter_loans import iterated_storage
 from .own_copy import holds_only_values
 from .receiver_calls import ImplicitCall, implicit_calls
+from .call_lends import NO_CALLS, MayLend, may_hold_pointer
 from .context import (
-    ITER_BORROWER, _root_name_of_expr, _stable_loop_source, _storage_root,
-    call_param_args, field_chain_storage_key, frame_binding_calls,
-    may_hold_pointer,
+    _stable_loop_source, call_param_args, frame_binding_calls,
 )
 from .may_interrupt import InertWalk, NotInert, is_inert_type
+from .storage_walk import (StorageKey, Use, container_path_key, holder_root,
+                           path_key, storage_roots)
 
 if TYPE_CHECKING:
     from ..parse import TpyComprehensionGenerator, TpyExpr, TpyWithItem
@@ -157,9 +159,9 @@ def storage_edges(stmt_loans,
     borrows: dict[str, set[str]] = {}
     for entries in stmt_loans.values():
         for storage, holder, _loan in entries:
-            if holder.startswith(ITER_BORROWER):
+            if isinstance(holder, IterHolder):
                 continue
-            src = storage.split(".", 1)[0]
+            src = storage.root
             if src == holder:
                 continue
             borrows.setdefault(holder, set()).add(src)
@@ -211,7 +213,7 @@ def check_loop_hold(ctx: 'SemanticContext', hold: LoopFrameHold) -> None:
         # needs to stay put is the container.
         rebinds = facts.body
     upstream = hold.upstream | (
-        {container.split(".", 1)[0]} if container is not None else set())
+        {container.root} if container is not None else set())
     rebound = sorted(rebinds & upstream - {hold.holder}, key=_user_first)
     if rebound:
         raise _error(ctx, hold, f"the loop binds {_shown(rebound[0])} again")
@@ -227,10 +229,10 @@ def check_loop_hold(ctx: 'SemanticContext', hold: LoopFrameHold) -> None:
         setter = getattr(_peel(place), "property_setter_call", None)
         if setter is not None:
             queue(setter)
-        root = _root_name_of_expr(place)
+        root = _holder(ctx, place)
         if root is not None and (root in hold.reach or (
                 container is not None
-                and _overlaps(_place_key(place), container, root))):
+                and _overlaps(container_path_key(place), container, root))):
             if not any(place is d for d in facts.deletes) and _store_in_place(
                     ctx, place):
                 continue
@@ -242,13 +244,13 @@ def check_loop_hold(ctx: 'SemanticContext', hold: LoopFrameHold) -> None:
         if any(e is c for c in hold.own_calls):
             continue
         if isinstance(e, TpyForEach):
-            root = _root_name_of_expr(_peel(e.iterable))
+            root = advanced_root(e)
             if (root is not None and root in hold.reach
                     and not _stable_loop_source(ctx, e)):
                 raise _error(ctx, hold, f"the loop advances '{root}'")
         elif isinstance(e, TpyWith):
             for item in e.items:
-                root = _root_name_of_expr(_peel(item.context_expr))
+                root = _holder(ctx, _peel(item.context_expr))
                 if root is not None and root in hold.reach:
                     raise _error(ctx, hold,
                                  f"the loop enters a 'with' on '{root}'")
@@ -328,7 +330,7 @@ def with_exit_write(ctx: 'SemanticContext', stmt: TpyWith,
     diagnostic -- or None: the loop rule read over the exit's body, its
     receiver standing for the manager."""
     for item in stmt.items:
-        root = _manager_root(item.context_expr)
+        root = _holder(ctx, _peel(item.context_expr))
         under = (root in reach if root is not None
                  else item.manager_borrowed and bool(reach))
         if not under and not globals_:
@@ -393,13 +395,13 @@ def _exit_body_write(ctx: 'SemanticContext', fi: 'FunctionInfo',
     if rebound:
         return label(rebound[0])
     for place in facts.stores:
-        root = _root_name_of_expr(place)
+        root = _holder(ctx, place)
         if root in reach and (any(place is d for d in facts.deletes)
                               or not _store_in_place(ctx, place)):
             return label(root)
     for e in facts.effects:
         if isinstance(e, TpyForEach):
-            root = _root_name_of_expr(_peel(e.iterable))
+            root = advanced_root(e)
             if root in reach and not _stable_loop_source(ctx, e):
                 return label(root)
             continue
@@ -425,13 +427,19 @@ def _exit_methods(ctx: 'SemanticContext', item: 'TpyWithItem',
     return [fi for fi in methods if fi.name == exit_name]
 
 
-def _manager_root(e: 'TpyExpr') -> str | None:
-    """The name a manager expression's storage is reached through: the
-    receiver chain under a field, element or method call."""
-    e = _peel(e)
-    while isinstance(e, (TpyFieldAccess, TpySubscript, TpyMethodCall)):
-        e = _peel(e.obj)
-    return e.name if isinstance(e, TpyName) else None
+def _holder(ctx: 'SemanticContext', e: 'TpyExpr') -> str | None:
+    """The single storage root holding `e` (the HOLDER climb under MAY,
+    through what a call's result may point into), proven only: every
+    verdict here is a hard error, which a guess about a pending callee may
+    not take."""
+    return holder_root(e, MayLend(ctx), proven=True)
+
+
+def advanced_root(loop: 'TpyForEach') -> str | None:
+    """The name a `for` advances the storage of: its iterable's holder,
+    climbing no call -- a call's result is a fresh iterator the loop
+    advances in place of what it borrows."""
+    return holder_root(_peel(loop.iterable), NO_CALLS)
 
 
 def _queue_frame_run(ctx: 'SemanticContext', hold: LoopFrameHold,
@@ -521,7 +529,7 @@ def binding_value(node: 'TpyExpr | TpyStmt') -> 'TpyExpr | None':
 
 
 def _stepped_container(ctx: 'SemanticContext', hold: LoopFrameHold,
-                       body: 'frozenset[str]') -> str | None:
+                       body: 'frozenset[str]') -> StorageKey | None:
     """The field chain (`self.rows`) of the container `hold`'s loop steps
     its own variable through, when the frame borrows that variable. (A
     container named by a plain name is the frame's root already:
@@ -530,7 +538,7 @@ def _stepped_container(ctx: 'SemanticContext', hold: LoopFrameHold,
     if (not isinstance(loop, TpyForEach) or loop.var not in hold.upstream
             or loop.var in body or not _stable_loop_source(ctx, loop)):
         return None
-    return field_chain_storage_key(_peel(loop.iterable))
+    return path_key(_peel(loop.iterable))
 
 
 def _is_free_copy_scalar_expr(ctx: 'SemanticContext', e: 'TpyExpr') -> bool:
@@ -551,22 +559,13 @@ def _store_in_place(ctx: 'SemanticContext', place: 'TpyExpr') -> bool:
     return _is_free_copy_scalar_expr(ctx, place)
 
 
-def _place_key(place: 'TpyExpr') -> str | None:
-    """The field chain a store lands in: an element store writes the
-    container the chain names."""
-    place = _peel(place)
-    while isinstance(place, TpySubscript):
-        place = _peel(place.obj)
-    return field_chain_storage_key(place)
-
-
-def _overlaps(key: str | None, container: str, root: str) -> bool:
+def _overlaps(key: StorageKey | None, container: StorageKey,
+              root: str) -> bool:
     """A store at `key` may write `container`: one is a prefix of the
     other, or the store's chain is unknown under the container's root."""
     if key is None:
-        return root == container.split(".", 1)[0]
-    return (key == container or key.startswith(container + ".")
-            or container.startswith(key + "."))
+        return root == container.root
+    return key.has_prefix(container) or container.has_prefix(key)
 
 
 def resolve_loop_frame_calls(ctx: 'SemanticContext') -> None:
@@ -605,7 +604,7 @@ def _call_write(ctx: 'SemanticContext', hold: LoopFrameHold,
         return None
 
     def in_reach(e: 'TpyExpr') -> 'str | None':
-        root = _root_name_of_expr(_peel(e))
+        root = _holder(ctx, _peel(e))
         return root if root is not None and root in hold.reach else None
 
     hit = call_write(ctx, parts, in_reach, facts_final=True,
@@ -814,7 +813,7 @@ def loop_source(ctx: 'SemanticContext', iterable: 'TpyExpr',
                      and e.name not in ctx.func.current_param_names)
             return LoopSource((elem_type,), view=e.name if local else None)
         if isinstance(e, (TpyName, TpySubscript, TpyFieldAccess)):
-            root = _root_name_of_expr(e)
+            root = _holder(ctx, e)
             return LoopSource((t,), None if root is None
                               else frozenset((root,)))
         return (None if isinstance(e, _FRESH_SOURCES)
@@ -828,8 +827,8 @@ def loop_source(ctx: 'SemanticContext', iterable: 'TpyExpr',
             return LoopSource((elem_type,), None)
         if not call_returns_cpp_ref(None, e.resolved_function_info):
             return None
-    roots = [_root_name_of_expr(o) for o in operands] + [
-        _storage_root(k) for k, _loan in storage.loans]
+    roots = [_holder(ctx, o) for o in operands] + [
+        k.root for k, _loan in storage.loans]
     types = [ctx.get_expr_type(o) for o in operands]
     if None in types:
         return LoopSource(unknown=True)
@@ -1066,12 +1065,11 @@ class _SourceProof(InertWalk):
         e = _peel(e)
         if not self.may_hold(self.ctx.get_expr_type(e)):
             return False
-        node = e
-        while isinstance(node, (TpyFieldAccess, TpySubscript)):
-            node = _peel(node.obj)
-        root = _root_name_of_expr(e)
-        t = (self.ctx.get_expr_type(node) if isinstance(node, TpyName)
-             and node.name == root else None)
+        place = storage_roots(e, Use.HOLDER, None,
+                              MayLend(self.ctx)).proven().single_place()
+        root = place.name if place is not None else None
+        t = (self.ctx.get_expr_type(place.node)
+             if place is not None and place.node is not None else None)
         self.require(root is not None and t is not None
                      and not root.startswith("__")
                      and not may_hold_pointer(t))

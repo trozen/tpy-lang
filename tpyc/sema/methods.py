@@ -14,7 +14,7 @@ from ..typesys import (
     SuperType, TypeParamRef, FunctionInfo, ParamInfo, VOID, is_protocol_type,
     PtrType, ReadonlyType, unwrap_readonly,
     PendingGenericInstanceType, IntLiteralType, CallableType, unwrap_ref_type, unwrap_qualifiers, unwrap_send_sync, is_any_int_type,
-    unwrap_own, ConcreteCoroType, receiver_lends,
+    unwrap_own, ConcreteCoroType, receiver_lends_handle,
     RecordInfo, InitInheritBlock, InitInheritBlocker,
     contains_type_param, contains_pending_leaf,
     FloatLiteralType, resolve_int_literals,
@@ -24,7 +24,7 @@ from ..parse import (
     TpyCall, TpyMethodCall, TpyName, TpyFieldAccess, TpyFunction, TpyStrLiteral, TpyStmt,
     TpyStarUnpack,
     is_docstring,
-    TpyFString, TpyExpr, TpyCoerce, TpySubscript,
+    TpyFString, TpyExpr, TpySubscript,
     is_super_del_call,
 )
 from ..parse.nodes import name_path
@@ -885,8 +885,7 @@ class MethodAnalyzer:
             if (elem_t is not None and is_borrowing_view_type(unwrap_readonly(elem_t))
                     and ai < len(expr.args)):
                 arg = expr.args[ai]
-                if view_source_is_temporary(
-                        arg.expr if isinstance(arg, TpyCoerce) else arg):
+                if view_source_is_temporary(self.ctx, arg):
                     raise self.ctx.error(
                         f"Cannot store a temporary in '{expr.method}' on a "
                         f"{elem_t} container; the backing storage is destroyed at "
@@ -963,7 +962,7 @@ class MethodAnalyzer:
                     # The self-rooted call edge is `_record_mutation_call_edges`'s.
                     credit_receiver_mutation(self.ctx, expr.obj, obj_type,
                                              expr.method, edges_recorded=True,
-                                             eager=receiver_lends(info)[0])
+                                             eager=receiver_lends_handle(info))
                 return result
 
             deref_target = self.expr.get_deref_target_type(

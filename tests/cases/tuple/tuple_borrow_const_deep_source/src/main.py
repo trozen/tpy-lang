@@ -1,7 +1,7 @@
-# Borrow-tuple sinks off DEEP lvalue sources rooted at a const receiver
-# (self.store[k] in a readonly method, rows[i] off a const param) must spell
-# const element pointers; bump() is the mutation inverse (receiver demoted,
-# write observed through the field -- the reads alias, they don't copy).
+# Borrow-tuple sinks off DEEP lvalue sources (self.store[k], rows[i]) bind
+# element pointers: const off an unwritten receiver at one binding (peek,
+# arg_weight), mutable once rebound (get_weight, first_weight mark the root
+# written); bump() writes through them, seen via the field (they alias).
 from tpy import int32
 
 

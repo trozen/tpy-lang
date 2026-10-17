@@ -25,7 +25,9 @@ from ..parse.nodes import (
 )
 
 if TYPE_CHECKING:
+    from ..holders import Holder
     from ..typesys import TpyType
+    from .storage_walk import StorageKey
 
 
 # A body evaluated somewhere other than where it is written -- the enclosing
@@ -207,11 +209,11 @@ def _merge_value_ranges(
 
 
 def merge_borrow_triples(
-    then_borrows: frozenset[tuple[str, str, LoanInfo]],
-    else_borrows: frozenset[tuple[str, str, LoanInfo]],
+    then_borrows: frozenset[tuple[StorageKey, Holder, LoanInfo]],
+    else_borrows: frozenset[tuple[StorageKey, Holder, LoanInfo]],
     then_term: bool,
     else_term: bool,
-) -> frozenset[tuple[str, str, LoanInfo]]:
+) -> frozenset[tuple[StorageKey, Holder, LoanInfo]]:
     """Merge loan (storage, borrower, LoanInfo) triples across branch endpoints.
 
     Uses UNION policy: a borrow exists after the merge if it exists in
@@ -228,7 +230,7 @@ def merge_borrow_triples(
     else:
         combined = then_borrows | else_borrows
     # Deduplicate (storage, borrower) pairs, keeping the more dangerous facts
-    best: dict[tuple[str, str], LoanInfo] = {}
+    best: dict[tuple[StorageKey, Holder], LoanInfo] = {}
     for storage, borrower, loan in combined:
         key = (storage, borrower)
         prev = best.get(key)
@@ -323,9 +325,8 @@ class FlowFacts:
     # Per-local escape/ownership provenance (return-safety + tuple-member
     # hazards). See BindingProvenance / merge_binding_provenance.
     binding_provenance: frozenset[tuple[str, BindingProvenance]] = frozenset()
-    # Loan map: (storage_name, borrower_name, LoanInfo) triples.
-    # ITER_BORROWER is the borrower for implicit for-loop iterator borrows.
-    borrows: frozenset[tuple[str, str, LoanInfo]] = frozenset()
+    # Loan map: (storage, holder, LoanInfo) triples.
+    borrows: frozenset[tuple[StorageKey, Holder, LoanInfo]] = frozenset()
     value_ranges: frozenset[tuple[str, ValueRange]] = frozenset()
 
     @staticmethod

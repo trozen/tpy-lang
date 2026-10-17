@@ -1,9 +1,9 @@
-# The fourth borrow-invalidation wording: an element loan that is NOT an
-# iteration and whose index is uncertain. Rebinding `mid` retargets the
-# iteration loan onto `outer` and merges it with `mid`'s own element loan; the
-# merged loan keeps the element hop, takes the higher-ranked ELEMENT kind and
-# loses the index, so the write through `outer[j]` is reported as a possible
-# hit on a BORROWED element rather than as an iteration in progress.
+# An iteration's element loan whose index is uncertain. Rebinding `mid`
+# retargets the iteration loan onto `outer` and merges it with `mid`'s own
+# element loan; the merged loan keeps the element hop, takes the
+# higher-ranked ELEMENT kind and loses the index, but the loop's iterator
+# still holds it, so the write through `outer[j]` is reported as a possible
+# hit on the element being iterated.
 #
 # The call passes the index of the element the loop does NOT iterate, so the
 # warned write is the harmless leg of what the warning covers. `mid` is not
@@ -20,7 +20,7 @@ def f(outer: list[list[list[int32]]], j: int32) -> None:
     for x in mid[0]:
         mid = outer[1]
         # the merged loan has no index, so the wording may not claim the hit
-        outer[j] = []  # tpyc: warning(/may hit a borrowed element \(element assignment may invalidate references\)/)
+        outer[j] = []  # tpyc: warning(/may hit the element being iterated \(element assignment may invalidate the iterator\)/)
         print(x)
 
 def main() -> None:

@@ -11,3 +11,4 @@ main.py:172: warning: 'q' will not keep the object it was given -- 'a' is reboun
 main.py:191: warning: 'q' will not keep the object it was given -- 'p' is rebound here and both names share its storage; bind the new value to a name of its own
 main.py:216: warning: 'keep' will not keep the object it was given -- 'a' is rebound here and both names share its storage; bind 'keep' with copy(a), or bind the new value to a name of its own
 main.py:248: warning: 'kept' will not keep the object it was given -- 'p' is rebound on each iteration and both names share its storage; use copy(p) for an independent value
+main.py:271: warning: 'v' will not keep the object it was given -- 'n' is rebound here and both names share its storage; bind the new value to a name of its own

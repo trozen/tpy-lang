@@ -1,0 +1,1 @@
+main.py:25: error: cannot use 'g' after the loop it is bound in: it borrows a temporary; use 'g' inside the loop only

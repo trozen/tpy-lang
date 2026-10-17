@@ -61,161 +61,111 @@ class SelectResult:
     temporary: bool
 
 
-class BindingKind(Enum):
-    """The planner row that decided a binding's record: its C++
-    representation family. The lowering arm that declares a name builds the
-    node for its record's kind; the value spells `<site family>.<row>`."""
-    DECL_NO_INIT_OPT_PTR = "decl.no_init_opt_ptr"
-    DECL_NO_INIT_VALUE = "decl.no_init_value"
-    DECL_CLOSED_FRAME = "decl.closed_frame"
-    DECL_ER_ALIAS = "decl.er_alias"
-    DECL_ER_BIND = "decl.er_bind"
-    DECL_OWN_ELEM_TUPLE = "decl.own_elem_tuple"
-    DECL_RECORD_SLOT = "decl.record_slot"
-    DECL_RECORD_HOISTED_SLOT = "decl.record_hoisted_slot"
-    DECL_CONTAINER_SLOT = "decl.container_slot"
-    DECL_STORAGE_OPT_LIFT = "decl.storage_opt_lift"
-    DECL_DYN_OWN_ERASED = "decl.dyn_own_erased"
-    DECL_CORO_FRAME_LOCAL = "decl.coro_frame_local"
-    DECL_DYN = "decl.dyn"
-    DECL_OPT_BTUPLE = "decl.opt_btuple"
-    DECL_REF_ALIAS = "decl.ref_alias"
-    DECL_POINTER = "decl.pointer"
-    DECL_REBIND_SLOT = "decl.rebind_slot"
-    DECL_OPT_CALL_PASSTHROUGH = "decl.opt_call_passthrough"
-    DECL_OPT_STORAGE_CALL = "decl.opt_storage_call"
-    DECL_OPT_PTR = "decl.opt_ptr"
-    DECL_OPTIONAL_TO_PTR = "decl.optional_to_ptr"
-    DECL_OPT_OWN_PARAM_LIFT = "decl.opt_own_param_lift"
-    DECL_MIXED_ELEM_PTR = "decl.mixed_elem_ptr"
-    DECL_STORAGE_TUPLE_ALIAS = "decl.storage_tuple_alias"
-    DECL_STORAGE_TUPLE_CHAIN = "decl.storage_tuple_chain"
-    DECL_COMPREHENSION = "decl.comprehension"
-    DECL_TPARAM_CALL = "decl.tparam_call"
-    DECL_PTR_VARIANT = "decl.ptr_variant"
-    DECL_PTR_VARIANT_SLOT = "decl.ptr_variant_slot"
-    DECL_STORAGE_CALL_TUPLE = "decl.storage_call_tuple"
-    DECL_ITERATOR_OBJECT = "decl.iterator_object"
-    DECL_BTUPLE_REBOUND = "decl.btuple_rebound"
-    DECL_BTUPLE_ALIAS = "decl.btuple_alias"
-    DECL_BTUPLE_REF_ALIAS = "decl.btuple_ref_alias"
-    DECL_BTUPLE_INLINE_ARMS = "decl.btuple_inline_arms"
-    DECL_OPTVIEW_SHIM = "decl.optview_shim"
-    DECL_BTUPLE_LITERAL = "decl.btuple_literal"
-    DECL_TUPLE_LITERAL_WIDE = "decl.tuple_literal_wide"
-    DECL_TUPLE_LITERAL_RECORD = "decl.tuple_literal_record"
-    DECL_OPT_RECORD_CALL = "decl.opt_record_call"
-    DECL_VALUE_OPT = "decl.value_opt"
-    DECL_OPT_VALUE_RECORD = "decl.opt_value_record"
-    DECL_OWNED = "decl.owned"
-    DECL_PLAIN = "decl.plain"
-    HOIST_VALUE = "hoist.value"
-    HOIST_OPT_BTUPLE = "hoist.opt_btuple"
-    # The borrow tuple a branch binds (`std::tuple<.., T*>`, const elements
-    # from the whole-body fixpoint, a rebind slot for an owning-call source)
-    # and the loop variable's (the plain borrow spelling).
-    HOIST_BTUPLE_BRANCH = "hoist.btuple_branch"
-    HOIST_BTUPLE_LOOP = "hoist.btuple_loop"
-    HOIST_DYN = "hoist.dyn"
-    HOIST_PTR_NULL = "hoist.ptr_null"
-    HOIST_CONST_POINTER = "hoist.const_pointer"
-    HOIST_POINTER = "hoist.pointer"
-    HOIST_OPT_STORAGE = "hoist.opt_storage"
-    # A hoist with no C++ form (the statement rejects): a non-value in a
-    # resumable body (a loop head's owned slot apart), a move-through
-    # payload outside the owned-slot family, a const borrow rebound to
-    # rvalues outside an if chain or match, a name the body reads as a
-    # module global, any type no other hoist kind holds.
-    HOIST_PLAIN = "hoist.plain"
-    LOOP_VAR = "loop.var"
-    LOOP_UNPACK_HOLDER = "loop.unpack_holder"
-    LOOP_PLAIN = "loop.plain"
-    # A fresh unpack target, by the C++ its unpack declares: `T* a` of a
-    # pointer-repr Optional element, `::tpy::Union<A*, B*>` lifted per
-    # element, a rebound `T*`, `auto&&` aliasing a reference element
-    # (`unwrap_ref` of a recursive wrapper's live `X&`), the owned local
-    # moved out of the holder, `const T&` of a value element, `T` copied;
-    # `unpack.plain` is a target with no fresh C++ form (the unpack
-    # rejects).
-    UNPACK_OPT_PTR = "unpack.opt_ptr"
-    UNPACK_PTR_VARIANT = "unpack.ptr_variant"
-    UNPACK_PTR = "unpack.ptr"
-    UNPACK_REF = "unpack.ref"
-    UNPACK_UNWRAP_REF = "unpack.unwrap_ref"
-    UNPACK_MOVE = "unpack.move"
-    UNPACK_CREF = "unpack.cref"
-    UNPACK_VALUE = "unpack.value"
-    UNPACK_PLAIN = "unpack.plain"
-    # A fresh sync `with ... as` target: `T* name = &(...)` of a reassigned
-    # record, `auto& name` of any other record, `auto name` of a value;
-    # `with.plain` has no form here (a frame field's arms, or a reject).
-    WITH_POINTER = "with.pointer"
-    WITH_REF = "with.ref"
-    WITH_VALUE = "with.value"
-    WITH_PLAIN = "with.plain"
-    # A walrus target's first binding, by the pre-declaration its walrus
-    # places: `[const ]T* n = nullptr;` of a borrow-only record or a
-    # pointer-repr Optional, the borrow tuple `std::tuple<.., T*> t;`, the
-    # reassigned borrow tuple over its owning `__slot_N`, the deferred-init
-    # `std::optional<T>` of an owned non-value, the value-repr Optional,
-    # the plain value slot; `walrus.plain` has no form (the walrus
-    # rejects).
-    WALRUS_PTR_ALIAS = "walrus.ptr_alias"
-    WALRUS_OPT_PTR = "walrus.opt_ptr"
-    WALRUS_BTUPLE = "walrus.btuple"
-    WALRUS_BTUPLE_SLOT = "walrus.btuple_slot"
-    WALRUS_OWNED_SLOT = "walrus.owned_slot"
-    WALRUS_VALUE_OPT = "walrus.value_opt"
-    WALRUS_VALUE = "walrus.value"
-    WALRUS_PLAIN = "walrus.plain"
-    # A comprehension unpack target: the `auto&` reference of a record or a
-    # storage-form Optional element, or the element's rendered value type.
-    COMP_UNPACK_REF = "comp.unpack_ref"
-    COMP_UNPACK_STORAGE_OPT = "comp.unpack_storage_opt"
-    COMP_UNPACK_VALUE = "comp.unpack_value"
-    # An unpack clause's whole element (the targets read it through
-    # `__tup_N`), as a for statement's `loop.unpack_holder`.
-    COMP_UNPACK_HOLDER = "comp.unpack_holder"
-    COMP_STORAGE_TUPLE = "comp.storage_tuple"
-    COMP_STORAGE_OPT = "comp.storage_opt"
-    COMP_PLAIN = "comp.plain"
-    # A fresh match capture: `auto& x` aliasing what it matched, `auto x`
-    # copying it (sema's `bind_by_value`), or the `auto x` copy of a
-    # pointer subject an Optional chain binds whole.
-    MATCH_REF = "match.ref"
-    MATCH_COPY = "match.copy"
-    MATCH_SUBJECT_PTR = "match.subject_ptr"
-    DEF_CLOSURE_LOCAL = "def.closure_local"
-    DEF_PLAIN = "def.plain"
-    PARAM_SEED = "param.seed"
-    PARAM_RECEIVER = "param.receiver"
-    PARAM_PLAIN = "param.plain"
-    RECEIVER_PLAIN = "receiver.plain"
-    GLOBAL_SEED = "global.seed"
-    GLOBAL_MODULE = "global.module"
-    GLOBAL_PLAIN = "global.plain"
-    MODULE_GLOBAL_PLAIN = "module_global.plain"
-    FRAME_LAYOUT = "frame.layout"
-    FRAME_PLAIN = "frame.plain"
-    ASSIGN_PLAIN = "assign.plain"
-    EXCEPT_PLAIN = "except.plain"
-    CONST_PLAIN = "const.plain"
-    STUB_DEFAULT_PLAIN = "stub_default.plain"
-    LAMBDA_PLAIN = "lambda.plain"
-    NESTED_PARAM_PLAIN = "nested_param.plain"
-    UNBOUND = "unbound"
-    # A name narrowing renamed whole (an `Any` global read as its alias).
-    NARROWED_GLOBAL = "narrowed_global"
+class BindingForm(Enum):
+    """How a binding's C++ holds its value, decided once by the binding
+    planner (`lower/bindings.py`). The declaring site (`site_kind`), the
+    const and owning-slot facts and the initializer's construction
+    (`BindingConstruct`) sit beside it on the record."""
+    # No binding-specific form: the type's own C++ (a value local, a
+    # parameter as its signature passes it, `self`). A site that needs a
+    # form (a hoist, an unpack, a walrus, a with target) rejects on it.
+    NONE = "none"
+    # The object itself (`T x = ..`, `T x;`, `auto x`).
+    VALUE = "value"
+    # `auto&` / `auto&&` / `const T&`.
+    REFERENCE = "reference"
+    # `T*`, nullable included.
+    POINTER = "pointer"
+    # `::tpy::Union<A*, B*>`.
+    POINTER_UNION = "pointer_union"
+    # A value-repr `std::optional<T>` (its kind in `value_opt`).
+    VALUE_OPT = "value_opt"
+    # The storage `std::optional<P>` of a pointer-repr Optional, read as
+    # storage.
+    STORAGE_OPT = "storage_opt"
+    # An owned `std::optional<T>` slot.
+    OWNED_SLOT = "owned_slot"
+    # `std::tuple<.., T*>` (the mixed own / borrow render:
+    # `borrow_tuple_mixed`).
+    BORROW_TUPLE = "borrow_tuple"
+    # `std::optional<std::tuple<.., T*>>`.
+    OPT_BORROW_TUPLE = "opt_borrow_tuple"
+    # `std::tuple<A, B>` in storage form.
+    STORAGE_TUPLE = "storage_tuple"
+    # A `@dynamic` local behind its base pointer, or its coroutine frame.
+    DYN = "dyn"
+    # A resumable frame's `tpy::frame_slot<T>` field.
+    FRAME_SLOT = "frame_slot"
 
-    @classmethod
-    def plain(cls, site_kind: str) -> 'BindingKind':
-        """The kind a site of `site_kind` gets when no row decides it."""
-        return cls(f"{site_kind}.plain")
+
+class BindingConstruct(Enum):
+    """How a first declaration's, a walrus's first binding's or a fresh
+    unpack target's initializer becomes its `BindingForm`, where one form
+    has several constructions: read only by the arms that build the
+    declaration from it (the first declaration builders,
+    `bindings.decl_shape`, the walrus arm, the unpack binds). A walrus
+    takes `POINTER`, `OPT_PTR` and `BTUPLE_REBOUND`; a fresh unpack target
+    the unpack members below, `OPT_PTR` and `PTR_VARIANT`, each rendered
+    by its `UnpackBind` (`bindings.unpack_tag`)."""
+    # First declarations.
+    NO_INIT_OPT_PTR = "no_init_opt_ptr"
+    NO_INIT_VALUE = "no_init_value"
+    CLOSED_FRAME = "closed_frame"
+    ER_ALIAS = "er_alias"
+    ER_BIND = "er_bind"
+    OWN_ELEM_TUPLE = "own_elem_tuple"
+    RECORD_SLOT = "record_slot"
+    RECORD_HOISTED_SLOT = "record_hoisted_slot"
+    CONTAINER_SLOT = "container_slot"
+    STORAGE_OPT_LIFT = "storage_opt_lift"
+    DYN_OWN_ERASED = "dyn_own_erased"
+    CORO_FRAME_LOCAL = "coro_frame_local"
+    DYN = "dyn"
+    OPT_BTUPLE = "opt_btuple"
+    REF_ALIAS = "ref_alias"
+    POINTER = "pointer"
+    REBIND_SLOT = "rebind_slot"
+    OPT_CALL_PASSTHROUGH = "opt_call_passthrough"
+    OPT_STORAGE_CALL = "opt_storage_call"
+    OPT_PTR = "opt_ptr"
+    OPTIONAL_TO_PTR = "optional_to_ptr"
+    OPT_OWN_PARAM_LIFT = "opt_own_param_lift"
+    MIXED_ELEM_PTR = "mixed_elem_ptr"
+    STORAGE_TUPLE_ALIAS = "storage_tuple_alias"
+    STORAGE_TUPLE_CHAIN = "storage_tuple_chain"
+    COMPREHENSION = "comprehension"
+    TPARAM_CALL = "tparam_call"
+    PTR_VARIANT = "ptr_variant"
+    PTR_VARIANT_SLOT = "ptr_variant_slot"
+    STORAGE_CALL_TUPLE = "storage_call_tuple"
+    ITERATOR_OBJECT = "iterator_object"
+    BTUPLE_REBOUND = "btuple_rebound"
+    BTUPLE_ALIAS = "btuple_alias"
+    BTUPLE_REF_ALIAS = "btuple_ref_alias"
+    BTUPLE_INLINE_ARMS = "btuple_inline_arms"
+    OPTVIEW_SHIM = "optview_shim"
+    BTUPLE_LITERAL = "btuple_literal"
+    TUPLE_LITERAL_WIDE = "tuple_literal_wide"
+    TUPLE_LITERAL_RECORD = "tuple_literal_record"
+    OPT_RECORD_CALL = "opt_record_call"
+    VALUE_OPT = "value_opt"
+    OPT_VALUE_RECORD = "opt_value_record"
+    OWNED = "owned"
+    # Fresh unpack targets: the `unwrap_ref` alias of a recursive
+    # wrapper's live `X&`, the `auto&&` alias through an element pointer,
+    # the `const T&` of a value element, the rebound `auto*`, the owned
+    # element moved out of the holder, the copy.
+    UNWRAP_REF = "unwrap_ref"
+    REF = "ref"
+    CREF = "cref"
+    PTR = "ptr"
+    MOVE = "move"
+    VALUE = "value"
 
 
 class BindingRefinement(Enum):
     """A record re-derived from an earlier one at a later site, which keeps
-    that record's kind: a whole-Optional match capture into it, a frame
+    that record's form: a whole-Optional match capture into it, a frame
     hoist's value-opt kind, a standalone unpack's move promotion, a nested
     def's view of an enclosing global slot."""
     MATCH_BIND = "match_bind"
@@ -239,13 +189,17 @@ class BindingRepr:
     # The declared type (a flow-narrowed read has a narrower
     # `result_type`).
     type: TpyType | None
-    # The classifier row that decided the record.
-    kind: BindingKind
+    # Its C++ representation, and how its initializer constructs it.
+    form: BindingForm
+    construct: BindingConstruct | None = None
+    # A for head's null-pointer hoist of a container unpack target: the
+    # head re-points it each pass.
+    head_target: bool = False
     # The kind of site that declared it (`_Site.kind` in lower/bindings.py:
     # 'decl', 'hoist', 'loop', 'param', 'receiver', 'frame', ...); None for
     # `UNBOUND`. A refinement keeps it.
     site_kind: str | None = None
-    # The later sites that re-derived it, in order (the kind stays).
+    # The later sites that re-derived it, in order (the form stays).
     refinements: tuple[BindingRefinement, ...] = ()
     is_param: bool = False
     # The type the parameter list the body is lowered under (`lc.params`)
@@ -284,8 +238,6 @@ class BindingRepr:
     const_storage_tuple: bool = False
     # The mixed own / borrow render of a per-element-Own tuple.
     borrow_tuple_mixed: bool = False
-    # `std::optional<std::tuple<.., T*>>`.
-    optional_borrow_tuple: bool = False
     # An owned tuple constructed in place, and its element layout.
     tuple_layout: 'THIRTupleLayout | None' = None
     # Per element of a borrow tuple: held inline rather than by pointer.
@@ -296,19 +248,20 @@ class BindingRepr:
     # by a reference local's slot at its own site. Whether a read may move
     # an element is the read's (`own_element_copies`).
     ptr_tuple: 'TupleType | None' = None
-    # A const binding: a const declaration (the decl families), a
-    # parameter under its function's const verdict (the one its signature
-    # spells), a read-only method's receiver. A nested scope reads an
-    # enclosing parameter's or receiver's record, so its verdict.
+    # A const binding: a const declaration (the decl families; a borrow
+    # tuple's element pointers), a parameter under its function's const
+    # verdict (the one its signature spells), a read-only method's
+    # receiver. A nested scope reads an enclosing parameter's or
+    # receiver's record, so its verdict.
     const: bool = False
     # A parameter whose INNER surface is const beyond `const`: the deep
     # const verdict (a pointer-variant's pointees), an unmutated `*args`
     # pack's elements, a `Ptr[readonly[T]]` pointee.
     deep_const: bool = False
     # Some value bound into this record is a const borrow (the planner's
-    # const fixpoint). A declaration, hoist or walrus pointer slot holding
-    # one is `const T*` (`const`): a slot holding a mutable source too
-    # rejects at planning.
+    # const fixpoint). A declaration, hoist or walrus pointer slot or
+    # borrow tuple holding one is `const T*` (`const`): a slot holding a
+    # mutable source too rejects at planning.
     const_source: bool = False
     # A loop variable bound const: a const reference, or a reference over
     # an iteration that yields const elements (`auto&&` deduces const).
@@ -318,10 +271,6 @@ class BindingRepr:
     # holder): the C++ the loop emits per element. None on every other
     # record.
     loop_binding: 'LoopBinding | None' = None
-    # The whole-body borrow-tuple const fixpoint, per NAME as the lowering
-    # keeps it: every record of a marked name carries the bit.
-    const_borrow_tuple: bool = False
-    const_opt_borrow_tuple: bool = False
     # A sink may move from it at its last use (outside a `moves_only`
     # region, which decides there).
     movable: bool = False
@@ -374,9 +323,21 @@ class BindingRepr:
     nested_def: bool = False
 
     @property
+    def label(self) -> str:
+        """`<site kind>.<form>[.<construct>]`, for internal-error text."""
+        out = f"{self.site_kind}.{self.form.value}"
+        return (out if self.construct is None
+                else f"{out}.{self.construct.value}")
+
+    @property
     def frame_slot(self) -> bool:
         """A resumable frame's `tpy::frame_slot<T>` field."""
-        return self.frame_class is not None and self.frame_class.is_frame_slot
+        return self.form is BindingForm.FRAME_SLOT
+
+    @property
+    def optional_borrow_tuple(self) -> bool:
+        """`std::optional<std::tuple<.., T*>>`."""
+        return self.form is BindingForm.OPT_BORROW_TUPLE
 
     @property
     def module_slot(self) -> bool:
@@ -409,8 +370,7 @@ def slot_key(rec: 'BindingRepr') -> SlotKey:
 
 # The record a name with no binding answers with (a function, a class, a
 # synthesized narrowing alias): every representation fact false.
-UNBOUND = BindingRepr(name="", site=None, type=None,
-                      kind=BindingKind.UNBOUND)
+UNBOUND = BindingRepr(name="", site=None, type=None, form=BindingForm.NONE)
 
 
 class NameFacts:

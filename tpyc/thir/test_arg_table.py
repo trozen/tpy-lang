@@ -102,7 +102,6 @@ class TestProtocolSinkShape:
             "union_ctor_temp",
             "value_union_temp",
             "optional_ptr_container_temp",
-            "optional_ptr_scalar_temp",
             "protocol_slot",
         ]
 
@@ -128,7 +127,6 @@ class TestProtocolSinkShape:
             ("union_ctor_temp", "_x_temps_ok"),
             ("value_union_temp", "_x_temps_ok"),
             ("optional_ptr_container_temp", "_x_temps_ok"),
-            ("optional_ptr_scalar_temp", "_x_temps_ok"),
         ]
         cell = next(r for r in _PROTOCOL_ARG_SINK.rows
                     if r.row == "own_lvalue")
@@ -357,7 +355,6 @@ class TestMethodArgSinkShape:
             "str_literal_value_opt",
             "bytes_literal_value_opt",
             "optional_ptr_container_temp",
-            "optional_ptr_scalar_temp",
             "protocol_slot",
             "ru_wrapper_name",
             "ru_wrapper_member_name",
@@ -372,7 +369,7 @@ class TestMethodArgSinkShape:
         # already name: 15 shapes were written twice, and the leading cell is
         # now the only one deciding them.
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len(rows) == 108
+        assert len(rows) == 107
         assert len(rows[:self.STUB_ROWS]) == 50
         assert rows[self.STUB_ROWS] == "lambda"
 
@@ -547,7 +544,6 @@ class TestMethodArgSinkShape:
             ("union_bytes_literal_temp", "_x_temps_ok"),
             ("value_union_temp", "_x_temps_ok"),
             ("optional_ptr_container_temp", "_x_temps_ok"),
-            ("optional_ptr_scalar_temp", "_x_temps_ok"),
             ("ru_wrapper_member_name", "_x_temps_ok"),
             ("ru_wrapper_scalar_literal", "_x_temps_ok"),
             ("ru_wrapper_member_rvalue", "_x_temps_ok"),
@@ -597,7 +593,7 @@ class TestMethodArgSinkShape:
                      _PLAIN_ARG_SINK, _GENERIC_PLAIN_ARG_SINK):
             others |= {r.row for r in sink.rows}
         rows = [r.row for r in _METHOD_ARG_SINK.rows]
-        assert len([r for r in rows if r in others]) == 57
+        assert len([r for r in rows if r in others]) == 56
         assert [r for r in rows if r not in others] == [
             "scalar_at_template_slot",
             "protocol_bare_name",
@@ -1529,7 +1525,6 @@ class TestRecordCtorSinkShape:
             "own_opt_ptr_name_move",
             "opt_own_ptr_opt_name_move",
             "opt_own_record_name",
-            "opt_own_container_name",
             "copy_own",
             "own_element_pass",
             "copy_open_elem",
@@ -1630,7 +1625,6 @@ class TestRecordCtorSinkShape:
             ("own_move", "ctor.own_arg"),
             ("own_lvalue", "ctor.own_arg"),
             ("own_move_source_slice", "ctor.own_arg"),
-            ("opt_own_container_name", "ctor.opt_own_container_name"),
             ("generic_open_slot_elem", "ctor.generic_open_slot_elem"),
             ("field_read_ref_ctor", "ctor.field_read_ref_arg"),
             ("container_literal", "ctor.container_literal_arg"),
@@ -1724,7 +1718,7 @@ class TestRecordCtorNestedIsNotADirectPrefix:
         # absences free to be filled silently later.
         direct = {r.row for r in _CTOR_ARG_SINK.rows}
         nested = {r.row for r in _CTOR_NESTED_ARG_SINK.rows}
-        assert len(direct - nested) == 52
+        assert len(direct - nested) == 51
         assert {"mutated_container_literal", "str_pass_through",
                 "own_lvalue", "own_bytes_literal",
                 "container_literal", "own_container_literal",
@@ -1767,7 +1761,6 @@ class TestRecordCtorSharedAndNewRows:
             "bytearray_rvalue_ctor",
             "value_opt_name_pass",
             "tparam_name_pass",
-            "opt_own_container_name",
             "copy_open_elem",
             "async_factory_wrap",
             "field_read_ref_ctor",

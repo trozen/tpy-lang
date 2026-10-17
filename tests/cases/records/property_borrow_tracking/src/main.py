@@ -24,7 +24,7 @@ def test_borrow_via_property() -> None:
 def test_iter_via_property() -> None:
     c = Container()
     for x in c.items:
-        c._items = [7, 8, 9]  # tpyc: warning(/Mutation of 'c' while borrowed/)
+        c._items = [7, 8, 9]  # tpyc: warning(/Mutation of 'c' while iterating over it/)
         print(x)
         break
 

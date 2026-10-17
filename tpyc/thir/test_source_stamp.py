@@ -28,7 +28,7 @@ from .nodes import (
     Form, THIRExpr, THIRFieldAccess, THIRLiteral, THIRName, THIRSelf,
     THIRSubscript,
 )
-from .source import UNBOUND, BindingKind, BindingRepr, Held, Source
+from .source import UNBOUND, BindingForm, BindingRepr, Held, Source
 from .testutil import _compile, _entry, lower_bodies
 from .validate import _iter_children
 
@@ -36,8 +36,10 @@ _REC = NominalType("P")
 
 
 def _binding(name: str, *, pointer: bool) -> BindingRepr:
-    return BindingRepr(name=name, site=None, type=_REC, kind=BindingKind.DECL_PLAIN,
-                       pointer=pointer)
+    return BindingRepr(name=name, site=None, type=_REC,
+                       form=(BindingForm.POINTER if pointer
+                             else BindingForm.NONE),
+                       site_kind="decl", pointer=pointer)
 
 
 def _stamped(node):
@@ -126,8 +128,8 @@ def _lc(*, readonly: bool):
     # The receiver's record: const for a read-only method (a nested def
     # reads the enclosing method's record through its scope chain).
     receiver = BindingRepr(name="self", site=None, type=_REC,
-                           kind=BindingKind.PARAM_RECEIVER,
-                           site_kind="receiver", const=readonly)
+                           form=BindingForm.NONE, site_kind="receiver",
+                           const=readonly)
     return SimpleNamespace(
         record_name="P", analyzer=None, self_receiver="self",
         binding=lambda name: receiver)
@@ -621,10 +623,10 @@ def _assert_carries_table_records(body: object, table: BindingTable
                 continue
             assert rec is not None, (type(node).__name__, n)
             assert rec is UNBOUND or (id(rec) in known and rec.name == n), (
-                type(node).__name__, n, rec.kind)
+                type(node).__name__, n, rec.form, rec.construct)
             want = _expected_record(table, node, n, line)
-            assert rec is want, (type(node).__name__, n, line, rec.kind,
-                                 want.kind)
+            assert rec is want, (type(node).__name__, n, line, rec.form,
+                                 rec.construct, want.form, want.construct)
     return decls
 
 

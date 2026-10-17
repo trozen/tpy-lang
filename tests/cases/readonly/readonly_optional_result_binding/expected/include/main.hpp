@@ -27,7 +27,7 @@ const R* fget(const H& h);
 // def relay_method(h: H) -> readonly[Optional[R]]:
 const R* relay_method(const H& h);
 // def relay_free(h: H) -> readonly[Optional[R]]:
-const R* relay_free(H& h);
+const R* relay_free(const H& h);
 // @overload
 // def pick(h: H, k: int32) -> readonly[Optional[R]]: ...
 const R* pick__H__int32(H& h, int32_t k);

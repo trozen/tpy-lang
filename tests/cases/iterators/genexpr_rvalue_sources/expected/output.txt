@@ -53,3 +53,4 @@ try 18
 finally 4
 error_return 6
 match 6
+bump_values 5 2

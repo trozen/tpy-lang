@@ -6,7 +6,7 @@
 # the object the loan was given) -- hence no_cpython.txt.
 from typing import Iterator
 
-from tpy import Own, int32, take_ptr
+from tpy import Own, StrView, int32, take_ptr
 
 
 class Point:
@@ -250,6 +250,30 @@ def unpack_kept_first_pass_section() -> None:
     print("unpack_kept_first_pass:", kept.x)
 
 
+class Named:
+    s: str
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+
+def ident_view(s: StrView) -> StrView:
+    return s
+
+
+# A view returned through a call lends the view constructor's argument, so
+# `v` reads the loop site's object, which the next pass rebuilds in place
+# (short names: the rebuilt string stays in the object's own buffer).
+def view_through_call_section() -> None:
+    n = Named("n0")
+    v: StrView = ident_view(StrView(n.s))
+    for i in range(2):
+        n = Named("n" + str(i + 1))  # tpyc: warning(/'v' will not keep the object it was given/)
+        print("view_through_call_iter:", v)
+        v = ident_view(StrView(n.s))
+    print("view_through_call:", v, n.s)
+
+
 def main() -> None:
     loop_carried_section()
     for_carried_section()
@@ -267,6 +291,7 @@ def main() -> None:
     loop_capture_section()
     loop_capture_quiet_section()
     unpack_kept_first_pass_section()
+    view_through_call_section()
 
 
 main()

@@ -15,7 +15,9 @@ from .flow_facts import (
 from ..prescan import FactKills, deref_view_key
 
 if TYPE_CHECKING:
+    from ..holders import Holder
     from ..typesys import TpyType
+    from .storage_walk import StorageKey
     from .context import LoanInfo, SemanticContext
     from .narrowing import NarrowingTracker
 
@@ -227,7 +229,7 @@ class InitTracker:
     def _merge_loop_body_loans(
         self,
         before: FlowFacts,
-        body_end_borrows: frozenset[tuple[str, str, LoanInfo]],
+        body_end_borrows: frozenset[tuple[StorageKey, Holder, LoanInfo]],
     ) -> None:
         """Carry the loans the loop body took past the loop's closing brace.
 
@@ -236,9 +238,11 @@ class InitTracker:
         every hazard a post-loop statement poses to it. Same lattice as a
         both-arms-live join: the union, each pair at its more dangerous kind.
 
-        Every triple reaching here names a real local: the for-loop lowering
-        releases its synthetic iterator holder where the `for` statement ends,
-        before the caller freezes the body-end state. A loan whose holder is
+        The loop's own iterator is not among them: `loop_scope` releases it
+        where the statement ends, before the caller freezes the body-end
+        state. An ENCLOSING loop's iterator is (`IterHolder`), on whatever
+        storage the body retargeted its loans to, joined with the pre-loop
+        one: the zero-trip path keeps the latter. A loan whose holder is
         function-scoped but whose STORAGE the body declared is carried out
         unchanged and is NOT diagnosed -- codegen gives that storage a
         per-iteration block scope, so the holder dangles at the closing brace

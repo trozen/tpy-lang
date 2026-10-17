@@ -1145,7 +1145,7 @@ above is satisfied.
    tuple slot (`:282-322`); the `static_assert` mirrors `:317`. Land with step 11,
    which is its first consumer.
 8. **The lambda / nested-`def` result stamp and the dangle switch.** Extend
-   `returns_borrow_rooted_at_self` (`tpyc/parse/nodes.py:2102`) with the union over
+   `returns_borrow_rooted_at_self` (`tpyc/sema/registration.py`) with the union over
    return paths and the mixed-path reject; switch
    `tpyc/sema/expressions.py:4196` / `:4212` from `check_view_return_dangle`
    (`tpyc/sema/compatibility.py:3009`) to `check_dangling_reference` (`:3027`), with

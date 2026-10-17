@@ -8,6 +8,7 @@
 namespace tpyapp::main {
 
 struct Rec;
+struct Tree;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -27,6 +28,15 @@ Rec& first(std::vector<Rec>& rs);
 Rec make(int32_t n);
 // def call_arm(rs: list[Rec], c: bool) -> None:
 void call_arm(std::vector<Rec>& rs, bool c);
+// def nested_select(xs: list[Rec], ys: list[Rec], zs: list[Rec], c: bool,
+//                   d: bool) -> None:
+void nested_select(std::vector<Rec>& xs, std::vector<Rec>& ys, std::vector<Rec>& zs, bool c, bool d);
+// def strongest_kind(rs: Tree, c: bool) -> None:
+void strongest_kind(Tree& rs, bool c);
+// def strongest_kind_reversed(rs: Tree, c: bool) -> None:
+void strongest_kind_reversed(Tree& rs, bool c);
+// def whole_arms(rs: Tree, c: bool) -> None:
+void whole_arms(Tree& rs, bool c);
 // def main() -> None:
 void main();
 
@@ -46,9 +56,73 @@ inline std::ostream& operator<<(std::ostream& os, const Rec& obj) {
     return os;
 }
 
+// class Tree:
+struct Tree {
+    // n: int32
+    int32_t n;
+    // kids: list[Tree]
+    std::vector<Tree> kids;
+
+    // def __init__(self, n: int32) -> None:
+    Tree() = default;
+    explicit Tree(int32_t n);
+
+    // def __getitem__(self, i: int32) -> Tree:
+    Tree& __getitem__(int32_t i);
+
+    // def __getitem__(self, i: int32) -> Tree:
+    const Tree& __getitem__(int32_t i) const;
+
+    // def append(self, t: Own[Tree]) -> None:
+    void append(Tree&& t);
+
+    const Tree& operator[](int32_t i) const;
+
+    Tree& operator[](int32_t i);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Tree";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Tree& obj) {
+    ::tpy::print_object_default(os, "Tree", obj);
+    return os;
+}
+
 
 // def __init__(self, n: int32) -> None:
 //     self.n = n
 inline Rec::Rec(int32_t n) : n(n) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+//     self.kids = []
+inline Tree::Tree(int32_t n)
+    : n(n),
+      kids(std::vector<Tree>{}) {}
+
+// def __getitem__(self, i: int32) -> Tree:
+//     return self.kids[i]
+inline Tree& Tree::__getitem__(int32_t i) {
+    return ::tpy::__getitem__(this->kids, i);
+}
+
+// def __getitem__(self, i: int32) -> Tree:
+//     return self.kids[i]
+inline const Tree& Tree::__getitem__(int32_t i) const {
+    return ::tpy::__getitem__(this->kids, i);
+}
+
+// def append(self, t: Own[Tree]) -> None:
+//     self.kids.append(t)
+inline void Tree::append(Tree&& t) {
+    this->kids.push_back(std::move(t));
+}
+
+inline const Tree& Tree::operator[](int32_t i) const {
+    return __getitem__(i);
+}
+
+inline Tree& Tree::operator[](int32_t i) {
+    return __getitem__(i);
+}
 void __tpy_init();
 } // namespace tpyapp::main

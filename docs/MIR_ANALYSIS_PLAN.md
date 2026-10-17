@@ -1478,13 +1478,14 @@ Copying a borrowed record-tuple parameter into a later-reseated tuple local also
 retains that gate; non-reseated copies and scalar tuple copies compile. These source forms remain
 excluded rather than changing the frontend for MIR completeness.
 
-An existing producer defect also bounds coverage: auto copies from inferred or
-whole-tuple readonly record parameters can lose readonly in their local payload
-fact, including alias chains and method/constructor siblings. C++ auto copies
-preserve constness; MIR rejects the inconsistent fact. This is tracked as
-`BUGS.md#readonly-auto-tuple-copy-fact`. Mutable and correctly annotated mixed
-payload copies remain covered. The defect's existing const table also feeds
-rendering/admission, so changing it or adding parallel name-state is deferred.
+Auto copies from inferred or whole-tuple readonly record parameters, alias
+chains and method and constructor siblings included, carry the parameter's
+readonly payload in their local fact, as their C++ auto copies keep its
+constness: the copy's record is a slot of the binding planner's const fixpoint,
+const when every source bound into it is. MIR covers them in free functions and
+methods, beside mutable and correctly annotated mixed payload copies; a
+constructor body's tuple local stays uncovered whatever its access
+(`unsupported metadata: tuple_layout`).
 
 Implementation follows M2.3 tuple layouts and M2.6 place-valued borrows:
 

@@ -1750,21 +1750,12 @@ class CodeGenContext:
     # borrow form -- the storage<->pointer wrap must NOT fire when writing into
     # them (the local IS the borrow, not a storage slot).
     borrow_form_tuple_locals: set[str] = field(default_factory=set)
-    # Subset of borrow_form_tuple_locals declared with const element pointers
-    # (`std::tuple<..., const T*>`) because at least one binding source is a
-    # const-storage location. Codegen derives this as the OR over every source
-    # feeding the local (final post-inference const), and every tuple_to_pointer
-    # lift into the local must target this const borrow type; a write through a
-    # const element is rejected in sema. Populated by `_compute_borrow_tuple_const`.
-    const_borrow_form_tuple_locals: set[str] = field(default_factory=set)
     # Nullable borrow-form tuple locals: `tuple[..., Box] | None` declared as
     # `std::optional<std::tuple<..., T*>>`. The optional wraps the borrow-form
     # inner tuple so reference elements ALIAS storage on rebind (matching
     # CPython) rather than copying. Parallel to borrow_form_tuple_locals but
     # the value lives behind `std::optional` (narrowed access derefs via `*t`).
     optional_borrow_tuple_locals: set[str] = field(default_factory=set)
-    # Subset of optional_borrow_tuple_locals with const element pointers.
-    const_optional_borrow_tuple_locals: set[str] = field(default_factory=set)
 
     # --- Comprehension-local variable names ---
     # Loop variables inside comprehensions shadow globals during element
@@ -2075,9 +2066,7 @@ class CodeGenContext:
         self.const_storage_form_tuple_locals = set()
         self.own_borrow_tuple_locals = set()
         self.borrow_form_tuple_locals = set()
-        self.const_borrow_form_tuple_locals = set()
         self.optional_borrow_tuple_locals = set()
-        self.const_optional_borrow_tuple_locals = set()
         self.storage_form_optional_locals = set()
         self.const_storage_form_optional_locals = set()
         self.slots.reset()
@@ -2870,8 +2859,6 @@ class CodeGenContext:
                         self.is_const_storage_source))
         if isinstance(expr, TpyName):
             return (expr.name in self.const_storage_form_tuple_locals
-                    or expr.name in self.const_borrow_form_tuple_locals
-                    or expr.name in self.const_optional_borrow_tuple_locals
                     or expr.name in self.const_ref_params
                     or expr.name in self.const_indirect_locals
                     or self.frame_binding_is_const(expr.name))
@@ -3329,8 +3316,6 @@ class CodeGenContext:
                 # borrow-form local; proxy-ref loop elements (dict_items)
                 # carry the same form.
                 self.borrow_form_tuple_locals.add(lname)
-                if verdict.const:
-                    self.const_borrow_form_tuple_locals.add(lname)
             elif kind is _rcfg.FrameLocalKind.SOURCE_FORM_SLOT:
                 # A source-derived loop var is a frame slot whatever its
                 # element turns out to be -- including a value element:

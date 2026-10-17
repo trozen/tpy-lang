@@ -34,7 +34,7 @@ A& ret_elem(const std::vector<A*>& ps) {
 //     bump(m._a)  # tpyc: ok
 //     bump(m.ptr())  # tpyc: ok
 //     bump(ps[0])  # tpyc: ok
-void arg_sources(M& m, std::vector<A*>& ps) {
+void arg_sources(const M& m, const std::vector<A*>& ps) {
     ::tpyapp::main::bump(::tpy::deref_check(m._a));
     ::tpyapp::main::bump(::tpy::deref_check(m.ptr()));
     ::tpyapp::main::bump(::tpy::deref_check(::tpy::__getitem__(ps, 0)));

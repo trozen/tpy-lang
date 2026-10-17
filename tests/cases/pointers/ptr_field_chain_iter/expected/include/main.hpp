@@ -22,6 +22,8 @@ int32_t via_local(SubSector* ss);
 int32_t total(const std::vector<SubSector*>& subsectors);
 // def raise_floors(subsectors: list[Ptr[SubSector]]) -> None:
 void raise_floors(const std::vector<SubSector*>& subsectors);
+// def via_ptr(p: Ptr[Map]) -> None:
+void via_ptr(Map* p);
 // def main() -> None:
 void main();
 

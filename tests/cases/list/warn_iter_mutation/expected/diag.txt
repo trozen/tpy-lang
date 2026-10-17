@@ -22,4 +22,4 @@ main.py:146: warning: Mutation of 'rows[...]' while iterating over it (element a
 main.py:151: warning: Mutation of 'rows' while iterating over it ('append' invalidates the iterator)
 main.py:188: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
 main.py:207: warning: Mutation of 'items' while iterating over it ('append' invalidates the iterator)
-main.py:221: warning: Mutation of 'cube[...]' may hit a borrowed element ('append' may invalidate references)
+main.py:221: warning: Mutation of 'cube[...]' may hit the element being iterated ('append' may invalidate the iterator)

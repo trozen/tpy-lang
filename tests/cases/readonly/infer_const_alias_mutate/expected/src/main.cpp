@@ -16,12 +16,16 @@ namespace tpyapp::main {
 //     s.mutate_via_alias_chained()
 //     print(s.inner.counter)
 //     print("done")
+//     s.bump_lent()
+//     print("lent", s.inner.counter)
 void main() {
     S s = S();
     s.mutate_via_alias();
     s.mutate_via_alias_chained();
     std::cout << s.inner.counter << "\n" << ::tpy::check_signals;
     std::cout << "done" << "\n" << ::tpy::check_signals;
+    s.bump_lent();
+    std::cout << "lent" << " " << s.inner.counter << "\n" << ::tpy::check_signals;
 }
 
 // from tplib.box import Box

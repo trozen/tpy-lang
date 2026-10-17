@@ -1,0 +1,1 @@
+main.py:13: error: Cannot bind StrView 'v' to a temporary view source; the backing storage is destroyed at end-of-statement -- annotate 'v' as an owned str/bytes to keep a copy

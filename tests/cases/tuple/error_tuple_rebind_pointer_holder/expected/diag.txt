@@ -1,0 +1,1 @@
+main.py:13: error: in function 'iterated_element': a pointer taken from an element of 't', or an iterator over it, still refers to the object that element was bound to, so the object the rebind of 't' creates needs storage of its own, which is not yet supported here; bind the new value to a name of its own

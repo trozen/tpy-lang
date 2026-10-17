@@ -1,0 +1,7 @@
+comp_in_iterable [0, 1, 2, 0, 1, 2, 0, 1, 2]
+named_like_iterator 3
+generator_alias 0
+named_like_sink 1 1
+iterating_wording 2 2
+outer_loop_kept 1
+distinct_elements [3, 3]

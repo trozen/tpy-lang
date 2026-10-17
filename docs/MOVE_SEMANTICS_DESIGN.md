@@ -330,8 +330,8 @@ call results borrowing an argument (`return_borrows_from`), generator objects
 storing their iterable by reference -- are handled at the consume site
 instead: `compat.grant_name_move` (the recording move verdict) consults the
 BorrowTracker and demotes the move to the copy path (retracting the last-use mark so codegen agrees) when
-such a borrower exists. The for-loop iterator loan (`"__for_iter"`) is one
-of them: it expires with its loop, so it gates a consume of the iterable
+such a borrower exists. The for-loop iterator loan (held by the loop's
+`IterHolder`, `tpyc/holders.py`) is one of them: it expires with its loop, so it gates a consume of the iterable
 inside the body on every path out, `break` and `return` included. A
 prescan-map alias is modeled by liveness only as a name, so what borrows
 through it (`ys = xs; for x in ys:`, `v = first(ys)`) gates a consume of
@@ -343,9 +343,11 @@ the gate.
 
 Forward references: a generator's borrow set is signature-derived and
 stamped on its FunctionInfo at registration, so callers analyzed before its
-body see exact facts. For other bodied same-module callees the analyzer
-seeds `pending_borrow_fact_fis`; a bind whose callee fact is still None and
-whose signature could return a borrow registers a conservative
+body see exact facts. Any other callee whose body sema analyzes but has
+not yet (`return_borrow_fact_pending`: a later body of the import
+component, every body while module statements are analyzed) is pending; a
+bind whose callee fact is still None and whose signature could return a
+borrow registers a conservative
 `BorrowKind.OPAQUE` borrow (gates the move; excluded from
 mutation-invalidation and alias-identity logic), which a later-analyzed
 body's exact facts supersede naturally. Known residuals (cross-module

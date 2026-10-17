@@ -415,6 +415,36 @@ void unpack_kept_first_pass_section() {
     std::cout << "unpack_kept_first_pass:" << " " << kept->x << "\n" << ::tpy::check_signals;
 }
 
+// def ident_view(s: StrView) -> StrView:
+//     return s
+std::string_view ident_view(std::string_view s) {
+    return s;
+}
+
+// # A view returned through a call lends the view constructor's argument, so
+// # `v` reads the loop site's object, which the next pass rebuilds in place
+// # (short names: the rebuilt string stays in the object's own buffer).
+// def view_through_call_section() -> None:
+//     n = Named("n0")
+//     v: StrView = ident_view(StrView(n.s))
+//     for i in range(2):
+//         n = Named("n" + str(i + 1))  # tpyc: warning(/'v' will not keep the object it was given/)
+//         print("view_through_call_iter:", v)
+//         v = ident_view(StrView(n.s))
+//     print("view_through_call:", v, n.s)
+void view_through_call_section() {
+    Named __slot_1 = Named("n0");
+    Named* n = &__slot_1;
+    std::string_view v = ::tpyapp::main::ident_view(n->s);
+    std::optional<Named> __slot_2;
+    for (int32_t i = 0; i < 2; ++i) {
+        n = &*(__slot_2 = Named((::tpy::str_concat("n", ::tpy::fixed_to_str<int32_t>((::tpy::add_check<int32_t>(i, 1)))))));
+        std::cout << "view_through_call_iter:" << " " << v << "\n" << ::tpy::check_signals;
+        v = ::tpyapp::main::ident_view(n->s);
+    }
+    std::cout << "view_through_call:" << " " << v << " " << n->s << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
 //     loop_carried_section()
 //     for_carried_section()
@@ -432,6 +462,7 @@ void unpack_kept_first_pass_section() {
 //     loop_capture_section()
 //     loop_capture_quiet_section()
 //     unpack_kept_first_pass_section()
+//     view_through_call_section()
 void main() {
     ::tpyapp::main::loop_carried_section();
     ::tpyapp::main::for_carried_section();
@@ -450,6 +481,7 @@ void main() {
     ::tpyapp::main::loop_capture_section();
     ::tpyapp::main::loop_capture_quiet_section();
     ::tpyapp::main::unpack_kept_first_pass_section();
+    ::tpyapp::main::view_through_call_section();
 }
 
 // main()

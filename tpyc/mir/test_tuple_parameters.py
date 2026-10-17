@@ -168,14 +168,18 @@ def test_owned_tuple_parameters_remain_uncovered(artifacts: Artifacts, name: str
     assert isinstance(lower_function(functions[name], MIRBodyId("tuples", name)), MIRNotCovered)
 
 
-def test_readonly_auto_copy_fact_cannot_increase_access(artifacts: Artifacts) -> None:
+def test_readonly_auto_copy_keeps_its_source_access(artifacts: Artifacts) -> None:
     functions, _ = artifacts
-    # Auto preserves const pointers; the existing local fact loses that capability.
-    # BUGS.md#readonly-auto-tuple-copy-fact
-    fn = functions["readonly_copy"]
-    result = lower_function(fn, MIRBodyId("tuples", fn.name))
-    assert isinstance(result, MIRNotCovered)
-    assert result.reason == "payload copy type or access mismatch"
+    # The `auto` copy of a const-inferred tuple parameter holds the same
+    # `const Cell*` the parameter does: the copy is a borrow tuple whose
+    # one source is const, so its payload fact is readonly and the copy
+    # still aliases the parameter's referent.
+    fn = lower(functions["readonly_copy"])
+    saved = next(slot for slot in fn.slots if slot.name == "saved")
+    assert saved.shape.elements[0].readonly
+    value = MIRFieldId(fn.slots[0].shape.elements[0].type, "value")
+    heap = {1: {value: 1}}
+    assert execute(fn, TupleValue((Reference(1), 5)), Reference(1), heap=heap) == 24
 
 
 def test_capture_representation_and_readonly_are_verified(artifacts: Artifacts) -> None:

@@ -1,0 +1,6 @@
+self_loop 2
+enum_name_view RED
+enter_through_method 123
+pack_from_params True
+view_ctor_through_call abc
+view_ctor_through_call xyz

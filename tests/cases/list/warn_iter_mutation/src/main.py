@@ -207,18 +207,18 @@ def test_slice_source_warns() -> None:
         items.append(x)  # tpyc: warning(/Mutation of 'items'.*'append'/)
 
 def test_merged_element_loan_unknown_index() -> None:
-    """The fourth wording: a NON-iteration loan that is index-uncertain.
+    """An iteration's loan that is index-uncertain.
 
     Rebinding the local the iteration borrows through merges the loans, and
     the merged loan keeps `on_element` while losing the index -- so the
-    mutation is worded as possible, on the borrowed-element branch rather
-    than the iterating one."""
+    mutation is worded as possible. The loop's iterator still holds the
+    loan, so it is the element being iterated."""
     cube: list[list[list[int32]]] = [[[1, 2]], [[3, 4]], [[5, 6]]]
     rows: list[list[int32]] = []
     rows = cube[0]
     for v in rows[0]:
         rows = cube[1]
-        cube[2].append([v])  # tpyc: warning(/Mutation of 'cube\[\.\.\.\]' may hit a borrowed element.*'append' may invalidate references/)
+        cube[2].append([v])  # tpyc: warning(/Mutation of 'cube\[\.\.\.\]' may hit the element being iterated.*'append' may invalidate the iterator/)
     print("merged loan:", len(cube), len(cube[2]))
 
 def main() -> None:

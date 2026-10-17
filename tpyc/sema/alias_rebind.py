@@ -25,7 +25,7 @@ site re-executes on the next iteration. Two facts flow:
   model, on the side of "unknown means aliased": a holder bound by a path
   into an owned tuple element (`saved = t[0].xs[1]`) holds that element, a
   holder copied from another holder inherits its loans, a generator or
-  coroutine call keeps what its frame borrows (`frame_borrowed_operands`)
+  coroutine call keeps what its frame borrows (`frame_operands`)
   and any call result what its callee's recorded return borrows name, and
   a pointer that leaves through a call argument and a frame handed to an
   `Own` parameter are held for ever.
@@ -40,12 +40,11 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Container, Iterable, Mapping, NamedTuple
 
-from ..identity_map import IdentityMap
-from ..liveness import loop_iterator_name
+from ..holders import Holder, IterHolder
+from ..identity_map import IdentityMap, IdentitySet
 from ..parse import (
-    TpyAssign, TpyAwait, TpyBreak, TpyCall,
-    TpyCoerce, TpyContinue, TpyDelVar,
-    TpyExpr, TpyFieldAccess, TpyForEach, TpyFunction, TpyGeneratorExpression,
+    TpyAssign, TpyAwait, TpyBreak, TpyCall, TpyCoerce, TpyContinue, TpyDelVar,
+    TpyExpr, TpyForEach, TpyFunction,
     TpyGlobal, TpyIf, TpyIfExpr, TpyLambda, TpyMatch,
     TpyMethodCall, TpyName, TpyNamedExpr, TpyNestedDef, TpyNoneLiteral,
     TpyRaise, TpyReturn, TpySlice, TpyStmt, TpySubscript,
@@ -60,24 +59,23 @@ from ..prescan import (bound_names_of, loop_bindings_of, scope_bound_names,
                        walrus_names_of)
 from ..typesys import (
     OwnType, ReadonlyType, TpyType, TupleType,
-    held_whole_borrow_sources,
-    recorded_return_borrow_sources,
     unwrap_own, unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
 )
 from ..value_category import binds_owned_value, call_returns_cpp_ref
-from .context import (
-    BorrowKind, ITER_BORROWER, LoanInfo, _borrow_storage_roots,
-    note_nonowning_bind,
-    _root_name_of_expr,
-    addr_taken_roots, call_borrow_operands, call_contract_lend_exprs,
-    call_lend_sources,
-    element_index_key,
-    call_param_args, frame_binding_calls, frame_borrowed_operands,
-    holds_no_pointer, leaves_hold_no_pointer, may_hold_pointer,
+from .call_lends import (
+    ContractLend, MayLend, borrowing_ctor_arg, frame_operand_keys,
+    leaves_hold_no_pointer, may_hold_pointer,
 )
+from .context import (
+    BorrowKind, LoanInfo, UnnamedHolder,
+    call_param_args, frame_binding_calls, note_nonowning_bind,
+)
+from .storage_walk import (Place, StorageKey, Use, call_loans, leaves,
+                           storage_roots)
 from .loop_frames import (
-    LoopFrameHold, WithExitCheck, binding_value, check_loop_hold,
+    LoopFrameHold, WithExitCheck, advanced_root, binding_value,
+    check_loop_hold,
     StorageEdges, resolve_source_writes, storage_closure, storage_edges,
 )
 
@@ -91,32 +89,33 @@ if TYPE_CHECKING:
 FOREIGN = -1
 UNBOUND = -2
 
-# Holder of every pointer that left through a call argument: never dies.
-_ESCAPED = "__escaped"
-# The holder a tuple site reports when only a handed-out pointer or an
-# iterator still reaches its object (`tuple_own_sites`).
-ESCAPED_HOLDER = _ESCAPED
 
-# Names that take a pointer INTO their argument's storage rather than a copy.
-_PTR_TAKING_CALLS = ("take_ptr", "Ptr")
-_PTR_COERCIONS = ("record_to_ptr", "record_to_const_ptr",
-                  "upcast_to_ptr", "upcast_to_const_ptr")
+class _Sink(Enum):
+    # Holder of every pointer that left through a call argument: never dies.
+    # The replay's own; the borrow tracker never holds it.
+    ESCAPED = "escaped"
+
+
+_ESCAPED = _Sink.ESCAPED
+
+# What holds loans in the replay: the tracker's holders and the sink.
+_ReplayHolder = Holder | _Sink
 
 class _Loan(NamedTuple):
     """One loan a holder carries: the root it is on, its kind, the origins
     of the root when it was taken, and -- for a tuple root -- which element
     of it the loan points into (None: the whole tuple, or an element no
     literal index names)."""
-    root: str
+    root: StorageKey
     kind: BorrowKind
     origins: frozenset[int]
     elem: int | None = None
 
 
-def _loan_on(loan_root: str, name: str) -> bool:
+def _loan_on(loan_root: StorageKey, name: str) -> bool:
     """A loan whose storage key is `loan_root` is on `name`'s storage (the
-    key spells a field path below its name, `t.xs`)."""
-    return loan_root == name or loan_root.startswith(name + ".")
+    key may be a field path below its name, `t.xs`)."""
+    return loan_root.root == name
 
 
 def keeps_pointer(t: TpyType | None, *, fresh: bool) -> bool:
@@ -272,56 +271,24 @@ def rebinds_owning_tuple(ctx: 'SemanticContext', func: 'TpyFunction | None',
                                   for b in bindings)
 
 
-# A place: the name its path starts at, and the element of it a literal
-# index names (None: the whole value).
-_Place = tuple[str, int | None]
-
-
 def _kept_places(ctx: 'SemanticContext', value: TpyExpr
-                 ) -> list[tuple[TpyExpr, _Place | None, int | None]]:
+                 ) -> list[tuple[TpyExpr, Place | None, int | None]]:
     """The operands a value about to be bound keeps a reference into --
     each arm of a ternary, each element of a tuple literal but a VALUE one
     (a fresh object or a copy, made before anything is rebound), a call
-    through what it may lend under its contract (not what its body is
-    proven to return: the answer must not depend on whether the callee's
-    body was analyzed first) -- each with the place it is (None for a
-    shape that is no place) and the element of the value it lands in (a
-    tuple literal's index; None: the whole value). A call keeps every
-    operand it lends, whatever its result type: a callee may keep an
-    argument elsewhere (`k.save(t[0])` storing a `Ptr` to it)."""
-    out: list[tuple[TpyExpr, _Place | None, int | None]] = []
+    through what it may retain under its contract (`ContractLend`: not
+    what its body is proven to return, so the answer does not depend on
+    whether the callee's body was analyzed first) -- each with the one
+    place holding it (`Use.HOLDER`; None for a shape that is no place or
+    may be several) and the element of the value it lands in (a tuple
+    literal's index; None: the whole value)."""
+    out: list[tuple[TpyExpr, Place | None, int | None]] = []
+    contract = ContractLend(ctx)
 
     def leaf(e: TpyExpr, part: int | None) -> None:
-        e = _peel(e)
-        if isinstance(e, (TpyCall, TpyMethodCall)):
-            for src in call_contract_lend_exprs(e):
-                # A pointer-free operand reaches the callee as a copy
-                # (`range(len(t[0].ns))`), so the callee keeps nothing of it.
-                t = ctx.get_expr_type(src)
-                if t is not None and holds_no_pointer(t):
-                    continue
-                leaf(src, part)
-            return
-        if isinstance(e, TpyGeneratorExpression):
-            ops = call_borrow_operands(e)
-            if ops is not None:
-                # A capture the frame holds whole is the creator's variable,
-                # read afresh at each pull, which a rebind keeps current.
-                for src in call_lend_sources(
-                        ops, None, held_whole_borrow_sources(ops.fi),
-                        expr_type=None):
-                    if not (src.held_whole and src.idx >= 0):
-                        leaf(src.expr, part)
-                return
-        p, elem = e, None
-        while isinstance(p, (TpySubscript, TpyFieldAccess)):
-            key = (element_index_key(p.index)
-                   if isinstance(p, TpySubscript) else None)
-            elem = (key[1] if key is not None and key[0] == "lit"
-                    and isinstance(key[1], int) else None)
-            p = _peel(p.obj)
-        out.append((e, (p.name, elem) if isinstance(p, TpyName) else None,
-                    part))
+        roots = storage_roots(_peel(e), Use.HOLDER, None, contract)
+        for operand, kept in roots.by_operand():
+            out.append((_peel(operand), kept.single_place(), part))
 
     inner = _peel(value)
     for arm in ((inner.then_expr, inner.else_expr)
@@ -347,26 +314,25 @@ def kept_elems(ctx: 'SemanticContext', holder: str,
     whole tuple when it mentions `holder` at all: unknown is kept, never
     "keeps nothing"."""
     return frozenset(
-        place[1] if place is not None else None
+        place.elem if place is not None else None
         for e, place, _ in _kept_places(ctx, value)
-        if (place[0] == holder if place is not None
+        if (place.name == holder if place is not None
             else holder in read_names(e)))
 
 
 def binding_roots(ctx: 'SemanticContext',
                   value: TpyExpr) -> tuple[str, ...] | None:
     """The names whose storage a binding's value points into
-    (`_kept_places`), in source order, an operand that cannot hold a
-    pointer (`carries_no_borrow`) left out. None when an operand is no
-    place, or when no operand is left: nothing then says where the
-    pointers point."""
+    (`_kept_places`), in source order, an operand that holds no pointer
+    (`carries_no_borrow`) left out. None when an operand is no place, or
+    when no operand is left: nothing then says where the pointers point."""
     roots: dict[str, None] = {}
     for e, place, _ in _kept_places(ctx, value):
         if carries_no_borrow(ctx, e):
             continue
         if place is None:
             return None
-        roots[place[0]] = None
+        roots[place.name] = None
     return tuple(roots) or None
 
 
@@ -445,10 +411,11 @@ class _RootRule(NamedTuple):
         """None when a binding of `holder` may point into `name`'s
         storage: a parameter of `func` or `self`, its own receiver --
         storage that encloses every holder, so long as nothing replaces it:
-        not readonly by its declared type (the root is marked written,
-        `finalize_pointer_tuples`), and bound by nothing in the body nor
-        through `nonlocal` in a nested def (an `Own` parameter's rebind
-        writes in place under the pointers). Any other root -- a local, a
+        not readonly by its declared type (the binding marks the root
+        written, `StatementAnalyzer._mark_rebound_roots`), and bound by
+        nothing in the body nor through `nonlocal` in a nested def (an
+        `Own` parameter's rebind writes in place under the pointers). Any
+        other root -- a local, a
         global, a binder, a captured name -- may end, or be replaced, while
         a holder still points into it (TODO.md "Storage placement from
         loans"): the phrase naming it and why."""
@@ -517,12 +484,10 @@ class _RootRefusal(NamedTuple):
 
 
 class _Closure(NamedTuple):
-    """A body's pointer tuples (`_alias_closure`), the roots their
-    bindings that own nothing point into, the bindings whose roots
+    """A body's pointer tuples (`_alias_closure`), the bindings whose roots
     `_RootRule` refuses, and each name the set leaves out for another
     reason with its binding from the set and the member it reads there."""
     names: 'dict[str, PointerTupleOwner]'
-    roots: frozenset[str]
     refused: tuple[_RootRefusal, ...]
     mixed: 'tuple[tuple[TpyVarDecl | TpyAssign, str, str], ...]' = ()
 
@@ -543,7 +508,6 @@ def _alias_closure(ctx: 'SemanticContext', func: TpyFunction,
     rule = _root_rule(func, captures=captures)
 
     reads: dict[str, list[str]] = {}
-    alias_roots: dict[str, frozenset[str]] = {}
     # Names out of the set for an element of their own (`owning`) or for
     # bindings whose roots the rule refuses (`root_failed`).
     owning: set[str] = set()
@@ -552,7 +516,6 @@ def _alias_closure(ctx: 'SemanticContext', func: TpyFunction,
         if not bindings or n in seeds or n in excluded:
             continue
         srcs: list[str] = []
-        roots: set[str] = set()
         failed: list[tuple['TpyVarDecl | TpyAssign', str]] = []
         for b in bindings:
             form = _binding_form(ctx, b, None)
@@ -567,14 +530,11 @@ def _alias_closure(ctx: 'SemanticContext', func: TpyFunction,
             why = rule.first_refused(ctx, n, value)
             if why is not None:
                 failed.append((b, why))
-            else:
-                roots.update(binding_roots(ctx, value) or ())
         else:
             if failed:
                 root_failed[n] = failed
             else:
                 reads[n] = srcs
-                alias_roots[n] = frozenset(roots)
     users: dict[str, list[str]] = {}
     for n, srcs in reads.items():
         for s in srcs:
@@ -596,8 +556,6 @@ def _alias_closure(ctx: 'SemanticContext', func: TpyFunction,
         if not bad:
             break
         alive -= bad
-    roots = frozenset(r for n in out if n in alias_roots
-                      for r in alias_roots[n])
     refused: list[_RootRefusal] = []
     for n in seeds:
         if n in excluded:
@@ -610,8 +568,6 @@ def _alias_closure(ctx: 'SemanticContext', func: TpyFunction,
             why = rule.first_refused(ctx, n, value)
             if why is not None:
                 refused.append(_RootRefusal(b, n, None, why))
-            else:
-                roots |= set(binding_roots(ctx, value) or ())
     mixed: list[tuple['TpyVarDecl | TpyAssign', str, str]] = []
     for n, bindings in table.items():
         if not bindings or n in out:
@@ -642,7 +598,7 @@ def _alias_closure(ctx: 'SemanticContext', func: TpyFunction,
         else:
             refused.extend(_RootRefusal(b, n, member, why)
                            for b, why in failures)
-    return _Closure(out, roots, tuple(refused), tuple(mixed))
+    return _Closure(out, tuple(refused), tuple(mixed))
 
 
 class PointerTupleOwner(NamedTuple):
@@ -672,9 +628,8 @@ def pointer_tuple_names(ctx: 'SemanticContext', func: 'TpyFunction | None',
     bindings and is bound from one of them at one (`q = p; q = h.pair`,
     `_alias_closure`): it holds their element pointers or other storage's,
     never an object of its own -- in a nested def, the enclosing
-    body's pointer tuples it captures included. Sema's copy warning, root
-    marking and capture check and the binding planner read this one
-    answer. Once the outermost body is analyzed (`finalize_pointer_tuples`)
+    body's pointer tuples it captures included. Sema's copy warning and
+    capture check and the binding planner read this one answer. Once the outermost body is analyzed (`finalize_pointer_tuples`)
     it is cached; asked during the walk it is the answer over the bindings
     stamped so far, which only grows."""
     if func is None:
@@ -716,14 +671,14 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
                             nested: bool,
                             compat: 'TypeCompatibility') -> None:
     """The pointer-tuple facts of `func` once its body is analyzed, the same
-    whatever the order of its bindings and closures: the roots its own
-    pointer tuples' bindings that own nothing point into
-    (`_Closure.roots`) marked mutated (a binding takes the address of what
-    it reads, `q = h.pair` of `h`'s storage); for the outermost body, the
-    final sets of it, its nested defs and generator expressions, the
-    declared-slot checks of the rebinds the final set leaves out
-    (`TypeCompatibility.park_repointed_tuple_check`), and the closure
-    rejects."""
+    whatever the order of its bindings and closures: its seeds (the owning
+    pointer tuples, kept for the outermost body's pass); for the outermost
+    body, the final sets of it, its nested defs and generator expressions,
+    the root rule's refusals, the declared-slot checks of the rebinds the
+    final set leaves out (`TypeCompatibility.park_repointed_tuple_check`),
+    and the closure rejects. The roots a binding points into are marked
+    written by the body walk, at the binding
+    (`StatementAnalyzer._mark_rebound_roots`)."""
     # The ownership fact is complete once the body is: the owning-sink
     # reads it settles may declare copies the checks below read.
     compat.settle_owning_reads()
@@ -733,12 +688,10 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
     excluded = frozenset(f.current_param_names | f.current_nonlocal_names)
     owners = _owners(ctx, func, f.current_reassigned_vars, excluded)
     ctx.pointer_tuple_seeds[func] = (owners, excluded)
-    closure = _alias_closure(ctx, func, owners, excluded)
-    final = closure.names
-    for root in sorted(closure.roots):
-        ctx.mark_param_mutated(root)
     if nested:
         return
+    closure = _alias_closure(ctx, func, owners, excluded)
+    final = closure.names
     ctx.pointer_tuples_by_func[func] = final
     sets: list[tuple[TpyFunction, _Closure]] = [(func, closure)]
     defs: list[TpyNestedDef] = []
@@ -762,7 +715,7 @@ def finalize_pointer_tuples(ctx: 'SemanticContext',
         src = by_func.get(creator) or {}
         inherited = {n: src[n] for n in reads if n in src}
         if fn.is_genexpr:
-            inner_closure = _Closure(inherited, frozenset(), ())
+            inner_closure = _Closure(inherited, ())
         else:
             seeds, inner_excluded = ctx.pointer_tuple_seeds.get(
                 fn, ({}, frozenset()))
@@ -990,13 +943,13 @@ def _note_rebind_site(ctx: 'SemanticContext', stmt: TpyStmt, name: str,
     return True
 
 
-def _live_after_site(stmt: TpyStmt, name: str) -> frozenset[str] | None:
+def _live_after_site(stmt: TpyStmt, name: str) -> frozenset[Holder] | None:
     """The names live right after `stmt` binds `name`: a match capture's
     are those of every arm that captures it (it binds at the arm's entry);
     None where liveness never walked the body."""
     if not isinstance(stmt, TpyMatch):
         return stmt.live_names_after  # type: ignore[attr-defined]
-    live: set[str] = set()
+    live: set[Holder] = set()
     for case in stmt.cases:
         if not any(cap.name == name
                    for cap in iter_capture_bindings(case.pattern)):
@@ -1066,7 +1019,7 @@ def global_write_facts(
 @dataclass
 class _State:
     origins: dict[str, frozenset[int]] = field(default_factory=dict)
-    loans: dict[str, frozenset[_Loan]] = field(default_factory=dict)
+    loans: dict[_ReplayHolder, frozenset[_Loan]] = field(default_factory=dict)
 
     def copy(self) -> '_State':
         return _State(dict(self.origins), dict(self.loans))
@@ -1160,8 +1113,8 @@ class _Replay:
         self.pass_scoped: IdentityMap = IdentityMap()
         for name, loop in ctx.func.pass_scoped_frames.items():
             self.pass_scoped.setdefault(loop, set()).add(name)
-        # The loop each iterator holder iterates.
-        self.iter_loops: dict[str, TpyForEach] = {}
+        # Each loop's running iterator, numbered in walk order.
+        self.iter_ordinals: IdentityMap = IdentityMap()
 
     def edges(self) -> StorageEdges:
         """The body's loan graph, once the walk has filed every loan."""
@@ -1213,8 +1166,9 @@ class _Replay:
                     # the source's element, whether or not the tracker
                     # filed the loan (a module-level target is a global).
                     alias = (frozenset((_Loan(
-                        src.name, BorrowKind.ALIAS,
-                        self.origins_of(src.name, st), i),))
+                        StorageKey.of_name(src.name), BorrowKind.ALIAS,
+                        self.origins_of(StorageKey.of_name(src.name), st),
+                        i),))
                         if isinstance(src, TpyName) and src.name != name
                         and not takes else frozenset())
                     holder_type = (s.target_types[i]
@@ -1314,8 +1268,11 @@ class _Replay:
         raise AssertionError("alias-rebind loop replay did not converge")
 
     def walk_for(self, s: TpyForEach, st: _State) -> _State | None:
-        self.for_edges.append((bound_names_of(s),
-                               _root_name_of_expr(_peel(s.iterable))))
+        # Call-blind: a loop over a call is "untraced" here. Following the
+        # call's lends makes the loop-source write proof
+        # (`resolve_source_writes`) copy a value loop variable it moved
+        # (`for x in v` under `for v in m.values()`, `out.append(x)`).
+        self.for_edges.append((bound_names_of(s), advanced_root(s)))
         self.expr_effects(s.iterable, st, s, top_is_bind=True)
         groups = self.groups(s)
         # The running iterator is a holder bound from the iterable, alive
@@ -1324,11 +1281,10 @@ class _Replay:
         # (a call result) is the object the iterator runs over, so its own
         # type says whether that object can keep a pointer.
         iter_key = self.iter_holder(s)
-        self.iter_loops[iter_key] = s
         holds = (bind_kind_of(self.ctx, s.iterable) is not BindKind.RVALUE
                  or keeps_pointer(self.ctx.get_expr_type(s.iterable),
                                   fresh=True))
-        self.bind_foreign(s, iter_key, s.iterable, st, holds=holds)
+        self.bind_iterator(s, iter_key, st, holds=holds)
 
         # The iterable is evaluated once, before the first pass: what the
         # variable borrows is the storage its source held then, never what a
@@ -1420,20 +1376,34 @@ class _Replay:
 
     # -- bindings --
 
-    def groups(self, stmt: TpyStmt) -> dict[str, list[tuple[str, LoanInfo]]]:
-        # The tracker files every loop's iterator under one borrower; here
-        # each loop's iterator is a holder of its own.
-        iter_key = (self.iter_holder(stmt) if isinstance(stmt, TpyForEach)
-                    else ITER_BORROWER)
-        out: dict[str, list[tuple[str, LoanInfo]]] = {}
+    def groups(self, stmt: TpyStmt
+               ) -> dict[Holder, list[tuple[StorageKey, LoanInfo]]]:
+        """The loans the tracker filed at `stmt`, by holder. A running
+        iterator filed there is a holder of the replay only when `stmt` is
+        its own `for`: a comprehension's iterator ends inside the statement
+        that runs it."""
+        out: dict[Holder, list[tuple[StorageKey, LoanInfo]]] = {}
         for storage, holder, info in self.stmt_loans.get(stmt, ()):
-            if holder == ITER_BORROWER:
-                holder = iter_key
+            if isinstance(holder, IterHolder) and holder.node is not stmt:
+                continue
             out.setdefault(holder, []).append((storage, info))
         return out
 
-    def iter_holder(self, loop: TpyForEach) -> str:
-        return loop_iterator_name(loop)
+    def iter_holder(self, loop: TpyForEach) -> IterHolder:
+        if loop not in self.iter_ordinals:
+            self.iter_ordinals[loop] = len(self.iter_ordinals)
+        return IterHolder(loop)
+
+    def bind_iterator(self, s: TpyForEach, holder: IterHolder, st: _State,
+                      *, holds: bool) -> None:
+        """`s`'s running iterator holds what the tracker filed for it and,
+        with `holds`, what it may keep of the iterable. It binds no name:
+        it owns no storage and nothing deletes or rebinds it."""
+        loans = self.loans_of(holder, self.groups(s), s.iterable, st)
+        if holds:
+            loans |= self.path_loans(holder, s.iterable, st, None, None,
+                                     fresh=False, held=loans)
+        st.loans[holder] = loans
 
     def bind(self, stmt: TpyStmt, name: str, value: TpyExpr | None,
              kind: BindKind | None, st: _State, node: object) -> None:
@@ -1517,7 +1487,7 @@ class _Replay:
         st.loans[name] = loans
         self.bind_storage(name, stmt if owns else None, st)
 
-    def path_loans(self, holder: str, value: TpyExpr, st: _State,
+    def path_loans(self, holder: Holder, value: TpyExpr, st: _State,
                    holder_type: TpyType | None, part: int | None, *,
                    fresh: bool, held: frozenset[_Loan]) -> frozenset[_Loan]:
         """The loans on owned tuple elements that `holder`, bound from
@@ -1558,7 +1528,7 @@ class _Replay:
                 reached: list[tuple[str, int | None]] = [
                     (r, None) for r in sorted(read_names(e))]
             else:
-                root, elem = place
+                root, elem = place.name, place.elem
                 # An unpack target holds one element of a tuple it names.
                 if (elem is None and part is not None and lands is None
                         and isinstance(_peel(e), TpyName)):
@@ -1567,14 +1537,15 @@ class _Replay:
             for root, elem in reached:
                 if root == holder:
                     continue
-                origins = self.origins_of(root, st)
+                key = StorageKey.of_name(root)
+                origins = self.origins_of(key, st)
                 var_type = types.get(root)
                 need = self.owned_at(var_type, origins)
                 if elem is not None:
                     need &= {elem}
                 for loan in held | out:
                     need -= self.loan_elems(loan, root, origins, var_type)
-                out.update(_Loan(root, BorrowKind.ALIAS, origins, i)
+                out.update(_Loan(key, BorrowKind.ALIAS, origins, i)
                            for i in need)
         return frozenset(out)
 
@@ -1582,10 +1553,11 @@ class _Replay:
         """Loans registered on a statement for a holder the statement's own
         shape did not bind (a capture, a target bound by a helper)."""
         for holder in self.groups(stmt):
-            if holder not in self.bound_here and holder != ITER_BORROWER:
+            if holder not in self.bound_here:
                 self.bind_foreign(stmt, holder, None, st)
 
-    def loans_of(self, holder: str, groups: dict[str, list[tuple[str, LoanInfo]]],
+    def loans_of(self, holder: Holder,
+                 groups: dict[Holder, list[tuple[StorageKey, LoanInfo]]],
                  value: TpyExpr | None, st: _State, *,
                  whole: bool = True) -> frozenset[_Loan]:
         """`whole`: the holder binds the value itself (`u = p`), so a tuple
@@ -1617,15 +1589,17 @@ class _Replay:
                     if whole else ()):
             arm = _peel(arm)
             if isinstance(arm, TpyName) and arm.name != holder:
-                origins = self.origins_of(arm.name, st)
+                arm_key = StorageKey.of_name(arm.name)
+                origins = self.origins_of(arm_key, st)
                 for i in self.owned_at(self.local_type(arm.name, arm),
                                        origins):
-                    out.add(_Loan(arm.name, BorrowKind.ALIAS, origins, i))
+                    out.add(_Loan(arm_key, BorrowKind.ALIAS, origins, i))
         # A generator object keeps what its frame borrows for as long as it
-        # lives, and any call result keeps what its callee's recorded return
-        # borrows name (`c = mk(g)` where `mk` returns a coroutine over it).
-        for root in _frame_roots(inner) + self.result_borrow_roots(inner):
-            if root != holder:
+        # lives, and any call result keeps what it may point into
+        # (`c = mk(g)` where `mk` returns a coroutine over it).
+        for root in (frame_operand_keys(inner)
+                     + _call_loan_keys(self.ctx, inner)):
+            if root.as_name() != holder:
                 out.add(_Loan(root, BorrowKind.OPAQUE,
                               self.origins_of(root, st)))
         if holder in self.frames:
@@ -1635,8 +1609,9 @@ class _Replay:
             fact = self.ctx.func.frame_local_roots.get(holder)
             for root in fact[0] if fact is not None else ():
                 if root is not None and root != holder:
-                    out.add(_Loan(root, BorrowKind.OPAQUE,
-                                  self.origins_of(root, st)))
+                    key = StorageKey.of_name(root)
+                    out.add(_Loan(key, BorrowKind.OPAQUE,
+                                  self.origins_of(key, st)))
         return frozenset(out)
 
     def owned_at(self, slot: TpyType | None,
@@ -1656,45 +1631,29 @@ class _Replay:
             out.update(i for i, own in enumerate(mask) if own)
         return out
 
-    def result_borrow_roots(self, e: TpyExpr) -> list[str]:
-        """What a call's result keeps per its callee's recorded return
-        borrows."""
-        return [root for src in self.result_lend_exprs(e)
-                for root in _borrow_storage_roots(src)]
-
-    def result_lend_exprs(self, e: TpyExpr) -> list[TpyExpr]:
-        """The operands a call's result may point into."""
-        ops = call_borrow_operands(e)
-        if ops is None:
-            return []
-        # Module statements are analyzed before any body, so a module
-        # function's borrow facts are still unknown here; unknown means
-        # aliased -- every lent argument -- as the pass's rule says
-        # (BUGS.md#module-level-call-source-facts-not-ready).
-        sources = (None if self.ctx.is_top_level
-                   and ops.fi.root.return_borrows_from is None
-                   else recorded_return_borrow_sources(ops.fi))
-        return [src.expr for src in call_lend_sources(ops, sources,
-                                                      expr_type=None)]
-
-    def origins_of(self, root: str, st: _State) -> frozenset[int]:
-        base = root.split(".", 1)[0]
-        return st.origins.get(base, frozenset((FOREIGN,)))
+    def origins_of(self, key: StorageKey, st: _State) -> frozenset[int]:
+        return st.origins.get(key.root, frozenset((FOREIGN,)))
 
     # -- expressions --
 
     def expr_effects(self, e: TpyExpr, st: _State, stmt: TpyStmt,
-                     top_is_bind: bool = False) -> None:
+                     top_is_bind: bool = False,
+                     bound: 'IdentitySet[TpyExpr] | None' = None) -> None:
         """Replay a walrus binding and a pointer escaping through a call
-        argument, in evaluation order. The top node of a bind is the
-        holder's own loan, registered by the tracker, not an escape."""
+        argument, in evaluation order. What a bind's value climbs through to
+        its storage (`_bound_nodes`, computed at the top node of the bind)
+        is the holder's own loan, registered by the tracker, not an
+        escape."""
+        if top_is_bind:
+            bound = _bound_nodes(self.ctx, e)
         inner = _peel(e)
         if isinstance(inner, TpyNamedExpr):
             self.bind(stmt, inner.target, inner.value,
                       self.bind_kinds.get(inner), st, inner)
             return
-        if not top_is_bind:
-            for root in _ptr_escape_roots(e):
+        if bound is None or e not in bound:
+            for name in _ptr_escape_roots(self.ctx, e):
+                root = StorageKey.of_name(name)
                 st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
                     _Loan(root, BorrowKind.PTR, self.origins_of(root, st))}
         # A generator or coroutine handed over to an owning parameter
@@ -1703,16 +1662,17 @@ class _Replay:
         # with the statement.
         for arg in _owned_args(inner):
             arg = _peel(arg)
-            roots = _frame_roots(arg) + self.result_borrow_roots(arg)
+            roots = (frame_operand_keys(arg)
+                     + _call_loan_keys(self.ctx, arg))
             if isinstance(arg, TpyName) and arg.name in self.frames:
                 # The generator or coroutine object itself changes hands.
-                roots.append(arg.name)
+                roots.append(StorageKey.of_name(arg.name))
             for root in roots:
                 st.loans[_ESCAPED] = st.loans.get(_ESCAPED, frozenset()) | {
                     _Loan(root, BorrowKind.OPAQUE, self.origins_of(root, st))}
         # TODO: walk through parse.nodes.walk_expr_tree (the shared pruning visitor) instead of an own children() loop.
         for child in inner.children():
-            self.expr_effects(child, st, stmt)
+            self.expr_effects(child, st, stmt, bound=bound)
         if isinstance(inner, TpyAwait):
             # `await c` runs the coroutine to its end: it holds nothing after.
             awaited = _peel(inner.value)
@@ -1774,7 +1734,7 @@ class _Replay:
         fact = self.ctx.func.frame_local_roots.get(holder)
         roots = ({r for r in fact[0] if r is not None}
                  if fact is not None else
-                 {r.split(".", 1)[0] for r, *_ in self.hold_loans(holder)})
+                 {r.root for r, *_ in self.hold_loans(holder)})
         upstream, reach = storage_closure(self.edges(), self.frames, roots)
         return (frozenset(reach),
                 frozenset(n for n in upstream if self.is_module_global(n)))
@@ -1814,7 +1774,6 @@ class _Replay:
         Record, per tuple site of a body, the holder its lowering names
         when it refuses the site (`tuple_own_sites`), and refuse rebinding
         a generator name."""
-        loops = self.iter_loops
         frame_sites = self.ctx.func.frame_rebind_sites
         # `outer = p` with `p` bound in the loop body is diagnosed at the
         # alias site by the scope-escape check, which hoists `p` for it;
@@ -1861,11 +1820,11 @@ class _Replay:
             own_elems = (self.owned_at(var_type, frozenset((site_id,)))
                          if is_tuple and site_id is not None else set())
             # The holders whose loan points into what the name holds here.
-            own_by: set[str] = set()
-            clobbered: dict[str, BorrowKind] = {}
+            own_by: set[_ReplayHolder] = set()
+            clobbered: dict[Holder, BorrowKind] = {}
             for holder, loans in st.loans.items():
                 # A loop's iterator is live where its loop can pull from it
-                # again (`loop_iterator_name`).
+                # again (`liveness.loop_iterator`).
                 read_again = live is not None and holder in live
                 for loan in loans:
                     root, kind, lorigins, elem = loan
@@ -1882,7 +1841,7 @@ class _Replay:
                     # escaped holder (a pointer handed out through a call, a
                     # frame consumed by a call) has no liveness to consult:
                     # it is too coarse for a warning.
-                    if not (read_again and holder != _ESCAPED
+                    if not (read_again and holder is not _ESCAPED
                             and site_id in lorigins
                             and not (kind is BorrowKind.ALIAS
                                      and (holder, name) in escape_warned)):
@@ -1895,15 +1854,16 @@ class _Replay:
                 # own; any other tuple (an `Own` parameter, a loop variable,
                 # a name the pointer-tuple form refuses) is refused at the
                 # site by its lowering, naming the holder.
-                named = sorted(h for h in own_by if h != _ESCAPED
-                               and h not in loops)
+                named = sorted(h for h in own_by if isinstance(h, str))
                 # A pointer handed out of the tuple or an iterator over it
                 # holds the object with no name to report.
                 self.ctx.tuple_own_sites[stmt] = (
-                    named[0] if named else ESCAPED_HOLDER if own_by else None)
+                    named[0] if named
+                    else UnnamedHolder.POINTER_OR_ITERATOR if own_by
+                    else None)
             if clobbered:
                 self.warn(site, var_type, clobbered,
-                          whole_object=not is_tuple, loops=loops)
+                          whole_object=not is_tuple)
 
     def loan_elems(self, loan: _Loan, name: str, origins: frozenset[int],
                    var_type: TpyType | None) -> set[int]:
@@ -1932,16 +1892,20 @@ class _Replay:
         return t
 
     def warn(self, site: _Site, var_type: TpyType | None,
-             clobbered: dict[str, BorrowKind], *, whole_object: bool,
-             loops: 'Mapping[str, TpyForEach]') -> None:
-        """`loops`: the loop each iterator holder iterates."""
+             clobbered: dict[Holder, BorrowKind], *,
+             whole_object: bool) -> None:
         stmt, name = site.stmt, site.name
         # A variable is named before a loop's iterator, an outer loop's
-        # iterator before an inner one's.
-        def order(h: str) -> tuple[bool, int, int, str]:
-            loc = loops[h].loc if h in loops else None
-            return (h in loops, loc.line if loc else 0,
-                    loc.column if loc else 0, h)
+        # iterator before an inner one's; loops at one location (or none)
+        # in walk order. Every iterator the replay holds was bound by
+        # `walk_for`, so its loop has an ordinal.
+        def order(h: Holder) -> tuple[bool, int, int, int, str]:
+            if isinstance(h, IterHolder):
+                loc = h.node.loc
+                return (True, loc.line if loc else 0,
+                        loc.column if loc else 0, self.iter_ordinals[h.node],
+                        "")
+            return (False, 0, 0, 0, h)
 
         alias = min(clobbered, key=order)
         if alias == name and site.kept:
@@ -1955,10 +1919,9 @@ class _Replay:
                 f"that object's storage each time the loop runs it again; "
                 f"keeping it is not yet supported here", stmt)
             return
-        loop = loops.get(alias)
-        if loop is not None:
+        if isinstance(alias, IterHolder):
             self.ctx.warning(
-                f"{_loop_shown(loop)} will not keep iterating the object it "
+                f"{_loop_shown(alias.node)} will not keep iterating the object it "
                 f"was given -- '{name}' is rebound here into that object's "
                 f"storage; bind the new value to a name of its own", stmt)
             return
@@ -1999,33 +1962,51 @@ def _names_bound_in(body: list[TpyStmt]) -> set[str]:
     return out
 
 
-def _frame_roots(e: TpyExpr) -> list[str]:
-    operands = frame_borrowed_operands(e)
-    return [root for src in operands or ()
-            for root in _borrow_storage_roots(src)]
+def _call_loan_keys(ctx: 'SemanticContext', e: TpyExpr) -> list[StorageKey]:
+    """The storage a call result `e` may keep (`call_loans` under MAY); a
+    guess about a pending callee counts: every loan here is OPAQUE."""
+    return [loan.key for loan in call_loans(e, MayLend(ctx))
+            if isinstance(loan.key, StorageKey)]
 
 
-def _ptr_escape_roots(e: TpyExpr) -> list[str]:
+def _ptr_escape_roots(ctx: 'SemanticContext', e: TpyExpr) -> list[str]:
     """Storage roots a pointer or view into them is minted from by this
-    node: `take_ptr(x)` / `Ptr(x)`, a record-to-pointer coercion, a slice
-    view. Where such a node is not the whole value of a binding, the pointer
-    went somewhere the tracker cannot see (a call argument, a container),
-    so its root is held for the rest of the body."""
-    if isinstance(e, TpyCoerce) and e.coercion.name in _PTR_COERCIONS:
-        return addr_taken_roots(e.expr)
+    node: an address-taking coercion (`Coercion.produces_non_null_ptr`), a
+    borrowing constructor (`borrowing_ctor_arg`: `Ptr(x)`, `take_ptr(x)`,
+    `StrView(s)`), a slice view. Where such a node is not part of a
+    binding's own value, the pointer went somewhere the tracker cannot see
+    (a call argument, a container), so its root is held for the rest of
+    the body."""
+    if isinstance(e, TpyCoerce) and e.coercion.produces_non_null_ptr:
+        return _held_roots(ctx, e.expr)
     inner = _peel(e)
-    if isinstance(inner, TpyCall) and inner.args:
-        fn = inner.func
-        if isinstance(fn, TpyName) and fn.name in _PTR_TAKING_CALLS:
-            return addr_taken_roots(inner.args[0])
-        fi = inner.resolved_function_info
-        if fi is not None and fi.value_ptr_coercion:
-            return addr_taken_roots(inner.args[0])
-        if inner.call_type is not None and inner.call_type.is_pointer():
-            return addr_taken_roots(inner.args[0])
+    arg = borrowing_ctor_arg(inner)
+    if arg is not None:
+        return _held_roots(ctx, arg)
     if isinstance(inner, TpySubscript) and isinstance(inner.index, TpySlice):
-        return addr_taken_roots(inner.obj)
+        return _held_roots(ctx, inner.obj)
     return []
+
+
+def _bound_nodes(ctx: 'SemanticContext',
+                 value: TpyExpr) -> IdentitySet[TpyExpr]:
+    """The nodes a binding's `value` climbs through to the storage it
+    holds (`leaves` under MAY: its steps, the calls it forwards through and
+    the operands they lend), by identity: a pointer minted there is the
+    binding's own loan, not an escape."""
+    out: IdentitySet[TpyExpr] = IdentitySet([value])
+    for leaf in leaves(value, MayLend(ctx), split=False):
+        out.update(step.node for step in leaf.path)
+        out.add(leaf.node)
+    return out
+
+
+def _held_roots(ctx: 'SemanticContext', e: TpyExpr) -> list[str]:
+    """The storage a pointer minted from `e` keeps alive (`Use.HOLDER`); an
+    operand no place names keeps every name it reads alive."""
+    roots = storage_roots(e, Use.HOLDER, None, MayLend(ctx))
+    return roots.names + [n for u in roots.unknown for n in read_names(u)
+                          if n not in roots.names]
 
 
 def decide_rebind_storage(ctx: 'SemanticContext', stmts: list[TpyStmt], *,

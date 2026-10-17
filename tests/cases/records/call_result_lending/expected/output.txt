@@ -1,0 +1,26 @@
+lend write 1
+lend bind 1
+lend multi 2 1
+lend gen [1] 1
+lend async 2 2
+lend ctor 1 1
+lend free 2
+lend closure 3
+field meth 1
+field free 1
+field closure 1
+field ctor 1
+select 2 2
+chain 0
+walrus [3, 3, 3]
+callable 5
+temp nested
+overload 11 2
+overload method 11 2
+tuple static static
+cross method 3
+synth iter 11 2
+module 0
+module 1
+cross module 1
+cross module 11

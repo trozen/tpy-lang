@@ -530,8 +530,8 @@ the receiver qualifier it would have had at the call site.
 Which part of a result follows the receiver is DECLARED (`FunctionInfo.following_components`,
 read through `typesys.following_components` at the call's specialization -- a marker on a part
 that holds no reference, `auto_readonly[T]` at `T = int32`, follows nothing). What a call lends
-of its receiver is one fact, `typesys.receiver_lends`, consumed by the call and the existing loan
-machinery, never by the binding site:
+of its receiver is consumed by the call (a handle, `typesys.receiver_lends_handle`) and the
+existing loan machinery (a reference), never by the binding site:
 
 - **A handle's referent** (`Ptr[auto_readonly[T]]`, `Span[auto_readonly[T]]`, an `Rc`'s payload):
   every copy of the handle reaches it and nothing tracks the copies, so the CALL demotes its
@@ -559,12 +559,13 @@ machinery, never by the binding site:
   An `ArrayList` / span loop variable is the element itself (the `SpanIter` step lends it), so
   a write through it reaches the container and demotes the iterated source like any loop write.
 - **A reference** (the whole result, a tuple element): the call loans its receiver to whatever
-  binds the result (`_register_call_result_borrow` reads `typesys.result_borrow_sources`; a
-  `for` over the call files it as the iteration's loan), so a write through any place derived
-  from it -- a local, a walrus, a rebind, an unpack, a return, a loop variable -- climbs that
-  loan; a read-only alias leaves the receiver const and binds const, since C++ picks the clone by
-  the receiver. A receiver that is itself such a call lends ITS receiver (`w.me().ref()` loans
-  `w`, `sema.context.lent_receivers`), and the THIR const verdict follows the same chain. A
+  binds the result (`_register_call_result_borrow` files the storage walk's `call_loans` under
+  the MAY call policy, `sema/call_lends.py`; a `for` over the call files it as the iteration's
+  loan), so a write through any place derived from it -- a local, a walrus, a rebind, an unpack,
+  a return, a loop variable -- climbs that loan; a read-only alias leaves the receiver const and
+  binds const, since C++ picks the clone by the receiver. A receiver that is itself a lending call
+  lends what IT lends (`w.me().ref()` loans `w`, by declaration or by the inferred fact alike),
+  and the THIR const verdict follows the same chain. A
   place derived through a field of the result (`x = o.b.get().leaf`) is bound eagerly: the
   receiver is demoted at that binding.
 
@@ -630,9 +631,9 @@ class H:
         self.ro = other           # error: Cannot assign to readonly field 'ro'
 ```
 
-The rule has two halves, decided once per write by the mutation mode of the
-place walkers (`_root_name_of_expr` / `addr_taken_roots` given the expression
-types, `tpyc/sema/context.py`); the const walkers of every layer step the
+The rule has two halves, decided once per write by the place climb's
+PLACE / POINTEE questions (`storage_roots`, `tpyc/sema/storage_walk.py`);
+the const walkers of every layer step the
 same way (`value_category.const_place`, one step predicate,
 `typesys.indirection_referent_readonly`):
 
@@ -740,10 +741,10 @@ decided where the markers sit, in `_clone_auto_readonly`
 `following_components`): the whole result, a `Ptr` pointee, a `Span` element,
 a tuple element, a union member. A marker on a part that holds no reference
 at the call's specialization is inert (`typesys.following_components`). What a
-call lends of its receiver (`typesys.receiver_lends`) is consumed by the call
-and the loan machinery, never by a binding site: a handle's referent demotes
-the receiver at the call, a reference loans the receiver to whatever binds the
-result (see "Usage-dependent receiver const-ness").
+call lends of its receiver is consumed by the call (a handle,
+`typesys.receiver_lends_handle`) and the loan machinery, never by a binding
+site: a handle's referent demotes the receiver at the call, a reference loans
+the receiver to whatever binds the result (see "Usage-dependent receiver const-ness").
 
 The two clones of a pair whose whole result follows the receiver are ONE
 callable for THIR and MIR: they publish the receiver-neutral result

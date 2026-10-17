@@ -10,6 +10,7 @@ from contextlib import AbstractContextManager, ExitStack, nullcontext
 from dataclasses import replace as dc_replace
 from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 
+from ..holders import IterHolder
 from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import binds_runtime_symbol, body_function_info
@@ -72,7 +73,7 @@ from ..prescan import (
     int_constant_too_wide, storage_spelling, walrus_names_of)
 from ..diagnostics import Scope, SemanticError, OPTIONAL_NONE_ACCESS_WARNING
 from .. import qnames
-from .context import GenexprCreation, PENDING_CONTAINER_TYPES, _root_name_of_expr, _storage_root, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
+from .context import GenexprCreation, PENDING_CONTAINER_TYPES, is_body_like_scope, register_binding_borrow, ephemeral_borrow_root, record_stmt_borrow_binding, contains_pending_leaf, note_owned_local, holds_frame_object, frame_binding_fact, record_frame_binding_roots, call_param_args
 from ..value_category import (frame_factory_callee, is_rvalue_source, binds_owned_value, async_result_aliases,
                              return_type_is_cpp_ref, peel_value_wrappers,
                              lent_operands)
@@ -106,10 +107,11 @@ from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
 from .own_copy import warn_value_call_binding
-from .scope_tracker import lend_roots
+from .scope_tracker import lend_places
 from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
                              credit_implicit_receiver_call, record_implicit_call,
                              record_protocol_arg_calls, record_truth_calls)
+from .storage_walk import StorageKey
 from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage,
                          iteration_yields_copies, register_iteration_loans)
 from .loop_frames import comp_live_region, note_source_writes
@@ -4062,7 +4064,7 @@ class ExpressionAnalyzer:
         rejects. With no `__poll__` FunctionInfo (a coroutine handle) the
         mark is eager.
         """
-        if _root_name_of_expr(operand) is None:
+        if is_rvalue_source(self.ctx, operand):
             check_implicit_readonly_receiver(self.ctx, operand, None,
                                              "__poll__", operand, record=False)
             return
@@ -4387,7 +4389,7 @@ class ExpressionAnalyzer:
         # the old string/span survives the rebind unwarned.
         # Local import: statements <-> expressions circular dodge.
         from .statements import _handle_pinned_view_rebind
-        self.ctx.mark_all_view_borrowers_mutated(name)
+        self.ctx.mark_all_view_borrowers_mutated(StorageKey.of_name(name))
         _handle_pinned_view_rebind(self.ctx, name, expr)
         bt = self.ctx.func.borrow_tracker
         bt.retarget_storage_borrows(name)
@@ -5182,7 +5184,7 @@ class ExpressionAnalyzer:
         source_loans = () if range_args else tuple(
             (key, loan)
             for key, loan in iterated_storage(self.ctx, gen.iterable).loans
-            if _storage_root(key) in free_names)
+            if key.root in free_names)
         assert self.ctx.analyze_genexpr_function is not None
         self.ctx.analyze_genexpr_function(func, source_loans)
         assert func.generator_yield_type is not None
@@ -5207,7 +5209,7 @@ class ExpressionAnalyzer:
             lent = ({r.name for lo in lent_operands(
                          expr.element_expr, func.generator_yield_type,
                          expr_type=None)
-                     for r in lend_roots(self.ctx, lo.expr)}
+                     for r in lend_places(self.ctx, lo.expr)}
                     if frame_yield_may_borrow(func.generator_yield_type)
                     else set())
             n_source = len(range_args) or 1
@@ -5494,7 +5496,7 @@ class ExpressionAnalyzer:
         scope, clause 0's iterable already analyzed (`elem_type` is its
         element) in the enclosing scope."""
         assert self.scopes is not None
-        with self.scopes.comprehension_scope() as inner_scope:
+        with self.scopes.comprehension_scope(expr.generators) as inner_scope:
             return self._enter_comp_clause(expr, 0, elem_type, inner_scope, hint)
 
     def _enter_comp_clause(
@@ -5613,8 +5615,8 @@ class ExpressionAnalyzer:
         assert iterable_type is not None
         # `loan.unplaceable` needs no stamp here: a chain too deep for a loan
         # key never lowers as a comprehension source.
-        register_iteration_loans(self.ctx, gen.iterable, iterable_type,
-                                 excluded_roots=excluded)
+        register_iteration_loans(self.ctx, IterHolder(gen), gen.iterable,
+                                 iterable_type, excluded_roots=excluded)
         # The targets' element origin is not recorded here, so a view hoist
         # must not read the roots an earlier `for` over the same name left.
         for name in names:

@@ -105,7 +105,8 @@ from ...typesys import (
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
 from ...sema.literal_utils import fixed_int_literal_value_from_expr, numeric_literal_type
-from ...prescan import chain_root_name, literal_constant
+from ...prescan import literal_constant
+from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
     is_varargs,
     type_def_of,
@@ -272,7 +273,6 @@ from .predicates import (
     _tuple_name_elem_subscript,
     _borrow_tuple_local_type,
     _tuple_field_opt_elem_subscript,
-    _empty_instantiation_family,
     _field_receiver_ok,
     _field_receiver_or_unbound_self_ok,
     copy_call_arg,
@@ -5948,13 +5948,6 @@ def _shared_pass_through_arg(a: TpyExpr, ptype: 'TpyType | None',
     return ((_resolved_scalar(analyzer.get_expr_type(a), analyzer)
              and not _member_valued_union_slot(a, ptype, analyzer)
              and not _own_cascade_fires(ptype))
-            # A scalar-based `Literal[...]` SLOT (spelled as its base):
-            # sema leaves the arg's literal type unresolved there, so the
-            # resolved-scalar check applies -- slot-keyed on LiteralType,
-            # a domain no other row admits, so admission stays disjoint.
-            or (_literal_scalar_slot(ptype)
-                and _resolved_scalar(analyzer.get_expr_type(a), analyzer)
-                and _witness("arg.literal_scalar_slot"))
             or _own_scalar_rvalue_arg(a, ptype, locals_, analyzer)
             or _own_record_rvalue_arg(a, ptype, locals_, analyzer)
             or _float_literal_pass_through_arg(a, ptype, locals_, analyzer)
@@ -6533,7 +6526,8 @@ def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
     for any source expression -- a local, a field (`m._a`), a call result,
     an element; a record-wrapper source is the `<src>.__deref__()` lvalue
     (a coercing `__deref__` returns a borrow), for named storage: a source
-    rooted at a name (`chain_root_name`) that is not a fresh value. Returns
+    rooted at a name (`path_root` of a member path) that is not a fresh
+    value. Returns
     `("inline" | "wrapper", slot)` or None."""
     if not (isinstance(a, TpyCoerce) and a.coercion.name == "deref_to_target"):
         return None
@@ -6559,7 +6553,7 @@ def _deref_coerce_arg(a: TpyExpr, ptype: 'TpyType | None',
     # and not a fresh value (`R()`, a property or `__getattr__` building
     # one), either of which dies before the callee is done with it.
     if (isinstance(actual, NominalType) and actual.is_user_record
-            and chain_root_name(src) is not None
+            and path_root(src, MEMBER_PATH) is not None
             and not is_rvalue_source(analyzer, src)):
         return "wrapper", slot
     return None
@@ -7467,8 +7461,10 @@ def _own_lvalue_arg(a: TpyExpr, ptype: TpyType | None,
 def _opt_own_record_name_arg(a: TpyExpr, ptype: TpyType | None,
                              locals_: dict[str, TpyType],
                              analyzer) -> 'TpyType | None':
-    """A same-nominal F1-record NAME into an `Optional[Own[T]]` slot
-    (`_urlopen(..., conn)` on `conn: Box[...]`): `_maybe_move`
+    """A same-nominal F1-record or container NAME (record_like admits both)
+    into an `Optional[Own[T]]` slot (`_urlopen(..., conn)` on
+    `conn: Box[...]`, `DictReader(buf, fn)` on `Own[list[str]] | None`):
+    `_maybe_move`
     renders the movable last use `std::move(conn)` BARE -- the
     `std::optional` converting ctor absorbs the moved payload. Gate is
     shape-only; the lowering requires the move verdict (`_is_move_source`)
@@ -7491,35 +7487,6 @@ def _opt_own_record_name_arg(a: TpyExpr, ptype: TpyType | None,
     # payload), and the render arm re-derives the move verdict on the
     # PEELED name (`_is_move_source` -- movable_locals membership + last
     # use), so a copy shape can never render the bare move.
-    a = _peel_coerce(a)
-    if not (isinstance(a, TpyName) and a.name in locals_):
-        return None
-    at = analyzer.get_expr_type(a)
-    at = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-          if at is not None else None)
-    return w if at == w else None
-
-
-def _opt_own_container_name_arg(a: TpyExpr, ptype: TpyType | None,
-                                locals_: dict[str, TpyType],
-                                analyzer) -> 'TpyType | None':
-    """The CONTAINER twin of `_opt_own_record_name_arg`: a same-typed
-    reference-typed container NAME into an `Optional[Own[container]]` slot
-    (`DictReader(buf, fn)` on `fieldnames: Own[list[str]] | None`) -- the
-    movable last use renders `std::move(fn)` bare and the `std::optional`
-    converting ctor absorbs it. Payload-blind render, so the two share the
-    lowering arm; the gate keeps them apart so the record ladders do not
-    silently gain the container slice."""
-    pt = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(ptype)))
-          if isinstance(ptype, TpyType) else None)
-    if not isinstance(pt, OptionalType):
-        return None
-    ow = unwrap_optional_own(pt)
-    if ow is None:
-        return None
-    w = unwrap_readonly(ow.wrapped)
-    if not _f1_container_ref(w):
-        return None
     a = _peel_coerce(a)
     if not (isinstance(a, TpyName) and a.name in locals_):
         return None
@@ -7625,10 +7592,6 @@ def _optional_ptr_arg(a: TpyExpr, ptype: TpyType | None,
     if face == 'container_temp':
         # The spelled container-literal temp + `&(...)` -- flush positions
         # only; the literal's element shapes gate inside its own lowering.
-        return temps_ok
-    if face == 'scalar_temp':
-        # The typed scalar temp + `&(...)` -- flush positions only, like its
-        # ctor/container siblings; the rvalue's own lowering validates it.
         return temps_ok
     # 'name' / 'pass'
     if a.name not in locals_:
@@ -7989,14 +7952,7 @@ def _ctor_instantiation_ok(e: TpyCall, analyzer) -> bool:
             return False
         inherited_arity = True
     if not _f1_record(ct, analyzer):
-        # A zero-arg builtin-CONTAINER instantiation reaching the ctor path
-        # with a constructor fi (`Array[int32, 8]()` -- e.g. the pascal
-        # frontend's default-array init): the same `type_to_cpp(call_type)()`
-        # render with no arg arms to diverge. Arg-ful container ctors keep
-        # rejecting here (their args have their own arms).
-        return (not e.args
-                and _empty_instantiation_family(ct)
-                and _witness("ctor.container_empty_instantiation"))
+        return False
     ri = analyzer.registry.get_record_for_type(ct)
     if ri is None:
         return False
@@ -8088,16 +8044,6 @@ def _str_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
     if isinstance(a, TpyStrLiteral):
         return True
     return (_resolved_str_value(analyzer.get_expr_type(a), analyzer) is not None)
-
-def _literal_scalar_slot(ptype: TpyType | None) -> bool:
-    """A param slot annotated `Literal[...]` over a scalar base -- spelled
-    as the bare base type (`LiteralType` delegates `to_cpp`)."""
-    pt = ptype if isinstance(ptype, TpyType) else None
-    if pt is None:
-        return False
-    pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
-    return isinstance(pt, LiteralType) and _eligible_scalar(pt.base_type)
-
 
 def _own_str_literal_arg(a: TpyExpr, ptype: TpyType | None) -> bool:
     """A str LITERAL into an `Own[str]` ctor slot renders bare
@@ -9584,33 +9530,27 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # bare call), the record-method row's marker twin.
             or (value_opt_ret_ok and _value_opt_ret(ret))
             or (stmt_position and (ret is None or is_void_like_type(ret)))
-            # A DISCARDED record-family result (`asyncio.create_task(...);`
-            # -- the Task handle dropped at statement position): the render
-            # is the same bare call whatever the ignored result, the
-            # qualcall twin of the record-method discard row. Containers
-            # stay out (storage/borrow duality; no witness).
-            or (stmt_position and _moved_record_ret(ret, analyzer)
-                and _witness("method.qualcall.record_discard"))
-            # A DISCARDED container result (`os.listdir(path);` for its
-            # errors alone): no consumer exists, so the storage/borrow
-            # duality that keeps containers out of the value positions
-            # cannot bite -- the render is the same bare call statement.
-            or (stmt_position and _nonvalue_container_ret(ret)
-                and _witness("method.qualcall.container_discard"))
-            # A DISCARDED wrapper-union result (`json.load(fp)` called for
-            # its raise alone): the same bare call statement -- the by-value
-            # wrapper dies at the semicolon, exactly like the
-            # record and container discard rows above.
+            # A DISCARDED result at statement position
+            # (`asyncio.create_task(...);`, `os.listdir(path);`,
+            # `json.load(fp);`): the render is the same bare call whatever
+            # the ignored result -- a record-family nominal, a container
+            # (no consumer exists, so the storage/borrow duality cannot
+            # bite) or a wrapper union; the qualcall twin of
+            # `method.discard`.
             or (stmt_position
-                and _wrapper_union_like(_unwrap_own(unwrap_readonly(
-                    unwrap_ref_type(unwrap_send_sync(ret)))), analyzer)
-                is not None
-                and _witness("method.qualcall.union_discard"))
-            # A record-family RVALUE result consumed whole by a storage sink
-            # (`t1 = asyncio.create_task(reader(b1))` -- the frame-slot
-            # emplace / owned decl takes the bare call): record_ret_ok at
-            # STORAGE already pinned rvalue-source-ness; the F1 row above
-            # keeps the borrow-bind/receiver positions F1-only.
+                and (_moved_record_ret(ret, analyzer)
+                     or _nonvalue_container_ret(ret)
+                     or _wrapper_union_like(_unwrap_own(unwrap_readonly(
+                         unwrap_ref_type(unwrap_send_sync(ret)))), analyzer)
+                     is not None)
+                and _witness("method.qualcall.discard"))
+            # A non-protocol NOMINAL rvalue outside `_f1_container_ref`
+            # consumed whole by a storage sink (`sp = mymod.mk_span(xs)` --
+            # a Span view; the owned decl takes the bare call): real records
+            # take the earlier `record_ret_ok and record_like` row, so this
+            # one admits only the non-record nominals `_moved_record_ret`
+            # lets through. record_ret_ok at STORAGE already pinned
+            # rvalue-source-ness.
             or (storage_ret_ok and record_ret_ok
                 and _moved_record_ret(ret, analyzer)
                 and _witness("method.qualcall.record_storage"))
@@ -11044,9 +10984,8 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
                 and _witness("method.protocol_own_dyn_ret"))
             # A DISCARDED result in statement position: nothing consumes it,
             # so the call renders bare whatever its type -- the same reason
-            # the record-receiver ladder admits `method.record_discard` /
-            # `method.container_discard`. The result-family set exists for
-            # VALUE positions.
+            # the record-receiver ladder admits `method.discard`. The
+            # result-family set exists for VALUE positions.
             or (stmt_position and _witness("method.protocol_discard"))):
         return note_detail("method.protocol.ret_type")
     return _witness("method.protocol")
@@ -12114,8 +12053,8 @@ def _r_union_member_lift_none(req: _ArgReq) -> bool:
 def _r_optional_ptr_no_temp(req: _ArgReq) -> bool:
     # Hardcoded temps_ok=False where the shared `optional_ptr` cell threads
     # the position's own flag: this ladder admits the pointer-repr Optional
-    # faces that need no temp, and gives its two temp-bearing faces
-    # (container literal, scalar pointee) their own flush-gated rows below.
+    # faces that need no temp, and gives its temp-bearing container-literal
+    # face its own flush-gated row below.
     return _optional_ptr_arg(req.a, req.ptype, req.locals_, req.analyzer,
                              temps_ok=False)
 
@@ -12205,11 +12144,6 @@ def _r_optional_ptr_container_temp(req: _ArgReq) -> bool:
                                TpySetLiteral))
             and _optional_ptr_arg_face(req.a, req.ptype, req.locals_,
                                        req.analyzer) == 'container_temp')
-
-
-def _r_optional_ptr_scalar_temp(req: _ArgReq) -> bool:
-    return _optional_ptr_arg_face(req.a, req.ptype, req.locals_,
-                                  req.analyzer) == 'scalar_temp'
 
 
 def _pre_container_slot_family(req: _ArgReq) -> 'bool | None':
@@ -12592,8 +12526,6 @@ _PROTOCOL_ARG_SINK = register_sink(_ArgSink(
         _ArgRow("value_union_temp", _r_value_union_temp, extra=_x_temps_ok),
         _ArgRow("optional_ptr_container_temp",
                 _r_optional_ptr_container_temp, extra=_x_temps_ok),
-        _ArgRow("optional_ptr_scalar_temp", _r_optional_ptr_scalar_temp,
-                extra=_x_temps_ok),
         _ArgRow("protocol_slot", _r_protocol_slot),
     )))
 
@@ -13177,13 +13109,6 @@ _METHOD_ARG_SINK = register_sink(_ArgSink(
         # above for a container pointee as for a record one.
         _ArgRow("optional_ptr_container_temp",
                 _r_optional_ptr_container_temp, extra=_x_temps_ok),
-        # ... and the scalar-pointee sibling of that temp face
-        # (`c.set(int32(99))` at a `T | None` slot resolved to
-        # `const int32_t*`). The ladder's own `optional_ptr_no_temp` row
-        # above is hardcoded temps_ok=False, so the temp-bearing face
-        # needs its own flush-gated row, like the container literal's.
-        _ArgRow("optional_ptr_scalar_temp", _r_optional_ptr_scalar_temp,
-                extra=_x_temps_ok),
         # The full protocol-slot faces (`canvas().draw(square(4))` ->
         # the `Adapter<shape, square> __tmp_N{..}` hoist): the
         # method loop runs the same protocol / dynamic-protocol
@@ -14069,22 +13994,15 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
             # view -- whatever sema stamped).
             or (suspend_ok and ret is not None)
             or (stmt_position and (ret is None or is_void_like_type(ret)))
-            # A DISCARDED F1-record result (`s.get(url);` -- the Response
-            # dropped at statement position): the render is the same bare
-            # call whatever the ignored result, the record sibling of the
-            # container family's stmt_storage_ok row.
-            or (stmt_position and record_like(ret, analyzer)
-                and _witness("method.record_discard"))
-            # A DISCARDED container result (`g.get();` -- the guard payload
-            # dropped): same bare call, the container sibling.
+            # A DISCARDED result at statement position (`s.get(url);`,
+            # `g.un(1);`, `f.make();`): the render is the same bare call
+            # whatever the ignored result -- a record or container, a
+            # recursive-union wrapper (`_storage_call_ret`) or a union.
             or (stmt_position
-                and _storage_call_ret(ret, analyzer) is not None
-                and _witness("method.container_discard"))
-            # A DISCARDED union result (`b.get_span();` -- the Own[union]
-            # variant dropped at statement position): same bare call, the
-            # union sibling.
-            or (stmt_position and _call_ret_union_ok(ret, analyzer)
-                and _witness("method.union_discard"))
+                and (record_like(ret, analyzer)
+                     or _storage_call_ret(ret, analyzer) is not None
+                     or _call_ret_union_ok(ret, analyzer))
+                and _witness("method.discard"))
             # A container return at the for-head ITERABLE sink (`for v in
             # g.get():`): a borrow return captures `auto& __obj_N =`, an
             # Own return the owning capture -- the route pinned the

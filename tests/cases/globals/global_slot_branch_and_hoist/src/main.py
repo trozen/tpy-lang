@@ -57,8 +57,9 @@ if flag:
     # A slot-allocating write ...
     q = Node(7)  # tpyc: ok
     # ... then a borrow-returning Optional call: the `T*` passes through bare
-    # and the slot allocated above stays untouched.
-    q = find(pool, 5)  # tpyc: ok
+    # and the slot allocated above stays untouched. Its warning names a loop
+    # there is none of: BUGS.md#module-level-escape-warning-names-a-loop.
+    q = find(pool, 5)  # tpyc: warning(/will not keep the object it was given/)
 if q is not None:
     # The mutation must reach the pool element, proving the pass-through
     # aliased it rather than reseating a copy into the slot.

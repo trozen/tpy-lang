@@ -9,7 +9,7 @@ namespace tpyapp::main {
 //     for x in mid[0]:
 //         mid = outer[1]
 //         # the merged loan has no index, so the wording may not claim the hit
-//         outer[j] = []  # tpyc: warning(/may hit a borrowed element \(element assignment may invalidate references\)/)
+//         outer[j] = []  # tpyc: warning(/may hit the element being iterated \(element assignment may invalidate the iterator\)/)
 //         print(x)
 void f(std::vector<std::vector<std::vector<int32_t>>>& outer, int32_t j) {
     std::vector<std::vector<int32_t>>* mid = &(::tpy::__getitem__(outer, 0));

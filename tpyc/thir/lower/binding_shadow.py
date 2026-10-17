@@ -33,7 +33,7 @@ def check_read(e, node, lc, declared) -> None:
         return
     if not rec.nested_def and name not in declared and node.cpp is None:
         shadow_emit(lc, "wrong_scope:record_not_declared", name, loc,
-                    rec.kind.value)
+                    rec.label)
     pn = lc.prescan.param_names
     if node.cpp is not None:
         return
@@ -56,7 +56,7 @@ def check_read(e, node, lc, declared) -> None:
         static = project_held(rec, read_type(rec.type), deref, an, pn, ov)
         if static is not mine:
             shadow_emit(lc, f"held_type:{label}:{mine.name}/{static.name}",
-                        name, loc, rec.kind.value)
+                        name, loc, rec.label)
 
 
 def check_binding(e, rec, lc, declared) -> None:
@@ -83,7 +83,7 @@ def check_binding(e, rec, lc, declared) -> None:
         if not same:
             shadow_emit(lc, f"binding:{fld}", name, loc,
                         f"expected={v}:{type(v).__name__} "
-                        f"actual={have}:{type(have).__name__} row={rec.kind.value}")
+                        f"actual={have}:{type(have).__name__} row={rec.label}")
 
 
 def _view_axis_split(binding_type: TpyType | None,

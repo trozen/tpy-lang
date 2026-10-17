@@ -109,7 +109,7 @@ invalidated.** A unified borrow system replaces these with a single, composable 
 ### 1. Dangling Return Detection
 
 **Files**: `sema/compatibility.py` (`is_dangling_return`, `check_dangling_reference`),
-`sema/scope_tracker.py` (`check_escape`, `lend_roots`)
+`sema/scope_tracker.py` (`check_escape`, `lend_places`)
 
 Two complementary checks:
 
@@ -138,9 +138,10 @@ Safe sources:
 **Scope escape detection** (`check_escape`): When assigning to a variable at scope
 depth D from a source whose storage lives at depth D+N, the source may be freed
 before the target. The source's storage is the set of NAMES it lends from
-(`ScopeTracker.lend_roots`): a name, a field or an element lends its root, a ternary
-lends both arms when both lend, and a call lends whichever receiver or argument its
-callee's `return_borrows_from` names (for a tuple-literal argument at a tuple
+(`lend_places`, the storage walk's HOLDER climb under the MAY call policy,
+`sema/call_lends.py`): a name, a field or an element lends its root, a select
+lends each operand it may pick, a walrus its value, and a call lends whichever receiver or argument its
+callee's `return_borrows_from` names, through nested calls (for a tuple-literal argument at a tuple
 parameter, each element whose slot borrows: `call_lend_sources`) -- the fact the
 borrow tracker files a call result's binding loans from -- so the hoistable verdict does not turn on how a borrow is
 spelled. (A tuple literal bound directly to a local is a separate binding rule,
@@ -399,10 +400,15 @@ This is the core of the borrow system. For each function body, the compiler trac
 which variables hold borrows of which storage, and flags conflicts.
 
 **Representation**: A general borrow map replaces the ad-hoc `loop_borrowed_vars`.
-The mutable version on `AnalysisContext` is `dict[str, set[str]]` (storage_name ->
-set of borrower names). The immutable version in `FlowFacts` is
-`frozenset[tuple[str, str]]` (storage, borrower) pairs. A special borrower name
-`__for_iter` represents the implicit for-loop iterator borrow (no named variable).
+The mutable version is `BorrowTracker.loans` (`tpyc/sema/context.py`, one tracker
+per function in `FunctionTrackingState.borrow_tracker`):
+`dict[StorageKey, dict[Holder, LoanInfo]]` -- the borrowed storage (a name or a
+member path), who holds the loan, and the loan's shape (`LoanInfo`: its
+`BorrowKind`, and whether and which element it points into). The immutable
+version in `FlowFacts.borrows` (`tpyc/sema/flow_facts.py`) is
+`frozenset[tuple[StorageKey, Holder, LoanInfo]]`, the same loans as triples. A
+`Holder` (`tpyc/holders.py`) is a binding's name or, for the implicit for-loop or
+comprehension iterator borrow (no named variable), the loop's own `IterHolder`.
 
 **Merge policy**: UNION -- a borrow exists after a branch if it exists in either
 path (conservative, same as `loop_borrowed_vars` today).
@@ -421,7 +427,7 @@ save/restore mechanism covers branch boundaries, which handles the practical cas
 **Implementation steps**:
 
 **Step 6.1: Borrow map infrastructure.** Replace `loop_borrowed_vars` with the
-general borrow map. For-loop iteration becomes `borrows["items"].add("__for_iter")`.
+general borrow map. For-loop iteration becomes `borrows["items"].add(IterHolder(loop))`.
 All existing 6a conflict detection keeps working, just uses the new structure.
 Existing tests pass, no new behavior.
 
@@ -521,7 +527,7 @@ iterables (`self.items`) and aliased mutation are Phase 2 (cross-function infere
 - Beside method calls known to invalidate iterators (`LIST_ITER_INVALIDATING`,
   `DICT_MUTATION_METHODS`) and `del`, a subscript assignment (`rows[j] = v`) is
   warned only when the live loan sits on an ELEMENT of that container --
-  `LoanInfo.on_element`, the hop the string key cannot spell -- since replacing
+  `LoanInfo.on_element`, the hop the storage key cannot spell -- since replacing
   an element destroys what such a loan points into. Under a plain container
   iteration (`for row in rows: rows[j] = ...`) it stays deliberately quiet: list
   element replacement does not reallocate and `ordered_map` is node-based, so
@@ -535,16 +541,19 @@ iterables (`self.items`) and aliased mutation are Phase 2 (cross-function infere
   a negative literal (`rows[-1]` is `rows[0]` in a one-element list), an
   arithmetic index -- is UNKNOWN and still warns, worded as possible
   ("may hit the element being iterated").
-- The element check's kind is the loan's, not the statement's, so a MERGED
-  loan takes the fourth wording. Rebinding the name a loop iterates
-  (`mid = outer[0]` / `for x in mid[0]:` / `mid = outer[1]`) retargets the
-  ITER loan onto `outer` and merges it with `mid`'s own element loan: the
-  merged loan keeps `on_element`, takes the higher-ranked ELEMENT kind and
-  loses `elem_index`. A write through `outer[j]` is then neither an
-  iteration (the kind is no longer ITER) nor certain (no index to compare),
-  so it is reported as "may hit a borrowed element (... may invalidate
-  references)" -- the wording that must exist because a merge can drop both
-  facts at once. Pinned by `tests/cases/list/warn_iter_mutation`, which
+- The element check's wording follows the loan's HOLDER, not its kind or
+  the statement: a loop's or comprehension's running iterator (`IterHolder`)
+  is an iteration, a named holder is a borrow. Rebinding the name a loop
+  iterates (`mid = outer[0]` / `for x in mid[0]:` / `mid = outer[1]`)
+  retargets the iteration's loan onto `outer` and merges it with `mid`'s
+  own element loan: the merged loan keeps `on_element`, takes the
+  higher-ranked ELEMENT kind and loses `elem_index`, but the loop's
+  iterator still holds it. A write through `outer[j]` is then an iteration
+  that is not certain (no index to compare), so it is reported as "may hit
+  the element being iterated (... may invalidate the iterator)". The fourth
+  wording, "may hit a borrowed element (... may invalidate references)", is
+  a named holder's element loan with no index. Pinned by
+  `tests/cases/list/warn_iter_mutation`, which
   compiles and runs at CPython parity, and by
   `tests/cases/list/elem_loan_merge_rebind`, where the rebound element alias
   the warning is read off now binds and runs too (the decl reject that case
@@ -763,7 +772,8 @@ propagation):
      so `param` must be `T&`.
    - **Mutable Span coercion**: `Array -> Span[T]` calls `as_mut_span()` requiring
      non-const source.
-   All are tracked in Phase 1 via `addr_taken_roots()` (see `context.py`).
+   All are tracked in Phase 1 through the place climb and `mark_roots`
+   (`tpyc/sema/storage_walk.py`).
    - **For-loop iteration over protocol/TypeParamRef params**: iterating with
      `for x in param` where `param` has a protocol or TypeParamRef type requires
      `T&` (mutation of iterator state), so the param is marked mutated. (8a.4 --
@@ -918,7 +928,8 @@ must be declared explicitly or loaded from metadata. See
   yet analyzed (stubs, forward declarations).
 - Inference: set during body analysis in `sema/analyzer.py` alongside
   `mutated_params`. `return` statements call `ctx.mark_param_returned(root)` for
-  each root in `addr_taken_roots(return_expr)` (rules 1/4). Rule 3 (transitive):
+  each root the place climb finds in the returned value (rules 1/4,
+  `SemanticContext.escape_marks`). Rule 3 (transitive):
   when returning the result of a call whose `return_borrows_from` is known, the
   source args are also marked via `mark_param_returned`.
 - The inference gate fires for non-value-type returns and additionally for

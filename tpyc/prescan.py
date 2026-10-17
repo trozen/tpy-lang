@@ -30,6 +30,7 @@ from .parse.nodes import (SourceLocation, is_property_getter_read,
                           stmts_have_any_suspension, walk_body_stmts,
                           walrus_bindings, written_names)
 from .identity_map import IdentityMap
+from .storage_trace import MEMBER_PATH, path_root
 from .value_category import CONTAINER_LITERAL_NODES, peel_coerce
 
 
@@ -599,7 +600,11 @@ def _scan_stmts(stmts: list[TpyStmt], declared: set[str],
                         and stmt.init.name != stmt.name):
                     result.alias_sources[stmt.name] = stmt.init.name
                 elif stmt.init is not None:
-                    root = chain_root_name(stmt.init)
+                    # A call result is the borrow tracker's, not this alias
+                    # map's; a `@property` hop names storage its receiver
+                    # owns, whether that hop outlives it being each
+                    # reader's question.
+                    root = path_root(stmt.init, MEMBER_PATH)
                     if root is not None and root != stmt.name:
                         result.chain_alias_sources[stmt.name] = root
         elif isinstance(stmt, TpyAssign):
@@ -1407,40 +1412,13 @@ def _kills_assign_target(target: TpyExpr, kills: FactKills,
         if key is not None:
             kills.paths.setdefault(key, []).append(store)
         else:
-            root = _expr_root_name(target)
+            root = path_root(target)
             if root is not None:
                 kills.receivers.add(root)
     elif isinstance(target, TpySubscript):
-        root = _expr_root_name(target.obj)
+        root = path_root(target.obj)
         if root is not None:
             kills.receivers.add(root)
-
-
-def _expr_root_name(expr: TpyExpr) -> str | None:
-    while isinstance(expr, TpyFieldAccess):
-        expr = expr.obj
-    if isinstance(expr, TpyName):
-        return expr.name
-    return None
-
-
-def chain_root_name(expr: TpyExpr) -> str | None:
-    """Root TpyName of a pure field/subscript chain (o.inner, xs[0],
-    o.items[0].inner -> the root name), or None when the chain bottoms out
-    in anything else (call results are handled by the borrow tracker, not
-    the prescan alias map).
-
-    A `@property` hop is a hop of this chain: the read is spelled like a
-    member and names storage the root owns, so it is walked through like
-    one. It is the ONE call shape that is -- a spelled zero-arg accessor
-    returning a borrow is the same thing structurally and is not admitted
-    here (see TODO.md); whether a hop's storage actually outlives the root
-    is the caller's per-hop question, not this walker's.
-    """
-    while (isinstance(expr, (TpyFieldAccess, TpySubscript))
-           or is_property_getter_read(expr)):
-        expr = expr.obj
-    return expr.name if isinstance(expr, TpyName) else None
 
 
 def collect_fact_kills(stmts: list[TpyStmt],
@@ -1479,7 +1457,7 @@ def _fact_kills_walk(block: BlockSummary, kills: FactKills) -> None:
                     kills.paths.setdefault(key, []).append(None)
         elif isinstance(stmt, TpyDelItem):
             for t in stmt.targets:
-                root = _expr_root_name(t.obj)
+                root = path_root(t.obj)
                 if root is not None:
                     kills.receivers.add(root)
         elif ss.closure is not None:

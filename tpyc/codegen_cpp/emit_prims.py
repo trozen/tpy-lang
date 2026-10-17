@@ -13,9 +13,7 @@ their final one.
 
 Everything in this module is a self-contained predicate, type decision, ctx
 mutation or fragment render: none of it dispatches a statement or an
-arbitrary expression. (`compute_borrow_tuple_const` and the per-scope setup
-around it do read the function body -- a const-ness prescan over binding
-sources -- but they emit nothing.)
+arbitrary expression.
 
 The functions take their collaborators (`ctx`, the type resolver, the
 protocol generator) explicitly rather than living on a generator object: the
@@ -29,15 +27,14 @@ from typing import (Callable, Container, Final, Iterator, Mapping, NoReturn,
 
 from ..namespace import Namespace
 from ..parse.nodes import (
-    SourceLocation, TpyAsPattern, TpyAssign, TpyBinOp, TpyBoolLiteral,
+    SourceLocation, TpyAsPattern, TpyBinOp, TpyBoolLiteral,
     TpyCapturePattern, TpyClassPattern, TpyCoerce, TpyExpr, TpyFieldAccess,
     TpyFloatLiteral, TpyFunction,
-    TpyIfExpr, TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
-    TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern, TpySetLiteral, TpyStmt,
+    TpyIntLiteral, TpyLiteralPattern, TpyMatchCase, TpyMethodCall,
+    TpyName, TpyNoneLiteral, TpyOrPattern, TpyPattern, TpySetLiteral,
     TpyStrLiteral, TpySubscript,
     TpyTupleLiteral, TpyTupleUnpack, TpyVarDecl,
     TpyWildcardPattern,
-    walrus_bindings,
 )
 from ..prescan import parse_deref_view_key
 from ..sema.literal_utils import (fixed_int_literal_value_from_expr,
@@ -46,21 +43,19 @@ from ..sema.registration import receiver_self_type
 from ..type_def_registry import is_fixed_int_type
 from ..typesys import pointer_repr_optional
 from ..typesys import (
-    BIGINT, FLOAT, AnyType, FloatLiteralType, IntLiteralType, LiteralType,
+    BIGINT, AnyType, IntLiteralType, LiteralType,
     NominalType, OptionalType,
-    OwnType, PendingViewType, PtrType, ReadonlyType, TpyType, TupleType,
+    OwnType, PtrType, ReadonlyType, TpyType, TupleType,
     UnionType, VoidType,
-    collapse_tuple_own_elements, error_return_to_cpp, exception_record_cpp, handler_exception_record, is_dyn_protocol,
+    error_return_to_cpp, exception_record_cpp, handler_exception_record,
     is_own_pointer_repr_optional, is_polymorphic_subclass_fact,
     is_protocol_type, is_void_like_type, placeholder_value_inits,
     polymorphic_source_inner, param_takes_ownership,
-    polymorphic_subclass_into_optional, resolve_int_literals, unwrap_optional_own,
+    polymorphic_subclass_into_optional, unwrap_optional_own,
     unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
 )
 from ..value_category import call_result_const, receiver_const
 from .context import INDENT, CodeGenError, FinallyContext, escape_cpp_name
-from .type_resolution import resolve_stmt_binding_type
-from .types import resolve_pending_container
 from .variant_access import VariantAccess
 
 if TYPE_CHECKING:
@@ -896,142 +891,7 @@ def setup_body_scope(ctx: 'CodeGenContext', protocols: 'ProtocolGenerator',
                     rec_info, ctx.analyzer.registry)
             else:
                 ctx.current_method_record_type = NominalType(owning_record_name)
-    compute_borrow_tuple_const(ctx, types, func)
     return scan
-
-
-def compute_borrow_tuple_const(ctx: 'CodeGenContext', types: 'TypeResolver',
-                               func: TpyFunction) -> None:
-    """Populate `const_borrow_form_tuple_locals`: borrow-form tuple locals
-    whose declared element pointers must be `const T*` because some binding
-    source is a const-storage location.
-
-    Codegen runs after Phase-2 const inference, so each source's final
-    const-ness is known here. The declared const must be at least as const
-    as every source feeding the local (mutable->const lift is safe,
-    const->mutable would not compile); we therefore OR const over all
-    bindings. A bare-name source feeding from another borrow-form tuple
-    carries that local's const, so iterate to a fixpoint over name chains.
-    """
-    bindings: dict[str, list[TpyExpr]] = {}
-    # Nullable-borrow-tuple locals tracked separately: their const set is
-    # const_optional_borrow_tuple_locals (the inner tuple sits behind a
-    # std::optional, but const-ness is inferred from the same sources).
-    opt_bindings: dict[str, list[TpyExpr]] = {}
-
-    # A nullable-borrow-tuple local is identified by its TARGET type
-    # (`tuple[..., T] | None`), not the source: a rebind source is often a
-    # plain `tuple[..., T]` field, but the local stays the optional form.
-    optional_targets: set[str] = set()
-
-    def collect(stmts: list[TpyStmt]) -> None:
-        for stmt in stmts:
-            if isinstance(stmt, TpyVarDecl) and stmt.init is not None:
-                tt = resolve_target_type(ctx, types, stmt)
-                if (isinstance(tt, OptionalType)
-                        and tt.wraps_pointer_repr_tuple()):
-                    optional_targets.add(stmt.name)
-                record(stmt.name, stmt.init)
-            elif (isinstance(stmt, TpyAssign)
-                  and isinstance(stmt.target, TpyName)):
-                record(stmt.target.name, stmt.value)
-            # Walrus (`(t := src)`) binds too -- in conditions, values, etc.
-            for ne in walrus_bindings(stmt):
-                record(ne.target, ne.value)
-            for body in stmt.sub_bodies():
-                collect(body)
-
-    def record(tgt: str, src: TpyExpr) -> None:
-        if tgt not in ctx.reassigned_vars and tgt not in ctx.hoisted_vars:
-            return
-        st = ctx.analyzer.get_expr_type(src)
-        stb = (unwrap_readonly(unwrap_ref_type(st))
-               if st is not None else None)
-        is_ptr_repr_tuple = (
-            (isinstance(stb, TupleType) and stb.has_pointer_repr_element())
-            or (isinstance(stb, OptionalType) and stb.wraps_pointer_repr_tuple()))
-        if not is_ptr_repr_tuple:
-            return
-        if tgt in optional_targets:
-            opt_bindings.setdefault(tgt, []).append(src)
-        else:
-            bindings.setdefault(tgt, []).append(src)
-
-    collect(func.body)
-    if not bindings and not opt_bindings:
-        return
-    # Fixpoint over both kinds together: a name chain can cross between a
-    # plain borrow-tuple local and a nullable one, and `is_const_storage_source`
-    # (consulted via `tuple_source_is_const`) reads both const sets.
-    pairs = [(bindings, ctx.const_borrow_form_tuple_locals),
-             (opt_bindings, ctx.const_optional_borrow_tuple_locals)]
-    changed = True
-    while changed:
-        changed = False
-        for binds, const_set in pairs:
-            for name, srcs in binds.items():
-                if name in const_set:
-                    continue
-                if any(tuple_source_is_const(ctx, s) for s in srcs):
-                    const_set.add(name)
-                    changed = True
-
-
-def tuple_source_is_const(ctx: 'CodeGenContext', src: TpyExpr) -> bool:
-    """Whether a borrow-tuple binding source reads from const storage.
-
-    A ternary feeds whichever arm runs, so it is const if either arm is.
-    An explicit `readonly[...]` source (readonly param / field / return) is
-    const even though it is not in `const_ref_params`: its element pointers
-    lift as `const T*`, so the borrow local must declare them const.
-    """
-    inner = ctx.unwrap_copy(src)
-    if isinstance(inner, TpyIfExpr):
-        return (tuple_source_is_const(ctx, inner.then_expr)
-                or tuple_source_is_const(ctx, inner.else_expr))
-    if ctx.is_const_storage_source(inner):
-        return True
-    st = ctx.analyzer.get_expr_type(inner)
-    return isinstance(st, ReadonlyType)
-
-
-def resolve_target_type(ctx: 'CodeGenContext', types: 'TypeResolver',
-                        stmt: TpyVarDecl) -> TpyType | None:
-    """Resolve the target type for a variable declaration."""
-    target_type = resolve_stmt_binding_type(
-        stmt,
-        ctx.analyzer,
-        include_global_binding=(ctx.current_ns is ctx.analyzer.global_ns),
-    )
-    if target_type is None and stmt.init:
-        target_type = ctx.analyzer.get_expr_type(stmt.init)
-    if target_type is not None:
-        # Strip Ref and ReadonlyType -- C++ reference semantics are
-        # handled by codegen binding (T& / auto&), not by the type itself.
-        # Send/Sync markers (canonically outermost) have no C++ shape.
-        target_type = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(target_type)))
-        # Keep Own[dyn P]: the owned-erased local IS unique_ptr<P>;
-        # stripping it would route the decl to the borrow-form
-        # pointer-local path (dangling for an owned rvalue init).
-        if isinstance(target_type, OwnType) and not is_dyn_protocol(
-                unwrap_readonly(target_type.wrapped)):
-            target_type = target_type.wrapped
-        target_type = resolve_int_literals(target_type, ctx.analyzer.ctx.default_int_for_literal)
-        if isinstance(target_type, FloatLiteralType):
-            target_type = FLOAT
-        resolved = resolve_pending_container(target_type, ctx.analyzer)
-        if resolved is not None:
-            target_type = resolved
-        elif isinstance(target_type, PendingViewType):
-            target_type = types._resolve_pending_view(target_type)
-        # A reassigned per-element-Own tuple local (including the nullable
-        # `tuple[..., Own[T]] | None` form) takes the unified borrow shape
-        # so an alias rebind aliases the source instead of copying. Sema
-        # records this on inferred decls; an annotated decl reaches codegen
-        # with the raw `stmt.type`, so re-apply the collapse here.
-        if stmt.name in ctx.reassigned_vars:
-            target_type = collapse_tuple_own_elements(target_type)
-    return target_type
 
 
 # -- match routing predicates ----------------------------------------------
@@ -1556,7 +1416,6 @@ __all__ = [
     "PARAM_LOCAL_SET_FIELDS",
     "check_literal_chain",
     "check_literal_in",
-    "compute_borrow_tuple_const",
     "cpp_declared_type",
     "declared_type_incl_globals",
     "emit_except_handler_header",
@@ -1587,13 +1446,11 @@ __all__ = [
     "reject_rebind_slot_crosses_scope",
     "reject_suspending_polymorphic_match",
     "resolve_field_declared_type",
-    "resolve_target_type",
     "resumable_match_subject_is_stable",
     "returns_bare_reference",
     "seed_param_locals",
     "seed_param_locals_scoped",
     "setup_body_scope",
     "sub_has_field_condition",
-    "tuple_source_is_const",
     "unpack_source_has_const_slots",
 ]

@@ -22,6 +22,7 @@ from .identity_map import IdentityMap, IdentitySet
 from .symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 
 if TYPE_CHECKING:
+    from .sema.storage_walk import StorageKey
     from .parse.nodes import TpyArrayLiteral, TpyListRepeat, TpyListComprehension, TpyCall, TpyDictLiteral, TpyExpr, TpyFunction, TpyImport, TpyMethodCall, TypeRefNode, TpyExceptHandler
 
 
@@ -6701,7 +6702,7 @@ class ViewVarInfo:
     # Owned-storage roots this view borrows from (a compound ternary/and-or
     # source borrows every root reachable through its arms). Mutating any one
     # demotes the view to owned.
-    source_storages: list[str] = field(default_factory=list)
+    source_storages: list[StorageKey] = field(default_factory=list)
     source_mutated: bool = False
     # A view-safe source whose storage is not static (param, container
     # element, tuple-unpack temp, ...). Irrelevant in a sync body -- the
@@ -8054,6 +8055,11 @@ class FunctionInfo:
     # pair alike, never for a bodyless `typing.overload` stub. Found back
     # through `body_function_info` / `body_method_info`, never by name.
     body: TpyFunction | None = field(default=None, repr=False, compare=False)
+    # Set only on the bodyless `typing.overload` stub that receives its
+    # group's implementation facts (`overload_facts_stub`): the
+    # implementation def whose analysis fills them. Stored on the RAW fi,
+    # read through `root`.
+    facts_implementation: TpyFunction | None = field(default=None, repr=False, compare=False)
     special_handling: bool = False  # True if sema/codegen handle specially
     error_return_type: Optional[str] = None  # @error_return(E) exception type name
     builtin_decorator_key: Optional[str] = None  # e.g. "tpy.readonly" -- links .py function to decorator semantics
@@ -8393,14 +8399,21 @@ def _body_info(func: 'TpyFunction', candidates: 'list[FunctionInfo] | None', *,
             f"Internal error: {len(found)} FunctionInfos carry the body of '{func.name}'")
     if found:
         return found[0]
-    if any(fi.root.body is not None for fi in candidates):
+    return overload_facts_stub(candidates, sema_method=sema_method)
+
+
+def overload_facts_stub(candidates: 'list[FunctionInfo]', *,
+                        sema_method: bool) -> 'FunctionInfo | None':
+    """The stub of a `typing.overload` group that carries its
+    implementation's facts, None for a group with a body of its own. Its
+    FunctionInfos are the bodyless stubs and the implementation (or a
+    per-stub specialization built from it) has none, so the facts take one
+    stub by position -- the first of a method group on sema's side (where
+    they are written and read back), the last everywhere else. The two
+    disagree on a method group of several stubs
+    (BUGS.md#overload-group-borrow-facts-last-entry)."""
+    if not candidates or any(fi.root.body is not None for fi in candidates):
         return None
-    # A `typing.overload` group: its FunctionInfos are the bodyless stubs and
-    # the implementation (or a per-stub specialization built from it) has
-    # none, so its facts take one stub by position -- the first of a method
-    # group on sema's side (where they are written and read back), the last
-    # everywhere else. The two disagree on a method group of several stubs
-    # (BUGS.md#overload-group-borrow-facts-last-entry).
     return candidates[0 if sema_method else -1]
 
 
@@ -8563,6 +8576,17 @@ def is_declaration_only(fi: 'FunctionInfo') -> bool:
     return mod is not None and mod.is_native_module
 
 
+def analyzes_body(func: 'TpyFunction | None') -> bool:
+    """Whether sema's body passes analyze `func` for the facts its
+    FunctionInfo carries (`body_function_info` / `body_method_info`): a def
+    with a body, not one inlined at its call sites and not a generator
+    expression's (analyzed where the expression is written). The passes
+    skip every other def, and a call reads its callee's facts as pending
+    exactly while such a body is unanalyzed (`return_borrow_fact_pending`)."""
+    return (func is not None and not func.is_stub and not func.is_inline
+            and not func.is_genexpr)
+
+
 def is_bodyless_binding(fn) -> bool:
     """A callable with NO body or MIL emit at all, so nothing is lowered
     for it -- a `FunctionInfo` or the `TpyFunction` it was registered from.
@@ -8601,23 +8625,28 @@ def recorded_return_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
     Like every mutation fact, `return_borrows_from` reads through the ROOT
     fi: a call site's `resolved_function_info` can be a view synthesized
     before the callee's body facts landed, and its root carries the fact
-    once known. A None here means "not analyzed yet" only for a root in
-    `ctx.pending_borrow_fact_fis`; the readiness gates test the root's
-    membership for the same reason.
+    once known. A None here means "not analyzed yet" only for a root sema
+    analyzes a body for (`return_borrow_fact_pending`), asked through the
+    root for the same reason.
     """
     return fi.root.return_borrows_from or frozenset()
 
 
-def result_borrow_sources(fi: FunctionInfo) -> tuple[frozenset[int], bool]:
-    """The sources a call's result borrows (`recorded_return_borrow_sources`)
-    with the receiver added where the call DECLARES lending it by reference
-    (`receiver_lends`) -- the body may reach that storage through a `Ptr`,
-    which records nothing -- and whether the receiver is there only by that
-    declaration."""
-    sources = recorded_return_borrow_sources(fi)
-    if -1 in sources or not receiver_lends(fi)[1]:
-        return sources, False
-    return sources | {-1}, True
+def return_borrow_fact_pending(fi: FunctionInfo) -> bool:
+    """Whether it is still unknown if `fi`'s result borrows an argument:
+    sema analyzes a body for its facts and that body has not been analyzed
+    yet (a later body of the import component, or any body while module
+    statements are analyzed, which runs before every body of the layer).
+    The body sema analyzes for a root's facts is the def it was registered
+    from or, for the `typing.overload` stub that receives its group's
+    facts, the implementation stamped at registration
+    (`FunctionInfo.facts_implementation`); the group's other stubs get no
+    facts at all (BUGS.md#overload-group-borrow-facts-last-entry). Asked
+    through the root, which carries the fact for a call site's view (a
+    substituted generic, a constructor info)."""
+    root = fi.root
+    return (root.return_borrows_from is None
+            and analyzes_body(root.body or root.facts_implementation))
 
 
 def held_whole_borrow_sources(fi: FunctionInfo) -> frozenset[int]:
@@ -8693,24 +8722,21 @@ def following_components(fi: FunctionInfo | None) -> frozenset:
         or readonly_protects(part))
 
 
-def receiver_lends(fi: FunctionInfo | None) -> tuple[bool, bool]:
-    """What a call of `fi` lends of its receiver writable: (a handle's
-    referent, a reference) -- a following component (`following_components`)
-    that this clone's result does not make readonly, past a handle or held
-    by reference. A lent handle is aliased by every copy of the result and
-    nothing tracks it, so the call itself demotes its receiver; a lent
-    reference is a loan of the receiver on whatever binds it."""
-    handle = reference = False
+def receiver_lends_handle(fi: FunctionInfo | None) -> bool:
+    """Whether a call of `fi` lends a writable handle's referent of its
+    receiver: a following component (`following_components`) past a handle
+    that this clone's result does not make readonly. A lent handle is
+    aliased by every copy of the result and nothing tracks it, so the call
+    itself demotes its receiver (a lent reference is a loan of the receiver
+    on whatever binds it instead)."""
     for c in following_components(fi):
         assert fi is not None
         part = type_component(fi.return_type, c)
         if part is not None and isinstance(unwrap_ref_type(part), ReadonlyType):
             continue
         if _through_handle(fi.return_type, c):
-            handle = True
-        else:
-            reference = True
-    return handle, reference
+            return True
+    return False
 
 
 def result_follows_receiver_root(fi: FunctionInfo | None) -> bool:

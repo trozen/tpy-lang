@@ -29,15 +29,15 @@ from ..typesys import (
     FunctionInfo, ImplicitReadonly, MutationCallEdge, NominalType,
     ReadonlyType, TpyType,
     is_bodyless_binding, is_dyn_protocol, is_protocol_type, unwrap_own,
-    unwrap_readonly, unwrap_ref_type, unwrap_send_sync, is_indirection_type,
-    receiver_lends,
+    unwrap_readonly, unwrap_ref_type, unwrap_send_sync,
+    receiver_lends_handle,
 )
 from .context import (
-    _local_traces_to_self, _root_name_of_expr,
-    receiver_leaves, receiver_root,
+    _local_traces_to_self,
     call_param_args, element_index_key, element_loan_mutation_warning,
-    loan_mutation_warning,
+    storage_loan_mutation_warning,
 )
+from .storage_walk import MarkRequest, StorageKey, mark_roots, receiver_leaves
 
 if TYPE_CHECKING:
     from .context import SemanticContext
@@ -145,16 +145,16 @@ def implicit_calls(node: TpyExpr | TpyStmt) -> list[ImplicitCall]:
 def call_mutates_receiver(fi: FunctionInfo, *, handle_climbs: bool = False) -> bool:
     """Whether calling `fi` may mutate its receiver: its C++ member is not
     const (`emitted_const`), or it lends a writable handle into the receiver
-    (`receiver_lends`) -- nothing tracks the copies of a handle, so the call
-    is the write, whatever is done with its result -- unless the one name
-    the handle reaches its referent through climbs to the receiver
+    (`receiver_lends_handle`) -- nothing tracks the copies of a handle, so
+    the call is the write, whatever is done with its result -- unless the one
+    name the handle reaches its referent through climbs to the receiver
     (`handle_climbs`: a `for` loop variable, `loop_var_iterable`).
 
     The mutable clone of an @auto_readonly accessor (Box.get / Rc.get /
     Deref, a reference-returning `__getitem__`) that lends a reference does
     not mutate the receiver -- a mutation THROUGH its result climbs the loan
     the binding takes, or roots back to the receiver at the mutation site."""
-    if receiver_lends(fi)[0] and not handle_climbs:
+    if receiver_lends_handle(fi) and not handle_climbs:
         return True
     return not (fi.emitted_const or fi.is_pure
                 or fi.is_auto_readonly_mutable_clone)
@@ -256,9 +256,8 @@ def check_receiver_call_loans(ctx: SemanticContext, recv: TpyExpr,
     if storage is not None:
         if (bt.has_element_borrow(storage)
                 and _invalidates(ctx, obj_type, method, callee)):
-            ctx.warning(loan_mutation_warning(
-                storage, f"'{method}'",
-                iterating=bt.has_iter_borrow(storage)), site)
+            ctx.warning(storage_loan_mutation_warning(
+                bt, storage, f"'{method}'"), site)
     elif isinstance(recv, TpySubscript):
         # The receiver is itself an element read, which no storage key can
         # spell. A loan taken out of an element of the SAME container is
@@ -286,13 +285,13 @@ def credit_receiver_mutation(ctx: SemanticContext, recv: TpyExpr,
     call-edge recorder already filed that edge (an explicit method call).
     `eager` marks the receiver directly instead of deferring, whether or not
     a callee is known; with no callee the mark is always eager, and so is a
-    call lending a writable handle (`receiver_lends`: the callee's own body
-    does not write its self). A known
+    call lending a writable handle (`receiver_lends_handle`: the callee's
+    own body does not write its self). A known
     `callee` also answers the structural-mutation question from its own facts
     (an inherited dunder included); without one the method is looked up by
     name.
     """
-    eager = eager or callee is not None and receiver_lends(callee)[0]
+    eager = eager or callee is not None and receiver_lends_handle(callee)
     for leaf in receiver_leaves(recv):
         _credit_leaf(ctx, leaf, obj_type, method, callee, eager, edges_recorded)
 
@@ -301,50 +300,34 @@ def _credit_leaf(ctx: SemanticContext, recv: TpyExpr, obj_type: TpyType | None,
                  method: str, callee: FunctionInfo | None, eager: bool,
                  edges_recorded: bool) -> None:
     fn = ctx.func
-    obj_root = receiver_root(recv, ctx.get_expr_type)
-    if obj_root is not None:
-        ctx.mark_loop_var_mutated(obj_root)
-        defers = not eager and (edges_recorded or callee is not None)
-        receiver_idx = ctx.deferred_receiver_index(recv) if defers else None
-        if receiver_idx is None:
-            ctx.mark_param_mutated(obj_root)
-        else:
-            if obj_root != "self" and obj_root in fn.current_param_name_to_idx:
-                fn.current_receiver_deferred_param_names.add(obj_root)
+    defers = not eager and (edges_recorded or callee is not None)
+    # Structural mutation is tracked directly: Phase 2 does not propagate
+    # structural self-mutation through call edges. A direct `self`
+    # receiver is the callee's own self and stays with its facts.
+    is_direct_self = isinstance(recv, TpyName) and recv.name == "self"
+    structural = (not is_direct_self and obj_type is not None
+                  and _invalidates(ctx, obj_type, method, callee))
+    for name, receiver_idx in ctx.receiver_credits(recv):
+        if not defers:
+            receiver_idx = None
+        if receiver_idx is not None:
+            if name != "self" and name in fn.current_param_name_to_idx:
+                fn.current_receiver_deferred_param_names.add(name)
             if not edges_recorded:
                 assert callee is not None
                 fn.current_call_edges.append(MutationCallEdge(
                     callee_fi=callee.root, param_map={},
                     receiver_idx=receiver_idx))
-        # Structural mutation is tracked directly: Phase 2 does not
-        # propagate structural self-mutation through call edges. A direct
-        # `self` receiver is the callee's own self and stays with its facts.
-        is_direct_self = isinstance(recv, TpyName) and recv.name == "self"
-        if (not is_direct_self and obj_type is not None
-                and _invalidates(ctx, obj_type, method, callee)):
-            ctx.mark_param_structurally_mutated(obj_root)
-        storage = fn.borrow_tracker.effective_storage(obj_root)
-        ctx.mark_all_view_borrowers_mutated(storage)
-        return
-    # Check for chained method calls rooted at self:
-    # self.get_span().sort() -- sort() is non-readonly and
-    # the span is a mutable view of self's storage.
-    # Treat as self-mutation conservatively. A chain rooted
-    # at a local that borrow-traces to self.<field> (e.g.
-    # `frame = self.frame; frame.get().mutating_method()`)
-    # is also a self-mutation since the receiver aliases
-    # self-owned storage.
-    if is_indirection_type(ctx.get_expr_type(recv)):
-        # A handle a call returned points where it was formed, and forming a
-        # mutable one over the receiver's storage already mutated it there.
-        return
-    chain = recv
-    while isinstance(chain, TpyMethodCall):
-        chain = chain.obj
-    chain_root = _root_name_of_expr(chain)
-    if chain_root is not None and _local_traces_to_self(
-            fn.borrow_tracker, chain_root):
-        ctx.mark_param_mutated("self")
+        mark_roots(ctx, [StorageKey.of_name(name)], MarkRequest(
+            params=receiver_idx is None, loop_vars=True,
+            structural=structural))
+        if (receiver_idx is None and name != "self"
+                and _local_traces_to_self(fn.borrow_tracker, name)):
+            # A local alias of self-owned storage: its own mark stops at the
+            # member key it borrows, which names no parameter.
+            mark_roots(ctx, [StorageKey.of_name("self")], MarkRequest())
+        ctx.mark_all_view_borrowers_mutated(
+            fn.borrow_tracker.effective_storage(name))
 
 
 def receiver_is_readonly(ctx: SemanticContext, recv: TpyExpr | None,

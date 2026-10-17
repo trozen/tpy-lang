@@ -177,8 +177,7 @@ void second_arg_section() {
     std::cout << "second_arg:" << " " << holder->x << "\n" << ::tpy::check_signals;
 }
 
-// # a method off a reference-returning method: the root is still `b`. The first
-// # warning on the line is BUGS.md#ref-returning-receiver-call-called-temporary.
+// # a method off a reference-returning method: the root is still `b`.
 // def chain_of_calls_section() -> None:
 //     holder = Rec(0)
 //     for i in range(3):

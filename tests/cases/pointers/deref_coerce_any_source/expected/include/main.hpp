@@ -21,7 +21,7 @@ A& ret_call(const M& m);
 // def ret_elem(ps: list[Ptr[A]]) -> A:
 A& ret_elem(const std::vector<A*>& ps);
 // def arg_sources(m: M, ps: list[Ptr[A]]) -> None:
-void arg_sources(M& m, std::vector<A*>& ps);
+void arg_sources(const M& m, const std::vector<A*>& ps);
 // def ptr_with(a: A, scratch: list[int32]) -> Ptr[A]:
 A* ptr_with(A& a, std::vector<int32_t>& scratch);
 // def arg_temp(a: A) -> None:

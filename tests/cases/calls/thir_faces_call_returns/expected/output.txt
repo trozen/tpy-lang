@@ -1,0 +1,3 @@
+union_subject: max
+protocol_own_dyn: sheep1 sheep2
+ptr_opt_lift: 2

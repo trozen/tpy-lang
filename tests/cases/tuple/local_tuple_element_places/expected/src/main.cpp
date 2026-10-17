@@ -191,9 +191,9 @@ int32_t param_alias(const std::tuple<const Box*, int32_t>& pair) {
 //         a.n = 9
 //     mutate(b)
 //     return b.n + t[0].n
-int32_t nested_shadow(const std::vector<std::tuple<Box, int32_t>>& rows, Box& b) {
-    std::tuple<const Box*, int32_t> t = ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(::tpy::__getitem__(rows, 0));
-    t = ::tpy::tuple_to_pointer<std::tuple<const Box*, int32_t>>(::tpy::__getitem__(rows, 1));
+int32_t nested_shadow(std::vector<std::tuple<Box, int32_t>>& rows, Box& b) {
+    std::tuple<Box*, int32_t> t = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(::tpy::__getitem__(rows, 0));
+    t = ::tpy::tuple_to_pointer<std::tuple<Box*, int32_t>>(::tpy::__getitem__(rows, 1));
     auto mutate = [](Box& t) {
         Box& a = t;
         a.n = 9;
