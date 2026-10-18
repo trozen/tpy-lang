@@ -3526,7 +3526,9 @@ class CallAnalyzer:
                             f"copies {bare} into owned storage; use copy() to "
                             f"make this explicit", arg)
                         # Declared to the lowering, which builds only
-                        # declared copies of a name holding a reference.
+                        # declared copies of a name holding a reference. The
+                        # whole owned tuple is copied, so no MIXED mark
+                        # (`record_tuple_copy` would add one).
                         self.ctx.own_element_copies[arg] = None
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:

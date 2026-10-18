@@ -1189,7 +1189,7 @@ class StatementAnalyzer:
                 if tuple_target is not None:
                     self.compat.check_name_borrow_into_own(
                         stmt.value.name, tuple_target, stmt.value,
-                        return_slot=True)
+                        return_slot=tuple_slot)
             # A tuple name with a borrowed element has its copy declared per
             # element just above.
             if (not isinstance(own_expected, OwnType)
@@ -7650,23 +7650,21 @@ class StatementAnalyzer:
                              store_dest), stmt.value, True)
                 copy_warning_fired = True
             # A tuple is a value type, but storing one whose elements are
-            # pointer-repr COPIES each such element into the owned slot
-            # (tuple_to_storage) where CPython aliases -- warn per element via
-            # the shared helper (also used by the container-literal / insert
-            # coercion path). The helper carries the literal / copy() / owning-
-            # call exemptions.
+            # pointer-repr COPIES each element its source lends into the
+            # owned slot (tuple_to_storage) where CPython aliases -- warned
+            # per element by the one per-element check.
             if stmt.loc is not None and not target_is_any:
                 tgt_tuple = unwrap_qualifiers(target_type)
                 dest = "field" if isinstance(stmt.target, TpyFieldAccess) else "container"
-                if self.compat.warn_pointer_repr_tuple_copy(
-                        stmt.value, tgt_tuple, dest, stmt):
-                    copy_warning_fired = True
-                if (isinstance(stmt.value, TpyName)
-                        and isinstance(tgt_tuple, TupleType)):
-                    # The store moves the elements the local owns (its
-                    # warning above names every reference element).
-                    self.compat.grant_name_move(
-                        stmt.value, OwnType(tgt_tuple), warns=False)
+                if isinstance(tgt_tuple, TupleType):
+                    if self.compat.check_owned_tuple_sink(
+                            stmt.value, OwnType(tgt_tuple), dest, stmt):
+                        copy_warning_fired = True
+                    if isinstance(stmt.value, TpyName):
+                        # The store moves the elements the local owns (its
+                        # warning above names every reference element).
+                        self.compat.grant_name_move(
+                            stmt.value, OwnType(tgt_tuple), warns=False)
             # Own[T] param stored in a field/container — mark as consumed
             if isinstance(stmt.value, TpyName) and stmt.value.name in self.ctx.func.current_param_names:
                 self.ctx.mark_own_param_consumed(stmt.value.name)

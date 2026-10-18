@@ -41,3 +41,8 @@ ctor 2 3
 generic 0 3
 arg_error_return 4 3
 arg_with 4 3 1
+call_param 2 1
+call_elem 1 call_field 1 call_append 1 2
+arg_field_elem 2 1
+arg_subscript_elem 2 1
+gen_own 2 3

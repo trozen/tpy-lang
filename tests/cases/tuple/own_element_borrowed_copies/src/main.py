@@ -301,6 +301,67 @@ def arg_with(p: P) -> int32:
         return take((p, p))  # tpyc: warning(/argument 't' tuple element 0\)/) warning(/argument 't' tuple element 1\)/)
 
 
+# A borrow-returning tuple CALL, or a field / container element, handed whole
+# to an owning slot copies each borrowed element, warned per element as a
+# tuple name's copy is.
+def take_call(t: Own[tuple[P, int32]]) -> int32:
+    a, n = t
+    a.xs.append(100)
+    return len(a.xs)
+
+
+def take_elem(t: tuple[Own[P], int32]) -> Own[P]:
+    return t[0]
+
+
+class PairBox:
+    pair: tuple[P, int32]
+
+    # method: a field store of the call result
+    def __init__(self, p: P) -> None:
+        self.pair = mk(p)  # tpyc: warning(/copies P into field \(tuple element 0\)/)
+
+
+# generator: an owned element yielded -- a literal, since the name and call
+# forms still fail the C++ build (BUGS.md#yield-tuple-name-own-element); the
+# consuming `for` head copies the yielded tuple once more before moving
+# element 0 out (BUGS.md#for-head-owned-yield-copies-before-move)
+def gen_own(p: P) -> Iterator[tuple[Own[P], int32]]:
+    yield (p, 1)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+
+
+# argument: a field and a container element at an Own element slot
+def arg_field_elem(hp: PairBox) -> int32:
+    return sink(hp.pair)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+
+
+def arg_subscript_elem(ps: list[tuple[P, int32]]) -> int32:
+    return sink(ps[0])  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+
+
+def call_sinks() -> None:
+    c = P(1)
+    # free function: the Own tuple parameter and the Own element parameter
+    print("call_param", take_call(mk(c)), len(c.xs))  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+    ce = take_elem(mk(c))  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+    hc = PairBox(c)
+    cs: list[tuple[P, int32]] = []
+    cs.append(mk(c))  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+    c.xs.append(7)
+    hc0, _ = hc.pair
+    for cs0, _ in cs:
+        print("call_elem", len(ce.xs), "call_field", len(hc0.xs),
+              "call_append", len(cs0.xs), len(c.xs))
+    print("arg_field_elem", arg_field_elem(hc), len(hc0.xs))
+    ps = [(P(2), 1)]
+    n = arg_subscript_elem(ps)
+    for ps0, _ in ps:
+        print("arg_subscript_elem", n, len(ps0.xs))
+    for g0, _ in gen_own(c):
+        c.xs.append(8)
+        print("gen_own", len(g0.xs), len(c.xs))
+
+
 async def async_main() -> None:
     a = P(1)
     q, _ = await ret_async(a)
@@ -406,6 +467,7 @@ def main() -> None:
     except Big:
         pass
     print("arg_with", arg_with(a), len(a.xs), len(b.xs))
+    call_sinks()
 
 
 

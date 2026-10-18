@@ -464,6 +464,113 @@ int32_t arg_with(const P& p) {
     }
 }
 
+// # A borrow-returning tuple CALL, or a field / container element, handed whole
+// # to an owning slot copies each borrowed element, warned per element as a
+// # tuple name's copy is.
+// def take_call(t: Own[tuple[P, int32]]) -> int32:
+//     a, n = t
+//     a.xs.append(100)
+//     return len(a.xs)
+int32_t take_call(std::tuple<P, int32_t> t) {
+    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(t);
+    auto&& a = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    int32_t n = std::get<1>(__tup_1);
+    a.xs.push_back(100);
+    return ::tpy::__len__(a.xs);
+}
+
+// def take_elem(t: tuple[Own[P], int32]) -> Own[P]:
+//     return t[0]
+P take_elem(std::tuple<P, int32_t>&& t) {
+    return std::move(std::get<0>(t));
+}
+
+
+// def gen_own(p: P) -> Iterator[tuple[Own[P], int32]]:
+__gen_gen_own gen_own(const P& p) {
+    return __gen_gen_own(p);
+}
+
+// # argument: a field and a container element at an Own element slot
+// def arg_field_elem(hp: PairBox) -> int32:
+//     return sink(hp.pair)  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+int32_t arg_field_elem(const PairBox& hp) {
+    return ::tpyapp::main::sink(auto(hp.pair));
+}
+
+// def arg_subscript_elem(ps: list[tuple[P, int32]]) -> int32:
+//     return sink(ps[0])  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+int32_t arg_subscript_elem(const std::vector<std::tuple<P, int32_t>>& ps) {
+    return ::tpyapp::main::sink(auto(::tpy::__getitem__(ps, 0)));
+}
+
+// def call_sinks() -> None:
+//     c = P(1)
+//     # free function: the Own tuple parameter and the Own element parameter
+//     print("call_param", take_call(mk(c)), len(c.xs))  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+//     ce = take_elem(mk(c))  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+//     hc = PairBox(c)
+//     cs: list[tuple[P, int32]] = []
+//     cs.append(mk(c))  # tpyc: warning(/copies P into owned storage \(tuple element 0\)/)
+//     c.xs.append(7)
+//     hc0, _ = hc.pair
+//     for cs0, _ in cs:
+//         print("call_elem", len(ce.xs), "call_field", len(hc0.xs),
+//               "call_append", len(cs0.xs), len(c.xs))
+//     print("arg_field_elem", arg_field_elem(hc), len(hc0.xs))
+//     ps = [(P(2), 1)]
+//     n = arg_subscript_elem(ps)
+//     for ps0, _ in ps:
+//         print("arg_subscript_elem", n, len(ps0.xs))
+//     for g0, _ in gen_own(c):
+//         c.xs.append(8)
+//         print("gen_own", len(g0.xs), len(c.xs))
+void call_sinks() {
+    P c = P(1);
+    std::cout << "call_param" << " " << ::tpyapp::main::take_call(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(::tpyapp::main::mk(c))) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
+    P ce = ::tpyapp::main::take_elem(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(::tpyapp::main::mk(c)));
+    PairBox hc = PairBox(c);
+    std::vector<std::tuple<P, int32_t>> cs = std::vector<std::tuple<P, int32_t>>{};
+    cs.push_back(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(::tpyapp::main::mk(c)));
+    c.xs.push_back(7);
+    auto __tup_1 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(hc.pair);
+    auto&& hc0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_1)));
+    auto& __obj_0 = cs;
+    auto __beg_0 = __obj_0.begin();
+    auto __end_0 = __obj_0.end();
+    for (; __beg_0 != __end_0; ++__beg_0) {
+        auto&& __for_tup_0 = *__beg_0;
+        auto __tup_2 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(__for_tup_0);
+        auto&& cs0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_2)));
+        std::cout << "call_elem" << " " << ::tpy::__len__(ce.xs) << " " << "call_field" << " " << ::tpy::__len__(hc0.xs) << " " << "call_append" << " " << ::tpy::__len__(cs0.xs) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
+    }
+    std::cout << "arg_field_elem" << " " << ::tpyapp::main::arg_field_elem(hc) << " " << ::tpy::__len__(hc0.xs) << "\n" << ::tpy::check_signals;
+    std::vector<std::tuple<P, int32_t>> ps = {::tpy::tuple_to_storage<std::tuple<P, int32_t>>(std::tuple<P, int32_t>{P(2), 1})};
+    int32_t n = ::tpyapp::main::arg_subscript_elem(ps);
+    auto& __obj_1 = ps;
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        auto&& __for_tup_1 = *__beg_1;
+        auto __tup_3 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(__for_tup_1);
+        auto&& ps0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_3)));
+        std::cout << "arg_subscript_elem" << " " << n << " " << ::tpy::__len__(ps0.xs) << "\n" << ::tpy::check_signals;
+    }
+    {
+        auto __src_2 = ::tpyapp::main::gen_own(c);
+        auto&& __itr_2 = ::tpy::__iter__(__src_2);
+        for (;;) {
+            auto __r_3 = __itr_2.__next__();
+            if (!__r_3.has_value()) break;
+            auto&& __for_tup_2 = ::tpy::unwrap_ref(*__r_3);
+            auto __tup_4 = __for_tup_2;
+            P g0 = std::move(std::get<0>(__tup_4));
+            c.xs.push_back(8);
+            std::cout << "gen_own" << " " << ::tpy::__len__(g0.xs) << " " << ::tpy::__len__(c.xs) << "\n" << ::tpy::check_signals;
+        }
+    }
+}
+
 // async def async_main() -> None:
 //     a = P(1)
 //     q, _ = await ret_async(a)                                    # -> S_RESUME_0
@@ -622,6 +729,7 @@ __coro_async_main async_main() {
 //     except Big:
 //         pass
 //     print("arg_with", arg_with(a), len(a.xs), len(b.xs))
+//     call_sinks()
 void main() {
     P a = P(1);
     P b = P(2);
@@ -667,8 +775,8 @@ void main() {
     auto __beg_0 = __obj_0.begin();
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
-        auto&& __for_tup_0 = *__beg_0;
-        auto __tup_9 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(__for_tup_0);
+        auto&& __for_tup_3 = *__beg_0;
+        auto __tup_9 = ::tpy::tuple_to_pointer<std::tuple<P*, int32_t>>(__for_tup_3);
         auto&& st0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_9)));
         std::cout << "ret_loop_var" << " " << ::tpy::__len__(st0.xs) << " " << ::tpy::__len__(lv0.xs) << "\n" << ::tpy::check_signals;
     }
@@ -732,8 +840,8 @@ void main() {
     auto __beg_3 = __obj_3.begin();
     auto __end_3 = __obj_3.end();
     for (; __beg_3 != __end_3; ++__beg_3) {
-        auto&& __for_tup_1 = *__beg_3;
-        auto __tup_15 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_1);
+        auto&& __for_tup_4 = *__beg_3;
+        auto __tup_15 = ::tpy::tuple_to_pointer<std::tuple<P*, P*>>(__for_tup_4);
         auto&& i0 = ::tpy::unwrap_ref(::tpy::tuple_elem_ref(std::get<0>(__tup_15)));
         std::cout << "insert" << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(i0.xs) << "\n" << ::tpy::check_signals;
     }
@@ -751,6 +859,7 @@ void main() {
         __after_try_1:;
     }
     std::cout << "arg_with" << " " << ::tpyapp::main::arg_with(a) << " " << ::tpy::__len__(a.xs) << " " << ::tpy::__len__(b.xs) << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::call_sinks();
 }
 
 // # A borrowed source at a tuple element's Own[T] slot copies and warns as the

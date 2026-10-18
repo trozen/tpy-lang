@@ -1,0 +1,7 @@
+main.py:116: warning: copies A into field (tuple element 0); use copy() to make this explicit
+main.py:116: warning: copies A into field (tuple element 1); use copy() to make this explicit
+main.py:123: warning: copies A into field (tuple element 0); use copy() to make this explicit
+main.py:123: warning: copies A into field (tuple element 1); use copy() to make this explicit
+main.py:85: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:91: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit
+main.py:100: warning: copies A into owned storage (tuple element 1); use copy() to make this explicit ('t' is bound to existing storage at line 99)

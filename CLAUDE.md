@@ -158,6 +158,8 @@ Harness status lines are prefixed `tpy|` (exec tally, cache-invalidation cause, 
 
 **Churn in existing tests' expected output is approved with the plan.** The `/tpy-fix-bug` / `/tpy-add-feature` analysis lists which existing snapshots will change (count, kind, one generated-C++ example); approving the plan approves regenerating them. Churn beyond the plan that is neutral or an improvement: continue and list it in the branch summary. A regression or a program-behavior change: stop and ask. Churn is never a reason to choose a narrower fix or to keep two code paths.
 
+**Simpler compiler, different C++.** A change that removes a special case, a parallel path or a quirk may change existing cases' generated C++, provided program behavior is unchanged (output, aliasing, what compiles) and the C++ is no worse (no added copy, allocation or runtime check). Equivalence is shown by a probe, not assumed. Briefs and reviews never use "the render changed" as a stop condition; a behavior change or worse C++ is. The branch summary bins the changed snapshots by kind -- count, one before/after line, and why it is equivalent -- so the review is per kind, not per file.
+
 **Changing what an existing test pins** -- its source, `# tpyc:` annotations, `output.txt`, `error_`/`panic_` status -- is a decision ("Decide what the user would decide"), taken before the edit.
 
 **When adding new test cases**, run `update_snapshots.py -k {name}` so all expected files (`diag.txt`, generated `.hpp`/`.cpp`, `output.txt`, `.fingerprints`) are generated together.

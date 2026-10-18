@@ -44,7 +44,7 @@ from ..holders import Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
 from ..parse import (
     TpyAssign, TpyAwait, TpyBreak, TpyCall, TpyCoerce, TpyContinue, TpyDelVar,
-    TpyExpr, TpyForEach, TpyFunction,
+    TpyExpr, TpyFieldAccess, TpyForEach, TpyFunction,
     TpyGlobal, TpyIf, TpyIfExpr, TpyLambda, TpyMatch,
     TpyMethodCall, TpyName, TpyNamedExpr, TpyNestedDef, TpyNoneLiteral,
     TpyRaise, TpyReturn, TpySlice, TpyStmt, TpySubscript,
@@ -62,7 +62,7 @@ from ..typesys import (
     unwrap_own, unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
 )
-from ..value_category import binds_owned_value, call_returns_cpp_ref
+from ..value_category import binds_owned_value
 from .call_lends import (
     ContractLend, MayLend, borrowing_ctor_arg, frame_operand_keys,
     leaves_hold_no_pointer, may_hold_pointer,
@@ -146,49 +146,158 @@ def _peel(e: TpyExpr) -> TpyExpr:
     return e
 
 
+ElemPath = tuple[int, ...]
+
+
+def bare_tuple(t: TpyType | None) -> TupleType | None:
+    """`t` as a tuple, its wrappers (`Own`, `readonly`, Send/Sync) peeled;
+    None for no tuple."""
+    bare = (unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(t))))
+            if t is not None else None)
+    return bare if isinstance(bare, TupleType) else None
+
+
+def _paths_at(et: TpyType, path: ElemPath) -> frozenset[ElemPath]:
+    """The reference paths of a tuple element of type `et` at `path`: its
+    own when it is a reference leaf (an open type parameter included: it
+    may be one), its members' when it is a nested value tuple."""
+    e = unwrap_readonly(unwrap_ref_type(unwrap_own(unwrap_send_sync(et))))
+    if isinstance(e, TupleType):
+        return reference_paths(e, path)
+    return frozenset() if e.is_value_type() else frozenset((path,))
+
+
+def reference_paths(slot: TpyType | None,
+                    prefix: ElemPath = ()) -> frozenset[ElemPath]:
+    """The element paths of tuple `slot` -- top-level `(i,)`, nested
+    `(i, j)` through value tuples -- whose leaf is a reference. Empty for
+    no tuple."""
+    bare = bare_tuple(slot)
+    out: set[ElemPath] = set()
+    for i, et in enumerate(bare.element_types if bare is not None else ()):
+        out |= _paths_at(et, prefix + (i,))
+    return frozenset(out)
+
+
 def _reference_elements(slot: TpyType | None) -> tuple[bool, ...] | None:
     """Per element of a tuple slot, whether it is a reference type; None
     when the slot is no tuple or holds no reference element at all."""
-    bare = (unwrap_readonly(unwrap_ref_type(unwrap_own(slot)))
-            if slot is not None else None)
-    if not isinstance(bare, TupleType):
+    bare = bare_tuple(slot)
+    if bare is None:
         return None
-    ref = tuple(not unwrap_readonly(unwrap_ref_type(unwrap_own(et)))
-                .is_value_type() for et in bare.element_types)
+    paths = reference_paths(bare)
+    ref = tuple((i,) in paths for i in range(len(bare.element_types)))
     return ref if any(ref) else None
+
+
+def _declared_borrowed(declared: TpyType, slot: TpyType,
+                       path: ElemPath) -> frozenset[ElemPath]:
+    """The paths at `path` a call's declared return element `declared`
+    lends: an `Own[...]` marker hands its subtree over, a nested tuple
+    answers per member, anything else lends every reference path of the
+    slot there."""
+    d = unwrap_readonly(unwrap_send_sync(declared))
+    if isinstance(d, OwnType):
+        return frozenset()
+    dt, st = bare_tuple(d), bare_tuple(slot)
+    if (dt is None or st is None
+            or len(dt.element_types) != len(st.element_types)):
+        return _paths_at(slot, path)
+    out: set[ElemPath] = set()
+    for i, (de, se) in enumerate(zip(dt.element_types, st.element_types)):
+        out |= _declared_borrowed(de, se, path + (i,))
+    return frozenset(out)
+
+
+def owned_slot_paths(slot: TpyType | None) -> frozenset[ElemPath]:
+    """The element paths (`reference_paths`) of tuple `slot` its `Own`
+    markers own, at any depth: every one under `Own[tuple[...]]`, those
+    under an `Own[...]` element, none of a plain element. Empty for no
+    tuple."""
+    bare = bare_tuple(slot)
+    if bare is None or slot is None:
+        return frozenset()
+    return reference_paths(bare) - _declared_borrowed(
+        unwrap_ref_type(slot), bare, ())
+
+
+def top_level(paths: Iterable[ElemPath]) -> frozenset[int]:
+    """The top-level elements the element `paths` lie in."""
+    return frozenset(p[0] for p in paths)
+
+
+def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
+                         slot: TpyType | None, prefix: ElemPath = ()
+                         ) -> frozenset[ElemPath] | None:
+    """The element paths (`reference_paths`) of a tuple SOURCE at `slot`
+    whose reference payload arrives BORROWED -- storage that outlives the
+    expression, which an owning slot copies where CPython aliases. None
+    when the slot is no tuple. A literal lends each member it does not
+    capture by VALUE (a nested tuple member answers for its subtree); a
+    call lends per its declared return (`Own[tuple]` nothing, an `Own`
+    element marker at any depth not that subtree); a select lends what either arm does (C++
+    copies the chosen one); an element the read moves out (`element_moves`)
+    and a consuming method's field move lend nothing; a name, a field, a
+    subscript and anything else lend every reference path."""
+    bare = bare_tuple(slot)
+    if bare is None or expr is None:
+        return None
+    init = _peel(expr)
+    if isinstance(init, TpyIfExpr):
+        return frozenset().union(*(
+            tuple_borrowed_paths(ctx, arm, bare, prefix) or frozenset()
+            for arm in (init.then_expr, init.else_expr)))
+    if isinstance(init, TpyTupleLiteral):
+        caps = init.elem_capture
+        out: set[ElemPath] = set()
+        for i, et in enumerate(bare.element_types):
+            path = prefix + (i,)
+            if i < len(caps) and caps[i] is TupleElemCapture.VALUE:
+                continue
+            if bare_tuple(et) is not None and i < len(init.elements):
+                out |= tuple_borrowed_paths(ctx, init.elements[i], et,
+                                            path) or frozenset()
+            else:
+                out |= _paths_at(et, path)
+        return frozenset(out)
+    if isinstance(init, (TpyCall, TpyMethodCall)):
+        fi = init.resolved_function_info
+        if fi is None or fi.return_type is None:
+            return reference_paths(bare, prefix)
+        return _declared_borrowed(fi.return_type, bare, prefix)
+    if init in ctx.element_moves or (isinstance(init, TpyFieldAccess)
+                                     and init.consuming_move):
+        return frozenset()
+    return reference_paths(bare, prefix)
+
+
+def tuple_source_elem_owned(ctx: 'SemanticContext', expr: TpyExpr | None,
+                            slot: TpyType | None) -> tuple[bool, ...] | None:
+    """Per element of a tuple source at `slot`, whether the value hands that
+    element over as an object of its own: it holds a reference and lends
+    none of it (`tuple_borrowed_paths`). None when the slot is no tuple."""
+    lent = tuple_borrowed_paths(ctx, expr, slot)
+    bare = bare_tuple(slot)
+    if lent is None or bare is None:
+        return None
+    every, lends = top_level(reference_paths(bare)), top_level(lent)
+    return tuple(i in every and i not in lends
+                 for i in range(len(bare.element_types)))
 
 
 def tuple_elem_owned(ctx: 'SemanticContext', value: TpyExpr | None,
                      slot: TpyType | None) -> tuple[bool, ...] | None:
     """Per element of a tuple binding, whether the binding holds that
-    element as an object of its own rather than a borrow of storage
-    elsewhere: a literal's VALUE-captured reference elements; the `Own`
-    positions of a call's declared return, every reference element of
-    `-> Own[tuple[...]]`. A name, a borrowing call, a select and `None`
-    own nothing. None when the slot holds no reference element (a value
-    tuple is copied at every binding, so no rebind can clobber it)."""
+    reference element as an object of its own rather than a borrow of
+    storage elsewhere (`tuple_source_elem_owned` of its initializer; a
+    name, like every lvalue, owns nothing). None when the slot holds no
+    reference element (a value tuple is copied at every binding, so no
+    rebind can clobber it)."""
     ref = _reference_elements(slot)
     if ref is None or value is None:
         return None
-    init = _peel(value)
-    owned: tuple[bool, ...] = (False,) * len(ref)
-    if isinstance(init, TpyTupleLiteral) and init.elem_capture:
-        caps = init.elem_capture
-        owned = tuple(r and i < len(caps) and caps[i] is TupleElemCapture.VALUE
-                      for i, r in enumerate(ref))
-    elif isinstance(init, (TpyCall, TpyMethodCall)):
-        fi = init.resolved_function_info
-        rt = (unwrap_readonly(unwrap_send_sync(fi.return_type))
-              if fi is not None and fi.return_type is not None else None)
-        if rt is not None and not call_returns_cpp_ref(ctx, fi):
-            if isinstance(rt, OwnType) and isinstance(
-                    unwrap_readonly(rt.wrapped), TupleType):
-                owned = ref
-            elif (isinstance(rt, TupleType)
-                    and len(rt.element_types) == len(ref)):
-                owned = tuple(r and isinstance(unwrap_readonly(et), OwnType)
-                              for r, et in zip(ref, rt.element_types))
-    return owned
+    owned = tuple_source_elem_owned(ctx, value, slot) or (False,) * len(ref)
+    return tuple(r and o for r, o in zip(ref, owned))
 
 
 def note_tuple_elem_borrows(ctx: 'SemanticContext', name: str,

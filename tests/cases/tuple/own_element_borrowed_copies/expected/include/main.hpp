@@ -15,6 +15,7 @@ struct Holder;
 struct Sink;
 struct Keeper;
 struct Cm;
+struct PairBox;
 
 inline constexpr std::string_view __name__ = "__main__";
 
@@ -22,6 +23,7 @@ struct __coro_ret_async;
 struct __coro_ret_async_name;
 struct __gen_arg_generator;
 struct __coro_arg_async_name;
+struct __gen_gen_own;
 struct __coro_async_main;
 
 // def mk(p: P) -> tuple[P, int32]:
@@ -110,6 +112,18 @@ int32_t gtake(std::tuple<T, T> t);
 std::expected<int32_t, Big> arg_error_return(const P& p);
 // def arg_with(p: P) -> int32:
 int32_t arg_with(const P& p);
+// def take_call(t: Own[tuple[P, int32]]) -> int32:
+int32_t take_call(std::tuple<P, int32_t> t);
+// def take_elem(t: tuple[Own[P], int32]) -> Own[P]:
+P take_elem(std::tuple<P, int32_t>&& t);
+// def gen_own(p: P) -> Iterator[tuple[Own[P], int32]]:
+__gen_gen_own gen_own(const P& p);
+// def arg_field_elem(hp: PairBox) -> int32:
+int32_t arg_field_elem(const PairBox& hp);
+// def arg_subscript_elem(ps: list[tuple[P, int32]]) -> int32:
+int32_t arg_subscript_elem(const std::vector<std::tuple<P, int32_t>>& ps);
+// def call_sinks() -> None:
+void call_sinks();
 // async def async_main() -> None:
 __coro_async_main async_main();
 // def main() -> None:
@@ -217,6 +231,22 @@ struct Cm {
 
 inline std::ostream& operator<<(std::ostream& os, const Cm& obj) {
     ::tpy::print_object_default(os, "Cm", obj);
+    return os;
+}
+
+// class PairBox:
+struct PairBox {
+    // pair: tuple[P, int32]
+    std::tuple<P, int32_t> pair;
+
+    // def __init__(self, p: P) -> None:
+    PairBox() = default;
+    explicit PairBox(P& p);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.PairBox";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const PairBox& obj) {
+    ::tpy::print_object_default(os, "PairBox", obj);
     return os;
 }
 
@@ -353,6 +383,29 @@ struct __gen_arg_generator : public ::tpy::next_iter_mixin<__gen_arg_generator, 
     }
 };
 
+// def gen_own(p: P) -> Iterator[tuple[Own[P], int32]]:
+struct __gen_gen_own : public ::tpy::next_iter_mixin<__gen_gen_own, std::tuple<P, int32_t>> {
+    ::tpy::frame_state __state;
+    const P& p;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_gen_own(const P& p)
+        : __state(S_INITIAL),
+          p(p) {}
+
+    std::expected<std::tuple<P, int32_t>, ::tpy::StopIteration> __next__();
+    __gen_gen_own& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_gen_own&) {
+        return os << "<generator gen_own>";
+    }
+};
+
 
 // def __init__(self, x: int32) -> None:
 //     self.xs = [x]
@@ -421,6 +474,11 @@ inline int32_t Cm::__enter__() const {
 //     pass
 inline void Cm::__exit__(std::monostate exc_type, const ::tpy::BaseException* exc_val, std::monostate exc_tb) const {
 }
+
+// # method: a field store of the call result
+// def __init__(self, p: P) -> None:
+//     self.pair = mk(p)  # tpyc: warning(/copies P into field \(tuple element 0\)/)
+inline PairBox::PairBox(P& p) : pair(::tpy::tuple_to_storage<std::tuple<P, int32_t>>(::tpyapp::main::mk(p))) {}
 // def gtake[T](t: Own[tuple[T, T]]) -> int32:
 //     return 0
 template<typename T>

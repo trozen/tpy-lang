@@ -425,7 +425,28 @@ parameter, a field or subscript read, a borrow-returning call, a local not
 at its last use) is COPIED and warns `copies C into owned storage (tuple
 element 1); use copy() to make this explicit`, direct or nested, whether the
 tuple is a literal or a name (a local built from one or from a call that
-returns a borrowing tuple, a tuple parameter, a loop variable). The same
+returns a borrowing tuple, a tuple parameter, a loop variable). A whole
+tuple source that is no name -- a borrow-returning call or method call, a
+field, a subscript, a select with any such arm or a name arm -- takes the
+same per-element warning at every owning tuple slot, the return
+(`return mk(a)` at `-> Own[tuple[A, int32]]` or `-> tuple[Own[A], int32]`)
+and the yield included (where it then fails the C++ build,
+`BUGS.md#yield-tuple-name-own-element`), and so does a reference
+nested in a returned tuple (`(tuple element 0.0)`), an `Own` marker nested
+in the slot (`tuple[tuple[Own[A], int32], int32]`) included. Only the
+elements the source lends warn: a call's `Own[...]` element, at any depth,
+is handed over and copies nothing. A tuple NAME keeps its own rule: stored
+whole into a field it warns every reference element, the ones a last-use
+store moves in included (`BUGS.md#ptr-tuple-field-store-move-warned-copy`,
+`BUGS.md#own-tuple-param-field-store-warns`); at a container element, an
+`append` or an `Own`-element argument a local warns the elements it holds
+by reference, though a last-use local that also owns an element is copied
+whole there (`BUGS.md#mixed-tuple-local-append-copies-owned`), and a tuple
+parameter's declared type says which elements arrive borrowed at every one
+of these sinks. The warning is the whole story at an
+`Own` argument, a field and a container insert of a call; a returned one,
+and any of these sinks fed by a select, still reject after the warning
+(`BUGS.md#borrow-tuple-source-own-return-rejects`). The same
 owned local used twice (`return (b, b)`, or a consuming method's
 `(self.a, self.a)`) warns at
 each copy, since CPython returns one object twice. A type that cannot be
@@ -433,10 +454,15 @@ copied at all (`@nocopy`, or a record with `__del__`) is an error instead. A
 fresh member, an owned local at its last use, and `copy()` stay quiet. A
 tuple PARAMETER passed whole to an `Own`-element argument warns once for the
 whole tuple (`copies tuple[C, int32] into owned storage`) rather than per
-element. Not yet covered: a tuple name that also OWNS an element (`t =
-(Box(1), p)`, or a call returning `tuple[Own[Box], Box]`) at a whole-tuple
-slot -- its borrowed elements warn, then the compile rejects, since copying
-the whole tuple would copy the owned element too -- a tuple name nested in a returned literal
+element; a mixed one (`p: tuple[Own[C], C]`) at its last use warns each
+element its declared type borrows (`(tuple element 1)`). Not yet covered: a tuple name that also OWNS an element (`t =
+(Box(1), p)`, or a call returning `tuple[Own[Box], Box]`) returned into an
+`Own[tuple[...]]` slot -- its borrowed elements warn, then the compile
+rejects, since copying the whole tuple would copy the owned element too (a
+field store, an append and an `Own[tuple[...]]` argument of the same name
+compile and copy it, warned per element; an append at its last use also
+copies the owned element unwarned,
+`BUGS.md#mixed-tuple-local-append-copies-owned`) -- a tuple name nested in a returned literal
 (`BUGS.md#nested-tuple-name-own-return`), `yield t`
 (`BUGS.md#yield-tuple-name-own-element`), an Optional member
 (`BUGS.md#optional-member-own-copy-no-render`) -- these reject loudly -- and
