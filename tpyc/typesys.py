@@ -3971,6 +3971,20 @@ CLASSVAR_INNER_TYPE_ERROR = (
 C_ABI_TYPE_ERROR = "is not representable in the C ABI"
 
 
+def _c_abi_subject(typ: 'TpyType') -> 'TpyType':
+    """The type a C-linkage gate judges: `typ` without the wrappers that do
+    not change its C spelling."""
+    t = unwrap_readonly(typ)
+    if isinstance(t, OwnType) and t.wrapped.is_value_type():
+        # Own selects the owned C++ form over the borrowed one; on a value
+        # type every form this gate admits is the same spelling, so the
+        # wrapper says nothing about the ABI -- as `readonly` does not.
+        # Over a reference type Own is `T&&` (and forces the value form of an
+        # Optional), which is why the unwrap stops at value types.
+        t = unwrap_readonly(t.wrapped)
+    return t
+
+
 def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
     """Allow-list for types tpyc renders into an `extern "C"` signature.
 
@@ -3984,14 +3998,7 @@ def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
     from .type_def_registry import (is_fixed_int_type, is_bool_type,
                                     is_char_type, is_float_category,
                                     is_enum_type, enum_info_of)
-    t = unwrap_readonly(typ)
-    if isinstance(t, OwnType) and t.wrapped.is_value_type():
-        # Own selects the owned C++ form over the borrowed one; on a value
-        # type every form this gate admits is the same spelling, so the
-        # wrapper says nothing about the ABI -- as `readonly` does not.
-        # Over a reference type Own is `T&&` (and forces the value form of an
-        # Optional), which is why the unwrap stops at value types.
-        t = unwrap_readonly(t.wrapped)
+    t = _c_abi_subject(typ)
     if isinstance(t, PtrType):
         # Deliberately unconditional in the pointee: a pointer is an opaque
         # handle at the ABI, whatever it addresses. The C++ spelling of the
@@ -4012,7 +4019,9 @@ def is_c_abi_allowed(typ: 'TpyType', *, is_return: bool = False) -> bool:
         return True
     if is_enum_type(t):
         # A @native enum names a real C enum; a TPy-declared one lowers to
-        # a namespaced C++ `enum class` with no C spelling.
+        # a namespaced C++ `enum class` with no C spelling, and a C caller
+        # could hand it a non-member (BUGS.md#native-enum-non-member-unreachable
+        # is the same hazard on the admitted side).
         info = enum_info_of(t)
         return info is not None and info.is_native
     # `-> None` resolves to VoidType; NoneType is the annotation spelling.
@@ -4046,7 +4055,7 @@ def c_abi_type_hint(typ: 'TpyType', *, is_element: bool = False) -> str:
     pointer the annotation already has.
     """
     from .type_def_registry import is_big_int_type, is_enum_type
-    t = unwrap_readonly(typ)
+    t = _c_abi_subject(typ)
     if is_big_int_type(t):
         return "use a fixed-width integer type (int32, int64, ...)"
     if is_any_str_type(t):
@@ -4057,7 +4066,12 @@ def c_abi_type_hint(typ: 'TpyType', *, is_element: bool = False) -> str:
     if is_sequence_c_abi(t):
         return "use Ptr[T] plus an explicit length parameter"
     if is_enum_type(t):
-        return "declare the enum @native so it names a real C enum"
+        info = _enum_info_of(t)
+        width = info.underlying_type if info is not None else "its integer type"
+        # No `Mode(v)` spelling: the declaration name need not be bound where
+        # the signature names the enum (an import alias, a module qualifier).
+        return (f"pass its value as {width}: send '.value', receive by "
+                f"calling the enum on the integer (checked against the members)")
     if isinstance(t, NominalType) and t.is_user_record:
         if is_element:
             return ('declare the class @native(binding="C") so it names a '

@@ -1,0 +1,1 @@
+main.py:14: error: parameter 'm': type 'Mode' is not representable in the C ABI; pass its value as int32: send '.value', receive by calling the enum on the integer (checked against the members)

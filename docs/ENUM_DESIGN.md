@@ -490,8 +490,9 @@ std::optional<...> EnumUtil<tpyapp::main::Color>::try_parse(std::string_view s) 
 }
 ```
 
-The `default: tpy_panic(...)` in `name()` and `from_value()` guards against
-invalid `static_cast` from C++ interop. No `__tpy_enum_value` helper is
+`from_value()` raises `ValueError` for a non-member, as `Color(7)` does in
+CPython; the `default: tpy_panic(...)` in `name()` guards against an invalid
+`static_cast` from C++ interop. No `__tpy_enum_value` helper is
 generated -- `.value` codegen emits `static_cast<int32_t>(c)` directly.
 
 ### Member Access Codegen

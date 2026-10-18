@@ -75,11 +75,34 @@ def test_native_enum_param_is_representable():
 
 def test_plain_enum_param_is_rejected():
     # A TPy-declared enum lowers to a namespaced C++ `enum class` with no C
-    # spelling, so admitting it would reopen the silent-ABI hole.
-    with pytest.raises(SemanticError, match="not representable in the C ABI"):
+    # spelling, and a C caller could pass a non-member integer, so the
+    # remedy is the checked conversion through the underlying width.
+    with pytest.raises(SemanticError, match="not representable in the C ABI") as exc:
         _compile(_ENUM_SRC
                  + "class Mode(Enum):\n    A = 0\n"
                  + '@export(binding="C")\ndef f(m: Mode) -> None: pass\n')
+    assert "pass its value as int32" in str(exc.value)
+    assert "calling the enum on the integer" in str(exc.value)
+
+
+def test_enum_hint_names_the_mixin_width():
+    # The underlying type comes from the mixin, so the hint must not assume
+    # int32 -- a C side written against it would read the wrong width.
+    with pytest.raises(SemanticError, match="return type 'Small'") as exc:
+        _compile(_ENUM_SRC + "from tpy import uint8\n"
+                 + "class Small(uint8, Enum):\n    A = 1\n"
+                 + '@export(binding="C")\ndef f() -> Small: return Small.A\n')
+    assert "pass its value as uint8" in str(exc.value)
+
+
+def test_enum_hint_sees_through_own():
+    # The gate judges Own over a value type as the type itself, so the hint
+    # has to as well, or it falls back to the generic Ptr[T] advice.
+    with pytest.raises(SemanticError, match="not representable") as exc:
+        _compile(_ENUM_SRC + "from tpy import Own\n"
+                 + "class Mode(Enum):\n    A = 0\n"
+                 + '@export(binding="C")\ndef f(m: Own[Mode]) -> None: pass\n')
+    assert "pass its value as int32" in str(exc.value)
 
 
 _EXPORT = ("from tpy.extern import export\n"
