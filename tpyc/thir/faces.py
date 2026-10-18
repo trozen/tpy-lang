@@ -435,8 +435,8 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # param name / pointer deref source
     "call.wrapper_borrow_ret",      # wrapper-borrow-returning call composes
                                     # bare (`count(passthru(tree))`)
-    "call.own_tuple_storage_ret",   # Own[tuple]-declared callee at the
-                                    # owning frame-slot emplace sink
+    "call.own_tuple_storage_ret",   # storage-form tuple return (any
+                                    # callee) at a STORAGE sink
     "call.open_value_tuple_ret",    # `tuple[T, int32]` call result bare at
                                     # the storage sink (open element, no lift)
     "call.union_elem_tuple_ret",

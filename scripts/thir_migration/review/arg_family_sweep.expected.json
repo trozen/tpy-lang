@@ -14120,44 +14120,44 @@
   ""
  ],
  "list_i__mut__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_i__mut__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i__mut__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_i__mut__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_i__mut__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_i__mut__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i__mut__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_i__mut__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i__mut__dict_subscript__ctor": [
   "ok",
@@ -15120,44 +15120,44 @@
   ""
  ],
  "list_i__ro__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_i__ro__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i__ro__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_i__ro__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_i__ro__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_i__ro__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i__ro__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_i__ro__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i__ro__dict_subscript__ctor": [
   "ok",
@@ -16120,44 +16120,44 @@
   ""
  ],
  "list_i_own__mut__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw])"
  ],
  "list_i_own__mut__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "reject:expr.call:call.ctor_arg.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__mut__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__mut__dict_subscript__ctor": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -17120,44 +17120,44 @@
   ""
  ],
  "list_i_own__ro__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}]) print(%k0.tag [raw])"
  ],
  "list_i_own__ro__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%g, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%t, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "reject:expr.call:call.ctor_arg.own_container",
   "not stored in a field, forwarded to another Own[T], or returned",
   ""
  ],
  "list_i_own__ro__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "method_call(%pp, CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "not stored in a field, forwarded to another Own[T], or returned",
-  ""
+  "call(CALLEE, [%argtmp(std::vector<int32_t> move){%s0}])"
  ],
  "list_i_own__ro__dict_subscript__ctor": [
   "reject:expr.call:call.ctor_arg.own_container",
@@ -18120,44 +18120,44 @@
   ""
  ],
  "list_i_ro__ro__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_i_ro__ro__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i_ro__ro__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_i_ro__ro__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_i_ro__ro__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_i_ro__ro__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_i_ro__ro__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_i_ro__ro__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_i_ro__ro__dict_subscript__ctor": [
   "ok",
@@ -19120,44 +19120,44 @@
   ""
  ],
  "list_r__mut__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_r__mut__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_r__mut__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_r__mut__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_r__mut__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__mut__dict_subscript__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -20040,44 +20040,44 @@
   ""
  ],
  "list_r__ro__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [%s0]) print(%k0.tag [raw])"
  ],
  "list_r__ro__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__gen": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE<int32_t>, [coerce(lit(1) -> int32), %s0])"
  ],
  "list_r__ro__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [%s0]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc, get, []), get, "
  ],
  "list_r__ro__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [%s0])"
  ],
  "list_r__ro__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [%s0])"
  ],
  "list_r__ro__dict_subscript__ctor": [
   "reject:expr.call:call.ctor_arg.container",
@@ -29850,14 +29850,14 @@
   "call(CALLEE, [coerce(call(copy [template 'std::array<int32_t, 2>({0})'], [%s0]) -> Span)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "span_i__mut__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [coerce(%s0 -> Span)]) print(%k0.tag [raw])"
  ],
  "span_i__mut__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__mut__dict_items_value__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -29865,29 +29865,29 @@
   ""
  ],
  "span_i__mut__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__mut__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__mut__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%s0 -> Span)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc,"
  ],
  "span_i__mut__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__mut__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__mut__dict_subscript__ctor": [
   "ok",
@@ -30850,14 +30850,14 @@
   "call(CALLEE, [coerce(call(copy [template 'std::array<int32_t, 2>({0})'], [%s0]) -> Span)]) print(call(len [tpy::__len__], [%s0]) [raw])"
  ],
  "span_i__ro__dict_items_value__ctor": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%k0: CALLEE = ctor(CALLEE, [coerce(%s0 -> Span)]) print(%k0.tag [raw])"
  ],
  "span_i__ro__dict_items_value__fn": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__ro__dict_items_value__gen": [
   "sema:Cannot infer type arguments for 'take'. Specify explicitly: take[T](...)",
@@ -30865,29 +30865,29 @@
   ""
  ],
  "span_i__ro__dict_items_value__genrec": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%g, CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__ro__dict_items_value__meth": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%t, CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__ro__dict_items_value__nested": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "%rc: Rc = call(new<::tpystd::tplib::box::Box<DynP>>, [ctor(::tpystd::tplib::box::Box<DynP>, [coerce(ctor(CALLEE, [coerce(%s0 -> Span)]) -> Own[DynP])])]) print(method_call(method_call(method_call(%rc,"
  ],
  "span_i__ro__dict_items_value__proto": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "method_call(%pp, CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__ro__dict_items_value__static": [
-  "reject:stmt.for_each:tuple.ref_target",
+  "ok",
   "",
-  ""
+  "call(CALLEE, [coerce(%s0 -> Span)])"
  ],
  "span_i__ro__dict_subscript__ctor": [
   "ok",
@@ -36415,9 +36415,9 @@
   ""
  ],
  "tup_ri__ro__own_call__fn": [
-  "ok",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
-  "call(CALLEE, [call(mk, [])])"
+  ""
  ],
  "tup_ri__ro__own_call__gen": [
   "reject:expr.call:call.generic_arg_shape",
@@ -36445,9 +36445,9 @@
   ""
  ],
  "tup_ri__ro__own_call__static": [
-  "ok",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
-  "call(CALLEE, [call(mk, [])])"
+  ""
  ],
  "tup_ri__ro__param__ctor": [
   "reject:expr.call:call.ctor_arg.tuple",
@@ -36495,7 +36495,7 @@
   ""
  ],
  "tup_ri__ro__prop_own__fn": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],
@@ -36525,7 +36525,7 @@
   ""
  ],
  "tup_ri__ro__prop_own__static": [
-  "reject:expr.method_call:method.ret_type",
+  "reject:expr.call:call.arg_shape.tuple",
   "",
   ""
  ],

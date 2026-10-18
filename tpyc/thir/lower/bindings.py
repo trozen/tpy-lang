@@ -2256,6 +2256,18 @@ def fresh_record(table: 'BindingTable', site: object, name: str
     return rec if rec is not None and rec.site is site else None
 
 
+def unpack_target_type(stmt: TpyTupleUnpack, i: int,
+                       an) -> 'TpyType | None':
+    """Unpack target `i`'s type, a pending container leaf resolved to the
+    container its literal's uses decided (`stack = [(["x"], 1)]; a, b =
+    stack.pop()` types `a` `PendingList[str, 1]`). The target's record is
+    built from it; the readers without a record read it here."""
+    raw = stmt.target_types[i] if i < len(stmt.target_types) else None
+    if not isinstance(raw, TpyType):
+        return None
+    return _p.resolve_pending_container(unwrap_ref_type(raw), an) or raw
+
+
 def head_target_writes_outer(stmt: TpyTupleUnpack, i: int, typ,
                              outer: 'BindingRepr | None', analyzer, *,
                              walk_declared: bool = False) -> bool:
@@ -2774,7 +2786,7 @@ class _Planner:
                 if (frame_head and n in fr.fields
                         and node.lookup(n) is not None):
                     continue
-                tt = s.target_types[i] if i < len(s.target_types) else None
+                tt = unpack_target_type(s, i, an)
                 if s.is_loop_head and head_target_writes_outer(
                         s, i, tt, node.lookup(n), an):
                     continue

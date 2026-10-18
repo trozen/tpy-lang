@@ -7178,8 +7178,11 @@ def _btuple_pass_arg(a: TpyExpr, ptype: 'TpyType | None',
     (call.btuple_pass). Element-blind render, so both shape keys bind the
     same way. A `copy()` call is excluded: its result is a fresh STORAGE
     tuple, which the borrow-form slot cannot bind."""
+    # A storage-ABI tuple return (BUGS.md#own-tuple-call-at-borrow-tuple-param)
+    # cannot bind a borrow-form slot bare either.
     if (not isinstance(a, (TpyCall, TpyMethodCall))
-            or copy_call_arg(a, analyzer) is not None):
+            or copy_call_arg(a, analyzer) is not None
+            or _storage_form_tuple_return(a.resolved_function_info)):
         return False
     pt = _ptr_optional_tuple(ptype)
     if pt is None:
@@ -9515,6 +9518,10 @@ def _marker_call_supported(e: TpyMethodCall, kind: 'tuple[str, str]',
             # marker twin of free-call lowering's storage_ret_ok escape.
             or (storage_ret_ok
                 and _storage_call_ret(ret, analyzer) is not None)
+            # A storage-form tuple return at a STORAGE sink: the free
+            # call's row (call.own_tuple_storage_ret).
+            or (storage_ret_ok and _storage_form_tuple_return(fi)
+                and _witness("call.own_tuple_storage_ret"))
             # An owned-optional record return (`Container.wrap_optional(v)
             # -> Own[Container[T]] | None`) at a STORAGE sink lands bare in
             # its by-value `std::optional<T>` decl slot -- the record-method
@@ -10679,6 +10686,11 @@ def _container_method_call_supported(
                 and call_hands_back_value(e)
                 and _call_storage_optional_return(e, analyzer) is not None
                 and _witness("method.declared_storage_opt_ret"))
+            # A storage-form tuple return (`a, b = stack.pop()` at
+            # `list[tuple[list[str], int32]]`) at a STORAGE sink: the free
+            # call's row -- the owned tuple lands bare in its slot.
+            or (storage_ret_ok and _storage_form_tuple_return(fi)
+                and _witness("call.own_tuple_storage_ret"))
             # A borrow-returning record result at the owning COPY sink
             # (`h.p = d.get("a", fb)`): the record arm's and the free call's
             # row -- the copy-assign absorbs the reference, sema warns.
@@ -10939,6 +10951,10 @@ def _protocol_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, Tpy
             # factory.create_point(x, y)` off a bounded-T protocol
             # receiver): the prvalue lands bare in the return/decl slot,
             # exactly like the record ladder's storage admission.
+            # A storage-form tuple return at a STORAGE sink: the free
+            # call's row (call.own_tuple_storage_ret).
+            or (storage_ret_ok and _storage_form_tuple_return(fi)
+                and _witness("call.own_tuple_storage_ret"))
             or (storage_ret_ok and is_rvalue_source(analyzer, e)
                 and record_like(
                     _unwrap_own(unwrap_readonly(unwrap_ref_type(
@@ -13961,6 +13977,10 @@ def _record_method_call_supported(e: TpyMethodCall, fi, locals_: dict[str, TpyTy
                 and is_array(unwrap_readonly(unwrap_ref_type(
                     unwrap_send_sync(ret))))
                 and _witness("method.array_value_ret"))
+            # A storage-form tuple return (`a, n = m.pair()` off
+            # `-> Own[tuple[list[str], int32]]`): the free call's row.
+            or (storage_ret_ok and _storage_form_tuple_return(fi)
+                and _witness("call.own_tuple_storage_ret"))
             or (storage_ret_ok
                 and (_storage_call_ret(ret, analyzer) is not None
                      or _span_value(ret)

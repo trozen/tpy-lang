@@ -176,7 +176,9 @@ from ...codegen_cpp.forms import (
 )
 from ...codegen_cpp import emit_prims
 from ...codegen_cpp.param_const import decide_param_const
-from ...codegen_cpp.types import resolve_pending_container
+from ...codegen_cpp.types import (resolve_pending_container,
+                                   resolve_tuple_pending,
+                                   resolve_view_storage)
 from ...codegen_cpp.context import (
     bigint_index_narrow_type,
     enum_cpp_name,
@@ -2041,27 +2043,10 @@ def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
 def _resolve_pending_view(t: TpyType | None, analyzer) -> TpyType | None:
     """A `PendingStrType`/`PendingBytesType` resolved to its concrete view/owned
     type through the family's ViewVarInfo (sema's usage resolution is FINAL
-    pre-lowering), else None. Mirrors codegen's `_resolve_view_storage`: no
-    registry entry (or an unresolved one) falls back to the owned type."""
+    pre-lowering), else None."""
     if not isinstance(t, PendingViewType):
         return None
-    info = analyzer.ctx.view_vars(t.family).get(t.var_id)
-    return (info.resolved_type if info is not None and info.resolved_type
-            else t.family.owned_type)
-
-def _resolve_tuple_pending(tt: TupleType, analyzer) -> TupleType:
-    """Mirror `TypeResolver._resolve_tuple_pending`: `to_cpp*` do not resolve
-    pending slots (a str element carries PendingStr until usage-resolved), so
-    every tuple wrap spelling resolves its elements first. An int-literal
-    element comes from a tuple literal written in place; an element read
-    of a function-local list is its cells' settled type."""
-    resolve_lit = analyzer.ctx.default_int_for_literal
-    resolved = []
-    for et in tt.element_types:
-        rv = _resolve_pending_view(et, analyzer)
-        resolved.append(rv if rv is not None
-                        else resolve_int_literals(et, resolve_lit))
-    return TupleType(tuple(resolved))
+    return resolve_view_storage(t.family, t.var_id, analyzer)
 
 def _resolved_str_value(t: TpyType | None, analyzer) -> TpyType | None:
     """The sema-RESOLVED str-slice type -- owned `str` (`std::string` storage /
@@ -5800,17 +5785,6 @@ def _tuple_compare_pair(lt: 'TpyType | None', rt: 'TpyType | None',
     return (_value_tuple_nested(lt, analyzer) is not None
             and _value_tuple_nested(rt, analyzer) is not None)
 
-def _resolve_pending_tuple_elems(tt: TupleType, analyzer) -> TupleType:
-    """A TupleType with every pending element (IntLiteral / view) resolved
-    -- resolve_tuple_pending runs before any type spelling (an
-    IntLiteral element would otherwise leak its VALUE into
-    `std::tuple<1, Box*>`). Shared by the compare pair, the membership
-    needle, and the print tuple-literal arm."""
-    return TupleType(tuple(
-        (_resolve_pending_view(et, analyzer)
-         or resolve_int_literals(et, analyzer.ctx.default_int_for_literal))
-        for et in tt.element_types))
-
 def _ptr_tuple_literal_compare_pair(
         e: TpyBinOp, analyzer) -> 'tuple[TupleType, TupleType] | None':
     """Both compare operands are tuple LITERALS whose type carries a
@@ -5835,8 +5809,8 @@ def _ptr_tuple_literal_compare_pair(
     if not (ltu.has_pointer_repr_element()
             or rtu.has_pointer_repr_element()):
         return None
-    return (_resolve_pending_tuple_elems(ltu, analyzer),
-            _resolve_pending_tuple_elems(rtu, analyzer))
+    return (resolve_tuple_pending(ltu, analyzer),
+            resolve_tuple_pending(rtu, analyzer))
 
 def _ptr_tuple_field_compare_pair(
         e: TpyBinOp, locals_: dict[str, TpyType],

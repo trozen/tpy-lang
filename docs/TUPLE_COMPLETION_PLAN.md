@@ -310,7 +310,8 @@ per shape; the mixed tuple global (D2) waits on that entry.
     (`tests/cases/tuple/tuple_argument_places`)
   - [x] the `bytes` element read `t[0]` (D6), and the `bytes` global unpack /
     `print(G)` rejects behind it (branch `u4-d6`)
-  - [ ] `BUGS.md#rvalue-ref-tuple-unpack-address-of-rvalue` -- `a, b = stack.pop()`
+  - [x] `rvalue-ref-tuple-unpack-address-of-rvalue` (fixed, entry removed) -- `a, b = stack.pop()`
+    (branch fix-method-tuple-unpack)
   - [x] yield re-packing an owning local: `yield (t[0], t[1])` -- compiles
     (a local literal or a call source) and warns the element copy since the
     tuple-literal member walker; moving the element at the root's last use

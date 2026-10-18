@@ -1,0 +1,20 @@
+list_pop s ['p', 'z'] ['q'] True []
+pop0 ['x', 'y'] 1 [(['w'], 2)]
+dict_pop ['x', 'y'] 1 {'j': (['w'], 2)}
+arraylist_pop ['x', 'y'] 1 0
+user_method ['u', 'y'] 1 []
+method_body ['m', 'y'] 2 []
+bound ['w', 'y'] 2 ['w', 'y']
+bound ['q'] ['x'] 1 []
+literal_stack ['x', 'y'] 1 []
+literal_stack_bound ['x', 'y'] 1 (['x', 'y'], 1) []
+literal_local_tuple ['x', 'y'] 1 ['x', 'y']
+for_head ['x', 'y'] 1
+for_head ['w', 'y'] 2
+for_head [(['x', 'y'], 1), (['w', 'y'], 2)]
+dict_items_literal {'k': [1, 9], 'j': [2, 9]}
+static_method ['s', 'y'] 2
+module_qualified ['q', 'y'] 3
+protocol_generic ['x', 'y'] 1
+record_elem 9 1 0
+nocopy_elem 9 1 0

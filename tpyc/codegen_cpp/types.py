@@ -49,6 +49,30 @@ def resolve_pending_container(typ: 'TpyType | None', analyzer) -> 'TpyType | Non
     return None
 
 
+def resolve_view_storage(family: ViewTypeFamily, var_id: int,
+                         analyzer) -> TpyType:
+    """A view-vars entry's usage-resolved type (view or owned); an entry
+    that never resolved falls back to the owned type."""
+    info = analyzer.ctx.view_vars(family).get(var_id)
+    return info.resolved_type if info and info.resolved_type else family.owned_type
+
+
+def resolve_tuple_pending(tt: TupleType, analyzer) -> TupleType:
+    """A tuple with its pending elements resolved -- a pending str / bytes
+    view, an int literal, a pending container literal -- since `to_cpp*`
+    resolve none of them: every tuple spelling resolves its elements
+    first."""
+    resolve_lit = analyzer.ctx.default_int_for_literal
+    resolved = []
+    for et in tt.element_types:
+        if isinstance(et, PendingViewType):
+            resolved.append(resolve_view_storage(et.family, et.var_id, analyzer))
+        else:
+            resolved.append(resolve_pending_container(et, analyzer)
+                            or resolve_int_literals(et, resolve_lit))
+    return TupleType(tuple(resolved))
+
+
 def _numeric_operand(t: TpyType | None) -> bool:
     """A binop operand the numeric result-typing rules may be applied to."""
     return is_numeric_type(t) or isinstance(t, (IntLiteralType, FloatLiteralType))
@@ -249,8 +273,7 @@ class TypeResolver:
 
     def _resolve_view_storage(self, family: ViewTypeFamily, var_id: int) -> TpyType:
         """Resolve a view-vars entry to its storage form (view or owned)."""
-        info = self.ctx.analyzer.ctx.view_vars(family).get(var_id)
-        return info.resolved_type if info and info.resolved_type else family.owned_type
+        return resolve_view_storage(family, var_id, self.ctx.analyzer)
 
     def _resolve_pending_view(self, typ: PendingViewType) -> TpyType:
         """Resolve a PendingViewType to its concrete type."""
@@ -260,32 +283,18 @@ class TypeResolver:
         """Public entry to pending-element resolution: callers that hand a
         tuple to `convert()` (which spells via the bare `to_cpp*` methods that
         do not resolve) must resolve first, exactly as `tuple_*_cpp` do."""
-        return self._resolve_tuple_pending(tt)
-
-    def _resolve_tuple_pending(self, tt: TupleType) -> TupleType:
-        """Resolve PendingViewType / IntLiteralType tuple elements to their
-        concrete types. `to_cpp` / `to_cpp_return` do not resolve pending
-        slots, so the borrow/storage wrap sites must do it first (e.g. a
-        str loop-var element carries PendingStrType until usage-resolved)."""
-        resolve_lit = self.ctx.analyzer.ctx.default_int_for_literal
-        resolved = []
-        for et in tt.element_types:
-            if isinstance(et, PendingViewType):
-                resolved.append(self._resolve_pending_view(et))
-            else:
-                resolved.append(resolve_int_literals(et, resolve_lit))
-        return TupleType(tuple(resolved))
+        return resolve_tuple_pending(tt, self.ctx.analyzer)
 
     def tuple_borrow_cpp(self, tt: TupleType, const: bool = False) -> str:
         """Borrow-form C++ (`std::tuple<..., T*>`) for a tuple, resolving
         pending element types first."""
-        resolved = self._resolve_tuple_pending(tt)
+        resolved = resolve_tuple_pending(tt, self.ctx.analyzer)
         return resolved.to_cpp_return_const() if const else resolved.to_cpp_return()
 
     def tuple_storage_cpp(self, tt: TupleType) -> str:
         """Storage-form C++ (`std::tuple<..., T>` / `std::optional<T>`) for a
         tuple, resolving pending element types first."""
-        return self._resolve_tuple_pending(tt).to_cpp()
+        return resolve_tuple_pending(tt, self.ctx.analyzer).to_cpp()
 
     def _resolve_pending_container(self, typ: TpyType) -> TpyType | None:
         """Resolve a pending container type via the shared unified lookup.

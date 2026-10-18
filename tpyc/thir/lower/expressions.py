@@ -133,7 +133,7 @@ from ...type_def_registry import (
     view_to_owned_conv,
 )
 from ...codegen_cpp import emit_prims
-from ...codegen_cpp.types import TypeResolver, resolve_pending_container
+from ...codegen_cpp.types import TypeResolver, resolve_pending_container, resolve_tuple_pending
 from ...modules.defs import BINOP_TO_METHOD
 from ...modules.type_resolution import (
     get_iterable_element_type,
@@ -430,7 +430,6 @@ from .predicates import (
     _nullable_protocol_slot,
     _protocol_union_arg,
     _declared_own_return,
-    _own_declared_call_ret,
     _own_storage_opt_param,
     _record_class_binding,
     _already_pointer_source,
@@ -478,7 +477,6 @@ from .predicates import (
     _record_call_rvalue_operand,
     _record_rvalue_temp_slot,
     _resolve_pending_view,
-    _resolve_tuple_pending,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -546,7 +544,6 @@ from .predicates import (
     _tuple_compare_pair,
     _ptr_tuple_field_compare_pair,
     _ptr_tuple_literal_compare_pair,
-    _resolve_pending_tuple_elems,
     _value_tuple_global,
     _value_tuple_return,
     _generic_value_tuple_return,
@@ -1282,10 +1279,7 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
               # owning frame-slot emplace value, `t.emplace(make_pair(9))`):
               # the by-value tuple return constructs in place.
               or (result is _ExprResultUse.STORAGE
-                  and _own_declared_call_ret(e)
-                  and isinstance(
-                      unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-                          ret))), TupleType)
+                  and _storage_form_tuple_return(fi)
                   and _witness("call.own_tuple_storage_ret"))
               # A wrapper-union VALUE return (`build() -> Own[Expr]`) in a
               # plain VALUE position: the by-value wrapper struct renders
@@ -4456,7 +4450,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             # (`tuple_to_storage<std::tuple<int32_t, Box>>(std::tuple<
             # int32_t, Box*>{1, &(b)})`) so the element comparison is
             # value-level -- the needle lift.
-            storage_t = _resolve_pending_tuple_elems(needle_tu, analyzer)
+            storage_t = resolve_tuple_pending(needle_tu, analyzer)
             _witness("binop.tuple_ptr_needle")
             needle: THIRExpr = THIRFormConvert(
                 result_type=storage_t,
@@ -13127,9 +13121,9 @@ def _lower_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
         # The spelling resolves pending elements: `to_cpp` does not, so a
         # slot carrying a str element's `PendingStrType` would raise at
         # emit -- the spelling comes from the ELEMENTS' resolved types.
-        result_type=_resolve_tuple_pending(slot, lc.analyzer),
+        result_type=resolve_tuple_pending(slot, lc.analyzer),
         elements=tuple(lower_element(i) for i in range(len(e.elements))),
-        tuple_layout=tuple_layout(_resolve_tuple_pending(slot, lc.analyzer), lc.analyzer),
+        tuple_layout=tuple_layout(resolve_tuple_pending(slot, lc.analyzer), lc.analyzer),
         loc=getattr(e, "loc", None))
 
 def _lower_borrow_tuple_literal(e: TpyTupleLiteral, slot: 'TupleType',
@@ -15412,7 +15406,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
             # A pointer tuple: each object it owns at this last use moves
             # into the slot, a borrowed element the slot owns is copied in
             # and one it borrows keeps its pointer.
-            slot_t = _resolve_tuple_pending(unwrap_readonly(
+            slot_t = resolve_tuple_pending(unwrap_readonly(
                 unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer)
             _witness("move.own_tuple_ptr_lift")
             return (elementwise_tuple_storage(lowered, slot_t,
@@ -15430,7 +15424,7 @@ def _lower_call_arg_at(a: TpyExpr, ptype: 'TpyType | None', lc: '_LowerCtx',
         if mixed_slot_btuple_name(a, ptype, declared, lc.narrow.narrowed):
             _witness("arg.own_tuple_btuple_lift")
             return THIRFormConvert(
-                result_type=_resolve_tuple_pending(unwrap_readonly(
+                result_type=resolve_tuple_pending(unwrap_readonly(
                     unwrap_ref_type(unwrap_send_sync(ptype))), lc.analyzer),
                 value=lowered, form=Form.STORAGE, param_form=True,
                 loc=getattr(a, "loc", None))
@@ -17536,7 +17530,7 @@ def _lower_copy_special(src: TpyExpr, callee: str, rtype: 'TpyType | None',
         _witness("call.copy_tuple_storage")
         return THIRBorrowTupleLiteral(
             result_type=stu,
-            spelled_cpp=lc.render_type(_resolve_tuple_pending(stu, analyzer)),
+            spelled_cpp=lc.render_type(resolve_tuple_pending(stu, analyzer)),
             elements=_copy_elems,
             addr_of=tuple(False for _ in _copy_elems),
             elem_wraps=(), loc=loc)

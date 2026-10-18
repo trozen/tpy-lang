@@ -167,7 +167,7 @@ from ...typesys import (is_polymorphic_subclass_fact,
                         polymorphic_source_is_pointer,
                         polymorphic_subclass_into_optional)
 from ...codegen_cpp.type_resolution import resolve_stmt_recorded_type
-from ...codegen_cpp.types import resolve_pending_container
+from ...codegen_cpp.types import resolve_pending_container, resolve_tuple_pending
 from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
 from ...liveness import (
     collect_nested_def_nonlocal_rebinds, stmts_terminate,
@@ -429,8 +429,6 @@ from .predicates import (
     _reassert_bump_info,
     _record_borrow_return,
     _resolve_pending_view,
-    _resolve_tuple_pending,
-    _resolve_pending_tuple_elems,
     _resolved_bytes_value,
     _resolved_scalar,
     _resolved_str_value,
@@ -2239,7 +2237,7 @@ def _tuple_unpack_reject_tag(stmt: TpyForEach, analyzer,
             continue
         if name in declared or name in narrowed:
             return "tuple.reused_target"
-        tt = unwrap_ref_type(up.target_types[i])
+        tt = unwrap_ref_type(_bindings.unpack_target_type(up, i, analyzer))
         if not _scalar_or_str_unpack_elem(tt, analyzer):
             return "tuple.target_family." + _type_family_tag(tt, analyzer)
     return "tuple.iter_shape"
@@ -2467,7 +2465,7 @@ def _tuple_unpack_targets(stmt: TpyTupleUnpack, analyzer,
             continue
         if name in narrowed:
             return None
-        tt = unwrap_ref_type(stmt.target_types[i])
+        tt = unwrap_ref_type(_bindings.unpack_target_type(stmt, i, analyzer))
         if name in declared:
             # A REUSED target -- an enclosing loop's variable, or any local
             # already in scope -- assigns its slot per iteration instead of
@@ -2606,8 +2604,10 @@ def _standalone_unpack_target_binds(
             continue
         if name in narrowed:
             return None
-        tt = unwrap_ref_type(stmt.target_types[i])
         rec = _bindings.fresh_record(lc.table, stmt, name)
+        tt = unwrap_ref_type(
+            rec.type if rec is not None
+            else _bindings.unpack_target_type(stmt, i, analyzer))
         if rec is not None:
             bind = unpack_bind(rec)
             if bind is None or (
@@ -2947,9 +2947,9 @@ def _borrow_tuple_wrap_cpp(target_types: 'tuple', analyzer, *,
     for a `tuple_to_pointer` unpack wrap, or None if it has no pointer-repr
     element. `resolve_tuple_pending` must run before `to_cpp_return`:
     `to_cpp*` do not resolve pending slots (a str element carries PendingStr
-    until usage-resolved), so resolve view / int-literal elements first. A
+    until usage-resolved), so resolve the pending elements first. A
     const source (a const loop var) spells `const T*` element pointers."""
-    ptr_form = _resolve_tuple_pending(TupleType(tuple(target_types)), analyzer)
+    ptr_form = resolve_tuple_pending(TupleType(tuple(target_types)), analyzer)
     if not ptr_form.has_pointer_repr_element():
         return None
     return (ptr_form.to_cpp_return_const() if const_source
@@ -5659,7 +5659,7 @@ def _park_tuple_global(stmt: TpyVarDecl, scope: '_LowerScope',
         return None
     if not any(fact):
         return None
-    ptt = _bindings.pointer_tuple_of(_resolve_tuple_pending(bt_t, analyzer))
+    ptt = _bindings.pointer_tuple_of(resolve_tuple_pending(bt_t, analyzer))
     if ptt is None:
         return None
     for i, own in enumerate(fact):
@@ -11953,7 +11953,7 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # value. So: `resolve_int_literals` (the helper's per-element
             # half) then `type_to_cpp`, whose own recursion reaches a pending
             # element nested in an inner tuple.
-            cpp_type = lc.render_type(_resolve_tuple_pending(vtype, analyzer))
+            cpp_type = lc.render_type(resolve_tuple_pending(vtype, analyzer))
         else:
             cpp_type = None
         return THIRVarDecl(
@@ -16001,8 +16001,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                         writes = rec is None or (
                                 name in declared
                                 and _bindings.head_target_writes_outer(
-                                    up, i, up.target_types[i]
-                                    if i < len(up.target_types) else None,
+                                    up, i, _bindings.unpack_target_type(
+                                        up, i, analyzer),
                                     lc.prior_binding(name), analyzer,
                                     walk_declared=True))
                         if writes:
@@ -17422,7 +17422,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
             # like the compare pair).
             at = lc.analyzer.get_expr_type(a)
             atu = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(at)))
-            resolved_t = _resolve_pending_tuple_elems(atu, lc.analyzer)
+            resolved_t = resolve_tuple_pending(atu, lc.analyzer)
             if _print_tuple_opt_ternary(a, atu, lc.analyzer) is not None:
                 # An Optional-TERNARY element: the family predicate admits
                 # nothing but VALUE element slots beside it, so the slot
