@@ -75,7 +75,6 @@ def test_parameters_keep_signature_order() -> None:
     a, b, c = (emitter.adopt(emitter.record(LEAF, MIRSlotKind.PARAMETER, name, passing=ParamPassing.VALUE))
                for name in "abc")
     value = emitter.fragment()
-    value.type = INT32
     value.end(MIRReturn(value.leaf(INT32, MIRRead(MIRPlace(c)), None)))
     emitter.splice(value)
     fn = _build(emitter, void=False)

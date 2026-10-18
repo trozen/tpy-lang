@@ -1940,7 +1940,12 @@ a `Fragment` (`tpyc/mir/emit.py`) -- its statements in order, the blocks a
 select, a short-circuit or a loop opens, the slots and regions it adds, the
 backings and borrow-operation points it publishes, and its value in the form
 its consumer asked for (a slot, a place or an rvalue; an owned leaf's
-consumer names the form, `_Use`). Fragments are built bottom-up and spliced
+consumer names the form, `_Use`). That value is one `MIRValue`, and every
+holder of a slot or place value comes from `Fragment.holder_of` (a call
+result's holder is still built by its call kind); a call's write,
+return and transfer paths are walked by one predicate,
+`call_contract.call_path_problem`, which the lowering and the validator
+share. Fragments are built bottom-up and spliced
 into their parent; a statement list is spliced into the scope it runs in, and
 a statement after one with no open exit is checked but not built. A
 fragment's region is a dissolved handle whose parent is the region it is

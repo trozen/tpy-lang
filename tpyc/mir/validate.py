@@ -40,8 +40,8 @@ from .presence import MIRPresence, _analyze_presence
 from .coverage import PAYLOAD_RECORD, primitive_operand, read_leaf, slot_representation, view_compatible
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .call_contract import (
-    BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, owned_record_result, path_hops, result_problem, summary_problem,
-    transfer_ends,
+    BORROWING_PASSINGS, OWNING_PASSINGS, binds_at, call_path_problem, owned_record_result, result_problem,
+    summary_problem,
 )
 from .definitions import layout_copy_may_raise
 from .shapes import (
@@ -879,34 +879,16 @@ def _validate_structure(fn: MIRFunction) -> None:
         _require(isinstance(call.absent, frozenset) and all(
             type(i) is int and 0 <= i < len(call.arguments) and call.arguments[i] in empty_optionals
             for i in call.absent), "call absent argument is not an empty Optional")
-        transferred = []
-        for transfer in summary.transfers:
-            for end in transfer_ends(transfer, summary.parameters, summary.callee.signature.return_type):
-                _require(end is not None, "invalid loan transfer")
-                if end.parameter is not None:
-                    transferred.append((end.parameter, end.path))
-                    continue
-                # A result's or a handed-over record's own storage, walked from its type.
-                _require(end.owned_hops is not None and all(
-                    record in records and MIRField(MIRFieldId(field.owner, field.name), field.type)
-                    in records[record].fields for record, field in end.owned_hops),
-                    "call write field does not match record layout")
-        for parameter, path in (*((w.parameter, w.path) for w in summary.writes),
-                                *((o.parameter, o.path) for o in summary.returns), *transferred):
-            # Each field of a write or return path is a member of the record
-            # storage it is read from: hop 0 the record the argument binds
-            # (a descendant's layout carries its ancestors' fields), hop k
-            # the previous field's member record.
+        def storage_of(parameter: int) -> NominalType | None:
             argument = slots.get(call.arguments[parameter])
-            storage = argument.type if argument is not None and record_type(argument.type) else None
+            return argument.type if argument is not None and record_type(argument.type) else None
+
+        def unbound(parameter: int, storage: NominalType | None) -> bool:
+            # The argument check below refuses the binding itself.
             ref = summary.parameters[parameter].borrowed_record
-            if storage is not None and ref is not None and not binds_at(records, storage, ref.type):
-                continue  # the argument check below refuses the binding itself
-            hops = path_hops(summary.parameters[parameter], path, storage)
-            _require(hops is not None and all(
-                record in records and MIRField(MIRFieldId(field.owner, field.name), field.type)
-                in records[record].fields for record, field in hops),
-                "call write field does not match record layout")
+            return storage is not None and ref is not None and not binds_at(records, storage, ref.type)
+        problem = call_path_problem(summary, summary.callee.signature.return_type, storage_of, records.get, unbound)
+        _require(problem is None, problem)
         # A pure stub reads every argument whatever its declared access.
         pure = isinstance(summary.callee, THIRStubCallee) and summary.callee.contract is THIRStubContract.PURE
         for sid, binding in zip(call.arguments, summary.parameters):

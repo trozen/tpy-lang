@@ -41,10 +41,8 @@ def holding_representation(holding: MIRHolding) -> Representation:
 
 def with_access(members: tuple[MIRShape | None, ...], readonly: bool) -> tuple[MIRShape | None, ...]:
     """A holder's view of a container's members: a readonly holder reaches
-    readonly storage members (an inert leaf is read by value and carries no
-    access)."""
-    return tuple(m if m is None or m.cls is MIRClass.LEAF else replace(m, readonly=m.readonly or readonly)
-                 for m in members)
+    readonly members, as `step` reaches them through it."""
+    return tuple(m if m is None else replace(m, readonly=m.readonly or readonly) for m in members)
 
 
 def container_member(typ: TpyType, leaves_only: bool,

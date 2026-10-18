@@ -306,7 +306,7 @@ def test_aggregate_parameters_keep_their_models(artifacts) -> None:
     point = bodies["Point"]
     assert [f.type for r in point.records for f in r.fields] == [FLOAT, bodies["tuples"].return_type]
     container = next(s for s in bodies["container"].slots if s.name == "xs")
-    assert container.shape.element == leaf_shape(FLOAT)
+    assert container.shape.element == leaf_shape(FLOAT, True)
     assert any(s.kind is MIRSlotKind.GLOBAL and s.type == FLOAT for s in bodies["reads_global"].slots)
 
 

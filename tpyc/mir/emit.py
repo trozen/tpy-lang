@@ -20,7 +20,7 @@ from .nodes import (
     MIRRvalue, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
     MIRTupleInitialization, MIRValidationError, member_init_operands, source_order, statement_target,
 )
-from .shapes import place_shape
+from .shapes import place_shape, record_pointer
 from .validate import body_may_raise, statement_reads, successors, validate_function
 
 
@@ -47,6 +47,41 @@ def owned_holder_shape(typ: TpyType) -> MIRShape:
 def view_holder_shape(typ: TpyType) -> MIRShape:
     """A readonly holder typed by a view: what it views is owned-leaf storage."""
     return MIRShape(typ, MIRClass.VIEW, MIRHolding.POINTER, True)
+
+
+def holder_form(shape: MIRShape) -> MIRShape:
+    """The shape of a holder lending a value of `shape`: a record pointer, a
+    container's region, a view's or owned leaf's readonly holder, a tuple itself."""
+    match shape.cls:
+        case MIRClass.RECORD:
+            return record_pointer(shape.type, shape.readonly)
+        case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW:
+            return replace(shape, holding=MIRHolding.REGION)
+        case MIRClass.VIEW:
+            return view_holder_shape(shape.type)
+        case MIRClass.OWNED_LEAF:
+            return owned_holder_shape(shape.type)
+        case MIRClass.TUPLE:
+            return shape
+    raise AssertionError(f"no holder form of {shape.cls}")
+
+
+@dataclass(frozen=True, eq=False)
+class MIRValue:
+    """A fragment's value: a slot, a place or an rvalue, with the expression's
+    `shape` when its producer states one (an rvalue's, or a slot's that is not
+    its holder's); a place's is derived where read (`Fragment.shape_of`).
+    `held`: the binding slot it already is; `raises`: reading the place may
+    raise; `storage`: the owned leaf storage a name read is, a return moves out."""
+    value: MIRSlotId | MIRPlace | MIRRvalue
+    shape: MIRShape | None = None
+    loc: object = None
+    held: MIRSlotId | None = None
+    raises: bool = False
+    storage: MIRSlotId | None = None
+
+    def __post_init__(self) -> None:
+        assert self.shape is None or not isinstance(self.value, MIRPlace), "a place's shape is derived"
 
 
 class RegionHandle:
@@ -153,9 +188,8 @@ class Fragment:
     """MIR built bottom-up before the block it runs in is known: its
     statements in order (the blocks a select or a short-circuit opens
     included), the slots and blocks it adds, the backings it publishes,
-    and its value -- `result`, a slot, a place or an rvalue in the form its
-    consumer asked for -- with the facts its consumers read of it. Its region
-    is a handle on the region it is spliced into.
+    and its value (`MIRValue`) in the form its consumer asked for. Its
+    region is a handle on the region it is spliced into.
 
     The body itself is the root fragment: its head is the entry block, and
     every other fragment's statements, slots and backings reach the body
@@ -200,29 +234,7 @@ class Fragment:
             self.operations: list[object] = []
             self.claims: list[tuple[object, _Block, object]] = []
         self.current: _Block | None = self.head
-        # The value and the facts known of it; each producer sets
-        # the attributes its consumers read.
-        self.result: object = None
-        self.type: TpyType | None = None
-        self.loc: object = None
-        # A place it denotes, and whether reading through it may raise (an
-        # unproven element subscript on the way).
-        self.place: MIRPlace | None = None
-        self.raises = False
-        # The shape of what a place denotes: a field's, an element's.
-        self.shape: MIRShape | None = None
-        # The holder slot the value already is, and the shape of a holder
-        # of it when it is not (a view, a record source, a container).
-        self.held: MIRSlotId | None = None
-        self.holder_shape: MIRShape | None = None
-        self.readonly = False
-        self.members: tuple[MIRShape, ...] = ()
-        # A view's holder type; a tuple's layout; a call's summary; the slot
-        # whose own storage the value is (a move out).
-        self.view: TpyType | None = None
-        self.layout: object = None
-        self.summary: MIRCallSummary | None = None
-        self.storage: MIRSlotId | None = None
+        self._value: MIRValue | None = None
         # As one full expression: whether it owns temporaries, which a region
         # of its own ends, and where it is.
         self.needs_region = False
@@ -235,22 +247,35 @@ class Fragment:
     def fragment(self) -> 'Fragment':
         return Fragment(self.root)
 
-    # --- container place facts -----------------------------------------------
+    # --- its value ---------------------------------------------------------------
 
     @property
-    def element(self) -> MIRShape:
-        """What iterating the container yields: a list / set / Array element, a dict key."""
-        return self.members[0]
+    def value(self) -> MIRValue | None:
+        return self._value
 
-    @property
-    def keyed(self) -> bool:
-        """A dict: a key addresses the value member."""
-        return len(self.members) > 1
+    @value.setter
+    def value(self, value: MIRValue) -> None:
+        # Reusing a binding as the value's holder is sound only at its own type.
+        assert value.held is None or self.root.records[value.held].type == self.shape_of(value).type, \
+            "a held slot has the value's type"
+        self._value = value
 
-    @property
-    def subscript(self) -> MIRShape:
-        """The member a subscript yields: a dict's value, else the element."""
-        return self.members[-1]
+    def shape_of(self, v: MIRValue | None = None) -> MIRShape:
+        """The shape of a value (this fragment's by default): a place's, derived
+        over the layouts registered by now; else the stated one, else its slot's."""
+        v = self._value if v is None else v
+        root = self.root
+        if isinstance(v.value, MIRPlace):
+            return place_shape(v.value, root.records, root.layouts())
+        if v.shape is not None:
+            return v.shape
+        assert isinstance(v.value, MIRSlotId), "an rvalue states its shape"
+        return root.records[v.value].shape
+
+    def holder_shape_of(self, v: MIRValue | None = None) -> MIRShape:
+        """The shape of a holder of a value: the binding slot it already is, else its `holder_form`."""
+        v = self._value if v is None else v
+        return self.root.records[v.held].shape if v.held is not None else holder_form(self.shape_of(v))
 
     # --- slots and blocks ----------------------------------------------------
 
@@ -340,7 +365,7 @@ class Fragment:
         if not value.needs_region:
             with self.dissolved():
                 return self.splice(value)
-        result = self.slot(scalar_shape(value.type))
+        result = self.slot(scalar_shape(value.shape_of().type))
         with self.full_expression(value):
             self.write(result, MIRRead(MIRPlace(self.splice(value))), value.expression_loc)
         return result
@@ -460,7 +485,7 @@ class Fragment:
             self.backings = _extend(self.backings, fragment.backings)
         if self.refusal is None:
             self.refusal = fragment.refusal
-        return fragment.result
+        return fragment._value.value if fragment._value is not None else None
 
     # --- values ----------------------------------------------------------------
 
@@ -483,6 +508,19 @@ class Fragment:
         holder = self.slot(shape)
         self.write(holder, value, loc)
         return holder
+
+    def holder_of(self, fragment: 'Fragment', want: MIRShape | None = None, *, raises: bool = True) -> MIRSlotId:
+        """A holder slot of `fragment`'s value, spliced here first: the binding
+        slot it already is, else a new holder of shape `want` (an access asked
+        for) or its holder form, written from the rvalue or a borrow of its
+        place (raising as reading it may, unless `raises` is false)."""
+        v = fragment.value
+        value = self.splice(fragment)
+        if v.held is not None:
+            return v.held
+        if isinstance(value, MIRPlace):
+            value = MIRBorrow(value, v.raises and raises)
+        return self.holder(want or self.holder_shape_of(v), value, v.loc)
 
     def branch(self, cond: MIRSlotId, yes: MIRBlockId, no: MIRBlockId, loc: object) -> None:
         constants = self.root.constant_bools

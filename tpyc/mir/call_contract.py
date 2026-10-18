@@ -1,6 +1,6 @@
 """Immutable certificates for the bounded call interface."""
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from enum import Enum, auto
 from typing import TYPE_CHECKING
@@ -852,6 +852,47 @@ def transfer_ends(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBindi
     if not isinstance(transfer.source, MIRStaticLoan) and transfer.source_path:
         ends.append(transfer_end(transfer.source, transfer.source_path, parameters, result))
     return tuple(ends)
+
+
+
+def _has_field(layout: 'MIRRecordLayout | None', field: THIRFieldIdentity) -> bool:
+    """Whether a layout carries the field (`MIRField` membership, keyed by its declaring owner)."""
+    return layout is not None and any(f.id.owner == field.owner and f.id.name == field.name and f.type == field.type
+                                      for f in layout.fields)
+
+
+def call_path_problem(summary: 'MIRCallSummary', return_type: TpyType,
+                      storage_of: Callable[[int], NominalType | None],
+                      layout_of: Callable[[NominalType], 'MIRRecordLayout | None'],
+                      skip: Callable[[int, NominalType | None], bool] | None = None) -> str | None:
+    """The problem of a call's paths against the record layouts it binds,
+    or None: each field of a transfer under owned record storage, then of
+    every write, return and lent-transfer path, is a member of the record
+    storage it is read from -- hop 0 the record the argument binds
+    (`storage_of` its parameter; a descendant's layout carries its
+    ancestors' fields), hop k the previous field's member record. The
+    caller's `layout_of` may register what it returns, so it is called in
+    this order and only as far as the walk gets; `skip` passes over a
+    parameter path whose binding another check refuses."""
+    transferred: list[tuple[int, object]] = []
+    for transfer in summary.transfers:
+        for end in transfer_ends(transfer, summary.parameters, return_type):
+            if end is None:
+                return "invalid loan transfer"
+            if end.parameter is not None:
+                transferred.append((end.parameter, end.path))
+            elif end.owned_hops is None or not all(_has_field(layout_of(record), field)
+                                                   for record, field in end.owned_hops):
+                return "call write field does not match record layout"
+    for parameter, path in (*((w.parameter, w.path) for w in summary.writes),
+                            *((o.parameter, o.path) for o in summary.returns), *transferred):
+        storage = storage_of(parameter)
+        if skip is not None and skip(parameter, storage):
+            continue
+        hops = path_hops(summary.parameters[parameter], path, storage)
+        if hops is None or not all(_has_field(layout_of(record), field) for record, field in hops):
+            return "call write field does not match record layout"
+    return None
 
 
 def transfer_problem(transfer: MIRLoanTransfer, parameters: tuple[MIRParameterBinding, ...],

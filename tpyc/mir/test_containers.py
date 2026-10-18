@@ -31,6 +31,7 @@ from .nodes import (
     MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn,
     MIRSlot,
 )
+from .shapes import with_access
 from .testutil import ContainerValue, Reference, execute, leaf_shape, owned_shape, reslot
 from .validate import MIRValidationError, validate_function
 
@@ -464,7 +465,7 @@ def test_a_span_parameter_and_result_view_a_region(active) -> None:
     tail = _fn(active, "tail")
     lines = _lines(tail)
     assert "result borrowed readonly" in lines
-    assert "%2: Span[readonly[int32]] readonly-ref element=int32:leaf temporary" in lines
+    assert "%2: Span[readonly[int32]] readonly-ref element=int32:leaf:readonly temporary" in lines
     assert "%2 = borrow %0[elements]" in lines
     first = _lines(_fn(active, "span_first"))
     assert "%0: Span[int32] mutable-ref element=int32:leaf parameter s" in first
@@ -711,7 +712,7 @@ def test_validator_rejects_damaged_results_and_iterators(active) -> None:
     _rejects(replace(tail, borrowed_result=replace(tail.borrowed_result, readonly=False)),
              "unsupported return type or access")
     holder = next(s for s in items.slots if s.shape.holding is MIRHolding.REGION)
-    _rejects(replace(items, slots=tuple(reslot(s, readonly=True)
+    _rejects(replace(items, slots=tuple(reslot(s, readonly=True, members=with_access(s.shape.members, True))
                                         if s is holder else s for s in items.slots)),
              "borrowed return type or access mismatch")
     iterator = next(s for s in span_sum.slots if s.shape.holding is MIRHolding.CURSOR)
@@ -755,7 +756,7 @@ def test_a_dict_view_loop_walks_the_member_its_iteration_declares(fresh) -> None
     assert "%4 = iterator-init %3" in lines and "%6 = iterator-read %4" in lines
     lines = _lines(_fn(fresh, "values_total"))
     # A values view walks the values.
-    assert "%4: dict_values[str, int32] native-iterator readonly element=int32:leaf temporary" in lines
+    assert "%4: dict_values[str, int32] native-iterator readonly element=int32:leaf:readonly temporary" in lines
 
 
 def test_a_pure_stub_reads_a_dict_view_whole(active) -> None:
@@ -768,7 +769,7 @@ def test_validator_rejects_damaged_view_cursors(fresh) -> None:
     fn = _fn(fresh, "values_total")
     cursor = next(s for s in fn.slots if s.shape.holding is MIRHolding.CURSOR)
     holder = next(s for s in fn.slots if s.type == cursor.type and s is not cursor)
-    assert cursor.shape.members == holder.shape.members == (leaf_shape(INT32),)
+    assert cursor.shape.members == holder.shape.members == (leaf_shape(INT32, True),)
     # A cursor over a values view walks the value member, never the key.
     key = (owned_shape(STR, True),)
     damaged = replace(fn, slots=tuple(reslot(s, members=key) if s is cursor else s for s in fn.slots))
@@ -779,7 +780,7 @@ def test_only_a_pure_stub_binds_a_readonly_container_mutably(active) -> None:
     fn = _fn(active, "grow")
     # `append` writes its receiver: a readonly holder cannot be lent to it.
     _rejects(_reslot(fn, "xs", readonly=True, passing=ParamPassing.CONST_REF,
-                     members=(leaf_shape(INT32),)),
+                     members=(leaf_shape(INT32, True),)),
              "call container argument mismatch")
 
 
@@ -858,8 +859,8 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
     dumps, functions = calls
     for name in ("ro_values", "inferred_values"):
         lines = dumps[name]
-        assert ("%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly value=int32:leaf "
-                "parameter d") in lines, name
+        assert ("%0: dict[str, int32] container-ref readonly element=str:owned_leaf:readonly "
+                "value=int32:leaf:readonly parameter d") in lines, name
         assert any(line.startswith("%1 = call stub builtins.dict.values[dict[str, int32]](%0) "
                                    "[pure, reader, returns={param0}, may-raise]") for line in lines), name
     # The const-inferred receiver reaches the @auto_readonly mutable clone: a
