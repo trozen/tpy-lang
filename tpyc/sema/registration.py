@@ -5,7 +5,8 @@ Registers builtin types, records, protocols, and functions.
 """
 
 from __future__ import annotations
-from dataclasses import replace as dc_replace, fields as _dc_fields
+from dataclasses import dataclass, replace as dc_replace, fields as _dc_fields
+from enum import Enum
 from typing import TYPE_CHECKING
 
 
@@ -57,18 +58,20 @@ from ..typesys import (
     unwrap_ref_type,
     CallableType, is_bodyless_binding,
 )
-from ..compilation_context import get_current_compiler
+from ..compilation_context import get_current_compiler, require_current_compiler
 from ..module_names import public_module_name
 from ..parse import (
     TpyRecord, TpyProtocol, TpyEnum, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, RecordLinkage,
     TpyAssign, TpyFieldAccess, TpyName, TpyBinOp, TpyReturn, TpyMethodCall, TpyCall, TpyExprStmt,
     TpyNoneLiteral, TpyStrLiteral, TpyRaise, TpyTry, collect_name_refs,
-    TpyForEach, TpyNestedDef, TpyWith,
+    TpyForEach, TpyNestedDef, TpyWith, TpyUnaryOp,
 )
 from .call_lends import NO_CALLS
 from .storage_walk import holder_root
-from ..parse.nodes import (COPY_HOOK, OverloadForm, is_base_init_call,
-                          walk_body_stmts, written_names)
+from ..parse.nodes import (COPY_HOOK, DefaultReferent,
+                          NON_CONSTANT_DEFAULT_MSG, OverloadForm,
+                          SourceLocation,
+                          is_base_init_call, walk_body_stmts, written_names)
 from ..identity_map import IdentitySet
 from ..parse.parser import auto_declare_fields_from_init, reorder_fields_by_init
 from ..namespace import NameBinding, BindingKind
@@ -90,7 +93,8 @@ from .operators import DUNDER_CPP_TEMPLATES, OPERATOR_DUNDERS
 from ..macro_api import expr_to_cpp_default
 from .literal_utils import const_expr_type, is_char_literal_init
 from ..symbol_binding import (
-    SymbolKind, install_binding, protocol_kind_for, resolve_type_path,
+    SymbolBinding, SymbolKind, install_binding, lookup_imported,
+    protocol_kind_for, resolve_type_path,
 )
 from ..parse.nodes import name_path
 
@@ -256,14 +260,15 @@ def check_type_member_default(
     """Validate a default that names a member of a class or enum --
     `Color.RED`, `m.Outer.Kind.A`, `Outer.LIMIT` -- against `target_type`.
 
-    The receiver resolves in the DEFINING scope, as CPython evaluates a
-    default once where the `def` / field is: the class body (`scope_record`)
-    first, then the module; a parameter of the function never shadows it.
+    The receiver's head resolves in the DEFINING scope
+    (`default_scope_name`), as CPython evaluates a default once where the
+    `def` / field is; a parameter of the function never shadows it.
     An enum member or a `Final` class constant is admitted and the default
     carries the fact its printer reads (`enum_member_of` /
-    `class_constant_owner`). Raises on a missing enum member or a type that
-    mismatches `target_type`. Returns False when `expr` names no such member,
-    so the caller applies its own handling. Shared by field- and
+    `class_constant_owner`). Raises on a missing enum member, a type that
+    mismatches `target_type`, or a head the class body binds to anything
+    but a type before the default. Returns False when `expr` names no such
+    member, so the caller applies its own handling. Shared by field- and
     parameter-default validation so the two default surfaces stay
     consistent."""
     if not isinstance(expr, TpyFieldAccess):
@@ -271,12 +276,30 @@ def check_type_member_default(
     path = name_path(expr.obj)
     if path is None:
         return False
-    owner = None
-    if scope_record is not None:
-        owner = resolve_type_path(
-            ctx, ctx.module_name, f"{scope_record}.{path[0]}", path[1:])
-    if owner is None:
-        owner = ctx.type_ref(expr.obj)
+    head = default_scope_name(ctx, path[0], scope_record,
+                              _leaf_at(expr, loc))
+    return _check_member_default(ctx, expr, path, head, target_type, loc,
+                                 target_noun=target_noun, compat=compat)
+
+
+def _check_member_default(
+        ctx: 'SemanticContext', expr: TpyFieldAccess, path: list[str],
+        head: 'DefaultScopeName', target_type: 'TpyType | None',
+        loc: object, *, target_noun: str,
+        compat: 'TypeCompatibility | None') -> bool:
+    """`check_type_member_default` with the receiver's head resolved."""
+    if head.holder is not None:
+        if head.nested is None:
+            raise SemanticError(
+                f"Default {target_noun} value "
+                f"'{'.'.join((*path, expr.field))}' must name an enum "
+                f"member, a class constant or a module-level Final[T] "
+                f"constant" + _body_binding_note(path[0], head), loc)
+        owner = (resolve_type_path(ctx, head.nested.defining_module,
+                                   head.nested.canonical_name, path[1:])
+                 if len(path) > 1 else head.nested)
+    else:
+        owner = ctx.type_ref_bound_path(head.module, path)
     if owner is None:
         return False
     spelled = ".".join(path)
@@ -302,6 +325,310 @@ def check_type_member_default(
             f"{target_noun} default", loc)
     expr.class_constant_owner = holder
     return True
+
+
+@dataclass
+class _DefaultSite:
+    """One registered signature's defaults, queued for `resolve_defaults`:
+    (parameter name, slot type or None, default) per parameter; the class
+    whose body holds the def; whether a member default is type-checked
+    against its slot."""
+    slots: list[tuple[str, 'TpyType | None', 'TpyExpr | None']]
+    scope_record: str | None
+    members_typed: bool
+
+
+def resolve_default(ctx: 'SemanticContext', expr: TpyExpr,
+                    target_type: 'TpyType | None', loc: object, *,
+                    scope_record: str | None = None,
+                    compat: 'TypeCompatibility | None' = None) -> set[str]:
+    """Resolve a parameter default once, in the scope it is written in, as
+    CPython evaluates it at the `def`: every leaf of the expression gets the
+    referent the call-site fill, the C++ default argument and the interop
+    glue read, whatever scope they are in. A name (`default_referent`) is a
+    class constant of `scope_record`'s body, else a module-level `Final`
+    defined here or imported; a dotted leaf is an enum member or class
+    constant (`check_type_member_default`) or a module's `Final` variable
+    (`module_var_access`). A constructor call's arguments resolve the same
+    way, and its callee to the class it names here (`_callee_referent`).
+    Every name -- a bare leaf, a callee, a dotted receiver's head --
+    resolves through `default_scope_name`.
+    Raises when a leaf names nothing a default may. Returns the modules
+    defining the referents the default reads."""
+    done = _referent_modules(expr)
+    if done is not None:
+        # Resolved already, where it is written: a holder in another module
+        # shares the expression (a dataclass child's `__init__` takes its
+        # parent's field defaults).
+        return done
+    if isinstance(expr, TpyName):
+        head = default_scope_name(ctx, expr.name, scope_record,
+                                  _leaf_at(expr, loc))
+        referent = _name_referent(ctx, expr.name, head)
+        if referent is None:
+            raise ctx.error(
+                f"Default parameter value '{expr.name}' must be a module-level "
+                f"Final[T] constant"
+                + _body_binding_note(expr.name, head, suggest_final=True),
+                expr)
+        expr.default_referent = referent
+        return _referent_modules(expr) or set()
+    if isinstance(expr, TpyFieldAccess):
+        path = name_path(expr.obj)
+        head = (default_scope_name(ctx, path[0], scope_record,
+                                   _leaf_at(expr, loc))
+                if path is not None else None)
+        if head is not None and _check_member_default(
+                ctx, expr, path, head, target_type, loc,
+                target_noun="parameter", compat=compat):
+            return _referent_modules(expr) or set()
+        spelled = ".".join(name_path(expr) or (expr.field,))
+        # A class-body head here is a nested type, never a module.
+        module = (ctx.module_of_bound_path(head.module, path[0], path[1:])
+                  if head is not None and head.holder is None else None)
+        var = (ctx.registry.module_variable(module, expr.field)
+               if module is not None else None)
+        if var is None:
+            raise SemanticError(
+                f"default value '{spelled}' is not a resolvable enum member",
+                loc)
+        if not var.is_final:
+            raise SemanticError(
+                f"Default parameter value '{spelled}' must be a module-level "
+                f"Final[T] constant", loc)
+        expr.module_var_access = (module, expr.field)
+        return {module}
+    if isinstance(expr, TpyCall):
+        if (isinstance(expr.func, TpyName)
+                and expr.func.default_referent is None):
+            head = default_scope_name(ctx, expr.func.name, scope_record,
+                                      _leaf_at(expr.func, loc))
+            expr.func.default_referent = _callee_referent(
+                ctx, expr.func, head)
+        out: set[str] = set()
+        for arg in expr.args:
+            out |= resolve_default(ctx, arg, None, loc,
+                                   scope_record=scope_record)
+        return out
+    if isinstance(expr, TpyUnaryOp):
+        return resolve_default(ctx, expr.operand, None, loc,
+                               scope_record=scope_record)
+    return set()
+
+
+def _referent_modules(leaf: TpyExpr) -> set[str] | None:
+    """The module defining the referent a resolved default leaf reads, from
+    its stamp; None when the leaf carries none."""
+    if isinstance(leaf, TpyName):
+        ref = leaf.default_referent
+        if ref is None or ref.ctor is not None:
+            return None
+        if ref.module_var is not None:
+            return {ref.module_var[0]}
+        assert ref.class_owner is not None
+        return {_record_module(ref.class_owner)}
+    if not isinstance(leaf, TpyFieldAccess):
+        return None
+    if leaf.module_var_access is not None:
+        return {leaf.module_var_access[0]}
+    if leaf.class_constant_owner is not None:
+        return {_record_module(leaf.class_constant_owner)}
+    if leaf.enum_member_of is not None:
+        info = enum_info_of(leaf.enum_member_of)
+        return ({info.module_name}
+                if info is not None and info.module_name is not None
+                else set())
+    return None
+
+
+def _record_module(record: RecordInfo) -> str:
+    return record.defining_module or record.module or ""
+
+
+class BodyBinding(Enum):
+    """What the class body holding a default binds a name to before the
+    default (`DefaultScopeName.body`)."""
+    TYPE = "nested class"
+    FINAL_CONSTANT = "Final class constant"
+    CONSTANT = "class variable"
+    METHOD = "method"
+    FIELD = "field"
+
+
+@dataclass(frozen=True)
+class DefaultScopeName:
+    """What a name read in a parameter default binds where the default is
+    written (`default_scope_name`): a binding the class body holding the
+    def makes before the default (`holder`, `body`), else the module's
+    binding of it (`module`: its own, an import or a builtin; None when
+    nothing binds it). A nested type's binding is `nested`."""
+    holder: RecordInfo | None = None
+    body: BodyBinding | None = None
+    module: NameBinding | None = None
+    nested: SymbolBinding | None = None
+
+
+def default_scope_name(ctx: 'SemanticContext', name: str,
+                       scope_record: str | None,
+                       at: 'SourceLocation | None') -> DefaultScopeName:
+    """Resolve `name` as a default written at `at` in this module (in the
+    body of class `scope_record`, when given) reads it, as CPython
+    evaluates the default once at the `def`: what that class body binds
+    before `at` -- not a base's binding, which a class body does not see,
+    nor one made later -- else the module's binding. A class-body binding
+    is final: whatever it binds, the default never reaches the module's
+    binding of the same name. The one resolver every default leaf -- a
+    bare name, a constructor callee, a dotted receiver's head -- goes
+    through; each admits or rejects by the binding's kind."""
+    holder = (ctx.registry.get_record(scope_record)
+              if scope_record is not None else None)
+    if holder is not None and name in holder.body_locs and _binds_before(
+            holder.body_locs[name], at):
+        return _body_binding(ctx, holder, name)
+    return DefaultScopeName(module=ctx.global_ns.lookup(name))
+
+
+def _body_binding(ctx: 'SemanticContext', holder: RecordInfo,
+                  name: str) -> DefaultScopeName:
+    if name in holder.class_constants:
+        return DefaultScopeName(
+            holder=holder,
+            body=(BodyBinding.FINAL_CONSTANT
+                  if holder.is_final_class_constant(name)
+                  else BodyBinding.CONSTANT))
+    if holder.get_method_overloads(name):
+        return DefaultScopeName(holder=holder, body=BodyBinding.METHOD)
+    nested = resolve_type_path(ctx, ctx.module_name, f"{holder.name}.{name}",
+                               [])
+    if nested is not None:
+        return DefaultScopeName(holder=holder, body=BodyBinding.TYPE,
+                                nested=nested)
+    return DefaultScopeName(holder=holder, body=BodyBinding.FIELD)
+
+
+def _leaf_at(leaf: TpyExpr, enclosing: object) -> 'SourceLocation | None':
+    """Where a default's leaf is read: its own location, else the
+    enclosing default's (a macro-synthesized callee carries none)."""
+    if leaf.loc is not None:
+        return leaf.loc
+    return enclosing if isinstance(enclosing, SourceLocation) else None
+
+
+def _body_binding_note(name: str, head: DefaultScopeName, *,
+                       suggest_final: bool = False) -> str:
+    """The rejection's pointer at the class-body binding a default reads,
+    which a reader would otherwise take for the module's of that name."""
+    if head.body is None:
+        return ""
+    note = (f"; the class body binds '{name}' to a {head.body.value} "
+            f"before the default")
+    if suggest_final and head.body in (BodyBinding.FIELD,
+                                       BodyBinding.CONSTANT):
+        note += f" (declare it '{name}: Final[...]' to make it a constant)"
+    return note
+
+
+def _name_referent(ctx: 'SemanticContext', name: str,
+                   head: DefaultScopeName) -> DefaultReferent | None:
+    """What a bare name in a default names (`head`, from
+    `default_scope_name`): a `Final` class constant of the class body,
+    else a `Final` global of this module or one imported into it (by its
+    defining module). None for anything else: a class-body method, field
+    or `ClassVar` (CPython binds the default to the slot's value at the
+    `def`, a later write never reaches it), a non-Final global."""
+    if head.holder is not None:
+        return (DefaultReferent(class_owner=head.holder)
+                if head.body is BodyBinding.FINAL_CONSTANT else None)
+    if head.module is None or head.module.kind != BindingKind.VARIABLE:
+        return None
+    if name in ctx.final_globals:
+        return DefaultReferent(module_var=(ctx.cpp_module_name, name))
+    imp = lookup_imported(ctx.module_attributes, name, SymbolKind.VARIABLE)
+    if imp is not None:
+        var = ctx.registry.module_variable(*imp)
+        if var is not None and var.is_final:
+            return DefaultReferent(module_var=imp)
+    return None
+
+
+def _callee_referent(ctx: 'SemanticContext', func: TpyName,
+                     head: DefaultScopeName) -> DefaultReferent | None:
+    """The class the callee of a call in a parameter default constructs
+    (`head`, from `default_scope_name`), as the binding the call is
+    dispatched on wherever it is filled. Raises the parser's
+    non-constant-default rejection when the name binds anything but a
+    class there (a method, a function); None when it binds nothing, which
+    the call's own analysis reports."""
+    if head.holder is not None:
+        nested = head.nested
+        if nested is None or nested.kind != SymbolKind.RECORD:
+            raise SemanticError(
+                NON_CONSTANT_DEFAULT_MSG + _body_binding_note(func.name, head),
+                func.loc)
+        return DefaultReferent(ctor=NameBinding(
+            kind=BindingKind.RECORD, name=func.name, record_info=nested.info))
+    if head.module is None:
+        return None
+    ref = ctx.type_ref_bound_path(head.module, [func.name])
+    if ref is None or ref.kind != SymbolKind.RECORD:
+        raise SemanticError(NON_CONSTANT_DEFAULT_MSG, func.loc)
+    return DefaultReferent(ctor=head.module)
+
+
+def _body_locs(record: TpyRecord) -> dict[str, 'SourceLocation | None']:
+    """`RecordInfo.body_locs` of `record`; read before its class constants
+    are partitioned out of its fields."""
+    bindings = [
+        *((bare_name(n.name), n.loc)
+          for n in (*record.nested_records, *record.nested_enums)),
+        *((m.name, m.loc) for m in record.methods),
+        *((f.name, f.loc) for f in record.fields
+          if f.default_expr is not None)]
+    locs: dict[str, 'SourceLocation | None'] = {}
+    for name, loc in sorted(bindings, key=lambda b: (b[1].line, b[1].column)
+                            if b[1] is not None else (0, 0)):
+        locs.setdefault(name, loc)
+    return locs
+
+
+def _binds_before(decl: 'SourceLocation | None',
+                  at: 'SourceLocation | None') -> bool:
+    """Whether a class-body binding at `decl` is executed before the
+    statement at `at`. A name is bound once its whole statement ran: `K:
+    Final = K` and a default in the signature of a method named like it
+    read the enclosing scope's, while a statement earlier on the same line
+    (`R: int32 = 11; x: int32 = R.real`) binds. A read is located by
+    `_leaf_at`; a position still unknown counts as after the binding, which
+    rejects rather than silently reading the module's binding of the
+    name."""
+    if decl is None or at is None:
+        return True
+    if decl.end_line is None:
+        return (decl.line, decl.column) < (at.line, at.column)
+    if decl.end_column is None:
+        return decl.end_line <= at.line
+    return (decl.end_line, decl.end_column) <= (at.line, at.column)
+
+
+def referent_type(ctx: 'SemanticContext', *,
+                  module_var: tuple[str, str] | None = None,
+                  class_owner: 'RecordInfo | None' = None,
+                  member: str = "") -> 'TpyType | None':
+    """The type a read of a default's referent has: a module variable's
+    (this module's from its own namespace, which a module publishes only
+    after its top-level statements ran) or class constant `member` of
+    `class_owner`."""
+    if class_owner is not None:
+        cc = class_owner.class_constants.get(member)
+        return cc.type if cc is not None else None
+    if module_var is None:
+        return None
+    module, name = module_var
+    if module == ctx.cpp_module_name:
+        binding = ctx.global_ns.lookup(name)
+        return binding.type if binding is not None else None
+    var = ctx.registry.module_variable(module, name)
+    return var.type if var is not None else None
 
 
 def check_default_value_type(expr: TpyExpr, target_type: 'TpyType | None',
@@ -670,6 +997,10 @@ class TypeRegistrar:
         self.type_ops = type_ops
         self.protocols = protocols
         self.compat = compat
+        # Registered signatures whose defaults `resolve_defaults` resolves.
+        self._default_sites: list[_DefaultSite] = []
+        # The cycle peers the drain ran with, None until it ran.
+        self._drained_peers: frozenset[str] | None = None
 
     def _resolve_type_param_bounds(
         self, raw_bounds: dict[str, TpyType], loc,
@@ -1383,6 +1714,7 @@ class TypeRegistrar:
         # registration at the bottom of this function goes through the normal
         # path. If `register_record()` grows new side effects, update the
         # comment here so the skip is still audited.
+        body_locs = _body_locs(record)
         if not record.builtin_type_key:
             record_module = public_module_name(self.ctx.module_name, self.ctx.module_cpp_namespace) or None
             # If `_pre_populate_decl_exports` minted a skeleton
@@ -1412,6 +1744,9 @@ class TypeRegistrar:
                     type_params=list(record.type_params) if record.type_params else [],
                     type_param_kinds=list(record.type_param_kinds) if record.type_param_kinds else [],
                 )
+            # Field defaults are checked against it before the full
+            # registration below.
+            placeholder.body_locs = body_locs
             self.ctx.registry.records[record.name] = placeholder
 
         # Partition class-body Final/ClassVar annotations into class_constants
@@ -1858,7 +2193,7 @@ class TypeRegistrar:
                 resolved_kwarg_type = self.type_ops.resolve_type(method.kwarg_type)
                 method_param_infos.append(ParamInfo(method.kwarg_name, resolved_kwarg_type,
                                                     is_kwargs=True))
-            self._validate_param_defaults(method_param_infos, record.name)
+            self._defer_param_defaults(method_param_infos, record.name)
             # async def method: callers see Cancellable[T]. Mirrors free async def
             # (line ~2603); the user's T stays on method.return_type for codegen
             # and the body-return checker. Cancellable structurally extends
@@ -2356,6 +2691,7 @@ class TypeRegistrar:
             defining_module=self.ctx.module_name,
             exposed_to_host=record.exposed_to_host,
             enum_companion_of=record.enum_companion_of,
+            body_locs=body_locs,
         )
         # Adopt the pre-populated skeleton when available so peer
         # registries that captured a reference during bind_imports
@@ -3621,6 +3957,7 @@ class TypeRegistrar:
                 param_defaults=msig.param_defaults,
                 num_posonly_params=msig.num_posonly_params,
             ))
+        self._defer_protocol_defaults(resolved_methods)
         info = ProtocolInfo(
             name=protocol.name,
             methods=resolved_methods,
@@ -3900,65 +4237,103 @@ class TypeRegistrar:
             and not is_owned_in_coro_frame(ptype)
         )
 
-    def _validate_param_defaults(self, param_infos: 'list[ParamInfo]',
-                                 scope_record: str | None = None) -> None:
-        """Type-check parameter defaults against their declared types.
+    def _defer_param_defaults(self, param_infos: 'list[ParamInfo]',
+                              scope_record: str | None = None) -> None:
+        """Queue a registered signature's defaults for `resolve_defaults`.
+        `scope_record` is the class whose body defines a method, the first
+        scope a default's names resolve in."""
+        self._queue_default_site(_DefaultSite(
+            [(pi.name, pi.type, pi.default_expr) for pi in param_infos],
+            scope_record, members_typed=True))
 
-        The parser accepts a default by shape alone; this is the type-aware
-        gate, keeping parameter defaults consistent with field defaults. A
-        `Final[T]` name resolves too late to see here and is checked in the
-        analyzer instead. `scope_record` is the class whose body defines a
-        method, the first scope a dotted default resolves in."""
-        for pi in param_infos:
-            default = pi.default_expr
-            if default is None:
-                continue
-            if not isinstance(default, TpyFieldAccess):
-                check_default_value_type(default, pi.type, self.compat,
-                                         default.loc, target_noun="parameter",
-                                         target_name=pi.name)
-                continue
-            # An enum-member default is monomorphic: it is only meaningful when
-            # the parameter type IS that concrete enum. A type-param-containing
-            # type (bare `T`, `T | None`, ...) can't be checked here and would
-            # emit a `T x = Enum::M` initializer C++ rejects opaquely at
-            # instantiation, so reject it up front (unlike a literal default,
-            # which is legitimately polymorphic and deferred to instantiation).
-            if contains_type_param(pi.type):
-                raise SemanticError(
-                    f"an enum-member default requires a concrete enum-typed "
-                    f"parameter; parameter '{pi.name}' has generic type "
-                    f"'{pi.type}'", default.loc)
-            if not check_type_member_default(
-                    self.ctx, default, pi.type, default.loc,
-                    target_noun="parameter", scope_record=scope_record,
-                    compat=self.compat):
-                spelled = ".".join(name_path(default) or (default.field,))
-                raise SemanticError(
-                    f"default value '{spelled}' is not "
-                    f"a resolvable enum member", default.loc)
-
-    def validate_ast_param_defaults(self, func: TpyFunction) -> None:
-        """Type-check a function's defaults straight off the AST.
-
-        For a callable that never reaches `register_function` and so builds no
-        ParamInfo -- the @overload IMPLEMENTATION, whose defaults codegen still
-        emits into each specialization. A `Final[T]` name is not judged here:
-        `_validate_named_defaults` covers it during body analysis, which the
-        implementation does undergo.
-        """
+    def defer_ast_param_defaults(self, func: TpyFunction) -> None:
+        """Queue a function's defaults straight off the AST: the @overload
+        IMPLEMENTATION, which never reaches `register_function` and so
+        builds no ParamInfo, while codegen still emits its defaults into
+        every specialization. Its literal defaults are type-checked against
+        the resolved annotation; a member default is resolved, not
+        type-checked."""
         defaults = func.defaults or []
+        slots: list[tuple[str, 'TpyType | None', 'TpyExpr | None']] = []
         for i, (pname, ptype) in enumerate(func.params):
             default = defaults[i] if i < len(defaults) else None
             if default is None:
                 continue
             try:
-                resolved = self.type_ops.resolve_type(ptype)
+                resolved: 'TpyType | None' = self.type_ops.resolve_type(ptype)
             except SemanticError:
-                continue  # a bad annotation is reported by its own pass
-            check_default_value_type(default, resolved, self.compat,
-                                     default.loc, target_noun="parameter",
-                                     target_name=pname)
+                resolved = None  # a bad annotation is reported by its own pass
+            slots.append((pname, resolved, default))
+        self._queue_default_site(_DefaultSite(slots, None,
+                                              members_typed=False))
+
+    def _defer_protocol_defaults(self, methods: 'list[MethodSignature]') -> None:
+        """Queue a protocol's method defaults: resolved where the protocol
+        is written, for the calls through a protocol-typed receiver that
+        fill them. They name no slot type here."""
+        for msig in methods:
+            self._queue_default_site(_DefaultSite(
+                [(name, None, default) for (name, _t), default
+                 in zip(msig.params, msig.param_defaults or ())],
+                None, members_typed=False))
+
+    def _queue_default_site(self, site: _DefaultSite) -> None:
+        """Queue a signature's defaults for `resolve_defaults`, or resolve
+        them at once when the drain already ran: a signature registered
+        during body analysis (a generator expression's frame function, a
+        builder-trace function) would otherwise never be resolved."""
+        self._default_sites.append(site)
+        if self._drained_peers is not None:
+            self.resolve_defaults(self._drained_peers)
+
+    def resolve_defaults(self,
+                         cycle_peers: frozenset[str] = frozenset()) -> None:
+        """Resolve every queued parameter default where it is written
+        (`resolve_default`) and type-check the literal and member ones
+        against their slots; a name meets its slot at body analysis
+        (`_validate_named_defaults`). In an import cycle this runs once the
+        last member is finalized, and a default reading another member's
+        storage (`cycle_peers`) is filled at every call
+        (`Compiler.cycle_peer_defaults`)."""
+        self._drained_peers = cycle_peers
+        sites, self._default_sites = self._default_sites, []
+        for site in sites:
+            for pname, ptype, default in site.slots:
+                if default is None:
+                    continue
+                modules = self._resolve_slot_default(site, pname, ptype,
+                                                     default)
+                if modules & cycle_peers:
+                    require_current_compiler().cycle_peer_defaults.add(default)
+
+    def _resolve_slot_default(self, site: _DefaultSite, pname: str,
+                              ptype: 'TpyType | None',
+                              default: TpyExpr) -> set[str]:
+        """`resolve_default` for one slot of `site`, with the slot type
+        check; returns the modules the default's referents live in."""
+        if not isinstance(default, TpyFieldAccess):
+            if ptype is not None:
+                check_default_value_type(
+                    default, ptype, self.compat, default.loc,
+                    target_noun="parameter", target_name=pname)
+            return resolve_default(self.ctx, default, None, default.loc,
+                                   scope_record=site.scope_record)
+        target = ptype if site.members_typed else None
+        # An enum-member default is monomorphic: it is only meaningful when
+        # the parameter type IS that concrete enum. A type-param-containing
+        # type (bare `T`, `T | None`, ...) can't be checked here and would
+        # emit a `T x = Enum::M` initializer C++ rejects opaquely at
+        # instantiation, so reject it up front (unlike a literal default,
+        # which is legitimately polymorphic and deferred to instantiation).
+        if target is not None and contains_type_param(target):
+            raise SemanticError(
+                f"an enum-member default requires a concrete enum-typed "
+                f"parameter; parameter '{pname}' has generic type "
+                f"'{target}'", default.loc)
+        return resolve_default(
+            self.ctx, default, target, default.loc,
+            scope_record=site.scope_record,
+            compat=self.compat if target is not None else None)
 
     def register_function(self, func: TpyFunction, *, unique_declaration: bool = False) -> None:
         """Register a function."""
@@ -4094,7 +4469,7 @@ class TypeRegistrar:
             span_type = _vararg_span_type(resolved_vararg_type)
             param_infos.append(ParamInfo(func.vararg_name, span_type, is_variadic=True))
 
-        self._validate_param_defaults(param_infos)
+        self._defer_param_defaults(param_infos)
 
         # **kwargs: Unpack[TypedDict] -- append as TypedDict param at end
         resolved_kwarg_type = None
@@ -4582,7 +4957,7 @@ class TypeRegistrar:
             # A stub's own defaults reach codegen (the specialization is
             # synthesized from the STUB's params, not the implementation's),
             # so they need the same gate a plain function's get.
-            self._validate_param_defaults(stub_param_infos)
+            self._defer_param_defaults(stub_param_infos)
             info = FunctionInfo(
                 name=func.name,
                 # A @dispatch variant is its own body; a @overload stub only

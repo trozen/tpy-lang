@@ -735,6 +735,10 @@ class Compiler:
         self._ext_glue_cpp_paths: list[Path] = []
         # Count of bodies lowered through THIR, reported by the test harness.
         self._thir_routed_bodies = 0
+        # Parameter defaults that read storage of an import-cycle peer of the
+        # module declaring them, whose header sees that peer only through
+        # its forward declarations (`TypeRegistrar.resolve_defaults`).
+        self.cycle_peer_defaults: IdentitySet = IdentitySet()
         # Each registered method's source bodies by (owning type, name), for
         # a statement-level question its mutation facts do not answer.
         self.method_bodies: dict[tuple[str | None, str], list] = {}
@@ -1080,11 +1084,25 @@ class Compiler:
         # bind_imports finds names re-exported from other peers (whose
         # own bind_imports may not have run yet).
         self._pre_populate_reexport_bindings()
+        # An import cycle's parameter defaults are resolved once its last
+        # member is finalized: they may name a later peer's enum or constant.
+        # Its members run no top-level statement before that
+        # (`is_module_declaration`), and a module depending on the cycle
+        # comes after it.
+        cycles = {member: component for component in self.compile_components
+                  if self._is_import_cycle(component)
+                  for member in component}
         for name in names:
             compiled = self.modules[name]
             self._expand_star_imports_for_module(compiled)
             self._resolve_types_for_module(compiled)
-            self._finalize_declarations(compiled)
+            cycle = cycles.get(name)
+            self._finalize_declarations(compiled,
+                                        resolve_defaults=cycle is None)
+            if cycle is not None and name == cycle[-1]:
+                for member in cycle:
+                    self._resolve_cycle_member_defaults(self.modules[member],
+                                                        cycle)
         # Phantom-name check runs as a separate post-loop pass so SCC
         # cycle peers' module_attributes is fully populated before any
         # peer's __all__ is diffed against its surface.
@@ -1997,7 +2015,7 @@ class Compiler:
         for component in sccs:
             if component[0] in done:
                 continue
-            if len(component) > 1 or component[0] in succ.get(component[0], []):
+            if self._is_import_cycle(component):
                 self._reject_unsupported_cycle(component)
 
         # Record cycle peers so codegen can emit `<peer>_fwd.hpp`
@@ -2012,12 +2030,11 @@ class Compiler:
         self._emits_inl_cache = {}
         self._reach_cache = {}
         for component in sccs:
-            if not (len(component) > 1 or component[0] in succ.get(component[0], [])):
+            if not self._is_import_cycle(component):
                 continue
             regular = [m for m in component
                        if not self.modules[m].ast.directives.native_module]
-            if not (len(regular) > 1
-                    or (len(regular) == 1 and regular[0] in succ[regular[0]])):
+            if not regular or not self._is_import_cycle(regular):
                 continue
             peers = frozenset(regular)
             import_component = frozenset(component)
@@ -2988,12 +3005,33 @@ class Compiler:
         # methods don't exist yet at this point.
         self._resolve_module_refs(compiled)
 
-    def _finalize_declarations(self, compiled: CompiledModule) -> SemanticAnalyzer:
+    def _is_import_cycle(self, component: list[str]) -> bool:
+        """Whether an import component (a Tarjan SCC) is a cycle: several
+        modules, or one importing itself."""
+        return (len(component) > 1
+                or component[0] in self._import_succ.get(component[0], []))
+
+    def _resolve_cycle_member_defaults(self, compiled: CompiledModule,
+                                       cycle: list[str]) -> None:
+        """Resolve an import-cycle member's parameter defaults, deferred by
+        `_finalize_declarations` until every peer is finalized."""
+        try:
+            compiled.analyzer.registrar.resolve_defaults(
+                cycle_peers=frozenset(cycle) - {compiled.name})
+        except SemanticError as e:
+            if e.filename is None and not compiled.is_entry_point:
+                e.filename = os.path.relpath(compiled.path)
+            raise
+
+    def _finalize_declarations(self, compiled: CompiledModule, *,
+                               resolve_defaults: bool = True
+                               ) -> SemanticAnalyzer:
         """Create the analyzer for `compiled`, register dep
         ModuleInfo, and run the three declaration-time sub-phases
         (`bind_imports`, `register_records_and_protocols`,
         `register_signatures`). Returns the analyzer so a subsequent
-        body-sema pass can consume it.
+        body-sema pass can consume it. `resolve_defaults` False defers the
+        parameter defaults (`_resolve_cycle_member_defaults`).
 
         `_analyze_layer` runs all of a layer's `_finalize_declarations`
         first, then its bodies -- so by the time any module's body sema
@@ -3083,7 +3121,8 @@ class Compiler:
             analyzer.bind_imports(compiled.ast, module_name=module_name,
                                   cpp_module_name=compiled.name)
             analyzer.register_records_and_protocols(compiled.ast)
-            analyzer.register_signatures(compiled.ast)
+            analyzer.register_signatures(compiled.ast,
+                                         resolve_defaults=resolve_defaults)
         except SemanticError as e:
             if e.filename is None and not compiled.is_entry_point:
                 e.filename = os.path.relpath(compiled.path)

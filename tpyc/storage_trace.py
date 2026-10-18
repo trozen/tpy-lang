@@ -117,7 +117,7 @@ def trace(expr: TpyExpr) -> Trace:
         if isinstance(expr, TpyCoerce):
             steps.append(Step(StepKind.COERCE, expr))
             expr = expr.expr
-        elif isinstance(expr, TpyFieldAccess):
+        elif isinstance(expr, TpyFieldAccess) and not expr.default_fill:
             steps.append(Step(StepKind.FIELD, expr))
             expr = expr.obj
         elif isinstance(expr, TpySubscript):

@@ -28,7 +28,7 @@ from .desugar_suspensions import desugar_suspension_positions
 if TYPE_CHECKING:
     from ..typesys import TpyType
 from .nodes import (
-    name_path, ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage, OverloadForm,
+    NON_CONSTANT_DEFAULT_MSG, name_path, ParseError, SourceLocation, ParseWarning, RecordLinkage, FunctionLinkage, OverloadForm,
     TpyTypeRef, TpyUnionRef, TpyCallableRef, TpyLiteralRef, TpyInferFromDefaultRef,
     ResolverInputNode, TypeRefNode,
     TpyExpr, TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral, TpyBytesLiteral,
@@ -528,7 +528,9 @@ class Parser:
         if hasattr(node, 'lineno'):
             col = getattr(node, 'col_offset', 0)
             return SourceLocation(line=node.lineno, column=col,
-                                  end_line=getattr(node, 'end_lineno', None))
+                                  end_line=getattr(node, 'end_lineno', None),
+                                  end_column=getattr(node, 'end_col_offset',
+                                                     None))
         return None
 
     @staticmethod
@@ -4635,10 +4637,7 @@ class Parser:
             if len(expr.args) == 1:
                 self._validate_const_default(expr.args[0], node)
                 return
-        raise ParseError(
-            f"Default parameter value must be a constant expression "
-            f"(literal, None, fixed-int constructor like int32(5), "
-            f"an enum member like Color.RED, or a Final[T] module constant)", node)
+        raise ParseError(NON_CONSTANT_DEFAULT_MSG, node)
 
     # A `cls` bound inside one of these belongs to that inner scope, not to
     # the classmethod, so it is an ordinary shadow rather than a rebind.

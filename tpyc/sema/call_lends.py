@@ -78,6 +78,7 @@ from ..value_category import (
 )
 from . import own_copy
 from .storage_walk import (
+    qualifier_kind,
     Ask, CallPolicy, LeafKind, StorageKey, Use, call_lends_receiver_at, operand_keys, storage_roots,
 )
 from ..storage_trace import Step, StepKind
@@ -854,17 +855,15 @@ def shared_leaf_kind(node: TpyExpr,
 def qualifier_read_kind(node: TpyExpr,
                         ctx: 'SemanticContext') -> LeafKind | None:
     """A read off a module or class qualifier (`mod.X`, `Cls.X`): a
-    CONSTANT for a `Final` view (a constexpr view), else a GLOBAL -- a plain
-    module variable can be rebound through `global` in its own module.
-    None for any other node."""
+    CONSTANT for a view, else a GLOBAL, neither one durable storage -- a
+    plain module variable can be rebound through `global` in its own
+    module. None for any other node. (A read whose stamped referent is
+    static storage is the climb's own leaf, `static_read_kind`.)"""
     type_of = ctx.get_expr_type
     if not (isinstance(node, TpyFieldAccess) and isinstance(node.obj, TpyName)
             and type_of(node.obj) is None):
         return None
-    et = type_of(node)
-    return (LeafKind.CONSTANT if et is not None
-            and is_borrowing_view_type(unwrap_readonly(et))
-            else LeafKind.GLOBAL)
+    return qualifier_kind(node, ctx)
 
 
 def is_enum_name_read(expr: TpyExpr, ctx: 'SemanticContext') -> bool:
@@ -1220,7 +1219,7 @@ class MustLend(CallPolicy):
     follows_selects = False
 
     def __init__(self, analyzer: ValueCategoryAnalyzer) -> None:
-        self.analyzer = analyzer
+        self.ctx = analyzer
 
     def at_step(self, step: Step) -> bool:
         node = step.node
@@ -1247,7 +1246,7 @@ class MustLend(CallPolicy):
         elif not isinstance(call, (TpyCall, TpyMethodCall)):
             return None
         elif (lend.kind not in _RECORDS_A_FACT
-                or not _result_points(self.analyzer, lend.ops.fi)):
+                or not _result_points(self.ctx, lend.ops.fi)):
             return None
         if lend.kind is CalleeFact.UNRESOLVED:
             return None
@@ -1266,6 +1265,7 @@ class ContractLend(CallPolicy):
     follows_selects = True
 
     def __init__(self, ctx: ValueCategoryAnalyzer) -> None:
+        self.ctx = ctx
         self.type_of = ctx.get_expr_type
 
     def at_step(self, step: Step) -> bool:

@@ -74,7 +74,7 @@ std::string _ipv4_to_str(uint8_t* addr_bytes);
 ::sockaddr_in _build_sockaddr_in(std::string_view host, int32_t port);
 // def socketpair(family: int32 = AF_UNIX, type_: int32 = SOCK_STREAM,
 //                proto: int32 = int32(0)) -> tuple[Own[socket], Own[socket]]:
-std::tuple<socket, socket> socketpair(int32_t family = AF_UNIX, int32_t type_ = SOCK_STREAM, int32_t proto = 0);
+std::tuple<socket, socket> socketpair(int32_t family = ::tpystd::socket::AF_UNIX, int32_t type_ = ::tpystd::socket::SOCK_STREAM, int32_t proto = 0);
 // def create_connection(address: tuple[str, int32],
 //                       timeout: float | None = None) -> Own[socket]:
 socket create_connection(const std::tuple<std::string, int32_t>& address, std::optional<double> timeout = std::nullopt);

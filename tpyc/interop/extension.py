@@ -17,7 +17,7 @@ from typing import TYPE_CHECKING, NamedTuple, TextIO
 
 from ..parse import TpyModule, TpyVarDecl
 from ..parse.nodes import (
-    TpyBytesLiteral, TpyFieldAccess, TpyName, TpyNoneLiteral)
+    TpyBytesLiteral, TpyFieldAccess, TpyNoneLiteral)
 from ..typesys import (
     TpyType, ParamInfo, is_void_like_type, FinalType, OwnType, ReadonlyType,
     error_return_uses_borrow_slot)
@@ -633,7 +633,8 @@ class ExtensionGenerator:
         inner = _boundary_inner(typ)
         if isinstance(default_expr, TpyBytesLiteral):
             return cpp_bytes_literal_owned(default_expr.value)
-        if is_exposed_enum(typ) and isinstance(default_expr, TpyFieldAccess):
+        if (is_exposed_enum(typ) and isinstance(default_expr, TpyFieldAccess)
+                and default_expr.enum_member_of is not None):
             # Enum-member default. `enum_member_cpp` names the enumerator
             # relative to the DEFINING module -- bare, since the enum is this
             # module's -- and the glue TU sits outside that namespace, so
@@ -644,13 +645,6 @@ class ExtensionGenerator:
                                      default_expr.field)
             return f"{cpp}{{{cpp}::{member.rsplit('::', 1)[-1]}}}"
         rendered = default_to_cpp(self.ctx, default_expr, inner)
-        if isinstance(default_expr, TpyName) and "::" not in rendered:
-            # A `Final` module constant. default_to_cpp renders a LOCALLY
-            # defined one as a bare name -- right inside the module's own
-            # namespace, but the glue TU sits in an anonymous namespace beside
-            # it, so qualify it the way the constant snapshots do. (An
-            # IMPORTED Final already comes back qualified.)
-            rendered = qualified_cpp_name(self.ctx.module_name, rendered)
         return f"{cpp}{{{rendered}}}"
 
     def _emit_marshal_in(self, out: TextIO, idx: int, typ: TpyType,

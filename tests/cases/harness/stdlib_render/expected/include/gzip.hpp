@@ -70,9 +70,9 @@ bool _read_gzip_header(T_fp& fp);
 int64_t _open_for_read(std::string_view filename);
 // def open(filename: str) -> Own[GzipFile]:
 GzipFile open(std::string_view filename);
-// def compress(data: bytes, compresslevel: int32 = 9,
+// def compress(data: bytes, compresslevel: int32 = _COMPRESS_LEVEL_BEST,
 //              *, mtime: float | None = None) -> bytes:
-::tpy::Bytes compress(::tpy::BytesView data, int32_t compresslevel = 9, std::optional<double> mtime = std::nullopt);
+::tpy::Bytes compress(::tpy::BytesView data, int32_t compresslevel = ::tpystd::gzip::_COMPRESS_LEVEL_BEST, std::optional<double> mtime = std::nullopt);
 // def _put_u32le(out: bytearray, v: uint32) -> None:
 void _put_u32le(::tpy::ByteArray& out, uint32_t v);
 // def decompress(data: bytes) -> bytes:

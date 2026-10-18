@@ -1,0 +1,1 @@
+main.py:18: error: Default parameter value 'K' must be a module-level Final[T] constant; the class body binds 'K' to a class variable before the default (declare it 'K: Final[...]' to make it a constant)

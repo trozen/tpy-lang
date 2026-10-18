@@ -290,7 +290,7 @@ std::string kind_names(::tpyapp::m::Outer::Kind k, ::tpyapp::pkg::sub::mod::Oute
 // def local_pattern(o: Outer.Inner | m.Outer.Inner) -> None:
 void local_pattern(::tpy::Union<const Outer::Inner*, const ::tpyapp::m::Outer::Inner*> o);
 // def local_defaults(s: str = Outer.NAME, n: int32 = Outer.N) -> str:  # tpyc: ok
-std::string local_defaults(std::string_view s = Outer::NAME, int32_t n = Outer::N);
+std::string local_defaults(std::string_view s = ::tpyapp::main::Outer::NAME, int32_t n = ::tpyapp::main::Outer::N);
 // def local_inner(i: Outer.Inner) -> int:  # tpyc: ok
 ::tpy::BigInt local_inner(const Outer::Inner& i);
 
@@ -449,7 +449,7 @@ struct Config {
     // color: m.Color = m.Color.BLUE  # tpyc: ok
     ::tpyapp::m::Color color = ::tpyapp::m::Color::BLUE;
     // label: str = Outer.NAME  # tpyc: ok
-    std::string label = std::string(Outer::NAME);
+    std::string label = std::string(::tpyapp::main::Outer::NAME);
 
 
     // def pick(self, mode: Mode = Mode.Y) -> int:  # tpyc: ok

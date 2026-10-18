@@ -34,7 +34,7 @@ from ..namespace import Namespace, NameBinding, BindingKind
 from ..parse import TpyModule, TpyRecord, TpyFunction, TpyExpr, TpyStmt, TpyVarDecl, is_super_del_call, is_base_init_call, is_init_trivia, init_leading_run_end, ParseError
 from ..parse.nodes import RecordLinkage, OverloadForm, value_capture_lambdas
 from .registration import (
-    receiver_self_type, _vararg_span_type, skipped_base_ctor_error,
+    receiver_self_type, referent_type, _vararg_span_type, skipped_base_ctor_error,
     skipped_base_init_warning, skipped_base_inits,
 )
 from ..parse.nodes import (
@@ -139,7 +139,7 @@ from .macros import _promote_method_signature
 from .builder_trace import BuilderTraceExpander
 from .function_macros import run_function_macros, run_deferred_sema_macros
 from ..symbol_binding import (
-    SymbolKind, install_binding, lookup_imported, protocol_kind_for,
+    SymbolKind, install_binding, protocol_kind_for,
     is_macro_kind, is_kind, walk_attribute_chain, resolve_definer,
     resolve_type_path,
 )
@@ -902,11 +902,14 @@ class SemanticAnalyzer:
             self._PHASE_REGISTER_RECORDS_AND_PROTOCOLS,
         )
 
-    def register_signatures(self, module: TpyModule) -> None:
+    def register_signatures(self, module: TpyModule, *,
+                            resolve_defaults: bool = True) -> None:
         """Sub-phase 3: register function signatures with @overload
         grouping, normalize FunctionInfo refs (`make_ref` over params /
         returns now that records/protocols/value-type flags are final),
         inject synthetic `__name__` Final[str] for non-private modules.
+        `resolve_defaults` False leaves the parameter defaults to an import
+        cycle's last finalized member (`TypeRegistrar.resolve_defaults`).
         """
         # Second pass: register all functions (with @overload grouping)
         self._register_functions_with_overloads(module.functions)
@@ -942,6 +945,8 @@ class SemanticAnalyzer:
         # modules' `from X import VAR` resolve at decl-time, which the
         # workspace-wide two-pass sema needs (Phase 5 split).
         self.registrar.register_globals(module.top_level_stmts)
+        if resolve_defaults:
+            self.registrar.resolve_defaults()
         bodies = [*module.functions,
                   *(m for r in module.all_records() for m in r.methods)]
         # A borrow return rooted in a module global is certified durable
@@ -2014,36 +2019,23 @@ class SemanticAnalyzer:
             self.ctx.nested_def_hoisted_vars)
 
     def _validate_named_defaults(self, func: TpyFunction) -> None:
-        """Validate `def f(x: T = NAME)` defaults: NAME must be a Final[T] global.
-
-        The parser accepts any TpyName in default position; binding shape is
-        deferred here so module-level Finals (declared after functions in the
-        registration order) and imported Finals are visible.
-        """
+        """Type-check a default that names a constant -- `def f(x: T =
+        NAME)`, `x: T = m.NAME` -- against its parameter: the referent
+        `resolve_default` stamped, whose type an inferred global has only
+        once the top-level statements ran. The other default shapes are
+        checked at registration."""
         for i, default in enumerate(func.defaults):
-            if not isinstance(default, TpyName):
-                continue
-            name = default.name
-            const_type: 'TpyType | None' = None
-            if name in self.ctx.final_globals:
-                binding = self.ctx.global_ns.lookup(name)
-                const_type = binding.type if binding is not None else None
+            if isinstance(default, TpyName) and default.default_referent:
+                ref = default.default_referent
+                const_type = referent_type(
+                    self.ctx, module_var=ref.module_var,
+                    class_owner=ref.class_owner, member=default.name)
+            elif (isinstance(default, TpyFieldAccess)
+                    and default.module_var_access is not None):
+                const_type = referent_type(
+                    self.ctx, module_var=default.module_var_access)
             else:
-                imp = lookup_imported(
-                    self.ctx.module_attributes, name, SymbolKind.VARIABLE)
-                var_info = None
-                if imp is not None:
-                    source_module, original_name = imp
-                    source_info = self.ctx.registry.get_module(source_module)
-                    var_info = source_info.variables.get(original_name) if source_info else None
-                if var_info is None or not var_info.is_final:
-                    raise self.ctx.error(
-                        f"Default parameter value '{name}' must be a module-level "
-                        f"Final[T] constant", default)
-                const_type = var_info.type
-            # The binding resolves only here, so this is also where the
-            # constant's type meets the parameter's -- the other default
-            # shapes are checked at registration.
+                continue
             ptype = func.params[i][1] if i < len(func.params) else None
             if const_type is not None and ptype is not None and not contains_type_param(ptype):
                 self.compat.check_type_compatible(
@@ -2335,7 +2327,7 @@ class SemanticAnalyzer:
         # The implementation builds no ParamInfo (see below), but codegen
         # emits ITS defaults into every specialization, so they need the same
         # gate a plain function's params get.
-        self.registrar.validate_ast_param_defaults(impl)
+        self.registrar.defer_ast_param_defaults(impl)
 
         # The impl skips register_function (it is not callable), so its
         # signature-derived generator yield type is never set there. Body

@@ -1,0 +1,3 @@
+main.py:42: warning: Method 'SubRec.__eq__' hides 'Rec.__eq__' -- any 'Rec' reference will call 'Rec.__eq__', not 'SubRec.__eq__' (differs from Python's dynamic dispatch); make 'Rec' a @dynamic protocol for runtime dispatch
+main.py:42: warning: Method 'SubRec.__repr__' hides 'Rec.__repr__' -- any 'Rec' reference will call 'Rec.__repr__', not 'SubRec.__repr__' (differs from Python's dynamic dispatch); make 'Rec' a @dynamic protocol for runtime dispatch
+main.py:42: warning: the '__init__' synthesized by '@dataclass' for 'SubRec' does not call 'Rec.__init__'; TPy default-constructs the 'Rec' part instead, which runs 'Rec.__init__()'; write an explicit '__init__' that calls it

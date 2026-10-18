@@ -349,7 +349,7 @@ struct BufferedReader {
 
     // def __init__(self, raw: Own[RawBinaryIO],
     //              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
-    explicit BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size = DEFAULT_BUFFER_SIZE);
+    explicit BufferedReader(std::unique_ptr<RawBinaryIO> raw, int32_t buffer_size = ::tpystd::io::DEFAULT_BUFFER_SIZE);
     // non-copyable (@nocopy)
     BufferedReader(const BufferedReader&) = delete;
     BufferedReader& operator=(const BufferedReader&) = delete;
@@ -422,7 +422,7 @@ struct BufferedWriter {
 
     // def __init__(self, raw: Own[RawBinaryWriter],
     //              buffer_size: int32 = DEFAULT_BUFFER_SIZE) -> None:
-    explicit BufferedWriter(std::unique_ptr<RawBinaryWriter> raw, int32_t buffer_size = DEFAULT_BUFFER_SIZE);
+    explicit BufferedWriter(std::unique_ptr<RawBinaryWriter> raw, int32_t buffer_size = ::tpystd::io::DEFAULT_BUFFER_SIZE);
     // non-copyable (@nocopy)
     BufferedWriter(const BufferedWriter&) = delete;
     BufferedWriter& operator=(const BufferedWriter&) = delete;

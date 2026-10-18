@@ -53,7 +53,7 @@ bool flagged(bool on = true);
 // def optional(n: int32 | None = None) -> int32:
 int32_t optional(std::optional<int32_t> n = std::nullopt);
 // def from_final(n: int64 = STEP) -> int64:
-int64_t from_final(int64_t n = STEP);
+int64_t from_final(int64_t n = ::tpyapp::main::STEP);
 // def shade(c: Color = Color.BLUE) -> int32:
 int32_t shade(Color c = Color::BLUE);
 // def wrapped(n: int32 = int32(7)) -> int32:
@@ -75,7 +75,7 @@ struct Box {
     int32_t scale(int32_t by = 2) const;
 
     // def stepped(self, by: int64 = STEP) -> int64:
-    int64_t stepped(int64_t by = STEP) const;
+    int64_t stepped(int64_t by = ::tpyapp::main::STEP) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 

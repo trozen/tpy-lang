@@ -758,7 +758,7 @@ inline std::ostream& operator<<(std::ostream& os, const ProtoConst& obj) {
 }
 
 // def proto_number(n: int32 = ProtoConst.N) -> int32:
-int32_t proto_number(int32_t n = ProtoConst::N);
+int32_t proto_number(int32_t n = ::tpyapp::main::ProtoConst::N);
 
 // class ParamOuter:
 struct ParamOuter {
@@ -853,7 +853,7 @@ inline std::ostream& operator<<(std::ostream& os, const DedFirst& obj) {
 }
 
 // def ded_number(n: int32 = DedFirst.N) -> int32:
-int32_t ded_number(int32_t n = DedFirst::N);
+int32_t ded_number(int32_t n = ::tpyapp::main::DedFirst::N);
 
 // class DedCaller[T]:
 template<typename T>
@@ -1229,7 +1229,7 @@ inline std::ostream& operator<<(std::ostream& os, const InlFirst& obj) {
 }
 
 // def inl_number(n: int32 = InlFirst.N) -> int32:
-int32_t inl_number(int32_t n = InlFirst::N);
+int32_t inl_number(int32_t n = ::tpyapp::main::InlFirst::N);
 
 // class InlCaller[T]:
 template<typename T>
@@ -1294,7 +1294,7 @@ inline std::ostream& operator<<(std::ostream& os, const HbConst& obj) {
 }
 
 // def hb_number(n: int32 = HbConst.N) -> int32:
-int32_t hb_number(int32_t n = HbConst::N);
+int32_t hb_number(int32_t n = ::tpyapp::main::HbConst::N);
 
 // class HbKey:
 struct HbKey {

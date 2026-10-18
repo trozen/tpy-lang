@@ -6125,7 +6125,7 @@ class StatementAnalyzer:
             # Handle empty list literal or generic type constructor with explicit type annotation
             # Note: [] * N is collapsed to [] in the parser
             is_empty_literal = isinstance(stmt.init, TpyArrayLiteral) and not stmt.init.elements
-            ctor_td = generic_constructor_factory(stmt.init)
+            ctor_td = generic_constructor_factory(self.ctx, stmt.init)
             is_generic_constructor = ctor_td is not None
 
             if (is_empty_literal or is_generic_constructor) and stmt.type:

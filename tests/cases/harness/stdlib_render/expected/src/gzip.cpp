@@ -53,9 +53,7 @@ GzipFile open(std::string_view filename) {
     return GzipFile(filename);
 }
 
-// # The default is _COMPRESS_LEVEL_BEST spelled as a literal
-// # (BUGS.md#param-default-resolves-in-caller-scope).
-// def compress(data: bytes, compresslevel: int32 = 9,
+// def compress(data: bytes, compresslevel: int32 = _COMPRESS_LEVEL_BEST,
 //              *, mtime: float | None = None) -> bytes:
 //     """Compress `data` into one gzip member. `mtime` defaults to now."""
 //     stamp = mtime if mtime is not None else time.time()

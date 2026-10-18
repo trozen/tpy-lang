@@ -495,8 +495,7 @@ def module_variable_cpp(registry, module: str, name: str,
     ModuleVarInfo for it. A re-export's entry already carries its definer's
     native symbol and pointer-slot fact; a plain global spells the
     definer's qname."""
-    info = registry.get_module(module)
-    var_info = info.variables.get(name) if info is not None else None
+    var_info = registry.module_variable(module, name)
     if var_info is not None and var_info.native_cpp_name is not None:
         return var_info.native_cpp_name, var_info
     return qualified_cpp_name(*resolve_definer(

@@ -78,7 +78,7 @@ void free_function() {
     int64_t master = std::get<0>(__tup_1);
     int64_t slave = std::get<1>(__tup_1);
     ::tpystd::termios::TermAttributes old = ::tpystd::termios::tcgetattr(slave);
-    ::tpystd::termios::TermAttributes prev = ::tpystd::tty::setcbreak__int64(slave);
+    ::tpystd::termios::TermAttributes prev = ::tpystd::tty::setcbreak(slave);
     std::cout << "free: setcbreak returns old:" << " " << ::tpy::print_bool(((prev) == (old))) << "\n" << ::tpy::check_signals;
     ::tpystd::os::set_blocking(slave, true);
     std::cout << "free: set_blocking no-op:" << " " << ::tpy::print_bool(::tpystd::os::get_blocking(slave)) << "\n" << ::tpy::check_signals;
@@ -94,7 +94,7 @@ void free_function() {
         }
     }
     ::tpystd::os::set_blocking(slave, true);
-    ::tpystd::tty::setraw__int64(slave);
+    ::tpystd::tty::setraw(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\x03", 1));
     std::cout << "free: raw read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsaflush, old);
@@ -185,7 +185,7 @@ void try_finally() {
     ::tpystd::termios::TermAttributes old = ::tpystd::termios::tcgetattr(slave);
     {
         try {
-            ::tpystd::tty::setcbreak__int64__int32(slave, ::tpy_const_termios_tcsadrain);
+            ::tpystd::tty::setcbreak(slave, ::tpy_const_termios_tcsadrain);
             ::tpystd::os::write(master, ::tpy::bytes_literal("x", 1));
             std::cout << "finally: read:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 1)) << "\n" << ::tpy::check_signals;
         } catch (...) {
@@ -315,7 +315,7 @@ void repr_str() {
     std::cout << "repr: ends with ]]:" << " " << ::tpy::print_bool(::tpy::str_endswith(text, "]]")) << "\n" << ::tpy::check_signals;
     std::vector<std::string> cooked = ::tpy::str_split(::tpy::str_slice(text, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(::tpy::str_index(text, ", ["), 3)), -2}), ", ");
     std::cout << "repr: cooked cc all bytes:" << " " << ::tpy::print_bool(((::tpy::__len__(cooked) == ::tpy_const_termios_nccs) && ::tpy::builtin_all(::tpyapp::main::__genexpr_repr_str_1(cooked)))) << "\n" << ::tpy::check_signals;
-    ::tpystd::termios::TermAttributes old = ::tpystd::tty::setraw__int64(slave);
+    ::tpystd::termios::TermAttributes old = ::tpystd::tty::setraw(slave);
     std::string raw = ::tpy::repr_of(::tpystd::termios::tcgetattr(slave));
     std::vector<std::string> items = ::tpy::str_split(::tpy::str_slice(raw, ::tpy::BasicSlice{(::tpy::add_check<int32_t>(::tpy::str_index(raw, ", ["), 3)), -2}), ", ");
     int32_t nbytes = 0;
@@ -411,10 +411,10 @@ void icrnl() {
     auto __tup_1 = ::tpystd::os::openpty();
     int64_t master = std::get<0>(__tup_1);
     int64_t slave = std::get<1>(__tup_1);
-    ::tpystd::termios::TermAttributes old = ::tpystd::tty::setcbreak__int64(slave);
+    ::tpystd::termios::TermAttributes old = ::tpystd::tty::setcbreak(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\r", 1));
     std::cout << "icrnl: cbreak:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
-    ::tpystd::tty::setraw__int64(slave);
+    ::tpystd::tty::setraw(slave);
     ::tpystd::os::write(master, ::tpy::bytes_literal("\r", 1));
     std::cout << "icrnl: raw:" << " " << ::tpy::BytesPrinter(::tpystd::os::read(slave, 16)) << "\n" << ::tpy::check_signals;
     ::tpystd::termios::tcsetattr(slave, ::tpy_const_termios_tcsanow, old);
@@ -461,7 +461,7 @@ void negative_fd() {
     }
     {
         try {
-            ::tpystd::tty::setraw__int64(-2);
+            ::tpystd::tty::setraw(-2);
         } catch (const ::tpy::ValueError& e) {
             std::cout << "negfd: setraw: ValueError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }

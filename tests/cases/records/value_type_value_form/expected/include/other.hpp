@@ -19,7 +19,7 @@ struct Far {
     int32_t n;
 
     // def __init__(self, n: int32 = BASE) -> None:
-    explicit Far(int32_t n = BASE);
+    explicit Far(int32_t n = ::tpyapp::other::BASE);
     static constexpr std::string_view __tpy_class_name__ = "other.Far";
 };
 

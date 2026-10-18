@@ -52,3 +52,7 @@ d = defaults.Derived(1, hi=9)                         # inherited ctor: scale de
 print(d.lo, d.hi, d.scale, d.span())                  # 1 9 2 16
 d2 = defaults.Derived(4, hi=10, scale=3)              # inherited kwonly, supplied
 print(d2.lo, d2.hi, d2.scale, d2.span())              # 4 10 3 18
+
+s = defaults.Stride()                                 # class-constant default
+print(s.step(), s.step(3))                            # 22 6
+print(s.shift(), s.shift(1), s.shift(back=2))         # 1100 100 1102

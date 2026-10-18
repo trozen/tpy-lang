@@ -182,7 +182,7 @@ struct HTTPConnection : _Connection {
     // def __init__(self, host: str, port: int32 = HTTP_PORT,
     //              timeout: float | None = None) -> None:
     HTTPConnection() = default;
-    explicit HTTPConnection(std::string_view host, int32_t port = HTTP_PORT, std::optional<double> timeout = std::nullopt);
+    explicit HTTPConnection(std::string_view host, int32_t port = ::tpystd::http::client::HTTP_PORT, std::optional<double> timeout = std::nullopt);
     // non-copyable (field 'sock')
     HTTPConnection(const HTTPConnection&) = delete;
     HTTPConnection& operator=(const HTTPConnection&) = delete;
@@ -228,7 +228,7 @@ struct HTTPSConnection : _Connection {
     //              timeout: float | None = None,
     //              context: ssl.SSLContext | None = None) -> None:
     HTTPSConnection() = default;
-    explicit HTTPSConnection(std::string_view host, int32_t port = HTTPS_PORT, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
+    explicit HTTPSConnection(std::string_view host, int32_t port = ::tpystd::http::client::HTTPS_PORT, std::optional<double> timeout = std::nullopt, const ::tpystd::ssl::SSLContext* context = nullptr);
     // non-copyable (field '_tls')
     HTTPSConnection(const HTTPSConnection&) = delete;
     HTTPSConnection& operator=(const HTTPSConnection&) = delete;

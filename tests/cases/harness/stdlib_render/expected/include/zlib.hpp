@@ -75,16 +75,18 @@ _Pump _pump(::tpy_zstream* s, ::tpy::BytesView data, int32_t flush, int32_t firs
 uint32_t crc32(::tpy::BytesView data, uint32_t value = 0);
 // def adler32(data: bytes, value: uint32 = 1) -> uint32:
 uint32_t adler32(::tpy::BytesView data, uint32_t value = 1);
-// def compress(data: bytes, level: int32 = -1, wbits: int32 = 15) -> bytes:
-::tpy::Bytes compress(::tpy::BytesView data, int32_t level = -1, int32_t wbits = 15);
-// def decompress(data: bytes, wbits: int32 = 15,
-//                bufsize: int32 = 16384) -> bytes:
-::tpy::Bytes decompress(::tpy::BytesView data, int32_t wbits = 15, int32_t bufsize = 16384);
-// def compressobj(level: int32 = -1, method: int32 = 8, wbits: int32 = 15,
-//                 memLevel: int32 = 8, strategy: int32 = 0) -> Own[_Compress]:
-_Compress compressobj(int32_t level = -1, int32_t method = 8, int32_t wbits = 15, int32_t memLevel = 8, int32_t strategy = 0);
-// def decompressobj(wbits: int32 = 15) -> Own[_Decompress]:
-_Decompress decompressobj(int32_t wbits = 15);
+// def compress(data: bytes, level: int32 = Z_DEFAULT_COMPRESSION,
+//              wbits: int32 = MAX_WBITS) -> bytes:
+::tpy::Bytes compress(::tpy::BytesView data, int32_t level = ::tpystd::zlib::Z_DEFAULT_COMPRESSION, int32_t wbits = ::tpystd::zlib::MAX_WBITS);
+// def decompress(data: bytes, wbits: int32 = MAX_WBITS,
+//                bufsize: int32 = DEF_BUF_SIZE) -> bytes:
+::tpy::Bytes decompress(::tpy::BytesView data, int32_t wbits = ::tpystd::zlib::MAX_WBITS, int32_t bufsize = ::tpystd::zlib::DEF_BUF_SIZE);
+// def compressobj(level: int32 = Z_DEFAULT_COMPRESSION, method: int32 = DEFLATED,
+//                 wbits: int32 = MAX_WBITS, memLevel: int32 = DEF_MEM_LEVEL,
+//                 strategy: int32 = Z_DEFAULT_STRATEGY) -> Own[_Compress]:
+_Compress compressobj(int32_t level = ::tpystd::zlib::Z_DEFAULT_COMPRESSION, int32_t method = ::tpystd::zlib::DEFLATED, int32_t wbits = ::tpystd::zlib::MAX_WBITS, int32_t memLevel = ::tpystd::zlib::DEF_MEM_LEVEL, int32_t strategy = ::tpystd::zlib::Z_DEFAULT_STRATEGY);
+// def decompressobj(wbits: int32 = MAX_WBITS) -> Own[_Decompress]:
+_Decompress decompressobj(int32_t wbits = ::tpystd::zlib::MAX_WBITS);
 
 // class error(Exception):
 struct error : ::tpy::Exception {
@@ -157,10 +159,11 @@ struct _Compress {
     // _ended: bool
     bool _ended;
 
-    // def __init__(self, level: int32 = -1, method: int32 = 8,
-    //              wbits: int32 = 15, memLevel: int32 = 8,
-    //              strategy: int32 = 0) -> None:
-    explicit _Compress(int32_t level = -1, int32_t method = 8, int32_t wbits = 15, int32_t memLevel = 8, int32_t strategy = 0);
+    // def __init__(self, level: int32 = Z_DEFAULT_COMPRESSION,
+    //              method: int32 = DEFLATED,
+    //              wbits: int32 = MAX_WBITS, memLevel: int32 = DEF_MEM_LEVEL,
+    //              strategy: int32 = Z_DEFAULT_STRATEGY) -> None:
+    explicit _Compress(int32_t level = ::tpystd::zlib::Z_DEFAULT_COMPRESSION, int32_t method = ::tpystd::zlib::DEFLATED, int32_t wbits = ::tpystd::zlib::MAX_WBITS, int32_t memLevel = ::tpystd::zlib::DEF_MEM_LEVEL, int32_t strategy = ::tpystd::zlib::Z_DEFAULT_STRATEGY);
     // non-copyable (@nocopy)
     _Compress(const _Compress&) = delete;
     _Compress& operator=(const _Compress&) = delete;
@@ -170,8 +173,8 @@ struct _Compress {
     // def compress(self, data: bytes) -> bytes:
     ::tpy::Bytes compress(::tpy::BytesView data) const;
 
-    // def flush(self, mode: int32 = 4) -> bytes:
-    ::tpy::Bytes flush(int32_t mode = 4);
+    // def flush(self, mode: int32 = Z_FINISH) -> bytes:
+    ::tpy::Bytes flush(int32_t mode = ::tpystd::zlib::Z_FINISH);
     static constexpr std::string_view __tpy_class_name__ = "zlib._Compress";
 };
 
@@ -194,8 +197,8 @@ struct _Decompress {
     // _tail: bytes
     ::tpy::Bytes _tail;
 
-    // def __init__(self, wbits: int32 = 15) -> None:
-    explicit _Decompress(int32_t wbits = 15);
+    // def __init__(self, wbits: int32 = MAX_WBITS) -> None:
+    explicit _Decompress(int32_t wbits = ::tpystd::zlib::MAX_WBITS);
     // non-copyable (@nocopy)
     _Decompress(const _Decompress&) = delete;
     _Decompress& operator=(const _Decompress&) = delete;
@@ -220,8 +223,8 @@ struct _Decompress {
     // def decompress(self, data: bytes, max_length: int32 = 0) -> bytes:
     ::tpy::Bytes decompress(::tpy::BytesView data, int32_t max_length = 0);
 
-    // def flush(self, length: int32 = 16384) -> bytes:
-    ::tpy::Bytes flush(int32_t length = 16384);
+    // def flush(self, length: int32 = DEF_BUF_SIZE) -> bytes:
+    ::tpy::Bytes flush(int32_t length = ::tpystd::zlib::DEF_BUF_SIZE);
     static constexpr std::string_view __tpy_class_name__ = "zlib._Decompress";
 };
 
@@ -268,9 +271,10 @@ inline ::tpy::Bytes _Pump::output() const {
     return ::tpy::bytes_join(::tpy::Bytes{}, this->parts);
 }
 
-// def __init__(self, level: int32 = -1, method: int32 = 8,
-//              wbits: int32 = 15, memLevel: int32 = 8,
-//              strategy: int32 = 0) -> None:
+// def __init__(self, level: int32 = Z_DEFAULT_COMPRESSION,
+//              method: int32 = DEFLATED,
+//              wbits: int32 = MAX_WBITS, memLevel: int32 = DEF_MEM_LEVEL,
+//              strategy: int32 = Z_DEFAULT_STRATEGY) -> None:
 //     self._s = _Stream(_deflate_stream(level, method, wbits, memLevel,
 //                                       strategy))
 //     self._ended = False
@@ -299,7 +303,7 @@ inline ::tpy::Bytes _Compress::compress(::tpy::BytesView data) const {
     return run.output();
 }
 
-// def __init__(self, wbits: int32 = 15) -> None:
+// def __init__(self, wbits: int32 = MAX_WBITS) -> None:
 //     self._s = _Stream(_inflate_stream(wbits, True))
 //     self._eof = False
 //     self._ended = False

@@ -49,8 +49,8 @@ void one_shot() {
     std::cout << "free gzip" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 9, 31), 31) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "free auto" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 9, 31), 47) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "free raw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, 6, -15), -15) == RAW)) << "\n" << ::tpy::check_signals;
-    std::cout << "free wbits kw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, -1, -9), -9) == RAW)) << "\n" << ::tpy::check_signals;
-    std::cout << "free bufsize" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 1) == RAW)) << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 0) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free wbits kw" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpystd::zlib::compress(RAW, ::tpystd::zlib::Z_DEFAULT_COMPRESSION, -9), -9) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "free bufsize" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, 15, 1) == RAW)) << " " << ::tpy::print_bool((::tpystd::zlib::decompress(FIXTURE, ::tpystd::zlib::MAX_WBITS, 0) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "free bytearray" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes padded = (::tpy::bytes_concat((::tpy::bytes_concat(::tpy::bytes_literal("??", 2), FIXTURE)), ::tpy::bytes_literal("??", 2)));
     std::cout << "free slice" << " " << ::tpy::print_bool((::tpystd::zlib::decompress(::tpy::Bytes(::tpy::bytes_slice(padded, ::tpy::BasicSlice{2, (::tpy::sub_check<int32_t>(::tpy::__len__(padded), 2))}))) == RAW)) << "\n" << ::tpy::check_signals;

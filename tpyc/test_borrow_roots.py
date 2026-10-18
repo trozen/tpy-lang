@@ -30,10 +30,11 @@ from .sema.local_deduction import LocalTypeDeduction
 from .sema.storage_walk import (
     Ask, KeyShape, LeafKind, LoanKey, Roots, StorageKey, Unkeyed, Use,
     borrow_key, call_loans, container_path_key, leaves, loan_key,
-    receiver_leaves, select_arm_keys, storage_roots, view_leaves,
+    reads_static_only, receiver_leaves, select_arm_keys, static_read_kind,
+    storage_roots, view_leaves,
 )
 from .thir.testutil import _compile, _entry
-from .typesys import INT32
+from .typesys import INT32, FieldInfo, RecordInfo
 from .value_category import peel_coerce
 
 _k = StorageKey.of_name
@@ -651,6 +652,58 @@ def test_view_leaves_of_qualifier_reads(tmp_path) -> None:
         # view's source reader answers like any unplaceable leaf.
         assert leaves("v_module") == [(LeafKind.GLOBAL, 1)]
         assert leaves("v_unbound") == [(LeafKind.GLOBAL, 1)]
+
+
+def test_static_read_needs_a_final_referent(tmp_path) -> None:
+    # Durability rides on the referent's finality, never on the leaf kind:
+    # a mutable qualifier read is a CONSTANT / GLOBAL leaf too.
+    (tmp_path / "consts.py").write_text(
+        "from typing import Final\nfrom tpy import StrView\n"
+        "TAG: Final[StrView] = \"tag\"\nNAME: StrView = \"name\"\n")
+    compiler, modules = _compile(
+        "import consts\nfrom typing import Final\nfrom tpy import StrView\n"
+        "class C:\n    K: Final[StrView] = \"k\"\n"
+        "    def __init__(self) -> None:\n        pass\n"
+        "def subject(c: C) -> None:\n"
+        "    v_final = consts.TAG\n    v_mut = consts.NAME\n"
+        "    v_cls = c.K\n    print(v_final, v_mut, v_cls)\n",
+        extra_lib_dirs=[tmp_path])
+    entry = _entry(modules)
+    fn = next(f for f in entry.ast.functions if f.name == "subject")
+    inits = {s.name: peel_coerce(s.init) for s in fn.body
+             if isinstance(s, TpyVarDecl)}
+    # An unstamped module read is classified by its qualifier shape; the
+    # stamp is what a filled default carries.
+    assert inits["v_final"].module_var_access is None
+    inits["v_final"].module_var_access = ("consts", "TAG")
+    inits["v_mut_stamped"] = copy.copy(inits["v_mut"])
+    inits["v_mut_stamped"].module_var_access = ("consts", "NAME")
+    with activate_compiler(compiler):
+        ctx = entry.analyzer.ctx
+        for policy in (ViewLend(ctx), TempLend(ctx)):
+            def static(name: str) -> list[bool]:
+                return [lf.static_read for lf in leaves(inits[name], policy)]
+
+            for mutable in ("v_mut", "v_mut_stamped"):
+                assert static(mutable) == [False]
+                assert not reads_static_only(inits[mutable], policy)
+            assert static("v_final") == [True]
+            assert reads_static_only(inits["v_final"], policy)
+            # A class constant read through an instance reads the class.
+            assert static("v_cls") == [True]
+            assert reads_static_only(inits["v_cls"], policy)
+
+
+def test_class_constant_without_a_finality_record_is_not_static() -> None:
+    rec = RecordInfo(name="R", fields=[],
+                     class_constants={"K": FieldInfo("K", INT32)})
+    read = TpyFieldAccess(obj=TpyName("r"), field="K",
+                          class_constant_owner=rec)
+    assert static_read_kind(read, None) is None
+    rec.class_constants_finality["K"] = False
+    assert static_read_kind(read, None) is None
+    rec.class_constants_finality["K"] = True
+    assert static_read_kind(read, None) is LeafKind.GLOBAL
 
 
 def test_view_falls_back_to_every_buffer_operand_without_a_usable_fact(

@@ -743,7 +743,7 @@ inline std::ostream& operator<<(std::ostream& os, const Outer::In& obj) {
 }
 
 // def takes(i: Outer.In, bonus: int32 = Outer.BONUS) -> int32:
-int32_t takes(const Outer::In& i, int32_t bonus = Outer::BONUS);
+int32_t takes(const Outer::In& i, int32_t bonus = ::tpyapp::main::Outer::BONUS);
 
 // class Five:
 struct Five {

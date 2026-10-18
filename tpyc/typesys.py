@@ -7152,13 +7152,20 @@ def default_emittable_at(slots: Sequence[DefaultSlot], i: int,
     block precedes every record definition; inside a record the alternatives
     are already defined, so a member keeps such a default (a member whose union
     forward-references a LATER record is the residual, tracked in BUGS.md).
+    A default reading storage of an import-cycle peer of the declaring module
+    has no spelling either: that header sees the peer only through its
+    forward declarations (`Compiler.cycle_peer_defaults`).
     """
     if slots[i][1] is None:
         return False
     if not is_member and any(d is not None and default_needs_call_site_fill(t)
                              for t, d in slots):
         return False
-    return all(slots[j][1] is not None for j in range(i + 1, len(slots)))
+    compiler = get_current_compiler()
+    peer_defaults = (compiler.cycle_peer_defaults if compiler is not None
+                     else ())
+    return all(slots[j][1] is not None and slots[j][1] not in peer_defaults
+               for j in range(i, len(slots)))
 
 
 def any_default_suppressed(slots: Iterable[DefaultSlot],
@@ -7734,6 +7741,10 @@ class RecordInfo:
     defining_module: str | None = None  # Raw (uncollapsed) module where the class was declared; used by re-export logic to look up the record through ModuleInfo.records
     exposed_to_host: bool = False  # True for a bare `@export` class in an ext_module: exposed as a CPython type (PyType_FromSpec). Mirrors TpyFunction.exposed_to_host.
     enum_companion_of: str | None = None  # The enum whose body's methods this record carries (`__enum_<Name>`); never bound by name, reached through EnumInfo.companion
+    # Where the class body first binds each name -- a nested class / enum, a
+    # method, a field or constant given a value (bare name ->
+    # SourceLocation): a default written before that point does not see it.
+    body_locs: dict[str, Any] = field(default_factory=dict)
     # Field names (declared on THIS record) that some body assigns outside an
     # `__init__` with a bare-`self` receiver -- i.e. the field can be REBOUND
     # after construction. Populated during Phase-1 body analysis at the
@@ -7784,6 +7795,12 @@ class RecordInfo:
         `class_constants`.
         """
         return self.class_constants_finality.get(name, True)
+
+    def is_recorded_final_constant(self, name: str) -> bool:
+        """True only if this record records `name` as a Final class
+        constant: the durable reading a lifetime takes, where a missing
+        entry means a slot that may be rebound."""
+        return self.class_constants_finality.get(name, False)
 
     def get_method(self, name: str) -> Optional['FunctionInfo']:
         """Get first overload of a method (for single-overload cases)."""
@@ -9318,6 +9335,12 @@ class TypeRegistry:
     def get_module(self, name: str) -> Optional[ModuleInfo]:
         """Get a module by name."""
         return self.modules.get(name)
+
+    def module_variable(self, module: str,
+                        name: str) -> Optional['ModuleVarInfo']:
+        """`module`'s registered variable `name`, or None."""
+        info = self.modules.get(module)
+        return info.variables.get(name) if info is not None else None
 
     def get_record(self, name: str) -> Optional[RecordInfo]:
         return self.records.get(name)

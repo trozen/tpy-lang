@@ -16,7 +16,7 @@ inline constexpr uint32_t NOFLAG = 0;
 inline constexpr int32_t DEFAULT_LIMIT = 16;
 
 // def fn(flags: uint32 = NOFLAG, limit: int32 = DEFAULT_LIMIT) -> int32:
-int32_t fn(uint32_t flags = NOFLAG, int32_t limit = DEFAULT_LIMIT);
+int32_t fn(uint32_t flags = ::tpyapp::main::NOFLAG, int32_t limit = ::tpyapp::main::DEFAULT_LIMIT);
 // def main() -> None:
 void main();
 
@@ -25,7 +25,7 @@ struct Engine {
 
 
     // def run(self, flags: uint32 = NOFLAG, limit: int32 = DEFAULT_LIMIT) -> int32:
-    int32_t run(uint32_t flags = NOFLAG, int32_t limit = DEFAULT_LIMIT) const;
+    int32_t run(uint32_t flags = ::tpyapp::main::NOFLAG, int32_t limit = ::tpyapp::main::DEFAULT_LIMIT) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Engine";
 };
 

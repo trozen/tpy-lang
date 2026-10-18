@@ -54,7 +54,7 @@ struct __gen_Box2_take;
 // def upto(stop: int32 = 3, step: int32 = 1) -> Iterator[int32]:
 __gen_upto upto(int32_t stop = 3, int32_t step = 1);
 // def upto_final(stop: int32 = DEFAULT_STOP) -> Iterator[int32]:
-__gen_upto_final upto_final(int32_t stop = DEFAULT_STOP);
+__gen_upto_final upto_final(int32_t stop = ::tpyapp::main::DEFAULT_STOP);
 // def bounded(limit: int32 = 2) -> Iterator[int32]:
 __gen_bounded bounded(int32_t limit = 2);
 // def head[T](it: Iterable[T], n: int32 = 2) -> Iterator[T]:
@@ -91,7 +91,7 @@ struct Box {
 
     __gen_Box_bounded_m bounded_m(int32_t limit = 2) const;
 
-    __gen_Box_shapes shapes(std::string_view tag = "t", bool flag = true, double ratio = 0.5, Mode m = Mode::B, Rec* r = nullptr, int32_t w = 3, int32_t neg = -1, int32_t f = WIDTH) const;
+    __gen_Box_shapes shapes(std::string_view tag = "t", bool flag = true, double ratio = 0.5, Mode m = Mode::B, Rec* r = nullptr, int32_t w = 3, int32_t neg = -1, int32_t f = ::tpyapp::main::WIDTH) const;
     static constexpr std::string_view __tpy_class_name__ = "__main__.Box";
 };
 
@@ -160,7 +160,7 @@ struct __gen_upto_final : public ::tpy::next_iter_mixin<__gen_upto_final, int32_
         S_DONE = 3,
     };
 
-    __gen_upto_final(int32_t stop_ = DEFAULT_STOP)
+    __gen_upto_final(int32_t stop_ = ::tpyapp::main::DEFAULT_STOP)
         : __state(S_INITIAL),
           stop(std::move(stop_)) {}
 
@@ -370,7 +370,7 @@ struct __gen_Box_shapes : public ::tpy::next_iter_mixin<__gen_Box_shapes, int32_
         S_DONE = 3,
     };
 
-    __gen_Box_shapes(const Box& __self, std::string_view tag_ = "t", bool flag_ = true, double ratio_ = 0.5, Mode m_ = Mode::B, Rec* r_ = nullptr, int32_t w_ = 3, int32_t neg_ = -1, int32_t f_ = WIDTH)
+    __gen_Box_shapes(const Box& __self, std::string_view tag_ = "t", bool flag_ = true, double ratio_ = 0.5, Mode m_ = Mode::B, Rec* r_ = nullptr, int32_t w_ = 3, int32_t neg_ = -1, int32_t f_ = ::tpyapp::main::WIDTH)
         : __state(S_INITIAL),
           __self(__self),
           tag(std::string(tag_)),

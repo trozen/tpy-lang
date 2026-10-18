@@ -1,0 +1,54 @@
+module level 179 149
+free 179
+free trailing 170
+private 59
+int ctor 79
+enum 29
+class const 119
+module qualified 39
+dispatch 79
+overload 79
+ctor 179
+inherited ctor 179
+dataclass child 11
+method 179
+classmethod 119
+staticmethod 119
+generic method 79
+class order 79 70
+inherited name 79 70
+parameter name 17
+dotted class order 79 70
+dotted enum order 29 20
+dotted field order 7
+instance field name 79 70 1000
+field order 79 70 11
+factory order 1 4 0 3
+classvar 139 130
+protocol 79
+param 179
+int ctor shadowed 78
+class ctor order 79 70
+factory shadowed 5 1 3 99
+reexported factory 1 2
+reexported factory shadowed 1 3
+capture 179
+capture same module 149
+ctor position 179
+method position 179
+generator 179
+async 179
+comprehension [178, 179]
+lambda 179
+view hello
+hoisted generator hello
+static receiver class hello class hello
+static temporary class hello box F
+static receiver yield class hello
+matching f 179 7
+matching tuple 79 2
+matching dotted 119 39 11 3
+matching type param 179 179 7
+matching int ctor 79 1
+matching factory 5 0 9 4
+own 1000 1000 shadow 5 99 98 97

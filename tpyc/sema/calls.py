@@ -50,9 +50,10 @@ from ..parse import (
     TpyGeneratorExpression, TpyStmt, TupleElemCapture,
 )
 from ..modules import extract_type_params
-from ..namespace import BindingKind
+from ..namespace import BindingKind, NameBinding
 from ..coercions import CoercionContext, VALUE_TO_PTR
-from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
+from ..symbol_binding import (SymbolKind, is_kind, lookup_imported,
+                              walk_attribute_chain)
 from .call_lends import (
     LendSource, MayLend, borrow_declared_sources,
     call_lend_sources, escaping_borrow_writes, expr_lends_storage,
@@ -112,8 +113,8 @@ from ..type_def_registry import (
     is_fixed_int_type, is_bool_type, is_char_type, is_fstr_type,
     is_str_type, is_big_int_type,
     int_traits_of,
-    is_enum_type, protocol_info_of,
-    find_factory_by_simple_name, find_factory_in_module,
+    is_enum_type, enum_info_of, protocol_info_of,
+    TypeDef, find_factory_by_simple_name,
 )
 
 
@@ -165,14 +166,136 @@ def _init_params_min_args(init_params: list) -> int:
     return sum(1 for _, _, default in init_params if default is None)
 
 
-def materialized_default(p: ParamInfo,
-                         call_loc: 'SourceLocation | None') -> TpyExpr:
-    """Clone a parameter's default for splicing into a call's argument list.
+def filled_default(default: TpyExpr, call_loc: 'SourceLocation | None',
+                   ctx: 'SemanticContext') -> TpyExpr:
+    """A fresh copy of the syntax of a resolved default (`resolve_default`)
+    for a call's argument list, at the CALL's loc so an error points at the
+    call. A leaf this scope names by the same referent keeps its spelling,
+    the read every other spelling of that constant here takes; any other
+    leaf -- shadowed here, or not named here at all -- is a stamped read of
+    the referent (`TpyFieldAccess.default_fill`), so the value is the one
+    the default names where it is written, as in CPython."""
+    loc = call_loc if call_loc is not None else default.loc
+    if isinstance(default, TpyName):
+        ref = default.default_referent
+        if ref is None or (ref.module_var is not None
+                           and _scope_module_var(ctx, default.name)
+                           == ref.module_var):
+            return TpyName(default.name, loc=loc)
+        if ref.module_var is not None:
+            return _stamped_read(ref.module_var[1], loc,
+                                 module_var_access=ref.module_var)
+        return _stamped_read(default.name, loc,
+                             class_constant_owner=ref.class_owner)
+    if isinstance(default, TpyFieldAccess):
+        stamped = (default.enum_member_of is not None
+                   or default.class_constant_owner is not None
+                   or default.module_var_access is not None)
+        if stamped and not _scope_names_member(ctx, default):
+            return _stamped_read(
+                default.field, loc,
+                module_var_access=default.module_var_access,
+                class_constant_owner=default.class_constant_owner,
+                enum_member_of=default.enum_member_of)
+        return _clone_path(default, loc)
+    if isinstance(default, TpyCall):
+        return dc_replace(default, func=_filled_callee(default.func, loc, ctx),
+                          args=[filled_default(a, loc, ctx)
+                                for a in default.args], loc=loc)
+    if isinstance(default, TpyUnaryOp):
+        return dc_replace(default,
+                          operand=filled_default(default.operand, loc, ctx),
+                          loc=loc)
+    return dc_replace(default, loc=loc)
 
-    The clone carries the CALL's loc so an error points at the call rather
-    than the definition.
-    """
-    return dc_replace(p.default_expr, loc=call_loc) if call_loc is not None else p.default_expr
+
+def _filled_callee(func: TpyExpr, loc: 'SourceLocation | None',
+                   ctx: 'SemanticContext') -> TpyExpr:
+    """The callee of a filled default's constructor call: its name when this
+    scope binds it to the same class (`class_of_binding`), as
+    `filled_default` keeps a name leaf; else the binding of the class it
+    names where the default is written (`DefaultReferent.ctor`), which
+    `analyze_call` dispatches on as that scope would its name, under a
+    spelling no scope can bind."""
+    ref = func.default_referent if isinstance(func, TpyName) else None
+    if ref is None or ref.ctor is None:
+        return _clone_path(func, loc)
+    here = ctx.name_read(func.name)
+    there = ctx.class_of_binding(ref.ctor)
+    if (here.comp is None and here.binding is not None
+            and there is not None
+            and ctx.class_of_binding(here.binding) is there):
+        return TpyName(func.name, loc=loc)
+    spelled = (ref.ctor.record_info.qualified_name()
+               if ref.ctor.record_info is not None
+               else ".".join(ref.ctor.import_source or (ref.ctor.name,)))
+    return TpyName(f"<{spelled}>", default_referent=ref, loc=loc)
+
+
+def _clone_path(expr: TpyExpr, loc: 'SourceLocation | None') -> TpyExpr:
+    """A fresh copy of a dotted name chain, its stamps kept."""
+    if isinstance(expr, TpyName):
+        return TpyName(expr.name, loc=loc)
+    if isinstance(expr, TpyFieldAccess):
+        return dc_replace(expr, obj=_clone_path(expr.obj, loc), loc=loc)
+    return dc_replace(expr, loc=loc)
+
+
+def _stamped_read(field: str, loc: 'SourceLocation | None', *,
+                  module_var_access: tuple[str, str] | None = None,
+                  class_constant_owner: 'RecordInfo | None' = None,
+                  enum_member_of: 'TpyType | None' = None) -> TpyFieldAccess:
+    """A filled default's read of its referent, spelled by the stamp alone.
+    The receiver is a placeholder no scope can bind (not an identifier)."""
+    if module_var_access is not None:
+        where = module_var_access[0]
+    elif class_constant_owner is not None:
+        where = class_constant_owner.qualified_name()
+    else:
+        where = str(enum_member_of)
+    return TpyFieldAccess(
+        obj=TpyName(f"<{where}>", loc=loc), field=field,
+        module_var_access=module_var_access,
+        class_constant_owner=class_constant_owner,
+        enum_member_of=enum_member_of, default_fill=True, loc=loc)
+
+
+def _scope_module_var(ctx: 'SemanticContext',
+                      name: str) -> tuple[str, str] | None:
+    """The module variable the name `name` reads in the scope being
+    analyzed (`SemanticContext.name_read`, the resolution `_analyze_name`
+    takes), by its defining module and name; None when that is anything
+    but a module-level variable (a comprehension variable, a type
+    parameter, a local, a parameter, a capture) or nothing."""
+    read = ctx.name_read(name)
+    if (read.comp is not None or read.binding is None
+            or read.binding.kind != BindingKind.VARIABLE
+            or read.binding is not ctx.global_ns.lookup_local(name)):
+        return None
+    imported = lookup_imported(ctx.module_attributes, name,
+                               SymbolKind.VARIABLE)
+    return imported if imported is not None else (ctx.cpp_module_name, name)
+
+
+def _scope_names_member(ctx: 'SemanticContext',
+                        default: TpyFieldAccess) -> bool:
+    """Whether the dotted spelling of a resolved default reads the same
+    referent in the scope being analyzed: the same module's variable, the
+    same enum's member, the class constant of the same declaring class --
+    resolved the way `_analyze_field_access` resolves it."""
+    if default.module_var_access is not None:
+        return (ctx.module_named_by(default.obj)
+                == default.module_var_access[0])
+    owner = ctx.type_ref(default.obj)
+    if owner is None:
+        return False
+    if default.enum_member_of is not None:
+        return (owner.kind == SymbolKind.ENUM
+                and enum_info_of(owner.info)
+                is enum_info_of(default.enum_member_of))
+    return (owner.kind != SymbolKind.ENUM
+            and ctx.registry.find_class_constant_owner(
+                owner.info, default.field) is default.class_constant_owner)
 
 
 def _tuple_call_message(expr: TpyCall) -> str:
@@ -196,6 +319,8 @@ def resolve_kwargs(
     error_fn,
     call_loc: 'SourceLocation | None' = None,
     is_member: bool = False,
+    *,
+    ctx: 'SemanticContext',
 ) -> list[TpyExpr]:
     """Resolve keyword arguments into a fully-positional argument list.
 
@@ -247,7 +372,7 @@ def resolve_kwargs(
                 if not p.keyword_only and not p.has_default:
                     raise error_fn(
                         f"'{func_name}' missing required argument: '{p.name}'")
-                result.append(materialized_default(p, call_loc))
+                result.append(filled_default(p.default_expr, call_loc, ctx))
             return result
         return expr_args
 
@@ -278,7 +403,7 @@ def resolve_kwargs(
             if p.name in expr_kwargs:
                 result.append(expr_kwargs[p.name])
             elif p.has_default:
-                result.append(materialized_default(p, call_loc))
+                result.append(filled_default(p.default_expr, call_loc, ctx))
             else:
                 raise error_fn(f"'{func_name}' missing required argument: '{p.name}'")
         for p in params:
@@ -287,7 +412,7 @@ def resolve_kwargs(
             if p.name in expr_kwargs:
                 result.append(expr_kwargs[p.name])
             elif p.has_default:
-                result.append(materialized_default(p, call_loc))
+                result.append(filled_default(p.default_expr, call_loc, ctx))
             else:
                 raise error_fn(f"'{func_name}' missing required keyword argument: '{p.name}'")
         return result
@@ -321,7 +446,7 @@ def resolve_kwargs(
         elif p.name in expr_kwargs:
             result.append(expr_kwargs[p.name])
         elif p.has_default:
-            result.append(materialized_default(p, call_loc))
+            result.append(filled_default(p.default_expr, call_loc, ctx))
         else:
             raise error_fn(f"'{func_name}' missing required argument: '{p.name}'")
 
@@ -342,6 +467,8 @@ def resolve_kwargs_init_params(
     call_loc: 'SourceLocation | None' = None,
     keyword_only: bool = False,
     is_member: bool = False,
+    *,
+    ctx: 'SemanticContext',
 ) -> list[TpyExpr]:
     """Resolve keyword arguments for record constructors using init_params format.
 
@@ -351,7 +478,7 @@ def resolve_kwargs_init_params(
     params = [ParamInfo(name, ptype, default_expr=default, keyword_only=keyword_only)
               for name, ptype, default in init_params]
     return resolve_kwargs(expr_args, expr_kwargs, params, func_name, error_fn,
-                          call_loc=call_loc, is_member=is_member)
+                          call_loc=call_loc, is_member=is_member, ctx=ctx)
 
 
 def _cross_module_cpp_overlay(
@@ -919,7 +1046,7 @@ class CallAnalyzer:
         expr.args = resolve_kwargs(
             expr.args, expr.kwargs, func.params, expr.func_name,
             lambda msg: self.ctx.error(msg, expr),
-            call_loc=expr.loc, is_member=func.is_method,
+            call_loc=expr.loc, is_member=func.is_method, ctx=self.ctx,
         )
         expr.kwargs = {}
 
@@ -930,7 +1057,7 @@ class CallAnalyzer:
         expr.args = resolve_kwargs_init_params(
             expr.args, expr.kwargs, record.init_params, f"{record.name}()",
             lambda msg: self.ctx.error(msg, expr),
-            call_loc=expr.loc, is_member=True,
+            call_loc=expr.loc, is_member=True, ctx=self.ctx,
         )
         expr.kwargs = {}
 
@@ -1015,12 +1142,13 @@ class CallAnalyzer:
         td_args = resolve_kwargs_init_params(
             [], td_kwargs, init_params, func_name,
             lambda msg: self.ctx.error(msg, expr),
-            call_loc=expr.loc, keyword_only=True,
+            call_loc=expr.loc, keyword_only=True, ctx=self.ctx,
         )
         # Pad trailing fields that have defaults (resolve_kwargs stops at rightmost)
         for fld in record.fields[len(td_args):]:
             if fld.default_expr is not None:
-                td_args.append(dc_replace(fld.default_expr, loc=expr.loc))
+                td_args.append(filled_default(fld.default_expr, expr.loc,
+                                              self.ctx))
             else:
                 raise self.ctx.error(
                     f"'{func_name}' missing required keyword argument: '{fld.name}'", expr)
@@ -1134,14 +1262,28 @@ class CallAnalyzer:
             return record.name
         return expr.func_name
 
-    def _record_for_local_name(self, name: str) -> 'RecordInfo | None':
+    def _callee_binding(self, expr: TpyCall) -> 'NameBinding | None':
+        """What a call's callee name binds: in the scope being analyzed,
+        or, for a filled parameter default's constructor, where the
+        default is written (`DefaultReferent.ctor`) -- the one by-name
+        dispatch of `analyze_call` serves both."""
+        ref = expr.func.default_referent
+        if ref is not None and ref.ctor is not None:
+            return ref.ctor
+        ns = self.ctx.func.current_ns
+        return ns.lookup(expr.func_name) if ns is not None else None
+
+    def _record_for_local_name(self, name: str,
+                               binding: 'NameBinding | None' = None
+                               ) -> 'RecordInfo | None':
         """The class a bare callee name denotes, resolved like every other
-        type path (`type_ref_path`): its scoped binding, an import, or a
-        builtin -- never another module's class that shares the short
-        name. Outside its own module a generic `@builtin_type` class (`Span`,
-        `list`) constructs through its type factory, which infers its type
-        arguments."""
-        ref = self.ctx.type_ref_path([name])
+        type path (`type_ref_path`): its scoped binding (`binding`, when
+        the caller looked it up), an import, or a builtin -- never another
+        module's class that shares the short name. Outside its own module a
+        generic `@builtin_type` class (`Span`, `list`) constructs through
+        its type factory, which infers its type arguments."""
+        ref = (self.ctx.type_ref_path([name]) if binding is None
+               else self.ctx.type_ref_bound_path(binding, [name]))
         if ref is None or ref.kind != SymbolKind.RECORD:
             return None
         rec = ref.info
@@ -1394,131 +1536,128 @@ class CallAnalyzer:
                 return expr.call_type
             # Otherwise fall through to function handling (type_args will be used)
 
-        # Track if we found an imported generic type (allows fallthrough to generic handling)
-        # Stores the original name (not alias) for factory lookup by simple name
-        imported_generic_name: str | None = None
-        imported_generic_module: str | None = None
+        # The factory of an imported generic type, whose construction falls
+        # through to the generic handling below.
+        imported_generic_td: TypeDef | None = None
 
         # Use namespace for unified lookup - handles shadowing automatically
-        if self.ctx.func.current_ns:
-            binding = self.ctx.func.current_ns.lookup(expr.func_name)
-            if binding:
-                if binding.kind == BindingKind.VARIABLE:
-                    if expr.subscript_callee is not None:
-                        return self._rewrite_subscript_callee(expr)
-                    var_type = self.ctx.func.narrowed_types.get(expr.func_name, binding.type)
-                    # Strip Own[T] -- Own is a storage property, not a type distinction
-                    if isinstance(var_type, OwnType):
-                        var_type = var_type.wrapped
-                    # Send/Sync markers add a guarantee, not callability
-                    var_type = unwrap_send_sync(var_type)
-                    if is_fn_type(var_type):
-                        return self._analyze_fn_type_call(expr, var_type)
-                    if isinstance(var_type, CallableType):
-                        return self._analyze_callable_type_call(expr, var_type)
-                    # Check for record type with __call__ method
-                    if isinstance(var_type, NominalType):
-                        record = self.ctx.registry.get_record_for_type(var_type)
-                        if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
-                            return self._analyze_dunder_call(expr)
-                    raise self.ctx.error(f"'{expr.func_name}' is not callable", expr)
-                elif binding.kind == BindingKind.FUNCTION:
-                    # Builtin-supplemented functions route through builtin path
-                    # (richer diagnostics for unsafe_ptr, unsafe_cast etc.)
-                    if binding.func_infos[0].is_builtin_function:
-                        if binding.func_infos[0].special_handling:
-                            return self._analyze_special_builtin(expr, binding.func_infos)
-                        return self._analyze_builtin_function_overloads(expr, binding.func_infos)
-                    return self._analyze_user_function_call(expr, binding.func_infos)
-                elif binding.kind == BindingKind.RECORD:
-                    return self._analyze_record_constructor(expr, binding.record_info)
-                elif binding.kind == BindingKind.IMPORTED_NAME:
-                    module_name, func_name = binding.import_source
-                    # Check for call-site macro before other handling.
-                    # Walks the re-export chain via the attribute table so
-                    # `from utils import asdict` (where utils re-exports
-                    # from dataclasses) resolves to the macro registered
-                    # under the ultimate macro module's key.
-                    if self.ctx.macro_registry:
-                        macro_fn = self.ctx.macro_registry.get_call_macro(module_name, func_name)
-                        ult_mod, ult_name = module_name, func_name
-                        if macro_fn is None:
-                            chain = self._resolve_call_macro_chain(module_name, func_name)
-                            if chain is not None:
-                                ult_mod, ult_name = chain
-                                macro_fn = self.ctx.macro_registry.get_call_macro(ult_mod, ult_name)
-                        if macro_fn is not None:
-                            return self._expand_call_macro(expr, macro_fn, ult_mod, ult_name)
-                    qname = f"{module_name}.{func_name}"
-                    # Special handling for functions with custom sema
-                    if qname == "tpy.copy":
-                        return self._analyze_tpy_copy(expr)
-                    if qname == "tpy.copy_iter":
-                        return self._analyze_tpy_copy_iter(expr)
-                    if qname == "tpy.own_iter":
-                        return self._analyze_tpy_own_iter(expr)
-                    if qname == "tpy.try_parse":
-                        return self._analyze_tpy_try_parse(expr)
-                    if qname in (qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
-                        if overloads := self._get_module_function_overloads(module_name, func_name):
-                            return self._analyze_asyncio_spawn_call(expr, qname, overloads)
-                        # falls through when the module registry misses (error path)
-                    if qname == "builtins.isinstance":
-                        return self._analyze_isinstance(expr)
-                    if qname == "builtins.super":
-                        # Lazy: methods.py imports calls at module load; cycle breaks here.
-                        from .methods import MethodAnalyzer
-                        return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
-                    if qname == "builtins.print":
-                        return self._analyze_print_call(expr)
-                    # Check for user module function (registered via _register_user_module_import)
-                    if func_infos := self.ctx.registry.get_function(expr.func_name):
-                        # from-imported asyncio.run / create_task keep the
-                        # coroutine-only arg contract (CPython parity).
-                        if func_infos[0].qualified_name in (
-                                qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
-                            return self._analyze_asyncio_spawn_call(
-                                expr, func_infos[0].qualified_name, func_infos)
-                        # Builtin-supplemented functions route through builtin path
-                        if func_infos[0].is_builtin_function:
-                            if func_infos[0].special_handling:
-                                return self._analyze_special_builtin(expr, func_infos)
-                            return self._analyze_builtin_function_overloads(expr, func_infos)
-                        return self._analyze_user_function_call(expr, func_infos)
-                    # Check for user module record (registered via _register_user_module_import).
-                    # Import-aware: get_record by short name collides for same-name
-                    # records from different modules.
-                    if record_info := self._record_for_local_name(expr.func_name):
-                        return self._analyze_record_constructor(expr, record_info)
-                    # Check for module function (e.g., math.sqrt)
+        binding = self._callee_binding(expr)
+        if binding:
+            if binding.kind == BindingKind.VARIABLE:
+                if expr.subscript_callee is not None:
+                    return self._rewrite_subscript_callee(expr)
+                var_type = self.ctx.func.narrowed_types.get(expr.func_name, binding.type)
+                # Strip Own[T] -- Own is a storage property, not a type distinction
+                if isinstance(var_type, OwnType):
+                    var_type = var_type.wrapped
+                # Send/Sync markers add a guarantee, not callability
+                var_type = unwrap_send_sync(var_type)
+                if is_fn_type(var_type):
+                    return self._analyze_fn_type_call(expr, var_type)
+                if isinstance(var_type, CallableType):
+                    return self._analyze_callable_type_call(expr, var_type)
+                # Check for record type with __call__ method
+                if isinstance(var_type, NominalType):
+                    record = self.ctx.registry.get_record_for_type(var_type)
+                    if record and self.ctx.registry.get_method_overloads_with_parents(record, "__call__"):
+                        return self._analyze_dunder_call(expr)
+                raise self.ctx.error(f"'{expr.func_name}' is not callable", expr)
+            elif binding.kind == BindingKind.FUNCTION:
+                # Builtin-supplemented functions route through builtin path
+                # (richer diagnostics for unsafe_ptr, unsafe_cast etc.)
+                if binding.func_infos[0].is_builtin_function:
+                    if binding.func_infos[0].special_handling:
+                        return self._analyze_special_builtin(expr, binding.func_infos)
+                    return self._analyze_builtin_function_overloads(expr, binding.func_infos)
+                return self._analyze_user_function_call(expr, binding.func_infos)
+            elif binding.kind == BindingKind.RECORD:
+                return self._analyze_record_constructor(expr, binding.record_info)
+            elif binding.kind == BindingKind.IMPORTED_NAME:
+                module_name, func_name = binding.import_source
+                # Check for call-site macro before other handling.
+                # Walks the re-export chain via the attribute table so
+                # `from utils import asdict` (where utils re-exports
+                # from dataclasses) resolves to the macro registered
+                # under the ultimate macro module's key.
+                if self.ctx.macro_registry:
+                    macro_fn = self.ctx.macro_registry.get_call_macro(module_name, func_name)
+                    ult_mod, ult_name = module_name, func_name
+                    if macro_fn is None:
+                        chain = self._resolve_call_macro_chain(module_name, func_name)
+                        if chain is not None:
+                            ult_mod, ult_name = chain
+                            macro_fn = self.ctx.macro_registry.get_call_macro(ult_mod, ult_name)
+                    if macro_fn is not None:
+                        return self._expand_call_macro(expr, macro_fn, ult_mod, ult_name)
+                qname = f"{module_name}.{func_name}"
+                # Special handling for functions with custom sema
+                if qname == "tpy.copy":
+                    return self._analyze_tpy_copy(expr)
+                if qname == "tpy.copy_iter":
+                    return self._analyze_tpy_copy_iter(expr)
+                if qname == "tpy.own_iter":
+                    return self._analyze_tpy_own_iter(expr)
+                if qname == "tpy.try_parse":
+                    return self._analyze_tpy_try_parse(expr)
+                if qname in (qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
                     if overloads := self._get_module_function_overloads(module_name, func_name):
-                        if overloads[0].special_handling:
-                            return self._analyze_special_builtin(expr, overloads)
-                        if overloads[0].value_ptr_coercion:
-                            return self._analyze_user_function_call(expr, overloads)
-                        return self._analyze_builtin_function_overloads(expr, overloads)
-                    # Check for type constructor (e.g., int32 from tpy, int from builtins)
-                    qname = f"{module_name}.{func_name}"
-                    if record_info := self.ctx.registry.get_builtin_record(qname):
-                        if record_info.get_method_overloads("__init__") and not record_info.type_params:
-                            return self._analyze_record_constructor(expr, record_info)
-                    # Generic types (Array, list) - mark as found and fall through
-                    if find_factory_in_module(func_name, module_name) is not None:
-                        imported_generic_name = func_name
-                        imported_generic_module = module_name
-                    else:
-                        raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
-                elif binding.kind == BindingKind.MODULE:
-                    raise SemanticError(f"Cannot call module '{expr.func_name}' directly; use module.function()", expr.loc)
-                elif binding.kind == BindingKind.ENUM:
-                    return self._analyze_enum_from_value(expr, binding.enum_type)
-                elif binding.kind == BindingKind.BUILTIN:
-                    raise SemanticError(f"'{expr.func_name}' is not callable", expr.loc)
+                        return self._analyze_asyncio_spawn_call(expr, qname, overloads)
+                    # falls through when the module registry misses (error path)
+                if qname == "builtins.isinstance":
+                    return self._analyze_isinstance(expr)
+                if qname == "builtins.super":
+                    # Lazy: methods.py imports calls at module load; cycle breaks here.
+                    from .methods import MethodAnalyzer
+                    return MethodAnalyzer._analyze_super_call_static(self.ctx, expr)
+                if qname == "builtins.print":
+                    return self._analyze_print_call(expr)
+                # Check for user module function (registered via _register_user_module_import)
+                if func_infos := self.ctx.registry.get_function(expr.func_name):
+                    # from-imported asyncio.run / create_task keep the
+                    # coroutine-only arg contract (CPython parity).
+                    if func_infos[0].qualified_name in (
+                            qnames.ASYNCIO_CREATE_TASK, qnames.ASYNCIO_RUN):
+                        return self._analyze_asyncio_spawn_call(
+                            expr, func_infos[0].qualified_name, func_infos)
+                    # Builtin-supplemented functions route through builtin path
+                    if func_infos[0].is_builtin_function:
+                        if func_infos[0].special_handling:
+                            return self._analyze_special_builtin(expr, func_infos)
+                        return self._analyze_builtin_function_overloads(expr, func_infos)
+                    return self._analyze_user_function_call(expr, func_infos)
+                # Check for user module record (registered via _register_user_module_import).
+                # Import-aware: get_record by short name collides for same-name
+                # records from different modules.
+                if record_info := self._record_for_local_name(
+                        expr.func_name, binding):
+                    return self._analyze_record_constructor(expr, record_info)
+                # Check for module function (e.g., math.sqrt)
+                if overloads := self._get_module_function_overloads(module_name, func_name):
+                    if overloads[0].special_handling:
+                        return self._analyze_special_builtin(expr, overloads)
+                    if overloads[0].value_ptr_coercion:
+                        return self._analyze_user_function_call(expr, overloads)
+                    return self._analyze_builtin_function_overloads(expr, overloads)
+                # Check for type constructor (e.g., int32 from tpy, int from builtins)
+                qname = f"{module_name}.{func_name}"
+                if record_info := self.ctx.registry.get_builtin_record(qname):
+                    if record_info.get_method_overloads("__init__") and not record_info.type_params:
+                        return self._analyze_record_constructor(expr, record_info)
+                # Generic types (Array, list) - mark as found and fall through
+                imported_generic_td = self.ctx.factory_of_binding(binding)
+                if imported_generic_td is None:
+                    raise SemanticError(f"Unknown function '{func_name}' in module '{module_name}'", expr.loc)
+            elif binding.kind == BindingKind.MODULE:
+                raise SemanticError(f"Cannot call module '{expr.func_name}' directly; use module.function()", expr.loc)
+            elif binding.kind == BindingKind.ENUM:
+                return self._analyze_enum_from_value(expr, binding.enum_type)
+            elif binding.kind == BindingKind.BUILTIN:
+                raise SemanticError(f"'{expr.func_name}' is not callable", expr.loc)
 
         # Check if it's a tpy type that requires explicit import
         # Only check if we didn't find it in namespace (i.e., not imported)
         # Python builtins (int, str, list) are in builtins_ns and would be found above
-        if imported_generic_name is None:
+        if imported_generic_td is None:
             tpy_qname = f"tpy.{expr.func_name}"
             if record_info := self.ctx.registry.get_builtin_record(tpy_qname):
                 if record_info.get_method_overloads("__init__") and not record_info.type_params:
@@ -1551,9 +1690,7 @@ class CallAnalyzer:
 
         # Generic type constructor without context for type inference
         # Only proceed if we found an imported generic type in namespace
-        if imported_generic_name and imported_generic_module and (
-            lookup_td := find_factory_in_module(imported_generic_name, imported_generic_module)
-        ):
+        if (lookup_td := imported_generic_td) is not None:
             record_info = self.ctx.registry.get_builtin_record(lookup_td.qname)
             if not record_info:
                 raise self.ctx.error(f"Unknown type '{expr.func_name}'", expr)

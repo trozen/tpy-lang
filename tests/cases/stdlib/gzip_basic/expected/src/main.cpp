@@ -113,7 +113,7 @@ void load_attempt(std::string_view label, std::string_view path) {
 //     print("mem big", gzip.decompress(gzip.compress(big, mtime=0)) == big)
 void in_memory() {
     std::cout << "mem fixture" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(FIXTURE) == RAW)) << "\n" << ::tpy::check_signals;
-    std::cout << "mem mtime0" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 9, static_cast<double>(0))) == RAW)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem mtime0" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, ::tpystd::gzip::_COMPRESS_LEVEL_BEST, static_cast<double>(0))) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "mem mtime" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 1, 12345.0)) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "mem now" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(RAW, 6, std::nullopt)) == RAW)) << "\n" << ::tpy::check_signals;
     std::cout << "mem bytearray" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpy::ByteArray(FIXTURE)) == RAW)) << "\n" << ::tpy::check_signals;
@@ -122,7 +122,7 @@ void in_memory() {
     std::cout << "mem empty" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(::tpy::BytesView{})) << "\n" << ::tpy::check_signals;
     std::cout << "mem header fields" << " " << ::tpy::BytesPrinter(::tpystd::gzip::decompress(HEADER_FIELDS)) << "\n" << ::tpy::check_signals;
     ::tpy::Bytes big = (::tpy::bytes_repeat(::tpy::bytes_from_int_iterable(::tpy::Range<int32_t>(256)), 1500));
-    std::cout << "mem big" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(big, 9, static_cast<double>(0))) == big)) << "\n" << ::tpy::check_signals;
+    std::cout << "mem big" << " " << ::tpy::print_bool((::tpystd::gzip::decompress(::tpystd::gzip::compress(big, ::tpystd::gzip::_COMPRESS_LEVEL_BEST, static_cast<double>(0))) == big)) << "\n" << ::tpy::check_signals;
 }
 
 // def in_memory_errors() -> None:
@@ -169,7 +169,7 @@ void in_memory_errors() {
         double stamp = *__beg_0;
         {
             try {
-                ::tpystd::gzip::compress(RAW, 9, stamp);
+                ::tpystd::gzip::compress(RAW, ::tpystd::gzip::_COMPRESS_LEVEL_BEST, stamp);
                 std::cout << "err mtime" << " " << ::tpy::print_float(stamp) << " " << "ok" << "\n" << ::tpy::check_signals;
             } catch (const ::tpy::Exception&) {
                 std::cout << "err mtime" << " " << ::tpy::print_float(stamp) << " " << "raised" << "\n" << ::tpy::check_signals;
@@ -440,7 +440,7 @@ void files() {
     std::array<::tpy::Bytes, 3> payloads = {(::tpy::bytes_repeat(::tpy::bytes_literal("a", 1), 10)), (::tpy::bytes_repeat(::tpy::bytes_literal("b", 1), 100000)), ::tpy::Bytes{}};
     int32_t __stop_3 = ::tpy::__len__(payloads);
     for (int32_t i = 0; i < __stop_3; ++i) {
-        ::tpyapp::main::write(std::format("gzip_basic_{}.gz", i), ::tpystd::gzip::compress(payloads[static_cast<std::size_t>(i)], 9, static_cast<double>(0)));
+        ::tpyapp::main::write(std::format("gzip_basic_{}.gz", i), ::tpystd::gzip::compress(payloads[static_cast<std::size_t>(i)], ::tpystd::gzip::_COMPRESS_LEVEL_BEST, static_cast<double>(0)));
     }
     std::cout << "comprehension" << " " << ::tpy::ListPrinter(({
         std::vector<int32_t> __result;

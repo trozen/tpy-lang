@@ -418,6 +418,11 @@ bindings on the per-module attribute table so a cycle peer's
 `bind_imports` may not have run yet). Variable and type alias
 re-export *from* a cycle peer is the one remaining gap (BUGS.md
 entries) -- their bodies aren't TpyType-resolved at pre-pop time.
+A cycle member's parameter defaults are resolved after the last member
+is finalized (`TypeRegistrar.resolve_defaults`), and a default reading a
+peer's storage has no C++ spelling in the member's header, which sees
+the peer only through its forward declarations, so it is filled at
+each call (`Compiler.cycle_peer_defaults`).
 
 A native module (`"mod": "native"`) generates no header (at most a .cpp
 holding its init), so it is never a C++ cycle peer: the C++ cycle is an import SCC's regular members, and

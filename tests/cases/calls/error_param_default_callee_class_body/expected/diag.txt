@@ -1,0 +1,1 @@
+main.py:15: error: Default parameter value must be a constant expression (literal, None, fixed-int constructor like int32(5), an enum member like Color.RED, or a Final[T] module constant); the class body binds 'int64' to a method before the default

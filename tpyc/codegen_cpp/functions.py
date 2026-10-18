@@ -45,7 +45,7 @@ from ..parse.nodes import (
     TpyBytesLiteral, TpyNoneLiteral, TpyUnaryOp, TpyTypeParamConstruct,
     TpyCall, TpyName, TpyFieldAccess, TpyStmt, OverloadForm,
 )
-from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
+from .context import INDENT, module_to_cpp_namespace, escape_cpp_name, qualified_cpp_name, cpp_string_literal_expr, cpp_bytes_literal_span, cpp_bytes_literal_owned, expand_cpp_template, enum_member_cpp, module_variable_cpp, CodeGenError, module_init_function, module_init_namespace, native_init_namespace
 from . import emit_prims
 from .param_const import decide_param_const, ParamConstDecision
 from .type_resolution import (resolve_global_binding_type,
@@ -222,13 +222,35 @@ def type_member_default_cpp(analyzer: SemanticAnalyzer, expr: TpyFieldAccess) ->
     if expr.enum_member_of is not None:
         return enum_member_cpp(expr.enum_member_of, analyzer.ctx.module_name,
                                expr.field)
-    if expr.class_constant_owner is not None:
-        # The access spelling the expression lowering uses; a default's owner
-        # is never generic (sema admits none), so no instantiation renderer.
+    owner = expr.class_constant_owner
+    if owner is None:
+        return None
+    if owner.is_native or owner.type_params or owner.defining_module is None:
+        # The access spelling the expression lowering uses: a native rename,
+        # or a generic class's constant, which a member's default reads in
+        # its class's scope (no instantiation renderer here).
         # Imported here: the THIR lowering imports this module.
         from ..thir.lower.predicates import _class_constant_cpp
         return _class_constant_cpp(expr, analyzer, None)
-    return None
+    # Fully qualified, as a module constant: a default argument is read
+    # where it is spelled -- inside a class whose member or nested type may
+    # shadow the owner's name, or in @export glue outside the namespace.
+    module = (analyzer.ctx.cpp_module_name
+              if owner.defining_module == analyzer.ctx.module_name
+              else owner.defining_module)
+    cc = owner.class_constants.get(expr.field)
+    member = (cc.native_name if cc is not None and cc.native_name
+              else escape_cpp_name(expr.field))
+    return f"{qualified_cpp_name(module, owner.name)}::{member}"
+
+
+def _module_var_default_cpp(analyzer: SemanticAnalyzer, module: str,
+                            name: str) -> str:
+    """A module constant as a default argument: a `native_global` by its
+    bound symbol, any other by its defining module's qualified name -- a
+    bare name would be looked up from the declaration, where an inherited
+    class member or an earlier parameter of that name shadows it."""
+    return module_variable_cpp(analyzer.registry, module, name)[0]
 
 
 def default_to_cpp(ctx: 'CodeGenContext', expr: TpyExpr, ptype: TpyType) -> str:
@@ -280,30 +302,25 @@ def default_to_cpp_from_analyzer(analyzer, expr: TpyExpr,
     if isinstance(expr, TpyNoneLiteral):
         return none_default_cpp_spelling(ptype)
     if isinstance(expr, TpyName):
-        # Final[T] module constant in default position (sema validated).
-        # For imported names: route through the attribute table's
-        # ultimate definer (bypasses parent-package `inline auto&`
-        # aliases that may not be visible in the sibling-cross-import +
-        # Final-reexport shape, where parent.hpp is pulled into a
-        # sub.hpp via the auto-parent walk before the sub's namespace
-        # has opened). For locally-defined Final globals we still emit
-        # the bare name -- `lookup_qualified` would resolve them to
-        # `current_module` which is `__main__` for the entry module,
-        # mismatching the actual C++ namespace `tpyapp::main`.
-        table = analyzer.ctx.module_attributes
-        cell = table.get(expr.name) if table else None
-        bd = cell.binding if cell is not None else None
-        if bd is not None and bd.defining_module is not None:
-            return qualified_cpp_name(bd.defining_module, bd.canonical_name)
-        imp = analyzer.imported_names.get(expr.name)
-        if imp is not None:
-            source_module, original_name = imp
-            return qualified_cpp_name(source_module, original_name)
+        # A name resolved where the default is written (sema's
+        # `resolve_default`): a class constant of the def's class, or a
+        # Final module constant.
+        ref = expr.default_referent
+        if ref is not None and ref.class_owner is not None:
+            member = type_member_default_cpp(analyzer, TpyFieldAccess(
+                obj=expr, field=expr.name, class_constant_owner=ref.class_owner))
+            # A generic class's constant: a member's default argument is
+            # looked up in its class's scope.
+            return member if member is not None else escape_cpp_name(expr.name)
+        if ref is not None and ref.module_var is not None:
+            return _module_var_default_cpp(analyzer, *ref.module_var)
         return escape_cpp_name(expr.name)
     if isinstance(expr, TpyFieldAccess):
         member = type_member_default_cpp(analyzer, expr)
         if member is not None:
             return member
+        if expr.module_var_access is not None:
+            return _module_var_default_cpp(analyzer, *expr.module_var_access)
         raise CodeGenError(
             f"default value '{expr.field}' is not a resolvable enum member "
             f"or class constant", expr.loc)

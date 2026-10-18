@@ -7,7 +7,8 @@ __tpy__ = {"mod": "ext"}
 # while passing a later one by keyword. Covers a default of every marshallable
 # by-value shape (int/float/bool/str/bytes/tuple/enum/Final constant), a
 # REQUIRED keyword-only param (which PyArg cannot express, so the glue
-# NULL-checks it), and defaults on a class __init__ and method.
+# NULL-checks it), defaults on a class __init__ and method, and a method
+# default naming its class body's Final constant.
 from enum import IntEnum
 from typing import Final
 
@@ -137,3 +138,23 @@ class Pair:
 
     def weigh(self, *, factor: int64) -> int64:
         return (self.a + self.b) * factor
+
+
+@export
+class Stride:
+    """A method default naming a Final constant of its own class body: the
+    glue sits outside the module's namespace, so it spells the constant
+    through the module's."""
+
+    WIDTH: Final[int64] = 11
+
+    def __init__(self) -> None:
+        pass
+
+    def step(self, by: int64 = WIDTH) -> int64:
+        return by * 2
+
+    # The constant inside a conversion: the glue spells it qualified there
+    # too.
+    def shift(self, by: int64 = int64(WIDTH), back: int64 = 0) -> int64:
+        return by * 100 + back

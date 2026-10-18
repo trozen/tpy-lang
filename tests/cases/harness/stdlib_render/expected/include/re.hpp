@@ -49,25 +49,25 @@ uint64_t _utf8_advance(const uint8_t* data, uint64_t offset, uint64_t length);
 // def _to_pcre2_opts(flags: int32) -> uint32:
 uint32_t _to_pcre2_opts(int32_t flags);
 // def compile(pattern: str, flags: int32 = NOFLAG) -> Own[Pattern]:
-Pattern compile(std::string_view pattern, int32_t flags = NOFLAG);
+Pattern compile(std::string_view pattern, int32_t flags = ::tpystd::re::NOFLAG);
 // def search(pattern: str, subject: str,
 //            flags: int32 = NOFLAG) -> Optional[Own[Match]]:
-std::optional<Match> search(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+std::optional<Match> search(std::string_view pattern, std::string_view subject, int32_t flags = ::tpystd::re::NOFLAG);
 // def match(pattern: str, subject: str,
 //           flags: int32 = NOFLAG) -> Optional[Own[Match]]:
-std::optional<Match> match(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+std::optional<Match> match(std::string_view pattern, std::string_view subject, int32_t flags = ::tpystd::re::NOFLAG);
 // def fullmatch(pattern: str, subject: str,
 //               flags: int32 = NOFLAG) -> Optional[Own[Match]]:
-std::optional<Match> fullmatch(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+std::optional<Match> fullmatch(std::string_view pattern, std::string_view subject, int32_t flags = ::tpystd::re::NOFLAG);
 // def findall(pattern: str, subject: str,
 //             flags: int32 = NOFLAG) -> Own[list[str]]:
-std::vector<std::string> findall(std::string_view pattern, std::string_view subject, int32_t flags = NOFLAG);
+std::vector<std::string> findall(std::string_view pattern, std::string_view subject, int32_t flags = ::tpystd::re::NOFLAG);
 // def sub(pattern: str, repl: str, subject: str, count: int32 = 0,
 //         flags: int32 = NOFLAG) -> str:
-std::string sub(std::string_view pattern, std::string_view repl, std::string_view subject, int32_t count = 0, int32_t flags = NOFLAG);
+std::string sub(std::string_view pattern, std::string_view repl, std::string_view subject, int32_t count = 0, int32_t flags = ::tpystd::re::NOFLAG);
 // def split(pattern: str, subject: str, maxsplit: int32 = int32(0),
 //           flags: int32 = NOFLAG) -> Own[list[str]]:
-std::vector<std::string> split(std::string_view pattern, std::string_view subject, int32_t maxsplit = 0, int32_t flags = NOFLAG);
+std::vector<std::string> split(std::string_view pattern, std::string_view subject, int32_t maxsplit = 0, int32_t flags = ::tpystd::re::NOFLAG);
 
 // @nocopy
 // class _OwnedMatchData:
@@ -228,7 +228,7 @@ struct Pattern {
     int32_t flags;
 
     // def __init__(self, pattern: str, flags: int32 = NOFLAG) -> None:
-    explicit Pattern(std::string_view pattern, int32_t flags = NOFLAG);
+    explicit Pattern(std::string_view pattern, int32_t flags = ::tpystd::re::NOFLAG);
     // non-copyable (field '_code')
     Pattern(const Pattern&) = delete;
     Pattern& operator=(const Pattern&) = delete;

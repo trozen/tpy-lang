@@ -1,0 +1,2 @@
+A TypedDict field default is ignored by CPython at runtime (TPy warns at
+the field), so CPython raises KeyError on the omitted key.

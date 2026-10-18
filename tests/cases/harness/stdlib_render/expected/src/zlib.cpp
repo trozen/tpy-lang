@@ -215,7 +215,8 @@ uint32_t adler32(::tpy::BytesView data, uint32_t value) {
     return ::tpy_zlib_adler32(value, data.data(), ::tpy::int_cast_check<uint64_t>(::tpy::__len__(data)));
 }
 
-// def compress(data: bytes, level: int32 = -1, wbits: int32 = 15) -> bytes:
+// def compress(data: bytes, level: int32 = Z_DEFAULT_COMPRESSION,
+//              wbits: int32 = MAX_WBITS) -> bytes:
 //     """Compress `data` in one call. `wbits` picks the container: 9..15 zlib,
 //     -9..-15 raw deflate, 25..31 gzip."""
 //     rc: int32 = 0
@@ -252,8 +253,8 @@ uint32_t adler32(::tpy::BytesView data, uint32_t value) {
     return run.output();
 }
 
-// def decompress(data: bytes, wbits: int32 = 15,
-//                bufsize: int32 = 16384) -> bytes:
+// def decompress(data: bytes, wbits: int32 = MAX_WBITS,
+//                bufsize: int32 = DEF_BUF_SIZE) -> bytes:
 //     """Decompress a complete stream in one call; trailing bytes after the
 //     end of the stream are ignored. `bufsize` only sizes the first output
 //     buffer."""
@@ -281,15 +282,16 @@ uint32_t adler32(::tpy::BytesView data, uint32_t value) {
     return run.output();
 }
 
-// def compressobj(level: int32 = -1, method: int32 = 8, wbits: int32 = 15,
-//                 memLevel: int32 = 8, strategy: int32 = 0) -> Own[_Compress]:
+// def compressobj(level: int32 = Z_DEFAULT_COMPRESSION, method: int32 = DEFLATED,
+//                 wbits: int32 = MAX_WBITS, memLevel: int32 = DEF_MEM_LEVEL,
+//                 strategy: int32 = Z_DEFAULT_STRATEGY) -> Own[_Compress]:
 //     """An incremental compressor for data too large to hold at once."""
 //     return _Compress(level, method, wbits, memLevel, strategy)
 _Compress compressobj(int32_t level, int32_t method, int32_t wbits, int32_t memLevel, int32_t strategy) {
     return _Compress(level, method, wbits, memLevel, strategy);
 }
 
-// def decompressobj(wbits: int32 = 15) -> Own[_Decompress]:
+// def decompressobj(wbits: int32 = MAX_WBITS) -> Own[_Decompress]:
 //     """An incremental decompressor for streams too large to hold at once."""
 //     return _Decompress(wbits)
 _Decompress decompressobj(int32_t wbits) {
@@ -297,7 +299,7 @@ _Decompress decompressobj(int32_t wbits) {
 }
 
 
-// def flush(self, mode: int32 = 4) -> bytes:
+// def flush(self, mode: int32 = Z_FINISH) -> bytes:
 //     """Emit pending output. Z_FINISH ends the stream: no further
 //     compress() or flush() is allowed after it."""
 //     if mode == Z_NO_FLUSH:
@@ -361,7 +363,7 @@ _Decompress decompressobj(int32_t wbits) {
     return run.output();
 }
 
-// def flush(self, length: int32 = 16384) -> bytes:
+// def flush(self, length: int32 = DEF_BUF_SIZE) -> bytes:
 //     """Decompress the pending `unconsumed_tail`. Never raises for a
 //     truncated or corrupt stream (CPython's flush does not either)."""
 //     if length <= 0:

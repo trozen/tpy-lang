@@ -107,6 +107,7 @@ from .operators import OperatorAmbiguity, answers_as_call
 from .bound_check import raise_if_class_param_bound_violated
 from .overloads import OverloadAmbiguityError, resolve_overload
 from .type_ops import frame_yield_may_borrow
+from .registration import referent_type
 from .own_copy import warn_value_call_binding
 from .scope_tracker import lend_places
 from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
@@ -285,14 +286,21 @@ def star_source_element_type(source: TpyType) -> 'TpyType | None':
     return None
 
 
-def generic_constructor_factory(expr: TpyExpr) -> 'TypeDef | None':
+def generic_constructor_factory(ctx: 'SemanticContext',
+                                expr: TpyExpr) -> 'TypeDef | None':
     """The generic type factory an argument-less constructor call such as
     `list()`, `dict()` or `set()` names, whose type arguments only its
-    context can give; None for any other expression."""
+    context can give; None for any other expression. A filled parameter
+    default's callee is looked up by the binding it has where the default
+    is written (`DefaultReferent.ctor`), as `analyze_call` dispatches it."""
     if not (isinstance(expr, TpyCall) and isinstance(expr.func, TpyName)
             and not expr.args and expr.call_type is None):
         return None
-    td = find_factory_by_simple_name(expr.func_name)
+    ref = expr.func.default_referent
+    if ref is not None and ref.ctor is not None:
+        td = ctx.factory_of_binding(ref.ctor)
+    else:
+        td = find_factory_by_simple_name(expr.func_name)
     return td if td is not None and td.param_kinds else None
 
 
@@ -1124,8 +1132,7 @@ class ExpressionAnalyzer:
             return self.analyze_expr(expr)
         return self._analyze_expr_under_hint(expr, slot)
 
-    @staticmethod
-    def _fill_types(expr: TpyExpr) -> bool:
+    def _fill_types(self, expr: TpyExpr) -> bool:
         """The argument shapes a fill-only hint (`SlotHint.fill`) types as
         a whole; a generic call's or a record construction's type
         parameters are filled by their inference. A lambda is not one:
@@ -1137,7 +1144,7 @@ class ExpressionAnalyzer:
                                   TpySetLiteral, TpyTupleLiteral,
                                   TpyListComprehension, TpyDictComprehension,
                                   TpySetComprehension))
-                or generic_constructor_factory(expr) is not None)
+                or generic_constructor_factory(self.ctx, expr) is not None)
 
     def _forward_fill(self, select: TpyExpr, operand: TpyExpr,
                       ) -> AbstractContextManager[None]:
@@ -1175,8 +1182,7 @@ class ExpressionAnalyzer:
         return next((t for t in types if self._hint_converts_int(t, hint)),
                     None)
 
-    @staticmethod
-    def _hint_gave_float(mix: InferredJoin, peers: Sequence[TpyExpr],
+    def _hint_gave_float(self, mix: InferredJoin, peers: Sequence[TpyExpr],
                          hint: SlotHint | None) -> bool:
         """Whether a hinted literal's peers mix an int only with a float the
         hint gave an element the source left empty (`[[], [2]]` over a
@@ -1184,7 +1190,7 @@ class ExpressionAnalyzer:
         literal keeps its int side, and the join with the hint's source --
         the rebound local's own type -- refuses it, naming the local."""
         return hint is not None and float_left_open(
-            mix, peers, lambda e: generic_constructor_factory(e) is not None)
+            mix, peers, lambda e: generic_constructor_factory(self.ctx, e) is not None)
 
     def _mark_list_annotated(self, typ: TpyType, list_hint: SlotHint,
                              coerced_elem: TpyType | None) -> None:
@@ -1318,7 +1324,7 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(expr, typ)
                 return typ
 
-        ctor_td = generic_constructor_factory(expr)
+        ctor_td = generic_constructor_factory(self.ctx, expr)
         is_generic_constructor = ctor_td is not None
 
         # Check for empty list literal []
@@ -1472,10 +1478,9 @@ class ExpressionAnalyzer:
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
-        binding = (self.ctx.comp_binding(expr.name)
-                   if self.ctx.in_comprehension else None)
-        if binding is not None:
-            self.ctx.comp_var_reads[expr] = binding
+        read = self.ctx.name_read(expr.name)
+        if read.comp is not None:
+            self.ctx.comp_var_reads[expr] = read.comp
         # Use-after-consume: variable was consumed by a consuming method call.
         # A comprehension variable is not the consumed enclosing binding.
         elif expr.name in self.ctx.func.consumed_vars:
@@ -1505,21 +1510,14 @@ class ExpressionAnalyzer:
         # the iteration step). So no closure can retain an ephemeral frame-slot borrow
         # past its step.
 
-        # Check for INT type parameter references in generic class context
-        # INT type params can be used as values in expressions (e.g., int32(N))
-        if self.ctx.record_ctx.type_params and self.ctx.record_ctx.type_param_kinds:
-            try:
-                idx = self.ctx.record_ctx.type_params.index(expr.name)
-                if self.ctx.record_ctx.type_param_kinds[idx] == TypeParamKind.INT:
-                    # INT type param - return TypeParamRef with INT kind
-                    # This represents a compile-time constant, treated as int32-compatible
-                    return TypeParamRef(expr.name, kind=TypeParamKind.INT)
-            except ValueError:
-                pass  # Not a type parameter
+        # An INT type param of a generic class is a compile-time value
+        # (e.g., int32(N)), treated as int32-compatible.
+        if read.int_type_param:
+            return TypeParamRef(expr.name, kind=TypeParamKind.INT)
 
         # Use namespace for unified lookup (includes builtins)
         if self.ctx.func.current_ns:
-            binding = self.ctx.func.current_ns.lookup(expr.name)
+            binding = read.binding
             if binding:
                 if binding.kind == BindingKind.VARIABLE:
                     self._check_definitely_assigned(expr)
@@ -3371,6 +3369,13 @@ class ExpressionAnalyzer:
     def _analyze_field_access(self, expr: TpyFieldAccess,
                              obj_type: TpyType | None = None) -> TpyType:
         """Analyze a field access."""
+        # A filled default's read is spelled by its stamp alone.
+        if expr.default_fill:
+            if expr.enum_member_of is not None:
+                return expr.enum_member_of
+            return referent_type(
+                self.ctx, module_var=expr.module_var_access,
+                class_owner=expr.class_constant_owner, member=expr.field)
         # A module variable: `sys.argv`, `pkg.sub.X`.
         module_name = self.ctx.module_named_by(expr.obj)
         if module_name is not None:

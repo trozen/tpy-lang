@@ -27,6 +27,7 @@ class SourceLocation:
     column: int = 0  # 0-indexed column
     file: str | None = None  # Source file path (optional)
     end_line: int | None = None  # 1-indexed last line of the node, when known
+    end_column: int | None = None  # 0-indexed column just past the node's end
 
 
 class ParseError(Exception):
@@ -166,6 +167,7 @@ if TYPE_CHECKING:
     from ..sema.context import LoanInfo
     from ..sema.storage_walk import StorageKey
     from ..symbol_binding import SymbolBinding
+    from ..namespace import NameBinding
     from ..typesys import FunctionInfo, RecordInfo, ResolvedBinop, ResolvedUnaryop
 
 
@@ -230,6 +232,27 @@ class TpyNoneLiteral(TpyExpr):
 
 
 @dataclass
+class DefaultReferent:
+    """What a name in a parameter default names in the scope the default
+    is written in, as CPython binds it once at the `def`: a module variable
+    (`module_var`: its defining module and name), a class constant of the
+    class whose body holds the `def` (`class_owner`), or, for a
+    constructor call's callee, the binding of the class it constructs
+    (`ctor`), which the call is dispatched on wherever it is filled."""
+    module_var: tuple[str, str] | None = None
+    class_owner: 'RecordInfo | None' = None
+    ctor: 'NameBinding | None' = None
+
+
+# The parser judges a default by its shape; sema refuses with the same words
+# a callee that shape admits but that names no class where it is written.
+NON_CONSTANT_DEFAULT_MSG = (
+    "Default parameter value must be a constant expression "
+    "(literal, None, fixed-int constructor like int32(5), "
+    "an enum member like Color.RED, or a Final[T] module constant)")
+
+
+@dataclass
 class TpyName(TpyExpr):
     """Variable reference."""
     name: str
@@ -239,6 +262,11 @@ class TpyName(TpyExpr):
     # Set by sema: a class name at a Callable/Fn slot stands for this
     # synthesized `lambda *a: C(*a)`; read it through `lambda_of`.
     factory_expansion: 'TpyLambda | None' = None
+    # Set by sema on a name in a parameter default: what it names where the
+    # default is written. Stamped on the default's own node, which every
+    # holder of the expression shares (ParamInfo, init_params, protocol
+    # signatures, TpyFunction.defaults).
+    default_referent: DefaultReferent | None = None
 
 
 _OP_SPELLINGS = {"div": "/", "!": "not", "&&": "and", "||": "or"}
@@ -584,6 +612,12 @@ class TpyFieldAccess(TpyExpr):
     # position whose lowering has no move row still rejects. Every other
     # such read borrows.
     consuming_move: bool = False
+    # Set by sema on a parameter default filled at a call whose own scope
+    # cannot name the default's referent: the read is spelled entirely by
+    # its stamp (`module_var_access` / `class_constant_owner` /
+    # `enum_member_of`), and `obj` is a placeholder no scope binds, so the
+    # node is a leaf.
+    default_fill: bool = False
 
     @property
     def hidden_call(self) -> 'TpyMethodCall | None':
@@ -608,7 +642,7 @@ class TpyFieldAccess(TpyExpr):
                 or self.dyn_delattr_call)
 
     def children(self) -> list[TpyExpr]:
-        return [self.obj]
+        return [] if self.default_fill else [self.obj]
 
 
 def name_path(expr: TpyExpr) -> list[str] | None:

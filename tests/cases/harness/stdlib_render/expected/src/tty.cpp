@@ -17,17 +17,13 @@ void cfmakecbreak(::tpystd::termios::TermAttributes& mode) {
     mode._make_cbreak();
 }
 
-// # CPython's `when=TCSAFLUSH` default is spelled as an overload because a
-// # native_global constant cannot be a parameter default yet
-// # (BUGS.md#imported-final-param-default).
-// @dispatch
-// def setraw(fd: int64, when: int32) -> Own[TermAttributes]:
+// def setraw(fd: int64, when: int32 = termios.TCSAFLUSH) -> Own[TermAttributes]:
 //     mode = termios.tcgetattr(fd)
 //     new = mode._copy()
 //     cfmakeraw(new)
 //     termios.tcsetattr(fd, when, new)
 //     return mode
-::tpystd::termios::TermAttributes setraw__int64__int32(int64_t fd, int32_t when) {
+::tpystd::termios::TermAttributes setraw(int64_t fd, int32_t when) {
     ::tpystd::termios::TermAttributes mode = ::tpystd::termios::tcgetattr(fd);
     ::tpystd::termios::TermAttributes new_ = mode._copy();
     ::tpystd::tty::cfmakeraw(new_);
@@ -35,33 +31,19 @@ void cfmakecbreak(::tpystd::termios::TermAttributes& mode) {
     return mode;
 }
 
-// @dispatch
-// def setraw(fd: int64) -> Own[TermAttributes]:
-//     return setraw(fd, termios.TCSAFLUSH)
-::tpystd::termios::TermAttributes setraw__int64(int64_t fd) {
-    return ::tpystd::tty::setraw__int64__int32(fd, ::tpy_const_termios_tcsaflush);
-}
-
-// @dispatch
-// def setcbreak(fd: int64, when: int32) -> Own[TermAttributes]:
+// def setcbreak(fd: int64,
+//               when: int32 = termios.TCSAFLUSH) -> Own[TermAttributes]:
 //     mode = termios.tcgetattr(fd)
 //     new = mode._copy()
 //     cfmakecbreak(new)
 //     termios.tcsetattr(fd, when, new)
 //     return mode
-::tpystd::termios::TermAttributes setcbreak__int64__int32(int64_t fd, int32_t when) {
+::tpystd::termios::TermAttributes setcbreak(int64_t fd, int32_t when) {
     ::tpystd::termios::TermAttributes mode = ::tpystd::termios::tcgetattr(fd);
     ::tpystd::termios::TermAttributes new_ = mode._copy();
     ::tpystd::tty::cfmakecbreak(new_);
     ::tpystd::termios::tcsetattr(fd, when, new_);
     return mode;
-}
-
-// @dispatch
-// def setcbreak(fd: int64) -> Own[TermAttributes]:
-//     return setcbreak(fd, termios.TCSAFLUSH)
-::tpystd::termios::TermAttributes setcbreak__int64(int64_t fd) {
-    return ::tpystd::tty::setcbreak__int64__int32(fd, ::tpy_const_termios_tcsaflush);
 }
 
 // """Terminal mode helpers over `termios`, CPython 3.12 surface.

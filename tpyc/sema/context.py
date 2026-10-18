@@ -47,8 +47,8 @@ from ..typesys import (
 from ..namespace import BindingKind, NameBinding, Namespace
 from ..symbol_binding import (SymbolBinding, SymbolKind, resolve_type_path,
                               walk_attribute_chain)
-from ..type_def_registry import (enum_info_of, int_traits_of,
-                                 is_borrowing_view_type)
+from ..type_def_registry import (TypeDef, enum_info_of, get_type_def,
+                                 int_traits_of, is_borrowing_view_type)
 from ..parse import (
     TpyExpr, TpyStmt, TpyRecord, TpyFunction, TpyVarDecl, TpyMethodCall,
     TpyCall, TpyCoerce, TpyName, TpyFieldAccess,
@@ -68,7 +68,7 @@ from .call_lends import (
 from .storage_walk import (
     EscapePosition, KeyShape, LoanKey, MarkRequest, Roots, Unkeyed,
     Use, element_index_key, holder_root, loan_key,
-    mark_roots, path_key,
+    mark_roots, path_key, reads_static_only,
     StorageKey, select_arm_keys, slot_lent_roots, storage_key,
     storage_roots, ternary_operands,
 )
@@ -254,11 +254,15 @@ def frame_binding_fact(value: TpyExpr | None, ctx: 'SemanticContext'
                 for e in frame_operands(c) or ()]
     # A recorded fact: a guess about a pending callee is no root.
     may = MayLend(ctx)
-    held = [holder_root(e, may, proven=True) for e in operands]
-    roots = set(held)
-    if any(r is None and not is_rvalue_source(ctx, e)
-           for r, e in zip(held, operands)):
-        return None
+    roots: set[str | None] = set()
+    for e in operands:
+        if reads_static_only(e, may):
+            # The frame borrows nothing that can end.
+            continue
+        root = holder_root(e, may, proven=True)
+        if root is None and not is_rvalue_source(ctx, e):
+            return None
+        roots.add(root)
     if any(_frame_borrows_adapter(c) for c in calls):
         roots.add(None)
     return frozenset(roots), len(calls) == 1 and calls[0] is peel_coerce(value)
@@ -1493,6 +1497,15 @@ class CompTarget:
     comp: TpyExpr
     clause: int
     depth: int
+
+
+class NameRead(NamedTuple):
+    """What a read of a name resolves to (`SemanticContext.name_read`): the
+    comprehension clause binding it (`comp`), whether it is an INT type
+    parameter, else the namespace binding (None when nothing binds it)."""
+    comp: CompTarget | None
+    int_type_param: bool
+    binding: NameBinding | None
 
 
 @dataclass
@@ -2790,6 +2803,24 @@ class SemanticContext:
             return self.registry.find_record_by_qname(f"{module}.{original}")
         return None
 
+    def class_of_binding(self, binding: NameBinding) -> RecordInfo | None:
+        """The class a callee bound to `binding` constructs, at its
+        definition: an import is followed through re-exports
+        (`from helpers import list` names `builtins.list`), so two bindings
+        of one class compare equal by identity."""
+        ref = self.type_ref_bound_path(binding, [binding.name])
+        return (ref.info if ref is not None and ref.kind == SymbolKind.RECORD
+                else None)
+
+    def factory_of_binding(self, binding: NameBinding) -> TypeDef | None:
+        """The generic type factory a constructor callee bound to `binding`
+        builds through (`list()` -> `builtins.list`), the class taken at
+        its definition (`class_of_binding`); None for a class without one,
+        a user class included -- nested or of this module."""
+        record = self.class_of_binding(binding)
+        td = get_type_def(record.qualified_name()) if record is not None else None
+        return td if td is not None and td.type_factory is not None else None
+
     def get_module(self, module_name: str) -> object | None:
         """The attribute-table holder `resolve_type_path` walks: this
         module's own table (a module never finds its own ModuleInfo while it
@@ -2803,14 +2834,23 @@ class SemanticContext:
         the module (declarations resolve where they are defined)."""
         return self.func.current_ns or self.global_ns
 
+    def _scope_binding(self, name: str) -> NameBinding | None:
+        ns = self._scope_ns()
+        return ns.lookup(name) if ns is not None else None
+
     def _module_of_path(self, root: str, segments: 'list[str]') -> str | None:
         """The module `root.segments...` names: a name bound to an imported
         module (`m`, an alias `mm`), or a dotted chain whose root is unbound
         or a module (`pkg.sub.mod`). None when the root is bound to
         anything but a module -- a local, parameter or class of that name
         shadows the module."""
-        ns = self._scope_ns()
-        binding = ns.lookup(root) if ns is not None else None
+        return self.module_of_bound_path(self._scope_binding(root), root,
+                                         segments)
+
+    def module_of_bound_path(self, binding: NameBinding | None, root: str,
+                             segments: 'list[str]') -> str | None:
+        """`_module_of_path` with `binding`, what `root` binds in the scope
+        the caller resolves it in, already looked up."""
         if binding is not None and binding.kind != BindingKind.MODULE:
             return None
         if not segments:
@@ -2846,12 +2886,16 @@ class SemanticContext:
         """`type_ref` over the names of a dotted path (`["m", "Outer",
         "Err"]`), for a position that holds the names rather than an
         expression (an `except` clause)."""
+        return self.type_ref_bound_path(self._scope_binding(path[0]), path)
+
+    def type_ref_bound_path(self, binding: NameBinding | None,
+                            path: 'list[str]') -> SymbolBinding | None:
+        """`type_ref_path` with `binding`, what the head `path[0]` binds in
+        the scope the caller resolves it in, already looked up."""
         root, members = path[0], list(path[1:])
-        ns = self._scope_ns()
-        binding = ns.lookup(root) if ns is not None else None
         if binding is None or binding.kind == BindingKind.MODULE:
             for k in range(len(members) - 1, -1, -1):
-                module = self._module_of_path(root, members[:k])
+                module = self.module_of_bound_path(binding, root, members[:k])
                 if module is not None:
                     return resolve_type_path(self, module, members[k], members[k + 1:])
             return None
@@ -3703,6 +3747,20 @@ class SemanticContext:
                 and (reach is None or root in reach)):
             mark_roots(self, [StorageKey.of_name(root)],
                        MarkRequest(params=False, loop_vars=True))
+
+    def name_read(self, name: str) -> 'NameRead':
+        """What a read of `name` here resolves to, in the order
+        `_analyze_name` takes: the comprehension clause binding it, an INT
+        type parameter of the class being analyzed (a compile-time value
+        shadowing every binding), else the innermost namespace binding."""
+        comp = self.comp_binding(name) if self.in_comprehension else None
+        kinds = self.record_ctx.type_param_kinds
+        params = self.record_ctx.type_params
+        if (params and kinds and name in params
+                and kinds[params.index(name)] == TypeParamKind.INT):
+            return NameRead(comp, True, None)
+        ns = self.func.current_ns
+        return NameRead(comp, False, ns.lookup(name) if ns else None)
 
     def comp_binding(self, name: str) -> CompTarget | None:
         """The comprehension clause a read of `name` here resolves to, or

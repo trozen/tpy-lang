@@ -52,13 +52,15 @@ from ..parse import (
 from ..storage_trace import Step, StepKind, Trace, is_unbound_field, trace
 from ..typesys import (
     TpyType, TupleType, following_components, is_indirection_type,
-    unwrap_qualifiers,
+    unwrap_qualifiers, unwrap_readonly,
 )
+from ..type_def_registry import is_borrowing_view_type
 from ..value_category import ExprTypeOf, lent_operands
 
 if TYPE_CHECKING:
     from .call_lends import LendSource
     from .context import SemanticContext
+    from ..value_category import ValueCategoryAnalyzer
 
 
 class Use(Enum):
@@ -351,8 +353,11 @@ class CallPolicy:
     says whether it climbs each operand a select or a pack stands for.
 
     The LIFETIME climb (`leaves`) also asks the classifier hooks below;
-    each default is the climb's own answer."""
+    each default is the climb's own answer. `ctx`: the analyzer whose types
+    and registry the climb's own leaf rule reads (`static_read_kind`), None
+    for a policy without one."""
     follows_selects: bool = True
+    ctx: 'ValueCategoryAnalyzer | None' = None
 
     def at_step(self, step: Step) -> bool:
         raise NotImplementedError
@@ -365,7 +370,9 @@ class CallPolicy:
                   above: Step | None) -> 'LeafKind | None':
         """What `node` is when the climb must stop at it, asked before it
         steps past the node (`above`: the step the climb took onto it);
-        None to climb on."""
+        None to climb on. A read whose stamped referent is static storage
+        (`static_read_kind`) is classified before this hook and never
+        reaches it."""
         return None
 
     def call_kind(self, call: TpyExpr,
@@ -590,9 +597,10 @@ class _Roots:
 class LeafKind(Enum):
     """What one leaf of the LIFETIME climb is (`leaves`): STATIC storage (a
     str / bytes / None literal, an enum member's `.name`, a `Literal[str]`
-    call), NULL (`Ptr[T]()`, pointing nowhere), a CONSTANT (a `Final` view
-    off a module or class qualifier), a GLOBAL (any other read off a module
-    or class qualifier), a PLACE (a name), a TEMPORARY (a fresh value dying
+    call), NULL (`Ptr[T]()`, pointing nowhere), a CONSTANT (a view read off
+    a module or class qualifier), a GLOBAL (any other read off a module or
+    class qualifier -- either may be rebindable unless `Leaf.static_read`
+    says otherwise), a PLACE (a name), a TEMPORARY (a fresh value dying
     with the statement, a temp-backed tuple element), UNNAMED (a call result
     that may point into storage no operand names), a VIEWNODE (a node of a
     borrowing-view type no rule classifies) or UNPLACEABLE (anything else
@@ -606,6 +614,44 @@ class LeafKind(Enum):
     UNNAMED = "unnamed"
     VIEWNODE = "viewnode"
     UNPLACEABLE = "unplaceable"
+
+
+def static_read_kind(node: TpyExpr,
+                     ctx: 'ValueCategoryAnalyzer | None') -> LeafKind | None:
+    """A read of storage no frame owns and nothing rebinds, known by the
+    referent sema stamped on it, whatever its receiver (`c.K` reads the
+    class's constant, not `c`): an enum member, a `Final` class constant (a
+    `ClassVar` is a mutable slot) or a `Final` module variable -- a filled
+    default's (`default_fill`) referent always is one. A CONSTANT for a view
+    (a constexpr view), else a GLOBAL; None for any other node. Without a
+    context (`NO_CALLS`) a module variable's finality is known only for a
+    filled default."""
+    if not isinstance(node, TpyFieldAccess):
+        return None
+    if node.enum_member_of is not None:
+        static = True
+    elif node.class_constant_owner is not None:
+        static = node.class_constant_owner.is_recorded_final_constant(
+            node.field)
+    elif node.module_var_access is not None:
+        var = (ctx.registry.module_variable(*node.module_var_access)
+               if ctx is not None else None)
+        static = node.default_fill or (var is not None and var.is_final)
+    else:
+        return None
+    if not static:
+        return None
+    return qualifier_kind(node, ctx) if ctx is not None else LeafKind.GLOBAL
+
+
+def qualifier_kind(node: TpyExpr,
+                   ctx: 'ValueCategoryAnalyzer') -> LeafKind:
+    """A read off a qualifier or a stamped referent as a leaf: a CONSTANT
+    for a view, else a GLOBAL."""
+    et = ctx.get_expr_type(node)
+    return (LeafKind.CONSTANT if et is not None
+            and is_borrowing_view_type(unwrap_readonly(et))
+            else LeafKind.GLOBAL)
 
 
 @dataclass(frozen=True)
@@ -622,7 +668,9 @@ class Leaf:
     the climb went through. `via`: how the climb reached it (`_Via`).
     `temp_backed`: storage a tuple temporary holds by value for the call
     the path ends at (`LendSource.temp_backed`), with `alone` when every
-    source of that call is."""
+    source of that call is. `static_read`: a CONSTANT or GLOBAL whose
+    stamped referent is durable static storage (`static_read_kind`), never
+    rebound and owned by no frame."""
     origin: TpyExpr
     arm: TpyExpr | None
     path: tuple[Step, ...]
@@ -635,6 +683,7 @@ class Leaf:
     via: '_Via' = _DIRECT
     temp_backed: bool = False
     alone: bool = False
+    static_read: bool = False
 
     def stretches(self) -> list[Trace]:
         """The path cut at its calls: from `origin`, then from each lent
@@ -675,10 +724,11 @@ class _Leaves(_Roots):
 
     def _leaf(self, kind: LeafKind, node: TpyExpr, name: str | None = None,
               *, at_call: bool = False, elem: int | None = None,
-              temp_backed: bool = False, alone: bool = False) -> None:
+              temp_backed: bool = False, alone: bool = False,
+              static_read: bool = False) -> None:
         self.out.append(Leaf(self.origin, self.arm, self.trail, node, kind,
                              name, at_call, elem, self.operand, self.via,
-                             temp_backed, alone))
+                             temp_backed, alone, static_read))
 
     def _unknown(self, node: TpyExpr) -> None:
         # Only `_through` reports here: a call the policy cannot answer.
@@ -732,6 +782,10 @@ class _Leaves(_Roots):
                                                          lent)
 
     def _stops_at(self, node: TpyExpr) -> bool:
+        kind = static_read_kind(node, self.policy.ctx)
+        if kind is not None:
+            self._leaf(kind, node, static_read=True)
+            return True
         kind = self.policy.leaf_kind(node,
                                      self.trail[-1] if self.trail else None)
         if kind is not None:
@@ -815,12 +869,16 @@ def view_leaves(expr: TpyExpr, policy: CallPolicy) -> list[Leaf]:
 
 def _holder(expr: TpyExpr, policy: CallPolicy) -> Roots:
     """HOLDER: the LIFETIME leaves of `expr` as roots -- a name is a place,
-    a fresh call result holds nothing, a temp-backed element nothing unless
-    every source of its call is one (then the call is unknown), and every
-    other leaf is an operand the climb could not place."""
+    a fresh call result holds nothing, nor does a stamped static read
+    (`Leaf.static_read`: storage no frame owns), a temp-backed element
+    nothing unless every source of its call is one (then the call is
+    unknown), and every other leaf is an operand the climb could not
+    place."""
     hits: list[Hit] = []
     alone_calls: list[TpyExpr] = []
     for leaf in leaves(expr, policy, split=False):
+        if leaf.static_read:
+            continue
         if leaf.kind is LeafKind.PLACE:
             v = leaf.via
             hits.append(Hit(leaf.operand, Place(
@@ -838,6 +896,15 @@ def _holder(expr: TpyExpr, policy: CallPolicy) -> Roots:
     return Roots(tuple(h.place for h in hits if h.place is not None),
                  tuple(h.unknown for h in hits if h.unknown is not None),
                  tuple(hits))
+
+
+def reads_static_only(expr: TpyExpr, policy: CallPolicy) -> bool:
+    """Whether every LIFETIME leaf of `expr` under `policy` is storage no
+    frame owns and nothing rebinds: STATIC storage or a stamped static read
+    (`Leaf.static_read`). An operand with no leaf is not."""
+    found = leaves(expr, policy, split=False)
+    return bool(found) and all(
+        leaf.static_read or leaf.kind is LeafKind.STATIC for leaf in found)
 
 
 def storage_roots(expr: TpyExpr, use: Use, type_of: ExprTypeOf | None,

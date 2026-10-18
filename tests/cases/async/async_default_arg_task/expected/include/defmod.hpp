@@ -17,7 +17,7 @@ inline constexpr int32_t BUMP = 30;
 struct __coro_scaled;
 
 // async def scaled(a: int32, b: int32 = BUMP) -> int32:
-__coro_scaled scaled(int32_t a, int32_t b = BUMP);
+__coro_scaled scaled(int32_t a, int32_t b = ::tpyapp::defmod::BUMP);
 
 // async def scaled(a: int32, b: int32 = BUMP) -> int32:
 struct __coro_scaled {
@@ -33,7 +33,7 @@ struct __coro_scaled {
         S_DONE = 2,
     };
 
-    __coro_scaled(int32_t a_, int32_t b_ = BUMP)
+    __coro_scaled(int32_t a_, int32_t b_ = ::tpyapp::defmod::BUMP)
         : __state(S_INITIAL),
           __cancel_pending(false),
           a(std::move(a_)),

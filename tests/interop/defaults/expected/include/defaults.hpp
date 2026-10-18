@@ -34,16 +34,17 @@ struct Counter;
 struct Base;
 struct Derived;
 struct Pair;
+struct Stride;
 
 inline constexpr std::string_view __name__ = "__main__";
 inline constexpr int64_t STEP = 7;
 extern const std::tuple<int32_t, int32_t> ORIGIN;
 
 std::string greet(std::string_view name, std::string_view greeting = "Hello", bool excited = false);
-int64_t advance(int64_t n, int64_t by = STEP);
+int64_t advance(int64_t n, int64_t by = ::tpyapp::defaults::STEP);
 double scale(double x, double factor = 0.5);
 int32_t tag(::tpy::BytesView data = ::tpy::bytes_literal("ab", 2));
-int32_t offset(const std::tuple<int32_t, int32_t>& at = ORIGIN);
+int32_t offset(const std::tuple<int32_t, int32_t>& at = ::tpyapp::defaults::ORIGIN);
 int32_t paint(Color shade = Color::BLUE);
 int64_t combine(int64_t a, int64_t b, int64_t c = 5);
 int64_t blend(int64_t red, int64_t green, int64_t blue);
@@ -97,6 +98,22 @@ inline std::ostream& operator<<(std::ostream& os, const Pair& obj) {
     return os;
 }
 
+struct Stride {
+    static constexpr int64_t WIDTH = 11;
+
+    Stride();
+
+    int64_t step(int64_t by = ::tpyapp::defaults::Stride::WIDTH) const;
+
+    int64_t shift(int64_t by = ::tpyapp::defaults::Stride::WIDTH, int64_t back = 0) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Stride";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Stride& obj) {
+    ::tpy::print_object_default(os, "Stride", obj);
+    return os;
+}
+
 struct Derived : Base {
 
     using Base::Base;
@@ -136,6 +153,17 @@ inline Pair::Pair(int64_t a, int64_t b)
 
 inline int64_t Pair::weigh(int64_t factor) const {
     return (::tpy::mul_check<int64_t>((::tpy::add_check<int64_t>(this->a, this->b)), factor));
+}
+
+inline Stride::Stride() {
+}
+
+inline int64_t Stride::step(int64_t by) const {
+    return (::tpy::mul_check<int64_t>(by, 2));
+}
+
+inline int64_t Stride::shift(int64_t by, int64_t back) const {
+    return (::tpy::add_check<int64_t>((::tpy::mul_check<int64_t>(by, 100)), back));
 }
 void __tpy_init();
 } // namespace tpyapp::defaults

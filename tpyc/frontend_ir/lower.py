@@ -1388,6 +1388,8 @@ def _to_source_loc(loc: Loc | None) -> SourceLocation | None:
         column=max(0, loc.col - 1),  # parser uses 0-based columns
         file=str(loc.file),
         end_line=loc.end_line,
+        # 1-based inclusive is the same number as 0-based exclusive.
+        end_column=loc.end_col,
     )
 
 

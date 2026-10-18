@@ -1,0 +1,1 @@
+main.py:20: error: Default field value 'R.real' must name an enum member, a class constant or a module-level Final[T] constant; the class body binds 'R' to a field before the default

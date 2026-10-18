@@ -1,0 +1,1 @@
+main.py:16: warning: TypedDict field 'level' has a default value which is ignored by CPython at runtime; consider using total=False for optional fields

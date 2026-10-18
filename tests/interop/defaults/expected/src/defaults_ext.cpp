@@ -12,6 +12,7 @@ PyObject *defaults__type_Counter = nullptr;
 PyObject *defaults__type_Base = nullptr;
 PyObject *defaults__type_Derived = nullptr;
 PyObject *defaults__type_Pair = nullptr;
+PyObject *defaults__type_Stride = nullptr;
 PyObject *defaults__enum_Color = nullptr;
 ::tpy::interop::ViewRegistry defaults__view_registry;
 
@@ -663,6 +664,99 @@ PyType_Spec defaults__Pair__spec = {
     Py_TPFLAGS_DEFAULT, defaults__Pair__slots,
 };
 
+int defaults__Stride_init(PyObject *self, PyObject *args, PyObject *) {
+    auto *__inst = reinterpret_cast<::tpy::interop::Instance<::tpyapp::defaults::Stride> *>(self);
+    if (__inst->owner != nullptr) {
+        PyErr_SetString(PyExc_TypeError, "cannot __init__ a borrowed field view");
+        return -1;
+    }
+    try {
+        if (__inst->initialized && ::tpy::interop::has_views_into(__inst->p, sizeof(*__inst->p), defaults__view_registry)) {
+            PyErr_SetString(PyExc_TypeError, "cannot __init__ an instance while borrow views of its fields are alive");
+            return -1;
+        }
+        if (__inst->initialized) { __inst->initialized = false; ::std::destroy_at(&__inst->storage); }
+        new (&__inst->storage) ::tpyapp::defaults::Stride();
+        __inst->p = &__inst->storage;
+        __inst->initialized = true;
+        return 0;
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return -1;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: constructor failed");
+        return -1;
+    }
+}
+
+void defaults__Stride_dealloc(PyObject *self) {
+    ::tpy::interop::instance_dealloc<::tpyapp::defaults::Stride>(self, defaults__view_registry);
+}
+
+PyObject *defaults__Stride__step_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("by"), nullptr};
+    PyObject *a0 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|O:Stride.step", __kwlist, &a0)) return nullptr;
+    try {
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::defaults::Stride> *>(self)->p;
+        int64_t __p0 = a0 ? ::tpy::interop::from_py<int64_t>(a0) : int64_t{::tpyapp::defaults::Stride::WIDTH};
+        return ::tpy::interop::to_py(__self.step(__p0));
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyObject *defaults__Stride__shift_pywrap(PyObject *self, PyObject *args, PyObject *kwargs) {
+    static char *__kwlist[] = {const_cast<char *>("by"), const_cast<char *>("back"), nullptr};
+    PyObject *a0 = nullptr; PyObject *a1 = nullptr;
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "|OO:Stride.shift", __kwlist, &a0, &a1)) return nullptr;
+    try {
+        auto &__self = *reinterpret_cast<::tpy::interop::Instance<::tpyapp::defaults::Stride> *>(self)->p;
+        int64_t __p0 = a0 ? ::tpy::interop::from_py<int64_t>(a0) : int64_t{::tpyapp::defaults::Stride::WIDTH};
+        int64_t __p1 = a1 ? ::tpy::interop::from_py<int64_t>(a1) : int64_t{0};
+        return ::tpy::interop::to_py(__self.shift(__p0, __p1));
+    } catch (const ::tpy::BaseException &__e) {
+        ::tpy::interop::set_py_err_from(__e);
+        return nullptr;
+    } catch (...) {
+        if (!PyErr_Occurred())
+            PyErr_SetString(PyExc_RuntimeError, "tpy extension: unhandled error");
+        return nullptr;
+    }
+}
+
+PyMethodDef defaults__Stride__methods[] = {
+    {"step", as_pycfunction(defaults__Stride__step_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {"shift", as_pycfunction(defaults__Stride__shift_pywrap), METH_VARARGS | METH_KEYWORDS, nullptr},
+    {nullptr, nullptr, 0, nullptr},
+};
+PyGetSetDef defaults__Stride__getset[] = {
+    {nullptr, nullptr, nullptr, nullptr, nullptr},
+};
+const char defaults__Stride__doc[] =
+    "A method default naming a Final constant of its own class body: the\n"
+    "glue sits outside the module's namespace, so it spells the constant\n"
+    "through the module's.";
+PyType_Slot defaults__Stride__slots[] = {
+    {Py_tp_doc, (void *)defaults__Stride__doc},
+    {Py_tp_init, (void *)defaults__Stride_init},
+    {Py_tp_dealloc, (void *)defaults__Stride_dealloc},
+    {Py_tp_methods, (void *)defaults__Stride__methods},
+    {Py_tp_getset, (void *)defaults__Stride__getset},
+    {Py_tp_new, (void *)::tpy::cpy::PyType_GenericNew},
+    {0, nullptr},
+};
+PyType_Spec defaults__Stride__spec = {
+    "defaults.Stride", (int)sizeof(::tpy::interop::Instance<::tpyapp::defaults::Stride>), 0,
+    Py_TPFLAGS_DEFAULT, defaults__Stride__slots,
+};
+
 const char defaults__advance_pywrap__doc[] =
     "A Final module constant as a default -- one shared constant, not a\n"
     "per-call rebuild.";
@@ -714,6 +808,9 @@ extern "C" PyObject *PyInit_defaults(void) {
         defaults__type_Pair = ::tpy::cpy::PyType_FromSpec(&defaults__Pair__spec);
         if (!defaults__type_Pair) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         if (::tpy::cpy::PyModule_AddObjectRef(__m, "Pair", defaults__type_Pair) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        defaults__type_Stride = ::tpy::cpy::PyType_FromSpec(&defaults__Stride__spec);
+        if (!defaults__type_Stride) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
+        if (::tpy::cpy::PyModule_AddObjectRef(__m, "Stride", defaults__type_Stride) < 0) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }
         {
             PyObject *__d = ::tpy::cpy::PyDict_New();
             if (!__d) { ::tpy::cpy::Py_DecRef(__m); return nullptr; }

@@ -345,7 +345,7 @@ struct Noisy {
     int32_t n;
 
     // def __init__(self, n: int32 = K) -> None:
-    explicit Noisy(int32_t n = K);
+    explicit Noisy(int32_t n = ::tpyapp::main::K);
 
     // def __eq__(self, other: "Noisy") -> bool:
     bool __eq__(Noisy other) const;
@@ -377,7 +377,7 @@ struct Calm {
     int32_t n;
 
     // def __init__(self, n: int32 = K) -> None:
-    explicit Calm(int32_t n = K);
+    explicit Calm(int32_t n = ::tpyapp::main::K);
 
     // def __eq__(self, other: "Calm") -> bool:
     bool __eq__(Calm other) const;

@@ -468,7 +468,7 @@ class MethodAnalyzer:
             expr.args = resolve_kwargs(
                 expr.args, expr.kwargs, resolved_target.params, expr.method,
                 lambda msg: self.ctx.error(msg, expr),
-                call_loc=expr.loc, is_member=True,
+                call_loc=expr.loc, is_member=True, ctx=self.ctx,
             )
             expr.kwargs = {}
 
@@ -544,7 +544,7 @@ class MethodAnalyzer:
                     expr.args = resolve_kwargs(
                         expr.args, expr.kwargs, resolved.params, expr.method,
                         lambda msg: self.ctx.error(msg, expr),
-                        call_loc=expr.loc, is_member=True,
+                        call_loc=expr.loc, is_member=True, ctx=self.ctx,
                     )
                     expr.kwargs = {}
                     # Pre-analyzed types no longer align with expanded expr.args;
@@ -1601,7 +1601,7 @@ class MethodAnalyzer:
             expr.args = resolve_kwargs(
                 expr.args, expr.kwargs, method.params, expr.method,
                 lambda msg: self.ctx.error(msg, expr),
-                call_loc=expr.loc, is_member=True,
+                call_loc=expr.loc, is_member=True, ctx=self.ctx,
             )
             expr.kwargs = {}
 

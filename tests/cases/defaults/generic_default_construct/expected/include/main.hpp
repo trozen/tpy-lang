@@ -26,7 +26,7 @@ struct Noisy {
     int32_t n;
 
     // def __init__(self, n: int32 = K) -> None:
-    explicit Noisy(int32_t n = K);
+    explicit Noisy(int32_t n = ::tpyapp::main::K);
     static constexpr std::string_view __tpy_class_name__ = "__main__.Noisy";
 };
 
