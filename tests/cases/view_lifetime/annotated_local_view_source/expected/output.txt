@@ -1,3 +1,8 @@
+tuple free this is long enough to dodge the small-string buffer this is long enough to dodge the small-string bufferx
+tuple method this is long enough to dodge the small-string buffer
+tuple callable this is long enough to dodge the small-string buffer
+tuple gen this is long enough to dodge the small-string buffer
+tuple async this is long enough to dodge the small-string buffer
 hello 5
 hi 2
 b'abc' 3

@@ -4,12 +4,19 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/asyncio/_executor/_executor.hpp"
 
 namespace tpyapp::main {
+
+struct Picker;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 struct __gen_gen_frame;
+struct __gen_tuple_temp_gen;
+struct __coro_tuple_temp_async;
 
 // def view_from_param(sv: StrView) -> None:
 void view_from_param(std::string_view sv);
@@ -27,8 +34,61 @@ std::string owned_return_still_copies(std::string_view sv);
 void hoisted_branch(std::string_view sv, bool flag);
 // def gen_frame(sv: StrView) -> Iterator[int]:
 __gen_gen_frame gen_frame(std::string_view sv);
+// def first_of(p: tuple[str, int32]) -> StrView:
+std::string_view first_of(const std::tuple<std::string, int32_t>& p);
+// def tuple_temp_free(s: str) -> None:
+void tuple_temp_free(std::string_view s);
+// def tuple_temp_method(s: str) -> None:
+void tuple_temp_method(std::string_view s);
+// def tuple_temp_callable(s: str, f: Callable[[tuple[str, int32]], StrView]) -> None:
+void tuple_temp_callable(std::string_view s, const std::function<std::string_view(const std::tuple<std::string, int32_t>&)>& f);
+// def tuple_temp_gen(s: str) -> Iterator[str]:
+__gen_tuple_temp_gen tuple_temp_gen(std::string_view s);
+// async def tuple_temp_async(s: str) -> str:
+__coro_tuple_temp_async tuple_temp_async(std::string_view s);
 // def main() -> None:
 void main();
+
+// class Picker:
+struct Picker {
+
+
+    // def first_of(self, p: tuple[str, int32]) -> StrView:
+    std::string_view first_of(const std::tuple<std::string, int32_t>& p) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Picker";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Picker& obj) {
+    ::tpy::print_object_default(os, "Picker", obj);
+    return os;
+}
+
+// async def tuple_temp_async(s: str) -> str:
+struct __coro_tuple_temp_async {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    std::string s;
+    std::string v;
+    std::optional<::tpystd::asyncio::_executor::Task<std::monostate>> __sub_0;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __coro_tuple_temp_async(std::string_view s_)
+        : __state(S_INITIAL),
+          __cancel_pending(false),
+          s(std::string(s_)) {}
+
+    ::tpystd::tpy::Poll<std::string> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_tuple_temp_async&) {
+        return os << "<coroutine tuple_temp_async>";
+    }
+};
 
 // def gen_frame(sv: StrView) -> Iterator[int]:
 struct __gen_gen_frame : public ::tpy::next_iter_mixin<__gen_gen_frame, ::tpy::BigInt> {
@@ -54,5 +114,35 @@ struct __gen_gen_frame : public ::tpy::next_iter_mixin<__gen_gen_frame, ::tpy::B
     }
 };
 
+// def tuple_temp_gen(s: str) -> Iterator[str]:
+struct __gen_tuple_temp_gen : public ::tpy::next_iter_mixin<__gen_tuple_temp_gen, std::string> {
+    ::tpy::frame_state __state;
+    std::string s;
+    std::string v;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_tuple_temp_gen(std::string_view s_)
+        : __state(S_INITIAL),
+          s(std::string(s_)) {}
+
+    std::expected<std::string, ::tpy::StopIteration> __next__();
+    __gen_tuple_temp_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_tuple_temp_gen&) {
+        return os << "<generator tuple_temp_gen>";
+    }
+};
+
+
+// def first_of(self, p: tuple[str, int32]) -> StrView:
+//     return p[0]
+inline std::string_view Picker::first_of(const std::tuple<std::string, int32_t>& p) const {
+    return std::get<0>(p);
+}
 void __tpy_init();
 } // namespace tpyapp::main

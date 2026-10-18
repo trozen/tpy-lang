@@ -27,4 +27,25 @@ inline std::expected<::tpy::BigInt, ::tpy::StopIteration> __gen_gen_frame::__nex
     __builtin_unreachable();
 }
 
+// # generator frame
+// def tuple_temp_gen(s: str) -> Iterator[str]:
+//     v: str = first_of((s, 1))  # tpyc: ok
+//     yield v                                   # -> S_RESUME_0
+inline std::expected<std::string, ::tpy::StopIteration> __gen_tuple_temp_gen::__next__() {
+    while (true) switch (__state) {
+    case S_INITIAL: {  // entry
+        __state = S_DONE;  // until a yield sets where to resume
+        v = std::string(::tpyapp::main::first_of(std::tuple<std::string, int32_t>{std::string(s), 1}));
+        __state = S_RESUME_0;
+        return v;
+    }
+    case S_RESUME_0: {  // after: yield v
+        __state = S_DONE;
+        return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    case S_DONE: return ::tpy::make_unexpected(::tpy::StopIteration{});
+    }
+    __builtin_unreachable();
+}
+
 } // namespace tpyapp::main
