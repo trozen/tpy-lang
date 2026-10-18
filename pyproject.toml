@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "tpy-lang"
 dynamic = ["version"]
-description = "A Python-to-C++ compiler for TurboPython, a high-performance dialect of Python: native binaries with no Python runtime, no garbage collector and no GIL."
+description = "A Python-to-C++ compiler for TurboPython, a high-performance dialect of Python: native binaries with no interpreter, no garbage collector and no GIL."
 readme = "README.md"
 requires-python = ">=3.12"
 license = "Apache-2.0 WITH LLVM-exception"
