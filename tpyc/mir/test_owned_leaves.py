@@ -22,6 +22,7 @@ from .call_contract import MIRGlobalId, MIRSummaryState
 from .dependencies import MIRReferent, analyze_dependencies
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import dump_function
+from .emit import MIRValue, owned_storage_shape
 from .liveness import MIRPoint, analyze_liveness
 from .lower import _Lowering, lower_function
 from .nodes import (
@@ -635,6 +636,22 @@ def test_an_owned_return_plans_its_full_expression_once(lowered_active, monkeypa
     lower_function(lowered_active.thir["by_value"], MIRBodyId("owned", "by_value"),
                    definitions=lowered_active.definitions)
     assert len(built) == 1
+
+
+def test_region_storage_outside_a_full_expression_refuses_the_body(lowered_active, monkeypatch) -> None:
+    # The assembly failure is the body's verdict, not an exception out of the lowering.
+    original = _Lowering.check
+
+    def leaking(self) -> None:
+        self.mir.active_temporaries = []
+        self.mir.materialize(MIRValue(MIRConstant("x"), owned_storage_shape(STR)), "node")
+        self.mir.active_temporaries = None
+        original(self)
+
+    monkeypatch.setattr(_Lowering, "check", leaking)
+    result = lower_function(lowered_active.thir["by_value"], MIRBodyId("owned", "by_value"),
+                            definitions=lowered_active.definitions)
+    assert isinstance(result, MIRNotCovered) and result.reason == "region storage outside its full expression"
 
 
 def test_locals_initialize_once_then_replace_in_place(lowered_active) -> None:

@@ -18,7 +18,7 @@ from ..typesys import (
     BOOL, INT32, STR, NominalType, OwnType, TpyType, VoidType, make_list, make_span, return_representation,
     unwrap_readonly, unwrap_ref_type,
 )
-from .call_contract import MIRCallSummary, MIRParameterBinding
+from .call_contract import MIRCallSummary
 from ..thir.scalar_leaves import MIRClass, declared_members, native_container_type
 from .collect import call_definitions, dump_codegen_mir
 from .definitions import MIRDefinitions
@@ -32,7 +32,7 @@ from .nodes import (
     MIRSlot,
 )
 from .shapes import with_access
-from .testutil import ContainerValue, Reference, execute, leaf_shape, owned_shape, reslot
+from .testutil import ContainerValue, Reference, bound, execute, leaf_shape, owned_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 SOURCE = """\
@@ -691,7 +691,7 @@ def _container_call(fn: MIRFunction, target: str, ret: TpyType, argument: str) -
     callee taking `argument`'s int32 by value and returning `ret`."""
     signature = th.THIRCallableSignature((INT32,), ret, None, (ParamPassing.VALUE,), return_representation(ret))
     summary = MIRCallSummary(th.THIRResolvedCallee(th.THIRFunctionIdentity("containers", "made"), signature),
-                             (MIRParameterBinding(INT32, ParamPassing.VALUE, False),), frozenset({0}),
+                             (bound(INT32, ParamPassing.VALUE),), frozenset({0}),
                              frozenset(), frozenset(), frozenset(), frozenset(), False)
     built = _replace_first(fn, lambda s: _assign(MIRConstruct)(s) and s.target == MIRPlace(_slot(fn, target).id),
                            lambda s: replace(s, value=MIRCall(summary, (_slot(fn, argument).id,), True)))
@@ -787,7 +787,7 @@ def test_only_a_pure_stub_binds_a_readonly_container_mutably(active) -> None:
 # --- calls over real lowered MIR ---------------------------------------------------
 
 CALLS = """\
-from tpy import int32, Own, readonly
+from tpy import int32, Own, Span, readonly
 
 
 def consume(xs: Own[list[int32]]) -> int32:
@@ -812,6 +812,19 @@ def ro_values(d: readonly[dict[str, int32]]) -> int:
 
 def inferred_values(d: dict[str, int32]) -> int:
     return len(d.values())
+
+
+def span_sum(s: Span[int32]) -> int32:
+    t = 0
+    for v in s:
+        t += v
+    return t
+
+
+def pass_span(s: Span[int32]) -> int32:
+    xs = [1, 2, 3]
+    w = xs[0:2]
+    return span_sum(w) + span_sum(s)
 """
 
 
@@ -874,3 +887,30 @@ def test_a_pure_stub_reads_a_readonly_receiver(calls) -> None:
     declared, = (s for s in functions["ro_values"].call_summaries if s.callee.identity.qualified_name.endswith(
         ".values"))
     assert declared.parameters[0].readonly
+
+
+def test_a_span_holder_is_lent_at_a_span_parameter(calls) -> None:
+    # A Span binding is not storage: the local and the parameter lend the region they view.
+    lines = calls[0]["pass_span"]
+    assert "%7: Span[int32] mutable-ref element=int32:leaf local w" in lines
+    assert "%8 = call main::span_sum(%7) [reader, may-raise]" in lines
+    assert "%9 = call main::span_sum(%0) [reader, may-raise]" in lines
+
+
+def _with_summary(fn: MIRFunction, old: MIRCallSummary, new: MIRCallSummary) -> MIRFunction:
+    def change(s):
+        return replace(s, value=replace(s.value, summary=new)) if isinstance(s, MIRAssign) and isinstance(
+            s.value, MIRCall) and s.value.summary is old else s
+    return replace(fn, call_summaries=tuple(new if s is old else s for s in fn.call_summaries), blocks=tuple(
+        replace(b, statements=tuple(change(s) for s in b.statements)) for b in fn.blocks))
+
+
+def test_validator_rejects_a_readonly_span_lent_mutably(calls) -> None:
+    fn = calls[1]["pass_span"]
+    validate_function(fn)
+    _rejects(_reslot(fn, "w", readonly=True, members=(leaf_shape(INT32, True),)),
+             "call container argument mismatch")
+    # A view binding is by value by construction: the summary check refuses any other passing.
+    summary, = fn.call_summaries
+    damaged = replace(summary, parameters=(replace(summary.parameters[0], passing=ParamPassing.CONST_REF),))
+    _rejects(_with_summary(fn, summary, damaged), "call parameter passing differs from its type")

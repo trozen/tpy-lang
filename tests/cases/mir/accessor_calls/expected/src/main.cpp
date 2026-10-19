@@ -127,7 +127,7 @@ int32_t twin_readonly(const Counter& c) {
 }
 
 // # kept refusal: a call result as a receiver (receivers beyond a name or self)
-// def twin_via(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def twin_via(c: Counter) -> int32:  # tpyc: mir(uncovered /^owned result from a borrowed call$/)
 //     return c.via().count
 int32_t twin_via(const Counter& c) {
     return c.via().count();

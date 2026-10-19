@@ -11,7 +11,7 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, NominalType
 from .call_contract import (
-    MIRAliasObligation, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRParameterWrite,
+    MIRAliasObligation, MIRContainerElements, MIRContainerStructure, MIRParameterWrite,
     MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
@@ -25,7 +25,7 @@ from .nodes import (
 )
 from .summaries import summarize_function
 from .validate import MIRValidationError, validate_function
-from .testutil import borrowed_shape, leaf_shape, region_shape
+from .testutil import borrowed_shape, bound, leaf_shape, region_shape
 
 
 SOURCE = '''\
@@ -195,8 +195,8 @@ def test_a_method_summary_binds_the_receiver_first(program: _Program) -> None:
     assert identity.owner == counter.qualified_name()
     summary = _known(program, "Counter.push")
     assert summary.parameters == (
-        MIRParameterBinding(counter, ParamPassing.MUT_REF, False, th.THIRBorrowedRecord(counter, False)),
-        MIRParameterBinding(INT32, ParamPassing.VALUE, False))
+        bound(counter, ParamPassing.MUT_REF, ref=th.THIRBorrowedRecord(counter, False)),
+        bound(INT32, ParamPassing.VALUE))
     items = _field(program, "Counter", "items", INTS)
     assert summary.writes == {MIRParameterWrite(0, (items, MIRContainerStructure()))}
     assert summary.returns == frozenset() and summary_problem(summary) is None
@@ -209,7 +209,7 @@ def test_a_readonly_receiver_is_lent_readonly_and_never_written(program: _Progra
     counter = _record(program, "Counter")
     summary = _known(program, "Counter.total")
     assert summary.parameters == (
-        MIRParameterBinding(counter, ParamPassing.CONST_REF, True, th.THIRBorrowedRecord(counter, True)),)
+        bound(counter, ParamPassing.CONST_REF, ref=th.THIRBorrowedRecord(counter, True)),)
     assert summary.writes == frozenset()
 
 

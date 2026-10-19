@@ -358,14 +358,14 @@ Gauge& pick(Gauge& g) {
 }
 
 // # kept refusal: a call-result receiver (the borrowed result of a summarized callee)
-// def result_receiver(g: Gauge) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def result_receiver(g: Gauge) -> int32:  # tpyc: mir(uncovered /^owned result from a borrowed call$/)
 //     return pick(g).read()
 int32_t result_receiver(Gauge& g) {
     return ::tpyapp::main::pick(g).read();
 }
 
 // # kept refusal: a constructor temporary as the receiver
-// def temp_receiver(k: int32) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def temp_receiver(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver access disagrees with its binding$/)
 //     return Gauge(k).read()
 int32_t temp_receiver(int32_t k) {
     return Gauge(k).read();

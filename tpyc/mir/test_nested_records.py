@@ -15,7 +15,7 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
 from .call_contract import (
-    MIRCallSummary, MIRGlobalId, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult,
+    MIRCallSummary, MIRGlobalId, MIRParameterWrite, MIRReturnOrigin, MIRSummaryResult,
     MIRSummaryState, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
@@ -37,7 +37,7 @@ from .nodes import (
 )
 from .retention import affects, analyze_retention
 from .storage import analyze_storage, storage_destination
-from .testutil import Reference, borrowed_shape, execute, leaf_shape, reslot
+from .testutil import Reference, borrowed_shape, bound, execute, leaf_shape, reslot
 from .validate import MIRValidationError, validate_function
 
 SOURCE = """\
@@ -1543,9 +1543,9 @@ def _summary(callee: th.THIRResolvedCallee, *, writes=(), returns=()) -> MIRSumm
         bare = unwrap_readonly(unwrap_ref_type(typ))
         if record_type(bare):
             readonly = passing is ParamPassing.CONST_REF
-            bindings.append(MIRParameterBinding(bare, passing, readonly, th.THIRBorrowedRecord(bare, readonly)))
+            bindings.append(bound(typ, passing, ref=th.THIRBorrowedRecord(bare, readonly)))
         else:
-            bindings.append(MIRParameterBinding(bare, passing, False))
+            bindings.append(bound(typ, passing))
     summary = MIRCallSummary(callee, tuple(bindings), frozenset(range(len(bindings))), frozenset(writes),
                              frozenset(), frozenset(returns), frozenset(), True)
     assert summary_problem(summary) is None, summary_problem(summary)

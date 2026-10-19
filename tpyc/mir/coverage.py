@@ -12,7 +12,7 @@ from ..thir.scalar_leaves import (  # noqa: F401
 from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
 )
-from .call_contract import MIRContainerElements, MIRContainerStructure
+from .call_contract import MIRContainerElements, MIRContainerStructure, MIRParameterBinding
 from .nodes import (
     MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalPayload, MIRPlace,
     MIRSlot, MIRSlotId, MIRSlotKind,
@@ -33,10 +33,10 @@ def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyTy
     return typ
 
 
-def scalar_param(p: th.THIRParam) -> bool:
-    """A parameter holding an inert leaf at the passing THIR published for
-    it; a parameter without a published passing is refused."""
-    return p.passing is not None and storage_leaf(p.type, passing_representation(p.passing))
+def scalar_param(binding: MIRParameterBinding) -> bool:
+    """A parameter bound as the callee's own scalar value
+    (`MIRParameterBinding.scalar_value`)."""
+    return binding.scalar_value
 
 
 def slot_representation(slot: MIRSlot) -> Representation:

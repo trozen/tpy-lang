@@ -34,7 +34,7 @@ hooks.install()
 from families import family  # noqa: E402
 import tpyc.mir.lower as _mir_lower  # noqa: E402
 import tpyc.mir.coverage as _mir_cov  # noqa: E402
-from tpyc.mir.coverage import scalar_param  # noqa: E402
+from tpyc.mir.call_contract import parameter_binding  # noqa: E402
 from tpyc.codegen_cpp.context import CodeGenOptions  # noqa: E402
 from tpyc.compiler import Compiler  # noqa: E402
 from tpyc.diagnostics import DiagnosticLevel, format_diagnostics  # noqa: E402
@@ -79,11 +79,8 @@ def blocker_type(reason: str) -> str | None:
         if "return type" in reason:
             return str(node.return_type)
         if "parameter type" in reason:
-            # The parameter lowering refused: no layout fact and no inert leaf
-            # at its published passing.
             bad = [str(p.type) for p in node.params
-                   if not scalar_param(p) and all(getattr(p, fact, None) is None for fact in (
-                       "borrowed_record", "optional_layout", "union_layout", "tuple_layout", "native_container"))]
+                   if isinstance(parameter_binding(p, constructor=False), str)]
             return bad[0] if bad else None
         for attr in ("resolved_type", "result_type"):
             t = getattr(node, attr, None)

@@ -35,6 +35,7 @@ from .nodes import (
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
+from .testutil import bound
 from .validate import MIRValidationError, validate_function
 
 SOURCE = """\
@@ -631,15 +632,15 @@ def test_user_summaries_publish_container_writes(methods) -> None:
     bag = params["bag"].borrowed_record
     xs = params["xs"].native_container.type
     items = th.THIRFieldIdentity(bag.type, "items", xs)
-    point_list = params["ps"].native_container.type
     sp, rsp = (params[n].type for n in ("sp", "rsp"))
-    bindings = (MIRParameterBinding(xs, ParamPassing.MUT_REF, False),
-                MIRParameterBinding(xs, ParamPassing.CONST_REF, True),
-                MIRParameterBinding(xs, ParamPassing.OWN, False),
-                MIRParameterBinding(sp, ParamPassing.VALUE, False),
-                MIRParameterBinding(rsp, ParamPassing.VALUE, True),
-                MIRParameterBinding(bag.type, ParamPassing.MUT_REF, False, replace(bag, readonly=False)),
-                MIRParameterBinding(point_list, ParamPassing.CONST_REF, True))
+    types = tuple(p.type for p in fn.params)
+    bindings = (bound(types[0], ParamPassing.MUT_REF),
+                bound(types[1], ParamPassing.CONST_REF, True),
+                bound(types[2], ParamPassing.OWN),
+                bound(sp, ParamPassing.VALUE),
+                bound(rsp, ParamPassing.VALUE, True),
+                bound(types[5], ParamPassing.MUT_REF, ref=replace(bag, readonly=False)),
+                bound(types[6], ParamPassing.CONST_REF, True))
     fn = replace(fn, params=tuple(replace(p, passing=b.passing) for p, b in zip(fn.params, bindings)))
     structure, elements = MIRContainerStructure(), MIRContainerElements()
     for path in ((0, (structure,)), (0, (elements,)), (2, (structure,)), (3, (elements,)),
@@ -673,8 +674,7 @@ def test_user_summaries_return_container_views_and_elements_of_parameters(method
     xs, = (p for p in fn.params if p.name == "xs")
     ps, = (p for p in fn.params if p.name == "ps")
     fn = replace(fn, params=(xs, ps))
-    bindings = (MIRParameterBinding(xs.native_container.type, ParamPassing.CONST_REF, True),
-                MIRParameterBinding(ps.native_container.type, ParamPassing.CONST_REF, True))
+    bindings = (bound(xs.type, ParamPassing.CONST_REF, True), bound(ps.type, ParamPassing.CONST_REF, True))
     rsp = next(p.type for p in methods.thir["shapes"].params if p.name == "rsp")
     sp = next(p.type for p in methods.thir["shapes"].params if p.name == "sp")
     assert summary_problem(_user_summary(fn, bindings, ret=rsp, returns={0})) is None

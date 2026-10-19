@@ -114,9 +114,9 @@ bool call_bool(const Pair& p);
 void field_receiver(Outer& o);
 // def pick(g: Gauge) -> Gauge:  # tpyc: mir(covered) mir_summary(known)
 Gauge& pick(Gauge& g);
-// def result_receiver(g: Gauge) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def result_receiver(g: Gauge) -> int32:  # tpyc: mir(uncovered /^owned result from a borrowed call$/)
 int32_t result_receiver(Gauge& g);
-// def temp_receiver(k: int32) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def temp_receiver(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver access disagrees with its binding$/)
 int32_t temp_receiver(int32_t k);
 // def element_receiver(gs: list[Gauge]) -> None:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
 void element_receiver(std::vector<Gauge>& gs);

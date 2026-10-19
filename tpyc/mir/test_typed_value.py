@@ -14,19 +14,20 @@ from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing
-from ..typesys import INT32, STR, STRVIEW, NominalType, TupleType
+from ..typesys import INT32, STR, STRVIEW, NominalType, OwnType, TupleType
 from .call_contract import (
-    MIR_STATIC, MIRContainerElements, MIRLoanTransfer, MIRParameterBinding, MIRParameterWrite, call_path_problem,
+    MIR_STATIC, MIRContainerElements, MIRLoanTransfer, MIRParameterWrite, call_path_problem,
 )
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
 from .definitions import MIRDefinitions
 from .emit import holder_form, owned_holder_shape, owned_storage_shape, view_holder_shape
-from .lower import _Lowering, _Use
+from .lower import _Lowering
 from .nodes import (
     MIRAssign, MIRConstant, MIRField, MIRFieldId, MIRHolding, MIRRead, MIRRecordLayout, MIRShape,
     MIRTupleCopy,
 )
 from .shapes import record_pointer, step, with_access
+from .testutil import bound
 from .validate import MIRValidationError, validate_function
 
 SOURCE = '''\
@@ -235,21 +236,6 @@ def test_a_leaf_element_of_a_readonly_container_reads_readonly(unit, dumps) -> N
         validate_function(damaged)
 
 
-def test_a_lent_string_is_a_str_value_held_through_its_view(unit, monkeypatch) -> None:
-    seen: list[tuple[MIRShape, MIRShape]] = []
-    owned_use = _Lowering.owned_use
-
-    def spy(self, f, use, typ, loc, **kwargs):
-        owned_use(self, f, use, typ, loc, **kwargs)
-        if use is _Use.OPERAND and kwargs.get("operand_shape") is not None:
-            seen.append((f.shape_of(), f.root.records[f.value.value].shape))
-    monkeypatch.setattr(_Lowering, "owned_use", spy)
-    _lowered(unit, "lend_string")
-    # The expression is a `str`; only its holder slot is typed by the view.
-    (value, holder), = seen
-    assert value.type == STR and holder == view_holder_shape(STRVIEW)
-
-
 def test_a_field_returned_readonly_is_lent_through_a_readonly_holder(dumps) -> None:
     # The receiver is lent mutably; the result asks for readonly access.
     lines = dumps["narrow"]
@@ -269,8 +255,8 @@ _R = NominalType("R", _module_qname="m.R")
 _V = th.THIRFieldIdentity(_R, "v", STRVIEW)
 _MISSING = th.THIRFieldIdentity(_R, "missing", STRVIEW)
 _LAYOUT = MIRRecordLayout(_R, (MIRField(MIRFieldId(_R, "v"), STRVIEW),), True, True)
-_OWNED = MIRParameterBinding(_R, ParamPassing.OWN, False)
-_LENT = MIRParameterBinding(_R, ParamPassing.MUT_REF, False, th.THIRBorrowedRecord(_R, False))
+_OWNED = bound(OwnType(_R), ParamPassing.OWN)
+_LENT = bound(_R, ParamPassing.MUT_REF, ref=th.THIRBorrowedRecord(_R, False))
 
 
 def _summary(transfers=(), writes=()) -> SimpleNamespace:

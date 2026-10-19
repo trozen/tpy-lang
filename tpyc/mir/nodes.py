@@ -11,7 +11,9 @@ from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
 from ..thir.scalar_leaves import MIRClass
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType, TpyType
-from .call_contract import MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId
+from .call_contract import (
+    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding,
+)
 
 
 class MIRValidationError(ValueError):
@@ -806,6 +808,9 @@ class MIRFunction:
     # summary may raise, or a print; or a receiver member's initialization
     # copies an owned leaf. Derived at lowering, re-checked by the validator.
     exceptional_exits: bool = False
+    # How each parameter slot is bound (`call_contract.parameter_binding`),
+    # receiver first: the lowering's, which a summary publishes.
+    parameter_bindings: tuple[MIRParameterBinding, ...] = ()
 
     @cached_property
     def record_layouts(self) -> 'Mapping[TpyType, MIRRecordLayout]':

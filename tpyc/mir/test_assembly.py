@@ -4,8 +4,8 @@ the canonical numbering are fixed only once the whole body is built."""
 import pytest
 
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, VoidType
-from .emit import Fragment, assemble
+from ..typesys import BOOL, INT32, STR, VoidType
+from .emit import Fragment, MIRRegionStorageError, MIRValue, assemble, owned_storage_shape
 from .nodes import (
     MIRBodyId, MIRBodyKind, MIRClass, MIRConstant, MIRGoto, MIRPlace, MIRRead, MIRReturn, MIRShape, MIRSlotKind,
     MIRValidationError,
@@ -130,3 +130,12 @@ def test_a_spliced_fragment_takes_no_more_statements() -> None:
     body.splice(child)
     with pytest.raises(AssertionError, match="spliced fragment"):
         child.write(child.slot(LEAF), MIRConstant(2), None)
+
+
+def test_region_storage_outside_a_full_expression_fails_assembly() -> None:
+    body = _emitter()
+    body.active_temporaries = []
+    # Storage of a full expression's region, materialized where no full expression opened a region.
+    body.materialize(MIRValue(MIRConstant("x"), owned_storage_shape(STR)), "node")
+    with pytest.raises(MIRRegionStorageError, match="region storage outside its full expression"):
+        _build(body)

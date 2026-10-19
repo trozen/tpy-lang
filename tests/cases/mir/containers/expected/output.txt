@@ -47,6 +47,7 @@ iterate_and_grow: 24
 tail: 2
 span_first: 2
 span_sum: 3
+span_pass: 6
 comp: 2
 nested: 8
 extend_it: 6

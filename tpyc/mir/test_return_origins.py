@@ -12,7 +12,7 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, return_representation
 from .call_contract import (
-    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterBinding, MIRParameterWrite,
+    MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterWrite,
     MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, endpoint_admitted, parameter_binding_problem,
     path_hops, resolve_path, result_problem, stub_summary, summary_problem,
 )
@@ -27,7 +27,7 @@ from .nodes import (
     MIRSlot, MIRSlotId, MIRSlotKind,
 )
 from .summaries import summarize_function
-from .testutil import borrowed_shape, leaf_shape, region_shape
+from .testutil import borrowed_shape, bound, leaf_shape, region_shape
 
 
 SOURCE = '''\
@@ -393,7 +393,7 @@ def _record_summary(param: NominalType, readonly: bool, *, ret=None, borrowed=No
     passing = param.param_passing(readonly)
     signature = th.THIRCallableSignature((param,), ret, borrowed, (passing,), return_representation(ret))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "nested"), signature)
-    binding = MIRParameterBinding(param, passing, readonly, th.THIRBorrowedRecord(param, readonly))
+    binding = bound(param, passing, ref=th.THIRBorrowedRecord(param, readonly))
     return MIRCallSummary(callee, (binding,), frozenset({0}), frozenset(MIRParameterWrite(0, p) for p in writes),
                           frozenset(), frozenset(MIRReturnOrigin(0, p) for p in returns), frozenset(), True)
 
@@ -421,7 +421,7 @@ def test_path_hops_name_the_storage_each_field_is_read_from(program: _Program, n
                       (MIRContainerElements(), nested.bag_f), (MIRContainerStructure(), MIRContainerElements())):
         assert path_hops(room, malformed) is None, malformed
     # Fields need a record parameter.
-    assert path_hops(MIRParameterBinding(INTS, ParamPassing.MUT_REF, False), (nested.items,)) is None
+    assert path_hops(bound(INTS, ParamPassing.MUT_REF), (nested.items,)) is None
 
 
 def test_the_access_at_a_path_end_accumulates(program: _Program, nested: _Nested) -> None:
@@ -520,7 +520,7 @@ def test_one_endpoint_table_serves_writes_and_returns(program: _Program, nested:
 def test_an_owned_record_parameter_is_handed_over(program: _Program, nested: _Nested) -> None:
     for record in (nested.bag, nested.shelf):
         typ = OwnType(record)
-        handed = MIRParameterBinding(record, typ.param_passing(False), False)
+        handed = bound(typ, typ.param_passing(False))
         assert parameter_binding_problem(typ, handed) is None, record
         # Owned storage is never readonly and never a borrow of the caller's.
         assert parameter_binding_problem(typ, replace(handed, readonly=True)) == "unsupported element call parameter"
@@ -628,7 +628,7 @@ def test_a_whole_container_rooted_in_an_elements_region_is_refused() -> None:
     ys = MIRSlot(MIRSlotId(body, 1), region_shape(INTS, members=layout), MIRSlotKind.LOCAL, "ys")
     signature = th.THIRCallableSignature((INTS,), INTS, None, (ParamPassing.MUT_REF,))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "ident"), signature)
-    summary = MIRCallSummary(callee, (MIRParameterBinding(INTS, ParamPassing.MUT_REF, False),), frozenset({0}),
+    summary = MIRCallSummary(callee, (bound(INTS, ParamPassing.MUT_REF),), frozenset({0}),
                              frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     call = MIRCall(summary, (xs.id,), False)
     slots = {xs.id: xs, ys.id: ys}
@@ -652,7 +652,7 @@ def test_a_span_argument_is_projected_once() -> None:
     state = {MIRPlace(t.id): frozenset({xs_elements})}
     slots = {t.id: t, u.id: u}
     for path in ((), (MIRContainerElements(),)):
-        summary = MIRCallSummary(callee, (MIRParameterBinding(span, ParamPassing.VALUE, True),), frozenset({0}),
+        summary = MIRCallSummary(callee, (bound(span, ParamPassing.VALUE, True),), frozenset({0}),
                                  frozenset(), frozenset(), frozenset({MIRReturnOrigin(0, path)}), frozenset(), True)
         assert resolve_call_returns(MIRCall(summary, (t.id,), False), state, slots, {}, u) == {xs_elements}
 

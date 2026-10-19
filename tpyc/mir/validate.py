@@ -9,8 +9,8 @@ from ..parse import SourceLocation
 from ..thir.nodes import COMPARISON_OPS, THIRBorrowedRecord, THIRStubCallee, THIRStubContract
 from ..type_def_registry import is_array
 from ..thir.scalar_leaves import (
-    MIRClass, binds_cursor, container_view, holds_loan, leaf_constant, modeled_field, native_container_type,
-    owned_constant, owned_value_type, primitive_leaf, readonly_elements, record_type, value_class, view_leaf,
+    MIRClass, binds_cursor, holds_loan, leaf_constant, modeled_field, owned_constant, owned_value_type,
+    primitive_leaf, readonly_elements, record_type, value_class,
 )
 from ..type_def_registry import ParamPassing, type_def_of, zero_value_of
 from ..typesys import (
@@ -895,7 +895,7 @@ def _validate_structure(fn: MIRFunction) -> None:
             _require(sid in slots, "unknown slot ID")
             source = slots[sid]
             _require(source.kind is not MIRSlotKind.GLOBAL, "global value needs explicit read")
-            ref, owned = binding.borrowed_record, owned_value_type(binding.type)
+            ref = binding.borrowed_record
             if binding.protocol:
                 # Only a builtin leaf's dispatch is the stub's own runtime code;
                 # the leaf is read in place (a view: the leaf it views) or by
@@ -905,30 +905,29 @@ def _validate_structure(fn: MIRFunction) -> None:
                     bound.owned_leaf and source.shape.leaf_borrow or bound.loan_inert and source.shape.is_scalar),
                          "call protocol argument is not a builtin leaf")
                 continue
-            if native_container_type(binding.type) or container_view(binding.type):
+            cls = binding.cls
+            if cls in (MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW):
                 # A container is lent whole (a view by value: the loan it
                 # holds), or handed over as the body's own temporary.
                 _require(source.type == binding.type and ref is None and (
-                    binding.passing in OWNING_PASSINGS and binding.passing is not ParamPassing.VALUE
-                    and source.shape.container_storage and source.kind is MIRSlotKind.TEMPORARY
-                    or container_view(binding.type) and source.shape.container_view_holder
-                    and binding.passing is ParamPassing.VALUE and (not source.readonly or binding.readonly)
-                    or native_container_type(binding.type) and binding.passing not in OWNING_PASSINGS
-                    and source.shape.region and not source.shape.container_view_holder
+                    source.shape.container_storage and source.kind is MIRSlotKind.TEMPORARY if binding.storage
+                    else source.shape.container_view_holder and (not source.readonly or binding.readonly)
+                    if cls is MIRClass.CONTAINER_VIEW
+                    else source.shape.region and not source.shape.container_view_holder
                     and (not source.readonly or binding.readonly or pure)), "call container argument mismatch")
                 continue
-            if record_type(binding.type) and ref is None and binding.passing in OWNING_PASSINGS:
+            if cls is MIRClass.RECORD and binding.storage:
                 # A record handed over by value (an element a container
                 # takes): the temporary the call moves from.
                 _require(source.type == binding.type and source.shape.is_storage
                          and source.kind is MIRSlotKind.TEMPORARY and binding.type in records,
                          "call record argument mismatch")
                 continue
-            if owned is not None and binding.passing in BORROWING_PASSINGS and source.shape.view_holder:
+            if cls is MIRClass.OWNED_LEAF and not binding.storage and source.shape.view_holder:
                 # A view of the parameter's family is lent as the view it already is.
-                _require(view_compatible(source.type, owned), "call owned-leaf argument mismatch")
+                _require(view_compatible(source.type, binding.type), "call owned-leaf argument mismatch")
                 continue
-            if isinstance(binding.type, OptionalType):
+            if cls is MIRClass.OPTIONAL:
                 # An Optional holder of the payload the binding borrows, or of its scalar.
                 expected = thir_member(ref if ref is not None else binding.type.inner)
                 _require(source.type == binding.type and source.shape.cls is MIRClass.OPTIONAL
@@ -936,19 +935,18 @@ def _validate_structure(fn: MIRFunction) -> None:
                 continue
             # Record storage binds at its own type or a struct-base ancestor's;
             # every other binding is exact.
-            _require(source.type == binding.type or ref is not None and ref.type == binding.type
+            _require(source.type == binding.type or cls is MIRClass.RECORD
                      and binds_at(records, source.type, binding.type), "call argument type mismatch")
-            if view_leaf(binding.type):
+            if cls is MIRClass.VIEW:
                 _require(source.shape.view_holder and binding.readonly, "call view argument mismatch")
-            elif ref is not None:
+            elif cls is MIRClass.RECORD:
                 _require(source.shape.is_pointer and (not source.readonly or ref.readonly),
                          "call record argument mismatch")
-            elif owned is not None:
+            elif cls is MIRClass.OWNED_LEAF:
                 # Lent for the call at a borrowing passing, else the callee's own copy.
-                _require(source.type == owned and (
-                    source.shape.owned_leaf_borrow if binding.passing in BORROWING_PASSINGS
-                    else source.shape.leaf_storage and source.kind is MIRSlotKind.TEMPORARY),
-                    "call owned-leaf argument mismatch")
+                _require(source.type == binding.type and (
+                    source.shape.leaf_storage and source.kind is MIRSlotKind.TEMPORARY if binding.storage
+                    else source.shape.owned_leaf_borrow), "call owned-leaf argument mismatch")
             else:
                 _require(source.type == binding.type and source.shape.is_scalar,
                          "call scalar argument mismatch")

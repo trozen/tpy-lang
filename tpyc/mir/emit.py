@@ -12,21 +12,27 @@ from enum import Enum, auto
 
 from ..typesys import BOOL, TpyType
 from ..identity_map import IdentityMap
-from .call_contract import MIRCallSummary
+from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRClass, MIRConstant, MIRDeref, MIRFunction,
-    MIRGoto, MIRHolding, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRClass, MIRConstant, MIRCopy,
+    MIRDeref, MIRFunction, MIRGoto, MIRHolding, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
+    MIRRead, MIRReceiverInit,
     MIRRecordLayout, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
     MIRRvalue, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
     MIRTupleInitialization, MIRValidationError, member_init_operands, source_order, statement_target,
 )
 from .shapes import place_shape, record_pointer
-from .validate import body_may_raise, statement_reads, successors, validate_function
+from .validate import body_may_raise, reaches_element, statement_reads, successors, validate_function
 
 
 class MIRFallthroughError(Exception):
     """A non-void body's end is reachable; the lowering refuses it at the
     body it checked."""
+
+
+class MIRRegionStorageError(Exception):
+    """Storage of a full expression's region was spliced where no such
+    region is open; the lowering refuses the body."""
 
 
 def scalar_shape(typ: TpyType) -> MIRShape:
@@ -69,8 +75,8 @@ def holder_form(shape: MIRShape) -> MIRShape:
 @dataclass(frozen=True, eq=False)
 class MIRValue:
     """A fragment's value: a slot, a place or an rvalue, with the expression's
-    `shape` when its producer states one (an rvalue's, or a slot's that is not
-    its holder's); a place's is derived where read (`Fragment.shape_of`).
+    `shape` -- an rvalue's, stated where it is built, or a slot's that is not
+    its holder's; a place's is derived where read (`Fragment.shape_of`).
     `held`: the binding slot it already is; `raises`: reading the place may
     raise; `storage`: the owned leaf storage a name read is, a return moves out."""
     value: MIRSlotId | MIRPlace | MIRRvalue
@@ -82,6 +88,12 @@ class MIRValue:
 
     def __post_init__(self) -> None:
         assert self.shape is None or not isinstance(self.value, MIRPlace), "a place's shape is derived"
+        assert self.shape is not None or isinstance(self.value, (MIRSlotId, MIRPlace)), "an rvalue states its shape"
+
+    @property
+    def fresh(self) -> bool:
+        """An rvalue building storage of its own: a fresh owned leaf, a record or container built."""
+        return not isinstance(self.value, (MIRSlotId, MIRPlace)) and self.shape is not None and self.shape.is_storage
 
 
 class RegionHandle:
@@ -188,8 +200,9 @@ class Fragment:
     """MIR built bottom-up before the block it runs in is known: its
     statements in order (the blocks a select or a short-circuit opens
     included), the slots and blocks it adds, the backings it publishes,
-    and its value (`MIRValue`) in the form its consumer asked for. Its
-    region is a handle on the region it is spliced into.
+    and its value (`MIRValue`) in the form its producer built, which the
+    consumer converts (`lend`, `sink`, `view`, `materialize`). Its region
+    is a handle on the region it is spliced into.
 
     The body itself is the root fragment: its head is the entry block, and
     every other fragment's statements, slots and backings reach the body
@@ -200,7 +213,8 @@ class Fragment:
     and the child is dead (`spliced`)."""
 
     def __init__(self, root: 'Fragment | None' = None, *, body: MIRBodyId | None = None,
-                 layouts: Callable[[], Mapping[TpyType, MIRRecordLayout]] | None = None) -> None:
+                 layouts: Callable[[], Mapping[TpyType, MIRRecordLayout]] | None = None,
+                 copy_may_raise: Callable[[MIRShape], bool] | None = None) -> None:
         self.blocks: list[_Block] = []
         self.slots: list[_SlotRecord] = []
         self.spliced = False
@@ -208,6 +222,8 @@ class Fragment:
             self.root = self
             self.body = body
             self.layouts = layouts if layouts is not None else dict
+            # Whether a copy of storage of a shape may raise (the lowering's rule).
+            self.copy_may_raise = copy_may_raise if copy_may_raise is not None else (lambda shape: True)
             self.records: dict[MIRSlotId, _SlotRecord] = {}
             self.block_count = 0
             self.constant_bools: dict[MIRSlotId, bool] = {}
@@ -218,6 +234,9 @@ class Fragment:
             self.backing_places: IdentityMap[object, MIRPlace] = IdentityMap()
             self.borrow_operations: IdentityMap[object, tuple[MIRPoint, ...]] = IdentityMap()
             self.operation_handles: IdentityMap[object, list[tuple[_Block, object]]] = IdentityMap()
+            # The nodes whose storage the full expression being lowered owns
+            # (`materialize`'s and the lowering's own); None outside one.
+            self.active_temporaries: list[object] | None = None
             self.region = self.body_region = RegionHandle(None, None)
             self.regions: list[RegionHandle] = [self.region]
             self.head = self.block()
@@ -267,10 +286,7 @@ class Fragment:
         root = self.root
         if isinstance(v.value, MIRPlace):
             return place_shape(v.value, root.records, root.layouts())
-        if v.shape is not None:
-            return v.shape
-        assert isinstance(v.value, MIRSlotId), "an rvalue states its shape"
-        return root.records[v.value].shape
+        return v.shape if v.shape is not None else root.records[v.value].shape
 
     def holder_shape_of(self, v: MIRValue | None = None) -> MIRShape:
         """The shape of a holder of a value: the binding slot it already is, else its `holder_form`."""
@@ -334,6 +350,20 @@ class Fragment:
             yield
         finally:
             self.region = region
+
+    @contextmanager
+    def temporaries(self) -> Iterator[list[object]]:
+        """A fresh list of the temporaries a full expression (or a placed
+        temporary's initializer) registers while it is built; the enclosing
+        list is restored after."""
+        root = self.root
+        outer = root.active_temporaries
+        own: list[object] = []
+        root.active_temporaries = own
+        try:
+            yield own
+        finally:
+            root.active_temporaries = outer
 
     @contextmanager
     def dissolved(self) -> Iterator[None]:
@@ -509,18 +539,110 @@ class Fragment:
         self.write(holder, value, loc)
         return holder
 
-    def holder_of(self, fragment: 'Fragment', want: MIRShape | None = None, *, raises: bool = True) -> MIRSlotId:
-        """A holder slot of `fragment`'s value, spliced here first: the binding
-        slot it already is, else a new holder of shape `want` (an access asked
-        for) or its holder form, written from the rvalue or a borrow of its
-        place (raising as reading it may, unless `raises` is false)."""
+    def materialize(self, v: MIRValue, node: object = None) -> MIRSlotId:
+        """Storage of the full expression's region initialized from `v`, a
+        storage rvalue; the storage slot. `node`: the expression the full
+        expression owns it for; None for storage of an expression already
+        registered (a composed member of the construct being built)."""
+        assert v.shape is not None and v.shape.is_storage, "materialize takes a storage rvalue"
+        temporaries = self.root.active_temporaries
+        assert temporaries is not None, "materialized storage needs a full expression"
+        if node is not None:
+            temporaries.append(node)
+        else:
+            assert temporaries, "unregistered materialized storage"
+        storage = self.slot(v.shape, storage_duration=self.region)
+        self.write(storage, v.value, v.loc, MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
+        return storage
+
+    def holds_region_storage(self) -> bool:
+        """Whether storage of its own region (a full expression's, `materialize`) is among its slots."""
+        for record in self.slots:
+            region = record.storage_duration
+            while isinstance(region, RegionHandle) and region.dissolved:
+                if region is self.region:
+                    return True
+                region = region.parent
+        return False
+
+    # --- conversions of a value for its consumer ------------------------------------
+
+    def lend(self, fragment: 'Fragment', want: MIRShape | None = None, *, raises: bool = True) -> MIRSlotId:
+        """A holder slot of `fragment`'s value, spliced here first (`_lent`)."""
         v = fragment.value
-        value = self.splice(fragment)
+        return self._lent(v, self.splice(fragment), want, raises)
+
+    def _lent(self, v: MIRValue, value: object, want: MIRShape | None = None, raises: bool = True) -> MIRSlotId:
+        """A holder slot of `v` (evaluated to `value`): the binding or holder
+        slot it already is, else a new holder of shape `want` (an access
+        asked for) or its holder form, written from a borrow of its place or
+        of the storage slot it is (raising as reading it may, unless
+        `raises` is false), else from the rvalue."""
+        assert not v.fresh, "fresh storage is lent once materialized"
         if v.held is not None:
             return v.held
+        if isinstance(value, MIRSlotId):
+            if not self.root.records[value].shape.is_storage:
+                return value
+            value = MIRPlace(value)
         if isinstance(value, MIRPlace):
             value = MIRBorrow(value, v.raises and raises)
         return self.holder(want or self.holder_shape_of(v), value, v.loc)
+
+    def sink(self, dest: MIRShape) -> 'Fragment':
+        """This fragment's value as a write of a destination of shape `dest`
+        takes it, converted in place: a leaf read whole, a copy of the
+        storage a place, a holder or a view reaches, fresh storage or a
+        static constant as it is; a borrowed result is copied through the
+        holder it is lent by."""
+        v = self._value
+        # A slot is the place it names.
+        value = MIRPlace(v.value) if isinstance(v.value, MIRSlotId) else v.value
+        if isinstance(value, MIRPlace):
+            rvalue = (MIRRead(value, v.raises) if self.shape_of(v).cls is MIRClass.LEAF
+                      else self._copy(value, dest))
+        elif v.fresh or isinstance(value, MIRConstant):
+            rvalue = value
+        elif isinstance(value, MIRBorrow) and not self.storage_steps(value.source):
+            # A borrow of storage held in place: that storage; a view's loan is copied through its holder.
+            rvalue = self._copy(value.source, dest)
+        elif isinstance(value, MIRAlias):
+            rvalue = self._copy(MIRPlace(value.source), dest)
+        else:
+            rvalue = self._copy(MIRPlace(self._lent(v, value)), dest)
+        self.value = MIRValue(rvalue, dest, v.loc, storage=v.storage)
+        return self
+
+    def _copy(self, place: MIRPlace, dest: MIRShape) -> MIRCopy:
+        """A copy of the storage `place` reaches into storage of shape `dest`:
+        raising as the copy may, or as reaching an element does."""
+        storage = MIRPlace(place.root, place.projections + self.storage_steps(place))
+        return MIRCopy(storage, self.root.copy_may_raise(dest) or reaches_element(storage))
+
+    def view(self, want: MIRShape, node: object = None) -> 'Fragment':
+        """This fragment's value as a view holder of shape `want` takes it,
+        converted in place: a place or a storage slot borrowed, a holder
+        aliased, a view or a static constant as it is, a borrowed owned leaf
+        aliased through the holder it is lent by; fresh storage is
+        materialized for `node` and lent first. A view binding's place is
+        aliased through the binding, which stays its holder."""
+        v = self._value
+        value = v.value
+        held = None
+        if v.fresh:
+            storage = self.materialize(v, node)
+            value = MIRAlias(self._lent(MIRValue(storage, loc=v.loc), storage))
+        elif isinstance(value, MIRSlotId):
+            value = (MIRBorrow(MIRPlace(value)) if self.root.records[value].shape.is_storage
+                     else MIRAlias(value))
+        elif isinstance(value, MIRPlace) and v.held is not None:
+            value = MIRAlias(held := v.held)
+        elif isinstance(value, MIRPlace):
+            value = MIRBorrow(value, v.raises)
+        elif self.shape_of(v).cls is not MIRClass.VIEW and not isinstance(value, MIRConstant):
+            value = MIRAlias(self._lent(v, value))
+        self.value = MIRValue(value, want, v.loc, held=held)
+        return self
 
     def branch(self, cond: MIRSlotId, yes: MIRBlockId, no: MIRBlockId, loc: object) -> None:
         constants = self.root.constant_bools
@@ -570,18 +692,26 @@ class Fragment:
         """Owned storage's initialization, by its duration (decided at assembly)."""
         return _PendingWrite(_WriteRule.OWNED, target=dest)
 
-    def initialize(self, temporaries: tuple[object, ...]) -> None:
-        """Build placed temporaries where the temporary plan initializes them."""
+    def initialize(self, temporaries: tuple[object, ...], *, nested: bool = False) -> None:
+        """Build placed temporaries where the temporary plan initializes them;
+        `nested`: at a statement, where an initializer owning temporaries is
+        a full expression of its own, its region ending after it."""
         for temporary in temporaries:
+            # Decided in the scope the storage lives in, outside the initializer's region.
             write = (MIRRecordWrite(MIRRecordWriteMode.OPTIONAL_ASSIGN) if temporary.optional
                      else self.initial_write())
-            self.write(temporary.storage, self.splice(temporary.value), temporary.loc, write)
+            if nested:
+                with self.full_expression(temporary.value):
+                    self.write(temporary.storage, self.splice(temporary.value), temporary.loc, write)
+            else:
+                self.write(temporary.storage, self.splice(temporary.value), temporary.loc, write)
             self.write(temporary.holder, MIRBorrow(MIRPlace(temporary.storage)), temporary.loc)
 
 
 def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, callees: tuple[object, ...],
              result: object, layouts: Mapping[TpyType, MIRRecordLayout],
-             receiver_init: MIRReceiverInit | None = None) -> MIRFunction:
+             receiver_init: MIRReceiverInit | None = None,
+             parameter_bindings: tuple[MIRParameterBinding, ...] = ()) -> MIRFunction:
     """The body built, closed and numbered: a reachable end returns (a
     non-void body's refuses), then assembly."""
     blocks = {b.id: b for b in body.blocks}
@@ -599,7 +729,8 @@ def assemble(body: Fragment, *, void: bool, return_type: TpyType, kind: object, 
         if not void:
             raise MIRFallthroughError("non-void fallthrough")
         body.end(MIRReturn())
-    return _Assembly(body, receiver_init, reachable).function(return_type, kind, callees, result, layouts)
+    return _Assembly(body, receiver_init, reachable).function(return_type, kind, callees, result, layouts,
+                                                              parameter_bindings)
 
 
 def _structure(value: object) -> bool:
@@ -752,7 +883,11 @@ class _Assembly:
                                       else MIRRecordWriteMode.INITIALIZE_ONCE)
 
     def duration(self, duration: object) -> object:
-        return self.region(duration) if isinstance(duration, RegionHandle) else duration
+        if not isinstance(duration, RegionHandle):
+            return duration
+        if duration.is_body:
+            raise MIRRegionStorageError("region storage outside its full expression")
+        return self.region(duration)
 
     def freeze(self, record: _SlotRecord) -> MIRSlot:
         shape = record.shape
@@ -800,7 +935,8 @@ class _Assembly:
         return points
 
     def function(self, return_type: TpyType, kind: object, callees: tuple[object, ...], result: object,
-                 layouts: Mapping[TpyType, MIRRecordLayout]) -> MIRFunction:
+                 layouts: Mapping[TpyType, MIRRecordLayout],
+                 parameter_bindings: tuple[MIRParameterBinding, ...] = ()) -> MIRFunction:
         emitter = self.emitter
         operations = self.operations()
         emitter.borrow_operations = operations
@@ -824,7 +960,8 @@ class _Assembly:
         fn = MIRFunction(self.body, return_type, _reachable_slots(frozen, blocks, receiver_init), tuple(blocks),
                          self.block_ids[emitter.head.id], records, receiver_init, kind, regions,
                          callees, result,
-                         body_may_raise(blocks, frozen, {r.type: r for r in records}, receiver_init))
+                         body_may_raise(blocks, frozen, {r.type: r for r in records}, receiver_init),
+                         parameter_bindings)
         validate_function(fn)
         return fn
 

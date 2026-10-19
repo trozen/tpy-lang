@@ -3,21 +3,19 @@
 from dataclasses import replace
 
 from ..thir import nodes as th
-from ..thir.scalar_leaves import (
-    MIRClass, native_container_subject, owned_value_type, value_class,
-)
+from ..thir.scalar_leaves import MIRClass, value_class
 from ..type_def_registry import ParamPassing
 from ..typesys import TpyType, receiver_neutral_return
 from .call_contract import (
     BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRAliasObligation, MIRCallSummary, MIRGlobalId,
     MIRLoanTransfer, MIRParameterBinding, MIRParameterWrite, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, bound_result, obligation_problem, path_hops, return_origin_problem, summary_problem,
-    transfer_ends, write_problem,
+    MIRSummaryState, bound_result, obligation_problem, parameter_binding, path_hops, return_origin_problem,
+    summary_problem, transfer_ends, write_problem,
 )
 from .call_effects import resolve_call_writes
 from .shapes import view_member
 from .coverage import MIRUnsupported, payload_record_path, summary_path, whole_wrapper_field
-from .definitions import MIRDefinitions, optional_parameter
+from .definitions import MIRDefinitions
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, resolve_referents, seeded_loan
 from .liveness import MIRLiveness, analyze_liveness
 from .retention import alias_obligation, analyze_body_retention, parameter_indices
@@ -297,45 +295,21 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             or tuple(th.declared_param_type(t) for t in callee.signature.param_types)
             != tuple(th.declared_param_type(p.type) for p in effective)):
         return MIRSummaryResult.opaque("summary definition signature mismatch")
-    bindings: list[MIRParameterBinding] = []
-    for slot, param in zip(params, effective):
+    # The body bound each parameter by its one derivation (`parameter_binding`).
+    bindings = list(body.parameter_bindings)
+    if len(bindings) != len(effective):
+        return MIRSummaryResult.opaque("summary definition signature mismatch")
+    for slot, param, binding in zip(params, effective, bindings):
         if param.passing is None:
             return MIRSummaryResult.opaque("summary parameter passing unpublished")
-        owned = owned_value_type(param.type)
-        view = slot.shape.view_holder
-        # A container parameter (borrowed, owned, or a Span view of one)
-        # carries its container fact in the slot, published from THIR.
-        container = slot.shape.cls in CONTAINER_CLASSES
+        # The body is the declaration's: each slot bound as its parameter derives.
         if (slot.name != param.name or slot.passing is not param.passing
-                or slot.type != (owned if owned is not None else native_container_subject(param.type))
-                or (slot.shape.is_pointer and owned is None and not view and not container
-                    and (param.borrowed_record is None
-                         # The slot's access (`access_of`) only adds to THIR's.
-                         or param.borrowed_record.readonly and not slot.readonly))):
+                or parameter_binding(param, constructor=False) != binding):
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
-        ref, optional = param.borrowed_record, None
-        if ref is not None and ref.readonly is not slot.readonly:
-            # A binding's record carries the binding's access (`parameter_binding_problem`).
-            ref = replace(ref, readonly=slot.readonly)
-        # An owned leaf at a borrowing passing and a view are lent, read-only;
-        # a record or a borrowed container or a Span lends with its slot's
-        # access, and an owned container is the callee's own.
-        readonly = (slot.readonly if ref is not None
-                    else slot.readonly if container and not slot.shape.is_storage
-                    else view or owned is not None and param.passing in BORROWING_PASSINGS)
-        if slot.shape.cls is MIRClass.OPTIONAL:
-            # An Optional record parameter borrows its payload record at the
-            # payload's access; a scalar payload is the callee's own value.
-            optional = optional_parameter(param)
-            if optional is None:
-                return MIRSummaryResult.opaque("summary parameter binding mismatch")
-            ref = optional.payload if isinstance(optional.payload, th.THIRBorrowedRecord) else None
-            readonly = ref is not None and ref.readonly
-        bindings.append(MIRParameterBinding(slot.type, param.passing, readonly, ref, optional))
     if twin:
         receiver = bindings[0]
-        bindings[0] = MIRParameterBinding(receiver.type, callee.signature.passings[0], True,
-                                          th.THIRBorrowedRecord(receiver.borrowed_record.type, True))
+        bindings[0] = replace(receiver, passing=callee.signature.passings[0], readonly=True,
+                              borrowed_record=th.THIRBorrowedRecord(receiver.borrowed_record.type, True))
     slots = {s.id: s for s in body.slots}
     record_layouts = body.record_layouts
     # The dependency pass runs once, first asked for by a record storage slot.

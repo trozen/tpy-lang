@@ -16,7 +16,7 @@ from ..thir.testutil import _compile, _entry, force_in_place
 from ..type_def_registry import ParamPassing
 from ..typesys import NominalType
 from .call_contract import (
-    MIR_RESULT, MIR_STATIC, MIRAliasObligation, MIRLoanTransfer, MIRParameterBinding, MIRParameterWrite,
+    MIR_RESULT, MIR_STATIC, MIRAliasObligation, MIRLoanTransfer, MIRParameterWrite,
     MIRSummaryState, summary_problem, transfer_problem,
 )
 from .collect import MIRBodyVerdict, enumerate_bodies
@@ -35,7 +35,7 @@ from .storage import analyze_storage, owned_field
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
 from .summaries import summarize_function
 from .validate import MIRValidationError, validate_function
-from .testutil import reslot
+from .testutil import bound, reslot
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -476,7 +476,7 @@ def test_transfer_contract_validation(program: _Program) -> None:
     # The source is static storage, a lent leaf of the family, or a view member's loan.
     assert transfer_problem(MIRLoanTransfer(0, path, MIR_STATIC, path), params, result) == source
     assert transfer_problem(MIRLoanTransfer(0, path, 1), params, result) == source
-    owned = (*params[:2], MIRParameterBinding(params[2].type, ParamPassing.VALUE, False))
+    owned = (*params[:2], bound(params[2].type, ParamPassing.VALUE))
     assert transfer_problem(MIRLoanTransfer(0, path, 2), owned, result) == source
     assert summary_problem(replace(copied, transfers=frozenset({MIRLoanTransfer(0, (), 2)}))) == holder
 

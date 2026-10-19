@@ -1938,11 +1938,17 @@ A THIR body becomes MIR in one pass. The lowering (`_Lowering`,
 and builds the body's MIR as it goes: each expression and each statement is
 a `Fragment` (`tpyc/mir/emit.py`) -- its statements in order, the blocks a
 select, a short-circuit or a loop opens, the slots and regions it adds, the
-backings and borrow-operation points it publishes, and its value in the form
-its consumer asked for (a slot, a place or an rvalue; an owned leaf's
-consumer names the form, `_Use`). That value is one `MIRValue`, and every
-holder of a slot or place value comes from `Fragment.holder_of` (a call
-result's holder is still built by its call kind); a call's write,
+backings and borrow-operation points it publishes, and its value. That value
+is one `MIRValue` -- a slot, a place or an rvalue, which states its shape --
+in the form its producer has: a place expression is lowered once
+(`_Lowering.place`), a fresh value is storage, a call states its result's
+shape. The consumer converts it: `Fragment.lend` (a holder), `sink` (the
+rvalue a destination write takes, a copy's raise flag decided there),
+`view` (a view holder) or `materialize` (storage of the full expression's
+region). A parameter binds once (`call_contract.parameter_binding`: its
+class, holding and loan access, read by the body's parameter slots,
+summaries, stubs and constructor definitions), and calls and constructors
+bind arguments through one ladder (`_Lowering.argument`); a call's write,
 return and transfer paths are walked by one predicate,
 `call_contract.call_path_problem`, which the lowering and the validator
 share. Fragments are built bottom-up and spliced

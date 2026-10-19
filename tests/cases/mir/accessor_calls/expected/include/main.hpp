@@ -55,7 +55,7 @@ int32_t alias_survives_growth(Counter& c);
 int32_t twin_mutable(Counter& c);
 // def twin_readonly(c: readonly[Counter]) -> int32:  # tpyc: mir(certified)
 int32_t twin_readonly(const Counter& c);
-// def twin_via(c: Counter) -> int32:  # tpyc: mir(uncovered /^call needs borrowed record name$/)
+// def twin_via(c: Counter) -> int32:  # tpyc: mir(uncovered /^owned result from a borrowed call$/)
 int32_t twin_via(const Counter& c);
 // def twin_items_grow(c: Counter) -> int32:  # tpyc: mir(conflict /replacement/)
 int32_t twin_items_grow(Counter& c);

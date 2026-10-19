@@ -16,7 +16,7 @@ from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
 from ..typesys import BOOL, INT32, STR, NominalType, OwnType, RefType, VoidType, return_representation
 from .call_contract import (
-    MIRCallSummary, MIRParameterBinding, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, stub_summary,
+    MIRCallSummary, MIRParameterWrite, MIRReturnOrigin, MIRSummaryState, stub_summary,
 )
 from .coverage import call_write_places
 from .collect import MIRBodyVerdict, MIRVerdictStatus, MIRWriteKind, analyze_body, line_facts
@@ -37,7 +37,7 @@ from .storage import analyze_storage, storage_destination
 from .storage_evidence import certify_storage_origins
 from .summaries import summarize_function
 from .validate import MIRPresenceError, MIRValidationError, body_may_raise, validate_function
-from .testutil import borrowed_shape, cursor_shape, leaf_shape, owned_shape, region_shape
+from .testutil import bindings_of, borrowed_shape, bound, cursor_shape, leaf_shape, owned_shape, region_shape
 
 B = MIRBodyId("containers", "effects")
 CELL = NominalType("Cell", _module_qname="containers.Cell")
@@ -378,7 +378,7 @@ def element_call(result: MIRSlot, argument: MIRSlot, record: bool = True) -> MIR
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("containers", "first"), signature)
     # A record argument is lent as the record it is.
     lent = th.THIRBorrowedRecord(argument.type, False) if argument.shape.holding is MIRHolding.POINTER else None
-    summary = MIRCallSummary(callee, (MIRParameterBinding(argument.type, ParamPassing.MUT_REF, False, lent),),
+    summary = MIRCallSummary(callee, (bound(argument.type, ParamPassing.MUT_REF, ref=lent),),
                              frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     return body((argument, result, scalar(2)), MIRBlock(bid(0), (assign(1, MIRCall(summary, (sid(0),))),
                                                              assign(2, MIRConstant(0))), MIRReturn(sid(2))))
@@ -573,7 +573,7 @@ def grow_body(compiled) -> MIRFunction:
         assign(2, MIRConstant(1)),
         assign(1, MIRConstruct((sid(2),)), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
         MIRCallStmt(call)), MIRReturn(None)),), bid(0), records=(record,), call_summaries=(call.summary,),
-        exceptional_exits=True)
+        exceptional_exits=True, parameter_bindings=bindings_of(decl))
 
 
 def test_a_callee_shape_write_is_published_and_reaches_the_caller(compiled) -> None:
@@ -629,7 +629,8 @@ def test_an_element_result_returns_as_the_whole_parameter(compiled) -> None:
     fn = MIRFunction(B, returned, (ps, result_slot), (MIRBlock(bid(0), (assign(1, MIRBorrow(place(0, ELEMENTS))),),
                                                      MIRReturn(sid(1))),), bid(0),
                      records=(MIRRecordLayout(cell, (MIRField(MIRFieldId(cell, "value"), INT32),), True, True),),
-                     borrowed_result=decl.resolved_callee.signature.borrowed_result)
+                     borrowed_result=decl.resolved_callee.signature.borrowed_result,
+                     parameter_bindings=bindings_of(decl))
     result = summarize_function(decl, fn, definitions(compiled))
     assert result.state is MIRSummaryState.KNOWN, result.reason
     assert result.summary.returns == {MIRReturnOrigin(0)} and result.summary.writes == frozenset()
@@ -649,7 +650,7 @@ def test_an_element_field_write_keeps_the_summary_opaque(compiled) -> None:
         assign(2, MIRConstant(3)), assign(0, MIRRead(place(2)), ELEMENTS, field),
         assign(1, MIRBorrow(place(0, ELEMENTS)))), MIRReturn(sid(1))),), bid(0),
         records=(MIRRecordLayout(cell, (field,), True, True),), exceptional_exits=True,
-        borrowed_result=decl.resolved_callee.signature.borrowed_result)
+        borrowed_result=decl.resolved_callee.signature.borrowed_result, parameter_bindings=bindings_of(decl))
     result = summarize_function(decl, fn, definitions(compiled))
     assert result.state is MIRSummaryState.OPAQUE and result.reason == "summary unsupported write origin"
 
@@ -683,7 +684,7 @@ def test_a_container_field_shape_write_is_published_with_its_field(compiled) -> 
         assign(1, MIRConstruct((sid(2),)), write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)),
         assign(3, MIRBorrow(place(0, MIRDeref(), items))), MIRCallStmt(call)), MIRReturn(None)),), bid(0),
         records=(record, MIRRecordLayout(bag, (items,), True, True)), call_summaries=(call.summary,),
-        exceptional_exits=True)
+        exceptional_exits=True, parameter_bindings=bindings_of(decl))
     defs = _WithBag(definitions(compiled), MIRRecordLayout(bag, (items,), True, True))
     result = summarize_function(decl, fn, defs)
     assert result.state is MIRSummaryState.KNOWN, result.reason

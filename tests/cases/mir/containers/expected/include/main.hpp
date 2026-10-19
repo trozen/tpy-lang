@@ -74,6 +74,8 @@ std::span<const int32_t> tail(const std::vector<int32_t>& xs);
 int32_t span_first(std::span<int32_t> s);
 // def span_sum(s: Span[int32]) -> int32:  # tpyc: mir(covered)
 int32_t span_sum(std::span<int32_t> s);
+// def span_pass(s: Span[int32]) -> int32:  # tpyc: mir(covered)
+int32_t span_pass(std::span<int32_t> s);
 // def span_write(xs: list[int32]) -> int32:  # tpyc: mir(covered)
 int32_t span_write(std::vector<int32_t>& xs);
 // def span_write_in_loop(xs: list[int32], flag: bool) -> int32:  # tpyc: mir(conflict /replacement/)

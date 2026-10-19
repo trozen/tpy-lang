@@ -325,6 +325,127 @@ int32_t rvalue_temp() {
     return ::tpyapp::main::take_point(__tmp_1);
 }
 
+// def lent_big(p: BigP) -> int:
+//     return p.x
+::tpy::BigInt lent_big(const BigP& p) {
+    return p.x;
+}
+
+// def take_big(p: BigP) -> bool:
+//     return p.x > 0
+bool take_big(const BigP& p) {
+    return (p.x > 0);
+}
+
+// # returned: the BigInt operand of the lent argument temporary ends with the temporary's initialization
+// def lent_temp_return() -> int:  # tpyc: mir(covered)
+//     return lent_big(BigP(2))
+::tpy::BigInt lent_temp_return() {
+    BigP __tmp_1 = BigP(::tpy::BigInt(2));
+    return ::tpyapp::main::lent_big(__tmp_1);
+}
+
+// # bound: the same operand region at a declaration
+// def lent_temp_bind() -> int:  # tpyc: mir(covered)
+//     y = lent_big(BigP(2))
+//     return y
+::tpy::BigInt lent_temp_bind() {
+    BigP __tmp_1 = BigP(::tpy::BigInt(2));
+    ::tpy::BigInt y = ::tpyapp::main::lent_big(__tmp_1);
+    return y;
+}
+
+// # if condition: the same operand region at the condition's initialization
+// def lent_temp_cond() -> int:  # tpyc: mir(covered)
+//     if lent_big(BigP(5)) > 1:
+//         return 1
+//     return 0
+::tpy::BigInt lent_temp_cond() {
+    BigP __tmp_1 = BigP(::tpy::BigInt(5));
+    if ((::tpyapp::main::lent_big(__tmp_1) > 1)) {
+        return ::tpy::BigInt(1);
+    }
+    return ::tpy::BigInt(0);
+}
+
+// # in a lexical scope: the operand ends with the initialization, not with the if body
+// def lent_temp_scoped(c: bool) -> int:  # tpyc: mir(covered)
+//     if c:
+//         return lent_big(BigP(2))
+//     return 0
+::tpy::BigInt lent_temp_scoped(bool c) {
+    if (c) {
+        BigP __tmp_1 = BigP(::tpy::BigInt(2));
+        return ::tpyapp::main::lent_big(__tmp_1);
+    }
+    return ::tpy::BigInt(0);
+}
+
+// # short-circuit anchor: the temporary is built inside the enclosing full expression
+// def lent_temp_and(c: bool) -> bool:  # tpyc: mir(covered)
+//     return c and take_big(BigP(2))
+bool lent_temp_and(bool c) {
+    std::optional<BigP> __tmp_1;
+    return (c && (__tmp_1.emplace(BigP(::tpy::BigInt(2))), ::tpyapp::main::take_big((*__tmp_1))));
+}
+
+// # select anchor: the same inside the chosen arm
+// def lent_temp_select(c: bool) -> bool:  # tpyc: mir(covered)
+//     return take_big(BigP(2)) if c else False
+bool lent_temp_select(bool c) {
+    std::optional<BigP> __tmp_1;
+    return ((c) ? (__tmp_1.emplace(BigP(::tpy::BigInt(2))), ::tpyapp::main::take_big((*__tmp_1))) : (false));
+}
+
+// def made(t: str) -> str:
+//     return t
+std::string made(std::string_view t) {
+    return std::string(t);
+}
+
+// def view_len(v: ViewP) -> int32:
+//     return len(v.s)
+int32_t view_len(const ViewP& v) {
+    return ::tpy::__len__(v.s);
+}
+
+// # refused: the temporary's view operand is a call result, not a stable operand
+// def lent_view_temp(t: str) -> int32:  # tpyc: mir(uncovered /named temporary needs stable scalar operands/)
+//     y = view_len(ViewP(made(t)))
+//     return y
+int32_t lent_view_temp(std::string_view t) {
+    ViewP __tmp_1 = ViewP(::tpyapp::main::made(t));
+    int32_t y = ::tpyapp::main::view_len(__tmp_1);
+    return y;
+}
+
+// def make(k: int32) -> Own[Gauge]:
+//     return Gauge(k)
+Gauge make(int32_t k) {
+    return Gauge(k);
+}
+
+// # temporary receiver: the constructed record is materialized and lent mutably as parameter 0
+// def temp_ctor_bump(k: int32) -> int32:  # tpyc: mir(covered)
+//     return Gauge(k).bump()
+int32_t temp_ctor_bump(int32_t k) {
+    return Gauge(k).bump();
+}
+
+// # temporary receiver: an `Own[Gauge]` call result takes the same materialize + lend route
+// def temp_call_bump(k: int32) -> int32:  # tpyc: mir(covered)
+//     return make(k).bump()
+int32_t temp_call_bump(int32_t k) {
+    return ::tpyapp::main::make(k).bump();
+}
+
+// # refused: a readonly method on a constructed temporary: the receiver is emitted mutable, the binding lends it readonly
+// def temp_ctor_read(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver access disagrees with its binding$/)
+//     return Gauge(k).read()
+int32_t temp_ctor_read(int32_t k) {
+    return Gauge(k).read();
+}
+
 // # free function: `saved` aliases the loop's hoisted `p`, whose storage the next iteration's rebind replaces
 // def conditional_hoist() -> None:  # tpyc: mir(conflict /^replacement$/)
 //     saved = Point(0, 0)
@@ -494,6 +615,16 @@ __gen_countdown countdown(::tpy::BigInt n) {
 //     print()
 //     print("bytes_literal:", bytes_literal())
 //     print("rvalue_temp:", rvalue_temp())
+//     print("lent_temp_return:", lent_temp_return())
+//     print("lent_temp_bind:", lent_temp_bind())
+//     print("lent_temp_cond:", lent_temp_cond())
+//     print("lent_temp_scoped:", lent_temp_scoped(True), lent_temp_scoped(False))
+//     print("lent_temp_and:", lent_temp_and(True), lent_temp_and(False))
+//     print("lent_temp_select:", lent_temp_select(True), lent_temp_select(False))
+//     print("lent_view_temp:", lent_view_temp("abc"))
+//     print("temp_ctor_bump:", temp_ctor_bump(1))
+//     print("temp_call_bump:", temp_call_bump(2))
+//     print("temp_ctor_read:", temp_ctor_read(3))
 //     conditional_hoist()
 //     print("view_local:", view_local("vl"))
 //     r = Rec("x", 2)
@@ -554,6 +685,16 @@ void main() {
     std::cout << "\n" << ::tpy::check_signals;
     std::cout << "bytes_literal:" << " " << ::tpy::BytesPrinter(::tpyapp::main::bytes_literal()) << "\n" << ::tpy::check_signals;
     std::cout << "rvalue_temp:" << " " << ::tpyapp::main::rvalue_temp() << "\n" << ::tpy::check_signals;
+    std::cout << "lent_temp_return:" << " " << ::tpyapp::main::lent_temp_return() << "\n" << ::tpy::check_signals;
+    std::cout << "lent_temp_bind:" << " " << ::tpyapp::main::lent_temp_bind() << "\n" << ::tpy::check_signals;
+    std::cout << "lent_temp_cond:" << " " << ::tpyapp::main::lent_temp_cond() << "\n" << ::tpy::check_signals;
+    std::cout << "lent_temp_scoped:" << " " << ::tpyapp::main::lent_temp_scoped(true) << " " << ::tpyapp::main::lent_temp_scoped(false) << "\n" << ::tpy::check_signals;
+    std::cout << "lent_temp_and:" << " " << ::tpy::print_bool(::tpyapp::main::lent_temp_and(true)) << " " << ::tpy::print_bool(::tpyapp::main::lent_temp_and(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "lent_temp_select:" << " " << ::tpy::print_bool(::tpyapp::main::lent_temp_select(true)) << " " << ::tpy::print_bool(::tpyapp::main::lent_temp_select(false)) << "\n" << ::tpy::check_signals;
+    std::cout << "lent_view_temp:" << " " << ::tpyapp::main::lent_view_temp("abc") << "\n" << ::tpy::check_signals;
+    std::cout << "temp_ctor_bump:" << " " << ::tpyapp::main::temp_ctor_bump(1) << "\n" << ::tpy::check_signals;
+    std::cout << "temp_call_bump:" << " " << ::tpyapp::main::temp_call_bump(2) << "\n" << ::tpy::check_signals;
+    std::cout << "temp_ctor_read:" << " " << ::tpyapp::main::temp_ctor_read(3) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::conditional_hoist();
     std::cout << "view_local:" << " " << ::tpyapp::main::view_local("vl") << "\n" << ::tpy::check_signals;
     Rec r = Rec("x", 2);

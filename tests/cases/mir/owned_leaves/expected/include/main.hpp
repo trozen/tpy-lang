@@ -9,6 +9,9 @@ namespace tpyapp::main {
 
 struct Rec;
 struct Point;
+struct BigP;
+struct ViewP;
+struct Gauge;
 
 extern std::string G;
 extern ::tpy::BigInt N;
@@ -102,6 +105,36 @@ void print_call(std::string_view s);
 int32_t take_point(const Point& p);
 // def rvalue_temp() -> int32:  # tpyc: mir(certified)
 int32_t rvalue_temp();
+// def lent_big(p: BigP) -> int:
+::tpy::BigInt lent_big(const BigP& p);
+// def take_big(p: BigP) -> bool:
+bool take_big(const BigP& p);
+// def lent_temp_return() -> int:  # tpyc: mir(covered)
+::tpy::BigInt lent_temp_return();
+// def lent_temp_bind() -> int:  # tpyc: mir(covered)
+::tpy::BigInt lent_temp_bind();
+// def lent_temp_cond() -> int:  # tpyc: mir(covered)
+::tpy::BigInt lent_temp_cond();
+// def lent_temp_scoped(c: bool) -> int:  # tpyc: mir(covered)
+::tpy::BigInt lent_temp_scoped(bool c);
+// def lent_temp_and(c: bool) -> bool:  # tpyc: mir(covered)
+bool lent_temp_and(bool c);
+// def lent_temp_select(c: bool) -> bool:  # tpyc: mir(covered)
+bool lent_temp_select(bool c);
+// def made(t: str) -> str:
+std::string made(std::string_view t);
+// def view_len(v: ViewP) -> int32:
+int32_t view_len(const ViewP& v);
+// def lent_view_temp(t: str) -> int32:  # tpyc: mir(uncovered /named temporary needs stable scalar operands/)
+int32_t lent_view_temp(std::string_view t);
+// def make(k: int32) -> Own[Gauge]:
+Gauge make(int32_t k);
+// def temp_ctor_bump(k: int32) -> int32:  # tpyc: mir(covered)
+int32_t temp_ctor_bump(int32_t k);
+// def temp_call_bump(k: int32) -> int32:  # tpyc: mir(covered)
+int32_t temp_call_bump(int32_t k);
+// def temp_ctor_read(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver access disagrees with its binding$/)
+int32_t temp_ctor_read(int32_t k);
 // def conditional_hoist() -> None:  # tpyc: mir(conflict /^replacement$/)
 void conditional_hoist();
 // def view_local(s: str) -> int32:  # tpyc: mir(covered)
@@ -172,6 +205,61 @@ inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
     return os;
 }
 
+// class BigP:
+struct BigP {
+    // x: int
+    ::tpy::BigInt x;
+
+    // def __init__(self, x: int) -> None:
+    BigP() = default;
+    explicit BigP(const ::tpy::BigInt& x);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.BigP";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const BigP& obj) {
+    ::tpy::print_object_default(os, "BigP", obj);
+    return os;
+}
+
+// class ViewP:
+struct ViewP {
+    // s: StrView
+    std::string_view s;
+
+    // def __init__(self, s: str) -> None:
+    ViewP() = default;
+    explicit ViewP(std::string_view s);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.ViewP";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const ViewP& obj) {
+    ::tpy::print_object_default(os, "ViewP", obj);
+    return os;
+}
+
+// class Gauge:
+struct Gauge {
+    // n: int32
+    int32_t n;
+
+    // def __init__(self, n: int32) -> None:
+    Gauge() = default;
+    explicit Gauge(int32_t n);
+
+    // def bump(self) -> int32:
+    int32_t bump();
+
+    // @readonly
+    // def read(self) -> int32:
+    int32_t read() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Gauge";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Gauge& obj) {
+    ::tpy::print_object_default(os, "Gauge", obj);
+    return os;
+}
+
 // def countdown(n: int) -> Iterator[int]:  # tpyc: mir(uncovered /^resumable body$/)
 struct __gen_countdown : public ::tpy::next_iter_mixin<__gen_countdown, ::tpy::BigInt> {
     ::tpy::frame_state __state;
@@ -220,5 +308,32 @@ inline bool Rec::positive_x(std::string_view s) const {
 inline Point::Point(int32_t x, int32_t y)
     : x(x),
       y(y) {}
+
+// def __init__(self, x: int) -> None:
+//     self.x = x
+inline BigP::BigP(const ::tpy::BigInt& x) : x(x) {}
+
+// def __init__(self, s: str) -> None:
+//     self.s = s
+inline ViewP::ViewP(std::string_view s) : s(s) {}
+
+// def __init__(self, n: int32) -> None:
+//     self.n = n
+inline Gauge::Gauge(int32_t n) : n(n) {}
+
+// def bump(self) -> int32:
+//     self.n += 1
+//     return self.n
+inline int32_t Gauge::bump() {
+    this->n = ::tpy::add_check<int32_t>(this->n, 1);
+    return this->n;
+}
+
+// @readonly
+// def read(self) -> int32:
+//     return self.n
+inline int32_t Gauge::read() const {
+    return this->n;
+}
 void __tpy_init();
 } // namespace tpyapp::main

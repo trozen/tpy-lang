@@ -2,7 +2,7 @@
 # shapes, and the record shapes that reach the certified and conflict rungs.
 from typing import Iterator
 
-from tpy import int32, char, String, Own, StrView
+from tpy import int32, char, readonly, String, Own, StrView
 
 G: str = "glob"
 N: int = 7
@@ -249,6 +249,111 @@ def rvalue_temp() -> int32:  # tpyc: mir(certified)
     return take_point(Point(7, 0))
 
 
+class BigP:
+    x: int
+
+    def __init__(self, x: int) -> None:
+        self.x = x
+
+
+def lent_big(p: BigP) -> int:
+    return p.x
+
+
+def take_big(p: BigP) -> bool:
+    return p.x > 0
+
+
+# returned: the BigInt operand of the lent argument temporary ends with the temporary's initialization
+def lent_temp_return() -> int:  # tpyc: mir(covered)
+    return lent_big(BigP(2))
+
+
+# bound: the same operand region at a declaration
+def lent_temp_bind() -> int:  # tpyc: mir(covered)
+    y = lent_big(BigP(2))
+    return y
+
+
+# if condition: the same operand region at the condition's initialization
+def lent_temp_cond() -> int:  # tpyc: mir(covered)
+    if lent_big(BigP(5)) > 1:
+        return 1
+    return 0
+
+
+# in a lexical scope: the operand ends with the initialization, not with the if body
+def lent_temp_scoped(c: bool) -> int:  # tpyc: mir(covered)
+    if c:
+        return lent_big(BigP(2))
+    return 0
+
+
+# short-circuit anchor: the temporary is built inside the enclosing full expression
+def lent_temp_and(c: bool) -> bool:  # tpyc: mir(covered)
+    return c and take_big(BigP(2))
+
+
+# select anchor: the same inside the chosen arm
+def lent_temp_select(c: bool) -> bool:  # tpyc: mir(covered)
+    return take_big(BigP(2)) if c else False
+
+
+class ViewP:
+    s: StrView
+
+    def __init__(self, s: str) -> None:
+        self.s = s
+
+
+def made(t: str) -> str:
+    return t
+
+
+def view_len(v: ViewP) -> int32:
+    return len(v.s)
+
+
+# refused: the temporary's view operand is a call result, not a stable operand
+def lent_view_temp(t: str) -> int32:  # tpyc: mir(uncovered /named temporary needs stable scalar operands/)
+    y = view_len(ViewP(made(t)))
+    return y
+
+
+class Gauge:
+    n: int32
+
+    def __init__(self, n: int32) -> None:
+        self.n = n
+
+    def bump(self) -> int32:
+        self.n += 1
+        return self.n
+
+    @readonly
+    def read(self) -> int32:
+        return self.n
+
+
+def make(k: int32) -> Own[Gauge]:
+    return Gauge(k)
+
+
+# temporary receiver: the constructed record is materialized and lent mutably as parameter 0
+def temp_ctor_bump(k: int32) -> int32:  # tpyc: mir(covered)
+    return Gauge(k).bump()
+
+
+# temporary receiver: an `Own[Gauge]` call result takes the same materialize + lend route
+def temp_call_bump(k: int32) -> int32:  # tpyc: mir(covered)
+    return make(k).bump()
+
+
+# refused: a readonly method on a constructed temporary: the receiver is emitted mutable, the binding lends it readonly
+def temp_ctor_read(k: int32) -> int32:  # tpyc: mir(uncovered /^call receiver access disagrees with its binding$/)
+    return Gauge(k).read()
+
+
 # free function: `saved` aliases the loop's hoisted `p`, whose storage the next iteration's rebind replaces
 def conditional_hoist() -> None:  # tpyc: mir(conflict /^replacement$/)
     saved = Point(0, 0)
@@ -376,6 +481,16 @@ def main() -> None:
     print()
     print("bytes_literal:", bytes_literal())
     print("rvalue_temp:", rvalue_temp())
+    print("lent_temp_return:", lent_temp_return())
+    print("lent_temp_bind:", lent_temp_bind())
+    print("lent_temp_cond:", lent_temp_cond())
+    print("lent_temp_scoped:", lent_temp_scoped(True), lent_temp_scoped(False))
+    print("lent_temp_and:", lent_temp_and(True), lent_temp_and(False))
+    print("lent_temp_select:", lent_temp_select(True), lent_temp_select(False))
+    print("lent_view_temp:", lent_view_temp("abc"))
+    print("temp_ctor_bump:", temp_ctor_bump(1))
+    print("temp_call_bump:", temp_call_bump(2))
+    print("temp_ctor_read:", temp_ctor_read(3))
     conditional_hoist()
     print("view_local:", view_local("vl"))
     r = Rec("x", 2)

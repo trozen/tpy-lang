@@ -20,8 +20,11 @@ from .nodes import (
     MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements,
 )
 from .region_flow import MIRRegionFlow
+from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, value_class
+from ..type_def_registry import ParamPassing
 from ..typesys import TpyType
+from .call_contract import MIRParameterBinding, parameter_binding
 from .shapes import place_shape
 from .coverage import PAYLOAD_RECORD
 from .validate import statement_reads
@@ -34,6 +37,24 @@ def _class(typ: TpyType, cls: MIRClass | None) -> MIRClass:
 
 
 _SHAPE_FIELDS = frozenset({"type", "cls", "holding", "readonly", "members"})
+
+
+def bound(typ: TpyType, passing: ParamPassing, readonly: bool = False,
+          ref: th.THIRBorrowedRecord | None = None) -> MIRParameterBinding:
+    """The binding `parameter_binding` derives for a hand-built summary's
+    parameter of declared type `typ` (at access `readonly` where THIR
+    publishes no fact)."""
+    binding = parameter_binding(th.THIRParam("", typ, borrowed_record=ref, passing=passing), constructor=False,
+                                declared_readonly=readonly)
+    assert isinstance(binding, MIRParameterBinding), binding
+    return binding
+
+
+def bindings_of(fn: th.THIRFunction) -> tuple[MIRParameterBinding, ...]:
+    """The parameter bindings a lowering of `fn` records, receiver first (a hand-built body's)."""
+    bindings = tuple(parameter_binding(p, constructor=False) for p in th.effective_params(fn))
+    assert all(isinstance(b, MIRParameterBinding) for b in bindings), bindings
+    return bindings
 
 
 def reslot(slot: MIRSlot, **changes: object) -> MIRSlot:

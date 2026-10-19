@@ -33,6 +33,16 @@ expression_arguments: 1
 print_call: pc
 bytes_literal: b'ab'
 rvalue_temp: 7
+lent_temp_return: 2
+lent_temp_bind: 2
+lent_temp_cond: 1
+lent_temp_scoped: 2 0
+lent_temp_and: True False
+lent_temp_select: True False
+lent_view_temp: 3
+temp_ctor_bump: 2
+temp_call_bump: 3
+temp_ctor_read: 3
 conditional_hoist: 4 12
 view_local: 1
 str_field: True

@@ -469,6 +469,17 @@ int32_t span_sum(std::span<int32_t> s) {
     return t;
 }
 
+// # free function: a Span local and a Span parameter lent whole at a callee's Span parameter
+// def span_pass(s: Span[int32]) -> int32:  # tpyc: mir(covered)
+//     ys = [1, 2, 3]
+//     w = ys[0:2]
+//     return span_sum(w) + span_sum(s)
+int32_t span_pass(std::span<int32_t> s) {
+    std::array<int32_t, 3> ys = {1, 2, 3};
+    std::span<int32_t> w = ::tpy::list_slice(ys, ::tpy::BasicSlice{0, 2});
+    return (::tpy::add_check<int32_t>(::tpyapp::main::span_sum(w), ::tpyapp::main::span_sum(s)));
+}
+
 // # free function: a write through a mutable Span of a list parameter
 // def span_write(xs: list[int32]) -> int32:  # tpyc: mir(covered)
 //     s = xs[0:2]
@@ -761,6 +772,7 @@ int32_t nested(const std::vector<std::vector<int32_t>>& xss) {
 //     print("tail:", t[0])
 //     print("span_first:", span_first(sp))
 //     print("span_sum:", span_sum(sp2))
+//     print("span_pass:", span_pass(sp2))
 //     c = comp(xs)
 //     print("comp:", c[0])
 //     xss = [[8]]
@@ -850,6 +862,7 @@ void main() {
     std::cout << "tail:" << " " << ::tpy::__getitem__(t, 0) << "\n" << ::tpy::check_signals;
     std::cout << "span_first:" << " " << ::tpyapp::main::span_first(sp) << "\n" << ::tpy::check_signals;
     std::cout << "span_sum:" << " " << ::tpyapp::main::span_sum(sp2) << "\n" << ::tpy::check_signals;
+    std::cout << "span_pass:" << " " << ::tpyapp::main::span_pass(sp2) << "\n" << ::tpy::check_signals;
     std::vector<int32_t> c = ::tpyapp::main::comp(xs);
     std::cout << "comp:" << " " << ::tpy::__getitem__(c, 0) << "\n" << ::tpy::check_signals;
     std::vector<std::vector<int32_t>> xss = {{8}};

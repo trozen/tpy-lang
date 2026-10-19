@@ -11,7 +11,7 @@ from ..type_def_registry import ParamPassing
 from ..typesys import INT32, NominalType, RefType
 from ..mir_workspace import MIRCallWorkspace, analyze_call_workspace
 from .call_contract import (
-    MIRCallSummary, MIRParameterBinding, MIRReturnOrigin, MIRSummaryState, result_problem, summary_problem,
+    MIRCallSummary, MIRReturnOrigin, MIRSummaryState, result_problem, summary_problem,
 )
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies, resolve_call_returns
@@ -27,7 +27,7 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .summaries import summarize_function
 from .validate import MIRValidationError, validate_function
-from .testutil import Reference, execute, reslot
+from .testutil import Reference, bound, execute, reslot
 from .test_scope_inspection import scoped_loop
 from .test_retention import CELL, SAVED
 
@@ -336,7 +336,7 @@ def test_call_results_are_live_alias_holders(workspace: MIRCallWorkspace, name: 
 
 
 @pytest.mark.parametrize("name, reason", [
-    ("temporary", "call needs borrowed record name"),
+    ("temporary", "temporary needs full-expression boundary"),
     ("recursive", "recursive or recursion-dependent call"),
     ("tuple_result", "unsupported return type"),
     ("optional_result", "unsupported return type"),
@@ -438,7 +438,7 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
     ref = THIRBorrowedRecord(CELL, False)
     callee = THIRResolvedCallee(THIRFunctionIdentity("retention", "identity"),
                                 THIRCallableSignature((RefType(CELL),), RefType(CELL), ref, (ParamPassing.MUT_REF,)))
-    summary = MIRCallSummary(callee, (MIRParameterBinding(CELL, ParamPassing.MUT_REF, False, ref),),
+    summary = MIRCallSummary(callee, (bound(CELL, ParamPassing.MUT_REF, ref=ref),),
                              frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     blocks = tuple(replace(block, statements=tuple(
         replace(stmt, value=MIRCall(summary, (stmt.value.source,)))

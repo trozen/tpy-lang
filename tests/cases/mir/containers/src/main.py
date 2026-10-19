@@ -327,6 +327,13 @@ def span_sum(s: Span[int32]) -> int32:  # tpyc: mir(covered)
     return t
 
 
+# free function: a Span local and a Span parameter lent whole at a callee's Span parameter
+def span_pass(s: Span[int32]) -> int32:  # tpyc: mir(covered)
+    ys = [1, 2, 3]
+    w = ys[0:2]
+    return span_sum(w) + span_sum(s)
+
+
 # free function: a write through a mutable Span of a list parameter
 def span_write(xs: list[int32]) -> int32:  # tpyc: mir(covered)
     s = xs[0:2]
@@ -524,6 +531,7 @@ def main() -> None:  # tpyc: mir(uncovered /^constructor container field$/)
     print("tail:", t[0])
     print("span_first:", span_first(sp))
     print("span_sum:", span_sum(sp2))
+    print("span_pass:", span_pass(sp2))
     c = comp(xs)
     print("comp:", c[0])
     xss = [[8]]
