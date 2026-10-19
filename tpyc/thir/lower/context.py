@@ -300,10 +300,6 @@ class SinkForm(Enum):
     # closure's borrow-form trailing return, so the direct `return body;`
     # needs no element conversion.
     LAMBDA_BTUPLE_RET = auto()
-    # The pure-literal binop FOLD, admitted where no slot target is threaded
-    # into the render. Slot-threaded positions (decl init / arg / return)
-    # render the FULL operator expression and keep rejecting it.
-    LITERAL_FOLD = auto()
     # A BORROW-returning ptr-repr Optional result landing BARE: it already
     # IS the `T*` the slot or binding holds (`g = find(xs, k);`,
     # `Point* r1 = get_or_none(true, p);`). Every other consumer of such a
@@ -386,10 +382,6 @@ _ONLY_BTUPLE_SLOT: frozenset[SinkForm] = frozenset({SinkForm.BTUPLE_SLOT})
 _ONLY_INDIRECT_READ: frozenset[SinkForm] = frozenset({SinkForm.INDIRECT_READ})
 _ONLY_FRAME_FACTORY: frozenset[SinkForm] = frozenset({SinkForm.FRAME_FACTORY})
 _ONLY_CTX_MANAGER: frozenset[SinkForm] = frozenset({SinkForm.CTX_MANAGER})
-# The FOLD end of the 3-valued literal axis. Which sinks carry it is
-# enumerated, never derived from `slot_target is None`: a target-less sink
-# that did not vet the fold renders the full operator, so the two differ.
-_ONLY_LITERAL_FOLD: frozenset[SinkForm] = frozenset({SinkForm.LITERAL_FOLD})
 _ONLY_PTR_OPT_PASSTHROUGH: frozenset[SinkForm] = frozenset(
     {SinkForm.PTR_OPT_PASSTHROUGH})
 _ONLY_PTR_OPT_LIFT: frozenset[SinkForm] = frozenset({SinkForm.PTR_OPT_LIFT})
@@ -469,7 +461,7 @@ _POS_FORMS: dict[SinkPos, frozenset[SinkForm]] = {
     SinkPos.GLOBAL_SLOT_WRITE: _ONLY_PTR_OPT_PASSTHROUGH,
     SinkPos.UNPACK_SOURCE: _ONLY_TUPLE_SOURCE,
     SinkPos.ALIAS_BIND: _ONLY_INDIRECT_READ,
-    SinkPos.OPERAND: _ONLY_LITERAL_FOLD | _TRANSIENT_OK,
+    SinkPos.OPERAND: _TRANSIENT_OK,
     SinkPos.LAMBDA_RETURN: _ONLY_LAMBDA_BTUPLE_RET,
     SinkPos.WALRUS_TARGET: _ONLY_TUPLE_SOURCE,
     SinkPos.FRAME_SLOT_WRITE: _ONLY_TUPLE_SOURCE,

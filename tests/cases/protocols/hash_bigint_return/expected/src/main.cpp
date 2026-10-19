@@ -36,8 +36,8 @@ void main() {
     Key e = Key(::tpy::BigInt(-1));
     std::cout << ::tpy::print_bool((::tpy::__hash__(c) == ::tpy::__hash__(e))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_bool((::tpy::__hash__(c) == ::tpy::__hash__(a))) << "\n" << ::tpy::check_signals;
-    Key big = Key(((::tpy::BigInt(10)).pow(::tpy::BigInt(30))));
-    Key big2 = Key(((::tpy::BigInt(10)).pow(::tpy::BigInt(30))));
+    Key big = Key(::tpy::BigInt::from_str("1000000000000000000000000000000"));
+    Key big2 = Key(::tpy::BigInt::from_str("1000000000000000000000000000000"));
     std::cout << ::tpy::print_bool((::tpy::__hash__(big) == ::tpy::__hash__(big2))) << "\n" << ::tpy::check_signals;
 }
 

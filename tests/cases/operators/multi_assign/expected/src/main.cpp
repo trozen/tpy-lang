@@ -81,7 +81,7 @@ void main() {
     int32_t b = a;
     int32_t c = a;
     std::cout << a << " " << b << " " << c << "\n" << ::tpy::check_signals;
-    int32_t x = ::tpy::add_check<int32_t>(2, 3);
+    int32_t x = 5;
     int32_t y = x;
     std::cout << x << " " << y << "\n" << ::tpy::check_signals;
     a = 99;

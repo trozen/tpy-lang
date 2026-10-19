@@ -82,8 +82,8 @@ void __tpy_init() {
     std::cout << static_cast<int32_t>(~(z)) << "\n" << ::tpy::check_signals;
     z = 5;
     std::cout << static_cast<int32_t>(~(z)) << "\n" << ::tpy::check_signals;
-    big1 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | (((::tpy::BigInt(1)) << (::tpy::BigInt(50)))));
-    big2 = ((((::tpy::BigInt(1)) << (::tpy::BigInt(100)))) | ((::tpy::lshift_check<int32_t>(1, 25))));
+    big1 = ::tpy::BigInt::from_str("1267650600228230527396610048000");
+    big2 = ::tpy::BigInt::from_str("1267650600228229401496736759808");
     std::cout << ((((big1) & (big2))) >> (::tpy::BigInt(100))) << "\n" << ::tpy::check_signals;
     std::cout << ((((big1) | (big2))) >> (::tpy::BigInt(100))) << "\n" << ::tpy::check_signals;
     std::cout << ((((big1) ^ (big2))) >> (::tpy::BigInt(50))) << "\n" << ::tpy::check_signals;

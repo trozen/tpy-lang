@@ -694,7 +694,7 @@ void main() {
     std::cout << "ne" << " " << ::tpy::print_bool(::tpyapp::main::u_ne(x, y)) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt big53 = ::tpy::BigInt(static_cast<int64_t>(9007199254740993LL));
     double f53 = 9007199254740992.0;
-    ::tpy::BigInt p70 = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)));
+    ::tpy::BigInt p70 = ::tpy::BigInt::from_str("1180591620717411303424");
     double fp70 = (std::pow(2.0, 70));
     double inf = std::numeric_limits<double>::infinity();
     ::tpy::Union<double, ::tpy::BigInt> __tmp_13 = big53;

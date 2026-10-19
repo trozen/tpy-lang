@@ -62,7 +62,7 @@ void main() {
     std::cout << ::tpy::print_bool((::tpy::ordered_set<::tpystd::datetime::timedelta>({::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(1)), ::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(30))}).contains(::tpystd::datetime::timedelta(::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(0), ::tpy::BigInt(60))))) << "\n" << ::tpy::check_signals;
     {
         try {
-            ::tpystd::datetime::timedelta bad = ::tpystd::datetime::timedelta((::tpy::pow_check<int32_t>(10, 9)));
+            ::tpystd::datetime::timedelta bad = ::tpystd::datetime::timedelta(::tpy::BigInt(1000000000));
             std::cout << "no error" << "\n" << ::tpy::check_signals;
         } catch (const ::tpy::OverflowError&) {
             std::cout << "caught OverflowError" << "\n" << ::tpy::check_signals;

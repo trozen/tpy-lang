@@ -104,8 +104,7 @@ from ...typesys import (
 )
 from ...coercions import CoercionContext
 from ...modules.type_resolution import is_native_iterable
-from ...sema.literal_utils import fixed_int_literal_value_from_expr, numeric_literal_type
-from ...prescan import literal_constant
+from ...sema.literal_utils import fixed_int_literal_value_from_expr
 from ...storage_trace import MEMBER_PATH, path_root
 from ...type_def_registry import (
     is_varargs,
@@ -283,7 +282,8 @@ from .predicates import (
     _unbound_self_field_ok,
     _ptr_value_field_recv_ok,
     _user_deref_field_recv_ok,
-    _folded_neg_int_literal,
+    _int_constant_value,
+    _numeric_literal_type,
     _is_bytes_family,
     _is_type_param_slot,
     _open_tparam_pass_arg,
@@ -1012,9 +1012,9 @@ def _container_lit_elem_ok(e: TpyExpr, slot: 'TpyType | None',
         if (_eligible_wrapper_union(su, analyzer) is not None
                 and (isinstance(e, (TpyIntLiteral, TpyFloatLiteral,
                                     TpyBoolLiteral, TpyStrLiteral))
-                     # `-3`: the unary-minus literal fold renders the bare
-                     # negated token like the raw literal.
-                     or _folded_neg_int_literal(e, analyzer) is not None)):
+                     # `-3`, `2 * 3`: a constant lowers to the bare token
+                     # of its value, like the raw literal.
+                     or _int_constant_value(e, analyzer) is not None)):
             return True
         # `None` at a wrapper element slot is the monostate member
         # (`{std::monostate{}, true, 42}`), and a NESTED list/dict literal
@@ -4155,25 +4155,6 @@ def _literal_overload_pin_fires(e: 'TpyCall', fi, analyzer) -> bool:
     return any(i < len(params)
                and _literal_pin_slot(a, params[i].type, fi, analyzer) is not None
                for i, a in enumerate(e.args))
-
-
-def _numeric_literal_type(a: TpyExpr,
-                          analyzer) -> 'IntLiteralType | FloatLiteralType | None':
-    """Sema's literal type of a numeric argument (`numeric_literal_type`),
-    else None."""
-    return numeric_literal_type(analyzer.get_expr_type(_peel_coerce(a)))
-
-
-def _numeric_literal_value(a: TpyExpr, analyzer) -> 'int | float | None':
-    """The value of a numeric literal argument, read from its literal type
-    (`_numeric_literal_type`, any magnitude), when the argument is a
-    constant over literals (`1 + 2`, `+3`, `~0`) and so can render as that
-    value -- else None. A walrus or a conditional is not: rendering its
-    value would drop its effects."""
-    t = _numeric_literal_type(a, analyzer)
-    if t is None or literal_constant(_peel_coerce(a)) is None:
-        return None
-    return t.value
 
 
 def _literal_pin_slot(a: TpyExpr, ptype: 'TpyType | None',
@@ -8424,7 +8405,7 @@ def _char_pass_through_arg(a: TpyExpr, ptype: TpyType | None,
 
 def _int_literal_bigint_arg(a: TpyExpr, ptype: TpyType | None,
                             locals_: dict[str, TpyType], analyzer) -> bool:
-    """A bare int literal (or folded `-3`) into a BigInt param slot: sema
+    """An int constant (`10`, `-3`, `2 * 3`) into a BigInt param slot: sema
     leaves it unwrapped (unlike a fixed-int slot's range-checked
     `int_literal_to_fixed_int` coerce), and the slot threads
     into the literal render (`::tpy::BigInt(10)`) -- via the
@@ -8435,13 +8416,11 @@ def _int_literal_bigint_arg(a: TpyExpr, ptype: TpyType | None,
     pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(pt)))
     if not is_big_int_type(pt):
         return False
-    if isinstance(a, TpyIntLiteral) or _folded_neg_int_literal(a, analyzer):
+    if _int_constant_value(a, analyzer) is not None:
         return True
-    # A constant-valued int arithmetic expression (`2 ** 64 + 1`, `-2 ** 64`)
-    # keeps its IntLiteralType through sema but codegen renders it as an
-    # ordinary BigInt binop (each operand individually `::tpy::BigInt(..)`),
-    # not a single retyped literal. Lower it as a normal expression -- the
-    # BigInt slot is what makes the operands materialize wide.
+    # A literal operation the fold declines (`10 // 0`) keeps its
+    # IntLiteralType but lowers as the operator itself; the BigInt slot is
+    # what makes its operands materialize wide.
     if isinstance(a, (TpyBinOp, TpyUnaryOp)):
         at = analyzer.get_expr_type(a)
         return isinstance(at, IntLiteralType)
@@ -15884,6 +15863,8 @@ def _print_arg_ok(a: TpyExpr, locals_: dict[str, TpyType], analyzer) -> bool:
 
 # Sentinel for an f-string arg type outside the supported wrapper rows.
 _FSTRING_INELIGIBLE = object()
+# The runtime-BigInt row: std::format has no BigInt formatter.
+_FSTRING_BIGINT_WRAP = "({0}).to_string()"
 
 
 def _fstring_container_call_arg(a: TpyExpr, analyzer) -> bool:
@@ -15917,8 +15898,10 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
     spec on double/float directly); the 8-bit-int and enum casts apply
     spec-or-not. bool is checked before the 8-bit-int row, keeping the table
     order (bool carries 8-bit int traits but must format as True/False). An
-    IntLiteral-typed arg (`f"{5}"`) resolves through the module default int --
-    fixed widths format bare at the fall-through; a runtime BigInt
+    int constant (`f"{5}"`, `f"{2**40}"`) takes no row: it lowers to a
+    literal, and the f-string lowering adds `.to_string()` when that literal
+    renders as BigInt. Fixed widths format bare at the fall-through; a
+    runtime BigInt
     takes the `.to_string()` row (a spec'd int/BigInt arg is a sema error, so
     the spec never reaches that row)."""
     row: 'str | None | object' = _FSTRING_INELIGIBLE
@@ -15958,12 +15941,16 @@ def _fstring_arg_wrap(a: TpyExpr, analyzer, conv: int,
                 row = "::tpy::float_to_str(static_cast<double>({0}))"
             else:
                 row = "::tpy::float_to_str({0})"
+        elif _int_constant_value(a, analyzer) is not None:
+            # An int constant lowers to a literal, whose render type alone
+            # picks bare vs `.to_string()` (the f-string lowering).
+            row = None
         elif _runtime_bigint(bigint_key, analyzer) and not has_spec:
             # A runtime BigInt formats via `.to_string()`, keyed on the
             # DECLARED type (`is_runtime_bigint`). Placed ahead of the
             # 8-bit-int and enum casts.
             _witness("narrow.fstring_arg")
-            row = "({0}).to_string()"
+            row = _FSTRING_BIGINT_WRAP
         elif _eligible_enum(t, analyzer) is not None:
             row = "static_cast<int>({0})"
         elif isinstance(unwrap_readonly(unwrap_ref_type(

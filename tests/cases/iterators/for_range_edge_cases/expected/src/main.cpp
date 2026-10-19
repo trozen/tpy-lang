@@ -74,7 +74,7 @@ void __tpy_init() {
     for (int32_t i = 10; i > 0; i += -100) {
         std::cout << i << "\n" << ::tpy::check_signals;
     }
-    int32_t __stop_9 = ::tpy::add_check<int32_t>(1, 2);
+    int32_t __stop_9 = 3;
     for (int32_t i = 0; i < __stop_9; ++i) {
         std::cout << i << "\n" << ::tpy::check_signals;
     }

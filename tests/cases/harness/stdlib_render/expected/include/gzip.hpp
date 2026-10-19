@@ -44,7 +44,7 @@ inline constexpr int32_t _COMPRESS_LEVEL_FAST = 1;
 // _COMPRESS_LEVEL_BEST: Final[int32] = 9
 inline constexpr int32_t _COMPRESS_LEVEL_BEST = 9;
 // READ_BUFFER_SIZE: Final[int32] = 128 * 1024
-inline constexpr int32_t READ_BUFFER_SIZE = ::tpy::mul_check<int32_t>(128, 1024);
+inline constexpr int32_t READ_BUFFER_SIZE = 131072;
 // _TRUNCATED: Final[str] = (
 //     "Compressed file ended before the end-of-stream marker was reached")
 inline constexpr std::string_view _TRUNCATED = "Compressed file ended before the end-of-stream marker was reached";

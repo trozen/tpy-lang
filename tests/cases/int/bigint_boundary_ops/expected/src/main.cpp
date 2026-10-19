@@ -135,13 +135,13 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    B = ((::tpy::BigInt(1)) << (::tpy::BigInt(62)));
+    B = ::tpy::BigInt(static_cast<int64_t>(4611686018427387904LL));
     SMALL_MAX = ((B) - (::tpy::BigInt(1)));
     SMALL_MIN = -(B);
     BIG_POS = B;
     BIG_NEG = ((-(B)) - (::tpy::BigInt(1)));
-    WIDE_POS = ((::tpy::BigInt(1)) << (::tpy::BigInt(70)));
-    WIDE_NEG = -(((::tpy::BigInt(1)) << (::tpy::BigInt(70))));
+    WIDE_POS = ::tpy::BigInt::from_str("1180591620717411303424");
+    WIDE_NEG = ::tpy::BigInt::from_str("-1180591620717411303424");
     ONE_BIG = ::tpy::BigInt(1);
     std::cout << SMALL_MAX << "\n" << ::tpy::check_signals;
     std::cout << ((SMALL_MAX) + (::tpy::BigInt(1))) << "\n" << ::tpy::check_signals;

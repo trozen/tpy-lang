@@ -46,23 +46,23 @@ void main() {
     ::tpy::BigInt a = ::tpy::BigInt::from_str("-86399999913600000000");
     ::tpy::BigInt b = ::tpy::BigInt(1000000);
     std::cout << ::tpy::print_float((::tpy::truediv(a, b))) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt c = ((((::tpy::BigInt(1)) << (::tpy::BigInt(60)))) + ((::tpy::lshift_check<int32_t>(1, 7))));
+    ::tpy::BigInt c = ::tpy::BigInt(static_cast<int64_t>(1152921504606847104LL));
     ::tpy::BigInt d = ::tpy::BigInt(3);
     std::cout << ::tpy::print_float((::tpy::truediv(c, d))) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt e = ((((::tpy::BigInt(1)) << (::tpy::BigInt(53)))) + (::tpy::BigInt(1)));
+    ::tpy::BigInt e = ::tpy::BigInt(static_cast<int64_t>(9007199254740993LL));
     ::tpy::BigInt f = ::tpy::BigInt(1);
     std::cout << ::tpy::print_float((::tpy::truediv(e, f))) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt g = ((((::tpy::BigInt(10)).pow(::tpy::BigInt(23)))) + (::tpy::BigInt(1)));
-    ::tpy::BigInt h = ((::tpy::BigInt(10)).pow(::tpy::BigInt(22)));
+    ::tpy::BigInt g = ::tpy::BigInt::from_str("100000000000000000000001");
+    ::tpy::BigInt h = ::tpy::BigInt::from_str("10000000000000000000000");
     std::cout << ::tpy::print_float((::tpy::truediv(g, h))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt z = ::tpy::BigInt(0);
     ::tpy::BigInt w = ::tpy::BigInt(-5);
     std::cout << ::tpy::print_float((::tpy::truediv(z, w))) << "\n" << ::tpy::check_signals;
     ::tpy::BigInt tiny = ::tpy::BigInt(1);
-    ::tpy::BigInt huge = ((::tpy::BigInt(10)).pow(::tpy::BigInt(330)));
+    ::tpy::BigInt huge = ::tpy::BigInt::from_str("1000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
     std::cout << ::tpy::print_float((::tpy::truediv(tiny, huge))) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::print_float((::tpy::truediv(-(tiny), huge))) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt big = ((::tpy::BigInt(10)).pow(::tpy::BigInt(400)));
+    ::tpy::BigInt big = ::tpy::BigInt::from_str("10000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000");
     {
         try {
             std::cout << ::tpy::print_float((::tpy::truediv(big, d))) << "\n" << ::tpy::check_signals;

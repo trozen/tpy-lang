@@ -322,8 +322,8 @@ void main() {
     Keep* k = &__slot_1;
     k->load(::tpy::bytes_literal("src", 3));
     Vals vals = Vals();
-    vals.keep(std::tuple<::tpy::BigInt, int32_t>{((::tpy::BigInt(10)).pow(::tpy::BigInt(20))), 7}, ((::tpy::BigInt(10)).pow(::tpy::BigInt(21))), "kept string long enough to heap");
-    ::tpyapp::main::nested_writes("a captured string long enough to heap", std::tuple<::tpy::BigInt, int32_t>{((::tpy::BigInt(10)).pow(::tpy::BigInt(20))), 2}, ((::tpy::BigInt(10)).pow(::tpy::BigInt(30))));
+    vals.keep(std::tuple<::tpy::BigInt, int32_t>{::tpy::BigInt::from_str("100000000000000000000"), 7}, ::tpy::BigInt::from_str("1000000000000000000000"), "kept string long enough to heap");
+    ::tpyapp::main::nested_writes("a captured string long enough to heap", std::tuple<::tpy::BigInt, int32_t>{::tpy::BigInt::from_str("100000000000000000000"), 2}, ::tpy::BigInt::from_str("1000000000000000000000000000000"));
     ::tpyapp::main::lambda_reads();
     ::tpyapp::main::ctor_writes();
 }

@@ -220,7 +220,7 @@ int64_t aug_local(int64_t a, int32_t b) {
 //     mixed(200, 4000000000, -100, b - 1000, a)
 //     print("aug_local", aug_local(a, b))
 void main() {
-    int64_t a = ::tpy::pow_check<int64_t>(2, 40);
+    int64_t a = static_cast<int64_t>(1099511627776);
     int32_t b = 2147483647;
     ::tpyapp::main::free_fn(a, b);
     Acc acc = Acc(a, b);
@@ -262,7 +262,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::asyncio::__tpy_init();
-    ga = ::tpy::pow_check<int64_t>(2, 40);
+    ga = static_cast<int64_t>(1099511627776);
     gb = 2147483647;
     gm = (::tpy::mod_check<int64_t>(ga, static_cast<int64_t>(gb)));
     ::tpyapp::main::main();

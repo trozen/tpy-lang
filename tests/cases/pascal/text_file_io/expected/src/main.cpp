@@ -64,7 +64,7 @@ void __tpy_init() {
     f->assign("out.txt");
     f->rewrite();
     f->writeln_str("numbers");
-    int32_t __stop_0 = ::tpy::add_check<int32_t>(4, 1);
+    int32_t __stop_0 = 5;
     for (int32_t i = 1; i < __stop_0; ++i) {
         f->writeln_int((::tpy::mul_check<int32_t>(i, 10)));
     }

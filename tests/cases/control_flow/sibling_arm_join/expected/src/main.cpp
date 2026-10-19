@@ -541,7 +541,7 @@ void main() {
     ::tpyapp::main::match_hoist_none_first(2, 5);
     ::tpyapp::main::try_hoist_opt("4", 5);
     ::tpyapp::main::try_hoist_opt("x", 5);
-    std::cout << "match_bigint" << " " << ::tpyapp::main::match_bigint(::tpy::BigInt(1)) << " " << ::tpyapp::main::match_bigint(((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))) << "\n" << ::tpy::check_signals;
+    std::cout << "match_bigint" << " " << ::tpyapp::main::match_bigint(::tpy::BigInt(1)) << " " << ::tpyapp::main::match_bigint(::tpy::BigInt::from_str("100000000000000000000")) << "\n" << ::tpy::check_signals;
     for (int32_t k = 2; k < 5; ++k) {
         ::tpyapp::main::match_nested(k);
         ::tpyapp::main::if_nested(k);

@@ -56,7 +56,8 @@ from ...parse.nodes import (
 from ...modules.defs import BINOP_TO_METHOD, get_dunder_cpp_template
 from ...modules.type_resolution import get_iterable_element_type
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
-                                   literal_value_from_expr)
+                                   literal_value_from_expr,
+                                   numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
 from ...typesys import make_readonly, pointer_repr_optional, readonly_access
 from ...typesys import (
@@ -123,6 +124,7 @@ from ...typesys import (
     view_family_for_type,
 )
 from ...type_def_registry import (
+    IntTraits,
     ParamPassing,
     TypeCategory,
     enum_info_of,
@@ -197,7 +199,7 @@ from ...codegen_cpp.protocols import (
 )
 from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
-from ...prescan import parse_deref_view_key
+from ...prescan import literal_constant, parse_deref_view_key
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
 from ..source import NameFacts
 from ..faces import witness as _witness
@@ -2006,18 +2008,38 @@ def _reassert_bump_info(
         return None
     return var, member
 
-def _folded_neg_int_literal(e: TpyExpr, analyzer) -> int | None:
-    """The negated value of a unary-minus int literal (`-3`), or None.
+def _numeric_literal_type(a: TpyExpr,
+                          analyzer) -> 'IntLiteralType | FloatLiteralType | None':
+    """Sema's literal type of a numeric argument (`numeric_literal_type`),
+    else None."""
+    return numeric_literal_type(analyzer.get_expr_type(_peel_coerce(a)))
 
-    The literal-negation fold (op `-`, a `TpyIntLiteral` operand of
-    `IntLiteralType`): the negated value renders as one int literal against
-    the target, so lowering carries that spelling on the resulting
-    `THIRLiteral`, including wide-value casts and suffixes."""
-    if not (isinstance(e, TpyUnaryOp) and e.op == "-"
-            and isinstance(e.operand, TpyIntLiteral)
-            and isinstance(analyzer.get_expr_type(e.operand), IntLiteralType)):
+def _numeric_literal_value(a: TpyExpr, analyzer) -> 'int | float | None':
+    """The value of a numeric literal argument, read from its literal type
+    (`_numeric_literal_type`, any magnitude), when the argument is a
+    constant over literals (`1 + 2`, `+3`, `~0`) and so can render as that
+    value -- else None. A walrus or a conditional is not: rendering its
+    value would drop its effects."""
+    t = _numeric_literal_type(a, analyzer)
+    if t is None or literal_constant(_peel_coerce(a)) is None:
         return None
-    return -e.operand.value
+    return t.value
+
+def _int_constant_value(e: TpyExpr, analyzer) -> int | None:
+    """The exact value of a variable-free integer constant (`6`, `2 * 3`,
+    `-2**63`, `~0`), looked up through a call macro's expansion, else None.
+    Such an expression lowers to the very literal its value spells, so a
+    gate that runs before its operand lowers asks this instead of the
+    parse shape."""
+    while True:
+        e = _peel_coerce(e)
+        if (isinstance(e, (TpyCall, TpyMethodCall))
+                and e.macro_expansion is not None):
+            e = e.macro_expansion
+            continue
+        break
+    v = _numeric_literal_value(e, analyzer)
+    return v if isinstance(v, int) and not isinstance(v, bool) else None
 
 def _resolved_scalar(t: TpyType | None, analyzer) -> bool:
     """`_eligible_scalar` over a type that may still be an IntLiteralType: a
@@ -2489,16 +2511,15 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
     sites cannot drift. obj_type is the receiver (its declared key/index type picks
     the narrow width via bigint_index_narrow_type):
 
-      * 'bare' -- no narrow: not runtime-BigInt, an int32-range (possibly
-        negated) int literal (a plain int constant is exempt, and the
-        emitter renders an unresolved IntLiteralType literal as the bare
-        token), or a BigInt-keyed receiver (the index passes through
+      * 'bare' -- no narrow: not runtime-BigInt, an int32-range int
+        constant (`3`, `-1`, `2 * 3`: it lowers to a literal, which the
+        emitter renders as the bare token), or a BigInt-keyed receiver (the index passes through
         unnarrowed; a big literal renders through the shared
         render_int_literal_value);
       * a fixed-int TpyType -- the `{0}.to_fixed_check<T>()` wrap at the
         receiver's declared key width (no outer parens: any composite render
         already carries its own);
-      * 'reject' -- an out-of-int32-range literal headed for a narrow: that
+      * 'reject' -- an out-of-int32-range constant headed for a narrow: that
         needs the BigInt ctor wrap inside the narrow, which the literal emit
         does not render.
 
@@ -2509,19 +2530,19 @@ def _bigint_index_disposition(index: TpyExpr, obj_type: 'TpyType | None',
         return "bare"
     narrow = (INT32 if obj_type is None
               else bigint_index_narrow_type(obj_type, analyzer))
-    c = const_tuple_index(index)
-    if c is not None:
-        if -(2**31) <= c <= 2**31 - 1:
-            return "bare"
-        return "bare" if narrow is None else "reject"
-    if const_tuple_index(_unwrap_lit_coerce(index)) is not None:
+    c = _int_constant_value(index, analyzer)
+    if c is None:
+        return "bare" if narrow is None else narrow
+    if isinstance(index, TpyCoerce):
         # A coerce-wrapped literal is not a plain int constant, so the
         # narrow would wrap the literal's target-typed render -- a shape no
         # index position produces (the one coercion sema puts on an index,
         # the dict-key narrow, already carries the width, so such an index
         # tests non-BigInt above); a defensive reject rather than a guess.
         return "reject"
-    return "bare" if narrow is None else narrow
+    if -(2**31) <= c <= 2**31 - 1:
+        return "bare"
+    return "bare" if narrow is None else "reject"
 
 def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, obj_type: 'TpyType | None',
                          analyzer, loc,
@@ -2795,9 +2816,10 @@ def _enum_compare_pair(e: TpyBinOp, lt: TpyType | None, rt: TpyType | None,
     el, er = _eligible_enum(lt, analyzer), _eligible_enum(rt, analyzer)
     return el is not None and er is not None and el == er
 
-def _binop_operand_casts(e: TpyBinOp, analyzer) -> 'tuple[str | None, str | None]':
-    """The per-side post-generation operand casts of the comparison render,
-    as `{0}` wraps:
+def _binop_operand_cast_types(e: TpyBinOp, analyzer
+                              ) -> 'tuple[TpyType | None, TpyType | None]':
+    """The type each operand of the binop render casts to after it is
+    generated (a `static_cast`), or None:
 
       * `int_enum_coercion` set -> whichever operand is IntEnum-typed casts
         to the underlying type (`static_cast<int32_t>(p)`);
@@ -2812,12 +2834,11 @@ def _binop_operand_casts(e: TpyBinOp, analyzer) -> 'tuple[str | None, str | None
 
     ie = e.int_enum_coercion
     if ie is not None:
-        u_cpp = enum_info_of(ie).underlying_type.to_cpp()
-        wrap = f"static_cast<{u_cpp}>({{0}})"
+        underlying = enum_info_of(ie).underlying_type
 
         def enum_side(operand):
             t = operand_t(operand)
-            return wrap if t is not None and is_int_enum_type(t) else None
+            return underlying if t is not None and is_int_enum_type(t) else None
 
         return (enum_side(e.left), enum_side(e.right))
     if e.op in COMPARISON_OPS:
@@ -2832,9 +2853,9 @@ def _binop_operand_casts(e: TpyBinOp, analyzer) -> 'tuple[str | None, str | None
         lt, rt = resolved_operand_t(e.left), resolved_operand_t(e.right)
         if lt is not None and rt is not None:
             if is_big_int_type(lt) and is_float_type(rt):
-                return (f"static_cast<{rt.to_cpp()}>({{0}})", None)
+                return (rt, None)
             if is_big_int_type(rt) and is_float_type(lt):
-                return (None, f"static_cast<{lt.to_cpp()}>({{0}})")
+                return (None, lt)
     return (None, None)
 
 def _enum_truthy_wrap(t: TpyType | None, analyzer) -> 'str | None':
@@ -8449,15 +8470,52 @@ def _declared_type(e: TpyExpr, locals_: dict[str, TpyType], analyzer) -> TpyType
             return t
     return analyzer.get_expr_type(e)
 
-def _mixed_sign_compare(left: TpyType | None, right: TpyType | None) -> bool:
-    # A signed-vs-unsigned fixed-int comparison emits std::cmp_* (and a
-    # mixed-sign one with a coercion target emits a cast), never the bare
-    # `(l op r)` the slice emits -- so exclude it. Keyed on int_traits_of,
-    # the same primitive the cmp_* render reads.
+_INT_COMPARE = {
+    "<": lambda a, b: a < b, "<=": lambda a, b: a <= b,
+    ">": lambda a, b: a > b, ">=": lambda a, b: a >= b,
+    "==": lambda a, b: a == b, "!=": lambda a, b: a != b,
+}
+
+def _range_decides_compare(op: str, value: int, traits: IntTraits,
+                           value_on_left: bool) -> bool:
+    """Whether `x op value` (or `value op x`) has the same answer for every
+    `x` of the fixed width `traits` describes. Every comparison is monotone
+    in `x` or changes only at `value`, so its answers at the range's two
+    ends and at `value` (when in range) are all it can give."""
+    lo, hi = traits.min_value, traits.max_value
+    points = [lo, hi] + ([value] if lo <= value <= hi else [])
+    cmp = _INT_COMPARE[op]
+    answers = {cmp(value, x) if value_on_left else cmp(x, value)
+               for x in points}
+    return len(answers) == 1
+
+def _mixed_sign_compare(op: str, left: TpyType | None,
+                        right: TpyType | None,
+                        left_value: int | None,
+                        right_value: int | None) -> bool:
+    """Whether an int comparison renders through `::std::cmp_*` rather than
+    the bare `(l op r)`. `left` / `right` are the C++ types the operands
+    render as, read off the LOWERED operands (a literal's render type, an
+    operand cast's target); `left_value` / `right_value` the values of the
+    operands that lowered to an int literal.
+
+    A pair without a literal takes it whenever the signedness differs. A
+    literal takes it exactly where the other operand's range decides the
+    answer (`b < 2**63`, `b > -1` on a `uint8`): otherwise the literal fits
+    that type, so C++'s conversions keep both values, and the bare compare
+    is exact and draws no always-true/false warning. A BigInt-rendered
+    operand compares as BigInt and never takes it."""
     if not (is_fixed_int_type(left) and is_fixed_int_type(right)):
         return False
-    lt, rt = int_traits_of(left), int_traits_of(right)
-    return lt is not None and rt is not None and lt.signed != rt.signed
+    ltr, rtr = int_traits_of(left), int_traits_of(right)
+    if ltr is None or rtr is None:
+        return False
+    if left_value is None and right_value is None:
+        return ltr.signed != rtr.signed
+    return ((left_value is not None
+             and _range_decides_compare(op, left_value, rtr, True))
+            or (right_value is not None
+                and _range_decides_compare(op, right_value, ltr, False)))
 
 def _union_compare_pair(lt: TpyType | None, rt: TpyType | None) -> bool:
     """Two SAME-TYPE value-union compare operands: `::tpy::Union`'s own
@@ -10173,10 +10231,10 @@ def _ru_elem_ok(x: TpyExpr, analyzer) -> bool:
         return True
     if isinstance(x, TpyIntLiteral):
         return -(2 ** 31) < x.value < 2 ** 31
-    _rnv = _folded_neg_int_literal(x, analyzer)
+    _rnv = _int_constant_value(x, analyzer)
     if _rnv is not None:
-        # `-3`: the unary-minus literal fold renders the bare negated
-        # token, same bounds as the raw literal.
+        # `-3`, `2 * 3`: a constant lowers to the bare token of its value,
+        # same bounds as the raw literal.
         return -(2 ** 31) < _rnv < 2 ** 31
     if isinstance(x, TpyFloatLiteral):
         return math.isfinite(x.value)

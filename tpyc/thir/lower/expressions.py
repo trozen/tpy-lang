@@ -14,7 +14,6 @@ from .captures import capture_facts
 from ..scalar_leaves import record_owner
 from ... import qnames
 from ...parse.nodes import (
-    const_tuple_index,
     RebindStorage,
     ResultForm,
     lambda_of,
@@ -121,6 +120,7 @@ from ...type_def_registry import (
     is_bytearray_type,
     is_dict,
     is_float32_type,
+    int_traits_of,
     is_fixed_int_type,
     is_list,
     is_span,
@@ -133,7 +133,7 @@ from ...type_def_registry import (
     view_to_owned_conv,
 )
 from ...codegen_cpp import emit_prims
-from ...codegen_cpp.types import TypeResolver, resolve_pending_container, resolve_tuple_pending
+from ...codegen_cpp.types import resolve_pending_container, resolve_tuple_pending
 from ...modules.defs import BINOP_TO_METHOD
 from ...modules.type_resolution import (
     get_iterable_element_type,
@@ -315,7 +315,7 @@ from .predicates import (
     _bare_module_recv,
     _module_var_access_pair,
     _bigint_index_disposition,
-    _binop_operand_casts,
+    _binop_operand_cast_types,
     _bytes_compare_operand,
     _bytes_concat_operand,
     _char_compare_operand,
@@ -397,7 +397,9 @@ from .predicates import (
     _typed_dict_recv_ok,
     _user_deref_stub_method_ok,
     _global_record_recv,
-    _folded_neg_int_literal,
+    _int_constant_value,
+    _numeric_literal_type,
+    _numeric_literal_value,
     _generic_root_subst,
     _instantiation_call_fi,
     _native_iter_value_slot,
@@ -581,7 +583,6 @@ from .predicates import (
     _record_dunder_operand_slot,
     _bytes_literal_view_slot,
     _unrouted_binding_read,
-    _unwrap_lit_coerce,
     _value_opt_view_name,
 )
 from .convert import elementwise_tuple_storage
@@ -717,6 +718,7 @@ from .checks import (
     _owned_str_slot,
     _owned_viewfam_elem,
     _FSTRING_INELIGIBLE,
+    _FSTRING_BIGINT_WRAP,
     _call_arity_ok,
     _call_ret_reject,
     _container_lit_elem_ok,
@@ -836,8 +838,6 @@ from .checks import (
     _own_str_literal_arg,
     _str_pass_through_arg,
     _literal_pin_slot,
-    _numeric_literal_type,
-    _numeric_literal_value,
     _pinned_literal_payload,
     _subscript_elem_reject,
     _subscript_recv_reject,
@@ -2333,7 +2333,7 @@ def _slice_bound_supported(b: 'TpyExpr | None', analyzer) -> bool:
     if bt is None:
         return False
     if _runtime_bigint(bt, analyzer):
-        return const_tuple_index(_unwrap_lit_coerce(b)) is None
+        return _int_constant_value(b, analyzer) is None
     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(bt)))
     return is_fixed_int_type(
         resolve_int_literals(bt, analyzer.ctx.default_int_for_literal))
@@ -3567,7 +3567,7 @@ def _lower_identity(e: TpyBinOp, lc: '_LowerCtx',
 
 def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                  declared: dict[str, TpyType], loc, *,
-                 fold_ok: bool = False, slot_threaded: bool = False,
+                 slot_threaded: bool = False,
                  temps_ok: bool = False, slot_ok: bool = False,
                  slot_needs_statement: bool = False,
                  prvalue_ok: bool = False) -> THIRExpr:
@@ -3594,6 +3594,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     if e.identity_pointees is not None:
         # Sema admitted an object pair for `is` / `is not`.
         return _lower_identity(e, lc, declared, rtype, loc)
+
+    if e.op in _ARITH_OPS or e.op in _BITWISE_OPS:
+        # A constant over int literals is the literal of its value, so every
+        # sink spells and retargets it as it does a hand-written one.
+        lit_val = _int_constant_value(e, analyzer)
+        if lit_val is not None:
+            _witness("binop.literal_fold")
+            return _lower_int_literal(lit_val, rtype, lc, loc)
 
     def _literal_fold_name(s: TpyExpr) -> bool:
         # A name the dead-branch fold may hold a literal fact for: a
@@ -3696,9 +3704,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
     # consumed by the operand render below (the tuple_eq/tuple_lt arm).
     ptr_tuple_pair: 'tuple[TupleType, TupleType] | None' = None
     ptr_tuple_fields = False
-    # The mixed-sign fixed-int compare's `::std::cmp_*` spelling, set in
-    # the compare gate for the target-less non-literal slice.
-    mixed_cmp_tpl: 'str | None' = None
+    # The int compare's `::std::cmp_*` spelling, decided over the lowered
+    # operands; the compare gate records the sides that cannot take it.
+    int_cmp_tpl: 'str | None' = None
+    cmp_unsupported = False
     # The open-`T` equality's `::tpy::eq` spelling, same seam.
     open_eq_tpl: 'str | None' = None
     # This is the CONTAINER-result native dunder leg (list concat / the set
@@ -3904,51 +3913,14 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
               and not isinstance(e.left, TpyName)
               and isinstance(analyzer.get_expr_type(e.right), IntLiteralType)
               and not isinstance(e.right, TpyName)):
-            # A both-literal int binop constant-folds at a TARGET-LESS
-            # position: a BigInt context renders
-            # `::tpy::BigInt(static_cast<int64_t>(...LL))` / `from_str`, a
-            # default-int one the plain decimal (`print(1 + (2 + 3))` ->
-            # `6`) -- both via the shared render_int_literal_value. Only
-            # flagged positions fold; a slot retarget downstream overwrites
-            # int_cpp wholesale, so the pre-render cannot double-wrap.
-            # Slot-THREADED fixed-int sinks
-            # never fold (the retype rebuilds `::tpy::add_check<intN>(...)`
-            # instead), so the operator route below stays their path.
-            lit_val = getattr(analyzer.get_expr_type(e), "value", None)
-            # The fold is SYNTACTIC (the involves_variables walk): sema
-            # computes a constant value for a subscript over a
-            # literal-seeded container too (`xs[0] + xs[1]`), but those
-            # render as runtime reads -- only variable-free literal trees
-            # fold.
-            if lit_val is not None and TypeResolver.involves_variables(e):
-                lit_val = None
-            fits_i64 = lit_val is not None and -(2**63) <= lit_val <= 2**63 - 1
+            # A literal operation the fold above declines (a zero divisor,
+            # a negative shift or power, a value past the width cap) renders
+            # as the operator itself. A slot-threaded sink rebuilds it at the
+            # slot's type (`_slot_literal_retype`); a target-less BigInt one
+            # has no render for it.
             resolved = resolve_int_literals(
                 rtype, analyzer.ctx.default_int_for_literal)
-            # The fold covers every magnitude in a flagged position:
-            # render_int_literal_value spells BigInt fits-i64 values
-            # `BigInt(static_cast<int64_t>(..LL))` and beyond-int64 values
-            # `BigInt::from_str("...")`.
-            if fold_ok and lit_val is not None:
-                _witness("binop.literal_fold")
-                return THIRLiteral(
-                    result_type=resolved, value=lit_val,
-                    int_cpp=render_int_literal_value(
-                        lit_val, resolved,
-                        default_int_type=analyzer.ctx.default_int_type,
-                        type_to_cpp=lambda t: lc.render_type(t)),
-                    loc=loc)
-            # An un-flagged TARGET-LESS position rejects the fits-i64
-            # slice: the fold belongs there, and only `fold_ok` marks the
-            # positions whose fold is spelled above. A SLOT-THREADED
-            # position renders the full operator instead (`b: int = 1 << 40`
-            # -> `((BigInt(1)) << (BigInt(40)))`), which is why both the
-            # fits-i64 and the beyond-int64 slice pass through it. The
-            # FIXED-resolvable slice needs no guard: its sinks are either
-            # slot-threaded (the retype rebuild) or flagged and folded
-            # above.
-            if (is_big_int_type(resolved) and (lit_val is None or fits_i64)
-                    and not slot_threaded):
+            if is_big_int_type(resolved) and not slot_threaded:
                 reject()
         if e.op in _BITWISE_OPS:
             _witness("binop.bitwise")
@@ -3970,10 +3942,10 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                 and not (rb.method.native_function
                          and rb.method.native_name)):
             reject()
-        _lt_raw = _declared_type(e.left, declared, analyzer)
-        _rt_raw = _declared_type(e.right, declared, analyzer)
-        lt = _narrowed_opt_operand(e.left, _lt_raw, lc, analyzer)
-        rt = _narrowed_opt_operand(e.right, _rt_raw, lc, analyzer)
+        lt = _narrowed_opt_operand(
+            e.left, _declared_type(e.left, declared, analyzer), lc, analyzer)
+        rt = _narrowed_opt_operand(
+            e.right, _declared_type(e.right, declared, analyzer), lc, analyzer)
         # A condition-scope-narrowed union NAME operand gates and renders
         # as its concrete member (the inline get).
         l_nu = _narrowed_union_compare_operand(e.left, declared, lc)
@@ -4056,24 +4028,12 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
             _witness("binop.open_tparam_eq")
             open_eq_tpl = ("::tpy::eq({self}, {0})" if e.op == "=="
                            else "(!::tpy::eq({self}, {0}))")
-        if _mixed_sign_compare(lt, rt):
-            # The `::std::cmp_*` slice: TARGET-LESS, non-literal fixed-int
-            # operands. A coercion-targeted pair casts instead, a literal
-            # side folds cleanly, an unproven-opt OR PROVEN-NARROWED
-            # optional side reads its INNER (the bare `(*a) < b` render,
-            # whose target suppresses cmp_*), and a condition-narrowed
-            # union side keeps its union type -- all of those reject.
-            if (opt_eq_targets is not None
-                    or _l_unproven is not None or _r_unproven is not None
-                    or lt is not _lt_raw or rt is not _rt_raw
-                    or l_nu is not None or r_nu is not None
-                    or isinstance(analyzer.get_expr_type(e.left),
-                                  IntLiteralType)
-                    or isinstance(analyzer.get_expr_type(e.right),
-                                  IntLiteralType)):
-                reject()
-            _witness("binop.mixed_sign_cmp")
-            mixed_cmp_tpl = f"{emit_prims.CMP_HELPER[e.op]}({{self}}, {{0}})"
+        # The `::std::cmp_*` render is decided once the operands lower
+        # (below); a coercion-targeted (optional_safe_eq) pair has no such
+        # render and rejects there. A narrowed optional or union side lowers
+        # to its inner read -- `(*o)`, `deref_optional_check(o)`,
+        # `std::get<int64_t>(x)` -- which `cmp_*` takes as is.
+        cmp_unsupported = opt_eq_targets is not None
     elif e.op in _LOGICAL_OPS:
         if rtype is None or not is_bool_type(rtype):
             # Value-position and/or: Python operand semantics via the
@@ -4967,7 +4927,21 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
                     right = replace(right,
                                     typed_brace_cpp=lc.render_type(recv_bare))
     bt = _resolved_bytes_value(rtype, analyzer)
-    lcast, rcast = _binop_operand_casts(e, analyzer)
+    lcast_t, rcast_t = _binop_operand_cast_types(e, analyzer)
+    lcast, rcast = (f"static_cast<{t.to_cpp()}>({{0}})" if t is not None
+                    else None for t in (lcast_t, rcast_t))
+    if e.op in COMPARISON_OPS:
+        # Decided on the operands as they render: a cast operand at its
+        # cast's type, any other at the type its lowering gave it.
+        l_cxx = lcast_t or _literal_render_type(left, lc)
+        r_cxx = rcast_t or _literal_render_type(right, lc)
+        if _mixed_sign_compare(e.op, l_cxx, r_cxx,
+                               _lowered_int_literal_value(left),
+                               _lowered_int_literal_value(right)):
+            if cmp_unsupported:
+                reject()
+            _witness("binop.mixed_sign_cmp")
+            int_cmp_tpl = f"{emit_prims.CMP_HELPER[e.op]}({{self}}, {{0}})"
     # The dedicated fixed-int literal arm fires only where a
     # fixed-int TARGET is threaded (decl inits, returns, call/ctor args,
     # resolved-binop operand slots -- exactly `_slot_literal_retype`'s
@@ -4994,7 +4968,7 @@ def _lower_binop(e: TpyBinOp, rtype: 'TpyType | None', lc: '_LowerCtx',
         left_cast=lcast,
         right_cast=rcast,
         both_literal_int_operands=both_lit,
-        template_override=mixed_cmp_tpl or open_eq_tpl,
+        template_override=int_cmp_tpl or open_eq_tpl,
         form=(Form.STORAGE if _is_string_owned(rtype)
               or (bt is not None and is_bytes_type(bt)) else Form.VALUE),
         loc=loc)
@@ -7988,6 +7962,13 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                     # construct actually blocked.
                     raise ex.with_context(
                         f"expr.fstring:{ex.reason}") from None
+                if (wrap is None and isinstance(lowered_part, THIRLiteral)
+                        and type(lowered_part.value) is int
+                        and is_big_int_type(
+                            _literal_render_type(lowered_part, lc))):
+                    # An int constant (`2**100`, a call macro expanding to
+                    # one) formats as the type its literal renders.
+                    wrap = _FSTRING_BIGINT_WRAP
                 parts.append(THIRFStringArg(
                     expr=lowered_part, wrap=wrap,
                     format_spec=part.format_spec))
@@ -7997,7 +7978,6 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                            form=Form.STORAGE, loc=loc)
     if isinstance(e, TpyBinOp):
         return _lower_binop(e, rtype, lc, declared, loc,
-                            fold_ok=use.admits(SinkForm.LITERAL_FOLD),
                             slot_threaded=use.slot_target is not None,
                             temps_ok=use.allow_temps,
                             slot_ok=_select_slot_ok(use, lc),
@@ -8005,10 +7985,9 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
                                 use, lc),
                             prvalue_ok=_select_prvalue_ok(e, use, analyzer))
     if isinstance(e, TpyUnaryOp):
-        # A negated int literal folds to a plain literal (the negated value
-        # renders directly); otherwise only logical `not` is admitted (bool
-        # operand).
-        neg = _folded_neg_int_literal(e, analyzer)
+        # An int constant (`-3`, `~(2**63)`) lowers to the literal of its
+        # value, as the binop arm folds one.
+        neg = _int_constant_value(e, analyzer)
         if neg is not None:
             return _lower_int_literal(neg, rtype, lc, loc)
         # IntEnum negation: `(-static_cast<U>(p))`.
@@ -8805,8 +8784,8 @@ def _lower_expr_impl(e: TpyExpr, lc: '_LowerCtx',
             enum_narrow_key = _narrow_key_type(e.args[0], declared, analyzer)
             if (not _resolved_scalar(enum_arg_type, analyzer)
                     or (_runtime_bigint(enum_narrow_key, analyzer)
-                        and const_tuple_index(
-                            _unwrap_lit_coerce(e.args[0])) is not None)):
+                        and _int_constant_value(e.args[0], analyzer)
+                        is not None)):
                 note_detail("call.enum_from_value.arg")
                 raise ThirUnsupported(call_reject_reason("expr.call"))
             # `E(x)` -> `::tpy::EnumUtil<E>::from_value(x)`.
@@ -19253,6 +19232,11 @@ def _retarget_int_literal(v: THIRLiteral, slot: TpyType,
                           lc: '_LowerCtx',
                           exact_type: bool = False) -> THIRLiteral:
     st = repr_shape(slot)
+    tr = int_traits_of(st) if is_fixed_int_type(st) else None
+    if tr is not None and not tr.min_value <= v.value <= tr.max_value:
+        # The render would be a `static_cast` that changes the value.
+        raise ThirUnsupported("literal.int_out_of_range", detail=True,
+                              loc=v.loc)
     return replace(
         v, result_type=st,
         int_cpp=render_int_literal_value(
@@ -19329,6 +19313,28 @@ def _pinned_literal_arg(a: TpyExpr, ptype: 'TpyType | None', fi,
     return pinned
 
 
+def _literal_render_type(v: 'THIRExpr', lc: '_LowerCtx') -> TpyType:
+    """The type `v` renders as in C++: its own type, or for a still
+    literal-typed value the target-less literal's (`target_less_int_literal_type`,
+    `float`)."""
+    source = repr_shape(v.result_type)
+    if isinstance(source, IntLiteralType):
+        return (target_less_int_literal_type(source.value)
+                if source.value is not None
+                else lc.analyzer.ctx.default_int_type)
+    if isinstance(source, FloatLiteralType):
+        return FLOAT
+    return source
+
+
+def _lowered_int_literal_value(v: 'THIRExpr') -> int | None:
+    """The value of `v` when it lowered to an int literal, else None."""
+    if (isinstance(v, THIRLiteral) and isinstance(v.value, int)
+            and not isinstance(v.value, bool)):
+        return v.value
+    return None
+
+
 def _pinned_literal_conversion(v: 'THIRExpr', payload: TpyType,
                                lc: '_LowerCtx', loc) -> 'THIRExpr':
     """A pinned literal-typed argument `v` converted to its slot's scalar
@@ -19344,13 +19350,7 @@ def _pinned_literal_conversion(v: 'THIRExpr', payload: TpyType,
     that way: a narrower fixed width and `float` -> `float32`; sema's
     literal type proves the value fits the first and Python rounds the
     binary64 value for the second, so both take a plain cast."""
-    source = repr_shape(v.result_type)
-    if isinstance(source, IntLiteralType):
-        source = (target_less_int_literal_type(source.value)
-                  if source.value is not None
-                  else lc.analyzer.ctx.default_int_type)
-    elif isinstance(source, FloatLiteralType):
-        source = FLOAT
+    source = _literal_render_type(v, lc)
     if source == payload and (isinstance(v, THIRLiteral)
                               or is_big_int_type(payload)):
         return v

@@ -7,7 +7,8 @@
 | **Phase 1** | Global `--default-int` CLI flag, configurable default (int32/int64/BigInt), explicit `int` stays BigInt | Done |
 | **Phase 2a** | Retro-widening of literal-seeded function locals at typed-slot uses | Replaced by Phase 2b (uses never decide a type) |
 | **Phase 2b** | Pending integer locals: a literal-seeded function local is typed by the values stored in it, decided once the function is analyzed | Done (function locals; module globals and collection elements not covered) |
-| **Future** | Per-module/per-function overrides (`__tpy__` settings, `@tpy.config`), constant folding | Planned |
+| **Constant folding** | A variable-free integer expression over literals is the literal of its value: sema values it, the lowering emits that literal at every position (`docs/LANGUAGE_FEATURES.md` "Constant folding") | Done |
+| **Future** | Per-module/per-function overrides (`__tpy__` settings, `@tpy.config`) | Planned |
 
 Decision date: 2026-02-16
 
@@ -158,9 +159,8 @@ Mitigation path:
 ## Open Follow-Ups (Phase 2+)
 
 1. Deferred `IntLiteralType` resolution for context-sensitive optimization.
-2. Constant folding for pure integer expressions (`2 ** 16`, etc.).
-3. Optional per-module/per-function policy override (`__tpy__` / decorators).
-4. Policy interaction with future profiles (`@noalloc`, backend profiles).
+2. Optional per-module/per-function policy override (`__tpy__` / decorators).
+3. Policy interaction with future profiles (`@noalloc`, backend profiles).
 
 ## Phase 2a: Literal-Seeded Local Retro-Widening (Replaced)
 
@@ -219,12 +219,20 @@ Module globals and collection-element literals keep the Phase 1 policy.
 
 ### Interaction with Constant Folding
 
-Deferred resolution benefits from preserving literal values. For example:
+Sema values every variable-free integer expression over literals exactly
+(`IntLiteralType` with its value), so a constant decides a type as the
+literal of the same value does:
 
 ```python
-for i in range(2 ** 16):  # fold to literal value to enable fixed-width path
+for i in range(2 ** 16):   # int32 counter, as for range(65536)
+    ...
+for k in range(2 ** 40):   # BigInt counter, as for range(1099511627776)
     ...
 ```
 
-If compile-time folding computes `2 ** 16` to a concrete literal, deferred
-resolution can make the same decision as for `range(65536)`.
+The lowering then emits the constant as that literal at every position
+(`int32_t __stop_0 = 65536;`), spelled and retargeted by the sink exactly as
+the hand-written literal is (`docs/LANGUAGE_FEATURES.md` "Constant
+folding"). A name, a subscript, a width constructor or an operation the
+fold declines (a zero divisor, a negative shift or power, a value past 4096
+bits) is not a constant and is computed at run time.

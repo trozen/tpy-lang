@@ -10,7 +10,7 @@ namespace tpyapp::main {
 //     print(k in b)
 void main() {
     Bag b = Bag();
-    ::tpy::BigInt k = ((::tpy::BigInt(2)).pow(::tpy::BigInt(40)));
+    ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(1099511627776LL));
     std::cout << ::tpy::print_bool(b.__contains__((k).to_fixed_check<int32_t>())) << "\n" << ::tpy::check_signals;
 }
 

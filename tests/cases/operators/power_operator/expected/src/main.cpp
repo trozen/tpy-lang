@@ -38,7 +38,7 @@ void __tpy_init() {
     std::cout << 2 << "\n" << ::tpy::check_signals;
     std::cout << 1024 << "\n" << ::tpy::check_signals;
     std::cout << 27 << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::BigInt(static_cast<int64_t>(4294967296LL)) << "\n" << ::tpy::check_signals;
+    std::cout << static_cast<int64_t>(4294967296) << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BigInt::from_str("18446744073709551616") << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::BigInt::from_str("100000000000000000000") << "\n" << ::tpy::check_signals;
     std::cout << -8 << "\n" << ::tpy::check_signals;

@@ -56,7 +56,7 @@ void test_mixed_arithmetic() {
 //     print(z)
 void test_large_bigint() {
     int32_t x = 5;
-    ::tpy::BigInt y = ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)));
+    ::tpy::BigInt y = ::tpy::BigInt::from_str("100000000000000000000");
     ::tpy::BigInt z = ((::tpy::BigInt(x)) + (y));
     std::cout << z << "\n" << ::tpy::check_signals;
 }
@@ -108,12 +108,12 @@ void test_augmented_assign_mixed() {
 //     z = 10 + (20 + 30)
 //     print(z)  # 60
 void test_nested_literal_binop() {
-    int32_t x = ::tpy::add_check<int32_t>(1, ::tpy::add_check<int32_t>(2, 3));
+    int32_t x = 6;
     std::cout << x << "\n" << ::tpy::check_signals;
-    int32_t y = ::tpy::mul_check<int32_t>(::tpy::add_check<int32_t>(1, 2), ::tpy::add_check<int32_t>(3, 4));
+    int32_t y = 21;
     std::cout << y << "\n" << ::tpy::check_signals;
     int32_t z = 0;
-    z = ::tpy::add_check<int32_t>(10, ::tpy::add_check<int32_t>(20, 30));
+    z = 60;
     std::cout << z << "\n" << ::tpy::check_signals;
 }
 

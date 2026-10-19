@@ -44,7 +44,7 @@ namespace tpyapp::main {
 // def big() -> int:
 //     return 10 ** 20
 ::tpy::BigInt big() {
-    return ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)));
+    return ::tpy::BigInt::from_str("100000000000000000000");
 }
 
 // def w64(v: int64) -> int64:
@@ -423,8 +423,8 @@ void mixed_widths(int64_t a, int32_t b) {
 //     print("slice", xs, n)
 void slice_bound(std::vector<int32_t>& xs) {
     ::tpy::BigInt n = ::tpy::BigInt(1);
-    n = (n) + (((::tpy::BigInt(10)).pow(::tpy::BigInt(20))));
-    ::tpy::list_set_slice(xs, ::tpy::BasicSlice{((n) - (((::tpy::BigInt(10)).pow(::tpy::BigInt(20))))).to_fixed_check<int32_t>(), std::nullopt}, std::vector<int32_t>{0});
+    n = (n) + (::tpy::BigInt::from_str("100000000000000000000"));
+    ::tpy::list_set_slice(xs, ::tpy::BasicSlice{((n) - (::tpy::BigInt::from_str("100000000000000000000"))).to_fixed_check<int32_t>(), std::nullopt}, std::vector<int32_t>{0});
     std::cout << "slice" << " " << ::tpy::ListPrinter(xs) << " " << n << "\n" << ::tpy::check_signals;
 }
 
@@ -623,7 +623,7 @@ void float_literal(int16_t a16, int32_t a32, float f32) {
     h = 10;
     h = static_cast<int32_t>(a16);
     int16_t k = a16;
-    k = ::tpy::add_check<int16_t>(10, 5);
+    k = 15;
     std::cout << "literal_family" << " " << (::tpy::mul_check<int16_t>(b, 50)) << " " << c << " " << ::tpy::print_float(static_cast<double>(((f) * (3)))) << " " << ::tpy::print_float(static_cast<double>(g)) << " " << (::tpy::mul_check<int32_t>(h, 5000)) << " " << (::tpy::mul_check<int16_t>(k, 50)) << "\n" << ::tpy::check_signals;
 }
 
@@ -1212,7 +1212,7 @@ void main() {
         __after_try_1:;
     }
     ::tpyapp::main::match_arm(0);
-    std::vector<::tpy::BigInt> __tmp_2 = {1, 2, ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))};
+    std::vector<::tpy::BigInt> __tmp_2 = {1, 2, ::tpy::BigInt::from_str("100000000000000000000")};
     std::cout << "acc" << " " << ::tpyapp::main::accumulate(__tmp_2) << "\n" << ::tpy::check_signals;
     ::tpyapp::main::derived();
     ::tpyapp::main::unsigned_store(250);

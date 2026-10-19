@@ -1,0 +1,1 @@
+main.py:8: error: in function 'check': this construct is not yet supported by C++ code generation (stmt.expr_stmt:literal.int_out_of_range)

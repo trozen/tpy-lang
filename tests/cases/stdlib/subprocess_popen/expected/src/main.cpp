@@ -430,7 +430,7 @@ void os_process() {
             std::cout << "osproc: ProcessLookupError" << " " << std::string(::tpy::__str__(e)) << "\n" << ::tpy::check_signals;
         }
     }
-    std::cout << "osproc:" << " " << ::tpy::stdlib::os::waitstatus_to_exitcode(::tpy::lshift_check<int64_t>(3, 8)) << "\n" << ::tpy::check_signals;
+    std::cout << "osproc:" << " " << ::tpy::stdlib::os::waitstatus_to_exitcode(768) << "\n" << ::tpy::check_signals;
     {
         try {
             ::tpy::stdlib::os::waitstatus_to_exitcode(5119);

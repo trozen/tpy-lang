@@ -170,7 +170,7 @@ void main() {
     std::cout << "system:" << " " << ::tpy::print_bool(::tpyapp::main::system_matches()) << "\n" << ::tpy::check_signals;
     std::cout << "machine:" << " " << ::tpy::print_bool(::tpyapp::main::machine_matches()) << "\n" << ::tpy::check_signals;
     std::cout << "byteorder:" << " " << ::tpy::print_bool(({ auto&& __in_lhs = ::tpy::sys_byteorder; (__in_lhs == "little") || (__in_lhs == "big"); })) << "\n" << ::tpy::check_signals;
-    std::cout << "maxsize:" << " " << ::tpy::print_bool((::tpy::sys_maxsize == ::tpy::BigInt(static_cast<int64_t>(9223372036854775807LL)))) << "\n" << ::tpy::check_signals;
+    std::cout << "maxsize:" << " " << ::tpy::print_bool((::tpy::sys_maxsize == static_cast<int64_t>(9223372036854775807))) << "\n" << ::tpy::check_signals;
     std::cout << "reexport:" << " " << ::tpy::print_bool((::tpy::sys_platform == ::tpy::sys_platform)) << " " << ::tpy::print_bool((::tpy::sys_maxsize == ::tpy::sys_maxsize)) << "\n" << ::tpy::check_signals;
 }
 

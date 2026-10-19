@@ -483,7 +483,7 @@ inline Guard::~Guard() {
 inline H::H()
     : a(P(1)),
       b(P(2)),
-      n(((::tpy::BigInt(10)).pow(::tpy::BigInt(20)))) {}
+      n(::tpy::BigInt::from_str("100000000000000000000")) {}
 
 // def count(self) -> int32:
 //     return len(self.a.xs)

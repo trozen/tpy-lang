@@ -210,7 +210,7 @@ void __tpy_init() {
 
     ::tpystd::asyncio::__tpy_init();
     ::tpystd::socket::__tpy_init();
-    _N = ::tpy::lshift_check<int32_t>(1, 20);
+    _N = 1048576;
     _PAYLOAD = ::tpyapp::main::_make_payload();
     ::tpyapp::main::main();
 }

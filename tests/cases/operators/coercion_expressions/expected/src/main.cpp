@@ -132,9 +132,9 @@ void test_nested_field_to_ptr() {
 //     print(bb)  # 150
 void test_literal_expr_to_int32() {
     std::cout << "Literal expressions -> int32:" << "\n" << ::tpy::check_signals;
-    int32_t x = ::tpy::add_check<int32_t>(::tpy::add_check<int32_t>(10, 20), 30);
+    int32_t x = 60;
     std::cout << x << "\n" << ::tpy::check_signals;
-    int32_t y = ::tpy::mul_check<int32_t>(::tpy::add_check<int32_t>(5, 5), ::tpy::add_check<int32_t>(2, 3));
+    int32_t y = 50;
     std::cout << y << "\n" << ::tpy::check_signals;
     int32_t aa = 100;
     int32_t bb = (::tpy::add_check<int32_t>(aa, 50));

@@ -23,7 +23,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    int32_t __stop_0 = ::tpy::add_check<int32_t>(15, 1);
+    int32_t __stop_0 = 16;
     for (int32_t i = 1; i < __stop_0; ++i) {
         if (((::tpy::mod_floor<int32_t>(i, 15)) == 0)) {
             std::cout << "FizzBuzz" << "\n" << ::tpy::check_signals;

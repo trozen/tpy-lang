@@ -149,7 +149,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    int32_t __stop_0 = ::tpy::add_check<int32_t>(8, 1);
+    int32_t __stop_0 = 9;
     for (int32_t i = 0; i < __stop_0; ++i) {
         n = i;
         auto& __match_subject_1 = n;

@@ -119,7 +119,7 @@ void main() {
     std::cout << "hash" << " " << ::tpy::print_bool((::tpy::__hash__(i32) == ::tpy::__hash__(f64))) << " " << ::tpy::print_bool((::tpy::__hash__(i32) == ::tpy::__hash__(t))) << " " << ::tpy::print_bool((::tpy::__hash__(big) == ::tpy::__hash__(f64))) << "\n" << ::tpy::check_signals;
     ::tpy::Any big53 = ::tpy::make_any(::tpy::BigInt(static_cast<int64_t>(9007199254740993)));
     ::tpy::Any f53 = ::tpy::make_any(double(9007199254740992.0));
-    ::tpy::Any p70 = ::tpy::make_any(::tpy::BigInt(((::tpy::BigInt(2)).pow(::tpy::BigInt(70)))));
+    ::tpy::Any p70 = ::tpy::make_any(::tpy::BigInt(::tpy::BigInt::from_str("1180591620717411303424")));
     ::tpy::Any fp70 = ::tpy::make_any(double((std::pow(2.0, 70))));
     std::cout << "exact" << " " << ::tpy::print_bool((big53 == f53)) << " " << ::tpy::print_bool((big53 != f53)) << " " << ::tpy::print_bool((p70 == fp70)) << " " << ::tpy::print_bool((::tpy::__hash__(p70) == ::tpy::__hash__(fp70))) << "\n" << ::tpy::check_signals;
     ::tpy::Any i64_53 = ::tpy::make_any(int64_t(static_cast<int64_t>(9007199254740993)));

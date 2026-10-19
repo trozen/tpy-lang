@@ -39,7 +39,7 @@ void __tpy_init() {
     ::tpy::__setitem__((*data), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(6, 1, 8, "data index"), 1)), 3);
     ::tpy::__setitem__((*data), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(7, 1, 8, "data index"), 1)), 7);
     ::tpy::__setitem__((*data), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(8, 1, 8, "data index"), 1)), 4);
-    int32_t __stop_0 = ::tpy::add_check<int32_t>(7, 1);
+    int32_t __stop_0 = 8;
     for (int32_t i = 1; i < __stop_0; ++i) {
         int32_t __stop_1 = (::tpy::add_check<int32_t>((::tpy::sub_check<int32_t>(8, i)), 1));
         for (int32_t j = 1; j < __stop_1; ++j) {
@@ -50,7 +50,7 @@ void __tpy_init() {
             }
         }
     }
-    int32_t __stop_2 = ::tpy::add_check<int32_t>(8, 1);
+    int32_t __stop_2 = 9;
     for (int32_t i = 1; i < __stop_2; ++i) {
         std::cout << ::tpy::__getitem__((*data), (::tpy::sub_check<int32_t>(::pascal_rt::runtime::builtins::check_subrange(i, 1, 8, "data index"), 1))) << "\n" << ::tpy::check_signals;
     }

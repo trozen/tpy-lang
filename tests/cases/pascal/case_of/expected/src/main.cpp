@@ -22,7 +22,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    int32_t __stop_0 = ::tpy::add_check<int32_t>(5, 1);
+    int32_t __stop_0 = 6;
     for (int32_t i = 1; i < __stop_0; ++i) {
         auto& __match_subject_1 = i;
         switch (__match_subject_1) {

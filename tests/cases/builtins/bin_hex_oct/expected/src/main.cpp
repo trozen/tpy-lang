@@ -57,12 +57,12 @@ void main() {
     std::cout << ::tpy::builtin_oct(-8) << "\n" << ::tpy::check_signals;
     int64_t big = static_cast<int64_t>(1000000000000);
     std::cout << ::tpy::builtin_hex(big) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::builtin_bin_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::builtin_hex_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::builtin_oct_bigint(((((::tpy::BigInt(2)).pow(::tpy::BigInt(64)))) + (::tpy::BigInt(1)))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::builtin_bin_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::builtin_hex_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n" << ::tpy::check_signals;
-    std::cout << ::tpy::builtin_oct_bigint(-(((::tpy::BigInt(2)).pow(::tpy::BigInt(64))))) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin_bigint(::tpy::BigInt::from_str("18446744073709551617")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex_bigint(::tpy::BigInt::from_str("18446744073709551617")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct_bigint(::tpy::BigInt::from_str("18446744073709551617")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_bin_bigint(::tpy::BigInt::from_str("-18446744073709551616")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_hex_bigint(::tpy::BigInt::from_str("-18446744073709551616")) << "\n" << ::tpy::check_signals;
+    std::cout << ::tpy::builtin_oct_bigint(::tpy::BigInt::from_str("-18446744073709551616")) << "\n" << ::tpy::check_signals;
 }
 
 // main()

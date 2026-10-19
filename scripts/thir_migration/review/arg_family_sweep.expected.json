@@ -10617,12 +10617,12 @@
  "dict_si__ro__comprehension__genrec": [
   "ok",
   "",
-  "method_call(%g, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
+  "method_call(%g, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: coerce(lit(1) -> int32"
  ],
  "dict_si__ro__comprehension__meth": [
   "ok",
   "",
-  "method_call(%t, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: lit(1) }])"
+  "method_call(%t, CALLEE, [comp[dict](::tpy::ordered_map<std::string, int32_t>) { for %k [const_typed_reference] [rvalue] in container_literal[Array]([str('c')]):; comp_insert %k: coerce(lit(1) -> int32"
  ],
  "dict_si__ro__comprehension__nested": [
   "reject:expr.call:call.ctor_arg.container",

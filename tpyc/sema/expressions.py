@@ -5245,8 +5245,12 @@ class ExpressionAnalyzer:
         if self._converting_element([result_elem_type], expected) is not None:
             expected_elem = None
 
-        if isinstance(result_elem_type, IntLiteralType):
-            result_elem_type = expected_elem if expected_elem is not None else self.ctx.default_int_type
+        if isinstance(result_elem_type, IntLiteralType) and expected_elem is None:
+            # A literal-valued element widens past the default int as a
+            # literal-seeded local does; at an annotated element it stays
+            # literal so the coercion below range-checks it.
+            result_elem_type = self.ctx.default_int_for_literal(
+                result_elem_type, expr.element_expr)
         if isinstance(result_elem_type, FloatLiteralType):
             result_elem_type = expected_elem if is_float_type(expected_elem) else FLOAT
 
@@ -5395,10 +5399,12 @@ class ExpressionAnalyzer:
         if self._converting_element([value_type], value_hint) is not None:
             expected_value = None
 
-        if isinstance(key_type, IntLiteralType):
-            key_type = expected_key if expected_key is not None else self.ctx.default_int_type
-        if isinstance(value_type, IntLiteralType):
-            value_type = expected_value if expected_value is not None else self.ctx.default_int_type
+        # As the list/set element: an annotated key / value stays literal for
+        # the range-checking coercion below.
+        if isinstance(key_type, IntLiteralType) and expected_key is None:
+            key_type = self.ctx.default_int_for_literal(key_type, expr.key_expr)
+        if isinstance(value_type, IntLiteralType) and expected_value is None:
+            value_type = self.ctx.default_int_for_literal(value_type, expr.value_expr)
         if isinstance(key_type, FloatLiteralType):
             key_type = expected_key if is_float_type(expected_key) else FLOAT
         if isinstance(value_type, FloatLiteralType):

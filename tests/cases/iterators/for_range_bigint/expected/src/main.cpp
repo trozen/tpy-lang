@@ -29,7 +29,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    base = ((::tpy::BigInt(1)) << (::tpy::BigInt(100)));
+    base = ::tpy::BigInt::from_str("1267650600228229401496703205376");
     ::tpy::BigInt __start_0 = base;
     ::tpy::BigInt __stop_0 = ((base) + (::tpy::BigInt(5)));
     for (::tpy::BigInt i = __start_0; i < __stop_0; ++i) {

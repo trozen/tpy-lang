@@ -45,7 +45,7 @@ void __tpy_init() {
     initialized = true;
 
     head = nullptr;
-    int32_t __stop_0 = ::tpy::sub_check<int32_t>(1, 1);
+    int32_t __stop_0 = 0;
     for (int32_t i = 5; i > __stop_0; --i) {
         cur = static_cast<node*>(::operator new(sizeof(node), std::align_val_t(alignof(node))));
         ::new(static_cast<void*>(cur)) node(node());

@@ -35,11 +35,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    a = ::tpy::pow_check<int64_t>(2, 40);
+    a = 1099511627776;
     std::cout << a << "\n" << ::tpy::check_signals;
     b = 10;
     std::cout << (::tpy::add_check<int64_t>(a, b)) << "\n" << ::tpy::check_signals;
-    c = ((::tpy::BigInt(2)).pow(::tpy::BigInt(70)));
+    c = ::tpy::BigInt::from_str("1180591620717411303424");
     std::cout << c << "\n" << ::tpy::check_signals;
     for (int64_t i = 0; i < 3; ++i) {
         std::cout << i << "\n" << ::tpy::check_signals;

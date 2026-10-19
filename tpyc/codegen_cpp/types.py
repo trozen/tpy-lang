@@ -18,7 +18,7 @@ from ..typesys import (
     substitute_type_params_simple,
     INT32, BIGINT, FLOAT, FLOAT32, STR, BYTES,
 )
-from ..parse import TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyCoerce, TpyCall, TpyMethodCall, TpyIntLiteral, TpyIfExpr
+from ..parse import TpyExpr, TpyName, TpyBinOp, TpyCoerce, TpyIfExpr
 from ..sema.context import PENDING_CONTAINER_TYPES
 from .context import qualified_cpp_name, enum_cpp_name
 from . import resumable_cfg as rcfg
@@ -336,29 +336,6 @@ class TypeResolver:
         THIR lowering resolves call-site slots through the same function.
         """
         return substitute_type_params_simple(typ, subst)
-
-    @staticmethod
-    def involves_variables(expr: TpyExpr) -> bool:
-        """Check if an expression involves any variable references. Static --
-        the literal fold's syntactic guard, one walk shared by every
-        caller."""
-        if isinstance(expr, TpyCoerce):
-            return TypeResolver.involves_variables(expr.expr)
-        if isinstance(expr, TpyName):
-            return True
-        if isinstance(expr, TpyIntLiteral):
-            return False
-        if isinstance(expr, TpyBinOp):
-            return (TypeResolver.involves_variables(expr.left)
-                    or TypeResolver.involves_variables(expr.right))
-        if isinstance(expr, TpyUnaryOp):
-            return TypeResolver.involves_variables(expr.operand)
-        if isinstance(expr, TpyCall):
-            return True  # Function calls may return BigInt
-        if isinstance(expr, TpyMethodCall):
-            return True
-        # Default to True for safety
-        return True
 
     def is_runtime_bigint(self, expr: TpyExpr, expr_type: TpyType) -> bool:
         """Check if expression is stored as BigInt at runtime."""

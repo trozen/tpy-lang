@@ -31,7 +31,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    int32_t __stop_0 = ::tpy::add_check<int32_t>(6, 1);
+    int32_t __stop_0 = 7;
     for (int32_t i = 1; i < __stop_0; ++i) {
         std::cout << ::tpyapp::main::factorial(i) << "\n" << ::tpy::check_signals;
     }

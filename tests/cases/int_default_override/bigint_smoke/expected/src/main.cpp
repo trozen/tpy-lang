@@ -32,9 +32,9 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    x = ((::tpy::BigInt(2)).pow(::tpy::BigInt(64)));
+    x = ::tpy::BigInt::from_str("18446744073709551616");
     std::cout << x << "\n" << ::tpy::check_signals;
-    y = ((::tpy::BigInt(1)) << (::tpy::BigInt(100)));
+    y = ::tpy::BigInt::from_str("1267650600228229401496703205376");
     std::cout << y << "\n" << ::tpy::check_signals;
     z = ::tpy::BigInt(5);
     std::cout << ((z) + (::tpy::BigInt(7))) << "\n" << ::tpy::check_signals;

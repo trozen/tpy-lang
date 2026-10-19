@@ -77,7 +77,7 @@ int32_t constructor_test(const ::tpy::BigInt& x) {
 //     x: int32 = 100 + 200
 //     return x
 int32_t literal_ops_local() {
-    int32_t x = ::tpy::add_check<int32_t>(100, 200);
+    int32_t x = 300;
     return x;
 }
 
@@ -131,11 +131,11 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    a = ::tpy::add_check<int32_t>(1, 2);
-    b = ::tpy::sub_check<int32_t>(10, 3);
-    c = ::tpy::mul_check<int32_t>(4, 5);
-    d = ::tpy::div_check<int32_t>(17, 3);
-    e = ::tpy::pow_check<int32_t>(2, 10);
+    a = 3;
+    b = 7;
+    c = 20;
+    d = 5;
+    e = 1024;
     n = 5;
     result1 = ::tpyapp::main::takes_int32(n);
     std::cout << result1 << "\n" << ::tpy::check_signals;

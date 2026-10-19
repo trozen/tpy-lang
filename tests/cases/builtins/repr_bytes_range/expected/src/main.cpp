@@ -108,7 +108,7 @@ void section_range() {
     std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(0, 10, 2)) << "\n" << ::tpy::check_signals;
     std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int32_t>(10, 0, -3)) << "\n" << ::tpy::check_signals;
     std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<int64_t>(5, -1, -1)) << "\n" << ::tpy::check_signals;
-    ::tpy::BigInt n = ((::tpy::BigInt(10)).pow(::tpy::BigInt(20)));
+    ::tpy::BigInt n = ::tpy::BigInt::from_str("100000000000000000000");
     std::cout << "range:" << " " << ::tpy::repr_of(::tpy::Range<::tpy::BigInt>(n, ((n) + (::tpy::BigInt(2))))) << "\n" << ::tpy::check_signals;
 }
 

@@ -486,7 +486,6 @@ from .context import (
     _ONLY_BTUPLE_SLOT,
     _ONLY_FRAME_FACTORY,
     _ONLY_INDIRECT_READ,
-    _ONLY_LITERAL_FOLD,
     _ONLY_PTR_OPT_PASSTHROUGH,
     _ONLY_SELECT_PRVALUE,
     _ONLY_SELECT_FRESH_PRVALUE,
@@ -17520,7 +17519,7 @@ def _lower_print_arg(a: TpyExpr, lc: _LowerCtx,
     # A print argument is streamed inside the print statement, so every one of
     # these arms carries the dying-source admission on top of its own verdict.
     use = _ExprUse(allow_temps=temps_ok, pos=SinkPos.PRINT_ARG,
-                                         forms=_ONLY_LITERAL_FOLD | _LEND_OK)
+                                         forms=_LEND_OK)
     if _record_call_rvalue_operand(a, lc.analyzer):
         use = _ExprUse(allow_temps=temps_ok,
                        result=_ExprResultUse.BORROW_BIND,

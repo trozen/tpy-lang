@@ -15514,9 +15514,9 @@ failure at the review's tree.
 - BUGS.md#thir-module-global-foreach-no-peephole -- `for a in sys.argv:`
   (another module's pointer-slot global) loses the native begin/end peephole
   under THIR; all three widths; quality, and THIR's spelling now ships.
-- BUGS.md#thir-folded-wide-literal-drops-int64-cast -- a folded constant
+- `thir-folded-wide-literal-drops-int64-cast` (fixed 2026-10-18) -- a folded constant
   outside Int32 range loses its `static_cast<int64_t>`; Int64 only.
-- BUGS.md#thir-int-methodarg-shift-not-folded -- `c.bump((1 << 33) + 1)` is
+- `thir-int-methodarg-shift-not-folded` (fixed 2026-10-18) -- `c.bump((1 << 33) + 1)` is
   folded by the AST, emitted as the checked-op chain by THIR. Filed as an
   Int64-only spelling difference; the review built and ran the repro and
   found the DEFAULT Int32 width silently panics at run time (`Int32
@@ -15564,7 +15564,8 @@ recorded in that branch's TODO. It is not part of the switch: the switch's
 goal is to make THIR the author and delete the AST body emitters, and the
 fold work had become a redesign of a spelling accident inside the emitter
 the next unit deletes. The method-arg panic itself is filed HIGH
-(`BUGS.md#thir-int-methodarg-shift-not-folded`).
+(`thir-int-methodarg-shift-not-folded`, fixed 2026-10-18 by the lowering
+fold).
 
 **Lesson:** mirroring an accident position by position cost a full round and
 produced a sibling table that was wrong in BOTH directions -- positions

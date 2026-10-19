@@ -73,7 +73,7 @@ void __tpy_init() {
     if (initialized) return;
     initialized = true;
 
-    B = ((::tpy::BigInt(1)) << (::tpy::BigInt(62)));
+    B = ::tpy::BigInt(static_cast<int64_t>(4611686018427387904LL));
     SMALL_MAX = ((B) - (::tpy::BigInt(1)));
     SMALL_MIN = -(B);
     BIG_POS = B;
