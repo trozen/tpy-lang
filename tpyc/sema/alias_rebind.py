@@ -69,7 +69,8 @@ from .call_lends import (
 )
 from .context import (
     BorrowKind, LoanInfo, UnnamedHolder,
-    call_param_args, frame_binding_calls, note_nonowning_bind,
+    ElemPath, call_param_args, direct_elements, frame_binding_calls,
+    note_nonowning_bind,
 )
 from .storage_walk import (Place, StorageKey, Use, call_loans, leaves,
                            storage_roots)
@@ -146,7 +147,6 @@ def _peel(e: TpyExpr) -> TpyExpr:
     return e
 
 
-ElemPath = tuple[int, ...]
 
 
 def bare_tuple(t: TpyType | None) -> TupleType | None:
@@ -186,7 +186,8 @@ def _reference_elements(slot: TpyType | None) -> tuple[bool, ...] | None:
     if bare is None:
         return None
     paths = reference_paths(bare)
-    ref = tuple((i,) in paths for i in range(len(bare.element_types)))
+    direct = direct_elements(paths)
+    ref = tuple(i in direct for i in range(len(bare.element_types)))
     return ref if any(ref) else None
 
 
@@ -315,16 +316,13 @@ def tuple_elem_owned(ctx: 'SemanticContext', value: TpyExpr | None,
 
 
 def note_tuple_elem_borrows(ctx: 'SemanticContext', name: str,
-                            value: TpyExpr | None, slot: TpyType | None,
-                            owned: tuple[bool, ...] | None) -> None:
-    """The ownership fact of a tuple binding, per element: the reference
-    elements it does not hold as objects of its own (`tuple_elem_owned`)
-    make the local non-owning there."""
-    ref = _reference_elements(slot)
-    if ref is None or owned is None:
-        return
-    borrowed = frozenset(i for i, r in enumerate(ref)
-                         if r and not (i < len(owned) and owned[i]))
+                            value: TpyExpr | None,
+                            slot: TpyType | None) -> None:
+    """The ownership fact of a tuple binding, per element path: the
+    reference paths its storage holds borrowed after the capture
+    (`tuple_borrowed_paths` without `member_lends`) make the local
+    non-owning there."""
+    borrowed = tuple_borrowed_paths(ctx, value, slot)
     if borrowed:
         note_nonowning_bind(ctx, name, value, borrowed)
 
@@ -1019,7 +1017,7 @@ def stamp_bind_kind(ctx: 'SemanticContext', stmt: 'TpyVarDecl | TpyAssign',
     owned = tuple_elem_owned(ctx, value, var_type)
     if owned is not None:
         ctx.tuple_elem_owned[stmt] = owned
-    note_tuple_elem_borrows(ctx, name, value, var_type, owned)
+    note_tuple_elem_borrows(ctx, name, value, var_type)
     kind = bind_kind_of(ctx, value, owned)
     ctx.func.bind_kinds[stmt] = kind
     if _note_rebind_site(ctx, stmt, name, kind, var_type, owned,

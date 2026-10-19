@@ -4254,8 +4254,7 @@ class ExpressionAnalyzer:
             owned = tuple_elem_owned(self.ctx, expr.value, resolved)
             if owned is not None:
                 self.ctx.tuple_elem_owned[expr] = owned
-            note_tuple_elem_borrows(self.ctx, name, expr.value, resolved,
-                                    owned)
+            note_tuple_elem_borrows(self.ctx, name, expr.value, resolved)
             self.ctx.func.bind_kinds[expr] = bind_kind_of(
                 self.ctx, expr.value, owned)
             # The walrus binds a fresh local, so its literal members take the

@@ -18,11 +18,12 @@ from ..parse import (TpyAssign, TpyCall, TpyCoerce, TpyExpr, TpyFieldAccess,
                      TpyReturn, TpySubscript, TpyTupleLiteral, TpyVarDecl,
                      TpyYield)
 from ..parse.nodes import SourceLocation
-from ..sema.alias_rebind import (bare_tuple, owned_slot_paths,
+from ..sema import alias_rebind
+from ..sema.alias_rebind import (bare_tuple, direct_elements, owned_slot_paths,
                                  tuple_borrowed_paths,
                                  tuple_source_elem_owned)
 from ..sema.compatibility import TupleSink, TypeCompatibility
-from ..sema.context import SemanticContext
+from ..sema.context import NonOwningBind, SemanticContext
 from ..sema.tuple_records import (LeafPermission, TupleSourceRecord,
                                   tuple_source_record)
 from ..thir.testutil import _compile as _compile_program, _entry
@@ -1724,3 +1725,146 @@ def elem_nested(a: A) -> None:
         (7, "copies tuple[A, B] into owned storage"),
         (12, "copies B into owned storage (tuple element 1.0)"),
         (23, "copies A into owned storage (tuple element 1.0)")]
+
+
+def _binding_facts(source: str, monkeypatch: pytest.MonkeyPatch
+                   ) -> dict[tuple[str, str], tuple[NonOwningBind, frozenset[int]]]:
+    """The ownership fact (`NonOwningBind`) a tuple binding leaves on each
+    local, by (function, local), with `nonowning_elems` of it -- the
+    top-level index set every reader asks."""
+    out: dict[tuple[str, str], tuple[NonOwningBind, frozenset[int]]] = {}
+    note = alias_rebind.note_nonowning_bind
+
+    def recording(ctx: SemanticContext, name: str, at: object,
+                  elems: object = None) -> None:
+        note(ctx, name, at, elems)
+        rec = ctx.func.nonowning_binds.get(name)
+        bare = bare_tuple(ctx.func.current_scope.lookup(name))
+        if rec is not None and bare is not None:
+            out[(ctx.func.current_function.name, name)] = (
+                rec, ctx.func.nonowning_elems(name, len(bare.element_types)))
+
+    monkeypatch.setattr(alias_rebind, "note_nonowning_bind", recording)
+    _compile_program(PRELUDE + source)
+    return out
+
+
+def test_binding_fact_is_path_keyed(monkeypatch: pytest.MonkeyPatch) -> None:
+    facts = _binding_facts("""\
+def nested_param(p: tuple[tuple[A, int32], int32]) -> None:
+    u = p
+    print(u[1])
+def nested_fresh() -> None:
+    u = ((A(1), 3), 4)
+    print(u[1])
+def top_borrow(a: A) -> None:
+    u = (a, 3)
+    print(u[1])
+def doubly(p: tuple[tuple[tuple[A, int32], int32], A]) -> None:
+    u = p
+    print(u[1].x)
+def value_member(a: A) -> None:
+    t = (a, 1)
+    u = (t, 2)
+    print(u[1])
+def own_elem(p: tuple[Own[A], int32]) -> None:
+    u = p
+    print(u[1])
+def own_marked_call(a: A) -> None:
+    u = mixed(a)
+    print(u[1].x)
+def open_elem[T](p: tuple[T, int32]) -> None:
+    u = p
+    print(u[1])
+def call_open(a: A) -> None:
+    open_elem((a, 1))
+def walrus(p: tuple[tuple[A, int32], int32]) -> None:
+    print((u := p)[1])
+""", monkeypatch)
+    paths = {k: rec.elems for k, (rec, _i) in facts.items()}
+    idxs = {k: i for k, (_rec, i) in facts.items()}
+    # A name lends every reference path, a nested one included.
+    assert paths[("nested_param", "u")] == {(0, 0)}
+    assert ("nested_fresh", "u") not in facts
+    assert paths[("top_borrow", "u")] == {(0,)}
+    assert paths[("doubly", "u")] == {(0, 0, 0), (1,)}
+    # The literal member `t` is captured by value: u's storage owns it.
+    assert ("value_member", "u") not in facts
+    assert paths[("value_member", "t")] == {(0,)}
+    # A name owns nothing, an `Own` element included; a call keeps the
+    # leaf its declared return marks `Own`.
+    assert paths[("own_elem", "u")] == {(0,)}
+    assert paths[("own_marked_call", "u")] == {(1,)}
+    # An open type parameter may be a reference.
+    assert paths[("open_elem", "u")] == {(0,)}
+    assert paths[("walrus", "u")] == {(0, 0)}
+    # The readers keep the top-level question: an element is borrowed only
+    # when it is itself a borrowed path.
+    assert idxs[("nested_param", "u")] == frozenset()
+    assert idxs[("top_borrow", "u")] == {0}
+    assert idxs[("doubly", "u")] == {1}
+    assert idxs[("own_marked_call", "u")] == {1}
+    assert idxs[("walrus", "u")] == frozenset()
+
+
+def test_direct_elements_projection() -> None:
+    assert direct_elements([]) == frozenset()
+    assert direct_elements([(0,), (1, 0), (2, 1, 0)]) == {0}
+    assert direct_elements([(0, 0), (0, 1)]) == frozenset()
+    assert direct_elements([(0,), (2,)]) == {0, 2}
+    assert NonOwningBind(3, None).direct_elems(2) == {0, 1}
+    assert NonOwningBind(3, frozenset({(0, 1), (1,)})).direct_elems(2) == {1}
+    assert not NonOwningBind(3, frozenset({(0, 1)})).borrows_direct()
+
+
+def test_ownership_line_names_the_first_direct_borrow(
+        monkeypatch: pytest.MonkeyPatch) -> None:
+    # A binding borrowing only a nested path makes no top-level element
+    # non-owning, so the line every ownership note names is the first
+    # binding that borrows directly, whichever comes first.
+    source = PRELUDE + """\
+def nested_first(p: tuple[tuple[A, int32], int32], q: tuple[A, int32]) -> None:
+    u = p  # nested-only
+    v = q  # direct
+    print(u[1], v[1])
+def direct_first(p: tuple[A, int32], q: tuple[tuple[A, int32], int32]) -> None:
+    w = p  # direct
+    print(w[1])
+    z = q  # nested-only
+    print(z[1])
+"""
+    lines: dict[tuple[str, str], int | None] = {}
+    note = alias_rebind.note_nonowning_bind
+
+    def recording(ctx: SemanticContext, name: str, at: object,
+                  elems: object = None) -> None:
+        note(ctx, name, at, elems)
+        lines[(ctx.func.current_function.name, name)] = (
+            ctx.func.nonowning_line(name))
+
+    monkeypatch.setattr(alias_rebind, "note_nonowning_bind", recording)
+    _compile_program(source)
+    at = {text.split("#")[1].strip() + ":" + text.split("=")[0].strip(): i
+          for i, text in enumerate(source.splitlines(), 1) if "  # " in text}
+    assert lines[("nested_first", "u")] is None
+    assert lines[("nested_first", "v")] == at["direct:v"]
+    assert lines[("direct_first", "w")] == at["direct:w"]
+    assert lines[("direct_first", "z")] is None
+
+def test_value_captured_member_keeps_its_copy_hazard() -> None:
+    # `t` captures the still-live `Own` member by value; its binding still
+    # reports that element held by reference, so the explicit copy() at the
+    # tuple's last use is not advised away.
+    _compiler, modules = _compile(PRELUDE + """\
+from tpy import copy
+def own_str(s: Own[str]) -> Own[tuple[str, A]]:
+    t = (s, A(1))
+    print(s)
+    return copy(t)
+def own_int(n: Own[int32]) -> Own[tuple[int32, A]]:
+    t = (n, A(1))
+    print(n)
+    return copy(t)
+""")
+    assert not [w for w in _warnings(_entry(modules).analyzer)
+                if "unnecessary copy()" in w]

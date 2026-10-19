@@ -9,7 +9,8 @@ from contextlib import contextmanager
 from copy import deepcopy
 from dataclasses import dataclass, field, replace
 from enum import Enum
-from typing import Any, Callable, Container, Iterator, NamedTuple, TYPE_CHECKING
+from typing import (Any, Callable, Container, Iterable, Iterator, NamedTuple,
+                    TYPE_CHECKING)
 
 from ..holders import Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
@@ -1175,24 +1176,45 @@ def record_borrow_binding(ctx: 'SemanticContext', name: str, *,
     note_nonowning_bind(ctx, name, at)
 
 
+ElemPath = tuple[int, ...]
+
+
+def direct_elements(paths: Iterable[ElemPath]) -> frozenset[int]:
+    """The top-level elements that are themselves one of the element
+    `paths` -- a reference leaf at `(i,)`, not one nested under `i`."""
+    return frozenset(p[0] for p in paths if len(p) == 1)
+
+
 @dataclass(frozen=True, slots=True)
 class NonOwningBind:
     """What a local's bindings to storage that already exists add up to,
-    for the whole function (`FunctionTrackingState.nonowning_binds`): the
-    line of the first one, and what they borrow -- None for the whole
-    value, else the positions of the tuple elements some binding borrows.
-    A local with no such binding is owning."""
+    for the whole function (`FunctionTrackingState.nonowning_binds`): what
+    they borrow -- None for the whole value, else the tuple element paths
+    (`alias_rebind.ElemPath`) some binding borrows -- and the line of the
+    first one borrowing the whole value or a top-level element
+    (`direct_elems`). A local with no such binding is owning."""
     line: int | None
-    elems: frozenset[int] | None
+    elems: frozenset[ElemPath] | None
+
+    def direct_elems(self, arity: int) -> frozenset[int]:
+        """The top-level elements this fact borrows themselves (every one
+        for the whole value); a path nested under an element is not the
+        element."""
+        return (frozenset(range(arity)) if self.elems is None
+                else direct_elements(self.elems))
+
+    def borrows_direct(self) -> bool:
+        """Whether the fact borrows the whole value or a top-level element."""
+        return self.elems is None or bool(self.direct_elems(0))
 
 
 def note_nonowning_bind(ctx: 'SemanticContext', name: str,
                         at: 'TpyExpr | TpyStmt | None',
-                        elems: 'frozenset[int] | None' = None) -> None:
+                        elems: 'frozenset[ElemPath] | None' = None) -> None:
     """The one writer of the ownership fact: a binding of local `name` that
     makes it refer to storage that already exists, wholly (`elems` None)
-    or at those tuple elements, makes it non-owning there for the whole
-    function. A parameter's ownership is its declared type, never a
+    or at those tuple element paths, makes it non-owning there for the
+    whole function. A parameter's ownership is its declared type, never a
     binding's."""
     if ctx.is_top_level:
         return
@@ -1204,7 +1226,11 @@ def note_nonowning_bind(ctx: 'SemanticContext', name: str,
     line = loc.line if loc is not None else None
     prev = ctx.func.nonowning_binds.get(name)
     if prev is not None:
-        line = prev.line if prev.line is not None else line
+        # The line names the first binding that borrows directly; a
+        # binding borrowing only nested paths yields it to a later one.
+        if not NonOwningBind(line, elems).borrows_direct() or (
+                prev.borrows_direct() and prev.line is not None):
+            line = prev.line
         elems = (None if prev.elems is None or elems is None
                  else prev.elems | elems)
     ctx.func.nonowning_binds[name] = NonOwningBind(line, elems)
@@ -2098,16 +2124,13 @@ class FunctionTrackingState:
         """The elements of tuple local `name` some binding so far borrows
         (every one when a binding borrows the whole tuple)."""
         rec = self.nonowning_binds.get(name)
-        if rec is None:
-            return frozenset()
-        return (frozenset(range(arity)) if rec.elems is None
-                else rec.elems)
+        return rec.direct_elems(arity) if rec is not None else frozenset()
 
     def nonowning_line(self, name: str) -> int | None:
         """The line of the first binding that made local `name` non-owning
-        (wholly or at an element), None for an owning local."""
+        (wholly or at a top-level element), None for an owning local."""
         rec = self.nonowning_binds.get(name)
-        return rec.line if rec is not None else None
+        return rec.line if rec is not None and rec.borrows_direct() else None
 
     # --- BindingProvenance accessors ---
     # Reads default-fill from an absent name; writes go through _bp_update,
