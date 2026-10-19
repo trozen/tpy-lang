@@ -422,6 +422,9 @@ class SemanticAnalyzer:
         # Per-function movable locals (owned, not hoisted/loop/lvalue-reassigned)
         self.function_movable_locals: IdentityMap = IdentityMap()
 
+        # Per-function locals an escaping closure (nested def or lambda) captures.
+        self.function_escaping_captured_locals: IdentityMap = IdentityMap()
+
         # Per-function locals ever bound to a fresh rvalue. A name absent here
         # is borrow-only: its storage must alias the source, never own a copy.
         self.function_ever_owned_locals: IdentityMap = IdentityMap()
@@ -2052,6 +2055,7 @@ class SemanticAnalyzer:
         outer_param_names = set(outer_params.keys())
         # Get the enclosing function body for "used after" analysis
         body = self.ctx.func.current_function.body if self.ctx.func.current_function else []
+        escaping_locals: set[str] = set()
         for name in self.ctx.func.nested_def_escapes:
             node = self.ctx.func.nested_def_nodes.get(name)
             if node is None:
@@ -2101,6 +2105,7 @@ class SemanticAnalyzer:
                             node.ref_captures.add(cap_name)
                 else:
                     # Local variable: must copy or move (local dies on return).
+                    escaping_locals.add(cap_name)
                     should_move = wants_move(raw_type)
                     if (should_move and self._capture_aliases_other_storage(
                             cap_name, raw_type)):
@@ -2124,6 +2129,14 @@ class SemanticAnalyzer:
                             f" is the last use, or use copy() to make the"
                             f" copy explicit",
                             node)
+        # An escaping lambda copies its captures like an escaping def does.
+        for lam, _ in value_capture_lambdas(body, nested=True):
+            escaping_locals.update(n for n in lam.body_captures
+                                   if n not in outer_param_names)
+        func = self.ctx.func.current_function
+        if escaping_locals and func is not None:
+            self.function_escaping_captured_locals[func] = frozenset(
+                escaping_locals)
 
     def _capture_aliases_other_storage(self, name: str,
                                        raw_type: TpyType) -> bool:

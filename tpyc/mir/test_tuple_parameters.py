@@ -219,7 +219,6 @@ def test_empty_tuple_parameter_at_internal_boundary() -> None:
 
 @pytest.mark.parametrize("body", [
     "def sample(pair: tuple[Cell], other: Cell) -> int32:\n    saved = pair[0]\n    saved = other\n    return saved.value\n",
-    "def sample(pair: tuple[Cell, int32], other: Cell) -> int32:\n    saved = pair\n    saved = (other, 2)\n    return saved[0].value\n",
 ])
 def test_existing_reseated_capture_gates_remain(body: str) -> None:
     _, reasons = _strict_reject(SOURCE + body)

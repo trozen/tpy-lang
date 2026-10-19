@@ -273,6 +273,7 @@ from . import binding_shadow
 from . import bindings
 from .bindings import _value_opt_kind, form_of, project_held
 from .predicates import (
+    _binding_form_tuple,
     _fold_literal_comparison,
     _nested_storage_tuple,
     tuple_stores_into,
@@ -432,6 +433,9 @@ from .predicates import (
     _nullable_protocol_slot,
     _protocol_union_arg,
     _declared_own_return,
+    _own_declared_result,
+    _pointer_repr_tuple_result,
+    call_declared_held,
     _own_storage_opt_param,
     _record_class_binding,
     _already_pointer_source,
@@ -1303,7 +1307,15 @@ def _call_use_supported(e: TpyCall, lc: '_LowerCtx',
                        # ... and the nullable one, whose optional holds
                        # the same borrow layout.
                        or _nullable_borrow_tuple_call(e, analyzer)
-                       is not None)
+                       is not None
+                       # ... and the open-T borrow tuple a local binds
+                       # (`auto c = mk<T>(a);` off
+                       # `std::tuple<val_or_ptr_t<T>, int32_t>`).
+                       or (use.pos is SinkPos.LOCAL_DECL
+                           and _declared_own_return(e, under_optional=False)
+                           is None
+                           and _binding_form_tuple(ret, analyzer)
+                           is not None))
                   and _witness("call.btuple_slot"))
               or (result is _ExprResultUse.BORROW_BIND
                   and record_like(record, analyzer))
@@ -5681,12 +5693,17 @@ def _lower_expr(e: TpyExpr, lc: '_LowerCtx',
     if (isinstance(e, (TpyCall, TpyMethodCall))
             and isinstance(lowered, (THIRCall, THIRMethodCall))
             and lowered.form is Form.VALUE):
-        if _own_declared_result(e, lowered):
+        if _own_declared_result(e):
             lowered = replace(lowered, form=Form.STORAGE)
-        elif _pointer_repr_tuple_result(lowered):
+        elif (_pointer_repr_tuple_result(lowered.result_type)
+              and unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
+                  lowered.result_type))).has_pointer_repr_element()):
             # A pointer-repr tuple result (`std::tuple<Box, Box*>`, the
             # mixed own / borrow render) is the borrow form whatever its
-            # stripped type says; a storage sink lifts it.
+            # stripped type says; a storage sink lifts it. An open-T one is
+            # held BORROWED too (`_held_from_facts`), but its node keeps the
+            # VALUE form the return and argument sinks route on, which no
+            # sink lifts yet (BUGS.md#open-t-tuple-slot-one-form).
             lowered = replace(lowered, form=Form.BORROW)
     if (isinstance(e, TpyName) and isinstance(lowered, THIRName)
             and lowered.cpp is None and not lowered.opt_deref_check):
@@ -5832,11 +5849,10 @@ def _held_from_facts(e: 'TpyExpr | None', node: THIRExpr, lc: '_LowerCtx',
     if isinstance(node, THIRCoerce):
         return stamped(node.expr, lc).source.held
     if isinstance(node, (THIRCall, THIRMethodCall)):
-        if isinstance(e, (TpyCall, TpyMethodCall)) and _own_declared_result(
-                e, node):
-            return Held.FRESH
-        if _pointer_repr_tuple_result(node):
-            return Held.BORROWED
+        declared = call_declared_held(
+            e if isinstance(e, (TpyCall, TpyMethodCall)) else None, t)
+        if declared is not None:
+            return declared
         return Held.FRESH if rv and _owned_buffer(t, an) else Held.VALUE
     if isinstance(node, (THIRIfExpr, THIRValueSelect)):
         # What the lowering normalized the arms into.
@@ -12324,27 +12340,6 @@ def _member_read_form(t: 'TpyType | None', viewfam: 'TpyType | None') -> Form:
         return _viewfam_result_form(viewfam)
     return Form.STORAGE if _is_borrow_form_name(t) else Form.VALUE
 
-
-def _own_declared_result(call: 'TpyCall | TpyMethodCall', lowered: THIRExpr
-                         ) -> bool:
-    """Whether a call's result owns its storage: the callee's DECLARED return
-    is `Own[T]` or `Own[T] | None` (the expression type sema stamps has the
-    `Own` stripped) and the result has a form axis at all. The call arms tag
-    the view-family axis themselves; this is the one owning stamp over every
-    call node, whichever arm built it."""
-    own = _declared_own_return(call, under_optional=True)
-    # The axis is the PAYLOAD's: `Own` itself answers as a value.
-    return own is not None and _is_borrow_form_name(unwrap_readonly(own.wrapped))
-
-
-def _pointer_repr_tuple_result(lowered: THIRExpr) -> bool:
-    """A call result that is a tuple with a pointer-repr element: the
-    callee hands back `std::tuple<..., T*>`, the borrow form. A record
-    borrow result stays VALUE: MIR's `_borrowed_expression` reads a call
-    as VALUE by contract."""
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        lowered.result_type)))
-    return isinstance(t, TupleType) and t.has_pointer_repr_element()
 
 def _lower_checked_container_elem(
         e: TpyExpr, slot: TpyType | None, lc: '_LowerCtx',
@@ -19174,6 +19169,13 @@ def _lower_if_expr(e: TpyIfExpr, rtype: 'TpyType | None', lc: '_LowerCtx',
         # and slip past a lifting sink's admission check.
         form = (Form.STORAGE
                 if Form.STORAGE in (then.form, orelse.form) else form)
+        sel_t = unwrap_readonly(unwrap_ref_type(slot))
+        if bindings.tuple_select(
+                (e.then_expr, e.else_expr),
+                (_held_from_facts(e.then_expr, then, lc, declared),
+                 _held_from_facts(e.else_expr, orelse, lc, declared)),
+                sel_t) is Held.BORROWED:
+            form = Form.BORROW
         _witness("ifexpr.tuple")
     elif _ifexpr_container(slot, analyzer) is not None:
         # The container ternary render is form-blind (`((c) ? (a) : (b))`);

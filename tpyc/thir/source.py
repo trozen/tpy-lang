@@ -238,6 +238,10 @@ class BindingRepr:
     const_storage_tuple: bool = False
     # The mixed own / borrow render of a per-element-Own tuple.
     borrow_tuple_mixed: bool = False
+    # An open-T tuple local no binding row took, declared as the storage copy
+    # it compiles to at a value T (`std::tuple<T, int32_t> y = ...;`)
+    # (BUGS.md#open-t-tuple-reseat-storage-residue).
+    open_t_storage_copy: bool = False
     # An owned tuple constructed in place, and its element layout.
     tuple_layout: 'THIRTupleLayout | None' = None
     # Per element of a borrow tuple: held inline rather than by pointer.

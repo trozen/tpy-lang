@@ -5340,6 +5340,14 @@ class TupleType(TpyType):
             return True
         return False
 
+    @staticmethod
+    def _element_is_val_or_ptr(e: 'TpyType') -> bool:
+        """Whether element `e`'s borrow form is `val_or_ptr_t<T>` (or its
+        const twin): an open `T`, a pointer at a reference instantiation."""
+        return (isinstance(unwrap_readonly(unwrap_ref_type(e)), TypeParamRef)
+                and e.value_form() in (ValueForm.TYPE_PARAM,
+                                       ValueForm.BORROW_REF))
+
     def has_pointer_repr_element(self) -> bool:
         """True if any element's borrow form is a bare pointer `T*`.
 
@@ -5375,6 +5383,51 @@ class TupleType(TpyType):
             return True
         return e.value_form() in (ValueForm.BORROW_REF, ValueForm.PTR_OPTIONAL,
                                   ValueForm.TYPE_PARAM)
+
+    def has_open_proxy_element(self) -> bool:
+        """True if a direct element is an open-`T` proxy (`val_or_ptr_t<T>`
+        in the borrow form, `T` in storage)."""
+        return any(self._element_is_val_or_ptr(e) for e in self.element_types)
+
+    def has_copy_free_borrow_form(self) -> bool:
+        """Whether a copy of this tuple's borrow form copies no referenced
+        object and no buffer beyond what each element costs as a scalar
+        local: every element a concrete pointer (`T*`) or a scalar
+        `is_bufferless_scalar` accepts, or every element an open-`T` proxy
+        or such a scalar -- `int` among them, whose limbs the copy
+        duplicates exactly as an `int` local's copy does
+        (`::tpy::BigInt y = x;`). A `str` element is not -- a `str` local
+        from a parameter is a view, so the tuple copy would duplicate a
+        buffer the scalar does not. An owned
+        element (`tuple[A, Own[B]]`) copies its object; a proxy beside a
+        `str` or a pointer (`tuple[T, str]`, `tuple[A, T]`) is outside too,
+        since a `str` instantiation of the proxy holds a buffer."""
+        if self.has_open_proxy_element():
+            elem_ok = self._element_is_val_or_ptr
+        elif self.has_pointer_repr_element():
+            elem_ok = self._element_is_pointer_repr
+        else:
+            return False
+        return all(elem_ok(e) or is_bufferless_scalar(e)
+                   for e in self.element_types)
+
+    def has_pointer_or_copy_free_borrow_form(self) -> bool:
+        """True if a direct element's borrow form is a bare pointer
+        (`has_pointer_repr_element`) or the whole borrow form is copy-free
+        (`has_copy_free_borrow_form`)."""
+        return (self.has_pointer_repr_element()
+                or self.has_copy_free_borrow_form())
+
+    def has_pointer_or_proxy_element(self) -> bool:
+        """True if a direct element's borrow form is a pointer (`T*`) or an
+        open-`T` proxy (`val_or_ptr_t<T>`): the tuple's borrow form may differ
+        from its storage. Nested tuples, union elements and a value-bounded
+        `T` (one form) are excluded; unlike `has_pointer_repr_element` it
+        counts the open proxy. Which bindings take the borrow form is
+        `has_copy_free_borrow_form`'s question."""
+        return any(self._element_is_pointer_repr(e)
+                   or self._element_is_val_or_ptr(e)
+                   for e in self.element_types)
 
     def has_borrowing_element(self) -> bool:
         """True if an element at any depth through nested value tuples

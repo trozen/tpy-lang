@@ -226,7 +226,7 @@ def is_storage_tuple_alias_decl(
     # ... or holds a record element inline (`tuple[Own[Box], Own[Box]]`):
     # the alias re-binds that storage exactly as it re-binds a pointer slot.
     if not (isinstance(target_type, TupleType)
-            and (target_type.has_pointer_repr_element()
+            and (target_type.has_pointer_or_copy_free_borrow_form()
                  or target_type.has_own_element())):
         return False
     if isinstance(init, (TpyFieldAccess, TpySubscript)):

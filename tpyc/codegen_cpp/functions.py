@@ -1334,6 +1334,10 @@ class FunctionGenerator:
             self.ctx.analyzer.function_closed_frames[synth] = (
                 self.ctx.analyzer.function_closed_frames[impl]
             )
+        if impl in self.ctx.analyzer.function_escaping_captured_locals:
+            self.ctx.analyzer.function_escaping_captured_locals[synth] = (
+                self.ctx.analyzer.function_escaping_captured_locals[impl]
+            )
         if impl in self.ctx.analyzer.function_move_through_vars:
             self.ctx.analyzer.function_move_through_vars[synth] = (
                 self.ctx.analyzer.function_move_through_vars[impl]
@@ -1409,6 +1413,10 @@ class FunctionGenerator:
         if impl in self.ctx.analyzer.function_closed_frames:
             self.ctx.analyzer.function_closed_frames[synth] = (
                 self.ctx.analyzer.function_closed_frames[impl]
+            )
+        if impl in self.ctx.analyzer.function_escaping_captured_locals:
+            self.ctx.analyzer.function_escaping_captured_locals[synth] = (
+                self.ctx.analyzer.function_escaping_captured_locals[impl]
             )
         if impl in self.ctx.analyzer.function_move_through_vars:
             self.ctx.analyzer.function_move_through_vars[synth] = (

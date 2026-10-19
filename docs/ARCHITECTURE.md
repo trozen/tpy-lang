@@ -661,7 +661,15 @@ and is the sema-side anchor for the boundary conversions
 taxonomy is `TupleType.is_owned_movable()` (every non-value element owned,
 so the tuple is owned storage) versus `is_mixed_own()` (owned AND borrowed
 elements, so it has no single form) -- `has_own_element()` alone answers
-neither, and an owning slot must ask the former. See `LANGUAGE_FEATURES.md`
+neither, and an owning slot must ask the former. Two more questions, kept
+apart: whether the borrow form may differ from storage counting the open-`T`
+proxy (`TupleType.has_pointer_or_proxy_element()`, read by the type-form
+readers -- the THIR validator, call-result held forms, decl slot forms), and
+whether a copy of the borrow form copies only pointers and bufferless
+scalars (`TupleType.has_copy_free_borrow_form()`), which decides the binding
+rows a tuple newly takes: an open-`T` local holding its source's form, a
+concrete one bound in a block, rebound from a parameter or hoisted. Sema and
+the return route keep `has_pointer_repr_element()`. See `LANGUAGE_FEATURES.md`
 "Borrow Form vs Storage Form" for the user-facing semantics and
 `IR_DESIGN.md` Open Questions item 9 for the planned IR-level form fact.
 Unit-tested in `tpyc/test_value_form.py`.

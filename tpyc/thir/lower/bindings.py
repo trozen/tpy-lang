@@ -50,7 +50,7 @@ from ...parse.nodes import (RebindStorage, ResultForm, TpyArrayLiteral,
                             TpyYield, TupleElemCapture,
                             iter_capture_bindings, program_names,
                             walk_body_stmts, walk_expr_tree, walrus_bindings)
-from ...prescan import scope_bound_names
+from ...prescan import scan_first_bindings, scope_bound_names
 from ...sema.alias_rebind import (final_pointer_tuple_names,
                                   pointer_tuple_owned, tuple_name_bindings)
 from ...sema.storage_policy import StorageVerdict, first_binding_storage
@@ -417,7 +417,10 @@ def project_held(rec: BindingRepr | None, rtype: TpyType | None,
     if _is_string_owned(rtype) or (rec is not None and (rec.storage_tuple
                                                         or rec.owned)):
         return Held.STORAGE
-    if rec is not None and rec.borrow_tuple_mixed:
+    if rec is not None and (rec.borrow_tuple_mixed
+                            or rec.form is F.BORROW_TUPLE):
+        # A borrow tuple whose type cannot say so (an open-T element's
+        # borrow form is `val_or_ptr_t<T>`) holds the form its record took.
         return Held.BORROWED
     return Held.BORROWED if _is_borrow_form_name(rtype) else Held.VALUE
 
@@ -429,6 +432,22 @@ def form_of(held: Held):
     if held in (Held.STORAGE, Held.FRESH):
         return Form.STORAGE
     return Form.VALUE
+
+
+def tuple_select(arms: tuple[TpyExpr, TpyExpr], helds: tuple[Held, Held],
+                 t: 'TupleType') -> 'Held | None':
+    """The held form a one-level select of two tuple arms of type `t`
+    takes: two NAMES holding the borrow form, of a tuple whose borrow form
+    copies nothing (`has_copy_free_borrow_form`), are that borrow (`auto y
+    = ((c) ? (x) : (z));`). None for every other select -- a storage, call
+    or nested arm, an owning element -- which keeps the value rule. The one
+    decision for both the binding planner (helds from the arms' records)
+    and the select's lowering (helds from the lowered arms)."""
+    if (all(isinstance(a, TpyName) for a in arms)
+            and helds == (Held.BORROWED, Held.BORROWED)
+            and t.has_copy_free_borrow_form()):
+        return Held.BORROWED
+    return None
 
 
 def read_type(t: TpyType | None) -> TpyType | None:
@@ -460,15 +479,22 @@ def bare_ptr_element(et: TpyType) -> bool:
             and TupleType._element_is_pointer_repr(bare))
 
 
-def ptr_tuple_element_message(name: str, index: int, et: TpyType) -> str:
+def ptr_tuple_element_message(name: str, index: int, et: TpyType, *,
+                              per_branch: bool = False) -> str:
     """The sentence for a rebound tuple whose owned element is no plain
-    reference: such an element has no reference local of its own yet."""
+    reference: such an element has no reference local of its own yet.
+    `per_branch`: every binding of the name is part of its first one (one
+    per arm of an `if` or `try`), so none rebinds it."""
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(unwrap_own(et))))
     kind = ("an Optional" if isinstance(bare, OptionalType)
             else "a union" if isinstance(bare, UnionType)
             else "a generic type parameter" if isinstance(bare, TypeParamRef)
             else "a nested tuple" if isinstance(bare, TupleType)
             else f"a {bare}")
+    if per_branch:
+        return (f"binding '{name}' in more than one branch while it owns "
+                f"element {index}, {kind}, is not yet supported here; bind "
+                f"each branch's value to a name of its own")
     return (f"rebinding '{name}' while it owns element {index}, {kind}, is "
             f"not yet supported here; bind the new value to a name of its "
             f"own")
@@ -615,9 +641,14 @@ def _decide_ptr_tuple_form(name: str, an,
     for i in sorted(owned):
         if i >= len(bt.element_types) or not bare_ptr_element(
                 bt.element_types[i]):
+            firsts = scan_first_bindings(
+                fn.body, [p for p, _ in fn.params]).get(name, ())
+            per_branch = len(bindings) > 1 and all(
+                any(b is f for f in firsts) for b in bindings)
             return refuse(first_owner, "ptr_tuple.owned_element_form",
                           ptr_tuple_element_message(
-                              shown(), i, bt.element_types[i]))
+                              shown(), i, bt.element_types[i],
+                              per_branch=per_branch))
     return PtrTupleDecision(bt, None)
 
 
@@ -760,12 +791,19 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
         f["value_opt"] = ValueOptKind.RECORD
     elif _value_opt_string_owned(typ) is not None:
         f["value_opt"] = ValueOptKind.VIEW
+    open_borrow = False
     if isinstance(u, OwnType):
         inner = unwrap_readonly(u.wrapped)
-        if isinstance(inner, TupleType) and inner.has_pointer_repr_element():
+        if (isinstance(inner, TupleType)
+                and inner.has_pointer_or_copy_free_borrow_form()):
             f["storage_tuple"] = True
     elif isinstance(u, TupleType) and u.is_owned_movable():
         f["storage_tuple"] = True
+    elif (isinstance(u, TupleType) and not u.has_pointer_repr_element()
+          and _p._binding_form_tuple(u, analyzer) is not None):
+        # The signature passes an open-T tuple in its borrow form
+        # (`val_or_ptr_t<T>`), which its type alone does not say.
+        open_borrow = True
     if isinstance(typ, TpyType) and unwrap_optional_own(
             unwrap_readonly(unwrap_send_sync(typ))) is not None:
         f["owned"] = True
@@ -787,6 +825,12 @@ def _param_row(site, name, typ, inp: PlanInputs, visible):
             and not isinstance(typ, ReadonlyType)
             and u.inner.is_expensive_copy()):
         f["movable"] = True
+    if open_borrow and _seeded_form(f) is F.NONE:
+        return BindingRepr(name=name, site=None, type=typ,
+                           form=F.BORROW_TUPLE, site_kind=site.kind,
+                           is_param=True, effective_type=u,
+                           param_type=ptype if isinstance(ptype, TpyType)
+                           else None, **f)
     return BindingRepr(name=name, site=None, type=typ, form=_seeded_form(f),
                        site_kind=site.kind,
                        is_param=True,
@@ -1187,7 +1231,12 @@ def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
         return _mk(site, name, typ, F.POINTER if ptr else F.VALUE,
                    BC.ER_BIND, pointer=ptr,
                    rebind_slot=ptr)
+    if _open_t_escaping_capture(site, name, typ, inp):
+        return _mk(site, name, typ, F.NONE, None, open_t_storage_copy=True)
     rec = _decl_value_rows(site, name, typ, inp, visible, bind, movable)
+    if rec is None and _open_t_storage_copy_decl(site, name, typ, inp,
+                                                 visible):
+        return _mk(site, name, typ, F.NONE, None, open_t_storage_copy=True)
     if (isinstance(vtype, TupleType) and vtype.has_own_element()
             and not vtype.has_pointer_repr_element()
             and name not in pre.reassigned):
@@ -1199,6 +1248,39 @@ def _decl_ladder(site, name, typ, inp: 'PlanInputs', visible, bind):
                        storage_tuple=True, movable=movable)
         return replace(rec, storage_tuple=True, movable=movable)
     return rec
+
+
+def _open_t_escaping_capture(site, name, typ, inp: 'PlanInputs') -> bool:
+    """An open-T tuple local an escaping closure captures keeps the
+    storage copy whatever row its source would take: the closure outlives
+    what a borrow form points at
+    (BUGS.md#escaping-closure-borrow-tuple-capture)."""
+    an = inp.analyzer
+    fn = site.func or inp.func
+    return (name in an.function_escaping_captured_locals.get(fn, ())
+            and _p._open_t_tuple_slot(typ, an) is not None
+            and _p._value_bounded_tuple_slot(typ, an) is None)
+
+
+def _open_t_storage_copy_decl(site, name, typ, inp: 'PlanInputs', visible
+                              ) -> bool:
+    """An open-T tuple local no binding row took keeps the storage copy it
+    compiles to at a value T where the borrow form is not decided for it: a
+    reassigned local, a select (only the borrow name pair takes the borrow
+    form, `tuple_select`), a copy of such a local, or a tuple whose borrow
+    form could copy (`has_copy_free_borrow_form`)."""
+    an = inp.analyzer
+    ot = _p._open_t_tuple_slot(typ, an)
+    if ot is None or _p._value_bounded_tuple_slot(typ, an) is not None:
+        return False
+    init = site.init
+    if (not ot.has_copy_free_borrow_form() or name in inp.prescan.reassigned
+            or isinstance(init, TpyIfExpr)):
+        return True
+    if isinstance(init, TpyName):
+        src = visible(init.name)
+        return src is not None and src.open_t_storage_copy
+    return False
 
 
 def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
@@ -1375,7 +1457,7 @@ def _decl_value_rows(site, name, typ, inp: 'PlanInputs', visible, bind,
         _p._unwrap_own(ct)))) if ct is not None else None)
     nested_own = _p._nested_owned_tuple_call_ret(ct, an) is not None
     if (_checks._storage_decl_src(init, an) and isinstance(ctu, TupleType)
-            and (ctu.has_pointer_repr_element() or nested_own)
+            and (ctu.has_pointer_or_copy_free_borrow_form() or nested_own)
             and (call_hands_back_value(init)
                  or _p._owned_tuple_call_ret(ct, an) is not None
                  or nested_own)
@@ -1411,12 +1493,18 @@ def _decl_tail_rows(site, name, typ, inp: 'PlanInputs', visible, ctx,
     stmt, init = site.node, site.init
     vtype = typ
     # A borrow-tuple alias of a name, a ternary of names or mixed calls, or
-    # a call (the mixed own / borrow tuple among them).
-    if (not site.in_branch and fixed
-            and isinstance(init, (TpyName, TpyCall, TpyMethodCall,
-                                  TpyIfExpr))):
+    # a call (the mixed own / borrow tuple among them). A block-local one is
+    # the same `auto` copy of the source's pointers when that copies nothing
+    # else; a mixed render or an inline element is aliased, which only a
+    # straight-line one may be.
+    if (fixed and isinstance(init, (TpyName, TpyCall, TpyMethodCall,
+                                    TpyIfExpr))):
         rec = _btuple_alias_decl(site, name, typ, inp, visible, ctx, movable)
-        if rec is not None:
+        if rec is not None and (
+                not site.in_branch
+                or (rec.construct is BC.BTUPLE_ALIAS
+                    and not rec.borrow_tuple_mixed
+                    and rec.effective_type.has_copy_free_borrow_form())):
             return rec
     # `decl.optview_shim`: the Optional-view param shim.
     if (name not in pre.reassigned and isinstance(init, TpyName)
@@ -1490,7 +1578,9 @@ def _btuple_rebound_decl(site, name, typ, inp: 'PlanInputs', ctx, fn,
         return None
     bt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
         collapse_tuple_own_elements(typ))))
-    if not (isinstance(bt, TupleType) and bt.has_pointer_repr_element()
+    if not (isinstance(bt, TupleType)
+            and (bt.has_pointer_repr_element()
+                 or _p._binding_form_tuple(bt, an) is not None)
             and not an.function_stmt_borrow_decls.get(fn, {}).get(name, False)
             and not contains_pending_leaf(bt)
             and not any(isinstance(t, (PendingViewType, IntLiteralType,
@@ -1575,7 +1665,13 @@ def _btuple_alias_decl(site, name, typ, inp: 'PlanInputs', visible, ctx,
         src = visible(n)
         if src is None or src.pointer or src.storage_tuple:
             return None
-        return _p._f1_tuple(src.effective_type or src.type, an)
+        bt = _p._binding_form_tuple(src.effective_type or src.type, an)
+        if (bt is not None and not bt.has_pointer_repr_element()
+                and src.form is not F.BORROW_TUPLE):
+            # An open-T tuple's type does not say which form it holds; only
+            # a source whose record took the borrow form is one.
+            return None
+        return bt
 
     if isinstance(init, TpyName):
         src_bt = name_bt(init.name)
@@ -1588,7 +1684,9 @@ def _btuple_alias_decl(site, name, typ, inp: 'PlanInputs', visible, ctx,
                 return abt if abt is not None and abt.is_mixed_own() else None
             return name_bt(a.name) if isinstance(a, TpyName) else None
         tb, eb = arm(init.then_expr), arm(init.else_expr)
-        if tb is not None and tb == eb:
+        if tb is not None and tb == eb and (
+                tb.has_pointer_repr_element()
+                or _name_pair_select(init, tb, inp, visible) is not None):
             src_bt = tb
             mixed = tb.is_mixed_own()
     else:
@@ -1600,11 +1698,12 @@ def _btuple_alias_decl(site, name, typ, inp: 'PlanInputs', visible, ctx,
         owned_only = (isinstance(cru, TupleType) and cru.has_own_element()
                       and not cru.has_ref_elements())
         if cru is not None and not owning and not owned_only:
-            src_bt = (_p._f1_tuple(an.get_expr_type(init), an)
+            src_bt = (_p._binding_form_tuple(an.get_expr_type(init), an)
                       or _p._wrapper_ref_tuple_return(
                           an.get_expr_type(init), an))
             mixed = promoted = (src_bt is not None and src_bt.is_mixed_own())
-    if src_bt is None or not src_bt.has_ref_elements():
+    if src_bt is None or not (src_bt.has_ref_elements()
+                               or src_bt.has_pointer_or_proxy_element()):
         return None
     if isinstance(init, TpyName):
         src = visible(init.name)
@@ -1718,16 +1817,23 @@ def _storage_tuple_alias(site, name, typ, inp, visible, ctx):
     record."""
     init = site.init
     pre, an = inp.prescan, inp.analyzer
-    if site.in_branch or not is_storage_tuple_alias_decl(
-            typ, init, name=name, reassigned=pre.reassigned,
-            hoisted=pre.hoisted, move_through=pre.move_through,
-            storage_tuple_locals=ctx.names_with("storage_tuple")):
+    # A block-local alias of a storage name is the same `auto&&`; a field
+    # or element alias stays straight-line.
+    if ((site.in_branch and not isinstance(init, TpyName))
+            or not is_storage_tuple_alias_decl(
+                typ, init, name=name, reassigned=pre.reassigned,
+                hoisted=pre.hoisted, move_through=pre.move_through,
+                storage_tuple_locals=ctx.names_with("storage_tuple"))):
         return None
     # The source must be a const-spellable storage tuple whose elements the
     # alias can re-bind (pointer-repr, or records held inline).
     src_t = an.get_expr_type(init)
+    # A field or element source names storage by its type; an open-T tuple
+    # name is storage only by its record (the chain arm below).
+    src_form_t = (_p._binding_form_tuple(src_t, an)
+                  if isinstance(init, TpyName) else _p._f1_tuple(src_t, an))
     if not (_p._storage_tuple_alias_src_ok(init, ctx.declared_view, an)
-            and (_p._f1_tuple(src_t, an) is not None
+            and (src_form_t is not None
                  or _p._own_record_tuple(src_t, an) is not None)):
         return None
     if isinstance(init, TpyFieldAccess):
@@ -1755,6 +1861,20 @@ def _storage_tuple_alias(site, name, typ, inp, visible, ctx):
                        tuple_layout=layout,
                        const_storage_tuple=_p._walrus_src_is_const(init, ctx))
     return None
+
+
+def _name_pair_select(init: TpyIfExpr, t: 'TupleType', inp: 'PlanInputs',
+                      visible) -> 'Held | None':
+    """`tuple_select` over a select's two arms as their records hold
+    them."""
+    an = inp.analyzer
+    arms = (init.then_expr, init.else_expr)
+    helds = tuple(
+        project_held(visible(a.name), an.get_expr_type(a), False, an,
+                     inp.prescan.param_names, frozenset(), name=a.name)
+        if isinstance(a, TpyName) else Held.VALUE
+        for a in arms)
+    return tuple_select(arms, (helds[0], helds[1]), t)
 
 
 def _try_hoist_type_ok(vtype: TpyType, analyzer) -> bool:
@@ -1915,7 +2035,10 @@ def _nonvalue_hoist_rung(site, name: str, var_type: TpyType,
     ptr_opt = var_opt is not None and not _readonly_opt_pointee(var_type)
     btuple = (isinstance(stmt, (TpyIf, TpyTry, TpyForEach))
               and isinstance(var_type, TupleType)
-              and var_type.has_pointer_repr_element())
+              and (var_type.has_pointer_repr_element()
+                   or (_p._binding_form_tuple(var_type, an) is not None
+                       and not _open_t_escaping_capture(site, name, var_type,
+                                                        inp))))
     dyn = (at_if and isinstance(var_type, NominalType)
            and is_dyn_protocol(var_type))
     if not (btuple or dyn) and _ptr_null_hoist(stmt, name, var_type, inp,
@@ -2078,7 +2201,7 @@ def _loop_row(site, name, typ, inp: 'PlanInputs', visible):
     etu = _uw(unwrap_ref_type(et)) if isinstance(et, TpyType) else None
     it_t = an.get_expr_type(stmt.iterable)
     storage_tuple = (isinstance(etu, TupleType)
-                     and etu.has_pointer_repr_element()
+                     and etu.has_pointer_or_copy_free_borrow_form()
                      and it_t is not None
                      and is_native_iterable(unwrap_readonly(it_t),
                                             an.registry)

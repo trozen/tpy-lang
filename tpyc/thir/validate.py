@@ -1093,7 +1093,8 @@ def _borrow_legal_return(rt) -> bool:
 def _pointer_lifted_storage(t) -> bool:
     """A storage slot whose borrow form is a POINTER shape with no implicit
     C++ conversion back: `optional<T>` (vs `T*`), value-variant (vs pointer
-    variant), storage tuple (vs pointer tuple). A BORROW value at such a slot
+    variant), storage tuple (vs pointer tuple, an open-T one's
+    `val_or_ptr_t<T>` included). A BORROW value at such a slot
     is a form lie -- the convert must have wrapped it."""
     if t is None:
         return False
@@ -1102,7 +1103,7 @@ def _pointer_lifted_storage(t) -> bool:
         return True
     if is_ptr_variant_union(t):
         return True
-    return isinstance(t, TupleType) and t.has_pointer_repr_element()
+    return isinstance(t, TupleType) and t.has_pointer_or_proxy_element()
 
 
 def _value_record_borrow(v: THIRExpr) -> bool:

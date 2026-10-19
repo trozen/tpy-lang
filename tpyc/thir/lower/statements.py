@@ -336,7 +336,7 @@ from .predicates import (
     _select_node,
     _native_iter_value_slot,
     _own_record_tuple,
-    _open_t_tuple_slot,
+    _open_t_tuple_storage_decl,
     _tuple_has_own_element,
     _union_elem_value_tuple,
     _own_ref_mix_call_ret,
@@ -4050,19 +4050,23 @@ def _borrow_tuple_source_ok(src: TpyExpr, lc: '_LowerCtx',
         # the field's own read admission runs during lowering.
         return not isinstance(analyzer.get_expr_type(src.obj), ReadonlyType)
     if isinstance(src, TpyName):
-        # Another borrow-form tuple LOCAL of the same shape (`u = t`): the
-        # reseat is the bare pointer-tuple copy. Params stay out (their
-        # const-element spelling would mismatch a mutable target).
+        # Another borrow-form tuple name of the same shape (`u = t`): the
+        # reseat is the bare pointer-tuple copy. A parameter's const element
+        # spelling is a const source, which the planner's const fixpoint
+        # carries into the target's element pointers; its copy may copy
+        # nothing but pointers and scalars.
         st = analyzer.get_expr_type(src)
         stu = (unwrap_readonly(unwrap_ref_type(unwrap_send_sync(st)))
                if st is not None else None)
         rec = (own[1] if own is not None and src.name == own[0]
                else lc.binding(src.name))
-        return (src.name not in lc.prescan.param_names
-                and not rec.const
+        return ((not rec.const and src.name not in lc.prescan.param_names
+                 or (rec.is_param and isinstance(stu, TupleType)
+                     and stu.has_copy_free_borrow_form()))
                 and not rec.storage_tuple
                 and isinstance(stu, TupleType)
-                and stu.has_pointer_repr_element())
+                and (stu.has_pointer_repr_element()
+                     or rec.form is BindingForm.BORROW_TUPLE))
     return False
 
 
@@ -10364,8 +10368,10 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     slot_cpp=lc.render_type(obt_t), loc=loc)
             note_detail("reseat.opt_btuple_source")
             raise ThirUnsupported(stmt_reject_reason(stmt))
-        bt_t = (_borrow_tuple_local_type(stmt.name, declared,
-                                 lc.names_with("storage_tuple"))
+        bt_t = (_borrow_tuple_local_type(
+                    stmt.name, declared, lc.names_with("storage_tuple"),
+                    borrow_form=(lc.binding(stmt.name).form
+                                 is BindingForm.BORROW_TUPLE))
                 if is_reassign and stmt.name not in lc.prescan.param_names
                 else None)
         if bt_t is not None:
@@ -11655,10 +11661,13 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     # (`t = make_pair()` -> `std::tuple<Counter, Counter>`)
                     # is the plain spelled copy like a value tuple.
                     or _own_record_tuple(vtype, analyzer) is not None
-                    # ... and the OPEN-T tuple slot (`p = s.pair()` on a
-                    # `tuple[T, int32]` protocol result) spells the bare
-                    # `std::tuple<T, int32_t>` copy the same way.
-                    or (_open_t_tuple_slot(vtype, analyzer) is not None
+                    # ... and an open-T tuple slot that spells its storage
+                    # (a value-bounded T, or a record keeping the storage
+                    # copy, BUGS.md#open-t-tuple-reseat-storage-residue); a
+                    # T that may be a reference otherwise holds its
+                    # source's form (the binding rows).
+                    or (_open_t_tuple_storage_decl(
+                            vtype, lc.declaring(stmt.name), analyzer)
                         and _witness("decl.open_t_tuple_slot"))
                     # A `None`-annotated unit slot (`local: None = x`):
                     # `std::monostate local = x;` -- borrow and storage

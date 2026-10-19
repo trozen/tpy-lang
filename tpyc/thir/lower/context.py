@@ -529,7 +529,7 @@ def _decl_slot_forms(slot: 'TpyType | None', analyzer, *,
     if tup is not None:
         if whole_tuple_call:
             return _ONLY_TUPLE_SOURCE
-        if from_call and (tup.has_pointer_repr_element()
+        if from_call and (tup.has_pointer_or_proxy_element()
                           or tup.has_ref_elements() or tup.is_mixed_own()):
             return _ONLY_BTUPLE_SLOT
         return _NO_FORMS

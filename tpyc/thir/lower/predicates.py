@@ -201,7 +201,7 @@ from ...compilation_context import get_current_compiler
 from ...qnames import COPY as COPY_QNAME
 from ...prescan import literal_constant, parse_deref_view_key
 from ..reject import ThirUnsupported, note_detail, stmt_reject_reason
-from ..source import NameFacts
+from ..source import Held, NameFacts
 from ..faces import witness as _witness
 from ..nodes import (
     COMPARISON_OPS,
@@ -5054,6 +5054,19 @@ def _f1_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
         return None
     return t
 
+def _binding_form_tuple(t: TpyType | None, analyzer) -> 'TupleType | None':
+    """`_f1_tuple` widened to the copy-free open-`T` tuple (open proxies
+    beside plain scalars, `has_copy_free_borrow_form`): a tuple whose
+    binding holds whichever form its source holds."""
+    f1 = _f1_tuple(t, analyzer)
+    if f1 is not None or t is None:
+        return f1
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    if (isinstance(t, TupleType) and t.has_open_proxy_element()
+            and t.has_copy_free_borrow_form()):
+        return t
+    return None
+
 def _open_slot_match(at_open: 'TpyType | None',
                      ptype: 'TpyType | None') -> bool:
     """The still-open-slot bare bind: the source's type IS the unsubstituted
@@ -5313,6 +5326,25 @@ def _open_t_tuple_slot(t: TpyType | None, analyzer) -> 'TupleType | None':
         if not _value_tuple_element_ok(e, analyzer):
             return None
     return t if open_elem else None
+
+def _value_bounded_tuple_slot(t: TpyType | None, analyzer
+                              ) -> 'TupleType | None':
+    """`_open_t_tuple_slot` whose every open element is value-bounded (`T:
+    ValueType`): borrow and storage are one form at every instantiation, so
+    a declaration spells the storage copy. An element that may be a
+    reference is the binding rows' (`_binding_form_tuple`)."""
+    ot = _open_t_tuple_slot(t, analyzer)
+    if ot is None or ot.has_open_proxy_element():
+        return None
+    return ot
+
+def _open_t_tuple_storage_decl(t: TpyType | None, rec, analyzer) -> bool:
+    """An open-T tuple declaration that spells its storage
+    (`std::tuple<T, int32_t> y = ...;`): a value-bounded T, whose one form
+    that is, or a local whose binding record keeps the storage copy
+    (`BindingRepr.open_t_storage_copy`)."""
+    return (_value_bounded_tuple_slot(t, analyzer) is not None
+            or (rec is not None and rec.open_t_storage_copy))
 
 def _tuple_has_own_element(t: 'TupleType') -> bool:
     """Any `Own[...]` element at any depth through nested tuples."""
@@ -5884,18 +5916,22 @@ def _subscript_index_and_tuple(sub: TpySubscript,
     return recv_t, idx
 
 def _borrow_tuple_local_type(name: str, declared: dict[str, TpyType],
-                             storage_tuple_locals: 'AbstractSet[str]'
+                             storage_tuple_locals: 'AbstractSet[str]', *,
+                             borrow_form: bool = False
                              ) -> 'TupleType | None':
     """The pointer-repr TupleType of a BORROW-form tuple name, or None.
     Borrow is the default form for a declared ptr-repr tuple name (params,
     btuple.decl literals, branch hoists); the storage registrations
     (`storage_tuple_locals`) carve out the owning locals, and an
-    `Own[tuple]` param keeps its Own wrapper in `declared`."""
+    `Own[tuple]` param keeps its Own wrapper in `declared`. An open-T
+    tuple's type does not show its form: `borrow_form` is its record's."""
     t = declared.get(name)
     if not isinstance(t, TpyType):
         return None
     bare = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
-    if (isinstance(bare, TupleType) and bare.has_pointer_repr_element()
+    if (isinstance(bare, TupleType)
+            and (bare.has_pointer_repr_element()
+                 or (borrow_form and bare.has_pointer_or_proxy_element()))
             and name not in storage_tuple_locals):
         return bare
     return None
@@ -9619,6 +9655,48 @@ def _declared_own_return(call: 'TpyCall | TpyMethodCall', *,
     if under_optional and isinstance(u, OptionalType):
         u = unwrap_readonly(u.inner)
     return u if isinstance(u, OwnType) else None
+
+
+def _own_declared_result(call: 'TpyCall | TpyMethodCall') -> bool:
+    """Whether a call's result owns its storage: the callee's DECLARED return
+    is `Own[T]` or `Own[T] | None` (the expression type sema stamps has the
+    `Own` stripped) and the result has a form axis at all. The call arms tag
+    the view-family axis themselves; this is the one owning stamp over every
+    call node, whichever arm built it."""
+    own = _declared_own_return(call, under_optional=True)
+    if own is None:
+        return False
+    # The axis is the PAYLOAD's: `Own` itself answers as a value. An open-T
+    # tuple has a form axis its type does not show.
+    payload = unwrap_readonly(own.wrapped)
+    return _is_borrow_form_name(payload) or (
+        isinstance(payload, TupleType)
+        and payload.has_pointer_or_proxy_element())
+
+
+def _pointer_repr_tuple_result(t: 'TpyType | None') -> bool:
+    """A call result type that is a tuple with a pointer-repr or open-T
+    element: the callee hands back `std::tuple<..., T*>` /
+    `std::tuple<val_or_ptr_t<T>, ...>`, the borrow form (an `Own` result
+    is decided first, by `_own_declared_result`). A record borrow result
+    stays VALUE: MIR's `_borrowed_expression` reads a call as VALUE by
+    contract."""
+    if t is None:
+        return False
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(t)))
+    return isinstance(t, TupleType) and t.has_pointer_or_proxy_element()
+
+
+def call_declared_held(call: 'TpyCall | TpyMethodCall | None',
+                       t: 'TpyType | None') -> 'Held | None':
+    """What a call result of type `t` holds by its callee's declared return
+    alone: an `Own` result FRESH (ownership wins), a tuple with a pointer
+    or open-T element BORROWED; None where the declaration does not say."""
+    if call is not None and _own_declared_result(call):
+        return Held.FRESH
+    if _pointer_repr_tuple_result(t):
+        return Held.BORROWED
+    return None
 
 
 def _own_declared_call_ret(call: 'TpyCall | TpyMethodCall') -> bool:

@@ -2918,8 +2918,9 @@ THIR_FACES: frozenset[str] = frozenset({
                                     # row (`h.store(b"abc")`)
     "gentuple.field_elem",          # `self.<field>` at an open-T generic
                                     # tuple-literal element slot
-    "decl.open_t_tuple_slot",       # `tuple[T, int32]` decl slot inside a
-                                    # generic body: the plain spelled copy
+    "decl.open_t_tuple_slot",       # `tuple[T, int32]` decl slot that
+                                    # spells its storage: a value-bounded
+                                    # T, or a record keeping the copy
     "method.protocol_open_t_tuple_ret",  # open-T tuple RESULT of a
                                     # protocol method (`s.pair()`)
     "arg.open_t_tuple_literal",     # tuple literal at an open-T tuple arg

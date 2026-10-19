@@ -9,7 +9,8 @@ where is_value_type() and uses_pointer_repr() disagree.
 
 from .typesys import (
     ValueForm, TupleType, OptionalType, OwnType, TypeParamRef, TypeParamKind,
-    RefType, NominalType, INT32, STR,
+    RefType, NominalType, ReadonlyType, UnionType, INT32, INT64, BOOL, STR,
+    CHAR, BIGINT,
 )
 
 RECORD = NominalType("Point")  # unregistered nominal -> non-value
@@ -164,3 +165,85 @@ class TestNestedPointerReprElement:
         # An Own element is moved into the slot, never copied out of a borrow.
         tt = TupleType((INT32, TupleType((INT32, OwnType(RECORD)))))
         assert not tt.has_nested_pointer_repr_element()
+
+
+class TestPointerOrProxyElement:
+    """has_pointer_or_proxy_element: a direct element whose borrow form is a
+    pointer or an open-T proxy, so a binding takes its source's form."""
+
+    VALUE_T = TypeParamRef("T", bound=NominalType(
+        "ValueType", is_protocol=True, _module_qname="tpy.ValueType"))
+
+    def test_open_t_counts(self):
+        assert TupleType((TypeParamRef("T"), INT32)).has_pointer_or_proxy_element()
+        assert TupleType((TypeParamRef("T"),)).has_pointer_or_proxy_element()
+
+    def test_readonly_and_ref_open_t_count(self):
+        t = TypeParamRef("T")
+        assert TupleType((ReadonlyType(t), INT32)).has_pointer_or_proxy_element()
+        assert TupleType((RefType(t), INT32)).has_pointer_or_proxy_element()
+
+    def test_pointer_repr_counts(self):
+        assert TupleType((RECORD, INT32)).has_pointer_or_proxy_element()
+        assert TupleType((OptionalType(RECORD),)).has_pointer_or_proxy_element()
+
+    def test_value_bounded_and_int_params_do_not(self):
+        # One form at every instantiation.
+        assert not TupleType((self.VALUE_T, INT32)).has_pointer_or_proxy_element()
+        n = TypeParamRef("N", kind=TypeParamKind.INT)
+        assert not TupleType((n, INT32)).has_pointer_or_proxy_element()
+
+    def test_nested_union_own_and_values_do_not(self):
+        t = TypeParamRef("T")
+        assert not TupleType((TupleType((t, INT32)), INT32)).has_pointer_or_proxy_element()
+        assert not TupleType((OwnType(t), INT32)).has_pointer_or_proxy_element()
+        assert not TupleType((INT32, STR)).has_pointer_or_proxy_element()
+        assert not TupleType(
+            (UnionType((RECORD, NominalType("Other"))), INT32)
+        ).has_pointer_or_proxy_element()
+
+    def test_open_t_beside_an_owning_element_counts(self):
+        # The borrow form differs from storage whatever else the tuple
+        # holds; whether a binding takes it is has_copy_free_borrow_form's.
+        assert TupleType((TypeParamRef("T"), STR)).has_pointer_or_proxy_element()
+        assert not TupleType((TypeParamRef("T"), STR)).has_copy_free_borrow_form()
+
+    def test_superset_of_pointer_repr(self):
+        for elems in TestPredicateEquivalence.CASES:
+            tt = TupleType(elems)
+            if tt.has_pointer_repr_element():
+                assert tt.has_pointer_or_proxy_element(), elems
+
+
+class TestCopyFreeBorrowForm:
+    """has_copy_free_borrow_form: every element a concrete pointer or a
+    bufferless scalar, or every element an open-T proxy or a bufferless
+    scalar -- a copy costs nothing beyond each element as a scalar local."""
+
+    def test_open_t_beside_scalars(self):
+        t = TypeParamRef("T")
+        assert TupleType((t, INT32)).has_copy_free_borrow_form()
+        assert TupleType((t, t, BOOL)).has_copy_free_borrow_form()
+        assert TupleType((ReadonlyType(t), INT64)).has_copy_free_borrow_form()
+        assert TupleType((t, CHAR)).has_copy_free_borrow_form()
+
+    def test_concrete_pointer_tuple(self):
+        assert TupleType((RECORD, INT32)).has_copy_free_borrow_form()
+        assert TupleType((RECORD, OptionalType(RECORD))).has_copy_free_borrow_form()
+        assert TupleType((RECORD, OptionalType(INT32), CHAR)).has_copy_free_borrow_form()
+        # An `int` element copies its limbs exactly as an `int` local does,
+        # so the tuple copy costs nothing the scalar would not.
+        assert TupleType((RECORD, BIGINT)).has_copy_free_borrow_form()
+        assert not TupleType((INT32, STR)).has_copy_free_borrow_form()
+        assert not TupleType((INT32, BOOL)).has_copy_free_borrow_form()
+
+    def test_concrete_pointer_beside_a_buffer_is_outside(self):
+        # A copy of `std::tuple<A*, std::string>` copies the string.
+        assert not TupleType((RECORD, STR)).has_copy_free_borrow_form()
+        assert not TupleType((RECORD, OwnType(RECORD))).has_copy_free_borrow_form()
+
+    def test_open_t_beside_a_pointer_or_buffer_is_outside(self):
+        t = TypeParamRef("T")
+        assert not TupleType((RECORD, t)).has_copy_free_borrow_form()
+        assert not TupleType((RECORD, t, INT32)).has_copy_free_borrow_form()
+        assert not TupleType((t, STR)).has_copy_free_borrow_form()

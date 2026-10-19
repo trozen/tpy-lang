@@ -77,7 +77,7 @@ inline int32_t Cell<T>::consume(const std::tuple<::tpy::val_or_cptr_t<T>, int32_
 //     return p[1]
 template<typename T, HasPair<T> T_s>
 int32_t second_of(T_s& s) {
-    std::tuple<T, int32_t> p = s.pair();
+    auto p = s.pair();
     return std::get<1>(p);
 }
 // # Parameter position: T inferred from `consume`'s tuple[T, int32] param.
