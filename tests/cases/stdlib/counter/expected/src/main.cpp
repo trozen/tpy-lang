@@ -35,6 +35,17 @@ namespace tpyapp::main {
 //
 //     empty: Counter[str] = Counter()
 //     print(len(empty), empty["nope"])   # 0 0
+//
+//     # most_common(n) stops inside the sorted list: of the tied p and r (2
+//     # each) the first-seen p survives the cut.
+//     m = Counter(["p", "q", "r", "q", "s", "p", "r", "q"])
+//     for key, cnt in m.most_common(2):
+//         print("cut", key, cnt)          # cut q 3 / cut p 2
+//     print("negative", len(m.most_common(-1)))   # negative 0
+//     for lim in [-1, 0, 3]:
+//         print("empty", lim, len(empty.most_common(lim)))  # empty -1 0 / 0 0 / 3 0
+//     for num, times in nums.most_common(2):
+//         print("int", num, times)      # int 3 5 / int 1 2
 void main() {
     std::vector<std::string> words = {"a", "b", "a", "c", "a", "b", "c"};
     ::tpystd::collections::Counter<std::string> c = ::tpystd::collections::Counter<std::string>(&(words));
@@ -67,10 +78,41 @@ void main() {
     std::cout << nums[1] << " " << nums[2] << " " << nums[3] << "\n" << ::tpy::check_signals;
     ::tpystd::collections::Counter<std::string> empty = ::tpystd::collections::Counter<std::string>();
     std::cout << ::tpy::__len__(empty) << " " << empty["nope"] << "\n" << ::tpy::check_signals;
+    std::array<std::string, 8> __tmp_3 = {"p", "q", "r", "q", "s", "p", "r", "q"};
+    ::tpystd::collections::Counter<std::string> m = ::tpystd::collections::Counter<std::string>(&(__tmp_3));
+    auto __obj_1 = m.most_common(2);
+    auto __beg_1 = __obj_1.begin();
+    auto __end_1 = __obj_1.end();
+    for (; __beg_1 != __end_1; ++__beg_1) {
+        const auto& __for_tup_1 = *__beg_1;
+        const auto& __tup_2 = __for_tup_1;
+        std::string_view key = std::get<0>(__tup_2);
+        const ::tpy::BigInt& cnt = std::get<1>(__tup_2);
+        std::cout << "cut" << " " << key << " " << cnt << "\n" << ::tpy::check_signals;
+    }
+    std::cout << "negative" << " " << ::tpy::__len__(m.most_common(-1)) << "\n" << ::tpy::check_signals;
+    auto __obj_2 = {-1, 0, 3};
+    auto __beg_2 = __obj_2.begin();
+    auto __end_2 = __obj_2.end();
+    for (; __beg_2 != __end_2; ++__beg_2) {
+        int32_t lim = *__beg_2;
+        std::cout << "empty" << " " << lim << " " << ::tpy::__len__(empty.most_common(lim)) << "\n" << ::tpy::check_signals;
+    }
+    auto __obj_3 = nums.most_common(2);
+    auto __beg_3 = __obj_3.begin();
+    auto __end_3 = __obj_3.end();
+    for (; __beg_3 != __end_3; ++__beg_3) {
+        const auto& __for_tup_2 = *__beg_3;
+        const auto& __tup_3 = __for_tup_2;
+        int32_t num = std::get<0>(__tup_3);
+        const ::tpy::BigInt& times = std::get<1>(__tup_3);
+        std::cout << "int" << " " << num << " " << times << "\n" << ::tpy::check_signals;
+    }
 }
 
 // # collections.Counter v1: construct/[]/len/in/total, most_common(n) (n=0, n>len,
-// # ties), update/subtract (incl. to negative). cpy phase checks real-Counter parity.
+// # ties, a cut inside the list, negative n, empty and int-keyed counters),
+// # update/subtract (incl. to negative). cpy phase checks real-Counter parity.
 // from collections import Counter
 //
 // main()

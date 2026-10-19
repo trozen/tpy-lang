@@ -18,7 +18,7 @@
 #
 __tpy__ = {"cpp_namespace": "tpystd::collections"}
 from typing import Iterable
-from tpy import Own, int32, Hashable, copy
+from tpy import Own, int32, Hashable, copy, own_iter
 
 
 class Counter[T: Hashable]:
@@ -53,12 +53,13 @@ class Counter[T: Hashable]:
         pairs: list[tuple[T, int]] = []
         for k in self._data:
             pairs.append((copy(k), self._data[k]))
-        ranked = sorted(pairs, key=lambda kv: -kv[1])
-        out: list[tuple[T, int]] = []
-        i = 0
-        while i < n and i < len(ranked):
-            out.append(ranked[i])
-            i += 1
+        # The pairs are moved through the sort and the tail dropped, so no
+        # tuple is copied; a stable reverse sort keeps first-seen order for
+        # equal counts, as CPython does. Still a full O(K log K) sort where
+        # CPython takes the top n in O(K log n) (heapq.nlargest with a key).
+        out = sorted(own_iter(pairs), key=lambda kv: kv[1], reverse=True)
+        while len(out) > 0 and len(out) > n:
+            del out[len(out) - 1]
         return out
 
     def update(self, other: Counter[T]) -> None:

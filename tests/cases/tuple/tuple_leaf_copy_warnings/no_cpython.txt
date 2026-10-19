@@ -1,0 +1,1 @@
+Each section's copy is the warned divergence: TPy copies the tuple leaf into the owning slot where CPython aliases it, so the mutated source differs from CPython's output by design.

@@ -1,5 +1,6 @@
 # collections.Counter v1: construct/[]/len/in/total, most_common(n) (n=0, n>len,
-# ties), update/subtract (incl. to negative). cpy phase checks real-Counter parity.
+# ties, a cut inside the list, negative n, empty and int-keyed counters),
+# update/subtract (incl. to negative). cpy phase checks real-Counter parity.
 from collections import Counter
 
 
@@ -34,6 +35,17 @@ def main() -> None:
 
     empty: Counter[str] = Counter()
     print(len(empty), empty["nope"])   # 0 0
+
+    # most_common(n) stops inside the sorted list: of the tied p and r (2
+    # each) the first-seen p survives the cut.
+    m = Counter(["p", "q", "r", "q", "s", "p", "r", "q"])
+    for key, cnt in m.most_common(2):
+        print("cut", key, cnt)          # cut q 3 / cut p 2
+    print("negative", len(m.most_common(-1)))   # negative 0
+    for lim in [-1, 0, 3]:
+        print("empty", lim, len(empty.most_common(lim)))  # empty -1 0 / 0 0 / 3 0
+    for num, times in nums.most_common(2):
+        print("int", num, times)      # int 3 5 / int 1 2
 
 
 main()

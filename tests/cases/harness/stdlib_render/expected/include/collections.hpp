@@ -135,12 +135,13 @@ inline ::tpy::BigInt Counter<T>::total() const {
 //     pairs: list[tuple[T, int]] = []
 //     for k in self._data:
 //         pairs.append((copy(k), self._data[k]))
-//     ranked = sorted(pairs, key=lambda kv: -kv[1])
-//     out: list[tuple[T, int]] = []
-//     i = 0
-//     while i < n and i < len(ranked):
-//         out.append(ranked[i])
-//         i += 1
+//     # The pairs are moved through the sort and the tail dropped, so no
+//     # tuple is copied; a stable reverse sort keeps first-seen order for
+//     # equal counts, as CPython does. Still a full O(K log K) sort where
+//     # CPython takes the top n in O(K log n) (heapq.nlargest with a key).
+//     out = sorted(own_iter(pairs), key=lambda kv: kv[1], reverse=True)
+//     while len(out) > 0 and len(out) > n:
+//         del out[len(out) - 1]
 //     return out
 template<::tpystd::tpy::Hashable T>
 inline std::vector<std::tuple<T, ::tpy::BigInt>> Counter<T>::most_common(int32_t n) const {
@@ -152,12 +153,9 @@ inline std::vector<std::tuple<T, ::tpy::BigInt>> Counter<T>::most_common(int32_t
         const auto& k = *__beg_0;
         pairs.push_back(std::tuple<T, ::tpy::BigInt>{T(k), ::tpy::__getitem__(this->_data, k)});
     }
-    std::vector<std::tuple<T, ::tpy::BigInt>> ranked = ::tpy::builtin_sorted_key<std::tuple<T, ::tpy::BigInt>>(pairs, [](const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>& kv) -> ::tpy::BigInt { return -(std::get<1>(kv)); });
-    std::vector<std::tuple<T, ::tpy::BigInt>> out = std::vector<std::tuple<T, ::tpy::BigInt>>{};
-    int32_t i = 0;
-    while (((i < n) && (i < ::tpy::__len__(ranked)))) {
-        out.push_back(ranked[static_cast<std::size_t>(i)]);
-        i = ::tpy::add_check<int32_t>(i, 1);
+    std::vector<std::tuple<T, ::tpy::BigInt>> out = ::tpy::builtin_sorted_key<std::tuple<T, ::tpy::BigInt>>(::tpy::own_iter(std::move(pairs)), [](const std::tuple<::tpy::val_or_ptr_t<T>, ::tpy::BigInt>& kv) -> ::tpy::BigInt { return std::get<1>(kv); }, true);
+    while (((::tpy::__len__(out) > 0) && (::tpy::__len__(out) > n))) {
+        ::tpy::__delitem__(out, (::tpy::sub_check<int32_t>(::tpy::__len__(out), 1)));
     }
     return out;
 }

@@ -1,0 +1,1 @@
+main.py:18: error: cannot copy non-copyable type 'N' into owned storage (tuple element 0) (a closure reads its captured value in place and cannot move it out; pass the value in as a parameter to transfer ownership)

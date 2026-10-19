@@ -47,7 +47,7 @@ from ..parse import (
     TpyBinOp, TpyTupleLiteral, TpyTypeParamConstruct, TpyCoerce, TpyLambda,
     TpyDictLiteral, TpySetLiteral, lambda_of,
     TpyVarargPack, TpyStarUnpack, TpyFString, TpyFStringValue,
-    TpyGeneratorExpression, TpyStmt, TupleElemCapture,
+    TpyGeneratorExpression, TpyNamedExpr, TpyStmt, TupleElemCapture,
 )
 from ..modules import extract_type_params
 from ..namespace import BindingKind, NameBinding
@@ -3486,12 +3486,22 @@ class CallAnalyzer:
         # before unwrap_optional_own because the second shape has no outer
         # Own to unwrap.
         peeled_ptype = unwrap_readonly(ptype)
+        # A walrus is its target name's read, not the literal's.
+        passed = peel_coerce(arg)
         if (isinstance(peeled_ptype, TupleType)
-                and isinstance(arg, TpyTupleLiteral)
+                and isinstance(passed, TpyTupleLiteral)
                 and any(isinstance(et, OwnType) for et in peeled_ptype.element_types)):
-            self._check_own_tuple_literal_arg(arg, peeled_ptype, pname)
+            self._check_own_tuple_literal_arg(passed, peeled_ptype, pname)
             self._warn_unnecessary_copy(arg)
             return
+        # A walrus is its target name's read, its warnings the argument
+        # coercion's; its record is the name's.
+        if isinstance(arg, TpyNamedExpr):
+            name_target = own_tuple_target(ptype)
+            if (name_target is not None
+                    and any(isinstance(et, OwnType)
+                            for et in name_target.element_types)):
+                self.compat.register_tuple_sink(arg, ptype, TupleSink.ARG)
         # A tuple LOCAL passed by NAME into a tuple param with Own slots: the
         # literal element check above never ran, so consult the
         # construction-time plain-borrow-into-Own hazard per Own slot.
@@ -3527,9 +3537,9 @@ class CallAnalyzer:
                             f"make this explicit", arg)
                         # Declared to the lowering, which builds only
                         # declared copies of a name holding a reference. The
-                        # whole owned tuple is copied, so no MIXED mark
-                        # (`record_tuple_copy` would add one).
-                        self.ctx.own_element_copies[arg] = None
+                        # whole owned tuple is copied, so no MIXED mark.
+                        self.compat.record_tuple_copy(arg, None,
+                                                      mark_mixed=False)
         own_ptype = unwrap_optional_own(ptype)
         if own_ptype is None:
             return
@@ -3537,12 +3547,12 @@ class CallAnalyzer:
         # own_tuple_target's synthesis (lvalue-tuple sources keep today's
         # silent-copy behaviour; the check applies to literal sources only).
         if (isinstance(own_ptype.wrapped, TupleType)
-                and isinstance(arg, TpyTupleLiteral)):
-            self._check_own_tuple_literal_arg(arg, own_ptype, pname)
+                and isinstance(passed, TpyTupleLiteral)):
+            self._check_own_tuple_literal_arg(passed, own_ptype, pname)
             # The parameter OWNS the tuple like a field: every member is held
             # by value (a last-use owned one moved in, a borrowed one copied
             # -- both decided by the member check above).
-            arg.elem_capture = [TupleElemCapture.VALUE] * len(arg.elements)
+            passed.elem_capture = [TupleElemCapture.VALUE] * len(passed.elements)
             self._warn_unnecessary_copy(arg)
             return
         # Unwrap OwnType from name lookup (implicit owned local) for the check.
@@ -3604,8 +3614,9 @@ class CallAnalyzer:
         target = own_tuple_target(ptype)
         if target is None:
             return
-        self.compat.check_tuple_literal_members(
-            literal, target, TupleSink.ARG, "owned storage", pname=pname)
+        self.compat.check_owned_tuple_sink(
+            literal, ptype, "owned storage", literal, sink=TupleSink.ARG,
+            pname=pname)
 
     def _derive_ctor_arg_hints(self, expr: TpyCall) -> list[TpyType | None]:
         """Derive per-argument type hints from __init__ param types.

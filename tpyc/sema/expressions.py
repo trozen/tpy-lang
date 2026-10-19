@@ -13,6 +13,7 @@ from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
 from ..holders import IterHolder
 from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
+from ..typesys import own_tuple_target
 from ..typesys import binds_runtime_symbol, body_function_info
 from ..typesys import (
     same_class,
@@ -6406,6 +6407,23 @@ class ExpressionAnalyzer:
                 raise _LambdaResultMismatch(err.message, err.loc, shown)
         self.compat.check_view_return_dangle(expr.body, fn_type.return_type, expr.loc)
         self._queue_lambda_borrow_check(expr, fn_type.return_type)
+        # A captured tuple name the body returns at an owning slot is read
+        # in place, as a nested def's is.
+        body_value = peel_value_wrappers(expr.body)
+        tuple_target = own_tuple_target(fn_type.return_type)
+        if (isinstance(body_value, TpyName) and tuple_target is not None
+                and body_value.name in expr.captured_names):
+            self.compat.check_name_borrow_into_own(
+                body_value.name, tuple_target, body_value,
+                return_slot=fn_type.return_type, captured=True)
+        elif (isinstance(body_value, TpyName) and tuple_target is not None
+              and body_value.name in expr.param_names):
+            # A returned parameter hands over what its declared type owns.
+            self.compat.grant_name_move(body_value, OwnType(tuple_target))
+            self.compat.register_tuple_sink(
+                body_value, fn_type.return_type, TupleSink.RETURN,
+                param=fn_type.param_types[
+                    expr.param_names.index(body_value.name)])
         if not isinstance(fn_type.return_type, VoidType):
             expr.body = self.compat.coerce_expr(
                 expr.body, body_type, fn_type.return_type, "lambda return",

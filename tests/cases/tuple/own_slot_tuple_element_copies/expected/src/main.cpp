@@ -101,6 +101,29 @@ std::tuple<A, int32_t> remedy(A& a) {
     return ::tpy::tuple_to_storage<std::tuple<A, int32_t>>(t);
 }
 
+// # closure: the copy remedy for a captured tuple returned into an owning
+// # result -- spelled, nothing warns, and the result is a copy as in CPython
+// # (a lambda body's or a captured parameter's copy() still rejects:
+// # BUGS.md#captured-tuple-copy-return-rejects)
+// def captured_remedy() -> None:
+//     t = (A(1), 3)
+//
+//     def inner() -> tuple[Own[A], int32]:
+//         return copy(t)  # tpyc: ok
+//
+//     r = inner()
+//     t[0].x = 10
+//     print("captured_remedy", r[0].x, t[0].x)
+void captured_remedy() {
+    auto t = std::tuple<A, int32_t>{A(1), 3};
+    auto inner = [&t]() -> std::tuple<A, int32_t> {
+        return std::tuple<A, int32_t>(t);
+    };
+    std::tuple<A, int32_t> r = inner();
+    std::get<0>(t).x = 10;
+    std::cout << "captured_remedy" << " " << std::get<0>(r).x << " " << std::get<0>(t).x << "\n" << ::tpy::check_signals;
+}
+
 // def keep_both(q: tuple[Own[A], Own[A]]) -> Own[list[tuple[A, A]]]:
 //     ys: list[tuple[A, A]] = []
 //     ys.append(q)
@@ -170,6 +193,7 @@ std::vector<std::tuple<A, A>> append_mixed_local(A& a) {
 //     r = remedy(a)
 //     r[0].x = 55
 //     print("remedy", a.x, r[0].x)
+//     captured_remedy()
 void main() {
     Holder h = Holder();
     A b = A(2);
@@ -193,6 +217,7 @@ void main() {
     auto r = ::tpyapp::main::remedy(a);
     std::get<0>(r).x = 55;
     std::cout << "remedy" << " " << a.x << " " << std::get<0>(r).x << "\n" << ::tpy::check_signals;
+    ::tpyapp::main::captured_remedy();
 }
 
 // main()

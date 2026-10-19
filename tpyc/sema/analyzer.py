@@ -3513,6 +3513,8 @@ class SemanticAnalyzer:
         self.ctx.current_module_stmt = None
         self.deduction.resolve_all()
         self.compat.drain_deferred_escape_checks()
+        # No module-level read waits for settlement.
+        self.compat.build_tuple_records()
         # A global some function rebinds through `global` can change between
         # two module-level statements: foreign storage for the replay.
         decide_rebind_storage(self.ctx, stmts, always_foreign=function_globals)

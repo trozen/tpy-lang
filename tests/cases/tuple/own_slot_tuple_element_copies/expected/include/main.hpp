@@ -32,6 +32,8 @@ int32_t select_owned(bool c, A& a);
 int32_t owning_call(const A& a);
 // def remedy(a: A) -> Own[tuple[A, int32]]:
 std::tuple<A, int32_t> remedy(A& a);
+// def captured_remedy() -> None:
+void captured_remedy();
 // def keep_both(q: tuple[Own[A], Own[A]]) -> Own[list[tuple[A, A]]]:
 std::vector<std::tuple<A, A>> keep_both(std::tuple<A, A>&& q);
 // def append_param(p: tuple[Own[A], A]) -> Own[list[tuple[A, A]]]:

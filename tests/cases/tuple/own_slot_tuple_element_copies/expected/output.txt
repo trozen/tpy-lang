@@ -9,3 +9,4 @@ select alias 40 1
 select 41 1
 owning_call 22 1
 remedy 1 55
+captured_remedy 1 10

@@ -38,7 +38,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import TYPE_CHECKING, Container, Iterable, Mapping, NamedTuple
+from typing import TYPE_CHECKING, Callable, Container, Iterable, Mapping, NamedTuple
 
 from ..holders import Holder, IterHolder
 from ..identity_map import IdentityMap, IdentitySet
@@ -227,37 +227,51 @@ def top_level(paths: Iterable[ElemPath]) -> frozenset[int]:
 
 
 def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
-                         slot: TpyType | None, prefix: ElemPath = ()
-                         ) -> frozenset[ElemPath] | None:
+                         slot: TpyType | None, prefix: ElemPath = (), *,
+                         member_lends: 'Callable[[TpyExpr], bool] | None'
+                         = None) -> frozenset[ElemPath] | None:
     """The element paths (`reference_paths`) of a tuple SOURCE at `slot`
     whose reference payload arrives BORROWED -- storage that outlives the
     expression, which an owning slot copies where CPython aliases. None
-    when the slot is no tuple. A literal lends each member it does not
-    capture by VALUE (a nested tuple member answers for its subtree); a
-    call lends per its declared return (`Own[tuple]` nothing, an `Own`
-    element marker at any depth not that subtree); a select lends what either arm does (C++
-    copies the chosen one); an element the read moves out (`element_moves`)
-    and a consuming method's field move lend nothing; a name, a field, a
-    subscript and anything else lend every reference path."""
+    when the slot is no tuple. A call lends per its declared return
+    (`Own[tuple]` nothing, an `Own` element marker at any depth not that
+    subtree); a select lends what either arm does (C++ copies the chosen
+    one); an element the read moves out (`element_moves`) and a consuming
+    method's field move lend nothing; a name, a field, a subscript and
+    anything else lend every reference path.
+
+    A literal answers two questions. Its INCOMING ownership (`member_lends`
+    given: what each scalar member lends as it arrives, the sink's question)
+    asks every member, whatever its capture: a nested tuple member answers
+    for its subtree. Its STORAGE after capture (no `member_lends`: what a
+    binding of it holds, the binding masks' question) lends each member it
+    does not capture by VALUE -- a member it captured by value is held as
+    an object of its own, a copied one included."""
     bare = bare_tuple(slot)
     if bare is None or expr is None:
         return None
     init = _peel(expr)
     if isinstance(init, TpyIfExpr):
         return frozenset().union(*(
-            tuple_borrowed_paths(ctx, arm, bare, prefix) or frozenset()
+            tuple_borrowed_paths(ctx, arm, bare, prefix,
+                                 member_lends=member_lends) or frozenset()
             for arm in (init.then_expr, init.else_expr)))
     if isinstance(init, TpyTupleLiteral):
         caps = init.elem_capture
         out: set[ElemPath] = set()
         for i, et in enumerate(bare.element_types):
             path = prefix + (i,)
-            if i < len(caps) and caps[i] is TupleElemCapture.VALUE:
+            m = init.elements[i] if i < len(init.elements) else None
+            if member_lends is None:
+                if i < len(caps) and caps[i] is TupleElemCapture.VALUE:
+                    continue
+            elif m is None:
                 continue
-            if bare_tuple(et) is not None and i < len(init.elements):
-                out |= tuple_borrowed_paths(ctx, init.elements[i], et,
-                                            path) or frozenset()
-            else:
+            if bare_tuple(et) is not None and m is not None:
+                out |= tuple_borrowed_paths(
+                    ctx, m, et, path,
+                    member_lends=member_lends) or frozenset()
+            elif member_lends is None or member_lends(m):
                 out |= _paths_at(et, path)
         return frozenset(out)
     if isinstance(init, (TpyCall, TpyMethodCall)):

@@ -975,7 +975,7 @@ Top-level analyzers (one module each):
 `numeric_lattice`, `mutation_propagation`, `method_expansion`,
 `macros`, `builder_trace`, `function_macros`, `reach_analysis`,
 `frame_traits`, `frame_close`, `loop_frames`, `own_copy`, `slot_hint`,
-`storage_policy`, `pending_num`, `call_lends`, `context`.
+`storage_policy`, `pending_num`, `call_lends`, `tuple_records`, `context`.
 `storage_walk` is the one climb from an expression to the named storage it
 references (`storage_roots`, asked as HOLDER / PLACE / POINTEE) and the one
 routine that marks those roots mutated (`mark_roots`). Its `trace` (the
@@ -1043,6 +1043,21 @@ passes of a loop (or, in a generator or async body, past a `with` block) that
 may write what it borrows, failing closed on anything it cannot trace -- the
 interim rule until MIR owns that hazard (docs/IR_DESIGN.md, "Loop-bound generators that borrow storage
 the loop writes").
+
+`tuple_records` holds the per-leaf ownership record of a tuple source at an
+owning sink (`TupleSourceRecord`: per reference leaf path borrowed, slot-owned
+and a permission -- PASS, MOVE, WARNED, HEDGED, EXPLICIT, UNDECIDED -- a
+select's arms with records of their own), keyed by the peeled source node;
+`tuple_source_record` is its one lookup. Each owning sink only registers its
+source and slot (`TypeCompatibility.register_tuple_sink`, from
+`check_owned_tuple_sink` and the name checks), once per source -- a
+statement's own check stands over its coercion's `Own`-slot check; one
+builder (`build_tuple_records`) runs at the end of `settle_owning_reads`, and
+once more after the module-level statements (`analyzer.py`, which leave no
+read to settle), and derives every leaf from settled facts: the source's incoming lending
+(`tuple_lent_paths`, the incoming mode of `tuple_borrowed_paths`), the slot's
+`owned_slot_paths`, and the declared verdicts (`own_element_copies`,
+`declared_tuple_reads`, last-use moves, `copy()` nodes, open `T` leaves).
 
 `own_copy` holds the owning-slot copy contract of a body whose payload is
 still a type parameter. The sinks warn at the body line, hedged, at

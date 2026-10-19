@@ -1707,6 +1707,11 @@ class FunctionTrackingState:
     # complete (`TypeCompatibility.settle_owning_reads`), and the loop
     # variables' copy warnings, settled when their loop's mode is decided.
     owning_reads: list[OwningRead] = field(default_factory=list)
+    # Every owning tuple sink's registration of its source and slot
+    # (`tuple_records.TupleSinkRead`), one per canonical source node: their
+    # per-leaf records are built from the settled verdicts once
+    # `settle_owning_reads` ran.
+    tuple_sinks: IdentityMap = field(default_factory=IdentityMap)
     move_through_vars: set[str] = field(default_factory=set)
 
     # --- Prescan / last-use ---
@@ -2620,6 +2625,10 @@ class SemanticContext:
     # never a move out of storage that outlives the call, never an
     # undeclared copy.
     own_element_copies: IdentityMap = field(default_factory=IdentityMap)
+    # The per-leaf ownership record of every tuple source an owning sink
+    # checked (`tuple_records.TupleSourceRecord`), keyed by the peeled
+    # source node and read through `tuple_records.tuple_source_record`.
+    tuple_records: IdentityMap = field(default_factory=IdentityMap)
     # Name reads that resolve to a comprehension's own variable, mapped to
     # the clause binding it (`CompTarget`): an owning sink's verdict on one
     # is its clause's, never the function's name-keyed ownership fact,

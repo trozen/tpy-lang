@@ -135,7 +135,7 @@ if TYPE_CHECKING:
 
 from .alias_rebind import (binding_roots, decide_rebind_storage,
                            finalize_pointer_tuples, stamp_bind_kind,
-                           stamp_unpack_rebinds)
+                           owned_slot_paths, stamp_unpack_rebinds)
 from .storage_policy import first_binding_storage
 from .numeric_lattice import same_width_family
 from .type_join import operand_spelling, python_type_name, wider_store_message
@@ -1098,6 +1098,16 @@ class StatementAnalyzer:
             f"{self.compat.copy_remedy(value)}", value)
         return True
 
+    def _reads_capture(self, name: str) -> bool:
+        """Whether `name` read in this body is a nested def's capture of
+        its enclosing scope's binding (a nested def cannot bind an
+        enclosing name of its own without `nonlocal`). Read off the
+        enclosing scope's names: the def's `captured_names` are set only
+        once its whole body is analyzed."""
+        fs = self.ctx.func
+        return (fs.in_nested_def and name in fs.outer_scope_locals
+                and name not in fs.current_param_names)
+
     def _note_live_name_copy(self, value: TpyExpr) -> None:
         """Record the returned NAME a closure still reads as a read the
         lowering must copy: C++ would move a bare `return x;`."""
@@ -1159,7 +1169,16 @@ class StatementAnalyzer:
                     and isinstance(unwrap_readonly(own_expected.inner), OwnType)
                     and own_tuple_target(own_expected.inner) is None):
                 own_expected = unwrap_readonly(own_expected.inner)
-            if isinstance(own_expected, OwnType):
+            returned_name = peel_coerce(stmt.value)
+            # A closure's return of a tuple it captured is decided per leaf
+            # (`check_name_borrow_into_own`), never as a whole. Only a return
+            # would move a whole name out; an `Own` argument copies a
+            # captured name as any name it outlives, and a nested def
+            # cannot yield.
+            captured_tuple = (isinstance(returned_name, TpyName)
+                              and own_tuple_target(own_expected) is not None
+                              and self._reads_capture(returned_name.name))
+            if isinstance(own_expected, OwnType) and not captured_tuple:
                 if self.compat.is_copy_call(stmt.value):
                     self._warn_unnecessary_return_copy(stmt.value)
                 else:
@@ -1171,25 +1190,33 @@ class StatementAnalyzer:
             # `-> X | None` returns its non-None value exactly as `-> X` does.
             tuple_slot = (expected.inner if isinstance(expected, OptionalType)
                           else expected)
-            # Check Own[T] elements in tuple literals.
-            if isinstance(stmt.value, TpyTupleLiteral):
+            # Check Own[T] elements in tuple literals. A walrus is its target
+            # name's read, which no name check below takes up.
+            returned = peel_coerce(stmt.value)
+            if isinstance(returned, TpyTupleLiteral):
                 tuple_target = own_tuple_target(tuple_slot)
                 if tuple_target is not None:
                     # The Own-element checks, then the per-element
                     # capture mode (ref/value/const_ref).
                     self._annotate_tuple_elem_capture(
-                        stmt.value, tuple_target, sink=TupleSink.RETURN,
+                        returned, tuple_target, sink=TupleSink.RETURN,
+                        sink_slot=tuple_slot,
                         return_slot=(expected if tuple_slot is not expected
                                      else None))
+            elif isinstance(returned, TpyNamedExpr):
+                if own_tuple_target(tuple_slot) is not None:
+                    self.compat.register_tuple_sink(returned, tuple_slot,
+                                                    TupleSink.RETURN)
             # A tuple LOCAL returned by name: the literal-element check
             # above never ran, so consult the construction-time
             # plain-borrow-into-Own hazard for each Own slot.
-            elif isinstance(stmt.value, TpyName):
+            elif isinstance(returned, TpyName):
                 tuple_target = own_tuple_target(tuple_slot)
                 if tuple_target is not None:
                     self.compat.check_name_borrow_into_own(
-                        stmt.value.name, tuple_target, stmt.value,
-                        return_slot=tuple_slot)
+                        returned.name, tuple_target, returned,
+                        return_slot=tuple_slot,
+                        captured=self._reads_capture(returned.name))
             # A tuple name with a borrowed element has its copy declared per
             # element just above.
             if (not isinstance(own_expected, OwnType)
@@ -1631,7 +1658,9 @@ class StatementAnalyzer:
         self, literal: TpyTupleLiteral, tuple_type: TupleType,
         *, sink: TupleSink = TupleSink.LOCAL,
         sink_dest: str = "owned storage",
-        return_slot: OptionalType | None = None
+        sink_slot: TpyType | None = None,
+        return_slot: OptionalType | None = None,
+        members_checked: bool = False
     ) -> None:
         """Annotate each element of a tuple literal with its capture mode,
         after the per-member copy check for the literal's `sink`.
@@ -1643,11 +1672,22 @@ class StatementAnalyzer:
                 element or a LOCAL; decides each member's copy rule and its
                 capture.
             sink_dest: How to name the destination in a copy diagnostic.
+            sink_slot: The slot the sink fills, as declared (an
+                `Own[tuple[...]]` return owns every nested leaf too);
+                `tuple_type` when not given.
             return_slot: The declared nullable return `tuple_type` is the
                 non-None value of, named as such in a remedy.
+            members_checked: A walrus bound the literal, so its members
+                took the local's copy rule and the sink copies the name's
+                read (`check_owned_tuple_sink` on the walrus).
         """
-        self.compat.check_tuple_literal_members(
-            literal, tuple_type, sink, sink_dest)
+        if sink is TupleSink.LOCAL and not members_checked:
+            self.compat.check_tuple_literal_members(
+                literal, tuple_type, sink, sink_dest)
+        elif not members_checked:
+            self.compat.check_owned_tuple_sink(
+                literal, sink_slot if sink_slot is not None else tuple_type,
+                sink_dest, literal, sink=sink)
         is_return = sink is TupleSink.RETURN
         # A field and a container element both OWN what they store.
         is_field = sink in (TupleSink.FIELD, TupleSink.CONTAINER)
@@ -5536,10 +5576,25 @@ class StatementAnalyzer:
         # runs per member -- apply it here.
         yielded = peel_value_wrappers(stmt.value)
         yield_bare = unwrap_readonly(unwrap_ref_type(elem_type))
-        if (isinstance(yielded, TpyTupleLiteral)
-                and isinstance(yield_bare, TupleType)):
-            self.compat.check_tuple_literal_members(
-                yielded, yield_bare, TupleSink.YIELD, "owned storage")
+        read = peel_coerce(stmt.value)
+        if not isinstance(yield_bare, TupleType):
+            pass
+        elif isinstance(read, TpyNamedExpr):
+            # A walrus is its target name's read, whose record is the name's;
+            # its literal's members keep their copy rule.
+            if isinstance(yielded, TpyTupleLiteral):
+                self.compat.check_tuple_literal_members(
+                    yielded, yield_bare, TupleSink.YIELD, "owned storage")
+            self.compat.register_tuple_sink(read, yield_bare, TupleSink.YIELD)
+        elif isinstance(yielded, TpyTupleLiteral):
+            self.compat.check_owned_tuple_sink(
+                yielded, yield_bare, "owned storage", yielded,
+                sink=TupleSink.YIELD)
+        elif isinstance(read, TpyName) and owned_slot_paths(yield_bare):
+            # The yield moves the elements a last-use local owns, read as
+            # every owning sink's tuple read is (settled with the body).
+            self.compat.grant_name_move(read, OwnType(yield_bare))
+            self.compat.register_tuple_sink(read, yield_bare, TupleSink.YIELD)
         # Re-yielding an ephemeral borrow onward (consumed from an inner
         # generator/iterator) past its iteration step would let the outer
         # consumer read a stale slot -- reject unless copied out. EXCEPTION:
@@ -7921,7 +7976,9 @@ class StatementAnalyzer:
                                else "owned storage"),
                     sink=(TupleSink.FIELD if is_field
                           else TupleSink.CONTAINER if is_subscript
-                          else TupleSink.LOCAL))
+                          else TupleSink.LOCAL),
+                    members_checked=isinstance(peel_coerce(stmt.value),
+                                               TpyNamedExpr))
         # Residual copy warning: reassigned vars without OwnType in scope
         if isinstance(stmt.target, TpyName):
             # After the literal's element captures: they say which elements

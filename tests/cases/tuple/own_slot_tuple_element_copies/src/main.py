@@ -70,6 +70,21 @@ def remedy(a: A) -> Own[tuple[A, int32]]:
     return copy(t)  # tpyc: ok
 
 
+# closure: the copy remedy for a captured tuple returned into an owning
+# result -- spelled, nothing warns, and the result is a copy as in CPython
+# (a lambda body's or a captured parameter's copy() still rejects:
+# BUGS.md#captured-tuple-copy-return-rejects)
+def captured_remedy() -> None:
+    t = (A(1), 3)
+
+    def inner() -> tuple[Own[A], int32]:
+        return copy(t)  # tpyc: ok
+
+    r = inner()
+    t[0].x = 10
+    print("captured_remedy", r[0].x, t[0].x)
+
+
 def keep_both(q: tuple[Own[A], Own[A]]) -> Own[list[tuple[A, A]]]:
     ys: list[tuple[A, A]] = []
     ys.append(q)
@@ -147,6 +162,7 @@ def main() -> None:
     r = remedy(a)
     r[0].x = 55
     print("remedy", a.x, r[0].x)
+    captured_remedy()
 
 
 main()

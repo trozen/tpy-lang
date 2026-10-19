@@ -467,7 +467,63 @@ copies the owned element unwarned,
 (`BUGS.md#yield-tuple-name-own-element`), an Optional member
 (`BUGS.md#optional-member-own-copy-no-render`) -- these reject loudly -- and
 a module-global name, which copies unwarned
-(`BUGS.md#global-tuple-name-own-return-unwarned`).
+(`BUGS.md#global-tuple-name-own-return-unwarned`). A closure returning a
+tuple it CAPTURED is the exception: it reads the capture in place, so every
+leaf the result owns copies, owned ones included, warned per leaf (below);
+at `-> tuple[Own[A], Own[A]]` that compiles. At a whole `-> Own[tuple[A,
+int32]]` a captured LOCAL (`t = (A(1), 3)`) still rejects after the warning
+(`BUGS.md#captured-tuple-own-tuple-return-rejects`), while a captured
+parameter at the same result compiles and copies, warned.
+
+The per-element rule covers every reference leaf, not only a pointer one:
+- A **union leaf** (`tuple[A | B, int32]`) copies like the scalar `A | B`
+  at the same slot: a select of union-leaf tuples returned at
+  `Own[tuple[A | B, int32]]` and a field read warn *copies A | B into owned
+  storage (tuple element 0)*; a `@nocopy` alternative makes it an error. A
+  tuple NAME keeps its own rule, which does not name a union leaf yet: `xs =
+  [t]` or `self.t = t` with `t: tuple[A | B, int32]` copies it unwarned
+  (`BUGS.md#tuple-name-union-leaf-copy-silent`).
+- An **open `T` leaf** of a source that is no name takes the scalar `T`'s
+  hedge, once per leaf: `return mk(x)` with `mk[T] -> tuple[T, int32]` at
+  `Own[tuple[T, int32]]` warns *may copy T into owned storage (tuple element
+  0) if not a value type*, a nested result names `(tuple element 0.0)`, and
+  `out.append(ps[0])` over `ps: list[tuple[T, int32]]` hedges as its
+  monomorphic twin warns. A tuple NAME keeps its own text (a generic tuple
+  parameter is hedged for the whole tuple and per element), and a call that
+  lends by a native's or a declared `borrows=` contract (`min(a, b,
+  key=...)`) keeps the whole-tuple hedge.
+- A **captured** tuple returned by a nested def or a lambda is read in place
+  by the closure, so it lends every reference leaf, one its declaration
+  marks `Own` included: `return t` of an enclosing `t = (A(1), 3)` at
+  `-> tuple[Own[A], int32]` warns *copies A into owned storage (tuple element
+  0)*, and a `@nocopy` leaf is an error (*a closure reads its captured value
+  in place and cannot move it out*). `return copy(t)` in the nested def
+  spells the copy and warns nothing; in a lambda body, or of a captured
+  parameter, that `copy()` does not compile yet
+  (`BUGS.md#captured-tuple-copy-return-rejects`). A lambda at a `Callable`
+  slot also copies its captures when it is created
+  (`BUGS.md#callable-local-lambda-copies-capture-silently`).
+- A select of tuple literals copies only what its arms lend, each member
+  as it arrives: `return (A(1), 2) if c else (A(2), 3)` and `(copy(x), 1)
+  if c else (copy(y), 2)` warn nothing (an `A | None` member under `copy()`
+  included); `pair(a) if c else pair(b)` still warns the element each arm
+  lends, and so does a borrowing call nested in an arm: `(pair(a), 1) if c
+  else (pair(b), 2)` at `Own[tuple[tuple[A, int32], int32]]` warns *(tuple
+  element 0.0)*.
+- An `Own[tuple[...]]` **member** of a returned or passed literal owns each
+  leaf it holds: `return (pair(a), 3)` with `pair -> tuple[Own[A], A]` at
+  `-> tuple[Own[tuple[A, A]], int32]` warns *(tuple element 0.1)* only, and
+  `((a, A(2)), 3)` there warns *(tuple element 0.0)*.
+- A **walrus** is its target name's read: `take((t := (A(2), 1)))` binds the
+  literal to `t`, which stays live, so the argument takes the name's rule:
+  the owned slot copies (warned), never moves the literal's member. The
+  lowering still rejects a walrus-bound tuple at an owning tuple slot
+  (`BUGS.md#walrus-tuple-owning-sink-rejects`).
+- A yielded tuple NAME is an owning read like a returned one: `yield t` at
+  `Iterator[tuple[Own[A], int32]]`, where a loop's back edge rebinds `t =
+  (a, 2)`, warns the copy of element 0 the back edge makes (*'t' is bound to
+  existing storage at line N*); the lowering still rejects that yield
+  (`BUGS.md#yield-tuple-name-own-element`).
 
 It matters when:
 - You see a copy warning mentioning "borrowed Optional/Union" -- that
