@@ -1196,16 +1196,26 @@ class NonOwningBind:
     line: int | None
     elems: frozenset[ElemPath] | None
 
+    def borrowed_paths(self,
+                       paths: Iterable[ElemPath]) -> frozenset[ElemPath]:
+        """The element `paths` this fact borrows: those at or under a path
+        it names (every one for the whole value)."""
+        if self.elems is None:
+            return frozenset(paths)
+        elems = self.elems
+        return frozenset(p for p in paths
+                         if any(p[:len(e)] == e for e in elems))
+
     def direct_elems(self, arity: int) -> frozenset[int]:
-        """The top-level elements this fact borrows themselves (every one
-        for the whole value); a path nested under an element is not the
-        element."""
-        return (frozenset(range(arity)) if self.elems is None
-                else direct_elements(self.elems))
+        """The top-level elements of a tuple of `arity` this fact borrows
+        themselves (every one for the whole value); a path nested under an
+        element is not the element."""
+        return frozenset(p[0] for p in self.borrowed_paths(
+            (i,) for i in range(arity)))
 
     def borrows_direct(self) -> bool:
         """Whether the fact borrows the whole value or a top-level element."""
-        return self.elems is None or bool(self.direct_elems(0))
+        return self.elems is None or bool(direct_elements(self.elems))
 
 
 def note_nonowning_bind(ctx: 'SemanticContext', name: str,
@@ -1288,13 +1298,18 @@ class ElementMove(OwningRead):
 
 @dataclass(eq=False)
 class TupleNameMove(OwningRead):
-    """A tuple local read whole at a sink that takes its `Own` elements
-    (those of the slot `tuple_type`): all but `copied` move out of it. A
-    `warns` sink declares each copy it makes with the slot's warning; a
-    consuming unpack has no copy to make (it refuses a borrowed one)."""
+    """A tuple local read whole at a sink that takes the leaf paths `owned`
+    of the slot `tuple_type` (`owned_slot_paths`): all but those under the
+    elements `copied` move out of it. A `warns` sink declares each copy it
+    makes with the slot's warning; a consuming unpack has no copy to make
+    (it refuses a borrowed one). `prefix` is the element path of the
+    destination the read fills inside a tuple literal (`"1."`), which a
+    settled copy's warning names."""
     tuple_type: 'TupleType'
     copied: frozenset[int]
+    owned: frozenset[ElemPath]
     warns: bool = True
+    prefix: str = ""
 
 
 @dataclass(eq=False)
@@ -2126,11 +2141,27 @@ class FunctionTrackingState:
         rec = self.nonowning_binds.get(name)
         return rec.direct_elems(arity) if rec is not None else frozenset()
 
-    def nonowning_line(self, name: str) -> int | None:
-        """The line of the first binding that made local `name` non-owning
-        (wholly or at a top-level element), None for an owning local."""
+    def nonowning_leaves(self, name: str,
+                         paths: Iterable[ElemPath]) -> frozenset[ElemPath]:
+        """The element `paths` of tuple local `name` a binding of it
+        borrows (`NonOwningBind.borrowed_paths`): the whole-function fact
+        once the body is read, at settlement; the bindings walked so far
+        before that."""
         rec = self.nonowning_binds.get(name)
-        return rec.line if rec is not None and rec.borrows_direct() else None
+        return rec.borrowed_paths(paths) if rec is not None else frozenset()
+
+    def nonowning_line(self, name: str,
+                       path: ElemPath | None = None) -> int | None:
+        """The line of the first binding that made local `name` non-owning
+        (wholly or at a top-level element; at element `path`, when given --
+        the fact keeps one line, a binding borrowing deeper names it only
+        when no binding borrows directly), None where it owns."""
+        rec = self.nonowning_binds.get(name)
+        if rec is None:
+            return None
+        if path is not None:
+            return rec.line if rec.borrowed_paths((path,)) else None
+        return rec.line if rec.borrows_direct() else None
 
     # --- BindingProvenance accessors ---
     # Reads default-fill from an absent name; writes go through _bp_update,

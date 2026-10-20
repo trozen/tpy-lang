@@ -54,9 +54,10 @@ NOCOPY_REMEDIATION_HINT = (
     " (use Own[...] to transfer ownership, copy() if a copy is truly intended, "
     "or let auto-move apply at last use)"
 )
-# The same remedies for a read that runs once per item (a comprehension's
-# element, filter or later source): it is never a last use, so no auto-move.
-NOCOPY_REPEATED_READ_HINT = (
+# The same remedies for a read no auto-move applies to: one that runs once
+# per item (a comprehension's element, filter or later source), never a last
+# use, or a last use whose sink copies all the same.
+NOCOPY_NO_AUTO_MOVE_HINT = (
     " (use Own[...] to transfer ownership, or copy() if a copy is truly "
     "intended)"
 )

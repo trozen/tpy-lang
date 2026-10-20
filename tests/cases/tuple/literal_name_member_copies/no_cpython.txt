@@ -1,0 +1,4 @@
+Prints the value where TPy copies and CPython aliases: a repeated or live
+tuple name inside a tuple literal is copied into each owned slot (TPy prints
+1, CPython 5 after the write through the other slot or the callee). The copy
+is the acknowledged divergence the warnings under test announce.

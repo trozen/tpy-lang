@@ -462,7 +462,8 @@ rejects, since copying the whole tuple would copy the owned element too (a
 field store, an append and an `Own[tuple[...]]` argument of the same name
 compile and copy it, warned per element; an append at its last use also
 copies the owned element unwarned,
-`BUGS.md#mixed-tuple-local-append-copies-owned`) -- a tuple name nested in a returned literal
+`BUGS.md#mixed-tuple-local-append-copies-owned`) -- a borrowing tuple name
+nested in a returned literal, which warns and then fails the C++ build
 (`BUGS.md#nested-tuple-name-own-return`), `yield t`
 (`BUGS.md#yield-tuple-name-own-element`), an Optional member
 (`BUGS.md#optional-member-own-copy-no-render`) -- these reject loudly -- and
@@ -514,6 +515,38 @@ The per-element rule covers every reference leaf, not only a pointer one:
   leaf it holds: `return (pair(a), 3)` with `pair -> tuple[Own[A], A]` at
   `-> tuple[Own[tuple[A, A]], int32]` warns *(tuple element 0.1)* only, and
   `((a, A(2)), 3)` there warns *(tuple element 0.0)*.
+- A tuple **name member** of a literal follows the name rule of the same
+  name read alone at that member's slot, at every owning sink (return,
+  `async` and method return, yield, argument, field, container, local),
+  exactly as a scalar member does: with `t = (A(1), 2)`, `return (t, t)` at
+  `-> tuple[tuple[Own[A], int32], tuple[Own[A], int32]]` warns *(tuple
+  element 0.0)* and *(tuple element 1.0)*, as `return (a, a)` warns 0 and 1;
+  `yield (t, 3)` with `t` read afterwards warns *(tuple element 0.0)*; a
+  member whose binding borrows (`t = (a, 2)`) warns that leaf even at its
+  last use, as does a parameter's declared borrowed element (`return (t,
+  3)` with `t: tuple[Own[A], A]` at `-> tuple[tuple[Own[A], Own[A]],
+  int32]` warns *(tuple element 0.1)*, as `return t` warns 1). A parameter
+  whose `Own` markers are only nested (`t: tuple[tuple[Own[A], int32],
+  int32]`) is passed by const reference, so as a member it copies every
+  owned leaf, at its last use too (`return (t, 3)` warns *(tuple element
+  0.0.0)*; `BUGS.md#nested-own-param-const-ref-abi`). A deeper member
+  names its whole path (`((t, 1), t)` warns *(tuple element
+  0.0.0)*). The member's slot owns what the sink owns: a field, a container
+  element, a local and an `Own[tuple[...]]` argument own every leaf, a
+  return, a yield and any other argument what their declared `Own` markers
+  say, at every depth -- `take((t, 3))` with `take(v: tuple[tuple[Own[A],
+  int32], int32])` warns *(tuple element 0.0)*, while the `tuple[A, int32]`
+  member of `tuple[Own[A], tuple[A, int32]]` is a borrow and warns nothing,
+  a name and a nested literal alike. A last-use member is not warned, and a
+  `@nocopy` leaf the slot owns is an error (*cannot copy non-copyable type
+  'N' into owned storage (tuple element 0.0)*), even at the last use at a
+  return, a field or a container, where its scalar twin moves: the
+  literal's render copies a tuple member there until the lowering moves it
+  (`BUGS.md#tuple-literal-name-member-silent-copy`, which also tracks the
+  borrowed member's render). The opt-out that compiles today is a separate
+  local: `u = copy(t); return (u, t)` warns nothing; `return (copy(t), t)`
+  is quiet in sema but does not lower at a return or a yield yet
+  (`BUGS.md#copy-tuple-name-position-rejects`).
 - A **walrus** is its target name's read: `take((t := (A(2), 1)))` binds the
   literal to `t`, which stays live, so the argument takes the name's rule:
   the owned slot copies (warned), never moves the literal's member. The

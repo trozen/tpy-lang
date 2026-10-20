@@ -40,12 +40,6 @@ _WHOLE_IN_WARNING = re.compile(r"^(?:copies|may copy) tuple\[")
 # the program must contain (which program, and which parametrization of it)
 # and the exact stripped line, with the entry that tracks each.
 _KNOWN_DISAGREEMENTS: dict[tuple[str, str], str] = {
-    # The nested member warns a copy its slot does not make.
-    ("def nested_arg(a: A) -> int32:",
-     "return take_nested((A(0), (a, 1)))"):
-        "BUGS.md#own-element-arg-nested-tuple-false-copy-warning",
-    ("def elem_nested(a: A) -> None:", "print(take((A(0), (a, 1))))"):
-        "BUGS.md#own-element-arg-nested-tuple-false-copy-warning",
     # A union-leaf tuple name records WARNED with no warning.
     ("class H:\n    p: tuple[A | B, int32]\n", "xs.append(t)"):
         "BUGS.md#tuple-name-union-leaf-copy-silent",
@@ -1068,7 +1062,9 @@ def stored(a: A) -> int32:
 
 def test_owned_tuple_member_decides_each_leaf() -> None:
     # An `Own[tuple[...]]` member: a call's leaves by its declared return,
-    # a literal's per member; a nested NAME waits for path-complete facts.
+    # a literal's per member; a nested NAME's record waits for path-complete
+    # facts, while its read takes the name rule (the leaf its binding
+    # borrows warns).
     records, warnings, _a = _probe("""\
 def own_first(a: A) -> tuple[Own[A], A]:
     return (A(1), a)
@@ -1097,7 +1093,7 @@ def whole(a: A) -> Own[tuple[tuple[A, int32], int32]]:
         (0, 0): (True, True, P.WARNED)}
     assert warnings == [
         "copies A into owned storage (tuple element 0.1); use copy() to "
-        "make this explicit"] + [
+        "make this explicit"] * 2 + [
         "copies A into owned storage (tuple element 0.0); use copy() to "
         "make this explicit"] * 2
 
@@ -1639,12 +1635,14 @@ _W, _U, _H = P.WARNED, P.UNDECIDED, P.HEDGED
       (29, "copies A into owned storage (argument 'p' tuple element 0)")]),
     # An owned `Send[T]` leaf is neither seen as owned nor as an open `T`
     # (BUGS.md#send-own-tuple-leaf-copy-unwarned): the return of the name
-    # (12), the yielded literal (16) and the field store of the name (21)
-    # are UNDECIDED, and the append (24) and the `Own[tuple]` argument (26)
-    # of the name are WARNED, all with no warning or hedge.
+    # (12), the yielded literal (16), the field store of the name (21) and
+    # the literal at the `Own`-element argument (29) are UNDECIDED, and the
+    # append (24) and the `Own[tuple]` argument (26) of the name are WARNED,
+    # all with no warning or hedge.
     (dict(G="[T]", L="Send[T]", P="Send[T]"),
      {(6, _L): _W, (12, _N): _U, (15, _N): _H, (16, _L): _U, (21, _N): _U,
-      (22, _L): _W, (24, _N): _W, (25, _L): _W, (26, _N): _W, (27, _L): _W},
+      (22, _L): _W, (24, _N): _W, (25, _L): _W, (26, _N): _W, (27, _L): _W,
+      (29, _L): _U},
      [(6, "may copy Send[T] into field (tuple element 0) if not a value "
        "type"),
       (15, "may copy tuple[Send[T], int32] into owned storage if not a value "
@@ -1717,14 +1715,12 @@ def elem_nested(a: A) -> None:
     assert _perms(records[(19, "TpyTupleLiteral")]) == {(0,): P.UNDECIDED}
     # An unmarked nested member of an `Own`-element argument stays a borrow:
     # the record moves the fresh `A(0)` and passes the borrowed `a`, which
-    # the slot does not own, while the site warns it copied
-    # (BUGS.md#own-element-arg-nested-tuple-false-copy-warning).
+    # the slot does not own, and the site warns nothing.
     assert _leaves(records[(23, "TpyTupleLiteral")]) == {
         (0,): (False, True, P.MOVE), (1, 0): (True, False, P.PASS)}
     assert _copy_warnings(ctx) == [
         (7, "copies tuple[A, B] into owned storage"),
-        (12, "copies B into owned storage (tuple element 1.0)"),
-        (23, "copies A into owned storage (tuple element 1.0)")]
+        (12, "copies B into owned storage (tuple element 1.0)")]
 
 
 def _binding_facts(source: str, monkeypatch: pytest.MonkeyPatch
@@ -1868,3 +1864,386 @@ def own_int(n: Own[int32]) -> Own[tuple[int32, A]]:
 """)
     assert not [w for w in _warnings(_entry(modules).analyzer)
                 if "unnecessary copy()" in w]
+
+
+def _member_copy_warnings(source: str) -> list[tuple[int, str]]:
+    """The copy warnings of `source` after the leaf prelude, by line."""
+    _compiler, modules = _compile(LEAF_PRELUDE + source)
+    return _copy_warnings(_entry(modules).analyzer.ctx)
+
+
+def test_tuple_name_member_borrowed_leaf_warns_at_return_and_yield() -> None:
+    # A tuple name inside a returned / yielded literal takes the name rule at
+    # its member slot: the leaf its binding borrows copies, even at its last
+    # use, exactly as `xs = [(t, 3)]` warns it.
+    assert _member_copy_warnings("""\
+from typing import Iterator
+def ret(a: A) -> tuple[tuple[Own[A], int32], int32]:
+    t = (a, 2)
+    return (t, 3)
+def gen(a: A) -> Iterator[tuple[tuple[Own[A], int32], int32]]:
+    t = (a, 2)
+    yield (t, 3)
+def stored(a: A) -> None:
+    t = (a, 2)
+    xs = [(t, 3)]
+    print(len(xs))
+def par(t: tuple[Own[A], A]) -> tuple[tuple[Own[A], Own[A]], int32]:
+    return (t, 3)
+def par_alone(t: tuple[Own[A], A]) -> tuple[Own[A], Own[A]]:
+    return t
+def par_scalar(a: Own[A], b: A) -> tuple[Own[A], Own[A], int32]:
+    return (a, b, 3)
+""") == [(4, "copies A into owned storage (tuple element 0.0)"),
+         (7, "copies A into owned storage (tuple element 0.0)"),
+         (10, "copies A into owned storage (tuple element 0.0)"),
+         # A parameter's declared borrowed element copies at its last use,
+         # as the parameter returned alone and its scalar twin copy it.
+         (13, "copies A into owned storage (tuple element 0.1)"),
+         (15, "copies A into owned storage (tuple element 1)"),
+         (17, "copies A into owned storage (tuple element 1)")]
+
+
+def test_tuple_name_member_param_owned_leaves() -> None:
+    # A tuple parameter as a member: a `@nocopy` leaf the slot borrows does
+    # not stop the move of the owned one, as in its scalar twin. A parameter
+    # whose `Own` markers are only nested is passed by const reference, so
+    # its member copies every owned leaf, at its last use too, under its
+    # full path, as it does passed alone (`deep_arg_alone`)
+    # (BUGS.md#nested-own-param-const-ref-abi). `deep_alone` pins a known
+    # defect of that entry: returned alone, the same copy is silent. `H`
+    # builds its field rather than storing an `Own` parameter, whose store
+    # warns spuriously (BUGS.md#own-tuple-param-field-store-warns).
+    assert _member_copy_warnings("""\
+def take_mixed(p: tuple[tuple[Own[A], N], int32]) -> None:
+    pass
+def mixed(t: tuple[Own[A], N]) -> None:
+    take_mixed((t, 3))
+def take_flat(p: tuple[Own[A], N, int32]) -> None:
+    pass
+def mixed_scalar(a: Own[A], n: N) -> None:
+    take_flat((a, n, 3))
+def deep_ret(t: tuple[tuple[Own[A], int32], int32]
+             ) -> tuple[tuple[tuple[Own[A], int32], int32], int32]:
+    return (t, 3)
+def deep_alone(t: tuple[tuple[Own[A], int32], int32]
+               ) -> tuple[tuple[Own[A], int32], int32]:
+    return t
+def deep_scalar(a: Own[A]) -> tuple[tuple[tuple[Own[A], int32], int32], int32]:
+    return (((a, 2), 3), 4)
+def take_deep(p: tuple[tuple[tuple[Own[A], int32], int32], int32]) -> int32:
+    return p[1]
+def deep_arg(t: tuple[tuple[Own[A], int32], int32]) -> int32:
+    return take_deep((t, 3))
+def deep_arg_live(t: tuple[tuple[Own[A], int32], int32]) -> int32:
+    n = take_deep((t, 3))
+    return n + t[1]
+def deep_arg_scalar(a: Own[A]) -> int32:
+    return take_deep((((a, 2), 3), 4))
+def deep_mixed(t: tuple[tuple[Own[A], A], int32]
+               ) -> tuple[tuple[tuple[Own[A], Own[A]], int32], int32]:
+    return (t, 3)
+def deep_mixed_alone(t: tuple[tuple[Own[A], A], int32]
+                     ) -> tuple[tuple[Own[A], Own[A]], int32]:
+    return t
+class H:
+    p: tuple[tuple[tuple[A, int32], int32], int32]
+    def __init__(self) -> None:
+        self.p = (((A(1), 2), 3), 4)
+def deep_field(t: tuple[tuple[Own[A], int32], int32], h: H) -> None:
+    h.p = (t, 3)
+def deep_append(t: tuple[tuple[Own[A], int32], int32],
+                xs: list[tuple[tuple[tuple[A, int32], int32], int32]]) -> None:
+    xs.append((t, 3))
+def take_one(p: tuple[tuple[Own[A], int32], int32]) -> int32:
+    return p[1]
+def deep_arg_alone(t: tuple[tuple[Own[A], int32], int32]) -> int32:
+    return take_one(t)
+""") == [(11, "copies A into owned storage (tuple element 0.0.0)"),
+         (20, "copies A into owned storage (tuple element 0.0.0)"),
+         (22, "copies A into owned storage (tuple element 0.0.0)"),
+         (28, "copies A into owned storage (tuple element 0.0.0)"),
+         (28, "copies A into owned storage (tuple element 0.0.1)"),
+         (31, "copies A into owned storage (tuple element 0.1)"),
+         (37, "copies A into field (tuple element 0.0.0)"),
+         (40, "copies A into owned storage (tuple element 0.0.0)"),
+         (44, "copies tuple[tuple[Own[A], int32], int32] into owned storage")]
+
+
+def test_tuple_name_member_last_use_moves_live_copies() -> None:
+    # The member's last use moves (no warning); a live or repeated one
+    # copies each owned leaf, named by its full path.
+    assert _member_copy_warnings("""\
+from typing import Iterator
+def last() -> tuple[tuple[Own[A], int32], int32]:
+    t = (A(1), 2)
+    return (t, 3)
+def rep() -> tuple[tuple[Own[A], int32], tuple[Own[A], int32]]:
+    t = (A(1), 2)
+    return (t, t)
+def live() -> Iterator[tuple[tuple[Own[A], int32], int32]]:
+    t = (A(1), 2)
+    yield (t, 3)
+    print(t[1])
+def nested() -> tuple[tuple[tuple[Own[A], int32], int32], int32]:
+    t = (A(1), 2)
+    u = ((t, 1), 2)
+    print(t[1])
+    return u
+""") == [(7, "copies A into owned storage (tuple element 0.0)"),
+         (7, "copies A into owned storage (tuple element 1.0)"),
+         (10, "copies A into owned storage (tuple element 0.0)"),
+         (14, "copies A into owned storage (tuple element 0.0.0)")]
+
+
+def test_tuple_name_member_settled_copy_names_its_path() -> None:
+    # A member move a later binding (the loop's back edge) turns into a copy
+    # warns the member's full path, as an eager copy does.
+    assert _member_copy_warnings("""\
+def f(a: A) -> None:
+    t = (A(1), 2)
+    for i in range(2):
+        xs = [(3, t)]
+        t = (a, 2)
+        print(len(xs))
+""") == [(4, "copies A into owned storage (tuple element 1.0)")]
+
+
+def test_tuple_name_member_arg_slot_owns_what_it_marks() -> None:
+    # A literal argument's tuple member copies only the leaves the
+    # parameter's `Own` markers own: one a level down warns, and a leaf the
+    # parameter borrows (`tuple[A, int32]` beside an `Own[A]`) does not, at
+    # any depth -- as `t` passed alone to `tuple[A, int32]` does not.
+    assert _member_copy_warnings("""\
+def deep(v: tuple[tuple[Own[A], int32], int32]) -> int32:
+    return v[1]
+def marked(p: tuple[Own[tuple[A, int32]], int32]) -> int32:
+    return p[1]
+def mixed(p: tuple[Own[A], tuple[A, int32]]) -> int32:
+    return p[1][1]
+def deeper(p: tuple[tuple[Own[A], tuple[A, int32]], int32]) -> int32:
+    return p[1]
+def alone(p: tuple[A, int32]) -> int32:
+    return p[1]
+def deeper_own(p: tuple[tuple[Own[A], tuple[Own[A], int32]], int32]) -> int32:
+    return p[1]
+def f() -> None:
+    t = (A(1), 2)
+    a = A(5)
+    print(deep((t, 3)))
+    print(marked((t, 3)))
+    print(mixed((A(3), t)))
+    print(deeper(((A(3), t), 4)))
+    print(alone(t))
+    # A scalar a level deeper takes the same projected slot.
+    print(deeper(((A(3), (a, 1)), 4)))
+    print(deeper_own(((A(3), (a, 1)), 4)))
+    print(t[1], a.v)
+""") == [(16, "copies A into owned storage (tuple element 0.0)"),
+         (17, "copies A into owned storage (tuple element 0.0)"),
+         (23, "copies A into owned storage "
+              "(argument 'p' tuple element 0.1.0)")]
+
+
+def test_tuple_name_member_nocopy_last_use_errors_where_render_copies() -> None:
+    # The scalar twins move a last-use `@nocopy` member: `return (n, 3)` and
+    # `self.p = (n, 3)` render `{std::move(n), 3}`. A tuple name member's
+    # render copies even at its last use (`{t, 3}`, at a return, a field and
+    # a container alike; BUGS.md#tuple-literal-name-member-silent-copy), so a
+    # non-copyable leaf has no copy to make: the located error replaces the
+    # C++ build's deleted-copy failure, and offers no auto-move.
+    for body in ("""\
+def f() -> tuple[Own[N], int32]:
+    n = N(1)
+    return (n, 3)
+""", """\
+class H:
+    p: tuple[N, int32]
+    def __init__(self) -> None:
+        n = N(1)
+        self.p = (n, 3)
+"""):
+        _compile(LEAF_PRELUDE + body)
+    for body, dest in (("""\
+def f() -> tuple[tuple[Own[N], int32], int32]:
+    t = (N(1), 2)
+    return (t, 3)
+""", "owned storage"), ("""\
+class H:
+    p: tuple[tuple[N, int32], int32]
+    def __init__(self) -> None:
+        t = (N(1), 2)
+        self.p = (t, 3)
+""", "field"), ("""\
+def f(xs: list[tuple[tuple[N, int32], int32]]) -> None:
+    t = (N(1), 2)
+    xs.append((t, 3))
+""", "owned storage")):
+        with pytest.raises(SemanticError, match=re.escape(
+                f"cannot copy non-copyable type 'N' into {dest} "
+                "(tuple element 0.0) (use Own[...] to transfer ownership, or "
+                "copy() if a copy is truly intended)")):
+            _compile(LEAF_PRELUDE + body)
+
+
+def test_tuple_walrus_member_reads_as_its_name() -> None:
+    # A walrus member is its target name's read, which stays live: a tuple
+    # one copies each owned leaf, as its scalar twin copies, a member and a
+    # whole container element alike.
+    assert _member_copy_warnings("""\
+def f(a: A) -> int32:
+    t = (A(1), 2)
+    xs = [((w := t), 3)]
+    ys = [(w2 := t)]
+    zs = [((v := a), 3)]
+    return len(xs) + len(ys) + len(zs) + w[1] + w2[1] + v.v
+""") == [(3, "copies A into owned storage (tuple element 0.0)"),
+         (4, "copies A into owned storage (tuple element 0)"),
+         (5, "copies A into owned storage (tuple element 0)")]
+
+
+def test_tuple_walrus_member_at_return_and_field() -> None:
+    # A walrus member names the binding it just made, which outlives the
+    # store: it copies at a return and at a field, a tuple one per owned
+    # leaf and its scalar twin alike.
+    assert _member_copy_warnings("""\
+def ret() -> tuple[tuple[Own[A], int32], int32]:
+    return ((t := (A(1), 2)), 3)
+def ret_scalar() -> tuple[Own[A], int32]:
+    return ((a := A(1)), 3)
+class H:
+    p: tuple[tuple[A, int32], int32]
+    q: tuple[A, int32]
+    def __init__(self) -> None:
+        self.p = ((t := (A(1), 2)), 3)
+        self.q = ((a := A(1)), 3)
+        print(t[1], a.v)
+""") == [(9, "copies A into field (tuple element 0.0)"),
+         (10, "copies A into field (tuple element 0)"),
+         (2, "copies A into owned storage (tuple element 0.0)"),
+         (4, "copies A into owned storage (tuple element 0)")]
+
+
+def test_nocopy_member_at_yield_and_own_arg() -> None:
+    # A value tuple holding a `@nocopy` leaf cannot be yielded, a tuple
+    # member and its scalar twin alike; the scalar twins that move a last
+    # use -- into an `Own[tuple[...]]` yield and an `Own`-marked argument
+    # element -- compile.
+    for body in ("""\
+def gen() -> Iterator[tuple[tuple[Own[N], int32], int32]]:
+    t = (N(1), 2)
+    yield (t, 3)
+""", """\
+def gen() -> Iterator[tuple[Own[N], int32]]:
+    n = N(1)
+    yield (n, 3)
+"""):
+        with pytest.raises(SemanticError,
+                           match="Generator cannot yield non-copyable"):
+            _compile(LEAF_PRELUDE + "from typing import Iterator\n" + body)
+    # The `Own[tuple[...]]` yield runs no member check, so it pins that sema
+    # accepts the program, not a move (BUGS.md#own-tuple-yield-member-unchecked).
+    _compile(LEAF_PRELUDE + """\
+from typing import Iterator
+def gen() -> Iterator[Own[tuple[N, int32]]]:
+    n = N(1)
+    yield (n, 3)
+def take_n(p: tuple[Own[N], int32]) -> int32:
+    return p[1]
+def arg() -> int32:
+    n = N(1)
+    return take_n((n, 3))
+""")
+
+
+def test_tuple_name_member_owning_local_nocopy_sibling() -> None:
+    # An owning local's member moves at its last use although a leaf the
+    # slot borrows is `@nocopy`; a live one copies the owned leaf.
+    assert _member_copy_warnings("""\
+def take_nc(p: tuple[tuple[Own[A], N], int32]) -> int32:
+    return p[1]
+def last() -> int32:
+    t = (A(1), N(2))
+    return take_nc((t, 3))
+def live() -> int32:
+    t = (A(1), N(2))
+    n = take_nc((t, 3))
+    return n + t[0].v
+""") == [(8, "copies A into owned storage (tuple element 0.0)")]
+
+
+def test_tuple_name_borrowing_local_nested_own_slot() -> None:
+    # A local borrowing a nested leaf copies it into a nested `Own` slot,
+    # returned or passed alone.
+    assert _member_copy_warnings("""\
+def take_deep(p: tuple[tuple[Own[A], int32], int32]) -> int32:
+    return p[1]
+def ret(a: A) -> tuple[tuple[Own[A], int32], int32]:
+    t = ((a, 1), 2)
+    return t
+def arg(a: A) -> int32:
+    t = ((a, 1), 2)
+    return take_deep(t)
+""") == [(4, "copies A into owned storage (tuple element 0.0)"),
+         (7, "copies A into owned storage (tuple element 0.0)")]
+
+
+def test_tuple_name_member_settled_nested_leaf() -> None:
+    # A later binding borrowing a member's nested leaf turns its move into a
+    # copy at settlement, warned under the full path, as the scalar twin's.
+    assert _member_copy_warnings("""\
+def deep(b: tuple[tuple[A, int32], int32]) -> None:
+    t = ((A(1), 2), 3)
+    for i in range(2):
+        xs = [(4, t)]
+        t = b
+        print(len(xs))
+def scalar(b: A) -> None:
+    a = A(1)
+    for i in range(2):
+        xs = [(4, a)]
+        a = b
+        print(len(xs))
+""") == [(4, "copies A into owned storage (tuple element 1.0.0)"),
+         (10, "copies A into owned storage (tuple element 1)")]
+
+
+def test_tuple_name_settled_nested_leaf_alone() -> None:
+    # A standalone name at a container whose later binding borrows a nested
+    # leaf copies it at settlement under its path, with the binding that
+    # made it non-owning, as the top-level twin names it.
+    _compiler, modules = _compile(LEAF_PRELUDE + """\
+def deep(b: tuple[tuple[A, int32], int32]) -> None:
+    t = ((A(1), 2), 3)
+    for i in range(2):
+        xs = [t]
+        t = b
+        print(len(xs))
+def flat(b: tuple[A, int32]) -> None:
+    t = (A(1), 3)
+    for i in range(2):
+        xs = [t]
+        t = b
+        print(len(xs))
+""")
+    assert [(d.loc.line - _LEAF_LINES, d.message)
+            for d in _entry(modules).analyzer.ctx.diagnostics
+            if d.level.value == "warning" and "cop" in d.message] == [
+        (4, "copies A into owned storage (tuple element 0.0); use copy() "
+            "to make this explicit ('t' is bound to existing storage at "
+            f"line {_LEAF_LINES + 5})"),
+        (10, "copies A into owned storage (tuple element 0); use copy() "
+             "to make this explicit ('t' is bound to existing storage at "
+             f"line {_LEAF_LINES + 11})")]
+
+
+def test_tuple_name_member_unowned_nocopy_leaf_param() -> None:
+    # A parameter member whose `@nocopy` leaf the slot borrows: its last use
+    # is unwarned, though the render copies the tuple
+    # (BUGS.md#tuple-literal-name-member-silent-copy, face 1).
+    assert _member_copy_warnings("""\
+def take(x: tuple[tuple[N, Own[A]], int32]) -> int32:
+    return x[1]
+def f(t: tuple[N, Own[A]]) -> int32:
+    return take((t, 3))
+""") == []

@@ -1,0 +1,12 @@
+main.py:41: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit
+main.py:41: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:20: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit
+main.py:20: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:26: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit
+main.py:26: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:50: warning: copies A into owned storage (tuple element 0.0.0); use copy() to make this explicit
+main.py:50: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:67: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit
+main.py:73: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit
+main.py:73: warning: copies A into owned storage (tuple element 1.0); use copy() to make this explicit
+main.py:89: warning: copies A into owned storage (tuple element 0.0); use copy() to make this explicit

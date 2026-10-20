@@ -84,6 +84,7 @@ from .receiver_calls import call_mutates_receiver, record_truth_calls
 from .narrowing import truthy_operands
 from .scope_tracker import lend_places
 from .compatibility import TupleSink
+from .alias_rebind import owned_slot_paths
 from .protocols import dynamic_dispatch_type_conforms
 from .type_ops import ReturnSeed, partial_substitute, seeded_arg_hint
 from .expressions import star_source_element_type
@@ -3490,7 +3491,10 @@ class CallAnalyzer:
         passed = peel_coerce(arg)
         if (isinstance(peeled_ptype, TupleType)
                 and isinstance(passed, TpyTupleLiteral)
-                and any(isinstance(et, OwnType) for et in peeled_ptype.element_types)):
+                and (any(isinstance(et, OwnType)
+                         for et in peeled_ptype.element_types)
+                     # An `Own` marker nested a level down owns its leaf.
+                     or owned_slot_paths(peeled_ptype))):
             self._check_own_tuple_literal_arg(passed, peeled_ptype, pname)
             self._warn_unnecessary_copy(arg)
             return
