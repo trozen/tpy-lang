@@ -26,7 +26,7 @@ from ..typesys import (
     borrow_form_differs, is_ptr_variant_union, property_getter_returns_storage_ref,
     unwrap_qualifiers, unwrap_readonly,
 )
-from ..value_category import call_returns_cpp_ref
+from ..value_category import call_returns_cpp_ref, getitem_call_of
 
 
 class LoopBinding(Enum):
@@ -175,8 +175,9 @@ def reads_storage_form_optional(analyzer, expr: TpyExpr) -> bool:
         # pointer-repr Optional return is already borrow-form `T*` unless the
         # accessor returns a C++ reference aliasing a stored optional (the
         # cpp-ref case keeps the storage lift, like a container element).
-        if expr.getitem_function_info is not None:
-            return call_returns_cpp_ref(analyzer, expr.getitem_function_info)
+        getitem = getitem_call_of(expr)
+        if getitem is not None:
+            return call_returns_cpp_ref(analyzer, getitem)
         # A tuple subscript pre-lifts to `T*` in codegen, so it is not a storage
         # source (mirrors the tuple carve-out in is_storage_form_optional_source).
         obj_type = _expr_type(analyzer, expr.obj)

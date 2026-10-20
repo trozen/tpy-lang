@@ -74,7 +74,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, AbstractSet, Callable, Iterable
 
 from ..parse import (
-    TpyAugAssign, TpyAwait, TpyBinOp, TpyCall, TpyCoerce, TpyFieldAccess,
+    TpyAugAssign, TpyAwait, TpyBinOp, TpyCall, TpyFieldAccess,
     TpyForEach, TpyMethodCall, TpyName, TpyStmt, TpySubscript,
     TpyTupleUnpack, TpyUnaryOp, TpyVarargPack, TpyVarDecl, TpyStarUnpack,
     TpyWith,
@@ -90,11 +90,12 @@ from ..holders import IterHolder
 from ..prescan import block_writes, loop_bindings_of
 from ..type_def_registry import is_free_copy_scalar
 from ..typesys import (
-    ReadonlyType, TpyType, declares_no_writes, is_bodyless_binding,
-    is_declaration_only, is_indirection_type, type_may_hold, unwrap_own,
+    ConcreteFrameType, NominalType, ReadonlyType, TpyType, declares_no_writes,
+    is_bodyless_binding, is_declaration_only, is_indirection_type, type_may_hold, unwrap_own,
     unwrap_qualifiers, unwrap_readonly, unwrap_ref_type,
 )
-from ..value_category import call_returns_cpp_ref
+from ..value_category import (call_returns_cpp_ref, is_iterator_protocol,
+                              peel_coerce)
 from .iter_loans import iterated_storage
 from .own_copy import holds_only_values
 from .receiver_calls import ImplicitCall, implicit_calls
@@ -226,7 +227,7 @@ def check_loop_hold(ctx: 'SemanticContext', hold: LoopFrameHold) -> None:
             PendingLoopFrameCall(call_hold, call))
 
     for place in facts.stores:
-        setter = getattr(_peel(place), "property_setter_call", None)
+        setter = getattr(peel_coerce(place), "property_setter_call", None)
         if setter is not None:
             queue(setter)
         root = _holder(ctx, place)
@@ -250,7 +251,7 @@ def check_loop_hold(ctx: 'SemanticContext', hold: LoopFrameHold) -> None:
                 raise _error(ctx, hold, f"the loop advances '{root}'")
         elif isinstance(e, TpyWith):
             for item in e.items:
-                root = _holder(ctx, _peel(item.context_expr))
+                root = _holder(ctx, peel_coerce(item.context_expr))
                 if root is not None and root in hold.reach:
                     raise _error(ctx, hold,
                                  f"the loop enters a 'with' on '{root}'")
@@ -330,7 +331,7 @@ def with_exit_write(ctx: 'SemanticContext', stmt: TpyWith,
     diagnostic -- or None: the loop rule read over the exit's body, its
     receiver standing for the manager."""
     for item in stmt.items:
-        root = _holder(ctx, _peel(item.context_expr))
+        root = _holder(ctx, peel_coerce(item.context_expr))
         under = (root in reach if root is not None
                  else item.manager_borrowed and bool(reach))
         if not under and not globals_:
@@ -439,7 +440,7 @@ def advanced_root(loop: 'TpyForEach') -> str | None:
     """The name a `for` advances the storage of: its iterable's holder,
     climbing no call -- a call's result is a fresh iterator the loop
     advances in place of what it borrows."""
-    return holder_root(_peel(loop.iterable), NO_CALLS)
+    return holder_root(peel_coerce(loop.iterable), NO_CALLS)
 
 
 def _queue_frame_run(ctx: 'SemanticContext', hold: LoopFrameHold,
@@ -502,7 +503,7 @@ def _nested_def_write(ctx: 'SemanticContext', hold: LoopFrameHold,
     if isinstance(call, TpyCall):
         names.append(call.func)
     for n in names:
-        n = _peel(n)
+        n = peel_coerce(n)
         if not (isinstance(n, TpyName)
                 and n.name in ctx.func.nested_def_names):
             continue
@@ -538,11 +539,11 @@ def _stepped_container(ctx: 'SemanticContext', hold: LoopFrameHold,
     if (not isinstance(loop, TpyForEach) or loop.var not in hold.upstream
             or loop.var in body or not _stable_loop_source(ctx, loop)):
         return None
-    return path_key(_peel(loop.iterable))
+    return path_key(peel_coerce(loop.iterable))
 
 
 def _is_free_copy_scalar_expr(ctx: 'SemanticContext', e: 'TpyExpr') -> bool:
-    t = ctx.get_expr_type(_peel(e))
+    t = ctx.get_expr_type(peel_coerce(e))
     return t is not None and is_free_copy_scalar(
         unwrap_readonly(unwrap_ref_type(t)))
 
@@ -552,7 +553,7 @@ def _store_in_place(ctx: 'SemanticContext', place: 'TpyExpr') -> bool:
     point into: a plain field holding a free-copy scalar. (An element store
     counts: the frame may hold a reference to the element, and a dict
     store may insert.)"""
-    place = _peel(place)
+    place = peel_coerce(place)
     if (not isinstance(place, TpyFieldAccess)
             or place.property_setter_call is not None):
         return False
@@ -604,7 +605,7 @@ def _call_write(ctx: 'SemanticContext', hold: LoopFrameHold,
         return None
 
     def in_reach(e: 'TpyExpr') -> 'str | None':
-        root = _holder(ctx, _peel(e))
+        root = _holder(ctx, peel_coerce(e))
         return root if root is not None and root in hold.reach else None
 
     hit = call_write(ctx, parts, in_reach, facts_final=True,
@@ -705,6 +706,18 @@ def call_write(ctx: 'SemanticContext', parts: CallParts,
     bodyless = root.special_handling or is_bodyless_binding(root)
     if not bodyless and not facts_final:
         return None if root.is_pure else (CallWrite.BODY, None)
+    if bodyless:
+        # Iterating an iterator advances it: `sum(g)` writes `g` at any
+        # parameter that may iterate it, whatever else the binding
+        # declares about it; only a concrete non-iterator slot cannot.
+        for i, arg in parts.args:
+            if not _iterates_param(root, i):
+                continue
+            for sub in _arg_exprs(arg):
+                if is_iterator_protocol(ctx.get_expr_type(sub)):
+                    label = written(sub)
+                    if label:
+                        return CallWrite.OPERAND, label
     if root.is_pure or declares_no_writes(fi):
         return None
     if not bodyless and globals_written:
@@ -745,17 +758,22 @@ def _readonly_param(t) -> bool:
         unwrap_ref_type(t), ReadonlyType)
 
 
+def _iterates_param(fi: 'FunctionInfo', i: int) -> bool:
+    """The callee may iterate what it is given at parameter `i`: anything
+    but a concrete type that is not itself an iterator, so an undeclared,
+    protocol or type-parameter slot (and a varargs pack) counts."""
+    if not 0 <= i < len(fi.params) or fi.params[i].type is None:
+        return True
+    t = unwrap_qualifiers(fi.params[i].type)
+    return (not isinstance(t, NominalType) or t.is_protocol
+            or isinstance(t, ConcreteFrameType) or is_iterator_protocol(t))
+
+
 def _arg_exprs(arg: 'TpyExpr') -> list['TpyExpr']:
     if isinstance(arg, TpyVarargPack):
         return [a.expr if isinstance(a, TpyStarUnpack) else a
                 for a in arg.args]
     return [arg]
-
-
-def _peel(e: 'TpyExpr') -> 'TpyExpr':
-    while isinstance(e, TpyCoerce):
-        e = e.expr
-    return e
 
 
 def _error(ctx: 'SemanticContext', hold: LoopFrameHold, why: str):
@@ -798,11 +816,12 @@ def loop_source(ctx: 'SemanticContext', iterable: 'TpyExpr',
     storage it borrows (`a[0:2]` from `a`, a view local from what its loans
     name), matched by what can hold its element. None for a source nothing
     else can reach -- a display or a call handing back a fresh value."""
-    e = _peel(iterable)
+    e = peel_coerce(iterable)
     t = ctx.get_expr_type(e)
     if t is None:
         return LoopSource(unknown=True)
-    if isinstance(e, TpySubscript) and isinstance(_peel(e.index), TpySlice):
+    if (isinstance(e, TpySubscript)
+            and isinstance(peel_coerce(e.index), TpySlice)):
         return loop_source(ctx, e.obj, elem_type)
     view = is_indirection_type(t)
     if view and elem_type is None:
@@ -819,9 +838,9 @@ def loop_source(ctx: 'SemanticContext', iterable: 'TpyExpr',
         return (None if isinstance(e, _FRESH_SOURCES)
                 else LoopSource((t,), None))
     storage = iterated_storage(ctx, e)
-    operands = [_peel(op.arg) for op in storage.operands]
+    operands = [peel_coerce(op.arg) for op in storage.operands]
     if is_property_getter_read(e):
-        operands.append(_peel(e.obj))
+        operands.append(peel_coerce(e.obj))
     if not (storage.loans or storage.unplaceable or operands):
         if view:
             return LoopSource((elem_type,), None)
@@ -1019,25 +1038,62 @@ def stamp_copy_verdicts(ctx: 'SemanticContext',
             ctx.mark_view_source_written(elem_type)
 
 
-class _SourceProof(InertWalk):
-    """The closed proof that a loop's live region cannot write its source:
-    `may_interrupt`'s allowlist walk (every statement and expression of a
-    known kind, every value it touches inert), with callees widened to any
-    without a body (or `@pure`), stores into any place, comprehensions
-    walked and nested `def`s defined, and no `try`, `raise` or suspension;
-    and separately no store, `del`, rebind or
-    writing call reaching an object whose type can hold the source
-    (`type_may_hold`), except through a function local whose type points
-    at no other storage (`through`): its identity is the function's to
-    see, decided over the body's loans."""
+class WriteProof(InertWalk):
+    """`may_interrupt`'s allowlist walk (every statement and expression of
+    a known kind) as a closed proof over calls: callees widened to any
+    without a body (or `@pure`), comprehensions walked and nested `def`s
+    defined, no `try`, `raise` or suspension, and every call -- explicit,
+    an operator or an implicit dunder (`implicit_calls`) -- writing no
+    operand `write_shows` answers for (`call_write`). A subclass says which
+    writes count and whether a check point (`print`, `time.sleep`) is
+    admitted."""
 
     admits_unwinding = False
     admits_nested = True
+    admits_check_points = True
+
+    def __init__(self, ctx: 'SemanticContext') -> None:
+        fn = ctx.func.current_function
+        super().__init__(ctx, fn if isinstance(fn, TpyFunction) else None)
+
+    def write_shows(self, e: 'TpyExpr') -> object:
+        """Whether a call's write into the object `e` defeats the proof."""
+        raise NotImplementedError
+
+    def admitted(self, fi: 'FunctionInfo') -> bool:
+        root = fi.root
+        if not self.admits_check_points and (root.checks_signals
+                                             or fi.checks_signals):
+            return False
+        return (root.is_pure or root.special_handling
+                or is_declaration_only(fi))
+
+    def on_node(self, node: 'TpyExpr | TpyStmt') -> None:
+        for call in implicit_calls(node):
+            self.on_call(call)
+
+    def on_call(self, call: 'TpyExpr | TpyStmt | ImplicitCall') -> None:
+        """One call: into an admitted callee, writing nothing
+        `write_shows` answers for."""
+        parts = call_parts(self.ctx, call)
+        if parts is None:
+            return
+        self.require(parts.fi is not None and self.admitted(parts.fi))
+        self.require(call_write(self.ctx, parts, self.write_shows,
+                                facts_final=False) is None)
+
+
+class _SourceProof(WriteProof):
+    """The closed proof that a loop's live region cannot write its source
+    (`WriteProof`): stores into any place, and separately no store,
+    `del`, rebind or writing call reaching an object whose type can hold
+    the source (`type_may_hold`), except through a function local whose
+    type points at no other storage (`through`): its identity is the
+    function's to see, decided over the body's loans."""
 
     def __init__(self, ctx: 'SemanticContext',
                  sources: 'tuple[TpyType, ...]') -> None:
-        fn = ctx.func.current_function
-        super().__init__(ctx, fn if isinstance(fn, TpyFunction) else None)
+        super().__init__(ctx)
         self.sources = sources
         self.through: set[str] = set()
 
@@ -1059,10 +1115,10 @@ class _SourceProof(InertWalk):
                        for r in refs for s in self.sources)
         return any(type_may_hold(t, s, reg) for s in self.sources)
 
-    def written(self, e: 'TpyExpr') -> bool:
+    def write_shows(self, e: 'TpyExpr') -> bool:
         """A write of the object `e`: proven apart from the source, or
         reaching it only through a function local (`through`)."""
-        e = _peel(e)
+        e = peel_coerce(e)
         if not self.may_hold(self.ctx.get_expr_type(e)):
             return False
         place = storage_roots(e, Use.HOLDER, None,
@@ -1077,25 +1133,6 @@ class _SourceProof(InertWalk):
         return False
 
     # -- hooks --
-
-    def admitted(self, fi: 'FunctionInfo') -> bool:
-        root = fi.root
-        return (root.is_pure or root.special_handling
-                or is_declaration_only(fi))
-
-    def on_node(self, node: 'TpyExpr | TpyStmt') -> None:
-        for call in implicit_calls(node):
-            self.on_call(call)
-
-    def on_call(self, call: 'TpyExpr | TpyStmt | ImplicitCall') -> None:
-        """One call: into a callee with no body (or `@pure`), writing
-        nothing that may hold the source."""
-        parts = call_parts(self.ctx, call)
-        if parts is None:
-            return
-        self.require(parts.fi is not None and self.admitted(parts.fi))
-        self.require(call_write(self.ctx, parts, self.written,
-                                facts_final=False) is None)
 
     def rebind(self, name: str, t: 'TpyType | None') -> None:
         """A whole-name binding (or `del`) replaces the name's object. A
@@ -1113,11 +1150,11 @@ class _SourceProof(InertWalk):
         """A store into any place: the old object goes (its value is
         checked where the target is walked), and the store writes the
         object it lands in."""
-        t = _peel(t)
+        t = peel_coerce(t)
         if isinstance(t, TpyName):
             super().target(t)
             return
         self.require(isinstance(t, (TpyFieldAccess, TpySubscript))
                      and getattr(t, "property_setter_call", None) is None
                      and not getattr(t, "property_setter", False))
-        self.written(t.obj)
+        self.write_shows(t.obj)

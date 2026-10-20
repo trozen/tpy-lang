@@ -402,7 +402,10 @@ inline Sender<T>::~Sender() {
         auto __ctx_1 = c._buf.lock();
         auto& g = __ctx_1.__enter__();
         try {
-            g.get()._senders = ::tpy::sub_check<uint32_t>(g.get()._senders, 1);
+            {
+                auto&& __tmp_1 = g.get();
+                __tmp_1._senders = ::tpy::sub_check<uint32_t>(__tmp_1._senders, 1);
+            }
             if ((g.get()._senders == 0)) {
                 g.get()._closed = true;
                 closed_now = true;
@@ -438,7 +441,10 @@ inline Sender<T> Sender<T>::clone() {
     auto __ctx_2 = c._buf.lock();
     auto& g = __ctx_2.__enter__();
     try {
-        g.get()._senders = ::tpy::add_check<uint32_t>(g.get()._senders, 1);
+        {
+            auto&& __tmp_1 = g.get();
+            __tmp_1._senders = ::tpy::add_check<uint32_t>(__tmp_1._senders, 1);
+        }
         goto __with_exit_2;
     } catch (::tpy::BaseException& __exc_2) {
         __ctx_2.__exit__({}, &__exc_2, {});

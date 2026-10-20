@@ -15,7 +15,10 @@ void free_move(int32_t v) {
     ::tpystd::tplib::box::Box<P> s = ::tpystd::tplib::box::Box<P>(P(v));
     Cell h = Cell();
     h.f = std::move(s);
-    h.f.get().v = ::tpy::add_check<int32_t>(h.f.get().v, 1);
+    {
+        auto&& __tmp_1 = h.f.get();
+        __tmp_1.v = ::tpy::add_check<int32_t>(__tmp_1.v, 1);
+    }
     std::cout << "free.boxed_local_move" << " " << h.f.get().v << "\n" << ::tpy::check_signals;
 }
 

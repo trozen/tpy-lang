@@ -11,8 +11,8 @@ namespace tpyapp::main {
 //     print(z.value)
 void fill(Slots& s) {
     Data z = Data(5);
-    ::tpy::__setitem__(s, 0, z);
-    ::tpy::__setitem__(s, 1, Data(9));
+    s.__setitem__(0, z);
+    s.__setitem__(1, Data(9));
     std::cout << z.value << "\n" << ::tpy::check_signals;
 }
 

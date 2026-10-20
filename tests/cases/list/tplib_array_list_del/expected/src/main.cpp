@@ -40,19 +40,19 @@ void main() {
     a.append(30);
     a.append(40);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__(a, 1);
+    a.__delitem__(1);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << a[0] << "\n" << ::tpy::check_signals;
     std::cout << a[1] << "\n" << ::tpy::check_signals;
     std::cout << a[2] << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__(a, 0);
+    a.__delitem__(0);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << a[0] << "\n" << ::tpy::check_signals;
     std::cout << a[1] << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__(a, 1);
+    a.__delitem__(1);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
     std::cout << a[0] << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__(a, 0);
+    a.__delitem__(0);
     std::cout << ::tpy::__len__(a) << "\n" << ::tpy::check_signals;
 }
 

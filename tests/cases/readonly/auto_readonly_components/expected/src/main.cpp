@@ -8,7 +8,10 @@ namespace tpyapp::main {
 // def root_write(h: Handle) -> None:
 //     h.get().n += 1
 void root_write(Handle& h) {
-    h.get().n = ::tpy::add_check<int32_t>(h.get().n, 1);
+    {
+        auto&& __tmp_1 = h.get();
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 1);
+    }
 }
 
 // # root_read: a read keeps it const
@@ -48,8 +51,7 @@ void root_derived(Handle& h) {
 }
 
 // # root_escape: the result returned at a mutable slot hands the caller write
-// # (the caller's `root_escape(h).n += 1` evaluates the call twice,
-// # BUGS.md#augassign-call-receiver-double-eval; the call has no side effect)
+// # (the caller's `root_escape(h).n += 1` evaluates the call once)
 // def root_escape(h: Handle) -> Item:
 //     return h.get()  # tpyc: ok
 Item& root_escape(Handle& h) {
@@ -133,7 +135,10 @@ int32_t loop_read(const Handle& h) {
 // def component_inline(h: Handle) -> None:
 //     h.ptr().item.n += 10
 void component_inline(Handle& h) {
-    ::tpy::deref_check(h.ptr()).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(h.ptr()).item.n, 10);
+    {
+        auto&& __tmp_1 = h.ptr();
+        ::tpy::deref_check(__tmp_1).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(__tmp_1).item.n, 10);
+    }
 }
 
 // # component_alias: a write through a local bound to the returned Ptr
@@ -183,7 +188,10 @@ void component_nullable(Handle& h) {
 // def unmarked_write(h: Handle) -> None:
 //     h.raw().item.n += 100000
 void unmarked_write(const Handle& h) {
-    ::tpy::deref_check(h.raw()).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(h.raw()).item.n, 100000);
+    {
+        auto&& __tmp_1 = h.raw();
+        ::tpy::deref_check(__tmp_1).item.n = ::tpy::add_check<int32_t>(::tpy::deref_check(__tmp_1).item.n, 100000);
+    }
 }
 
 // # unmarked_alias: the same through a bound copy of the Ptr
@@ -206,7 +214,10 @@ void getitem_alias(Rows& r) {
 // def getitem_inline(r: Rows) -> None:
 //     r[0].n += 10000000  # tpyc: ok
 void getitem_inline(Rows& r) {
-    ::tpy::deref_check(r[0]).n = ::tpy::add_check<int32_t>(::tpy::deref_check(r[0]).n, 10000000);
+    {
+        auto&& __tmp_1 = r[0];
+        ::tpy::deref_check(__tmp_1).n = ::tpy::add_check<int32_t>(::tpy::deref_check(__tmp_1).n, 10000000);
+    }
 }
 
 // # getitem_ro_read: a readonly receiver runs the const clone and reads
@@ -313,7 +324,10 @@ void main() {
     std::cout << "unmarked" << " " << ::tpy::__getitem__(ps, 0).item.n << "\n" << ::tpy::check_signals;
     ::tpyapp::main::root_walrus(h);
     ::tpyapp::main::root_derived(h);
-    ::tpyapp::main::root_escape(h).n = ::tpy::add_check<int32_t>(::tpyapp::main::root_escape(h).n, 1);
+    {
+        auto&& __tmp_1 = ::tpyapp::main::root_escape(h);
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 1);
+    }
     std::cout << "root_alias" << " " << ::tpyapp::main::root_alias_read(h) << " " << ::tpy::__getitem__(ps, 0).item.sub.n << "\n" << ::tpy::check_signals;
     Rows r = Rows(&::tpy::__getitem__(ps, 0).item);
     ::tpyapp::main::getitem_alias(r);

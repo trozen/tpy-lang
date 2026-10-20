@@ -1,1 +1,0 @@
-main.py:22: error: 'next(...)' is evaluated twice by an augmented assignment; bind it to a name first

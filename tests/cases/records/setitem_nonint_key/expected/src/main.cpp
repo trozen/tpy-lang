@@ -30,15 +30,15 @@ namespace tpyapp::main {
 //     print(len(d))          # 0
 void main() {
     Store s = Store();
-    ::tpy::__setitem__(s, "a", 10);
-    ::tpy::__setitem__(s, "b", 20);
+    s.__setitem__("a", 10);
+    s.__setitem__("b", 20);
     std::cout << s["a"] << " " << s["b"] << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__(s, "a");
+    s.__delitem__("a");
     std::cout << s["a"] << "\n" << ::tpy::check_signals;
     IntBox k = IntBox();
-    ::tpy::__setitem__(k, 3, 4);
+    k.__setitem__(3, 4);
     std::cout << k[0] << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__(k, 5);
+    k.__delitem__(5);
     std::cout << k[0] << "\n" << ::tpy::check_signals;
     std::vector<int32_t> xs = {1, 2, 3};
     ::tpy::__setitem__(xs, 1, 99);

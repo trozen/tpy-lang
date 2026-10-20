@@ -1,0 +1,1 @@
+main.py:32: error: Ambiguous overload for '__getitem__': multiple candidates match equally: __getitem__(int64 | None); __getitem__(int64)

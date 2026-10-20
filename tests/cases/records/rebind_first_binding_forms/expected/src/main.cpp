@@ -1160,7 +1160,10 @@ void owning_property_kinds(::tpy::ordered_map<std::string, int32_t>& d1, ::tpy::
     ::tpystd::tplib::box::Box<P> __slot_5 = k.g_own();
     ::tpystd::tplib::box::Box<P>* g = &__slot_5;
     g = &(g1);
-    g->get().n = ::tpy::add_check<int32_t>(g->get().n, 1);
+    {
+        auto&& __tmp_1 = g->get();
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 1);
+    }
     std::cout << "prop_own" << " " << "generic" << " " << g1.get().n << "\n" << ::tpy::check_signals;
 }
 

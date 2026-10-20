@@ -90,6 +90,7 @@ class _Planner:
         self.placements: list[THIRTempPlacement] = []
         self.initializers: IdentityMap[th.THIRArgTemp, th.THIRExpr] = IdentityMap()
         self.seen: IdentitySet[th.THIRArgTemp | th.THIRSlotEmplace] = IdentitySet()
+        self.read_ids: set[int] = set()
 
     def scope(self, owner: object, role: str, parent: int) -> int:
         index = len(self.scopes)
@@ -111,6 +112,12 @@ class _Planner:
             case th.THIRArgTemp():
                 self.expr(expr.init)
                 self.queue.register(expr, banks_in_region(expr.cpp_type or "auto", expr.movable))
+                if expr.read_id is not None:
+                    self.read_ids.add(expr.read_id)
+            case th.THIRTempRead():
+                # A read places nothing; its statement declares the temp.
+                if expr.read_id not in self.read_ids:
+                    raise _Unplanned()
             case th.THIRSlotEmplace():
                 self.expr(expr.value)
                 self.named.append(expr)
@@ -231,7 +238,9 @@ class _Planner:
                         self.expr(stmt.init)
                     self.flush(stmt, scope)
                 case th.THIRAssign():
-                    _plain(stmt, {"target", "value", "alias_binding"} | _LAYOUT_FACTS)
+                    _plain(stmt, {"target", "value", "alias_binding", "held"} | _LAYOUT_FACTS)
+                    for temp in stmt.held:
+                        self.expr(temp)
                     self.expr(stmt.target)
                     self.expr(stmt.value)
                     self.flush(stmt, scope)
@@ -254,7 +263,9 @@ class _Planner:
                         self.expr(stmt.value)
                     self.flush(stmt, scope)
                 case th.THIRExprStmt():
-                    _plain(stmt, {"expr"})
+                    _plain(stmt, {"expr", "held"})
+                    for temp in stmt.held:
+                        self.expr(temp)
                     self.expr(stmt.expr)
                     self.flush(stmt, scope)
                 case th.THIRBreak() | th.THIRContinue() | th.THIRNoOpStmt():

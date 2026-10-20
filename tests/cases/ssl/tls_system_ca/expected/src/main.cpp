@@ -194,7 +194,7 @@ bool try_verify(std::string_view cafile) {
 void main() {
     ::tpyapp::main::write_fixtures();
     if ((*::tpystd::os::_environ::environ).__contains__("SSL_CERT_FILE")) {
-        ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
+        (*::tpystd::os::_environ::environ).__delitem__("SSL_CERT_FILE");
     }
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(CERT_PATH));
     std::cout << "system-trusted:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify()) << "\n" << ::tpy::check_signals;
@@ -203,11 +203,11 @@ void main() {
     ::tpy::list_insert((*::tpystd::ssl::_ca_probe_paths), 0, std::string(GARBAGE_PATH));
     std::cout << "garbage probe skipped:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify(CERT_PATH)) << "\n" << ::tpy::check_signals;
     ::tpy::list_pop_at((*::tpystd::ssl::_ca_probe_paths), 0);
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE", std::string(CERT_PATH));
+    (*::tpystd::os::_environ::environ).__setitem__("SSL_CERT_FILE", std::string(CERT_PATH));
     std::cout << "env wins:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify()) << "\n" << ::tpy::check_signals;
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE", std::string(GARBAGE_PATH));
+    (*::tpystd::os::_environ::environ).__setitem__("SSL_CERT_FILE", std::string(GARBAGE_PATH));
     std::cout << "garbage env skipped:" << " " << ::tpy::print_bool(::tpyapp::main::try_verify(CERT_PATH)) << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__((*::tpystd::os::_environ::environ), "SSL_CERT_FILE");
+    (*::tpystd::os::_environ::environ).__delitem__("SSL_CERT_FILE");
 }
 
 // import os

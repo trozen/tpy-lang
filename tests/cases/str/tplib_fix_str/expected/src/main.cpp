@@ -66,7 +66,7 @@ void main() {
     std::cout << s[0] << "\n" << ::tpy::check_signals;
     std::cout << s[1] << "\n" << ::tpy::check_signals;
     char o = 'o';
-    ::tpy::__setitem__(s, 1, o);
+    s.__setitem__(1, o);
     std::cout << s[1] << "\n" << ::tpy::check_signals;
     std::cout << s.pop() << "\n" << ::tpy::check_signals;
     std::cout << ::tpy::__len__(s) << "\n" << ::tpy::check_signals;
@@ -96,7 +96,7 @@ void main() {
     std::cout << std::format("val={}", ::tpy::__str__(s)) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::fix_str::FixStr<16> t = ::tpystd::tplib::fix_str::FixStr<16>(s);
     char b = 'b';
-    ::tpy::__setitem__(t, 0, b);
+    t.__setitem__(0, b);
     std::cout << s[0] << "\n" << ::tpy::check_signals;
     std::cout << t[0] << "\n" << ::tpy::check_signals;
     s.clear();

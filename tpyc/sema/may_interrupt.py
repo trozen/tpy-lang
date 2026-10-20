@@ -23,14 +23,13 @@ from ..parse import (TpyAssert, TpyAssign, TpyAugAssign, TpyBreak, TpyContinue,
                      TpyPassStmt, TpyRaise, TpyReturn, TpyStmt, TpyTry,
                      TpyTupleUnpack, TpyVarDecl, TpyWhile, TpyYield)
 from ..parse.nodes import (
-    TpyArrayLiteral, TpyBinOp, TpyBoolLiteral, TpyBytesLiteral, TpyCall,
+    SubscriptDunder, TpyArrayLiteral, TpyBinOp, TpyBoolLiteral, TpyBytesLiteral, TpyCall,
     TpyChainedCompare, TpyCoerce, TpyDictComprehension, TpyDictLiteral,
     TpyExpr, TpyFieldAccess, TpyListComprehension, TpySetComprehension,
     TpyFloatLiteral, TpyFString, TpyIfExpr, TpyIntLiteral, TpyListRepeat,
     TpyMethodCall, TpyName, TpyNamedExpr, TpyNoneLiteral, TpySetLiteral,
     TpySlice, TpyStrLiteral, TpySubscript, TpyTupleLiteral, TpyUnaryOp,
-    TpyVarargPack, VarLinkage, is_super_del_call, walk_body_stmts,
-    walk_expr_tree)
+    TpyVarargPack, VarLinkage, is_super_del_call, walk_body_stmts)
 from ..type_def_registry import (RUNTIME_CONTAINER_CATEGORIES,
                                  RUNTIME_VALUE_CATEGORIES, type_def_of)
 from ..typesys import (PendingContainerType, PtrType, TupleType,
@@ -190,21 +189,25 @@ class InertWalk:
 
     def plain_field_read(self, e: TpyFieldAccess) -> bool:
         """`e` reads a field its receiver's class declares, or a module
-        variable, an enum member or a class constant. A property, a
+        variable, an enum member or a class constant -- directly or through
+        a `Ptr` hop, which reads through the pointer. A property, a
         `__getattr__` family or `__deref__` hop, or a protocol attribute
         (whose implementer may answer with a property) runs code, and a
         receiver whose class is unknown here is not shown to run none."""
-        if (e.hidden_call is not None or e.deref_depth != 0
+        if (e.hidden_call is not None
                 or e.resolved_property_getter is not None
                 or e.property_setter):
+            return False
+        t = self.ctx.get_expr_type(e.obj)
+        t = unwrap_qualifiers(t) if t is not None else None
+        if e.deref_depth != 0 and not (e.deref_depth == 1
+                                       and isinstance(t, PtrType)):
             return False
         if (e.module_var_access is not None or e.enum_member_of is not None
                 or e.class_constant_owner is not None):
             return True
-        t = self.ctx.get_expr_type(e.obj)
         if t is None:
             return False
-        t = unwrap_qualifiers(t)
         if isinstance(t, PtrType):
             t = unwrap_qualifiers(t.inner_pointee)
         record = self.ctx.registry.get_record_for_type(t)
@@ -214,12 +217,11 @@ class InertWalk:
     def builtin_element_read(self, e: TpySubscript) -> bool:
         """`e` reads an element of a builtin container, a str / bytes, a
         tuple or through a pointer: sema stamped no class `__getitem__` on
-        it (`record_getitem`, `getitem_callee`), no TypedDict field or enum
+        it (`TpySubscript.dunder`), no TypedDict field or enum
         name lookup, and the receiver's family reads elements in runtime
         code (a protocol's or a type parameter's implementer may run
         anything)."""
-        if (e.record_getitem is not None
-                or e.getitem_callee is not None
+        if (e.dunder(SubscriptDunder.GET) is not None
                 or e.typed_dict_field is not None
                 or e.enum_from_name is not None):
             return False
@@ -233,66 +235,95 @@ class InertWalk:
         return td is not None and (td.category in RUNTIME_CONTAINER_CATEGORIES
                                    or td.category in RUNTIME_VALUE_CATEGORIES)
 
+    def operands(self, e: TpyExpr, as_place: bool = False
+                 ) -> list[tuple[TpyExpr, bool]]:
+        """The operands evaluating `e` evaluates, in written order, each with
+        whether it is read through as a place rather than used as a value:
+        a plain field read's object and a builtin element read's container
+        are read through, whatever they hold (`self._store[name].value`
+        reads a record without running any of its code); a subscript's key
+        (hashed and compared), a call's arguments and a method's receiver
+        are values. A callee name, a type test's or cast's type argument
+        and a class path are no operands; a macro call's operand is its
+        expansion."""
+        if isinstance(e, TpyFieldAccess):
+            return [] if e.names_type is not None else [(e.obj, True)]
+        if isinstance(e, TpySubscript):
+            index = (list(e.index.children()) if isinstance(e.index, TpySlice)
+                     else [e.index])
+            return ([(e.obj, e.dunder(SubscriptDunder.GET) is None)]
+                    + [(i, False) for i in index])
+        if isinstance(e, TpyCall):
+            if e.macro_expansion is not None:
+                return [(e.macro_expansion, False)]
+            if e.isinstance_type is not None:
+                return [(e.args[0], False)]
+            if e.cast_target_type is not None:
+                return [(e.args[-1], False)]
+            return [(a, False) for a in [*e.args, *e.kwargs.values()]]
+        if isinstance(e, TpyMethodCall):
+            if e.macro_expansion is not None:
+                return [(e.macro_expansion, False)]
+            # A module function or a static method has no receiver value.
+            recv = ([] if (e.user_module_call or e.builtin_module_call
+                           or e.is_static_call) else [(e.obj, False)])
+            return recv + [(a, False) for a in [*e.args, *e.kwargs.values()]]
+        if isinstance(e, TpyChainedCompare):
+            return [(p, False) for p in e.pairs or ()]
+        if isinstance(e, TpyVarargPack):
+            return [(a, False) for a in e.args]
+        return [(c, False) for c in e.children()]
+
     def walk(self, e: TpyExpr) -> None:
-        walk_expr_tree(e, self.visit)
+        if self.visit(e):
+            self.walk_operands(e, False)
+
+    def walk_operands(self, e: TpyExpr, as_place: bool) -> None:
+        for op, op_place in self.operands(e, as_place):
+            if op_place:
+                self.place(op)
+            else:
+                self.walk(op)
 
     def place(self, e: TpyExpr) -> None:
-        """A place read through, not used as a value: a plain field chain's
-        base and a builtin subscript's container run nothing whatever they
-        hold (`self._store[name].value` reads a record without running any
-        of its code). Its parts used as values -- a subscript key, which is
-        hashed and compared, a call yielding the base -- are walked as
-        values."""
+        """A place read through, not used as a value (`operands`)."""
         if isinstance(e, (TpyFieldAccess, TpySubscript)):
             self.on_node(e)
             self.read_through(e)
+            self.walk_operands(e, True)
         elif isinstance(e, TpyName):
             self.require(not e.is_function_ref and e.factory_expansion is None)
         else:
             self.walk(e)
 
     def read_through(self, e: 'TpyFieldAccess | TpySubscript') -> None:
-        """The parts of a field or element read: the place under it, and a
-        subscript's key."""
+        """What a field or element read requires of itself, apart from its
+        operands: a plain field read, or an element read by the runtime or
+        by an admitted class `__getitem__` (the call it is, on its
+        receiver)."""
         if isinstance(e, TpyFieldAccess):
             self.require(e.factory_expansion is None)
-            root = self.field_chain_root(e)
             # A class or enum named by its path is no storage to read.
-            if not isinstance(root, TpyFieldAccess):
-                self.place(root)
+            if e.names_type is None:
+                self.require(self.plain_field_read(e))
             return
-        callee = e.record_getitem or e.getitem_callee
+        callee = e.dunder(SubscriptDunder.GET)
         if callee is not None:
-            # A class's own `__getitem__`: the call it is, on its receiver.
             self.require(self.admitted(callee))
-            self.walk(e.obj)
-            self.index(e.index)
             return
         self.require(self.builtin_element_read(e))
         if e.slice_function_info is not None:
             self.require(self.admitted(e.slice_function_info))
-        self.place(e.obj)
-        self.index(e.index)
-
-    def index(self, index: TpyExpr) -> None:
-        if isinstance(index, TpySlice):
-            for part in index.children():
-                self.walk(part)
-        else:
-            self.walk(index)
 
     def visit(self, e: TpyExpr) -> bool:
-        """Judge one node; True descends into its `children()`. A node judged
-        as a whole -- a field chain, a call (whose callee name is a child),
-        a subscript with its slice -- walks the parts it admits itself and
-        answers False."""
+        """Judge one node by itself; True walks its operands (`operands`)."""
+        self.on_node(e)
         if isinstance(e, TpyCall):
             self.call(e)
-            return False
+            return True
         if isinstance(e, TpyMethodCall):
             self.method_call(e)
-            return False
-        self.on_node(e)
+            return True
         if isinstance(e, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
                           TpyBytesLiteral, TpyBoolLiteral, TpyNoneLiteral)):
             return False
@@ -309,12 +340,10 @@ class InertWalk:
             # is only read.
             self.read_through(e)
             self.typed(e)
-            return False
+            return True
         if isinstance(e, TpyChainedCompare):
             self.require(e.pairs is not None)
-            for part in e.pairs or ():
-                self.walk(part)
-            return False
+            return True
         if isinstance(e, (TpyBinOp, TpyUnaryOp)):
             # Operand types inert leave no user dunder for the operator or a
             # `__contains__` to resolve to.
@@ -343,49 +372,32 @@ class InertWalk:
             return True
         if isinstance(e, TpyVarargPack):
             self.require(is_inert_type(e.element_type))
-            for child in e.args:
-                self.walk(child)
-            return False
+            return True
         raise NotInert
 
-    def call_args(self, args: list[TpyExpr], kwargs: dict[str, TpyExpr]) -> None:
-        for a in args:
-            self.walk(a)
-        for a in kwargs.values():
-            self.walk(a)
-
     def call(self, e: TpyCall) -> None:
-        self.on_node(e)
+        if e.macro_expansion is not None:
+            return
         self.require(isinstance(e.func, TpyName)
-                     and e.macro_expansion is None and e.dunder_call is None
+                     and e.dunder_call is None
                      and e.dyn_hasattr_call is None
                      and e.dyn_getattr_default_call is None
                      and e.kwarg_td_call is None
                      and e.double_star_unpack is None
                      and e.subscript_callee is None)
-        if e.isinstance_type is not None or e.cast_target_type is not None:
-            # A type test or a cast reads its subject; the type argument is
-            # no value.
-            self.walk(e.args[0] if e.isinstance_type is not None
-                      else e.args[-1])
-            self.typed(e)
-            return
-        if e.enum_from_value is not None:
-            # An enum lookup by value: the subject decides.
-            self.call_args(e.args, e.kwargs)
+        if (e.isinstance_type is not None or e.cast_target_type is not None
+                or e.enum_from_value is not None):
+            # A type test or a cast reads its subject (the type argument is
+            # no value); an enum lookup by value: the subject decides.
             self.typed(e)
             return
         self.require(e.resolved_function_info is not None
                      and self.admitted(e.resolved_function_info))
-        self.call_args(e.args, e.kwargs)
         self.typed(e)
         self.on_call(e)
 
     def method_call(self, e: TpyMethodCall) -> None:
-        self.on_node(e)
         if e.macro_expansion is not None:
-            # The call is its expansion (`m.Color(1)` is `Color(1)`).
-            self.walk(e.macro_expansion)
             return
         self.require(e.fstr_expansion is None
                      and not e.is_callable_field
@@ -396,10 +408,6 @@ class InertWalk:
                      and e.double_star_unpack is None
                      and e.resolved_function_info is not None
                      and self.admitted(e.resolved_function_info))
-        # A module function or a static method has no receiver value.
-        if not (e.user_module_call or e.builtin_module_call or e.is_static_call):
-            self.walk(e.obj)
-        self.call_args(e.args, e.kwargs)
         self.typed(e)
         self.on_call(e)
 

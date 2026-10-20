@@ -15,6 +15,7 @@ from ..typesys import canonical_readonly, make_readonly, substitute_type_params_
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target
 from ..typesys import binds_runtime_symbol, body_function_info
+from ..typesys import answers_as_call, store_slot_type, subscript_answers_as_call
 from ..typesys import (
     same_class,
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, RecordInfo,
@@ -48,7 +49,7 @@ from ..parse import (
     walk_body_stmts,
     TpyArrayLiteral, TpyTupleLiteral, TpyDictLiteral, TpySetLiteral, TpyListRepeat,
     TpyListComprehension, TpyDictComprehension, TpySetComprehension, TpyGeneratorExpression, TpyComprehensionGenerator,
-    TpySlice, TpySubscript, TpyCoerce,
+    TpySlice, TpySubscript, SubscriptDunder, SubscriptDunders, TpyCoerce,
     TpyIfExpr, TpyNamedExpr, TpyAwait,
     TpyLambda, TpyStarUnpack,
     TpyStmt, TpyVarDecl, TpyTupleUnpack, TpyAssign, TpyForEach, TpyWith,
@@ -104,15 +105,15 @@ from .slot_hint import (SlotHint, callable_return, element,
 from .local_deduction import (collect_pending_source_types,
                               mark_pending_list_mutated,
                               note_pending_elem_read, pending_elem_read)
-from .operators import OperatorAmbiguity, answers_as_call
+from .operators import OperatorAmbiguity
 from .bound_check import raise_if_class_param_bound_violated
-from .overloads import OverloadAmbiguityError, resolve_overload
+from .overloads import OverloadAmbiguityError, pins_const_receiver, resolve_overload
 from .type_ops import frame_yield_may_borrow
 from .registration import referent_type
 from .own_copy import warn_value_call_binding
 from .scope_tracker import lend_places
-from .receiver_calls import (call_mutates_receiver, check_implicit_readonly_receiver,
-                             credit_implicit_receiver_call, record_implicit_call,
+from .receiver_calls import (check_implicit_readonly_receiver,
+                             credit_implicit_receiver_call, receiver_is_readonly,
                              record_protocol_arg_calls, record_truth_calls)
 from .storage_walk import StorageKey
 from .iter_loans import (_record_iter_receiver_mutation, genexpr_iterated_roots, iterated_storage,
@@ -378,12 +379,6 @@ def _readonly_result(ret: TpyType) -> TpyType:
     caller's `Ref` -- a `__getitem__` declared to return a reference carries
     its own `Ref`, which would otherwise end up INSIDE the readonly."""
     return make_readonly(unwrap_ref_type(ret))
-
-
-def _is_slice_getitem(fi: 'FunctionInfo') -> bool:
-    return (len(fi.params) == 1
-            and (is_basic_slice_type(fi.params[0].type)
-                 or is_slice_type(fi.params[0].type)))
 
 
 def _protocol_getitem_is_readonly(protocol: NominalType) -> bool:
@@ -2510,6 +2505,8 @@ class ExpressionAnalyzer:
                     check_left = left_type
                     leaf = self._contains_leaf(right_type, expr.left,
                                                left_type)
+                    readonly_right = receiver_is_readonly(
+                        self.ctx, expr.right, right_type)
                     try:
                         matched = resolve_overload(
                             subst_overloads,
@@ -2518,6 +2515,7 @@ class ExpressionAnalyzer:
                             protocol_classifier=self.protocols.classify_protocol_conformance,
                             default_int_type=self.ctx.default_int_type,
                             subclass_checker=self.ctx.registry.subclass_distance,
+                            is_readonly_receiver=readonly_right,
                             type_ops=self.type_ops)
                     except OverloadAmbiguityError as e:
                         raise self.ctx.error(
@@ -2569,6 +2567,8 @@ class ExpressionAnalyzer:
                         expr.contains_call = TpyMethodCall(
                             obj=expr.right, method="__contains__",
                             args=[expr.left], resolved_function_info=matched,
+                            const_receiver=pins_const_receiver(
+                                matched, subst_overloads, readonly_right),
                             loc=expr.loc)
                         self.ctx.set_expr_type(expr.contains_call,
                                                matched.return_type)
@@ -5719,6 +5719,13 @@ class ExpressionAnalyzer:
         # Decided afresh on every analysis: an overload trial may have analyzed
         # this node under an Optional receiver type the winner does not have.
         expr.needs_optional_runtime_check = False
+        # A record dunder converted the key in place; a new analysis ranks
+        # the key as written again.
+        if expr.written_index is not None:
+            expr.index = expr.written_index
+        expr.dunders = SubscriptDunders()
+        expr.written_index = expr.setitem_index = None
+        expr.const_dunders = frozenset()
         # Enum name lookup: Color["Red"] -> Color (panics on invalid)
         owner = self.ctx.type_ref(expr.obj)
         if owner is not None and owner.kind == SymbolKind.ENUM:
@@ -5848,25 +5855,12 @@ class ExpressionAnalyzer:
                 return ret
             raise self.ctx.error(f"Slicing is not supported for {inner_obj_type}", expr)
 
-        # User-defined mapping with a NON-integer key (e.g. Counter over
-        # dict[T,int]): dispatch to its single-key __getitem__ before the
-        # sequence integer-index gate, validating the index against the key.
-        # Int indices keep their existing path below (record __getitem__ is
-        # handled there), so only non-int keys are intercepted here.
-        if not is_any_int_type(index_type):
-            ro_obj = isinstance(inner_obj_type, ReadonlyType)
-            bare_obj = unwrap_readonly(inner_obj_type)
-            if isinstance(bare_obj, NominalType) and bare_obj.is_record:
-                kr = self.narrowing.record_getitem_key_ret(
-                    bare_obj, readonly_receiver=ro_obj)
-                if kr is not None:
-                    key_t, ret_t = kr
-                    if self.compat.is_type_compatible(unwrap_readonly(index_type), unwrap_readonly(key_t)):
-                        self._tag_record_getitem(expr, bare_obj, ret_t, index_type)
-                        self._stamp_getitem_callee(expr, bare_obj, ro_obj)
-                        if ro_obj:
-                            ret_t = _readonly_result(ret_t)
-                        return make_ref(ret_t)
+        # A record subscript answers like its explicit dunder call, whatever
+        # the key's type.
+        if subscript_answers_as_call(inner_obj_type):
+            return self._record_subscript(
+                expr, unwrap_readonly(inner_obj_type),
+                isinstance(inner_obj_type, ReadonlyType), index_type)
 
         if not is_any_int_type(index_type):
             raise self.ctx.error(f"Subscript index must be an integer type, got {index_type}", expr)
@@ -5894,7 +5888,7 @@ class ExpressionAnalyzer:
             # its own; its element read credits nothing (the element rules
             # answer it, as for a builtin container).
             if isinstance(actual_type, NominalType):
-                self._stamp_getitem_callee(expr, actual_type, is_readonly_obj)
+                self._stamp_element_getitem(expr, actual_type, is_readonly_obj)
             # Subscript on a repeat-sourced pending list needs indexing support
             # (repeat_range doesn't have operator[], but Array does).
             if isinstance(actual_type, PendingListType):
@@ -5921,167 +5915,141 @@ class ExpressionAnalyzer:
                 ret = make_readonly(ret)
             return make_ref(ret)
 
-        # Records with __getitem__ method
-        if isinstance(actual_type, NominalType) and actual_type.is_record:
-            ret = self.narrowing._get_record_getitem_type(
-                actual_type, readonly_receiver=is_readonly_obj)
-            if ret is None:
-                raise self.ctx.error(f"Cannot index type {actual_type}: no __getitem__ method", expr)
-            self._tag_record_getitem(expr, actual_type, ret, index_type)
-            self._stamp_getitem_callee(expr, actual_type, is_readonly_obj)
-            if is_readonly_obj:
-                ret = _readonly_result(ret)
-            return make_ref(ret)
+        # A record reached through a checked Optional answers as one does.
+        if subscript_answers_as_call(actual_type):
+            return self._record_subscript(expr, actual_type, is_readonly_obj,
+                                          index_type)
 
         raise self.ctx.error(f"Cannot index type {obj_type}", expr)
 
-    def _stamp_getitem_callee(self, expr: TpySubscript, record_type: NominalType,
-                              readonly_receiver: bool) -> None:
-        """The stub a read off a user `@native` record renders through: the
-        one the subscript's type comes from, so render and type cannot name
-        two overloads (BUGS.md#record-getitem-overload-first-wins)."""
+    def _stamp_element_getitem(self, expr: TpySubscript,
+                               record_type: NominalType,
+                               readonly_receiver: bool) -> None:
+        """The stub an element read off an element-typed `@native` record
+        renders through (its C++ name may be its own); the element rules
+        answer the read itself, as for a builtin container."""
         if expr.is_write_target or not record_type.is_user_record:
             return
         record = self.ctx.registry.get_record_for_type(record_type)
         if record is None or not record.is_native:
             return
-        expr.getitem_callee = self.protocols.lookup_record_method(
+        getitem = self.protocols.lookup_record_method(
             record, "__getitem__", readonly_receiver=readonly_receiver)
+        if getitem is not None:
+            expr.dunders = expr.dunders.stamped(SubscriptDunder.GET, getitem)
 
-    def _tag_record_getitem(self, expr: TpySubscript, record_type: NominalType,
-                            ret_type: TpyType, index_type: TpyType) -> None:
-        """Record the resolved user-record __getitem__ on the subscript node
-        (substitution-composed, like a method call's resolved callee), so the
-        borrow/storage and value-category classifiers can treat the read as a
-        method CALL -- a pointer-repr Optional return is borrow-form T*, not a
-        storage `std::optional<T>` element lvalue, and a by-VALUE return is a
-        temporary where a container element read is an lvalue.
+    def _record_subscript(self, expr: TpySubscript, record_type: NominalType,
+                          readonly: bool, index_type: TpyType) -> TpyType:
+        """`t[k]` on a record: the explicit `t.__getitem__(k)` call, its
+        variant stamped on the node (`TpySubscript.dunder`) for the result
+        type, the key's conversion, the render and the receiver's effects.
+        A store target resolves its `__setitem__` once the value is known
+        (`StatementAnalyzer`); until then it is typed by the setter's value
+        parameter when every variant agrees on it."""
+        if expr.is_write_target:
+            return self.record_store_hint(expr, record_type)
+        fi = self.resolve_subscript_dunder(
+            expr, SubscriptDunder.GET, record_type, readonly, [index_type])
+        ret = fi.return_type
+        self._check_borrow_into_temporary(expr, ret)
+        if readonly:
+            ret = _readonly_result(ret)
+        return make_ref(ret)
 
-        Tagged exactly when the accessor's COMPOSED return is not a C++
-        reference -- the shapes whose consumption differs from a container
-        element read. A reference-returning accessor consumes identically, so
-        it stays untagged and its reads keep the container spelling (the
-        re-resolved signature below is unsubstituted, so a generic's `-> T`
-        cannot answer the question anyway).
-
-        Every record subscript is also an `obj.__getitem__(k)` call on its
-        receiver, credited here and stamped as `record_getitem` whatever the
-        return shape."""
-        self._credit_record_getitem_call(expr, record_type, index_type)
+    def record_store_hint(self, expr: TpySubscript,
+                          record_type: NominalType) -> TpyType:
+        """The type a record store target `t[k]` has before its
+        `__setitem__` is resolved: the value parameter every variant
+        declares (substituted at the receiver), else `UnknownElementType`,
+        which hints the value nothing."""
         record = self.ctx.registry.get_record_for_type(record_type)
-        if record is None:
-            return
-        if not expr.is_write_target:
-            expr.record_getitem = self.protocols.lookup_record_method(
-                record, "__getitem__")
-        actual_ret = unwrap_readonly(ret_type)
+        overloads = self.operators.dunder_overloads(
+            record, SubscriptDunder.SET.value)
+        if not overloads:
+            raise self.ctx.error(
+                f"Cannot index type {record_type}: no __setitem__ method",
+                expr)
+        subst = {k: v for k, v in self.type_ops.build_type_substitution(
+            record_type).items() if isinstance(v, TpyType)}
+        values = {store_slot_type(m, subst)
+                  for m in overloads if len(m.params) == 2}
+        return values.pop() if len(values) == 1 else UnknownElementType()
+
+    def resolve_subscript_dunder(
+            self, expr: TpySubscript, kind: SubscriptDunder,
+            record_type: NominalType, readonly: bool,
+            arg_types: list[TpyType],
+            args: 'list[TpyExpr] | None' = None) -> 'FunctionInfo':
+        """Resolve the dunder form `kind` of the record subscript `expr`
+        exactly as the explicit `t.__getitem__(k)` / `__setitem__(k, v)` /
+        `__delitem__(k)` call resolves it: one variant answers as a call to
+        it alone would, several are ranked with the receiver
+        (`OperatorResolver.rank_dunder_set`), and the winner receives its
+        arguments as that call's (`CallAnalyzer.receive_winner_args`) --
+        the key, converted in place on the node, and the further `args`
+        given (a store's value is received by the store). The variant,
+        substituted at the receiver's type args, is stamped on the node; a
+        read is credited on the receiver here, a store or `del` by its
+        statement."""
+        record = self.ctx.registry.get_record_for_type(record_type)
+        name = kind.value
+        overloads = self.operators.dunder_overloads(record, name)
+        if not overloads:
+            raise self.ctx.error(
+                f"Cannot index type {record_type}: no {name} method", expr)
+        receiver = make_readonly(record_type) if readonly else record_type
+        type_subst = self.type_ops.build_type_substitution(record_type)
+        if len(overloads) == 1:
+            sole = overloads[0]
+            found = (self.operators.bind_winner(sole, arg_types, type_subst)
+                     if len(sole.params) == len(arg_types) else None)
+        else:
+            found = self.decide_operator(self.operators.rank_dunder_set(
+                overloads, arg_types, type_subst, receiver, expr.obj), expr)
+        if found is None:
+            arg_strs = ", ".join(self.compat.call_type_text(t)
+                                 for t in arg_types)
+            raise self.ctx.error(
+                f"No matching overload for '{name}' with argument types "
+                f"({arg_strs})", expr)
+        method, subst = found.method, found.subst
+        fi = (self.type_ops.substitute_method_type_params(method, subst)
+              if subst else method)
+        expr.written_index = expr.index
+        received = [expr.index, *(args or [])]
+        self.calls.receive_winner_args(
+            None, received, arg_types[:len(received)],
+            fi.params[:len(received)], method.root)
+        expr.index = received[0]
+        if args:
+            args[:] = received[1:]
+        expr.dunders = expr.dunders.stamped(kind, fi)
+        if found.const_receiver:
+            expr.const_dunders |= {kind}
+        if kind is SubscriptDunder.GET:
+            credit_implicit_receiver_call(
+                self.ctx, expr.obj, record_type, method, name, expr)
+        return fi
+
+    def _check_borrow_into_temporary(self, expr: TpySubscript,
+                                     ret: TpyType) -> None:
+        """The accessor hands back a borrow (`T*`) into the receiver, valid
+        only while the receiver lives. An rvalue receiver (a temporary) dies
+        at the end of the full-expression, so the borrow would dangle. A
+        pointer-repr Optional is always a reference type, which TPy never
+        silently copies -- there is no valid non-copying result to hand
+        back. Reject loudly until the general borrow/liveness pass
+        (BUGS.md rvalue-subscript entry) replaces this with scope-based
+        reasoning."""
+        actual_ret = unwrap_readonly(ret)
         if return_type_is_cpp_ref(actual_ret):
             return
-        # The accessor hands back a borrow (`T*`) into the receiver, valid only
-        # while the receiver lives. An rvalue receiver (a temporary) dies at the
-        # end of the full-expression, so the borrow would dangle. A pointer-repr
-        # Optional is always a reference type, which TPy never silently copies --
-        # there is no valid non-copying result to hand back. Reject loudly until
-        # the general borrow/liveness pass (BUGS.md rvalue-subscript entry)
-        # replaces this with scope-based reasoning.
         if (pointer_repr_optional(actual_ret) is not None
                 and is_rvalue_source(self.ctx, expr.obj)):
             raise self.ctx.error(
                 "subscript into a temporary would dangle: the accessor returns "
                 "a borrow into the receiver, which is freed at the end of this "
                 "expression -- bind the receiver to a local first", expr)
-        # Re-resolved UNSUBSTITUTED: for a generic record this carries the raw
-        # `V | None` signature, not the composed `Rec | None`. Safe only because
-        # the sole consumer (call_returns_cpp_ref) keys on the return's outer
-        # shape; a consumer needing the substituted inner type must thread the
-        # already-composed FunctionInfo from _get_record_getitem_type instead.
-        expr.getitem_function_info = self.protocols.lookup_record_method(
-            record, "__getitem__")
-
-    def _credit_record_getitem_call(self, expr: TpySubscript,
-                                    record_type: NominalType,
-                                    index_type: TpyType) -> None:
-        """Credit the single-key `__getitem__` a record subscript calls as a
-        method call on the receiver (a slice overload is the slice path's).
-
-        The overload is the one `resolve_overload` picks for `index_type`,
-        as the `__contains__` arm resolves its own; when that fails or is
-        ambiguous, any mutating overload counts. The subscript's TYPE still
-        comes from the first overload (BUGS.md#record-getitem-overload-first-wins).
-        """
-        if expr.is_write_target:
-            return
-        keyed, callee = self._resolve_record_getitem(record_type, index_type)
-        if callee is None:
-            # Any overload may be the one that runs.
-            for fi in keyed:
-                record_implicit_call(expr, fi, expr.obj, "__getitem__")
-            callee = next((fi for fi in keyed if call_mutates_receiver(fi)), None)
-        if callee is not None:
-            credit_implicit_receiver_call(
-                self.ctx, expr.obj, record_type, callee, "__getitem__", expr)
-
-    def _resolve_record_getitem(
-            self, record_type: NominalType, index_type: TpyType
-    ) -> tuple[list['FunctionInfo'], 'FunctionInfo | None']:
-        """The record's single-key `__getitem__` overloads and the one
-        `index_type` selects (None when that is ambiguous)."""
-        record = self.ctx.registry.get_record_for_type(record_type)
-        if record is None:
-            return [], None
-        overloads, inherited_subst = self.protocols.lookup_record_method_overloads(
-            record, "__getitem__")
-        keyed = [fi for fi in overloads
-                 if not _is_slice_getitem(fi) and len(fi.params) == 1]
-        return keyed, self._resolve_getitem_overload(
-            keyed, record_type, inherited_subst, unwrap_readonly(index_type))
-
-    def _resolve_getitem_overload(
-            self, keyed: list['FunctionInfo'], record_type: NominalType,
-            inherited_subst: dict[str, TpyType | int],
-            index_type: TpyType) -> 'FunctionInfo | None':
-        """The single-key `__getitem__` overload `index_type` selects, or None.
-
-        Substituted as an explicit call's receiver is (the inherited
-        substitution composed with the instance's); a method-level type param
-        stays unbound and matches structurally."""
-        if len(keyed) < 2:
-            return keyed[0] if keyed else None
-        instance_subst = self.type_ops.build_type_substitution(record_type)
-        composed = {
-            k: (substitute_type_params_simple(v, {n: t for n, t in instance_subst.items()
-                                            if isinstance(t, TpyType)})
-                if isinstance(v, TpyType) else v)
-            for k, v in inherited_subst.items()}
-        subst = {k: v for k, v in {**instance_subst, **composed}.items()
-                 if isinstance(v, TpyType)}
-        subst_keyed = [
-            dc_replace(m, params=[dc_replace(p, type=substitute_type_params_simple(p.type, subst))
-                                  for p in m.params])
-            for m in keyed] if subst else keyed
-        # An int literal takes the first overload whose key it fits, as the
-        # `__contains__` arm does.
-        arg = index_type
-        if isinstance(arg, IntLiteralType):
-            for m in subst_keyed:
-                tr = int_traits_of(m.params[0].type)
-                if tr is not None and tr.min_value <= arg.value <= tr.max_value:
-                    arg = m.params[0].type
-                    break
-            else:
-                arg = self.ctx.default_int_for_literal(arg)
-        try:
-            matched = resolve_overload(
-                subst_keyed, [arg],
-                protocol_checker=self.protocols.type_conforms_to_protocol,
-                protocol_classifier=self.protocols.classify_protocol_conformance,
-                default_int_type=self.ctx.default_int_type,
-                subclass_checker=self.ctx.registry.subclass_distance,
-                type_ops=self.type_ops)
-        except OverloadAmbiguityError:
-            return None
-        return next((keyed[i] for i, m in enumerate(subst_keyed) if m is matched),
-                    None)
 
     def _credit_slice_getitem_call(self, expr: TpySubscript, actual_type: TpyType,
                                    fi: 'FunctionInfo') -> None:

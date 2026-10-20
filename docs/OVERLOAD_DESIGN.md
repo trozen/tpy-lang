@@ -360,10 +360,9 @@ result = describe(d)  # resolves to stub 1: describe(Dog) -> str
 The ranking below covers free-function, method and constructor calls,
 Regime C's per-candidate arguments (below) and a record's `__contains__`
 overload set (the `in` test converts its needle at the winner's parameter,
-above; a literal needle is ranked as the call ranks a literal argument). A record subscript is typed from its FIRST `__getitem__`
-overload and C++ `operator[]` picks what runs; the ranking only credits its
-receiver effects, and swallows a tie (BUGS.md#record-getitem-overload-first-wins).
-Operators rank the same way ("Operators" below).
+above; a literal needle is ranked as the call ranks a literal argument).
+Operators and record subscripts rank the same way ("Operators" and
+"Subscripts" below).
 
 #### Operators
 
@@ -373,8 +372,9 @@ is ranked exactly as the named call to that dunder ranks it
 (`OperatorResolver._rank_set`,
 `tpyc/sema/operators.py`, with the method call's checkers,
 `method_call_ranking`): the receiver's type parameters substituted
-(int-kind ones such as `ArrayList[T, N]`'s `N` included), the receiver's
-readonly / consuming filter (`filter_receiver_overloads`), the method's own
+(int-kind ones such as `ArrayList[T, N]`'s `N` included), the receiver kind
+ranked first ("The receiver kind ranks first" below) and the consuming
+filter (`filter_receiver_overloads`), the method's own
 type parameters inferred from the operand (a class-shadowed name, as in
 `Rc[T].__eq__[T: Equatable]`, stays the class's). The operand is ranked as
 analyzed: at the forward arithmetic dunder an undecided list is decided by
@@ -508,6 +508,67 @@ called on a readonly receiver, aliased classes (`StrView` / `String` are
 `str` there), element types, union members, keyword arguments; such a
 case goes compiler-only (BUGS.md#stub-first-applicable-cannot-split-calls).
 `@readonly` twins declare the mutating twin first.
+
+#### Subscripts
+
+**A record subscript answers like its explicit dunder call** (any user,
+library, `@native`, inherited or generic record whose subscripts do not read
+elements the builtin way -- `subscript_answers_as_call`; a builtin
+container, `str`, `bytes`, a tuple and an element-typed `@native` wrapper
+keep their own rule). `t[k]` is `t.__getitem__(k)`, `t[k] = v` is
+`t.__setitem__(k, v)`, `del t[k]` is `t.__delitem__(k)` and `t[k] op= v` is
+`t.__setitem__(k, t.__getitem__(k) op v)`: each form resolves its dunder set
+once, through the same ranking with the receiver
+(`ExpressionAnalyzer.resolve_subscript_dunder` over
+`OperatorResolver.rank_dunder_set`), the variant -- substituted at the
+receiver's type args -- is stamped on the node (`TpySubscript.dunder`), and
+the key is received at its parameter as the call receives its argument
+(`CallAnalyzer.receive_winner_args`). One variant answers as a call to it
+alone would (a wrong key is the call's *Type mismatch in argument*), a tie
+is the call's *Ambiguous overload*. Every reader -- the result type, the
+key's conversion, the C++ render, the `@native` callee, the receiver's
+effect credit -- reads that one stamp:
+
+```python
+class Table:
+    @dispatch
+    def __getitem__(self, i: int32) -> int32: ...
+    @dispatch
+    def __getitem__(self, k: str) -> int32: ...
+
+t["a"]         # t[std::string_view("a")] -- the str variant
+t[n64]         # at __getitem__(int32) / (int): t[::tpy::BigInt(n64)], no narrow
+t["a"] = 1     # t.__setitem__(std::string_view("a"), 1)
+del t[0]       # t.__delitem__(0)
+t[k()] += 1    # { auto __tmp_1 = k(); t.__setitem__(__tmp_1, ... t[__tmp_1] ...); }
+mk()[k()] += f()  # { auto&& __tmp_1 = mk(); auto __tmp_2 = k();
+                  #   __tmp_1.__setitem__(__tmp_2, ... __tmp_1[__tmp_2] ... f() ...); }
+```
+
+The read renders the record's `operator[]` with the key converted (a
+literal key takes the literal pin), the store and `del` render the method
+call the explicit spelling renders. A store resolves its `__setitem__` on
+the key and the value as analyzed, so a record with only a `__setitem__`
+takes a store, and the value is coerced to the variant's value parameter
+(its `Own` dropped: the move or the warned copy is the store's); a literal
+value takes the literal pin at that parameter, as the key does. An
+augmented subscript is the explicit `t.__setitem__(k, t.__getitem__(k) op
+v)`, with each target part whose repetition would show (a call into a
+body, a writing builtin, a walrus, a conditional region holding one:
+`TpyAugAssign.hold_parts`, docs/LANGUAGE_FEATURES.md)
+evaluated once into an argument temp the statement declares in its own block
+and reads by name (`THIRArgTemp.read_id` / `THIRTempRead`); the key is
+received at the getter and at the setter apart (`TpySubscript.setitem_index`), and the setter is ranked
+on, and receives, the operation's result at its value parameter
+(`TpyAugAssign.setitem_value`), so a narrowing there is the call's *Type
+mismatch*. Each form's call passes the receiver const on its own when its
+variant needs it (`TpySubscript.const_dunders`). A BigInt key at a fixed-width
+variant is the call's checked narrowing, one `to_fixed_check<T>()` per key.
+Not covered: a slice key (`_find_slice_getitem` picks by slice kind,
+BUGS.md#slice-dunder-overload-first-match), a protocol receiver with a
+non-`int32` key (BUGS.md#protocol-getitem-nonint-key-rejects), and a tuple,
+record or union key, which sema resolves but code generation rejects
+(BUGS.md#record-subscript-key-shapes-reject).
 
 #### First pass: strict tier-ranked matching
 
@@ -737,6 +798,47 @@ argument as the base picks a variant: `a: Animal = d; t(a, d, n8)` runs
 `t(x: Animal, y: Dog, z: int64)`. The DECLARED (static) type picks, not
 the runtime type (CPython's `isinstance` would still see a `Dog`), and
 binding the subclass at the base type warns "upcast narrows".
+
+**The receiver kind ranks first.** A method set whose variants differ in
+whether they mutate their receiver (`@readonly` / `@readonly(False)`, the two
+clones of an `@auto_readonly` pair) ranks the variants matching the receiver
+first -- the mutating ones on a mutable receiver, the readonly ones on a
+readonly receiver -- through both stages, and ranks the others only when
+none of those applies (`rank_overload_candidates`, shared by calls,
+operators, `in` and subscripts). A tie among the preferred variants stays
+*Ambiguous overload*; it never falls back. A mutating fallback on a
+readonly receiver is refused by the receiver's readonly check, as a call to
+that variant alone is.
+
+```python
+class B:
+    @dispatch
+    @readonly(False)
+    def __getitem__(self, k: int64) -> int32: ...   # bumps a counter
+    @dispatch
+    @readonly
+    def __getitem__(self, k: int32) -> int32: ...
+
+b[1]            # mutable receiver: the int64 variant, b[static_cast<int64_t>(1)]
+r[1]            # r: readonly[B] -- the int32 variant
+f.m(1)          # m(str) mutating, m(int32) readonly: no mutating one applies,
+                # so the readonly one runs: static_cast<const F&>(f).m(1)
+```
+
+A readonly variant ranked for a mutable receiver passes the receiver const
+(`static_cast<const T&>(recv)`, evaluated once; `std::as_const` is deleted
+for an rvalue) at every call of a dunder or method sema ranks: a method
+call (a nullable `Ptr` receiver as
+`static_cast<const T&>(::tpy::deref_check(p))`), each form of a subscript
+on its own (an augmented subscript's getter and setter apart), an `in` test
+and an operator (an `@native` operator's template included), so C++ does
+not prefer a mutating variant of the same name for the receiver. One
+decision makes it, `pins_const_receiver`, carried with the winner
+(`RankedDunder.const_receiver`, `ResolvedBinop.const_receiver`,
+`TpyMethodCall.const_receiver`, `TpySubscript.const_dunders`).
+CPython's `@dispatch` stand-in runs the first applicable variant whatever the
+receiver, so the two receivers of one set cannot both match it
+(BUGS.md#stub-first-applicable-cannot-split-calls).
 
 **A readonly argument does not re-rank.** Ranking reads signatures only, so
 when the best variant takes a mutable parameter and the argument is

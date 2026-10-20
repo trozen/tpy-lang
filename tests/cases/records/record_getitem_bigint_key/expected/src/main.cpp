@@ -13,7 +13,7 @@ namespace tpyapp::main {
 void main() {
     SparseCounter c = SparseCounter();
     ::tpy::BigInt k = ::tpy::BigInt(static_cast<int64_t>(17592186044416LL));
-    ::tpy::__setitem__(c, k, 7);
+    c.__setitem__(k, 7);
     std::cout << c[k] << "\n" << ::tpy::check_signals;
     std::cout << c[((k) + (::tpy::BigInt(1)))] << "\n" << ::tpy::check_signals;
 }

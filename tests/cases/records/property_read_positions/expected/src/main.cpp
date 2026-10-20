@@ -221,7 +221,10 @@ Rec& borrow_out(Bag& b) {
 //     borrow_out(b).x += 1
 //     print("return_pos:", b._rec.x)
 void return_pos(Bag& b) {
-    ::tpyapp::main::borrow_out(b).x = ::tpy::add_check<int32_t>(::tpyapp::main::borrow_out(b).x, 1);
+    {
+        auto&& __tmp_1 = ::tpyapp::main::borrow_out(b);
+        __tmp_1.x = ::tpy::add_check<int32_t>(__tmp_1.x, 1);
+    }
     std::cout << "return_pos:" << " " << b._rec.x << "\n" << ::tpy::check_signals;
 }
 

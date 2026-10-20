@@ -2416,6 +2416,36 @@ def unwrap_qualifiers(typ: 'TpyType') -> 'TpyType':
     return typ
 
 
+def answers_as_call(receiver: 'TpyType') -> bool:
+    """Whether the dunder set at `receiver` answers an operator as the
+    explicit call to it does, any conversion of the operand included: a
+    record's does (the operator is that call: a user, library or
+    `@native` record); a builtin type's answers by its own rule."""
+    bare = unwrap_qualifiers(receiver)
+    return isinstance(bare, NominalType) and bare.is_user_record
+
+
+def subscript_answers_as_call(receiver: 'TpyType') -> bool:
+    """Whether a subscript of `receiver` answers like its explicit
+    `__getitem__` / `__setitem__` / `__delitem__` call (`answers_as_call`),
+    unless the record reads elements the builtin way (an element-typed
+    `@native` wrapper, which the element rules answer)."""
+    bare = unwrap_qualifiers(receiver)
+    return answers_as_call(bare) and bare.get_element_type() is None
+
+
+def store_slot_type(setter: 'FunctionInfo',
+                    subst: 'dict[str, TpyType] | None' = None) -> 'TpyType':
+    """The type a record subscript store `t[k] = v` coerces its value to:
+    the `__setitem__` variant's value parameter (substituted by `subst`),
+    its `Own` dropped -- an owned parameter takes what the element slot
+    takes, the move or the warned copy being the store's."""
+    value = setter.params[-1].type
+    if subst:
+        value = substitute_type_params_simple(value, subst)
+    return unwrap_own(value)
+
+
 def types_held_by_value(typ: 'TpyType', *,
                         stop_at_indirecting: bool = False) -> Iterator['TpyType']:
     """Every class whose complete definition the storage form of `typ`
@@ -8069,6 +8099,10 @@ class FunctionInfo:
     return_type: Optional[TpyType]
     is_noalloc: bool = False
     is_readonly: bool = False
+    # `is_readonly` was set by the Phase-2 const inference, not declared:
+    # overload ranking must not read it, or the pick would depend on whether
+    # the callee's module was inferred before the call was analyzed.
+    readonly_inferred: bool = False
     is_pure: bool = False
     # `transient=True` on the binding: the stub's C++ reads or writes only
     # its arguments, retains nothing and reaches no other TPy storage.
@@ -8849,6 +8883,9 @@ class ResolvedBinop:
     # (the mixed-width step of the resolution); a promotion is certified
     # separately, by the `__int__` it names.
     widens_operand: bool = False
+    # The call passes the receiver const so C++ runs the readonly variant
+    # sema ranked (`pins_const_receiver`).
+    const_receiver: bool = False
 
     @property
     def result_ignores_operand(self) -> bool:

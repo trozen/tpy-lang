@@ -66,10 +66,10 @@ void free_function() {
     std::cout << "free in:" << " " << ::tpy::print_bool(::tpy::seq_contains(g["a"], 2)) << " " << ::tpy::print_bool(::tpy::seq_contains(g["a"], 5)) << " " << ::tpy::__len__(g) << "\n" << ::tpy::check_signals;
     ::tpy::__setitem__(g["a"], 0, 5);
     std::cout << "free setindex:" << " " << ::tpy::__getitem__(g["a"], 0) << "\n" << ::tpy::check_signals;
-    ::tpy::__setitem__(g, "c", std::vector<int32_t>{7, 8});
+    g.__setitem__("c", std::vector<int32_t>{7, 8});
     std::vector<int32_t> y = {9};
-    ::tpy::__setitem__(g, "d", std::move(y));
-    ::tpy::__setitem__(g, "e", ::tpyapp::main::new_list());
+    g.__setitem__("d", std::move(y));
+    g.__setitem__("e", ::tpyapp::main::new_list());
     std::cout << "free setitem:" << " " << ::tpy::ListPrinter(g["c"]) << " " << ::tpy::ListPrinter(g["d"]) << " " << ::tpy::ListPrinter(g["e"]) << "\n" << ::tpy::check_signals;
     DefaultDict<std::string, ::tpy::ordered_set<int32_t>> s = DefaultDict<std::string, ::tpy::ordered_set<int32_t>>(new_set);
     s["k"].insert(3);
@@ -122,7 +122,7 @@ void receivers() {
     std::cout << "box:" << " " << ::tpy::ListPrinter(b[0]) << " " << ::tpy::__len__(b[0]) << "\n" << ::tpy::check_signals;
     ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4> al = ::tpystd::tplib::array_list::ArrayList<std::vector<int32_t>, 4>();
     al.append(std::vector<int32_t>{3});
-    ::tpy::__setitem__(al, 0, std::vector<int32_t>{5});
+    al.__setitem__(0, std::vector<int32_t>{5});
     std::cout << "arraylist setitem:" << " " << ::tpy::ListPrinter(al[0]) << "\n" << ::tpy::check_signals;
     std::vector<int32_t>& w = al[0];
     w.push_back(4);

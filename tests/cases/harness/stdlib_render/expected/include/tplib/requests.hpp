@@ -951,7 +951,7 @@ inline void CaseInsensitiveDict::update(const CaseInsensitiveDict& other) {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string lk = *__beg_0;
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(other._store, lk);
-        ::tpy::__setitem__((*this), std::get<0>(pair), std::get<1>(pair));
+        (*this).__setitem__(std::get<0>(pair), std::get<1>(pair));
     }
 }
 
@@ -969,7 +969,7 @@ inline CaseInsensitiveDict CaseInsensitiveDict::copy() const {
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string lk = *__beg_0;
         std::tuple<std::string, std::string> pair = ::tpy::__getitem__(this->_store, lk);
-        ::tpy::__setitem__(out, std::get<0>(pair), std::get<1>(pair));
+        out.__setitem__(std::get<0>(pair), std::get<1>(pair));
     }
     return out;
 }

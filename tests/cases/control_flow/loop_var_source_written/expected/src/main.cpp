@@ -1601,7 +1601,7 @@ void getitem_ref_writes(const Rows& r) {
     auto __end_0 = __obj_0.end();
     for (; __beg_0 != __end_0; ++__beg_0) {
         std::string s = *__beg_0;
-        int32_t n = ::tpy::__len__(r[0]);
+        int32_t n = ::tpy::__len__(r[::tpy::BigInt(0)]);
         std::cout << "getitem_ref_writes:" << " " << s << " " << n << "\n" << ::tpy::check_signals;
     }
 }

@@ -372,12 +372,12 @@ void record_subscript() {
     BytesMap mb = BytesMap();
     std::tuple<std::string, std::string> ps = std::tuple<std::string, std::string>{"k", "v"};
     std::tuple<::tpy::Bytes, ::tpy::Bytes> pb = std::tuple<::tpy::Bytes, ::tpy::Bytes>{::tpy::bytes_literal_owned("k", 1), ::tpy::bytes_literal_owned("v", 1)};
-    ::tpy::__setitem__(ms, std::get<0>(ps), std::get<1>(ps));
-    ::tpy::__setitem__(mb, std::get<0>(pb), std::get<1>(pb));
-    ::tpy::__setitem__(ms, "a", "b");
-    ::tpy::__setitem__(mb, ::tpy::bytes_literal("a", 1), ::tpy::bytes_literal("b", 1));
-    ::tpy::__setitem__(ms, "c", (::tpy::str_concat(std::get<1>(ps), "!")));
-    ::tpy::__setitem__(mb, ::tpy::bytes_literal("c", 1), (::tpy::bytes_concat(std::get<1>(pb), ::tpy::bytes_literal("!", 1))));
+    ms.__setitem__(std::get<0>(ps), std::get<1>(ps));
+    mb.__setitem__(std::get<0>(pb), std::get<1>(pb));
+    ms.__setitem__("a", "b");
+    mb.__setitem__(::tpy::bytes_literal("a", 1), ::tpy::bytes_literal("b", 1));
+    ms.__setitem__("c", (::tpy::str_concat(std::get<1>(ps), "!")));
+    mb.__setitem__(::tpy::bytes_literal("c", 1), (::tpy::bytes_concat(std::get<1>(pb), ::tpy::bytes_literal("!", 1))));
     std::cout << "record_subscript:" << " " << ms["a"] << " " << ::tpy::BytesPrinter(mb[::tpy::bytes_literal("a", 1)]) << " " << ::tpy::DictPrinter(ms.d) << " " << ::tpy::DictPrinter(mb.d) << "\n" << ::tpy::check_signals;
 }
 

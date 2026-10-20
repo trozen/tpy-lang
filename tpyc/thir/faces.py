@@ -756,6 +756,13 @@ THIR_FACES: frozenset[str] = frozenset({
     "setitem.checked",              # `::tpy::__setitem__(c, k, v);`
     "setitem.bounds_safe",          # `c[static_cast<std::size_t>(k)] = v;`
     "setitem.aug",                  # `c[k] OP= v` -> the getitem/setitem pair
+    "call.const_receiver",          # readonly variant ranked on a mutable receiver:
+                                    # `static_cast<const T&>(recv)`
+    "aug.held",                     # `c[f()] OP= v` -> a target part whose
+                                    # repetition shows held in a temp the read
+                                    # and the store both read
+    "aug.held_key_moved",           # `t[mk()] OP= v` into an `Own` setter key:
+                                    # the update held too, both moved in
     "setitem.str_owned_copy",       # view source into a str element: std::string(v)
     "setitem.field_recv",           # write/aug receiver is a field access
     "setitem.user_record",          # `recv[k] = v` on a user record with

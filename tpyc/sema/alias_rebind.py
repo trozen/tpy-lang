@@ -62,14 +62,15 @@ from ..typesys import (
     unwrap_own, unwrap_readonly,
     unwrap_ref_type, unwrap_send_sync, view_family_for_type,
 )
-from ..value_category import binds_owned_value
+from ..value_category import (binds_owned_value, call_operands,
+                              peel_coerce)
 from .call_lends import (
     ContractLend, MayLend, borrowing_ctor_arg, frame_operand_keys,
     leaves_hold_no_pointer, may_hold_pointer,
 )
 from .context import (
     BorrowKind, LoanInfo, UnnamedHolder,
-    ElemPath, call_param_args, direct_elements, frame_binding_calls,
+    ElemPath, direct_elements, frame_binding_calls,
     note_nonowning_bind,
 )
 from .storage_walk import (Place, StorageKey, Use, call_loans, leaves,
@@ -140,14 +141,6 @@ class BindKind(Enum):
 
 
 # -- sema-side stamps ---------------------------------------------------------
-
-def _peel(e: TpyExpr) -> TpyExpr:
-    while isinstance(e, TpyCoerce):
-        e = e.expr
-    return e
-
-
-
 
 def bare_tuple(t: TpyType | None) -> TupleType | None:
     """`t` as a tuple, its wrappers (`Own`, `readonly`, Send/Sync) peeled;
@@ -251,7 +244,7 @@ def tuple_borrowed_paths(ctx: 'SemanticContext', expr: TpyExpr | None,
     bare = bare_tuple(slot)
     if bare is None or expr is None:
         return None
-    init = _peel(expr)
+    init = peel_coerce(expr)
     if isinstance(init, TpyIfExpr):
         return frozenset().union(*(
             tuple_borrowed_paths(ctx, arm, bare, prefix,
@@ -407,14 +400,14 @@ def _kept_places(ctx: 'SemanticContext', value: TpyExpr
     contract = ContractLend(ctx)
 
     def leaf(e: TpyExpr, part: int | None) -> None:
-        roots = storage_roots(_peel(e), Use.HOLDER, None, contract)
+        roots = storage_roots(peel_coerce(e), Use.HOLDER, None, contract)
         for operand, kept in roots.by_operand():
-            out.append((_peel(operand), kept.single_place(), part))
+            out.append((peel_coerce(operand), kept.single_place(), part))
 
-    inner = _peel(value)
+    inner = peel_coerce(value)
     for arm in ((inner.then_expr, inner.else_expr)
                 if isinstance(inner, TpyIfExpr) else (inner,)):
-        arm = _peel(arm)
+        arm = peel_coerce(arm)
         if not isinstance(arm, TpyTupleLiteral):
             leaf(arm, None)
             continue
@@ -460,7 +453,7 @@ def binding_roots(ctx: 'SemanticContext',
 def alias_sources(value: TpyExpr | None) -> 'list[str] | None':
     """The names a binding's value is when it is a plain name or a ternary
     of them, else None."""
-    e = _peel(value) if value is not None else None
+    e = peel_coerce(value) if value is not None else None
     if isinstance(e, TpyName):
         return [e.name]
     if isinstance(e, TpyIfExpr):
@@ -568,7 +561,7 @@ class _RootRule(NamedTuple):
         when it may point into every root. An await's result is no
         pointer into anything: the resume binds it whole, a route the
         lowering refuses for a pointer tuple (`ptr_tuple_decision`)."""
-        if isinstance(_peel(value), TpyAwait):
+        if isinstance(peel_coerce(value), TpyAwait):
             return None
         roots = binding_roots(ctx, value)
         if roots is None:
@@ -985,7 +978,7 @@ def bind_kind_of(ctx: 'SemanticContext', value: TpyExpr | None,
     its elements is one; otherwise every element borrows."""
     if value is None:
         return None
-    if isinstance(_peel(value), TpyNoneLiteral):
+    if isinstance(peel_coerce(value), TpyNoneLiteral):
         return BindKind.NONE
     if owned is not None:
         return BindKind.RVALUE if any(owned) else BindKind.LVALUE
@@ -1279,7 +1272,7 @@ class _Replay:
             return st
         if isinstance(s, TpyTupleUnpack):
             self.expr_effects(s.value, st, s, top_is_bind=True)
-            src = _peel(s.value)
+            src = peel_coerce(s.value)
             for i, name in enumerate(s.targets):
                 if name is not None:
                     takes = i < len(s.is_owned) and s.is_owned[i]
@@ -1652,7 +1645,7 @@ class _Replay:
                 root, elem = place.name, place.elem
                 # An unpack target holds one element of a tuple it names.
                 if (elem is None and part is not None and lands is None
-                        and isinstance(_peel(e), TpyName)):
+                        and isinstance(peel_coerce(e), TpyName)):
                     elem = part
                 reached = [(root, elem)]
             for root, elem in reached:
@@ -1696,7 +1689,7 @@ class _Replay:
                           and isinstance(index[1], int) else None))
         if value is None:
             return frozenset(out)
-        inner = _peel(value)
+        inner = peel_coerce(value)
         # A holder bound from another holder carries that holder's loans:
         # a copied Ptr, an alias of an alias, a view read off a pointer.
         if not carries_no_borrow(self.ctx, value):
@@ -1708,7 +1701,7 @@ class _Replay:
         for arm in (((inner.then_expr, inner.else_expr)
                      if isinstance(inner, TpyIfExpr) else (inner,))
                     if whole else ()):
-            arm = _peel(arm)
+            arm = peel_coerce(arm)
             if isinstance(arm, TpyName) and arm.name != holder:
                 arm_key = StorageKey.of_name(arm.name)
                 origins = self.origins_of(arm_key, st)
@@ -1767,7 +1760,7 @@ class _Replay:
         escape."""
         if top_is_bind:
             bound = _bound_nodes(self.ctx, e)
-        inner = _peel(e)
+        inner = peel_coerce(e)
         if isinstance(inner, TpyNamedExpr):
             self.bind(stmt, inner.target, inner.value,
                       self.bind_kinds.get(inner), st, inner)
@@ -1782,7 +1775,7 @@ class _Replay:
         # loans; one lent to a borrowing parameter (`list(relay(g))`) dies
         # with the statement.
         for arg in _owned_args(inner):
-            arg = _peel(arg)
+            arg = peel_coerce(arg)
             roots = (frame_operand_keys(arg)
                      + _call_loan_keys(self.ctx, arg))
             if isinstance(arg, TpyName) and arg.name in self.frames:
@@ -1796,7 +1789,7 @@ class _Replay:
             self.expr_effects(child, st, stmt, bound=bound)
         if isinstance(inner, TpyAwait):
             # `await c` runs the coroutine to its end: it holds nothing after.
-            awaited = _peel(inner.value)
+            awaited = peel_coerce(inner.value)
             if isinstance(awaited, TpyName) and awaited.name in self.frames:
                 st.loans.pop(awaited.name, None)
 
@@ -2066,9 +2059,10 @@ class _Replay:
 
 
 def _owned_args(e: TpyExpr) -> list[TpyExpr]:
-    """The arguments of call `e` its callee takes as `Own[...]`."""
-    return [a for p, a in call_param_args(e)
-            if isinstance(unwrap_readonly(p.type), OwnType)]
+    """The arguments of call `e` its callee takes by ownership."""
+    ops = call_operands(e)
+    return ([] if ops is None else
+            [a for i, a in ops.positioned() if ops.takes_ownership(i)])
 
 
 def _names_bound_in(body: list[TpyStmt]) -> set[str]:
@@ -2100,7 +2094,7 @@ def _ptr_escape_roots(ctx: 'SemanticContext', e: TpyExpr) -> list[str]:
     the body."""
     if isinstance(e, TpyCoerce) and e.coercion.produces_non_null_ptr:
         return _held_roots(ctx, e.expr)
-    inner = _peel(e)
+    inner = peel_coerce(e)
     arg = borrowing_ctor_arg(inner)
     if arg is not None:
         return _held_roots(ctx, arg)

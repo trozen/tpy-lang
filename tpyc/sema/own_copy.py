@@ -45,8 +45,7 @@ from typing import TYPE_CHECKING
 from ..diagnostics import Diagnostic, DiagnosticLevel, NOCOPY_REMEDIATION_HINT
 from ..identity_map import IdentityMap
 from ..parse import (ResultForm, TpyCallLike, TpyCoerce, TpyExpr, TpyFieldAccess,
-                     TpyLambda, TpySubscript, is_property_getter_read)
-from ..parse.nodes import walk_expr_tree
+                     TpySubscript, is_property_getter_read)
 from ..typesys import (INT32, NominalType, ReadonlyType, TpyType, TypeParamRef,
                        unwrap_qualifiers,
                        substitute_type_params_simple, unwrap_readonly,
@@ -419,28 +418,3 @@ def lost_write_message(call: TpyCallLike) -> str:
             f"is an iterator, or this is a generic body); a write through it "
             f"is lost -- bind it to a name first (the binding warns), or "
             f"spell the copy with copy(...)")
-
-
-def declared_borrow_call_under(target: TpyExpr) -> 'TpyCallLike | None':
-    """The first borrow-declared call anywhere in an augmented-assignment
-    TARGET -- its receiver chain (`max(a, b, key=f).v`, a method hop
-    `next(it, d).get_q().v`), an argument of a call on it (`wrap(next(it,
-    d)).v`) or an index (`xs[next(it, d).v]`) -- or None. The render spells
-    the whole target on both sides, which would run the key or advance the
-    iterator twice; a lowering limitation of these calls
-    (BUGS.md#augassign-call-receiver-double-eval), refused until aug-assign
-    binds its target once. A lambda body is not entered: the call holding
-    the lambda still runs twice, so a declared call inside it runs twice once
-    the lambda is called -- the filed double evaluation."""
-    found: list[TpyCallLike] = []
-
-    def visit(node: TpyExpr) -> bool:
-        if found or isinstance(node, TpyLambda):
-            return False
-        if isinstance(node, TpyCallLike) and node.result_form.from_operand:
-            found.append(node)
-            return False
-        return True
-
-    walk_expr_tree(target, visit)
-    return found[0] if found else None

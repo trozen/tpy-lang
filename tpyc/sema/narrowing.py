@@ -10,7 +10,7 @@ from itertools import chain
 from typing import TYPE_CHECKING
 
 from ..typesys import (
-    make_readonly,
+    make_readonly, store_slot_type,
     TpyType, OptionalType, NoneType, VoidType, PtrType, OwnType, NominalType, AliasRef,
     TypeParamRef, IntLiteralType, AnyType,
     UnionType, repr_shape, readonly_access, unwrap_readonly, unwrap_qualifiers, unwrap_ref_type, make_union, union_none_narrow,
@@ -20,7 +20,7 @@ from ..typesys import (
 )
 from ..parse import (
     TpyExpr, TpyName, TpyBinOp, TpyUnaryOp, TpyFieldAccess,
-    TpySubscript, TpyNoneLiteral, TpyCall, TpyMethodCall,
+    TpySubscript, SubscriptDunder, TpyNoneLiteral, TpyCall, TpyMethodCall,
     TpyIntLiteral, TpyCoerce, TpyNamedExpr, TpyBoolLiteral, TpyChainedCompare,
     TpyForEach, TpyArrayLiteral, TpyTupleLiteral, TpySetLiteral,
     TpyDictLiteral, TpyStrLiteral, TpyBytesLiteral, TpyIfExpr, TpyAssign,
@@ -233,8 +233,12 @@ class NarrowingTracker:
                 return elem_type
             if is_protocol_type(actual_type):
                 return self._get_protocol_getitem_type(actual_type)
-            if isinstance(actual_type, NominalType) and actual_type.is_record:
-                return self._get_record_getitem_type(actual_type)
+            setter = expr.dunder(SubscriptDunder.SET)
+            if setter is not None:
+                return store_slot_type(setter)
+            getter = expr.dunder(SubscriptDunder.GET)
+            if getter is not None:
+                return getter.return_type
         return None
 
     def _get_protocol_getitem_type(self, protocol: NominalType) -> TpyType | None:
@@ -251,22 +255,6 @@ class NarrowingTracker:
                     return self.type_ops.substitute_types(method_sig.return_type, type_subst)
                 return method_sig.return_type
         return None
-
-    def _get_record_getitem_type(self, record_type: NominalType, *,
-                                 readonly_receiver: bool = False) -> TpyType | None:
-        """Get __getitem__ return type for a record (returns None on failure),
-        on a readonly receiver the const clone's (`lookup_record_method`)."""
-        record = self.ctx.registry.get_record_for_type(record_type)
-        if record is None:
-            return None
-        getitem = self.protocols.lookup_record_method(
-            record, "__getitem__", readonly_receiver=readonly_receiver)
-        if getitem is None:
-            return None
-        type_subst = self.type_ops.build_type_substitution(record_type)
-        if type_subst:
-            return self.type_ops.substitute_type_params(getitem.return_type, type_subst)
-        return getitem.return_type
 
     def record_getitem_key_ret(self, record_type: NominalType, *,
                                readonly_receiver: bool = False) -> tuple[TpyType, TpyType] | None:

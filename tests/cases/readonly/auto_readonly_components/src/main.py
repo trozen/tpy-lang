@@ -96,8 +96,7 @@ def root_derived(h: Handle) -> None:
 
 
 # root_escape: the result returned at a mutable slot hands the caller write
-# (the caller's `root_escape(h).n += 1` evaluates the call twice,
-# BUGS.md#augassign-call-receiver-double-eval; the call has no side effect)
+# (the caller's `root_escape(h).n += 1` evaluates the call once)
 def root_escape(h: Handle) -> Item:
     return h.get()  # tpyc: ok
 

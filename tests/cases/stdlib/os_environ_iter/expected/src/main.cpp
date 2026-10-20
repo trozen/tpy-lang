@@ -54,9 +54,9 @@ std::string _PREFIX;
 //     print(matched)
 void main() {
     int32_t base_len = ::tpy::__len__((*::tpystd::os::_environ::environ));
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ITER_A", "va");
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ITER_B", "vb");
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TPY_ITER_C", "vc");
+    (*::tpystd::os::_environ::environ).__setitem__("TPY_ITER_A", "va");
+    (*::tpystd::os::_environ::environ).__setitem__("TPY_ITER_B", "vb");
+    (*::tpystd::os::_environ::environ).__setitem__("TPY_ITER_C", "vc");
     std::cout << ::tpy::print_bool((::tpy::__len__((*::tpystd::os::_environ::environ)) == (::tpy::add_check<int32_t>(base_len, 3)))) << "\n" << ::tpy::check_signals;
     std::vector<std::string> iter_keys = std::vector<std::string>{};
     auto& __src_0 = (*::tpystd::os::_environ::environ);

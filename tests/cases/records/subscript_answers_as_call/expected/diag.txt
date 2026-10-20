@@ -1,0 +1,2 @@
+main.py:947: warning: copies Stock into owned storage; use copy() to make this explicit ('st' is bound to existing storage at line 946)
+main.py:988: warning: copies V into owned storage; use copy() to make this explicit

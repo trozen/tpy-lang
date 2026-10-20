@@ -254,7 +254,10 @@ void main() {
     sib.value.n = ::tpy::add_check<int32_t>(sib.value.n, 1);
     std::cout << "siblings" << " " << sib.value.n << "\n" << ::tpy::check_signals;
     KeyHolder keys = KeyHolder();
-    ::tpy::__setitem__(keys.counts, HKey(2), ::tpy::add_check<int32_t>(::tpy::__getitem__(keys.counts, HKey(2)), 1));
+    {
+        auto&& __tmp_1 = HKey(2);
+        ::tpy::__setitem__(keys.counts, __tmp_1, ::tpy::add_check<int32_t>(::tpy::__getitem__(keys.counts, __tmp_1), 1));
+    }
     std::cout << "keys" << " " << ::tpy::__len__(keys.keys) << " " << ::tpy::__getitem__(keys.counts, HKey(2)) << "\n" << ::tpy::check_signals;
     Node node = Node(1);
     node.values.insert(Node(2));

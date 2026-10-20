@@ -1122,8 +1122,51 @@ def rank_overload_candidates(
     default_int_type: TpyType | None = None,
     subclass_checker: SubclassChecker | None = None,
     type_ops: 'TypeOperations | None' = None,
+    readonly_receiver: bool | None = None,
 ) -> OverloadPick:
-    """Two-stage overload resolution over one ranking (`OverloadFit.rank`).
+    """Two-stage overload resolution over one ranking (`OverloadFit.rank`),
+    the receiver kind its first component: with ``readonly_receiver`` given
+    (a method call's receiver), the variants matching it -- the readonly
+    ones on a readonly receiver, the mutating ones on a mutable receiver --
+    are ranked first, both stages, and the others only when none of them
+    applies. A tie among the preferred variants stays ambiguous. On a
+    readonly receiver a mutating fallback winner is then refused by the
+    receiver's readonly check, as a call to that variant alone is."""
+    declared = [_declared_readonly(c.overload) for c in candidates]
+    split = readonly_receiver is not None and len(set(declared)) > 1
+    if not split:
+        return _rank_stages(candidates, protocol_checker, classifier,
+                            deref_checker, default_int_type,
+                            subclass_checker, type_ops)
+    preferred = [i for i, ro in enumerate(declared) if ro == readonly_receiver]
+    others = [i for i, ro in enumerate(declared) if ro != readonly_receiver]
+    for part in (preferred, others):
+        pick = _rank_stages([candidates[i] for i in part], protocol_checker,
+                            classifier, deref_checker, default_int_type,
+                            subclass_checker, type_ops)
+        if pick.winner is not None:
+            return OverloadPick(part[pick.winner],
+                                tuple(part[i] for i in pick.strict))
+    return OverloadPick(None)
+
+
+def _declared_readonly(fi: FunctionInfo) -> bool:
+    """Whether variant `fi` is readonly by declaration (`@readonly`, a
+    dunder's default, an `@auto_readonly` clone) -- never by the const
+    inference, which a call may be analyzed before or after."""
+    return fi.is_readonly and not fi.readonly_inferred
+
+
+def _rank_stages(
+    candidates: list[OverloadCandidate],
+    protocol_checker: ProtocolChecker | None,
+    classifier: ProtocolClassifier | None,
+    deref_checker: DerefChecker | None,
+    default_int_type: TpyType | None,
+    subclass_checker: SubclassChecker | None,
+    type_ops: 'TypeOperations | None',
+) -> OverloadPick:
+    """The two stages of `rank_overload_candidates` over one partition.
 
     The strict stage takes the candidates that convert no argument; when
     none does, a generic overload the legacy structural match accepts
@@ -1185,17 +1228,12 @@ def rank_overload_candidates(
 
 def filter_receiver_overloads(
     overloads: list[FunctionInfo],
-    is_readonly_receiver: bool | None = None,
     is_consuming_receiver: bool | None = None,
 ) -> list[FunctionInfo]:
     """The variants of a method set a receiver of this kind can call: a
     consuming receiver the consuming ones, a borrowing receiver the others,
-    then a readonly receiver the readonly ones and a mutable receiver the
-    mutable ones -- each only when the set has some (an `@auto_readonly`
-    pair keeps one face per receiver). None skips that filter."""
-    # Must run BEFORE readonly filter: consuming overloads are non-readonly,
-    # so the readonly filter would drop the borrowing (readonly) overload
-    # and leave only the consuming one for mutable receivers.
+    each only when the set has some. None skips the filter. (The readonly
+    axis is the ranking's first component, `rank_overload_candidates`.)"""
     if is_consuming_receiver is not None and any(m.is_consuming for m in overloads):
         if is_consuming_receiver:
             consuming = [m for m in overloads if m.is_consuming]
@@ -1205,17 +1243,19 @@ def filter_receiver_overloads(
             borrowing = [m for m in overloads if not m.is_consuming]
             if borrowing:
                 overloads = borrowing
-
-    if is_readonly_receiver is not None:
-        if is_readonly_receiver:
-            ro = [m for m in overloads if m.is_readonly]
-            if ro:
-                overloads = ro
-        else:
-            mut = [m for m in overloads if not m.is_readonly]
-            if mut:
-                overloads = mut
     return overloads
+
+
+def pins_const_receiver(winner: FunctionInfo, overloads: list[FunctionInfo],
+                        readonly_receiver: bool) -> bool:
+    """Whether a method call passes its receiver const so C++ runs
+    `winner`, the variant ranked: a readonly one on a mutable receiver --
+    ranked only because no mutating variant applied
+    (`rank_overload_candidates`) -- beside mutating variants of the same
+    C++ name, which C++ would prefer for the mutable receiver whenever it
+    can convert the arguments."""
+    return (winner.is_readonly and not readonly_receiver
+            and any(not m.is_readonly for m in overloads))
 
 
 def resolve_overload(
@@ -1247,8 +1287,7 @@ def resolve_overload(
     a genuine tie at the top raises ``OverloadAmbiguityError`` rather than
     being broken by declaration order.
     """
-    overloads = filter_receiver_overloads(
-        overloads, is_readonly_receiver, is_consuming_receiver)
+    overloads = filter_receiver_overloads(overloads, is_consuming_receiver)
     pick = rank_overload_candidates(
         [OverloadCandidate(ov, arg_types, kwarg_types) for ov in overloads],
         protocol_checker=protocol_checker,
@@ -1257,6 +1296,7 @@ def resolve_overload(
         default_int_type=default_int_type,
         subclass_checker=subclass_checker,
         type_ops=type_ops,
+        readonly_receiver=is_readonly_receiver,
     )
     return overloads[pick.winner] if pick.winner is not None else None
 
@@ -1292,6 +1332,7 @@ class MethodCallRanking(NamedTuple):
         )
 
     def rank(self, overloads: list[FunctionInfo], arg_types: list[TpyType],
+             is_readonly_receiver: bool | None = None,
              ) -> OverloadPick:
         """`rank_overload_candidates` over ``overloads`` at one argument
         list, with this ranking's checkers: the pick with its stage."""
@@ -1303,6 +1344,7 @@ class MethodCallRanking(NamedTuple):
             default_int_type=self.default_int_type,
             subclass_checker=self.subclass_checker,
             type_ops=self.type_ops,
+            readonly_receiver=is_readonly_receiver,
         )
 
 

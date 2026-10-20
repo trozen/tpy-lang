@@ -34,7 +34,7 @@ from ..prescan import _expr_to_narrowing_key
 from .narrowing import deref_view_narrowed
 from ..diagnostics import OPTIONAL_NONE_ACCESS_WARNING, SemanticError
 from ..type_def_registry import is_list, is_set, is_fstr_type, is_borrowing_view_type, protocol_info_of
-from .overloads import method_call_ranking, OverloadAmbiguityError
+from .overloads import method_call_ranking, OverloadAmbiguityError, pins_const_receiver
 from .bound_check import raise_if_class_param_bound_violated
 from .calls import (
     arity_error_msg, resolve_kwargs, validate_generic_defaults,
@@ -509,6 +509,9 @@ class MethodAnalyzer:
                 if expr.kwargs:
                     kwarg_types = {k: self.expr.analyze_expr(v) for k, v in expr.kwargs.items()}
                 enriched_types = _enrich_literal_types(arg_types, expr.args, resolved_overloads)
+                # The one ranking a dunder set's implicit call uses too
+                # (`rank_overload_candidates`, receiver kind first); this
+                # call adds keywords, a consuming receiver and pending args.
                 try:
                     resolved = method_call_ranking(
                         self.ctx, self.protocols, self.type_ops).resolve(
@@ -536,6 +539,8 @@ class MethodAnalyzer:
                 arg_types = self.calls.apply_winner(
                     scope, expr.args, resolved.params, arg_types, resolved)
                 expr.resolved_function_info = resolved
+                expr.const_receiver = pins_const_receiver(
+                    resolved, resolved_overloads, is_readonly_receiver)
                 coerce_arg_types: list[TpyType] | None = arg_types
                 if expr.kwargs or resolved.materializes_defaults:
                     # Winner picked; expand kwargs into positional slots against its

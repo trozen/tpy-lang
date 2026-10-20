@@ -258,6 +258,7 @@ def infer_method_const(all_fis: list[FunctionInfo]) -> None:
     for fi in all_fis:
         if not fi.is_readonly and const_inferable(fi) and not fi.self_mutated:
             fi.is_readonly = True
+            fi.readonly_inferred = True
 
 
 def const_inferable(fi: FunctionInfo) -> bool:

@@ -1192,6 +1192,17 @@ def _walk_arg_list(owner: str, args: 'Sequence[THIRExpr]',
 _TRANSPARENT_WRAPPERS = (THIRCoerce, THIRErrorReturnUnwrap)
 
 
+def _walk_held(owner: str, held: 'Sequence[THIRArgTemp]',
+               return_type=None) -> None:
+    """The temps a statement holds (`THIRExprStmt.held`): each an argument
+    temp its expression reads by name, declared at the statement's flush
+    point."""
+    for temp in held:
+        if not isinstance(temp, THIRArgTemp) or temp.read_id is None:
+            _fail(owner, temp, "a held value that is no named argument temp")
+    _walk_arg_list(owner, held, return_type, argtemp_ok=True)
+
+
 def _walk(owner: str, node: THIRNode, return_type=None, *,
           argtemp_ok: bool = False, eager_only: bool = False,
           via_transparent: bool = False) -> None:
@@ -1265,6 +1276,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         _walk(owner, node.call, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRExprStmt):
+        _walk_held(owner, node.held, return_type)
         _walk(owner, node.expr, return_type, argtemp_ok=True)
         return
     if isinstance(node, THIRTupleUnpack):
@@ -1326,6 +1338,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # no argtemp exemption -- a temp reaching it is a lowering bug.
         if node.recv_eval is not None:
             _walk(owner, node.recv_eval, return_type)
+        _walk_held(owner, node.held, return_type)
         # The borrow-tuple reseat renders only under its optional spelling.
         if (node.btuple_borrow_cpp is None) != (node.btuple_opt_cpp is None):
             _fail(owner, node, "borrow-tuple reseat without its optional spelling")
@@ -1347,6 +1360,7 @@ def _walk(owner: str, node: THIRNode, return_type=None, *,
         # temp-free -- the lowering never
         # forwards flushability there, so a temp reaching it is a
         # lowering bug (the THIRAssign discipline).
+        _walk_held(owner, node.held, return_type)
         if isinstance(node.target, THIRSubscript):
             _walk(owner, node.target.receiver, return_type)
             _walk(owner, node.target.index, return_type, argtemp_ok=True)

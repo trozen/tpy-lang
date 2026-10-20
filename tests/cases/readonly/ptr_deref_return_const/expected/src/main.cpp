@@ -10,10 +10,22 @@ namespace tpyapp::main {
 //     m.via_local().n += 100  # tpyc: ok
 //     h.get().n += 1000  # tpyc: ok
 void through_readonly(const ::tpyapp::holder::M& m, const ::tpyapp::holder::Holder<::tpyapp::holder::A>& h) {
-    m.direct().n = ::tpy::add_check<int32_t>(m.direct().n, 1);
-    m.pick(false).n = ::tpy::add_check<int32_t>(m.pick(false).n, 10);
-    m.via_local().n = ::tpy::add_check<int32_t>(m.via_local().n, 100);
-    h.get().n = ::tpy::add_check<int32_t>(h.get().n, 1000);
+    {
+        auto&& __tmp_1 = m.direct();
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 1);
+    }
+    {
+        auto&& __tmp_2 = m.pick(false);
+        __tmp_2.n = ::tpy::add_check<int32_t>(__tmp_2.n, 10);
+    }
+    {
+        auto&& __tmp_3 = m.via_local();
+        __tmp_3.n = ::tpy::add_check<int32_t>(__tmp_3.n, 100);
+    }
+    {
+        auto&& __tmp_4 = h.get();
+        __tmp_4.n = ::tpy::add_check<int32_t>(__tmp_4.n, 1000);
+    }
 }
 
 // def main() -> None:
@@ -35,7 +47,10 @@ void main() {
     ::tpyapp::holder::Holder<::tpyapp::holder::A> h = ::tpyapp::holder::Holder<::tpyapp::holder::A>(pa);
     ::tpyapp::main::through_readonly(m, h);
     std::cout << "readonly" << " " << a.n << " " << b.n << "\n" << ::tpy::check_signals;
-    m.mine().n = ::tpy::add_check<int32_t>(m.mine().n, 5);
+    {
+        auto&& __tmp_1 = m.mine();
+        __tmp_1.n = ::tpy::add_check<int32_t>(__tmp_1.n, 5);
+    }
     std::cout << "own" << " " << m.own.n << "\n" << ::tpy::check_signals;
 }
 

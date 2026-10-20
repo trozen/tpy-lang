@@ -26,7 +26,7 @@ namespace tpyapp::main {
 //     h = expanduser("~")
 //     print(h == "~" or h.startswith("/"))
 void main() {
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "HOME", "/home/tpytest");
+    (*::tpystd::os::_environ::environ).__setitem__("HOME", "/home/tpytest");
     std::cout << ::tpystd::os::path::expanduser("~") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::os::path::expanduser("~/sub") << "\n" << ::tpy::check_signals;
     std::cout << ::tpystd::os::path::expanduser("~/") << "\n" << ::tpy::check_signals;
@@ -36,7 +36,7 @@ void main() {
     std::cout << ::tpystd::os::path::expanduser("~nosuchuser_zzz/x") << "\n" << ::tpy::check_signals;
     std::string r = ::tpystd::os::path::expanduser("~root");
     std::cout << ::tpy::print_bool(((r != "~root") && ::tpy::str_startswith(r, "/"))) << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__((*::tpystd::os::_environ::environ), "HOME");
+    (*::tpystd::os::_environ::environ).__delitem__("HOME");
     std::string h = ::tpystd::os::path::expanduser("~");
     std::cout << ::tpy::print_bool(((h == "~") || ::tpy::str_startswith(h, "/"))) << "\n" << ::tpy::check_signals;
 }

@@ -1,0 +1,1 @@
+main.py:13: error: the subscript key here is evaluated once but is not known to be a new value, so it cannot be held without a copy; bind it to a name first

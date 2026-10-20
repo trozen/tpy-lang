@@ -47,7 +47,7 @@ from ...parse.nodes import (
     TpySetLiteral,
     TpySlice,
     TpyStrLiteral,
-    TpySubscript,
+    TpySubscript, SubscriptDunder,
     TpyTupleLiteral,
     TpyUnaryOp,
     TpyVarDecl,
@@ -60,6 +60,7 @@ from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_type)
 from ...sema.call_lends import expr_lends_storage
 from ...typesys import make_readonly, pointer_repr_optional, readonly_access
+from ...typesys import subscript_answers_as_call
 from ...typesys import (
     RecordInfo, body_function_info, body_method_info,
     ConcreteFrameType,
@@ -161,7 +162,7 @@ from ...value_category import (
     CONTAINER_LITERAL_NODES,
     call_hands_back_value, call_value_optional,
     call_result_is_reference,
-    call_returns_cpp_ref,
+    call_returns_cpp_ref, getitem_call_of,
     const_place, deref_step_const,
     receiver_const, call_result_const,
     FrameTempElem,
@@ -2552,11 +2553,9 @@ def _narrow_bigint_index(idx: 'THIRExpr', e: TpyExpr, obj_type: 'TpyType | None'
     reaches lowering (the gates exclude it). A DICT key arrives already
     narrowed -- sema checks it against the key type and puts the coercion on
     the node -- so this serves the positions sema does not check: list /
-    Array / Span indices, and a user record's subscript. On a record the
-    width always comes from `__getitem__`'s key param, whatever dunder the
-    operation dispatches to, so a `__delitem__(self, i: int)` still narrows
-    to int32 and panics where CPython runs
-    (BUGS.md#record-subscript-bigint-narrow-width)."""
+    Array / Span indices and an element-typed native's. A record subscript
+    answering as its dunder call takes none: sema converts its key at the
+    variant each operation resolved."""
     disp = _bigint_index_disposition(e, obj_type, analyzer, declared)
     if isinstance(disp, str):
         return idx
@@ -6409,7 +6408,8 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                                 locals_: dict[str, TpyType], analyzer,
                                 pointers: 'AbstractSet[str]', *,
                                 ptr_recv_ok: bool = False,
-                                opt_ptr_recv_ok: bool = False) -> bool:
+                                opt_ptr_recv_ok: bool = False,
+                                held_recv_ok: bool = False) -> bool:
     """The record-getitem subscript arm's index/receiver admission, written
     once for the subscript arm and the field-over-getitem gate: a scalar
     index (a runtime-BigInt one against a fixed-int key param carries the
@@ -6419,7 +6419,9 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
     by opting in -- `ptr_recv_ok` for a module-var slot, `opt_ptr_recv_ok` for
     a None-narrowed pointer-repr Optional -- and rendering the deref itself).
     An UNPROVEN Optional receiver rejects, explicitly here rather than
-    relying on `_record_getitem_key`'s unwrap staying narrow."""
+    relying on `_record_dunder`'s unwrap staying narrow. `held_recv_ok`
+    admits any receiver the statement evaluates once into a temp of its own
+    (an augmented subscript's)."""
     if sub.needs_optional_runtime_check:
         return False
     idx_type = analyzer.get_expr_type(sub.index)
@@ -6442,7 +6444,8 @@ def _record_getitem_idx_recv_ok(sub: 'TpySubscript',
                    and _field_receiver_ok(sub.obj, locals_, analyzer))
                # A module-attr GLOBAL receiver (`os.environ[k]`): renders
                # through the module-variable arm's `(*slot)` deref.
-               or _module_var_recv(sub.obj, locals_, analyzer))
+               or _module_var_recv(sub.obj, locals_, analyzer)
+               or held_recv_ok)
     return bool(idx_ok and recv_ok)
 
 
@@ -6475,15 +6478,9 @@ def _record_getitem_borrow_subscript(sub: TpyExpr,
         return False
     if sub.needs_optional_runtime_check:
         return False
-    if _record_getitem_key(analyzer.get_expr_type(sub.obj), analyzer) is None:
-        return False
-    # The subscript node carries no resolved fi, so the return convention
-    # reads off the record's own `__getitem__` in the registry.
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(
-        analyzer.get_expr_type(sub.obj))))
-    ri = analyzer.registry.get_record_for_type(t)
-    fi = (_record_method_with_parents(ri, "__getitem__", analyzer)
-          if ri is not None else None)
+    getitem = _record_dunder(sub, SubscriptDunder.GET, analyzer)
+    # The return convention is the callee's as declared (`root`).
+    fi = getitem.root if getitem is not None else None
     if fi is None or not (call_returns_cpp_ref(analyzer, fi)
                           or _open_ref_return(fi)):
         return False
@@ -6529,7 +6526,7 @@ def _field_over_record_getitem_ok(e: TpyExpr, locals_: dict[str, TpyType],
     sub = e.obj
     if isinstance(sub.index, TpySlice):
         return False
-    if _record_getitem_key(analyzer.get_expr_type(sub.obj), analyzer) is None:
+    if _record_dunder(sub, SubscriptDunder.GET, analyzer) is None:
         return False
     # A pointer-slot NAME receiver derefs at the name render (`(*acc)[0].x`
     # -- the rebind-slot local's read), so the member-access consumer is
@@ -7691,8 +7688,8 @@ def _container_elem_lvalue_subscript(e: TpyExpr, locals_: dict[str, TpyType],
     recv_t = _chained_subscript_recv_type(e.obj, locals_, analyzer, pointers)
     if recv_t is None or isinstance(unwrap_qualifiers(recv_t), TupleType):
         return False
-    return (e.getitem_function_info is None
-            or call_returns_cpp_ref(analyzer, e.getitem_function_info))
+    getitem = getitem_call_of(e)
+    return getitem is None or call_returns_cpp_ref(analyzer, getitem)
 
 
 def _ptr_opt_binding_inner(recv: TpyExpr, recv_t: 'TpyType | None',
@@ -7724,73 +7721,37 @@ def _ptr_opt_binding_name(recv: TpyExpr, declared: dict[str, TpyType],
     return pointer_repr_optional(declared[recv.name]) is not None
 
 
-def _record_method_with_parents(ri, name: str, analyzer):
-    """`ri.get_method(name)` with the parent-traversing fallback: an
-    INHERITED dunder (incl. through a GENERIC parent, which `get_method`
-    misses on the subclass record) resolves through the registry's
-    overload traversal. The four record-dunder predicates share it so
-    their claimed same-slice parity actually holds."""
-    m = ri.get_method(name)
-    if m is None:
-        ovl = analyzer.registry.get_method_overloads_with_parents(ri, name)
-        m = ovl[0] if ovl else None
-    return m
-
-
-def _record_getitem_key(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
-    """The key param type of a user-record subscript receiver's `__getitem__`
-    (so `recv[index]` spells the record's generated bare `operator[]`), or
-    None. Non-@native user records (including monomorphized generic records
-    like `FixStr[16]`, whose C++ operator[] renders bare identically -- no
-    type-args guard is needed): a @native record wrapping an STL type has a
-    C++ operator[] taking size_t, which needs a cast."""
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
-    if not (isinstance(t, NominalType) and t.is_user_record):
+def _record_dunder(sub: TpyExpr, kind: SubscriptDunder, analyzer, *,
+                   recv_t: 'TpyType | None' = None) -> 'FunctionInfo | None':
+    """The record dunder a subscript calls in form `kind` -- the variant
+    sema resolved as the explicit `t.__getitem__(k)` / `__setitem__` /
+    `__delitem__` call (`TpySubscript.dunder`), substituted at the
+    receiver -- when the receiver (`recv_t`, by default the receiver
+    expression's type) is a NON-@native record, whose generated bare
+    `operator[]` and the `::tpy::__setitem__` / `::tpy::__delitem__`
+    fallbacks render it (a @native record wrapping an STL type takes
+    size_t there and keeps its own emit path). None for any other
+    receiver, a slice, a TypedDict field or an enum name lookup, and for a
+    form the subscript is not (a store target has no getter call). The
+    one reader of the stamp: a record subscript sema stamped nothing on is
+    a located reject, never a guess."""
+    if (not isinstance(sub, TpySubscript) or isinstance(sub.index, TpySlice)
+            or sub.slice_function_info is not None
+            or sub.typed_dict_field is not None
+            or sub.enum_from_name is not None):
+        return None
+    if recv_t is None:
+        recv_t = analyzer.get_expr_type(sub.obj)
+    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(recv_t)))
+    if not (isinstance(t, NominalType) and subscript_answers_as_call(t)):
         return None
     ri = analyzer.registry.get_record_for_type(t)
     if ri is None or ri.is_native:
         return None
-    m = _record_method_with_parents(ri, "__getitem__", analyzer)
-    if m is not None and len(m.params) >= 1:
-        # Method params exclude the implicit self, so params[0] is the key.
-        return m.params[0].type
-    return None
-
-
-def _record_setitem_value(obj_type: 'TpyType | None', analyzer) -> 'TpyType | None':
-    """The VALUE param type of a user-record subscript receiver's `__setitem__`
-    (so `recv[key] = v` spells the no-container fallback
-    `::tpy::__setitem__(recv, key, v)`), or None. Same non-@native restriction
-    as `_record_getitem_key` (monomorphized generic records included) -- a
-    native STL wrapper keeps its own emit path."""
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
-    if not (isinstance(t, NominalType) and t.is_user_record):
-        return None
-    ri = analyzer.registry.get_record_for_type(t)
-    if ri is None or ri.is_native:
-        return None
-    m = _record_method_with_parents(ri, "__setitem__", analyzer)
-    if m is not None and len(m.params) >= 2:
-        # (key, value) after the implicit self -- the value is the last param.
-        return m.params[-1].type
-    return None
-
-
-def _record_has_delitem(obj_type: 'TpyType | None', analyzer) -> bool:
-    """A user record defining `__delitem__` (so `del recv[key]` spells
-    `::tpy::__delitem__(recv, key)`). Non-@native only, and monomorphized
-    generic records included -- the del render spells the receiver name bare
-    and never the record type, so an instantiation reaches no part of the
-    emit. Same slice as `_record_getitem_key`, which likewise has no
-    type-args guard."""
-    t = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(obj_type)))
-    if not (isinstance(t, NominalType) and t.is_user_record):
-        return False
-    ri = analyzer.registry.get_record_for_type(t)
-    if ri is None or ri.is_native:
-        return False
-    return _record_method_with_parents(ri, "__delitem__",
-                                       analyzer) is not None
+    if not sub.dunders:
+        note_detail("subscript.unresolved_dunder")
+        raise ThirUnsupported("subscript.record_getitem", detail=True)
+    return sub.dunder(kind)
 
 def _f2_reseat_ok(init: TpyExpr, declared: dict[str, TpyType], analyzer) -> bool:
     """A pointer-local reseat value: an lvalue field read off an F1-record receiver
@@ -8762,7 +8723,10 @@ def _record_dunder_operand_slot(
     if ri is None:
         return None
     for name in _compare_op_dunders(op):
-        m = _record_method_with_parents(ri, name, analyzer)
+        # An inherited dunder (through a generic parent too) resolves
+        # through the registry's overload traversal.
+        inherited = analyzer.registry.get_method_overloads_with_parents(ri, name)
+        m = ri.get_method(name) or (inherited[0] if inherited else None)
         if m is None or not m.params:
             continue
         pt = unwrap_readonly(unwrap_ref_type(unwrap_send_sync(

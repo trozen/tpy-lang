@@ -60,15 +60,16 @@ from ..parse import (
     TpyBinOp, TpyCoerce, TpyNoneLiteral, TpyIntLiteral,
     TpyFunction, TpyIfExpr, TpyTupleLiteral, TpyLambda, TpyNamedExpr,
     lambda_of, comp_free_reads, comp_sinks, TpyComprehensionGenerator,
-    TpyStmt, TpyVarDecl, SourceLocation
+    TpyStmt, TpyVarDecl, SourceLocation, TpySlice
 )
 from .literal_utils import literal_value_from_expr
 from ..parse.nodes import program_names
 from ..coercions import resolve_coercion, borrow_only_veto, Coercion, CoercionContext, DEREF_COERCION, UPCAST_TO_PTR, UPCAST_TO_CONST_PTR, SPAN_METHOD_TO_SPAN_ARG, SPAN_METHOD_TO_SPAN, INTO_ANY, FROM_ANY, literal_range_error, coercion_refuses_value
 from ..modules import get_span_return_type
 from .call_lends import (
-    CalleeFact, Lent, MayLend, ReturnLend, borrowing_ctor_arg,
-    callee_lend_fact, escaping_borrow_tuple,
+    CalleeFact, EveryTempLend, Lent, MayLend, ReturnLend,
+    borrowing_ctor_arg, callee_lend_fact, escaping_borrow_tuple,
+    every_lent_operand,
 )
 from .context import (
     CompTarget, ConsumingLoop, ElementMove, FinallyCapture, HeldLoopCopy, NameMove,
@@ -501,6 +502,14 @@ class PendingIterCopyCheck(NamedTuple):
     display_type: TpyType
     hint: str
     loc: SourceLocation | None
+
+
+class TempRoot(NamedTuple):
+    """A temporary a borrow points into (`borrow_temp_roots`): `expr`, or
+    with `in_tuple` the owned element `expr` of a temporary tuple the
+    borrow points into."""
+    expr: TpyExpr
+    in_tuple: bool = False
 
 
 def _handle_lends_elements(t: TpyType) -> bool:
@@ -4413,6 +4422,43 @@ class TypeCompatibility:
             if leaf.kind is LeafKind.TEMPORARY:
                 return leaf.node
         return None
+
+    def borrow_temp_roots(self, expr: TpyExpr, *,
+                          stop: 'Callable[[TpyExpr], list[TempRoot] | None]'
+                          ' | None' = None,
+                          through: bool = False) -> 'list[TempRoot]':
+        """Every fresh owned temporary a borrow-form `expr` MAY point into:
+        the TEMPORARY leaves of the climb under `EveryTempLend`, and the
+        operands of each node the climb cannot step past, climbed the same
+        way (a subscript through a dunder its object and index, any other
+        node its operands). A name proves nothing -- whatever it is bound
+        to lives outside the expression. `stop` answers for a node the
+        caller decides itself (None climbs on); `through` asks what `expr`'s
+        value points into even when it is a new value itself (a new record
+        may hold a view of an operand)."""
+        if through and (isinstance(expr, TpyIfExpr) or (
+                isinstance(expr, TpyBinOp) and expr.op in ("&&", "||"))):
+            # The climb starts an arm past its coercions, where `stop` must
+            # still see the arm whole.
+            arms = ((expr.then_expr, expr.else_expr)
+                    if isinstance(expr, TpyIfExpr) else (expr.left, expr.right))
+            return [r for arm in arms
+                    for r in self.borrow_temp_roots(arm, stop=stop)]
+        policy = EveryTempLend(self.ctx, expr, stop=stop, through=through)
+        out: list[TempRoot] = []
+        for leaf in leaves(expr, policy, split=False):
+            if leaf.kind is LeafKind.TEMPORARY:
+                out.append(TempRoot(leaf.node, in_tuple=leaf.temp_backed))
+            elif leaf.kind is LeafKind.UNPLACEABLE:
+                node = leaf.node
+                parts = ([node.obj, *(node.index.children()
+                                      if isinstance(node.index, TpySlice)
+                                      else [node.index])]
+                         if isinstance(node, TpySubscript)
+                         else [e for _, e in every_lent_operand(node)])
+                for part in parts:
+                    out += self.borrow_temp_roots(part, stop=stop)
+        return policy.found + out
 
     def check_view_return_dangle(self, expr: TpyExpr, return_type: TpyType,
                                  loc: SourceLocation | None,

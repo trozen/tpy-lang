@@ -168,11 +168,11 @@
   ""
  ],
  "augassign_index__n__prop__named": [
-  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   ""
  ],
  "augassign_index__n__prop__temp": [
-  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   ""
  ],
  "augassign_list__items__meth__named": [
@@ -200,11 +200,11 @@
   ""
  ],
  "augassign_recv__rec__prop__named": [
-  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   ""
  ],
  "augassign_recv__rec__prop__temp": [
-  "stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   ""
  ],
  "call_arg__items__meth__named": [

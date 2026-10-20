@@ -4,7 +4,7 @@ branches, loops, with, try, raise, and narrowing statements.
 
 from __future__ import annotations
 import copy
-from collections.abc import Callable, Set as AbstractSet
+from collections.abc import Callable, Iterator, Set as AbstractSet
 from .storage import alias_binding, borrowed_record, full_expression_record, native_container, native_container_field, owned_container_decl, global_name_binding, hoisted_binding, optional_layout, storage_borrow, tuple_layout, union_literal
 from .callables import setitem_stub_callee, with_method_callee, with_method_stub
 from .captures import capture_facts
@@ -65,6 +65,7 @@ from ...parse.nodes import (
     TpyStarUnpack,
     TpyStrLiteral,
     TpySubscript,
+    SubscriptDunder,
     TpyTry,
     TpyTupleLiteral,
     TpyTupleUnpack,
@@ -137,6 +138,7 @@ from ...modules.type_resolution import is_native_iterable
 from ...codegen_cpp.gen_async import sub_struct_qualname
 from ...sema.call_lends import expr_lends_storage
 from ...sema.context import UnnamedHolder
+from ...sema.aug_hold import holds_by_value
 from ...sema.literal_utils import (fixed_int_literal_value_from_expr,
                                    numeric_literal_truth)
 from ...codegen_cpp.forms import (
@@ -169,6 +171,7 @@ from ...typesys import (is_polymorphic_subclass_fact,
 from ...codegen_cpp.type_resolution import resolve_stmt_recorded_type
 from ...codegen_cpp.types import resolve_pending_container, resolve_tuple_pending
 from ...codegen_cpp import emit_prims, resumable_cfg as rcfg
+from ...identity_map import IdentityMap
 from ...liveness import (
     collect_nested_def_nonlocal_rebinds, stmts_terminate,
     try_terminates_ignoring_finally, tuple_literal_leaves,
@@ -204,6 +207,7 @@ from ..nodes import (
     PrintForm,
     PtrSlotKind,
     THIRArgTemp,
+    THIRTempRead,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -295,7 +299,7 @@ from .predicates import (
     _call_storage_optional_return,
     receiver_is_const,
     _expr_is_const_source,
-    _record_getitem_key,
+    _record_dunder,
     copy_call_arg,
     _storage_family_ok,
     _binding_peel,
@@ -458,8 +462,6 @@ from .predicates import (
     _type_param_value_slot,
     _peel_coerce,
     _subscript_container_recv_type,
-    _record_has_delitem,
-    _record_setitem_value,
     _unwrap_lit_coerce,
     _ru_container_literal_ok,
     _ru_instance_literal_ok,
@@ -483,6 +485,7 @@ from .context import (
     _NO_FORMS,
     _ONLY_ADDR_CALL,
     _ONLY_BORROW_RET_PASSTHROUGH,
+    _ONLY_FIELD_RECV_BORROW,
     _ONLY_BTUPLE_SLOT,
     _ONLY_FRAME_FACTORY,
     _ONLY_INDIRECT_READ,
@@ -492,6 +495,7 @@ from .context import (
     _ONLY_SELECT_SLOT,
     _ONLY_RECORD_COPY,
     _ExprUse,
+    _recv_forms,
     _LowerCtx,
     _LowerScope,
     _Prescan,
@@ -502,6 +506,7 @@ from .context import (
     nested_def_prescan,
 )
 from .checks import (
+    _comp_own_container,
     _storage_form_tuple_return,
     owned_literal_layout,
     own_btuple_borrow_name_arg,
@@ -644,6 +649,10 @@ from .expressions import (
     _lower_tuple_literal,
     _rb_bytes_literal_views,
     _retag_param_bytes_literal,
+    _record_key,
+    _record_receiver,
+    _pinned_literal_arg,
+    _operator_receiver_pinned,
     _rb_operand_slots,
     _operator_literal_pins,
     _retag_bytes_literal_view,
@@ -9202,38 +9211,171 @@ def _overload_adjusted_return(stmt: TpyReturn, lc: _LowerCtx) -> TpyReturn:
     return adjusted
 
 
-def _augassign_recv_is_accessor(target: TpyExpr, analyzer) -> bool:
-    """Whether an augmented assignment reaches its lvalue THROUGH a
-    `@property` read.
+def _record_dunder_call(sub: TpySubscript, kind: SubscriptDunder,
+                        receiver: THIRExpr, args: tuple[THIRExpr, ...],
+                        lc: '_LowerCtx', loc) -> THIRMethodCall:
+    """A record subscript store or `del` as the explicit
+    `t.__setitem__(k, v)` / `t.__delitem__(k)` call it is: a method call
+    on `receiver` to the variant sema resolved (`_record_dunder`),
+    rendered by that variant's own binding."""
+    fi = _record_dunder(sub, kind, lc.analyzer)
+    assert fi is not None
+    binding = _bound_call_of(fi, fi.name)
+    call = THIRMethodCall(
+        result_type=VoidType(), receiver=_record_receiver(sub, receiver, lc,
+                                                          kind),
+        method_cpp=binding.method_cpp,
+        native_function_name=binding.native_function_name,
+        cpp_template=binding.cpp_template, args=args, loc=loc)
+    return with_method_callee(with_method_stub(call, fi), fi, lc.analyzer,
+                              lambda: receiver_is_const(sub.obj, lc))
 
-    `b.rec.x += 1` renders as `b.rec().x = add_check(b.rec().x, 1)`, running
-    the getter twice where Python runs it once. That is one site of the
-    evaluation-order class (`BUGS.md#augassign-call-receiver-double-eval`),
-    which is a postponed language decision -- fixing this site alone would
-    settle it by accident and leave the spelled-method twin disagreeing, so
-    the accessor spelling is held at a reject until the class is decided.
 
-    A subscript's INDEX is a hop for this question as much as its receiver
-    is: the render spells the whole TARGET on both sides, so `xs[b.i] += 1`
-    runs the getter twice exactly as `b.rec.x += 1` does. So is a user
-    `__getitem__` read below the outermost subscript (`r[0][0] += 1`
-    spells `::tpy::__getitem__(r, 0)` on both sides).
-    """
-    if isinstance(target, TpySubscript):
-        if (isinstance(target.obj, TpySubscript)
-                and _record_getitem_key(
-                    analyzer.get_expr_type(target.obj.obj),
-                    analyzer) is not None):
-            return True
-        return (_augassign_recv_is_accessor(target.obj, analyzer)
-                or _augassign_recv_is_accessor(target.index, analyzer))
-    if isinstance(target, TpyFieldAccess):
-        return _augassign_recv_is_accessor(target.obj, analyzer)
-    if isinstance(target, TpyMethodCall):
-        return (is_property_getter_read(target)
-                or _augassign_recv_is_accessor(target.obj, analyzer))
-    return False
+@dataclass(frozen=True)
+class _AugSubscript:
+    """The operands of `t[k] op= v`, spelled as the explicit
+    `t.__setitem__(k, t.__getitem__(k) op v)` spells them: `read` is the
+    getter call, `receiver` the receiver as the store reads it (without the
+    getter's const pin) and `store_index` the key as the store reads it (on
+    a record, converted at the setter's parameter). A target part whose
+    evaluation is observable when repeated is read by name from the
+    statement's `held` temps (`_aug_holds`)."""
+    read: THIRSubscript
+    receiver: THIRExpr
+    store_index: THIRExpr
 
+
+def _held_temp(init: THIRExpr, cpp_type: str | None, lc: '_LowerCtx',
+               loc) -> tuple[THIRArgTemp, THIRTempRead]:
+    """`init` held in an argument temp its statement declares, and a read of
+    it by name."""
+    init = stamped(init, lc)
+    temp = THIRArgTemp(
+        result_type=init.result_type, init=init, form=init.form,
+        cpp_type=cpp_type, movable=False, read_id=next(lc.temp_read_ids),
+        loc=loc)
+    # A reference temp reads what its init reads; a value temp is its own
+    # storage. A read of it reads the same.
+    temp = _hoisted(replace(temp, source=(
+        init.source if cpp_type == "auto&&" else stamped(temp, lc).source)), lc)
+    return temp, THIRTempRead(result_type=temp.result_type, form=temp.form,
+                              read_id=temp.read_id, source=temp.source,
+                              loc=loc)
+
+
+@contextmanager
+def _aug_holds(stmt: TpyAugAssign, lc: '_LowerCtx',
+               declared: dict[str, TpyType], loc
+               ) -> Iterator[tuple[THIRArgTemp, ...]]:
+    """The temps `stmt` holds its `hold_parts` in, each lowered once over
+    the ones before it, in order; while open, the rest of the statement
+    reads each part by name (`lc.prelowered`), as the argument temp an
+    ordinary call would bind it in: how a reader passes it is the reader's
+    own lowering. A fixed-width scalar or a view is held by value; anything
+    else binds `auto&&` -- a result the statement creates lives to the end
+    of its block, a reference reads the storage in place."""
+    held: list[THIRArgTemp] = []
+    saved = lc.prelowered
+    entries = list(saved.items()) if saved is not None else []
+    try:
+        for part in stmt.hold_parts:
+            lc.prelowered = IdentityMap(entries) if entries else saved
+            e = part.expr
+            t = lc.analyzer.get_expr_type(e)
+            if part.receiver:
+                # A call's reference result is read in place as a receiver,
+                # as a member read off it is.
+                use = (_ExprUse(result=_ExprResultUse.RECEIVER,
+                                allow_temps=True, pos=SinkPos.RECEIVER,
+                                forms=_ONLY_FIELD_RECV_BORROW | _LEND_OK)
+                       if isinstance(e, (TpyCall, TpyMethodCall))
+                       else _ExprUse(pos=SinkPos.RECEIVER,
+                                     forms=_recv_forms(False, False)))
+            elif (t is not None and not _select_node(e)
+                  and not unwrap_qualifiers(t).is_value_type()):
+                # A reference-type result is bound where it is, as a local
+                # alias of it is; a new one is stored as a local's value.
+                use = _ExprUse(result=(
+                    _ExprResultUse.STORAGE if is_rvalue_source(lc.analyzer, e)
+                    else _ExprResultUse.BORROW_BIND), allow_temps=True)
+            else:
+                use = _ExprUse(allow_temps=True)
+            # A comprehension held whole is typed by its own container.
+            # A container literal spells its own type: no slot supplies it.
+            init = _spell_brace(_lower_storage_value(
+                e, _comp_own_container(e, lc.analyzer) or t, lc, declared,
+                loc, use=use), t, lc)
+            temp, read = _held_temp(
+                init, "auto" if holds_by_value(t) else "auto&&", lc, loc)
+            held.append(temp)
+            entries.append((e, read))
+        lc.prelowered = IdentityMap(entries) if entries else saved
+        if held:
+            _witness("aug.held")
+        yield tuple(held)
+    finally:
+        lc.prelowered = saved
+
+
+def _setter_consumes_held_key(stmt: TpyAugAssign,
+                              store_key: THIRExpr) -> bool:
+    """Whether the record setter of `t[k] op= v` consumes the key as
+    written, held as a value the statement created (sema's verdict on the
+    held part): it moves rather than copies."""
+    sub = stmt.target
+    assert isinstance(sub, TpySubscript)
+    key = sub.written_index if sub.written_index is not None else sub.index
+    return (isinstance(store_key, THIRTempRead)
+            and any(key is p.expr and p.setter_consumes
+                    for p in stmt.hold_parts))
+
+
+def _aug_subscript_operands(stmt: TpyAugAssign, lc: '_LowerCtx',
+                            declared: dict[str, TpyType]) -> _AugSubscript:
+    sub = stmt.target
+    assert isinstance(sub, TpySubscript)
+    setter = _record_dunder(sub, SubscriptDunder.SET, lc.analyzer)
+    read = _lower_expr(sub, lc, declared)
+    assert isinstance(read, THIRSubscript)
+    set_key = (_record_key(sub.setitem_index, setter, lc, declared)
+               if setter is not None else None)
+    # The store's receiver is the read's without the getter's const pin.
+    receiver = read.receiver
+    if (isinstance(receiver, THIRCoerce)
+            and receiver.coercion_name == "const_receiver"):
+        receiver = receiver.expr
+    return _AugSubscript(read, receiver,
+                         set_key if set_key is not None else read.index)
+
+
+def _received_value(received: TpyExpr, value: THIRExpr, lc: '_LowerCtx',
+                    declared: dict[str, TpyType]) -> THIRExpr:
+    """The operation's result `value` of `t[k] op= v` as the setter
+    receives it (`TpyAugAssign.setitem_value`): the conversion sema put on
+    the stand-in for the result, lowered over `value`."""
+    stand_in = received
+    while isinstance(stand_in, TpyCoerce):
+        stand_in = stand_in.expr
+    saved = lc.prelowered
+    lc.prelowered = IdentityMap([*(saved.items() if saved is not None else ()),
+                                 (stand_in, value)])
+    try:
+        return _lower_expr(received, lc, declared,
+                           use=_ExprUse(allow_temps=True))
+    finally:
+        lc.prelowered = saved
+
+
+def _record_store_call(sub: TpySubscript, target: THIRExpr,
+                       value: THIRExpr, lc: '_LowerCtx',
+                       loc) -> THIRExprStmt:
+    """`t[k] = v` on a record: `_record_dunder_call` to its setter over
+    the store target's receiver and key (the read arm lowered them for
+    the setter's key slot) and the value."""
+    assert isinstance(target, THIRSubscript)
+    return THIRExprStmt(expr=_record_dunder_call(
+        sub, SubscriptDunder.SET, target.receiver, (target.index, value),
+        lc, loc), loc=loc)
 
 
 def _ptr_union_value(stmt: TpyVarDecl, ptr_u: 'UnionType', is_const: bool,
@@ -12121,21 +12263,20 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                     value=_lower_expr(_svn, lc, declared),
                     form=Form.STORAGE, loc=loc)
                 _witness("setitem.user_record")
-                return THIRSetItem(target=target, value=value, loc=loc)
+                return _record_store_call(stmt.target, target, value, lc, loc)
             if (_nested_container_elem_type(elem_t)
                     and not isinstance(v, TpyName)):
                 _witness("setitem.user_record")
-                return THIRSetItem(
-                    target=target,
-                    value=_lower_container_elem_value(
+                return _record_store_call(
+                    stmt.target, target,
+                    _lower_container_elem_value(
                         stmt, unwrap_readonly(unwrap_ref_type(
                             unwrap_send_sync(elem_t))),
                         target, lc, declared, loc),
-                    loc=loc)
+                    lc, loc)
             if record_like(elem_t, analyzer) and isinstance(v, TpyName):
                 if not _is_move_source(v, lc):
-                    if _record_setitem_own_value_slot(
-                            analyzer.get_expr_type(stmt.target.obj), analyzer):
+                    if _record_setitem_own_value_slot(stmt.target, analyzer):
                         # An `Own[...]` value slot is a `V&&` sink: a
                         # copy-shaped name has no binding there, and the
                         # bare forward does not compile. Sema warns the
@@ -12156,20 +12297,31 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                           allow_unrouted_name=True),
                         form=Form.STORAGE, loc=loc)
                     _witness("setitem.record_move")
-                    return THIRSetItem(target=target, value=value, loc=loc)
-            value = _slot_literal_retype(
-                _flush_witness(
-                    "flush.assign",
-                    _lower_expr(stmt.value, lc, declared,
-                                use=_ExprUse(result=_ExprResultUse.STORAGE,
-                                             allow_temps=True))),
-                elem_t, lc)
-            # The value lands in `__setitem__`'s PARAM, so a bytes literal
-            # takes the static span there.
-            value = _retag_param_bytes_literal(value, _record_setitem_value(
-                analyzer.get_expr_type(stmt.target.obj), analyzer))
+                    return _record_store_call(stmt.target, target, value,
+                                              lc, loc)
+            setitem = _record_dunder(stmt.target, SubscriptDunder.SET,
+                                     analyzer)
+            assert setitem is not None
+            # The value is the setter's argument: a literal is pinned to
+            # its parameter's own type, so C++ binds that variant
+            # (`_pinned_literal_arg`), as the key is.
+            value = _pinned_literal_arg(stmt.value, setitem.params[-1].type,
+                                        setitem, lc, declared)
+            if value is None:
+                value = _slot_literal_retype(
+                    _flush_witness(
+                        "flush.assign",
+                        _lower_expr(stmt.value, lc, declared,
+                                    use=_ExprUse(
+                                        result=_ExprResultUse.STORAGE,
+                                        allow_temps=True))),
+                    elem_t, lc)
+                # The value lands in `__setitem__`'s PARAM, so a bytes
+                # literal takes the static span there.
+                value = _retag_param_bytes_literal(
+                    value, setitem.root.params[-1].type)
             _witness("setitem.user_record")
-            return THIRSetItem(target=target, value=value, loc=loc)
+            return _record_store_call(stmt.target, target, value, lc, loc)
         if isinstance(stmt.target, TpySubscript):
             # Container subscript write: the target lowers to the same
             # subscript node a read produces (bounds_safe + the BigInt index
@@ -12653,9 +12805,6 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         if (isinstance(stmt.target, TpyName)
                 and stmt.target.name in narrowed):
             raise ThirUnsupported("stmt.aug_assign")
-        if _augassign_recv_is_accessor(stmt.target, analyzer):
-            note_detail("augassign.recv.accessor_double_eval")
-            raise ThirUnsupported(stmt_reject_reason(stmt))
         inplace = _list_inplace_extend(stmt, lc, declared)
         if inplace is not None:
             return inplace
@@ -12747,6 +12896,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                                     result=_ExprResultUse.STORAGE,
                                     allow_temps=True)))
                 _inp_bc = _bound_call_of(_inp_fi, _inp_fi.name)
+                recv, _ = _operator_receiver_pinned(stmt.resolved_inplace,
+                                                    recv, val, lc)
                 return THIRExprStmt(
                     expr=with_method_callee(with_method_stub(THIRMethodCall(
                         result_type=VoidType(),
@@ -12792,94 +12943,129 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
         # div/mod helper (no source `TpyBinOp` node carries the flag).
         # A bytes target's binding is a PendingBytesType; resolve it (and tag
         # the owned concat result STORAGE) so the nodes carry final types.
-        tgt_type = analyzer.get_expr_type(stmt.target)
-        tgt_type = _resolve_pending_view(tgt_type, analyzer) or tgt_type
-        tgt_bytes = _resolved_bytes_value(tgt_type, analyzer)
-        target_prechecked = isinstance(stmt.target, TpyFieldAccess)
-        recv_eval = recv_wrap = None
-        if (isinstance(stmt.target, TpyFieldAccess)
-                and stmt.target.class_constant_owner is not None):
-            # Class-constant lvalue: the receiver eval splits off ONCE; the
-            # bare qualified name lands on both sides of the synthetic
-            # `target = (target OP value)` -- the same lvalue string fills
-            # both slots.
-            target, recv_eval, recv_wrap = _lower_class_const_write_target(
-                stmt.target, lc, declared, loc)
-            left: THIRExpr = target
-            _witness("aug.class_const")
-        else:
-            target = _lower_expr(
-                stmt.target, lc, declared,
-                field_prechecked=target_prechecked)
-            left = _lower_expr(
-                stmt.target, lc, declared,
-                field_prechecked=target_prechecked)
-        cast_t = analyzer.get_expr_type(stmt.target)
-        if (isinstance(stmt.target, TpySubscript)
-                and stmt.target.typed_dict_field is None):
-            # The subscript read-modify-write pair always renders the CHECKED
-            # dunders -- a subscript aug-assign never takes the bounds-safe
-            # operator[] -- so the node fact is forced off on both reads.
-            # The cast keys on the RESOLVED element scalar (a
-            # literal-seeded local's element read is still an IntLiteralType
-            # here).
-            target = replace(target, bounds_safe=False)
-            left = replace(left, bounds_safe=False)
-            if cast_t is not None:
-                cast_t = resolve_int_literals(
-                    unwrap_readonly(unwrap_ref_type(unwrap_send_sync(cast_t))),
-                    analyzer.ctx.default_int_for_literal)
-        _, aug_rslot = _rb_operand_slots(stmt.resolved_binop)
-        # FixedInt += BigInt: the value wraps in `({0}).to_fixed_check<T>()`
-        # BEFORE the binop substitution (sema resolved the binop over the
-        # target width), carried as the per-side operand cast.
-        aug_value_key = _narrow_key_type(stmt.value, declared, analyzer)
-        right_cast = None
-        if (is_fixed_int_type(cast_t)
-                and is_big_int_type(aug_value_key)):
-            _witness("narrow.aug_value")
-            right_cast = ("({0}).to_fixed_check<"
-                          f"{lc.render_type(cast_t)}>()")
-        # The subscript-write route flushes arg temps before its single
-        # setitem line (the pre-statement flush point), so the value
-        # position admits the temp rows there -- `d[i] += k.take(b)` hoists
-        # the Own-slot copy `auto __tmp_N = b;` ahead of the full expression.
-        # A NAME-target aug is the same flushable statement (`total +=
-        # take_mut(b)` hoists the vararg pack's std::array ahead of the
-        # assign).
-        aug_value_use = (_ExprUse(allow_temps=True)
-                         if ((isinstance(stmt.target, TpySubscript)
-                              and stmt.target.typed_dict_field is None)
-                             or isinstance(stmt.target, TpyName))
-                         else _ExprUse())
-        _, aug_pin = _operator_literal_pins(
-            stmt.resolved_binop, None, stmt.value, lc, declared)
-        _, aug_right = _rb_bytes_literal_views(
-            stmt.resolved_binop, left,
-            aug_pin or _slot_literal_retype(
-                _lower_expr(stmt.value, lc, declared, use=aug_value_use),
-                aug_rslot, lc))
-        binop = THIRBinOp(
-            result_type=tgt_type,
-            left=left,
-            op=stmt.op,
-            right=aug_right,
-            right_cast=right_cast,
-            resolved=stmt.resolved_binop,
-            paren_wrap=False,
-            form=(Form.STORAGE if tgt_bytes is not None
-                  and is_bytes_type(tgt_bytes) else Form.VALUE),
-            loc=loc,
-        )
-        if (isinstance(stmt.target, TpySubscript)
-                and stmt.target.typed_dict_field is None):
-            _witness("setitem.aug")
-            if isinstance(stmt.target.obj, TpyFieldAccess):
-                _witness("setitem.field_recv")
-            return THIRSetItem(target=target, value=binop,
-                               stub_callee=setitem_stub_callee(target, analyzer), loc=loc)
-        return THIRAssign(target=target, value=binop,
-                          recv_eval=recv_eval, recv_wrap=recv_wrap, loc=loc)
+        # The target parts whose evaluation is observable when repeated
+        # are evaluated once, ahead of the store (`hold_parts`).
+        with _aug_holds(stmt, lc, declared, loc) as held:
+            tgt_type = analyzer.get_expr_type(stmt.target)
+            tgt_type = _resolve_pending_view(tgt_type, analyzer) or tgt_type
+            tgt_bytes = _resolved_bytes_value(tgt_type, analyzer)
+            target_prechecked = isinstance(stmt.target, TpyFieldAccess)
+            recv_eval = recv_wrap = None
+            if (isinstance(stmt.target, TpyFieldAccess)
+                    and stmt.target.class_constant_owner is not None):
+                # Class-constant lvalue: the receiver eval splits off ONCE; the
+                # bare qualified name lands on both sides of the synthetic
+                # `target = (target OP value)` -- the same lvalue string fills
+                # both slots.
+                target, recv_eval, recv_wrap = _lower_class_const_write_target(
+                    stmt.target, lc, declared, loc)
+                left: THIRExpr = target
+                _witness("aug.class_const")
+            elif (isinstance(stmt.target, TpySubscript)
+                    and stmt.target.typed_dict_field is None):
+                aug_sub = _aug_subscript_operands(stmt, lc, declared)
+                left = target = aug_sub.read
+            else:
+                target = _lower_expr(
+                    stmt.target, lc, declared,
+                    field_prechecked=target_prechecked)
+                left = _lower_expr(
+                    stmt.target, lc, declared,
+                    field_prechecked=target_prechecked)
+            cast_t = analyzer.get_expr_type(stmt.target)
+            if (isinstance(stmt.target, TpySubscript)
+                    and stmt.target.typed_dict_field is None):
+                # The subscript read-modify-write pair always renders the CHECKED
+                # dunders -- a subscript aug-assign never takes the bounds-safe
+                # operator[] -- so the node fact is forced off on both reads.
+                # The cast keys on the RESOLVED element scalar (a
+                # literal-seeded local's element read is still an IntLiteralType
+                # here).
+                target = replace(target, bounds_safe=False)
+                left = replace(left, bounds_safe=False)
+                if cast_t is not None:
+                    cast_t = resolve_int_literals(
+                        unwrap_readonly(unwrap_ref_type(unwrap_send_sync(cast_t))),
+                        analyzer.ctx.default_int_for_literal)
+            _, aug_rslot = _rb_operand_slots(stmt.resolved_binop)
+            # FixedInt += BigInt: the value wraps in `({0}).to_fixed_check<T>()`
+            # BEFORE the binop substitution (sema resolved the binop over the
+            # target width), carried as the per-side operand cast.
+            aug_value_key = _narrow_key_type(stmt.value, declared, analyzer)
+            right_cast = None
+            if (is_fixed_int_type(cast_t)
+                    and is_big_int_type(aug_value_key)):
+                _witness("narrow.aug_value")
+                right_cast = ("({0}).to_fixed_check<"
+                              f"{lc.render_type(cast_t)}>()")
+            # The subscript-write route flushes arg temps before its single
+            # setitem line (the pre-statement flush point), so the value
+            # position admits the temp rows there -- `d[i] += k.take(b)` hoists
+            # the Own-slot copy `auto __tmp_N = b;` ahead of the full expression.
+            # A NAME-target aug is the same flushable statement (`total +=
+            # take_mut(b)` hoists the vararg pack's std::array ahead of the
+            # assign).
+            aug_value_use = (_ExprUse(allow_temps=True)
+                             if ((isinstance(stmt.target, TpySubscript)
+                                  and stmt.target.typed_dict_field is None)
+                                 or isinstance(stmt.target, TpyName))
+                             else _ExprUse())
+            _, aug_pin = _operator_literal_pins(
+                stmt.resolved_binop, None, stmt.value, lc, declared)
+            _, aug_right = _rb_bytes_literal_views(
+                stmt.resolved_binop, left,
+                aug_pin or _slot_literal_retype(
+                    _lower_expr(stmt.value, lc, declared, use=aug_value_use),
+                    aug_rslot, lc))
+            left, aug_right = _operator_receiver_pinned(stmt.resolved_binop,
+                                                        left, aug_right, lc)
+            binop = THIRBinOp(
+                result_type=tgt_type,
+                left=left,
+                op=stmt.op,
+                right=aug_right,
+                right_cast=right_cast,
+                resolved=stmt.resolved_binop,
+                paren_wrap=False,
+                form=(Form.STORAGE if tgt_bytes is not None
+                      and is_bytes_type(tgt_bytes) else Form.VALUE),
+                loc=loc,
+            )
+            if (isinstance(stmt.target, TpySubscript)
+                    and stmt.target.typed_dict_field is None):
+                _witness("setitem.aug")
+                if isinstance(stmt.target.obj, TpyFieldAccess):
+                    _witness("setitem.field_recv")
+                if stmt.setitem_value is not None:
+                    store_key = aug_sub.store_index
+                    received = _received_value(stmt.setitem_value, binop, lc,
+                                               declared)
+                    if _setter_consumes_held_key(stmt, store_key):
+                        # Moving the key inside the call that also reads it
+                        # for the getter would leave the getter an empty key
+                        # (argument order is unspecified): the update is
+                        # held first, then both move into the setter.
+                        _witness("aug.held_key_moved")
+                        update, update_read = _held_temp(received, "auto&&",
+                                                         lc, loc)
+                        held = (*held, update)
+                        store_key = THIRMove(result_type=store_key.result_type,
+                                             value=store_key,
+                                             form=store_key.form, loc=loc)
+                        received = THIRMove(
+                            result_type=update_read.result_type,
+                            value=update_read, form=update_read.form, loc=loc)
+                    return THIRExprStmt(expr=_record_dunder_call(
+                        stmt.target, SubscriptDunder.SET, aug_sub.receiver,
+                        (store_key, received), lc, loc), held=held, loc=loc)
+                target = replace(target, receiver=aug_sub.receiver,
+                                 index=aug_sub.store_index)
+                return THIRSetItem(target=target, value=binop,
+                                   stub_callee=setitem_stub_callee(target, analyzer),
+                                   held=held, loc=loc)
+            return THIRAssign(target=target, value=binop,
+                              recv_eval=recv_eval, recv_wrap=recv_wrap,
+                              held=held, loc=loc)
     if isinstance(stmt, TpyReturn):
         begin_stmt()
         if lc.overload_stub_return is not None:
@@ -15302,8 +15488,8 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
             # `::tpy::__delitem__(recv, key)` form the container path
             # emits -- so the record receiver rides the container arm's key
             # slice.
-            user_del = (recv_t is not None
-                        and _record_has_delitem(recv_t, analyzer))
+            deleter = _record_dunder(sub, SubscriptDunder.DEL, analyzer)
+            user_del = recv_t is not None and deleter is not None
             # The container receiver is admitted ELEMENT-BLIND: the del emit
             # never constructs, converts or reads the element slot, so the
             # key slice alone decides byte-parity (the reasoning
@@ -15319,6 +15505,17 @@ def _lower_stmt_dispatch(stmt: TpyStmt, scope: _LowerScope, *,
                 raise ThirUnsupported("stmt.del_item:recv_or_index")
             if user_del:
                 _witness("delitem.user_record")
+                calls.append(_record_dunder_call(
+                    sub, SubscriptDunder.DEL,
+                    _lower_expr(
+                        sub.obj, lc, declared,
+                        use=(_ExprUse(result=_ExprResultUse.RECEIVER)
+                             if _module_var_recv(sub.obj, declared, analyzer)
+                             else _ExprUse(pos=SinkPos.RECEIVER,
+                                           forms=_recv_forms(False, False))),
+                        field_prechecked=isinstance(sub.obj, TpyFieldAccess)),
+                    (_record_key(sub.index, deleter, lc, declared),), lc, loc))
+                continue
             calls.append(THIRCall(
                 result_type=VoidType(),
                 callee="__delitem__",

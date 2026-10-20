@@ -1,0 +1,1 @@
+main.py:27: error: the subscript key here is a view chosen inside a conditional expression and cannot be evaluated once; bind the value it views to a name first

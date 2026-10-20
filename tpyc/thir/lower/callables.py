@@ -7,6 +7,7 @@ from ...compilation_context import get_current_compiler
 from ...parse.nodes import TpyFunction
 from ...symbol_binding import SymbolKind
 from ...type_def_registry import ParamPassing, get_type_def
+from ...typesys import subscript_answers_as_call
 from ...typesys import (
     AnyType, FunctionInfo, FunctionLinkage, IntLiteralType, NominalType, ReadonlyType,
     RecordInfo, RefType, TpyType, VoidType, contains_pending_leaf, contains_type_param, is_fn_type, is_protocol_type,
@@ -412,13 +413,17 @@ def with_method_callee(node: THIRMethodCall, fi: FunctionInfo | None, analyzer: 
 
 def setitem_stub_callee(target: THIRExpr, analyzer: 'SemanticAnalyzer') -> THIRStubCallee | None:
     """The `__setitem__` stub a subscript write `c[k] = v` dispatches to on
-    a native type: the receiver type's overload, substituted at its type
+    a builtin native type (a container, an element-typed `@native`
+    wrapper): the receiver type's overload, substituted at its type
     arguments, whose index parameter is the written index's type (a
     subscript write never takes a slice overload). None when the receiver
-    is no native type or no single overload takes the index."""
+    is no native type or no single overload takes the index. A record's
+    store is the call to the variant sema resolved (`_record_dunder_call`),
+    never this."""
     if not isinstance(target, THIRSubscript):
         return None
     bare = unwrap_send_sync(native_container_subject(target.receiver.result_type))
+    assert not subscript_answers_as_call(bare), "record store outside its dunder call"
     record = analyzer.registry.get_record_for_type(bare) if isinstance(bare, NominalType) else None
     if record is None or not record.is_native or len(bare.type_args) != len(record.type_params):
         return None

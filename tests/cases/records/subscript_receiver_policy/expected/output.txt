@@ -1,0 +1,7 @@
+mixed: 200 200 2
+mixed_readonly: 101 101 2
+narrow: 64 64 0
+temporary: 64
+twins: 2 2 2
+twins_readonly: 1 1 2
+inferred: 101 0

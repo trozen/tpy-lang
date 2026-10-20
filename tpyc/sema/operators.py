@@ -11,13 +11,14 @@ from typing import TYPE_CHECKING, Callable, NamedTuple
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, LiteralType, TypeParamRef,
     ResolvedBinop, ResolvedUnaryop, FunctionInfo, ParamInfo, RecordInfo, TypeParamKind,
-    INT32, FLOAT, PendingContainerType, OwnType, NominalType, unwrap_ref_type,
-    unwrap_readonly, unwrap_qualifiers, resolve_int_literals,
-    substitute_type_params_simple, is_any_float_type,
+    INT32, FLOAT, PendingContainerType, OwnType, unwrap_ref_type,
+    unwrap_readonly, resolve_int_literals,
+    substitute_type_params_simple, is_any_float_type, answers_as_call,
 )
 from ..parse import TpyAugAssign, TpyBinOp, TpyExpr
 from .overloads import (method_call_ranking, filter_receiver_overloads,
-                        OverloadAmbiguityError, converts_literal_to_base)
+                        OverloadAmbiguityError, converts_literal_to_base,
+                        pins_const_receiver)
 from .literal_utils import numeric_literal_type
 from .receiver_calls import receiver_is_readonly
 from ..coercions import (resolve_coercion, context_free_wrap_template,
@@ -142,15 +143,6 @@ def _answers_converted(operand: TpyType, param: TpyType) -> bool:
             or converts_literal_to_base(operand, param))
 
 
-def answers_as_call(receiver: TpyType) -> bool:
-    """Whether the dunder set at `receiver` answers an operator as the
-    explicit call to it does, any conversion of the operand included: a
-    record's does (the operator is that call); a builtin type's answers
-    only what `_answers_converted` admits."""
-    bare = unwrap_qualifiers(receiver)
-    return isinstance(bare, NominalType) and bare.is_user_record
-
-
 def _operand_exprs(loc_node: object) -> tuple[TpyExpr | None, TpyExpr | None]:
     """The (left, right) operand expressions of the operator `loc_node`
     spells: a binary operator's, an augmented assignment's target and
@@ -169,6 +161,15 @@ class OperatorAmbiguity(NamedTuple):
     operator raises it (`ExpressionAnalyzer.decide_operator`)."""
     method_name: str
     candidates: tuple[FunctionInfo, ...]
+
+
+class RankedDunder(NamedTuple):
+    """The variant a dunder set answers with: the method, the substitution
+    to apply to it, and whether its call passes the receiver const so C++
+    runs it (`pins_const_receiver`)."""
+    method: FunctionInfo
+    subst: dict[str, TpyType]
+    const_receiver: bool = False
 
 
 def _type_entries(subst: dict[str, TpyType | int]) -> dict[str, TpyType]:
@@ -282,77 +283,98 @@ class OperatorResolver:
         type_subst: dict[str, TpyType | int],
         receiver: TpyType, receiver_expr: TpyExpr | None,
         home: TpyType | None = None,
-    ) -> tuple[FunctionInfo, dict[str, TpyType]] | OperatorAmbiguity | None:
-        """Rank one dunder set for `operand` as the named call to it ranks
-        the set (`method_call_ranking`): the receiver's type params
-        substituted (int-kind ones included), its readonly / consuming
-        filter, the method's own type params inferred from the operand. A
-        numeric literal operand ranks at its `home` beside the other
-        operand when it has one. A record's set answers as the call does
+    ) -> RankedDunder | OperatorAmbiguity | None:
+        """`rank_dunder_set` for an operator's one operand. A numeric
+        literal operand ranks at its `home` beside the other operand when
+        it has one. A record's set answers as the call does
         (`answers_as_call`); any other answers when the winner takes the
         operand as it is, or converts it as `_answers_converted` admits,
         and leaves any other conversion to the later steps, as it does a
-        tie fewer than two of whose candidates would answer. Returns the
-        method with the substitution to apply to it, or the tie as a
+        tie fewer than two of whose candidates would answer."""
+        arg = home if home is not None else operand
+        as_call = answers_as_call(receiver)
+        return self.rank_dunder_set(
+            overloads, [arg], type_subst, receiver, receiver_expr,
+            admits=None if as_call else (
+                lambda m, strict: strict or _answers_converted(
+                    operand, m.params[0].type)))
+
+    def rank_dunder_set(
+        self, overloads: list[FunctionInfo], args: list[TpyType],
+        type_subst: dict[str, TpyType | int],
+        receiver: TpyType, receiver_expr: TpyExpr | None,
+        admits: Callable[[FunctionInfo, bool], bool] | None = None,
+    ) -> RankedDunder | OperatorAmbiguity | None:
+        """Rank one dunder set for the arguments `args` as the named call
+        to it ranks the set (`method_call_ranking`): the receiver's type
+        params substituted (int-kind ones included), its kind the ranking's
+        first component (`rank_overload_candidates`), the method's own type
+        params inferred from the arguments. `admits(variant, strict)` says
+        whether a set that does not answer as the call (a builtin type's)
+        answers with that winner; a tie answers when at least two tied
+        candidates would. Returns the winner, with whether its call pins
+        the receiver const (`pins_const_receiver`), or the tie as a
         value."""
         cands = filter_receiver_overloads(
-            [m for m in overloads if len(m.params) == 1],
-            is_readonly_receiver=receiver_is_readonly(
-                self.ctx, receiver_expr, receiver),
+            [m for m in overloads if len(m.params) == len(args)],
             is_consuming_receiver=False)
         if not cands:
             return None
-        arg = home if home is not None else operand
         ranking = method_call_ranking(self.ctx, self.protocols, self.type_ops)
         views = [self.type_ops.substitute_method_type_params(m, type_subst)
                  if type_subst else m for m in cands]
-        as_call = answers_as_call(receiver)
+        readonly = receiver_is_readonly(self.ctx, receiver_expr, receiver)
         try:
-            pick = ranking.rank(views, [arg])
+            pick = ranking.rank(views, args, is_readonly_receiver=readonly)
         except OverloadAmbiguityError as e:
             tied = tuple(c for c in e.candidates
-                         if as_call or not e.converted
-                         or _answers_converted(operand, c.params[0].type))
+                         if admits is None or admits(c, not e.converted))
             return (OperatorAmbiguity(cands[0].name, tied)
                     if len(tied) > 1 else None)
         if pick.winner is None:
             return None
-        if (not as_call and pick.winner not in pick.strict
-                and not _answers_converted(operand, views[pick.winner].params[0].type)):
+        if admits is not None and not admits(views[pick.winner],
+                                             pick.winner in pick.strict):
             return None
-        return self._bind_winner(cands[pick.winner], arg, type_subst)
+        found = self.bind_winner(cands[pick.winner], args, type_subst)
+        if found is None:
+            return None
+        return found._replace(const_receiver=pins_const_receiver(
+            cands[pick.winner], cands, readonly))
 
-    def _bind_winner(
-        self, method: FunctionInfo, arg: TpyType,
+    def bind_winner(
+        self, method: FunctionInfo, args: list[TpyType],
         type_subst: dict[str, TpyType | int],
-    ) -> tuple[FunctionInfo, dict[str, TpyType]] | None:
+    ) -> RankedDunder | None:
         """The ranked winner with its substitution: the receiver's type
-        params, and a type param of the method's own bound from the operand
-        as a call binds it from its argument (a class-shadowed name stays
-        the class's)."""
+        params, and a type param of the method's own bound from the
+        arguments as a call binds it (a class-shadowed name stays the
+        class's)."""
         bind = _type_entries(type_subst)
         own_params = [tp for tp in method.type_params if tp not in type_subst]
         if not own_params:
-            return method, bind
-        param = method.params[0]
-        param_type = unwrap_ref_type(param.type)
-        if bind:
-            param_type = substitute_type_params_simple(param_type, bind)
-        view = dc_replace(method, params=[dc_replace(param, type=param_type)],
-                          type_params=own_params)
+            return RankedDunder(method, bind)
+        params = []
+        for param in method.params:
+            param_type = unwrap_ref_type(param.type)
+            if bind:
+                param_type = substitute_type_params_simple(param_type, bind)
+            params.append(dc_replace(param, type=param_type))
+        view = dc_replace(method, params=params, type_params=own_params)
         bound = self.type_ops.infer_type_params_for_function(
-            view, [arg], self.protocols.type_conforms_to_protocol)
+            view, args, self.protocols.type_conforms_to_protocol)
         if bound is None:
             return None
-        return method, {**bind, **bound}
+        return RankedDunder(method, {**bind, **bound})
 
     def _make_resolved(
-        self, method: FunctionInfo, type_subst: dict[str, TpyType],
+        self, found: RankedDunder,
         receiver_type: TpyType, loc_node, left_wrapper: str = "{expr}",
         right_wrapper: str = "{expr}", is_reverse: bool = False,
         promotion: FunctionInfo | None = None, widens_operand: bool = False,
     ) -> ResolvedBinop:
         """Create ResolvedBinop with type params substituted in method signature."""
+        method, type_subst = found.method, found.subst
         # Bound check before substitution rewrites `method` (bounds are on the
         # original FunctionInfo and indexed by class-shadow names). Raises on
         # violation -- the resolver never returns a result carrying one.
@@ -395,6 +417,7 @@ class OperatorResolver:
             receiver_type=receiver_type,
             promotion=promotion,
             widens_operand=widens_operand,
+            const_receiver=found.const_receiver,
         )
 
     def received_params(self, result: ResolvedBinop) -> list[ParamInfo]:
@@ -506,7 +529,7 @@ class OperatorResolver:
             if isinstance(found, OperatorAmbiguity):
                 return found
             if found:
-                return self._make_resolved(*found, left_effective, loc_node)
+                return self._make_resolved(found, left_effective, loc_node)
 
         # 2. Try promoting left to right's type via __int__
         if left_record and right_record:
@@ -523,7 +546,7 @@ class OperatorResolver:
                         return found
                     if found:
                         return self._make_resolved(
-                            *found, right_effective, loc_node,
+                            found, right_effective, loc_node,
                             left_wrapper=int_method.cpp_template or "{expr}",
                             promotion=int_method,
                         )
@@ -548,7 +571,7 @@ class OperatorResolver:
                 return found
             if found:
                 return self._make_resolved(
-                    *found, right_effective, loc_node, is_reverse=True,
+                    found, right_effective, loc_node, is_reverse=True,
                 )
 
         # 4. Try promoting right to left's type via __int__, then use left's operator
@@ -566,7 +589,7 @@ class OperatorResolver:
                         return found
                     if found:
                         return self._make_resolved(
-                            *found, left_effective, loc_node,
+                            found, left_effective, loc_node,
                             right_wrapper=int_method.cpp_template or "{expr}",
                             promotion=int_method,
                         )
@@ -583,7 +606,7 @@ class OperatorResolver:
                     return found
                 if found:
                     return self._make_resolved(
-                        *found, left_effective, loc_node,
+                        found, left_effective, loc_node,
                         right_wrapper=wrap, widens_operand=True,
                     )
             elif wrap := self._fixed_int_widening_wrap(left_effective, right_effective):
@@ -594,7 +617,7 @@ class OperatorResolver:
                     return found
                 if found:
                     return self._make_resolved(
-                        *found, right_effective, loc_node,
+                        found, right_effective, loc_node,
                         left_wrapper=wrap, widens_operand=True,
                     )
 
@@ -640,7 +663,7 @@ class OperatorResolver:
                                _operand_exprs(loc_node)[0], home)
         if found is None or isinstance(found, OperatorAmbiguity):
             return found
-        return self._make_resolved(*found, target_effective, loc_node)
+        return self._make_resolved(found, target_effective, loc_node)
 
     def get_aug_inplace_param_types(
         self, target_type: TpyType, op: str,

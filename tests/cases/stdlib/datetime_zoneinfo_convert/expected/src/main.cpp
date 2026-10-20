@@ -108,7 +108,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TZ", "Europe/Warsaw");
+    (*::tpystd::os::_environ::environ).__setitem__("TZ", "Europe/Warsaw");
     ::tpy::stdlib::time::tzset();
     ::tpystd::datetime::__tpy_init();
     ::tpystd::zoneinfo::__tpy_init();

@@ -17,6 +17,7 @@ from .nodes import (
     Form,
     TruthinessMode,
     THIRArgTemp,
+    THIRTempRead,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -280,8 +281,11 @@ def _expr(e: THIRExpr) -> str:
     if isinstance(e, THIRArgTemp):
         # Number-free by design: the real __tmp_N is drawn at emission from
         # the ctx sink.
-        mods = (" move" if e.move else "") + (" addr" if e.addr_of else "")
+        mods = ((" move" if e.move else "") + (" addr" if e.addr_of else "")
+                + (f" #{e.read_id}" if e.read_id is not None else ""))
         return f"%argtmp({e.cpp_type or 'auto'}{mods}){{{_expr(e.init)}}}"
+    if isinstance(e, THIRTempRead):
+        return f"%argtmp#{e.read_id}"
     if isinstance(e, THIRSlotEmplace):
         return f"slot_emplace[{e.cpp_type}]({_expr(e.value)})"
     if isinstance(e, THIRCopy):
@@ -451,6 +455,13 @@ def _deferred_parts(parts) -> str:
     return f"({', '.join(out)})"
 
 
+def _held(held) -> str:
+    """The temps a statement holds, as a `held [...]; ` prefix."""
+    if not held:
+        return ""
+    return f"held [{', '.join(_expr(t) for t in held)}]; "
+
+
 def _stmt_lines(stmt: THIRStmt, depth: int) -> list[str]:
     # A predeclaration is part of where a name lives, so the dump shows it at
     # the statement that owns it.
@@ -469,7 +480,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         return [f"{pad}%{stmt.name}: {_ty(stmt.resolved_type)} = {init}"]
     if isinstance(stmt, THIRAssign):
         # target is a THIRName (`%x`) or, for F2b, a THIRFieldAccess (`recv.field`).
-        return [f"{pad}{_expr(stmt.target)} = {_expr(stmt.value)}"]
+        return [f"{pad}{_held(stmt.held)}{_expr(stmt.target)} = {_expr(stmt.value)}"]
     if isinstance(stmt, THIRStrAppend):
         return [f"{pad}%{stmt.target} += {_expr(stmt.value)}"]
     if isinstance(stmt, THIRNarrowAlias):
@@ -619,7 +630,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
         args = ", ".join(_print_arg(a) for a in stmt.args)
         return [f"{pad}print({args})"]
     if isinstance(stmt, THIRExprStmt):
-        return [f"{pad}{_expr(stmt.expr)}"]
+        return [f"{pad}{_held(stmt.held)}{_expr(stmt.expr)}"]
     if isinstance(stmt, THIRNoOpStmt):
         return [f"{pad}noop"]
     if isinstance(stmt, THIRImportInit):
@@ -678,7 +689,7 @@ def _stmt_body_lines(stmt: THIRStmt, depth: int) -> list[str]:
                 lines.extend(_stmt_lines(s, depth + 1))
         return lines
     if isinstance(stmt, THIRSetItem):
-        return [f"{pad}{_expr(stmt.target)} = {_expr(stmt.value)}"]
+        return [f"{pad}{_held(stmt.held)}{_expr(stmt.target)} = {_expr(stmt.value)}"]
     if isinstance(stmt, THIRSliceAssign):
         lo = "" if stmt.lower is None else _expr(stmt.lower)
         hi = "" if stmt.upper is None else _expr(stmt.upper)

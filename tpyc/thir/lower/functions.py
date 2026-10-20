@@ -90,7 +90,7 @@ from ...type_def_registry import (
 )
 from ..reject import ThirUnsupported, _walk as _fallback_walk, note
 from ..faces import witness as _witness
-from ..validate import _iter_children, validate_constructor, validate_function
+from ..validate import validate_constructor, validate_function
 from ..nodes import (
     THIRBaseInit,
     THIRInheritedConstructor,
@@ -133,6 +133,7 @@ from .predicates import (
 )
 from . import bindings
 from .context import (
+    _iter_thir,
     _LowerCtx,
     SlotPlacement,
 )
@@ -1829,14 +1830,6 @@ def module_native_globals(module: TpyModule) -> dict[str, str]:
     match byte-for-byte, not just over-approximate. A `global` declaration
     naming one never write-seeds (see lower_function)."""
     return module_native_global_names(module.top_level_stmts)
-
-def _iter_thir(roots):
-    stack = list(roots)
-    while stack:
-        node = stack.pop()
-        yield node
-        stack.extend(_iter_children(node))
-
 
 def _needs_held_back_slot(node) -> bool:
     """A THIR statement predeclaring a name whose owning-call writes fill

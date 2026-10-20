@@ -1,0 +1,1 @@
+main.py:17: error: the subscript key here views a temporary that cannot be kept until the store; bind it to a name first

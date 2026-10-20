@@ -20,10 +20,8 @@
 # getter that lends the receiver's STORAGE (`(b.rec, 1)`) by
 # records/error_property_elem_lends_storage -- which is why `tuple_literal`
 # below reads `b.rec.x` and not `b.rec`.
-# `return_pos` pins a pre-existing double evaluation: `borrow_out(b).x += 1`
-# renders the call twice (read and write-back), so an impure getter behind it
-# would run twice -- BUGS.md#augassign-call-receiver-double-eval, whose shape
-# is any augmented assignment through a CALL receiver.
+# `return_pos` pins `borrow_out(b).x += 1`, whose CALL receiver the augmented
+# assignment evaluates once into a temp it reads and writes back through.
 from typing import Iterator
 
 from tpy import ReturnException, StrView, error_return, int32

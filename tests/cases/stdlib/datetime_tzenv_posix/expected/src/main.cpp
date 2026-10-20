@@ -54,7 +54,7 @@ void __tpy_init() {
     initialized = true;
 
     ::tpystd::os::__tpy_init();
-    ::tpy::__setitem__((*::tpystd::os::_environ::environ), "TZ", "EST5EDT,M3.2.0,M11.1.0");
+    (*::tpystd::os::_environ::environ).__setitem__("TZ", "EST5EDT,M3.2.0,M11.1.0");
     ::tpy::stdlib::time::tzset();
     ::tpystd::datetime::__tpy_init();
     ::tpyapp::main::main();

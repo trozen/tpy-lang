@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 import copy
+import itertools
 from collections.abc import (Callable, Iterable, Iterator, Mapping,
                              Set as AbstractSet)
 from contextlib import contextmanager
@@ -1491,6 +1492,15 @@ class StorageSlots:
         return slot
 
 
+def _iter_thir(roots):
+    """Every THIR node under `roots`, the roots included."""
+    stack = list(roots)
+    while stack:
+        node = stack.pop()
+        yield node
+        stack.extend(_iter_children(node))
+
+
 def _filled_slots(stmt: THIRStmt) -> list[THIRRebindSlot]:
     """The slots the writes under body-level statement `stmt` fill, each
     once; a nested def or a lambda is a body of its own."""
@@ -1686,7 +1696,7 @@ _LC_NOT_NAME_KEYED = (
     # Keyed by a binding's SlotKey and by a write's site identity.
     "storage_slots",
     # Keyed by parse-node identity.
-    "lowered_capture",
+    "lowered_capture", "prelowered",
 )
 _LC_INHERITED_BY_DESIGN = (
     # A lazily computed body-wide memo: a restore would discard a result
@@ -1700,6 +1710,9 @@ _LC_INHERITED_BY_DESIGN = (
     # Node-keyed closure sites plus the outer body's entry locals, read only
     # at a top-level closure (inner ones are ineligible), outside its scope.
     "capture_sites",
+    # A function-wide id source: a nested scope draws from the same one, so
+    # every `THIRTempRead` id stays unique in the emitted function.
+    "temp_read_ids",
 )
 _PRESCAN_NOT_NAME_KEYED = (
     # Return-slot facts: a nested def swaps in its own prescan and a lambda
@@ -1807,7 +1820,8 @@ class _LowerCtx:
                  "import_calls", "pre_decl_import_cpp", "top_level_line",
                  "member_self", "_alias_taken_memo",
                  "table", "cursor", "shadow_report", "move_region",
-                 "storage_slots", "lowered_capture")
+                 "storage_slots", "lowered_capture", "prelowered",
+                 "temp_read_ids")
 
     def __init__(self, func: TpyFunction, analyzer, render_type,
                  self_receiver: str | None = None,
@@ -2033,6 +2047,12 @@ class _LowerCtx:
         # written operand inside the conversions an enclosing arm put on it;
         # None when nothing is recorded.
         self.lowered_capture: 'IdentityMap[object, list] | None' = None
+        # Parse nodes a caller lowered already, which `_lower_expr` returns
+        # as they are where it meets them (a value the caller evaluates
+        # once, read again inside an enclosing arm); None when none is.
+        self.prelowered: 'IdentityMap[object, THIRExpr] | None' = None
+        # The ids `THIRArgTemp.read_id` draws from.
+        self.temp_read_ids = itertools.count()
         # The names a sink may move inside a `moves_only` region; None
         # outside one, where the binding's record decides.
         self.move_region: frozenset[str] | None = None

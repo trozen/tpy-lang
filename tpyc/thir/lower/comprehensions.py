@@ -1117,6 +1117,10 @@ def _lower_comprehension(
         init, result_type: 'TpyType | None', lc: '_LowerCtx',
         declared: dict[str, TpyType],
         pointers: AbstractSet[str]) -> THIRExpr:
+    if lc.prelowered is not None and init in lc.prelowered:
+        # Held by its statement (`_aug_holds`): read by name, as
+        # `_lower_expr` reads it, not built again.
+        return lc.prelowered[init]
     global_scope = lc.global_binding_scope
     lc.global_binding_scope = False
     try:
@@ -1395,6 +1399,9 @@ def _comprehension_loop(route: _CompRoute, gen, lc: '_LowerCtx',
 
 def _lower_genexpr(expr: TpyGeneratorExpression, lc: '_LowerCtx',
                    declared: dict[str, TpyType]) -> THIRGenExpr:
+    if lc.prelowered is not None and expr in lc.prelowered:
+        # Held by its statement (`_aug_holds`), as `_lower_comprehension`.
+        return lc.prelowered[expr]  # type: ignore[return-value]
     global_scope = lc.global_binding_scope
     lc.global_binding_scope = False
     try:

@@ -25,7 +25,10 @@ void mutate_through_get(Outer& o) {
 // def aug_through_get(o: Outer):             # Outer&
 //     o.b.get().v += 1
 void aug_through_get(Outer& o) {
-    o.b.get().v = ::tpy::add_check<int32_t>(o.b.get().v, 1);
+    {
+        auto&& __tmp_1 = o.b.get();
+        __tmp_1.v = ::tpy::add_check<int32_t>(__tmp_1.v, 1);
+    }
 }
 
 // def alias_read(o: Outer) -> int32:         # const Outer&: the alias is never written

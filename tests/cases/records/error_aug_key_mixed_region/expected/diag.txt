@@ -1,0 +1,1 @@
+main.py:18: error: a value in the subscript key here is chosen inside a conditional expression between a new value and existing storage and cannot be evaluated once without a copy; bind it to a name first

@@ -17,8 +17,8 @@ namespace tpyapp::main {
 //         left = left + 1
 //     print(left)
 void main() {
-    ::tpy::__setitem__((*::tpyapp::store::env), "a", "x");
-    ::tpy::__setitem__((*::tpyapp::store::env), "b", "y");
+    (*::tpyapp::store::env).__setitem__("a", "x");
+    (*::tpyapp::store::env).__setitem__("b", "y");
     int32_t n = 0;
     auto& __src_0 = (*::tpyapp::store::env);
     auto&& __itr_0 = ::tpy::__iter__(__src_0);
@@ -29,7 +29,7 @@ void main() {
         n = (::tpy::add_check<int32_t>(n, ::tpy::__len__(k)));
     }
     std::cout << (*::tpyapp::store::env)["a"] << " " << (*::tpyapp::store::env)["b"] << " " << n << "\n" << ::tpy::check_signals;
-    ::tpy::__delitem__((*::tpyapp::store::env), "a");
+    (*::tpyapp::store::env).__delitem__("a");
     int32_t left = 0;
     auto& __src_2 = (*::tpyapp::store::env);
     auto&& __itr_2 = ::tpy::__iter__(__src_2);

@@ -13407,7 +13407,7 @@
  "gen_rec__async__borrow_method__recv_mut": [
   "ok",
   "",
-  "[2] method_call(method_call(*%b, v_m, []), get, []).x = binop(method_call(method_call(*%b, v_m, []), get, []).x, +, lit(1)) [3] print(method_call(method_call(*%b, v_m, []), get, []).x [raw])"
+  "[2] held [%argtmp(auto&& #N){method_call(*%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(method_call(*%b, v_m, ["
  ],
  "gen_rec__async__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -13417,17 +13417,17 @@
  "gen_rec__async__borrow_method__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] method_call(*%t[0] [borrow], get, []).x = binop(method_call(*%t[0] [borrow], get, []).x, +, lit(1)) [4] print(method_call(method_call("
+  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(me"
  ],
  "gen_rec__async__global_name__decl_alias": [
   "ok",
   "",
-  "[1] %x = form_convert[borrow](*%G) [2] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [3] print(method_call(%G, ->get, []).x [raw])"
+  "[1] %x = form_convert[borrow](*%G) [2] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__async__global_name__decl_reassigned": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [5] print(method_call(*%s1, get, []).x [raw]) ["
+  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [5] print(method_call(*%s1"
  ],
  "gen_rec__async__global_name__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13442,7 +13442,7 @@
  "gen_rec__async__global_name__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%G, ->get, []).x = binop(method_call(%G, ->get, []).x, +, lit(1)) [2] print(method_call(%G, ->get, []).x [raw])"
+  "[1] held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [2] print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__async__global_name__return_borrow": [
   "reject:stmt.return:return.borrow_form",
@@ -13457,12 +13457,12 @@
  "gen_rec__async__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [4] print(method_call(*%s0, get, []).x [raw])"
+  "[2] %x = form_convert[borrow](*%s0) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%s0, get, []).x [raw])"
  ],
  "gen_rec__async__local__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, []).x [raw]) "
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(method_call(*%s"
  ],
  "gen_rec__async__local__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13477,7 +13477,7 @@
  "gen_rec__async__local__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, get, []).x = binop(method_call(*%s0, get, []).x, +, lit(1)) [3] print(method_call(*%s0, get, []).x [raw])"
+  "[2] held [%argtmp(auto&& #N){method_call(*%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%s0, get, []).x [raw])"
  ],
  "gen_rec__async__local__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13487,12 +13487,12 @@
  "gen_rec__async__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1))"
+  "[2] %x = form_convert[borrow](*%s0) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__async__local_last__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, []).x [raw])"
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(method_call(*%s"
  ],
  "gen_rec__async__local_last__field_write": [
   "ok",
@@ -13507,22 +13507,22 @@
  "gen_rec__async__local_last__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, get, []).x = binop(method_call(*%s0, get, []).x, +, lit(1))"
+  "[2] held [%argtmp(auto&& #N){method_call(*%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__async__local_last__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] method_call(*%t[0] [borrow], get, []).x = binop(method_call(*%t[0] [borrow], get, []).x, +, lit(1))"
+  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__async__obj_field__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [4] print(method_call(*%b._v [storage], get, []).x [raw])"
+  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%b._v [storage], get, [])."
  ],
  "gen_rec__async__obj_field__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, ["
+  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
  ],
  "gen_rec__async__obj_field__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13537,7 +13537,7 @@
  "gen_rec__async__obj_field__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%b._v [storage], get, []).x = binop(method_call(*%b._v [storage], get, []).x, +, lit(1)) [3] print(method_call(*%b._v [storage], get, []).x [raw])"
+  "[2] held [%argtmp(auto&& #N){method_call(*%b._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__async__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -13552,7 +13552,7 @@
  "gen_rec__async__own_call__decl_alias": [
   "ok",
   "",
-  "[1] frame_slot %x <- call(mk, []) [2] method_call(*%x, get, []).x = binop(method_call(*%x, get, []).x, +, lit(1))"
+  "[1] frame_slot %x <- call(mk, []) [2] held [%argtmp(auto&& #N){method_call(*%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__async__own_call__decl_reassigned": [
   "reject:res.alias_bind",
@@ -13572,7 +13572,7 @@
  "gen_rec__async__own_call__recv_mut": [
   "ok",
   "",
-  "[1] method_call(call(mk, []), get, []).x = binop(method_call(call(mk, []), get, []).x, +, lit(1))"
+  "[1] held [%argtmp(auto&& #N){call(mk, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__async__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -13582,7 +13582,7 @@
  "gen_rec__async__own_call__tuple_elem": [
   "ok",
   "",
-  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] method_call(*%t[0] [borrow], get, []).x = binop(method_call(*%t[0] [borrow], get, []).x, +, lit(1))"
+  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__async__param__decl_alias": [
   "reject:res.alias_bind",
@@ -13607,7 +13607,7 @@
  "gen_rec__async__param__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%pv, get, []).x = binop(method_call(%pv, get, []).x, +, lit(1)) [2] print(method_call(%pv, get, []).x [raw])"
+  "[1] held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [2] print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__async__param__return_borrow": [
   "reject:stmt.return:return.borrow_form",
@@ -13622,12 +13622,12 @@
  "gen_rec__async__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [4] print(method_call(*%xs[0] [borrow], get, []).x [raw])"
+  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%xs[0] [borrow], get, [])."
  ],
  "gen_rec__async__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, ["
+  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
  ],
  "gen_rec__async__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13642,7 +13642,7 @@
  "gen_rec__async__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], get, []).x = binop(method_call(*%xs[0] [borrow], get, []).x, +, lit(1)) [3] print(method_call(*%xs[0] [borrow], get, []).x [raw])"
+  "[2] held [%argtmp(auto&& #N){method_call(*%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__async__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -13657,12 +13657,12 @@
  "gen_rec__ctor__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_m, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
+  "%x: Box = method_call(%b, v_m, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
  ],
  "gen_rec__ctor__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
+  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call"
  ],
  "gen_rec__ctor__borrow_method__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13677,22 +13677,22 @@
  "gen_rec__ctor__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), get, []).x = binop(method_call(method_call(%b, v_m, []), get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, ["
  ],
  "gen_rec__ctor__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) print(method_call(method_call(%b, v"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
  ],
  "gen_rec__ctor__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
  ],
  "gen_rec__ctor__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__ctor__closure_capture__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13707,7 +13707,7 @@
  "gen_rec__ctor__closure_capture__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
  ],
  "gen_rec__ctor__closure_capture__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13717,12 +13717,12 @@
  "gen_rec__ctor__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x,"
  ],
  "gen_rec__ctor__ctor_rvalue__field_write": [
   "reject:stmt.assign:field_write.lift.storage",
@@ -13732,22 +13732,22 @@
  "gen_rec__ctor__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] held [%argtmp(a"
  ],
  "gen_rec__ctor__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, []).x = binop(method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, [])."
+  "held [%argtmp(auto&& #N){ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__ctor_rvalue__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x"
+  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__ctor__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%G method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
+  "%x: Box = *%G held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__ctor__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -13767,7 +13767,7 @@
  "gen_rec__ctor__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->get, []).x = binop(method_call(%G, ->get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__ctor__global_name__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13777,12 +13777,12 @@
  "gen_rec__ctor__local__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__ctor__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__ctor__local__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13792,12 +13792,12 @@
  "gen_rec__ctor__local__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__ctor__local__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13807,12 +13807,12 @@
  "gen_rec__ctor__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Box = move(%s0) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = move(%s0) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__ctor__local_last__field_write": [
   "ok",
@@ -13822,27 +13822,27 @@
  "gen_rec__ctor__local_last__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__ctor__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__ctor__loop_var__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13857,7 +13857,7 @@
  "gen_rec__ctor__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__ctor__loop_var__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13867,7 +13867,7 @@
  "gen_rec__ctor__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%o0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
+  "%x: Box = *%o0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
  ],
  "gen_rec__ctor__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -13882,12 +13882,12 @@
  "gen_rec__ctor__narrowed_opt__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%o0, ->"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__ctor__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->get, []).x = binop(method_call(%o0, ->get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%o0, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
  ],
  "gen_rec__ctor__narrowed_opt__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13897,7 +13897,7 @@
  "gen_rec__ctor__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+  "%x: Box = *%pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
  ],
  "gen_rec__ctor__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -13912,12 +13912,12 @@
  "gen_rec__ctor__narrowed_opt_param__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, ->"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__ctor__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, ->get, []).x = binop(method_call(%pv, ->get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%pv, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
  ],
  "gen_rec__ctor__narrowed_opt_param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13927,12 +13927,12 @@
  "gen_rec__ctor__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = %b._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
+  "%x: Box = %b._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__ctor__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) pri"
+  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__ctor__obj_field__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -13942,12 +13942,12 @@
  "gen_rec__ctor__obj_field__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v [storage]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v [storage]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
  ],
  "gen_rec__ctor__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], get, []).x = binop(method_call(%b._v [storage], get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__ctor__obj_field__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -13957,12 +13957,12 @@
  "gen_rec__ctor__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = call(mk, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__ctor__own_call__field_write": [
   "reject:stmt.assign:field_write.lift.storage",
@@ -13972,27 +13972,27 @@
  "gen_rec__ctor__own_call__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__ctor__own_call__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk, []), get, []).x = binop(method_call(call(mk, []), get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__param__decl_alias": [
   "ok",
   "",
-  "%x: Box = %pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "%x: Box = %pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__ctor__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__ctor__param__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14002,12 +14002,12 @@
  "gen_rec__ctor__param__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%p"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, get, []).x = binop(method_call(%pv, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__ctor__param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14017,12 +14017,12 @@
  "gen_rec__ctor__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = method_call(%b, v_own, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x "
  ],
  "gen_rec__ctor__prop_own__field_write": [
   "reject:expr.method_call:method.ret_type",
@@ -14035,19 +14035,19 @@
   ""
  ],
  "gen_rec__ctor__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw])"
+  "%x: Box = method_call(%b, v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw])"
  ],
  "gen_rec__ctor__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -14065,9 +14065,9 @@
   ""
  ],
  "gen_rec__ctor__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x"
  ],
  "gen_rec__ctor__prop_ref__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14077,12 +14077,12 @@
  "gen_rec__ctor__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__ctor__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print("
+  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
  ],
  "gen_rec__ctor__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14092,12 +14092,12 @@
  "gen_rec__ctor__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
  ],
  "gen_rec__ctor__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], get, []).x = binop(method_call(%xs[0] [borrow], get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__ctor__subscript__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14125,9 +14125,9 @@
   ""
  ],
  "gen_rec__ctor__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
@@ -14137,7 +14137,7 @@
  "gen_rec__ctor__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk_b, [])._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = call(mk_b, [])._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -14157,7 +14157,7 @@
  "gen_rec__ctor__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], get, []).x = binop(method_call(call(mk_b, [])._v [storage], get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__ctor__temp_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
@@ -14167,12 +14167,12 @@
  "gen_rec__fn__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_m, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
+  "%x: Box = method_call(%b, v_m, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
  ],
  "gen_rec__fn__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
+  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call"
  ],
  "gen_rec__fn__borrow_method__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14187,7 +14187,7 @@
  "gen_rec__fn__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), get, []).x = binop(method_call(method_call(%b, v_m, []), get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, ["
  ],
  "gen_rec__fn__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14197,17 +14197,17 @@
  "gen_rec__fn__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) print(method_call(method_call(%b, v"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
  ],
  "gen_rec__fn__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
  ],
  "gen_rec__fn__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__fn__closure_capture__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14222,7 +14222,7 @@
  "gen_rec__fn__closure_capture__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
  ],
  "gen_rec__fn__closure_capture__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14232,12 +14232,12 @@
  "gen_rec__fn__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x,"
  ],
  "gen_rec__fn__ctor_rvalue__field_write": [
   "ok",
@@ -14247,12 +14247,12 @@
  "gen_rec__fn__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] held [%argtmp(a"
  ],
  "gen_rec__fn__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, []).x = binop(method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, [])."
+  "held [%argtmp(auto&& #N){ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__ctor_rvalue__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14262,12 +14262,12 @@
  "gen_rec__fn__ctor_rvalue__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x"
+  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__fn__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%G method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
+  "%x: Box = *%G held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__fn__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -14287,7 +14287,7 @@
  "gen_rec__fn__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->get, []).x = binop(method_call(%G, ->get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__fn__global_name__return_borrow": [
   "ok",
@@ -14302,12 +14302,12 @@
  "gen_rec__fn__local__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__fn__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__fn__local__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14317,12 +14317,12 @@
  "gen_rec__fn__local__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__fn__local__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14332,12 +14332,12 @@
  "gen_rec__fn__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Box = move(%s0) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = move(%s0) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__fn__local_last__field_write": [
   "ok",
@@ -14347,27 +14347,27 @@
  "gen_rec__fn__local_last__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__fn__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__fn__loop_var__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14382,7 +14382,7 @@
  "gen_rec__fn__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__fn__loop_var__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14392,7 +14392,7 @@
  "gen_rec__fn__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%o0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
+  "%x: Box = *%o0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -14407,12 +14407,12 @@
  "gen_rec__fn__narrowed_opt__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%o0, ->"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__fn__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->get, []).x = binop(method_call(%o0, ->get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%o0, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14422,7 +14422,7 @@
  "gen_rec__fn__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+  "%x: Box = *%pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -14437,12 +14437,12 @@
  "gen_rec__fn__narrowed_opt_param__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, ->"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__fn__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, ->get, []).x = binop(method_call(%pv, ->get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%pv, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
  ],
  "gen_rec__fn__narrowed_opt_param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14452,12 +14452,12 @@
  "gen_rec__fn__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = %b._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
+  "%x: Box = %b._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) pri"
+  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__fn__obj_field__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14467,12 +14467,12 @@
  "gen_rec__fn__obj_field__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v [storage]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v [storage]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
  ],
  "gen_rec__fn__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], get, []).x = binop(method_call(%b._v [storage], get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__fn__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14487,12 +14487,12 @@
  "gen_rec__fn__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = call(mk, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__fn__own_call__field_write": [
   "ok",
@@ -14502,12 +14502,12 @@
  "gen_rec__fn__own_call__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__fn__own_call__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk, []), get, []).x = binop(method_call(call(mk, []), get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14517,17 +14517,17 @@
  "gen_rec__fn__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__param__decl_alias": [
   "ok",
   "",
-  "%x: Box = %pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "%x: Box = %pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__fn__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__fn__param__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14537,12 +14537,12 @@
  "gen_rec__fn__param__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%p"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, get, []).x = binop(method_call(%pv, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__fn__param__return_borrow": [
   "ok",
@@ -14557,12 +14557,12 @@
  "gen_rec__fn__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = method_call(%b, v_own, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x "
  ],
  "gen_rec__fn__prop_own__field_write": [
   "ok",
@@ -14575,9 +14575,9 @@
   ""
  ],
  "gen_rec__fn__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14587,12 +14587,12 @@
  "gen_rec__fn__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw])"
+  "%x: Box = method_call(%b, v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw])"
  ],
  "gen_rec__fn__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -14610,9 +14610,9 @@
   ""
  ],
  "gen_rec__fn__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x"
  ],
  "gen_rec__fn__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14627,12 +14627,12 @@
  "gen_rec__fn__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__fn__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print("
+  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
  ],
  "gen_rec__fn__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14642,12 +14642,12 @@
  "gen_rec__fn__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
  ],
  "gen_rec__fn__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], get, []).x = binop(method_call(%xs[0] [borrow], get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__fn__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14680,9 +14680,9 @@
   ""
  ],
  "gen_rec__fn__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14697,7 +14697,7 @@
  "gen_rec__fn__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk_b, [])._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = call(mk_b, [])._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -14717,7 +14717,7 @@
  "gen_rec__fn__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], get, []).x = binop(method_call(call(mk_b, [])._v [storage], get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__fn__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -14752,12 +14752,12 @@
  "gen_rec__gen__borrow_method__recv_mut": [
   "ok",
   "",
-  "[2] method_call(method_call(*%b, v_m, []), get, []).x = binop(method_call(method_call(*%b, v_m, []), get, []).x, +, lit(1)) [3] print(method_call(method_call(*%b, v_m, []), get, []).x [raw]) yield_val"
+  "[2] held [%argtmp(auto&& #N){method_call(*%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(method_call(*%b, v_m, ["
  ],
  "gen_rec__gen__borrow_method__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] method_call(*%t[0] [borrow], get, []).x = binop(method_call(*%t[0] [borrow], get, []).x, +, lit(1)) [4] print(method_call(method_call("
+  "[2] frame_slot %t <- tuple(method_call(*%b, v_m, []), lit(1)) [3] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(me"
  ],
  "gen_rec__gen__borrow_method__yield_borrow": [
   "sema:Cannot yield local or temporary as reference. Reference type 'Box[R]' is yielded",
@@ -14767,12 +14767,12 @@
  "gen_rec__gen__global_name__decl_alias": [
   "ok",
   "",
-  "[1] %x = form_convert[borrow](*%G) [2] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [3] print(method_call(%G, ->get, []).x [raw]) yield_values: [0] coerce(lit(0) -> in"
+  "[1] %x = form_convert[borrow](*%G) [2] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(%G, ->get, []).x [raw]) yield_values: [0"
  ],
  "gen_rec__gen__global_name__decl_reassigned": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [5] print(method_call(*%s1, get, []).x [raw]) ["
+  "[2] %x = form_convert[borrow](*%G) [3] %x = form_convert[borrow](*%s1) [4] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [5] print(method_call(*%s1"
  ],
  "gen_rec__gen__global_name__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14787,7 +14787,7 @@
  "gen_rec__gen__global_name__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%G, ->get, []).x = binop(method_call(%G, ->get, []).x, +, lit(1)) [2] print(method_call(%G, ->get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [2] print(method_call(%G, ->get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__global_name__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14802,12 +14802,12 @@
  "gen_rec__gen__local__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [4] print(method_call(*%s0, get, []).x [raw]) yield_values: [0] coerce(lit(0) -> i"
+  "[2] %x = form_convert[borrow](*%s0) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%s0, get, []).x [raw]) yield_values: ["
  ],
  "gen_rec__gen__local__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, []).x [raw]) "
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(method_call(*%s"
  ],
  "gen_rec__gen__local__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14822,7 +14822,7 @@
  "gen_rec__gen__local__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, get, []).x = binop(method_call(*%s0, get, []).x, +, lit(1)) [3] print(method_call(*%s0, get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] held [%argtmp(auto&& #N){method_call(*%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%s0, get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__local__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14832,12 +14832,12 @@
  "gen_rec__gen__local_last__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%s0) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] %x = form_convert[borrow](*%s0) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__local_last__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, []).x [raw]) "
+  "[3] %x = form_convert[borrow](*%s0) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(method_call(*%s"
  ],
  "gen_rec__gen__local_last__field_write": [
   "ok",
@@ -14852,22 +14852,22 @@
  "gen_rec__gen__local_last__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%s0, get, []).x = binop(method_call(*%s0, get, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] held [%argtmp(auto&& #N){method_call(*%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__local_last__tuple_elem": [
   "ok",
   "",
-  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] method_call(*%t[0] [borrow], get, []).x = binop(method_call(*%t[0] [borrow], get, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] frame_slot %t <- tuple(move(*%s0), lit(1)) [3] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int3"
  ],
  "gen_rec__gen__obj_field__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [4] print(method_call(*%b._v [storage], get, []).x [raw]) yield_values"
+  "[2] %x = form_convert[borrow](*%b._v [storage]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%b._v [storage], get, [])."
  ],
  "gen_rec__gen__obj_field__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, ["
+  "[3] %x = form_convert[borrow](*%b._v [storage]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
  ],
  "gen_rec__gen__obj_field__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14882,7 +14882,7 @@
  "gen_rec__gen__obj_field__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%b._v [storage], get, []).x = binop(method_call(*%b._v [storage], get, []).x, +, lit(1)) [3] print(method_call(*%b._v [storage], get, []).x [raw]) yield_values: [0] coerce(lit(0) -> i"
+  "[2] held [%argtmp(auto&& #N){method_call(*%b._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%b._v [storage], get, []).x [raw]) yield_values: [0] coerce(li"
  ],
  "gen_rec__gen__obj_field__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14897,7 +14897,7 @@
  "gen_rec__gen__own_call__decl_alias": [
   "ok",
   "",
-  "[1] frame_slot %x <- call(mk, []) [2] method_call(*%x, get, []).x = binop(method_call(*%x, get, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] frame_slot %x <- call(mk, []) [2] held [%argtmp(auto&& #N){method_call(*%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__own_call__decl_reassigned": [
   "reject:res.alias_bind",
@@ -14917,12 +14917,12 @@
  "gen_rec__gen__own_call__recv_mut": [
   "ok",
   "",
-  "[1] method_call(call(mk, []), get, []).x = binop(method_call(call(mk, []), get, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] held [%argtmp(auto&& #N){call(mk, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__own_call__tuple_elem": [
   "ok",
   "",
-  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] method_call(*%t[0] [borrow], get, []).x = binop(method_call(*%t[0] [borrow], get, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] frame_slot %t <- tuple(call(mk, []), lit(1)) [2] held [%argtmp(auto&& #N){method_call(*%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> in"
  ],
  "gen_rec__gen__own_call__yield_borrow": [
   "sema:Cannot yield local or temporary as reference. Reference type 'Box[R]' is yielded",
@@ -14952,7 +14952,7 @@
  "gen_rec__gen__param__recv_mut": [
   "ok",
   "",
-  "[1] method_call(%pv, get, []).x = binop(method_call(%pv, get, []).x, +, lit(1)) [2] print(method_call(%pv, get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [2] print(method_call(%pv, get, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "gen_rec__gen__param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -14967,12 +14967,12 @@
  "gen_rec__gen__subscript__decl_alias": [
   "ok",
   "",
-  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [4] print(method_call(*%xs[0] [borrow], get, []).x [raw]) yield_values"
+  "[2] %x = form_convert[borrow](*%xs[0] [borrow]) [3] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [4] print(method_call(*%xs[0] [borrow], get, [])."
  ],
  "gen_rec__gen__subscript__decl_reassigned": [
   "ok",
   "",
-  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) [6] print(method_call(*%s1, get, ["
+  "[3] %x = form_convert[borrow](*%xs[0] [borrow]) [4] %x = form_convert[borrow](*%s1) [5] held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [6] print(met"
  ],
  "gen_rec__gen__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -14987,7 +14987,7 @@
  "gen_rec__gen__subscript__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%xs[0] [borrow], get, []).x = binop(method_call(*%xs[0] [borrow], get, []).x, +, lit(1)) [3] print(method_call(*%xs[0] [borrow], get, []).x [raw]) yield_values: [0] coerce(lit(0) -> i"
+  "[2] held [%argtmp(auto&& #N){method_call(*%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%xs[0] [borrow], get, []).x [raw]) yield_values: [0] coerce(li"
  ],
  "gen_rec__gen__subscript__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15002,12 +15002,12 @@
  "gen_rec__meth__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_m, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
+  "%x: Box = method_call(%b, v_m, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
  ],
  "gen_rec__meth__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
+  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call"
  ],
  "gen_rec__meth__borrow_method__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15022,7 +15022,7 @@
  "gen_rec__meth__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), get, []).x = binop(method_call(method_call(%b, v_m, []), get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, ["
  ],
  "gen_rec__meth__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15032,17 +15032,17 @@
  "gen_rec__meth__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) print(method_call(method_call(%b, v"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
  ],
  "gen_rec__meth__closure_capture__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
  ],
  "gen_rec__meth__closure_capture__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__meth__closure_capture__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15057,7 +15057,7 @@
  "gen_rec__meth__closure_capture__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(inner, [])"
  ],
  "gen_rec__meth__closure_capture__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15067,12 +15067,12 @@
  "gen_rec__meth__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x,"
  ],
  "gen_rec__meth__ctor_rvalue__field_write": [
   "ok",
@@ -15082,12 +15082,12 @@
  "gen_rec__meth__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] held [%argtmp(a"
  ],
  "gen_rec__meth__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, []).x = binop(method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, [])."
+  "held [%argtmp(auto&& #N){ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__ctor_rvalue__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15097,12 +15097,12 @@
  "gen_rec__meth__ctor_rvalue__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x"
+  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__meth__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%G method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
+  "%x: Box = *%G held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__meth__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -15122,7 +15122,7 @@
  "gen_rec__meth__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->get, []).x = binop(method_call(%G, ->get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw])"
  ],
  "gen_rec__meth__global_name__return_borrow": [
   "ok",
@@ -15137,12 +15137,12 @@
  "gen_rec__meth__local__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__meth__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__meth__local__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15152,12 +15152,12 @@
  "gen_rec__meth__local__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%s"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__meth__local__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15167,12 +15167,12 @@
  "gen_rec__meth__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Box = move(%s0) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = move(%s0) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__meth__local_last__field_write": [
   "ok",
@@ -15182,27 +15182,27 @@
  "gen_rec__meth__local_last__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1))"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %s0: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(move(%s0), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__meth__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__meth__loop_var__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15217,7 +15217,7 @@
  "gen_rec__meth__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw])"
  ],
  "gen_rec__meth__loop_var__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15227,7 +15227,7 @@
  "gen_rec__meth__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%o0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
+  "%x: Box = *%o0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -15242,12 +15242,12 @@
  "gen_rec__meth__narrowed_opt__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%o0, ->"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %o0: [if_elif_record] case default: as %v [assign] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__meth__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->get, []).x = binop(method_call(%o0, ->get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%o0, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15257,7 +15257,7 @@
  "gen_rec__meth__narrowed_opt_param__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+  "%x: Box = *%pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt_param__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -15272,12 +15272,12 @@
  "gen_rec__meth__narrowed_opt_param__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%pv, ->"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) prin"
  ],
  "gen_rec__meth__narrowed_opt_param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, ->get, []).x = binop(method_call(%pv, ->get, []).x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%pv, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, ->get, []).x [raw])"
  ],
  "gen_rec__meth__narrowed_opt_param__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15287,12 +15287,12 @@
  "gen_rec__meth__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = %b._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
+  "%x: Box = %b._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) pri"
+  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__meth__obj_field__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15302,12 +15302,12 @@
  "gen_rec__meth__obj_field__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v [storage]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %b._v [storage]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
  ],
  "gen_rec__meth__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], get, []).x = binop(method_call(%b._v [storage], get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw])"
  ],
  "gen_rec__meth__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15322,12 +15322,12 @@
  "gen_rec__meth__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = call(mk, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
  ],
  "gen_rec__meth__own_call__field_write": [
   "ok",
@@ -15337,12 +15337,12 @@
  "gen_rec__meth__own_call__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__meth__own_call__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk, []), get, []).x = binop(method_call(call(mk, []), get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15352,17 +15352,17 @@
  "gen_rec__meth__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__param__decl_alias": [
   "ok",
   "",
-  "%x: Box = %pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "%x: Box = %pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__meth__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__meth__param__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15372,12 +15372,12 @@
  "gen_rec__meth__param__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(method_call(%p"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %pv: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, get, []).x = binop(method_call(%pv, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw])"
  ],
  "gen_rec__meth__param__return_borrow": [
   "ok",
@@ -15392,12 +15392,12 @@
  "gen_rec__meth__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = method_call(%b, v_own, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw])"
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x "
  ],
  "gen_rec__meth__prop_own__field_write": [
   "ok",
@@ -15410,9 +15410,9 @@
   ""
  ],
  "gen_rec__meth__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15422,12 +15422,12 @@
  "gen_rec__meth__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1))"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw])"
+  "%x: Box = method_call(%b, v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw])"
  ],
  "gen_rec__meth__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -15445,9 +15445,9 @@
   ""
  ],
  "gen_rec__meth__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x"
  ],
  "gen_rec__meth__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15462,12 +15462,12 @@
  "gen_rec__meth__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__meth__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print("
+  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
  ],
  "gen_rec__meth__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15477,12 +15477,12 @@
  "gen_rec__meth__subscript__match_capture": [
   "ok",
   "",
-  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1)) print(me"
+  "hoist %v: ::tpystd::tplib::box::Box<R>* match %xs[0] [borrow]: [if_elif_record] case default: as %v [assign_addr] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x"
  ],
  "gen_rec__meth__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], get, []).x = binop(method_call(%xs[0] [borrow], get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw])"
  ],
  "gen_rec__meth__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15515,9 +15515,9 @@
   ""
  ],
  "gen_rec__meth__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15532,7 +15532,7 @@
  "gen_rec__meth__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk_b, [])._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1))"
+  "%x: Box = call(mk_b, [])._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -15552,7 +15552,7 @@
  "gen_rec__meth__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], get, []).x = binop(method_call(call(mk_b, [])._v [storage], get, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "gen_rec__meth__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15567,12 +15567,12 @@
  "gen_rec__nested__borrow_method__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_m, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = method_call(%b, v_m, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw]) call(n"
  ],
  "gen_rec__nested__borrow_method__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
+  "ptr_decl[ptr_addr] %x: Box = method_call(%b, v_m, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call"
  ],
  "gen_rec__nested__borrow_method__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15587,7 +15587,7 @@
  "gen_rec__nested__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(method_call(%b, v_m, []), get, []).x = binop(method_call(method_call(%b, v_m, []), get, []).x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, []).x [raw]) call(nested_inner, ["
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v_m, []), get, ["
  ],
  "gen_rec__nested__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15597,17 +15597,17 @@
  "gen_rec__nested__borrow_method__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) print(method_call(method_call(%b, v"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_m, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method"
  ],
  "gen_rec__nested__ctor_rvalue__decl_alias": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, ["
  ],
  "gen_rec__nested__ctor_rvalue__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(met"
+  "%x: Box = ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x,"
  ],
  "gen_rec__nested__ctor_rvalue__field_write": [
   "ok",
@@ -15617,12 +15617,12 @@
  "gen_rec__nested__ctor_rvalue__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] method_call(%v,"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]): [if_elif_record] case default: as %v [assign_move] held [%argtmp(a"
  ],
  "gen_rec__nested__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, []).x = binop(method_call(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), get, [])."
+  "held [%argtmp(auto&& #N){ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) ca"
  ],
  "gen_rec__nested__ctor_rvalue__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15632,12 +15632,12 @@
  "gen_rec__nested__ctor_rvalue__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x"
+  "%t: tuple[Box[R], int32] = tuple(ctor(::tpystd::tplib::box::Box<R>, [ctor(R, [coerce(lit(7) -> int32)])]), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__nested__global_name__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%G method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = *%G held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__global_name__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -15657,7 +15657,7 @@
  "gen_rec__nested__global_name__recv_mut": [
   "ok",
   "",
-  "method_call(%G, ->get, []).x = binop(method_call(%G, ->get, []).x, +, lit(1)) print(method_call(%G, ->get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%G, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%G, ->get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__global_name__return_borrow": [
   "ok",
@@ -15672,12 +15672,12 @@
  "gen_rec__nested__local__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__local__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__nested__local__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15692,7 +15692,7 @@
  "gen_rec__nested__local__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__local__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15702,12 +15702,12 @@
  "gen_rec__nested__local_last__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__local_last__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call(nested_inner,"
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__nested__local_last__field_write": [
   "ok",
@@ -15722,22 +15722,22 @@
  "gen_rec__nested__local_last__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__local_last__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(%s0, lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%t: tuple[Box[R], int32] = tuple(%s0, lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__loop_var__decl_alias": [
   "ok",
   "",
-  "%x: Box = %s0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = %s0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__loop_var__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %s0 ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__nested__loop_var__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15752,7 +15752,7 @@
  "gen_rec__nested__loop_var__recv_mut": [
   "ok",
   "",
-  "method_call(%s0, get, []).x = binop(method_call(%s0, get, []).x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%s0, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s0, get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__loop_var__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15762,7 +15762,7 @@
  "gen_rec__nested__narrowed_opt__decl_alias": [
   "ok",
   "",
-  "%x: Box = *%o0 method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = *%o0 held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__decl_reassigned": [
   "reject:stmt.var_decl:decl.branch_slot_type",
@@ -15782,7 +15782,7 @@
  "gen_rec__nested__narrowed_opt__recv_mut": [
   "ok",
   "",
-  "method_call(%o0, ->get, []).x = binop(method_call(%o0, ->get, []).x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%o0, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%o0, ->get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__narrowed_opt__tuple_elem": [
   "sema:cannot bind tuple element 0 of non-copyable type 'Box[R]' by reference. Annotate",
@@ -15822,12 +15822,12 @@
  "gen_rec__nested__obj_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = %b._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = %b._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__obj_field__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) pri"
+  "%x: Box = form_convert[borrow](%b._v [storage]) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, "
  ],
  "gen_rec__nested__obj_field__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15842,7 +15842,7 @@
  "gen_rec__nested__obj_field__recv_mut": [
   "ok",
   "",
-  "method_call(%b._v [storage], get, []).x = binop(method_call(%b._v [storage], get, []).x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%b._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b._v [storage], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__obj_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15857,12 +15857,12 @@
  "gen_rec__nested__own_call__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%x: Box = call(mk, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__own_call__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = call(mk, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call(ne"
  ],
  "gen_rec__nested__own_call__field_write": [
   "ok",
@@ -15872,12 +15872,12 @@
  "gen_rec__nested__own_call__match_capture": [
   "ok",
   "",
-  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] method_call(%v, ->get, []).x = binop(method_call(%v, ->get, []).x, +, lit(1"
+  "hoist %v: std::optional<::tpystd::tplib::box::Box<R>> match call(mk, []): [if_elif_record] case default: as %v [assign_move] held [%argtmp(auto&& #N){method_call(%v, ->get, [])}]; %argtmp#N.x = binop("
  ],
  "gen_rec__nested__own_call__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk, []), get, []).x = binop(method_call(call(mk, []), get, []).x, +, lit(1)) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){call(mk, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15887,17 +15887,17 @@
  "gen_rec__nested__own_call__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%t: tuple[Box[R], int32] = tuple(call(mk, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__param__decl_alias": [
   "ok",
   "",
-  "%x: Box = %pv method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw]) call(nested_inner, [%pv])"
+  "%x: Box = %pv held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw]) call(nested_inner, [%pv])"
  ],
  "gen_rec__nested__param__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print(method_call("
+  "ptr_decl[ptr_addr] %x: Box = %pv ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x [raw"
  ],
  "gen_rec__nested__param__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -15912,7 +15912,7 @@
  "gen_rec__nested__param__recv_mut": [
   "ok",
   "",
-  "method_call(%pv, get, []).x = binop(method_call(%pv, get, []).x, +, lit(1)) print(method_call(%pv, get, []).x [raw]) call(nested_inner, [%pv])"
+  "held [%argtmp(auto&& #N){method_call(%pv, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%pv, get, []).x [raw]) call(nested_inner, [%pv])"
  ],
  "gen_rec__nested__param__return_borrow": [
   "ok",
@@ -15927,12 +15927,12 @@
  "gen_rec__nested__prop_own__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%x: Box = method_call(%b, v_own, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__prop_own__decl_reassigned": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) call(nested_in"
+  "%x: Box = method_call(%b, v_own, []) ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get, []).x "
  ],
  "gen_rec__nested__prop_own__field_write": [
   "ok",
@@ -15945,9 +15945,9 @@
   ""
  ],
  "gen_rec__nested__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15957,12 +15957,12 @@
  "gen_rec__nested__prop_own__tuple_elem": [
   "ok",
   "",
-  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) method_call(%t[0] [borrow], get, []).x = binop(method_call(%t[0] [borrow], get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%t: tuple[Box[R], int32] = tuple(method_call(%b, v_own, []), lit(1)) held [%argtmp(auto&& #N){method_call(%t[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__prop_ref__decl_alias": [
   "ok",
   "",
-  "%x: Box = method_call(%b, v, []) method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = method_call(%b, v, []) held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x [raw]) call(neste"
  ],
  "gen_rec__nested__prop_ref__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -15980,9 +15980,9 @@
   ""
  ],
  "gen_rec__nested__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(method_call(%b, v, []), get, []).x"
  ],
  "gen_rec__nested__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -15997,12 +15997,12 @@
  "gen_rec__nested__subscript__decl_alias": [
   "ok",
   "",
-  "%x: Box = %xs[0] [borrow] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw]) call(nested_inner, [])"
+  "%x: Box = %xs[0] [borrow] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__subscript__decl_reassigned": [
   "ok",
   "",
-  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 method_call(%x, ->get, []).x = binop(method_call(%x, ->get, []).x, +, lit(1)) print(method_call(%s1, get, []).x [raw]) print("
+  "ptr_decl[ptr_addr] %x: Box = %xs[0] [borrow] ptr_rebind[ptr_addr] %x = %s1 held [%argtmp(auto&& #N){method_call(%x, ->get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%s1, get"
  ],
  "gen_rec__nested__subscript__field_write": [
   "sema:cannot copy non-copyable type 'Box[R]' into field (use Own[...] to transfer owne",
@@ -16017,7 +16017,7 @@
  "gen_rec__nested__subscript__recv_mut": [
   "ok",
   "",
-  "method_call(%xs[0] [borrow], get, []).x = binop(method_call(%xs[0] [borrow], get, []).x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%xs[0] [borrow], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%xs[0] [borrow], get, []).x [raw]) call(nested_inner, [])"
  ],
  "gen_rec__nested__subscript__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -16050,9 +16050,9 @@
   ""
  ],
  "gen_rec__nested__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nest"
  ],
  "gen_rec__nested__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -16067,7 +16067,7 @@
  "gen_rec__nested__temp_field__decl_alias": [
   "ok",
   "",
-  "%x: Box = call(mk_b, [])._v [storage] method_call(%x, get, []).x = binop(method_call(%x, get, []).x, +, lit(1)) call(nested_inner, [])"
+  "%x: Box = call(mk_b, [])._v [storage] held [%argtmp(auto&& #N){method_call(%x, get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__temp_field__decl_reassigned": [
   "reject:stmt.var_decl:decl.slot_type",
@@ -16087,7 +16087,7 @@
  "gen_rec__nested__temp_field__recv_mut": [
   "ok",
   "",
-  "method_call(call(mk_b, [])._v [storage], get, []).x = binop(method_call(call(mk_b, [])._v [storage], get, []).x, +, lit(1)) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N._v [storage], get, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "gen_rec__nested__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'Box[R]' is return",
@@ -21227,7 +21227,7 @@
  "rec__async__borrow_method__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%b, v_m, []).x = binop(method_call(*%b, v_m, []).x, +, lit(1)) [3] print(method_call(*%b, v_m, []).x [raw])"
+  "[2] held [%argtmp(auto&& #N){method_call(*%b, v_m, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%b, v_m, []).x [raw])"
  ],
  "rec__async__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -21392,7 +21392,7 @@
  "rec__async__own_call__recv_mut": [
   "ok",
   "",
-  "[1] call(mk, []).x = binop(call(mk, []).x, +, lit(1))"
+  "[1] held [%argtmp(auto&& #N){call(mk, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__async__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -21497,7 +21497,7 @@
  "rec__ctor__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(%b, v_m, []).x = binop(method_call(%b, v_m, []).x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__ctor__borrow_method__tuple_elem": [
   "ok",
@@ -21557,7 +21557,7 @@
  "rec__ctor__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "ctor(R, [coerce(lit(7) -> int32)]).x = binop(ctor(R, [coerce(lit(7) -> int32)]).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){ctor(R, [coerce(lit(7) -> int32)])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__ctor__ctor_rvalue__tuple_elem": [
   "ok",
@@ -21827,7 +21827,7 @@
  "rec__ctor__own_call__recv_mut": [
   "ok",
   "",
-  "call(mk, []).x = binop(call(mk, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__ctor__own_call__tuple_elem": [
   "ok",
@@ -21885,9 +21885,9 @@
   ""
  ],
  "rec__ctor__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__ctor__prop_own__tuple_elem": [
   "ok",
@@ -21915,9 +21915,9 @@
   ""
  ],
  "rec__ctor__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v, []).x [raw])"
  ],
  "rec__ctor__prop_ref__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.tuple_literal:container_elem.accessor_lends_storage",
@@ -22005,9 +22005,9 @@
   ""
  ],
  "rec__ctor__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__ctor__temp_accessor__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:expr.container_literal:container_elem.accessor_lends_storage",
@@ -22037,7 +22037,7 @@
  "rec__ctor__temp_field__recv_mut": [
   "ok",
   "",
-  "call(mk_b, [])._v [storage].x = binop(call(mk_b, [])._v [storage].x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}]; %argtmp#N._v [storage].x = binop(%argtmp#N._v [storage].x, +, lit(1))"
  ],
  "rec__ctor__temp_field__tuple_elem": [
   "reject:stmt.var_decl:decl.tuple_literal_shape:field.result_type",
@@ -22067,7 +22067,7 @@
  "rec__fn__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(%b, v_m, []).x = binop(method_call(%b, v_m, []).x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__fn__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22132,7 +22132,7 @@
  "rec__fn__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "ctor(R, [coerce(lit(7) -> int32)]).x = binop(ctor(R, [coerce(lit(7) -> int32)]).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){ctor(R, [coerce(lit(7) -> int32)])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__fn__ctor_rvalue__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22422,7 +22422,7 @@
  "rec__fn__own_call__recv_mut": [
   "ok",
   "",
-  "call(mk, []).x = binop(call(mk, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__fn__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22490,9 +22490,9 @@
   ""
  ],
  "rec__fn__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__fn__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22525,9 +22525,9 @@
   ""
  ],
  "rec__fn__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v, []).x [raw])"
  ],
  "rec__fn__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22625,9 +22625,9 @@
   ""
  ],
  "rec__fn__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__fn__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22662,7 +22662,7 @@
  "rec__fn__temp_field__recv_mut": [
   "ok",
   "",
-  "call(mk_b, [])._v [storage].x = binop(call(mk_b, [])._v [storage].x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}]; %argtmp#N._v [storage].x = binop(%argtmp#N._v [storage].x, +, lit(1))"
  ],
  "rec__fn__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -22697,7 +22697,7 @@
  "rec__gen__borrow_method__recv_mut": [
   "ok",
   "",
-  "[2] method_call(*%b, v_m, []).x = binop(method_call(*%b, v_m, []).x, +, lit(1)) [3] print(method_call(*%b, v_m, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
+  "[2] held [%argtmp(auto&& #N){method_call(*%b, v_m, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) [3] print(method_call(*%b, v_m, []).x [raw]) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__borrow_method__tuple_elem": [
   "ok",
@@ -22862,7 +22862,7 @@
  "rec__gen__own_call__recv_mut": [
   "ok",
   "",
-  "[1] call(mk, []).x = binop(call(mk, []).x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
+  "[1] held [%argtmp(auto&& #N){call(mk, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) yield_values: [0] coerce(lit(0) -> int32)"
  ],
  "rec__gen__own_call__tuple_elem": [
   "ok",
@@ -22967,7 +22967,7 @@
  "rec__meth__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(%b, v_m, []).x = binop(method_call(%b, v_m, []).x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v_m, []).x [raw])"
  ],
  "rec__meth__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23032,7 +23032,7 @@
  "rec__meth__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "ctor(R, [coerce(lit(7) -> int32)]).x = binop(ctor(R, [coerce(lit(7) -> int32)]).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){ctor(R, [coerce(lit(7) -> int32)])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__meth__ctor_rvalue__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23322,7 +23322,7 @@
  "rec__meth__own_call__recv_mut": [
   "ok",
   "",
-  "call(mk, []).x = binop(call(mk, []).x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__meth__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23390,9 +23390,9 @@
   ""
  ],
  "rec__meth__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__meth__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23425,9 +23425,9 @@
   ""
  ],
  "rec__meth__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v, []).x [raw])"
  ],
  "rec__meth__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23525,9 +23525,9 @@
   ""
  ],
  "rec__meth__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1))"
  ],
  "rec__meth__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23562,7 +23562,7 @@
  "rec__meth__temp_field__recv_mut": [
   "ok",
   "",
-  "call(mk_b, [])._v [storage].x = binop(call(mk_b, [])._v [storage].x, +, lit(1))"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}]; %argtmp#N._v [storage].x = binop(%argtmp#N._v [storage].x, +, lit(1))"
  ],
  "rec__meth__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23597,7 +23597,7 @@
  "rec__nested__borrow_method__recv_mut": [
   "ok",
   "",
-  "method_call(%b, v_m, []).x = binop(method_call(%b, v_m, []).x, +, lit(1)) print(method_call(%b, v_m, []).x [raw]) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){method_call(%b, v_m, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v_m, []).x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__borrow_method__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23632,7 +23632,7 @@
  "rec__nested__ctor_rvalue__recv_mut": [
   "ok",
   "",
-  "ctor(R, [coerce(lit(7) -> int32)]).x = binop(ctor(R, [coerce(lit(7) -> int32)]).x, +, lit(1)) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){ctor(R, [coerce(lit(7) -> int32)])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__ctor_rvalue__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23922,7 +23922,7 @@
  "rec__nested__own_call__recv_mut": [
   "ok",
   "",
-  "call(mk, []).x = binop(call(mk, []).x, +, lit(1)) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){call(mk, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__own_call__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -23990,9 +23990,9 @@
   ""
  ],
  "rec__nested__prop_own__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v_own, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__prop_own__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -24025,9 +24025,9 @@
   ""
  ],
  "rec__nested__prop_ref__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){method_call(%b, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) print(method_call(%b, v, []).x [raw]) call(nested_inner, [])"
  ],
  "rec__nested__prop_ref__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -24125,9 +24125,9 @@
   ""
  ],
  "rec__nested__temp_accessor__recv_mut": [
-  "reject:stmt.aug_assign:augassign.recv.accessor_double_eval",
+  "ok",
   "",
-  ""
+  "held [%argtmp(auto&& #N){call(mk_b, [])}, %argtmp(auto&& #N){method_call(%argtmp#N, v, [])}]; %argtmp#N.x = binop(%argtmp#N.x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__temp_accessor__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",
@@ -24162,7 +24162,7 @@
  "rec__nested__temp_field__recv_mut": [
   "ok",
   "",
-  "call(mk_b, [])._v [storage].x = binop(call(mk_b, [])._v [storage].x, +, lit(1)) call(nested_inner, [])"
+  "held [%argtmp(auto&& #N){call(mk_b, [])}]; %argtmp#N._v [storage].x = binop(%argtmp#N._v [storage].x, +, lit(1)) call(nested_inner, [])"
  ],
  "rec__nested__temp_field__return_borrow": [
   "sema:Cannot return local or temporary as reference. Reference type 'R' is returned by",

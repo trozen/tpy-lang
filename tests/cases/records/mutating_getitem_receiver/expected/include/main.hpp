@@ -578,8 +578,7 @@ inline int32_t Two::__getitem__(int32_t i) const {
     return ::tpy::__getitem__(this->xs, i);
 }
 
-// # Only the str-keyed overload mutates (a str-key subscript is not
-// # resolved per key yet: BUGS.md#record-getitem-overload-first-wins).
+// # Only the str-keyed overload mutates; an int key reads the other one.
 // @dispatch
 // @readonly(False)
 // def __getitem__(self, k: str) -> int32:

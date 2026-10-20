@@ -34,9 +34,9 @@ void test_arraylist_aug_assign() {
     ::tpystd::tplib::array_list::ArrayList<int32_t, 4> items = ::tpystd::tplib::array_list::ArrayList<int32_t, 4>();
     items.append(100);
     items.append(200);
-    ::tpy::__setitem__(items, 0, ::tpy::add_check<int32_t>(items[0], 5));
+    items.__setitem__(0, ::tpy::add_check<int32_t>(items[0], 5));
     std::cout << items[0] << "\n" << ::tpy::check_signals;
-    ::tpy::__setitem__(items, 1, ::tpy::sub_check<int32_t>(items[1], 50));
+    items.__setitem__(1, ::tpy::sub_check<int32_t>(items[1], 50));
     std::cout << items[1] << "\n" << ::tpy::check_signals;
 }
 

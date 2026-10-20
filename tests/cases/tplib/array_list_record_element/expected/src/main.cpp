@@ -29,13 +29,13 @@ void bump(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
 //     lst[1] = z  # last use of z -> moved into the Own[T] value slot
 void replace_move(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
     Point z = Point(7, 7);
-    ::tpy::__setitem__(lst, 1, std::move(z));
+    lst.__setitem__(1, std::move(z));
 }
 
 // def replace_rvalue(lst: ArrayList[Point, 8]) -> None:
 //     lst[1] = Point(8, 8)  # a ctor prvalue binds the same slot directly
 void replace_rvalue(::tpystd::tplib::array_list::ArrayList<Point, 8>& lst) {
-    ::tpy::__setitem__(lst, 1, Point(8, 8));
+    lst.__setitem__(1, Point(8, 8));
 }
 
 // def main() -> None:

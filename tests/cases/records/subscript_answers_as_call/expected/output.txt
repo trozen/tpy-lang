@@ -1,0 +1,102 @@
+free: 10 20 10 20
+free: {'a': 15} [0, 18, 0, 0] ['del-a', 'del-int']
+inherited: {'x': 5} 0 ['del-x']
+generic: 7 8 7
+setter_only: ['k=1']
+keys: int32 int32 int int
+reference: 3 [1, 2, 3]
+once: 23 [1, 3, 3] {'n': 2} 3
+method: 3
+ctor: 4
+generator: [1, 2, 1, 1] ['del-y'] 1
+async: 8 1
+pop: [1, 13, 3] 1
+walrus: [1, 113, 3] 1
+receiver: i
+receiver: k
+receiver: [[1, 7], [3, 4]]
+call_receiver: pick
+call_receiver: key
+call_receiver: [0, 4, 0, 0]
+view_key: view
+view_key: {'v': 4} {'v': 2}
+own_key: {'a-key-longer-than-the-small-string-buffer': 2, 'v': 2}
+attribute: held_rec
+attribute: 2
+property: rec getter
+property: rec_m call
+property: index getter
+property: 3 [1, 1113, 3]
+user_getter: [[2], [2]] 1
+borrow_call: key_of
+borrow_call: key_of
+borrow_call: 1 7 11 2 2
+readonly_getter: [1, 4] 0 1
+fallback: 101 0
+pair: 3
+pair_readonly: 1 3
+contains: True True True 1
+stages: 32 32
+optional: 2
+comprehension: [11, 11] [0, 0]
+closure: 11
+match: 11 0
+with: 1
+finally: 9 1 1
+error_return: 7
+method: 5 1
+ctor: 3 1
+closure_key: 1 1
+match_key: 1 1
+error_return_key: 6 1
+with_key: 1 1
+bigint_key: {1099511627776: 2} 1
+wrapped_borrow: 11 2 [0, 0, 5]
+async_key: [0, 1] {1: 1} 1
+async_total: 1 5
+region_ternary: [0, 1, 0, 0] [0, 1, 0, 0] 2
+region_nested: [0, 2, 0, 0] [0, 2, 0, 0] 4
+region_comprehension: [0, 2, 0, 1] [0, 2, 0, 1] 10
+region_chained: [1, 2, 0, 1] [1, 2, 0, 1] 12
+consumed: [1, 3, 0, 1] [1, 3, 0, 1] 14
+region_or: 1 16
+region_and: 2 18
+region_or_scalar: [1, 4, 0, 1] 19
+region_genexpr: [1, 4, 0, 2] 22
+region_lambda: [1, 5, 0, 2] 1
+region_fresh_key: 3 23
+region_inert_choice: [1, 6, 0, 2]
+region_inert_arg: [2, 6, 0, 2] 2 5
+backing: {'a-key-longer-than-the-small-string-buffer': 5} {'a-key-longer-than-the-small-string-buffer': 5}
+backing_region: 1 1 2
+container_view: 1 1 4
+consumed_copy: [0, 1, 0, 0] 2 1
+consumed_receiver: [0, 1, 1, 0] 1
+consumed_operand: [0, 2, 1, 0] 2
+borrowed_nocopy: [1, 2, 1, 0] 3
+borrowed_list: [1, 3, 1, 0] 4
+tuple_key: {(' t-a-key-longer-than-the-small-string-buffer ',): 1} 6
+tuple_arg: [2, 3, 1, 0] 7
+dunder_unary: [0, 1, 0, 0] ['neg']
+dunder_fstring: {'r': 1} ['repr']
+dunder_builtin: 1 ['lt']
+iterator_key: [0, 6, 0, 0] 2
+hash_key: [0, 0, 1, 0] ['hash', 'eq']
+hash_settled: [0, 0, 1, 0]
+hash_settled_int: [0, 0, 1, 0]
+number_reader: [0, 0, 3, 1] 1
+generic_twin: {'a': 2}
+hash_get: [0, 0, 2, 0] ['hash', 'eq']
+eq_in: [0, 1, 3, 1] ['eq']
+eq_list: [0, 2, 3, 1] ['eq']
+generator_in: [0, 3, 3, 1] 1
+optional_arg: [0, 4, 3, 1] 1
+nocopy_literal: [0, 5, 3, 1] 2
+owned_getitem: [0, 6, 3, 1] 3 ['getitem']
+in_place_key: {'a-key-longer-than-the-small-string-buffer': 2, 'v': 1} ['a-key-longer-than-the-small-string-buffer', 'a-key-longer-than-the-small-string-buffer-and-more']
+attr_temp: ['x=8']
+select_ref: True True ['a-key-longer-than-the-small-string-buffer', 'a-key-longer-than-the-small-string-buffer-and-more']
+select_local: g-a-label-longer-than-the-small-string-buffer
+select_chain: g-a-label-longer-than-the-small-string-buffer
+module: 6 0
+module_key: [0, 1] 1

@@ -177,7 +177,6 @@ Pitfall disposition:
   no source diagnostic/acceptance changes; uncovered is an analysis status.
 
 Known adjacent issues remain separate: `BUGS.md#lend-back-of-hoisted-temp-warned-as-dangling`,
-`BUGS.md#augassign-call-receiver-double-eval`,
 `BUGS.md#getter-source-const-not-tracked`,
 `BUGS.md#nested-def-return-validated-against-enclosing` and
 `BUGS.md#finally-mutate-then-rebind-return`. The initial batch avoids those

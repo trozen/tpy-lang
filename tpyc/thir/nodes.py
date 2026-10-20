@@ -1289,6 +1289,9 @@ class THIRArgTemp(THIRExpr):
     brace_init: bool = False
     move: bool = False
     addr_of: bool = False
+    # The id a read of this temp (`THIRTempRead`) names it by, for a temp
+    # its statement holds (`held`); None for a temp read where it stands.
+    read_id: int | None = None
     # The AUDITED defer fact: the movable argument passed
     # to `TempState.create`/`create_typed` for this row, decided at lowering.
     # None = the row is UNAUDITED -- it never answered the question, so the
@@ -1305,6 +1308,16 @@ class THIRArgTemp(THIRExpr):
         row emits `movable=False`) and the slot spelling (a `None`
         cpp_type is the `auto` row, which no `std::optional` can name)."""
         return banks_in_region(self.cpp_type or "auto", self.movable)
+
+
+@dataclass(frozen=True)
+class THIRTempRead(THIRExpr):
+    """A read of an argument temp (`THIRArgTemp.read_id`) its statement
+    declares before its expression (`THIRExprStmt.held`,
+    `THIRSetItem.held`), rendering its name: a value one statement
+    evaluates once and reads at several positions (an augmented subscript's
+    receiver and key, read by its getter and its setter)."""
+    read_id: int = 0
 
 
 @dataclass(frozen=True)
@@ -2738,6 +2751,10 @@ class THIRAssign(THIRStmt):
     # (`StorageSlots`).
     own_slot: THIRRebindSlot | None = field(
         default=None, kw_only=True, compare=False, repr=False)
+    # The values the statement evaluates once, in order, before the write:
+    # argument temps it declares, which the write reads again by name
+    # (`THIRTempRead`) -- an augmented attribute target's receiver.
+    held: tuple['THIRArgTemp', ...] = field(default=(), kw_only=True)
 
     @property
     def bound_name(self) -> 'str | None':
@@ -2784,6 +2801,10 @@ class THIRSetItem(THIRStmt):
     target: 'THIRSubscript'
     value: THIRExpr
     stub_callee: THIRStubCallee | None = None
+    # The values the statement evaluates once, in order, before the write:
+    # argument temps it declares, which the write reads again by name
+    # (`THIRTempRead`) -- an augmented subscript's receiver and key parts.
+    held: tuple['THIRArgTemp', ...] = ()
 
 
 @dataclass(frozen=True)
@@ -4462,6 +4483,11 @@ class THIRExprStmt(THIRStmt):
     # Lowering decides this per row -- the render must not re-derive it by
     # inspecting the expression's shape.
     void_cast: bool = False
+    # The values the statement evaluates once, in order, before the
+    # expression: argument temps it declares, which the expression reads
+    # again by name (`THIRTempRead`) -- an augmented subscript's receiver
+    # and key parts.
+    held: tuple['THIRArgTemp', ...] = ()
 
 
 # --- Function / module ---

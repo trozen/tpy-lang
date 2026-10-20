@@ -7,7 +7,7 @@ No parsing logic lives here.
 
 from __future__ import annotations
 import ast
-from dataclasses import dataclass, field, is_dataclass
+from dataclasses import dataclass, field, is_dataclass, replace
 from enum import Enum, IntEnum
 from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
 
@@ -538,6 +538,9 @@ class TpyMethodCall(TpyCallLike):
     builtin_module_call: Optional[str] = None  # Set by sema for builtin module.func() calls (canonical module name)
     needs_optional_runtime_check: bool = False  # Set by sema for unproven Optional access
     resolved_function_info: FunctionInfo | None = None  # Set by sema for resolved method overloads
+    # Set by sema: the receiver passes const so C++ runs the readonly variant
+    # sema ranked (`pins_const_receiver`).
+    const_receiver: bool = False
     inferred_type_args: tuple[TpyType, ...] | None = None  # Set by sema for generic builtin module calls
     deref_depth: int = 0  # Set by sema: number of __deref__ steps applied before method resolution
     # Set by sema to the narrowed subclass when this method resolves through a
@@ -914,6 +917,37 @@ class TpySlice(TpyExpr):
         return [x for x in (self.lower, self.upper, self.step) if x is not None]
 
 
+class SubscriptDunder(Enum):
+    """The dunder one form of a subscript calls: a read `t[k]`, a store
+    `t[k] = v`, a `del t[k]` (an augmented `t[k] op= v` calls both the
+    first two)."""
+    GET = "__getitem__"
+    SET = "__setitem__"
+    DEL = "__delitem__"
+
+
+@dataclass(frozen=True)
+class SubscriptDunders:
+    """The dunder variant each form of one subscript calls (`SubscriptDunder`),
+    None for a form it does not call."""
+    get: 'FunctionInfo | None' = None
+    set: 'FunctionInfo | None' = None
+    delete: 'FunctionInfo | None' = None
+
+    _FIELDS = {SubscriptDunder.GET: "get", SubscriptDunder.SET: "set",
+               SubscriptDunder.DEL: "delete"}
+
+    def of(self, kind: SubscriptDunder) -> 'FunctionInfo | None':
+        return getattr(self, self._FIELDS[kind])
+
+    def stamped(self, kind: SubscriptDunder,
+                fi: 'FunctionInfo') -> 'SubscriptDunders':
+        return replace(self, **{self._FIELDS[kind]: fi})
+
+    def __bool__(self) -> bool:
+        return any(f is not None for f in (self.get, self.set, self.delete))
+
+
 @dataclass
 class TpySubscript(TpyExpr):
     """Subscript indexing: obj[index]"""
@@ -924,20 +958,21 @@ class TpySubscript(TpyExpr):
     bounds_safe: bool = False  # Set by sema: index provably in [0, len(obj)), skip bounds check
     is_stepped_slice: bool = False  # Set by sema: slice has step (a[::2])
     slice_function_info: 'FunctionInfo | None' = None  # Set by sema: resolved __getitem__ for slice
-    # Set by sema: the resolved user-record single-key __getitem__ this
-    # subscript calls. Distinguishes a real method CALL (whose return follows
-    # the call convention -- e.g. a pointer-repr Optional returns T*) from a
-    # container ELEMENT read (a storage lvalue); the borrow/storage and
-    # value-category classifiers key on it.
-    getitem_function_info: 'FunctionInfo | None' = None
-    # Set by sema on a READ of a user @native record: the __getitem__ stub
-    # the subscript's type comes from, whose @native / @cpp_template binding
-    # is how the read renders.
-    getitem_callee: 'FunctionInfo | None' = None
-    # Set by sema on a READ of a record (a class or `@native` record, any
-    # return shape): its class `__getitem__`, so the read is known to be
-    # that call rather than a builtin element read.
-    record_getitem: 'FunctionInfo | None' = None
+    # Set by sema: the dunder variant each form of this subscript calls on a
+    # record receiver (a class, library or `@native` record), resolved once
+    # as the explicit `t.__getitem__(k)` / `__setitem__` / `__delitem__` call
+    # is and substituted at the receiver's type args; read through `dunder`.
+    dunders: SubscriptDunders = SubscriptDunders()
+    # Set by sema with `dunders`: the key as written, before the variant's
+    # conversion put on `index`; and on an augmented `t[k] op= v`, the key
+    # as the `__setitem__` variant receives it -- the written key under that
+    # variant's own conversion, so both reads evaluate it once.
+    written_index: 'TpyExpr | None' = None
+    setitem_index: 'TpyExpr | None' = None
+    # Set by sema with `dunders`: the forms whose call passes the receiver
+    # const so C++ runs the readonly variant sema ranked
+    # (`pins_const_receiver`), each decided for its own variant.
+    const_dunders: frozenset[SubscriptDunder] = frozenset()
     # Set by sema BEFORE the target of a plain assignment is analysed as a
     # read: `g[k] = v` calls `__setitem__` only, so the read-side analysis
     # must not credit a `__getitem__` call on the receiver.
@@ -947,6 +982,13 @@ class TpySubscript(TpyExpr):
 
     def children(self) -> list[TpyExpr]:
         return [self.obj, self.index]
+
+    def dunder(self, kind: SubscriptDunder) -> 'FunctionInfo | None':
+        """The record dunder variant form `kind` of this subscript calls,
+        as sema resolved it; None on a builtin receiver (a container, str,
+        bytes, tuple, an element-typed `@native` wrapper's element read
+        aside) or a form this subscript is not."""
+        return self.dunders.of(kind)
 
 
 @dataclass
@@ -1168,6 +1210,19 @@ class TpyAssign(TpyStmt):
 
 
 @dataclass
+class AugHeldPart:
+    """One part of `t[k] op= v` / `o.n op= v`'s target evaluated once.
+    `receiver`: a field, element or method is read off it in place. Not
+    frozen: a tree rewrite after sema (a settled number's conversion
+    placeholder spliced out) updates `expr` with the tree."""
+    expr: TpyExpr
+    receiver: bool = False
+    # The key as written, a value the statement creates, at a record
+    # `__setitem__` taking its key by ownership: the setter consumes it.
+    setter_consumes: bool = False
+
+
+@dataclass
 class TpyAugAssign(TpyStmt):
     """Augmented assignment (+=, -=, etc.)"""
     target: TpyExpr
@@ -1175,6 +1230,15 @@ class TpyAugAssign(TpyStmt):
     value: TpyExpr
     resolved_binop: 'ResolvedBinop | None' = None  # Set by sema for builtin ops
     resolved_inplace: 'ResolvedBinop | None' = None  # Set by sema for in-place ops (__iadd__, __ior__, etc.)
+    # Set by sema on a record subscript target: the operation's result as the
+    # `__setitem__` variant receives it at its value parameter -- the result
+    # (a stand-in `target op value` node, which lowering supplies the
+    # operation for) under that parameter's conversion. Not a child.
+    setitem_value: 'TpyExpr | None' = None
+    # Set by sema on a subscript or attribute target: the target parts the
+    # statement evaluates once, ahead of the store, and reads by name
+    # (`sema/aug_hold.py`), in evaluation order. Not children.
+    hold_parts: 'tuple[AugHeldPart, ...]' = ()
 
     def exprs(self) -> list[TpyExpr]:
         return [self.target, self.value]

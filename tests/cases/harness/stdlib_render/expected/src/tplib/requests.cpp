@@ -604,9 +604,9 @@ Response _request_on(::tpystd::tplib::box::Box<::tpystd::http::client::_Connecti
         }
         std::optional<std::string> existing = out_headers.get(std::get<0>(kv));
         if ((existing.has_value())) {
-            ::tpy::__setitem__(out_headers, std::get<0>(kv), (::tpy::str_concat((::tpy::str_concat((*existing), ", ")), std::get<1>(kv))));
+            out_headers.__setitem__(std::get<0>(kv), (::tpy::str_concat((::tpy::str_concat((*existing), ", ")), std::get<1>(kv))));
         } else {
-            ::tpy::__setitem__(out_headers, std::get<0>(kv), std::get<1>(kv));
+            out_headers.__setitem__(std::get<0>(kv), std::get<1>(kv));
         }
     }
     if (do_stream) {

@@ -20,7 +20,7 @@ from typing import Any, Callable, NamedTuple, Protocol
 from .typesys import pointer_repr_optional, pointer_variant_union
 from .typesys import (
     FunctionInfo, NominalType, PtrType, ReadonlyType, TpyType, TupleType,
-    TypeParamRef, OwnType,
+    TypeParamRef, OwnType, UnionType,
     OptionalType, ResultPosition, ResultRepresentation, classify_result_representation,
     is_bodyless_binding, is_open_type_param_return, is_primitive_type, is_protocol_type,
     indirection_referent_readonly, declared_result_readonly, result_follows_receiver_root,
@@ -28,6 +28,7 @@ from .typesys import (
     property_getter_returns_storage_ref, returns_cpp_reference_shape,
     unwrap_optional_own, unwrap_readonly, unwrap_ref_type,
     unwrap_send_sync, bound_as_spelled, make_list, PendingListType,
+    param_takes_ownership, answers_as_call,
 )
 from .parse import (
     TpyExpr, TpyForEach, ResultForm, TpyCallLike,
@@ -37,7 +38,7 @@ from .parse import (
     TpyGeneratorExpression, TpyCoerce, TpyBinOp, TpyUnaryOp, TpyMethodCall,
     TpySubscript, TpyCall, TpyName, TpyFieldAccess, TpyIfExpr, TpyAwait,
     TpyBytesLiteral, TpyFString, TpyNamedExpr, TpyTupleLiteral,
-    is_property_getter_read,
+    SubscriptDunder, is_property_getter_read,
 )
 from .type_def_registry import (is_array, is_bool_type, is_borrowing_view_type,
                                 is_bytes_type, is_bytes_view_type,
@@ -67,6 +68,18 @@ class CallOperands(NamedTuple):
         recv = [] if self.obj is None else [(-1, self.obj)]
         return recv + self.positioned()
 
+    def takes_ownership(self, i: int) -> bool:
+        """Whether operand `i` (the receiver at -1) is received by
+        ownership: an `Own[Self]` receiver, or a parameter that takes its
+        argument by ownership transfer (`param_takes_ownership`). Read off
+        the callee as declared (`root`): its convention, not its
+        substitution, is the C++ one."""
+        root = self.fi.root
+        if i == -1:
+            return root.is_consuming
+        return (0 <= i < len(root.params) and root.params[i].type is not None
+                and param_takes_ownership(root.params[i].type))
+
 
 def call_operands(expr: TpyExpr) -> CallOperands | None:
     """The operands a call-shaped `expr`'s `return_borrows_from` indexes,
@@ -92,6 +105,12 @@ def call_operands(expr: TpyExpr) -> CallOperands | None:
         args = [expr.left if rb.is_reverse else expr.right]
     elif isinstance(expr, TpyUnaryOp) and expr.resolved_unaryop is not None:
         fi, obj, args = expr.resolved_unaryop.method.root, expr.operand, []
+    elif (isinstance(expr, TpySubscript)
+          and expr.dunder(SubscriptDunder.GET) is not None):
+        # A class `__getitem__` read is the call it renders, its key the
+        # one argument.
+        fi, obj, args = (expr.dunder(SubscriptDunder.GET).root, expr.obj,
+                         [expr.index])
     elif (isinstance(expr, TpyGeneratorExpression)
           and expr.frame_creation is not None):
         return call_operands(expr.frame_creation)
@@ -278,6 +297,64 @@ def binds_owned_value(analyzer: 'ValueCategoryAnalyzer',
             and not lends_pointer_form_result(analyzer, expr))
 
 
+def result_is_fresh(analyzer: 'ValueCategoryAnalyzer',
+                    expr: TpyExpr) -> bool:
+    """Whether `expr` is POSITIVELY proven a value the statement creates and
+    owns, so a reference binding of it may be moved from: a literal, a
+    container literal or an f-string, a builtin type's operator, a user
+    record's constructor, a call whose declared result is `Own[...]`, or a
+    call into a body whose result is by value (not a reference return; an
+    open type parameter's at this instantiation). Read off the callee as
+    declared. Anything else is not proven: a bodyless binding hands back
+    what its C++ returns, which may be an operand or an element in place
+    (`min(a, b, key=f)`, `d.setdefault(k, v)`, `int(x)`)."""
+    while isinstance(expr, TpyCoerce):
+        if expr.coercion.builds_fresh_value:
+            return True
+        expr = expr.expr
+    if isinstance(expr, (TpyIntLiteral, TpyFloatLiteral, TpyStrLiteral,
+                         TpyBytesLiteral, TpyBoolLiteral, TpyFString,
+                         TpyTupleLiteral, *CONTAINER_LITERAL_NODES)):
+        return True
+    ops = call_operands(expr)
+    if (isinstance(expr, TpyUnaryOp) or (isinstance(expr, TpyBinOp)
+                                         and expr.op not in ("&&", "||"))):
+        # An operator on a builtin type builds its result in the runtime;
+        # a class's is the call it resolves to.
+        recv = analyzer.get_expr_type(ops.obj) if ops is not None else None
+        if ops is None or (recv is not None and not answers_as_call(recv)):
+            return True
+    if (ops is None or ops.fi.is_callable_value
+            or (isinstance(expr, TpyCall)
+                and expr.macro_expansion is not None)):
+        return False
+    fi = ops.fi.root
+    if fi.is_constructor or (isinstance(expr, TpyCall)
+                             and fi.name == "__init__"):
+        made = analyzer.get_expr_type(expr)
+        return isinstance(made, NominalType) and made.is_user_record
+    rt = unwrap_readonly(fi.return_type) if fi.return_type else None
+    if isinstance(rt, OwnType):
+        return True
+    if (fi.body is None or fi.body.is_stub or is_bodyless_binding(fi)):
+        return False
+    if (isinstance(expr, TpyCallLike)
+            and expr.result_form is ResultForm.BORROW):
+        return False
+    if _returns_open_type_param(fi):
+        # `val_or_ref_t<T>`: by value at a value instantiation, as the
+        # monomorphic twin returns it (`property_access_returns_cpp_ref`).
+        # An Optional or a union is left out: the runtime's value-type
+        # trait answers a reference for one where the sema shape says
+        # value (that predicate's documented gap).
+        inst = analyzer.get_expr_type(expr)
+        return (inst is not None
+                and not isinstance(unwrap_readonly(inst),
+                                   (OptionalType, UnionType))
+                and not return_type_is_cpp_ref(inst))
+    return not call_returns_cpp_ref(analyzer, fi)
+
+
 def call_value_optional(call: TpyExpr) -> 'OptionalType | None':
     """The pointer-repr Optional a call hands back WHOLE as a value
     (`call_hands_back_value`): the `std::optional<T>` a pointer-form holder
@@ -389,6 +466,23 @@ def return_type_is_cpp_ref(rt: 'TpyType | None') -> bool:
     record's re-resolved signature carries the raw `T`, which answers False
     here for a substitution that is in fact a reference)."""
     return returns_cpp_reference_shape(rt)
+
+
+def getitem_call_of(expr: TpyExpr) -> 'FunctionInfo | None':
+    """The record `__getitem__` a subscript read calls (`TpySubscript.dunder`)
+    when its result is NOT a C++ reference -- the reads whose consumption
+    differs from a container element read (a by-value result is a
+    temporary, a pointer-repr Optional one already borrow-form `T*`), so
+    the borrow / storage and value-category classifiers treat them as the
+    call they are. The callee as declared (`root`): its convention, not its
+    substitution, is the C++ one. None for a reference-returning read,
+    which consumes as an element lvalue does."""
+    if not isinstance(expr, TpySubscript):
+        return None
+    fi = expr.dunder(SubscriptDunder.GET)
+    if fi is None or return_type_is_cpp_ref(unwrap_readonly(fi.return_type)):
+        return None
+    return fi.root
 
 
 def property_getter_of(expr: TpyExpr) -> 'FunctionInfo | None':
@@ -573,8 +667,9 @@ def is_rvalue_source(analyzer: ValueCategoryAnalyzer, expr: TpyExpr) -> bool:
     if isinstance(expr, TpySubscript):
         if expr.slice_function_info is not None:
             return not call_returns_cpp_ref(analyzer, expr.slice_function_info)
-        if expr.getitem_function_info is not None:
-            return not call_returns_cpp_ref(analyzer, expr.getitem_function_info)
+        getitem = getitem_call_of(expr)
+        if getitem is not None:
+            return not call_returns_cpp_ref(analyzer, getitem)
         return False
     # A non-value ternary is the and/or rule below: a fresh arm beside an
     # lvalue arm is emplaced into a hoisted slot, so the result stays an
@@ -1153,8 +1248,8 @@ def _borrow_link(expr: TpyExpr) -> 'tuple[FunctionInfo | None, TpyExpr | None] |
         return (expr.resolved_function_info, expr.obj)
     if isinstance(expr, TpyCall):
         return (expr.resolved_function_info, None)
-    if isinstance(expr, TpySubscript) and expr.getitem_function_info is not None:
-        return (expr.getitem_function_info, expr.obj)
+    if isinstance(expr, TpySubscript) and getitem_call_of(expr) is not None:
+        return (getitem_call_of(expr), expr.obj)
     if isinstance(expr, TpyBinOp) and expr.resolved_binop is not None:
         rb = expr.resolved_binop
         return (rb.method, expr.right if rb.is_reverse else expr.left)

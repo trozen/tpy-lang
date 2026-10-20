@@ -1,0 +1,1 @@
+main.py:22: error: the receiver here is evaluated once and read by both `__getitem__` and `__setitem__`, but `__setitem__` takes it by ownership (`Own[Self]`); an augmented assignment through it is not supported

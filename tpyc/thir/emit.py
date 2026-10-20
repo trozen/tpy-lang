@@ -46,6 +46,7 @@ from .nodes import (
     PtrSlotKind,
     TruthinessMode,
     THIRArgTemp,
+    THIRTempRead,
     THIRAssert,
     THIRAssign,
     THIRBinOp,
@@ -203,6 +204,11 @@ class TempSink:
         self._named: list[THIRTempPlacement] = []
         self._declared: list[THIRTempPlacement] = []
         self._initialized: set[int] = set()
+        # The name each temp a further read (`THIRTempRead`) names was
+        # declared under, by `THIRArgTemp.read_id`: the ids are unique in
+        # the function, and a statement emitted again (a `finally` body on
+        # each of its paths) declares the temp again before reading it.
+        self._read_names: dict[int, str] = {}
 
     def bind_plan(self, plan: THIRTempPlan) -> None:
         assert self.plan is None and self.checkpoint() == (0, 0)
@@ -276,15 +282,28 @@ class TempSink:
 
     def argument(self, expr: THIRArgTemp, init: str, plan: THIRTempPlan | None) -> str:
         if plan is None:
-            return self.create(expr.cpp_type or "auto", init, brace_init=expr.brace_init,
+            name = self.create(expr.cpp_type or "auto", init, brace_init=expr.brace_init,
                                movable=bool(expr.movable))
-        placement = plan.placement(expr)
-        assert self.plan is plan and isinstance(placement.node, THIRArgTemp)
-        entry = self._planned.register(placement, expr.would_bank())
-        assert entry.optional == placement.optional
-        return self._ctx.temps.create_typed(expr.cpp_type or "auto", init,
-                                            brace_init=expr.brace_init, movable=bool(expr.movable),
-                                            planned_optional=placement.optional)
+        else:
+            placement = plan.placement(expr)
+            assert self.plan is plan and isinstance(placement.node, THIRArgTemp)
+            entry = self._planned.register(placement, expr.would_bank())
+            assert entry.optional == placement.optional
+            name = self._ctx.temps.create_typed(expr.cpp_type or "auto", init,
+                                                brace_init=expr.brace_init, movable=bool(expr.movable),
+                                                planned_optional=placement.optional)
+        if expr.read_id is not None:
+            self._read_names[expr.read_id] = name
+        return name
+
+    def read(self, expr: THIRTempRead) -> str:
+        """The name of the temp `expr` reads, declared by its statement
+        (`held`)."""
+        name = self._read_names.get(expr.read_id)
+        if name is None:
+            raise THIRCodeGenError(
+                "internal error: a temp read before its declaration")
+        return name
 
     def select_slot(self, expr: THIRSlotEmplace) -> str:
         if self.plan is None:
@@ -336,6 +355,13 @@ class TempSink:
     def flush(self, out: TextIO, indent: str) -> None:
         self._check_flush()
         self._ctx.temps.flush(out, indent)
+
+
+def _emit_held(held: 'tuple[THIRArgTemp, ...]', state: '_EmitState') -> None:
+    """Declare the temps a statement holds, in order, ahead of its line;
+    its expression reads them by name (`THIRTempRead`)."""
+    for temp in held:
+        _emit_expr(temp, state)
 
 
 def _is_thir_record(v: object) -> bool:
@@ -1843,12 +1869,12 @@ def _emit_expr(e: THIRExpr, state: _EmitState) -> str:
         # here; args render left-to-right, so temps are created in argument
         # order. The pending decl flushes before the statement line.
         init_cpp = _emit_expr(e.init, state)
-        name = (state.temps.argument(e, init_cpp, state.temp_plan) if state.temp_plan is not None
-                else state.temps.create(e.cpp_type or "auto", init_cpp,
-                                        brace_init=e.brace_init, movable=bool(e.movable)))
+        name = state.temps.argument(e, init_cpp, state.temp_plan)
         if e.move:
             return f"std::move({name})"
         return f"&({name})" if e.addr_of else name
+    if isinstance(e, THIRTempRead):
+        return state.temps.read(e)
     if isinstance(e, THIRCopy):
         return f"{e.cpp_type}({_emit_expr(e.value, state)})"
     if isinstance(e, THIRConsumingIter):
@@ -3815,6 +3841,19 @@ def _emit_match_guarded_record(out: TextIO, stmt: THIRMatch,
 
 
 def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState) -> None:
+    if isinstance(stmt, (THIRExprStmt, THIRSetItem, THIRAssign)) and stmt.held:
+        # A held value lives as long as the statement's temporaries would:
+        # the block ends it right after the statement.
+        indent = INDENT * indent_level
+        out.write(f"{indent}{{\n")
+        _emit_stmt_line(out, stmt, indent_level + 1, state)
+        out.write(f"{indent}}}\n")
+        return
+    _emit_stmt_line(out, stmt, indent_level, state)
+
+
+def _emit_stmt_line(out: TextIO, stmt: THIRStmt, indent_level: int,
+                    state: _EmitState) -> None:
     indent = INDENT * indent_level
     state.stmt_indent_level = indent_level
     if isinstance(stmt, THIRVarDecl):
@@ -4178,6 +4217,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
             # Receiver eval (class-constant writes) renders first, then the
             # value (its arg temps flush before the line); targets are
             # names/field lvalues that never register temps.
+            _emit_held(stmt.held, state)
             recv_cpp = (_emit_expr(stmt.recv_eval, state)
                         if stmt.recv_eval is not None else None)
             target_cpp = _emit_expr(stmt.target, state)
@@ -4191,6 +4231,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
         # synthetic binop value arrives pre-built): bounds-safe writes share
         # _emit_subscript's operator[] render; checked writes call the
         # free-function dunder.
+        _emit_held(stmt.held, state)
         value_cpp = _emit_expr(stmt.value, state)
         if stmt.target.bounds_safe:
             target_cpp = _emit_subscript(stmt.target, state)
@@ -4375,6 +4416,7 @@ def _emit_stmt(out: TextIO, stmt: THIRStmt, indent_level: int, state: _EmitState
     elif isinstance(stmt, THIRPrint):
         _emit_print(out, stmt, indent_level, state)
     elif isinstance(stmt, THIRExprStmt):
+        _emit_held(stmt.held, state)
         expr_cpp = _emit_expr(stmt.expr, state)
         state.temps.flush(out, indent)
         if stmt.void_cast:

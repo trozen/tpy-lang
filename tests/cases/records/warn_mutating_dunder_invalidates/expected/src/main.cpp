@@ -46,7 +46,7 @@ void setitem() {
     Grid g = Grid();
     Pt& a = g[0];
     std::cout << "setitem:" << " " << a.x << "\n" << ::tpy::check_signals;
-    ::tpy::__setitem__(g, 40, Pt(5));
+    g.__setitem__(40, Pt(5));
     std::cout << "setitem:" << " " << ::tpy::__len__(g.ps) << " " << ::tpy::__getitem__(g.ps, 40).x << "\n" << ::tpy::check_signals;
 }
 
@@ -148,7 +148,7 @@ void aug_setitem() {
     Cells g = Cells();
     Pt& a = g.at(0);
     std::cout << "aug:" << " " << a.x << "\n" << ::tpy::check_signals;
-    ::tpy::__setitem__(g, 40, ::tpy::add_check<int32_t>(g[40], 1));
+    g.__setitem__(40, ::tpy::add_check<int32_t>(g[40], 1));
     std::cout << "aug:" << " " << ::tpy::__len__(g.ps) << " " << g[40] << "\n" << ::tpy::check_signals;
 }
 
@@ -187,7 +187,7 @@ void close_it(Closer& g) {
 // def put(g: Cells) -> None:
 //     g[40] = 3
 void put(Cells& g) {
-    ::tpy::__setitem__(g, 40, 3);
+    g.__setitem__(40, 3);
 }
 
 // def caller_with() -> None:

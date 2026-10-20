@@ -133,7 +133,10 @@ inline InCtor::InCtor(int32_t v) : tag(0) {
     ::tpystd::tplib::box::Box<P> s = ::tpystd::tplib::box::Box<P>(P(v));
     Cell h = Cell();
     h.f = std::move(s);
-    h.f.get().v = ::tpy::add_check<int32_t>(h.f.get().v, 1);
+    {
+        auto&& __tmp_1 = h.f.get();
+        __tmp_1.v = ::tpy::add_check<int32_t>(__tmp_1.v, 1);
+    }
     this->tag = h.f.get().v;
 }
 

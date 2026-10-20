@@ -10,7 +10,8 @@ from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple, Sequence
 
 from ..holders import IterHolder
 from ..typesys import (pointer_repr_optional, pointer_variant_union,
-                       ResolvedBinop)
+                       ResolvedBinop, store_slot_type,
+                       subscript_answers_as_call)
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, OwnType, ReadonlyType, make_readonly,
     is_indirection_type,
@@ -52,7 +53,7 @@ from ..parse import (
     TpyGlobal, TpyNonlocal, TpyNestedDef,
     TpyCall, TpyMethodCall, TpyArrayLiteral, TpyListComprehension, TpyCoerce,
     TpyListRepeat, TpyDictLiteral, TpySetLiteral,
-    TpySubscript, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
+    TpySubscript, SubscriptDunder, TpySlice, TpyStrLiteral, TpyName, TpyTupleLiteral,
     TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral, TpyUnaryOp,
     TpyNoneLiteral,
     TpyFieldAccess, TpyFunction, TupleElemCapture,
@@ -108,6 +109,7 @@ from .receiver_calls import (
     implicit_readonly_result_hint,
     record_implicit_call,
 )
+from .aug_hold import aug_hold_parts
 from .loop_frames import for_live_region, note_source_writes
 from .iter_loans import (
     IterElementSource, iter_element_source, iteration_yields_copies,
@@ -118,7 +120,6 @@ from .iter_loans import (
     temp_arg_spelling,
 )
 from .own_copy import (contains_reference_type, copy_result_under_write,
-                       declared_borrow_call_under,
                        lost_write_message,
                        type_has_type_param, warn_value_call_binding)
 from .value_range import ValueRange
@@ -172,7 +173,7 @@ from .local_deduction import (
 from tpyc import modules as builtin_modules
 from tpyc import qnames
 from ..type_def_registry import (
-    is_iterator_adapter, is_basic_slice_type, is_slice_type,
+    is_iterator_adapter,
     is_dict, is_array, is_span, is_list,
     is_char_type, is_str_type, is_string_type, is_str_view_type,
     is_bytes_type, is_bytearray_type, is_bytes_view_type,
@@ -7423,23 +7424,53 @@ class StatementAnalyzer:
         chokepoint, so the structural mark reaches a caller holding a loan
         across the enclosing call. `check_loans=False` when the element-hop
         check already warned at this write."""
-        recv_type = self.ctx.get_expr_type(target.obj)
-        recv_type = (unwrap_readonly(unwrap_own(unwrap_ref_type(recv_type)))
-                     if recv_type is not None else None)
-        if not (isinstance(recv_type, NominalType) and recv_type.is_user_record):
+        callee = target.dunder(SubscriptDunder.SET)
+        if callee is None:
             return
-        record = self.ctx.registry.get_record_for_type(recv_type)
-        if record is None:
-            return
-        overloads, _ = self.protocols.lookup_record_method_overloads(
-            record, "__setitem__")
-        callee = next((fi for fi in overloads
-                       if fi.params and not is_basic_slice_type(fi.params[0].type)
-                       and not is_slice_type(fi.params[0].type)), None)
-        if callee is not None:
-            credit_implicit_receiver_call(self.ctx, target.obj, recv_type, callee,
-                                          "__setitem__", stmt,
-                                          check_loans=check_loans)
+        recv = self._record_subscript_receiver(target)
+        assert recv is not None
+        credit_implicit_receiver_call(self.ctx, target.obj, recv[0], callee.root,
+                                      callee.name, stmt,
+                                      check_loans=check_loans)
+
+    def _record_subscript_receiver(
+            self, target: TpySubscript) -> 'tuple[NominalType, bool] | None':
+        """The record a subscript calls its dunders on, and whether the
+        receiver is readonly; None for a receiver whose subscripts keep the
+        builtin rule (`subscript_answers_as_call`). A checked Optional
+        receiver answers as its record."""
+        recv = self.ctx.get_expr_type(target.obj)
+        if recv is None or target.typed_dict_field is not None:
+            return None
+        recv = unwrap_own(unwrap_ref_type(recv))
+        readonly = isinstance(recv, ReadonlyType)
+        bare = unwrap_qualifiers(recv)
+        if isinstance(bare, OptionalType):
+            bare = unwrap_qualifiers(bare.inner)
+        if not (isinstance(bare, NominalType)
+                and subscript_answers_as_call(bare)):
+            return None
+        return bare, readonly
+
+    def _resolve_record_store(self, target: TpySubscript,
+                              value_type: TpyType) -> TpyType | None:
+        """`t[k] = v` on a record is the explicit `t.__setitem__(k, v)`
+        call: its variant resolved on the key and the value
+        (`ExpressionAnalyzer.resolve_subscript_dunder`), the key received at
+        it; the value is the store's, coerced to the variant's value
+        parameter (`store_slot_type`), which this returns as the target's
+        type. None for a builtin receiver."""
+        recv = self._record_subscript_receiver(target)
+        if recv is None:
+            return None
+        index_type = self.ctx.get_expr_type(target.index)
+        assert index_type is not None
+        fi = self.expr.resolve_subscript_dunder(
+            target, SubscriptDunder.SET, recv[0], recv[1],
+            [index_type, value_type])
+        slot = make_ref(store_slot_type(fi))
+        self.ctx.set_expr_type(target, slot)
+        return slot
 
     def _analyze_assign(self, stmt: TpyAssign) -> None:
         """Analyze an assignment."""
@@ -7556,6 +7587,11 @@ class StatementAnalyzer:
             # The element is not known yet, or is a tuple or a row whose
             # leaves the value is stored into one by one: no hint.
             value_hint = None
+        elif isinstance(unwrap_ref_type(target_type), UnknownElementType):
+            # A record store whose `__setitem__` variants disagree on the
+            # value: they are ranked on the value as analyzed, as the call
+            # ranks its argument.
+            value_hint = None
         else:
             value_hint = target_type
         # A list stored as a row, or rebinding a cell list, is linked to
@@ -7572,6 +7608,9 @@ class StatementAnalyzer:
                 or into is not None
                 else self.expr.analyze_at_slot(stmt.value, value_hint,
                                                CoercionContext.ASSIGN))
+        if isinstance(stmt.target, TpySubscript):
+            target_type = (self._resolve_record_store(stmt.target, value_type)
+                           or target_type)
         cell_target = elem_cell is not None
         if into is not None:
             target_type, value_type, stored = self._store_subscript(
@@ -8075,23 +8114,26 @@ class StatementAnalyzer:
             # Check that the type has __delitem__
             record_info = self.ctx.registry.get_record_for_type(actual)
             if record_info:
-                overloads = record_info.get_method_overloads("__delitem__")
-                if not overloads:
+                if not self.expr.operators.dunder_overloads(
+                        record_info, SubscriptDunder.DEL.value):
                     raise self.ctx.error(
                         f"'del' is not supported for type {actual}; "
                         f"define __delitem__ to enable element deletion", stmt)
-                # A builtin container's delete is the store itself; a user
-                # type's runs its dunders, which may write anything.
-                if isinstance(actual, NominalType) and actual.is_user_record:
-                    for fi in self.ctx.registry.get_method_overloads_with_parents(
-                            record_info, "__delitem__"):
-                        record_implicit_call(subscript, fi, subscript.obj,
-                                             "__delitem__")
             else:
                 raise self.ctx.error(
                     f"'del' is not supported for type {actual}", stmt)
             # Analyze the index expression only after confirming __delitem__ exists
             index_type = self.expr.analyze_expr(subscript.index)
+            recv = self._record_subscript_receiver(subscript)
+            if recv is not None:
+                # `del t[k]` is the explicit `t.__delitem__(k)` call, whose
+                # code may write anything.
+                callee = self.expr.resolve_subscript_dunder(
+                    subscript, SubscriptDunder.DEL, recv[0], recv[1],
+                    [index_type])
+                record_implicit_call(subscript, callee.root, subscript.obj,
+                                     callee.name)
+                continue
             decided = self.expr.decide_for_lookup(
                 subscript.obj, del_obj_type, del_step, index_type)
             if decided is not del_obj_type:
@@ -8531,7 +8573,55 @@ class StatementAnalyzer:
                 stmt.target, target, result.method.return_type, stmt.op, stmt)
 
     def _analyze_aug_assign(self, stmt: TpyAugAssign) -> None:
-        """Analyze an augmented assignment (+=, -=, etc.)."""
+        """Analyze an augmented assignment (+=, -=, etc.). On a record
+        subscript `t[k] op= v` is `t.__setitem__(k, t.__getitem__(k) op v)`:
+        the target read resolved its getter, the store resolves its setter
+        once the operation is (`_resolve_aug_store`)."""
+        self._analyze_aug_assign_body(stmt)
+        if isinstance(stmt.target, TpySubscript):
+            self._resolve_aug_store(stmt)
+        stmt.hold_parts = aug_hold_parts(self.ctx, self.compat, stmt)
+
+    def _resolve_aug_store(self, stmt: TpyAugAssign) -> None:
+        """The `__setitem__` of a record subscript `t[k] op= v`: ranked on
+        the key as written and the operation's result (the getter's type
+        where the operator settles later, as the write-back holds the
+        result to it), the key received at it apart from the getter's
+        (`TpySubscript.written_index`), and credited on the receiver."""
+        target = stmt.target
+        assert isinstance(target, TpySubscript)
+        recv = self._record_subscript_receiver(target)
+        if recv is None or target.written_index is None:
+            return
+        rb = stmt.resolved_binop
+        result = (rb.method.return_type if rb is not None
+                  else self.ctx.get_expr_type(target))
+        key = target.written_index
+        key_type = self.ctx.get_expr_type(key)
+        assert result is not None and key_type is not None
+        result = unwrap_ref_type(result)
+        # The value the setter receives is the operation's result, which no
+        # node of the statement spells: a stand-in carries it through the
+        # call's receiving step.
+        value = [TpyBinOp(left=target, op=stmt.op, right=stmt.value,
+                          resolved_binop=rb, loc=stmt.loc)]
+        self.ctx.set_expr_type(value[0], result)
+        getter_key = target.index
+        target.index = key
+        try:
+            self.expr.resolve_subscript_dunder(
+                target, SubscriptDunder.SET, recv[0], recv[1],
+                [key_type, result], value)
+        finally:
+            target.setitem_index, target.index = target.index, getter_key
+        stmt.setitem_value = value[0]
+        storage = self._resolve_obj_storage(target.obj)
+        hit = (self.ctx.func.borrow_tracker.element_hop_loan(
+                   storage, element_index_key(key))
+               if storage is not None else None)
+        self._credit_user_setitem(target, stmt, check_loans=hit is None)
+
+    def _analyze_aug_assign_body(self, stmt: TpyAugAssign) -> None:
         # In nested defs, aug-assign to an outer variable requires nonlocal
         if (self.ctx.func.in_nested_def
                 and isinstance(stmt.target, TpyName)
@@ -8568,11 +8658,6 @@ class StatementAnalyzer:
                                     else None):
             target_type = unwrap_own(unwrap_ref_type(
                 self.expr.analyze_expr(stmt.target)))
-        twice = declared_borrow_call_under(stmt.target)
-        if twice is not None:
-            raise self.ctx.error(
-                f"{twice.call_display} is evaluated twice by an augmented "
-                f"assignment; bind it to a name first", twice)
         list_target = (isinstance(stmt.target, TpyName)
                        and self.pend.cell_container(target_type) is not None)
         elem_cell = self._target_elem_cell(stmt.target)
@@ -8652,8 +8737,6 @@ class StatementAnalyzer:
                     self.ctx.warning(element_loan_mutation_warning(
                         f"{storage}[...]", f"'{op_spelling(stmt.op)}='", hit), stmt)
                 self.ctx.mark_all_view_borrowers_mutated(storage)
-            # `g[k] += v` writes back through `g.__setitem__` as well.
-            self._credit_user_setitem(stmt.target, stmt, check_loans=hit is None)
         elif isinstance(stmt.target, TpyFieldAccess):
             storage = self._resolve_obj_storage(stmt.target.obj)
             field_storage = storage_key(stmt.target)

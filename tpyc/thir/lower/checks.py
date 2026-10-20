@@ -46,7 +46,7 @@ from ...parse.nodes import (
     TpySetLiteral,
     TpySlice,
     TpyStrLiteral,
-    TpySubscript,
+    TpySubscript, SubscriptDunder,
     TpyTupleLiteral,
     TpyUnaryOp,
     TpyVarDecl,
@@ -198,7 +198,7 @@ from .predicates import (
     _module_var_access_pair,
     _module_var_recv,
     _module_var_read_cpp,
-    _record_getitem_key,
+    _record_dunder,
     _record_getitem_idx_recv_ok,
     _subscript_index_and_tuple,
     _callable_value,
@@ -329,7 +329,6 @@ from .predicates import (
     _bounded_tparam_protocol,
     _protocol_binding,
     _record_rvalue_temp_slot,
-    _record_setitem_value,
     _resolve_literal_seeded,
     _opt_pointee_wide,
     _optional_ptr_borrow_wide,
@@ -3257,16 +3256,16 @@ def _container_setitem_ok(
     return True
 
 
-def _record_setitem_own_value_slot(obj_type: 'TpyType | None',
-                                   analyzer) -> bool:
+def _record_setitem_own_value_slot(sub: TpySubscript, analyzer) -> bool:
     """Whether the record's `__setitem__` value param is an `Own[...]` slot
     (`ArrayList.__setitem__(self, index, value: Own[T])`, a `V&&` sink).
     A copy-shaped record NAME cannot bind such a slot, so only a move source
     or an rvalue is emittable there; a plain `T` slot binds `const T&` and
     copies like any other param."""
-    v = _record_setitem_value(obj_type, analyzer)
-    if v is None:
+    setitem = _record_dunder(sub, SubscriptDunder.SET, analyzer)
+    if setitem is None:
         return False
+    v = setitem.root.params[-1].type
     return isinstance(unwrap_readonly(unwrap_ref_type(unwrap_send_sync(v))),
                       OwnType)
 
@@ -3337,9 +3336,12 @@ def _user_record_setitem_ok(
         return False
     if sub.needs_optional_runtime_check or sub.typed_dict_field is not None:
         return False
-    vslot = _record_setitem_value(analyzer.get_expr_type(sub.obj), analyzer)
-    if vslot is None:
+    setitem = _record_dunder(sub, SubscriptDunder.SET, analyzer)
+    if setitem is None:
         return False
+    # The value slot as declared: an open `T` keys on the subscript's own
+    # (substituted) type below.
+    vslot = setitem.root.params[-1].type
     recv = sub.obj
     recv_ok = ((isinstance(recv, TpyName) and recv.name in declared
                 and recv.name not in pointers and recv.name not in narrowed)
@@ -3455,26 +3457,30 @@ def _owned_viewfam_rvalue_source(e: TpyExpr, analyzer) -> bool:
             and not is_bytes_view_type(rv))
 
 def _record_aug_setitem_ok(
-        sub: TpySubscript, declared: dict[str, TpyType], pointers: set[str],
+        stmt: TpyAugAssign, declared: dict[str, TpyType], pointers: set[str],
         narrowed: AbstractSet[str], analyzer) -> bool:
     """The record twin of `_setitem_target_ok` for the AUG pair only: a
-    single-index subscript off a user record carrying both a getitem (the
-    `_record_getitem_key` read family -- the bare operator[] render) and a
-    `__setitem__` method (the write renders the fixed `::tpy::__setitem__`
-    dunder spelling THIRSetItem emits). The scalar-element / value checks
+    single-index subscript off a user record whose getter (the bare
+    operator[] read render) and `__setitem__` (the fixed
+    `::tpy::__setitem__` dunder spelling THIRSetItem emits) sema resolved. The scalar-element / value checks
     stay with the caller."""
+    sub = stmt.target
+    assert isinstance(sub, TpySubscript)
     if isinstance(sub.index, TpySlice) or sub.slice_function_info is not None:
         return False
     if sub.typed_dict_field is not None or sub.needs_optional_runtime_check:
         return False
-    recv_t = analyzer.get_expr_type(sub.obj)
-    if _record_getitem_key(recv_t, analyzer) is None:
+    if _record_dunder(sub, SubscriptDunder.GET, analyzer) is None:
         return False
-    if not _record_getitem_idx_recv_ok(sub, declared, analyzer, pointers):
+    # A receiver the statement evaluates once is read from its temp
+    # (`TpyAugAssign.hold_parts`).
+    if not _record_getitem_idx_recv_ok(
+            sub, declared, analyzer, pointers,
+            held_recv_ok=any(sub.obj is p.expr for p in stmt.hold_parts)):
         return False
-    # The same lookup the PLAIN record-setitem write uses (own method,
-    # non-@native record) -- one fact, so gate and render cannot drift.
-    if _record_setitem_value(recv_t, analyzer) is None:
+    # The same stamp the PLAIN record-setitem write reads -- one fact, so
+    # gate and render cannot drift.
+    if _record_dunder(sub, SubscriptDunder.SET, analyzer) is None:
         return False
     return bool(_witness("setitem.record_aug"))
 
@@ -3500,7 +3506,7 @@ def _container_aug_setitem_ok(
             # (the record-getitem arm) and the WRITE the fixed
             # `::tpy::__setitem__` dunder spelling THIRSetItem emits --
             # admitted when the record carries a __setitem__ method.
-            or _record_aug_setitem_ok(stmt.target, declared, pointers,
+            or _record_aug_setitem_ok(stmt, declared, pointers,
                                       narrowed, analyzer)):
         return False
     if stmt.resolved_inplace is not None:
@@ -8769,8 +8775,7 @@ def _method_nonname_receiver_ok(recv: TpyExpr, locals_: dict[str, TpyType],
                  # getitem read; only this admission was missing (a
                  # pointer-local receiver still rejects at the getitem
                  # arm's idx/recv recheck).
-                 or (_record_getitem_key(
-                         analyzer.get_expr_type(recv.obj), analyzer)
+                 or (_record_dunder(recv, SubscriptDunder.GET, analyzer)
                      is not None
                      and record_like(analyzer.get_expr_type(recv), analyzer)
                      # The CALLER'S pointer set is load-bearing here: the

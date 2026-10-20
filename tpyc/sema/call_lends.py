@@ -45,7 +45,7 @@ the call-site source rule (`call_lend_sources`) read them.
 from __future__ import annotations
 
 from enum import Enum
-from typing import TYPE_CHECKING, NamedTuple
+from typing import TYPE_CHECKING, Callable, NamedTuple
 
 from ..parse import (
     ResultForm, TpyArrayLiteral, TpyAwait, TpyBinOp, TpyBytesLiteral,
@@ -73,7 +73,8 @@ from ..typesys import (
 from ..value_category import (
     CONTAINER_LITERAL_NODES, CallOperands, ExprTypeOf,
     ValueCategoryAnalyzer, call_operands,
-    call_returns_cpp_ref, frame_factory_callee, lent_operand_binds_open_param,
+    call_returns_cpp_ref, frame_factory_callee, getitem_call_of,
+    lent_operand_binds_open_param,
     lent_operands, property_access_returns_cpp_ref,
 )
 from . import own_copy
@@ -1039,7 +1040,7 @@ class ReturnLend(CallPolicy):
             return node.hidden_call is None
         if step.kind is StepKind.INDEX:
             return (node.slice_function_info is None
-                    and node.getitem_function_info is None)
+                    and getitem_call_of(node) is None)
         return step.kind is StepKind.COERCE
 
     def leaf_kind(self, node: TpyExpr,
@@ -1206,6 +1207,111 @@ class TempLend(CallPolicy):
         return LeafKind.UNNAMED
 
 
+class EveryTempLend(CallPolicy):
+    """EVERY: each temporary a borrow-form value MAY point into -- the
+    reading that must name every one rather than prove one
+    (`TypeCompatibility.borrow_temp_roots`). A fresh value is a TEMPORARY
+    (a container literal, a constructor of no view or `Ptr`, a fresh-stamped
+    result, `call_result_is_fresh`'s proof); any other call lends each
+    operand it does not take by ownership, unless its recorded
+    `return_borrows_from` names its sources (a temp-backed tuple element
+    among them). A subscript through a dunder or a slice callee is refused
+    (UNPLACEABLE): the reader climbs its object and its index itself, as it
+    climbs the operands of any other node the climb ends at.
+
+    `stop` answers for a node the caller decides itself (its temporaries,
+    gathered in `found`; None climbs on), and `top` with `through` is the
+    value asked about, whose own freshness is not the question: what it
+    points into is."""
+    follows_selects = True
+
+    def __init__(self, ctx: 'SemanticContext', top: TpyExpr, *,
+                 stop: 'Callable[[TpyExpr], list | None] | None' = None,
+                 through: bool = False) -> None:
+        self.ctx = ctx
+        self.top = top
+        self.stop = stop
+        self.through = through
+        self.found: list = []
+        self._fresh: list[TpyExpr] = []
+
+    def _is_top(self, node: TpyExpr) -> bool:
+        return self.through and node is self.top
+
+    def _stopped(self, node: TpyExpr) -> bool:
+        if self.stop is None or self._is_top(node):
+            return False
+        found = self.stop(node)
+        if found is None:
+            return False
+        self.found += found
+        return True
+
+    def at_step(self, step: Step) -> bool:
+        node = step.node
+        if step.kind is StepKind.INDEX:
+            return (node.slice_function_info is None
+                    and getitem_call_of(node) is None)
+        return True
+
+    def leaf_kind(self, node: TpyExpr,
+                  above: Step | None) -> LeafKind | None:
+        if self._stopped(node):
+            return LeafKind.STATIC
+        if isinstance(node, TpyFieldAccess) and node.names_type is not None:
+            return LeafKind.STATIC
+        if (isinstance(node, CONTAINER_LITERAL_NODES)
+                and not isinstance(node, TpyGeneratorExpression)
+                and not self._is_top(node)):
+            return LeafKind.TEMPORARY
+        return None
+
+    def at_call(self, call: TpyExpr, path: tuple,
+                ask: Ask) -> list[LendSource] | None:
+        # A getter is a step, which the classifier hook is not asked about.
+        if is_property_getter_read(call) and self._stopped(call):
+            return []
+        lent = [LendSource(i, e, None) for i, e in every_lent_operand(call)]
+
+        def fresh() -> list[LendSource]:
+            if self._is_top(call):
+                return lent
+            self._fresh.append(call)
+            return []
+
+        if isinstance(call, TpyCall) and call.call_type is not None:
+            if (isinstance(call.call_type, PtrType)
+                    or is_borrowing_view_type(call.call_type)):
+                return lent
+            return fresh()
+        if isinstance(call, TpyCallLike) and call.result_form.is_fresh:
+            return fresh()
+        ops = call_operands(call)
+        if ops is None:
+            return lent
+        if call_result_is_fresh(self.ctx, call, proof=True):
+            return fresh()
+        if ops.fi.root.return_borrows_from is None:
+            return lent
+        return call_lend_sources(ops, recorded_return_borrow_sources(ops.fi),
+                                 expr_type=None, temp_backing=True)
+
+    def call_kind(self, call: TpyExpr,
+                  srcs: 'list[LendSource] | None') -> LeafKind:
+        return (LeafKind.TEMPORARY if any(c is call for c in self._fresh)
+                else LeafKind.STATIC)
+
+
+def every_lent_operand(call: TpyExpr) -> list[tuple[int, TpyExpr]]:
+    """Every operand of `call` with its source index, less one an
+    ownership-taking slot moves into the result (it is the result's own
+    storage); every child, at -2, for a node no callee resolves."""
+    ops = call_operands(call)
+    if ops is None:
+        return [(-2, e) for e in call.children()]
+    return [(i, e) for i, e in ops.indexed() if not ops.takes_ownership(i)]
+
+
 class MustLend(CallPolicy):
     """MUST: the operands a call's result points into when its FORM proves
     that storage outlives the statement (`proven_lend_roots`): a call sema
@@ -1228,7 +1334,7 @@ class MustLend(CallPolicy):
         if step.kind is StepKind.FIELD:
             return node.hidden_call is None
         if step.kind is StepKind.INDEX:
-            return not (node.getitem_function_info is not None
+            return not (getitem_call_of(node) is not None
                         or node.slice_function_info is not None
                         or getattr(node, "needs_optional_runtime_check",
                                    False))

@@ -11,7 +11,7 @@ namespace tpyapp::main {
 void main() {
     WidePages p = WidePages();
     ::tpy::BigInt k = ::tpy::BigInt::from_str("1180591620717411303424");
-    ::tpy::__setitem__(p, k.to_fixed_check<int64_t>(), 9);
+    p.__setitem__((k).to_fixed_check<int64_t>(), 9);
 }
 
 // main()
