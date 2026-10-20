@@ -137,7 +137,8 @@ def test_positive_producer_facts_and_inline_placement(artifacts: Artifacts) -> N
                    for b in body.blocks for s in b.statements)
 
 
-@pytest.mark.parametrize("change", ["decl_layout", "invalid_layout", "literal_layout", "placement", "form", "constructor", "copy"])
+@pytest.mark.parametrize("change", ["decl_layout", "field", "invalid_layout", "literal_layout", "placement", "form",
+                                    "constructor", "copy"])
 def test_damaged_producer_facts_do_not_grant_coverage(artifacts: Artifacts, change: str) -> None:
     functions, _, definitions, _ = artifacts
     fn = functions["singleton"]
@@ -145,6 +146,9 @@ def test_damaged_producer_facts_do_not_grant_coverage(artifacts: Artifacts, chan
     match change:
         case "decl_layout":
             decl = replace(decl, tuple_layout=None)
+        case "field":
+            # The tuple's layout in an Optional's field.
+            decl = replace(decl, tuple_layout=None, optional_layout=decl.tuple_layout)
         case "invalid_layout":
             decl = replace(decl, tuple_layout=object())
         case "literal_layout":
@@ -161,7 +165,10 @@ def test_damaged_producer_facts_do_not_grant_coverage(artifacts: Artifacts, chan
     bad = replace(fn, body=(decl, *fn.body[1:]))
     result = lower_function(bad, MIRBodyId("damaged", change), definitions=definitions)
     assert isinstance(result, MIRNotCovered)
-    if change != "decl_layout":
+    if change in ("decl_layout", "field"):
+        # The declaration dispatches on the class its one layout fact lays out: none here.
+        assert result.reason == "missing or invalid layout fact", result
+    else:
         with pytest.raises(THIRValidationError):
             validate_thir(bad)
 

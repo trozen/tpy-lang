@@ -16,9 +16,11 @@ from ..typesys import STR, STRVIEW
 from .coverage import MIRUnsupported
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
 from .definitions import MIRDefinitions
-from .emit import Fragment, MIRValue, owned_storage_shape, view_holder_shape
+from .emit import Fragment, MIRValue, owned_leaf_shape, view_holder_shape
 from .lower import _Lowering
-from .nodes import MIRClass, MIRConstant, MIRRecordWriteMode, MIRShape
+from .nodes import MIRConstant, MIRRecordWriteMode
+from ..thir.scalar_leaves import MIRClass
+from .value import MIRRole, MIRShape
 
 SOURCE = '''\
 from tpy import int32, pure, readonly, Own, String, StrView
@@ -302,7 +304,7 @@ def test_a_fresh_value_viewed_is_materialized_lent_and_aliased(dumps) -> None:
 def test_lending_fresh_storage_before_it_is_materialized_is_a_lowering_defect() -> None:
     root = Fragment()
     f = root.fragment()
-    f.value = MIRValue(MIRConstant("x"), owned_storage_shape(STR))
+    f.value = MIRValue(MIRConstant("x"), owned_leaf_shape(STR, MIRRole.STORAGE))
     with pytest.raises(AssertionError, match="fresh storage is lent once materialized"):
         root.fragment().lend(f)
 
@@ -310,7 +312,7 @@ def test_lending_fresh_storage_before_it_is_materialized_is_a_lowering_defect() 
 def test_materialize_registers_its_node_and_refuses_an_unregistered_one() -> None:
     root = Fragment()
     f = root.fragment()
-    value = MIRValue(MIRConstant("x"), owned_storage_shape(STR))
+    value = MIRValue(MIRConstant("x"), owned_leaf_shape(STR, MIRRole.STORAGE))
     with pytest.raises(AssertionError, match="needs a full expression"):
         f.materialize(value, "node")
     root.active_temporaries = []

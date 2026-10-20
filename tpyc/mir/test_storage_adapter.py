@@ -25,7 +25,8 @@ from .storage_evidence import MIRBorrowEvidence, MIRStorageConflictKind, MIRStor
 from .test_borrowed_argument_storage import SOURCE, Artifacts, _compile_workspace, _thir
 from .test_expression_temporary_lower import SOURCE as EXPRESSION_SOURCE
 from .testutil import Reference, execute
-from .validate import MIRRepeatedInitializationError, MIRValidationError, validate_function
+from .validate import MIRRepeatedInitializationError, validate_function
+from .value import MIRValidationError
 
 
 EXTRA = '''

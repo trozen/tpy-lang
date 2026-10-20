@@ -1916,7 +1916,7 @@ This is a good first step even if the compiler later grows exact per-element rea
 #### Values at places
 
 Every slot, wrapper or container member and record field carries one value
-description (`MIRShape`, `tpyc/mir/nodes.py`): its type, its class --
+description (`MIRShape`, `tpyc/mir/value.py`): its type, its class --
 `value_class` of the type (inert leaf, owned leaf, view, record, container,
 container view, tuple, Optional, union), the one classifier over the leaf
 predicates -- how its position holds it (by value, a pointer a `Deref`
@@ -1925,11 +1925,11 @@ cursor, a payload alias), its access, and its members. Holding is positional,
 never derived from the type: a tuple's record member is owned or borrowed by
 the tuple's form, an Optional record payload is a pointer at a slot and
 inline at a field. A record stores every field inline except a view member,
-the loan the record holds (`shapes.loan_field`): the one rule the field's
-shape (`shapes.field_shape`), the storage events (`storage.owned_field`),
-the line facts and the dependency state read. One stepping table
-(`shapes.step`) answers what each projection reaches from a value; every
-reader of a place walks it.
+the loan the record holds (`value.loan_field`): the one rule the field's
+shape (`value.value_shape` at field position), the storage events
+(`storage.owned_field`), the line facts and the dependency state read. One
+stepping table (`shapes.step`) answers what each projection reaches from a
+value; every reader of a place walks it.
 
 #### Lowering: one pass building fragments
 
@@ -1945,9 +1945,12 @@ in the form its producer has: a place expression is lowered once
 shape. The consumer converts it: `Fragment.lend` (a holder), `sink` (the
 rvalue a destination write takes, a copy's raise flag decided there),
 `view` (a view holder) or `materialize` (storage of the full expression's
-region). A parameter binds once (`call_contract.parameter_binding`: its
-class, holding and loan access, read by the body's parameter slots,
-summaries, stubs and constructor definitions), and calls and constructors
+region). A parameter binds once (`call_contract.derived_binding`, reached
+from THIR's facts through `parameter_binding`: its class, holding, loan
+access and value shape, read by the body's parameter slots, summaries,
+stubs, constructor definitions and the validator, which checks each
+parameter slot against its binding through the same derivation,
+`parameter_contract_problem`), and calls and constructors
 bind arguments through one ladder (`_Lowering.argument`); a call's write,
 return and transfer paths are walked by one predicate,
 `call_contract.call_path_problem`, which the lowering and the validator
@@ -1966,15 +1969,18 @@ their entry block -- before pruning and freezing.
 
 The lowering owns the one name -> slot map: a binding's slot is created where
 the lowering binds it, its shape built once from the declaring node's THIR
-facts (`_slot_shape`, `shapes.from_thir`), and it enters the body where the
+facts by the one composer (`value.value_shape`: the access it is given,
+the holding its role decides, `value.holding_of`, and the members its
+position places), and it enters the body where the
 statement declaring it is built (`Fragment.adopt`). A read takes the
 binding's type, record, layout and access from that slot's shape; the read
 node's own facts (`optional_read`, `union_read`, a union extraction or test)
-are checked against it. A field's value is `shapes.field_shape`'s. Two
+are checked against it. A field's value is the composer's at field position. Two
 translations of THIR's facts have one site each: a binding's access
-(`access_of`, from the record, container or view fact its declaration gives
-it) and whether a call result or a literal is built fresh or lends storage
-from elsewhere (`holding_of`: a call's from MIR's call summary, a str or
+(`value.loan_access`, from the source it names: a parameter's passing, a
+declaration, an access THIR published inside a fact, a local's inputs)
+and whether a call result or a literal is built fresh or lends storage
+from elsewhere (`owned_leaf_role`: a call's from MIR's call summary, a str or
 bytes literal's from its form, any other from its `Source`). Whether a
 value is a place or an rvalue at all is the operation the node class picks.
 A record copy's raise flag is per type over the verified definitions
@@ -1989,7 +1995,7 @@ The facts MIR still derives because THIR does not carry them (TODO.md, under
 borrow-form name or a storage-form member, a number literal's resolved type,
 the view / container / value-type result a call lends, the `Held` refinements
 above, a body's return kind (the signature is not on every lowered
-function), and a binding's access (`access_of`, to become one effective-access
+function), and a binding's access (`value.loan_access`, to become one effective-access
 field on THIR's binding facts).
 
 Three refusals need the built body: a declaration THIR placed no storage for

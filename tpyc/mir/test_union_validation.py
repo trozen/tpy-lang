@@ -5,17 +5,18 @@ from dataclasses import replace
 import pytest
 
 from ..type_def_registry import ParamPassing
-from ..typesys import BOOL, INT32, NoneType, NominalType, UnionType
+from ..typesys import BOOL, INT32, NoneType, NominalType, OptionalType, UnionType
 from .nodes import (
-    MIRHolding,
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
-    MIRFunction, MIRGoto, MIRIsAlternative, MIRNot, MIRPlace, MIRRead, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct,
-    MIRUnionCopy, MIRUnionExtract, MIRUnionPayload,
-    MIRDeref, MIRField, MIRFieldId, MIRRecordLayout, MIRConstruct,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRFunction, MIRGoto, MIRIsAlternative, MIRNot,
+    MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract,
+    MIRUnionPayload, MIRDeref, MIRConstruct,
 )
-from .testutil import Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, owned_shape, reslot, union_shape
-from .validate import MIRPresenceError, MIRValidationError, validate_function
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
+from .testutil import (
+    bind_parameters, Reference, UnionValue, alias_shape, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
+    reslot, union_shape,
+)
+from .validate import MIRPresenceError, validate_function
 
 
 BODY = MIRBodyId("union_validation", "example")
@@ -30,9 +31,9 @@ SLOTS = (
     MIRSlot(SAVED, union_shape(TYPE, LAYOUT), MIRSlotKind.LOCAL),
     MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL),
     MIRSlot(COPY, leaf_shape(BOOL), MIRSlotKind.LOCAL),
-    MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
     MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
     MIRSlot(ALIAS, alias_shape(INT32, readonly=True), MIRSlotKind.LOCAL, alias_source=PAYLOAD),
 )
 CAPTURE = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(PARAM)))
@@ -46,7 +47,7 @@ FALLBACK = MIRBlock(NO, (), MIRReturn(VALUE))
 
 
 def function(*blocks: MIRBlock) -> MIRFunction:
-    return MIRFunction(BODY, INT32, SLOTS, blocks, ENTRY)
+    return bind_parameters(MIRFunction(BODY, INT32, SLOTS, blocks, ENTRY))
 
 
 @pytest.mark.parametrize("mutation", [
@@ -173,8 +174,8 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
     # cannot bypass that read by appearing directly in a constructor operand.
     statements = (BUILD, EXTRACT) + ((ALIAS_READ,) if checked_read else ()) + (
         CLEAR, MIRAssign(MIRPlace(storage), MIRConstruct((RESULT if checked_read else ALIAS,))))
-    fn = replace(function(MIRBlock(ENTRY, statements, MIRReturn(VALUE))),
-                 slots=(*SLOTS, slot), records=(MIRRecordLayout(record, (field,), True, True),))
+    fn = bind_parameters(replace(function(MIRBlock(ENTRY, statements, MIRReturn(VALUE))),
+                 slots=(*SLOTS, slot), records=(MIRRecordLayout(record, (field,), True, True),)))
     if checked_read:
         validate_function(fn)
         heap = {}
@@ -185,17 +186,50 @@ def test_record_construction_requires_explicit_scalar_alias_read(checked_read: b
             validate_function(fn)
 
 
-@pytest.mark.parametrize("bad", [
-    reslot(SLOTS[0], members=()),
-    reslot(SLOTS[0], members=(None, leaf_shape(INT32), leaf_shape(BOOL))),
-    reslot(SLOTS[0], holding=MIRHolding.POINTER),
-    replace(SLOTS[8], alias_source=None),
+@pytest.mark.parametrize(("bad", "message"), [
+    (reslot(SLOTS[0], members=()), "slot unsupported union layout"),
+    (reslot(SLOTS[0], members=(None, leaf_shape(INT32), leaf_shape(BOOL))), "slot unsupported union scalar"),
+    (reslot(SLOTS[0], holding=MIRHolding.POINTER), "slot invalid holding"),
+    (replace(SLOTS[8], alias_source=None), "unsupported payload alias"),
+    # A payload alias is no parameter: no binding derives its holding.
+    (replace(SLOTS[8], kind=MIRSlotKind.PARAMETER), "parameter call parameter binding differs from its derivation"),
 ])
-def test_bad_union_layouts_and_alias_slots(bad: MIRSlot) -> None:
+def test_bad_union_layouts_and_alias_slots(bad: MIRSlot, message: str) -> None:
     slots = tuple(bad if s.id == bad.id else s for s in SLOTS)
+    # A forged parameter keeps the binding of the slot it forges; a slot made
+    # a parameter has none to keep.
     fn = replace(function(MIRBlock(ENTRY, (), MIRReturn(VALUE))), slots=slots)
-    with pytest.raises(MIRValidationError):
+    if bad.kind is not SLOTS[bad.id.index].kind:
+        fn = bind_parameters(replace(fn, parameter_bindings=()))
+    with pytest.raises(MIRValidationError, match=message):
         validate_function(fn)
+
+
+def test_each_parameter_slot_holds_its_binding() -> None:
+    fn = function(MIRBlock(ENTRY, (), MIRReturn(VALUE)))
+    validate_function(fn)
+    bindings = fn.parameter_bindings
+    with pytest.raises(MIRValidationError, match="parameter slots differ from their bindings"):
+        validate_function(replace(fn, parameter_bindings=bindings[:-1]))
+    with pytest.raises(MIRValidationError, match="invalid parameter binding"):
+        validate_function(replace(fn, parameter_bindings=(*bindings[:-1], "binding")))
+    # A binding naming another value than its slot holds.
+    union = bindings[0]
+    forged = replace(union, value=replace(union.value, members=tuple(reversed(union.value.members))))
+    with pytest.raises(MIRValidationError, match="parameter slot differs from its binding"):
+        validate_function(replace(fn, parameter_bindings=(forged, *bindings[1:])))
+    # Every binding has a passing, a constructor's built receiver's included.
+    with pytest.raises(MIRValidationError, match="parameter malformed call parameter binding"):
+        validate_function(replace(fn, parameter_bindings=(replace(union, passing=None), *bindings[1:])))
+    # A slot no binding derives (a scalar Optional by pointer) is left without
+    # one, so the count refuses it.
+    maybe = MIRSlot(MIRSlotId(BODY, len(SLOTS)), optional_shape(OptionalType(INT32), leaf_shape(INT32)),
+                    MIRSlotKind.PARAMETER)
+    unbound = bind_parameters(replace(fn, slots=(*SLOTS, maybe), parameter_bindings=()),
+                              {maybe.id: ParamPassing.POINTER})
+    assert len(unbound.parameter_bindings) == len(bindings)
+    with pytest.raises(MIRValidationError, match="parameter slots differ from their bindings"):
+        validate_function(unbound)
 
 
 @pytest.mark.parametrize("stmt", [
@@ -227,7 +261,7 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
         MIRSlot(CURRENT, union_shape(typ, layout(dest_const)), MIRSlotKind.LOCAL),
         MIRSlot(SAVED, union_shape(typ, layout(source_const)), MIRSlotKind.PARAMETER),
         MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL),
-        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
         MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
         MIRSlot(FLAG, borrowed_shape(cell), MIRSlotKind.PARAMETER),
         MIRSlot(ALIAS, borrowed_shape(cell, readonly=dest_const), MIRSlotKind.LOCAL),
@@ -237,10 +271,10 @@ def reference_function(source_const: bool = False, dest_const: bool = False) -> 
     overwrite = MIRAssign(MIRPlace(CURRENT), MIRUnionCopy(MIRPlace(SAVED)))
     mutate = MIRAssign(MIRPlace(FLAG, (MIRDeref(), field)), MIRRead(MIRPlace(VALUE)))
     read = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(ALIAS, (MIRDeref(), field))))
-    return MIRFunction(BODY, INT32, ref_slots, (
+    return bind_parameters(MIRFunction(BODY, INT32, ref_slots, (
         MIRBlock(ENTRY, (CAPTURE, replace(TEST, value=MIRIsAlternative(MIRPlace(CURRENT), (0,)))), MIRBranch(GUARD, YES, NO)),
         MIRBlock(YES, (bind, overwrite, mutate, read), MIRReturn(RESULT)), FALLBACK,
-    ), ENTRY)
+    ), ENTRY))
 
 
 @pytest.mark.parametrize("source_const,dest_const", [(False, False), (False, True), (True, True), (True, False)])
@@ -258,7 +292,7 @@ def test_reference_capture_survives_reseat_and_preserves_capability(source_const
 
 def test_readonly_extraction_cannot_create_mutable_alias() -> None:
     fn = reference_function(True, True)
-    fn = replace(fn, slots=(*fn.slots[:-1], reslot(fn.slots[-1], readonly=False)))
+    fn = bind_parameters(replace(fn, slots=(*fn.slots[:-1], reslot(fn.slots[-1], readonly=False))))
     with pytest.raises(MIRValidationError, match="increases access"):
         validate_function(fn)
 
@@ -266,6 +300,7 @@ def test_readonly_extraction_cannot_create_mutable_alias() -> None:
 @pytest.mark.parametrize("source_const,dest_const", [(False, False), (False, True), (True, True), (True, False)])
 def test_record_member_construction_preserves_capability(source_const: bool, dest_const: bool) -> None:
     fn = reference_function(False, dest_const)
+    # The record parameter at its type's own passing for its access.
     source = reslot(fn.slots[-2], readonly=source_const)
     # Construct directly from the record parameter, then retain the extracted
     # identity across wrapper replacement and mutate through a separate alias.
@@ -277,8 +312,8 @@ def test_record_member_construction_preserves_capability(source_const: bool, des
     write = branch.statements[2]
     branch = replace(branch, statements=(*branch.statements[:2],
         replace(write, target=replace(write.target, root=mutable)), *branch.statements[3:]))
-    fn = replace(fn, slots=(*fn.slots[:-2], source, fn.slots[-1], mutable_slot),
-                 blocks=(entry, branch, fn.blocks[2]))
+    fn = bind_parameters(replace(fn, slots=(*fn.slots[:-2], source, fn.slots[-1], mutable_slot),
+                 blocks=(entry, branch, fn.blocks[2])))
     if source_const and not dest_const:
         with pytest.raises(MIRValidationError, match="type or access mismatch"):
             validate_function(fn)

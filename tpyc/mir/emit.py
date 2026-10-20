@@ -14,14 +14,17 @@ from ..typesys import BOOL, TpyType
 from ..identity_map import IdentityMap
 from .call_contract import MIRCallSummary, MIRParameterBinding
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRClass, MIRConstant, MIRCopy,
-    MIRDeref, MIRFunction, MIRGoto, MIRHolding, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint,
-    MIRRead, MIRReceiverInit,
-    MIRRecordLayout, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
-    MIRRvalue, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator,
-    MIRTupleInitialization, MIRValidationError, member_init_operands, source_order, statement_target,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRDeref,
+    MIRFunction, MIRGoto, MIRNot, MIRPayloadWrite, MIRPayloadWriteMode, MIRPlace, MIRPoint, MIRRead, MIRReceiverInit,
+    MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRRvalue, MIRSlot,
+    MIRSlotId, MIRSlotKind, MIRStatement, MIRStorageDuration, MIRTerminator, MIRTupleInitialization,
+    member_init_operands, source_order, statement_target,
 )
-from .shapes import place_shape, record_pointer
+from ..thir.scalar_leaves import MIRClass
+from .value import (
+    MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, Published, holder_form, loan_access, value_shape,
+)
+from .shapes import place_shape
 from .validate import body_may_raise, reaches_element, statement_reads, successors, validate_function
 
 
@@ -37,39 +40,19 @@ class MIRRegionStorageError(Exception):
 
 def scalar_shape(typ: TpyType) -> MIRShape:
     """An inert leaf held by value: an expression's scalar result."""
-    return MIRShape(typ, MIRClass.LEAF)
+    return value_shape(typ, MIRClass.LEAF)
 
 
-def owned_storage_shape(typ: TpyType) -> MIRShape:
-    """Owned-leaf storage held in place."""
-    return MIRShape(typ, MIRClass.OWNED_LEAF)
-
-
-def owned_holder_shape(typ: TpyType) -> MIRShape:
-    """A readonly holder of owned-leaf storage."""
-    return MIRShape(typ, MIRClass.OWNED_LEAF, MIRHolding.POINTER, True)
+def owned_leaf_shape(typ: TpyType, role: MIRRole) -> MIRShape:
+    """Owned-leaf storage held in place, or (LOAN) a holder of it at a
+    lent owned leaf's own access (`holder_form`)."""
+    storage = value_shape(typ, MIRClass.OWNED_LEAF)
+    return holder_form(storage) if role is MIRRole.LOAN else storage
 
 
 def view_holder_shape(typ: TpyType) -> MIRShape:
-    """A readonly holder typed by a view: what it views is owned-leaf storage."""
-    return MIRShape(typ, MIRClass.VIEW, MIRHolding.POINTER, True)
-
-
-def holder_form(shape: MIRShape) -> MIRShape:
-    """The shape of a holder lending a value of `shape`: a record pointer, a
-    container's region, a view's or owned leaf's readonly holder, a tuple itself."""
-    match shape.cls:
-        case MIRClass.RECORD:
-            return record_pointer(shape.type, shape.readonly)
-        case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW:
-            return replace(shape, holding=MIRHolding.REGION)
-        case MIRClass.VIEW:
-            return view_holder_shape(shape.type)
-        case MIRClass.OWNED_LEAF:
-            return owned_holder_shape(shape.type)
-        case MIRClass.TUPLE:
-            return shape
-    raise AssertionError(f"no holder form of {shape.cls}")
+    """A holder typed by a view, at a view's own access (`holder_form`): what it views is owned-leaf storage."""
+    return holder_form(value_shape(typ, MIRClass.VIEW))
 
 
 @dataclass(frozen=True, eq=False)
@@ -141,7 +124,6 @@ class _SlotRecord:
     storage_duration: object = None
     residence: RegionHandle | None = None
     record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
-    passing: object = None
     writable: bool | None = None
     loc: object = None
 
@@ -299,13 +281,13 @@ class Fragment:
                loc: object = None, alias_source: MIRPlace | None = None, global_id: object = None,
                storage_duration: object = None,
                record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT,
-               passing: object = None, writable: bool | None = None) -> MIRSlotId:
+               writable: bool | None = None) -> MIRSlotId:
         """A slot of the body, not yet placed: `adopt` places it."""
         root = self.root
         sid = MIRSlotId(self.body, len(root.records))
         root.records[sid] = _SlotRecord(sid, shape, kind, name, alias_source=alias_source, global_id=global_id,
                                         storage_duration=storage_duration, record_storage=record_storage,
-                                        passing=passing, writable=writable, loc=loc)
+                                        writable=writable, loc=loc)
         return sid
 
     def adopt(self, sid: MIRSlotId, storage_duration: object = None) -> MIRSlotId:
@@ -892,13 +874,14 @@ class _Assembly:
     def freeze(self, record: _SlotRecord) -> MIRSlot:
         shape = record.shape
         if record.writable is False and not shape.readonly:
-            # A global no use writes is read through a readonly handle.
-            shape = replace(shape, readonly=True)
+            # A global no use writes is read through a readonly handle, the
+            # access its binding publishes.
+            shape = replace(shape, readonly=loan_access(shape.type, shape.cls, Published(True)))
         return MIRSlot(self.slot_ids[record.id], shape, record.kind, record.name,
                        alias_source=self.remap(record.alias_source), global_id=record.global_id,
                        storage_duration=self.duration(record.storage_duration),
                        residence=self.region(record.residence) if record.residence is not None else None,
-                       record_storage=record.record_storage, passing=record.passing)
+                       record_storage=record.record_storage)
 
     # --- the function ------------------------------------------------------
 

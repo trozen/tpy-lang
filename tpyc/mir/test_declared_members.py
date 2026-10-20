@@ -12,14 +12,15 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
-from ..typesys import INT32, STR, NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
+from ..typesys import BIGINT, INT32, STR, STRVIEW, NominalType, ReadonlyType, unwrap_readonly, unwrap_ref_type
 from .call_contract import MIRSummaryState
 from .collect import MIRVerdictStatus, enumerate_bodies, line_facts
 from .coverage import MIRUnsupported
-from .shapes import expected_container_members
-from .validate import MIRValidationError, validate_function
+from .value import (
+    MIRField, MIRFieldId, MIRHolding, MIRValidationError, admitted_members, container_members, value_shape,
+)
+from .validate import validate_function
 from .testutil import leaf_shape, owned_shape, reslot
-from .nodes import MIRHolding
 
 SOURCE = """\
 from typing import Iterator
@@ -356,10 +357,50 @@ def test_layout_refusals(active) -> None:
                          "unsupported native container element")):
         with pytest.raises(MIRUnsupported, match=reason):
             definitions.container(None, typ)
-    # The validator re-derives the same refusal: no layout for a record value member.
+    # The validator re-derives the same refusal from the type: a record value member.
     records = {point: definitions.get(None, point).layout}
-    assert expected_container_members(_nominal("builtins.dict", STR, point), False, records) is None
-    assert expected_container_members(_nominal("builtins.list", point), False, records) == (owned_shape(point),)
+    assert isinstance(container_members(_nominal("builtins.dict", STR, point), False), str)
+    assert container_members(_nominal("builtins.list", point), False) == (owned_shape(point),)
+    assert admitted_members(_nominal("builtins.list", point), False, records) == (owned_shape(point),)
+
+
+def test_member_builder_refusals(active) -> None:
+    point = _bare(_param(active, "keyed", "p").type)
+    # An element holding a borrow, and a nested container, are refused from the type alone.
+    assert container_members(_nominal("builtins.list", STRVIEW), False) == "container holds a borrow"
+    assert container_members(_nominal("builtins.list", _nominal("builtins.list", BIGINT)), False) \
+        == "unsupported native container element"
+    # A dict's value is a leaf, as its key is: the record a list admits is refused there.
+    assert container_members(_nominal("builtins.list", point), False) == (owned_shape(point),)
+    assert container_members(_nominal("builtins.dict", INT32, point), False) == "unsupported native container element"
+    assert container_members(_nominal("builtins.dict", INT32, STR), True) == (leaf_shape(INT32, True),
+                                                                             owned_shape(STR, True))
+    # The composer builds a slot's container only once it is admitted: the
+    # lowering admits it first, so no body reaches this; a direct caller is refused.
+    for refused in (_nominal("builtins.list", STRVIEW), _nominal("builtins.list", _nominal("builtins.list", BIGINT))):
+        with pytest.raises(MIRValidationError, match="unadmitted container members"):
+            value_shape(refused)
+
+
+def test_admission_checks_the_supplied_layout(active) -> None:
+    definitions = active[3]
+    point = _bare(_param(active, "keyed", "p").type)
+    listed = _nominal("builtins.list", point)
+    layout = definitions.get(None, point).layout
+    assert admitted_members(listed, False, {point: layout}) == (owned_shape(point),)
+    assert admitted_members(listed, False, {}) == "missing record layout"
+    # A layout whose field is no leaf is refused although the declaration's
+    # fields are leaves; so is an opaque one, and one storing a readonly field.
+    forged = replace(layout, fields=(MIRField(MIRFieldId(point, "x"), _nominal("builtins.list", INT32)),))
+    assert admitted_members(listed, False, {point: forged}) == "unsupported native container element"
+    assert admitted_members(listed, False, {point: replace(layout, opaque=True)}) == (
+        "unsupported native container element")
+    readonly_field = replace(layout, fields=(MIRField(MIRFieldId(point, "x"), ReadonlyType(INT32)),))
+    assert admitted_members(listed, False, {point: readonly_field}) == "unsupported native container element"
+    # An owned-leaf member needs its opaque layout.
+    assert admitted_members(_nominal("builtins.list", STR), False, {}) == "missing owned-leaf layout"
+    # A type declaring no members is no container whatever the layouts.
+    assert admitted_members(point, False, {point: layout}) == "unsupported native container type"
 
 
 # --- THIR validator ----------------------------------------------------------------
@@ -439,10 +480,10 @@ def test_mir_validator_rejects_a_cursor_over_a_view_that_binds_none(active) -> N
     items = _nominal("builtins.dict_items", STR, INT32)
     layout = (owned_shape(STR, cursor.readonly), leaf_shape(INT32, cursor.readonly))
     # The layout is the items view's own: only the missing cursor is wrong.
-    assert expected_container_members(items, cursor.readonly, {r.type: r for r in fn.records}) == layout
+    assert admitted_members(items, cursor.readonly, {r.type: r for r in fn.records}) == layout
     damaged = replace(fn, slots=tuple(reslot(s, type=items, members=layout) if s is cursor else s
                                       for s in fn.slots))
-    _mir_rejects(damaged, "unsupported native element")
+    _mir_rejects(damaged, "iterator binds no element")
 
 
 def test_mir_validator_reads_a_view_holder_access_from_its_own_element(active) -> None:
@@ -453,7 +494,7 @@ def test_mir_validator_reads_a_view_holder_access_from_its_own_element(active) -
     # A values view whose element argument (its second) is readonly lends readonly access only.
     readonly_values = _nominal("builtins.dict_values", STR, ReadonlyType(INT32))
     layout = (leaf_shape(INT32),)
-    assert expected_container_members(readonly_values, False, {}) == layout
+    assert admitted_members(readonly_values, False, {}) == layout
     damaged = replace(fn, slots=tuple(reslot(s, type=readonly_values, members=layout) if s is holder else s
                                       for s in fn.slots))
-    _mir_rejects(damaged, "invalid container view holder")
+    _mir_rejects(damaged, "mutable loan of a readonly value")

@@ -5,7 +5,6 @@ from dataclasses import replace
 import pytest
 
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -19,8 +18,9 @@ from .nodes import (
 )
 from .payload_lifetime import MIRPayloadEnds, analyze_payload_ends, dump_payload_ends
 from .presence import _analyze_presence
-from .validate import MIRValidationError, validate_function
-from .testutil import leaf_shape, optional_shape, union_shape
+from .validate import validate_function
+from .value import MIRValidationError
+from .testutil import bind_parameters, leaf_shape, optional_shape, union_shape
 
 
 BODY = MIRBodyId("payload_lifetime", "example")
@@ -39,10 +39,9 @@ def wrapper_function(optional: bool, *blocks: MIRBlock) -> MIRFunction:
                           else MIRStorageDuration.BODY)
                   for sid, kind in ((PARAM, MIRSlotKind.PARAMETER), (CURRENT, MIRSlotKind.LOCAL),
                                     (SAVED, MIRSlotKind.LOCAL)))
-    return MIRFunction(BODY, INT32, (*slots, MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER,
-                                                     passing=ParamPassing.VALUE),
-                                   MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-                                   MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL)), blocks, ENTRY)
+    return bind_parameters(MIRFunction(BODY, INT32, (*slots, MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+                                   MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
+                                   MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL)), blocks, ENTRY))
 
 
 def write(optional: bool, tag: int | MIRSlotId, *, target: MIRSlotId = CURRENT,

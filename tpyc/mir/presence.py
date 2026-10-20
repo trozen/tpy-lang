@@ -13,14 +13,13 @@ from ..typesys import BOOL, OptionalType, TpyType, TupleType, UnionType, is_void
 from .coverage import call_write_places
 from .nodes import (
     MIRStatement, MIRStorageInit, MIRBlockId, MIRBorrow, MIRBranch, MIRConstant, MIRCopy, MIRFunction, MIRGoto,
-    statement_call, statement_target, MIRContainerStructure, MIRDeref, MIRField, MIRFieldId, MIRRecordLayout,
-    MIRHolding, MIRSlot,
-    MIRIsPresent, MIRNot, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRPlace, MIRPoint, MIRRead, MIRSlotId,
-    MIREdge, MIRReturn, MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRRecordWrite, MIRRecordWriteMode,
-    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
+    statement_call, statement_target, MIRContainerStructure, MIRDeref, MIRSlot, MIRIsPresent, MIRNot,
+    MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRPoint, MIRRead, MIRSlotId, MIREdge,
+    MIRReturn, MIRRecordStorageInit, MIRRecordStorageKind, MIRAssign, MIRRecordWrite, MIRRecordWriteMode,
+    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract, MIRIteratorInit,
+    MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
 )
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout
 from .shapes import place_shape
 from .region_flow import MIRRegionFlow
 

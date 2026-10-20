@@ -5,7 +5,6 @@ from dataclasses import replace
 import pytest
 
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -16,8 +15,9 @@ from .nodes import (
 )
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .test_scope_lifetime import region_fixture
-from .testutil import Reference, execute, leaf_shape
-from .validate import MIRValidationError, validate_function
+from .testutil import bind_parameters, Reference, execute, leaf_shape
+from .validate import validate_function
+from .value import MIRValidationError
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -191,10 +191,10 @@ def conditional_region() -> MIRFunction:
     fn = region_fixture()
     entry, iteration, after = fn.blocks
     initialize = MIRBlockId(fn.id, 3)
-    skip = MIRSlot(MIRSlotId(fn.id, 3), leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
-    return replace(fn, slots=(*fn.slots, skip), blocks=(entry,
+    skip = MIRSlot(MIRSlotId(fn.id, 3), leaf_shape(BOOL), MIRSlotKind.PARAMETER)
+    return bind_parameters(replace(fn, slots=(*fn.slots, skip), blocks=(entry,
         replace(iteration, statements=(), terminator=MIRBranch(skip.id, after.id, initialize)),
-        after, replace(iteration, id=initialize)))
+        after, replace(iteration, id=initialize))))
 
 
 @pytest.mark.parametrize("absent", [False, True])
@@ -226,10 +226,10 @@ def test_optional_scalar_copy_survives_its_wrapper_end() -> None:
     copied = MIRSlot(MIRSlotId(fn.id, 4), leaf_shape(INT32), MIRSlotKind.LOCAL, residence=entry.region)
     done = MIRBlockId(fn.id, 4)
     read = MIRAssign(MIRPlace(copied.id), MIRRead(MIRPlace(fn.slots[2].id, (MIROptionalPayload(),))))
-    fn = replace(fn, slots=(*fn.slots, copied), blocks=(entry,
+    fn = bind_parameters(replace(fn, slots=(*fn.slots, copied), blocks=(entry,
         replace(iteration, terminator=MIRBranch(fn.slots[3].id, entry.id, initialize.id)), after,
         replace(initialize, statements=(*initialize.statements, read), terminator=MIRGoto(done)),
-        MIRBlock(done, (), MIRReturn(copied.id), entry.region)))
+        MIRBlock(done, (), MIRReturn(copied.id), entry.region))))
     result = inspect_scope_lifetimes(fn)
     assert MIREdge(iteration.id, 0) not in result.ends.ends
     assert result.conflicts == () and result.freshness == ()

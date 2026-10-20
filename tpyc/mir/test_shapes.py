@@ -1,6 +1,7 @@
 """The value description MIR reads everywhere: `value_class` of a type, the
-shape `from_thir` gives a slot, `field_shape` a record field, and what
-`step` reaches from each class and holding -- the illegal steps included."""
+shape the one composer (`value_shape`) gives a value at each position and
+role, and what `step` reaches from each class and holding -- the illegal
+steps included."""
 
 from collections.abc import Iterator
 from dataclasses import dataclass, replace
@@ -12,16 +13,24 @@ from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, modeled_field, storage_leaf, value_class
 from ..thir.testutil import _compile, _entry
 from ..typesys import (
-    INT32, STR, NominalType, OptionalType, ReadonlyType, Representation, TupleType, TpyType, UnionType,
+    BYTES, BYTESVIEW, INT32, NONE, STR, STRVIEW, NominalType, OptionalType, OwnType, ReadonlyType, RefType,
+    Representation, TupleType, TpyType, UnionType,
 )
+from ..type_def_registry import ParamPassing
+from .definitions import lends_view
+from .testutil import bound
 from .nodes import (
-    MIRContainerElements, MIRContainerStructure, MIRDeref, MIRField, MIRFieldId, MIRHolding, MIROptionalPayload,
-    MIRAssign, MIRBorrow, MIRFunction, MIRTupleIndex, MIRUnionPayload,
-    MIRPlace, MIRRecordLayout, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRBodyId, MIRValidationError,
+    MIRContainerElements, MIRContainerStructure, MIRDeref, MIROptionalPayload, MIRAssign, MIRBorrow, MIRFunction,
+    MIRTupleIndex, MIRUnionPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind, MIRBodyId,
 )
+from .value import (
+    MIRField, MIRFieldId, MIRHolding, MIRPosition, MIRRecordLayout, MIRRole, MIRShape, MIRValidationError,
+    lent_record, member_compatible, member_shape, shape_problem, value_shape,
+)
+from .dependencies import object_keys, origin_shape
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
-from .shapes import field_shape, from_thir, place_shape, step
+from .shapes import place_shape, step
 from .validate import validate_function
 
 SOURCE = """\
@@ -135,39 +144,258 @@ def test_modeled_fields_are_a_class_in_the_admitted_set(program: _Program) -> No
     assert not modeled_field(TupleType((INT32, p)))
 
 
-# --- the shape a slot gets from THIR ----------------------------------------------------
+# --- the shape the composer gives a value --------------------------------------------
 
-def test_from_thir_holds_each_value_by_its_position(program: _Program) -> None:
+def test_the_composer_holds_each_value_by_its_role(program: _Program) -> None:
     p = program.types["P"]
     ref = th.THIRBorrowedRecord(p, True)
-    assert from_thir(p, True, reference=ref) == MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER, True)
-    assert from_thir(p, False, storage=True) == MIRShape(p, MIRClass.RECORD, MIRHolding.VALUE)
-    assert from_thir(STR, True, reference=th.THIRBorrowedRecord(STR, True)).holding is MIRHolding.POINTER
+    assert value_shape(p, access=True, role=MIRRole.LOAN) == MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER, True)
+    assert value_shape(p) == MIRShape(p, MIRClass.RECORD, MIRHolding.VALUE)
+    assert value_shape(STR, access=True, role=MIRRole.LOAN).holding is MIRHolding.POINTER
     # A tuple's record member is owned or borrowed by THIR's selection, never by its type.
     layout = th.THIRTupleLayout((INT32, ref, th.THIROwnedRecord(p)))
-    tup = from_thir(TupleType((INT32, p, p)), False, tuple_layout=layout)
+    tup = value_shape(TupleType((INT32, p, p)), facts=layout)
     assert [(m.cls, m.holding) for m in tup.elements] == [
         (MIRClass.LEAF, MIRHolding.VALUE), (MIRClass.RECORD, MIRHolding.POINTER), (MIRClass.RECORD, MIRHolding.VALUE)]
     assert tup.form is th.Form.STORAGE
     # An Optional record payload at a slot is a pointer at the record.
-    opt = from_thir(OptionalType(p), False, optional_layout=th.THIROptionalLayout(ref))
+    opt = value_shape(OptionalType(p), facts=th.THIROptionalLayout(ref))
     assert (opt.payload.cls, opt.payload.holding) == (MIRClass.RECORD, MIRHolding.POINTER) and opt.record_payload
-    union = from_thir(UnionType((p, INT32)), False, union_layout=th.THIRUnionLayout(UnionType((p, INT32)), (ref, None)))
+    union = value_shape(UnionType((p, INT32)), facts=th.THIRUnionLayout(UnionType((p, INT32)), (ref, None)))
     assert union.alternatives[1] is None and union.alternatives[0].holding is MIRHolding.POINTER
-    assert from_thir(INT32, True, alias=True) == MIRShape(INT32, MIRClass.LEAF, MIRHolding.ALIAS, True)
-    assert from_thir(INT32, False).is_scalar
+    alias = value_shape(INT32, MIRClass.LEAF, access=True, role=MIRRole.ALIAS)
+    assert alias == MIRShape(INT32, MIRClass.LEAF, MIRHolding.ALIAS, True)
+    assert value_shape(INT32, MIRClass.LEAF).is_scalar
 
 
 def test_containers_are_regions_storage_or_cursors(program: _Program) -> None:
     ints = program.fields["H.xs"]
     members = (MIRShape(INT32, MIRClass.LEAF),)
-    borrowed = from_thir(ints, False, members=members, borrowed_container=True)
+    borrowed = value_shape(ints, role=MIRRole.LOAN)
     assert (borrowed.cls, borrowed.holding) == (MIRClass.CONTAINER, MIRHolding.REGION) and borrowed.whole_container
-    assert from_thir(ints, False, storage=True, members=members).container_storage
-    cursor = from_thir(ints, False, members=members, borrowed_container=True, iterator=True)
-    assert cursor.holding is MIRHolding.CURSOR and not cursor.region and cursor.is_holder
-    view = from_thir(program.span, True, reference=th.THIRBorrowedRecord(program.span, True), members=members)
+    # The members come from the builder, at the holder's access.
+    assert borrowed.members == members
+    assert value_shape(ints).container_storage
+    cursor = value_shape(ints, role=MIRRole.CURSOR)
+    assert cursor.holding is MIRHolding.CURSOR and not cursor.region and cursor.is_holder and cursor.members == members
+    view = value_shape(program.span, access=True, role=MIRRole.LOAN)
     assert (view.cls, view.holding) == (MIRClass.CONTAINER_VIEW, MIRHolding.REGION) and view.container_view_holder
+    assert view.members == (MIRShape(INT32, MIRClass.LEAF, readonly=True),)
+
+
+def test_a_wrapper_keeps_its_layout_members_whatever_its_holding(program: _Program) -> None:
+    p = program.types["P"]
+    lent = th.THIRBorrowedRecord(p, True)
+    # `readonly[P] | None` lent: the Optional's own slot is storage at its
+    # own access, its pointer payload carries the loan's.
+    maybe = value_shape(OptionalType(ReadonlyType(p)), role=MIRRole.LOAN, facts=th.THIROptionalLayout(lent))
+    assert (maybe.holding, maybe.readonly) == (MIRHolding.VALUE, False)
+    assert maybe.payload == MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER, True)
+    # An access given to the Optional's own slot is refused, never dropped.
+    with pytest.raises(MIRValidationError, match="readonly Optional slot"):
+        value_shape(OptionalType(ReadonlyType(p)), access=True, role=MIRRole.LOAN, facts=th.THIROptionalLayout(lent))
+    # A wrapper's members come from its layout facts: none given, it has no shape.
+    for wrapper in (OptionalType(INT32), TupleType((INT32, INT32)), UnionType((p, NONE))):
+        with pytest.raises(MIRValidationError, match="wrapper without its layout facts"):
+            value_shape(wrapper)
+    # `int32 | None` keeps its scalar payload.
+    scalar = value_shape(OptionalType(INT32), role=MIRRole.LOAN,
+                         facts=th.THIROptionalLayout(INT32))
+    assert scalar.payload == MIRShape(INT32, MIRClass.LEAF) and scalar.scalar_wrapper
+    # A tuple lent at CONST_REF is held by value, its members kept.
+    pair = value_shape(TupleType((INT32, p)), role=MIRRole.LOAN,
+                       facts=th.THIRTupleLayout((INT32, lent)))
+    assert pair.holding is MIRHolding.VALUE and pair.members == (
+        MIRShape(INT32, MIRClass.LEAF), MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER, True))
+
+
+def test_an_optional_record_payload_is_a_pointer_at_a_parameter_and_inline_at_a_field(program: _Program) -> None:
+    p, maybe = program.types["P"], program.fields["H.p"]
+    parameter = value_shape(maybe, role=MIRRole.LOAN,
+                            facts=th.THIROptionalLayout(th.THIRBorrowedRecord(p, False)))
+    assert parameter.payload.holding is MIRHolding.POINTER
+    field = value_shape(maybe, position=MIRPosition.FIELD, layouts=program.records)
+    assert field.payload == MIRShape(p, MIRClass.RECORD, MIRHolding.VALUE)
+    # A field MIR does not model has no shape.
+    with pytest.raises(MIRValidationError, match="unsupported field type"):
+        value_shape(ReadonlyType(INT32), position=MIRPosition.FIELD, layouts=program.records)
+
+
+def test_the_lent_record_is_a_record_pointer_or_an_optional_pointer_payload(program: _Program) -> None:
+    p = program.types["P"]
+    pointer = value_shape(p, access=True, role=MIRRole.LOAN)
+    assert lent_record(pointer) is pointer
+    maybe = value_shape(OptionalType(p), facts=th.THIROptionalLayout(th.THIRBorrowedRecord(p, True)))
+    assert lent_record(maybe) == pointer and maybe.record_payload
+    # A field's inline payload is the holder's own storage: it lends nothing.
+    inline = value_shape(program.fields["H.p"], position=MIRPosition.FIELD, layouts=program.records)
+    assert lent_record(inline) is None and not inline.record_payload
+    scalar = value_shape(OptionalType(INT32), facts=th.THIROptionalLayout(INT32))
+    for shape in (value_shape(p), value_shape(INT32, MIRClass.LEAF), scalar,
+                  value_shape(STR, access=True, role=MIRRole.LOAN)):
+        assert lent_record(shape) is None, shape
+    assert not scalar.record_payload
+
+
+def test_a_parameters_lent_record_is_read_from_its_slot_shape(program: _Program) -> None:
+    # The stored-loan keys and the origin of a parameter come from the
+    # record its shape lends; a local holding the same shape lends nothing
+    # of the caller's.
+    h = program.types["H"]
+    pointer = _slot(0, value_shape(h, role=MIRRole.LOAN))
+    maybe = _slot(0, value_shape(OptionalType(h), facts=th.THIROptionalLayout(th.THIRBorrowedRecord(h, False))))
+    keys = object_keys(pointer, program.records)
+    assert keys and object_keys(maybe, program.records) == keys
+    assert object_keys(replace(maybe, kind=MIRSlotKind.LOCAL), program.records) == ()
+    assert origin_shape(maybe) == origin_shape(pointer) == value_shape(h)
+    local = replace(maybe, kind=MIRSlotKind.LOCAL)
+    assert origin_shape(local) == local.shape
+
+
+# --- the one shape check ----------------------------------------------------------------
+
+def test_the_shape_check_accepts_what_the_composer_builds(program: _Program) -> None:
+    p, ints, view = program.types["P"], program.fields["H.xs"], program.fields["H.v"]
+    lent = th.THIRBorrowedRecord(p, True)
+    slots = [
+        (value_shape(p), p),
+        (value_shape(p, access=True, role=MIRRole.LOAN), RefType(p)),
+        (value_shape(p), OwnType(p)),
+        (value_shape(STR, access=True, role=MIRRole.LOAN), STR),
+        (value_shape(view, access=True), view),
+        (value_shape(ints, role=MIRRole.LOAN), RefType(ints)),
+        (value_shape(ints, role=MIRRole.CURSOR), ints),
+        (value_shape(program.span, access=True, role=MIRRole.LOAN), program.span),
+        (value_shape(INT32, MIRClass.LEAF, access=True, role=MIRRole.ALIAS), INT32),
+        (value_shape(TupleType((INT32, ReadonlyType(p))), facts=th.THIRTupleLayout((INT32, lent))),
+         TupleType((INT32, ReadonlyType(p)))),
+        (value_shape(OptionalType(ReadonlyType(p)), facts=th.THIROptionalLayout(lent)), OptionalType(ReadonlyType(p))),
+        (value_shape(UnionType((ReadonlyType(p), NONE)),
+                     facts=th.THIRUnionLayout(UnionType((ReadonlyType(p), NONE)), (lent, None))),
+         UnionType((ReadonlyType(p), NONE))),
+    ]
+    for shape, declared in slots:
+        assert shape_problem(shape, declared) is None, (shape, declared)
+    for name in ("H.n", "H.s", "H.v", "H.p", "H.inner", "H.xs", "H.ro"):
+        typ = program.fields[name]
+        assert shape_problem(member_shape(typ, False, program.records), typ, MIRPosition.FIELD) is None, name
+
+
+def test_the_shape_check_refuses_each_forgery_by_its_rule(program: _Program) -> None:
+    p, h, ints, view = program.types["P"], program.types["H"], program.fields["H.xs"], program.fields["H.v"]
+    pointer, storage = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER), MIRShape(p, MIRClass.RECORD)
+    region = value_shape(ints, role=MIRRole.LOAN)
+    pair = TupleType((INT32, p))
+    either = UnionType((p, NONE))
+    ro_pair, ro_either = TupleType((INT32, ReadonlyType(p))), UnionType((ReadonlyType(p), NONE))
+    cases = [
+        # A lent owned leaf and a view read only.
+        (MIRShape(STR, MIRClass.OWNED_LEAF, MIRHolding.POINTER), STR, "mutable loan of a readonly value"),
+        (MIRShape(view, MIRClass.VIEW, MIRHolding.POINTER), view, "mutable loan of a readonly value"),
+        # A slot's own container or owned-leaf buffer is written in place: readonly is a loan's.
+        (replace(value_shape(ints), readonly=True), ints, "readonly owned storage"),
+        (MIRShape(STR, MIRClass.OWNED_LEAF, readonly=True), STR, "readonly owned storage"),
+        # A slot's tuple or union is its own mutable storage.
+        (MIRShape(pair, MIRClass.TUPLE, readonly=True, members=(MIRShape(INT32, MIRClass.LEAF), pointer)), pair,
+         "readonly wrapper slot"),
+        (MIRShape(either, MIRClass.UNION, readonly=True, members=(pointer, None)), either,
+         "readonly wrapper slot"),
+        # A union points at its record member, never holds it by value.
+        (MIRShape(either, MIRClass.UNION, members=(storage, None)), either, "unsupported union record holding"),
+        # A holding the composer never gives the class: a stored view, a record cursor.
+        (MIRShape(view, MIRClass.VIEW, readonly=True), view, "invalid holding"),
+        (MIRShape(p, MIRClass.RECORD, MIRHolding.CURSOR), p, "invalid holding"),
+        # An `Own[R]` hands the record over: no pointer at it.
+        (pointer, OwnType(p), "reference type mismatch"),
+        # A member never has more access than its declaration grants.
+        (MIRShape(ro_pair, MIRClass.TUPLE, members=(MIRShape(INT32, MIRClass.LEAF), pointer)), ro_pair,
+         "tuple layout increases access"),
+        (MIRShape(pair, MIRClass.TUPLE, members=(MIRShape(INT32, MIRClass.LEAF), pointer)), ReadonlyType(pair),
+         "tuple layout increases access"),
+        (MIRShape(ro_either, MIRClass.UNION, members=(pointer, None)), ro_either,
+         "union layout increases access"),
+        (MIRShape(OptionalType(ReadonlyType(p)), MIRClass.OPTIONAL, members=(pointer,)),
+         OptionalType(ReadonlyType(p)), "optional layout increases access"),
+        # A wrapper member holds no borrow, which the wrapper would have to select.
+        (MIRShape(TupleType((INT32, h)), MIRClass.TUPLE,
+                  members=(MIRShape(INT32, MIRClass.LEAF), MIRShape(h, MIRClass.RECORD, MIRHolding.POINTER))),
+         TupleType((INT32, h)), "wrapper holds a borrow"),
+        # The class is the type's; a container's members are its type's.
+        (MIRShape(STR, MIRClass.LEAF), STR, "value class mismatch"),
+        (replace(region, members=(MIRShape(STR, MIRClass.OWNED_LEAF),)), ints,
+         "container members disagree with its type"),
+    ]
+    for shape, declared, reason in cases:
+        assert shape_problem(shape, declared) == reason, (shape, declared)
+    # A slot's Optional record payload is a pointer, a field's stored inline.
+    maybe = program.fields["H.p"]
+    inline = MIRShape(maybe, MIRClass.OPTIONAL, members=(storage,))
+    assert shape_problem(inline, maybe) == "unsupported optional record holding"
+    assert shape_problem(inline, maybe, MIRPosition.FIELD) is None
+    # A field stores its record: no loan of it, and no scalar payload.
+    assert shape_problem(pointer, p, MIRPosition.FIELD) == "invalid holding"
+    assert shape_problem(replace(inline, members=(pointer,)), maybe, MIRPosition.FIELD) == (
+        "unsupported optional record holding")
+    assert shape_problem(replace(inline, members=(MIRShape(INT32, MIRClass.LEAF),)), maybe, MIRPosition.FIELD) == (
+        "unsupported optional payload")
+    # A tuple or union lent at CONST_REF is held by value: no loan form to refuse.
+    held = value_shape(pair, role=MIRRole.LOAN, facts=th.THIRTupleLayout((INT32, th.THIRBorrowedRecord(p, False))))
+    assert held.holding is MIRHolding.VALUE and shape_problem(held, pair) is None
+
+
+def test_the_shape_check_refuses_a_field_the_composer_refuses(program: _Program) -> None:
+    # A tuple, a container view and a `readonly[...]` leaf are no field MIR models.
+    ints = TupleType((INT32, INT32))
+    fields = [
+        (value_shape(ints, facts=th.THIRTupleLayout((INT32, INT32))), ints),
+        (value_shape(program.span, access=True, role=MIRRole.LOAN), program.span),
+        (MIRShape(INT32, MIRClass.LEAF), ReadonlyType(INT32)),
+    ]
+    for shape, declared in fields:
+        with pytest.raises(MIRValidationError, match="unsupported field type"):
+            value_shape(declared, position=MIRPosition.FIELD, layouts=program.records)
+        assert shape_problem(shape, declared, MIRPosition.FIELD) == "unsupported field type", declared
+
+
+def test_a_holder_declared_readonly_is_never_mutable(program: _Program) -> None:
+    # The access a `readonly[...]` declaration gives every loan (`loan_access`) bounds the holder's.
+    p, ints = program.types["P"], program.fields["H.xs"]
+    mutable = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER)
+    for declared in (ReadonlyType(p), RefType(ReadonlyType(p))):
+        assert shape_problem(mutable, declared) == "mutable loan of a readonly value", declared
+        assert shape_problem(replace(mutable, readonly=True), declared) is None, declared
+    region = value_shape(ints, role=MIRRole.LOAN)
+    assert shape_problem(region, ReadonlyType(ints)) == "mutable loan of a readonly value"
+    # The callee's own storage lends nothing: no loan access to bound.
+    assert shape_problem(MIRShape(p, MIRClass.RECORD), OwnType(p)) is None
+
+
+def test_a_member_copies_into_the_same_member_never_gaining_access(program: _Program) -> None:
+    p = program.types["P"]
+    lent, mutable = MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER, True), MIRShape(p, MIRClass.RECORD, MIRHolding.POINTER)
+    assert member_compatible(mutable, lent) and member_compatible(lent, lent)
+    assert not member_compatible(lent, mutable)
+    # The same value held another way, or another value, is no copy of it.
+    assert not member_compatible(MIRShape(p, MIRClass.RECORD), mutable)
+    assert not member_compatible(MIRShape(STRVIEW, MIRClass.VIEW, MIRHolding.POINTER, True),
+                                 MIRShape(BYTESVIEW, MIRClass.VIEW, MIRHolding.POINTER, True))
+    assert member_compatible(MIRShape(INT32, MIRClass.LEAF), MIRShape(INT32, MIRClass.LEAF))
+    # Members are part of the value: the same container with other members is another value.
+    ints = program.fields["H.xs"]
+    region = value_shape(ints, role=MIRRole.LOAN)
+    assert not member_compatible(region, replace(region, members=()))
+    # A non-record member, too, copies into a readonly one, never back.
+    readonly_leaf = MIRShape(INT32, MIRClass.LEAF, readonly=True)
+    assert member_compatible(MIRShape(INT32, MIRClass.LEAF), readonly_leaf)
+    assert not member_compatible(readonly_leaf, MIRShape(INT32, MIRClass.LEAF))
+
+
+def test_a_view_member_stores_only_a_loan_of_its_own_family(program: _Program) -> None:
+    # A `StrView` member holds a borrow of a `str` (or `StrView`) parameter, never of bytes.
+    assert lends_view(bound(STR, ParamPassing.VIEW, True), STRVIEW)
+    assert lends_view(bound(STRVIEW, ParamPassing.VALUE, True), STRVIEW)
+    assert not lends_view(bound(BYTES, ParamPassing.VIEW, True), STRVIEW)
+    assert not lends_view(bound(BYTESVIEW, ParamPassing.VALUE, True), STRVIEW)
 
 
 # --- what a projection reaches ------------------------------------------------------------
@@ -203,7 +431,6 @@ def test_fields_are_classed_by_their_declared_type(program: _Program) -> None:
     # An Optional record field stores its payload inline.
     assert step(shapes["H.p"], MIROptionalPayload(), program.records) == MIRShape(
         program.types["P"], MIRClass.RECORD, MIRHolding.VALUE)
-    assert field_shape(ReadonlyType(INT32), False, program.records) is None
 
 
 def test_nothing_projects_through_a_view_member(program: _Program) -> None:

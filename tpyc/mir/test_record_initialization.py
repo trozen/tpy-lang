@@ -4,28 +4,27 @@ from dataclasses import replace
 
 import pytest
 
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, NoneType, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
-    MIRConstant, MIRConstruct, MIRDeref, MIREdge, MIRField, MIRFieldId, MIRFunction,
-    MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordLayout, MIRRecordStorageInit,
-    MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion,
-    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
-    MIROptionalConstruct, MIROptionalPayload,
-    MIRTupleConstruct, MIRTupleIndex,
-    MIRUnionConstruct, MIRUnionPayload, MIRStatement,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
+    MIREdge, MIRFunction, MIRGoto, MIRPlace, MIRPoint, MIRRead, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration, MIROptionalConstruct, MIROptionalPayload, MIRTupleConstruct, MIRTupleIndex, MIRUnionConstruct,
+    MIRUnionPayload, MIRStatement,
 )
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .payload_lifetime import analyze_payload_ends
 from .presence import MIREngagement, _analyze_presence
 from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape
-from .validate import MIRDefiniteAssignmentError, MIRValidationError, validate_function
+from .testutil import (
+    bind_parameters, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, tuple_shape, union_shape,
+)
+from .validate import MIRDefiniteAssignmentError, validate_function
 
 
 BODY = MIRBodyId("record_initialization", "example")
@@ -49,13 +48,13 @@ def function(*blocks: MIRBlock) -> MIRFunction:
                 residence=ROOT, record_storage=MIRRecordStorageKind.OPTIONAL),
         MIRSlot(CURRENT, borrowed_shape(CELL), MIRSlotKind.LOCAL, residence=ROOT),
         MIRSlot(SAVED, borrowed_shape(CELL), MIRSlotKind.LOCAL, residence=ROOT),
-        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
         MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT),
     )
-    return MIRFunction(BODY, INT32, slots, blocks, ENTRY,
+    return bind_parameters(MIRFunction(BODY, INT32, slots, blocks, ENTRY,
                        records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
-                       regions=(MIRRegion(ROOT, None, ENTRY),))
+                       regions=(MIRRegion(ROOT, None, ENTRY),)))
 
 
 def straight(*statements: MIRStatement) -> MIRFunction:
@@ -144,9 +143,9 @@ def test_nested_activation_ends_record_and_does_not_revive_old_alias() -> None:
         MIRBlock(YES, (INIT, WRITE, BIND, SAVE), MIRGoto(NO), CHILD),
         MIRBlock(NO, (), MIRBranch(FLAG, YES, JOIN), ROOT),
         MIRBlock(JOIN, (READ,), MIRReturn(RESULT), ROOT))
-    fn = replace(fn, slots=(replace(fn.slots[0], residence=CHILD, storage_duration=CHILD),
+    fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], residence=CHILD, storage_duration=CHILD),
                             replace(fn.slots[1], residence=CHILD), *fn.slots[2:]),
-                 regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES)))
+                 regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES))))
     validate_function(fn)
     presence = _analyze_presence(fn)
     assert BACKING not in dict(presence.engagement[MIRPoint(YES, 0)])
@@ -160,8 +159,8 @@ def test_empty_inner_activation_has_only_wrapper_end() -> None:
         MIRBlock(YES, (INIT,), MIRGoto(NO), CHILD),
         MIRBlock(NO, (), MIRBranch(FLAG, YES, JOIN), ROOT),
         MIRBlock(JOIN, (), MIRReturn(VALUE), ROOT))
-    fn = replace(fn, slots=(replace(fn.slots[0], residence=CHILD, storage_duration=CHILD), *fn.slots[1:]),
-                 regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES)))
+    fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], residence=CHILD, storage_duration=CHILD), *fn.slots[1:]),
+                 regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES))))
     validate_function(fn)
     event, = analyze_scope_ends(fn).ends[MIREdge(YES)]
     assert event.kind is MIRScopeEndKind.RECORD_WRAPPER
@@ -193,7 +192,7 @@ def test_aggregate_holder_retains_the_same_record_across_overwrite(shape: str) -
     read_holder = MIRAssign(MIRPlace(SAVED), MIRBorrow(payload))
     fn = function(MIRBlock(ENTRY, (INIT, WRITE, BIND, bind, WRITE, BIND, read_holder, MUTATE, READ),
                            MIRReturn(RESULT), ROOT))
-    fn = replace(fn, slots=(*fn.slots, slot))
+    fn = bind_parameters(replace(fn, slots=(*fn.slots, slot)))
     validate_function(fn)
     assert execute(fn, 2, False) == 9
     live = analyze_liveness(fn)
@@ -229,7 +228,7 @@ def test_backedge_cannot_reinitialize_the_same_wrapper() -> None:
 ])
 def test_backing_metadata_is_required(change: dict, message: str) -> None:
     fn = straight(INIT, WRITE)
-    fn = replace(fn, slots=(replace(fn.slots[0], **change), *fn.slots[1:]))
+    fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], **change), *fn.slots[1:])))
     with pytest.raises(MIRValidationError, match=message):
         validate_function(fn)
 
@@ -254,7 +253,7 @@ def test_possible_engagement_with_retained_alias_reports_overwrite() -> None:
         MIRBlock(YES, (WRITE, BIND, SAVE), MIRGoto(JOIN), ROOT),
         MIRBlock(NO, (), MIRGoto(JOIN), ROOT),
         MIRBlock(JOIN, (MIRAssign(MIRPlace(VALUE), MIRConstant(9)), WRITE, BIND, READ), MIRReturn(RESULT), ROOT))
-    fn = replace(fn, slots=(*fn.slots, MIRSlot(external, borrowed_shape(CELL), MIRSlotKind.PARAMETER)))
+    fn = bind_parameters(replace(fn, slots=(*fn.slots, MIRSlot(external, borrowed_shape(CELL), MIRSlotKind.PARAMETER))))
     assert dict(_analyze_presence(fn).engagement[MIRPoint(JOIN, 1)])[BACKING] == frozenset(MIREngagement)
     live = analyze_liveness(fn)
     conflicts = analyze_retention(fn, live, analyze_dependencies(fn, live), analyze_storage(fn)).conflicts

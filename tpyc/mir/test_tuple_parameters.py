@@ -10,9 +10,10 @@ from ..thir.validate import THIRValidationError, validate_function as validate_t
 from ..type_def_registry import ParamPassing
 from ..typesys import INT32, TupleType
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
+from .value import MIRFieldId, MIRValidationError
 from .testutil import Reference, TupleValue, execute, reslot
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
 
 
 SOURCE = """\

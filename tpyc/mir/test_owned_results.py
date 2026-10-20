@@ -19,17 +19,17 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRContainerElements,
-    MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite,
-    MIRRecordStorageInit, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRConstruct, MIRContainerElements, MIRCopy,
+    MIRDeref, MIRFunction, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordStorageInit,
+    MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .value import MIRField, MIRFieldId, MIRHolding, MIRValidationError
 from .scope_lifetime import analyze_scope_ends
 from .storage_adapter import MIRStorageRequest, certify_thir_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from . import summaries
 from .summaries import _private_records, summarize_function
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
 from .testutil import borrowed_shape, leaf_shape, owned_shape, reslot
 from ..thir.scalar_leaves import MIRClass
 

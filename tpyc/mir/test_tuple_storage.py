@@ -4,25 +4,25 @@ from dataclasses import replace
 
 import pytest
 
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionType
 from .dependencies import analyze_dependencies, MIRReferent
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant,
-    MIRConstruct, MIRDeref, MIREdge, MIRField, MIRFieldId, MIRFunction, MIRGoto,
-    MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRPoint,
-    MIRRead, MIRRecordLayout, MIRRegion, MIRRegionId, MIRReturn, MIRSlot,
-    MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
-    MIRTupleIndex, MIRTupleInitialization,
-    MIRUnionConstruct, MIRUnionCopy,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
+    MIREdge, MIRFunction, MIRGoto, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRPoint, MIRRead, MIRRegion,
+    MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy,
+    MIRTupleIndex, MIRTupleInitialization, MIRUnionConstruct, MIRUnionCopy,
 )
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage, dump_storage
-from .testutil import Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape, union_shape
-from .validate import MIRValidationError, validate_function
+from .testutil import (
+    bind_parameters, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, reslot,
+    tuple_shape, union_shape,
+)
+from .validate import validate_function
 
 
 BODY = MIRBodyId("tuple_storage", "example")
@@ -48,14 +48,14 @@ def function(*statements: MIRAssign) -> MIRFunction:
         MIRSlot(PAIR, tuple_shape(TUPLE, LAYOUT), MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY,
                 residence=ROOT),
         MIRSlot(EXTERNAL, borrowed_shape(CELL), MIRSlotKind.PARAMETER),
-        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
         MIRSlot(SAVED, borrowed_shape(CELL), MIRSlotKind.LOCAL, residence=ROOT),
         MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT),
     )
-    return MIRFunction(BODY, INT32, slots, (MIRBlock(ENTRY, statements, MIRReturn(VALUE), ROOT),), ENTRY,
+    return bind_parameters(MIRFunction(BODY, INT32, slots, (MIRBlock(ENTRY, statements, MIRReturn(VALUE), ROOT),), ENTRY,
                        records=(MIRRecordLayout(CELL, (FIELD,), True, True),),
-                       regions=(MIRRegion(ROOT, None, ENTRY),))
+                       regions=(MIRRegion(ROOT, None, ENTRY),)))
 
 
 def scoped(fn: MIRFunction, inside: tuple[MIRAssign, ...], after: tuple[MIRAssign, ...]) -> MIRFunction:

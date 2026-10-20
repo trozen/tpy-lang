@@ -29,7 +29,8 @@ from .presence import _analyze_presence
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .validate import MIRValidationError, source_definition, statement_reads, validate_function
+from .validate import source_definition, statement_reads, validate_function
+from .value import MIRValidationError
 
 
 SOURCE = '''from tpy import int32, nocopy

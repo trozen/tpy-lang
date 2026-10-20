@@ -16,7 +16,8 @@ from .nodes import (
     MIRStorageDuration,
 )
 from .summaries import summarize_function
-from .validate import MIRValidationError
+from .testutil import reaccess
+from .value import MIRValidationError
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -201,12 +202,12 @@ def test_parameter_bindings_carry_passing_and_access(artifacts: Artifacts) -> No
     functions, bodies, definitions = artifacts
     summary = summarize_function(functions["setter"], bodies["setter"], definitions).summary
     cell, value = summary.parameters
-    assert (cell.passing, cell.readonly, cell.borrowed_record.readonly) == (ParamPassing.MUT_REF, False, False)
-    assert (value.type, value.passing, value.readonly, value.borrowed_record) == (
+    assert (cell.passing, cell.readonly, cell.lent_record.readonly) == (ParamPassing.MUT_REF, False, False)
+    assert (value.type, value.passing, value.readonly, value.lent_record) == (
         INT32, ParamPassing.VALUE, False, None)
-    for damaged in (replace(value, passing=ParamPassing.CONST_REF), replace(value, readonly=True),
-                    replace(cell, passing=ParamPassing.CONST_REF), replace(cell, type=BOOL)):
-        broken = replace(summary, parameters=(damaged, value) if damaged.borrowed_record else (cell, damaged))
+    for damaged in (replace(value, passing=ParamPassing.CONST_REF), reaccess(value, True),
+                    replace(cell, passing=ParamPassing.CONST_REF), replace(cell, declared=BOOL)):
+        broken = replace(summary, parameters=(damaged, value) if damaged.lent_record else (cell, damaged))
         assert summary_problem(broken) is not None, damaged
     # An unpublished passing fails closed.
     fn = functions["setter"]
@@ -221,7 +222,7 @@ def test_a_readonly_function_binds_its_record_parameters_readonly(artifacts: Art
     assert result.state is MIRSummaryState.KNOWN, result
     left, right, flag = result.summary.parameters
     for record in (left, right):
-        assert (record.passing, record.readonly, record.borrowed_record.readonly) == (
+        assert (record.passing, record.readonly, record.lent_record.readonly) == (
             ParamPassing.CONST_REF, True, True)
     assert summary_problem(result.summary) is None
 
@@ -272,7 +273,7 @@ def test_malformed_write_contract(artifacts: Artifacts, damage: str) -> None:
         case "owner":
             write = replace(write, path=(replace(write.path[0], owner=BOOL),))
         case "readonly":
-            summary = replace(summary, parameters=(replace(summary.parameters[0], readonly=True),))
+            summary = replace(summary, parameters=(reaccess(summary.parameters[0], True),))
         case "untyped":
             write = 0
     assert summary_problem(replace(summary, writes=frozenset({write}))) is not None

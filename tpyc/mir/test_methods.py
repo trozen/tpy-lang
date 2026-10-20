@@ -12,7 +12,8 @@ from ..type_def_registry import ParamPassing
 from ..typesys import INT32, ReadonlyType
 from .definitions import MIRDefinitions
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRBodyKind, MIRFieldId, MIRFunction, MIRNotCovered, MIRSlotKind, function_body_kind
+from .nodes import MIRBodyId, MIRBodyKind, MIRFunction, MIRNotCovered, MIRSlotKind, function_body_kind
+from .value import MIRFieldId
 from .testutil import Reference, execute
 
 

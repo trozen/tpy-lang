@@ -8,10 +8,9 @@ from .coverage import call_write_places
 from .dependencies import MIRDependencies, MIRReferent, MIRReferents, resolve_referents
 from .dump import _place
 from ..typesys import TpyType
-from .nodes import (
-    MIRCall, MIRFunction, MIRNotCovered, MIRPoint, MIRRecordLayout, MIRSlot, MIRSlotId, statement_call,
-)
-from .validate import MIRValidationError, validate_function
+from .nodes import MIRCall, MIRFunction, MIRNotCovered, MIRPoint, MIRSlot, MIRSlotId, statement_call
+from .value import MIRRecordLayout, MIRValidationError
+from .validate import validate_function
 
 
 def resolve_call_writes(call: MIRCall, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],

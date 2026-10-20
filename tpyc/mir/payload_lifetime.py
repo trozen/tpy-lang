@@ -15,7 +15,8 @@ from .nodes import (
 from ..thir.scalar_leaves import MIRClass
 from .shapes import place_shape
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind
-from .validate import MIRPrepared, MIRPresenceError, MIRValidationError, _prepare_function, _validated_function
+from .validate import MIRPrepared, MIRPresenceError, _prepare_function, _validated_function
+from .value import MIRValidationError
 
 
 @dataclass(frozen=True)

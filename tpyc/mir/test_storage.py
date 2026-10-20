@@ -14,10 +14,8 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, UnionType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import (
-    MIRHolding,
-    MIRAlias, MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered,
-)
+from .nodes import MIRAlias, MIRBodyId, MIRFunction, MIRNotCovered
+from .value import MIRFieldId, MIRHolding
 from .testutil import Heap, Reference, execute
 
 SOURCE = """\
@@ -342,7 +340,8 @@ def test_unknown_reference_and_access_upgrade_are_not_covered(functions: dict[st
                       alias_binding=replace(alias.alias_binding, source="missing"))
     not_covered(replace(fn, body=(unknown, store, ret)), "unknown reference source")
     param = fn.params[0]
-    readonly = replace(param, borrowed_record=replace(param.borrowed_record, readonly=True))
+    readonly = replace(param, passing=ParamPassing.CONST_REF,
+                       borrowed_record=replace(param.borrowed_record, readonly=True))
     not_covered(replace(fn, params=(readonly,)), "alias increases access")
 
 

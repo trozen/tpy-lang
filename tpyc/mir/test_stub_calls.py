@@ -20,7 +20,8 @@ from ..typesys import (
 )
 from .call_contract import (
     MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding, MIRParameterWrite,
-    MIRReturnOrigin, MIRSummaryState, parameter_binding_problem, stub_protocol_argument, stub_summary, summary_problem,
+    MIRReturnOrigin, MIRSummaryState, parameter_contract_problem, stub_protocol_argument, stub_summary,
+    summary_problem,
 )
 from .definitions import MIRDefinitions
 from .dependencies import MIRReferent, analyze_dependencies
@@ -28,15 +29,14 @@ from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRDeref, MIRFunction, MIRNotCovered,
-    MIRPlace, MIRSlotKind,
+    MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRCopy, MIRDeref, MIRFunction, MIRNotCovered, MIRPlace, MIRSlotKind,
 )
+from .value import Declared, MIRHolding, MIRValidationError, with_access
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
-from .testutil import bound
-from .validate import MIRValidationError, validate_function
+from .testutil import bound, reaccess
+from .validate import validate_function
 
 SOURCE = """\
 import math
@@ -515,7 +515,7 @@ def test_a_mutating_method_writes_its_receivers_structure(methods) -> None:
     append = _summary(stubs["append"][0])
     assert _writes(append) == {(0, STRUCTURE)} and append.returns == frozenset()
     receiver, value = append.parameters
-    assert (receiver.passing, receiver.readonly, receiver.borrowed_record) == (ParamPassing.MUT_REF, False, None)
+    assert (receiver.passing, receiver.readonly, receiver.lent_record) == (ParamPassing.MUT_REF, False, None)
     # The element argument is copied into the container.
     assert (value.type, value.passing, value.readonly) == (INT32, ParamPassing.VALUE, False)
     # Either `pop` overload removes an element; its result is the caller's own.
@@ -583,9 +583,9 @@ def test_method_stub_summary_gates(methods) -> None:
                  signature=replace(signature, param_types=(nested, value))), "unsupported native container element"),
         (replace(append, bound_arguments=(signature.param_types[0],)), "stub protocol argument is not a builtin leaf"),
         # A container is readonly exactly at CONST_REF, and passes by reference.
-        (replace(append, readonly=(True, False)), "unsupported container call parameter"),
+        (replace(append, readonly=(True, False)), "call parameter passing differs from its type"),
         (replace(append, signature=replace(signature, passings=(ParamPassing.CONST_REF, ParamPassing.VALUE))),
-         "unsupported container call parameter"),
+         "call parameter passing differs from its type"),
         (replace(append, signature=replace(signature, passings=(ParamPassing.VALUE, ParamPassing.VALUE))),
          "call parameter passing differs from its type"),
         (replace(append, signature=replace(signature, passings=None)), "stub signature unpublished"),
@@ -606,9 +606,10 @@ def test_method_stub_summary_gates(methods) -> None:
     # An element handed over to the container is the callee's own: never a readonly borrow.
     record = _summary(methods.stubs["methods"]["append"][1])
     element = record.parameters[1]
-    assert parameter_binding_problem(record.callee.signature.param_types[1], element) is None
-    assert parameter_binding_problem(record.callee.signature.param_types[1], replace(element, readonly=True)) == (
-        "unsupported element call parameter")
+    assert element.declared == record.callee.signature.param_types[1]
+    assert parameter_contract_problem(element, Declared(False)) is None
+    assert parameter_contract_problem(reaccess(element, True), Declared(False)) == (
+        "call parameter binding differs from its derivation")
     summary = _summary(append)
     for damaged in (replace(summary, writes=frozenset()),
                     replace(summary, writes=frozenset({MIRParameterWrite(0, (MIRContainerElements(),))}))):
@@ -662,11 +663,15 @@ def test_user_summaries_publish_container_writes(methods) -> None:
         write = MIRParameterWrite(*path)
         assert summary_problem(_user_summary(fn, bindings, writes={write})) == reason, path
     # Bindings: a container is readonly exactly at CONST_REF; a readonly-element view is readonly.
-    for index, damaged in ((0, replace(bindings[0], readonly=True)), (2, replace(bindings[2], readonly=True)),
-                           (4, replace(bindings[4], readonly=False))):
+    # A loan readonly at MUT_REF (its members with it), readonly owned storage, a readonly view made mutable.
+    lent = bindings[0].value
+    for index, damaged, reason in (
+            (0, replace(bindings[0], value=replace(lent, readonly=True, members=with_access(lent.members, True))),
+             "call parameter binding differs from its derivation"),
+            (2, reaccess(bindings[2], True), "readonly owned storage"),
+            (4, reaccess(bindings[4], False), "mutable loan of a readonly value")):
         broken = bindings[:index] + (damaged,) + bindings[index + 1:]
-        assert summary_problem(_user_summary(fn, broken)) in (
-            "unsupported container call parameter", "unsupported container view call parameter")
+        assert summary_problem(_user_summary(fn, broken)) == reason, index
 
 
 def test_user_summaries_return_container_views_and_elements_of_parameters(methods) -> None:

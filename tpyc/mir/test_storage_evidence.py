@@ -7,7 +7,6 @@ import pytest
 
 from ..thir.nodes import THIRBorrowedRecord
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType
 from ..mir_workspace import analyze_call_workspace
 from .collect import call_definitions
@@ -16,12 +15,12 @@ from .dependencies import _dependencies
 from .liveness import _liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
-    MIRConstant, MIRConstruct, MIRDeref, MIREdge, MIRField, MIRFieldId, MIRFunction, MIRGoto,
-    MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRPoint, MIRRead,
-    MIRRecordLayout, MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode,
-    MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRDeref,
+    MIREdge, MIRFunction, MIRGoto, MIRIsPresent, MIROptionalConstruct, MIRPlace, MIRPoint, MIRRead,
+    MIRRecordStorageInit, MIRRecordStorageKind, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage_evidence import (
     MIRStorageConflictKind, MIRStorageEvidence, MIRStorageVerdict, _storage_evidence,
@@ -30,8 +29,8 @@ from .storage_evidence import (
 from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_function
 from .test_payload_lifetime import CURRENT, payload, write
 from .test_scope_inspection import stale_scalar_alias
-from .validate import MIRPresenceError, MIRValidationError, _prepare_function
-from .testutil import borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot
+from .validate import MIRPresenceError, _prepare_function
+from .testutil import bind_parameters, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot
 
 
 SOURCE = '''from tpy import int32, readonly
@@ -300,10 +299,10 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
         construct, MIRAssign(MIRPlace(SAVED), MIRBorrow(MIRPlace(BACKING))), read)
     if not retain:
         iteration += (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)),)
-    return MIRFunction(LOOP, INT32, (
-        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    return bind_parameters(MIRFunction(LOOP, INT32, (
+        MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
         _ref(OWNER, cell, MIRSlotKind.PARAMETER),
-        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+        MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
         _ref(SAVED, cell, MIRSlotKind.LOCAL, ROOT), backing,
         MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL, residence=ROOT)), (
         MIRBlock(ENTRY, (MIRAssign(MIRPlace(SAVED), MIRAlias(OWNER)), MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(VALUE)))),
@@ -312,7 +311,7 @@ def activation(definitions: MIRDefinitions, *, retain: bool, optional: bool = Fa
         MIRBlock(ITERATION, iteration, MIRGoto(HEADER), INNER),
         # Reading `saved` after the loop keeps it live across every iteration end.
         MIRBlock(AFTER, (read,), MIRReturn(OUT), ROOT)),
-        ENTRY, (layout,), regions=(MIRRegion(ROOT, None, ENTRY), MIRRegion(INNER, ROOT, ITERATION)))
+        ENTRY, (layout,), regions=(MIRRegion(ROOT, None, ENTRY), MIRRegion(INNER, ROOT, ITERATION))))
 
 
 @pytest.mark.parametrize("optional", [False, True])
@@ -448,10 +447,10 @@ def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
                       residence=region)
     once = MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_ONCE)
     local_arm = MIRBorrow(MIRPlace(R_LOCAL)) if escape else MIRAlias(R_OWNER)
-    return MIRFunction(RETURN, ReadonlyType(cell), (
-        MIRSlot(R_FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    return bind_parameters(MIRFunction(RETURN, ReadonlyType(cell), (
+        MIRSlot(R_FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
         _ref(R_OWNER, cell, MIRSlotKind.PARAMETER),
-        MIRSlot(R_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), storage,
+        MIRSlot(R_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER), storage,
         replace(storage, id=R_SPARE),
         _ref(R_SAVED, cell, MIRSlotKind.LOCAL, region)), (
         MIRBlock(R_ENTRY, (MIRAssign(MIRPlace(R_LOCAL), MIRConstruct((R_VALUE,)), storage_write=once),
@@ -460,7 +459,7 @@ def returning(definitions: MIRDefinitions, *, escape: bool) -> MIRFunction:
         MIRBlock(R_LOCAL_ARM, (MIRAssign(MIRPlace(R_SAVED), local_arm),), MIRReturn(R_SAVED), region),
         MIRBlock(R_OWNER_ARM, (MIRAssign(MIRPlace(R_SAVED), MIRAlias(R_OWNER)),), MIRReturn(R_SAVED), region)),
         R_ENTRY, (layout,), regions=(MIRRegion(region, None, R_ENTRY),),
-        borrowed_result=THIRBorrowedRecord(cell, True))
+        borrowed_result=THIRBorrowedRecord(cell, True)))
 
 
 def test_borrowed_return_needs_explicit_origin_proof(artifacts: Artifacts) -> None:

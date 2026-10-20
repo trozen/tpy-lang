@@ -19,15 +19,16 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRDeref, MIRField,
-    MIRFunction, MIRNotCovered, MIRReturn, MIRPoint, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstruct, MIRDeref, MIRFunction, MIRNotCovered, MIRReturn,
+    MIRPoint, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
 )
+from .value import MIRField, MIRValidationError
 from .retention import analyze_retention
 from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .summaries import summarize_function
-from .validate import MIRValidationError, validate_function
-from .testutil import Reference, bound, execute, reslot
+from .validate import validate_function
+from .testutil import bind_parameters, Reference, bound, execute, reslot
 from .test_scope_inspection import scoped_loop
 from .test_retention import CELL, SAVED
 
@@ -255,7 +256,9 @@ def test_result_contract_rejects_missing_or_wrong_origins(artifacts: Artifacts) 
     ):
         assert summary_problem(replace(summary, returns=origins)) == message
     readonly = summarize_function(functions["observe"], bodies["observe"], definitions).summary
-    assert summary_problem(replace(summary, parameters=readonly.parameters)) == "unsupported return origin type or access"
+    # The readonly loan bound at the callee's own declared type.
+    lent = tuple(replace(b, declared=t) for b, t in zip(readonly.parameters, summary.callee.signature.param_types))
+    assert summary_problem(replace(summary, parameters=lent)) == "unsupported return origin type or access"
 
 
 def test_return_access_is_validated_without_thir(artifacts: Artifacts) -> None:
@@ -269,9 +272,11 @@ def test_return_access_is_validated_without_thir(artifacts: Artifacts) -> None:
         validate_function(replace(body, borrowed_result=replace(body.borrowed_result, readonly=False)))
     body = bodies["identity"]
     returned = next(block.terminator.value for block in body.blocks if isinstance(block.terminator, MIRReturn))
-    slots = tuple(reslot(slot, readonly=True) if slot.id == returned else slot for slot in body.slots)
+    # The parameter it returns, lent readonly (and bound so): the result it returns stays mutable.
+    slots = tuple(reslot(slot, readonly=True) if slot.id == returned else slot
+                  for slot in body.slots)
     with pytest.raises(MIRValidationError, match="^borrowed return type or access mismatch$"):
-        validate_function(replace(body, slots=slots))
+        validate_function(bind_parameters(replace(body, slots=slots)))
 
 
 def test_borrowed_return_requires_verified_layout(artifacts: Artifacts) -> None:
@@ -438,7 +443,7 @@ def test_call_result_retains_storage_across_scope_exit() -> None:
     ref = THIRBorrowedRecord(CELL, False)
     callee = THIRResolvedCallee(THIRFunctionIdentity("retention", "identity"),
                                 THIRCallableSignature((RefType(CELL),), RefType(CELL), ref, (ParamPassing.MUT_REF,)))
-    summary = MIRCallSummary(callee, (bound(CELL, ParamPassing.MUT_REF, ref=ref),),
+    summary = MIRCallSummary(callee, (bound(RefType(CELL), ParamPassing.MUT_REF, ref=ref),),
                              frozenset({0}), frozenset(), frozenset(), frozenset({MIRReturnOrigin(0)}), frozenset(), True)
     blocks = tuple(replace(block, statements=tuple(
         replace(stmt, value=MIRCall(summary, (stmt.value.source,)))
@@ -460,8 +465,8 @@ def test_call_result_target_is_validated(workspace: MIRCallWorkspace, damage: st
                               for index, stmt in enumerate(block.statements)
                               if isinstance(stmt, MIRAssign) and isinstance(stmt.value, MIRCall))
     if damage == "readonly":
-        changed = replace(body, slots=tuple(reslot(s, readonly=False) if s.id == stmt.target.root else s
-                                            for s in body.slots))
+        changed = bind_parameters(replace(body, slots=tuple(reslot(s, readonly=False) if s.id == stmt.target.root else s
+                                            for s in body.slots)))
         message = "call result type or access mismatch"
     else:
         if damage == "projected":

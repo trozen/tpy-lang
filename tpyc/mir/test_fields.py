@@ -19,14 +19,14 @@ from .dump import dump_function
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField,
-    MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordWriteMode,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCallStmt, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRFunction,
+    MIRMemberInitMode, MIRNotCovered, MIRPlace, MIRRecordWrite, MIRRecordWriteMode,
 )
+from .value import MIRField, MIRFieldId, MIRValidationError
 from .retention import MIRRetention, affects, analyze_retention, may_overlap
 from .storage import analyze_storage, dump_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
 
 SOURCE = """\
 from tpy import String, StrView, Own, int32

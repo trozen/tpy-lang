@@ -11,10 +11,9 @@ from ..typesys import BOOL, INT32
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRHolding,
-    MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWrite,
-    MIRRecordWriteMode, MIRReturn, MIRStorageDuration,
+    MIRBodyId, MIRFunction, MIRNotCovered, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRStorageDuration,
 )
+from .value import MIRHolding
 from .scope_lifetime import inspect_scope_lifetimes
 from .test_retention import analyze
 from .test_reuse import CELL_SOURCE, source_function

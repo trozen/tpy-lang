@@ -23,9 +23,10 @@ from .mir.collect import MIRAnalyses, MIRBodySource, enumerate_body_sources, low
 from .mir.coverage import call_place
 from .mir.dependencies import MIRReferents, resolve_referents
 from .mir.nodes import (
-    MIRCall, MIRContainerElements, MIRContainerStructure, MIRField, MIRFunction, MIRPlace,
-    MIRSlotKind, source_order, statement_call,
+    MIRCall, MIRContainerElements, MIRContainerStructure, MIRFunction, MIRPlace, MIRSlotKind, source_order,
+    statement_call,
 )
+from .mir.value import MIRField
 from .mir_workspace import MIRProgram, resolved_calls
 
 

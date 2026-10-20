@@ -14,13 +14,14 @@ from .dependencies import (
 from .dump import _location, _place, _write_step, obligation_text
 from .liveness import MIRLiveness, MIRPoint, analyze_liveness
 from .nodes import (
-    MIRContainerElements, MIRContainerStructure, MIRField, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite,
-    MIRRecordLayout, MIRRecordWriteMode, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, statement_call,
+    MIRContainerElements, MIRContainerStructure, MIRFunction, MIRNotCovered, MIRPlace, MIRRecordWrite,
+    MIRRecordWriteMode, MIRSlot, MIRSlotId, MIRSlotKind, statement_call,
 )
+from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError
 from .storage import MIRStorageEvents, analyze_storage, owned_field
 from .presence import MIREngagement
 from .shapes import walk_to
-from .validate import MIRValidationError, _validated_function
+from .validate import _validated_function
 
 
 # An initialization creates its storage, so no loan can predate it: the

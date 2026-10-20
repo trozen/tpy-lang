@@ -35,16 +35,17 @@ from .dependencies import (
 )
 from .liveness import MIRLiveness, _liveness
 from .nodes import (
-    MIRAssign, MIRBodyKind, MIREdge, MIRField, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
-    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit,
-    MIRUnionPayload, source_order,
+    MIRAssign, MIRBodyKind, MIREdge, MIRFunction, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRPoint,
+    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageInit, MIRUnionPayload,
+    source_order,
 )
+from .value import MIRField, MIRValidationError
 from .payload_lifetime import _payload_conflicts, _payload_ends
 from .presence import MIRPresenceIssueKind
 from .retention import analyze_retention
 from .scope_lifetime import MIRScopeEndKind, _scope_conflicts, _scope_ends
 from .storage import analyze_storage
-from .validate import MIRPrepared, MIRPresenceError, MIRValidationError, _prepare_function
+from .validate import MIRPrepared, MIRPresenceError, _prepare_function
 
 
 class MIRStorageVerdict(Enum):

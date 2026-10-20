@@ -7,17 +7,19 @@ import pytest
 from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _assert_rejects_at, _compile, _entry, _strict_reject
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32_MAX, INT32_MIN, VoidType
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBlock, MIRBodyId, MIRFieldId, MIRFunction,
-    MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPlace, MIRReturn,
+    MIRAssign, MIRBlock, MIRBodyId, MIRFunction, MIRNotCovered, MIROptionalConstruct, MIROptionalCopy, MIRPlace,
+    MIRReturn,
 )
-from .testutil import Heap, OptionalValue, Reference, execute, reslot
-from .validate import MIRValidationError, validate_function as validate_mir
+from .value import MIRFieldId, MIRValidationError
+from .testutil import bind_parameters, Heap, OptionalValue, Reference, execute, reslot
+from .validate import validate_function as validate_mir
 from ..thir.scalar_leaves import MIRClass
 
 SOURCE = """\
@@ -310,7 +312,8 @@ def test_internal_record_member_assembly(artifacts: Artifacts) -> None:
                          form=th.Form.BORROW)
     # The frontend's parameter-reseat gate is pinned separately; this checks
     # the admitted IR operation without claiming that source spelling works.
-    other = replace(fn.params[1], borrowed_record=replace(fn.params[1].borrowed_record, readonly=False))
+    other = replace(fn.params[1], passing=ParamPassing.MUT_REF,
+                    borrowed_record=replace(fn.params[1].borrowed_record, readonly=False))
     ir = lower(replace(fn, params=(fn.params[0], other),
                        body=(replace(decl, init=member), *fn.body[1:])))
     field = MIRFieldId(decl.optional_layout.payload.type, "value")
@@ -322,7 +325,7 @@ def test_internal_readonly_optional_store_is_rejected(artifacts: Artifacts) -> N
     fn = lower(artifacts[0]["records"])
     readonly = tuple(reslot(s, members=(replace(s.shape.payload, readonly=True),))
                      if s.shape.cls is MIRClass.OPTIONAL else s for s in fn.slots)
-    from_fn = replace(fn, slots=readonly)
+    from_fn = bind_parameters(replace(fn, slots=readonly))
     with pytest.raises(MIRValidationError, match="readonly reference"):
         validate_mir(from_fn)
 
@@ -341,8 +344,8 @@ def test_optional_transfer_capabilities(artifacts: Artifacts, copy: bool,
     operation = MIROptionalCopy(MIRPlace(source.id)) if copy else MIROptionalConstruct(MIRPlace(source.id))
     root = fn.blocks[0].region
     block = MIRBlock(fn.entry, (MIRAssign(MIRPlace(target.id), operation),), MIRReturn(), root)
-    fn = replace(fn, slots=tuple(replace(s, residence=root) if s.residence else s for s in slots),
-                 return_type=VoidType(), blocks=(block,), regions=(fn.regions[0],))
+    fn = bind_parameters(replace(fn, slots=tuple(replace(s, residence=root) if s.residence else s for s in slots),
+                 return_type=VoidType(), blocks=(block,), regions=(fn.regions[0],)))
     if source_readonly and not target_readonly:
         with pytest.raises(MIRValidationError, match="access mismatch"):
             validate_mir(fn)

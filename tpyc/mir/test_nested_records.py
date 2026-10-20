@@ -29,16 +29,15 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId,
-    MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead,
-    MIRRecordLayout, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRMemberInit,
+    MIRMemberInitMode, MIRMemberInits, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode,
+    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .retention import affects, analyze_retention
 from .storage import analyze_storage, storage_destination
-from .testutil import Reference, borrowed_shape, bound, execute, leaf_shape, reslot
-from .validate import MIRValidationError, validate_function
+from .testutil import Reference, bind_parameters, borrowed_shape, bound, execute, leaf_shape, repass, reslot
+from .validate import validate_function
 
 SOURCE = """\
 from tpy import int32, Own, ValueType, copy, readonly
@@ -979,10 +978,10 @@ def test_record_member_initializer_capabilities(program: _Program) -> None:
     # A member copy needs a copyable layout ...
     with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
         validate_function(_with_layout(copied, point, copyable=False))
-    # ... and reads through a readonly lend.
+    # ... and reads through a readonly lend (a parameter lent mutably, bound so).
     lent = copied.slots[copied.receiver_init.fields[0].source.index]
     with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
-        validate_function(_with_slot(copied, lent, readonly=False))
+        validate_function(bind_parameters(_with_slot(copied, lent, readonly=False)))
     # A move out of the `Own[R]` parameter, and a member built field by
     # field then moved in, need a movable layout.
     with pytest.raises(MIRValidationError, match="invalid receiver initializer parameter"):
@@ -1006,7 +1005,7 @@ def _with_slot(fn: MIRFunction, slot: MIRSlot, **changes) -> MIRFunction:
 def test_an_owned_record_parameter_is_body_storage(program: _Program, name: str) -> None:
     fn = _lowered(program, name)
     storage = _handed(fn)
-    assert (storage.passing is ParamPassing.OWN and storage.storage_duration is MIRStorageDuration.BODY
+    assert (fn.slot_bindings[storage.id].passing is ParamPassing.OWN and storage.storage_duration is MIRStorageDuration.BODY
             and storage.name == "p" and not storage.readonly)
     # The body reaches it through a holder borrowed at entry, as an owned local.
     entry = fn.blocks[0].statements[0]
@@ -1054,16 +1053,17 @@ def test_an_owned_record_parameter_needs_its_definition(program: _Program) -> No
 
 
 @pytest.mark.parametrize("change,message", [
-    ({"passing": ParamPassing.CONST_REF}, "invalid storage duration fact"),
-    ({"passing": ParamPassing.VALUE}, "invalid storage duration fact"),
-    ({"readonly": True}, "invalid storage duration fact"),
+    ({"passing": ParamPassing.CONST_REF}, "parameter call parameter passing differs from its type"),
+    ({"passing": ParamPassing.VALUE}, "parameter call parameter passing differs from its type"),
+    ({"readonly": True}, "parameter call parameter binding differs from its derivation"),
     ({"storage_duration": None}, "unsupported record storage type or form"),
 ])
 def test_owned_record_parameter_slot_negatives(program: _Program, change: dict, message: str) -> None:
     fn = _lowered(program, "keep")
     validate_function(fn)
     with pytest.raises(MIRValidationError, match=message):
-        validate_function(_with_slot(fn, _handed(fn), **change))
+        validate_function(repass(fn, "p", change["passing"]) if "passing" in change
+                          else _with_slot(fn, _handed(fn), **change))
 
 
 def test_a_member_moves_from_the_parameter_storage(program: _Program) -> None:
@@ -1442,8 +1442,9 @@ def test_member_write_validator_negatives(program: _Program) -> None:
     # A readonly receiver, or a member declared `readonly[...]`.
     holder = fn.slots[write.target.root.index]
     with pytest.raises(MIRValidationError, match="store through readonly"):
-        validate_function(replace(fn, slots=tuple(reslot(s, readonly=True) if s.id == holder.id else s
-                                                  for s in fn.slots)))
+        validate_function(bind_parameters(replace(fn, slots=tuple(
+            reslot(s, readonly=True) if s.id == holder.id else s
+            for s in fn.slots))))
     a = write.target.projections[-1]
     fixed = replace(a, type=ReadonlyType(point))
     readonly_member = _with_statement(_with_layout(fn, line, fields=tuple(

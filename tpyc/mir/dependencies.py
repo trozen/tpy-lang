@@ -9,24 +9,25 @@ from ..parse import SourceLocation
 from ..thir.nodes import THIRFieldIdentity
 from .call_contract import MIRLoanTransfer, MIRResultHolder, MIRStaticLoan, owned_record_result
 from ..thir.scalar_leaves import (
-    MIRClass, declared_members, holds_loan, value_class, view_endpoint,
+    MIRClass, holds_loan, value_class, view_endpoint,
 )
 from ..typesys import NominalType, TpyType, unwrap_readonly
 from .dump import _place
 from .liveness import MIRLiveness, MIRPoint
 from .nodes import (
     MIRAlias, MIRAssign, MIRCallStmt, MIRStatement, MIRBlockId, MIRBorrow, MIRCall, MIRCompare, MIRConstant,
-    MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRIsAlternative, MIRRecordLayout,
-    MIRIsPresent, MIRMove, MIRNot, MIRNotCovered, MIROptionalConstruct,
-    MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct,
-    MIRUnionCopy, MIRUnionExtract, MIRUnionPayload, MIRHolding, MIRShape,
-    MIRContainerStructure, MIRContainerElements,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRReturn, statement_target,
+    MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRIsAlternative, MIRIsPresent, MIRMove, MIRNot, MIRNotCovered,
+    MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract, MIRUnionPayload,
+    MIRContainerStructure, MIRContainerElements, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
+    MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRReturn, statement_target,
 )
-from .shapes import loan_field, prefix_shapes, step, view_member
-from .validate import MIRPrepared, MIRValidationError, _validated_function, successors
+from .value import (
+    MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRShape, MIRValidationError, lent_record, loan_field,
+    member_types,
+)
+from .shapes import prefix_shapes, step, view_member
+from .validate import MIRPrepared, _validated_function, successors
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .coverage import call_place, path_step
 
@@ -162,15 +163,14 @@ def object_keys(slot: MIRSlot, layouts: Mapping[TpyType, MIRRecordLayout]) -> tu
     (the caller's object), one per view member, keyed at the member place --
     through inline record members, whose layouts come with the record's."""
     if slot.shape.is_storage and slot.shape.cls is MIRClass.RECORD:
-        pass
-    elif _optional_record_parameter(slot):
-        # The payload record an Optional parameter lends, keyed like a
-        # borrowed record parameter's (`external_origin`).
-        return _member_keys(MIRPlace(slot.id), layouts.get(origin_shape(slot).type), layouts)
-    elif not (slot.kind is MIRSlotKind.PARAMETER and slot.shape.is_pointer
-              and slot.shape.cls is MIRClass.RECORD):
+        record = slot.type
+    elif (lent := _parameter_lent_record(slot)) is not None:
+        # An Optional parameter's payload record is keyed at the parameter,
+        # as a borrowed record parameter's is (`external_origin`).
+        record = lent.type
+    else:
         return ()
-    return _member_keys(MIRPlace(slot.id), layouts.get(slot.type), layouts)
+    return _member_keys(MIRPlace(slot.id), layouts.get(record), layouts)
 
 
 def _member_keys(place: MIRPlace, layout: MIRRecordLayout | None,
@@ -312,7 +312,7 @@ def external_origin(leaf: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot]) -> MIRPl
     -- the record it lends, as a borrowed record parameter's does."""
     if not leaf.projections and slots[leaf.root].shape.container_view_holder:
         return MIRPlace(leaf.root, (MIRContainerElements(),))
-    if leaf.projections == (MIROptionalPayload(),) and _optional_record_parameter(slots[leaf.root]):
+    if leaf.projections == (MIROptionalPayload(),) and _parameter_lent_record(slots[leaf.root]) is not None:
         return MIRPlace(leaf.root)
     return leaf
 
@@ -321,12 +321,15 @@ def origin_shape(root: MIRSlot) -> MIRShape:
     """The object a referent rooted at `root` names: the slot's own value,
     the storage a holder of it points at, or, for an Optional record
     parameter (`external_origin`), the payload record it lends."""
-    shape = root.shape.payload if _optional_record_parameter(root) else root.shape
+    lent = _parameter_lent_record(root)
+    shape = root.shape if lent is None else lent
     return step(shape, MIRDeref(), {}) if shape.is_pointer else shape
 
 
-def _optional_record_parameter(slot: MIRSlot) -> bool:
-    return slot.kind is MIRSlotKind.PARAMETER and slot.shape.record_payload
+def _parameter_lent_record(slot: MIRSlot) -> MIRShape | None:
+    """The caller's record a parameter lends (`lent_record`), an origin
+    outside the body; a local holder's record is found through its loans."""
+    return lent_record(slot.shape) if slot.kind is MIRSlotKind.PARAMETER else None
 
 
 def resolve_referents(place: MIRPlace, state: MIRReferents, slots: Mapping[MIRSlotId, MIRSlot],
@@ -491,8 +494,10 @@ def written_record(place: MIRPlace, slots: Mapping[MIRSlotId, MIRSlot],
     for projection, holder in prefix_shapes(place, slots, records):
         match projection:
             case MIRContainerStructure() | MIRContainerElements():
-                members = declared_members(unwrap_readonly(typ))
-                if members is not None and not any(holds_loan(m) for m in members[:2] if m is not None):
+                # Not `container_members`: an element place MIR does not
+                # model (a nested container) still holds no loan.
+                members = member_types(unwrap_readonly(typ))
+                if members is not None and not any(holds_loan(m) for m in members):
                     return None
                 raise _DependencyRefusal("loan-holding write under an unmodeled place")
         # UNKNOWN reads as no loan, as everywhere in MIR (`holds_loan`): a

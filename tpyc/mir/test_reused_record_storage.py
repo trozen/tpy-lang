@@ -22,7 +22,8 @@ from .scope_lifetime import inspect_scope_lifetimes
 from .storage import analyze_storage
 from .test_retention import INITIAL, analyze, loop_function
 from .testutil import execute, owned_shape, reslot
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
+from .value import MIRValidationError
 
 
 @pytest.mark.parametrize("move", [False, True])

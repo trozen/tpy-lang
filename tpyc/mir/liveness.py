@@ -9,7 +9,8 @@ from .nodes import (
     MIRStatement, MIRBlockId, MIRBranch, MIRFunction, MIRGoto, MIRReturn,
     MIRPoint, MIRSlotId, MIRTerminator, member_init_operands,
 )
-from .validate import MIRPrepared, MIRValidationError, _validated_function, source_definition, statement_reads, successors
+from .validate import MIRPrepared, _validated_function, source_definition, statement_reads, successors
+from .value import MIRValidationError
 
 
 @dataclass(frozen=True)

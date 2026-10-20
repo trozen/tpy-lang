@@ -22,24 +22,21 @@ from .call_contract import MIRGlobalId, MIRSummaryState
 from .dependencies import MIRReferent, analyze_dependencies
 from .definitions import MIRDefinitions, MIROwnedLeafDefinition
 from .dump import dump_function
-from .emit import MIRValue, owned_storage_shape
+from .emit import MIRValue, owned_leaf_shape
 from .liveness import MIRPoint, analyze_liveness
 from .lower import _Lowering, lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant,
-    MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRMove, MIRNotCovered,
-    MIROp,
-    MIRPlace, MIRRead,
-    MIRRecordLayout, MIRRecordWrite, MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId,
-    MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRCall, MIRCompare, MIRConstant, MIRConstruct,
+    MIRCopy, MIRDeref, MIRFunction, MIRGoto, MIRMove, MIRNotCovered, MIROp, MIRPlace, MIRRead, MIRRecordWrite,
+    MIRRecordWriteMode, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRValidationError
 from .retention import analyze_retention, may_overlap
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage import analyze_storage
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
-from .validate import MIRValidationError, statement_may_raise, validate_function
-from .testutil import borrowed_shape, leaf_shape, owned_shape, reslot
+from .validate import statement_may_raise, validate_function
+from .testutil import bind_parameters, borrowed_shape, leaf_shape, owned_shape, repass, reslot
 from ..thir.scalar_leaves import MIRClass
 
 RECORD_SOURCE = """\
@@ -127,7 +124,7 @@ class _Variant:
     def extra_slots(self) -> tuple[MIRSlot, ...]:
         if self.leaf:
             return (MIRSlot(RESULT, leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=R0),)
-        field_slot = MIRSlot(FIELD_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, "v", passing=ParamPassing.VALUE)
+        field_slot = MIRSlot(FIELD_VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER, "v")
         return (MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.TEMPORARY, residence=R0), field_slot,
                 _holder(WRITER, self.type, readonly=False))
 
@@ -162,8 +159,8 @@ def _with_exits(fn: MIRFunction) -> MIRFunction:
 
 
 def _function(variant: _Variant, slots, blocks, regions) -> MIRFunction:
-    return _with_exits(MIRFunction(B, variant.return_type(), tuple(sorted(slots, key=lambda s: s.id.index)),
-                                   tuple(blocks), _bid(0), (variant.layout,), regions=tuple(regions)))
+    return _with_exits(bind_parameters(MIRFunction(B, variant.return_type(), tuple(sorted(slots, key=lambda s: s.id.index)),
+                                   tuple(blocks), _bid(0), (variant.layout,), regions=tuple(regions))))
 
 
 def scope_end_body(variant: _Variant) -> MIRFunction:
@@ -248,12 +245,12 @@ def test_probe_replacement_answers_as_a_record(active, retained: bool) -> None:
 def _leaf_body(statements, slots, *, blocks=None, regions=None, ret=RESULT, return_type=BOOL) -> MIRFunction:
     layout = MIRRecordLayout(STR, (), True, True, opaque=True)
     blocks = blocks or [MIRBlock(_bid(0), tuple(statements), MIRReturn(ret), R0)]
-    return _with_exits(MIRFunction(B, return_type, tuple(sorted(slots, key=lambda s: s.id.index)), tuple(blocks),
-                                   _bid(0), (layout,), regions=tuple(regions or (MIRRegion(R0, None, _bid(0)),))))
+    return _with_exits(bind_parameters(MIRFunction(B, return_type, tuple(sorted(slots, key=lambda s: s.id.index)), tuple(blocks),
+                                   _bid(0), (layout,), regions=tuple(regions or (MIRRegion(R0, None, _bid(0)),)))))
 
 
-def _param_borrow(sid: MIRSlotId, typ=STR, passing=ParamPassing.VIEW) -> MIRSlot:
-    return MIRSlot(sid, borrowed_shape(typ, readonly=True), MIRSlotKind.PARAMETER, "p", passing=passing)
+def _param_borrow(sid: MIRSlotId, typ=STR) -> MIRSlot:
+    return MIRSlot(sid, borrowed_shape(typ, readonly=True), MIRSlotKind.PARAMETER, "p")
 
 
 def _write(target, value, mode=MIRRecordWriteMode.INITIALIZE_ONCE) -> MIRAssign:
@@ -325,7 +322,7 @@ def test_replacement_needs_initialized_storage(active) -> None:
 
 @pytest.mark.parametrize("replaced", [False, True])
 def test_entry_owned_parameter_is_body_storage(active, replaced: bool) -> None:
-    param = _storage(STR, MIRStorageDuration.BODY, MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
+    param = _storage(STR, MIRStorageDuration.BODY, MIRSlotKind.PARAMETER)
     replacement = [_write(STORAGE, MIRConstant("b"), MIRRecordWriteMode.IN_PLACE)] if replaced else []
     fn = _leaf_body([MIRAssign(MIRPlace(HOLDER), MIRBorrow(MIRPlace(STORAGE))), *replacement, _compare_holder()],
                     [param, _holder(HOLDER, STR), _result()])
@@ -340,7 +337,7 @@ def test_entry_owned_parameter_is_body_storage(active, replaced: bool) -> None:
 
 
 def _loop_body(mode: MIRRecordWriteMode, duration) -> MIRFunction:
-    flag = MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, "flag", passing=ParamPassing.VALUE)
+    flag = MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, "flag")
     inner = R1 if isinstance(duration, MIRRegionId) else R0
     slots = [_storage(STR, duration), _holder(HOLDER, STR, residence=inner),
              replace(_result(), residence=inner), flag]
@@ -611,12 +608,13 @@ def test_parameters_borrow_or_own_by_their_passing(lowered_active) -> None:
     for name, passing in (("s", ParamPassing.VIEW), ("n", ParamPassing.CONST_REF),
                           ("t", ParamPassing.CONST_REF), ("b", ParamPassing.VIEW)):
         slot = _slot(fn, name)
-        assert (slot.shape.holding, slot.readonly, slot.form, slot.passing) == (
+        assert (slot.shape.holding, slot.readonly, slot.form, fn.slot_bindings[slot.id].passing) == (
             MIRHolding.POINTER, True, Form.BORROW, passing)
     entry = analyze_dependencies(fn, analyze_liveness(fn)).entry_active
     assert all(refs == frozenset({MIRReferent(leaf, external=True)}) for leaf, refs in entry.items())
     owned = _slot(lowered_active.bodies["by_value"], "s")
-    assert (owned.shape.is_storage, owned.storage_duration, owned.passing) == (
+    assert (owned.shape.is_storage, owned.storage_duration,
+            lowered_active.bodies["by_value"].slot_bindings[owned.id].passing) == (
         True, MIRStorageDuration.BODY, ParamPassing.VALUE)
     # The by-value parameter returns itself, with no copy.
     assert _lines(lowered_active.bodies["by_value"])[-1] == f"return %{owned.id.index}"
@@ -644,7 +642,7 @@ def test_region_storage_outside_a_full_expression_refuses_the_body(lowered_activ
 
     def leaking(self) -> None:
         self.mir.active_temporaries = []
-        self.mir.materialize(MIRValue(MIRConstant("x"), owned_storage_shape(STR)), "node")
+        self.mir.materialize(MIRValue(MIRConstant("x"), owned_leaf_shape(STR, MIRRole.STORAGE)), "node")
         self.mir.active_temporaries = None
         original(self)
 
@@ -976,7 +974,7 @@ def test_validator_rejects_damaged_owned_leaf_facts(lowered_active) -> None:
     with pytest.raises(MIRValidationError, match="copy exit fact mismatch"):
         validate_function(silent)
     # An owned-leaf borrow that could write.
-    with pytest.raises(MIRValidationError, match="unsupported reference slot type or form"):
+    with pytest.raises(MIRValidationError, match="mutable loan of a readonly value"):
         validate_function(_replace_slot(ret_copy, "s", readonly=False))
 
 
@@ -1027,11 +1025,15 @@ def test_hand_built_shapes_no_source_reaches_refuse(lowered_active) -> None:
 def test_validator_rejects_damaged_owned_leaf_slots_and_layouts(lowered_active) -> None:
     local = lowered_active.bodies["local"]
     # A borrowed owned-leaf parameter the callee could write through.
-    with pytest.raises(MIRValidationError, match="owned leaf parameter borrow needs a readonly passing"):
-        validate_function(_replace_slot(local, "n", passing=ParamPassing.MUT_REF))
+    with pytest.raises(MIRValidationError, match="parameter call parameter passing differs from its type"):
+        validate_function(repass(local, "n", ParamPassing.MUT_REF))
     # Owned storage placed as a readonly slot.
-    with pytest.raises(MIRValidationError, match="owned leaf storage needs a mutable placement"):
+    with pytest.raises(MIRValidationError, match="slot readonly owned storage"):
         validate_function(_replace_slot(local, "total", readonly=True))
+    # Mutable owned storage with no placement: nothing would destroy its buffer.
+    assert _slot(local, "total").shape.leaf_storage and not _slot(local, "total").readonly
+    with pytest.raises(MIRValidationError, match="owned leaf storage needs a placement"):
+        validate_function(_replace_slot(local, "total", storage_duration=None))
     # An opaque layout that is not freely copyable.
     damaged = replace(local, records=tuple(replace(r, copyable=False) if r.opaque else r for r in local.records))
     with pytest.raises(MIRValidationError, match="invalid opaque leaf layout"):

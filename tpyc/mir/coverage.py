@@ -13,11 +13,8 @@ from ..typesys import (
     FLOAT, INT32, FloatLiteralType, IntLiteralType, Representation, TpyType, passing_representation, through_view,
 )
 from .call_contract import MIRContainerElements, MIRContainerStructure, MIRParameterBinding
-from .nodes import (
-    MIRValidationError, MIRCall, MIRDeref, MIRField, MIRFieldId, MIROptionalPayload, MIRPlace,
-    MIRSlot, MIRSlotId, MIRSlotKind,
-)
-from .shapes import holding_representation
+from .nodes import MIRCall, MIRDeref, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId
+from .value import holding_representation, MIRField, MIRFieldId, MIRValidationError
 
 
 def literal_type(expr: th.THIRLiteral, expected: TpyType | None = None) -> TpyType:
@@ -39,12 +36,13 @@ def scalar_param(binding: MIRParameterBinding) -> bool:
     return binding.scalar_value
 
 
-def slot_representation(slot: MIRSlot) -> Representation:
-    """The representation a slot's value has: a parameter's passing
-    convention (unknown when unpublished), else its holding's (a value and
-    owned storage are their own storage, a holder points elsewhere)."""
-    if slot.kind is MIRSlotKind.PARAMETER:
-        return Representation.TRAIT if slot.passing is None else passing_representation(slot.passing)
+def slot_representation(slot: MIRSlot, bindings: Mapping[MIRSlotId, MIRParameterBinding]) -> Representation:
+    """The representation a slot's value has: a parameter's binding's
+    passing convention (`MIRFunction.slot_bindings`), else its holding's
+    (a value and owned storage are their own storage, a holder points
+    elsewhere)."""
+    if slot.id in bindings:
+        return passing_representation(bindings[slot.id].passing)
     return holding_representation(slot.shape.holding)
 
 

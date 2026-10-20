@@ -17,10 +17,8 @@ from ..typesys import BOOL, INT32, NominalType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import (
-    MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFieldId, MIRFunction,
-    MIRMove, MIRNotCovered, MIRRecordWriteMode,
-)
+from .nodes import MIRBodyId, MIRBorrow, MIRConstruct, MIRCopy, MIRFunction, MIRMove, MIRNotCovered, MIRRecordWriteMode
+from .value import MIRFieldId
 from .storage import MIRStorageEvents, analyze_storage
 from .testutil import Heap, Reference, execute
 

@@ -4,15 +4,14 @@ from dataclasses import replace
 
 import pytest
 
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, ReadonlyType
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch,
-    MIRConstant, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRDeref, MIRFunction, MIRGoto,
     MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .validate import MIRValidationError, validate_function
-from .testutil import borrowed_shape, leaf_shape, reslot
+from .value import MIRField, MIRFieldId, MIRValidationError
+from .validate import validate_function
+from .testutil import bind_parameters, borrowed_shape, leaf_shape, reslot
 
 B = MIRBodyId("test", "storage")
 CELL = NominalType("Cell", _module_qname="test.Cell")
@@ -31,12 +30,12 @@ SLOTS = (
     MIRSlot(Q, borrowed_shape(CELL), MIRSlotKind.LOCAL),
     MIRSlot(X, leaf_shape(INT32), MIRSlotKind.LOCAL),
     MIRSlot(Y, leaf_shape(BOOL), MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
 )
 BIND = MIRAssign(MIRPlace(Q), MIRAlias(P))
 STORE = MIRAssign(field(Q), MIRConstant(7))
 READ = MIRAssign(MIRPlace(X), MIRRead(field(P)))
-GOOD = MIRFunction(B, INT32, SLOTS, (MIRBlock(A, (BIND, STORE, READ), MIRReturn(X)),), A)
+GOOD = bind_parameters(MIRFunction(B, INT32, SLOTS, (MIRBlock(A, (BIND, STORE, READ), MIRReturn(X)),), A))
 
 
 def invalid(fn: MIRFunction, message: str) -> None:
@@ -74,11 +73,11 @@ def test_field_store_reads_holder_instead_of_initializing_it() -> None:
 def test_access_can_be_reduced_but_never_increased() -> None:
     readonly_p = reslot(SLOTS[0], readonly=True)
     readonly_q = reslot(SLOTS[1], readonly=True)
-    invalid(replace(GOOD, slots=(readonly_p, *SLOTS[1:])), "alias increases access")
-    invalid(replace(GOOD, slots=(SLOTS[0], readonly_q, *SLOTS[2:])), "store through readonly")
+    invalid(bind_parameters(replace(GOOD, slots=(readonly_p, *SLOTS[1:]))), "alias increases access")
+    invalid(bind_parameters(replace(GOOD, slots=(SLOTS[0], readonly_q, *SLOTS[2:]))), "store through readonly")
     # Reseating a const-reference holder is legal; only a referent write is forbidden.
-    validate_function(replace(GOOD, slots=(readonly_p, readonly_q, *SLOTS[2:]),
-                              blocks=(MIRBlock(A, (BIND, BIND, READ), MIRReturn(X)),)))
+    validate_function(bind_parameters(replace(GOOD, slots=(readonly_p, readonly_q, *SLOTS[2:]),
+                              blocks=(MIRBlock(A, (BIND, BIND, READ), MIRReturn(X)),))))
 
 
 def test_field_identity_has_one_type() -> None:
@@ -89,7 +88,7 @@ def test_field_identity_has_one_type() -> None:
 
 
 def test_nominal_reference_types_must_match() -> None:
-    invalid(replace(GOOD, slots=(SLOTS[0], reslot(SLOTS[1], type=OTHER), *SLOTS[2:])),
+    invalid(bind_parameters(replace(GOOD, slots=(SLOTS[0], reslot(SLOTS[1], type=OTHER), *SLOTS[2:]))),
             "alias type mismatch")
     invalid(replace(GOOD, slots=(reslot(SLOTS[0], type=NominalType("Cell")), *SLOTS[1:])),
             "value class mismatch")
@@ -120,10 +119,10 @@ def test_a_value_type_is_bare_its_access_is_the_shape_flag() -> None:
     # `readonly[Cell]`, or a `readonly[int32]` scalar, would read past it.
     invalid(replace(GOOD, slots=(reslot(SLOTS[0], type=ReadonlyType(CELL)), *SLOTS[1:])),
             "readonly-wrapped value type")
-    invalid(replace(GOOD, slots=(*SLOTS[:2], reslot(SLOTS[2], type=ReadonlyType(INT32)), *SLOTS[3:])),
+    invalid(bind_parameters(replace(GOOD, slots=(*SLOTS[:2], reslot(SLOTS[2], type=ReadonlyType(INT32)), *SLOTS[3:]))),
             "readonly-wrapped value type")
 
 
 def test_a_local_scalar_has_no_access_of_its_own() -> None:
-    invalid(replace(GOOD, slots=(*SLOTS[:2], reslot(SLOTS[2], readonly=True), *SLOTS[3:])),
+    invalid(bind_parameters(replace(GOOD, slots=(*SLOTS[:2], reslot(SLOTS[2], readonly=True), *SLOTS[3:]))),
             "unsupported slot type or form")

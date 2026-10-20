@@ -749,7 +749,7 @@ the receiver to whatever binds the result (see "Usage-dependent receiver const-n
 The two clones of a pair whose whole result follows the receiver are ONE
 callable for THIR and MIR: they publish the receiver-neutral result
 (`typesys.receiver_neutral_return`), and each call binds its access at its
-own receiver (`call_contract.bound_result`). A pair that differs below the
+own receiver (`call_contract.call_result`). A pair that differs below the
 whole result (a component marker) is two callables.
 
 ## Future Roadmap

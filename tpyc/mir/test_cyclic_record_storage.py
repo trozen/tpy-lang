@@ -19,7 +19,8 @@ from .storage import analyze_storage
 from .test_retention import CURRENT, INITIAL, LOOP, analyze, loop_function
 from .test_scope_inspection import scoped_loop
 from .testutil import execute
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
+from .value import MIRValidationError
 
 
 SOURCE = '''from tpy import int32

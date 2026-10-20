@@ -212,7 +212,7 @@ def test_producer_defaults_match_render_order_and_source_writes_are_assignments(
 
 
 @pytest.mark.parametrize("name", ["optional_snapshot", "union_snapshot"])
-@pytest.mark.parametrize("damage", ["missing", "tag", "type", "layout", "assigned", "placement", "name"])
+@pytest.mark.parametrize("damage", ["missing", "tag", "type", "layout", "field", "assigned", "placement", "name"])
 def test_bad_producer_facts_remain_uncovered(artifacts: Artifacts, name: str, damage: str) -> None:
     functions, _, definitions, _ = artifacts
     fn = functions[name]
@@ -226,6 +226,11 @@ def test_bad_producer_facts_remain_uncovered(artifacts: Artifacts, name: str, da
         fact = replace(fact, physical_default=replace(fact.physical_default, value="0"))
     elif damage == "layout":
         fact = replace(fact, union_layout=th.THIRUnionLayout(INT32, (BOOL, INT32)))
+    elif damage == "field":
+        # The wrapper's layout in the other wrapper's field.
+        layout = fact.optional_layout or fact.union_layout
+        fact = replace(fact, optional_layout=fact.union_layout, union_layout=fact.optional_layout)
+        assert (fact.optional_layout or fact.union_layout) is layout
     elif damage == "assigned":
         fact = replace(fact, initially_assigned=True)
     elif damage == "placement":
@@ -235,7 +240,16 @@ def test_bad_producer_facts_remain_uncovered(artifacts: Artifacts, name: str, da
     changed = replace(fn, body=(replace(stmt, hoisted_bindings=(fact,)), *fn.body[1:]))
     result = lower_function(changed, MIRBodyId("wrapper_hoists", "damaged"), definitions=definitions)
     assert isinstance(result, MIRNotCovered), result
-    assert any(word in result.reason for word in ("hoisted", "default", "union layout")), result
+    default = "missing or inconsistent physical wrapper default"
+    placement = "invalid hoisted binding placement or availability"
+    reasons = {
+        "missing": default, "tag": default, "type": default,
+        # A second layout conflicts with an Optional's; a union's names its union.
+        "layout": "conflicting layout facts" if name == "optional_snapshot" else "unsupported union layout",
+        "field": "missing or invalid layout fact",
+        "assigned": placement, "placement": placement, "name": "missing or inconsistent hoisted binding facts",
+    }
+    assert result.reason == reasons[damage], result
     if damage in ("tag", "type", "layout"):
         with pytest.raises(THIRValidationError):
             validate_thir(changed)

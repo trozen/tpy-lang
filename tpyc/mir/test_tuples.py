@@ -14,7 +14,8 @@ from ..typesys import INT32, TupleType
 from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRNotCovered
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
+from .value import MIRFieldId
 from .testutil import Heap, Reference, execute
 
 Artifacts = tuple[dict[str, th.THIRFunction], tuple[th.THIRConstructor, ...], tuple[str, str]]
@@ -285,8 +286,8 @@ def example(a: readonly[Cell]) -> int32:
     ("def example(pair: tuple[tuple[int32, int32]]) -> int32:\n    return 1\n",
      "parameter type"),
     ("def example(x: int32) -> tuple[int32, int32]:\n    return (x, 1)\n", "return type"),
-    ("def example(x: int32) -> int32:\n    pair = ((x, 1), 2)\n    return x\n", "tuple layout"),
-    ("def example(x: int32) -> int32:\n    pair = (x, 'text')\n    return x\n", "tuple layout"),
+    ("def example(x: int32) -> int32:\n    pair = ((x, 1), 2)\n    return x\n", "layout fact"),
+    ("def example(x: int32) -> int32:\n    pair = (x, 'text')\n    return x\n", "layout fact"),
 ])
 def test_deferred_source_shapes_are_whole_body_uncovered(body: str, reason: str) -> None:
     functions, constructors, _ = compile_artifacts(PRELUDE + body)

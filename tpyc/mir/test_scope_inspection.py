@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import pytest
 
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL
 from .dependencies import MIRReferent, _dependencies
 from .liveness import _liveness
@@ -22,8 +21,9 @@ from .test_payload_inspection import ALIAS, EXTRACT, READ, RESULT, alias_functio
 from .test_payload_lifetime import CURRENT, FLAG
 from .test_retention import AGAIN, END, LOOP, SITE, loop_function
 from .test_scope_lifetime import Artifacts, artifacts
-from .validate import MIRPresenceError, MIRValidationError, _prepare_function, validate_function
-from .testutil import leaf_shape
+from .validate import MIRPresenceError, _prepare_function, validate_function
+from .value import MIRValidationError
+from .testutil import bind_parameters, leaf_shape
 
 
 def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction, MIRPlace]:
@@ -37,9 +37,9 @@ def scoped_loop(shape: str, *, reseat_first: bool = False) -> tuple[MIRFunction,
     initialize = replace(initialize, storage_write=MIRRecordWrite(MIRRecordWriteMode.INITIALIZE_REGION))
     statements = (initialize, borrow, current, capture, read) if reseat_first else (
         initialize, borrow, current, read, capture)
-    return replace(fn, slots=slots, blocks=tuple(
+    return bind_parameters(replace(fn, slots=slots, blocks=tuple(
         replace(b, region=iteration, statements=statements) if b.id == LOOP else replace(b, region=root)
-        for b in fn.blocks), regions=(MIRRegion(root, None, fn.entry), MIRRegion(iteration, root, LOOP))), observed
+        for b in fn.blocks), regions=(MIRRegion(root, None, fn.entry), MIRRegion(iteration, root, LOOP)))), observed
 
 
 @pytest.mark.parametrize("shape", ["record", "singleton", "mixed", "optional", "union"])
@@ -91,11 +91,11 @@ def stale_scalar_alias() -> MIRFunction:
     init = replace(original.statements[0], storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
     slots = tuple(replace(s, residence=None if s.kind is MIRSlotKind.PARAMETER else inner if s.id == CURRENT else root,
                           storage_duration=inner if s.id == CURRENT else s.storage_duration) for s in fn.slots)
-    return replace(fn, slots=slots, blocks=(
+    return bind_parameters(replace(fn, slots=slots, blocks=(
         MIRBlock(fn.entry, (), MIRGoto(child), root),
         MIRBlock(child, (init, EXTRACT), MIRGoto(after), inner),
         MIRBlock(after, (READ,), MIRReturn(RESULT), root)),
-        regions=(MIRRegion(root, None, fn.entry), MIRRegion(inner, root, child)))
+        regions=(MIRRegion(root, None, fn.entry), MIRRegion(inner, root, child))))
 
 
 def test_scope_end_invalidates_scalar_alias_without_erasing_its_referent() -> None:
@@ -141,9 +141,8 @@ def test_skipped_union_construction_keeps_old_payload_alias(read_inside: bool) -
     fn = stale_scalar_alias()
     entry, initialize, after = fn.blocks
     guard, skipped, end = (MIRBlockId(fn.id, i) for i in (3, 4, 5))
-    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(BOOL), MIRSlotKind.PARAMETER,
-                   passing=ParamPassing.VALUE)
-    fn = replace(fn, slots=(*fn.slots, skip), blocks=(
+    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(BOOL), MIRSlotKind.PARAMETER)
+    fn = bind_parameters(replace(fn, slots=(*fn.slots, skip), blocks=(
         replace(entry, terminator=MIRGoto(guard)),
         replace(initialize, statements=(*initialize.statements, READ) if read_inside else initialize.statements),
         replace(after, statements=() if read_inside else (READ,),
@@ -151,7 +150,7 @@ def test_skipped_union_construction_keeps_old_payload_alias(read_inside: bool) -
         MIRBlock(guard, (), MIRBranch(skip.id, skipped, initialize.id), initialize.region),
         MIRBlock(skipped, (), MIRGoto(entry.id), entry.region),
         MIRBlock(end, (), MIRReturn(fn.slots[3].id), entry.region)),
-        regions=(fn.regions[0], replace(fn.regions[1], entry=guard)))
+        regions=(fn.regions[0], replace(fn.regions[1], entry=guard))))
     prepared = _prepare_function(fn)
     dependencies = _dependencies(prepared, _liveness(prepared))
     assert dependencies.referents[MIRPoint(skipped, 0)][MIRPlace(ALIAS)] == frozenset({
@@ -222,16 +221,15 @@ def test_skipped_construction_preserves_old_holder_dependencies(shape: str, rese
     fn, observed = scoped_loop(shape, reseat_first=reseat_first)
     entry, loop, again, end = fn.blocks
     guard = MIRBlockId(fn.id, 4)
-    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(BOOL), MIRSlotKind.PARAMETER,
-                   passing=ParamPassing.VALUE)
+    skip = MIRSlot(MIRSlotId(fn.id, len(fn.slots)), leaf_shape(BOOL), MIRSlotKind.PARAMETER)
     # Read the saved alias before this activation decides whether to construct.
     reads = () if reseat_first else (loop.statements[3],)
     statements = loop.statements if reseat_first else (*loop.statements[:3], loop.statements[4])
-    fn = replace(fn, slots=(*fn.slots, skip), blocks=(
+    fn = bind_parameters(replace(fn, slots=(*fn.slots, skip), blocks=(
         replace(entry, terminator=MIRGoto(guard)), replace(loop, statements=statements),
         replace(again, terminator=MIRGoto(guard)), end,
         MIRBlock(guard, reads, MIRBranch(skip.id, AGAIN, LOOP), loop.region)),
-        regions=(fn.regions[0], replace(fn.regions[1], entry=guard)))
+        regions=(fn.regions[0], replace(fn.regions[1], entry=guard))))
     result = inspect_scope_lifetimes(fn)
     assert MIREdge(guard, 0) not in result.ends.ends
     assert bool(result.conflicts) is not reseat_first

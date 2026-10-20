@@ -7,7 +7,6 @@ import pytest
 from ..thir import nodes as th
 from ..thir.temp_plan import prepare_temporaries
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, OptionalType
 from .definitions import MIRDefinitions
 from .lower import lower_constructor, lower_function
@@ -20,8 +19,9 @@ from .nodes import (
     MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRStorageDuration,
 )
 from .scope_lifetime import MIRScopeEnds, analyze_scope_ends, dump_scope_ends
-from .validate import MIRValidationError, validate_function
-from .testutil import leaf_shape, optional_shape
+from .validate import validate_function
+from .value import MIRValidationError
+from .testutil import bind_parameters, leaf_shape, optional_shape
 
 
 SOURCE = """\
@@ -353,15 +353,15 @@ def region_fixture() -> MIRFunction:
     root, child = (MIRRegionId(body, i) for i in range(2))
     init = MIRAssign(MIRPlace(local), MIROptionalConstruct(MIRPlace(value)),
                      storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE_REGION))
-    return MIRFunction(body, INT32, (
-        MIRSlot(value, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
-        MIRSlot(flag, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    return bind_parameters(MIRFunction(body, INT32, (
+        MIRSlot(value, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+        MIRSlot(flag, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
         MIRSlot(local, optional_shape(OptionalType(INT32), leaf_shape(INT32)), MIRSlotKind.LOCAL,
                 storage_duration=child, residence=child)), (
         MIRBlock(entry, (), MIRBranch(flag, iteration, after), root),
         MIRBlock(iteration, (init,), MIRGoto(entry), child),
         MIRBlock(after, (), MIRReturn(value), root)), entry,
-        regions=(MIRRegion(root, None, entry), MIRRegion(child, root, iteration)))
+        regions=(MIRRegion(root, None, entry), MIRRegion(child, root, iteration))))
 
 
 def test_fresh_loop_activation_has_one_static_end() -> None:
@@ -390,9 +390,9 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
     if damage == "cycle":
         fn = replace(fn, blocks=(entry, replace(iteration, terminator=MIRGoto(iteration.id)), after))
     elif damage == "residence":
-        fn = replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], residence=None)))
+        fn = bind_parameters(replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], residence=None))))
     elif damage == "foreign":
-        fn = replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], storage_duration=MIRRegionId(fn.id, 9))))
+        fn = bind_parameters(replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], storage_duration=MIRRegionId(fn.id, 9)))))
     elif damage == "parent":
         fn = replace(fn, regions=(fn.regions[0], replace(fn.regions[1], parent=fn.regions[1].id)))
     elif damage == "outside_read":
@@ -401,7 +401,7 @@ def test_invalid_region_contracts(damage: str, message: str) -> None:
         stmt = replace(iteration.statements[0], storage_write=MIRPayloadWrite(MIRPayloadWriteMode.INITIALIZE))
         fn = replace(fn, blocks=(entry, replace(iteration, statements=(stmt,)), after))
     elif damage == "body_residence":
-        fn = replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], storage_duration=MIRStorageDuration.BODY)))
+        fn = bind_parameters(replace(fn, slots=(*fn.slots[:2], replace(fn.slots[2], storage_duration=MIRStorageDuration.BODY))))
     elif damage == "interior_entry":
         interior = replace(iteration, id=MIRBlockId(fn.id, 3), statements=())
         fn = replace(fn, blocks=(replace(entry, terminator=MIRGoto(interior.id)), iteration, after, interior))
@@ -431,10 +431,10 @@ def test_edge_selection_survives_equal_branch_destinations() -> None:
     parameter = replace(fn.slots[0], shape=optional_shape(OptionalType(INT32), leaf_shape(INT32)))
     guard = MIRSlot(MIRSlotId(fn.id, 3), leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=iteration.region)
     from_source = replace(iteration.statements[0], value=MIROptionalCopy(MIRPlace(parameter.id)))
-    fn = replace(fn, return_type=BOOL, slots=(parameter, *fn.slots[1:], guard), blocks=(
+    fn = bind_parameters(replace(fn, return_type=BOOL, slots=(parameter, *fn.slots[1:], guard), blocks=(
         entry, replace(iteration, statements=(from_source, MIRAssign(MIRPlace(guard.id), MIRIsPresent(MIRPlace(fn.slots[2].id)))),
                        terminator=MIRBranch(guard.id, after.id, after.id)),
-        replace(after, terminator=MIRReturn(fn.slots[1].id))))
+        replace(after, terminator=MIRReturn(fn.slots[1].id)))))
     result = analyze_scope_ends(fn)
     assert len(result.ends) == 2
     assert result.ends[MIREdge(iteration.id, 0)][0].payloads

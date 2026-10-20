@@ -20,7 +20,7 @@ from .storage_evidence import (
     MIRBorrowEvidence, MIRStorageEvidence, MIRStorageVerdict,
     certify_borrow_operations, certify_storage_origins,
 )
-from .validate import MIRValidationError
+from .value import MIRValidationError
 
 
 @dataclass(frozen=True, eq=False)

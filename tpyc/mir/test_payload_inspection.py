@@ -24,7 +24,8 @@ from .test_payload_lifetime import (
     ASSIGN, BODY, CURRENT, ENTRY, FLAG, GUARD, INIT, JOIN, NO, PARAM, VALUE, YES,
     payload, wrapper_function, write,
 )
-from .validate import MIRPresenceError, MIRValidationError, _prepare_function, validate_function
+from .validate import MIRPresenceError, _prepare_function, validate_function
+from .value import MIRValidationError
 from .testutil import alias_shape, leaf_shape
 
 

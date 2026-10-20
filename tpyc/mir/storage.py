@@ -9,11 +9,10 @@ from .coverage import call_write_places
 from .dump import _location, _place
 from .liveness import MIRPoint
 from .nodes import (
-    MIRAssign, MIRConstruct, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRField, MIRFunction,
-    MIRMove, MIRNotCovered, MIRSlot, MIRSlotId, MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace,
-    statement_call,
+    MIRAssign, MIRConstruct, MIRContainerElements, MIRContainerStructure, MIRDeref, MIRFunction, MIRMove,
+    MIRNotCovered, MIRSlot, MIRSlotId, MIRRecordWrite, MIRTupleConstruct, MIRTupleIndex, MIRPlace, statement_call,
 )
-from .shapes import loan_field
+from .value import loan_field, MIRField
 from .validate import successors, validate_function
 
 

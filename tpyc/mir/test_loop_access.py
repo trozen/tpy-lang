@@ -1,14 +1,19 @@
 """A binding's access comes from every fact its declaration gives it
-(`lower.access_of`): a loop variable sema made const over a container the
+(`value.loan_access`): a loop variable sema made const over a container the
 body writes elsewhere, one over a readonly source, and a parameter of a
 `@readonly` function, whose type is `readonly[R]` though its borrowed-record
-fact is mutable."""
+fact is mutable. A local alias's THIR fact is checked against that access,
+never read: a forged one is refused."""
+
+from dataclasses import replace
 
 import pytest
 
+from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry
+from ..typesys import ReadonlyType
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRFunction, MIRSlotKind
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered, MIRSlotKind
 
 SOURCE = """\
 from tpy import int32, readonly
@@ -60,18 +65,48 @@ def readonly_param(a: P, b: P, flag: bool) -> int32:
     if flag:
         x = b
     return x.x
+
+
+class H:
+    p: P
+
+    def __init__(self, p: P) -> None:
+        self.p = p
+
+
+def container_alias(xs: list[int32]) -> int32:
+    ys = xs
+    return len(ys)
+
+
+def record_alias(p: P) -> int32:
+    q = p
+    return q.x
+
+
+def field_borrow(h: H) -> int32:
+    q = h.p
+    q.x = 1
+    return q.x
 """
 
 
 @pytest.fixture(scope="module")
-def bodies() -> dict[str, object]:
+def program():
     compiler, modules = _compile(SOURCE)
     entry = _entry(modules)
     _, ctx = compiler.generate_code_and_thir(entry)
     with compiler.mir_analysis(((entry, ctx),)) as mir:
-        yield {fn.name: lower_function(fn, MIRBodyId("access", fn.name), definitions=mir.definitions,
-                                       summaries=mir.workspace.summaries)
-               for fn in ctx.thir_functions.values()}
+        def lower(fn: th.THIRFunction) -> MIRFunction | MIRNotCovered:
+            return lower_function(fn, MIRBodyId("access", fn.name), definitions=mir.definitions,
+                                  summaries=mir.workspace.summaries)
+        yield {fn.name: fn for fn in ctx.thir_functions.values()}, lower
+
+
+@pytest.fixture(scope="module")
+def bodies(program) -> dict[str, object]:
+    functions, lower = program
+    return {name: lower(fn) for name, fn in functions.items()}
 
 
 def _slot(fn: MIRFunction, name: str):
@@ -101,3 +136,56 @@ def test_a_readonly_parameter_binds_readonly(bodies) -> None:
     fn = bodies["readonly_param"]
     assert isinstance(fn, MIRFunction), fn
     assert _slot(fn, "a").readonly and _slot(fn, "b").readonly
+
+
+def _forged(program, name: str, **changes) -> MIRFunction | MIRNotCovered:
+    """`name`'s body with its one declaration rebuilt: `changes` replace the
+    declaration's own fields, a callable value is given the old one."""
+    functions, lower = program
+    fn = functions[name]
+    decl = next(s for s in fn.body if isinstance(s, th.THIRVarDecl))
+    decl = replace(decl, **{k: v(getattr(decl, k)) if callable(v) else v for k, v in changes.items()})
+    return lower(replace(fn, body=tuple(decl if isinstance(s, th.THIRVarDecl) else s for s in fn.body)))
+
+
+def _refused(result: MIRFunction | MIRNotCovered, reason: str) -> bool:
+    return isinstance(result, MIRNotCovered) and result.reason == reason
+
+
+def _flip(fact):
+    return replace(fact, readonly=not fact.readonly)
+
+
+def test_a_forged_container_alias_fact_is_refused(program) -> None:
+    # `ys = xs` binds const: its fact is readonly, as the declaration derives.
+    assert isinstance(_forged(program, "container_alias"), MIRFunction)
+    reason = "container alias needs fixed matching borrowed source"
+    assert _refused(_forged(program, "container_alias", native_container=_flip), reason)
+    # A `readonly[...]` declaration reads only although it is not bound
+    # const: its readonly fact agrees, a mutable one is refused (by the
+    # fact's own check against the declared type, ahead of the alias's).
+    declared = _forged(program, "container_alias", resolved_type=ReadonlyType, is_const=False)
+    assert isinstance(declared, MIRFunction), declared
+    mutable = _forged(program, "container_alias", resolved_type=ReadonlyType, is_const=False,
+                      native_container=lambda f: replace(f, readonly=False))
+    assert _refused(mutable, "invalid native container fact")
+
+
+def test_a_forged_record_alias_fact_is_refused(program) -> None:
+    assert isinstance(_forged(program, "record_alias"), MIRFunction)
+    reference = lambda ab: replace(ab, reference=_flip(ab.reference))  # noqa: E731
+    assert _refused(_forged(program, "record_alias", alias_binding=reference), "alias access mismatch")
+    # Declared `readonly[P]` and not bound const: a readonly fact agrees, a
+    # mutable one is refused (by the fact's own shape check against the
+    # declared type, ahead of the alias's).
+    assert isinstance(_forged(program, "record_alias", resolved_type=ReadonlyType, is_const=False), MIRFunction)
+    mutable = lambda ab: replace(ab, reference=replace(ab.reference, readonly=False))  # noqa: E731
+    assert _refused(_forged(program, "record_alias", resolved_type=ReadonlyType, is_const=False,
+                            alias_binding=mutable), "mutable loan of a readonly value")
+
+
+def test_a_forged_storage_borrow_fact_is_refused(program) -> None:
+    # `q = h.p` written through binds mutable.
+    assert isinstance(_forged(program, "field_borrow"), MIRFunction)
+    assert _refused(_forged(program, "field_borrow", storage_borrow=_flip), "alias access mismatch")
+    assert _refused(_forged(program, "field_borrow", resolved_type=ReadonlyType), "mutable loan of a readonly value")

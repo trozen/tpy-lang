@@ -8,19 +8,21 @@ from types import MappingProxyType
 from ..parse import SourceLocation
 from ..thir import nodes as th
 from ..thir.scalar_leaves import (
-    MIRClass, declared_members, holds_loan, inline_member_type, leaf_constant, loan_free, modeled_field,
-    owned_constant, owned_leaf, plain_record_element, storage_leaf, value_class,
+    MIRClass, holds_loan, inline_member_type, leaf_constant, loan_free, modeled_field,
+    owned_constant, owned_leaf, storage_leaf, value_class,
     view_compatible,
 )
 from ..type_def_registry import ParamPassing, type_def_of
 from ..typesys import NominalType, TpyType, unwrap_readonly
-from .call_contract import BORROWING_PASSINGS, OWNING_PASSINGS, MIRParameterBinding, parameter_binding
-from .coverage import MIRUnsupported, literal_type, plain, require, scalar_param
-from .shapes import container_member, loan_field
-from .nodes import (
-    CONTAINER_CLASSES,
-    MIRConstant, MIRField, MIRFieldId, MIRMemberInitMode, MIROptionalConstruct, MIRRecordLayout, MIRShape,
+from .call_contract import (
+    BORROWING_PASSINGS, CONSTRUCTOR, OWNING_PASSINGS, MIRParameterBinding, function_binding,
 )
+from .coverage import MIRUnsupported, literal_type, plain, require, scalar_param
+from .value import (
+    CONTAINER_CLASSES, MIRField, MIRFieldId, MIRRecordLayout, MIRShape, admitted_members, container_members,
+    loan_field, member_types, value_shape,
+)
+from .nodes import MIRConstant, MIRMemberInitMode, MIROptionalConstruct
 
 
 @dataclass(frozen=True)
@@ -72,18 +74,17 @@ def owned_record_parameter(binding: MIRParameterBinding) -> NominalType | None:
             and binding.passing is ParamPassing.OWN else None)
 
 
-def optional_parameter(binding: MIRParameterBinding) -> th.THIROptionalLayout | None:
-    """The payload layout of an Optional parameter MIR models, at a
-    constructor and a call alike (`optional_parameter_layout`): the
-    caller's pointer at its payload record, or null; or a scalar Optional
-    by value. None for anything else."""
-    return binding.optional_layout
+def optional_parameter(binding: MIRParameterBinding) -> MIRShape | None:
+    """The value of an Optional parameter MIR models, at a constructor and
+    a call alike: the caller's pointer at its payload record, or null; or a
+    scalar Optional by value. None for anything else."""
+    return binding.value if binding.cls is MIRClass.OPTIONAL else None
 
 
 def optional_record_parameter(binding: MIRParameterBinding) -> NominalType | None:
     """The payload record of an Optional record parameter, else None."""
-    layout = binding.optional_layout
-    return layout.payload.type if layout is not None and isinstance(layout.payload, th.THIRBorrowedRecord) else None
+    value = optional_parameter(binding)
+    return value.payload.type if value is not None and value.record_payload else None
 
 
 def view_parameter(binding: MIRParameterBinding) -> bool:
@@ -96,8 +97,7 @@ def lends_view(binding: MIRParameterBinding, view: TpyType) -> bool:
     """Whether a parameter holds a loan a `view` member may store: a view
     parameter's own, or a borrow of an owned-leaf parameter the caller lends.
     A parameter the callee owns (by value or `Own[str]`) dies with the call."""
-    return ((view_parameter(binding) or owned_parameter(binding) and not binding.storage)
-            and view_compatible(view, binding.type))
+    return not binding.protocol and binding.value.leaf_borrow and view_compatible(view, binding.type)
 
 
 def record_parameter(binding: MIRParameterBinding) -> bool:
@@ -199,20 +199,20 @@ def _container_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterB
         case th.THIRName():
             plain(expr, {"name", "is_last_use", "is_movable"})
             binding = params.get(expr.name)
-            require(expr, binding is not None and binding.native_container is not None
-                    and binding.native_container.type == typ and expr.result_type == typ,
+            require(expr, binding is not None and binding.cls in CONTAINER_CLASSES
+                    and binding.type == typ and expr.result_type == typ,
                     "constructor initializer needs parameter")
             return MIRFieldInitializer(field, expr.name, MIRMemberInitMode.COPY, True, expr.loc)
         case th.THIRContainerLiteral():
             plain(expr, {"elements", "values", "typed_brace_cpp", "make_container", "elem_cpp", "bare_empty"})
             require(expr, expr.result_type == typ, "constructor field type")
-            element, value, _ = declared_members(typ)
+            element, *value = member_types(typ)
             operands: list[str] = []
             for i, e in enumerate(expr.elements):
                 operands.append(_literal_element(e, params, unwrap_readonly(element)))
-                if value is not None:
-                    operands.append(_literal_element(expr.values[i], params, unwrap_readonly(value)))
-            require(expr, value is None or len(expr.values) == len(expr.elements), "constructor field type")
+                if value:
+                    operands.append(_literal_element(expr.values[i], params, unwrap_readonly(value[0])))
+            require(expr, not value or len(expr.values) == len(expr.elements), "constructor field type")
             return MIRFieldInitializer(field, tuple(operands), MIRMemberInitMode.MOVE, True, expr.loc)
     raise MIRUnsupported(expr, "constructor initializer needs parameter or literal")
 
@@ -243,8 +243,8 @@ def _record_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBind
             require(expr, isinstance(name, th.THIRName), "constructor initializer needs parameter")
             plain(name, {"name", "is_last_use", "is_movable"})
             binding = params.get(name.name)
-            require(expr, binding is not None and record_parameter(binding) and binding.borrowed_record is not None
-                    and binding.borrowed_record.type == typ, "constructor initializer needs parameter")
+            require(expr, binding is not None and record_parameter(binding) and binding.lent_record is not None
+                    and binding.lent_record.type == typ, "constructor initializer needs parameter")
             require(expr, layout.copyable, "constructor copies a noncopyable record")
             return MIRFieldInitializer(field, name.name, MIRMemberInitMode.COPY,
                                        layout_copy_may_raise(layout, _verified_layout(definitions)), expr.loc)
@@ -297,8 +297,12 @@ def _optional_initializer(expr: th.THIRExpr, params: Mapping[str, MIRParameterBi
                     and name.form is th.Form.BORROW, "constructor form conversion")
             plain(name, {"name", "is_last_use", "is_movable", "optional_read"})
             binding = params.get(name.name)
+            read = name.optional_read
+            # The parameter read whole, as the layout its value has.
             require(expr, binding is not None and optional_record_parameter(binding) == payload
-                    and name.optional_read == th.THIROptionalRead(binding.optional_layout, False),
+                    and isinstance(read, th.THIROptionalRead) and read.extract is False
+                    and isinstance(read.layout, th.THIROptionalLayout)
+                    and value_shape(binding.type, facts=read.layout) == binding.value,
                     "constructor initializer needs parameter")
             require(expr, definition.layout.copyable, "constructor copies a noncopyable record")
             return MIRFieldInitializer(field, name.name, MIRMemberInitMode.COPY,
@@ -673,12 +677,13 @@ def constructor_initialization(ctor: th.THIRConstructor,
     require(ctor, len({p.name for p in ctor.params}) == len(ctor.params), "duplicate constructor parameter")
     params: dict[str, MIRParameterBinding] = {}
     for p in ctor.params:
-        binding = parameter_binding(p, constructor=True)
+        binding = function_binding(p, CONSTRUCTOR)
         bound = isinstance(binding, MIRParameterBinding)
         plain(p, {"name", "type", "passing", "native_container", "borrowed_record"}
-              | ({"optional_layout"} if bound and binding.optional_layout is not None else set()))
+              | ({"optional_layout"} if bound and binding.cls is MIRClass.OPTIONAL else set()))
         require(p, p.passing is not None, "unpublished parameter passing")
-        require(p, bound and (_callable_parameter(binding) or binding.native_container is not None),
+        # A container parameter only the constructor body fills a member from.
+        require(p, bound and (_callable_parameter(binding) or binding.cls in CONTAINER_CLASSES),
                 "constructor parameter type")
         params[p.name] = binding
     initializers: dict[MIRFieldId, MIRFieldInitializer] = {}
@@ -775,7 +780,7 @@ class MIRContainerDefinition:
     TypeDef and type arguments: an opaque buffer whose members MIR types
     but never tracks one by one. `members` are its element (and a dict's
     value) at mutable access; a holder applies its own access
-    (`shapes.with_access`). `records` are the definitions
+    (`value.with_access`). `records` are the definitions
     of its record members, which the body's layouts must carry."""
     members: tuple[MIRShape, ...]
     records: tuple['MIRConstructorDefinition', ...] = ()
@@ -787,6 +792,11 @@ class MIROwnedLeafDefinition:
     one opaque buffer, copied, moved and destroyed with no hook. Kept apart
     from verified constructor definitions; nothing else earns it."""
     layout: MIRRecordLayout
+
+
+def owned_leaf_layout(typ: NominalType) -> MIRRecordLayout:
+    """An owned leaf's layout (`MIROwnedLeafDefinition`): its opaque buffer."""
+    return MIRRecordLayout(typ, (), True, True, opaque=True)
 
 
 @dataclass(frozen=True)
@@ -858,7 +868,7 @@ class MIRDefinitions:
             ) -> MIRConstructorDefinition | MIROwnedLeafDefinition | MIRContainerDefinition:
         cls = value_class(typ)
         if cls is MIRClass.OWNED_LEAF:
-            return MIROwnedLeafDefinition(MIRRecordLayout(typ, (), True, True, opaque=True))
+            return MIROwnedLeafDefinition(owned_leaf_layout(typ))
         if cls in CONTAINER_CLASSES:
             return self.container(node, typ)
         definition = self.records.get(typ, "missing constructor definition")
@@ -887,9 +897,9 @@ def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:
     reads = [bi.base for bi in ctor.base_inits if isinstance(bi.base, NominalType)]
     for f in ctor.record_layout.fields:
         bare = inline_member_type(f.type)
-        members = declared_members(bare) if value_class(bare) is MIRClass.CONTAINER else None
-        for typ in (bare,) if members is None else members[:2]:
-            if typ is not None and value_class(typ) is MIRClass.RECORD:
+        members = member_types(bare) if value_class(bare) is MIRClass.CONTAINER else None
+        for typ in (bare,) if members is None else members:
+            if value_class(typ) is MIRClass.RECORD:
                 reads.append(unwrap_readonly(typ))
     return reads
 
@@ -897,44 +907,25 @@ def _read_records(ctor: th.THIRConstructor) -> list[NominalType]:
 def container_definition(node: object, typ: NominalType,
                          definition_of: Callable[[NominalType], MIRConstructorDefinition | str]
                          ) -> MIRContainerDefinition:
-    """A native container's or container view's members: the ones its
-    stub declares (`declared_members`; a view's own, at its own type
-    arguments), a record member read through its verified definition
-    (`definition_of`), or the refusal of its members."""
-    members = declared_members(typ)
-    require(node, members is not None, "unsupported native container type")
-    element, value, _ = members
+    """A native container's or container view's members (`container_members`;
+    a view's own, at its own type arguments), a record member read through
+    its verified definition (`definition_of`) whose layout the container
+    admits (`admitted_members`), or the refusal of its members."""
+    # The members' own refusal first: a definition is read only for a member MIR models.
+    members = container_members(typ, False)
+    if isinstance(members, str):
+        raise MIRUnsupported(node, members)
     records: dict[NominalType, MIRConstructorDefinition] = {}
-    # A record is admitted only as the single element of a type; the two
-    # members of a type with a value member are both leaves.
-    leaves_only = value is not None
-    found = tuple(_container_member(node, m, leaves_only, records, definition_of)
-                  for m in (element, value) if m is not None)
-    return MIRContainerDefinition(found, tuple(records.values()))
-
-
-def _container_member(node: object, typ: TpyType, leaves_only: bool,
-                      records: dict[NominalType, MIRConstructorDefinition],
-                      definition_of: Callable[[NominalType], MIRConstructorDefinition | str]) -> MIRShape:
-    """One container member (`shapes.container_member`), admitted: it holds
-    no borrow, and a record member dispatches no user code."""
-    # A stored borrow outlives the operation that put it there, which
-    # needs the retention contracts MIR does not model yet.
-    require(node, not holds_loan(typ), "container holds a borrow")
-    bare = unwrap_readonly(typ)
-    # A nested container or a record holding one has element places
-    # beyond one hop.
-    require(node, value_class(bare) in (MIRClass.LEAF, MIRClass.OWNED_LEAF)
-            or not leaves_only and isinstance(bare, NominalType)
-            and plain_record_element(bare), "unsupported native container element")
-
-    def layout_of(t: TpyType) -> MIRRecordLayout | str:
-        definition = definition_of(t)
-        return definition if isinstance(definition, str) else definition.layout
-
-    member = container_member(typ, leaves_only, layout_of)
-    if isinstance(member, str):
-        raise MIRUnsupported(node, member)
-    if member.cls is MIRClass.RECORD:
-        records[bare] = definition_of(bare)
-    return member
+    layouts: dict[TpyType, MIRRecordLayout] = {}
+    for member in members:
+        if member.cls is MIRClass.RECORD:
+            definition = definition_of(member.type)
+            if isinstance(definition, str):
+                raise MIRUnsupported(node, definition)
+            records[member.type] = definition
+            layouts[member.type] = definition.layout
+        elif member.cls is MIRClass.OWNED_LEAF:
+            layouts[member.type] = owned_leaf_layout(member.type)
+    admitted = admitted_members(typ, False, layouts)
+    require(node, not isinstance(admitted, str), admitted)
+    return MIRContainerDefinition(admitted, tuple(records.values()))

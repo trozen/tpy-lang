@@ -20,9 +20,10 @@ from .dependencies import analyze_dependencies
 from .dump import _write_step
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstruct, MIRContainerElements, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRMove, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBorrow, MIRConstruct, MIRContainerElements, MIRDeref, MIRFunction, MIRMove, MIROptionalPayload,
+    MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .value import MIRField, MIRFieldId
 from .summaries import _member_chain, _private_records, summarize_function
 from .validate import validate_function
 from .testutil import borrowed_shape, leaf_shape

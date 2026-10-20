@@ -28,7 +28,8 @@ from .nodes import (
 )
 from .lower import lower_function
 from .presence import _analyze_presence
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
+from .value import MIRValidationError
 from .scope_lifetime import inspect_scope_lifetimes
 from .region_flow import outgoing_edges
 from .testutil import reslot

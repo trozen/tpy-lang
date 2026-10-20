@@ -4,16 +4,14 @@ from dataclasses import replace
 
 import pytest
 
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch,
-    MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId,
-    MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRRecordLayout, MIRReturn,
-    MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
+    MIRDeref, MIRFunction, MIRGoto, MIRMove, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
-from .testutil import borrowed_shape, execute, leaf_shape, owned_shape, reslot
-from .validate import MIRValidationError, validate_function
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
+from .testutil import bind_parameters, borrowed_shape, execute, leaf_shape, owned_shape, reslot
+from .validate import validate_function
 
 B = MIRBodyId("owned", "verify")
 CELL = NominalType("Cell", _module_qname="owned.Cell")
@@ -28,15 +26,15 @@ SLOTS = (
     MIRSlot(T, owned_shape(CELL), MIRSlotKind.TEMPORARY),
     MIRSlot(Q, borrowed_shape(CELL), MIRSlotKind.LOCAL),
     MIRSlot(RESULT, leaf_shape(INT32), MIRSlotKind.LOCAL),
-    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
 )
 NUMBER = MIRAssign(MIRPlace(N), MIRConstant(1))
 INIT = MIRAssign(MIRPlace(S), MIRConstruct((N,)))
 BORROW = MIRAssign(MIRPlace(P), MIRBorrow(MIRPlace(S)))
 COPY = MIRAssign(MIRPlace(T), MIRCopy(MIRPlace(P, (MIRDeref(),))))
 READ = MIRAssign(MIRPlace(RESULT), MIRRead(MIRPlace(P, (MIRDeref(), MEMBER))))
-GOOD = MIRFunction(B, INT32, SLOTS,
-                   (MIRBlock(A, (NUMBER, INIT, BORROW, COPY, READ), MIRReturn(RESULT)),), A, (LAYOUT,))
+GOOD = bind_parameters(MIRFunction(B, INT32, SLOTS,
+                   (MIRBlock(A, (NUMBER, INIT, BORROW, COPY, READ), MIRReturn(RESULT)),), A, (LAYOUT,)))
 
 
 def invalid(fn: MIRFunction, message: str) -> None:
@@ -94,7 +92,7 @@ def test_layout_and_eligibility_are_required() -> None:
     invalid(replace(fn, records=(replace(LAYOUT, movable=False),)), "move source or eligibility")
     invalid(replace(fn, slots=(SLOTS[0], reslot(SLOTS[1], readonly=True), *SLOTS[2:])),
             "borrow increases access")
-    invalid(replace(GOOD, slots=(SLOTS[0], replace(SLOTS[1], kind=MIRSlotKind.PARAMETER), *SLOTS[2:])),
+    invalid(bind_parameters(replace(GOOD, slots=(SLOTS[0], replace(SLOTS[1], kind=MIRSlotKind.PARAMETER), *SLOTS[2:]))),
             "record storage type")
 
 

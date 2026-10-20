@@ -7,10 +7,12 @@ import pytest
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, _strict_reject, _assert_rejects_at
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
+from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, INT32_MIN, INT32_MAX
 from .dump import dump_function
 from .lower import lower_function
-from .nodes import MIRBodyId, MIRFieldId, MIRFunction, MIRHolding, MIRNotCovered
+from .nodes import MIRBodyId, MIRFunction, MIRNotCovered
+from .value import MIRFieldId, MIRHolding
 from .testutil import Reference, UnionValue, execute
 from ..thir.scalar_leaves import MIRClass
 
@@ -184,7 +186,8 @@ def test_internal_record_member_assembly(artifacts: Artifacts) -> None:
     member = th.THIRName(name="other", result_type=other.borrowed_record.type, form=th.Form.BORROW)
     # Source construction is still gated; pass its semantic operation through
     # THIR coverage and MIR lowering without claiming frontend admission.
-    other = replace(other, borrowed_record=replace(other.borrowed_record, readonly=False))
+    other = replace(other, passing=ParamPassing.MUT_REF,
+                    borrowed_record=replace(other.borrowed_record, readonly=False))
     ir = lower(replace(fn, params=(fn.params[0], other),
                        body=(replace(decl, init=member), *fn.body[1:])))
     field = cell_field(ir)
@@ -321,3 +324,10 @@ def test_existing_record_member_construction_gate_is_preserved(statements: str, 
     source = SOURCE + "\ndef sample(a: Cell, base: Cell | Other) -> int32:\n" + statements + "    return 0\n"
     _, reasons = _strict_reject(source)
     _assert_rejects_at(reasons, "body:stmt.var_decl", reason)
+
+
+def test_a_payload_alias_binds_readonly(artifacts: Artifacts) -> None:
+    # A narrowed scalar payload is aliased in place: the alias only reads it.
+    fn = lower(artifacts[0]["scalar"])
+    aliases = [s for s in fn.slots if s.shape.holding is MIRHolding.ALIAS]
+    assert aliases and all(s.readonly for s in aliases)

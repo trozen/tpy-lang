@@ -6,25 +6,24 @@ import re
 import pytest
 
 from ..thir.testutil import _compile, _entry
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NominalType, OptionalType, ReadonlyType, TupleType, UnionType, VoidType
 from .definitions import MIRDefinitions
 from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, dump_dependencies
 from .liveness import MIRPoint, analyze_liveness
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow,
-    MIRBranch, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFieldId,
-    MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRMove, MIRNotCovered,
-    MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRPlace, MIRRead, MIRRecordLayout, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex,
-    MIRUnionConstruct, MIRUnionCopy, MIRUnionExtract,
-    MIRUnionPayload,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBorrow, MIRBranch, MIRConstant, MIRConstruct, MIRCopy,
+    MIRDeref, MIRFunction, MIRGoto, MIRIsAlternative, MIRIsPresent, MIRMove, MIRNotCovered, MIROptionalConstruct,
+    MIROptionalCopy, MIROptionalPayload, MIRPlace, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRStorageDuration, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRUnionConstruct, MIRUnionCopy,
+    MIRUnionExtract, MIRUnionPayload,
 )
-from .validate import MIRValidationError, successors, validate_function
-from .testutil import alias_shape, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape, union_shape
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
+from .validate import successors, validate_function
+from .testutil import (
+    bind_parameters, alias_shape, borrowed_shape, leaf_shape, optional_shape, owned_shape, reslot, tuple_shape,
+    union_shape,
+)
 from ..thir.scalar_leaves import MIRClass
 
 B = MIRBodyId("dependencies", "test")
@@ -52,12 +51,12 @@ def external(sid: MIRSlotId, *path) -> frozenset[MIRReferent]:
 def test_alias_snapshot_survives_source_reseat_and_last_use() -> None:
     slots = (reference(P, param=True), reference(Q, param=True), reference(X), reference(Y),
              MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
-    fn = MIRFunction(B, INT32, slots, (MIRBlock(A, (
+    fn = bind_parameters(MIRFunction(B, INT32, slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(X), MIRAlias(P)),
         MIRAssign(MIRPlace(Y), MIRAlias(X)),
         MIRAssign(MIRPlace(X), MIRAlias(Q)),
         MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(Y, (MIRDeref(), FIELD)))),
-    ), MIRReturn(OUT)),), A)
+    ), MIRReturn(OUT)),), A))
     result = analyze(fn)
     point = MIRPoint(A, 3)
     assert result.referents[point][MIRPlace(X)] == external(Q)
@@ -74,7 +73,7 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
     member = borrowed_shape(CELL)
     if shape == "tuple":
         wrapper = MIRSlot(X, tuple_shape(TupleType((CELL, INT32)), (member, leaf_shape(INT32))), MIRSlotKind.LOCAL)
-        scalar = MIRSlot(Z, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE)
+        scalar = MIRSlot(Z, leaf_shape(INT32), MIRSlotKind.PARAMETER)
         initial, copy, reseat = MIRTupleConstruct((P, Z)), MIRTupleCopy(X), MIRTupleConstruct((Q, Z))
         path = (MIRTupleIndex(0),)
     elif shape == "optional":
@@ -97,8 +96,8 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
         blocks = (MIRBlock(A, (*statements, MIRAssign(MIRPlace(Z), guard)), MIRBranch(Z, C, D)),
                   MIRBlock(C, (read,), MIRReturn(OUT)),
                   MIRBlock(D, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)))
-    fn = MIRFunction(B, INT32, (reference(P, param=True), reference(Q, param=True), wrapper,
-                     replace(wrapper, id=Y), scalar, MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL)), blocks, A)
+    fn = bind_parameters(MIRFunction(B, INT32, (reference(P, param=True), reference(Q, param=True), wrapper,
+                     replace(wrapper, id=Y), scalar, MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL)), blocks, A))
     result = analyze(fn)
     point = MIRPoint(A, 3)
     assert result.active[point] == {MIRPlace(Y, path): external(P)}
@@ -109,10 +108,10 @@ def test_aggregate_copy_retains_original_payload(shape: str) -> None:
 def test_local_storage_copy_move_and_replacement_keep_distinct_origins() -> None:
     storage = MIRSlot(STORE, owned_shape(CELL), MIRSlotKind.TEMPORARY, storage_duration=MIRStorageDuration.BODY)
     third = MIRSlotId(B, 9)
-    slots = (MIRSlot(P, leaf_shape(INT32), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE), reference(X),
+    slots = (MIRSlot(P, leaf_shape(INT32), MIRSlotKind.PARAMETER), reference(X),
              reference(Y), reference(Z),
              storage, replace(storage, id=STORE2), replace(storage, id=third))
-    fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
+    fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(STORE))),
         MIRAssign(MIRPlace(Y), MIRAlias(X)),
@@ -123,7 +122,7 @@ def test_local_storage_copy_move_and_replacement_keep_distinct_origins() -> None
         MIRAssign(MIRPlace(Y, (MIRDeref(),)), MIRConstruct((P,))),
         MIRAssign(MIRPlace(Y, (MIRDeref(), FIELD)), MIRRead(MIRPlace(P))),
         MIRAssign(MIRPlace(Z, (MIRDeref(), FIELD)), MIRRead(MIRPlace(P))),
-    ), MIRReturn()),), A, records=(LAYOUT,))
+    ), MIRReturn()),), A, records=(LAYOUT,)))
     result = analyze(fn)
     state = result.referents[MIRPoint(A, 8)]
     for holder, root in ((X, STORE2), (Y, STORE), (Z, third)):
@@ -137,12 +136,12 @@ def test_tuple_leaves_and_parameter_payloads_keep_separate_origins() -> None:
     pair = MIRSlot(X, tuple_shape(TupleType((CELL, CELL)), layout), MIRSlotKind.LOCAL)
     slots = (reference(P, param=True), reference(Q, param=True), pair,
              replace(pair, id=Y), replace(pair, id=Z, kind=MIRSlotKind.PARAMETER))
-    fn = MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
+    fn = bind_parameters(MIRFunction(B, VoidType(), slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(X), MIRTupleConstruct((P, Q))),
         MIRAssign(MIRPlace(Y), MIRTupleCopy(X)),
         MIRAssign(MIRPlace(X), MIRTupleCopy(Z)),
         MIRAssign(MIRPlace(Y), MIRTupleCopy(Y)),
-    ), MIRReturn()),), A)
+    ), MIRReturn()),), A))
     state = analyze(fn).referents[MIRPoint(A, 4)]
     for index, param in enumerate((P, Q)):
         path = (MIRTupleIndex(index),)
@@ -158,14 +157,14 @@ def test_record_union_extraction_survives_switch_to_other_alternative() -> None:
     slots = (reference(P, param=True), reslot(reference(Q, param=True), type=other), wrapper,
              reference(Y), MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.TEMPORARY),
              MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
-    fn = MIRFunction(B, INT32, slots, (
+    fn = bind_parameters(MIRFunction(B, INT32, slots, (
         MIRBlock(A, (MIRAssign(MIRPlace(X), MIRUnionConstruct(0, MIRPlace(P))),
                      MIRAssign(MIRPlace(FLAG), MIRIsAlternative(MIRPlace(X), (0,)))), MIRBranch(FLAG, C, D)),
         MIRBlock(C, (MIRAssign(MIRPlace(Y), MIRUnionExtract(first)),
                      MIRAssign(MIRPlace(X), MIRUnionConstruct(1, MIRPlace(Q))),
                      MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(Y, (MIRDeref(), FIELD))))), MIRReturn(OUT)),
         MIRBlock(D, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)),
-    ), A)
+    ), A))
     result = analyze(fn)
     state = result.referents[MIRPoint(C, 2)]
     assert first not in state
@@ -179,11 +178,11 @@ def test_inline_paths_append_to_original_origin_and_preserve_readonly() -> None:
     slots = (reslot(reference(P, param=True, readonly=True), type=parent),
              reference(X, readonly=True), reference(Y, readonly=True),
              MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
-    fn = MIRFunction(B, INT32, slots, (MIRBlock(A, (
+    fn = bind_parameters(MIRFunction(B, INT32, slots, (MIRBlock(A, (
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(P, (MIRDeref(), child)))),
         MIRAssign(MIRPlace(Y), MIRAlias(X)),
         MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(Y, (MIRDeref(), FIELD)))),
-    ), MIRReturn(OUT)),), A)
+    ), MIRReturn(OUT)),), A))
     result = analyze(fn)
     assert result.active[MIRPoint(A, 2)] == {MIRPlace(Y): external(P, child)}
     assert result.function.slots[2].readonly
@@ -197,24 +196,23 @@ def test_recursive_field_graph_is_rejected_before_unbounded_path_growth(readonly
     projections = (MIRDeref(), child)
     if mutual:
         projections += (MIRField(MIRFieldId(other, "parent"), ReadonlyType(CELL)),)
-    fn = MIRFunction(B, VoidType(), (reference(P, param=True, readonly=readonly), reference(X, readonly=readonly)), (
+    fn = bind_parameters(MIRFunction(B, VoidType(), (reference(P, param=True, readonly=readonly), reference(X, readonly=readonly)), (
         MIRBlock(A, (MIRAssign(MIRPlace(X), MIRAlias(P)),), MIRGoto(C)),
         MIRBlock(C, (MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(X, projections))),), MIRGoto(C)),
-    ), A)
+    ), A))
     result = analyze_dependencies(fn, analyze_liveness(fn))
     assert isinstance(result, MIRNotCovered) and result.reason == "recursive inline field paths"
 
 
 def test_missing_and_malformed_backing_facts_fail_explicitly() -> None:
     storage = MIRSlot(STORE, owned_shape(CELL), MIRSlotKind.TEMPORARY)
-    fn = MIRFunction(B, VoidType(), (storage, MIRSlot(P, leaf_shape(INT32), MIRSlotKind.PARAMETER,
-                                                      passing=ParamPassing.VALUE)), (
-        MIRBlock(A, (MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),), MIRReturn()),), A, records=(LAYOUT,))
+    fn = bind_parameters(MIRFunction(B, VoidType(), (storage, MIRSlot(P, leaf_shape(INT32), MIRSlotKind.PARAMETER)), (
+        MIRBlock(A, (MIRAssign(MIRPlace(STORE), MIRConstruct((P,))),), MIRReturn()),), A, records=(LAYOUT,)))
     result = analyze_dependencies(fn, analyze_liveness(fn))
     assert isinstance(result, MIRNotCovered) and "missing storage duration" in result.reason
     for duration in ("body", MIRStorageDuration.CALLER):
         with pytest.raises(MIRValidationError, match="storage duration"):
-            validate_function(replace(fn, slots=(replace(storage, storage_duration=duration), fn.slots[1])))
+            validate_function(bind_parameters(replace(fn, slots=(replace(storage, storage_duration=duration), fn.slots[1]))))
 
 
 @pytest.mark.parametrize("local", [False, True])
@@ -231,30 +229,30 @@ def test_scalar_union_alias_depends_on_wrapper_but_scalar_copy_does_not(local: b
     if local:
         slots += (replace(wrapper, id=Q, kind=MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY),)
         prefix = (MIRAssign(MIRPlace(Q), MIRUnionCopy(MIRPlace(P))),)
-    fn = MIRFunction(B, INT32, slots, (
+    fn = bind_parameters(MIRFunction(B, INT32, slots, (
         MIRBlock(A, (*prefix, MIRAssign(MIRPlace(FLAG), MIRIsAlternative(MIRPlace(source), (0,)))), MIRBranch(FLAG, C, D)),
         MIRBlock(C, (MIRAssign(MIRPlace(X), MIRUnionExtract(payload)),
                      MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(X)))), MIRReturn(OUT)),
         MIRBlock(D, (MIRAssign(MIRPlace(OUT), MIRConstant(0)),), MIRReturn(OUT)),
-    ), A)
+    ), A))
     result = analyze(fn)
     assert result.active[MIRPoint(C, 1)] == {MIRPlace(X): {MIRReferent(payload)}}
     assert result.active[MIRPoint(C, 2)] == {}
-    without_duration = replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == source else s for s in slots))
+    without_duration = bind_parameters(replace(fn, slots=tuple(replace(s, storage_duration=None) if s.id == source else s for s in slots)))
     rejected = analyze_dependencies(without_duration, analyze_liveness(without_duration))
     assert isinstance(rejected, MIRNotCovered) and "missing storage duration" in rejected.reason
 
 
 def loop_function() -> MIRFunction:
     slots = (reference(P, param=True), reference(Q, param=True), reference(X), reference(Y),
-             MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+             MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
              MIRSlot(OUT, leaf_shape(INT32), MIRSlotKind.LOCAL))
-    return MIRFunction(B, INT32, slots, (
+    return bind_parameters(MIRFunction(B, INT32, slots, (
         MIRBlock(A, (MIRAssign(MIRPlace(X), MIRAlias(P)), MIRAssign(MIRPlace(Y), MIRAlias(Q))), MIRGoto(C)),
         MIRBlock(C, (), MIRBranch(FLAG, D, E)),
         MIRBlock(D, (MIRAssign(MIRPlace(X), MIRAlias(Y)), MIRAssign(MIRPlace(Y), MIRAlias(P))), MIRGoto(C)),
         MIRBlock(E, (MIRAssign(MIRPlace(OUT), MIRRead(MIRPlace(X, (MIRDeref(), FIELD)))),), MIRReturn(OUT)),
-    ), A)
+    ), A))
 
 
 @pytest.mark.parametrize("same_object", [False, True])
@@ -288,21 +286,21 @@ def test_fixed_point_contains_concrete_paths_with_aliased_parameters(same_object
 
 
 def test_known_empty_unreachable_invalid_and_uncovered_are_distinct() -> None:
-    fn = MIRFunction(B, VoidType(), (), (MIRBlock(A, (), MIRReturn()), MIRBlock(C, (), MIRReturn())), A)
+    fn = bind_parameters(MIRFunction(B, VoidType(), (), (MIRBlock(A, (), MIRReturn()), MIRBlock(C, (), MIRReturn())), A))
     result = analyze(fn)
     assert result.active[MIRPoint(A, 0)] == {}
     assert MIRPoint(C, 0) not in result.active
     with pytest.raises(MIRValidationError, match="different MIR function"):
         analyze_dependencies(replace(fn), analyze_liveness(fn))
     recursive = MIRField(MIRFieldId(CELL, "child"), CELL)
-    recursive_fn = MIRFunction(B, VoidType(), (reference(P, param=True), reference(X)), (MIRBlock(A, (
+    recursive_fn = bind_parameters(MIRFunction(B, VoidType(), (reference(P, param=True), reference(X)), (MIRBlock(A, (
         MIRAssign(MIRPlace(X), MIRBorrow(MIRPlace(P, (MIRDeref(), recursive)))),
-    ), MIRReturn()),), A)
+    ), MIRReturn()),), A))
     uncovered = analyze_dependencies(recursive_fn, analyze_liveness(recursive_fn))
     assert isinstance(uncovered, MIRNotCovered) and "recursive inline" in uncovered.reason
     assert "not covered" in dump_dependencies(uncovered)
     with pytest.raises(MIRValidationError, match="storage duration"):
-        validate_function(replace(recursive_fn, slots=(replace(reference(P, param=True), storage_duration=MIRStorageDuration.BODY), reference(X))))
+        validate_function(bind_parameters(replace(recursive_fn, slots=(replace(reference(P, param=True), storage_duration=MIRStorageDuration.BODY), reference(X)))))
 
 
 SOURCE = """\
@@ -373,9 +371,9 @@ def test_real_producer_stamps_storage_duration_and_constructor_entry() -> None:
     assert parameter.storage_duration is None
     assert re.search(r"record_union\(::tpy::Union<const Cell\*, const Other\*> value\)", source)
     assert re.search(r"scalar\(const ::tpy::Union<bool, int32_t>& value\)", source)
-    bad = replace(bodies["record_union"], slots=tuple(
+    bad = bind_parameters(replace(bodies["record_union"], slots=tuple(
         replace(s, storage_duration=MIRStorageDuration.CALLER) if s.id == parameter.id else s
-        for s in bodies["record_union"].slots))
+        for s in bodies["record_union"].slots)))
     with pytest.raises(MIRValidationError, match="caller duration requires borrowed scalar"):
         validate_function(bad)
     assert all(s.storage_duration is None for fn in bodies.values() for s in fn.slots

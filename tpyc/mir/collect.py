@@ -28,11 +28,11 @@ from .liveness import MIRLiveness, MIRPoint, dump_liveness
 from .emit import slot_occurrences
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure,
-    MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace,
-    MIRRecordLayout, MIRShape, MIRSlot, MIRSlotId, MIRSlotKind, MIRTupleIndex, MIRUnionPayload,
-    function_body_kind, source_order, statement_target,
+    MIRAssign, MIRBlockId, MIRBodyId, MIRBodyKind, MIRBorrow, MIRContainerElements, MIRContainerStructure, MIRCopy,
+    MIRDeref, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId,
+    MIRSlotKind, MIRTupleIndex, MIRUnionPayload, function_body_kind, source_order, statement_target,
 )
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRShape
 from .payload_lifetime import (
     MIRPayloadInspection, dump_payload_ends, dump_payload_inspection, inspect_payload_lifetimes,
 )

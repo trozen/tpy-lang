@@ -4,7 +4,6 @@ from dataclasses import replace
 
 import pytest
 
-from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, NoneType, OptionalType, UnionType
 from .dependencies import analyze_dependencies
 from .dump import dump_function
@@ -22,8 +21,9 @@ from .payload_lifetime import analyze_payload_ends
 from .presence import _analyze_presence
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
-from .testutil import execute, leaf_shape, optional_shape, union_shape
-from .validate import MIRDefiniteAssignmentError, MIRValidationError, validate_function
+from .testutil import bind_parameters, execute, leaf_shape, optional_shape, union_shape
+from .validate import MIRDefiniteAssignmentError, validate_function
+from .value import MIRValidationError
 
 
 BODY = MIRBodyId("storage_initialization", "example")
@@ -43,11 +43,10 @@ def function(shape: str, *blocks: MIRBlock) -> MIRFunction:
              else union_shape(UnionType(members), tuple(
                  None if isinstance(typ, NoneType) else leaf_shape(typ) for typ in members)))
     slot = MIRSlot(CURRENT, shape, MIRSlotKind.LOCAL, storage_duration=MIRStorageDuration.BODY, residence=ROOT)
-    return MIRFunction(BODY, INT32, (slot, MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER,
-                                                   passing=ParamPassing.VALUE),
-                                    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER, passing=ParamPassing.VALUE),
+    return bind_parameters(MIRFunction(BODY, INT32, (slot, MIRSlot(VALUE, leaf_shape(INT32), MIRSlotKind.PARAMETER),
+                                    MIRSlot(FLAG, leaf_shape(BOOL), MIRSlotKind.PARAMETER),
                                     MIRSlot(GUARD, leaf_shape(BOOL), MIRSlotKind.LOCAL, residence=ROOT)),
-                       blocks, ENTRY, regions=(MIRRegion(ROOT, None, ENTRY),))
+                       blocks, ENTRY, regions=(MIRRegion(ROOT, None, ENTRY),)))
 
 
 def initialize(shape: str) -> MIRStorageInit:
@@ -168,11 +167,11 @@ def test_defaults_require_exact_layout_placement_and_single_site(shape: str, dam
         fn = replace(fn, blocks=(replace(fn.blocks[0], statements=(init, init)),))
         message = "repeated payload initialization"
     elif damage == "missing_placement":
-        fn = replace(fn, slots=(replace(fn.slots[0], storage_duration=None), *fn.slots[1:]))
+        fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], storage_duration=None), *fn.slots[1:])))
         message = "physical initialization needs owning placement"
     elif damage == "parameter":
-        fn = replace(fn, slots=(replace(fn.slots[0], kind=MIRSlotKind.PARAMETER, residence=None,
-                                      storage_duration=None), *fn.slots[1:]))
+        fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], kind=MIRSlotKind.PARAMETER, residence=None,
+                                      storage_duration=None), *fn.slots[1:])))
         message = "physical initialization needs local scalar wrapper"
     if damage in ("alternative", "type", "value"):
         fn = replace(fn, blocks=(replace(fn.blocks[0], statements=(init,)),))
@@ -186,8 +185,8 @@ def test_loop_activation_ends_default_even_when_continue_skips_source_write(shap
         MIRBlock(ENTRY, (), MIRBranch(FLAG, YES, NO), ROOT),
         MIRBlock(YES, (initialize(shape), MIRAssign(MIRPlace(FLAG), MIRConstant(False))), MIRGoto(ENTRY), CHILD),
         MIRBlock(NO, (), MIRReturn(VALUE), ROOT))
-    fn = replace(fn, slots=(replace(fn.slots[0], storage_duration=CHILD, residence=CHILD), *fn.slots[1:]),
-                 regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES)))
+    fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], storage_duration=CHILD, residence=CHILD), *fn.slots[1:]),
+                 regions=(*fn.regions, MIRRegion(CHILD, ROOT, YES))))
     ends = analyze_scope_ends(fn).ends
     assert tuple(ends) == (MIREdge(YES),)
     assert bool(ends[MIREdge(YES)][0].payloads) == (shape == "union_bool")
@@ -202,7 +201,7 @@ def test_body_default_before_loop_is_not_reconstructed_on_backedge() -> None:
         MIRBlock(ENTRY, (initialize("optional_int"),), MIRGoto(YES), ROOT),
         MIRBlock(YES, (write("optional_int"),), MIRBranch(FLAG, YES, NO), ROOT),
         MIRBlock(NO, (), MIRReturn(VALUE), ROOT))
-    fn = replace(fn, slots=(replace(fn.slots[0], storage_duration=MIRStorageDuration.BODY), *fn.slots[1:]))
+    fn = bind_parameters(replace(fn, slots=(replace(fn.slots[0], storage_duration=MIRStorageDuration.BODY), *fn.slots[1:])))
     validate_function(fn)
     assert tuple(analyze_scope_ends(fn).ends) == (MIREdge(NO),)
     assert execute(fn, 7, False) == 7

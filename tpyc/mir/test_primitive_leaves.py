@@ -15,15 +15,15 @@ from .call_contract import MIRSummaryState
 from .coverage import slot_representation
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRConstant, MIRFunction, MIRNotCovered, MIROp,
-    MIRPrint, MIRSlotKind, MIRStorageDuration,
+    MIRAssign, MIRBodyId, MIRCall, MIRCompare, MIRConstant, MIRFunction, MIRNotCovered, MIROp, MIRPrint, MIRSlotKind,
+    MIRStorageDuration,
 )
+from .value import MIRHolding, MIRValidationError
 from .payload_lifetime import inspect_payload_lifetimes
 from .test_payload_inspection import EXTRACT, READ, alias_function
 from .test_payload_lifetime import write
-from .testutil import execute, leaf_shape, reslot
-from .validate import MIRValidationError, validate_function
+from .testutil import bind_parameters, execute, leaf_shape, reslot
+from .validate import validate_function
 from ..thir.validate import THIRValidationError, validate_function as validate_thir
 from ..thir.scalar_leaves import MIRClass
 
@@ -351,7 +351,7 @@ def test_raising_bodies_summarize_their_exit_and_printing_stays_opaque(artifacts
 
 @pytest.mark.parametrize("name,reason", [
     ("pointer", "unsupported parameter type"),
-    ("view", "unsupported parameter type"),
+    ("view", "unsupported reference parameter passing"),
     # The enum parameter is a leaf; print refuses it (a user enum may define `__str__`).
     ("enum_print", "print argument needs a scalar leaf"),
     ("record_print", "unsupported expression form"),
@@ -445,7 +445,7 @@ def _as_float(fn: MIRFunction) -> MIRFunction:
 
     slots = tuple(reslot(s, type=retype(s.type), members=tuple(member(m) for m in s.shape.members))
                   for s in fn.slots)
-    return replace(fn, slots=slots, return_type=retype(fn.return_type))
+    return bind_parameters(replace(fn, slots=slots, return_type=retype(fn.return_type)))
 
 
 @pytest.mark.parametrize("statements,conflicts", [
@@ -528,7 +528,7 @@ def test_native_container_of_float_records(artifacts) -> None:
 
 def _retype(fn: MIRFunction, old, new) -> MIRFunction:
     slots = tuple(reslot(s, type=new) if s.type == old else s for s in fn.slots)
-    return replace(fn, slots=slots, return_type=new if fn.return_type == old else fn.return_type)
+    return bind_parameters(replace(fn, slots=slots, return_type=new if fn.return_type == old else fn.return_type))
 
 
 def _enum_type(compiled):
@@ -558,16 +558,11 @@ def _replace_statement(fn: MIRFunction, kind, change) -> MIRFunction:
         for b in fn.blocks))
 
 
-def test_passing_facts_live_on_parameter_slots(artifacts) -> None:
+def test_a_parameter_classifies_at_its_binding_passing(artifacts) -> None:
     fn = artifacts[1]["leaves"]
-    local = next(s for s in fn.slots if s.name == "y")
     param = next(s for s in fn.slots if s.name == "a")
-    bad = replace(local, passing=ParamPassing.VALUE)
-    with pytest.raises(MIRValidationError, match="passing fact on a non-parameter slot"):
-        validate_function(replace(fn, slots=tuple(bad if s.id == bad.id else s for s in fn.slots)))
-    # An unpublished passing classifies at the unknown representation, not as storage.
-    assert slot_representation(param) is Representation.STORAGE
-    assert slot_representation(replace(param, passing=None)) is Representation.TRAIT
+    assert fn.slot_bindings[param.id].passing is ParamPassing.VALUE
+    assert slot_representation(param, fn.slot_bindings) is Representation.STORAGE
 
 
 def test_validator_rejects_malformed_operations_and_prints(artifacts) -> None:
@@ -581,7 +576,7 @@ def test_validator_rejects_malformed_operations_and_prints(artifacts) -> None:
     glob = next(s for s in artifacts[1]["reads_global"].slots if s.kind is MIRSlotKind.GLOBAL)
     prints = artifacts[1]["prints"]
     moved = replace(glob, id=replace(glob.id, body=prints.id, index=len(prints.slots)))
-    printed = replace(prints, slots=(*prints.slots, moved))
+    printed = bind_parameters(replace(prints, slots=(*prints.slots, moved)))
     printed = _replace_statement(printed, MIRPrint, lambda s: replace(s, arguments=(moved.id,)))
     with pytest.raises(MIRValidationError, match="print needs local inert leaf arguments"):
         validate_function(printed)

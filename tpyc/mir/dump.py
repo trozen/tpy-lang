@@ -6,17 +6,15 @@ from ..thir.nodes import THIRStubCallee
 from ..thir.scalar_leaves import MIRClass
 from .call_contract import MIRAliasObligation, MIRResultHolder, MIRStaticLoan
 from .nodes import (
-    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRField,
-    MIRGoto, MIRFunction, MIRNot, MIROp, MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRHolding, MIRShape,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit, MIRMemberInitMode, MIRMemberInits,
-    MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization,
-    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
-    MIRContainerStructure, MIRContainerElements,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIRSlotId,
+    MIRAlias, MIRBranch, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRDeref, MIRGoto, MIRFunction, MIRNot, MIROp,
+    MIRPrint, MIRPlace, MIRRead, MIRReturn, MIRBorrow, MIRConstruct, MIRCopy, MIRMove, MIRMemberInit,
+    MIRMemberInitMode, MIRMemberInits, MIRRegionId, MIRStorageInit, MIRRecordStorageInit, MIRRecordStorageKind,
+    MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRTupleInitialization, MIRIsPresent, MIROptionalConstruct,
+    MIROptionalCopy, MIROptionalPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload,
+    MIRUnionExtract, MIRContainerStructure, MIRContainerElements, MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead,
+    MIRIteratorAdvance, MIRRangeAdvance, MIRSlotId,
 )
+from .value import MIRField, MIRHolding, MIRShape
 from .validate import validate_function
 
 

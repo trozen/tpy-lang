@@ -63,8 +63,8 @@ statement a `Fragment` (`tpyc/mir/emit.py`) spliced bottom-up into the body,
 which `emit.assemble` closes and numbers; assembly reads no THIR. Every fact
 it needs has one source: a THIR fact read as is (a binding's shape built once
 from its declaring node's facts, a read node's own facts, the temporary plan),
-a THIR fact translated at one site (`access_of` for a binding's access,
-`holding_of` for whether a call result or a literal is fresh), or a MIR rule
+a THIR fact translated at one site (`value.loan_access` for a binding's access,
+`owned_leaf_role` for whether a call result or a literal is fresh), or a MIR rule
 at one site (storage durations, call summaries, the class model, evaluation
 order, record copy raise flags). The facts MIR still derives because THIR
 does not carry them are listed in TODO.md under "One conversion boundary for
@@ -2147,10 +2147,11 @@ as the corpus grows).
   meaning, written down); the coverage tool reports bodies with
   exceptional exits as a fifth count. Whether a certificate must cover
   exits is decided per diagnostic family at B6.
-- **Call rule.** `MIRCallSummary.parameters` are `MIRParameterBinding(type,
-  passing, readonly, borrowed_record)`; an unpublished passing fails
-  closed, and the caller cross-checks `THIRCallableSignature.passings`
-  against them. Both passings come from one helper,
+- **Call rule.** `MIRCallSummary.parameters` are `MIRParameterBinding(declared,
+  value, passing, private_owned)` (`call_contract.derived_binding`; the
+  class, storage and loan access are its properties); an unpublished
+  passing fails closed, and the caller cross-checks
+  `THIRCallableSignature.passings` against them. Both passings come from one helper,
   `predicates.param_passing`, over the FunctionInfo that holds the body's
   const verdicts: the definition's `THIRParam.passing` and the signature
   every call publishes for it (a stub's from its declaration,
@@ -2371,11 +2372,11 @@ as the corpus grows).
   subscript is keyed when its index parameter is the element (dict), else
   positional, and a subscript on a type whose keyedness disagrees with
   having a value member refuses ("unsupported keyed container").
-  `dict[K, K]` has two members (`shapes.container_member`, shared by the
+  `dict[K, K]` has two members (`value.container_members`, shared by the
   definitions and the validator). Each member is an `MIRShape` held by
   value -- the container stores it -- whose class is an inert leaf, an
   owned leaf or a plain record, its access the container's
-  (`shapes.with_access`). Admission keys on `typesys.loan_class` (a native
+  (`value.with_access`). Admission keys on `typesys.loan_class` (a native
   container's `holds` is its element's, it is lendable) and on the
   `native_container` fact THIR publishes on `THIRParam`, `THIRVarDecl` and
   `THIRForEach.iteration`, widened to owned-leaf keys, values and elements,
@@ -2633,7 +2634,7 @@ as the corpus grows).
   `CONST_REF` under the method's readonly verdict (declared or inferred),
   else `MUT_REF` -- one helper, `thir.nodes.effective_params` /
   `receiver_param`, feeds the published signature, the THIR validator, the
-  MIR receiver slot's passing and `summarize_function`. Parameter types
+  MIR receiver's binding and `summarize_function`. Parameter types
   compare through `thir.nodes.declared_param_type` (reference and access
   stripped): an explicit `@readonly` / `@pure` body reads its parameters
   as readonly while the signature keeps the declared types, and the
@@ -2664,8 +2665,9 @@ as the corpus grows).
   [accessor and twin](#accessor-and-twin-callables) rules. Such a body
   lowers as a METHOD body, and
   `summarize_function` summarizes it with the receiver bound as
-  `MIRParameterBinding(record, passing, readonly, receiver)`; every other
-  summary rule is the free function's.
+  its parameter 0, a `MIRParameterBinding` whose value is a pointer at the
+  owner record (`call_contract.bound_params`); every other summary rule is
+  the free function's.
 - **Call rule** (`method_callee`, `with_method_callee`). A call carries the
   callee when the target is proven: a body-eligible method with no
   template (a dunder's injected operator included: an explicit
@@ -2704,9 +2706,9 @@ as the corpus grows).
   call: a method that does not write `self` and returns a record
   parameter hands its caller a mutable borrow (`call_other`), an explicit
   `@readonly` method returning `self` a readonly one (`call_me_ro`). An
-  explicit `@readonly` callable RETURNING its record parameter stays
-  OPAQUE ("unsupported record call parameter": the parameter's record
-  fact is mutable while its passing is const). A
+  explicit `@readonly` callable returning its record parameter declares
+  `-> readonly[P]` (sema refuses a mutable return of it) and summarizes
+  KNOWN, a free function and a method alike. A
   scalar field written through a call is no replacement event (no
   `mir_write` line fact), as a direct scalar field write is none.
 - **Conflicts.** The existing `replacement` kind:
@@ -2829,7 +2831,7 @@ validator) and `tpyc/mir/test_return_origins.py` (MIR).
   signature carries ONE result value, at the definition and at every
   call: the one the const clone binds (readonly; the THIR validator holds
   every follows-receiver signature to it). The access of one call is
-  derived where it is read (`call_contract.bound_result`): MIR binds the
+  derived where it is read (`call_contract.call_result`): MIR binds the
   result at the receiver ARGUMENT's binding (`MIRCallSummary.result_at`),
   so an inferred-const receiver binds a readonly result although its
   static type is mutable. The call arm records the access its receiver is
@@ -3487,9 +3489,11 @@ and setter and `getter_through_field`; `mir/method_calls`
   storage; the model follows the `Own[list[T]]` parameter's. It is returned
   as that storage (`give`), moved into a member (`adopt`, `Frame.__init__`),
   and a caller hands it a temporary (`hand_over`).
-  `call_contract.parameter_binding_problem` admits a record at an owning
-  passing, never readonly ("unsupported element call parameter") and never
-  with a borrowed-record fact ("unsupported record call parameter").
+  A body binds it only as exactly `Own[R]` at OWN
+  (`call_contract.function_binding`); `parameter_contract_problem` refuses a binding of it
+  that is readonly ("call parameter binding differs from its derivation"),
+  holds a pointer at the caller's record ("reference type mismatch") or is
+  passed at another passing ("call parameter passing differs from its type").
 - **Callers' constructs** (`record_value`'s construct arm, the validator's
   `construct_members_ok`). An operand follows its constructor parameter's
   passing, never "a temporary moves": a record lent at CONST_REF is copied
@@ -3520,9 +3524,10 @@ and setter and `getter_through_field`; `mir/method_calls`
   record": C++ move-assigns the member). `storage.owned_field` is the one
   "replaced in place" predicate -- every field the record stores inline
   but a scalar leaf; a view member is the loan the record holds
-  (`shapes.loan_field`, the one field rule `field_shape` reads too), whose
-  write rebinds that loan -- so `storage_destination` makes the write an
-  event of the member place, and the line facts call the write owned.
+  (`value.loan_field`, the one field rule the composer's field position
+  reads too), whose write rebinds that loan -- so `storage_destination`
+  makes the write an event of the member place, and the line facts call
+  the write owned.
   `retention.affects` reaches holders at or under the member, not a
   sibling member and not the record around it: replacing `f.line` reaches
   a holder of `f.line.a`, replacing `f.line.a` spares `f.line` and
@@ -4190,9 +4195,9 @@ change. Pinned by `tests/cases/mir/wrapper_fields` and
   after a killed fact refuses ("optional payload access without current
   presence proof").
 - **Constructors.** An Optional parameter is admitted by the predicate calls
-  share (`definitions.optional_parameter`, wrapping
-  `call_contract.optional_parameter_layout`): a `P | None` pointer at a
-  readonly or mutable payload, or a scalar `int32 | None` by value.
+  share (`definitions.optional_parameter`, reading the value of the one
+  binding `call_contract.parameter_binding` derives): a `P | None` pointer
+  at a readonly or mutable payload, or a scalar `int32 | None` by value.
   `_optional_initializer` handles the parameter copied into the field,
   `None`, and a composed `P(..)` (`_composed_member`, shared with the
   record member arm, which both check the record is movable). Caller constructs take an Optional operand: none,
@@ -4259,11 +4264,12 @@ clear_read(h.p, h)   # warning: argument 'h.p' is what 'clear_read'
 - **Binding.** A record-payload Optional parameter is a POINTER at the
   caller's payload record (C++ `const P*` / `P*`), readonly iff the payload
   is; a scalar-payload Optional parameter is the callee's own VALUE. One
-  admission predicate serves constructors and calls
-  (`call_contract.optional_parameter_layout`, wrapped by
-  `definitions.optional_parameter`); the summary's `MIRParameterBinding`
-  carries the THIR payload layout (`optional_layout`) and, for a record
-  payload, the record it borrows; `parameter_binding_problem` checks both.
+  binding serves constructors and calls (`call_contract.parameter_binding`,
+  read by `definitions.optional_parameter`): its value is the Optional's
+  shape, its payload member the record it borrows at the access THIR
+  published (`published_problem` checks the facts a body needs beyond their
+  form); `parameter_contract_problem` checks the value's form, so the
+  payload is never more mutable than declared.
 - **Origin.** The payload record an Optional parameter lends names the
   parameter itself outside the body (`dependencies.external_origin`, keyed
   like a borrowed record parameter's in `object_keys`), so writes under the

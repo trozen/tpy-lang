@@ -25,15 +25,15 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRContainerElements,
-    MIRCopy, MIRDeref, MIRFunction, MIRIteratorInit, MIRIteratorRead, MIRMemberInit,
-    MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn,
-    MIRSlot,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRCall, MIRConstant, MIRConstruct, MIRContainerElements, MIRCopy,
+    MIRDeref, MIRFunction, MIRIteratorInit, MIRIteratorRead, MIRMemberInit, MIRMemberInitMode, MIRMove, MIRNotCovered,
+    MIRPlace, MIRRead, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRSlot, MIRStorageDuration,
 )
-from .shapes import with_access
-from .testutil import ContainerValue, Reference, bound, execute, leaf_shape, owned_shape, reslot
-from .validate import MIRValidationError, validate_function
+from .value import MIRHolding, MIRValidationError, container_members, with_access
+from .testutil import (
+    ContainerValue, bind_parameters, Reference, bound, execute, leaf_shape, owned_shape, repass, reslot,
+)
+from .validate import validate_function
 
 SOURCE = """\
 from tpy import int32, Span, Array, readonly, StrView, Own
@@ -586,16 +586,35 @@ def test_validator_rejects_damaged_container_slots(active) -> None:
     for fn in (first, own, tail, span_first):
         validate_function(fn)
     _rejects(_reslot(first, "ps", members=(leaf_shape(INT32),)),
-             "unsupported native element")
+             "container members disagree with its type")
     _rejects(_reslot(first, "ps", type=INT32), "value class mismatch")
-    _rejects(_reslot(own, "xs", readonly=True), "unsupported container storage")
+    # A container lent at CONST_REF is the caller's region, never storage of the body's:
+    # readonly storage is no shape at all, mutable storage not at a borrowing passing.
+    _rejects(_reslot(first, "ps", holding=MIRHolding.VALUE), "slot readonly owned storage")
+    ps = next(s for s in first.slots if s.name == "ps")
+    # Placed and well formed, so only the binding refuses it: its passing lends a region.
+    _rejects(_reslot(first, "ps", holding=MIRHolding.VALUE, readonly=False, storage_duration=MIRStorageDuration.BODY,
+                     members=container_members(ps.type, False)),
+             "parameter call parameter binding differs from its derivation")
+    xs = next(s for s in own.slots if s.name == "xs")
+    _rejects(_reslot(own, "xs", readonly=True, members=with_access(xs.shape.members, True)),
+             "slot readonly owned storage")
     _rejects(_reslot(own, "xs", members=(leaf_shape(BOOL),)),
-             "unsupported container storage")
+             "container members disagree with its type")
     holder = next(s for s in tail.slots if s.shape.cls is MIRClass.CONTAINER_VIEW)
     _rejects(replace(tail, slots=tuple(reslot(s, readonly=False) if s is holder else s for s in tail.slots)),
-             "invalid container view holder")
-    _rejects(_reslot(span_first, "s", passing=ParamPassing.CONST_REF), "view parameter needs a by-value passing")
+             "mutable loan of a readonly value")
+    _rejects(repass(span_first, "s", ParamPassing.CONST_REF),
+             "parameter call parameter passing differs from its type")
     _rejects(_reslot(first, "p", members=(leaf_shape(INT32),)), "members on a memberless value")
+    # A container's record element needs the layout the body supplies for it.
+    point = next(s for s in first.slots if s.name == "ps").shape.element.type
+    _rejects(replace(first, records=tuple(r for r in first.records if r.type != point)), "unsupported native element")
+    # A record lent at CONST_REF is the caller's storage, never the body's.
+    items_of = _fn(active, "items_of")
+    validate_function(items_of)
+    _rejects(_reslot(items_of, "b", holding=MIRHolding.VALUE, readonly=False),
+             "unsupported record storage type or form")
 
 
 def test_validator_rejects_damaged_element_places(active) -> None:
@@ -773,14 +792,14 @@ def test_validator_rejects_damaged_view_cursors(fresh) -> None:
     # A cursor over a values view walks the value member, never the key.
     key = (owned_shape(STR, True),)
     damaged = replace(fn, slots=tuple(reslot(s, members=key) if s is cursor else s for s in fn.slots))
-    _rejects(damaged, "unsupported native element")
+    _rejects(damaged, "container members disagree with its type")
 
 
 def test_only_a_pure_stub_binds_a_readonly_container_mutably(active) -> None:
     fn = _fn(active, "grow")
     # `append` writes its receiver: a readonly holder cannot be lent to it.
-    _rejects(_reslot(fn, "xs", readonly=True, passing=ParamPassing.CONST_REF,
-                     members=(leaf_shape(INT32, True),)),
+    _rejects(bind_parameters(_reslot(fn, "xs", readonly=True,
+                                     members=(leaf_shape(INT32, True),))),
              "call container argument mismatch")
 
 

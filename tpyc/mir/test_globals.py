@@ -17,7 +17,8 @@ from .nodes import (
     MIRAssign, MIRCompare, MIRNot, MIRPlace, MIRReturn,
 )
 from .testutil import Reference, execute, reslot
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
+from .value import MIRValidationError
 
 
 SOURCE = """\

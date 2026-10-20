@@ -13,11 +13,11 @@ from .definitions import MIRDefinitions
 from .dump import dump_function
 from .lower import lower_constructor, lower_function
 from .nodes import (
-    MIRBodyId, MIRConstant, MIRFieldId, MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRNotCovered,
-    MIRSlotId, MIRSlotKind,
+    MIRBodyId, MIRConstant, MIRFunction, MIRMemberInit, MIRMemberInitMode, MIRNotCovered, MIRSlotId, MIRSlotKind,
 )
-from .testutil import Reference, execute, reslot
-from .validate import MIRValidationError, validate_function
+from .value import MIRFieldId, MIRValidationError
+from .testutil import bind_parameters, Reference, execute, reslot
+from .validate import validate_function
 
 
 SOURCE = """\
@@ -163,11 +163,35 @@ def test_entry_cannot_read_a_local_or_initialize_readonly_receiver(artifacts: Ar
         validate_function(replace(fn, receiver_init=replace(fn.receiver_init,
             fields=(MIRMemberInit(local.id), MIRMemberInit(MIRConstant(0)), MIRMemberInit(MIRConstant(False))))))
     with pytest.raises(MIRValidationError, match="constructor receiver"):
-        validate_function(replace(fn, slots=(reslot(fn.slots[0], readonly=True), *fn.slots[1:])))
-    with pytest.raises(MIRValidationError, match="constructor receiver"):
+        validate_function(bind_parameters(replace(fn, slots=(reslot(fn.slots[0], readonly=True), *fn.slots[1:]))))
+    # Initializing another parameter is not building the receiver.
+    with pytest.raises(MIRValidationError, match="invalid constructor receiver"):
         validate_function(replace(fn, receiver_init=replace(fn.receiver_init, receiver=fn.slots[1].id)))
     with pytest.raises(MIRValidationError, match="constructor entry mismatch"):
         validate_function(replace(fn, receiver_init=None))
+
+
+def test_the_built_receiver_is_parameter_zero(artifacts: Artifacts) -> None:
+    fn = lower(artifacts[0]["Cell"])
+    receiver = next(iter(fn.slot_bindings))
+    slots = {s.id: s for s in fn.slots}
+    assert fn.receiver_init.receiver == receiver and slots[receiver].name == "self"
+    # Another mutable parameter of the record's own type is no receiver the
+    # entry may build, though it binds as the receiver does.
+    other = replace(slots[receiver], id=MIRSlotId(fn.id, max(s.id.index for s in fn.slots) + 1),
+                    name="other")
+    widened = bind_parameters(replace(fn, slots=(*fn.slots, other)))
+    assert widened.slot_bindings[other.id] == widened.slot_bindings[receiver]
+    validate_function(widened)
+    with pytest.raises(MIRValidationError, match="invalid constructor receiver"):
+        validate_function(replace(widened, receiver_init=replace(widened.receiver_init, receiver=other.id)))
+    # A body with no parameter has no receiver to build.
+    bare = replace(fn, slots=tuple(s for s in fn.slots if s.kind is not MIRSlotKind.PARAMETER),
+                   parameter_bindings=(), receiver_init=replace(fn.receiver_init, receiver=None))
+    with pytest.raises(MIRValidationError, match="invalid constructor receiver"):
+        validate_function(bare)
+    with pytest.raises(MIRValidationError, match="invalid slot kind"):
+        validate_function(replace(fn, slots=(replace(fn.slots[0], kind="parameter"), *fn.slots[1:])))
 
 
 @pytest.mark.parametrize("fields,body,reason", [

@@ -23,12 +23,12 @@ from .dependencies import (
 )
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
-    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRField, MIRFunction,
-    MIRMemberInitMode, MIRMove, MIRNotCovered, MIRPlace,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBorrow, MIRConstant, MIRConstruct, MIRCopy, MIRDeref, MIRFunction, MIRMemberInitMode, MIRMove,
+    MIRNotCovered, MIRPlace, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .value import MIRField, MIRValidationError
 from .retention import affects, may_overlap
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
 from .testutil import borrowed_shape, optional_shape, tuple_shape, union_shape
 
 SOURCE = """\

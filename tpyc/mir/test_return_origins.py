@@ -10,11 +10,13 @@ from ..thir import nodes as th
 from ..thir.test_method_stubs import _replace_node, nodes as _thir_nodes
 from ..thir.testutil import _compile, _entry
 from ..type_def_registry import ParamPassing, latch_declared_native_flags
-from ..typesys import INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, return_representation
+from ..typesys import (
+    INT32, STR, NominalType, OwnType, ReadonlyType, RefType, VoidType, return_representation, unwrap_ref_type,
+)
 from .call_contract import (
     MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRParameterWrite,
-    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, bound_result, endpoint_admitted, parameter_binding_problem,
-    path_hops, resolve_path, result_problem, stub_summary, summary_problem,
+    MIRReturnOrigin, MIRSummaryResult, MIRSummaryState, call_result, endpoint_admitted,
+    parameter_contract_problem, path_hops, resolve_path, result_problem, return_origin_problem, stub_summary, summary_problem,
 )
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .definitions import MIRDefinitions
@@ -26,8 +28,10 @@ from .nodes import (
     MIRAssign, MIRBodyId, MIRCall, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
     MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from . import summaries
 from .summaries import summarize_function
-from .testutil import borrowed_shape, bound, leaf_shape, region_shape
+from .testutil import borrowed_shape, bound, leaf_shape, reaccess, region_shape
+from .value import MIRHolding, MIRShape
 
 
 SOURCE = '''\
@@ -197,6 +201,12 @@ def grow_alias(b: Bag) -> int32:
     return xs[0]
 
 
+def inner_of(b: Box | None, q: Inner) -> Inner:
+    if b is not None:
+        return b.inner
+    return q
+
+
 def main() -> None:
     b = Bag("b")
     b.push(1)
@@ -204,6 +214,8 @@ def main() -> None:
     set_count(b)
     write_through_me(b)
     print(read_inferred(b), view_across(b), b.count, len(b.span_items()), Box(Inner(1)).inner.x, iterate_grab(b))
+    i, bx = Inner(3), Box(Inner(2))
+    print(inner_of(bx, i).x, inner_of(None, i).x)
 
 
 main()
@@ -521,11 +533,14 @@ def test_an_owned_record_parameter_is_handed_over(program: _Program, nested: _Ne
     for record in (nested.bag, nested.shelf):
         typ = OwnType(record)
         handed = bound(typ, typ.param_passing(False))
-        assert parameter_binding_problem(typ, handed) is None, record
-        # Owned storage is never readonly and never a borrow of the caller's.
-        assert parameter_binding_problem(typ, replace(handed, readonly=True)) == "unsupported element call parameter"
-        borrowed = replace(handed, borrowed_record=th.THIRBorrowedRecord(record, False))
-        assert parameter_binding_problem(typ, borrowed) == "unsupported record call parameter"
+        assert handed.declared == typ
+        assert parameter_contract_problem(handed) is None, record
+        # Owned storage is never readonly and never a borrow of the caller's (a POINTER on `Own[R]`).
+        assert parameter_contract_problem(reaccess(handed, True)) == (
+            "call parameter binding differs from its derivation")
+        borrowed = replace(handed, value=replace(handed.value, holding=MIRHolding.POINTER))
+        assert parameter_contract_problem(borrowed) == (
+            "reference type mismatch")
 
 
 def test_dump_spells_every_field_of_a_path(program: _Program, nested: _Nested) -> None:
@@ -610,6 +625,53 @@ def test_a_return_field_outside_the_certified_layout_is_opaque(program: _Program
     assert summarize_function(fn, lowered, definitions).reason == "summary return field differs from definition"
 
 
+def test_a_return_origin_inside_a_record_is_read_from_the_parameters_slot(
+        program: _Program, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Whether a result lies inside a lent record is what the parameter's
+    # slot lends (`lent_record`): a slot lending none returns as the whole
+    # parameter, where a field path is unspellable.
+    identity = _definition(program, "Bag.elems").resolved_callee.identity
+    body, fn = program.workspace.definitions[identity]
+    lowered = program.workspace.bodies[body]
+    receiver = next(s for s in lowered.slots if s.name == "self").shape
+    asked: list[MIRShape] = []
+
+    def lends_nothing(shape: MIRShape) -> MIRShape | None:
+        asked.append(shape)
+        return None
+    known = summarize_function(fn, lowered, program.definitions)
+    assert known.state is MIRSummaryState.KNOWN and all(origin.path for origin in known.summary.returns)
+    monkeypatch.setattr(summaries, "lent_record", lends_nothing)
+    assert summarize_function(fn, lowered, program.definitions).reason == "summary unsupported return origin"
+    assert asked == [receiver]
+
+
+def test_an_optional_record_parameter_returns_inside_its_payload(program: _Program) -> None:
+    # `b: Box | None` lends its payload record: a field path into it is a
+    # record origin, checked as a borrowed record parameter's is
+    # (`return_origin_problem`, the body's layouts), never the whole parameter.
+    fn = _free(program, "inner_of")
+    result = program.workspace.summaries[fn.resolved_callee.identity]
+    assert result.state is MIRSummaryState.KNOWN, result.reason
+    box = fn.params[0].optional_layout.payload.type
+    inner = th.THIRFieldIdentity(box, "inner", unwrap_ref_type(fn.params[1].type))
+    assert result.summary.returns == {MIRReturnOrigin(0, (inner,)), MIRReturnOrigin(1)}
+    parameters, borrowed = result.summary.parameters, call_result(fn.resolved_callee, False)
+    assert return_origin_problem(MIRReturnOrigin(0, (inner,)), borrowed, parameters) is None
+    # The empty path is the payload record itself: an `Inner` result never reaches it.
+    assert return_origin_problem(MIRReturnOrigin(0), borrowed, parameters) == "unsupported return origin type or access"
+    assert return_origin_problem(MIRReturnOrigin(0), th.THIRBorrowedRecord(box, True), parameters) is None
+    # A field outside the payload's layout keeps the summary opaque.
+    body, declaration = program.workspace.definitions[fn.resolved_callee.identity]
+    lowered = program.workspace.bodies[body]
+    definition = program.definitions.get(None, box)
+    fewer = replace(definition, layout=replace(definition.layout, fields=tuple(
+        f for f in definition.layout.fields if f.id.name != "inner")))
+    definitions = object.__new__(MIRDefinitions)
+    object.__setattr__(definitions, "records", {**program.definitions.records, box: fewer})
+    assert summarize_function(declaration, lowered, definitions).reason == "summary return field differs from definition"
+
+
 def test_a_container_result_may_be_more_readonly_than_its_type(program: _Program) -> None:
     mutable, frozen = RefType(INTS), RefType(ReadonlyType(INTS))
     assert result_problem(mutable, th.THIRBorrowedRecord(INTS, False)) is None
@@ -618,13 +680,24 @@ def test_a_container_result_may_be_more_readonly_than_its_type(program: _Program
     assert result_problem(frozen, th.THIRBorrowedRecord(INTS, False)) == "invalid borrowed result"
     strs = NominalType("list", (STR,), _module_qname="builtins.list")
     assert result_problem(mutable, th.THIRBorrowedRecord(strs, False)) == "invalid borrowed result"
+    # A nested container has no region MIR models: refused, never raised.
+    nested = NominalType("list", (INTS,), _module_qname="builtins.list")
+    assert result_problem(RefType(nested), th.THIRBorrowedRecord(nested, False)) == "invalid borrowed result"
+
+
+def test_a_record_result_declared_readonly_is_never_lent_mutably(program: _Program) -> None:
+    # The record's shape check refuses it (`fact_shape`): no guard of its own.
+    bag = _bag(program)
+    frozen = RefType(ReadonlyType(bag))
+    assert result_problem(RefType(bag), th.THIRBorrowedRecord(bag, False)) is None
+    assert result_problem(frozen, th.THIRBorrowedRecord(bag, True)) is None
+    assert result_problem(frozen, th.THIRBorrowedRecord(bag, False)) == "invalid borrowed result"
 
 
 def test_a_whole_container_rooted_in_an_elements_region_is_refused() -> None:
     body = MIRBodyId("main", "region")
     layout = (leaf_shape(INT32),)
-    xs = MIRSlot(MIRSlotId(body, 0), region_shape(INTS, members=layout), MIRSlotKind.PARAMETER, "xs",
-                 passing=ParamPassing.MUT_REF)
+    xs = MIRSlot(MIRSlotId(body, 0), region_shape(INTS, members=layout), MIRSlotKind.PARAMETER, "xs")
     ys = MIRSlot(MIRSlotId(body, 1), region_shape(INTS, members=layout), MIRSlotKind.LOCAL, "ys")
     signature = th.THIRCallableSignature((INTS,), INTS, None, (ParamPassing.MUT_REF,))
     callee = th.THIRResolvedCallee(th.THIRFunctionIdentity("main", "ident"), signature)
@@ -697,9 +770,9 @@ def _free(program: _Program, name: str) -> th.THIRFunction:
 
 
 def test_a_follows_receiver_result_takes_the_receiver_access(program: _Program) -> None:
-    signature = _definition(program, "Bag.view_items").resolved_callee.signature
-    assert signature.result_follows_receiver
-    assert bound_result(signature, True).readonly and not bound_result(signature, False).readonly
+    callee = _definition(program, "Bag.view_items").resolved_callee
+    assert callee.signature.result_follows_receiver
+    assert call_result(callee, True).readonly and not call_result(callee, False).readonly
     # Calls at a readonly and at a mutable receiver publish the definition's one signature.
     me = _definition(program, "Bag.me").resolved_callee
     calls = [node for name in ("read_readonly", "write_through_me")

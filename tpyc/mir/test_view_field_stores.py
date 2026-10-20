@@ -14,7 +14,7 @@ from ..compilation_context import activate_compiler
 from ..thir import nodes as th
 from ..thir.testutil import _compile, _entry, force_in_place
 from ..type_def_registry import ParamPassing
-from ..typesys import NominalType
+from ..typesys import NominalType, OwnType
 from .call_contract import (
     MIR_RESULT, MIR_STATIC, MIRAliasObligation, MIRLoanTransfer, MIRParameterWrite,
     MIRSummaryState, summary_problem, transfer_problem,
@@ -27,15 +27,16 @@ from .dependencies import (
 )
 from .liveness import MIRPoint, analyze_liveness
 from .nodes import (
-    MIRAlias, MIRAssign, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIRDeref, MIREdge, MIRField, MIRFunction,
-    MIRPlace, MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRTupleIndex,
+    MIRAlias, MIRAssign, MIRCall, MIRCallStmt, MIRConstant, MIRCopy, MIRDeref, MIREdge, MIRFunction, MIRPlace,
+    MIRRecordWrite, MIRRecordWriteMode, MIRReturn, MIRTupleIndex,
 )
+from .value import MIRField, MIRValidationError
 from .retention import analyze_retention
 from .storage import analyze_storage, owned_field
 from .storage_evidence import MIRStorageConflict, MIRStorageConflictKind, analyze_store_escapes, dump_escapes
 from .summaries import summarize_function
-from .validate import MIRValidationError, validate_function
-from .testutil import bound, reslot
+from .validate import validate_function
+from .testutil import bind_parameters, bound, reaccess, reslot
 
 SOURCE = """\
 from tpy import Own, StrView, int32, copy
@@ -335,7 +336,8 @@ def test_a_view_member_write_needs_mutable_access(program: _Program) -> None:
     fn = _lowered(program, "literal")
     receiver = fn.slots[0]
     with pytest.raises(MIRValidationError, match="store through readonly reference"):
-        validate_function(replace(fn, slots=(reslot(receiver, readonly=True), *fn.slots[1:])))
+        validate_function(bind_parameters(replace(fn, slots=(
+            reslot(receiver, readonly=True), *fn.slots[1:]))))
 
 
 def test_a_view_member_write_needs_a_view_holder(program: _Program) -> None:
@@ -469,14 +471,13 @@ def test_transfer_contract_validation(program: _Program) -> None:
     # The holder ends at a view member of a record lent mutably, or of the owned result.
     assert transfer_problem(MIRLoanTransfer(0, (), 2), params, result) == holder
     assert transfer_problem(MIRLoanTransfer(2, path, 1), params, result) == holder
-    readonly = (replace(params[0], readonly=True,
-                        borrowed_record=th.THIRBorrowedRecord(params[0].borrowed_record.type, True)), *params[1:])
+    readonly = (reaccess(params[0], True), *params[1:])
     assert transfer_problem(MIRLoanTransfer(0, path, 2), readonly, result) == holder
     assert transfer_problem(MIRLoanTransfer(MIR_RESULT, path, 2), params, params[0].type) == holder
     # The source is static storage, a lent leaf of the family, or a view member's loan.
     assert transfer_problem(MIRLoanTransfer(0, path, MIR_STATIC, path), params, result) == source
     assert transfer_problem(MIRLoanTransfer(0, path, 1), params, result) == source
-    owned = (*params[:2], bound(params[2].type, ParamPassing.VALUE))
+    owned = (*params[:2], bound(OwnType(params[2].type), ParamPassing.VALUE))
     assert transfer_problem(MIRLoanTransfer(0, path, 2), owned, result) == source
     assert summary_problem(replace(copied, transfers=frozenset({MIRLoanTransfer(0, (), 2)}))) == holder
 

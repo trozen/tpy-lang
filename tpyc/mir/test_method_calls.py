@@ -24,7 +24,8 @@ from .nodes import (
     MIRSlotKind,
 )
 from .summaries import summarize_function
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
+from .value import MIRValidationError
 from .testutil import borrowed_shape, bound, leaf_shape, region_shape
 
 
@@ -200,9 +201,10 @@ def test_a_method_summary_binds_the_receiver_first(program: _Program) -> None:
     items = _field(program, "Counter", "items", INTS)
     assert summary.writes == {MIRParameterWrite(0, (items, MIRContainerStructure()))}
     assert summary.returns == frozenset() and summary_problem(summary) is None
-    # The body's receiver slot carries the passing the signature publishes for parameter 0.
-    receiver = next(s for s in _lowered(program, "Counter.push").slots if s.kind is MIRSlotKind.PARAMETER)
-    assert (receiver.name, receiver.passing) == ("self", ParamPassing.MUT_REF)
+    # The body binds its receiver at the passing the signature publishes for parameter 0.
+    push = _lowered(program, "Counter.push")
+    receiver = next(s for s in push.slots if s.kind is MIRSlotKind.PARAMETER)
+    assert (receiver.name, push.slot_bindings[receiver.id].passing) == ("self", ParamPassing.MUT_REF)
 
 
 def test_a_readonly_receiver_is_lent_readonly_and_never_written(program: _Program) -> None:
@@ -313,7 +315,7 @@ def test_a_damaged_receiver_binding_is_refused(program: _Program) -> None:
     # A readonly receiver written, a receiver passed beyond its access, the receiver missing.
     assert summary_problem(replace(total, writes=frozenset({written}))) == "unsupported call write field or access"
     assert summary_problem(replace(total, parameters=(replace(receiver, passing=ParamPassing.MUT_REF),))) == (
-        "unsupported record call parameter")
+        "call parameter binding differs from its derivation")
     push = _known(program, "Counter.push")
     assert summary_problem(replace(push, parameters=push.parameters[1:])) == "unsupported call summary contract"
 
@@ -339,7 +341,8 @@ def test_a_call_consuming_another_callees_summary_is_refused(active: _Program) -
 def test_a_readonly_holder_cannot_receive_a_mutating_call(active: _Program) -> None:
     fn = active.functions["use"]
     param = fn.params[0]
-    readonly = replace(fn, params=(replace(param, borrowed_record=replace(param.borrowed_record, readonly=True)),))
+    readonly = replace(fn, params=(replace(param, passing=ParamPassing.CONST_REF,
+                                           borrowed_record=replace(param.borrowed_record, readonly=True)),))
     result = lower_function(readonly, MIRBodyId("methods", "use"), definitions=active.definitions,
                             summaries=active.workspace.summaries)
     assert isinstance(result, MIRNotCovered) and result.reason == "call record argument mismatch"

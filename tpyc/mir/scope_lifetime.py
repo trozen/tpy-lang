@@ -20,7 +20,8 @@ from ..thir.scalar_leaves import MIRClass
 from .presence import MIRPresenceIssue, MIRPresenceIssueKind, MIREngagement
 from .region_flow import MIRRegionFlow, outgoing_edges
 from .retention import may_overlap
-from .validate import MIRPrepared, MIRPresenceError, MIRValidationError, _prepare_function, _validated_function
+from .validate import MIRPrepared, MIRPresenceError, _prepare_function, _validated_function
+from .value import MIRValidationError
 
 
 class MIRScopeEndKind(Enum):

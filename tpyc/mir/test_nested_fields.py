@@ -14,15 +14,17 @@ from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRDeref, MIRField, MIRFieldId,
-    MIRFunction, MIROptionalConstruct,
-    MIROptionalPayload, MIRPlace, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRUnionConstruct, MIRUnionPayload,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRDeref, MIRFunction, MIROptionalConstruct, MIROptionalPayload, MIRPlace,
+    MIRSlot, MIRSlotId, MIRSlotKind, MIRUnionConstruct, MIRUnionPayload,
 )
+from .value import MIRField, MIRFieldId, MIRValidationError
 from .retention import analyze_retention
 from .storage import analyze_storage
-from .testutil import Heap, OptionalValue, Reference, UnionValue, borrowed_shape, execute, optional_shape, reslot, union_shape
-from .validate import MIRPresenceError, MIRValidationError, validate_function
+from .testutil import (
+    bind_parameters, Heap, OptionalValue, Reference, UnionValue, borrowed_shape, execute, optional_shape, reslot,
+    union_shape,
+)
+from .validate import MIRPresenceError, validate_function
 
 
 SOURCE = """\
@@ -403,8 +405,10 @@ def test_malformed_storage_borrows_are_rejected(artifacts: Artifacts, change: st
         source = replace(source, projections=(*source.projections,
                          MIRField(MIRFieldId(scalar.owner, scalar.name), scalar.type)))
     else:
-        fn = replace(fn, slots=tuple(reslot(slot, readonly=True) if slot.id == source.root else slot
-                                    for slot in fn.slots))
+        # A record parameter lent readonly, bound so.
+        fn = bind_parameters(replace(fn, slots=tuple(
+            reslot(slot, readonly=True) if slot.id == source.root else slot
+            for slot in fn.slots)))
     changed = replace(stmt, value=MIRBorrow(source))
     fn = replace(fn, blocks=(replace(block, statements=(changed, *block.statements[1:])), *fn.blocks[1:]))
     with pytest.raises(MIRValidationError, match=message):

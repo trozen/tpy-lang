@@ -8,23 +8,21 @@ from ..type_def_registry import int_traits_of
 from ..typesys import INT32_MIN, INT32_MAX
 
 from .nodes import (
-    MIRShape, MIRSlot,
-    MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRField, MIRFieldId,
-    MIRFunction, MIRGoto, MIRNot, MIRPlace, MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId,
-    MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRHolding, MIRSlotId,
-    MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind,
-    MIRDeref, MIRTupleConstruct, MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge,
-    MIRIsPresent, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload,
-    MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
-    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance,
-    MIRRangeAdvance, MIROp, MIRPrint, MIRContainerElements,
+    MIRSlot, MIRAlias, MIRBranch, MIRCallStmt, MIRCompare, MIRConstant, MIRFunction, MIRGoto, MIRNot, MIRPlace,
+    MIRRead, MIRReturn, MIRSlotKind, MIRGlobalId, MIRBorrow, MIRConstruct, MIRCopy, MIRMemberInits, MIRMove, MIRSlotId,
+    MIRPayloadWrite, MIRPayloadWriteMode, MIRRecordStorageInit, MIRRecordStorageKind, MIRDeref, MIRTupleConstruct,
+    MIRTupleCopy, MIRTupleIndex, MIRStorageInit, MIREdge, MIRIsPresent, MIROptionalConstruct, MIROptionalCopy,
+    MIROptionalPayload, MIRUnionConstruct, MIRUnionCopy, MIRIsAlternative, MIRUnionPayload, MIRUnionExtract,
+    MIRIteratorInit, MIRIteratorHasNext, MIRIteratorRead, MIRIteratorAdvance, MIRRangeAdvance, MIROp, MIRPrint,
+    MIRContainerElements,
 )
+from .value import Declared, MIRField, MIRFieldId, MIRHolding, MIRShape
 from .region_flow import MIRRegionFlow
 from ..thir import nodes as th
 from ..thir.scalar_leaves import MIRClass, value_class
 from ..type_def_registry import ParamPassing
-from ..typesys import TpyType
-from .call_contract import MIRParameterBinding, parameter_binding
+from ..typesys import OwnType, TpyType
+from .call_contract import FUNCTION, MIRParameterBinding, parameter_binding
 from .shapes import place_shape
 from .coverage import PAYLOAD_RECORD
 from .validate import statement_reads
@@ -44,17 +42,78 @@ def bound(typ: TpyType, passing: ParamPassing, readonly: bool = False,
     """The binding `parameter_binding` derives for a hand-built summary's
     parameter of declared type `typ` (at access `readonly` where THIR
     publishes no fact)."""
-    binding = parameter_binding(th.THIRParam("", typ, borrowed_record=ref, passing=passing), constructor=False,
-                                declared_readonly=readonly)
+    binding = parameter_binding(th.THIRParam("", typ, borrowed_record=ref, passing=passing),
+                                Declared(readonly) if ref is None else FUNCTION)
     assert isinstance(binding, MIRParameterBinding), binding
     return binding
 
 
+def reaccess(binding: MIRParameterBinding, readonly: bool) -> MIRParameterBinding:
+    """A forged binding: `binding` with its value at access `readonly`."""
+    return replace(binding, value=replace(binding.value, readonly=readonly))
+
+
 def bindings_of(fn: th.THIRFunction) -> tuple[MIRParameterBinding, ...]:
     """The parameter bindings a lowering of `fn` records, receiver first (a hand-built body's)."""
-    bindings = tuple(parameter_binding(p, constructor=False) for p in th.effective_params(fn))
+    bindings = tuple(parameter_binding(p) for p in th.effective_params(fn))
     assert all(isinstance(b, MIRParameterBinding) for b in bindings), bindings
     return bindings
+
+
+def _member_fact(member: MIRShape | None, element: bool = False) -> object:
+    """The THIR fact a layout lays member `member` out as (the inverse of
+    `thir_member`); a container's record element is a borrowed one."""
+    if member is None or member.cls is not MIRClass.RECORD:
+        return None if member is None else member.type
+    borrowed = element or member.is_pointer
+    return (th.THIRBorrowedRecord if borrowed else th.THIROwnedRecord)(member.type, member.readonly)
+
+
+def slot_param(slot: MIRSlot, passing: ParamPassing | None = None) -> th.THIRParam:
+    """The THIR parameter a hand-built parameter slot is the slot of: its
+    type (handed over, `Own[...]`, when the slot is its own storage), its
+    passing (the type's own at the slot's access, unless `passing` states
+    one) and the fact its shape lays out."""
+    shape = slot.shape
+    facts: dict[str, object] = {}
+    match shape.cls:
+        case MIRClass.RECORD if shape.is_pointer:
+            facts["borrowed_record"] = th.THIRBorrowedRecord(shape.type, shape.readonly)
+        case MIRClass.CONTAINER | MIRClass.CONTAINER_VIEW if shape.members:
+            facts["native_container"] = th.THIRNativeContainer(
+                shape.type, _member_fact(shape.element, element=True), shape.readonly)
+        case MIRClass.OPTIONAL:
+            facts["optional_layout"] = th.THIROptionalLayout(_member_fact(shape.payload))
+        case MIRClass.TUPLE:
+            facts["tuple_layout"] = th.THIRTupleLayout(tuple(map(_member_fact, shape.members)))
+        case MIRClass.UNION:
+            facts["union_layout"] = th.THIRUnionLayout(shape.type, tuple(map(_member_fact, shape.members)))
+    typ = OwnType(shape.type) if shape.is_storage else shape.type
+    if passing is None:
+        passing = typ.param_passing(shape.readonly)
+    return th.THIRParam(slot.name or "", typ, passing=passing, **facts)
+
+
+def bind_parameters(fn: MIRFunction, passings: dict[MIRSlotId, ParamPassing] | None = None) -> MIRFunction:
+    """A hand-built body with the binding the one derivation
+    (`parameter_binding`) gives each of its parameter slots, at the passing
+    `passings` names for it, else its type's own."""
+    passings = passings or {}
+    bindings = []
+    for slot in fn.slots:
+        if slot.kind is MIRSlotKind.PARAMETER:
+            binding = parameter_binding(slot_param(slot, passings.get(slot.id)))
+            # A slot no binding derives (a forged one) keeps none: the validator refuses it.
+            if isinstance(binding, MIRParameterBinding):
+                bindings.append(binding)
+    return replace(fn, parameter_bindings=tuple(bindings))
+
+
+def repass(fn: MIRFunction, name: str, passing: ParamPassing) -> MIRFunction:
+    """A forged passing: `fn` with the binding of its parameter slot `name` at `passing`."""
+    names = {s.id: s.name for s in fn.slots}
+    return replace(fn, parameter_bindings=tuple(replace(b, passing=passing) if names[sid] == name else b
+                                                for sid, b in fn.slot_bindings.items()))
 
 
 def reslot(slot: MIRSlot, **changes: object) -> MIRSlot:

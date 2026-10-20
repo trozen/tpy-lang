@@ -8,16 +8,11 @@ from enum import Enum, auto
 
 from ..parse import SourceLocation
 from ..thir.nodes import Form, THIRBorrowedRecord, THIRFunction
-from ..thir.scalar_leaves import MIRClass
-from ..type_def_registry import ParamPassing
-from ..typesys import NominalType, TpyType
+from ..typesys import TpyType
 from .call_contract import (
     MIRCallSummary, MIRContainerElements, MIRContainerStructure, MIRGlobalId, MIRParameterBinding,
 )
-
-
-class MIRValidationError(ValueError):
-    """A producer supplied malformed MIR, rather than unsupported source."""
+from .value import MIRField, MIRRecordLayout, MIRShape, MIRValidationError
 
 
 @dataclass(frozen=True)
@@ -89,25 +84,6 @@ class MIRSlotKind(Enum):
     TEMPORARY = auto()
 
 
-class MIRHolding(Enum):
-    """How a position holds its value, never derived from the type: a
-    tuple's record member is owned or borrowed by the tuple's form, an
-    Optional record payload is a pointer at a slot and inline at a field,
-    an iterator has its container's type."""
-    # Stored here: an inert leaf, owned storage, inline members.
-    VALUE = auto()
-    # A reference a `[deref]` follows: a borrowed record, an owned leaf's
-    # borrow, a view holder.
-    POINTER = auto()
-    # A holder whose `[elements]` region is reached directly, never
-    # dereferenced: a borrowed container, a container view.
-    REGION = auto()
-    # A native iterator over its container.
-    CURSOR = auto()
-    # A narrowed alias of a wrapper payload, naming the payload's storage.
-    ALIAS = auto()
-
-
 class MIRStorageDuration(Enum):
     BODY = auto()
     CALLER = auto()
@@ -116,192 +92,6 @@ class MIRStorageDuration(Enum):
 class MIRRecordStorageKind(Enum):
     DIRECT = auto()
     OPTIONAL = auto()
-
-
-@dataclass(frozen=True)
-class MIRShape:
-    """One value as MIR models it: its type, its class (`value_class` of the
-    type), how its position holds it, its access, and its members -- a
-    tuple's elements, an Optional's payload, a union's alternatives (None
-    for an absent one), a container's element and, for a dict, its value.
-    A container member's access is the container's; element identity is
-    never tracked: `[elements]` is one region every subscript, iterator and
-    view of the container reaches."""
-    type: TpyType
-    cls: MIRClass
-    holding: MIRHolding = MIRHolding.VALUE
-    readonly: bool = False
-    members: tuple['MIRShape | None', ...] = ()
-
-    @property
-    def payload(self) -> 'MIRShape':
-        """An Optional's payload."""
-        assert self.cls is MIRClass.OPTIONAL
-        return self.members[0]
-
-    @property
-    def elements(self) -> 'tuple[MIRShape, ...]':
-        """A tuple's members, in order."""
-        assert self.cls is MIRClass.TUPLE
-        return self.members
-
-    @property
-    def alternatives(self) -> 'tuple[MIRShape | None, ...]':
-        """A union's members, None for an absent alternative."""
-        assert self.cls is MIRClass.UNION
-        return self.members
-
-    @property
-    def element(self) -> 'MIRShape':
-        """What iterating a container yields: a list / set / Array element, a dict key."""
-        assert self.cls in CONTAINER_CLASSES
-        return self.members[0]
-
-    @property
-    def value(self) -> 'MIRShape | None':
-        """A dict's value member, None for any other container."""
-        assert self.cls in CONTAINER_CLASSES
-        return self.members[1] if len(self.members) > 1 else None
-
-    @property
-    def subscript(self) -> 'MIRShape':
-        """The member a subscript yields: a dict's value, else the element."""
-        value = self.value
-        return value if value is not None else self.element
-
-    @property
-    def is_scalar(self) -> bool:
-        """An inert leaf held by value."""
-        return self.cls is MIRClass.LEAF and self.holding is MIRHolding.VALUE
-
-    @property
-    def scalar_by_value(self) -> bool:
-        """A member holding an inert leaf by value, with no access of its own."""
-        return self.is_scalar and not self.readonly
-
-    @property
-    def is_storage(self) -> bool:
-        """Owned storage held here: an owned leaf's buffer, a record, a
-        container -- what a move empties while the holder lives on."""
-        return self.holding is MIRHolding.VALUE and self.cls in _STORAGE_CLASSES
-
-    @property
-    def leaf_storage(self) -> bool:
-        """An owned leaf's storage held here."""
-        return self.holding is MIRHolding.VALUE and self.cls is MIRClass.OWNED_LEAF
-
-    @property
-    def container_storage(self) -> bool:
-        """A native container's storage held here."""
-        return self.holding is MIRHolding.VALUE and self.cls is MIRClass.CONTAINER
-
-    @property
-    def is_holder(self) -> bool:
-        """A holder of storage elsewhere -- a pointer, a region, an iterator's
-        cursor, a payload alias: a loan of its own, whose root write points
-        it elsewhere without writing storage another place reaches."""
-        return self.holding is not MIRHolding.VALUE
-
-    @property
-    def owned_leaf_borrow(self) -> bool:
-        """A readonly holder of an owned leaf's storage."""
-        return self.holding is MIRHolding.POINTER and self.readonly and self.cls is MIRClass.OWNED_LEAF
-
-    @property
-    def view_holder(self) -> bool:
-        """A readonly holder typed by a view over an owned leaf: its
-        referents are the owned-leaf storage it views."""
-        return self.holding is MIRHolding.POINTER and self.readonly and self.cls is MIRClass.VIEW
-
-    @property
-    def leaf_borrow(self) -> bool:
-        """A holder an operation reads an owned leaf through: an owned leaf's
-        own borrow or a view of one."""
-        return self.owned_leaf_borrow or self.view_holder
-
-    @property
-    def container_view_holder(self) -> bool:
-        """A holder typed by a container view (a Span, a dict view): it IS
-        the elements region of the container it views, so its referents are
-        `[elements]` places and a container projection on it is absorbed."""
-        return self.holding is MIRHolding.REGION and self.cls is MIRClass.CONTAINER_VIEW
-
-    @property
-    def is_pointer(self) -> bool:
-        """A reference one `[deref]` follows to the storage it points at."""
-        return self.holding is MIRHolding.POINTER
-
-    @property
-    def borrowed(self) -> bool:
-        """A holder of storage elsewhere that a lent argument, a borrowed
-        result or a rebound holder is: a pointer, or a container view's region."""
-        return self.is_pointer or self.container_view_holder
-
-    @property
-    def borrow_holder(self) -> bool:
-        """A holder a borrow fills -- a borrowed result, an alias: a pointer
-        or a region (a borrowed container, a container view)."""
-        return self.holding in (MIRHolding.POINTER, MIRHolding.REGION)
-
-    @property
-    def borrowed_container(self) -> bool:
-        """A whole container held elsewhere: a borrowed container's region."""
-        return self.whole_container and not self.container_storage
-
-    @property
-    def owned_place(self) -> bool:
-        """Storage at a place: owned storage, or the storage a view holder
-        points at (its family's owned leaf, typed by the view)."""
-        return self.holding is MIRHolding.VALUE and (self.is_storage or self.cls is MIRClass.VIEW)
-
-    @property
-    def whole_container(self) -> bool:
-        """A whole container object: a borrowed container or container
-        storage (an iterator is a cursor, not the object)."""
-        return self.cls is MIRClass.CONTAINER and self.holding in (MIRHolding.VALUE, MIRHolding.REGION)
-
-    @property
-    def region(self) -> bool:
-        """A value whose `[elements]` region a place reaches directly:
-        container storage, a borrowed container, or a view of one."""
-        return self.cls in CONTAINER_CLASSES and self.holding in (MIRHolding.VALUE, MIRHolding.REGION)
-
-    @property
-    def owned_tuple(self) -> bool:
-        """A tuple storing a record member inline."""
-        return self.cls is MIRClass.TUPLE and any(m is not None and m.is_storage for m in self.members)
-
-    @property
-    def record_payload(self) -> bool:
-        """An Optional whose payload is a pointer at a record."""
-        return self.cls is MIRClass.OPTIONAL and self.payload.holding is MIRHolding.POINTER
-
-    @property
-    def scalar_wrapper(self) -> bool:
-        """An Optional or a union whose every payload is an inert leaf by value."""
-        match self.cls:
-            case MIRClass.OPTIONAL:
-                return self.payload.scalar_by_value
-            case MIRClass.UNION:
-                return all(m is None or m.scalar_by_value for m in self.members)
-        return False
-
-    @property
-    def form(self) -> Form:
-        """The THIR form a holder of this value has: owned storage (and a
-        tuple owning a record member) is STORAGE, any holder of storage
-        elsewhere BORROW, anything held by value VALUE."""
-        if self.holding is not MIRHolding.VALUE:
-            return Form.BORROW
-        if self.is_storage or self.owned_tuple:
-            return Form.STORAGE
-        return Form.VALUE
-
-
-_STORAGE_CLASSES = frozenset({MIRClass.OWNED_LEAF, MIRClass.RECORD, MIRClass.CONTAINER})
-CONTAINER_CLASSES = frozenset({MIRClass.CONTAINER, MIRClass.CONTAINER_VIEW})
-# A wrapper's or a container's members are the only ones a value carries.
-MEMBERED_CLASSES = frozenset({MIRClass.TUPLE, MIRClass.OPTIONAL, MIRClass.UNION}) | CONTAINER_CLASSES
 
 
 @dataclass(frozen=True)
@@ -315,9 +105,6 @@ class MIRSlot:
     storage_duration: MIRStorageDuration | MIRRegionId | None = None
     residence: MIRRegionId | None = None
     record_storage: MIRRecordStorageKind = MIRRecordStorageKind.DIRECT
-    # How the signature passes a PARAMETER slot (`THIRParam.passing`);
-    # None elsewhere, and a parameter without it is no scalar leaf.
-    passing: ParamPassing | None = None
 
     @property
     def type(self) -> TpyType:
@@ -350,34 +137,6 @@ class MIROptionalPayload:
 @dataclass(frozen=True)
 class MIRUnionPayload:
     alternative: int
-
-
-@dataclass(frozen=True)
-class MIRFieldId:
-    owner: NominalType
-    name: str
-
-
-@dataclass(frozen=True)
-class MIRField:
-    id: MIRFieldId
-    type: TpyType
-
-
-@dataclass(frozen=True)
-class MIRRecordLayout:
-    type: NominalType
-    fields: tuple[MIRField, ...]
-    copyable: bool
-    movable: bool
-    # An owned leaf's storage: a buffer MIR models whole, with no fields to
-    # project (`MIRDefinitions` answers it from the TypeDef, never from a
-    # constructor).
-    opaque: bool = False
-    # The struct-base ancestors, MRO order, nearest first: a field's owner
-    # is `type` or one of them, and storage of `type` binds at any of them
-    # (`call_contract.binds_at`).
-    ancestors: tuple[NominalType, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -816,6 +575,15 @@ class MIRFunction:
     def record_layouts(self) -> 'Mapping[TpyType, MIRRecordLayout]':
         """The body's record layouts by record type."""
         return MappingProxyType({r.type: r for r in self.records})
+
+    @cached_property
+    def slot_bindings(self) -> 'Mapping[MIRSlotId, MIRParameterBinding]':
+        """Each parameter slot's binding, paired in order; a count mismatch is
+        refused here, before any reader pairs them."""
+        params = [s.id for s in self.slots if s.kind is MIRSlotKind.PARAMETER]
+        if len(params) != len(self.parameter_bindings):
+            raise MIRValidationError("parameter slots differ from their bindings")
+        return MappingProxyType(dict(zip(params, self.parameter_bindings)))
 
 
 @dataclass(frozen=True)

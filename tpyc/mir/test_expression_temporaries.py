@@ -12,18 +12,16 @@ from ..typesys import BOOL, INT32, NominalType, OptionalType, TupleType, UnionTy
 from .definitions import MIRDefinitions
 from .lower import lower_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRConstruct,
-    MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRNotCovered,
-    MIRPlace, MIRRead, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIROptionalConstruct, MIROptionalPayload,
-    MIRTupleConstruct, MIRTupleIndex,
-    MIRUnionConstruct, MIRUnionPayload,
+    MIRAssign, MIRBodyId, MIRBorrow, MIRBranch, MIRConstruct, MIRDeref, MIRFunction, MIRGoto, MIRNotCovered, MIRPlace,
+    MIRRead, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIROptionalConstruct, MIROptionalPayload,
+    MIRTupleConstruct, MIRTupleIndex, MIRUnionConstruct, MIRUnionPayload,
 )
+from .value import MIRField, MIRFieldId, MIRValidationError
 from .region_flow import MIRRegionFlow
 from .scope_lifetime import analyze_scope_ends, inspect_scope_lifetimes
 from .storage_evidence import MIRStorageConflictKind, MIRStorageVerdict, certify_storage_origins
 from .testutil import borrowed_shape, execute, optional_shape, tuple_shape, union_shape
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
 
 
 @pytest.fixture(scope="module")

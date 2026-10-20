@@ -22,11 +22,11 @@ from .collect import (
 )
 from .definitions import MIRDefinitions
 from .nodes import (
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction,
-    MIRPlace, MIRRecordLayout, MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    function_body_kind,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBodyKind, MIRCompare, MIRConstant, MIRFunction, MIRPlace,
+    MIRRegion, MIRRegionId, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, function_body_kind,
 )
-from .testutil import borrowed_shape, leaf_shape
+from .value import MIRRecordLayout
+from .testutil import bind_parameters, borrowed_shape, leaf_shape
 
 
 def dump(source: str) -> str:
@@ -657,7 +657,7 @@ def test_a_literal_origin_is_spelled_static() -> None:
     region = MIRRegionId(body, 0)
     literal, view, result = (MIRSlotId(body, i) for i in range(3))
     entry = MIRBlockId(body, 0)
-    fn = MIRFunction(body, BOOL, (
+    fn = bind_parameters(MIRFunction(body, BOOL, (
         MIRSlot(literal, borrowed_shape(STR, readonly=True), MIRSlotKind.TEMPORARY, residence=region),
         MIRSlot(view, borrowed_shape(STR, readonly=True), MIRSlotKind.LOCAL, "v", residence=region),
         MIRSlot(result, leaf_shape(BOOL), MIRSlotKind.TEMPORARY, residence=region),
@@ -666,7 +666,7 @@ def test_a_literal_origin_is_spelled_static() -> None:
         MIRAssign(MIRPlace(view), MIRAlias(literal), SourceLocation(2, 4)),
         MIRAssign(MIRPlace(result), MIRCompare("==", view, view), SourceLocation(3, 4)),
     ), MIRReturn(result), region),), entry, (MIRRecordLayout(STR, (), True, True, opaque=True),),
-        regions=(MIRRegion(region, None, entry),))
+        regions=(MIRRegion(region, None, entry),)))
     verdict = MIRBodyVerdict(body, "f", 1, MIRBodyKind.FREE_FUNCTION, MIRVerdictStatus.COVERED, None, (), False,
                              None, None, fn, analyze_body(fn), None)
     found = line_facts(verdict)
@@ -717,7 +717,7 @@ def retarget(t: Tok, s: str) -> None:
 
 
 def test_a_view_member_write_is_a_borrowed_write() -> None:
-    # A view member is the loan the record holds (`shapes.loan_field`), so a
+    # A view member is the loan the record holds (`value.loan_field`), so a
     # write rebinding it is borrowed, as the member init storing it is.
     compiler, modules = _compile(VIEW_FIELD_WRITE_SOURCE)
     entry = _entry(modules)

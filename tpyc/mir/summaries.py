@@ -9,8 +9,8 @@ from ..typesys import TpyType, receiver_neutral_return
 from .call_contract import (
     BORROWING_PASSINGS, MIR_RESULT, MIR_STATIC, OWNING_PASSINGS, MIRAliasObligation, MIRCallSummary, MIRGlobalId,
     MIRLoanTransfer, MIRParameterBinding, MIRParameterWrite, MIRResultHolder, MIRReturnOrigin, MIRSummaryResult,
-    MIRSummaryState, bound_result, obligation_problem, parameter_binding, path_hops, return_origin_problem,
-    summary_problem, transfer_ends, write_problem,
+    MIRSummaryState, bound_params, call_result, function_binding, obligation_problem, parameter_binding, path_hops,
+    return_origin_problem, summary_problem, transfer_ends, write_problem,
 )
 from .call_effects import resolve_call_writes
 from .shapes import view_member
@@ -20,13 +20,13 @@ from .dependencies import MIRDependencies, MIRReferent, analyze_dependencies, re
 from .liveness import MIRLiveness, analyze_liveness
 from .retention import alias_obligation, analyze_body_retention, parameter_indices
 from .nodes import (
-    CONTAINER_CLASSES,
     MIRAlias, MIRAssign, MIRBodyKind, MIRBorrow, MIRCall, MIRCallStmt, MIRCompare, MIRConstant, MIRConstruct,
-    MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRIsPresent, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot,
-    MIRNotCovered, MIROp, MIROptionalConstruct, MIROptionalCopy, MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn, MIRPlace,
-    MIRSlot, MIRSlotKind, MIRSlotId, MIRTupleIndex, MIRUnionPayload, MIRHolding, statement_call,
+    MIRContainerElements, MIRContainerStructure, MIRCopy, MIRDeref, MIRFunction, MIRIsPresent, MIRIteratorAdvance,
+    MIRIteratorHasNext, MIRIteratorInit, MIRIteratorRead, MIRMove, MIRNot, MIRNotCovered, MIROp, MIROptionalConstruct,
+    MIROptionalCopy, MIROptionalPayload, MIRPoint, MIRPrint, MIRRangeAdvance, MIRRead, MIRRecordStorageInit, MIRReturn,
+    MIRPlace, MIRSlot, MIRSlotKind, MIRSlotId, MIRTupleIndex, MIRUnionPayload, statement_call,
 )
+from .value import CONTAINER_CLASSES, MIRField, MIRFieldId, MIRHolding, lent_record
 from .validate import owned_leaf_place_type, statement_reads, validate_function
 
 # The passings that lend storage to the callee without a copy; a template
@@ -273,8 +273,8 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     are summarized by the dependency and liveness fixpoints.
 
     An `@auto_readonly` access twin (`THIRFunction.access_twin`) summarizes
-    as if its receiver were bound like its definition's (`CONST_REF`,
-    readonly), so the two summaries compare equal exactly when the twin's
+    as if its receiver were bound at its definition's passing (`CONST_REF`,
+    so readonly: `parameter_binding`), so the two summaries compare equal exactly when the twin's
     effects and origins are its definition's."""
     validate_function(body)
     callee = declaration.resolved_callee
@@ -284,33 +284,29 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
     if (callee is None or body.kind is not (MIRBodyKind.METHOD if method else MIRBodyKind.FREE_FUNCTION)
             or (callee.identity.owner is not None) is not method or body.receiver_init is not None
             or twin and not (method and callee.signature.result_follows_receiver and callee.signature.passings)
-            or body.borrowed_result != bound_result(callee.signature, method and declaration.receiver.readonly)
+            or body.borrowed_result != call_result(callee, method and declaration.receiver.readonly)
             or callee.signature.return_type not in (
                 body.return_type, receiver_neutral_return(
                     body.return_type, callee.signature.result_follows_receiver))):
         return MIRSummaryResult.opaque("summary definition or result contract mismatch")
-    effective = th.effective_params(declaration)
-    params = tuple(s for s in body.slots if s.kind is MIRSlotKind.PARAMETER)
-    if (len(params) != len(effective)
-            or tuple(th.declared_param_type(t) for t in callee.signature.param_types)
-            != tuple(th.declared_param_type(p.type) for p in effective)):
+    effective = bound_params(declaration)
+    # The body bound each parameter as its callers bind it (`bound_params`),
+    # checked against its slot by the validator.
+    if effective is None or len(effective) != len(body.slot_bindings):
         return MIRSummaryResult.opaque("summary definition signature mismatch")
-    # The body bound each parameter by its one derivation (`parameter_binding`).
-    bindings = list(body.parameter_bindings)
-    if len(bindings) != len(effective):
-        return MIRSummaryResult.opaque("summary definition signature mismatch")
-    for slot, param, binding in zip(params, effective, bindings):
+    slots = {s.id: s for s in body.slots}
+    for (sid, binding), param in zip(body.slot_bindings.items(), effective):
         if param.passing is None:
             return MIRSummaryResult.opaque("summary parameter passing unpublished")
-        # The body is the declaration's: each slot bound as its parameter derives.
-        if (slot.name != param.name or slot.passing is not param.passing
-                or parameter_binding(param, constructor=False) != binding):
+        # The body is the declaration's: each binding the one THIR's facts derive.
+        if slots[sid].name != param.name or function_binding(param) != binding:
             return MIRSummaryResult.opaque("summary parameter binding mismatch")
+    bindings = list(body.parameter_bindings)
     if twin:
-        receiver = bindings[0]
-        bindings[0] = replace(receiver, passing=callee.signature.passings[0], readonly=True,
-                              borrowed_record=th.THIRBorrowedRecord(receiver.borrowed_record.type, True))
-    slots = {s.id: s for s in body.slots}
+        twin_receiver = parameter_binding(replace(effective[0], passing=callee.signature.passings[0]))
+        if isinstance(twin_receiver, str):
+            return MIRSummaryResult.opaque("summary parameter binding mismatch")
+        bindings[0] = twin_receiver
     record_layouts = body.record_layouts
     # The dependency pass runs once, first asked for by a record storage slot.
     liveness = analyze_liveness(body)
@@ -360,7 +356,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
             pass
         elif slot.shape.record_payload:
             # A holder of a record: the record a borrowed holder points at.
-            records = (shape.payload.type,)
+            records = (lent_record(shape).type,)
         else:
             return MIRSummaryResult.opaque("summary storage or value shape")
         if shape.cls in CONTAINER_CLASSES:
@@ -403,7 +399,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         return None
 
     # The borrowed result the summary publishes, as a caller binds it.
-    result = bound_result(callee.signature, bool(bindings) and bindings[0].readonly)
+    result = call_result(callee, bool(bindings) and bindings[0].readonly)
     for block in body.blocks:
         if body.borrowed_result is not None and isinstance(block.terminator, MIRReturn):
             state = dependencies.referents.get(MIRPoint(block.id, len(block.statements)))
@@ -419,7 +415,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
                         return MIRSummaryResult.opaque("view result origin outside the parameters" if view
                                                        else "summary unsupported return origin")
                     index = parameters[origin.place.root]
-                    if bindings[index].borrowed_record is None:
+                    if lent_record(slots[origin.place.root].shape) is None:
                         # A container result, a Span, or a record element of a
                         # container parameter returns as the whole parameter (the
                         # caller projects a container argument into its elements).
@@ -568,7 +564,7 @@ def summarize_function(declaration: th.THIRFunction, body: MIRFunction,
         if not _transfer_in_layouts(declaration, definitions, tuple(bindings), transfer, callee.signature.return_type):
             return MIRSummaryResult.opaque("summary transfer field differs from definition")
     summary = MIRCallSummary(callee, tuple(bindings),
-                             frozenset(range(len(params))), frozenset(writes), frozenset(),
+                             frozenset(range(len(bindings))), frozenset(writes), frozenset(),
                              frozenset(returns), transfers, not body.exceptional_exits,
                              frozenset(global_reads))
     obligations = _obligations(declaration, body, definitions, summary, liveness, dependencies)

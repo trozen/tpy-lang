@@ -16,9 +16,10 @@ from ..typesys import INT32, NominalType, OptionalType, ReadonlyType, TupleType
 from .collect import MIRBodyVerdict, MIRVerdictStatus, enumerate_bodies
 from .dump import dump_function
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRConstant, MIRDeref, MIRField, MIRFieldId, MIRFunction, MIRIsPresent,
-    MIROptionalConstruct, MIROptionalPayload, MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
+    MIRAssign, MIRBodyId, MIRConstant, MIRDeref, MIRFunction, MIRIsPresent, MIROptionalConstruct, MIROptionalPayload,
+    MIRPlace, MIRRead, MIRSlot, MIRSlotId, MIRSlotKind,
 )
+from .value import MIRField, MIRFieldId
 from .coverage import MIRUnsupported
 from .definitions import constructor_initialization
 from .presence import _State, _may_hold, _reaches, _transfer

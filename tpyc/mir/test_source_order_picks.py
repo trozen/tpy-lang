@@ -14,9 +14,11 @@ from . import collect, storage_evidence
 from .collect import enumerate_bodies, line_facts
 from .emit import Fragment, RegionHandle, assemble
 from .nodes import (
-    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRClass, MIRConstant, MIRGlobalId, MIRNotCovered, MIRPlace, MIRReturn,
-    MIRShape, MIRSlotId, MIRSlotKind, MIRValidationError,
+    MIRAssign, MIRBodyId, MIRBodyKind, MIRBorrow, MIRConstant, MIRGlobalId, MIRNotCovered, MIRPlace, MIRReturn,
+    MIRSlotId, MIRSlotKind,
 )
+from ..thir.scalar_leaves import MIRClass
+from .value import MIRShape, MIRValidationError
 from .liveness import MIRPoint
 from .storage_evidence import MIRStorageVerdict, analyze_return_escapes
 from ..mir_diagnostics import argument_aliases

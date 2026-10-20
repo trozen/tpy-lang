@@ -19,7 +19,8 @@ from .nodes import (
 )
 from .storage import MIRStorageEvents, analyze_storage
 from .testutil import Heap, Reference, execute, reslot
-from .validate import MIRPresenceError, MIRValidationError, validate_function
+from .validate import MIRPresenceError, validate_function
+from .value import MIRValidationError
 from ..thir.scalar_leaves import MIRClass
 
 

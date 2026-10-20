@@ -11,11 +11,8 @@ from .dependencies import analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .lower import lower_constructor, lower_function
-from .nodes import (
-    MIRHolding,
-    MIRBodyId, MIRContainerElements, MIRFunction,
-    MIRNotCovered, MIRPlace, MIRPoint, MIRReturn,
-)
+from .nodes import MIRBodyId, MIRContainerElements, MIRFunction, MIRNotCovered, MIRPlace, MIRPoint, MIRReturn
+from .value import MIRHolding
 from .retention import MIRRetention, analyze_retention
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage

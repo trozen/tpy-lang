@@ -19,10 +19,9 @@ from .collect import MIRBodyVerdict, enumerate_bodies, line_facts
 from .coverage import MIRUnsupported
 from .definitions import MIRConstructorDefinition, MIRDefinitions, _verify, constructor_initialization
 from .lower import lower_function
-from .nodes import (
-    MIRBodyId, MIRConstant, MIRField, MIRFieldId, MIRFunction, MIRMemberInitMode, MIRNotCovered, MIRRecordLayout,
-)
-from .validate import MIRValidationError, validate_function
+from .nodes import MIRBodyId, MIRConstant, MIRFunction, MIRMemberInitMode, MIRNotCovered
+from .value import MIRField, MIRFieldId, MIRRecordLayout, MIRValidationError
+from .validate import validate_function
 
 SOURCE = """\
 from tpy import int32, Own, String

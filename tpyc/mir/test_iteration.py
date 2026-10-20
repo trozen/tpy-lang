@@ -9,22 +9,20 @@ from .dependencies import MIRReferent, analyze_dependencies
 from .dump import dump_function
 from .liveness import analyze_liveness
 from .nodes import (
-    MIRHolding,
-    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant,
-    MIRContainerElements, MIRContainerStructure, MIRDeref,
-    MIRField, MIRFieldId, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext,
-    MIRIteratorInit, MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRRecordLayout,
-    MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind,
-    MIRRegion, MIRRegionId,
-    MIROptionalConstruct, MIROptionalPayload,
-    MIRUnionConstruct, MIRUnionPayload,
-    MIRTupleConstruct, MIRTupleIndex,
+    MIRAlias, MIRAssign, MIRBlock, MIRBlockId, MIRBodyId, MIRBranch, MIRConstant, MIRContainerElements,
+    MIRContainerStructure, MIRDeref, MIRFunction, MIRGoto, MIRIteratorAdvance, MIRIteratorHasNext, MIRIteratorInit,
+    MIRIteratorRead, MIRPlace, MIRPoint, MIRRead, MIRReturn, MIRSlot, MIRSlotId, MIRSlotKind, MIRRegion, MIRRegionId,
+    MIROptionalConstruct, MIROptionalPayload, MIRUnionConstruct, MIRUnionPayload, MIRTupleConstruct, MIRTupleIndex,
 )
+from .value import MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRValidationError
 from .retention import may_overlap
 from .scope_lifetime import analyze_scope_ends
 from .storage import analyze_storage
-from .testutil import ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape, region_shape, reslot, tuple_shape, union_shape
-from .validate import MIRValidationError, validate_function
+from .testutil import (
+    bind_parameters, ContainerValue, Reference, borrowed_shape, execute, leaf_shape, optional_shape, owned_shape,
+    region_shape, reslot, tuple_shape, union_shape,
+)
+from .validate import validate_function
 
 B = MIRBodyId("iteration", "retained")
 P, Q, SOURCE, ITER, HAS, FIRST, CURRENT, OUT, SEVEN = (MIRSlotId(B, i) for i in range(9))
@@ -62,7 +60,7 @@ def fixture() -> MIRFunction:
         MIRBlock(DONE, (assignment(OUT, MIRRead(MIRPlace(FIRST, (MIRDeref(), FIELD)))),), MIRReturn(OUT)),
         MIRBlock(EMPTY, (assignment(OUT, MIRConstant(0)),), MIRReturn(OUT)),
     )
-    return MIRFunction(B, INT32, slots, blocks, ENTRY, records=(RECORD,))
+    return bind_parameters(MIRFunction(B, INT32, slots, blocks, ENTRY, records=(RECORD,)))
 
 
 def test_cursor_advance_and_source_reseat_do_not_retarget_saved_element() -> None:

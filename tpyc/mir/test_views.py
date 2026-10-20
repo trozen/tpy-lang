@@ -21,13 +21,13 @@ from .dump import dump_function
 from .liveness import MIRPoint
 from .lower import lower_function
 from .nodes import (
-    MIRHolding,
-    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstant, MIRCopy, MIRDeref, MIRField, MIRFieldId, MIRFunction,
-    MIRPlace, MIRReturn, MIRSlot, MIRSlotKind,
+    MIRAlias, MIRAssign, MIRBodyId, MIRBorrow, MIRConstant, MIRCopy, MIRDeref, MIRFunction, MIRPlace, MIRReturn,
+    MIRSlot, MIRSlotKind,
 )
+from .value import MIRField, MIRFieldId, MIRHolding, MIRValidationError
 from .storage_evidence import MIRStorageConflictKind, analyze_return_escapes
-from .validate import MIRValidationError, validate_function
-from .testutil import reslot
+from .validate import validate_function
+from .testutil import bind_parameters, reslot
 
 SOURCE = """\
 from tpy import StrView, String, BytesView, int32, pure
@@ -253,7 +253,7 @@ def test_view_results_carry_their_parameter_origins_to_the_caller(active) -> Non
     # A view parameter is the caller's loan passed by value; returning it returns that loan.
     explicit = _fn(active, "explicit_view_param")
     slot = _slot(explicit, "v")
-    assert (slot.kind, slot.shape.holding, slot.readonly, slot.passing.name) == (
+    assert (slot.kind, slot.shape.holding, slot.readonly, explicit.slot_bindings[slot.id].passing.name) == (
         MIRSlotKind.PARAMETER, MIRHolding.POINTER, True, "VALUE")
     assert active.verdicts["explicit_view_param"].summary.summary.returns == frozenset({MIRReturnOrigin(0)})
 
@@ -415,14 +415,15 @@ def test_validator_rejects_damaged_view_facts(active) -> None:
     is_borrow = lambda s: isinstance(s, MIRAssign) and isinstance(s.value, MIRBorrow)
     is_copy = lambda s: isinstance(s, MIRAssign) and isinstance(s.value, MIRCopy)
     validate_function(fn)
-    # A StrView holder borrowing a BigInt place.
+    # A StrView holder borrowing a BigInt place (a BigInt parameter, bound so).
+    retyped = _retype(fn, param, BIGINT, big)
     with pytest.raises(MIRValidationError, match="storage borrow type mismatch"):
-        validate_function(_retype(fn, param, BIGINT, big))
+        validate_function(bind_parameters(retyped))
     # A copy through a view into owned storage of another family.
     with pytest.raises(MIRValidationError, match="owned leaf copy source mismatch"):
         validate_function(_retype(fn, result, BIGINT, big))
     # A view holder that could write through its loan.
-    with pytest.raises(MIRValidationError, match="unsupported reference slot type or form"):
+    with pytest.raises(MIRValidationError, match="mutable loan of a readonly value"):
         validate_function(replace(fn, slots=tuple(
             reslot(s, readonly=False) if s.id == view else s for s in fn.slots)))
     # A field projected through a view.
@@ -440,9 +441,9 @@ def test_validator_rejects_damaged_view_facts(active) -> None:
                             lambda s: replace(s, target=MIRPlace(view_param), value=MIRAlias(s.target.root)))
     with pytest.raises(MIRValidationError, match="reference parameter reseat"):
         validate_function(reseat)
-    with pytest.raises(MIRValidationError, match="view parameter needs a by-value passing"):
-        validate_function(replace(explicit, slots=tuple(
-            replace(s, passing=ParamPassing.VIEW) if s.id == view_param else s for s in explicit.slots)))
+    with pytest.raises(MIRValidationError, match="parameter call parameter passing differs from its type"):
+        binding, = explicit.parameter_bindings
+        validate_function(replace(explicit, parameter_bindings=(replace(binding, passing=ParamPassing.VIEW),)))
     # A view result claiming a writable borrow.
     with pytest.raises(MIRValidationError, match="unsupported return type or access"):
         validate_function(replace(explicit, borrowed_result=th.THIRBorrowedRecord(STRVIEW, False)))

@@ -20,15 +20,16 @@ from .call_contract import (
 )
 from .collect import call_definitions, dump_codegen_mir, enumerate_body_sources, lower_body
 from .definitions import MIRDefinitions
-from .emit import holder_form, owned_holder_shape, owned_storage_shape, view_holder_shape
+from .emit import owned_leaf_shape, view_holder_shape
 from .lower import _Lowering
-from .nodes import (
-    MIRAssign, MIRConstant, MIRField, MIRFieldId, MIRHolding, MIRRead, MIRRecordLayout, MIRShape,
-    MIRTupleCopy,
+from .nodes import MIRAssign, MIRConstant, MIRRead, MIRTupleCopy
+from .value import (
+    MIRField, MIRFieldId, MIRHolding, MIRRecordLayout, MIRRole, MIRShape, MIRValidationError, holder_form,
+    with_access,
 )
-from .shapes import record_pointer, step, with_access
+from .shapes import step
 from .testutil import bound
-from .validate import MIRValidationError, validate_function
+from .validate import validate_function
 
 SOURCE = '''\
 from tpy import int32, readonly, String
@@ -200,14 +201,15 @@ def test_a_tuple_copy_states_the_shape_of_the_slot_it_is_written_into(unit, monk
 
 def test_holder_form_is_each_holder_a_value_is_lent_through() -> None:
     point = NominalType("P")
-    assert holder_form(MIRShape(point, MIRClass.RECORD, readonly=True)) == record_pointer(point, True)
-    assert holder_form(owned_storage_shape(STR)) == owned_holder_shape(STR)
+    pointer = MIRShape(point, MIRClass.RECORD, MIRHolding.POINTER, True)
+    assert holder_form(MIRShape(point, MIRClass.RECORD, readonly=True)) == pointer
+    assert holder_form(owned_leaf_shape(STR, MIRRole.STORAGE)) == owned_leaf_shape(STR, MIRRole.LOAN)
     assert holder_form(view_holder_shape(STR)) == view_holder_shape(STR)
     members = (MIRShape(INT32, MIRClass.LEAF, readonly=True),)
     container = MIRShape(NominalType("list", (INT32,)), MIRClass.CONTAINER, readonly=True, members=members)
     assert holder_form(container) == MIRShape(container.type, MIRClass.CONTAINER, MIRHolding.REGION, True, members)
     pair = MIRShape(TupleType((INT32, INT32)), MIRClass.TUPLE, members=(members[0], members[0]))
-    assert holder_form(pair) is pair
+    assert holder_form(pair) == pair
 
 
 def test_a_leaf_member_of_a_readonly_holder_is_readonly() -> None:

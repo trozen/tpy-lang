@@ -5,11 +5,11 @@ import pytest
 
 from ..type_def_registry import ParamPassing
 from ..typesys import BOOL, INT32, STR, VoidType
-from .emit import Fragment, MIRRegionStorageError, MIRValue, assemble, owned_storage_shape
-from .nodes import (
-    MIRBodyId, MIRBodyKind, MIRClass, MIRConstant, MIRGoto, MIRPlace, MIRRead, MIRReturn, MIRShape, MIRSlotKind,
-    MIRValidationError,
-)
+from .emit import Fragment, MIRRegionStorageError, MIRValue, assemble, owned_leaf_shape
+from .nodes import MIRBodyId, MIRBodyKind, MIRConstant, MIRGoto, MIRPlace, MIRRead, MIRReturn, MIRSlotKind
+from ..thir.scalar_leaves import MIRClass
+from .testutil import bound
+from .value import MIRRole, MIRShape, MIRValidationError
 
 BODY = MIRBodyId("main", "f")
 LEAF = MIRShape(INT32, MIRClass.LEAF)
@@ -19,9 +19,9 @@ def _emitter() -> Fragment:
     return Fragment(body=BODY)
 
 
-def _build(body: Fragment, void: bool = True):
+def _build(body: Fragment, void: bool = True, parameter_bindings: tuple = ()):
     return assemble(body, void=void, return_type=VoidType() if void else INT32, kind=MIRBodyKind.FREE_FUNCTION,
-                    callees=(), result=None, layouts={})
+                    callees=(), result=None, layouts={}, parameter_bindings=parameter_bindings)
 
 
 def test_a_dissolved_region_takes_its_parent_region() -> None:
@@ -72,12 +72,12 @@ def test_an_unresolvable_borrow_handle_fails_assembly() -> None:
 def test_parameters_keep_signature_order() -> None:
     # The body reads the last parameter first; the parameters still come first, in signature order.
     emitter = _emitter()
-    a, b, c = (emitter.adopt(emitter.record(LEAF, MIRSlotKind.PARAMETER, name, passing=ParamPassing.VALUE))
+    a, b, c = (emitter.adopt(emitter.record(LEAF, MIRSlotKind.PARAMETER, name))
                for name in "abc")
     value = emitter.fragment()
     value.end(MIRReturn(value.leaf(INT32, MIRRead(MIRPlace(c)), None)))
     emitter.splice(value)
-    fn = _build(emitter, void=False)
+    fn = _build(emitter, void=False, parameter_bindings=tuple(bound(INT32, ParamPassing.VALUE) for _ in "abc"))
     parameters = [s for s in fn.slots if s.kind is MIRSlotKind.PARAMETER]
     assert [(s.name, s.id.index) for s in parameters] == [("a", 0), ("b", 1), ("c", 2)]
     assert [s.id.index for s in fn.slots] == [0, 1, 2, 3]
@@ -136,6 +136,6 @@ def test_region_storage_outside_a_full_expression_fails_assembly() -> None:
     body = _emitter()
     body.active_temporaries = []
     # Storage of a full expression's region, materialized where no full expression opened a region.
-    body.materialize(MIRValue(MIRConstant("x"), owned_storage_shape(STR)), "node")
+    body.materialize(MIRValue(MIRConstant("x"), owned_leaf_shape(STR, MIRRole.STORAGE)), "node")
     with pytest.raises(MIRRegionStorageError, match="region storage outside its full expression"):
         _build(body)
