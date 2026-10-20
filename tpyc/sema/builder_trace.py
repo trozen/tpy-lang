@@ -36,7 +36,7 @@ from ..typesys import (
 from ..diagnostics import SemanticError
 from ..symbol_binding import SymbolKind, is_kind, walk_attribute_chain
 from ..macro_api import (
-    MacroArg, MacroArgs, BuilderContext, TypeInfo, MacroError,
+    MacroArg, MacroArgs, BuilderContext, TypeInfo, MacroError, types,
 )
 
 if TYPE_CHECKING:
@@ -648,14 +648,9 @@ def _build_default_init(
     params: list[tuple[str, TpyType]] = []
     body: list[Any] = []
     for fname, ftype in fields:
-        # Union[A, B] non-value fields use the bare type as the param
-        # (pointer-variant convention) -- codegen expects the body's
-        # implicit assignment to lower through `to_value_variant`,
-        # which assumes a pointer-variant input. Wrapping in OwnType
-        # here renders the param as `value_variant&&` and breaks that
-        # body lowering. Mirrors how user-written ctors for Union-
-        # typed fields are spelled (`s: A | B`, not `s: Own[A | B]`).
-        if ftype.is_value_type() or isinstance(ftype, UnionType):
+        # A union of reference types stays bare: its store lowers from the
+        # pointer-variant parameter (`to_value_variant`), not from `Own`.
+        if isinstance(ftype, UnionType) or not types.owns_reference(ftype):
             param_type = ftype
         else:
             param_type = OwnType(ftype)

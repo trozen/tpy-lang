@@ -1,0 +1,15 @@
+copy: 1 9
+last-use literal: 30 4
+last-use name: 7 80
+call result: 50
+keyword: 100
+nested: 120 1
+nocopy: 130 3
+value tuple: 1 x
+live: 21 20
+live name: 22 23
+generic record: 25 25
+generic value: 3 4
+optional leaf: 26 26
+union leaf: UQ
+ptr: 240

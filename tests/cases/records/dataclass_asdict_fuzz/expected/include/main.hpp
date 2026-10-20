@@ -311,7 +311,7 @@ struct TupleMixed {
     std::tuple<Point, int32_t> pair;
 
     TupleMixed() = default;
-    explicit TupleMixed(const std::tuple<const Point*, int32_t>& pair);
+    explicit TupleMixed(std::tuple<Point, int32_t> pair);
 
     bool __eq__(const TupleMixed& other) const;
 
@@ -335,7 +335,7 @@ struct TupleAllDC {
     std::tuple<Point, Point> pair;
 
     TupleAllDC() = default;
-    explicit TupleAllDC(const std::tuple<const Point*, const Point*>& pair);
+    explicit TupleAllDC(std::tuple<Point, Point> pair);
 
     bool __eq__(const TupleAllDC& other) const;
 
@@ -477,7 +477,7 @@ inline std::string DictOfDC::__repr__() const {
     return std::format("DictOfDC(items={})", ::tpy::dict_to_str(this->items));
 }
 
-inline TupleMixed::TupleMixed(const std::tuple<const Point*, int32_t>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, int32_t>>(pair)) {}
+inline TupleMixed::TupleMixed(std::tuple<Point, int32_t> pair) : pair(std::move(pair)) {}
 
 inline bool TupleMixed::__eq__(const TupleMixed& other) const {
     return ::tpy::tuple_eq(this->pair, other.pair);
@@ -487,7 +487,7 @@ inline std::string TupleMixed::__repr__() const {
     return std::format("TupleMixed(pair={})", ::tpy::tuple_to_str(::tpy::tuple_to_pointer<std::tuple<const Point*, int32_t>>(this->pair)));
 }
 
-inline TupleAllDC::TupleAllDC(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
+inline TupleAllDC::TupleAllDC(std::tuple<Point, Point> pair) : pair(std::move(pair)) {}
 
 inline bool TupleAllDC::__eq__(const TupleAllDC& other) const {
     return ::tpy::tuple_eq(this->pair, other.pair);

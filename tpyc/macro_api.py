@@ -2027,6 +2027,19 @@ class TypeBuilder:
     def own(self, inner: TpyType) -> TpyType:
         return OwnType(inner)
 
+    # -- Queries --
+
+    def owns_reference(self, typ: TpyType) -> bool:
+        """Whether a slot of `typ` owns a reference type: `typ` is one, or
+        is a tuple with a reference leaf (an open type parameter counts).
+
+        The per-leaf question, not `contains_reference_type`'s copy question:
+        a `Ptr` / `Span` / `Callable` is a value handle the slot holds as is,
+        while the copy question looks through it to what it reaches."""
+        # Deferred: tpyc.sema imports this module at load time.
+        from .sema.alias_rebind import reference_paths
+        return not typ.is_value_type() or bool(reference_paths(typ))
+
     def optional(self, inner: TpyType) -> TpyType:
         return OptionalType(inner)
 

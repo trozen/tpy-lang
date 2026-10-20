@@ -48,7 +48,7 @@ struct PairHolder {
     std::tuple<Point, Point> pair;
 
     PairHolder() = default;
-    explicit PairHolder(const std::tuple<const Point*, const Point*>& pair);
+    explicit PairHolder(std::tuple<Point, Point> pair);
 
     bool __eq__(const PairHolder& other) const;
 
@@ -78,7 +78,7 @@ inline std::string Point::__repr__() const {
     return std::format("Point(x={}, y={})", ::tpy::repr_of(this->x), ::tpy::repr_of(this->y));
 }
 
-inline PairHolder::PairHolder(const std::tuple<const Point*, const Point*>& pair) : pair(::tpy::tuple_to_storage<std::tuple<Point, Point>>(pair)) {}
+inline PairHolder::PairHolder(std::tuple<Point, Point> pair) : pair(std::move(pair)) {}
 
 inline bool PairHolder::__eq__(const PairHolder& other) const {
     return ::tpy::tuple_eq(this->pair, other.pair);

@@ -1,0 +1,6 @@
+main.py:108: warning: copies P | Q into owned storage (argument 'pair' tuple element 0); use copy() to make this explicit
+main.py:167: warning: copies P into owned storage (argument 'pair' tuple element 0); use copy() to make this explicit
+main.py:172: warning: copies P into owned storage (tuple element 0); use copy() to make this explicit
+main.py:172: warning: copies P into owned storage (tuple element 1); use copy() to make this explicit
+main.py:177: warning: copies P into owned storage (argument 'pair' tuple element 0); use copy() to make this explicit
+main.py:185: warning: copies P into owned storage (argument 'pair' tuple element 0); use copy() to make this explicit

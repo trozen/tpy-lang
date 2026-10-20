@@ -19,6 +19,16 @@ ORDER_DUNDERS = ("__lt__", "__le__", "__gt__", "__ge__")
 ORDER_DUNDER_OPS = ("<", "<=", ">", ">=")
 
 
+def _init_param_type(fld: FieldInfo) -> Type:
+    """The generated `__init__` parameter for a field: owned whenever the
+    field owns a reference -- the field itself or a tuple leaf -- so a tuple
+    of records moves its elements into storage as a record field does."""
+    param_type = fld.type.raw_type
+    if types.owns_reference(param_type):
+        return types.own(param_type)
+    return param_type
+
+
 def build_init(
     cls: ClassInfo,
     parent_fields: list[FieldInfo],
@@ -31,10 +41,7 @@ def build_init(
 
     # Parent fields come first; forwarded via super().__init__()
     for fld in parent_fields:
-        param_type = fld.type.raw_type
-        if not param_type.is_value_type():
-            param_type = types.own(param_type)
-        params.append((fld.name, param_type))
+        params.append((fld.name, _init_param_type(fld)))
         defaults.append(fld.default_expr)
 
     if parent_fields:
@@ -46,10 +53,7 @@ def build_init(
 
     # Own fields
     for fld in own_fields:
-        param_type = fld.type.raw_type
-        if not param_type.is_value_type():
-            param_type = types.own(param_type)
-        params.append((fld.name, param_type))
+        params.append((fld.name, _init_param_type(fld)))
         defaults.append(fld.default_expr)
         body.append(ast.assign(
             ast.field_access(ast.name("self"), fld.name),
