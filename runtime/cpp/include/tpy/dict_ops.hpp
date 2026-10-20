@@ -277,24 +277,6 @@ struct dict_values_view {
         }
     bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
 
-    // A wider-integer key whose == with V is not usable (unsigned V:
-    // `uint32_t == BigInt` is ambiguous between the int64/uint64 ctors):
-    // narrow-then-find, out-of-range -> absent (False), like the map's key
-    // overload.
-    template<typename ValArg>
-        requires (std::is_integral_v<V>
-                  && !requires(const V& v, const ValArg& a) {
-                         { v == a } -> std::convertible_to<bool>;
-                     }
-                  && requires(const ValArg& a, V& out) {
-                         { a.template to_fixed_try<V>(out) } -> std::convertible_to<bool>;
-                     })
-    bool contains(const ValArg& value) const {
-        V narrowed;
-        return value.template to_fixed_try<V>(narrowed)
-               && std::find(begin(), end(), narrowed) != end();
-    }
-
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};
     }
@@ -313,24 +295,6 @@ struct dict_values_view<K, const V> {
             { v == a } -> std::convertible_to<bool>;
         }
     bool contains(const ValArg& value) const { return std::find(begin(), end(), value) != end(); }
-
-    // A wider-integer key whose == with V is not usable (unsigned V:
-    // `uint32_t == BigInt` is ambiguous between the int64/uint64 ctors):
-    // narrow-then-find, out-of-range -> absent (False), like the map's key
-    // overload.
-    template<typename ValArg>
-        requires (std::is_integral_v<V>
-                  && !requires(const V& v, const ValArg& a) {
-                         { v == a } -> std::convertible_to<bool>;
-                     }
-                  && requires(const ValArg& a, V& out) {
-                         { a.template to_fixed_try<V>(out) } -> std::convertible_to<bool>;
-                     })
-    bool contains(const ValArg& value) const {
-        V narrowed;
-        return value.template to_fixed_try<V>(narrowed)
-               && std::find(begin(), end(), narrowed) != end();
-    }
 
     auto __iter__() const {
         return native_iterator<decltype(begin()), V>{begin(), end()};

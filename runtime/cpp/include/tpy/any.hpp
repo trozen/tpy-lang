@@ -252,7 +252,7 @@ constexpr AnyNumber (*as_number_slot_for() noexcept)(const std::any&) {
         };
     } else if constexpr (any_number_capable<T>) {
         return +[](const std::any& a) -> AnyNumber {
-            return vc_to_bigint(std::any_cast<const T&>(a));
+            return BigInt(std::any_cast<const T&>(a));
         };
     } else {
         return nullptr;

@@ -22,6 +22,7 @@
 #include <cctype>
 #include <charconv>
 #include <cmath>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
@@ -55,7 +56,19 @@ class BigInt {
 public:
     BigInt() noexcept : raw_(0) {}
 
+    // Unscoped enums are not std::integral and reach BigInt only through
+    // their promotion to int.
     BigInt(int32_t v) noexcept : BigInt(static_cast<int64_t>(v)) {}
+
+    // Every other integer type widens by signedness. Exact constructors per
+    // width cannot cover them: uint32_t ties between int32/int64/uint64, and
+    // size_t / long are distinct from both 64-bit types on macOS.
+    template <std::integral T>
+        requires (!std::same_as<T, int32_t> && !std::same_as<T, int64_t>
+                  && !std::same_as<T, uint64_t>)
+    BigInt(T v) noexcept
+        : BigInt(std::is_signed_v<T> ? BigInt(static_cast<int64_t>(v))
+                                     : BigInt(static_cast<uint64_t>(v))) {}
 
     BigInt(int64_t v) noexcept {
         if (fits_small(v)) {

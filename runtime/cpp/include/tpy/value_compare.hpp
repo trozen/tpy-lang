@@ -116,18 +116,6 @@ concept vc_same_alternative =
 template<typename...>
 inline constexpr bool vc_always_false = false;
 
-// Widen an integer to the exact width BigInt has a constructor for. A bare
-// `BigInt(x)` is ambiguous for uint32_t (three candidates, all conversions),
-// which is why the widening is spelled here.
-template<typename T>
-inline BigInt vc_to_bigint(const T& x) {
-    if constexpr (std::is_signed_v<T>) {
-        return BigInt(static_cast<std::int64_t>(x));
-    } else {
-        return BigInt(static_cast<std::uint64_t>(x));
-    }
-}
-
 enum class CmpOp { Lt, Le, Gt, Ge };
 
 constexpr const char* cmp_op_name(CmpOp op) {
@@ -269,9 +257,9 @@ inline bool py_eq(const A& a, const B& b) {
     } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
         return vc_bigint_eq_float(b, static_cast<double>(a));
     } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
-        return a == vc_to_bigint(b);
+        return a == BigInt(b);
     } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
-        return vc_to_bigint(a) == b;
+        return BigInt(a) == b;
     } else if constexpr (vc_py_integer<A> && std::is_floating_point_v<B>) {
         return vc_int_cmp_float(a, static_cast<double>(b)) == NumOrder::Equal;
     } else if constexpr (std::is_floating_point_v<A> && vc_py_integer<B>) {
@@ -314,9 +302,9 @@ inline bool py_ne(const A& a, const B& b) {
     } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
         return !vc_bigint_eq_float(b, static_cast<double>(a));
     } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
-        return a != vc_to_bigint(b);
+        return a != BigInt(b);
     } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
-        return vc_to_bigint(a) != b;
+        return BigInt(a) != b;
     } else if constexpr (vc_py_integer<A> && std::is_floating_point_v<B>) {
         return vc_int_cmp_float(a, static_cast<double>(b)) != NumOrder::Equal;
     } else if constexpr (std::is_floating_point_v<A> && vc_py_integer<B>) {
@@ -375,9 +363,9 @@ inline bool py_cmp(const A& a, const B& b) {
     } else if constexpr (std::is_floating_point_v<A> && vc_bigint<B>) {
         return vc_bigint_cmp_float<vc_mirror_op<Op>()>(b, static_cast<double>(a));
     } else if constexpr (vc_bigint<A> && vc_cmp_integer<B>) {
-        return apply_cmp<Op>(a, vc_to_bigint(b));
+        return apply_cmp<Op>(a, BigInt(b));
     } else if constexpr (vc_cmp_integer<A> && vc_bigint<B>) {
-        return apply_cmp<Op>(vc_to_bigint(a), b);
+        return apply_cmp<Op>(BigInt(a), b);
     } else if constexpr (vc_py_integer<A> && std::is_floating_point_v<B>) {
         return vc_order_to_bool<Op>(vc_int_cmp_float(a, static_cast<double>(b)));
     } else if constexpr (std::is_floating_point_v<A> && vc_py_integer<B>) {
