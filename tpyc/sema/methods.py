@@ -680,16 +680,20 @@ class MethodAnalyzer:
                 field = subscript.obj
                 receiver_type = self.ctx.get_raw_expr_type(expr.obj)
                 assert receiver_type is not None
-                field_type = self.expr._analyze_field_access(field, receiver_type)
+                # The brackets index the field the receiver already read.
+                with self.expr.reuse(field.obj, receiver_type):
+                    field_type = self.expr._analyze_field_access(field)
                 self.ctx.set_expr_type(field, field_type)
-                callee_type = self.expr._analyze_subscript(subscript, field_type)
+                with self.expr.reuse(field, field_type):
+                    callee_type = self.expr._analyze_subscript(subscript)
                 self.ctx.set_expr_type(subscript, callee_type)
                 expr.obj = subscript
                 expr.method = "__call__"
                 expr.subscript_callee = None
                 expr.type_args = ()
                 expr.type_args_parse_error = None
-                return self.analyze_method_call(expr, callee_type)
+                with self.expr.reuse(subscript, callee_type):
+                    return self.analyze_method_call(expr)
         result = self._analyze_protocol_or_bound_method(expr, obj_type)
         if result is not None:
             return result
@@ -734,8 +738,7 @@ class MethodAnalyzer:
         expr.is_callable_field = True
         return ret
 
-    def analyze_method_call(self, expr: TpyMethodCall,
-                            obj_type: TpyType | None = None) -> TpyType:
+    def analyze_method_call(self, expr: TpyMethodCall) -> TpyType:
         """Analyze a method call."""
         # A `.cancel()` read of a bound coroutine handle is not
         # consumption: without this restore, `c = f(); c.cancel()`
@@ -746,7 +749,7 @@ class MethodAnalyzer:
             _coro_unread = self.ctx.func.unread_coro_locals.get(expr.obj.name)
         self._mark_coro_started(expr)
         try:
-            result = self._analyze_method_call_impl(expr, obj_type)
+            result = self._analyze_method_call_impl(expr)
             # Walks after sema must see only the resolved receiver, never its alternative.
             expr.subscript_callee = None
             return result
@@ -767,8 +770,7 @@ class MethodAnalyzer:
             self.ctx.func.started_coro_locals.setdefault(
                 expr.obj.name, expr.loc.line if expr.loc else 0)
 
-    def _analyze_method_call_impl(self, expr: TpyMethodCall,
-                                  obj_type: TpyType | None = None) -> TpyType:
+    def _analyze_method_call_impl(self, expr: TpyMethodCall) -> TpyType:
         if isinstance(expr.obj, (TpyName, TpyFieldAccess)):
             # `Outer.Inner(...)`, `m.Outer(...)`, `m.Color(2)`: the callee
             # names a class or enum.
@@ -810,11 +812,10 @@ class MethodAnalyzer:
                     expr.representational_subst_params = flat_expr.representational_subst_params
                     return result
 
-        if obj_type is None:
-            # A method of a list literal's own may leave its element open
-            # (`_elem_cell_method`).
-            with self.expr.pend.list_sink(expr.obj):
-                obj_type = self.expr.analyze_expr(expr.obj)
+        # A method of a list literal's own may leave its element open
+        # (`_elem_cell_method`).
+        with self.expr.pend.list_sink(expr.obj):
+            obj_type = self.expr.analyze_expr(expr.obj)
         callable_type = unwrap_qualifiers(obj_type)
         if expr.method == "__call__" and isinstance(callable_type, CallableType):
             return self.calls.analyze_callable_value_call(
@@ -2178,7 +2179,7 @@ class MethodAnalyzer:
         positions.
         """
         merged_seed = self.type_ops.seed_subst_from_return_hint(
-            partial_func, self.ctx.slot_hint_at(expr),
+            partial_func, self.expr.slot_hint_for(expr),
         ).with_explicit(new_params, explicit_type_args)
 
         # Default-arg capture freezes ``partial_func`` and ``merged_seed`` at
@@ -2194,7 +2195,7 @@ class MethodAnalyzer:
         arg_types = _analyze_args()
         method_subst = self.type_ops.infer_type_params_for_function(
             partial_func, arg_types, self.protocols.satisfies_bound,
-            expected_return_type=self.ctx.slot_hint_at(expr),
+            expected_return_type=self.expr.slot_hint_for(expr),
             explicit_type_args=explicit_type_args,
         )
         if method_subst is None:

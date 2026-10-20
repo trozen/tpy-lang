@@ -90,6 +90,17 @@ void test_quote_expr() {
     std::cout << q.default_first() << "\n" << ::tpy::check_signals;
 }
 
+// def test_shared_body() -> None:
+//     # The two methods share one body in the macro's output.
+//     p = Point(1, 2)
+//     print("shared:", p.show_int(42))
+//     print("shared:", p.show_str("hello"))
+void test_shared_body() {
+    Point p = Point(1, 2);
+    std::cout << "shared:" << " " << p.show_int(42) << "\n" << ::tpy::check_signals;
+    std::cout << "shared:" << " " << p.show_str("hello") << "\n" << ::tpy::check_signals;
+}
+
 // from builder import builder
 //
 // test_basic()
@@ -99,6 +110,7 @@ void test_quote_expr() {
 // test_reset()
 // test_static()
 // test_quote_expr()
+// test_shared_body()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
@@ -111,6 +123,7 @@ void __tpy_init() {
     ::tpyapp::main::test_reset();
     ::tpyapp::main::test_static();
     ::tpyapp::main::test_quote_expr();
+    ::tpyapp::main::test_shared_body();
 }
 
 } // namespace tpyapp::main

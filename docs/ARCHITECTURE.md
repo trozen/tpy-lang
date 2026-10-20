@@ -937,6 +937,18 @@ writing one.
    user's spelling site (`Ptr[T] | None`, `Optional[Ptr[T]]`, etc.)
    so the redundant form doesn't drift back in.
 
+### Analysis lifecycle
+
+An expression is analyzed once; a decision that depends on its destination slot is meant to stay
+open and be completed once when the slot is decided (TODO.md "An expression is analyzed once").
+In place today: a node analyzed a second time under the same hint (a chained comparison's middle
+operand, an attribute-write or `__getattr__` receiver, `del obj.attr`, `setattr` / `delattr`)
+reads its first result back through `ExpressionAnalyzer.reuse`, which asserts the hint is the
+same; macro output reaches sema with one node per evaluation (`unshare`, applied where class,
+builder and function macro output enters); and every slot-hint reader in the reader table records
+the node in `ctx.slot_reads`, not consumed yet (structural tests in `tpyc/sema/test_slot_reads.py`). Overload probe -> winner,
+generic inference -> commit, pending redispatch and the lambda trial still analyze twice.
+
 ## Design decisions
 
 - **Nominal vs. structural** is the real axis, not "named vs.

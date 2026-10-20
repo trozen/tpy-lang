@@ -2804,6 +2804,11 @@ class SemanticContext:
     # positions an inferred local decides; set only via `slot_hint_scope`,
     # read through `expr_slot_hint` or `slot_hint_at`.
     current_slot_hint: 'SlotHint | None' = None
+    # The expressions whose analysis consulted the slot they are analyzed
+    # for -- read its hint, or found none and took what an absent hint
+    # gives -- each with the expressions holding it up to a call's argument
+    # (`ExpressionAnalyzer.read_slot`).
+    slot_reads: IdentitySet = field(default_factory=IdentitySet)
     # The whole value of the unannotated first binding `name = ...` being
     # analysed: a diagnostic on exactly this node can offer annotating the
     # name, which an already-declared name or any other value cannot take.
@@ -3743,6 +3748,8 @@ class SemanticContext:
           warnings/errors emitted during a rejected trial don't leak into
           the user-visible output.
         - The deferred lambda borrow checks, truncated the same way.
+        - The recorded slot reads (``slot_reads``): the trial records into a
+          copy, dropped with it.
 
         Lambda AST mutations (``inferred_param_types``, ``inferred_return_type``,
         ``captured_names``, ``captures_by_value``) are the caller's
@@ -3760,11 +3767,15 @@ class SemanticContext:
         saved_bytes_vars = dict(self.bytes_vars)
         saved_diagnostics_len = len(self.diagnostics)
         saved_lambda_checks_len = len(self.pending_lambda_borrow_checks)
+        # What the trial reads is the trial's: it analyzes the live nodes.
+        saved_slot_reads = self.slot_reads
+        self.slot_reads = saved_slot_reads.copy()
         self.trial_depth += 1
         try:
             yield
         finally:
             self.trial_depth -= 1
+            self.slot_reads = saved_slot_reads
             del self.pending_lambda_borrow_checks[saved_lambda_checks_len:]
             self.restore_function_state(saved_func)
             self.expr_types.clear()

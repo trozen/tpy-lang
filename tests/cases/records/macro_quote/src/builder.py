@@ -58,3 +58,17 @@ def builder(cls: ClassInfo) -> None:
     """)
     func.is_staticmethod = True
     cls.add_method(func)
+
+    # One body list given to two methods: each method analyzes it at its
+    # own parameter type.
+    show_int = ast.quote_fun("""
+        def show_int(self, v: int32) -> str:
+            return str(v)
+    """)
+    show_str = ast.quote_fun("""
+        def show_str(self, v: str) -> str:
+            return str(v)
+    """)
+    show_str.body = show_int.body
+    cls.add_method(show_int)
+    cls.add_method(show_str)

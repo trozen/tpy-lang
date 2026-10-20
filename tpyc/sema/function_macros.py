@@ -18,6 +18,7 @@ from ..macro_api import (
     FunctionMacroContext, PostSemaFunctionMacroContext, MacroError,
 )
 from ..diagnostics import SemanticError
+from ..parse.nodes import unshare
 
 if TYPE_CHECKING:
     from ..parse.nodes import TpyFunction, TpyRecord
@@ -65,6 +66,8 @@ def run_function_macros(
             raise SemanticError(
                 f"{qname}(): function macro raised {type(e).__name__}: {e}",
                 func.loc) from e
+    # The macros' edits may place one node at several positions.
+    unshare(func)
 
 
 def run_deferred_sema_macros(

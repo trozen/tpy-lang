@@ -32,3 +32,12 @@ False
 2
 False
 1
+free True
+method True
+gen [True]
+async False
+comp [False, True, False]
+try True
+finally
+walrus True 3
+walrus literal True 2147483648

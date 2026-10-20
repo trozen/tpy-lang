@@ -4,23 +4,42 @@
 namespace tpyapp::main {
 
 
+// def f(x: str) -> str:
+//     return x
+std::string f(std::string_view x) {
+    return std::string(x);
+}
+
 // def main() -> None:
 //     s = "a-key-longer-than-the-small-string-buffer"
 //     d = {s: 0}
 //     # the subject: `trimmed(s)` expands to `(" " + s).strip()`
 //     d[trimmed(s)] += 1  # tpyc: ok
 //     print("macro_key:", d[s])
+//     # An argument embedded twice is the analyzed node at both places, its
+//     # element read converted once for the `str` parameter. Evaluating it
+//     # at both places (`f` runs twice) is the filed defect
+//     # BUGS.md#call-macro-arg-evaluated-per-field, not the intended result.
+//     print("twice:", twice(f(s[0])))  # tpyc: ok
+//     # Editing a clone leaves the argument as written.
+//     r: tuple[int32, int32] = clone_edit(7)  # tpyc: ok
+//     print("clone:", r)
 void main() {
     std::string_view s = "a-key-longer-than-the-small-string-buffer";
     ::tpy::ordered_map<std::string, int32_t> d = ::tpy::ordered_map<std::string, int32_t>({{std::string(s), 0}});
     ::tpy::__setitem__(d, ::tpy::str_strip((::tpy::str_concat(" ", s))), ::tpy::add_check<int32_t>(::tpy::__getitem__(d, ::tpy::str_strip((::tpy::str_concat(" ", s)))), 1));
     std::cout << "macro_key:" << " " << ::tpy::__getitem__(d, s) << "\n" << ::tpy::check_signals;
+    std::cout << "twice:" << " " << ::tpy::TuplePrinter(std::tuple<std::string, std::string>{::tpyapp::main::f(::tpy::char_to_str(::tpy::__getitem__(s, 0))), ::tpyapp::main::f(::tpy::char_to_str(::tpy::__getitem__(s, 0)))}) << "\n" << ::tpy::check_signals;
+    std::tuple<int32_t, int32_t> r = std::tuple<int32_t, int32_t>{7, 8};
+    std::cout << "clone:" << " " << ::tpy::TuplePrinter(r) << "\n" << ::tpy::check_signals;
 }
 
 // # A call macro's expansion as an augmented-assignment key: the hold proof
 // # reads the expansion, which runs nothing observable, so the key is re-read in
 // # place -- never a held view over the concatenation's dying temporary.
-// from aug_macros import trimmed
+// # Also: a call macro's expansion keeps the analysis of the arguments it
+// # embeds, and `ast.clone` copies.
+// from aug_macros import clone_edit, trimmed, twice
 //
 // main()
 void __tpy_init() {

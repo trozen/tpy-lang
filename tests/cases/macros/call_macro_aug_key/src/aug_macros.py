@@ -10,3 +10,21 @@ def trimmed(ctx: CallMacroContext, arg: MacroArg | None = None) -> Expr:
         return (" " + ctx).strip()
     return ast.method_call(ast.binop(ast.str_lit(" "), "+", arg.expr),
                            "strip")
+
+
+@call_macro
+def twice(ctx: CallMacroContext, arg: MacroArg | None = None) -> Expr:
+    """`twice(x)` expands to `(x, x)`, embedding the analyzed argument twice."""
+    if arg is None:
+        return (ctx, ctx)
+    return ast.tuple_lit([arg.expr, arg.expr])
+
+
+@call_macro
+def clone_edit(ctx: CallMacroContext, arg: MacroArg | None = None) -> Expr:
+    """`clone_edit(n)` expands to `(n, n + 1)` by editing a clone of `n`."""
+    if arg is None:
+        return (ctx, ctx + 1)
+    edited = ast.clone(arg.expr)
+    edited.value += 1
+    return ast.tuple_lit([arg.expr, edited])

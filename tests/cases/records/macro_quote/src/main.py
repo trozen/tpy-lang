@@ -55,6 +55,12 @@ def test_quote_expr() -> None:
     q = Person("Alice", 30)
     print(q.default_first())
 
+def test_shared_body() -> None:
+    # The two methods share one body in the macro's output.
+    p = Point(1, 2)
+    print("shared:", p.show_int(42))
+    print("shared:", p.show_str("hello"))
+
 test_basic()
 test_setter()
 test_eq()
@@ -62,3 +68,4 @@ test_describe()
 test_reset()
 test_static()
 test_quote_expr()
+test_shared_body()

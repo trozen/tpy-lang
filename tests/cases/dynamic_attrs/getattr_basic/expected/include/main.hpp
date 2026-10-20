@@ -4,15 +4,26 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
+
 struct Config;
+struct Echo;
+struct Point;
+struct Holder;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def main() -> None:
 void main();
+// def consumed_receiver() -> None:
+void consumed_receiver();
+// def counted_receiver() -> None:
+void counted_receiver();
 
 // class Config:
 struct Config {
@@ -33,6 +44,58 @@ inline std::ostream& operator<<(std::ostream& os, const Config& obj) {
     return os;
 }
 
+// class Echo:
+struct Echo {
+
+
+    // def __setattr__(self, name: str, value: int) -> None:
+    void __setattr__(std::string_view name, const ::tpy::BigInt& value) const;
+
+    // def __delattr__(self, name: str) -> None:
+    void __delattr__(std::string_view name) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Echo";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Echo& obj) {
+    ::tpy::print_object_default(os, "Echo", obj);
+    return os;
+}
+
+// class Point:
+struct Point {
+    // v: int32
+    int32_t v;
+
+    // def __init__(self) -> None:
+    Point();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Point";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Point& obj) {
+    ::tpy::print_object_default(os, "Point", obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+    // p: Point
+    Point p;
+    // calls: int32
+    int32_t calls;
+
+    // def __init__(self) -> None:
+    Holder();
+
+    // def get(self) -> Point:
+    Point& get();
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
 
 // def __init__(self, data: dict[str, Any]) -> None:
 //     self._data = data
@@ -42,6 +105,37 @@ inline Config::Config(const ::tpy::ordered_map<std::string, ::tpy::Any>& data) :
 //     return self._data[name]
 inline ::tpy::Any Config::__getattr__(std::string_view name) const {
     return ::tpy::__getitem__(this->_data, name);
+}
+
+// def __setattr__(self, name: str, value: int) -> None:
+//     print("set", name, value)
+inline void Echo::__setattr__(std::string_view name, const ::tpy::BigInt& value) const {
+    std::cout << "set" << " " << name << " " << value << "\n" << ::tpy::check_signals;
+}
+
+// def __delattr__(self, name: str) -> None:
+//     print("del", name)
+inline void Echo::__delattr__(std::string_view name) const {
+    std::cout << "del" << " " << name << "\n" << ::tpy::check_signals;
+}
+
+// def __init__(self) -> None:
+//     self.v = 0
+inline Point::Point() : v(0) {}
+
+// def __init__(self) -> None:
+//     self.p = Point()
+//     self.calls = 0
+inline Holder::Holder()
+    : p(Point()),
+      calls(0) {}
+
+// def get(self) -> Point:
+//     self.calls += 1
+//     return self.p
+inline Point& Holder::get() {
+    this->calls = ::tpy::add_check<int32_t>(this->calls, 1);
+    return this->p;
 }
 void __tpy_init();
 } // namespace tpyapp::main

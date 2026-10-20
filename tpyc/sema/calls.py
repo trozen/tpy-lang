@@ -1759,8 +1759,9 @@ class CallAnalyzer:
                                 self._check_ctor_arg_compatibility(expr, ctor, arg_types, inferred_params)
                                 return result_type
                             # T not inferred from args; try assignment target hint
-                            if record_info.type_factory and self.ctx.expr_type_hint is not None:
-                                hint = self.ctx.expr_type_hint
+                            hint = (self.expr.type_hint_for(expr)
+                                    if record_info.type_factory else None)
+                            if hint is not None:
                                 if isinstance(hint, OwnType):
                                     hint = hint.wrapped
                                 hint = unwrap_readonly(hint)
@@ -1889,12 +1890,14 @@ class CallAnalyzer:
 
     def _extract_dyn_builtin_target(
         self, expr: TpyCall, builtin: str, expected_args: int | tuple[int, ...],
-    ) -> tuple[TpyExpr, TpyExpr, str | None, NominalType, 'RecordInfo']:
+    ) -> tuple[TpyExpr, TpyExpr, str | None, NominalType, 'RecordInfo',
+               TpyType]:
         """Shared validation for getattr/setattr/delattr/hasattr builtins (D16).
 
         Validates: no kwargs, arg count, str-typed name, record receiver.
         `expected_args` may be a single count or a tuple of accepted counts.
-        Returns (obj_arg, name_arg, literal_name_or_None, actual_type, record).
+        Returns (obj_arg, name_arg, literal_name_or_None, actual_type, record,
+        obj_type).
         Non-literal names route everything to the dunder (D16 phase 9, Option A);
         callers should skip the declared-member check when literal_name is None.
         """
@@ -1920,7 +1923,7 @@ class CallAnalyzer:
         if record is None:
             raise self.ctx.error(
                 f"{builtin}() requires a record receiver; got '{obj_type}'", expr)
-        return obj_arg, name_arg, literal_name, actual_type, record
+        return obj_arg, name_arg, literal_name, actual_type, record, obj_type
 
     def _declared_member_kind(self, record: 'RecordInfo', name: str) -> str | None:
         """Return the kind ('field' / 'property' / 'method' / 'class constant')
@@ -1959,7 +1962,7 @@ class CallAnalyzer:
     def _analyze_getattr_builtin(self, expr: TpyCall) -> TpyType:
         """`getattr(obj, name[, default])` -- always routed through `__getattr__`
         (Option A: route-all-to-dunder, regardless of literal vs runtime name)."""
-        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+        obj_arg, name_arg, name, actual_type, record, obj_type = self._extract_dyn_builtin_target(
             expr, "getattr", expected_args=(2, 3))
         if name is not None:
             self._reject_declared_member_in_dyn_builtin(
@@ -2005,7 +2008,7 @@ class CallAnalyzer:
         runtime check returns True if the dunder succeeds, False if it raises
         AttributeError. Requires a dyn-readable receiver.
         """
-        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+        obj_arg, name_arg, name, actual_type, record, obj_type = self._extract_dyn_builtin_target(
             expr, "hasattr", expected_args=2)
         if name is not None and self._declared_member_kind(record, name) is not None:
             expr.macro_expansion = TpyBoolLiteral(value=True, loc=expr.loc)
@@ -2029,7 +2032,7 @@ class CallAnalyzer:
 
     def _analyze_setattr_builtin(self, expr: TpyCall) -> TpyType:
         """`setattr(obj, name, value)` -- routes to `__setattr__` (dynamic-fallback only)."""
-        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+        obj_arg, name_arg, name, actual_type, record, obj_type = self._extract_dyn_builtin_target(
             expr, "setattr", expected_args=3)
         value_arg = expr.args[2]
         if name is not None:
@@ -2046,13 +2049,14 @@ class CallAnalyzer:
         # Delegate to method-call analysis so arg coercion (e.g. into-Any) applies.
         synth = TpyMethodCall(
             obj=obj_arg, method="__setattr__", args=[name_arg, value_arg], loc=expr.loc)
-        self.expr.analyze_expr(synth)
+        with self.expr.reuse(obj_arg, obj_type):
+            self.expr.analyze_expr(synth)
         expr.macro_expansion = synth
         return VOID
 
     def _analyze_delattr_builtin(self, expr: TpyCall) -> TpyType:
         """`delattr(obj, name)` -- routes to `__delattr__` (dynamic-fallback only)."""
-        obj_arg, name_arg, name, actual_type, record = self._extract_dyn_builtin_target(
+        obj_arg, name_arg, name, actual_type, record, obj_type = self._extract_dyn_builtin_target(
             expr, "delattr", expected_args=2)
         if name is not None:
             self._reject_declared_member_in_dyn_builtin(
@@ -2067,7 +2071,8 @@ class CallAnalyzer:
             )
         synth = TpyMethodCall(
             obj=obj_arg, method="__delattr__", args=[name_arg], loc=expr.loc)
-        self.expr.analyze_expr(synth)
+        with self.expr.reuse(obj_arg, obj_type):
+            self.expr.analyze_expr(synth)
         expr.macro_expansion = synth
         return VOID
 
@@ -4771,7 +4776,7 @@ class CallAnalyzer:
             # `_analyze_generic_function_call`; wildcards and short lists
             # keep the seed. Validation of over-long lists happens elsewhere.
             seed = self.type_ops.seed_subst_from_return_hint(
-                fn_generic, self.ctx.slot_hint_at(expr),
+                fn_generic, self.expr.slot_hint_for(expr),
             ).with_explicit(fn_generic.type_params, expr.type_args)
             arg_types = self._infer_arg_types(expr, fn_generic, seed)
         else:
@@ -4803,7 +4808,7 @@ class CallAnalyzer:
             if is_generic_for_pool(func):
                 type_subst = self.type_ops.infer_type_params_for_function(
                     func, arg_types, self.protocols.satisfies_bound,
-                    expected_return_type=self.ctx.slot_hint_at(expr),
+                    expected_return_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=explicit_type_args,
                 )
                 if type_subst is not None:
@@ -4869,7 +4874,7 @@ class CallAnalyzer:
         """
         # A fill aimed at this call (it is an outer overload's argument) is its
         # LHS too, so its own untyped arguments are filled the same way.
-        lhs_hint = self.ctx.slot_hint_at(call)
+        lhs_hint = self.expr.slot_hint_for(call)
         sole = func_infos[0] if len(func_infos) == 1 else None
 
         def probe(i: int, arg: TpyExpr,
@@ -5273,7 +5278,7 @@ class CallAnalyzer:
                 return None
             type_subst = self.type_ops.infer_type_params_for_function(
                 func, expanded_args, self.protocols.satisfies_bound,
-                expected_return_type=self.ctx.slot_hint_at(expr),
+                expected_return_type=self.expr.slot_hint_for(expr),
                 explicit_type_args=explicit_type_args,
             )
             if type_subst is None:
@@ -5303,7 +5308,7 @@ class CallAnalyzer:
         inference -- if context can pin it, we don't need lambda body
         analysis.
         """
-        hint = self.ctx.expr_type_hint
+        hint = self.expr.type_hint_here()
         if hint is None:
             return False
         trial: dict[str, TpyType] = {}
@@ -5717,9 +5722,10 @@ class CallAnalyzer:
                        for i, ((_, ptype), arg_t)
                        in enumerate(zip(overload.params, arg_types))):
                 continue
-            if self.ctx.expr_type_hint and not inferred:
+            exp = self.expr.type_hint_for(expr)
+            if exp and not inferred:
                 ret = overload.return_type.wrapped if isinstance(overload.return_type, OwnType) else overload.return_type
-                exp = self.ctx.expr_type_hint.wrapped if isinstance(self.ctx.expr_type_hint, OwnType) else self.ctx.expr_type_hint
+                exp = exp.wrapped if isinstance(exp, OwnType) else exp
                 self.type_ops.match_type_with_inference(ret, exp, inferred)
             failed = [
                 (type_arg, overload.type_param_bounds[name])
@@ -5950,7 +5956,7 @@ class CallAnalyzer:
         if not isinstance(arg_type, PtrType):
             raise self.ctx.error(
                 f"unsafe_cast() requires a pointer argument, got {arg_type}", expr)
-        hint = self.ctx.expr_type_hint
+        hint = self.expr.type_hint_for(expr)
         if hint is not None:
             raw_hint = hint
             if isinstance(hint, OwnType):
@@ -6313,12 +6319,12 @@ class CallAnalyzer:
                 # Explicit positional type args override the seed at those
                 # positions; merge them in before propagating into per-arg hints.
                 seed = self.type_ops.seed_subst_from_return_hint(
-                    func, self.ctx.slot_hint_at(expr),
+                    func, self.expr.slot_hint_for(expr),
                 ).with_explicit(func.type_params, expr.type_args)
                 arg_types = self._infer_arg_types(expr, func, seed)
                 type_subst = self.type_ops.infer_type_params_for_function(
                     func, arg_types, self.protocols.satisfies_bound,
-                    expected_return_type=self.ctx.slot_hint_at(expr),
+                    expected_return_type=self.expr.slot_hint_for(expr),
                     explicit_type_args=expr.type_args,
                 )
                 if type_subst is None:
@@ -6340,11 +6346,11 @@ class CallAnalyzer:
             # the inner call's record-construction LHS-hint logic then picks up
             # T=Pet before arg-driven inference would have settled on T=Dog.
             seed = self.type_ops.seed_subst_from_return_hint(
-                func, self.ctx.slot_hint_at(expr))
+                func, self.expr.slot_hint_for(expr))
             arg_types = self._infer_arg_types(expr, func, seed)
             type_subst = self.type_ops.infer_type_params_for_function(
                 func, arg_types, self.protocols.satisfies_bound,
-                expected_return_type=self.ctx.slot_hint_at(expr),
+                expected_return_type=self.expr.slot_hint_for(expr),
             )
             if type_subst is None:
                 # TODO: replace qualified_name check with @compiler_check decorator
@@ -6376,7 +6382,8 @@ class CallAnalyzer:
         # TODO: replace qualified_name check with @compiler_check decorator
         if (func.qualified_name == "tpy.unsafe.unsafe_cast"
                 and is_readonly_ptr(resolved_func.return_type)
-                and isinstance(self.ctx.expr_type_hint, PtrType) and not self.ctx.expr_type_hint.is_readonly):
+                and isinstance(hint := self.expr.type_hint_for(expr), PtrType)
+                and not hint.is_readonly):
             raise self.ctx.error(
                 "unsafe_cast() cannot cast read-only pointer to mutable pointer (use unsafe_const_cast first)", expr
             )
@@ -6748,7 +6755,7 @@ class CallAnalyzer:
                 # args overlay the seed at their positions; concrete explicit
                 # type args take priority over both.
                 seed = self.type_ops.seed_subst_from_record_pattern(
-                    record, self.ctx.slot_hint_at(expr),
+                    record, self.expr.slot_hint_for(expr),
                 ).with_explicit(record.type_params, wildcard_type_args)
 
                 # The arguments the type parameters are inferred from stay
@@ -6764,7 +6771,7 @@ class CallAnalyzer:
                         arg_types.append(self.expr.analyze_expr_with_hint(arg, hint))
 
                     inferred = self.type_ops.infer_type_params_for_record(
-                        record, arg_types, expected_type=self.ctx.slot_hint_at(expr),
+                        record, arg_types, expected_type=self.expr.slot_hint_for(expr),
                         explicit_type_args=wildcard_type_args,
                     )
                     if inferred:
@@ -6805,7 +6812,7 @@ class CallAnalyzer:
                         f"use @dataclass or define __init__ to accept constructor arguments",
                         expr)
                 # No __init__ -- try contextual inference only
-                result_hint = self.ctx.slot_hint_at(expr)
+                result_hint = self.expr.slot_hint_for(expr)
                 if result_hint is not None or wildcard_type_args is not None:
                     inferred: dict[str, TpyType] = {}
                     if wildcard_type_args:
@@ -7153,7 +7160,7 @@ class CallAnalyzer:
         # The hint for the whole call expression is the slot type the macro
         # result lowers into (CallMacroContext.expected_type). Capture it, then
         # clear it during arg analysis so it can't leak into arg sub-analysis.
-        expected_type = self.ctx.expr_type_hint
+        expected_type = self.expr.type_hint_here()
         with self.ctx.slot_hint_scope(None):
             macro_args = []
             for a in args:

@@ -7,6 +7,7 @@ No parsing logic lives here.
 
 from __future__ import annotations
 import ast
+import copy
 from dataclasses import dataclass, field, is_dataclass, replace
 from enum import Enum, IntEnum
 from typing import Any, Callable, Iterator, Literal, Optional, TYPE_CHECKING
@@ -506,6 +507,8 @@ class TpyCall(TpyCallLike):
         if self.macro_expansion is not None:
             return [self.macro_expansion]
         extra = [self.subscript_callee] if self.subscript_callee is not None else []
+        if self.double_star_unpack is not None:
+            extra.append(self.double_star_unpack)
         return [self.func] + list(self.args) + list(self.kwargs.values()) + extra
 
 
@@ -569,7 +572,8 @@ class TpyMethodCall(TpyCallLike):
         if self.macro_expansion is not None:
             return [self.macro_expansion]
         callee = self.subscript_callee if self.subscript_callee is not None else self.obj
-        return [callee] + list(self.args) + list(self.kwargs.values())
+        dstar = [self.double_star_unpack] if self.double_star_unpack is not None else []
+        return [callee] + list(self.args) + list(self.kwargs.values()) + dstar
 
 
 @dataclass
@@ -2910,3 +2914,70 @@ def is_parse_node(obj: object) -> bool:
     return (is_dataclass(obj) and not isinstance(obj, type)
             and type(obj).__module__ == __name__
             and type(obj).__name__ not in _NON_NODE_RECORDS)
+
+
+def rewrite_tree(roots: object, replace: Callable[[object], object],
+                 skip: frozenset[str] = frozenset()) -> None:
+    """Visit every parse node `roots` holds -- through fields, lists,
+    tuples and dicts -- once, in pre-order and field order, storing back
+    `replace(v)` for every value; a tuple is rebuilt when an element
+    changes. A field named in `skip` is neither rewritten nor walked."""
+    seen: set[int] = set()
+    stack: list[object] = []
+
+    def fix(v: object) -> object:
+        v = replace(v)
+        if is_parse_node(v):
+            stack.append(v)
+        elif isinstance(v, list):
+            for i, x in enumerate(v):
+                v[i] = fix(x)
+        elif isinstance(v, tuple):
+            items = tuple(fix(x) for x in v)
+            if any(a is not b for a, b in zip(items, v)):
+                v = items
+        elif isinstance(v, dict):
+            for k, x in v.items():
+                v[k] = fix(x)
+        return v
+
+    fix(roots)
+    stack.reverse()
+    while stack:
+        node = stack.pop()
+        if id(node) in seen:
+            continue
+        seen.add(id(node))
+        mark = len(stack)
+        for attr, v in list(vars(node).items()):
+            if attr in skip:
+                continue
+            u = fix(v)
+            if u is not v:
+                setattr(node, attr, u)
+        stack[mark:] = stack[mark:][::-1]
+
+
+def unshare(roots: object) -> None:
+    """Give every expression and statement that `roots` -- one macro's
+    output, not analyzed yet -- holds at more than one place a copy of its
+    own at each place after the first. Each place is an evaluation of its
+    own, analyzed under its own flow state and hint; one node would carry
+    the facts of whichever analysis ran last. A list or dict held at two
+    places (one `body` given to two methods) is copied too: unsharing its
+    elements in place would leave both places holding the copies. A
+    call's indexed-callee alternative (`subscript_callee`) shares its
+    receiver with the call by design and is left as it is."""
+    met: set[int] = set()
+
+    def own(v: object) -> object:
+        if isinstance(v, (TpyExpr, TpyStmt, list, dict)):
+            if id(v) in met:
+                # A copied container's elements are met already, so the
+                # walk then copies each of them.
+                return (copy.copy(v) if isinstance(v, (list, dict))
+                        else copy.deepcopy(v))
+            met.add(id(v))
+        return v
+
+    rewrite_tree(roots, own, skip=frozenset(("subscript_callee",)))

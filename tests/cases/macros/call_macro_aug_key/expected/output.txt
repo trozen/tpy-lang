@@ -1,1 +1,3 @@
 macro_key: 1
+twice: ('a', 'a')
+clone: (7, 8)

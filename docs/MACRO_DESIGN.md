@@ -228,6 +228,16 @@ expression that does not propagate the slot type.
 use the shared builder functions from `_macro_helpers` (`build_init`, `build_eq`,
 `build_repr`, `build_hash`, `build_order`) to generate complete method bodies.
 
+A macro may place one node at several sites of its output (`build_order` puts a
+field access in both the `!=` test and the returned compare; `__init__`'s
+parameter defaults are the fields' default nodes). Each site is an evaluation
+of its own, so where unanalyzed macro output enters the compiler -- a class
+macro's added methods with the fields' defaults, a builder's `emit_function` /
+`emit_record`, a function macro's body -- every node met again is replaced by a
+copy (`unshare`, `tpyc/parse/nodes.py`). A call macro's expansion is not
+unshared: the arguments it embeds are already analyzed, and an argument it
+places twice is evaluated twice (BUGS.md#call-macro-arg-evaluated-per-field).
+
 Builder-trace macros (Phase 7) receive a `BuilderContext` carrying macro-time
 literal evaluators, code emission helpers, and diagnostics:
 

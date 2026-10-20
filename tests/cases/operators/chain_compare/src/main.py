@@ -1,4 +1,7 @@
 # Chained comparison operators: a < b < c desugars to (a < b) and (b < c)
+from typing import Iterator
+import asyncio
+from tplib.box import Box
 from tpy import int32
 
 def test_basic() -> None:
@@ -121,3 +124,73 @@ test_as_expression()
 test_single_eval()
 test_short_circuit_operands()
 test_triple_short_circuit()
+
+
+class N:
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+
+class P:
+    def __init__(self, v: int32) -> None:
+        self.v = v
+
+    def __lt__(self, other: "P") -> bool:
+        return self.v < other.v
+
+
+# A middle operand is analyzed and evaluated once, for both pairs it
+# belongs to: consuming it there is one consume, at every position.
+def consume_middle_free() -> None:
+    b = Box(N(3))
+    print("free", 0 < b.take().v < 10)  # tpyc: ok
+
+
+class Holder:
+    def check(self) -> bool:
+        b = Box(N(4))
+        return 0 < b.take().v < 10  # tpyc: ok
+
+
+def consume_middle_gen() -> Iterator[bool]:
+    b = Box(N(5))
+    yield 0 < b.take().v < 10  # tpyc: ok
+
+
+async def consume_middle_async() -> bool:
+    b = Box(N(6))
+    return 0 < b.take().v < 3  # tpyc: ok
+
+
+def consume_middle_comp() -> None:
+    print("comp", [0 < Box(N(i)).take().v < 2 for i in range(3)])  # tpyc: ok
+
+
+def consume_middle_try() -> None:
+    b = Box(N(7))
+    try:
+        print("try", 0 < b.take().v < 10)  # tpyc: ok
+    finally:
+        print("finally")
+
+
+def walrus_middle() -> None:
+    # A walrus middle binds once.
+    lo = P(1)
+    hi = P(5)
+    print("walrus", lo < (q := P(3)) < hi, q.v)  # tpyc: ok
+    v: int = 3000000000
+    print("walrus literal", v > (c := 2147483648) > 0, c)  # tpyc: ok
+
+
+def test_evaluated_once() -> None:
+    consume_middle_free()
+    print("method", Holder().check())
+    print("gen", list(consume_middle_gen()))
+    print("async", asyncio.run(consume_middle_async()))
+    consume_middle_comp()
+    consume_middle_try()
+    walrus_middle()
+
+
+test_evaluated_once()

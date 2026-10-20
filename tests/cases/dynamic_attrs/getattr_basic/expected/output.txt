@@ -1,2 +1,6 @@
 localhost
 8080
+set a 6
+del b
+del c
+plain write: 1 1

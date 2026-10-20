@@ -18,13 +18,52 @@ void main() {
     std::cout << port << "\n" << ::tpy::check_signals;
 }
 
+// def consumed_receiver() -> None:
+//     # A dunder fallback's receiver is evaluated once: consuming it there is
+//     # one consume.
+//     e = Box(Echo())
+//     setattr(e.take(), "a", 6)  # tpyc: ok
+//     e = Box(Echo())
+//     delattr(e.take(), "b")  # tpyc: ok
+//     e = Box(Echo())
+//     del e.take().c  # tpyc: ok
+void consumed_receiver() {
+    ::tpystd::tplib::box::Box<Echo> __slot_1 = ::tpystd::tplib::box::Box<Echo>(Echo());
+    ::tpystd::tplib::box::Box<Echo>* e = &__slot_1;
+    std::move(*e).take().__setattr__("a", 6);
+    std::optional<::tpystd::tplib::box::Box<Echo>> __slot_2;
+    e = &*(__slot_2 = ::tpystd::tplib::box::Box<Echo>(Echo()));
+    std::move(*e).take().__delattr__("b");
+    std::optional<::tpystd::tplib::box::Box<Echo>> __slot_3;
+    e = &*(__slot_3 = ::tpystd::tplib::box::Box<Echo>(Echo()));
+    std::move(*e).take().__delattr__("c");
+}
+
+// def counted_receiver() -> None:
+//     # A plain field write's receiver is analyzed ahead of the target (for the
+//     # setattr-only check) and evaluated once.
+//     h = Holder()
+//     h.get().v = 1  # tpyc: ok
+//     print("plain write:", h.calls, h.p.v)
+void counted_receiver() {
+    Holder h = Holder();
+    h.get().v = 1;
+    std::cout << "plain write:" << " " << h.calls << " " << h.p.v << "\n" << ::tpy::check_signals;
+}
+
+// from tplib.box import Box
+//
 // main()
+// consumed_receiver()
+// counted_receiver()
 void __tpy_init() {
     static bool initialized = false;
     if (initialized) return;
     initialized = true;
 
     ::tpyapp::main::main();
+    ::tpyapp::main::consumed_receiver();
+    ::tpyapp::main::counted_receiver();
 }
 
 } // namespace tpyapp::main

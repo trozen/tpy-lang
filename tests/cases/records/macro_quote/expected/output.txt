@@ -13,3 +13,5 @@ name=Alice, age=30
 2
 0
 
+shared: 42
+shared: hello

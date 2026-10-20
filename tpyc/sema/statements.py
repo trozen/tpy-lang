@@ -5,7 +5,7 @@ Statement analysis including variable declarations, assignments, and control flo
 """
 
 from __future__ import annotations
-from contextlib import contextmanager
+from contextlib import AbstractContextManager, contextmanager, nullcontext
 from typing import TYPE_CHECKING, Callable, Iterator, NamedTuple, Sequence
 
 from ..holders import IterHolder
@@ -7497,11 +7497,22 @@ class StatementAnalyzer:
         # D16 dyn-attr write: if the target is `obj.foo` where foo is undeclared
         # AND the class has __setattr__, the read-side analysis would either
         # resolve via __getattr__ (handled below) or raise "no field". Detect
-        # the latter by analyzing the target with a recovery path: pre-check
-        # for an undeclared FieldAccess target on a dyn-writable class.
-        if (isinstance(stmt.target, TpyFieldAccess)
-                and self._target_is_dyn_writable_only(stmt.target)):
-            self._analyze_dyn_setattr_assign(stmt)
+        # the latter from the receiver, analyzed ahead of the target, which
+        # then reads it back rather than evaluating it again.
+        recv = (stmt.target.obj if isinstance(stmt.target, TpyFieldAccess)
+                else None)
+        recv_type = (self._write_target_receiver(stmt.target)
+                     if isinstance(stmt.target, TpyFieldAccess) else None)
+
+        def recv_reuse() -> AbstractContextManager[None]:
+            return (self.expr.reuse(recv, recv_type)
+                    if recv is not None and recv_type is not None
+                    else nullcontext())
+
+        if (recv_type is not None
+                and self._target_is_dyn_writable_only(stmt.target, recv_type)):
+            with recv_reuse():
+                self._analyze_dyn_setattr_assign(stmt)
             return
         if isinstance(stmt.target, TpyFieldAccess):
             # Pin the write position before the target is analysed as a read:
@@ -7520,7 +7531,8 @@ class StatementAnalyzer:
                 self.pend.list_sink(stmt.target
                                     if isinstance(stmt.target,
                                                   (TpyName, TpySubscript))
-                                    else None):
+                                    else None), \
+                recv_reuse():
             target_type = self.expr.analyze_expr(stmt.target)
         into = self._target_cell_list(stmt.target)
         elem_cell = self._target_elem_cell(stmt.target)
@@ -7561,7 +7573,8 @@ class StatementAnalyzer:
                 args=[TpyStrLiteral(value=stmt.target.field), stmt.value],
                 loc=stmt.loc,
             )
-            self.expr.analyze_expr(setter_call)
+            with recv_reuse():
+                self.expr.analyze_expr(setter_call)
             stmt.target.dyn_setattr_call = setter_call
             # Mark mutation: writing through a dyn-attr is mutating self/obj.
             mark_roots(self.ctx, storage_roots(
@@ -8158,7 +8171,16 @@ class StatementAnalyzer:
                 self.expr.check_dict_key(
                     subscript, actual.key_type, unwrap_readonly(index_type))
 
-    def _target_is_dyn_writable_only(self, target: TpyFieldAccess) -> bool:
+    def _write_target_receiver(self, target: TpyFieldAccess) -> TpyType | None:
+        """The type of write target `target`'s receiver, analyzed ahead of
+        the target; None for a receiver naming a module or a class, whose
+        member the target's own analysis resolves."""
+        if not self.expr.receiver_is_value(target.obj):
+            return None
+        return self.expr.analyze_expr(target.obj)
+
+    def _target_is_dyn_writable_only(self, target: TpyFieldAccess,
+                                     obj_type: TpyType) -> bool:
         """D16: True if `target` is `obj.foo` where foo is undeclared on the
         receiver's class AND the class has __setattr__ but not __getattr__.
 
@@ -8166,10 +8188,6 @@ class StatementAnalyzer:
         before reaching the assign-time dunder routing, so the assign path
         needs to take over BEFORE calling analyze_expr on the target.
         """
-        try:
-            obj_type = self.expr.analyze_expr(target.obj)
-        except SemanticError:
-            return False
         actual = unwrap_qualifiers(obj_type) if obj_type is not None else None
         if not (isinstance(actual, NominalType) and actual.is_record):
             return False
@@ -8286,7 +8304,8 @@ class StatementAnalyzer:
                 args=[TpyStrLiteral(value=field_name)],
                 loc=stmt.loc,
             )
-            self.expr.analyze_expr(synth)
+            with self.expr.reuse(target.obj, obj_type):
+                self.expr.analyze_expr(synth)
             target.dyn_delattr_call = synth
             # Mark mutation: deletion through dunder mutates the receiver.
             mark_roots(self.ctx, storage_roots(

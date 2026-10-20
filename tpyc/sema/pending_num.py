@@ -43,7 +43,7 @@ from ..parse import (
     TpyIntLiteral, TpyListRepeat, TpyMethodCall, TpyName, TpySetLiteral,
     TpyStmt, TpySubscript, TpyTupleLiteral, TpyUnaryOp, TpyVarDecl,
 )
-from ..parse.nodes import is_parse_node
+from ..parse.nodes import is_parse_node, rewrite_tree
 from ..typesys import (
     TpyType, IntLiteralType, FloatLiteralType, PendingNumType, OwnType,
     AutoReadonlyType,
@@ -3349,42 +3349,6 @@ def _line(node: TpyStmt | TpyExpr | None) -> int | None:
     return getattr(getattr(node, "loc", None), "line", None)
 
 
-def _rewrite_tree(body: list[TpyStmt],
-                  replace: Callable[[object], object]) -> None:
-    """Visit every parse node the body holds -- through fields, lists,
-    tuples and dicts -- once, storing back `replace(v)` for every value; a
-    tuple is rebuilt when an element changes."""
-    seen: set[int] = set()
-    stack: list[object] = []
-
-    def fix(v: object) -> object:
-        v = replace(v)
-        if is_parse_node(v):
-            stack.append(v)
-        elif isinstance(v, list):
-            for i, x in enumerate(v):
-                v[i] = fix(x)
-        elif isinstance(v, tuple):
-            items = tuple(fix(x) for x in v)
-            if any(a is not b for a, b in zip(items, v)):
-                v = items
-        elif isinstance(v, dict):
-            for k, x in v.items():
-                v[k] = fix(x)
-        return v
-
-    fix(body)
-    while stack:
-        node = stack.pop()
-        if id(node) in seen:
-            continue
-        seen.add(id(node))
-        for attr, v in list(vars(node).items()):
-            u = fix(v)
-            if u is not v:
-                setattr(node, attr, u)
-
-
 def _splice_out(body: list[TpyStmt], placeholders: list[TpyCoerce]) -> None:
     """Replace every placeholder that turned out to convert nothing by the
     expression it wraps, wherever the tree holds it, so the tree is the one
@@ -3399,7 +3363,7 @@ def _splice_out(body: list[TpyStmt], placeholders: list[TpyCoerce]) -> None:
             v = v.expr  # type: ignore[attr-defined]
         return v
 
-    _rewrite_tree(body, unwrap)
+    rewrite_tree(body, unwrap)
     for p in placeholders:
         if id(p) not in found:
             line = getattr(p.loc, "line", None)
@@ -3417,5 +3381,5 @@ def surviving_placeholder(body: list[TpyStmt]) -> TpyCoerce | None:
             left.append(v)
         return v
 
-    _rewrite_tree(body, look)
+    rewrite_tree(body, look)
     return left[0] if left else None

@@ -25,7 +25,7 @@ from ..parse.nodes import (
     TpyName, TpyStmt, TpyExpr, TpyFunction, TpyRecord, TpyLambda,
     TpyNestedDef,
     TpyStrLiteral, TpyIntLiteral, TpyFloatLiteral, TpyBoolLiteral,
-    TpyNoneLiteral, TpyUnaryOp,
+    TpyNoneLiteral, TpyUnaryOp, unshare,
 )
 from ..typesys import (
     FieldInfo, NominalType, OwnType, TpyType, VOID, STR, STRVIEW, BOOL, BIGINT,
@@ -545,6 +545,7 @@ class BuilderTraceExpander:
         methods = list(methods)
         if not any(m.name == "__init__" for m in methods):
             methods.insert(0, _build_default_init(fields, loc))
+        unshare(methods)
         record = _build_record(name, fields, methods, loc)
         # Append to module so codegen sees it; register with the registrar
         # so subsequent sema lookups find it.
@@ -575,6 +576,7 @@ class BuilderTraceExpander:
         if not return_type.is_value_type() and not isinstance(return_type, OwnType):
             return_type = OwnType(return_type)
         body = list(body)
+        unshare(body)
         # Stmts coming from ast.quote() carry locs anchored to the
         # fragment source, not the user module. Clear them so codegen
         # doesn't try to look up the fragment's line numbers in main.py.

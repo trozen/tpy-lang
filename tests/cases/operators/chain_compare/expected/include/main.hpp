@@ -4,11 +4,24 @@
 #include <tpy/tpy.hpp>
 #include "tpystd/tpy/_types.hpp"
 #include "tpystd/typing/_typing.hpp"
+#include "tpystd/coro.hpp"
+#include "tpystd/asyncio.hpp"
+#include "tpystd/tplib.hpp"
+#include "tpystd/tplib/box.hpp"
 
 namespace tpyapp::main {
 
+using ::tpystd::tplib::box::Box;
+
+struct N;
+struct P;
+struct Holder;
+
 extern int32_t call_count;
 inline constexpr std::string_view __name__ = "__main__";
+
+struct __gen_consume_middle_gen;
+struct __coro_consume_middle_async;
 
 // def test_basic() -> None:
 void test_basic();
@@ -42,6 +55,139 @@ void test_single_eval();
 void test_short_circuit_operands();
 // def test_triple_short_circuit() -> None:
 void test_triple_short_circuit();
+// def consume_middle_free() -> None:
+void consume_middle_free();
+// def consume_middle_gen() -> Iterator[bool]:
+__gen_consume_middle_gen consume_middle_gen();
+// async def consume_middle_async() -> bool:
+__coro_consume_middle_async consume_middle_async();
+// def consume_middle_comp() -> None:
+void consume_middle_comp();
+// def consume_middle_try() -> None:
+void consume_middle_try();
+// def walrus_middle() -> None:
+void walrus_middle();
+// def test_evaluated_once() -> None:
+void test_evaluated_once();
 
+// class N:
+struct N {
+    // self.v = v
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    N() = default;
+    explicit N(int32_t v);
+    static constexpr std::string_view __tpy_class_name__ = "__main__.N";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const N& obj) {
+    ::tpy::print_object_default(os, "N", obj);
+    return os;
+}
+
+// class P:
+struct P {
+    // self.v = v
+    int32_t v;
+
+    // def __init__(self, v: int32) -> None:
+    P() = default;
+    explicit P(int32_t v);
+
+    // def __lt__(self, other: "P") -> bool:
+    bool __lt__(const P& other) const;
+
+    friend bool operator<(const P& lhs, const P& other) {
+        return lhs.__lt__(other);
+    }
+    static constexpr std::string_view __tpy_class_name__ = "__main__.P";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const P& obj) {
+    ::tpy::print_object_default(os, "P", obj);
+    return os;
+}
+
+// class Holder:
+struct Holder {
+
+
+    // def check(self) -> bool:
+    bool check() const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Holder";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Holder& obj) {
+    ::tpy::print_object_default(os, "Holder", obj);
+    return os;
+}
+
+// async def consume_middle_async() -> bool:
+struct __coro_consume_middle_async {
+    ::tpy::frame_state __state;
+    bool __cancel_pending;
+    ::tpy::frame_slot<::tpystd::tplib::box::Box<N>> b;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_DONE = 1,
+    };
+
+    __coro_consume_middle_async()
+        : __state(S_INITIAL),
+          __cancel_pending(false) {}
+
+    ::tpystd::tpy::Poll<bool> __poll__(::tpystd::coro::Waker waker);
+    void cancel() { __cancel_pending = true; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __coro_consume_middle_async&) {
+        return os << "<coroutine consume_middle_async>";
+    }
+};
+
+// def consume_middle_gen() -> Iterator[bool]:
+struct __gen_consume_middle_gen : public ::tpy::next_iter_mixin<__gen_consume_middle_gen, bool> {
+    ::tpy::frame_state __state;
+    ::tpy::frame_slot<::tpystd::tplib::box::Box<N>> b;
+
+    enum : int32_t {
+        S_INITIAL = 0,
+        S_RESUME_0 = 1,
+        S_DONE = 2,
+    };
+
+    __gen_consume_middle_gen() : __state(S_INITIAL) {}
+
+    std::expected<bool, ::tpy::StopIteration> __next__();
+    __gen_consume_middle_gen& __iter__() { return *this; }
+
+    friend std::ostream& operator<<(std::ostream& os, const __gen_consume_middle_gen&) {
+        return os << "<generator consume_middle_gen>";
+    }
+};
+
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline N::N(int32_t v) : v(v) {}
+
+// def __init__(self, v: int32) -> None:
+//     self.v = v
+inline P::P(int32_t v) : v(v) {}
+
+// def __lt__(self, other: "P") -> bool:
+//     return self.v < other.v
+inline bool P::__lt__(const P& other) const {
+    return (this->v < other.v);
+}
+
+// def check(self) -> bool:
+//     b = Box(N(4))
+//     return 0 < b.take().v < 10  # tpyc: ok
+inline bool Holder::check() const {
+    ::tpystd::tplib::box::Box<N> b = ::tpystd::tplib::box::Box<N>(N(4));
+    return ({ auto&& _cmp1 = std::move(b).take().v; (0 < _cmp1) && (_cmp1 < 10); });
+}
 void __tpy_init();
 } // namespace tpyapp::main

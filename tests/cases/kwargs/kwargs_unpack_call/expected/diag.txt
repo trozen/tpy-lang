@@ -1,0 +1,2 @@
+main.py:20: warning: copies Options into owned storage; use copy() to make this explicit
+main.py:32: warning: copies Options into owned storage; use copy() to make this explicit

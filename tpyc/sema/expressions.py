@@ -6,11 +6,12 @@ Core expression analysis including literals, names, operators, field access, and
 
 from __future__ import annotations
 import copy
-from contextlib import AbstractContextManager, ExitStack, nullcontext
+from contextlib import AbstractContextManager, ExitStack, contextmanager, nullcontext
 from dataclasses import replace as dc_replace
-from typing import Callable, Iterable, Literal, Sequence, TYPE_CHECKING
+from typing import Callable, Iterable, Iterator, Literal, Sequence, TYPE_CHECKING
 
 from ..holders import IterHolder
+from ..identity_map import IdentityMap
 from ..typesys import canonical_readonly, make_readonly, substitute_type_params_simple
 from ..typesys import pointer_repr_optional, readonly_access, repr_shape
 from ..typesys import own_tuple_target
@@ -433,6 +434,20 @@ _COMPARE_OPS = ("==", "!=", "<", ">", "<=", ">=")
 _PENDING_NUM_BINOPS = frozenset((*_COMPARE_OPS, "+", "-", "*", "//", "%", "&",
                                  "|", "^", "**", "<<", ">>", "div"))
 
+# The container literals and comprehensions: typed as a whole from the slot
+# they are analyzed for, their elements left open without a hint.
+CONTAINER_KINDS: tuple[type, ...] = (
+    TpyArrayLiteral, TpyDictLiteral, TpySetLiteral, TpyListComprehension,
+    TpyDictComprehension, TpySetComprehension)
+
+# The expressions whose analysis reads the slot they are analyzed for even
+# when it has no hint: with none they take a default (a container's open
+# element, `str` for an f-string, the type parameter itself for `T()`, an
+# error for a lambda). An argument-less generic constructor
+# (`generic_constructor_factory`) is one too.
+SLOT_READER_KINDS: tuple[type, ...] = (
+    *CONTAINER_KINDS, TpyFString, TpyTypeParamConstruct, TpyLambda)
+
 
 def _use_as_part_of(parent: TpyExpr, child: TpyExpr) -> str:
     """How `parent` uses its operand `child`, for a diagnostic."""
@@ -502,6 +517,10 @@ class ExpressionAnalyzer:
         # The expressions whose analysis is open, innermost last: what a
         # forced pending read is part of (`describe_pending_use`).
         self._expr_stack: list[TpyExpr] = []
+        # The nodes `reuse` hands their result back for, with the slot hint
+        # each was analyzed under.
+        self._reused: IdentityMap[TpyExpr, tuple[TpyType, SlotHint | None]] = (
+            IdentityMap())
         self.describe_statement_use: Callable[[TpyExpr | None], str] = (
             lambda _e=None: "this use")
 
@@ -615,6 +634,9 @@ class ExpressionAnalyzer:
             inner_type = self.analyze_expr_with_hint(node.expr, inner_hint)
         else:
             inner_type = self.analyze_expr(node.expr)
+        if self.slot_was_read(node.expr):
+            # The unpack is the argument; what it unpacks read the slot.
+            self.ctx.slot_reads.add(node)
         elem = star_source_element_type(inner_type)
         if elem is None:
             raise self.ctx.error(
@@ -695,6 +717,90 @@ class ExpressionAnalyzer:
                 f"give '{fi.name}' a parameter of the concrete type, or bind "
                 f"the value to a '{pt}'-typed parameter of this function",
                 call)
+
+    @contextmanager
+    def reuse(self, node: TpyExpr, typ: TpyType) -> Iterator[None]:
+        """`node`, which its site has just analyzed to `typ`, entered again
+        by that site's next step (a dunder call synthesized over the same
+        receiver, a chained comparison's next pair): the entry hands back
+        `typ` rather than analyzing the node a second time, so what its
+        analysis did -- a consume, a move, a nested call's commit -- is done
+        once, as the expression is evaluated once. Only for an entry under
+        the hint in force where `reuse` is opened (asserted on re-entry): a
+        different hint is a different analysis. The pending gate still runs
+        on the reused entry, and the node's slot read is not re-marked on
+        its new parent (its argument root already carries it)."""
+        prev = self._reused.get(node)
+        self._reused[node] = (typ, self.ctx.slot_hint_at(node))
+        try:
+            yield
+        finally:
+            if prev is None:
+                del self._reused[node]
+            else:
+                self._reused[node] = prev
+
+    def read_slot(self, node: TpyExpr) -> None:
+        """Record that the analysis of `node` consulted the slot it is
+        analyzed for -- read its hint, or found none and took what an absent
+        hint gives -- and so did the analysis of each expression holding
+        it, up to the argument of the innermost call: a call reads its own
+        slot only through a reader of its own, or through its receiver,
+        whose type is the method's (`sink(make().ident())` takes `make`'s
+        type arguments from `sink`'s parameter). A node not under analysis
+        (a synthesized stand-in) speaks for the one that is."""
+        reads = self.ctx.slot_reads
+        reads.add(node)
+        stack = self._expr_stack
+        at = next((i for i in range(len(stack) - 1, -1, -1)
+                   if stack[i] is node), None)
+        if at is None and stack:
+            at = len(stack) - 1
+            reads.add(stack[at])
+        child = stack[at] if at is not None else node
+        for parent in reversed(stack[:at or 0]):
+            if (isinstance(parent, TpyCall)
+                    or (isinstance(parent, TpyMethodCall)
+                        and child is not parent.obj)):
+                break
+            reads.add(parent)
+            child = parent
+
+    def slot_was_read(self, node: TpyExpr) -> bool:
+        """Whether the analysis of `node` consulted its slot (`read_slot`)."""
+        return node in self.ctx.slot_reads
+
+    def slot_hint_for(self, node: TpyExpr) -> SlotHint | None:
+        """The hint `node` is analyzed under (`SemanticContext.slot_hint_at`),
+        read by the analysis of `node` itself."""
+        self.read_slot(node)
+        return self.ctx.slot_hint_at(node)
+
+    def type_hint_for(self, node: TpyExpr) -> TpyType | None:
+        """The type of the hint in force (`SemanticContext.expr_type_hint`),
+        read by the analysis of `node`."""
+        self.read_slot(node)
+        return self.ctx.expr_type_hint
+
+    def type_hint_here(self) -> TpyType | None:
+        """`type_hint_for` the expression under analysis."""
+        if self._expr_stack:
+            self.read_slot(self._expr_stack[-1])
+        return self.ctx.expr_type_hint
+
+    def _reused_result(self, expr: TpyExpr,
+                       hint: SlotHint | None) -> TpyType | None:
+        """The type `reuse` hands back for `expr` entered under `hint`."""
+        reused = self._reused.get(expr)
+        if reused is None:
+            return None
+        typ, registered = reused
+        if hint != registered:
+            raise AssertionError(
+                f"Internal error: an expression at line "
+                f"{getattr(expr.loc, 'line', None)} handed back by `reuse` "
+                f"is entered under another slot hint")
+        return typ
 
     def analyze_expr(self, expr: TpyExpr) -> TpyType:
         """Analyze an expression and return its type.
@@ -950,18 +1056,25 @@ class ExpressionAnalyzer:
 
     def _analyze_expr_raw(self, expr: TpyExpr) -> TpyType:
         own = self.ctx.slot_hint_at(expr)
+        reused = self._reused_result(expr, own)
+        if reused is not None:
+            return reused
         if own is not None and own.is_fill and self._fill_types(expr):
             # What the literal or empty constructor leaves open -- its
             # empty element types, its float literals' width -- is filled
             # from the overload's declared parameter type, which converts
             # none of its ints: the same typing an inferred local's type
             # gives.
+            self.read_slot(expr)
             return self._analyze_expr_under_hint(expr, own.as_local())
+        if (isinstance(expr, SLOT_READER_KINDS)
+                or generic_constructor_factory(self.ctx, expr) is not None):
+            self.read_slot(expr)
         if is_property_getter_read(expr):
             # A property read BECAME its getter call at the end of its own
-            # analysis, and bodies re-analyse expressions (a chained
-            # comparison's middle operand, the receiver of a write target, a
-            # lambda body under an overload dry-run). The getter is pruned
+            # analysis, and bodies re-analyse expressions (a lambda body
+            # under an overload dry-run, an overload's argument from its
+            # probe to the winner). The getter is pruned
             # from the record's method table, so re-running METHOD resolution
             # would reject a read that already resolved.
             # It is re-RESOLVED rather than read back: the become is
@@ -1136,10 +1249,7 @@ class ExpressionAnalyzer:
         that typing if another won (the reason `_probe_arg_hint` drops a
         Callable hint), so it gets no fill, as a declared local's probe
         gives it no hint."""
-        return (isinstance(expr, (TpyArrayLiteral, TpyDictLiteral,
-                                  TpySetLiteral, TpyTupleLiteral,
-                                  TpyListComprehension, TpyDictComprehension,
-                                  TpySetComprehension))
+        return (isinstance(expr, (*CONTAINER_KINDS, TpyTupleLiteral))
                 or generic_constructor_factory(self.ctx, expr) is not None)
 
     def _forward_fill(self, select: TpyExpr, operand: TpyExpr,
@@ -1216,11 +1326,14 @@ class ExpressionAnalyzer:
         """`coercion_ctx` is the context the caller coerces the value to
         the declared slot under (`analyze_at_slot`); None when the hint
         only types the value."""
-        self._expr_stack.append(expr)
-        try:
-            typ = self._analyze_expr_under_hint_raw(expr, slot, coercion_ctx)
-        finally:
-            self._expr_stack.pop()
+        typ = self._reused_result(expr, slot)
+        if typ is None:
+            self._expr_stack.append(expr)
+            try:
+                typ = self._analyze_expr_under_hint_raw(expr, slot,
+                                                        coercion_ctx)
+            finally:
+                self._expr_stack.pop()
         return self._pending_gate(
             expr, typ, slot if coercion_ctx is not None else None)
 
@@ -1228,6 +1341,23 @@ class ExpressionAnalyzer:
                                      coercion_ctx: CoercionContext | None,
                                      ) -> TpyType:
         slot = slot.map(unwrap_ref_type)
+        typ = self._analyze_hinted_shape(expr, slot, coercion_ctx)
+        if typ is not None:
+            self.read_slot(expr)
+            return typ
+        # Fall back to regular analysis, propagating hint through context
+        # for functions that need it (e.g. unsafe_cast). The caller's gate
+        # is the node's one gate: it knows the slot.
+        with self.ctx.slot_hint_scope(slot):
+            return self._analyze_expr_raw(expr)
+
+    def _analyze_hinted_shape(self, expr: TpyExpr, slot: SlotHint,
+                              coercion_ctx: CoercionContext | None,
+                              ) -> TpyType | None:
+        """The type of `expr` when it is a shape typed from `slot` (a
+        lambda, a function reference or a class at a callable slot, a
+        select, a container literal or comprehension, ...); None for any
+        other expression, which regular analysis types."""
         type_hint = slot.type
 
         # Lambda with Fn/Callable type hint: infer param types from the hint.
@@ -1466,11 +1596,7 @@ class ExpressionAnalyzer:
                 self.ctx.set_expr_type(expr, result)
                 return result
 
-        # Fall back to regular analysis, propagating hint through context
-        # for functions that need it (e.g. unsafe_cast). The caller's gate
-        # is the node's one gate: it knows the slot.
-        with self.ctx.slot_hint_scope(slot):
-            return self._analyze_expr_raw(expr)
+        return None
 
     def _analyze_name(self, expr: TpyName) -> TpyType:
         """Analyze a name reference."""
@@ -3012,7 +3138,12 @@ class ExpressionAnalyzer:
             # Only the first two operands always evaluate; every later
             # comparator sits behind a compare that has to pass.
             pair = TpyBinOp(prev, op, comp, loc=expr.loc, cond_right=i >= 1)
-            self.analyze_expr(pair)
+            # A middle operand is evaluated once, as the previous pair's
+            # right side, and this pair compares that value.
+            middle = self.ctx.get_raw_expr_type(prev) if i else None
+            with (self.reuse(prev, middle) if middle is not None
+                  else nullcontext()):
+                self.analyze_expr(pair)
             pairs.append(pair)
             prev = comp
         expr.pairs = pairs
@@ -3367,8 +3498,14 @@ class ExpressionAnalyzer:
         expr.native_field_name = field_info.native_name
         return make_ref(field_type)
 
-    def _analyze_field_access(self, expr: TpyFieldAccess,
-                             obj_type: TpyType | None = None) -> TpyType:
+    def receiver_is_value(self, obj: TpyExpr) -> bool:
+        """Whether the receiver `obj` of a field access is a value the
+        access reads a field of, rather than a module or a class it names
+        a member of."""
+        return (self.ctx.module_named_by(obj) is None
+                and self.ctx.type_ref(obj) is None)
+
+    def _analyze_field_access(self, expr: TpyFieldAccess) -> TpyType:
         """Analyze a field access."""
         # A filled default's read is spelled by its stamp alone.
         if expr.default_fill:
@@ -3377,35 +3514,35 @@ class ExpressionAnalyzer:
             return referent_type(
                 self.ctx, module_var=expr.module_var_access,
                 class_owner=expr.class_constant_owner, member=expr.field)
-        # A module variable: `sys.argv`, `pkg.sub.X`.
-        module_name = self.ctx.module_named_by(expr.obj)
-        if module_name is not None:
-            module_info = self.ctx.registry.get_module(module_name)
-            if module_info is not None and expr.field in module_info.variables:
-                if isinstance(expr.obj, TpyFieldAccess):
-                    expr.module_var_access = (module_name, expr.field)
-                return module_info.variables[expr.field].type
+        if not self.receiver_is_value(expr.obj):
+            # A module variable: `sys.argv`, `pkg.sub.X`.
+            module_name = self.ctx.module_named_by(expr.obj)
+            if module_name is not None:
+                module_info = self.ctx.registry.get_module(module_name)
+                if module_info is not None and expr.field in module_info.variables:
+                    if isinstance(expr.obj, TpyFieldAccess):
+                        expr.module_var_access = (module_name, expr.field)
+                    return module_info.variables[expr.field].type
 
-        # A class used as a value is not one, spelled bare (`Outer`) or
-        # through a path (`m.Outer`, `Outer.Inner`).
-        if self.ctx.type_ref(expr) is not None:
-            raise self.ctx.error(
-                f"'{'.'.join(name_path(expr) or ())}' is not a variable", expr)
-        # A member of the class or enum the receiver names: `Color.RED`,
-        # `m.Outer.Kind.A`, `Outer.Inner.K`, `Base.field` from a subclass.
-        owner = self.ctx.type_ref(expr.obj)
-        if owner is not None:
-            member = self._type_member_access(expr, owner)
-            if member is not None:
-                if isinstance(expr.obj, TpyFieldAccess):
-                    expr.obj.names_type = owner
-                return member
-            path = name_path(expr)
-            if path is not None and not self.ctx.class_has_member(owner, expr.field):
-                raise self.ctx.error(self.ctx.type_path_miss(path, "a class"), expr)
+            # A class used as a value is not one, spelled bare (`Outer`) or
+            # through a path (`m.Outer`, `Outer.Inner`).
+            if self.ctx.type_ref(expr) is not None:
+                raise self.ctx.error(
+                    f"'{'.'.join(name_path(expr) or ())}' is not a variable", expr)
+            # A member of the class or enum the receiver names: `Color.RED`,
+            # `m.Outer.Kind.A`, `Outer.Inner.K`, `Base.field` from a subclass.
+            owner = self.ctx.type_ref(expr.obj)
+            if owner is not None:
+                member = self._type_member_access(expr, owner)
+                if member is not None:
+                    if isinstance(expr.obj, TpyFieldAccess):
+                        expr.obj.names_type = owner
+                    return member
+                path = name_path(expr)
+                if path is not None and not self.ctx.class_has_member(owner, expr.field):
+                    raise self.ctx.error(self.ctx.type_path_miss(path, "a class"), expr)
 
-        if obj_type is None:
-            obj_type = self.analyze_expr(expr.obj)
+        obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers
         is_readonly_obj = readonly_access(obj_type)
@@ -3537,7 +3674,7 @@ class ExpressionAnalyzer:
         # as a synthesized method call (parallel to property routing). Fires
         # only after the static-resolution + deref loop has failed.
         if isinstance(actual_type, NominalType) and actual_type.is_record:
-            dyn_result = self._try_dyn_getattr(actual_type, expr)
+            dyn_result = self._try_dyn_getattr(actual_type, expr, obj_type)
             if dyn_result is not None:
                 return make_ref(dyn_result)
             hint = ""
@@ -3554,7 +3691,8 @@ class ExpressionAnalyzer:
                 f"Record '{actual_type.name}' has no field '{expr.field}'{hint}", expr)
         raise self.ctx.error(f"Cannot access field '{expr.field}' on type {obj_type}", expr)
 
-    def _try_dyn_getattr(self, typ: NominalType, expr: TpyFieldAccess) -> TpyType | None:
+    def _try_dyn_getattr(self, typ: NominalType, expr: TpyFieldAccess,
+                         obj_type: TpyType) -> TpyType | None:
         """D16 Phase 1: try routing `obj.field` through __getattr__.
 
         Returns the dunder's substituted return type (and stashes the
@@ -3578,7 +3716,8 @@ class ExpressionAnalyzer:
             args=[TpyStrLiteral(value=expr.field)],
             loc=expr.loc,
         )
-        ret_type = self.analyze_expr(getter_call)
+        with self.reuse(expr.obj, obj_type):
+            ret_type = self.analyze_expr(getter_call)
         expr.dyn_getattr_call = getter_call
         return ret_type
 
@@ -4236,9 +4375,8 @@ class ExpressionAnalyzer:
             _, expr.value = self.compat.coerce_reassignment(
                 name, existing, value_type, expr.value, expr)
             resolved = existing
-            # A re-analysis of the walrus that introduced the binding (a
-            # chained comparison's middle operand is analyzed by both of its
-            # pairs) is checked as a reassignment but keeps its first type.
+            # A re-analysis of the walrus that introduced the binding is
+            # checked as a reassignment but keeps its first type.
             result_type = (_walrus_result_type(existing, value_type)
                            if expr in self.ctx.func.bind_kinds else existing)
         else:
@@ -5713,8 +5851,7 @@ class ExpressionAnalyzer:
             sub.index, index_type, key_type, context, coercion,
             CoercionContext.ARG)
 
-    def _analyze_subscript(self, expr: TpySubscript,
-                          obj_type: TpyType | None = None) -> TpyType:
+    def _analyze_subscript(self, expr: TpySubscript) -> TpyType:
         """Analyze subscript indexing: obj[index] or slicing: obj[start:stop]"""
         # Decided afresh on every analysis: an overload trial may have analyzed
         # this node under an Optional receiver type the winner does not have.
@@ -5738,12 +5875,11 @@ class ExpressionAnalyzer:
             expr.enum_from_name = owner.info
             return owner.info
 
-        if obj_type is None:
-            # An element read leaves the element of a list literal as its
-            # cell has it; a slice builds a container from it.
-            with self.pend.list_sink(
-                    None if isinstance(expr.index, TpySlice) else expr.obj):
-                obj_type = self.analyze_expr(expr.obj)
+        # An element read leaves the element of a list literal as its
+        # cell has it; a slice builds a container from it.
+        with self.pend.list_sink(
+                None if isinstance(expr.index, TpySlice) else expr.obj):
+            obj_type = self.analyze_expr(expr.obj)
 
         # Unwrap transparent wrappers -- Ref/Own don't affect subscript behavior
         inner_obj_type = unwrap_ref_type(obj_type)

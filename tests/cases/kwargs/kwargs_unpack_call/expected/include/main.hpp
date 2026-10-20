@@ -8,11 +8,18 @@
 namespace tpyapp::main {
 
 struct Options;
+struct Conn;
 
 inline constexpr std::string_view __name__ = "__main__";
 
 // def connect(**kwargs: Unpack[Options]) -> None:
 void connect(const Options& kwargs);
+// def keep(o: Own[Options]) -> Own[Options]:
+Options keep(Options&& o);
+// def used_after_own() -> None:
+void used_after_own();
+// def used_after_own_method() -> None:
+void used_after_own_method();
 // def main() -> None:
 void main();
 
@@ -31,5 +38,25 @@ inline std::ostream& operator<<(std::ostream& os, const Options& obj) {
     return os;
 }
 
+// class Conn:
+struct Conn {
+
+
+    // def connect(self, **kwargs: Unpack[Options]) -> None:
+    void connect(const Options& kwargs) const;
+    static constexpr std::string_view __tpy_class_name__ = "__main__.Conn";
+};
+
+inline std::ostream& operator<<(std::ostream& os, const Conn& obj) {
+    ::tpy::print_object_default(os, "Conn", obj);
+    return os;
+}
+
+
+// def connect(self, **kwargs: Unpack[Options]) -> None:
+//     print("method", kwargs["host"], kwargs["port"])
+inline void Conn::connect(const Options& kwargs) const {
+    std::cout << "method" << " " << kwargs.host << " " << kwargs.port << "\n" << ::tpy::check_signals;
+}
 void __tpy_init();
 } // namespace tpyapp::main

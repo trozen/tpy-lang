@@ -15,7 +15,7 @@ import textwrap
 from dataclasses import dataclass, field, fields
 from typing import Any, Callable, Literal, NoReturn, TYPE_CHECKING
 
-from .parse.nodes import ParseError as _ParseError
+from .parse.nodes import ParseError as _ParseError, unshare as _unshare
 from .typesys import (
     TpyType, NominalType, OwnType,
     OptionalType,
@@ -1747,6 +1747,14 @@ class ClassInfo:
 
     def apply_to_record(self) -> None:
         """Write macro mutations back to the TpyRecord."""
+        # One node per evaluation across the whole output; a field's default
+        # and a method the record already has (a deferred macro reruns on
+        # the composed record) come first, so a generated method spelling
+        # one again (an `__init__` parameter's default) gets the copy.
+        defaults = [f.default_expr for f in self._record.fields]
+        _unshare([defaults, self._record.methods, self._added_methods])
+        for f, d in zip(self._record.fields, defaults):
+            f.default_expr = d
         for func in self._added_methods:
             if func.name == "__init__":
                 self._record.methods.insert(0, func)

@@ -12,12 +12,57 @@ void connect(const Options& kwargs) {
     std::cout << kwargs.port << "\n" << ::tpy::check_signals;
 }
 
+// def keep(o: Own[Options]) -> Own[Options]:
+//     return o
+Options keep(Options&& o) {
+    return o;
+}
+
+// def used_after_own() -> None:
+//     # A `**d` operand is a use of `d`: the earlier Own use is not its last,
+//     # so it copies (and says so) instead of moving `d` away.
+//     d = Options(host="kept", port=1)
+//     k = keep(d)  # tpyc: warning(/copies Options into owned storage/)
+//     connect(**d)
+//     k["port"] = 2
+//     print("after own", k["host"], k["port"])
+void used_after_own() {
+    Options d = Options("kept", 1);
+    Options __tmp_1 = d;
+    Options k = ::tpyapp::main::keep(std::move(__tmp_1));
+    ::tpyapp::main::connect(d);
+    k.port = 2;
+    std::cout << "after own" << " " << k.host << " " << k.port << "\n" << ::tpy::check_signals;
+}
+
+// def used_after_own_method() -> None:
+//     # The method form: `c.connect(**d)` is a use of `d` as well.
+//     d = Options(host="kept", port=1)
+//     k = keep(d)  # tpyc: warning(/copies Options into owned storage/)
+//     c = Conn()
+//     c.connect(**d)
+//     k["port"] = 3
+//     print("method after own", k["host"], k["port"])
+void used_after_own_method() {
+    Options d = Options("kept", 1);
+    Options __tmp_1 = d;
+    Options k = ::tpyapp::main::keep(std::move(__tmp_1));
+    Conn c = Conn();
+    c.connect(d);
+    k.port = 3;
+    std::cout << "method after own" << " " << k.host << " " << k.port << "\n" << ::tpy::check_signals;
+}
+
 // def main() -> None:
-//     opts = Options(host="example.com", port=int32(443))
+//     opts = Options(host="example.com", port=443)
 //     connect(**opts)
+//     used_after_own()
+//     used_after_own_method()
 void main() {
     Options opts = Options("example.com", 443);
     ::tpyapp::main::connect(opts);
+    ::tpyapp::main::used_after_own();
+    ::tpyapp::main::used_after_own_method();
 }
 
 // main()

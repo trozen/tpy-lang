@@ -26,6 +26,8 @@ void test_reset();
 void test_static();
 // def test_quote_expr() -> None:
 void test_quote_expr();
+// def test_shared_body() -> None:
+void test_shared_body();
 
 // @builder
 // class Point:
@@ -55,6 +57,12 @@ struct Point {
 
     // # Test quote/add_method_from_source macro APIs.
     static int32_t field_count();
+
+    // # Test quote/add_method_from_source macro APIs.
+    std::string show_int(int32_t v) const;
+
+    // # Test quote/add_method_from_source macro APIs.
+    std::string show_str(std::string_view v) const;
 
     friend bool operator==(const Point& lhs, const Point& other) {
         return lhs.__eq__(other);
@@ -95,6 +103,12 @@ struct Person {
 
     // # Test quote/add_method_from_source macro APIs.
     static int32_t field_count();
+
+    // # Test quote/add_method_from_source macro APIs.
+    std::string show_int(int32_t v) const;
+
+    // # Test quote/add_method_from_source macro APIs.
+    std::string show_str(std::string_view v) const;
 
     friend bool operator==(const Person& lhs, const Person& other) {
         return lhs.__eq__(other);
@@ -149,6 +163,18 @@ inline int32_t Point::field_count() {
     return 2;
 }
 
+// # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
+inline std::string Point::show_int(int32_t v) const {
+    return ::tpy::fixed_to_str<int32_t>(v);
+}
+
+// # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
+inline std::string Point::show_str(std::string_view v) const {
+    return std::string(v);
+}
+
 inline Person::Person(std::string_view name, int32_t age)
     : name(name),
       age(age) {}
@@ -188,6 +214,18 @@ inline std::string Person::default_first() const {
 // from tpy import int32
 inline int32_t Person::field_count() {
     return 2;
+}
+
+// # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
+inline std::string Person::show_int(int32_t v) const {
+    return ::tpy::fixed_to_str<int32_t>(v);
+}
+
+// # Test quote/add_method_from_source macro APIs.
+// from tpy import int32
+inline std::string Person::show_str(std::string_view v) const {
+    return std::string(v);
 }
 void __tpy_init();
 } // namespace tpyapp::main
